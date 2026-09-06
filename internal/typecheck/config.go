@@ -348,7 +348,8 @@ func resolveTypeRoots(modulesPath, repoRoot string) []string {
 	}
 
 	// Prefer modules/tsconfig.json typeRoots (type-fetch under ~/.choysum).
-	for _, raw := range readTsconfigTypeRoots(modulesPath) {
+	tsTypeRoots := readTsconfigTypeRoots(modulesPath)
+	for _, raw := range tsTypeRoots {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			// Empty entries Join to modulesPath and would wrongly register it
@@ -368,6 +369,14 @@ func resolveTypeRoots(modulesPath, repoRoot string) []string {
 			}
 		}
 		add(abs)
+	}
+
+	// When tsconfig omits typeRoots (gitignored CI shards), still pick up
+	// type-fetch bridges written under choysum homes (…/pkg/types/typeRoots).
+	if len(tsTypeRoots) == 0 {
+		for _, root := range choysumTypesSearchRoots() {
+			add(filepath.Join(root, "typeRoots"))
+		}
 	}
 
 	// Opportunistic only — typecheck must not require node_modules.

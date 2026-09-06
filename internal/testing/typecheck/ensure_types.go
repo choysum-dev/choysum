@@ -459,19 +459,21 @@ func writeTypeRootBridge(typesDir, typeName, cachedPath string) error {
 	if err != nil {
 		return err
 	}
-	if realTypesDir, err := filepath.EvalSymlinks(absTypesDir); err == nil {
-		absTypesDir = realTypesDir
-	}
 	if !filepath.IsAbs(cachedPath) {
 		cachedPath, err = filepathAbs(cachedPath)
 		if err != nil {
 			return err
 		}
 	}
-	if realCachedPath, err := filepath.EvalSymlinks(cachedPath); err == nil {
-		cachedPath = realCachedPath
+	// Resolve both or neither so containment is not checked across mixed views.
+	if realTypesDir, err := filepath.EvalSymlinks(absTypesDir); err == nil {
+		if realCachedPath, err := filepath.EvalSymlinks(cachedPath); err == nil {
+			absTypesDir = realTypesDir
+			cachedPath = realCachedPath
+		}
 	}
-	if !strings.HasPrefix(cachedPath, absTypesDir+string(os.PathSeparator)) {
+	rel, err := filepath.Rel(absTypesDir, cachedPath)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 		return nil
 	}
 	typePkgDir := filepath.Join(absTypesDir, "typeRoots", typeName)

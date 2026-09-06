@@ -651,6 +651,12 @@ func TestBuildCompilerOptions_AbsBaseURL(t *testing.T) {
 
 func TestResolveTypeRootsAndTypes(t *testing.T) {
 	dir := t.TempDir()
+	// Isolate from the developer's ~/.choysum typeRoots bridges.
+	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	t.Setenv("CHOYSUM_TEST_TMP", "")
+	origHome := userHomeDir
+	t.Cleanup(func() { userHomeDir = origHome })
+	userHomeDir = func() (string, error) { return filepath.Join(t.TempDir(), "no-home"), nil }
 	local := filepath.Join(dir, "node_modules", "@types", "node")
 	mustMkdir(t, local)
 	roots := resolveTypeRoots(dir, dir)

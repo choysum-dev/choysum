@@ -502,6 +502,33 @@ func TestResolveTypeRoots_TypeRootsRewrite(t *testing.T) {
 	}
 }
 
+func TestResolveTypeRoots_SearchRootsWithoutTsconfig(t *testing.T) {
+	repo := t.TempDir()
+	modules := filepath.Join(repo, "modules")
+	mustMkdir(t, modules)
+
+	home := t.TempDir()
+	t.Setenv("CHOYSUM_HOME", home)
+	t.Setenv("CHOYSUM_TEST_TMP", "")
+	origHome := userHomeDir
+	t.Cleanup(func() { userHomeDir = origHome })
+	userHomeDir = func() (string, error) { return filepath.Join(t.TempDir(), "no-home"), nil }
+	typeRootsDir := filepath.Join(home, "pkg", "types", "typeRoots")
+	mustMkdir(t, filepath.Join(typeRootsDir, "node"))
+
+	roots := resolveTypeRoots(modules, repo)
+	found := false
+	for _, r := range roots {
+		if filepath.Clean(r) == filepath.Clean(typeRootsDir) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected search-root typeRoots %s in %v", typeRootsDir, roots)
+	}
+}
+
 func TestResolveCompilerTypes_ConfiguredTypes(t *testing.T) {
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules")
