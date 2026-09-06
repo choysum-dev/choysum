@@ -10,7 +10,8 @@ import (
 	"sync"
 )
 
-// CachedCoder wraps a Coder and memoizes CreateServiceScript by path+source hash.
+// CachedCoder wraps a Coder and memoizes CreateServiceScript by
+// path + source + CurrentDirectory.
 type CachedCoder struct {
 	inner Coder
 	mu    sync.Mutex
@@ -25,17 +26,18 @@ func NewCachedCoder(inner Coder) *CachedCoder {
 	}
 }
 
-func cacheKey(path, source string) string {
-	sum := sha256.Sum256([]byte(path + "\x00" + source))
+func cacheKey(path, source string, opts CodegenOptions) string {
+	sum := sha256.Sum256([]byte(path + "\x00" + source + "\x00" + opts.CurrentDirectory))
 	return hex.EncodeToString(sum[:])
 }
 
-// CreateServiceScript returns a cached ServiceScript when path and source match a prior call.
+// CreateServiceScript returns a cached ServiceScript when path, source, and
+// CurrentDirectory match a prior call.
 func (c *CachedCoder) CreateServiceScript(path, source string, opts CodegenOptions) (ServiceScript, error) {
 	if c == nil || c.inner == nil {
 		return ServiceScript{}, fmt.Errorf("vue: CachedCoder is nil or missing inner Coder")
 	}
-	key := cacheKey(path, source)
+	key := cacheKey(path, source, opts)
 	c.mu.Lock()
 	if hit, ok := c.cache[key]; ok {
 		c.mu.Unlock()
@@ -52,4 +54,15 @@ func (c *CachedCoder) CreateServiceScript(path, source string, opts CodegenOptio
 	c.cache[key] = script
 	c.mu.Unlock()
 	return script, nil
+}
+
+// Close closes the inner Coder when it implements Close.
+func (c *CachedCoder) Close() error {
+	if c == nil {
+		return nil
+	}
+	if cl, ok := c.inner.(interface{ Close() error }); ok {
+		return cl.Close()
+	}
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/vuevirtual"
@@ -27,6 +28,26 @@ type jsServiceScript struct {
 	Mappings   []SpanMapping `json:"mappings"`
 }
 
+// Test hooks (overridden in *_test.go).
+var (
+	vueVirtualScriptContent = func() string { return vuevirtual.VueVirtualScript }
+	newVueVirtualEngine     = defaultNewVueVirtualEngine
+	marshalJSValue          = defaultMarshalJSValue
+)
+
+func defaultNewVueVirtualEngine(script string) (jsengine.JsEngine, error) {
+	return quickjsengine.NewFactory(
+		quickjsengine.WithScript(&jsengine.JsScript{
+			FileName: "scripts/vuevirtual/dist/index.js",
+			Content:  script,
+		}),
+	)()
+}
+
+func defaultMarshalJSValue(eng *quickjsengine.QuickjsEngine, v any) (*quickjs.Value, error) {
+	return eng.Ctx.Marshal(v)
+}
+
 // NewQuickJSCoder returns a Coder backed by the embedded vuevirtual IIFE.
 func NewQuickJSCoder() *QuickJSCoder {
 	return &QuickJSCoder{}
@@ -36,12 +57,7 @@ func (c *QuickJSCoder) ensureEngineLocked() error {
 	if c.engine != nil {
 		return nil
 	}
-	eng, err := quickjsengine.NewFactory(
-		quickjsengine.WithScript(&jsengine.JsScript{
-			FileName: "scripts/vuevirtual/dist/index.js",
-			Content:  vuevirtual.VueVirtualScript,
-		}),
-	)()
+	eng, err := newVueVirtualEngine(vueVirtualScriptContent())
 	if err != nil {
 		return fmt.Errorf("vue: create QuickJS engine: %w", err)
 	}
@@ -88,12 +104,12 @@ func (c *QuickJSCoder) CreateServiceScript(path, source string, opts CodegenOpti
 		return ServiceScript{}, fmt.Errorf("vue: vuevirtual.createServiceScript is not a function")
 	}
 
-	pathVal, err := eng.Ctx.Marshal(path)
+	pathVal, err := marshalJSValue(eng, path)
 	if err != nil {
 		return ServiceScript{}, fmt.Errorf("vue: marshal path: %w", err)
 	}
 	defer pathVal.Free()
-	sourceVal, err := eng.Ctx.Marshal(source)
+	sourceVal, err := marshalJSValue(eng, source)
 	if err != nil {
 		return ServiceScript{}, fmt.Errorf("vue: marshal source: %w", err)
 	}
@@ -102,7 +118,7 @@ func (c *QuickJSCoder) CreateServiceScript(path, source string, opts CodegenOpti
 	if opts.CurrentDirectory != "" {
 		optsMap["currentDirectory"] = opts.CurrentDirectory
 	}
-	optsVal, err := eng.Ctx.Marshal(optsMap)
+	optsVal, err := marshalJSValue(eng, optsMap)
 	if err != nil {
 		return ServiceScript{}, fmt.Errorf("vue: marshal opts: %w", err)
 	}

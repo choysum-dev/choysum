@@ -169,6 +169,12 @@ func resolveVueCoder(opts Options) (vue.Coder, error) {
 	return vue.NewCachedCoder(vue.NewQuickJSCoder()), nil
 }
 
+func closeVueCoder(coder vue.Coder) {
+	if cl, ok := coder.(interface{ Close() error }); ok {
+		_ = cl.Close()
+	}
+}
+
 func remapDiagnostics(diags []Diagnostic, scripts map[string]vue.ServiceScript) []Diagnostic {
 	if len(scripts) == 0 {
 		return diags

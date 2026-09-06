@@ -67,6 +67,7 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
+		defer closeVueCoder(coder)
 		caseSensitive := newTypecheckFS(overlays).UseCaseSensitiveFileNames()
 		vuePaths := mergeVuePaths(
 			collectVuePaths(files),

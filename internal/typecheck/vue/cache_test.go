@@ -4,6 +4,7 @@
 package vue_test
 
 import (
+	"errors"
 	"sync/atomic"
 	"testing"
 
@@ -18,6 +19,12 @@ type countingCoder struct {
 func (c *countingCoder) CreateServiceScript(path, source string, opts vue.CodegenOptions) (vue.ServiceScript, error) {
 	c.calls.Add(1)
 	return c.inner.CreateServiceScript(path, source, opts)
+}
+
+type failCoder struct{}
+
+func (failCoder) CreateServiceScript(string, string, vue.CodegenOptions) (vue.ServiceScript, error) {
+	return vue.ServiceScript{}, errors.New("inner boom")
 }
 
 func TestCachedCoder_SameContentSkipsInner(t *testing.T) {
@@ -46,6 +53,35 @@ func TestCachedCoder_SameContentSkipsInner(t *testing.T) {
 	}
 	if counter.calls.Load() != 2 {
 		t.Fatalf("calls=%d want 2 after source change", counter.calls.Load())
+	}
+	// Different CurrentDirectory must miss cache.
+	if _, err := cached.CreateServiceScript("/a.vue", fixture, vue.CodegenOptions{CurrentDirectory: "/other"}); err != nil {
+		t.Fatal(err)
+	}
+	if counter.calls.Load() != 3 {
+		t.Fatalf("calls=%d want 3 after CurrentDirectory change", counter.calls.Load())
+	}
+}
+
+func TestCachedCoder_InnerError(t *testing.T) {
+	cached := vue.NewCachedCoder(failCoder{})
+	if _, err := cached.CreateServiceScript("a.vue", "x", vue.CodegenOptions{}); err == nil || err.Error() != "inner boom" {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestCachedCoder_Close(t *testing.T) {
+	inner := vue.NewQuickJSCoder()
+	cached := vue.NewCachedCoder(inner)
+	if err := cached.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var nilCached *vue.CachedCoder
+	if err := nilCached.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := vue.NewCachedCoder(failCoder{}).Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
