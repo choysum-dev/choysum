@@ -681,7 +681,7 @@ func TestResolveTypeRootsAndTypes(t *testing.T) {
 
 func TestResolveModulePathsForTest(t *testing.T) {
 	_, modules := fixtureRoots(t, "service_ok")
-	paths, base, err := ResolveModulePathsForTest(modules)
+	paths, base, err := ResolveModulePathsForTest(modules, filepath.Dir(modules))
 	if err != nil {
 		t.Fatal(err)
 	}

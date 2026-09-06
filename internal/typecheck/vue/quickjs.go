@@ -6,6 +6,7 @@ package vue
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/buke/quickjs-go"
@@ -36,7 +37,13 @@ var (
 )
 
 func defaultNewVueVirtualEngine(script string) (jsengine.JsEngine, error) {
+	// language-core expects console + document.createElement("div") (HTML decode).
 	return quickjsengine.NewFactory(
+		quickjsengine.WithConsole(slog.Default()),
+		quickjsengine.WithScript(&jsengine.JsScript{
+			FileName: "polyfills/document-min.js",
+			Content:  documentMinPolyfill,
+		}),
 		quickjsengine.WithScript(&jsengine.JsScript{
 			FileName: "scripts/vuevirtual/dist/index.js",
 			Content:  script,

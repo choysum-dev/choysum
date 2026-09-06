@@ -5,6 +5,7 @@ package typecheck
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/buke/typescript-go-internal/v7/pkg/bundled"
@@ -13,6 +14,25 @@ import (
 	"github.com/buke/typescript-go-internal/v7/pkg/vfs/osvfs"
 	"github.com/buke/typescript-go-internal/v7/pkg/vfs/wrapvfs"
 )
+
+// esm.sh type-fetch .d.ts files rewrite module augmentations to
+// declare module 'https://esm.sh/<pkg>@ver/...' which does not merge into
+// package-name modules (breaks vue GlobalComponents / GlobalDirectives).
+var esmShDeclareModuleRE = regexp.MustCompile(
+	`declare module 'https://esm\.sh/((?:@[^/'@]+/)?[^/'@]+)(?:@[^/']+)?(?:/[^']*)?'`,
+)
+
+func rewriteEsmShDeclareModules(content string) string {
+	if !strings.Contains(content, "declare module 'https://esm.sh/") {
+		return content
+	}
+	return esmShDeclareModuleRE.ReplaceAllString(content, "declare module '$1'")
+}
+
+func isEsmShTypeFetchPath(p string) bool {
+	p = filepath.ToSlash(p)
+	return strings.Contains(p, "/pkg/types/esm.sh_") || strings.Contains(p, "/.choysum/pkg/types/esm.sh_")
+}
 
 func newTypecheckFS(overlays map[string]string) vfs.FS {
 	base := osvfs.FS()
@@ -27,9 +47,16 @@ func newTypecheckFS(overlays map[string]string) vfs.FS {
 		},
 		ReadFile: func(p string) (string, bool) {
 			if content, ok := lookupOverlay(normalized, p, caseSensitive); ok {
-				return content, true
+				return rewriteEsmShDeclareModules(content), true
 			}
-			return base.ReadFile(p)
+			content, ok := base.ReadFile(p)
+			if !ok {
+				return "", false
+			}
+			if isEsmShTypeFetchPath(p) {
+				content = rewriteEsmShDeclareModules(content)
+			}
+			return content, true
 		},
 	})
 	return bundled.WrapFS(overlay)

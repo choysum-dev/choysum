@@ -26,7 +26,7 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 	modulesPath = filepath.Clean(modulesPath)
 	repoRoot = filepath.Clean(repoRoot)
 
-	paths, pathsBase, err := resolveModulePaths(modulesPath)
+	paths, pathsBase, err := resolveModulePaths(modulesPath, repoRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,8 @@ func BuildCompilerOptions(modulesPath, repoRoot string) (*core.CompilerOptions, 
 	return opts, nil
 }
 
-func resolveModulePaths(modulesRoot string) (map[string][]string, string, error) {
+func resolveModulePaths(modulesRoot, repoRoot string) (map[string][]string, string, error) {
+	_ = repoRoot // reserved; typecheck must not read node_modules (use type-fetch paths only).
 	out := make(map[string][]string)
 	pathsBase := modulesRoot
 	tsconfigPath := filepath.Join(modulesRoot, "tsconfig.json")
@@ -106,15 +107,92 @@ func resolveModulePaths(modulesRoot string) (map[string][]string, string, error)
 	for alias, targets := range tsconfig.CompilerOptions.Paths {
 		var absTargets []string
 		for _, t := range targets {
-			if filepath.IsAbs(t) {
-				absTargets = append(absTargets, filepath.ToSlash(t))
+			abs := t
+			if !filepath.IsAbs(t) {
+				abs = filepath.ToSlash(filepath.Join(pathsBase, t))
 			} else {
-				absTargets = append(absTargets, filepath.ToSlash(filepath.Join(pathsBase, t)))
+				abs = filepath.ToSlash(t)
 			}
+			abs = rewriteChoysumTypesPath(abs)
+			if !typePathExists(abs) {
+				continue
+			}
+			absTargets = append(absTargets, abs)
+		}
+		if len(absTargets) == 0 {
+			continue
 		}
 		out[alias] = absTargets
 	}
 	return out, pathsBase, nil
+}
+
+// rewriteChoysumTypesPath remaps repo-relative ../../.choysum/pkg/types/... entries
+// that point at a missing tree onto $CHOYSUM_HOME/pkg/types (default ~/.choysum).
+func rewriteChoysumTypesPath(abs string) string {
+	abs = filepath.ToSlash(abs)
+	const marker = "/.choysum/pkg/types/"
+	idx := strings.Index(abs, marker)
+	if idx < 0 {
+		return abs
+	}
+	if typePathExists(abs) {
+		return abs
+	}
+	home := choysumHomeDir()
+	if home == "" {
+		return abs
+	}
+	suffix := abs[idx+len(marker):]
+	alt := filepath.ToSlash(filepath.Join(home, "pkg", "types", filepath.FromSlash(suffix)))
+	if typePathExists(alt) {
+		return alt
+	}
+	return abs
+}
+
+func choysumHomeDir() string {
+	if v := strings.TrimSpace(os.Getenv("CHOYSUM_HOME")); v != "" {
+		return filepath.Clean(v)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".choysum")
+}
+
+func typePathExists(path string) bool {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return false
+	}
+	// Glob entries (type-fetch wildcards) are treated as present; TS resolves them.
+	if strings.ContainsAny(path, "*?[") {
+		return true
+	}
+	st, err := os.Stat(filepath.FromSlash(path))
+	return err == nil && !st.IsDir()
+}
+
+// hasResolvableVueTypes reports whether Vue package types are available via
+// modules/tsconfig paths (type-fetch under ~/.choysum/pkg/types). Does not
+// consult node_modules.
+func hasResolvableVueTypes(modulesPath, repoRoot string) bool {
+	paths, _, err := resolveModulePaths(modulesPath, repoRoot)
+	if err != nil {
+		return false
+	}
+	targets, ok := paths["vue"]
+	if !ok {
+		return false
+	}
+	for _, t := range targets {
+		if typePathExists(t) {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveTypeRoots(repoRoot string) []string {
@@ -143,8 +221,8 @@ func resolveCompilerTypes(typeRoots []string) []string {
 }
 
 // ResolveModulePathsForTest exposes path resolution for unit tests.
-func ResolveModulePathsForTest(modulesRoot string) (map[string][]string, string, error) {
-	return resolveModulePaths(modulesRoot)
+func ResolveModulePathsForTest(modulesRoot, repoRoot string) (map[string][]string, string, error) {
+	return resolveModulePaths(modulesRoot, repoRoot)
 }
 
 // Test hooks for hard-to-trigger filesystem failures.

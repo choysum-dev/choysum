@@ -44,16 +44,23 @@ declare global {
 	type __VLS_IsFunction<T, K> = K extends keyof T ? unknown extends T[K] ? false
 		: true
 		: false;
+	type __VLS_HasFunctionProp<T, K extends string> = K extends keyof T
+		? unknown extends T[K] ? false
+		: true
+		: false;
 	type __VLS_ResolveEvent<
 		Props,
 		Emits,
-		onEvent extends keyof Props,
-		Event extends keyof Emits,
-		CamelizedEvent extends keyof Emits,
-	> = __VLS_IsFunction<Props, onEvent> extends true ? Props
-		: __VLS_IsFunction<Emits, Event> extends true ? { [K in onEvent]?: Emits[Event] }
-		: __VLS_IsFunction<Emits, CamelizedEvent> extends true ? { [K in onEvent]?: Emits[CamelizedEvent] }
-		: Props;
+		onEvent extends string,
+		Event extends string,
+		CamelizedEvent extends string,
+	> = __VLS_HasFunctionProp<Props, onEvent> extends true ? Props
+		: __VLS_HasFunctionProp<Emits, Event> extends true
+			? { [K in onEvent]?: Emits[Extract<Event, keyof Emits>] }
+		: __VLS_HasFunctionProp<Emits, CamelizedEvent> extends true
+			? { [K in onEvent]?: Emits[Extract<CamelizedEvent, keyof Emits>] }
+		// Fallthrough (native DOM listeners on components).
+		: { [K in onEvent]?: (...args: any) => any };
 	// fix https://github.com/vuejs/language-tools/issues/926
 	type __VLS_UnionToIntersection<U> = (U extends unknown ? (arg: U) => unknown : never) extends
 		((arg: infer P) => unknown) ? P : never;

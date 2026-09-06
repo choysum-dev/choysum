@@ -5,6 +5,7 @@ package typecheck
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -70,6 +71,52 @@ func collectVuePaths(files []string) []string {
 		if strings.HasSuffix(strings.ToLower(f), ".vue") {
 			out = append(out, f)
 		}
+	}
+	return out
+}
+
+// collectModulesWebVuePaths returns every modules/<app>/web/**/*.vue path
+// (excluding test trees) so cross-app SFC imports receive service-script overlays.
+func collectModulesWebVuePaths(modulesPath string) []string {
+	modulesPath = filepath.Clean(modulesPath)
+	entries, err := os.ReadDir(modulesPath)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, ent := range entries {
+		if !ent.IsDir() {
+			continue
+		}
+		name := ent.Name()
+		if name == ".choysum" || name == "tmp" || name == ".typecheck-ambient" {
+			continue
+		}
+		webDir := filepath.Join(modulesPath, name, "web")
+		st, err := os.Stat(webDir)
+		if err != nil || !st.IsDir() {
+			continue
+		}
+		_ = filepath.WalkDir(webDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				base := d.Name()
+				if base == "node_modules" || base == "dist" || base == ".choysum" || base == "tmp" ||
+					base == "tests" || base == "__tests__" {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			if shouldSkipTSFileName(d.Name()) {
+				return nil
+			}
+			if strings.HasSuffix(strings.ToLower(d.Name()), ".vue") {
+				out = append(out, normalizePathKey(path))
+			}
+			return nil
+		})
 	}
 	return out
 }
