@@ -222,7 +222,14 @@ func TestEnsureTypeAssets_FetchSuccessAndFailures(t *testing.T) {
 					"esm.sh_@vue_runtime-core@3.5.0_dist_runtime-core.d.ts.d.ts",
 					"esm.sh_@vue_reactivity@3.5.0_dist_reactivity.d.ts.d.ts",
 				} {
-					if err := os.WriteFile(filepath.Join(typesDir, name), []byte("export {}\n"), 0o644); err != nil {
+					body := "export {}\n"
+					if strings.Contains(name, "runtime-dom") {
+						body = "export type PropType<T> = any;\n"
+					}
+					if strings.Contains(name, "reactivity") {
+						body = "export declare function toRef(...args: any[]): any;\n"
+					}
+					if err := os.WriteFile(filepath.Join(typesDir, name), []byte(body), 0o644); err != nil {
 						t.Fatal(err)
 					}
 				}

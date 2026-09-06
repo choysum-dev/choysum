@@ -80,11 +80,12 @@ func collectVuePaths(files []string) []string {
 
 // collectModulesWebVuePaths returns every modules/<app>/web/**/*.vue path
 // (excluding test trees) so cross-app SFC imports receive service-script overlays.
-func collectModulesWebVuePaths(modulesPath string) []string {
+// Walk I/O errors are returned so Check does not continue with a partial overlay set.
+func collectModulesWebVuePaths(modulesPath string) ([]string, error) {
 	modulesPath = filepath.Clean(modulesPath)
 	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	var out []string
 	for _, ent := range entries {
@@ -100,7 +101,7 @@ func collectModulesWebVuePaths(modulesPath string) []string {
 		if err != nil || !st.IsDir() {
 			continue
 		}
-		_ = walkModulesWebVueDir(webDir, func(path string, d fs.DirEntry, err error) error {
+		if err := walkModulesWebVueDir(webDir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -119,9 +120,11 @@ func collectModulesWebVuePaths(modulesPath string) []string {
 				out = append(out, normalizePathKey(path))
 			}
 			return nil
-		})
+		}); err != nil {
+			return nil, fmt.Errorf("typecheck: walk modules web vue under %s: %w", webDir, err)
+		}
 	}
-	return out
+	return out, nil
 }
 
 // collectVueOverlayPaths returns ScopeAll-eligible .vue paths that exist only

@@ -295,6 +295,9 @@ func TestHasResolvableVueTypes_IncompleteTypeFetchGraph(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("CHOYSUM_HOME", home)
 	t.Setenv("CHOYSUM_TEST_TMP", "")
+	origHome := userHomeDir
+	t.Cleanup(func() { userHomeDir = origHome })
+	userHomeDir = func() (string, error) { return filepath.Join(t.TempDir(), "no-types-home"), nil }
 
 	entry := filepath.Join(home, "pkg", "types", "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
 	mustMkdir(t, filepath.Dir(entry))
@@ -316,10 +319,23 @@ func TestHasResolvableVueTypes_IncompleteTypeFetchGraph(t *testing.T) {
 		"esm.sh_@vue_runtime-core@3.5.35_dist_runtime-core.d.ts.d.ts",
 		"esm.sh_@vue_reactivity@3.5.35_dist_reactivity.d.ts.d.ts",
 	} {
-		mustWrite(t, filepath.Join(home, "pkg", "types", name), "export {}\n")
+		content := "export {}\n"
+		if strings.Contains(name, "runtime-dom") {
+			content = "export type PropType<T> = any;\nexport function h(...args: any[]): any;\n"
+		}
+		if strings.Contains(name, "reactivity") {
+			content = "export declare function toRef(...args: any[]): any;\n"
+		}
+		mustWrite(t, filepath.Join(home, "pkg", "types", name), content)
 	}
 	if !HasResolvableVueTypes(modules, dir) {
 		t.Fatal("expected complete type-fetch vue graph")
+	}
+
+	// Hollow siblings (Stat-ok, no real exports) must not count as complete.
+	mustWrite(t, filepath.Join(home, "pkg", "types", "esm.sh_@vue_runtime-dom@3.5.35_dist_runtime-dom.d.ts.d.ts"), "export {}\n")
+	if HasResolvableVueTypes(modules, dir) {
+		t.Fatal("empty runtime-dom sibling must not count as resolvable")
 	}
 }
 
@@ -564,17 +580,20 @@ func TestResolveTypeRoots_SkipsEmptyEntry(t *testing.T) {
 	mustMkdir(t, types)
 	mustWrite(t, filepath.Join(modules, "tsconfig.json"), `{
   "compilerOptions": {
-    "typeRoots": ["", "`+filepath.ToSlash(types)+`"]
+    "typeRoots": ["", "  ", "`+filepath.ToSlash(types)+`"]
   }
 }
 `)
 	roots := resolveTypeRoots(modules, repo)
-	if len(roots) != 2 {
+	if len(roots) != 1 {
 		t.Fatalf("roots = %v", roots)
 	}
 	for _, r := range roots {
 		if strings.TrimSpace(r) == "" {
 			t.Fatalf("empty typeRoot leaked: %v", roots)
+		}
+		if filepath.Clean(r) == filepath.Clean(modules) {
+			t.Fatalf("empty typeRoot must not register modulesPath: %v", roots)
 		}
 	}
 }

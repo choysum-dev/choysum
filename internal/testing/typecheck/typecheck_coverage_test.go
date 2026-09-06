@@ -171,6 +171,13 @@ func TestTypecheckApp_DiagnosticsWriteFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(keepDir, 0o755) })
+	// Root/Windows may ignore chmod; skip when the directory remains writable.
+	probe := filepath.Join(keepDir, ".writecheck")
+	if f, err := os.Create(probe); err == nil {
+		_ = f.Close()
+		_ = os.Remove(probe)
+		t.Skip("keepDir still writable after chmod 0555")
+	}
 
 	var stderr strings.Builder
 	err = TypecheckApp(ctx, RunOptions{

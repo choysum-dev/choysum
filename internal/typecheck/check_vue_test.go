@@ -406,14 +406,18 @@ func TestCollectModulesWebVuePaths_WalkEntryError(t *testing.T) {
 	walkModulesWebVueDir = func(root string, fn fs.WalkDirFunc) error {
 		return fn(filepath.Join(root, "broken.vue"), nil, errors.New("walk entry"))
 	}
-	if got := collectModulesWebVuePaths(modules); got != nil {
+	got, err := collectModulesWebVuePaths(modules)
+	if err == nil || !strings.Contains(err.Error(), "walk entry") {
+		t.Fatalf("err = %v", err)
+	}
+	if got != nil {
 		t.Fatalf("got %v", got)
 	}
 }
 
 func TestCollectModulesWebVuePaths(t *testing.T) {
-	if got := collectModulesWebVuePaths(filepath.Join(t.TempDir(), "missing")); len(got) != 0 {
-		t.Fatalf("missing modules root should return nil, got %v", got)
+	if got, err := collectModulesWebVuePaths(filepath.Join(t.TempDir(), "missing")); err != nil || len(got) != 0 {
+		t.Fatalf("missing modules root should return nil,nil got %v %v", got, err)
 	}
 
 	modules := t.TempDir()
@@ -428,7 +432,10 @@ func TestCollectModulesWebVuePaths(t *testing.T) {
 	mustMkdir(t, filepath.Join(modules, "demo", "web", "node_modules", "pkg"))
 	mustWrite(t, filepath.Join(modules, "demo", "web", "node_modules", "pkg", "X.vue"), "<template></template>\n")
 
-	got := collectModulesWebVuePaths(modules)
+	got, err := collectModulesWebVuePaths(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(got) != 1 || !strings.HasSuffix(got[0], "web/ui/App.vue") {
 		t.Fatalf("got %v", got)
 	}

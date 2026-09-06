@@ -78,7 +78,11 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 		)
 		// TypeScript follows imports into other modules' .vue SFCs; codegen those
 		// too so Host does not serve raw SFC text (and so ambient *.vue is unnecessary).
-		vuePaths = mergeVuePaths(vuePaths, collectModulesWebVuePaths(modulesPath))
+		webVuePaths, err := collectModulesWebVuePaths(modulesPath)
+		if err != nil {
+			return Result{}, err
+		}
+		vuePaths = mergeVuePaths(vuePaths, webVuePaths)
 		vueOverlays, scripts, err := prepareVueOverlays(coder, vuePaths, modulesPath, overlays)
 		if err != nil {
 			return Result{}, err
@@ -177,8 +181,12 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 		if strings.Contains(d.Message, "'$el'") {
 			return true
 		}
-		// Slot destructuring when slots lack a typed `default` key.
-		if strings.Contains(d.Message, "'default'") {
+		// Slot `default` key only — require slot/helper context so a real
+		// `<script setup>` property access like `obj.default` is not dropped.
+		if strings.Contains(d.Message, "'default'") &&
+			(strings.Contains(d.Message, "__VLS") ||
+				strings.Contains(d.Message, "Slots") ||
+				strings.Contains(d.Message, "slots")) {
 			return true
 		}
 		return false
@@ -197,11 +205,11 @@ func isVueTemplateParityNoise(d Diagnostic) bool {
 	case 2552:
 		return strings.Contains(d.Message, "__VLS_asFunctionalElement")
 	case 2589:
-		// Deep generic Vue component graphs (e.g. chart views).
-		return strings.Contains(d.Message, "excessively deep")
+		// Template-generated deep component instantiation only.
+		return strings.Contains(d.Message, "excessively deep") && strings.Contains(d.Message, "__VLS")
 	case 2349:
-		// Slot/call-site fallout when emit/prop inference collapses.
-		return strings.Contains(d.Message, "not callable")
+		// Template slot/call-site fallout — require language-core helpers.
+		return strings.Contains(d.Message, "not callable") && strings.Contains(d.Message, "__VLS")
 	default:
 		return false
 	}

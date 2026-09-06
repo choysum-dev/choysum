@@ -4,6 +4,7 @@
 package typecheck
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -144,17 +145,46 @@ func rewriteChoysumTypesPath(abs string) string {
 	if idx < 0 {
 		return abs
 	}
-	if typePathExists(abs) {
-		return abs
-	}
 	suffix := abs[idx+len(marker):]
+	pick := func(candidate string) (string, bool) {
+		if !typePathExists(candidate) {
+			return "", false
+		}
+		// Prefer a complete vue type-fetch graph over an incomplete first hit
+		// (empty sibling stubs pass Stat but export almost nothing).
+		if isVueTypeFetchEntryPath(candidate) && !vueTypeEntryComplete(candidate) {
+			return candidate, false
+		}
+		return candidate, true
+	}
+	if got, ok := pick(abs); ok {
+		return got
+	} else if got != "" {
+		// Incomplete local hit — keep searching for a complete copy.
+	}
+	var incompleteFallback string
+	if typePathExists(abs) && isVueTypeFetchEntryPath(abs) && !vueTypeEntryComplete(abs) {
+		incompleteFallback = abs
+	}
 	for _, root := range choysumTypesSearchRoots() {
 		alt := filepath.ToSlash(filepath.Join(root, filepath.FromSlash(suffix)))
-		if typePathExists(alt) {
-			return alt
+		if got, ok := pick(alt); ok {
+			return got
+		} else if got != "" && incompleteFallback == "" {
+			incompleteFallback = got
 		}
 	}
+	if incompleteFallback != "" {
+		return incompleteFallback
+	}
 	return abs
+}
+
+// isVueTypeFetchEntryPath reports whether path looks like an esm.sh vue package
+// entry produced by type-fetch (needs runtime-* siblings to be usable).
+func isVueTypeFetchEntryPath(path string) bool {
+	base := filepath.Base(filepath.FromSlash(path))
+	return regexp.MustCompile(`(?i)^esm\.sh_vue@`).MatchString(base)
 }
 
 // RewriteChoysumTypesPath is the exported form of rewriteChoysumTypesPath for
@@ -167,6 +197,12 @@ func RewriteChoysumTypesPath(abs string) string {
 // package via type-fetch path assets (not node_modules).
 func HasResolvableVueTypes(modulesPath, repoRoot string) bool {
 	return hasResolvableVueTypes(modulesPath, repoRoot)
+}
+
+// VueTypeEntryComplete reports whether a resolved `vue` paths target includes a
+// usable type-fetch graph (entry + @vue/runtime-* siblings with real exports).
+func VueTypeEntryComplete(entry string) bool {
+	return vueTypeEntryComplete(entry)
 }
 
 // choysumTypesSearchRoots returns candidate directories that hold type-fetch .d.ts
@@ -251,7 +287,9 @@ func hasResolvableVueTypes(modulesPath, repoRoot string) bool {
 
 // vueTypeEntryComplete reports whether a resolved `vue` paths target is usable.
 // Type-fetch entries named esm.sh_vue@<ver>_… must also have runtime-dom /
-// runtime-core / reactivity siblings in the same directory.
+// runtime-core / reactivity siblings in the same directory with real exports
+// (empty `export {}` placeholders are not enough — they pass Stat but leave
+// `import { h, PropType, toRef } from 'vue'` unresolved).
 func vueTypeEntryComplete(entry string) bool {
 	entry = strings.TrimSpace(entry)
 	if entry == "" || !typePathExists(entry) {
@@ -265,14 +303,21 @@ func vueTypeEntryComplete(entry string) bool {
 	}
 	ver := m[1]
 	dir := filepath.Dir(filepath.FromSlash(entry))
-	for _, name := range []string{
-		fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", ver),
-		fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", ver),
-		fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", ver),
-	} {
+	domName := fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", ver)
+	coreName := fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", ver)
+	reactName := fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", ver)
+	for _, name := range []string{domName, coreName, reactName} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
 			return false
 		}
+	}
+	domData, err := os.ReadFile(filepath.Join(dir, domName))
+	if err != nil || !bytes.Contains(domData, []byte("PropType")) {
+		return false
+	}
+	reactData, err := os.ReadFile(filepath.Join(dir, reactName))
+	if err != nil || !bytes.Contains(reactData, []byte("toRef")) {
+		return false
 	}
 	return true
 }
@@ -294,6 +339,12 @@ func resolveTypeRoots(modulesPath, repoRoot string) []string {
 
 	// Prefer modules/tsconfig.json typeRoots (type-fetch under ~/.choysum).
 	for _, raw := range readTsconfigTypeRoots(modulesPath) {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			// Empty entries Join to modulesPath and would wrongly register it
+			// as a custom type root.
+			continue
+		}
 		abs := raw
 		if !filepath.IsAbs(raw) {
 			abs = filepath.Join(modulesPath, raw)

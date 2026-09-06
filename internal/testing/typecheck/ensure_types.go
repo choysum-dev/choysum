@@ -93,8 +93,10 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 		// Fixture / non-Vue apps: no vue path mapping to fetch.
 		return nil
 	}
-	// Incomplete caches may leave only the vue entry .d.ts; FetchTypeDefinition
-	// re-walks missing local imports and materializes @vue/runtime-* siblings.
+	// Incomplete durable caches may leave vue@ver.d.ts and/or empty sibling
+	// stubs that pass Stat but export nothing. Purge them so FetchTypeDefinition
+	// re-walks the real esm.sh_vue@ver entry and its @vue/runtime-* imports.
+	purgeIncompleteVueTypeFetch(typesDir, vueVersion)
 	if _, _, err := fetchTypeDefinition(client, upstream, typesDir, "vue", vueVersion); err != nil {
 		return xfmt.Errorf("typecheck: fetch vue@%s: %w", vueVersion, err)
 	}
@@ -106,6 +108,46 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 		return xfmt.Errorf("typecheck: vue types still missing after type-fetch into %s (run: go run . type-fetch %s)", typesDir, app)
 	}
 	return nil
+}
+
+// purgeIncompleteVueTypeFetch removes incomplete type-fetch vue graphs so the
+// next FetchTypeDefinition cannot early-return on a stale vue@ver.d.ts while
+// leaving a hollow esm.sh_vue@ver entry in place.
+func purgeIncompleteVueTypeFetch(typesDir, vueVersion string) {
+	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	vueVersion = strings.TrimSpace(vueVersion)
+	if typesDir == "" || vueVersion == "" {
+		return
+	}
+	pkgCache := filepath.Join(typesDir, fmt.Sprintf("vue@%s.d.ts", vueVersion))
+	_ = os.Remove(pkgCache)
+
+	entries, err := os.ReadDir(typesDir)
+	if err != nil {
+		return
+	}
+	prefix := "esm.sh_vue@" + vueVersion
+	for _, ent := range entries {
+		if ent.IsDir() {
+			continue
+		}
+		name := ent.Name()
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		entry := filepath.Join(typesDir, name)
+		if gonative.VueTypeEntryComplete(entry) {
+			continue
+		}
+		_ = os.Remove(entry)
+		for _, sib := range []string{
+			fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", vueVersion),
+			fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", vueVersion),
+			fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", vueVersion),
+		} {
+			_ = os.Remove(filepath.Join(typesDir, sib))
+		}
+	}
 }
 
 func ensureNodeCompilerTypes(client *http.Client, upstream, typesDir, modulesRoot string) error {

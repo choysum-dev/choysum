@@ -22,10 +22,14 @@ const documentMinPolyfill = `(function () {
       .replace(/&gt;/g, ">")
       .replace(/&amp;/g, "&")
       .replace(/&#x([0-9a-fA-F]+);/g, function (_, h) {
-        return String.fromCodePoint(parseInt(h, 16));
+        var cp = parseInt(h, 16);
+        if (!isFinite(cp) || cp < 0 || cp > 0x10FFFF) return "";
+        return String.fromCodePoint(cp);
       })
       .replace(/&#(\d+);/g, function (_, n) {
-        return String.fromCodePoint(+n);
+        var cp = +n;
+        if (!isFinite(cp) || cp < 0 || cp > 0x10FFFF) return "";
+        return String.fromCodePoint(cp);
       });
   }
 

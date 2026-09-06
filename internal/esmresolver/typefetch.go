@@ -4,6 +4,7 @@
 package esmresolver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -327,7 +328,13 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 	if data, err := os.ReadFile(cacheFile); err == nil {
 		imports := parseDTSImports(string(data))
 		if !hasMissingLocalCachedImports(typesDir, cacheFile, imports) {
-			return &TypeFetchResult{Package: pkg, Version: version, CachedPath: cacheFile, FromCache: true}, nil, nil
+			// vue@ver.d.ts may be complete while the tsconfig-mapped
+			// esm.sh_vue@ver entry still lacks @vue/runtime-* siblings.
+			if pkg == "vue" && vueTypeFetchEntryIncomplete(typesDir, version) {
+				// Fall through to discover + recursive repair.
+			} else {
+				return &TypeFetchResult{Package: pkg, Version: version, CachedPath: cacheFile, FromCache: true}, nil, nil
+			}
 		}
 	}
 
@@ -1533,6 +1540,47 @@ func fetchTypesForModuleWithStateAndStats(ctx context.Context, client *http.Clie
 
 func typesCachePath(typesDir, pkg, version string) string {
 	return filepath.Join(typesDir, fmt.Sprintf("%s@%s.d.ts", pkg, version))
+}
+
+// vueTypeFetchEntryIncomplete reports whether typesDir has an esm.sh_vue@ver
+// entry whose @vue/runtime-* siblings are missing or hollow (empty export {}).
+func vueTypeFetchEntryIncomplete(typesDir, version string) bool {
+	typesDir = filepath.Clean(strings.TrimSpace(typesDir))
+	version = strings.TrimSpace(version)
+	if typesDir == "" || version == "" {
+		return false
+	}
+	entries, err := os.ReadDir(typesDir)
+	if err != nil {
+		return false
+	}
+	prefix := "esm.sh_vue@" + version
+	domName := fmt.Sprintf("esm.sh_@vue_runtime-dom@%s_dist_runtime-dom.d.ts.d.ts", version)
+	reactName := fmt.Sprintf("esm.sh_@vue_reactivity@%s_dist_reactivity.d.ts.d.ts", version)
+	coreName := fmt.Sprintf("esm.sh_@vue_runtime-core@%s_dist_runtime-core.d.ts.d.ts", version)
+	sawEntry := false
+	for _, ent := range entries {
+		if ent.IsDir() || !strings.HasPrefix(ent.Name(), prefix) {
+			continue
+		}
+		sawEntry = true
+		for _, name := range []string{domName, coreName, reactName} {
+			if _, err := os.Stat(filepath.Join(typesDir, name)); err != nil {
+				return true
+			}
+		}
+		domData, err := os.ReadFile(filepath.Join(typesDir, domName))
+		if err != nil || !bytes.Contains(domData, []byte("PropType")) {
+			return true
+		}
+		reactData, err := os.ReadFile(filepath.Join(typesDir, reactName))
+		if err != nil || !bytes.Contains(reactData, []byte("toRef")) {
+			return true
+		}
+	}
+	// No esm.sh entry yet — package-cache hit alone is not enough for tsconfig
+	// paths that point at esm.sh_vue@ver_….
+	return !sawEntry
 }
 
 func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error {

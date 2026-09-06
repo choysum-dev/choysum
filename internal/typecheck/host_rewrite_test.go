@@ -139,14 +139,15 @@ func TestSuppressVueTemplateParityNoise(t *testing.T) {
 		{File: "/a.ts", Code: 2339, Message: "Property '$el' does not exist"},
 		{File: "/a.vue", Code: 2322, Message: "Type '{ onClick: () => void; }' is not assignable to type 'NonNullable<VNodeProps & ...>'"},
 		{File: "/a.vue", Code: 2322, Message: "Type '() => number' is not assignable to type 'NonNullable<((...args: any) => any) | undefined>'."},
+		{File: "/a.vue", Code: 2339, Message: "Property 'default' does not exist on type '__VLS_Slots'."},
 		{File: "/a.vue", Code: 2339, Message: "Property 'default' does not exist on type '{}'."},
 		{File: "/a.vue", Code: 1000, Message: "real error"},
 	}
 	got := suppressVueTemplateParityNoise(diags)
-	if len(got) != 3 {
+	if len(got) != 4 {
 		t.Fatalf("got %d %#v", len(got), got)
 	}
-	if got[0].File != "/a.ts" || got[1].Code != 2322 || got[2].Code != 1000 {
+	if got[0].File != "/a.ts" || got[1].Code != 2322 || got[2].Message != "Property 'default' does not exist on type '{}'." || got[3].Code != 1000 {
 		t.Fatalf("%#v", got)
 	}
 }
@@ -161,8 +162,8 @@ func TestIsVueTemplateParityNoise_RemainingCodes(t *testing.T) {
 		{Code: 7053, Message: `Element implicitly has an 'any' type because expression of type '""' can't be used to index type.`},
 		{Code: 7053, Message: "Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '__VLS_Slots'."},
 		{Code: 2552, Message: "Cannot find name '__VLS_asFunctionalElement'. Did you mean '__VLS_asFunctionalComponent'?"},
-		{Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite."},
-		{Code: 2349, Message: "This expression is not callable."},
+		{Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite. __VLS_ctx"},
+		{Code: 2349, Message: "This expression is not callable. __VLS_asFunctionalComponent"},
 	}
 	for _, d := range cases {
 		if !isVueTemplateParityNoise(d) {
@@ -178,11 +179,11 @@ func TestIsVueTemplateParityNoise_RemainingCodes(t *testing.T) {
 	if isVueTemplateParityNoise(Diagnostic{Code: 2552, Message: "Cannot find name 'x'"}) {
 		t.Fatal("2552 unrelated")
 	}
-	if isVueTemplateParityNoise(Diagnostic{Code: 2589, Message: "other deep"}) {
-		t.Fatal("2589 without excessively deep")
+	if isVueTemplateParityNoise(Diagnostic{Code: 2589, Message: "Type instantiation is excessively deep and possibly infinite."}) {
+		t.Fatal("2589 without __VLS must not be noise")
 	}
-	if isVueTemplateParityNoise(Diagnostic{Code: 2349, Message: "other"}) {
-		t.Fatal("2349 without not callable")
+	if isVueTemplateParityNoise(Diagnostic{Code: 2349, Message: "This expression is not callable."}) {
+		t.Fatal("2349 without __VLS must not be noise")
 	}
 	if isVueTemplateParityNoise(Diagnostic{Code: 9999, Message: "x"}) {
 		t.Fatal("default")
