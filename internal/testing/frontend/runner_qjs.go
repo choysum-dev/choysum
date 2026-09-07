@@ -361,13 +361,21 @@ func evalChoysumTestRun(ctx context.Context, engine jsengine.JsEngine, pattern s
 	if !ok {
 		return nil, xfmt.Errorf("fe-qjs: unexpected engine type %T", engine)
 	}
+	// Bind ctx so the engine interrupt handler honors cancel/deadline during Eval.
+	restore := qjs.SwapExecContext(ctx)
+	defer restore()
+
 	patJSON, err := jsonMarshalQJS(strings.TrimSpace(pattern))
 	if err != nil {
 		return nil, err
 	}
 	script := `(async () => {
   const r = await globalThis.__choysum_test_run__({ pattern: ` + string(patJSON) + ` });
-  return JSON.stringify(r) || "null";
+  const encoded = JSON.stringify(r);
+  if (encoded === undefined || encoded === "null") {
+    throw new Error("__choysum_test_run__ returned no report");
+  }
+  return encoded;
 })()`
 	val := qjs.Ctx.Eval(script, quickjs.EvalAwait(true))
 	defer val.Free()
@@ -375,7 +383,10 @@ func evalChoysumTestRun(ctx context.Context, engine jsengine.JsEngine, pattern s
 		// Exception() clears and returns the pending QuickJS error (buke/quickjs-go).
 		return nil, xfmt.Errorf("fe-qjs: run: %v", qjs.Ctx.Exception())
 	}
-	raw := val.String()
+	raw := strings.TrimSpace(val.String())
+	if raw == "" || raw == "null" || raw == "undefined" {
+		return nil, xfmt.Errorf("fe-qjs: run: __choysum_test_run__ returned no report")
+	}
 	var report qjsRunReport
 	if err := json.Unmarshal([]byte(raw), &report); err != nil {
 		return nil, xfmt.Errorf("fe-qjs: parse report: %w raw=%s", err, raw)

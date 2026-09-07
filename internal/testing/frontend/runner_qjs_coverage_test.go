@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/choysum-dev/choysum/internal/testing/coverage"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -196,6 +197,50 @@ func TestEvalChoysumTestRunBranches(t *testing.T) {
 	v.Free()
 	if _, err := evalChoysumTestRun(nil, engine, ""); err == nil || !strings.Contains(err.Error(), "parse report") {
 		t.Fatalf("parse: %v", err)
+	}
+
+	v = qjs.Ctx.Eval(`globalThis.__choysum_test_run__ = async () => undefined`)
+	if v.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	v.Free()
+	if _, err := evalChoysumTestRun(context.Background(), engine, ""); err == nil || !strings.Contains(err.Error(), "no report") {
+		t.Fatalf("undefined report: %v", err)
+	}
+
+	v = qjs.Ctx.Eval(`globalThis.__choysum_test_run__ = async () => null`)
+	if v.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	v.Free()
+	if _, err := evalChoysumTestRun(context.Background(), engine, ""); err == nil || !strings.Contains(err.Error(), "no report") {
+		t.Fatalf("null report: %v", err)
+	}
+}
+
+func TestEvalChoysumTestRun_TimeoutInterrupts(t *testing.T) {
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = engine.Close() })
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	v := qjs.Ctx.Eval(`globalThis.__choysum_test_run__ = async () => { while (true) {} }`)
+	if v.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	v.Free()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err = evalChoysumTestRun(ctx, engine, "")
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected timeout/interrupt error")
+	}
+	if elapsed > 3*time.Second {
+		t.Fatalf("interrupt too slow: %v err=%v", elapsed, err)
 	}
 }
 
