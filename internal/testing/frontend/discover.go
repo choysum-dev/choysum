@@ -202,8 +202,15 @@ func scanIllegalContent(path, content string) []IllegalMark {
 }
 
 func addRegexHits(content string, lines []string, re *regexp.Regexp, kind IllegalKind, add func(int, IllegalKind, string)) {
-	for _, loc := range re.FindAllStringIndex(content, -1) {
-		lineNo := 1 + strings.Count(content[:loc[0]], "\n")
+	matches := re.FindAllStringIndex(content, -1)
+	if len(matches) == 0 {
+		return
+	}
+	lineNo := 1
+	lastIdx := 0
+	for _, loc := range matches {
+		lineNo += strings.Count(content[lastIdx:loc[0]], "\n")
+		lastIdx = loc[0]
 		snippet := content[loc[0]:loc[1]]
 		if lineNo >= 1 && lineNo <= len(lines) {
 			snippet = lines[lineNo-1]
@@ -244,6 +251,8 @@ func FormatIllegalMarksGitHubAnnotations(hits []IllegalMark, repoRoot string) st
 	for _, hit := range hits {
 		rel := relativizeRepoPath(repoRoot, hit.Path)
 		rel = strings.ReplaceAll(rel, "\\", "/")
+		rel = strings.ReplaceAll(rel, "%", "%25")
+		rel = strings.ReplaceAll(rel, ",", "%2C")
 		msg := fmt.Sprintf("illegal FE unit mark [%s]: %s", hit.Kind, hit.Snippet)
 		msg = strings.ReplaceAll(msg, "\n", " ")
 		msg = strings.ReplaceAll(msg, "%", "%25")
@@ -255,8 +264,8 @@ func FormatIllegalMarksGitHubAnnotations(hits []IllegalMark, repoRoot string) st
 
 func relativizeRepoPath(repoRoot, path string) string {
 	path = filepath.Clean(path)
-	repoRoot = strings.TrimSpace(repoRoot)
-	if repoRoot == "" {
+	repoRoot = filepath.Clean(strings.TrimSpace(repoRoot))
+	if repoRoot == "" || repoRoot == "." {
 		return filepath.ToSlash(path)
 	}
 	if rel, err := filepath.Rel(repoRoot, path); err == nil && rel != "" && !strings.HasPrefix(rel, "..") {

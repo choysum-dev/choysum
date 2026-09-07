@@ -309,7 +309,7 @@ func TestFormatAndRelativizeHelpers(t *testing.T) {
 		t.Fatal("empty annotations")
 	}
 	hits := []IllegalMark{{
-		Path:    filepath.Join("C:", "abs", "x.test.ts"),
+		Path:    filepath.Join("C:", "abs", "weird,%path.test.ts"),
 		Line:    2,
 		Kind:    IllegalVTU,
 		Snippet: "mount(x) 100%\r\nok",
@@ -318,12 +318,18 @@ func TestFormatAndRelativizeHelpers(t *testing.T) {
 	if !strings.Contains(ann, "%25") || strings.Contains(ann, "\r") {
 		t.Fatalf("ann = %q", ann)
 	}
+	if !strings.Contains(ann, "file=") || !strings.Contains(ann, "%2C") {
+		t.Fatalf("expected escaped comma in file=, got %q", ann)
+	}
 	if got := relativizeRepoPath("", "/tmp/x"); got == "" {
 		t.Fatal("empty repo relativize")
 	}
+	if got := relativizeRepoPath(".", "/tmp/x"); !strings.Contains(got, "tmp") {
+		t.Fatalf("dot repoRoot = %q", got)
+	}
 	repo := t.TempDir()
 	inside := filepath.Join(repo, "modules", "a.test.ts")
-	if got := relativizeRepoPath(repo, inside); !strings.HasPrefix(got, "modules/") {
+	if got := relativizeRepoPath(repo+string(filepath.Separator), inside); !strings.HasPrefix(got, "modules/") {
 		t.Fatalf("inside rel = %q", got)
 	}
 	if got := relativizeRepoPath(repo, filepath.Join(t.TempDir(), "out.ts")); strings.HasPrefix(got, "modules/") {
