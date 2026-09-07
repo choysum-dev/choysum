@@ -246,6 +246,19 @@ func TestInstrumentJSFile_BlockWrapClosingOrder(t *testing.T) {
 	if strings.Contains(region, "{{") {
 		t.Fatalf("unexpected nested open before close:\n%s", region)
 	}
+	// Control-flow then-body is wrapped; top-level `c();` is not.
+	if !strings.Contains(region, "{") || !strings.Contains(region, "}") {
+		t.Fatalf("expected if-body block wrap:\n%s", region)
+	}
+	cIdx := strings.Index(region, "c();")
+	if cIdx < 0 {
+		t.Fatalf("missing c(); in:\n%s", region)
+	}
+	beforeC := region[:cIdx]
+	// After the if's closing brace there should be a statement counter for c, not `{inc;c`.
+	if strings.Contains(beforeC[strings.LastIndex(beforeC, "}"):], "{") {
+		t.Fatalf("top-level c(); must not be block-wrapped:\n%s", region)
+	}
 }
 
 func TestInstrumentJSFile_ArrowExpressionBodyNoFnInsert(t *testing.T) {
@@ -1493,18 +1506,12 @@ func TestWriteCoverageMkdirFailure(t *testing.T) {
 	}
 }
 
-func TestLoadMergedCoverageEmptyWithoutRunID(t *testing.T) {
-	repoRoot := t.TempDir()
-	tmpRoot := t.TempDir()
-	nyc, err := resolveCoverageNycOutputDirWithRunID(repoRoot, tmpRoot, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(nyc, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := loadMergedCoverage(repoRoot, tmpRoot, ""); err == nil {
-		t.Fatal("expected no coverage json error")
+func TestLoadMergedCoverageMissingDir(t *testing.T) {
+	repo := t.TempDir()
+	tmp := t.TempDir()
+	_, err := loadMergedCoverage(repo, tmp, "no-such-run")
+	if err == nil || !strings.Contains(err.Error(), "no coverage data found") {
+		t.Fatalf("err = %v", err)
 	}
 }
 

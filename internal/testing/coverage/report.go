@@ -300,6 +300,9 @@ func loadMergedCoverage(repoRoot, tmpRoot, runID string) (map[string]*coverageFi
 	}
 	entries, err := os.ReadDir(nycOutputDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, xfmt.Errorf("no coverage data found (directory %s does not exist)", nycOutputDir)
+		}
 		return nil, xfmt.Errorf("read nyc_output: %w", err)
 	}
 

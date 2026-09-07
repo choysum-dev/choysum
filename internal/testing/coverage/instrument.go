@@ -319,25 +319,23 @@ func shouldInstrumentStatement(n *tsast.Node) bool {
 }
 
 func statementNeedsBlockWrap(n *tsast.Node) bool {
-	if n == nil {
+	// Only wrap single-statement bodies of control-flow parents
+	// (`if (a) b()` → `if (a) {inc;b()}`). Statements already inside a block
+	// or list only need a prefix counter.
+	if n == nil || n.Parent == nil || n.Kind == tsast.KindBlock {
 		return false
 	}
-	if n.Parent != nil && n.Parent.Kind == tsast.KindLabeledStatement {
-		return false
-	}
-	switch n.Kind {
-	case tsast.KindVariableStatement,
-		tsast.KindFunctionDeclaration,
-		tsast.KindClassDeclaration,
-		tsast.KindImportDeclaration,
-		tsast.KindImportEqualsDeclaration,
-		tsast.KindExportAssignment,
-		tsast.KindExportDeclaration,
-		tsast.KindLabeledStatement,
-		tsast.KindMissingDeclaration:
-		return false
-	default:
+	switch n.Parent.Kind {
+	case tsast.KindIfStatement,
+		tsast.KindForStatement,
+		tsast.KindForInStatement,
+		tsast.KindForOfStatement,
+		tsast.KindWhileStatement,
+		tsast.KindDoStatement,
+		tsast.KindWithStatement:
 		return true
+	default:
+		return false
 	}
 }
 
