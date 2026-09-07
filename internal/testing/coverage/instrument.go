@@ -227,10 +227,7 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 		}
 		// At the same offset, emit closing braces before opening inserts so
 		// trailing statements after a braced if-body are not nested inside it.
-		if edits[i].closing != edits[j].closing {
-			return edits[i].closing
-		}
-		return edits[i].text < edits[j].text
+		return edits[i].closing && !edits[j].closing
 	})
 	var b strings.Builder
 	b.Grow(len(code) + len(edits)*24)
@@ -245,9 +242,6 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 	// Keep file-level directive prologues (e.g. "use strict") as the first
 	// statements so they remain directives after the coverage preamble.
 	prologueEnd := fileDirectivePrologueEnd(sf.AsNode())
-	if prologueEnd < 0 || prologueEnd > len(instrumented) {
-		prologueEnd = 0
-	}
 	return instrumented[:prologueEnd] + preamble + instrumented[prologueEnd:], meta
 }
 

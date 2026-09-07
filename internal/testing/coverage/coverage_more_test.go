@@ -1680,10 +1680,11 @@ func TestBuildGeneratedLineSkipsNonSourceMappings(t *testing.T) {
 
 func TestFunctionBodyEntryPosOutOfRangeCode(t *testing.T) {
 	normalized := tspath.NormalizePath("/tmp/entry.js")
+	full := "function f(){ \"use strict\"; return 1 }"
 	sf := tsparser.ParseSourceFile(tsast.SourceFileParseOptions{
 		FileName: normalized,
 		Path:     tspath.ToPath(normalized, "", true),
-	}, "function f(){ return 1 }", tscore.ScriptKindJS)
+	}, full, tscore.ScriptKindJS)
 	var fn *tsast.Node
 	stack := []*tsast.Node{sf.AsNode()}
 	for len(stack) > 0 {
@@ -1705,6 +1706,127 @@ func TestFunctionBodyEntryPosOutOfRangeCode(t *testing.T) {
 	}
 	if got := functionBodyEntryPos("", fn); got != -1 {
 		t.Fatalf("expected -1 for empty code, got %d", got)
+	}
+	// Truncate after `{` so directive End() exceeds len(code).
+	trunc := full[:fn.Body().Pos()+1]
+	if got := functionBodyEntryPos(trunc, fn); got != -1 {
+		t.Fatalf("expected -1 when directive end exceeds code, got %d", got)
+	}
+}
+
+func TestDirectivePrologueHelpers(t *testing.T) {
+	if fileDirectivePrologueEnd(nil) != 0 {
+		t.Fatal("nil source file")
+	}
+
+	parse := func(code string) *tsast.SourceFile {
+		normalized := tspath.NormalizePath("/tmp/d.js")
+		return tsparser.ParseSourceFile(tsast.SourceFileParseOptions{
+			FileName: normalized,
+			Path:     tspath.ToPath(normalized, "", true),
+		}, code, tscore.ScriptKindJS)
+	}
+
+	// ExpressionStatement with a cleared expression is not a directive.
+	sfStrict := parse("\"use strict\";\n")
+	strictStmt := sfStrict.AsNode().Statements()[0]
+	strictStmt.AsExpressionStatement().Expression = nil
+	if isDirectiveLiteralStatement(strictStmt) {
+		t.Fatal("nil expression must not count as directive")
+	}
+
+	// String literal under case clause is not a file/block prologue.
+	sfSwitch := parse("switch (x) { case 1: \"use strict\"; break; }\n")
+	var caseDir *tsast.Node
+	stack := []*tsast.Node{sfSwitch.AsNode()}
+	for len(stack) > 0 {
+		n := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if isDirectiveLiteralStatement(n) && n.Parent != nil && n.Parent.Kind == tsast.KindCaseClause {
+			caseDir = n
+			break
+		}
+		n.ForEachChild(func(child *tsast.Node) bool {
+			if child != nil {
+				stack = append(stack, child)
+			}
+			return false
+		})
+	}
+	if caseDir == nil {
+		t.Fatal("expected string literal under case clause")
+	}
+	if isDirectivePrologueStatement(caseDir) {
+		t.Fatal("case-clause string must not be prologue")
+	}
+
+	// Non-leading string literal expression statement.
+	sfLate := parse("var x=1; \"hello\";\n")
+	late := sfLate.AsNode().Statements()[1]
+	if isDirectivePrologueStatement(late) {
+		t.Fatal("non-leading string literal must not be prologue")
+	}
+
+	// Directive re-parented onto another file is not found in Statements().
+	// Parent must itself look like a prologue-only list so the loop finishes
+	// without an early non-directive return.
+	sfA := parse("\"use strict\";\n")
+	sfB := parse("\"use strict\";\n")
+	orphan := sfA.AsNode().Statements()[0]
+	orphan.Parent = sfB.AsNode()
+	if isDirectivePrologueStatement(orphan) {
+		t.Fatal("orphaned directive must not be prologue")
+	}
+}
+
+func TestInstrumentJSFile_NonPrologueStringLiteral(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "late.js")
+	if err := os.WriteFile(path, []byte("var x=1; \"hello\";\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := InstrumentJSFile(path); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoadMergedCoverageUnreadableDir(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("chmod-based read denial is unreliable as root")
+	}
+	repo := t.TempDir()
+	tmp := t.TempDir()
+	runID := "unreadable-nyc"
+	nyc, err := resolveCoverageNycOutputDirWithRunID(repo, tmp, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nyc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(nyc, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(nyc, 0o755) })
+	_, err = loadMergedCoverage(repo, tmp, runID)
+	if err == nil || !strings.Contains(err.Error(), "read nyc_output") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestLoadMergedCoverageEmptyDirNoRunID(t *testing.T) {
+	repo := t.TempDir()
+	tmp := t.TempDir()
+	nyc, err := resolveCoverageNycOutputDirWithRunID(repo, tmp, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nyc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err = loadMergedCoverage(repo, tmp, "")
+	if err == nil || err.Error() != "no coverage json found in nyc_output" {
+		t.Fatalf("err = %v", err)
 	}
 }
 
