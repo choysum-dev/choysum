@@ -71,9 +71,10 @@
 
   Element.prototype.insertBefore = function (newNode, ref) {
     if (!ref) return this.appendChild(newNode);
+    // Remove first so indexOf(ref) stays valid when newNode was already a sibling.
+    if (newNode && newNode.parentNode) newNode.parentNode.removeChild(newNode);
     var i = this._children.indexOf(ref);
     if (i < 0) return this.appendChild(newNode);
-    if (newNode.parentNode) newNode.parentNode.removeChild(newNode);
     newNode.parentNode = this;
     this._children.splice(i, 0, newNode);
     syncChildNodes(this);
@@ -185,9 +186,8 @@
       syncChildNodes(this);
       this._text = String(v == null ? '' : v);
       if (this._text) {
-        var t = this.ownerDocument
-          ? this.ownerDocument.createTextNode(this._text)
-          : { nodeType: NODE_TEXT, data: this._text, parentNode: null };
+        var doc = this.ownerDocument || global.document;
+        var t = doc.createTextNode(this._text);
         t.parentNode = this;
         this._children.push(t);
         syncChildNodes(this);
@@ -201,8 +201,9 @@
     },
     set: function (v) {
       this._html = String(v == null ? '' : v);
-      // Host tests use Vue renderer; keep a text fallback for polyfill-only paths.
-      this.textContent = this._html.replace(/<[^>]*>/g, '');
+      // Strip markup markers by deleting < and > (single-char) — avoids incomplete
+      // multi-character tag sanitization (CodeQL js/incomplete-multi-character-sanitization).
+      this.textContent = this._html.replace(/[<>]/g, '');
     },
   });
 
@@ -234,6 +235,14 @@
     this.parentNode = null;
     this.ownerDocument = null;
   }
+  Object.defineProperty(TextNode.prototype, 'nodeValue', {
+    get: function () {
+      return this.data;
+    },
+    set: function (v) {
+      this.data = String(v == null ? '' : v);
+    },
+  });
   Object.defineProperty(TextNode.prototype, 'textContent', {
     get: function () {
       return this.data;

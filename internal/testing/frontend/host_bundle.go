@@ -16,6 +16,12 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+// Test seams for rare OS / path failures (overridden in unit tests).
+var (
+	hostFilepathAbs = filepath.Abs
+	hostUserHomeDir = os.UserHomeDir
+)
+
 // VueHostBundleOptions configures an FE unit host bundle with real vue + optional SFC.
 type VueHostBundleOptions struct {
 	RepoRoot   string
@@ -46,7 +52,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	if err != nil {
 		return nil, xfmt.Errorf("vue host bundle: choysummount path: %w", err)
 	}
-	mountPath, err = filepath.Abs(mountPath)
+	mountPath, err = hostFilepathAbs(mountPath)
 	if err != nil {
 		return nil, xfmt.Errorf("vue host bundle: abs choysummount: %w", err)
 	}
@@ -56,7 +62,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		cacheDir = os.Getenv("CHOYSUM_HOME")
 	}
 	if cacheDir == "" {
-		home, homeErr := os.UserHomeDir()
+		home, homeErr := hostUserHomeDir()
 		if homeErr != nil {
 			return nil, xfmt.Errorf("vue host bundle: cache dir: %w", homeErr)
 		}

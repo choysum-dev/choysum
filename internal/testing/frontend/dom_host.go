@@ -10,6 +10,11 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+// Test seam for QuickJS timer bootstrap (overridden in unit tests).
+var bootstrapVueHostTimers = func(engine *quickjsengine.QuickjsEngine) bool {
+	return engine.Ctx.BootstrapTimers()
+}
+
 // InstallMinimalDOM injects the FE unit minimal DOM polyfill into a QuickJS engine.
 // Scope is frozen for PR-unit-vue-host: document/window/Element enough for Vue mount,
 // querySelector, and dispatchEvent — not a full happy-dom/jsdom.
@@ -35,7 +40,7 @@ func PrepareVueHostEngine(engine jsengine.JsEngine) error {
 	if !ok {
 		return nil
 	}
-	if !qjs.Ctx.BootstrapTimers() {
+	if !bootstrapVueHostTimers(qjs) {
 		return xfmt.Errorf("frontend host: BootstrapTimers failed")
 	}
 	return nil

@@ -22,20 +22,30 @@ var FrozenVTUSubsetAPIs = []string{
 	"wrapper.unmount",
 }
 
-// ChoysumMountSourcePath returns the on-disk path to choysummount.js for esbuild entry/alias.
-func ChoysumMountSourcePath() (string, error) {
-	_, thisFile, _, ok := runtime.Caller(0)
+// Test seams for ChoysumMountSourcePath (overridden in unit tests).
+var (
+	resolveChoysumMountSourcePath = defaultResolveChoysumMountSourcePath
+	runtimeCallerMount            = runtime.Caller
+	osStatMount                   = os.Stat
+)
+
+func defaultResolveChoysumMountSourcePath() (string, error) {
+	_, thisFile, _, ok := runtimeCallerMount(0)
 	if !ok {
 		return "", os.ErrNotExist
 	}
-	// Prefer module path via embed write is avoided; locate via known repo layout from this file.
 	// this file: internal/testing/frontend/choysum_mount.go
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
 	p := filepath.Join(repoRoot, "pkg", "jsengine", "scripts", "choysummount", "choysummount.js")
-	if _, err := os.Stat(p); err != nil {
+	if _, err := osStatMount(p); err != nil {
 		return "", err
 	}
 	return p, nil
+}
+
+// ChoysumMountSourcePath returns the on-disk path to choysummount.js for esbuild entry/alias.
+func ChoysumMountSourcePath() (string, error) {
+	return resolveChoysumMountSourcePath()
 }
 
 // ChoysumMountScript returns the embedded mount host source (for diagnostics / future Load).

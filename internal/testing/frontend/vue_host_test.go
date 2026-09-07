@@ -150,6 +150,14 @@ func TestChoysumMount_stubsAndFind(t *testing.T) {
 	if hasReal, _ := result["hasRealChild"].(bool); hasReal {
 		t.Fatalf("real child should be stubbed away: %#v", result)
 	}
+
+	all := runVueHostEntry(t, "entry_shallow_all.ts")
+	if has, _ := all["hasStub"].(bool); !has {
+		t.Fatalf("stubs:true auto stub missing: %#v", all)
+	}
+	if hasReal, _ := all["hasRealChild"].(bool); hasReal {
+		t.Fatalf("stubs:true still rendered real child: %#v", all)
+	}
 }
 
 func TestChoysumMount_flushPromises(t *testing.T) {

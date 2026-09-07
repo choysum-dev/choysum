@@ -91,17 +91,33 @@ function makeWrapper(app, el, vm) {
   };
 }
 
+function autoStubComponents(components) {
+  var auto = Object.create(null);
+  Object.keys(components || {}).forEach(function (name) {
+    auto[name] = {
+      name: name,
+      render: function () {
+        return h('div', { class: 'stub-' + name }, name);
+      },
+    };
+  });
+  return auto;
+}
+
 function withComponentStubs(component, stubs) {
   var map = normalizeStubs(stubs);
-  var keys = Object.keys(map).filter(function (k) {
-    return k !== '__all';
-  });
+  var base = component && typeof component === 'object' ? component : {};
+  if (map.__all) {
+    // shallowMount default: stub every options-API child registered on `components`.
+    map = Object.assign(autoStubComponents(base.components), map);
+    delete map.__all;
+  }
+  var keys = Object.keys(map);
   if (!keys.length) {
     return component;
   }
   // Options-API / defineComponent: merge into components so template lookups hit stubs.
   // script-setup local imports are closed over and are not stubbed (use defineComponent fixtures).
-  var base = component && typeof component === 'object' ? component : {};
   var merged = Object.assign({}, base);
   merged.components = Object.assign({}, base.components || {}, map);
   return merged;
