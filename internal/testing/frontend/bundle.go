@@ -111,9 +111,11 @@ func BuildFrontendUnitBundle(opts BundleOptions) (*BundleResult, error) {
 		JSPath:   outfile,
 		Warnings: warnings,
 	}
-	mapPath := outfile + ".map"
-	if _, err := osStatBundle(mapPath); err == nil {
-		out.MapPath = mapPath
+	if opts.Sourcemap {
+		mapPath := outfile + ".map"
+		if _, err := osStatBundle(mapPath); err == nil {
+			out.MapPath = mapPath
+		}
 	}
 	return out, nil
 }

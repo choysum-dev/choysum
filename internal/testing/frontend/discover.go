@@ -52,9 +52,11 @@ type IllegalMark struct {
 
 var (
 	reVitestEnvHappy = regexp.MustCompile(`(?i)@(?:vitest|jest)-environment\s+(happy-dom|jsdom)\b`)
-	reDOMPackage     = regexp.MustCompile(`(?m)(?:^|[\s;])(?:import\s+['"](happy-dom|jsdom)['"]|(?:import|export)[\s\S]*?\bfrom\s+['"](happy-dom|jsdom)['"])`)
-	reVTUImport      = regexp.MustCompile(`(?m)(?:^|[\s;])(?:import|export)[\s\S]*?\bfrom\s+['"]@vue/test-utils['"]`)
-	reMountCall      = regexp.MustCompile(`\b(?:shallowMount|mount)\s*\(`)
+	// Match the from/import clause itself so line numbers stay on the package specifier
+	// (avoids [\s\S]*? spanning back to an earlier unrelated import/export).
+	reDOMPackage = regexp.MustCompile(`(?m)(?:\bfrom\s+|import\s+)['"](happy-dom|jsdom)['"]`)
+	reVTUImport  = regexp.MustCompile(`(?m)(?:\bfrom\s+|import\s+)['"]@vue/test-utils['"]`)
+	reMountCall  = regexp.MustCompile(`\b(?:shallowMount|mount)\s*\(`)
 	// Matches from '...vue', side-effect import './x.vue', and dynamic import('./x.vue').
 	reVueImport = regexp.MustCompile(`(?m)(?:\bfrom\s+|import\s*(?:\(\s*)?)['"][^'"]+\.vue['"]`)
 )

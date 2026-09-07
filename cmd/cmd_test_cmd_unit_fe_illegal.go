@@ -56,7 +56,6 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 				if cwd, cwdErr := os.Getwd(); cwdErr == nil {
 					if st2, err2 := os.Stat(filepath.Join(cwd, "modules")); err2 == nil && st2.IsDir() {
 						repoRoot = cwd
-						modulesPath = filepath.Join(cwd, "modules")
 					}
 				}
 			}

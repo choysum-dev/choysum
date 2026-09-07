@@ -113,6 +113,18 @@ func TestDiscoverAndScanIllegalFrontendMarks(t *testing.T) {
 	if len(pureHits) != 0 {
 		t.Fatalf("pure file hits = %#v", pureHits)
 	}
+
+	sameLine := filepath.Join(web, "same_line.test.ts")
+	if err := os.WriteFile(sameLine, []byte("import 'happy-dom'; mount(x)\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sameHits, err := ScanIllegalFrontendMarks([]string{sameLine})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sameHits) < 2 {
+		t.Fatalf("same-line kinds = %#v", sameHits)
+	}
 }
 
 func TestDiscoverFrontendTestsGuardsAndSkips(t *testing.T) {
@@ -232,14 +244,17 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 
 	multi := "import {\n  mount\n} from '@vue/test-utils'\n"
 	hits = scanIllegalContent("m.ts", multi)
-	vtuLines := 0
+	vtuFromHits := 0
 	for _, h := range hits {
-		if h.Kind == IllegalVTU && strings.Contains(h.Snippet, "import") {
-			vtuLines++
+		if h.Kind == IllegalVTU && strings.Contains(h.Snippet, "from '@vue/test-utils'") {
+			vtuFromHits++
+			if h.Line != 3 {
+				t.Fatalf("expected from-clause line 3, got %#v", h)
+			}
 		}
 	}
-	if vtuLines != 1 {
-		t.Fatalf("expected single VTU import hit, got %#v", hits)
+	if vtuFromHits != 1 {
+		t.Fatalf("expected single VTU from hit, got %#v", hits)
 	}
 
 	// Same-line VTU import + mount( share IllegalVTU and exercise add() dedup.
