@@ -18,8 +18,13 @@ const AsyncProbe = {
 const w = mount(AsyncProbe);
 (globalThis as any).__hostResult = { before: w.find('.async-label').text() };
 
-flushPromises().then(() => {
-  (globalThis as any).__hostResult.after = w.find('.async-label').text();
-  (globalThis as any).__hostResult.ready = true;
-  w.unmount();
-});
+flushPromises()
+  .then(() => {
+    (globalThis as any).__hostResult.after = w.find('.async-label').text();
+    (globalThis as any).__hostResult.ready = true;
+    w.unmount();
+  })
+  .catch((err: unknown) => {
+    (globalThis as any).__hostResult.error = String(err);
+    (globalThis as any).__hostResult.ready = true;
+  });

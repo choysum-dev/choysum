@@ -158,6 +158,14 @@ func TestChoysumMount_stubsAndFind(t *testing.T) {
 	if hasReal, _ := all["hasRealChild"].(bool); hasReal {
 		t.Fatalf("stubs:true still rendered real child: %#v", all)
 	}
+
+	arr := runVueHostEntry(t, "entry_stubs_array.ts")
+	if has, _ := arr["hasStub"].(bool); !has {
+		t.Fatalf("stubs string[] auto stub missing: %#v", arr)
+	}
+	if hasReal, _ := arr["hasRealChild"].(bool); hasReal {
+		t.Fatalf("stubs string[] still rendered real child: %#v", arr)
+	}
 }
 
 func TestChoysumMount_flushPromises(t *testing.T) {
@@ -167,6 +175,77 @@ func TestChoysumMount_flushPromises(t *testing.T) {
 	}
 	if after, _ := result["after"].(string); strings.TrimSpace(after) != "done" {
 		t.Fatalf("after = %#v", result)
+	}
+	if errMsg, ok := result["error"]; ok && errMsg != nil && errMsg != "" {
+		t.Fatalf("unexpected flush error: %#v", result)
+	}
+}
+
+func TestMinimalDOM_selectorAndEvents(t *testing.T) {
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = engine.Close() })
+	if err := InstallMinimalDOM(engine); err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	script := `
+(() => {
+  const parent = document.createElement('div');
+  const child = document.createElement('span');
+  child.className = 'a   b';
+  parent.appendChild(child);
+  document.body.appendChild(parent);
+
+  // Whitespace-normalized class match.
+  if (!parent.querySelector('.a') || !parent.querySelector('.b')) {
+    throw new Error('class whitespace match failed');
+  }
+
+  let unsupported = false;
+  try { parent.querySelector('div.a'); } catch (_) { unsupported = true; }
+  if (!unsupported) throw new Error('expected unsupported compound selector');
+
+  let bubbled = false;
+  let sawTarget = false;
+  parent.addEventListener('click', (e) => {
+    bubbled = true;
+    sawTarget = e.target === child && e.currentTarget === parent;
+  });
+  const evt = new Event('click', { bubbles: true });
+  child.dispatchEvent(evt);
+  if (!bubbled || !sawTarget) throw new Error('bubbling/target failed');
+
+  let threw = false;
+  child.addEventListener('boom', () => { throw new Error('handler-boom'); });
+  try { child.dispatchEvent(new Event('boom', { bubbles: false })); }
+  catch (e) { threw = String(e).indexOf('handler-boom') >= 0; }
+  if (!threw) throw new Error('expected handler error rethrow');
+
+  // insertBefore(node, node) is a no-op.
+  const a = document.createElement('i');
+  const b = document.createElement('i');
+  parent.appendChild(a);
+  parent.appendChild(b);
+  const before = parent.childNodes.slice();
+  parent.insertBefore(a, a);
+  if (parent.childNodes.length !== before.length) throw new Error('insertBefore same-node mutated');
+
+  return 'ok';
+})()
+`
+	val := qjs.Ctx.Eval(script)
+	if val.IsException() {
+		err := qjs.Ctx.Exception()
+		val.Free()
+		t.Fatalf("minimal DOM behaviors: %v", err)
+	}
+	got := val.String()
+	val.Free()
+	if got != "ok" {
+		t.Fatalf("got %q", got)
 	}
 }
 

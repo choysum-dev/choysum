@@ -71,6 +71,8 @@
 
   Element.prototype.insertBefore = function (newNode, ref) {
     if (!ref) return this.appendChild(newNode);
+    // DOM: insertBefore(node, node) is a no-op that returns the node.
+    if (newNode === ref) return newNode;
     // Remove first so indexOf(ref) stays valid when newNode was already a sibling.
     if (newNode && newNode.parentNode) newNode.parentNode.removeChild(newNode);
     var i = this._children.indexOf(ref);
@@ -121,12 +123,24 @@
 
   Element.prototype.dispatchEvent = function (evt) {
     if (!evt || !evt.type) return false;
-    var list = (this._listeners[evt.type] || []).slice();
-    for (var i = 0; i < list.length; i++) {
-      try {
-        list[i].call(this, evt);
-      } catch (_) {}
+    if (!evt.target) evt.target = this;
+    var curr = this;
+    var firstErr = null;
+    while (curr) {
+      evt.currentTarget = curr;
+      var list = (curr._listeners && curr._listeners[evt.type] ? curr._listeners[evt.type] : []).slice();
+      for (var i = 0; i < list.length; i++) {
+        try {
+          list[i].call(curr, evt);
+        } catch (e) {
+          if (!firstErr) firstErr = e;
+        }
+      }
+      if (!evt.bubbles) break;
+      var parent = curr.parentNode;
+      curr = parent && parent.nodeType === NODE_ELEMENT ? parent : null;
     }
+    if (firstErr) throw firstErr;
     return true;
   };
 
@@ -147,9 +161,13 @@
     }
     function match(el, s) {
       if (!s) return false;
+      // Fail loud on forms this host does not implement (avoid false-negative finds).
+      if (/[\s,>+~]/.test(s) || /^[a-zA-Z][\w-]*[.#\[]/.test(s)) {
+        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+      }
       if (s.charAt(0) === '.') {
         var cls = s.slice(1);
-        var cn = el.className || el.getAttribute('class') || '';
+        var cn = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
         return (' ' + cn + ' ').indexOf(' ' + cls + ' ') >= 0;
       }
       if (s.charAt(0) === '#') {
@@ -157,10 +175,15 @@
       }
       if (s.charAt(0) === '[') {
         var m = /^\[([^=\]]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(s);
-        if (!m) return false;
+        if (!m) {
+          throw new Error('choysum minimal DOM: unsupported attribute selector: ' + s);
+        }
         var got = el.getAttribute(m[1]);
         if (m[2] === undefined) return got != null;
         return got === m[2];
+      }
+      if (!/^[a-zA-Z][\w-]*$/.test(s)) {
+        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
       }
       return el.tagName === s.toUpperCase();
     }

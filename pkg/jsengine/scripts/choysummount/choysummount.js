@@ -3,27 +3,39 @@
 
 /**
  * Choysum FE unit mount host — VTU subset (frozen for PR-unit-vue-host).
- * In: mount, shallowMount, stubs, flushPromises, wrapper.find/trigger/unmount.
- * Out: findComponent, setProps family, happy-dom.
+ * In: mount, shallowMount, stubs (object | string[] | true), flushPromises,
+ *     wrapper.find/trigger/unmount.
+ * Out: findComponent, setProps family, wrapper.html, happy-dom.
  *
  * Bundle this module with esbuild (imports vue). Do not eval as a bare global
  * unless Vue is already on globalThis.Vue.
  */
 import { createApp, h, nextTick } from 'vue';
 
+function makeDefaultStub(name) {
+  var key = String(name);
+  return {
+    name: key,
+    render: function () {
+      return h('div', { class: 'stub-' + key }, key);
+    },
+  };
+}
+
 function normalizeStubs(stubs) {
   if (!stubs) return {};
   if (stubs === true) return { __all: true };
   var out = Object.create(null);
+  if (Array.isArray(stubs)) {
+    stubs.forEach(function (name) {
+      out[String(name)] = makeDefaultStub(name);
+    });
+    return out;
+  }
   Object.keys(stubs).forEach(function (name) {
     var val = stubs[name];
     if (val === true) {
-      out[name] = {
-        name: name,
-        render: function () {
-          return h(name);
-        },
-      };
+      out[name] = makeDefaultStub(name);
     } else if (val && typeof val === 'object') {
       out[name] = val;
     }
@@ -75,9 +87,6 @@ function makeWrapper(app, el, vm) {
     text: function () {
       return el ? String(el.textContent || '') : '';
     },
-    html: function () {
-      return el ? String(el.innerHTML || el.textContent || '') : '';
-    },
     unmount: function () {
       try {
         app.unmount();
@@ -94,23 +103,19 @@ function makeWrapper(app, el, vm) {
 function autoStubComponents(components) {
   var auto = Object.create(null);
   Object.keys(components || {}).forEach(function (name) {
-    auto[name] = {
-      name: name,
-      render: function () {
-        return h('div', { class: 'stub-' + name }, name);
-      },
-    };
+    auto[name] = makeDefaultStub(name);
   });
   return auto;
 }
 
-function withComponentStubs(component, stubs) {
+function withComponentStubs(component, stubs, shallow) {
   var map = normalizeStubs(stubs);
   var base = component && typeof component === 'object' ? component : {};
-  if (map.__all) {
-    // shallowMount default: stub every options-API child registered on `components`.
-    map = Object.assign(autoStubComponents(base.components), map);
-    delete map.__all;
+  // shallowMount always auto-stubs options-API children; explicit stubs override.
+  if (map.__all || shallow) {
+    var explicit = Object.assign({}, map);
+    delete explicit.__all;
+    map = Object.assign(autoStubComponents(base.components), explicit);
   }
   var keys = Object.keys(map);
   if (!keys.length) {
@@ -133,13 +138,12 @@ export function mount(component, options) {
   if (doc.body && typeof doc.body.appendChild === 'function') {
     doc.body.appendChild(el);
   }
-  var root = withComponentStubs(component, options.stubs);
+  var shallow = !!options.shallow;
+  var root = withComponentStubs(component, options.stubs, shallow);
   var app = createApp(root, options.props || {});
   installStubs(app, options.stubs);
-  if (typeof options.shallow === 'boolean' && options.shallow) {
-    if (options.stubs === true) {
-      app.config.warnHandler = function () {};
-    }
+  if (shallow) {
+    app.config.warnHandler = function () {};
   }
   var vm = app.mount(el);
   return makeWrapper(app, el, vm);

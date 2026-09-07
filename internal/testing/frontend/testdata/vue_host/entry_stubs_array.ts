@@ -1,0 +1,16 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+import { shallowMount } from '@choysum/test-utils';
+import HostWithChild from './HostWithChild.vue';
+
+const w = shallowMount(HostWithChild, {
+  stubs: ['ChildWidget'],
+});
+
+(globalThis as any).__hostResult = {
+  label: w.find('.label').text(),
+  hasStub: w.find('.stub-ChildWidget').exists(),
+  hasRealChild: w.find('.real-child').exists(),
+  ready: true,
+};
