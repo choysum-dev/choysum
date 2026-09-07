@@ -16,6 +16,7 @@ import (
 	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
 	tscore "github.com/buke/typescript-go-internal/v7/pkg/core"
 	tsparser "github.com/buke/typescript-go-internal/v7/pkg/parser"
+	tssourcemap "github.com/buke/typescript-go-internal/v7/pkg/sourcemap"
 	tspath "github.com/buke/typescript-go-internal/v7/pkg/tspath"
 )
 
@@ -1714,5 +1715,113 @@ func TestCheckCoverageMissingJSON(t *testing.T) {
 		RepoRoot: repo, TmpRoot: tmp, RunID: "missing", Statements: 1,
 	}); err == nil {
 		t.Fatal("expected missing coverage json")
+	}
+}
+
+func TestInstrumentJSFile_LabeledContinueKeepsLabelOnLoop(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "label.js")
+	src := "var i=0; outer: for (; i<2; i++) { if (i===0) continue outer; }\n"
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := InstrumentJSFile(path); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := os.ReadFile(path)
+	text := string(out)
+	// Label must remain attached to the iteration statement, not a block wrap.
+	if strings.Contains(text, "outer: {") {
+		t.Fatalf("labeled loop must not be block-wrapped:\n%s", text)
+	}
+	if !strings.Contains(text, "outer:") || !strings.Contains(text, "continue outer") {
+		t.Fatalf("expected labeled continue to survive:\n%s", text)
+	}
+}
+
+func TestInstrumentJSFile_PreservesUseStrictDirectives(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "strict.js")
+	src := "\"use strict\";\nfunction f(){ \"use strict\"; return 1; }\nf();\n"
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := InstrumentJSFile(path); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := os.ReadFile(path)
+	text := string(out)
+	fileIdx := strings.Index(text, "\"use strict\";")
+	preambleIdx := strings.Index(text, "function cov_")
+	if fileIdx < 0 || preambleIdx < 0 || fileIdx > preambleIdx {
+		t.Fatalf("file directive must precede coverage preamble:\n%s", text)
+	}
+	fnBody := text[strings.Index(text, "function f()"):]
+	strictInFn := strings.Index(fnBody, "\"use strict\";")
+	fnInc := strings.Index(fnBody, ".f[")
+	if strictInFn < 0 || fnInc < 0 || strictInFn > fnInc {
+		t.Fatalf("function directive must precede function counter:\n%s", fnBody)
+	}
+}
+
+func TestRemapCoverageSameGeneratedLineDifferentSources(t *testing.T) {
+	// Two segments on generated line 1: col 0 → a.ts:1, col 10 → b.ts:6.
+	gen := tssourcemap.NewGenerator("out.js", "", "/repo", tspath.ComparePathsOptions{})
+	a := gen.AddSource("/repo/a.ts")
+	b := gen.AddSource("/repo/b.ts")
+	if err := gen.AddSourceMapping(0, 0, a, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := gen.AddSourceMapping(0, 10, b, 5, 0); err != nil {
+		t.Fatal(err)
+	}
+	raw := gen.RawSourceMap()
+	sm := &rawSourceMap{
+		Version:  raw.Version,
+		File:     raw.File,
+		Sources:  raw.Sources,
+		Mappings: raw.Mappings,
+	}
+	lineMap, err := buildGeneratedLineToSource("/repo/out.js", sm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pathA, lineA, ok := resolveGeneratedMapping(lineMap, 1, 0)
+	if !ok || !strings.HasSuffix(pathA, "a.ts") || lineA != 1 {
+		t.Fatalf("col 0 → a.ts:1, got %s:%d ok=%v", pathA, lineA, ok)
+	}
+	pathB, lineB, ok := resolveGeneratedMapping(lineMap, 1, 10)
+	if !ok || !strings.HasSuffix(pathB, "b.ts") || lineB != 6 {
+		t.Fatalf("col 10 → b.ts:6, got %s:%d ok=%v", pathB, lineB, ok)
+	}
+	pathMid, _, ok := resolveGeneratedMapping(lineMap, 1, 5)
+	if !ok || !strings.HasSuffix(pathMid, "a.ts") {
+		t.Fatalf("col 5 should use preceding a.ts segment, got %s", pathMid)
+	}
+
+	data := &coverageFileData{
+		Path: "/repo/out.js",
+		StatementMap: map[string]coverageRange{
+			"0": {Start: coveragePos{Line: 1, Column: 0}, End: coveragePos{Line: 1, Column: 3}},
+			"1": {Start: coveragePos{Line: 1, Column: 10}, End: coveragePos{Line: 1, Column: 13}},
+		},
+		S:              hitMap{"0": 1, "1": 1},
+		InputSourceMap: sm,
+	}
+	out, err := remapCoverageToSources(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawA, sawB bool
+	for path, st := range out {
+		if strings.HasSuffix(path, "a.ts") && st.Statements.Total == 1 {
+			sawA = true
+		}
+		if strings.HasSuffix(path, "b.ts") && st.Statements.Total == 1 {
+			sawB = true
+		}
+	}
+	if !sawA || !sawB {
+		t.Fatalf("expected both a.ts and b.ts statement hits, got %#v", out)
 	}
 }

@@ -488,8 +488,9 @@ func relativizeCoveragePath(repoRoot, path string) string {
 }
 
 type sourceLineRef struct {
-	Path string
-	Line int
+	Path   string
+	Line   int
+	GenCol int
 }
 
 func remapCoverageToSources(data *coverageFileData) (map[string]*fileCoverageStats, error) {
@@ -505,12 +506,8 @@ func remapCoverageToSources(data *coverageFileData) (map[string]*fileCoverageSta
 		if err != nil {
 			return nil, err
 		}
-		remap = func(genLine int) (string, int, bool) {
-			ref, ok := lineMap[genLine]
-			if !ok {
-				return "", 0, false
-			}
-			return ref.Path, ref.Line, true
+		remap = func(genLine, genCol int) (string, int, bool) {
+			return resolveGeneratedMapping(lineMap, genLine, genCol)
 		}
 	}
 
@@ -518,9 +515,9 @@ func remapCoverageToSources(data *coverageFileData) (map[string]*fileCoverageSta
 	return bySource, nil
 }
 
-func buildGeneratedLineToSource(generatedPath string, sm *rawSourceMap) (map[int]sourceLineRef, error) {
+func buildGeneratedLineToSource(generatedPath string, sm *rawSourceMap) (map[int][]sourceLineRef, error) {
 	dec := tssourcemap.DecodeMappings(sm.Mappings)
-	out := map[int]sourceLineRef{}
+	out := map[int][]sourceLineRef{}
 	baseDir := filepath.Dir(generatedPath)
 	for mapping, done := dec.Next(); !done; mapping, done = dec.Next() {
 		if mapping == nil || !mapping.IsSourceMapping() {
@@ -540,17 +537,43 @@ func buildGeneratedLineToSource(generatedPath string, sm *rawSourceMap) (map[int
 		srcPath = filepath.Clean(srcPath)
 		genLine := mapping.GeneratedLine + 1
 		srcLine := mapping.SourceLine + 1
-		if _, exists := out[genLine]; !exists {
-			out[genLine] = sourceLineRef{Path: srcPath, Line: srcLine}
-		}
+		out[genLine] = append(out[genLine], sourceLineRef{
+			Path:   srcPath,
+			Line:   srcLine,
+			GenCol: int(mapping.GeneratedCharacter),
+		})
 	}
 	if err := dec.Error(); err != nil {
 		return nil, xfmt.Errorf("decode inputSourceMap mappings: %w", err)
 	}
+	for line, segs := range out {
+		sort.SliceStable(segs, func(i, j int) bool {
+			return segs[i].GenCol < segs[j].GenCol
+		})
+		out[line] = segs
+	}
 	return out, nil
 }
 
-type lineRemapper func(genLine int) (sourcePath string, sourceLine int, ok bool)
+// resolveGeneratedMapping picks the closest preceding source-map segment for
+// (genLine, genCol). When genCol is before the first segment on that line, the
+// first segment is used.
+func resolveGeneratedMapping(lineMap map[int][]sourceLineRef, genLine, genCol int) (string, int, bool) {
+	segs := lineMap[genLine]
+	if len(segs) == 0 {
+		return "", 0, false
+	}
+	best := segs[0]
+	for _, seg := range segs[1:] {
+		if seg.GenCol > genCol {
+			break
+		}
+		best = seg
+	}
+	return best.Path, best.Line, true
+}
+
+type lineRemapper func(genLine, genCol int) (sourcePath string, sourceLine int, ok bool)
 
 func accumulateInto(bySource map[string]*fileCoverageStats, data *coverageFileData, remap lineRemapper, fallbackPath string) {
 	ensure := func(path string) *fileCoverageStats {
@@ -571,7 +594,7 @@ func accumulateInto(bySource map[string]*fileCoverageStats, data *coverageFileDa
 		path := fallbackPath
 		line := rng.Start.Line
 		if remap != nil {
-			if srcPath, srcLine, ok := remap(rng.Start.Line); ok {
+			if srcPath, srcLine, ok := remap(rng.Start.Line, rng.Start.Column); ok {
 				path = srcPath
 				line = srcLine
 			}
@@ -593,10 +616,11 @@ func accumulateInto(bySource map[string]*fileCoverageStats, data *coverageFileDa
 		path := fallbackPath
 		if remap != nil {
 			line := fn.Line
+			col := fn.Decl.Start.Column
 			if line <= 0 {
 				line = fn.Decl.Start.Line
 			}
-			if srcPath, _, ok := remap(line); ok {
+			if srcPath, _, ok := remap(line, col); ok {
 				path = srcPath
 			}
 		}
@@ -612,10 +636,11 @@ func accumulateInto(bySource map[string]*fileCoverageStats, data *coverageFileDa
 		path := fallbackPath
 		if remap != nil {
 			line := br.Line
+			col := br.Loc.Start.Column
 			if line <= 0 {
 				line = br.Loc.Start.Line
 			}
-			if srcPath, _, ok := remap(line); ok {
+			if srcPath, _, ok := remap(line, col); ok {
 				path = srcPath
 			}
 		}

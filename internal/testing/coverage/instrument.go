@@ -241,7 +241,14 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 		prev = ed.pos
 	}
 	b.WriteString(code[prev:])
-	return preamble + b.String(), meta
+	instrumented := b.String()
+	// Keep file-level directive prologues (e.g. "use strict") as the first
+	// statements so they remain directives after the coverage preamble.
+	prologueEnd := fileDirectivePrologueEnd(sf.AsNode())
+	if prologueEnd < 0 || prologueEnd > len(instrumented) {
+		prologueEnd = 0
+	}
+	return instrumented[:prologueEnd] + preamble + instrumented[prologueEnd:], meta
 }
 
 type instrumentPoint struct {
@@ -262,8 +269,8 @@ type fnPoint struct {
 }
 
 // functionBodyEntryPos returns the insert position for a function hit counter
-// (immediately after the opening `{` of a block body). Expression-bodied
-// arrows and body-less signatures return -1.
+// (after the opening `{` of a block body, past any directive prologue).
+// Expression-bodied arrows and body-less signatures return -1.
 func functionBodyEntryPos(code string, n *tsast.Node) int {
 	if n == nil {
 		return -1
@@ -277,11 +284,30 @@ func functionBodyEntryPos(code string, n *tsast.Node) int {
 		return -1
 	}
 	// KindBlock always starts at `{` after trivia.
-	return pos + 1
+	entry := pos + 1
+	// Insert after leading directives so `"use strict"` stays a directive.
+	for _, st := range body.Statements() {
+		if !isDirectiveLiteralStatement(st) {
+			break
+		}
+		entry = st.End()
+	}
+	if entry > len(code) {
+		return -1
+	}
+	return entry
 }
 
 func shouldInstrumentStatement(n *tsast.Node) bool {
 	if n == nil || !tsast.IsStatement(n) {
+		return false
+	}
+	// Prefix inserts before a labeled target detach the label (e.g.
+	// `outer: inc;for` or `outer: {inc;for}`), breaking `continue outer`.
+	if n.Parent != nil && n.Parent.Kind == tsast.KindLabeledStatement {
+		return false
+	}
+	if isDirectivePrologueStatement(n) {
 		return false
 	}
 	switch n.Kind {
@@ -296,6 +322,9 @@ func statementNeedsBlockWrap(n *tsast.Node) bool {
 	if n == nil {
 		return false
 	}
+	if n.Parent != nil && n.Parent.Kind == tsast.KindLabeledStatement {
+		return false
+	}
 	switch n.Kind {
 	case tsast.KindVariableStatement,
 		tsast.KindFunctionDeclaration,
@@ -304,11 +333,68 @@ func statementNeedsBlockWrap(n *tsast.Node) bool {
 		tsast.KindImportEqualsDeclaration,
 		tsast.KindExportAssignment,
 		tsast.KindExportDeclaration,
+		tsast.KindLabeledStatement,
 		tsast.KindMissingDeclaration:
 		return false
 	default:
 		return true
 	}
+}
+
+// isDirectiveLiteralStatement reports ExpressionStatements whose expression is
+// a string/template literal (candidates for a directive prologue).
+func isDirectiveLiteralStatement(n *tsast.Node) bool {
+	if n == nil || n.Kind != tsast.KindExpressionStatement {
+		return false
+	}
+	expr := n.Expression()
+	if expr == nil {
+		return false
+	}
+	switch expr.Kind {
+	case tsast.KindStringLiteral, tsast.KindNoSubstitutionTemplateLiteral:
+		return true
+	default:
+		return false
+	}
+}
+
+// isDirectivePrologueStatement is true for leading directive literals in a
+// SourceFile / Block / ModuleBlock statement list.
+func isDirectivePrologueStatement(n *tsast.Node) bool {
+	if !isDirectiveLiteralStatement(n) || n.Parent == nil {
+		return false
+	}
+	switch n.Parent.Kind {
+	case tsast.KindSourceFile, tsast.KindBlock, tsast.KindModuleBlock:
+	default:
+		return false
+	}
+	for _, st := range n.Parent.Statements() {
+		if st == n {
+			return true
+		}
+		if !isDirectiveLiteralStatement(st) {
+			return false
+		}
+	}
+	return false
+}
+
+// fileDirectivePrologueEnd is the byte offset after the last leading directive
+// in a source file (0 when there is no prologue).
+func fileDirectivePrologueEnd(sf *tsast.Node) int {
+	if sf == nil {
+		return 0
+	}
+	end := 0
+	for _, st := range sf.Statements() {
+		if !isDirectiveLiteralStatement(st) {
+			break
+		}
+		end = st.End()
+	}
+	return end
 }
 
 func functionCoverageName(n *tsast.Node) string {
