@@ -227,7 +227,7 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 		return true, xfmt.Errorf("fe-qjs: load: %w", err)
 	}
 
-	report, err := evalChoysumTestRun(engine, opts.Pattern)
+	report, err := evalChoysumTestRun(ctx, engine, opts.Pattern)
 	if err != nil {
 		return true, err
 	}
@@ -350,7 +350,13 @@ func newFrontendCompilerExecutor(ctx context.Context) (jsexecutor.JsExecutor, er
 	return executor, nil
 }
 
-func evalChoysumTestRun(engine jsengine.JsEngine, pattern string) (*qjsRunReport, error) {
+func evalChoysumTestRun(ctx context.Context, engine jsengine.JsEngine, pattern string) (*qjsRunReport, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	qjs, ok := engine.(*quickjsengine.QuickjsEngine)
 	if !ok {
 		return nil, xfmt.Errorf("fe-qjs: unexpected engine type %T", engine)

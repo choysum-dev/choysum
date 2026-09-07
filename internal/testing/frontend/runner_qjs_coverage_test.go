@@ -150,7 +150,13 @@ func TestWriteQJSTapAndJUnitHelpers(t *testing.T) {
 }
 
 func TestEvalChoysumTestRunBranches(t *testing.T) {
-	if _, err := evalChoysumTestRun(stubQJSEngine{}, ""); err == nil || !strings.Contains(err.Error(), "unexpected engine type") {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := evalChoysumTestRun(ctx, stubQJSEngine{}, ""); err == nil {
+		t.Fatal("expected canceled ctx")
+	}
+
+	if _, err := evalChoysumTestRun(context.Background(), stubQJSEngine{}, ""); err == nil || !strings.Contains(err.Error(), "unexpected engine type") {
 		t.Fatalf("type: %v", err)
 	}
 
@@ -162,7 +168,7 @@ func TestEvalChoysumTestRunBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = engine.Close() })
-	if _, err := evalChoysumTestRun(engine, "x"); err == nil {
+	if _, err := evalChoysumTestRun(context.Background(), engine, "x"); err == nil {
 		t.Fatal("expected marshal error")
 	}
 	jsonMarshalQJS = prevMarshal
@@ -179,7 +185,7 @@ func TestEvalChoysumTestRunBranches(t *testing.T) {
 		t.Fatal(qjs.Ctx.Exception())
 	}
 	v.Free()
-	if _, err := evalChoysumTestRun(engine, ""); err == nil || !strings.Contains(err.Error(), "fe-qjs: run:") {
+	if _, err := evalChoysumTestRun(context.Background(), engine, ""); err == nil || !strings.Contains(err.Error(), "fe-qjs: run:") {
 		t.Fatalf("exception: %v", err)
 	}
 
@@ -188,7 +194,7 @@ func TestEvalChoysumTestRunBranches(t *testing.T) {
 		t.Fatal(qjs.Ctx.Exception())
 	}
 	v.Free()
-	if _, err := evalChoysumTestRun(engine, ""); err == nil || !strings.Contains(err.Error(), "parse report") {
+	if _, err := evalChoysumTestRun(nil, engine, ""); err == nil || !strings.Contains(err.Error(), "parse report") {
 		t.Fatalf("parse: %v", err)
 	}
 }
