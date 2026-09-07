@@ -110,6 +110,7 @@ func RunOneAppFrontendTests(
 		repoRoot = wd
 	}
 	app = strings.TrimSpace(app)
+	warnIllegalFrontendMarks(repoRoot, app)
 	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
 	requiredModules, err := collectRequiredFrontendModules(repoRoot, app, coverage)
 	if err != nil {
@@ -410,6 +411,17 @@ func localFrontendModuleRoots(repoRoot string) []string {
 	return []string{
 		modulesNodeModules,
 		rootNodeModules,
+	}
+}
+
+func warnIllegalFrontendMarks(repoRoot, app string) {
+	hits, err := ScanAppIllegalFrontendMarks(repoRoot, app)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "choysum test: FE illegal scan failed for %s: %v\n", app, err)
+		return
+	}
+	if msg := FormatIllegalMarksWarn(hits, repoRoot); msg != "" {
+		fmt.Fprint(os.Stderr, msg)
 	}
 }
 
