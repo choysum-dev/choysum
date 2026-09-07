@@ -39,8 +39,17 @@ type ImportHubClient = {
 };
 
 const importHubClient = CreateWebClient(ImportHub);
+let importHubOverride: ImportHubClient | undefined;
+
+/** Test-only hub override (QuickJS has no vi.mock). Pass null/undefined to clear. */
+export function __setImportHubClientForTest(client?: ImportHubClient | null): void {
+  importHubOverride = client ?? undefined;
+}
 
 function importHub(): ImportHubClient {
+  if (importHubOverride) {
+    return importHubOverride;
+  }
   return importHubClient() as unknown as ImportHubClient;
 }
 

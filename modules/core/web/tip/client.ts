@@ -13,8 +13,17 @@ type TipHubClient = {
 };
 
 const tipHubClient = CreateWebClient(TipHub);
+let tipHubOverride: TipHubClient | undefined;
+
+/** Test-only hub override (QuickJS has no vi.mock). Pass null/undefined to clear. */
+export function __setTipHubClientForTest(client?: TipHubClient | null): void {
+  tipHubOverride = client ?? undefined;
+}
 
 function tipHub(): TipHubClient {
+  if (tipHubOverride) {
+    return tipHubOverride;
+  }
   return tipHubClient() as unknown as TipHubClient;
 }
 

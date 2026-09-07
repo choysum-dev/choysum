@@ -38,8 +38,17 @@ type ExportHubClient = {
 };
 
 const exportHubClient = CreateWebClient(ExportHub);
+let exportHubOverride: ExportHubClient | undefined;
+
+/** Test-only hub override (QuickJS has no vi.mock). Pass null/undefined to clear. */
+export function __setExportHubClientForTest(client?: ExportHubClient | null): void {
+  exportHubOverride = client ?? undefined;
+}
 
 function exportHub(): ExportHubClient {
+  if (exportHubOverride) {
+    return exportHubOverride;
+  }
   return exportHubClient() as unknown as ExportHubClient;
 }
 

@@ -195,7 +195,10 @@ func scanIllegalContent(path, content string) []IllegalMark {
 			add(lineNo, IllegalDOMEnvironment, line)
 		}
 		if reMountCall.MatchString(line) {
-			add(lineNo, IllegalVTU, line)
+			// choysumMount (`@choysum/test-utils`) is the allowed host; only flag VTU-era mounts.
+			if !strings.Contains(content, "@choysum/test-utils") {
+				add(lineNo, IllegalVTU, line)
+			}
 		}
 	}
 

@@ -1,210 +1,241 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const vueMocks = vi.hoisted(() => {
-  const installed: Array<{ app: any; plugin: any; options: any }> = [];
-  let mountSeed = 0;
-
-  const createVueApp = vi.fn(() => {
-    const mountResult = { uid: ++mountSeed };
-    const app: any = {
-      config: { globalProperties: {} },
-      provide: vi.fn(),
-      use: vi.fn(function (plugin: any, options?: any) {
-        installed.push({ app, plugin, options });
-        if (plugin && typeof plugin.install === 'function') {
-          plugin.install(app, options);
-        }
-        return app;
-      }),
-      mount: vi.fn(() => mountResult),
-    };
-    return app;
-  });
-
-  return {
-    installed,
-    createVueApp,
-    reset() {
-      installed.length = 0;
-      mountSeed = 0;
-      createVueApp.mockClear();
-    },
-  };
-});
-
-vi.mock('vue', () => ({
-  createApp: vueMocks.createVueApp,
-  defineComponent: (options: any) => options,
-}));
-
-import { defineComponent } from 'vue';
+import { defineComponent, h } from 'vue';
 import { createApp, getPlugins } from './index';
+import { ensureConsole } from '../testing/qjs_polyfills';
+
+ensureConsole();
 
 const RootComponent = defineComponent({
-  template: '<div>choysum</div>',
+  name: 'MigrateCoreRoot',
+  render() {
+    return h('div', { class: 'migrate-core-root' }, 'choysum');
+  },
 });
 
-describe('createApp', () => {
-  beforeEach(() => {
-    vueMocks.reset();
-  });
+function makeHost() {
+  const el = document.createElement('div');
+  el.id = `app-${Math.random().toString(36).slice(2)}`;
+  document.body.appendChild(el);
+  return el;
+}
 
-  it('runs setup immediately and returns the same app instance', () => {
-    const app = createApp(RootComponent);
-    const setup = vi.fn();
+function removeHost(host: { parentNode?: { removeChild: (n: unknown) => void } | null }) {
+  host.parentNode?.removeChild(host);
+}
 
-    const result = app.setup(setup);
+test('createApp: runs setup immediately and returns the same app instance', () => {
+  const host = makeHost();
+  const app = createApp(RootComponent);
+  let setupCalls = 0;
+  const setup = (arg: unknown) => {
+    setupCalls += 1;
+    expect(arg).toBe(app);
+  };
 
-    expect(result).toBe(app);
-    expect(setup).toHaveBeenCalledTimes(1);
-    expect(setup).toHaveBeenCalledWith(app);
-  });
+  const result = app.setup(setup);
+  expect(result).toBe(app);
+  expect(setupCalls).toBe(1);
+  app.mount(host);
+  app.unmount();
+  removeHost(host);
+});
 
-  it('exposes deferred plugins before mount and installs them once on mount', () => {
-    const app = createApp(RootComponent);
-    const install = vi.fn();
-    const plugin = { install };
+test('createApp: exposes deferred plugins before mount and installs them once on mount', () => {
+  const host = makeHost();
+  const app = createApp(RootComponent);
+  let installCalls = 0;
+  let installOptions: unknown;
+  const plugin = {
+    install(_a: unknown, options?: unknown) {
+      installCalls += 1;
+      installOptions = options;
+    },
+  };
 
-    app.usePlugin('demo', plugin as any, { locale: 'zh-CN' });
+  app.usePlugin('demo', plugin as any, { locale: 'zh-CN' });
+  expect((app as any).demo).toBe(plugin);
+  expect(getPlugins(app, { demo: {} as any }).demo).toBe(plugin);
+  expect(installCalls).toBe(0);
 
-    expect((app as any).demo).toBe(plugin);
-    expect(getPlugins(app, { demo: {} as any }).demo).toBe(plugin);
-    expect(vueMocks.installed).toHaveLength(0);
+  const mounted = app.mount(host);
+  expect(mounted).toBeTruthy();
+  expect(installCalls).toBe(1);
+  expect(installOptions).toEqual({ locale: 'zh-CN' });
+  expect(app.mount(host)).toBe(mounted);
+  expect(installCalls).toBe(1);
+  app.unmount();
+  removeHost(host);
+});
 
-    const mounted = app.mount('#app');
+test('createApp: deduplicates plugins by name before mount and after mount', () => {
+  const host = makeHost();
+  const app = createApp(RootComponent);
+  let first = 0;
+  let second = 0;
+  app.usePlugin('demo', {
+    install() {
+      first += 1;
+    },
+  } as any);
+  app.usePlugin('demo', {
+    install() {
+      second += 1;
+    },
+  } as any);
+  app.mount(host);
+  expect(first).toBe(1);
+  expect(second).toBe(0);
+  app.usePlugin(
+    'demo',
+    {
+      install() {
+        second += 1;
+      },
+    } as any,
+    undefined,
+    false,
+  );
+  expect(first).toBe(1);
+  expect(second).toBe(0);
+  app.unmount();
+  removeHost(host);
+});
 
-    expect(mounted).toBeTruthy();
-    expect(install).toHaveBeenCalledTimes(1);
-    expect(install.mock.calls[0]?.[1]).toEqual({ locale: 'zh-CN' });
-    expect(vueMocks.installed).toHaveLength(1);
-    expect(app.mount('#app')).toBe(mounted);
-    expect(install).toHaveBeenCalledTimes(1);
-  });
-
-  it('deduplicates plugins by name before mount and after mount', () => {
-    const app = createApp(RootComponent);
-    const firstInstall = vi.fn();
-    const secondInstall = vi.fn();
-
-    app.usePlugin('demo', { install: firstInstall } as any);
-    app.usePlugin('demo', { install: secondInstall } as any);
-
-    app.mount('#app');
-
-    expect(firstInstall).toHaveBeenCalledTimes(1);
-    expect(secondInstall).not.toHaveBeenCalled();
-    expect(vueMocks.installed).toHaveLength(1);
-
-    app.usePlugin('demo', { install: vi.fn() } as any, undefined, false);
-    expect(firstInstall).toHaveBeenCalledTimes(1);
-    expect(vueMocks.installed).toHaveLength(1);
-  });
-
-  it('allows nested app.use during plugin installation', () => {
-    const app = createApp(RootComponent);
-    const nestedInstall = vi.fn();
-    const nestedPlugin = { install: nestedInstall };
-    // Call the Proxy app.use (not the raw Vue app) so allowDirectUseDepth permits it.
-    const parentInstall = vi.fn(() => {
+test('createApp: allows nested app.use during plugin installation', () => {
+  const host = makeHost();
+  const app = createApp(RootComponent);
+  let nested = 0;
+  let parent = 0;
+  const nestedPlugin = {
+    install() {
+      nested += 1;
+    },
+  };
+  app.usePlugin('parent', {
+    install() {
+      parent += 1;
       app.use(nestedPlugin as any, { source: 'parent' });
-    });
+    },
+  } as any);
+  app.mount(host);
+  expect(parent).toBe(1);
+  expect(nested).toBe(1);
+  app.unmount();
+  removeHost(host);
+});
 
-    app.usePlugin('parent', { install: parentInstall } as any);
-    app.mount('#app');
+test('createApp: rejects direct app.use to keep plugin registration explicit', () => {
+  const app = createApp(RootComponent);
+  expect(() => (app as any).use({ install() {} })).toThrow(/usePlugin/);
+});
 
-    expect(parentInstall).toHaveBeenCalledTimes(1);
-    expect(nestedInstall).toHaveBeenCalledTimes(1);
-    expect(vueMocks.installed).toHaveLength(2);
-  });
-
-  it('rejects direct app.use to keep plugin registration explicit', () => {
-    const app = createApp(RootComponent);
-
-    expect(() => (app as any).use({ install() {} })).toThrow(/usePlugin/);
-  });
-
-  it('mounts without plugins and validates usePlugin inputs', () => {
-    const app = createApp(RootComponent);
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    expect(app.mount('#empty')).toBeTruthy();
+test('createApp: mounts without plugins and validates usePlugin inputs', () => {
+  const host = makeHost();
+  const app = createApp(RootComponent);
+  const prevError = console.error;
+  console.error = () => {};
+  try {
+    expect(app.mount(host)).toBeTruthy();
     expect(() => app.usePlugin('', { install() {} } as any)).toThrow(/cannot be empty/);
     expect(() => app.usePlugin('broken', undefined as any)).toThrow(/no valid plugin/);
+  } finally {
+    console.error = prevError;
+    app.unmount();
+    removeHost(host);
+  }
+});
 
-    errorSpy.mockRestore();
-  });
+test('createApp: installs plugins immediately when deferred is false', () => {
+  const host = makeHost();
+  const app = createApp(RootComponent);
+  let installCalls = 0;
+  app.usePlugin(
+    'eager',
+    {
+      install() {
+        installCalls += 1;
+      },
+    } as any,
+    { mode: 'sync' },
+    false,
+  );
+  expect(installCalls).toBe(1);
+  expect((app as any).eager).toBeTruthy();
+  app.mount(host);
+  app.unmount();
+  removeHost(host);
+});
 
-  it('installs plugins immediately when deferred is false', () => {
-    const app = createApp(RootComponent);
-    const install = vi.fn();
+test('createApp: installs plugins registered after mount', () => {
+  const host = makeHost();
+  const app = createApp(RootComponent);
+  app.mount(host);
+  let installCalls = 0;
+  app.usePlugin('late', {
+    install() {
+      installCalls += 1;
+    },
+  } as any);
+  expect(installCalls).toBe(1);
+  app.unmount();
+  removeHost(host);
+});
 
-    app.usePlugin('eager', { install } as any, { mode: 'sync' }, false);
-
-    expect(install).toHaveBeenCalledTimes(1);
-    expect(vueMocks.installed).toHaveLength(1);
-    expect((app as any).eager).toBeTruthy();
-  });
-
-  it('installs plugins registered after mount', () => {
-    const app = createApp(RootComponent);
-    app.mount('#app');
-
-    const install = vi.fn();
-    app.usePlugin('late', { install } as any);
-
-    expect(install).toHaveBeenCalledTimes(1);
-    expect(vueMocks.installed).toHaveLength(1);
-  });
-
-  it('logs and continues when deferred plugin install fails on mount', () => {
-    const app = createApp(RootComponent);
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const boom = new Error('install boom');
-
+test('createApp: logs and continues when deferred plugin install fails on mount', () => {
+  const host = makeHost();
+  const app = createApp(RootComponent);
+  const errors: unknown[] = [];
+  const prevError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args[0]);
+  };
+  try {
     app.usePlugin('bad', {
       install() {
-        throw boom;
+        throw new Error('install boom');
       },
     } as any);
+    expect(app.mount(host)).toBeTruthy();
+    expect(errors.length).toBeGreaterThan(0);
+    expect(String(errors[0])).toContain('Plugin bad registration failed');
+  } finally {
+    console.error = prevError;
+    app.unmount();
+    removeHost(host);
+  }
+});
 
-    expect(app.mount('#app')).toBeTruthy();
-    expect(errorSpy).toHaveBeenCalled();
-    expect(String(errorSpy.mock.calls[0]?.[0])).toContain('Plugin bad registration failed');
-
-    errorSpy.mockRestore();
-  });
-
-  it('logs and continues when immediate plugin install fails', () => {
-    const app = createApp(RootComponent);
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const boom = new Error('eager boom');
-
+test('createApp: logs and continues when immediate plugin install fails', () => {
+  const app = createApp(RootComponent);
+  const errors: unknown[] = [];
+  const prevError = console.error;
+  console.error = (...args: unknown[]) => {
+    errors.push(args[0]);
+  };
+  try {
     app.usePlugin(
       'eager-bad',
       {
         install() {
-          throw boom;
+          throw new Error('eager boom');
         },
       } as any,
       undefined,
-      false
+      false,
     );
+    expect(errors.length).toBeGreaterThan(0);
+    expect(String(errors[0])).toContain('Immediate registration failed for plugin eager-bad');
+  } finally {
+    console.error = prevError;
+  }
+});
 
-    expect(errorSpy).toHaveBeenCalled();
-    expect(String(errorSpy.mock.calls[0]?.[0])).toContain('Immediate registration failed for plugin eager-bad');
-
-    errorSpy.mockRestore();
-  });
-
-  it('forwards Vue App props and returns undefined for unknown keys', () => {
-    const app = createApp(RootComponent) as any;
-
-    expect(app.config).toEqual({ globalProperties: {} });
-    expect(typeof app.provide).toBe('function');
-    expect(app.missingPlugin).toBeUndefined();
-    expect(app[Symbol('choysum')]).toBeUndefined();
-  });
+test('createApp: forwards Vue App props and returns undefined for unknown keys', () => {
+  const app = createApp(RootComponent) as any;
+  expect(app.config).toBeTruthy();
+  expect(typeof app.provide).toBe('function');
+  expect(app.missingPlugin).toBeUndefined();
+  expect(app[Symbol('choysum')]).toBeUndefined();
 });
