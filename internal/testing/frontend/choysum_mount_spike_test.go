@@ -23,6 +23,10 @@ func TestVueHostSubsetSpike_P1(t *testing.T) {
 	if w := SpikeMount(nil, SpikeMountOptions{}); w.SetupRan {
 		t.Fatal("nil component must not report SetupRan")
 	}
+	var typedNil *spikeSetupProbe
+	if w := SpikeMount(typedNil, SpikeMountOptions{}); w.SetupRan {
+		t.Fatal("typed nil pointer must not report SetupRan")
+	}
 
 	probe := &spikeSetupProbe{}
 	w := SpikeMount(probe, SpikeMountOptions{

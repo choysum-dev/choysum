@@ -74,11 +74,6 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 		t.Fatal("no caller")
 	}
 	fixtureDir := filepath.Join(filepath.Dir(thisFile), "testdata", "vue_cov_spike")
-	for _, name := range []string{"SpikeCounter.vue", "entry.ts", "vue_stub.js"} {
-		if _, err := os.Stat(filepath.Join(fixtureDir, name)); err != nil {
-			t.Fatalf("fixture %s: %v", name, err)
-		}
-	}
 
 	work := t.TempDir()
 	for _, name := range []string{"SpikeCounter.vue", "entry.ts", "vue_stub.js"} {
@@ -105,7 +100,7 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 			JsExecutorFactory: "default",
 		},
 	}
-	runtimeScope := &spikeBuildScope{ctx: context.Background(), cfg: cfg}
+	runtimeScope := &spikeBuildScope{ctx: t.Context(), cfg: cfg}
 	executor, err := jsexecutor.NewCompilerExecutor(runtimeScope)
 	if err != nil {
 		t.Fatalf("NewCompilerExecutor: %v", err)
@@ -191,7 +186,7 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 		t.Fatalf("WriteCoverageJSON: %v", err)
 	}
 	reportDir := filepath.Join(tmpRoot, "reports")
-	if err := coverage.WriteLcov(context.Background(), coverage.ReportOptions{
+	if err := coverage.WriteLcov(t.Context(), coverage.ReportOptions{
 		RepoRoot:  work,
 		TmpRoot:   tmpRoot,
 		ReportDir: reportDir,

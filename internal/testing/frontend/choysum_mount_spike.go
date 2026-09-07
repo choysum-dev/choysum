@@ -3,6 +3,8 @@
 
 package frontend
 
+import "reflect"
+
 // SpikeMountOptions mirrors a VTU subset for host scoping (not a product freeze).
 type SpikeMountOptions struct {
 	Stubs map[string]bool
@@ -42,8 +44,15 @@ func SpikeMount(comp any, opts SpikeMountOptions) SpikeWrapper {
 			w.StubsAccepted[k] = v
 		}
 	}
+	if comp == nil {
+		return w
+	}
+	// Typed nil (*T)(nil) boxed in any is not == nil; calling Setup would panic.
+	if val := reflect.ValueOf(comp); val.Kind() == reflect.Ptr && val.IsNil() {
+		return w
+	}
 	setup, ok := comp.(setupComp)
-	if !ok || setup == nil {
+	if !ok {
 		return w
 	}
 	setup.Setup(nil, nil)
