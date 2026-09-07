@@ -276,6 +276,10 @@ func enrichCoverageJSONWithMeta(coverageJSON string) string {
 			data.CoverageSchema = meta.CoverageSchema
 			changed = true
 		}
+		if data.Hash == "" && meta.Hash != "" {
+			data.Hash = meta.Hash
+			changed = true
+		}
 	}
 	if !changed {
 		return coverageJSON
@@ -323,19 +327,21 @@ func ValidateCoverageReporters(reporters []string) ([]string, error) {
 	}
 	seenReporterSet := map[string]struct{}{}
 	validatedReporters := make([]string, 0, len(reporters))
-	for _, reporter := range reporters {
-		reporter = strings.ToLower(strings.TrimSpace(reporter))
-		if reporter == "" {
-			continue
+	for _, item := range reporters {
+		for _, reporter := range SplitCoverageReporters(item) {
+			reporter = strings.ToLower(strings.TrimSpace(reporter))
+			if reporter == "" {
+				continue
+			}
+			if _, ok := allowedReporterSet[reporter]; !ok {
+				return nil, xfmt.Errorf("unsupported coverage reporter %q", reporter)
+			}
+			if _, seen := seenReporterSet[reporter]; seen {
+				continue
+			}
+			seenReporterSet[reporter] = struct{}{}
+			validatedReporters = append(validatedReporters, reporter)
 		}
-		if _, ok := allowedReporterSet[reporter]; !ok {
-			return nil, xfmt.Errorf("unsupported coverage reporter %q", reporter)
-		}
-		if _, seen := seenReporterSet[reporter]; seen {
-			continue
-		}
-		seenReporterSet[reporter] = struct{}{}
-		validatedReporters = append(validatedReporters, reporter)
 	}
 	return validatedReporters, nil
 }

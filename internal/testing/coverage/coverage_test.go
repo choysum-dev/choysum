@@ -229,13 +229,20 @@ func TestValidateCoverageReportersAndDefaultExcludes(t *testing.T) {
 	if strings.Join(validated, ",") != "text,html,json-summary" {
 		t.Fatalf("ValidateCoverageReporters() = %#v", validated)
 	}
+	composite, err := ValidateCoverageReporters([]string{"text,lcovonly", " html ; text-summary "})
+	if err != nil {
+		t.Fatalf("ValidateCoverageReporters(composite): %v", err)
+	}
+	if strings.Join(composite, ",") != "text,lcovonly,html,text-summary" {
+		t.Fatalf("ValidateCoverageReporters(composite) = %#v", composite)
+	}
 	if _, err := ValidateCoverageReporters([]string{"bad"}); err == nil || !strings.Contains(err.Error(), "unsupported coverage reporter") {
 		t.Fatalf("expected unsupported reporter error, got %v", err)
 	}
 
-	excludes := mergeExcludeGlobs([]string{"custom/**", "  "})
+	excludes := mergeExcludeGlobs([]string{"custom/**", "  ", "extra/**;other/**"})
 	joined := strings.Join(excludes, " ")
-	for _, want := range []string{"**/*.test.ts", "**/dist/**", "custom/**"} {
+	for _, want := range []string{"**/*.test.ts", "**/dist/**", "custom/**", "extra/**", "other/**"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("mergeExcludeGlobs missing %q in %q", want, joined)
 		}

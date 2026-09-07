@@ -127,11 +127,11 @@ func defaultCoverageExcludes() []string {
 func mergeExcludeGlobs(extra []string) []string {
 	out := append([]string{}, defaultCoverageExcludes()...)
 	for _, e := range extra {
-		e = strings.TrimSpace(e)
-		if e == "" {
-			continue
+		for _, p := range SplitCoverageGlobs(e) {
+			if p != "" {
+				out = append(out, p)
+			}
 		}
-		out = append(out, e)
 	}
 	return out
 }

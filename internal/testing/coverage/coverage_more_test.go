@@ -529,6 +529,9 @@ func TestTrimGlobsAndSplitEmpty(t *testing.T) {
 	if got := trimGlobs([]string{" a ", "", "b"}); len(got) != 2 || got[0] != "a" {
 		t.Fatalf("trimGlobs = %#v", got)
 	}
+	if got := trimGlobs([]string{"modules/**,src/**", "  "}); len(got) != 2 || got[0] != "modules/**" || got[1] != "src/**" {
+		t.Fatalf("trimGlobs(composite) = %#v", got)
+	}
 	if SplitCoverageGlobs("") != nil {
 		t.Fatal("empty split")
 	}
@@ -975,7 +978,7 @@ func TestWriteCoverageJSONEmptyRepoRoot(t *testing.T) {
 func TestEnrichCoverageUsesMapKeyWhenPathEmpty(t *testing.T) {
 	dir := t.TempDir()
 	key := filepath.Join(dir, "keyed.js")
-	meta := coverageFileData{StatementMap: map[string]coverageRange{"0": {}}, CoverageSchema: "x"}
+	meta := coverageFileData{StatementMap: map[string]coverageRange{"0": {}}, CoverageSchema: "x", Hash: "abc"}
 	rawMeta, _ := json.Marshal(meta)
 	if err := os.WriteFile(key+".coverage-meta.json", rawMeta, 0o644); err != nil {
 		t.Fatal(err)
@@ -984,6 +987,9 @@ func TestEnrichCoverageUsesMapKeyWhenPathEmpty(t *testing.T) {
 	out := enrichCoverageJSONWithMeta(payload)
 	if !strings.Contains(out, "statementMap") || !strings.Contains(out, `"_coverageSchema":"x"`) {
 		t.Fatalf("enrich = %s", out)
+	}
+	if !strings.Contains(out, `"hash":"abc"`) {
+		t.Fatalf("expected hash enriched, got %s", out)
 	}
 }
 

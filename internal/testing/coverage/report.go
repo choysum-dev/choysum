@@ -284,9 +284,10 @@ func CheckCoverage(ctx context.Context, opts CheckOptions) error {
 func trimGlobs(globs []string) []string {
 	out := make([]string, 0, len(globs))
 	for _, g := range globs {
-		g = strings.TrimSpace(g)
-		if g != "" {
-			out = append(out, g)
+		for _, p := range SplitCoverageGlobs(g) {
+			if p != "" {
+				out = append(out, p)
+			}
 		}
 	}
 	return out
