@@ -59,7 +59,9 @@ var (
 	// Quote class includes backticks for dynamic import()/require() template literals.
 	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)(?:/[^'\"`]*)?['\"`]")
 	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
-	reMountCall  = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
+	// Allowed mount host for FE unit (choysumMount); used to suppress IllegalVTU on mount(...).
+	reChoysumTestUtilsImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@choysum/test-utils(?:/[^'\"`]*)?['\"`]")
+	reMountCall              = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
 	// Matches from '...vue', side-effect/dynamic/require imports, optional Vite query (?raw), and backticks.
 	reVueImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]+\\.vue(?:\\?[^'\"`]*)?['\"`]")
 )
@@ -196,7 +198,7 @@ func scanIllegalContent(path, content string) []IllegalMark {
 		}
 		if reMountCall.MatchString(line) {
 			// choysumMount (`@choysum/test-utils`) is the allowed host; only flag VTU-era mounts.
-			if !strings.Contains(content, "@choysum/test-utils") {
+			if !reChoysumTestUtilsImport.MatchString(content) {
 				add(lineNo, IllegalVTU, line)
 			}
 		}

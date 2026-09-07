@@ -163,7 +163,7 @@ func WriteFrontendTestsEntry(outPath string, testFiles []string) error {
 	for _, f := range testFiles {
 		absFile, absErr := filepathAbs(filepath.Clean(f))
 		if absErr != nil {
-			absFile = filepath.Clean(f)
+			return xfmt.Errorf("frontend bundle: resolve test file path: %w", absErr)
 		}
 		imp := filepath.ToSlash(absFile)
 		encoded, err := jsonMarshal(imp)

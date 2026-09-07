@@ -296,6 +296,11 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 			}
 		}
 	}
+	// Package name only in a comment must not suppress IllegalVTU for bare mount().
+	hits = scanIllegalContent("comment-only.ts", "// uses @choysum/test-utils someday\nmount(X)\n")
+	if len(hits) != 1 || hits[0].Kind != IllegalVTU {
+		t.Fatalf("comment-only choysum mention must still flag mount: %#v", hits)
+	}
 
 	// Method calls like app.mount() must not be treated as VTU mount().
 	if methodHits := scanIllegalContent("m.ts", "app.mount('#app')\nwrapper.mount()\n"); len(methodHits) != 0 {
@@ -514,16 +519,15 @@ func TestWriteFrontendTestsEntryEscapes(t *testing.T) {
 	prevAbs := filepathAbs
 	filepathAbs = func(string) (string, error) { return "", os.ErrInvalid }
 	t.Cleanup(func() { filepathAbs = prevAbs })
-	if err := WriteFrontendTestsEntry(out, []string{"a.ts"}); err != nil {
-		// Abs failure falls back to cleaned relative/cwd paths; write may still succeed.
-		t.Logf("abs fallback write: %v", err)
+	if err := WriteFrontendTestsEntry(out, []string{"a.ts"}); err == nil || !strings.Contains(err.Error(), "resolve test file path") {
+		t.Fatalf("abs resolve err = %v", err)
 	}
 	filepathAbs = prevAbs
 
 	prevWrite := osWriteFile
 	osWriteFile = func(string, []byte, os.FileMode) error { return os.ErrPermission }
 	t.Cleanup(func() { osWriteFile = prevWrite })
-	if err := WriteFrontendTestsEntry(out, []string{"a.ts"}); err == nil || !strings.Contains(err.Error(), "write entry") {
+	if err := WriteFrontendTestsEntry(out, []string{pathWithQuote}); err == nil || !strings.Contains(err.Error(), "write entry") {
 		t.Fatalf("write err = %v", err)
 	}
 }
