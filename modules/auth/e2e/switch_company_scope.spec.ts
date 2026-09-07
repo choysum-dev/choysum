@@ -115,3 +115,80 @@ test('auth: switch company → new TokenPair → refresh PermissionState → hea
   // UX change: header label should change.
   await expect.poll(async () => ((await trigger.textContent()) || '').trim(), { timeout: 10_000 }).not.toBe(beforeLabel);
 });
+
+/**
+ * Read active + an alternate allowed company id from the live auth store.
+ */
+async function readCompanyIdsFromAuthStore(page: any): Promise<{ active: string; other: string }> {
+  return page.evaluate(() => {
+    const app = (document.querySelector('#app') as any)?.__vue_app__;
+    const pinia = app?.config?.globalProperties?.$pinia || null;
+    const store = pinia?._s?.get?.('choysum.auth') || null;
+    const meta = store?.identity?.metadata ?? {};
+    const active = String(meta.activeCompanyId ?? '').trim();
+    const allowed = [
+      ...(Array.isArray(meta.allowedCompanyIds) ? meta.allowedCompanyIds : []),
+      ...(Array.isArray(meta.enabledCompanyIds) ? meta.enabledCompanyIds : []),
+    ]
+      .map((x: any) => String(x ?? '').trim())
+      .filter(Boolean);
+    const other = allowed.find((id: string) => id && id !== active) || '';
+    return { active, other };
+  });
+}
+
+/**
+ * Simulate a token-refresh updating JWT company metadata while the switcher is open.
+ */
+async function patchAuthIdentityActiveCompany(page: any, nextActiveCompanyId: string): Promise<boolean> {
+  return page.evaluate(activeId => {
+    const app = (document.querySelector('#app') as any)?.__vue_app__;
+    const pinia = app?.config?.globalProperties?.$pinia || null;
+    const store = pinia?._s?.get?.('choysum.auth');
+    if (!store?.identity) return false;
+
+    const prev = store.identity;
+    const meta = { ...((prev as any).metadata ?? {}) };
+    meta.activeCompanyId = activeId;
+    store.identity = { ...prev, metadata: meta };
+    return String(store.identity?.metadata?.activeCompanyId ?? '') === activeId;
+  }, nextActiveCompanyId);
+}
+
+test('auth: open company-switch panel drafts survive JWT metadata refresh', async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const runtime = readRuntimeInfo();
+  const baseURL = runtime.baseURL;
+
+  await loginAsE2EAdmin(page, baseURL);
+
+  const { other: otherCompanyId } = await readCompanyIdsFromAuthStore(page);
+  test.skip(!otherCompanyId, 'Need two companies in the auth allowlist');
+
+  const trigger = page.getByTestId('company-switch-trigger');
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+
+  const panel = page.getByTestId('company-switch-panel');
+  await expect(panel).toBeVisible();
+
+  // Wait until select options are seeded (same readiness as the happy-path switcher test).
+  await page.getByTestId('company-active-select').click();
+  const options = page.getByRole('option');
+  await expect.poll(async () => await options.count(), { timeout: 10_000 }).toBeGreaterThan(1);
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeVisible();
+
+  const applyButton = page.getByTestId('company-switch-apply');
+  // Fresh open + no user edit → Apply disabled ("No changes to apply").
+  await expect(applyButton).toBeDisabled();
+
+  const patched = await patchAuthIdentityActiveCompany(page, otherCompanyId);
+  expect(patched, 'expected pinia auth identity metadata patch').toBe(true);
+
+  // Drafts must stay on the open-panel seed; JWT active moved → dirty → Apply enabled.
+  await expect.poll(async () => await applyButton.isEnabled(), { timeout: 10_000 }).toBe(true);
+  await expect(page.getByTestId('company-switch-hint')).toHaveCount(0);
+  await expect(panel).toBeVisible();
+});
