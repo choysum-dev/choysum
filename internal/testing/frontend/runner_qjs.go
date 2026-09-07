@@ -361,7 +361,7 @@ func evalChoysumTestRun(engine jsengine.JsEngine, pattern string) (*qjsRunReport
 	}
 	script := `(async () => {
   const r = await globalThis.__choysum_test_run__({ pattern: ` + string(patJSON) + ` });
-  return JSON.stringify(r);
+  return JSON.stringify(r) || "null";
 })()`
 	val := qjs.Ctx.Eval(script, quickjs.EvalAwait(true))
 	defer val.Free()
