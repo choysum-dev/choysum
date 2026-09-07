@@ -58,10 +58,10 @@ var (
 	// (avoids [\s\S]*? spanning back to an earlier unrelated import/export).
 	// Quote class includes backticks for dynamic import()/require() template literals.
 	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)(?:/[^'\"`]*)?['\"`]")
-	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
-	// Allowed mount host for FE unit (choysumMount); used to suppress IllegalVTU on mount(...).
-	reChoysumTestUtilsImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@choysum/test-utils(?:/[^'\"`]*)?['\"`]")
-	reMountCall              = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
+	reVTUImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
+	// Suppress IllegalVTU for mount/shallowMount only when those names are imported from choysumMount.
+	reChoysumMountBinding = regexp.MustCompile(`(?m)import\s*\{[^}]*\b(?:mount|shallowMount)\b[^}]*\}\s*from\s*['"\x60]@choysum/test-utils(?:/[^'"\x60]*)?['"\x60]`)
+	reMountCall           = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
 	// Matches from '...vue', side-effect/dynamic/require imports, optional Vite query (?raw), and backticks.
 	reVueImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]+\\.vue(?:\\?[^'\"`]*)?['\"`]")
 )
@@ -197,8 +197,8 @@ func scanIllegalContent(path, content string) []IllegalMark {
 			add(lineNo, IllegalDOMEnvironment, line)
 		}
 		if reMountCall.MatchString(line) {
-			// choysumMount (`@choysum/test-utils`) is the allowed host; only flag VTU-era mounts.
-			if !reChoysumTestUtilsImport.MatchString(content) {
+			// choysumMount: suppress only when mount/shallowMount are imported from @choysum/test-utils.
+			if !reChoysumMountBinding.MatchString(content) {
 				add(lineNo, IllegalVTU, line)
 			}
 		}

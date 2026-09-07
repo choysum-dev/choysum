@@ -15,8 +15,6 @@ function installDownloadStubs(anchor: { click: () => void; remove: () => void; d
   const createCalls: unknown[] = [];
   const revokeCalls: unknown[] = [];
   const appendCalls: unknown[] = [];
-  const clickCalls: number[] = [];
-  const removeCalls: number[] = [];
 
   const prevURL = (globalThis as any).URL;
   const prevDocument = (globalThis as any).document;
@@ -51,8 +49,6 @@ function installDownloadStubs(anchor: { click: () => void; remove: () => void; d
     createCalls,
     revokeCalls,
     appendCalls,
-    clickCalls,
-    removeCalls,
     restore() {
       if (prevURL === undefined) Reflect.deleteProperty(globalThis, 'URL');
       else (globalThis as any).URL = prevURL;

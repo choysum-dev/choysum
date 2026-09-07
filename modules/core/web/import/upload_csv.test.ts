@@ -4,9 +4,12 @@
 import { clearGlobalRequestContextProvider, setGlobalRequestContextProvider } from '@/core/rpc/context';
 import { setCSRFProvider as bindCSRFProvider, setTokenProvider as bindTokenProvider } from '@/core/web/rpc/providers';
 import { registerStoreFactory } from '@/core/web/stores/registry';
+import { ensureHeaders } from '../testing/qjs_polyfills';
 import { uploadImportCsv, type UploadImportCsvOptions } from './upload_csv';
 
-// QuickJS FE unit host may lack File / Headers / Blob.
+ensureHeaders();
+
+// QuickJS FE unit host may lack File / Blob.
 (function polyfillUploadPrimitives() {
   const g = globalThis as any;
   if (typeof g.Blob !== 'function') {
@@ -33,20 +36,6 @@ import { uploadImportCsv, type UploadImportCsvOptions } from './upload_csv';
       constructor(parts: unknown[], name: string, opts?: { type?: string }) {
         super(parts, opts);
         this.name = name || '';
-      }
-    };
-  }
-  if (typeof g.Headers !== 'function') {
-    g.Headers = class Headers {
-      private map = new Map<string, string>();
-      get(name: string): string | null {
-        return this.map.get(String(name).toLowerCase()) ?? null;
-      }
-      has(name: string): boolean {
-        return this.map.has(String(name).toLowerCase());
-      }
-      set(name: string, value: string): void {
-        this.map.set(String(name).toLowerCase(), String(value));
       }
     };
   }

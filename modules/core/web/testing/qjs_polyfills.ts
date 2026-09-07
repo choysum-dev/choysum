@@ -48,6 +48,45 @@ export function ensureAbortController(): void {
   };
 }
 
+/** Minimal Headers for QuickJS FE unit (constructor init + get/has/set). */
+export function ensureHeaders(): void {
+  const g = globalThis as any;
+  if (typeof g.Headers === 'function') {
+    return;
+  }
+  g.Headers = class Headers {
+    private map = new Map<string, string>();
+    constructor(init?: unknown) {
+      if (!init) return;
+      if (Array.isArray(init)) {
+        for (const pair of init) {
+          if (pair && pair.length >= 2) this.set(String(pair[0]), String(pair[1]));
+        }
+        return;
+      }
+      if (typeof (init as any).forEach === 'function') {
+        (init as Headers).forEach((value: string, key: string) => this.set(key, value));
+        return;
+      }
+      for (const [key, value] of Object.entries(init as Record<string, string>)) {
+        this.set(key, value);
+      }
+    }
+    get(name: string): string | null {
+      return this.map.get(String(name).toLowerCase()) ?? null;
+    }
+    has(name: string): boolean {
+      return this.map.has(String(name).toLowerCase());
+    }
+    set(name: string, value: string): void {
+      this.map.set(String(name).toLowerCase(), String(value));
+    }
+    forEach(fn: (value: string, key: string) => void): void {
+      for (const [key, value] of this.map) fn(value, key);
+    }
+  };
+}
+
 /** Minimal console stub when QuickJS host did not install console. */
 export function ensureConsole(): void {
   const g = globalThis as any;

@@ -3,8 +3,11 @@
 
 import { Code, ConnectError } from '@connectrpc/connect';
 import type { RpcRequestContext } from '../../rpc/types';
+import { ensureHeaders } from '../testing/qjs_polyfills';
 import { createLifecycleProvider, toPublicApiState } from './lifecycle';
 import { createApiStateScope, type ApiStateInternal } from './state';
+
+ensureHeaders();
 
 function makeContext(methodName: string, spanId: string): RpcRequestContext {
   return {

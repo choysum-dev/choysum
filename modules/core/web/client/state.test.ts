@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Code, ConnectError } from '@connectrpc/connect';
+import { ensureHeaders } from '../testing/qjs_polyfills';
 import { createApiStateScope, type ApiStateInternal } from './state';
+
+ensureHeaders();
 
 test('client state: tracks concurrent requests and clears loading only after the last request finishes', () => {
   const state = createApiStateScope('state-test') as ApiStateInternal;

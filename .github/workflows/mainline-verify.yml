@@ -356,29 +356,31 @@ jobs:
 
       - name: Run unit tests with coverage and JUnit
         id: unit_tests
+        env:
+          MODULE: ${{ matrix.module }}
         run: |
-          coverage_root=".choysum/coverage/main/unit/${{ matrix.module }}"
+          coverage_root=".choysum/coverage/main/unit/$MODULE"
           junit_root=".choysum/test-results/main/unit"
           backend_lcov="$coverage_root/lcov.info"
-          frontend_lcov="$coverage_root/fe/${{ matrix.module }}/lcov.info"
-          backend_junit="$junit_root/${{ matrix.module }}.backend.junit.xml"
-          frontend_junit="$junit_root/${{ matrix.module }}.frontend.junit.xml"
+          frontend_lcov="$coverage_root/fe/$MODULE/lcov.info"
+          backend_junit="$junit_root/$MODULE.backend.junit.xml"
+          frontend_junit="$junit_root/$MODULE.frontend.junit.xml"
 
           mkdir -p "$coverage_root" "$junit_root"
 
           set +e
           CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
           # Migrated FE apps use QuickJS until PR-unit-final-fe hard-cuts default --fe.
-          if [ "${{ matrix.module }}" = "core" ]; then
+          if [ "$MODULE" = "core" ]; then
             export CHOYSUM_FE_UNIT_ENGINE=qjs
           fi
-          "$CHOYSUM_BIN" test unit "${{ matrix.module }}" \
+          "$CHOYSUM_BIN" test unit "$MODULE" \
             --coverage \
             --coverage-report \
             --fe-coverage-all \
             --coverage-report-dir "$coverage_root" \
             --coverage-reporters lcovonly \
-            --junit "$junit_root/${{ matrix.module }}.{scope}.junit.xml"
+            --junit "$junit_root/$MODULE.{scope}.junit.xml"
           exit_code=$?
           set -e
 

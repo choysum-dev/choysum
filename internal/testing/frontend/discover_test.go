@@ -301,6 +301,11 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 	if len(hits) != 1 || hits[0].Kind != IllegalVTU {
 		t.Fatalf("comment-only choysum mention must still flag mount: %#v", hits)
 	}
+	// Unrelated named import from test-utils must not suppress bare mount().
+	hits = scanIllegalContent("unrelated-import.ts", "import { flushPromises } from '@choysum/test-utils'\nmount(X)\n")
+	if len(hits) != 1 || hits[0].Kind != IllegalVTU {
+		t.Fatalf("unrelated choysum import must still flag mount: %#v", hits)
+	}
 
 	// Method calls like app.mount() must not be treated as VTU mount().
 	if methodHits := scanIllegalContent("m.ts", "app.mount('#app')\nwrapper.mount()\n"); len(methodHits) != 0 {
