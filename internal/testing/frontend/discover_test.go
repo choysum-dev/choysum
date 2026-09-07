@@ -288,6 +288,25 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 	if len(hits) != 1 || hits[0].Kind != IllegalVTU {
 		t.Fatalf("dedup hits = %#v", hits)
 	}
+	hits = scanIllegalContent("choysum-mount.ts", "import { mount } from '@choysum/test-utils'\nmount(X)\n")
+	if len(hits) != 0 {
+		for _, h := range hits {
+			if h.Kind == IllegalVTU {
+				t.Fatalf("choysum mount must not flag IllegalVTU: %#v", hits)
+			}
+		}
+	}
+	// Package name only in a comment must not suppress IllegalVTU for bare mount().
+	hits = scanIllegalContent("comment-only.ts", "// uses @choysum/test-utils someday\nmount(X)\n")
+	if len(hits) != 1 || hits[0].Kind != IllegalVTU {
+		t.Fatalf("comment-only choysum mention must still flag mount: %#v", hits)
+	}
+	// Unrelated named import from test-utils must not suppress bare mount().
+	hits = scanIllegalContent("unrelated-import.ts", "import { flushPromises } from '@choysum/test-utils'\nmount(X)\n")
+	if len(hits) != 1 || hits[0].Kind != IllegalVTU {
+		t.Fatalf("unrelated choysum import must still flag mount: %#v", hits)
+	}
+
 	// Method calls like app.mount() must not be treated as VTU mount().
 	if methodHits := scanIllegalContent("m.ts", "app.mount('#app')\nwrapper.mount()\n"); len(methodHits) != 0 {
 		t.Fatalf("method mount false positives = %#v", methodHits)
@@ -474,15 +493,16 @@ func TestWriteFrontendTestsEntryEscapes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(raw), `import "./subdir/o'brian.test.ts"`) && !strings.Contains(string(raw), `import "./subdir/o\'brian.test.ts"`) {
-		// json.Marshal escapes apostrophe as \u0027 or leaves as-is in Go encoding/json (apostrophe is fine unescaped in JSON strings)
-		encoded, _ := json.Marshal("./subdir/o'brian.test.ts")
-		if !strings.Contains(string(raw), "import "+string(encoded)) {
-			t.Fatalf("entry = %s want relative import containing %s", raw, encoded)
-		}
+	absWant, absErr := filepath.Abs(pathWithQuote)
+	if absErr != nil {
+		t.Fatal(absErr)
 	}
-	if strings.Contains(string(raw), filepath.ToSlash(pathWithQuote)) && strings.HasPrefix(filepath.ToSlash(pathWithQuote), "/") {
-		t.Fatalf("expected relative import, got absolute in %s", raw)
+	encoded, encErr := json.Marshal(filepath.ToSlash(absWant))
+	if encErr != nil {
+		t.Fatal(encErr)
+	}
+	if !strings.Contains(string(raw), "import "+string(encoded)) {
+		t.Fatalf("entry = %s want absolute import %s", raw, encoded)
 	}
 
 	prevMkdir := osMkdirAll
@@ -501,27 +521,18 @@ func TestWriteFrontendTestsEntryEscapes(t *testing.T) {
 	}
 	jsonMarshal = prevMarshal
 
-	prevRel := filepathRel
-	filepathRel = func(string, string) (string, error) { return "", os.ErrInvalid }
-	t.Cleanup(func() { filepathRel = prevRel })
-	if err := WriteFrontendTestsEntry(out, []string{pathWithQuote}); err == nil || !strings.Contains(err.Error(), "relative import path") {
-		t.Fatalf("rel err = %v", err)
-	}
-	filepathRel = prevRel
-
 	prevAbs := filepathAbs
 	filepathAbs = func(string) (string, error) { return "", os.ErrInvalid }
 	t.Cleanup(func() { filepathAbs = prevAbs })
-	if err := WriteFrontendTestsEntry(out, []string{"a.ts"}); err != nil {
-		// Abs failure falls back to cleaned paths; Rel may still succeed from TempDir layout.
-		t.Logf("abs fallback write: %v", err)
+	if err := WriteFrontendTestsEntry(out, []string{"a.ts"}); err == nil || !strings.Contains(err.Error(), "resolve test file path") {
+		t.Fatalf("abs resolve err = %v", err)
 	}
 	filepathAbs = prevAbs
 
 	prevWrite := osWriteFile
 	osWriteFile = func(string, []byte, os.FileMode) error { return os.ErrPermission }
 	t.Cleanup(func() { osWriteFile = prevWrite })
-	if err := WriteFrontendTestsEntry(out, []string{"a.ts"}); err == nil || !strings.Contains(err.Error(), "write entry") {
+	if err := WriteFrontendTestsEntry(out, []string{pathWithQuote}); err == nil || !strings.Contains(err.Error(), "write entry") {
 		t.Fatalf("write err = %v", err)
 	}
 }

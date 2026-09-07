@@ -37,6 +37,8 @@ export type UploadImportCsvOptions = {
   fieldName?: string;
   file: File;
   businessRequestId?: string;
+  /** Optional fetch (tests). Defaults to global fetch. */
+  fetch?: typeof fetch;
 };
 
 function newBusinessRequestId(prefix: string): string {
@@ -118,7 +120,12 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
   }
 }
 
-async function uploadToTarget(fieldName: string, target: NonNullable<PrepareUploadResp['uploadTarget']>, body: Blob): Promise<void> {
+async function uploadToTarget(
+  fieldName: string,
+  target: NonNullable<PrepareUploadResp['uploadTarget']>,
+  body: Blob,
+  fetchImpl: typeof fetch,
+): Promise<void> {
   const url = normalizeOptionalString(target?.url);
   if (!url) {
     throw new Error(`${fieldName}: upload target url is empty`);
@@ -140,7 +147,7 @@ async function uploadToTarget(fieldName: string, target: NonNullable<PrepareUplo
     await applyInternalUploadAuthHeaders(headers);
   }
 
-  const response = await fetch(url, {
+  const response = await fetchImpl(url, {
     method,
     headers,
     body,
@@ -161,6 +168,7 @@ export async function uploadImportCsv(options: UploadImportCsvOptions): Promise<
   const file = options.file;
   const contentType = normalizeOptionalString(file.type) || 'text/csv';
   const checksumSha256 = await sha256Hex(file);
+  const fetchImpl = options.fetch ?? fetch;
 
   const prepared = await service.PrepareUpload({
     ownerModel: options.ownerModel,
@@ -178,7 +186,7 @@ export async function uploadImportCsv(options: UploadImportCsvOptions): Promise<
     throw new Error('PrepareUpload did not return upload target');
   }
 
-  await uploadToTarget(fieldName, prepared.uploadTarget, file);
+  await uploadToTarget(fieldName, prepared.uploadTarget, file, fetchImpl);
 
   const finalized = await service.FinalizeUpload({ uploadId, businessRequestId });
   const sourceRef = normalizeOptionalString(finalized.attachmentObjectId);

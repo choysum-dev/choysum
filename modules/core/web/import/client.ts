@@ -27,7 +27,7 @@ export type ImportRunInput = {
   companyId?: string;
 };
 
-type ImportHubClient = {
+export type ImportHubClient = {
   describeImportFields(
     req: ReturnType<typeof create<typeof DescribeImportFieldsRequestSchema>>,
     options?: ImportCallOptions,
@@ -38,11 +38,18 @@ type ImportHubClient = {
   runAsync(req: ReturnType<typeof create<typeof ImportRunAsyncRequestSchema>>, options?: ImportCallOptions): Promise<ImportRunAsyncResponse>;
 };
 
-const importHubClient = CreateWebClient(ImportHub);
+export type ImportClientDeps = {
+  /** Injected hub (tests / alternate transports). Default: CreateWebClient(ImportHub). */
+  hub?: ImportHubClient;
+};
 
-function importHub(): ImportHubClient {
-  return importHubClient() as unknown as ImportHubClient;
-}
+export type ImportClient = {
+  describeImportFields(model: string, signal?: AbortSignal): Promise<DescribeImportFieldsResponse>;
+  parseHeaders(sourceRef: string, signal?: AbortSignal): Promise<ParseHeadersResponse>;
+  previewImport(input: ImportRunInput, signal?: AbortSignal): Promise<ImportRunResponse>;
+  runImport(input: ImportRunInput, signal?: AbortSignal): Promise<ImportRunResponse>;
+  runImportAsync(input: ImportRunInput, signal?: AbortSignal): Promise<ImportRunAsyncResponse>;
+};
 
 function callOptions(signal?: AbortSignal): ImportCallOptions | undefined {
   if (signal == null) {
@@ -61,28 +68,40 @@ function toRunRequest(input: ImportRunInput, dryRunPolicy: ImportPolicy) {
   });
 }
 
-export function describeImportFields(model: string, signal?: AbortSignal): Promise<DescribeImportFieldsResponse> {
-  return importHub().describeImportFields(create(DescribeImportFieldsRequestSchema, { model }), callOptions(signal));
+/** Composable ImportHub API. Pass `hub` in tests instead of mocking CreateWebClient. */
+export function createImportClient(deps: ImportClientDeps = {}): ImportClient {
+  const defaultHub = CreateWebClient(ImportHub);
+  const hub = (): ImportHubClient => deps.hub ?? (defaultHub() as unknown as ImportHubClient);
+
+  return {
+    describeImportFields(model, signal) {
+      return hub().describeImportFields(create(DescribeImportFieldsRequestSchema, { model }), callOptions(signal));
+    },
+    parseHeaders(sourceRef, signal) {
+      return hub().parseHeaders(create(ParseHeadersRequestSchema, { sourceRef }), callOptions(signal));
+    },
+    previewImport(input, signal) {
+      return hub().preview(toRunRequest(input, ImportPolicy.ATOMIC), callOptions(signal));
+    },
+    runImport(input, signal) {
+      return hub().run(toRunRequest(input, ImportPolicy.ATOMIC), callOptions(signal));
+    },
+    runImportAsync(input, signal) {
+      return hub().runAsync(
+        create(ImportRunAsyncRequestSchema, { run: toRunRequest(input, ImportPolicy.ATOMIC) }),
+        callOptions(signal),
+      );
+    },
+  };
 }
 
-export function parseHeaders(sourceRef: string, signal?: AbortSignal): Promise<ParseHeadersResponse> {
-  return importHub().parseHeaders(create(ParseHeadersRequestSchema, { sourceRef }), callOptions(signal));
-}
+const defaultImportClient = createImportClient();
 
-export function previewImport(input: ImportRunInput, signal?: AbortSignal): Promise<ImportRunResponse> {
-  return importHub().preview(toRunRequest(input, ImportPolicy.ATOMIC), callOptions(signal));
-}
-
-export function runImport(input: ImportRunInput, signal?: AbortSignal): Promise<ImportRunResponse> {
-  return importHub().run(toRunRequest(input, ImportPolicy.ATOMIC), callOptions(signal));
-}
-
-export function runImportAsync(input: ImportRunInput, signal?: AbortSignal): Promise<ImportRunAsyncResponse> {
-  return importHub().runAsync(
-    create(ImportRunAsyncRequestSchema, { run: toRunRequest(input, ImportPolicy.ATOMIC) }),
-    callOptions(signal)
-  );
-}
+export const describeImportFields = defaultImportClient.describeImportFields;
+export const parseHeaders = defaultImportClient.parseHeaders;
+export const previewImport = defaultImportClient.previewImport;
+export const runImport = defaultImportClient.runImport;
+export const runImportAsync = defaultImportClient.runImportAsync;
 
 export {
   ImportHub,

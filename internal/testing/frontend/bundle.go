@@ -22,7 +22,6 @@ var (
 	osStatBundle = os.Stat
 	jsonMarshal  = json.Marshal
 	esbuildBuild = api.Build
-	filepathRel  = filepath.Rel
 )
 
 // BundleOptions configures a thin FE unit esbuild (Vue optional; no ModuleBuilder).
@@ -149,6 +148,10 @@ func BuildFrontendUnitBundle(opts BundleOptions) (*BundleResult, error) {
 // choysumtest globals register cases at load time. Callers invoke
 // globalThis.__choysum_test_run__ after Load (do not auto-run in the entry:
 // QuickJS Load uses EvalAwait and must not await a top-level runner Promise).
+//
+// Imports use absolute paths (same as the BE tests index). Relative paths from
+// os.TempDir entries break under macOS /var → /private/var when AbsWorkingDir
+// is the repo root.
 func WriteFrontendTestsEntry(outPath string, testFiles []string) error {
 	if strings.TrimSpace(outPath) == "" {
 		return xfmt.Errorf("frontend bundle: empty entry out path")
@@ -156,24 +159,13 @@ func WriteFrontendTestsEntry(outPath string, testFiles []string) error {
 	if err := osMkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return xfmt.Errorf("frontend bundle: mkdir entry: %w", err)
 	}
-	entryDir, err := filepathAbs(filepath.Dir(outPath))
-	if err != nil {
-		entryDir = filepath.Dir(outPath)
-	}
 	var b strings.Builder
 	for _, f := range testFiles {
 		absFile, absErr := filepathAbs(filepath.Clean(f))
 		if absErr != nil {
-			absFile = filepath.Clean(f)
+			return xfmt.Errorf("frontend bundle: resolve test file path: %w", absErr)
 		}
-		rel, relErr := filepathRel(entryDir, absFile)
-		if relErr != nil {
-			return xfmt.Errorf("frontend bundle: relative import path: %w", relErr)
-		}
-		imp := filepath.ToSlash(rel)
-		if !strings.HasPrefix(imp, ".") {
-			imp = "./" + imp
-		}
+		imp := filepath.ToSlash(absFile)
 		encoded, err := jsonMarshal(imp)
 		if err != nil {
 			return xfmt.Errorf("frontend bundle: encode import path: %w", err)
