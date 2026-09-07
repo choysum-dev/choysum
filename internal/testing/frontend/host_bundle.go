@@ -4,6 +4,7 @@
 package frontend
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,6 +103,29 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		plugins = append(plugins, vueplugin.NewPlugin(vueplugin.WithJsExecutor(opts.JsExecutor)))
 	}
 
+	absWorkingDir := strings.TrimSpace(opts.WorkingDir)
+	if absWorkingDir == "" {
+		absWorkingDir = repoRoot
+	}
+	// vueplugin resolves `@/` via TsconfigRaw relative to AbsWorkingDir; keep that
+	// mapping pointed at repoRoot/modules even when WorkingDir differs (fixture dirs).
+	modulesFromWork, err := filepath.Rel(absWorkingDir, modulesDir)
+	if err != nil {
+		return nil, xfmt.Errorf("vue host bundle: modules relpath: %w", err)
+	}
+	modulesGlob := filepath.ToSlash(filepath.Join(modulesFromWork, "*"))
+	tsconfigRawBytes, err := json.Marshal(map[string]any{
+		"compilerOptions": map[string]any{
+			"baseUrl": ".",
+			"paths": map[string][]string{
+				"@/*": {modulesGlob},
+			},
+		},
+	})
+	if err != nil {
+		return nil, xfmt.Errorf("vue host bundle: tsconfig: %w", err)
+	}
+
 	buildOpts := api.BuildOptions{
 		EntryPoints:   []string{entry},
 		Bundle:        true,
@@ -111,13 +135,12 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		Format:        api.FormatIIFE,
 		Target:        api.ES2020,
 		LogLevel:      api.LogLevelWarning,
-		AbsWorkingDir: strings.TrimSpace(opts.WorkingDir),
+		AbsWorkingDir: absWorkingDir,
 		Alias: map[string]string{
 			"@":   modulesDir,
 			"vue": vueSpec,
 		},
-		// vueplugin resolves `@/` inside SFCs via tsconfig paths (esbuild Alias alone is not enough).
-		TsconfigRaw: `{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./modules/*"]}}}`,
+		TsconfigRaw: string(tsconfigRawBytes),
 		Loader: map[string]api.Loader{
 			".svg":  api.LoaderDataURL,
 			".png":  api.LoaderDataURL,
@@ -140,9 +163,6 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	}
 	if opts.Sourcemap {
 		buildOpts.Sourcemap = api.SourceMapLinked
-	}
-	if buildOpts.AbsWorkingDir == "" {
-		buildOpts.AbsWorkingDir = repoRoot
 	}
 
 	result := esbuildBuild(buildOpts)

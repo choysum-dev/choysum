@@ -23,14 +23,25 @@ import (
 )
 
 type stubQJSEngine struct {
-	loadErr error
+	loadErr     error
+	loadCalls   int
+	failOnLoadN int // 1-based; 0 means fail every Load when loadErr != nil
 }
 
-func (s stubQJSEngine) Load([]*jsengine.JsScript) error { return s.loadErr }
-func (s stubQJSEngine) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+func (s *stubQJSEngine) Load([]*jsengine.JsScript) error {
+	s.loadCalls++
+	if s.loadErr == nil {
+		return nil
+	}
+	if s.failOnLoadN == 0 || s.loadCalls == s.failOnLoadN {
+		return s.loadErr
+	}
+	return nil
+}
+func (s *stubQJSEngine) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	return nil, nil
 }
-func (s stubQJSEngine) Close() error { return nil }
+func (s *stubQJSEngine) Close() error { return nil }
 
 type stubJsExecutor struct {
 	startErr error
@@ -153,11 +164,11 @@ func TestWriteQJSTapAndJUnitHelpers(t *testing.T) {
 func TestEvalChoysumTestRunBranches(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := evalChoysumTestRun(ctx, stubQJSEngine{}, ""); err == nil {
+	if _, err := evalChoysumTestRun(ctx, &stubQJSEngine{}, ""); err == nil {
 		t.Fatal("expected canceled ctx")
 	}
 
-	if _, err := evalChoysumTestRun(context.Background(), stubQJSEngine{}, ""); err == nil || !strings.Contains(err.Error(), "unexpected engine type") {
+	if _, err := evalChoysumTestRun(context.Background(), &stubQJSEngine{}, ""); err == nil || !strings.Contains(err.Error(), "unexpected engine type") {
 		t.Fatalf("type: %v", err)
 	}
 
@@ -434,22 +445,41 @@ globalThis.__choysum_test_run__ = async () => ({
 		}
 	})
 
-	t.Run("load fail", func(t *testing.T) {
+	t.Run("console load fail", func(t *testing.T) {
 		prevBuild := buildFrontendUnitBundleQJS
 		buildFrontendUnitBundleQJS = passingBundle
 		prevEng := newQuickJSEngineQJS
-		newQuickJSEngineQJS = func() (jsengine.JsEngine, error) { return stubQJSEngine{loadErr: os.ErrInvalid}, nil }
+		newQuickJSEngineQJS = func() (jsengine.JsEngine, error) {
+			return &stubQJSEngine{loadErr: os.ErrInvalid, failOnLoadN: 1}, nil
+		}
 		t.Cleanup(func() {
 			buildFrontendUnitBundleQJS = prevBuild
 			newQuickJSEngineQJS = prevEng
 		})
 		if _, err := RunFrontendQJS(context.Background(), QJSRunOptions{
 			RepoRoot: repo, TestFiles: []string{testFile}, WorkingDir: work, TmpRoot: t.TempDir(),
-		}); err == nil || !(strings.Contains(err.Error(), "load") || strings.Contains(err.Error(), "InstallMinimalConsole")) {
+		}); err == nil || !strings.Contains(err.Error(), "InstallMinimalConsole") {
 			t.Fatalf("%v", err)
 		}
 	})
 
+	t.Run("bundle load fail", func(t *testing.T) {
+		prevBuild := buildFrontendUnitBundleQJS
+		buildFrontendUnitBundleQJS = passingBundle
+		prevEng := newQuickJSEngineQJS
+		newQuickJSEngineQJS = func() (jsengine.JsEngine, error) {
+			return &stubQJSEngine{loadErr: os.ErrInvalid, failOnLoadN: 2}, nil
+		}
+		t.Cleanup(func() {
+			buildFrontendUnitBundleQJS = prevBuild
+			newQuickJSEngineQJS = prevEng
+		})
+		if _, err := RunFrontendQJS(context.Background(), QJSRunOptions{
+			RepoRoot: repo, TestFiles: []string{testFile}, WorkingDir: work, TmpRoot: t.TempDir(),
+		}); err == nil || !strings.Contains(err.Error(), "fe-qjs: load") {
+			t.Fatalf("%v", err)
+		}
+	})
 	failingBundle := func(opts BundleOptions) (*BundleResult, error) {
 		js := `
 globalThis.__choysum_test_run__ = async () => ({

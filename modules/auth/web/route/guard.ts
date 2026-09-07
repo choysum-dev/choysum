@@ -18,7 +18,13 @@ function resolveAuthStore(deps?: AuthGuardDeps) {
 /**
  * Redirect unauthenticated users to the login page.
  */
-export async function authGuard(to: RouteLocationNormalized, _from: RouteLocationNormalized, deps?: AuthGuardDeps) {
+export async function authGuard(
+  to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  // Default keeps Function.length at 2 so a direct beforeEach(authGuard) registration
+  // is not treated as a legacy next-callback guard by vue-router.
+  deps: AuthGuardDeps = {}
+) {
   if (to.meta.requiresAuth === false || to.meta.isAuthPage) {
     return true;
   }
@@ -41,7 +47,11 @@ export async function authGuard(to: RouteLocationNormalized, _from: RouteLocatio
 /**
  * Redirect users to the permission error page when the route resource is not allowed.
  */
-export async function permissionGuard(to: RouteLocationNormalized, _from: RouteLocationNormalized, deps?: AuthGuardDeps) {
+export async function permissionGuard(
+  to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  deps: AuthGuardDeps = {}
+) {
   // Error pages bypass the permission guard to avoid redirect loops.
   if (String(to.path || '').startsWith('/error/')) {
     return true;

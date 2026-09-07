@@ -221,3 +221,45 @@ test('permissionGuard soft-landing keeps deterministic order under same permissi
   // user_create has routeSequence=30 and should never win over the two list pages.
   expect(result).toEqual({ path: '/auth/roles', replace: true });
 });
+
+test('permissionGuard soft-lands to access-rule create when that is the only grant', async () => {
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState: fnRecorder(),
+    permissionState: routesState(['auth.route.field_rule_create']),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
+
+  const result = await permissionGuard(
+    {
+      path: '/',
+      fullPath: '/',
+      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toEqual({ path: '/auth/field-rules/new', replace: true });
+});
+
+test('permissionGuard soft-landing prefers record-rules before field-rules by leaf menu order', async () => {
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState: fnRecorder(),
+    permissionState: routesState(['auth.route.field_rule_list', 'auth.route.record_rule_list']),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
+
+  const result = await permissionGuard(
+    {
+      path: '/home',
+      fullPath: '/home',
+      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(result).toEqual({ path: '/auth/record-rules', replace: true });
+});

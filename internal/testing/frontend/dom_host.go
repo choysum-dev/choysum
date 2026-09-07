@@ -30,8 +30,8 @@ func InstallMinimalDOM(engine jsengine.JsEngine) error {
 	return nil
 }
 
-// minimalConsoleScript installs a no-op console when the QuickJS host lacks one.
-// Bundled FE deps (and some product modules) may touch console at import time.
+// minimalConsoleScript installs browser-like globals when the QuickJS host lacks them.
+// Bundled FE deps (and some product modules) may touch these at import time.
 const minimalConsoleScript = `(function () {
   var g = globalThis;
   if (!g.console || typeof g.console.error !== "function") {
@@ -43,19 +43,32 @@ const minimalConsoleScript = `(function () {
     g.TextEncoder = function TextEncoder() {};
     g.TextEncoder.prototype.encode = function (str) {
       str = String(str == null ? "" : str);
-      var arr = new Uint8Array(str.length);
-      for (var i = 0; i < str.length; i++) arr[i] = str.charCodeAt(i) & 0xff;
+      var utf8 = unescape(encodeURIComponent(str));
+      var arr = new Uint8Array(utf8.length);
+      for (var i = 0; i < utf8.length; i++) arr[i] = utf8.charCodeAt(i);
       return arr;
     };
   }
   if (typeof g.atob !== "function") {
-    g.atob = function () {
-      throw new Error("atob not available in FE unit host");
+    var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    g.atob = function (input) {
+      input = String(input).replace(/[=]+$/, "");
+      if (input.length % 4 === 1) throw new Error("InvalidCharacterError");
+      var str = "";
+      for (var bc = 0, bs = 0, buffer, idx = 0; (buffer = input.charAt(idx++)); ) {
+        buffer = b64.indexOf(buffer);
+        if (buffer < 0) continue;
+        bs = bc % 4 ? bs * 64 + buffer : buffer;
+        if (bc++ % 4) {
+          str += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6)));
+        }
+      }
+      return str;
     };
   }
-  if (typeof g.localStorage === "undefined" || g.localStorage === null) {
+  function makeStorage() {
     var store = Object.create(null);
-    g.localStorage = {
+    return {
       getItem: function (k) { return Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null; },
       setItem: function (k, v) { store[k] = String(v); },
       removeItem: function (k) { delete store[k]; },
@@ -64,12 +77,15 @@ const minimalConsoleScript = `(function () {
       get length() { return Object.keys(store).length; }
     };
   }
+  if (typeof g.localStorage === "undefined" || g.localStorage === null) {
+    g.localStorage = makeStorage();
+  }
   if (typeof g.sessionStorage === "undefined" || g.sessionStorage === null) {
-    g.sessionStorage = g.localStorage;
+    g.sessionStorage = makeStorage();
   }
 })();`
 
-// InstallMinimalConsole injects a no-op console for QuickJS FE unit hosts.
+// InstallMinimalConsole injects browser-like console/storage helpers for QuickJS FE unit hosts.
 func InstallMinimalConsole(engine jsengine.JsEngine) error {
 	if engine == nil {
 		return xfmt.Errorf("frontend host: nil engine")

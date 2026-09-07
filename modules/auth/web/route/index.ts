@@ -22,8 +22,10 @@ export function setupRouter(app: ChoysumWebApp): void {
   }
 
   // Install auth before permission so redirects resolve in the expected order.
-  router.beforeEach(authGuard);
-  router.beforeEach(permissionGuard);
+  // Two-arg wrappers keep vue-router from treating AuthGuardDeps as `next`
+  // (guards declare an optional test deps object as a third parameter).
+  router.beforeEach((to, from) => authGuard(to, from));
+  router.beforeEach((to, from) => permissionGuard(to, from));
 }
 
 // Re-export auth routes and guards.

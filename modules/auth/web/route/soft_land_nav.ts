@@ -3,7 +3,8 @@
 
 /**
  * Lightweight nav candidates for permission soft-landing (no Vue page imports).
- * Sequences mirror modules/auth/web/route/routes.ts + menu/menus.ts ordering.
+ * Sequences mirror modules/auth/web/route/routes.ts + menu/menus.ts ordering:
+ * menuSequence uses the leaf menu `order` (same as findMenuSequenceForRoutePath).
  */
 export type SoftLandRouteCandidate = {
   path: string;
@@ -14,20 +15,25 @@ export type SoftLandRouteCandidate = {
 
 const DEFAULT_SEQUENCE = Number.POSITIVE_INFINITY;
 
-/** Navigable auth app routes used when / or /home is denied. */
+/** Navigable auth app routes used when / or /home is denied (excludes `:id` detail paths). */
 export const softLandRouteCandidates: SoftLandRouteCandidate[] = [
   { path: '/auth/users', resourceId: 'auth.route.user_list', routeSequence: 10, menuSequence: 10 },
   { path: '/auth/roles', resourceId: 'auth.route.role_list', routeSequence: 10, menuSequence: 30 },
   { path: '/auth/sessions', resourceId: 'auth.route.session_list', routeSequence: 10, menuSequence: 40 },
   { path: '/auth/tokens', resourceId: 'auth.route.token_list', routeSequence: 10, menuSequence: 50 },
-  { path: '/auth/record-rules', resourceId: 'auth.route.record_rule_list', routeSequence: 10, menuSequence: 35 },
-  { path: '/auth/field-rules', resourceId: 'auth.route.field_rule_list', routeSequence: 10, menuSequence: 35 },
-  { path: '/auth/method-accesses', resourceId: 'auth.route.method_access_list', routeSequence: 10, menuSequence: 35 },
-  { path: '/auth/ui-resource-grants', resourceId: 'auth.route.ui_resource_grant_list', routeSequence: 10, menuSequence: 35 },
+  // Access-rule leaves use child menu order (10/20/30/40), not the pathless parent 35.
+  { path: '/auth/record-rules', resourceId: 'auth.route.record_rule_list', routeSequence: 10, menuSequence: 10 },
+  { path: '/auth/field-rules', resourceId: 'auth.route.field_rule_list', routeSequence: 10, menuSequence: 20 },
+  { path: '/auth/method-accesses', resourceId: 'auth.route.method_access_list', routeSequence: 10, menuSequence: 30 },
+  { path: '/auth/ui-resource-grants', resourceId: 'auth.route.ui_resource_grant_list', routeSequence: 10, menuSequence: 40 },
   { path: '/auth/users/new', resourceId: 'auth.route.user_create', routeSequence: 30, menuSequence: 10 },
   { path: '/auth/roles/new', resourceId: 'auth.route.role_create', routeSequence: 30, menuSequence: 30 },
   { path: '/auth/sessions/new', resourceId: 'auth.route.session_create', routeSequence: 30, menuSequence: 40 },
   { path: '/auth/tokens/new', resourceId: 'auth.route.token_create', routeSequence: 30, menuSequence: 50 },
+  { path: '/auth/record-rules/new', resourceId: 'auth.route.record_rule_create', routeSequence: 30, menuSequence: 10 },
+  { path: '/auth/field-rules/new', resourceId: 'auth.route.field_rule_create', routeSequence: 30, menuSequence: 20 },
+  { path: '/auth/method-accesses/new', resourceId: 'auth.route.method_access_create', routeSequence: 30, menuSequence: 30 },
+  { path: '/auth/ui-resource-grants/new', resourceId: 'auth.route.ui_resource_grant_create', routeSequence: 30, menuSequence: 40 },
   { path: '/auth/tokens/kanban', resourceId: 'auth.route.token_kanban', routeSequence: 40, menuSequence: 50 },
 ];
 
