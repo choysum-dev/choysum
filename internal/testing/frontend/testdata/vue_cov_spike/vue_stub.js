@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LGPL-3.0-or-later
 
 /**
  * Minimal vue stub for the P0 coverage spike: createApp(...).mount() must run setup.
@@ -18,9 +18,14 @@ export function computed(getter) {
 }
 
 export function onMounted(fn) {
-  if (typeof fn === 'function') {
-    queueMicrotask(fn);
+  if (typeof fn !== 'function') {
+    return;
   }
+  if (typeof queueMicrotask === 'function') {
+    queueMicrotask(fn);
+    return;
+  }
+  Promise.resolve().then(fn);
 }
 
 export function defineComponent(options) {

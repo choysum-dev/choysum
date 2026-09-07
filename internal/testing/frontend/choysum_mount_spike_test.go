@@ -5,35 +5,53 @@ package frontend
 
 import "testing"
 
+type spikeSetupProbe struct {
+	calls int
+}
+
+func (p *spikeSetupProbe) Setup(props any, ctx any) any {
+	_ = props
+	_ = ctx
+	p.calls++
+	return nil
+}
+
 // TestVueHostSubsetSpike_P1 documents the intended VTU subset surface for migration.
-// Full QuickJS VTU compatibility is out of scope for this spike (see vue_cov_spike_migration.md).
+// Full QuickJS VTU (flushPromises/find/trigger) lands in PR-unit-vue-host; this spike
+// only proves Go-side mount must invoke setup and accept stubs.
 func TestVueHostSubsetSpike_P1(t *testing.T) {
-	w := SpikeMount(nil, SpikeMountOptions{
+	if w := SpikeMount(nil, SpikeMountOptions{}); w.SetupRan {
+		t.Fatal("nil component must not report SetupRan")
+	}
+
+	probe := &spikeSetupProbe{}
+	w := SpikeMount(probe, SpikeMountOptions{
 		Stubs: map[string]bool{
 			"el-button": true,
 			"el-select": true,
 		},
 	})
 	if !w.SetupRan {
-		t.Fatal("expected SpikeMount to report setup path")
+		t.Fatal("expected SpikeMount to run Setup")
 	}
-	w2 := SpikeShallowMount(nil, SpikeMountOptions{})
-	if !w2.SetupRan {
-		t.Fatal("expected SpikeShallowMount")
+	if probe.calls != 1 {
+		t.Fatalf("Setup calls = %d, want 1", probe.calls)
+	}
+	if !w.StubsAccepted["el-button"] || !w.StubsAccepted["el-select"] {
+		t.Fatalf("stubs not accepted: %#v", w.StubsAccepted)
 	}
 
-	// Inventory of APIs to implement in PR-unit-vue-host (from main VTU corpus):
-	needed := []string{
-		"mount",
-		"shallowMount",
-		"stubs",
-		"flushPromises",
-		"wrapper.find",
-		"wrapper.trigger",
+	w2 := SpikeShallowMount(probe, SpikeMountOptions{})
+	if !w2.SetupRan || probe.calls != 2 {
+		t.Fatalf("SpikeShallowMount SetupRan=%v calls=%d", w2.SetupRan, probe.calls)
 	}
-	for _, api := range needed {
+
+	if len(PlannedVTUSubsetAPIs) < 6 {
+		t.Fatalf("PlannedVTUSubsetAPIs too short: %v", PlannedVTUSubsetAPIs)
+	}
+	for _, api := range PlannedVTUSubsetAPIs {
 		if api == "" {
-			t.Fatal("empty api")
+			t.Fatal("empty planned API name")
 		}
 	}
 }

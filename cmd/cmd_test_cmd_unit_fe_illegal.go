@@ -115,8 +115,11 @@ prints warnings (optionally as GitHub Actions annotations).
 				fmt.Fprintf(out, "choysum test unit-fe-illegal: no illegal FE marks in %d app(s)\n", len(apps))
 			}
 
-			if failOnIllegal && len(allHits) > 0 {
-				return xfmt.Errorf("test unit-fe-illegal: %d illegal mark(s)", len(allHits))
+			if failOnIllegal {
+				failHits := frontend.FilterHardCutFailHits(allHits)
+				if len(failHits) > 0 {
+					return xfmt.Errorf("test unit-fe-illegal: %d illegal mark(s)", len(failHits))
+				}
 			}
 			return nil
 		},
@@ -124,6 +127,6 @@ prints warnings (optionally as GitHub Actions annotations).
 
 	cmd.Flags().BoolVar(&all, "all", false, "scan all apps that have FE unit tests")
 	cmd.Flags().BoolVar(&githubAnnotations, "github-annotations", false, "emit GitHub Actions ::warning annotations")
-	cmd.Flags().BoolVar(&failOnIllegal, "fail", false, "exit non-zero when illegal marks are found (hard-cut mode)")
+	cmd.Flags().BoolVar(&failOnIllegal, "fail", false, "exit non-zero on hard-cut illegal marks (excludes allowed .vue imports)")
 	return cmd
 }

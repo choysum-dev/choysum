@@ -5,6 +5,7 @@ package frontend
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -209,29 +210,32 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 	if !strings.Contains(lcov, "SpikeCounter.vue") {
 		t.Fatalf("lcov missing SpikeCounter.vue; got:\n%s", lcov)
 	}
-	// Require at least one executed line (DA:n,1) under the SpikeCounter.vue record.
+	// Require distinctive SpikeCounter.vue script lines (not any nonzero DA in the record).
 	vueIdx := strings.Index(lcov, "SpikeCounter.vue")
 	chunk := lcov[vueIdx:]
 	if end := strings.Index(chunk, "\nend_of_record"); end >= 0 {
 		chunk = chunk[:end]
 	}
-	hit := false
-	for _, line := range strings.Split(chunk, "\n") {
-		if strings.HasPrefix(line, "DA:") && strings.HasSuffix(line, ",1") {
-			hit = true
-			break
+	hitLines := map[int]bool{}
+	for _, rawLine := range strings.Split(chunk, "\n") {
+		line := strings.TrimSpace(rawLine)
+		if !strings.HasPrefix(line, "DA:") {
+			continue
 		}
-		// DA:line,hits — any hits > 0
-		if strings.HasPrefix(line, "DA:") {
-			parts := strings.Split(strings.TrimPrefix(line, "DA:"), ",")
-			if len(parts) == 2 && parts[1] != "0" {
-				hit = true
-				break
-			}
+		parts := strings.Split(strings.TrimPrefix(line, "DA:"), ",")
+		if len(parts) != 2 || parts[1] == "0" {
+			continue
+		}
+		var n int
+		if _, err := fmt.Sscanf(parts[0], "%d", &n); err == nil {
+			hitLines[n] = true
 		}
 	}
-	if !hit {
-		t.Fatalf("expected executed DA lines for SpikeCounter.vue script; chunk:\n%s\nfull:\n%s", chunk, lcov)
+	// Script lines in testdata/vue_cov_spike/SpikeCounter.vue (SPIKE_MARKER, spikeLabel body, call site).
+	for _, want := range []int{8, 11, 14} {
+		if !hitLines[want] {
+			t.Fatalf("expected DA hit for SpikeCounter.vue script line %d; hits=%v chunk:\n%s\nfull:\n%s", want, hitLines, chunk, lcov)
+		}
 	}
 	_ = vuePath
 }

@@ -10,20 +10,45 @@ type SpikeMountOptions struct {
 
 // SpikeWrapper is a minimal mount result used by P1 host probes.
 type SpikeWrapper struct {
-	SetupRan bool
+	SetupRan      bool
+	StubsAccepted map[string]bool
 }
 
-// SpikeMount runs component.setup when present (createApp().mount equivalent for coverage).
-// Stubs are accepted for API surface inventory only in this spike.
+// setupComp is the Go-side stand-in for a compiled SFC options object with setup().
+// Real product mounts run in QuickJS (see TestVueSFCCoverageSpike_P0); this probe
+// only documents that host mount must invoke setup when present.
+type setupComp interface {
+	Setup(props any, ctx any) any
+}
+
+// PlannedVTUSubsetAPIs lists mount-host surface to implement in PR-unit-vue-host.
+// flushPromises / find / trigger are not implemented in this Go spike.
+var PlannedVTUSubsetAPIs = []string{
+	"mount",
+	"shallowMount",
+	"stubs",
+	"flushPromises",
+	"wrapper.find",
+	"wrapper.trigger",
+}
+
+// SpikeMount runs component.Setup when present (createApp().mount equivalent for coverage).
+// Stubs are recorded for API surface inventory only in this spike.
 func SpikeMount(comp any, opts SpikeMountOptions) SpikeWrapper {
-	_ = opts.Stubs
-	type setupComp interface {
-		Setup(props any, ctx any) any
+	w := SpikeWrapper{}
+	if len(opts.Stubs) > 0 {
+		w.StubsAccepted = make(map[string]bool, len(opts.Stubs))
+		for k, v := range opts.Stubs {
+			w.StubsAccepted[k] = v
+		}
 	}
-	// Compiled SFC default export is typically a map-like options object in JS;
-	// Go-side probe only documents the intended API. Real mount lives in QuickJS
-	// (see TestVueSFCCoverageSpike_P0 and vue_stub.js).
-	return SpikeWrapper{SetupRan: true}
+	setup, ok := comp.(setupComp)
+	if !ok || setup == nil {
+		return w
+	}
+	setup.Setup(nil, nil)
+	w.SetupRan = true
+	return w
 }
 
 // SpikeShallowMount is an alias documenting the shallowMount subset target.

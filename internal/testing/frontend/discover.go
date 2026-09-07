@@ -287,14 +287,35 @@ func relativizeRepoPath(repoRoot, path string) string {
 	return filepath.ToSlash(path)
 }
 
-// CheckIllegalFrontendMarks scans and, in error mode, returns an error when hits exist.
+// IsHardCutFailKind reports whether a mark fails ScanModeError / unit-fe-illegal --fail.
+// IllegalVueImport stays inventory-only (warn): .vue imports are allowed at FE hard-cut.
+func IsHardCutFailKind(kind IllegalKind) bool {
+	return kind != IllegalVueImport
+}
+
+// FilterHardCutFailHits keeps marks that should fail hard-cut mode.
+func FilterHardCutFailHits(hits []IllegalMark) []IllegalMark {
+	out := make([]IllegalMark, 0, len(hits))
+	for _, h := range hits {
+		if IsHardCutFailKind(h.Kind) {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+// CheckIllegalFrontendMarks scans and, in error mode, returns an error when hard-cut hits exist.
+// All hits (including IllegalVueImport inventory) are still returned for warn formatting.
 func CheckIllegalFrontendMarks(repoRoot, app string, mode ScanMode) ([]IllegalMark, error) {
 	hits, err := ScanAppIllegalFrontendMarks(repoRoot, app)
 	if err != nil {
 		return nil, err
 	}
-	if mode == ScanModeError && len(hits) > 0 {
-		return hits, xfmt.Errorf("frontend illegal scan: %d illegal mark(s)\n%s", len(hits), FormatIllegalMarksWarn(hits, repoRoot))
+	if mode == ScanModeError {
+		failHits := FilterHardCutFailHits(hits)
+		if len(failHits) > 0 {
+			return hits, xfmt.Errorf("frontend illegal scan: %d illegal mark(s)\n%s", len(failHits), FormatIllegalMarksWarn(failHits, repoRoot))
+		}
 	}
 	return hits, nil
 }
