@@ -134,6 +134,21 @@ func TestNewTestUnitFEIllegalCmd_ArgsAndScan(t *testing.T) {
 		t.Fatalf("clean stderr = %q", stderr.String())
 	}
 
+	stderr.Reset()
+	cmd = newTestUnitFEIllegalCmdFromScope(func() scope.Scope {
+		return &commandTestScope{cfg: newCommandTestConfig(cleanModules)}
+	})
+	cmd.SetErr(&stderr)
+	if err := cmd.Flags().Set("github-annotations", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.RunE(cmd, []string{"pure"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stderr.String(), "no illegal FE marks") {
+		t.Fatalf("annotations empty summary = %q", stderr.String())
+	}
+
 	cmd = newTestUnitFEIllegalCmdFromScope(scopeGetter)
 	if err := cmd.RunE(cmd, []string{"does-not-exist"}); err == nil || !strings.Contains(err.Error(), "does not exist") {
 		t.Fatalf("missing module = %v", err)

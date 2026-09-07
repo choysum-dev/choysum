@@ -57,7 +57,7 @@ var (
 	// Quote class includes backticks for dynamic import()/require() template literals.
 	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)['\"`]")
 	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils['\"`]")
-	reMountCall  = regexp.MustCompile(`\b(?:shallowMount|mount)\s*\(`)
+	reMountCall  = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
 	// Matches from '...vue', side-effect/dynamic/require imports, optional Vite query (?raw), and backticks.
 	reVueImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]+\\.vue(?:\\?[^'\"`]*)?['\"`]")
 )

@@ -105,7 +105,11 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 
 			out := cmd.ErrOrStderr()
 			if githubAnnotations {
-				_, _ = out.Write([]byte(frontend.FormatIllegalMarksGitHubAnnotations(allHits, repoRoot)))
+				if ann := frontend.FormatIllegalMarksGitHubAnnotations(allHits, repoRoot); ann != "" {
+					_, _ = out.Write([]byte(ann))
+				} else {
+					fmt.Fprintf(out, "choysum test unit-fe-illegal: no illegal FE marks in %d app(s)\n", len(apps))
+				}
 			} else if msg := frontend.FormatIllegalMarksWarn(allHits, repoRoot); msg != "" {
 				_, _ = out.Write([]byte(msg))
 			} else {

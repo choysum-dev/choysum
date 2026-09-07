@@ -262,6 +262,10 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 	if len(hits) != 1 || hits[0].Kind != IllegalVTU {
 		t.Fatalf("dedup hits = %#v", hits)
 	}
+	// Method calls like app.mount() must not be treated as VTU mount().
+	if methodHits := scanIllegalContent("m.ts", "app.mount('#app')\nwrapper.mount()\n"); len(methodHits) != 0 {
+		t.Fatalf("method mount false positives = %#v", methodHits)
+	}
 
 	var snippets []string
 	addRegexHits("from './X.vue'", nil, reVueImport, IllegalVueImport, func(_ int, _ IllegalKind, snippet string) {
