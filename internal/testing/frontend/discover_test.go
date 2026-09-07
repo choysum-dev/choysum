@@ -341,6 +341,12 @@ func TestFormatAndRelativizeHelpers(t *testing.T) {
 	if got := relativizeRepoPath(repo, inside); !strings.HasPrefix(got, "modules/") {
 		t.Fatalf("abs-fallback rel = %q", got)
 	}
+	if got := relativizeRepoPath("/tmp/child", "/tmp"); got != "/tmp" && got != "\\tmp" {
+		// Rel yields ".."; fall through to cleaned path.
+		if !strings.HasSuffix(got, "tmp") {
+			t.Fatalf("abs-fail outside = %q", got)
+		}
+	}
 }
 
 func TestWarnIllegalFrontendMarks(t *testing.T) {
