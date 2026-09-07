@@ -26,13 +26,15 @@ var (
 type ScanMode int
 
 const (
-	// ScanModeWarn reports hits without failing (corpus migration).
+	// ScanModeWarn reports legacy Node/VTU inventory hits without failing (migration).
 	ScanModeWarn ScanMode = iota
-	// ScanModeError treats any hit as a hard failure (FE hard-cut).
+	// ScanModeError treats configured illegal patterns as a hard failure (FE hard-cut).
 	ScanModeError
 )
 
-// IllegalKind identifies a banned FE unit-test pattern.
+// IllegalKind identifies a legacy Node/VTU FE unit-test pattern.
+// During corpus migration these are inventory hits (CI warn), not a mandate to delete mount tests.
+// After FE hard-cut, ScanModeError rejects vitest/Node DOM packages; choysumMount + .vue imports are allowed.
 type IllegalKind string
 
 const (
@@ -42,7 +44,7 @@ const (
 	IllegalDOMPackage     IllegalKind = "dom-package"
 )
 
-// IllegalMark is one illegal FE unit-test hit.
+// IllegalMark is one legacy FE unit-test inventory hit (see IllegalKind).
 type IllegalMark struct {
 	Path    string
 	Line    int
@@ -285,14 +287,35 @@ func relativizeRepoPath(repoRoot, path string) string {
 	return filepath.ToSlash(path)
 }
 
-// CheckIllegalFrontendMarks scans and, in error mode, returns an error when hits exist.
+// IsHardCutFailKind reports whether a mark fails ScanModeError / unit-fe-illegal --fail.
+// IllegalVueImport stays inventory-only (warn): .vue imports are allowed at FE hard-cut.
+func IsHardCutFailKind(kind IllegalKind) bool {
+	return kind != IllegalVueImport
+}
+
+// FilterHardCutFailHits keeps marks that should fail hard-cut mode.
+func FilterHardCutFailHits(hits []IllegalMark) []IllegalMark {
+	out := make([]IllegalMark, 0, len(hits))
+	for _, h := range hits {
+		if IsHardCutFailKind(h.Kind) {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+// CheckIllegalFrontendMarks scans and, in error mode, returns an error when hard-cut hits exist.
+// All hits (including IllegalVueImport inventory) are still returned for warn formatting.
 func CheckIllegalFrontendMarks(repoRoot, app string, mode ScanMode) ([]IllegalMark, error) {
 	hits, err := ScanAppIllegalFrontendMarks(repoRoot, app)
 	if err != nil {
 		return nil, err
 	}
-	if mode == ScanModeError && len(hits) > 0 {
-		return hits, xfmt.Errorf("frontend illegal scan: %d illegal mark(s)\n%s", len(hits), FormatIllegalMarksWarn(hits, repoRoot))
+	if mode == ScanModeError {
+		failHits := FilterHardCutFailHits(hits)
+		if len(failHits) > 0 {
+			return hits, xfmt.Errorf("frontend illegal scan: %d illegal mark(s)\n%s", len(failHits), FormatIllegalMarksWarn(failHits, repoRoot))
+		}
 	}
 	return hits, nil
 }

@@ -23,13 +23,15 @@ func newTestUnitFEIllegalCmd(_ func() scope.Scope, runtimeOptionsGetter func() c
 
 	cmd := &cobra.Command{
 		Use:   "unit-fe-illegal [app]",
-		Short: "Scan FE unit tests for illegal marks (warn by default)",
+		Short: "Inventory FE unit tests still on Node DOM/VTU (warn by default)",
 		Long: strings.TrimSpace(`
-Scan modules/<app>/web unit tests for patterns banned after the FE hard-cut:
-DOM environment pragmas, @vue/test-utils mount, *.vue imports, and happy-dom/jsdom imports.
+Scan modules/<app>/web unit tests for legacy Node/Vitest DOM patterns:
+happy-dom/jsdom environment pragmas or imports, @vue/test-utils, and *.vue imports.
 
-Importing from 'vitest' is allowed during corpus migration. Default mode always
-exits 0 and prints warnings (optionally as GitHub Actions annotations).
+Hits are an inventory of tests still on the Vitest/VTU stack (to migrate onto the
+QuickJS + vuesfc + choysumMount host). They are not a mandate to delete mount tests.
+Importing from 'vitest' is allowed until FE hard-cut. Default mode exits 0 and
+prints warnings (optionally as GitHub Actions annotations).
 `),
 		Args: func(cmd *cobra.Command, args []string) error {
 			if all {
@@ -113,8 +115,11 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 				fmt.Fprintf(out, "choysum test unit-fe-illegal: no illegal FE marks in %d app(s)\n", len(apps))
 			}
 
-			if failOnIllegal && len(allHits) > 0 {
-				return xfmt.Errorf("test unit-fe-illegal: %d illegal mark(s)", len(allHits))
+			if failOnIllegal {
+				failHits := frontend.FilterHardCutFailHits(allHits)
+				if len(failHits) > 0 {
+					return xfmt.Errorf("test unit-fe-illegal: %d illegal mark(s)", len(failHits))
+				}
 			}
 			return nil
 		},
@@ -122,6 +127,6 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 
 	cmd.Flags().BoolVar(&all, "all", false, "scan all apps that have FE unit tests")
 	cmd.Flags().BoolVar(&githubAnnotations, "github-annotations", false, "emit GitHub Actions ::warning annotations")
-	cmd.Flags().BoolVar(&failOnIllegal, "fail", false, "exit non-zero when illegal marks are found (hard-cut mode)")
+	cmd.Flags().BoolVar(&failOnIllegal, "fail", false, "exit non-zero on hard-cut illegal marks (excludes allowed .vue imports)")
 	return cmd
 }

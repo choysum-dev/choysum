@@ -106,6 +106,30 @@ func TestDiscoverAndScanIllegalFrontendMarks(t *testing.T) {
 		t.Fatalf("warn mode = %v hits=%d", err, len(hits2))
 	}
 
+	vueOnlyRepo := t.TempDir()
+	vueOnlyWeb := filepath.Join(vueOnlyRepo, "modules", "vueonly", "web")
+	if err := os.MkdirAll(vueOnlyWeb, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(vueOnlyWeb, "sfc.test.ts"), []byte("import Comp from './Comp.vue'\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	vueHits, err := CheckIllegalFrontendMarks(vueOnlyRepo, "vueonly", ScanModeWarn)
+	if err != nil || len(vueHits) == 0 {
+		t.Fatalf("vue-only warn = %v hits=%#v", err, vueHits)
+	}
+	for _, h := range vueHits {
+		if h.Kind != IllegalVueImport {
+			t.Fatalf("unexpected hard-cut kind in vue-only inventory: %#v", h)
+		}
+	}
+	if failHits := FilterHardCutFailHits(vueHits); len(failHits) != 0 {
+		t.Fatalf("vue-only hard-cut hits = %#v", failHits)
+	}
+	if _, err := CheckIllegalFrontendMarks(vueOnlyRepo, "vueonly", ScanModeError); err != nil {
+		t.Fatalf("vue-only ScanModeError must allow .vue imports: %v", err)
+	}
+
 	pureHits, err := ScanIllegalFrontendMarks([]string{pure})
 	if err != nil {
 		t.Fatal(err)

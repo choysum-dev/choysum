@@ -100,6 +100,30 @@ func TestNewTestUnitFEIllegalCmd_ArgsAndScan(t *testing.T) {
 		t.Fatalf("fail mode = %v", err)
 	}
 
+	vueOnlyRepo := t.TempDir()
+	vueOnlyModules := filepath.Join(vueOnlyRepo, "modules")
+	vueOnlyWeb := filepath.Join(vueOnlyModules, "vueonly", "web")
+	if err := os.MkdirAll(vueOnlyWeb, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(vueOnlyWeb, "sfc.test.ts"), []byte("import Comp from './Comp.vue'\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stderr.Reset()
+	cmd = newTestUnitFEIllegalCmdFromScope(func() scope.Scope {
+		return &commandTestScope{cfg: newCommandTestConfig(vueOnlyModules)}
+	})
+	cmd.SetErr(&stderr)
+	if err := cmd.Flags().Set("fail", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.RunE(cmd, []string{"vueonly"}); err != nil {
+		t.Fatalf("--fail with only .vue import must succeed: %v stderr=%q", err, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "illegal FE unit mark") {
+		t.Fatalf("expected inventory warn for .vue import; stderr=%q", stderr.String())
+	}
+
 	stderr.Reset()
 	cmd = newTestUnitFEIllegalCmdFromScope(scopeGetter)
 	cmd.SetErr(&stderr)
