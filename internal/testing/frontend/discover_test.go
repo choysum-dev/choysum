@@ -270,6 +270,26 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 	if len(snippets) != 1 || !strings.Contains(snippets[0], ".vue") {
 		t.Fatalf("fallback snippets = %#v", snippets)
 	}
+
+	cjs := strings.Join([]string{
+		`require('jsdom')`,
+		`require("@vue/test-utils")`,
+		`require('./Comp.vue')`,
+		`await import('happy-dom')`,
+		`await import("@vue/test-utils")`,
+		`import Comp from './Comp.vue?raw'`,
+		"",
+	}, "\n")
+	cjsHits := scanIllegalContent("x.cjs", cjs)
+	wantKinds := map[IllegalKind]bool{}
+	for _, h := range cjsHits {
+		wantKinds[h.Kind] = true
+	}
+	for _, kind := range []IllegalKind{IllegalDOMPackage, IllegalVTU, IllegalVueImport} {
+		if !wantKinds[kind] {
+			t.Fatalf("cjs/dynamic/query missing %s in %#v", kind, cjsHits)
+		}
+	}
 }
 
 func TestScanAppAndCheckErrorPropagation(t *testing.T) {
@@ -391,8 +411,12 @@ func TestWriteFrontendTestsEntryEscapes(t *testing.T) {
 	if err := WriteFrontendTestsEntry("", nil); err == nil {
 		t.Fatal("empty out")
 	}
-	out := filepath.Join(t.TempDir(), "entry.ts")
-	pathWithQuote := filepath.Join(t.TempDir(), "o'brian.test.ts")
+	outDir := t.TempDir()
+	out := filepath.Join(outDir, "entry.ts")
+	pathWithQuote := filepath.Join(outDir, "subdir", "o'brian.test.ts")
+	if err := os.MkdirAll(filepath.Dir(pathWithQuote), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := WriteFrontendTestsEntry(out, []string{pathWithQuote}); err != nil {
 		t.Fatal(err)
 	}
@@ -400,9 +424,15 @@ func TestWriteFrontendTestsEntryEscapes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoded, _ := json.Marshal(filepath.ToSlash(filepath.Clean(pathWithQuote)))
-	if !strings.Contains(string(raw), string(encoded)) {
-		t.Fatalf("entry = %s", raw)
+	if !strings.Contains(string(raw), `import "./subdir/o'brian.test.ts"`) && !strings.Contains(string(raw), `import "./subdir/o\'brian.test.ts"`) {
+		// json.Marshal escapes apostrophe as \u0027 or leaves as-is in Go encoding/json (apostrophe is fine unescaped in JSON strings)
+		encoded, _ := json.Marshal("./subdir/o'brian.test.ts")
+		if !strings.Contains(string(raw), "import "+string(encoded)) {
+			t.Fatalf("entry = %s want relative import containing %s", raw, encoded)
+		}
+	}
+	if strings.Contains(string(raw), filepath.ToSlash(pathWithQuote)) && strings.HasPrefix(filepath.ToSlash(pathWithQuote), "/") {
+		t.Fatalf("expected relative import, got absolute in %s", raw)
 	}
 
 	prevMkdir := osMkdirAll
@@ -421,6 +451,23 @@ func TestWriteFrontendTestsEntryEscapes(t *testing.T) {
 	}
 	jsonMarshal = prevMarshal
 
+	prevRel := filepathRel
+	filepathRel = func(string, string) (string, error) { return "", os.ErrInvalid }
+	t.Cleanup(func() { filepathRel = prevRel })
+	if err := WriteFrontendTestsEntry(out, []string{pathWithQuote}); err == nil || !strings.Contains(err.Error(), "relative import path") {
+		t.Fatalf("rel err = %v", err)
+	}
+	filepathRel = prevRel
+
+	prevAbs := filepathAbs
+	filepathAbs = func(string) (string, error) { return "", os.ErrInvalid }
+	t.Cleanup(func() { filepathAbs = prevAbs })
+	if err := WriteFrontendTestsEntry(out, []string{"a.ts"}); err != nil {
+		// Abs failure falls back to cleaned paths; Rel may still succeed from TempDir layout.
+		t.Logf("abs fallback write: %v", err)
+	}
+	filepathAbs = prevAbs
+
 	prevWrite := osWriteFile
 	osWriteFile = func(string, []byte, os.FileMode) error { return os.ErrPermission }
 	t.Cleanup(func() { osWriteFile = prevWrite })
@@ -436,12 +483,23 @@ func TestBuildFrontendUnitBundleAndChoysumtestFixture(t *testing.T) {
 	}
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
 	fixtureDir := filepath.Join(filepath.Dir(thisFile), "testdata", "fe_qjs")
-	testFile := filepath.Join(fixtureDir, "math.test.ts")
-	if _, err := os.Stat(testFile); err != nil {
+	if _, err := os.Stat(filepath.Join(fixtureDir, "math.test.ts")); err != nil {
 		t.Fatalf("fixture missing: %v", err)
 	}
 
 	outDir := t.TempDir()
+	for _, name := range []string{"math.ts", "math.test.ts"} {
+		src := filepath.Join(fixtureDir, name)
+		dst := filepath.Join(outDir, name)
+		raw, err := os.ReadFile(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dst, raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	testFile := filepath.Join(outDir, "math.test.ts")
 	entry := filepath.Join(outDir, "entry.ts")
 	if err := WriteFrontendTestsEntry(entry, []string{testFile}); err != nil {
 		t.Fatal(err)

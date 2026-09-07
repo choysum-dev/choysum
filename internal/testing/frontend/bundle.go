@@ -21,6 +21,7 @@ var (
 	osStatBundle = os.Stat
 	jsonMarshal  = json.Marshal
 	esbuildBuild = api.Build
+	filepathRel  = filepath.Rel
 )
 
 // BundleOptions configures a thin FE unit esbuild (no Vue plugin / ModuleBuilder).
@@ -131,9 +132,24 @@ func WriteFrontendTestsEntry(outPath string, testFiles []string) error {
 	if err := osMkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return xfmt.Errorf("frontend bundle: mkdir entry: %w", err)
 	}
+	entryDir, err := filepathAbs(filepath.Dir(outPath))
+	if err != nil {
+		entryDir = filepath.Dir(outPath)
+	}
 	var b strings.Builder
 	for _, f := range testFiles {
-		imp := filepath.ToSlash(filepath.Clean(f))
+		absFile, absErr := filepathAbs(filepath.Clean(f))
+		if absErr != nil {
+			absFile = filepath.Clean(f)
+		}
+		rel, relErr := filepathRel(entryDir, absFile)
+		if relErr != nil {
+			return xfmt.Errorf("frontend bundle: relative import path: %w", relErr)
+		}
+		imp := filepath.ToSlash(rel)
+		if !strings.HasPrefix(imp, ".") {
+			imp = "./" + imp
+		}
 		encoded, err := jsonMarshal(imp)
 		if err != nil {
 			return xfmt.Errorf("frontend bundle: encode import path: %w", err)
