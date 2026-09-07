@@ -68,21 +68,31 @@ function makeWrapper(app, el, vm) {
         trigger: function (eventName) {
           if (!node) return Promise.resolve();
           var Evt = typeof Event === 'function' ? Event : null;
-          var evt = Evt ? new Evt(String(eventName), { bubbles: true } ) : { type: String(eventName) };
-          if (typeof node.dispatchEvent === 'function') {
-            node.dispatchEvent(evt);
-          }
-          return flushPromises();
+          var evt = Evt ? new Evt(String(eventName), { bubbles: true }) : { type: String(eventName) };
+          return Promise.resolve()
+            .then(function () {
+              if (typeof node.dispatchEvent === 'function') {
+                node.dispatchEvent(evt);
+              }
+            })
+            .then(function () {
+              return flushPromises();
+            });
         },
       };
     },
     trigger: function (eventName) {
       var Evt = typeof Event === 'function' ? Event : null;
       var evt = Evt ? new Evt(String(eventName), { bubbles: true }) : { type: String(eventName) };
-      if (el && typeof el.dispatchEvent === 'function') {
-        el.dispatchEvent(evt);
-      }
-      return flushPromises();
+      return Promise.resolve()
+        .then(function () {
+          if (el && typeof el.dispatchEvent === 'function') {
+            el.dispatchEvent(evt);
+          }
+        })
+        .then(function () {
+          return flushPromises();
+        });
     },
     text: function () {
       return el ? String(el.textContent || '') : '';

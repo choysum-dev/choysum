@@ -231,6 +231,27 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
   child.dispatchEvent(evt);
   if (!bubbled || !sawTarget) throw new Error('bubbling/target failed');
 
+  let ancestorHit = false;
+  parent.addEventListener('stopme', () => { ancestorHit = true; });
+  child.addEventListener('stopme', (e) => { e.stopPropagation(); });
+  child.dispatchEvent(new Event('stopme', { bubbles: true }));
+  if (ancestorHit) throw new Error('stopPropagation should block ancestor');
+
+  let sameTargetSecond = false;
+  child.addEventListener('imme', (e) => { e.stopImmediatePropagation(); });
+  child.addEventListener('imme', () => { sameTargetSecond = true; });
+  child.dispatchEvent(new Event('imme', { bubbles: true }));
+  if (sameTargetSecond) throw new Error('stopImmediatePropagation should skip same-target listeners');
+
+  const dupFn = () => {};
+  child.addEventListener('dup', dupFn);
+  child.addEventListener('dup', dupFn);
+  if (child._listeners.dup.length !== 1) throw new Error('addEventListener should dedupe');
+
+  parent.innerHTML = '<b>x</b>';
+  parent.appendChild(document.createElement('i'));
+  if (parent._html) throw new Error('appendChild should clear cached _html');
+
   let threw = false;
   child.addEventListener('boom', () => { throw new Error('handler-boom'); });
   try { child.dispatchEvent(new Event('boom', { bubbles: false })); }

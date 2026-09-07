@@ -53,6 +53,7 @@
     if (child.parentNode) {
       child.parentNode.removeChild(child);
     }
+    this._html = '';
     child.parentNode = this;
     this._children.push(child);
     syncChildNodes(this);
@@ -62,6 +63,7 @@
   Element.prototype.removeChild = function (child) {
     var i = this._children.indexOf(child);
     if (i >= 0) {
+      this._html = '';
       this._children.splice(i, 1);
       child.parentNode = null;
       syncChildNodes(this);
@@ -77,6 +79,7 @@
     if (newNode && newNode.parentNode) newNode.parentNode.removeChild(newNode);
     var i = this._children.indexOf(ref);
     if (i < 0) return this.appendChild(newNode);
+    this._html = '';
     newNode.parentNode = this;
     this._children.splice(i, 0, newNode);
     syncChildNodes(this);
@@ -110,7 +113,9 @@
   Element.prototype.addEventListener = function (type, fn) {
     var t = String(type);
     if (!this._listeners[t]) this._listeners[t] = [];
-    this._listeners[t].push(fn);
+    if (this._listeners[t].indexOf(fn) === -1) {
+      this._listeners[t].push(fn);
+    }
   };
 
   Element.prototype.removeEventListener = function (type, fn) {
@@ -130,13 +135,14 @@
       evt.currentTarget = curr;
       var list = (curr._listeners && curr._listeners[evt.type] ? curr._listeners[evt.type] : []).slice();
       for (var i = 0; i < list.length; i++) {
+        if (evt._stopImmediate) break;
         try {
           list[i].call(curr, evt);
         } catch (e) {
           if (!firstErr) firstErr = e;
         }
       }
-      if (!evt.bubbles) break;
+      if (!evt.bubbles || evt.cancelBubble || evt._stopImmediate) break;
       var parent = curr.parentNode;
       curr = parent && parent.nodeType === NODE_ELEMENT ? parent : null;
     }
@@ -217,6 +223,7 @@
         this._children[i].parentNode = null;
       }
       this._children = [];
+      this._html = '';
       syncChildNodes(this);
       this._text = String(v == null ? '' : v);
       if (this._text) {
@@ -349,13 +356,21 @@
     this.bubbles = !!(init && init.bubbles);
     this.cancelable = !!(init && init.cancelable);
     this.defaultPrevented = false;
+    this.cancelBubble = false;
+    this._stopImmediate = false;
     this.target = null;
     this.currentTarget = null;
   }
   Event.prototype.preventDefault = function () {
     this.defaultPrevented = true;
   };
-  Event.prototype.stopPropagation = function () {};
+  Event.prototype.stopPropagation = function () {
+    this.cancelBubble = true;
+  };
+  Event.prototype.stopImmediatePropagation = function () {
+    this.cancelBubble = true;
+    this._stopImmediate = true;
+  };
 
   var doc = new Document();
   global.document = doc;

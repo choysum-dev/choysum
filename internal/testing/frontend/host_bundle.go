@@ -151,9 +151,11 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		JS:     string(jsBytes),
 		JSPath: outfile,
 	}
-	mapPath := outfile + ".map"
-	if _, statErr := osStatBundle(mapPath); statErr == nil {
-		out.MapPath = mapPath
+	if opts.Sourcemap {
+		mapPath := outfile + ".map"
+		if _, statErr := osStatBundle(mapPath); statErr == nil {
+			out.MapPath = mapPath
+		}
 	}
 	for _, w := range result.Warnings {
 		out.Warnings = append(out.Warnings, w.Text)

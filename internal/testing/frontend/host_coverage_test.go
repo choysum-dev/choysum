@@ -297,6 +297,20 @@ func TestBuildFrontendVueHostBundleGuards(t *testing.T) {
 	if got2.MapPath == "" {
 		t.Fatal("expected map path")
 	}
+	got3, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
+		RepoRoot:   repo,
+		EntryPath:  entry,
+		Outfile:    outFile,
+		Sourcemap:  false,
+		CacheDir:   t.TempDir(),
+		WorkingDir: fixtureDir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got3.MapPath != "" {
+		t.Fatalf("Sourcemap=false must not attach stale map: %#v", got3)
+	}
 	osStatBundle = prevStat
 	esbuildBuild = prevBuild
 
