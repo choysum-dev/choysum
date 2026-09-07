@@ -54,6 +54,7 @@ import { User, Lock } from '@element-plus/icons-vue';
 import type { FormRules } from 'element-plus';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, langToUiKey } from '@/web/web/stores/i18nStore';
+import { shouldRedirectAfterAuthInit } from './login_redirect';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
@@ -121,7 +122,7 @@ onMounted(async () => {
     // Stale tokens are cleared by initAuth internally; continue to login.
   }
 
-  if (route.path === currentPath && isAuthenticated.value) {
+  if (shouldRedirectAfterAuthInit(currentPath, route.path, isAuthenticated.value)) {
     handleRedirect();
   }
 });

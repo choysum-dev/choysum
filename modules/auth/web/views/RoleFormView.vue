@@ -258,6 +258,7 @@ import { useI18n } from 'vue-i18n';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';
 import { selectInspectedUiResource, getInspectedUiResourceId, getInspectedUiResourceRequires, isInspectedUiResourceRow } from '@/auth/web/views/role_ui_requires_explain';
+import { uiResourceLabelFallback, uiResourceTypeIconKind } from '@/auth/web/views/role_ui_resource_display';
 
 defineOptions({ name: 'RoleFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleFormView' });
@@ -291,20 +292,19 @@ type UiResourceRow = {
 };
 
 function resolveUiResourceLabel(row?: UiResourceRow, label?: string) {
-  const fallback = String(label || row?.Title || row?.Name || row?.Id || '');
-  return translateTerm(composer, row?.TitleText ?? undefined, fallback);
+  return translateTerm(composer, row?.TitleText ?? undefined, uiResourceLabelFallback(row, label));
 }
 
 /**
  * Resolve the icon used for a UI resource node.
  */
 function resolveUiResourceTypeIcon(type?: string) {
-  switch (type) {
-    case 'MENU':
+  switch (uiResourceTypeIconKind(type)) {
+    case 'menu':
       return MenuIcon;
-    case 'ROUTE':
+    case 'route':
       return Connection;
-    case 'ACTION':
+    case 'action':
       return Operation;
     default:
       return QuestionFilled;
@@ -336,19 +336,6 @@ function openRecordRules() {
   activeTab.value = 'advanced';
   advancedPanels.value = 'record_rules';
 }
-
-defineExpose({
-  inspectUiResource,
-  inspectedUiResource,
-  inspectedUiResourceId,
-  inspectedUiResourceLabel,
-  inspectedRequires,
-  activeTab,
-  advancedPanels,
-  openRecordRules,
-  resolveUiResourceTypeIcon,
-  resolveUiResourceLabel,
-});
 </script>
 
 <style scoped>
