@@ -1000,7 +1000,7 @@ func TestNewTestCmd_NamespaceAndUsageError(t *testing.T) {
 	if cmd.Use != "test" {
 		t.Fatalf("unexpected command use: %q", cmd.Use)
 	}
-	seenSubcommands := map[string]bool{"unit": false, "typecheck": false, "e2e": false}
+	seenSubcommands := map[string]bool{"unit": false, "unit-fe-illegal": false, "typecheck": false, "e2e": false}
 	for _, sub := range cmd.Commands() {
 		if _, ok := seenSubcommands[sub.Name()]; ok {
 			seenSubcommands[sub.Name()] = true

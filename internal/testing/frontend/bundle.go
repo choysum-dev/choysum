@@ -4,12 +4,23 @@
 package frontend
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
 	xfmt "golang.org/x/exp/errors/fmt"
+)
+
+// Test seams for rare OS / build failures (overridden in unit tests).
+var (
+	osMkdirAll   = os.MkdirAll
+	osReadFile   = os.ReadFile
+	osWriteFile  = os.WriteFile
+	osStatBundle = os.Stat
+	jsonMarshal  = json.Marshal
+	esbuildBuild = api.Build
 )
 
 // BundleOptions configures a thin FE unit esbuild (no Vue plugin / ModuleBuilder).
@@ -41,15 +52,19 @@ func BuildFrontendUnitBundle(opts BundleOptions) (*BundleResult, error) {
 		return nil, xfmt.Errorf("frontend bundle: empty entry path")
 	}
 	modulesDir := filepath.Join(repoRoot, "modules")
-	if st, err := os.Stat(modulesDir); err != nil || !st.IsDir() {
-		return nil, xfmt.Errorf("frontend bundle: modules dir missing: %s", modulesDir)
+	st, err := osStatBundle(modulesDir)
+	if err != nil {
+		return nil, xfmt.Errorf("frontend bundle: stat modules dir %s: %w", modulesDir, err)
+	}
+	if !st.IsDir() {
+		return nil, xfmt.Errorf("frontend bundle: modules path is not a directory: %s", modulesDir)
 	}
 
 	outfile := strings.TrimSpace(opts.Outfile)
 	if outfile == "" {
 		outfile = filepath.Join(filepath.Dir(entry), "fe-unit.bundle.js")
 	}
-	if err := os.MkdirAll(filepath.Dir(outfile), 0o755); err != nil {
+	if err := osMkdirAll(filepath.Dir(outfile), 0o755); err != nil {
 		return nil, xfmt.Errorf("frontend bundle: mkdir: %w", err)
 	}
 
@@ -74,7 +89,7 @@ func BuildFrontendUnitBundle(opts BundleOptions) (*BundleResult, error) {
 		buildOpts.AbsWorkingDir = repoRoot
 	}
 
-	result := api.Build(buildOpts)
+	result := esbuildBuild(buildOpts)
 	warnings := make([]string, 0, len(result.Warnings))
 	for _, w := range result.Warnings {
 		warnings = append(warnings, w.Text)
@@ -87,7 +102,7 @@ func BuildFrontendUnitBundle(opts BundleOptions) (*BundleResult, error) {
 		return nil, xfmt.Errorf("frontend bundle: esbuild failed: %s", strings.Join(msgs, "; "))
 	}
 
-	jsBytes, err := os.ReadFile(outfile)
+	jsBytes, err := osReadFile(outfile)
 	if err != nil {
 		return nil, xfmt.Errorf("frontend bundle: read outfile: %w", err)
 	}
@@ -97,7 +112,7 @@ func BuildFrontendUnitBundle(opts BundleOptions) (*BundleResult, error) {
 		Warnings: warnings,
 	}
 	mapPath := outfile + ".map"
-	if _, err := os.Stat(mapPath); err == nil {
+	if _, err := osStatBundle(mapPath); err == nil {
 		out.MapPath = mapPath
 	}
 	return out, nil
@@ -111,17 +126,21 @@ func WriteFrontendTestsEntry(outPath string, testFiles []string) error {
 	if strings.TrimSpace(outPath) == "" {
 		return xfmt.Errorf("frontend bundle: empty entry out path")
 	}
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+	if err := osMkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return xfmt.Errorf("frontend bundle: mkdir entry: %w", err)
 	}
 	var b strings.Builder
 	for _, f := range testFiles {
 		imp := filepath.ToSlash(filepath.Clean(f))
-		b.WriteString("import '")
-		b.WriteString(imp)
-		b.WriteString("';\n")
+		encoded, err := jsonMarshal(imp)
+		if err != nil {
+			return xfmt.Errorf("frontend bundle: encode import path: %w", err)
+		}
+		b.WriteString("import ")
+		b.Write(encoded)
+		b.WriteString(";\n")
 	}
-	if err := os.WriteFile(outPath, []byte(b.String()), 0o644); err != nil {
+	if err := osWriteFile(outPath, []byte(b.String()), 0o644); err != nil {
 		return xfmt.Errorf("frontend bundle: write entry: %w", err)
 	}
 	return nil

@@ -49,9 +49,6 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 				return err
 			}
 			modulesPath := strings.TrimSpace(runtimeOptions.ModulesPath)
-			if modulesPath == "" {
-				return xfmt.Errorf("test unit-fe-illegal: modulesPath is required")
-			}
 			repoRoot := filepath.Dir(modulesPath)
 			if st, statErr := os.Stat(filepath.Join(repoRoot, "modules")); statErr != nil || !st.IsDir() {
 				// modulesPath may already be the repo root's modules dir; Dir is correct.
@@ -59,13 +56,15 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 				if cwd, cwdErr := os.Getwd(); cwdErr == nil {
 					if st2, err2 := os.Stat(filepath.Join(cwd, "modules")); err2 == nil && st2.IsDir() {
 						repoRoot = cwd
+						modulesPath = filepath.Join(cwd, "modules")
 					}
 				}
 			}
 
 			apps := args
 			if all {
-				entries, readErr := os.ReadDir(modulesPath)
+				modulesRoot := filepath.Join(repoRoot, "modules")
+				entries, readErr := os.ReadDir(modulesRoot)
 				if readErr != nil {
 					return xfmt.Errorf("test unit-fe-illegal: read modules: %w", readErr)
 				}

@@ -11,8 +11,15 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	xfmt "golang.org/x/exp/errors/fmt"
+)
+
+// Test seams for rare OS failures (overridden in unit tests).
+var (
+	osStat      = os.Stat
+	filepathAbs = filepath.Abs
 )
 
 // ScanMode controls whether illegal FE marks fail the scan.
@@ -48,7 +55,8 @@ var (
 	reDOMPackage     = regexp.MustCompile(`(?m)(?:^|[\s;])(?:import\s+['"](happy-dom|jsdom)['"]|(?:import|export)[\s\S]*?\bfrom\s+['"](happy-dom|jsdom)['"])`)
 	reVTUImport      = regexp.MustCompile(`(?m)(?:^|[\s;])(?:import|export)[\s\S]*?\bfrom\s+['"]@vue/test-utils['"]`)
 	reMountCall      = regexp.MustCompile(`\b(?:shallowMount|mount)\s*\(`)
-	reVueImport      = regexp.MustCompile(`(?m)\bfrom\s+['"][^'"]+\.vue['"]`)
+	// Matches from '...vue', side-effect import './x.vue', and dynamic import('./x.vue').
+	reVueImport = regexp.MustCompile(`(?m)(?:\bfrom\s+|import\s*(?:\(\s*)?)['"][^'"]+\.vue['"]`)
 )
 
 // DiscoverFrontendTests lists FE unit files under modules/<app>/web.
@@ -62,7 +70,7 @@ func DiscoverFrontendTests(repoRoot, app string) ([]string, error) {
 		return nil, xfmt.Errorf("frontend discover: empty app")
 	}
 	webRoot := filepath.Join(repoRoot, "modules", app, "web")
-	st, err := os.Stat(webRoot)
+	st, err := osStat(webRoot)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -88,7 +96,7 @@ func DiscoverFrontendTests(repoRoot, app string) ([]string, error) {
 		if !isFrontendUnitTestFile(d.Name()) {
 			return nil
 		}
-		abs, err := filepath.Abs(path)
+		abs, err := filepathAbs(path)
 		if err != nil {
 			return err
 		}
@@ -107,7 +115,12 @@ func isFrontendUnitTestFile(name string) bool {
 	if !strings.Contains(lower, ".test.") && !strings.Contains(lower, ".spec.") {
 		return false
 	}
-	return strings.HasSuffix(lower, ".ts") || strings.HasSuffix(lower, ".tsx")
+	for _, ext := range []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"} {
+		if strings.HasSuffix(lower, ext) {
+			return true
+		}
+	}
+	return false
 }
 
 // ScanIllegalFrontendMarks scans FE unit files for banned patterns.
@@ -160,11 +173,12 @@ func scanIllegalContent(path, content string) []IllegalMark {
 			return
 		}
 		seen[key] = true
-		snippet = strings.TrimSpace(snippet)
-		if len(snippet) > 120 {
-			snippet = snippet[:117] + "..."
-		}
-		hits = append(hits, IllegalMark{Path: path, Line: line, Kind: kind, Snippet: snippet})
+		hits = append(hits, IllegalMark{
+			Path:    path,
+			Line:    line,
+			Kind:    kind,
+			Snippet: truncateSnippet(snippet),
+		})
 	}
 
 	for i, line := range lines {
@@ -175,35 +189,33 @@ func scanIllegalContent(path, content string) []IllegalMark {
 		if reMountCall.MatchString(line) {
 			add(lineNo, IllegalVTU, line)
 		}
-		if reVueImport.MatchString(line) {
-			add(lineNo, IllegalVueImport, line)
-		}
-		if reDOMPackage.MatchString(line) {
-			add(lineNo, IllegalDOMPackage, line)
-		}
-		if reVTUImport.MatchString(line) {
-			add(lineNo, IllegalVTU, line)
-		}
 	}
 
-	// Multi-line import from '@vue/test-utils' / happy-dom / jsdom.
-	if reVTUImport.MatchString(content) {
-		for i, line := range lines {
-			if strings.Contains(line, "@vue/test-utils") {
-				add(i+1, IllegalVTU, line)
-			}
-		}
-	}
-	if reDOMPackage.MatchString(content) {
-		for i, line := range lines {
-			if strings.Contains(line, "happy-dom") || strings.Contains(line, "jsdom") {
-				if strings.Contains(line, "from") || strings.Contains(line, "import") {
-					add(i+1, IllegalDOMPackage, line)
-				}
-			}
-		}
-	}
+	// Match-span based reporting for import forms that may span lines.
+	addRegexHits(content, lines, reVueImport, IllegalVueImport, add)
+	addRegexHits(content, lines, reVTUImport, IllegalVTU, add)
+	addRegexHits(content, lines, reDOMPackage, IllegalDOMPackage, add)
 	return hits
+}
+
+func addRegexHits(content string, lines []string, re *regexp.Regexp, kind IllegalKind, add func(int, IllegalKind, string)) {
+	for _, loc := range re.FindAllStringIndex(content, -1) {
+		lineNo := 1 + strings.Count(content[:loc[0]], "\n")
+		snippet := content[loc[0]:loc[1]]
+		if lineNo >= 1 && lineNo <= len(lines) {
+			snippet = lines[lineNo-1]
+		}
+		add(lineNo, kind, snippet)
+	}
+}
+
+func truncateSnippet(snippet string) string {
+	snippet = strings.TrimSpace(snippet)
+	if utf8.RuneCountInString(snippet) <= 120 {
+		return snippet
+	}
+	runes := []rune(snippet)
+	return string(runes[:117]) + "..."
 }
 
 // FormatIllegalMarksWarn formats hits for stderr (human-readable).
@@ -242,7 +254,7 @@ func relativizeRepoPath(repoRoot, path string) string {
 	path = filepath.Clean(path)
 	repoRoot = strings.TrimSpace(repoRoot)
 	if repoRoot == "" {
-		return path
+		return filepath.ToSlash(path)
 	}
 	if rel, err := filepath.Rel(repoRoot, path); err == nil && rel != "" && !strings.HasPrefix(rel, "..") {
 		return filepath.ToSlash(rel)
