@@ -338,6 +338,14 @@ jobs:
       - name: Make choysum CLI executable
         run: chmod +x .choysum/tmp/choysum
 
+      - name: Warn on illegal FE unit marks
+        run: |
+          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          set +e
+          "$CHOYSUM_BIN" test unit-fe-illegal "${{ matrix.module }}" --github-annotations
+          set -e
+          exit 0
+
       - name: Setup CLI testing pkg cache
         uses: ./.github/actions/setup-cli-testing-cache
 
