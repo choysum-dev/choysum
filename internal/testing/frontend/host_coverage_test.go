@@ -37,8 +37,8 @@ func TestInstallMinimalDOMGuards(t *testing.T) {
 }
 
 func TestPrepareVueHostEngineBranches(t *testing.T) {
-	if err := PrepareVueHostEngine(stubJsEngine{loadErr: os.ErrInvalid}); err == nil || !strings.Contains(err.Error(), "InstallMinimalDOM") {
-		t.Fatalf("dom load fail: %v", err)
+	if err := PrepareVueHostEngine(stubJsEngine{loadErr: os.ErrInvalid}); err == nil || !strings.Contains(err.Error(), "InstallMinimalConsole") {
+		t.Fatalf("console load fail: %v", err)
 	}
 	if err := PrepareVueHostEngine(stubJsEngine{}); err != nil {
 		t.Fatalf("non-quickjs engine: %v", err)

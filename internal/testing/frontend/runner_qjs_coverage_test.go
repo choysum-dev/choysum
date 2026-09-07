@@ -445,7 +445,7 @@ globalThis.__choysum_test_run__ = async () => ({
 		})
 		if _, err := RunFrontendQJS(context.Background(), QJSRunOptions{
 			RepoRoot: repo, TestFiles: []string{testFile}, WorkingDir: work, TmpRoot: t.TempDir(),
-		}); err == nil || !strings.Contains(err.Error(), "load") {
+		}); err == nil || !(strings.Contains(err.Error(), "load") || strings.Contains(err.Error(), "InstallMinimalConsole")) {
 			t.Fatalf("%v", err)
 		}
 	})

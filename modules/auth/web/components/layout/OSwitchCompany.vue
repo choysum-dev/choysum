@@ -73,6 +73,7 @@ import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
+import { syncCompanyDraftsFromJwt } from './o_switch_company_draft';
 
 const { _t } = createTranslate('auth', { scope: 'web/components/layout/OSwitchCompany' });
 
@@ -138,10 +139,16 @@ watch(
     // Panel-open drafts are user-owned (seeded in the visible watcher). A token
     // refresh while the popover is open must not clobber an in-progress selection,
     // or isDirty/canApply flip back to "No changes to apply".
-    if (visible.value) return;
-    draftActiveCompanyId.value = active;
-    draftEnabledCompanyIds.value = uniq(enabled);
-    ensureActiveInEnabled();
+    syncCompanyDraftsFromJwt({
+      panelVisible: visible.value,
+      activeCompanyId: active,
+      enabledCompanyIds: enabled,
+      apply: (nextActive, nextEnabled) => {
+        draftActiveCompanyId.value = nextActive;
+        draftEnabledCompanyIds.value = uniq(nextEnabled);
+        ensureActiveInEnabled();
+      },
+    });
   },
   { immediate: true }
 );

@@ -214,9 +214,14 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 		if err := prepareVueHostEngineQJS(engine); err != nil {
 			return true, err
 		}
-	} else if qjs, ok := engine.(*quickjsengine.QuickjsEngine); ok {
-		if !bootstrapTimersQJS(qjs) {
-			return true, xfmt.Errorf("frontend host: BootstrapTimers failed")
+	} else {
+		if err := InstallMinimalConsole(engine); err != nil {
+			return true, err
+		}
+		if qjs, ok := engine.(*quickjsengine.QuickjsEngine); ok {
+			if !bootstrapTimersQJS(qjs) {
+				return true, xfmt.Errorf("frontend host: BootstrapTimers failed")
+			}
 		}
 	}
 

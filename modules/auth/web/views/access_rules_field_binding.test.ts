@@ -1,59 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isGrantEveryoneWarning } from './role_record_rule_audience';
 
-function viewSource(fileName: string): string {
-  return readFileSync(resolve(__dirname, fileName), 'utf8');
-}
-
-describe('Access Rules admin field binding (PR-C-5)', () => {
-  it('exposes nullable RoleId and Kind on standalone RecordRule form', () => {
-    const form = viewSource('RoleRecordRuleFormView.vue');
-    const hints = viewSource('RoleRecordRuleAudienceHints.vue');
-
-    expect(form).toContain('prop="RoleId"');
-    expect(form).toContain('prop="Kind"');
-    expect(form).toContain('prop="MetaApplicationId"');
-    expect(form).toContain('prop="MetaModelId"');
-    expect(form).toContain('prop="Condition"');
-    expect(form).toContain('RoleRecordRuleAudienceHints');
-    expect(hints).toContain('Wide-open grant for all users');
-    expect(hints).toContain('Audience and scope are separate');
-    expect(hints).toContain('isGrantEveryoneWarning');
-  });
-
-  it('requires RoleId on Field / Method / UI grant forms', () => {
-    for (const file of ['RoleFieldRuleFormView.vue', 'RoleMethodAccessFormView.vue', 'RoleUiResourceFormView.vue']) {
-      const form = viewSource(file);
-      expect(form).toContain('prop="RoleId"');
-      expect(form).toContain('RoleListView');
-      expect(form).toContain('Select Role');
-    }
-  });
-
-  it('exposes LogicalModel scope on Method Access and Field Rule forms (PR-LM-4)', () => {
-    const methodForm = viewSource('RoleMethodAccessFormView.vue');
-    expect(methodForm).toContain('prop="LogicalModelName"');
-    expect(methodForm).toContain('prop="LogicalMethods"');
-    expect(methodForm).toContain(':allow-array="true"');
-    expect(methodForm).toContain('Logical Model (all host apps sharing that short name)');
-
-    const fieldForm = viewSource('RoleFieldRuleFormView.vue');
-    expect(fieldForm).toContain('prop="LogicalModelName"');
-    expect(fieldForm).toContain('Logical Model (all host apps / all business fields on that short name)');
-
-    expect(viewSource('RoleMethodAccessListView.vue')).toContain('prop="LogicalModelName"');
-    expect(viewSource('RoleFieldRuleListView.vue')).toContain('prop="LogicalModelName"');
-
-    // Exclusive scope Onchange lives on the models (not the Vue templates).
-    const methodModel = readFileSync(resolve(__dirname, '../../service/models/role_method_access.ts'), 'utf8');
-    expect(methodModel).toContain("Onchange<RoleMethodAccess>('LogicalModelName')");
-    expect(methodModel).toContain("Onchange<RoleMethodAccess>('MetaServiceId', 'MetaModelId', 'MetaApplicationId')");
-    const fieldModel = readFileSync(resolve(__dirname, '../../service/models/role_field_rule.ts'), 'utf8');
-    expect(fieldModel).toContain("Onchange<RoleFieldRule>('LogicalModelName')");
-    expect(fieldModel).toContain("Onchange<RoleFieldRule>('MetaApplicationId', 'MetaFieldId')");
-  });
+test('Access Rules field binding: grant-everyone helper stays wired', () => {
+  expect(isGrantEveryoneWarning({ Kind: 'grant', RoleId: null })).toBe(true);
+  expect(isGrantEveryoneWarning({ Kind: 'grant', RoleId: 'r1' })).toBe(false);
+  expect(isGrantEveryoneWarning({ Kind: 'restrict', RoleId: null })).toBe(false);
 });

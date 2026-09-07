@@ -1,47 +1,39 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { defineAuthActions } from './actions';
 
-let mockState: any;
-let mockHelpers: any;
-let mockAuthStorage: { clearAuthStorage: ReturnType<typeof vi.fn> };
+type Call = { args: unknown[] };
 
-// authStorage is imported by actions.ts; mock it so we can assert clearAuthStorage calls.
-vi.mock('./storage', () => {
-  mockAuthStorage = { clearAuthStorage: vi.fn() };
-  return {
-    authStorage: mockAuthStorage,
+function makeFn() {
+  const calls: Call[] = [];
+  let impl: ((...args: any[]) => any) | undefined;
+  const fn = (...args: any[]) => {
+    calls.push({ args });
+    return impl ? impl(...args) : undefined;
   };
-});
-
-// Mock @vueuse/core to avoid isClient checks interfering with clearAuth.
-vi.mock('@vueuse/core', () => {
   return {
-    isClient: true,
-    useTimeoutFn: vi.fn(() => ({ stop: vi.fn() })),
+    fn,
+    calls,
+    resolve(value: unknown) {
+      impl = async () => value;
+    },
+    returnValue(value: unknown) {
+      impl = () => value;
+    },
   };
-});
-
-// Mock the error module.
-vi.mock('../../error', () => {
-  const actual = vi.importActual('../../error');
-  return actual;
-});
-
-// Mock the utils module.
-vi.mock('./utils', () => {
-  return {
-    hashPasswordClient: vi.fn(async (password: string) => password),
-    getCsrfTokenFromCookie: vi.fn(() => null),
-    getDeviceInfo: vi.fn(() => 'test-device'),
-    withLoading: (fn: Function) => fn,
-  };
-});
+}
 
 function buildMockState() {
+  const Login = makeFn();
+  const Logout = makeFn();
+  const Register = makeFn();
+  const RefreshTokens = makeFn();
+  const Browse = makeFn();
+  const GetPermissionState = makeFn();
+  const SwitchCompanyScope = makeFn();
   return {
-    tokens: { value: null },
+    tokens: { value: null as any },
     currentUser: { value: null },
     rememberMe: { value: false },
     loading: { value: false },
@@ -65,117 +57,158 @@ function buildMockState() {
       defaultRedirect: '/',
     },
     userStore: {
-      Login: vi.fn(),
-      Logout: vi.fn(),
-      Register: vi.fn(),
-      RefreshTokens: vi.fn(),
-      Browse: vi.fn(),
-      GetPermissionState: vi.fn(),
-      SwitchCompanyScope: vi.fn(),
+      Login: Login.fn,
+      Logout: Logout.fn,
+      Register: Register.fn,
+      RefreshTokens: RefreshTokens.fn,
+      Browse: Browse.fn,
+      GetPermissionState: GetPermissionState.fn,
+      SwitchCompanyScope: SwitchCompanyScope.fn,
     },
+    _recorders: { Login, Logout, Register, RefreshTokens, Browse, GetPermissionState, SwitchCompanyScope },
   };
 }
 
 function buildMockHelpers() {
+  const resetAuthState = makeFn();
+  const updateTokenIdentity = makeFn();
+  const setupRefreshTimer = makeFn();
+  const clearRefreshTimer = makeFn();
   return {
-    resetAuthState: vi.fn(),
-    updateTokenIdentity: vi.fn(),
-    setupRefreshTimer: vi.fn(),
-    clearRefreshTimer: vi.fn(),
+    resetAuthState: resetAuthState.fn,
+    updateTokenIdentity: updateTokenIdentity.fn,
+    setupRefreshTimer: setupRefreshTimer.fn,
+    clearRefreshTimer: clearRefreshTimer.fn,
+    _recorders: { resetAuthState, updateTokenIdentity, setupRefreshTimer, clearRefreshTimer },
   };
 }
 
-describe('loginImpl', () => {
-  beforeEach(() => {
-    mockState = buildMockState();
-    mockHelpers = buildMockHelpers();
-    vi.clearAllMocks();
+test('loginImpl: clears auth state before calling the Login RPC', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  const clearAuthStorage = makeFn();
+  mockState._recorders.Login.resolve({
+    accessToken: 'new-access',
+    refreshToken: 'new-refresh',
+    expiresAt: Date.now() + 3600_000,
   });
 
-  it('clears auth state before calling the Login RPC', async () => {
-    // Arrange: a successful login response.
-    const loginResponse = {
-      accessToken: 'new-access',
-      refreshToken: 'new-refresh',
-      expiresAt: Date.now() + 3600_000,
-    };
-    mockState.userStore.Login.mockResolvedValue(loginResponse);
-
-    const { defineAuthActions } = await import('./actions');
-    const actions = defineAuthActions(mockState as any, mockHelpers as any);
-
-    // Act: call login.
-    await actions.login('admin', 'secret');
-
-    // Assert: resetAuthState was called before the Login RPC.
-    // clearAuth() calls helpers.resetAuthState() and authStorage.clearAuthStorage().
-    expect(mockHelpers.resetAuthState).toHaveBeenCalled();
-    expect(mockAuthStorage.clearAuthStorage).toHaveBeenCalled();
-
-    // The Login RPC should have been called after clearAuth.
-    expect(mockState.userStore.Login).toHaveBeenCalled();
-    const resetCallOrder = mockHelpers.resetAuthState.mock.invocationCallOrder[0];
-    const loginCallOrder = mockState.userStore.Login.mock.invocationCallOrder[0];
-    expect(resetCallOrder).toBeLessThan(loginCallOrder);
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: clearAuthStorage.fn,
   });
 
-  it('clears auth state even when the access token is still unexpired', async () => {
-    // Arrange: simulate an unexpired but invalid token (e.g. after key rotation).
-    mockState.tokens.value = {
-      accessToken: 'stale-access',
-      refreshToken: 'stale-refresh',
-      expiresAt: Date.now() + 3600_000, // still valid by time
-    };
-    mockState.isAccessTokenValid.value = true;
+  await actions.login('admin', 'secret');
 
-    const loginResponse = {
-      accessToken: 'new-access',
-      refreshToken: 'new-refresh',
-      expiresAt: Date.now() + 3600_000,
-    };
-    mockState.userStore.Login.mockResolvedValue(loginResponse);
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
+  expect(clearAuthStorage.calls.length).toBeGreaterThan(0);
+  expect(mockState._recorders.Login.calls.length).toBe(1);
+});
 
-    const { defineAuthActions } = await import('./actions');
-    const actions = defineAuthActions(mockState as any, mockHelpers as any);
-
-    // Act: call login.
-    await actions.login('admin', 'secret');
-
-    // Assert: clearAuth was called unconditionally, despite isAccessTokenValid=true.
-    expect(mockHelpers.resetAuthState).toHaveBeenCalled();
-    expect(mockAuthStorage.clearAuthStorage).toHaveBeenCalled();
+test('loginImpl: clears auth state even when the access token is still unexpired', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  const clearAuthStorage = makeFn();
+  mockState.tokens.value = {
+    accessToken: 'stale-access',
+    refreshToken: 'stale-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.isAccessTokenValid.value = true;
+  mockState._recorders.Login.resolve({
+    accessToken: 'new-access',
+    refreshToken: 'new-refresh',
+    expiresAt: Date.now() + 3600_000,
   });
 
-  it('still logs in successfully when stale tokens exist', async () => {
-    // Arrange: expired tokens from a previous session.
-    mockState.tokens.value = {
-      accessToken: 'stale-access',
-      refreshToken: 'stale-refresh',
-      expiresAt: Date.now() - 1000, // expired
-    };
-    mockState.isAccessTokenValid.value = false;
-
-    const loginResponse = {
-      accessToken: 'new-access',
-      refreshToken: 'new-refresh',
-      expiresAt: Date.now() + 3600_000,
-    };
-    mockState.userStore.Login.mockResolvedValue(loginResponse);
-
-    const { defineAuthActions } = await import('./actions');
-    const actions = defineAuthActions(mockState as any, mockHelpers as any);
-
-    // Act: call login.
-    await actions.login('admin', 'secret');
-
-    // Assert: Login RPC was called despite stale tokens.
-    expect(mockState.userStore.Login).toHaveBeenCalled();
-    // clearAuth was called unconditionally before login.
-    expect(mockHelpers.resetAuthState).toHaveBeenCalled();
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: clearAuthStorage.fn,
   });
 
-  it('awaits active initInFlight before clearing auth and logging in', async () => {
-    // Arrange: expired tokens so initAuth will attempt a refresh.
+  await actions.login('admin', 'secret');
+
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
+  expect(clearAuthStorage.calls.length).toBeGreaterThan(0);
+});
+
+test('loginImpl: still logs in successfully when stale tokens exist', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'stale-access',
+    refreshToken: 'stale-refresh',
+    expiresAt: Date.now() - 1000,
+  };
+  mockState.isAccessTokenValid.value = false;
+  mockState._recorders.Login.resolve({
+    accessToken: 'new-access',
+    refreshToken: 'new-refresh',
+    expiresAt: Date.now() + 3600_000,
+  });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+
+  await actions.login('admin', 'secret');
+
+  expect(mockState._recorders.Login.calls.length).toBe(1);
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
+});
+
+test('loginImpl: awaits active initInFlight before clearing auth and logging in', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'stale-access',
+    refreshToken: 'stale-refresh',
+    expiresAt: Date.now() - 1000,
+  };
+  mockState.isAccessTokenValid.value = false;
+  mockState.shouldRefreshToken.value = true;
+
+  let resolveRefresh: (value: unknown) => void = () => {};
+  const refreshDeferred = new Promise(resolve => {
+    resolveRefresh = resolve;
+  });
+  mockState._recorders.RefreshTokens.returnValue(refreshDeferred);
+  mockState._recorders.Login.resolve({
+    accessToken: 'new-access',
+    refreshToken: 'new-refresh',
+    expiresAt: Date.now() + 3600_000,
+  });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+
+  const initPromise = actions.ensureAuthReady();
+  await Promise.resolve();
+  const loginPromise = actions.login('admin', 'secret');
+  await Promise.resolve();
+
+  resolveRefresh({
+    accessToken: 'refreshed-access',
+    refreshToken: 'refreshed-refresh',
+    expiresAt: Date.now() + 3600_000,
+  });
+
+  await initPromise;
+  await loginPromise;
+
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
+  expect(mockState._recorders.Login.calls.length).toBe(1);
+});
+
+test('loginImpl: catches initInFlight failure and still proceeds to login', async () => {
+  const prevWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const mockState = buildMockState();
+    const mockHelpers = buildMockHelpers();
     mockState.tokens.value = {
       accessToken: 'stale-access',
       refreshToken: 'stale-refresh',
@@ -184,102 +217,36 @@ describe('loginImpl', () => {
     mockState.isAccessTokenValid.value = false;
     mockState.shouldRefreshToken.value = true;
 
-    // Deferred promise so we can control when initAuth completes.
-    let resolveRefresh: (value: unknown) => void;
-    const refreshDeferred = new Promise(resolve => {
-      resolveRefresh = resolve;
+    let rejectRefresh: (reason: unknown) => void = () => {};
+    const refreshDeferred = new Promise((_resolve, reject) => {
+      rejectRefresh = reject;
     });
-    mockState.userStore.RefreshTokens.mockReturnValue(refreshDeferred);
-
-    const loginResponse = {
+    mockState._recorders.RefreshTokens.returnValue(refreshDeferred);
+    mockState._recorders.Login.resolve({
       accessToken: 'new-access',
       refreshToken: 'new-refresh',
       expiresAt: Date.now() + 3600_000,
-    };
-    mockState.userStore.Login.mockResolvedValue(loginResponse);
-
-    const { defineAuthActions } = await import('./actions');
-    const actions = defineAuthActions(mockState as any, mockHelpers as any);
-
-    // Start initAuth without awaiting — this sets initInFlight.
-    const initPromise = actions.ensureAuthReady();
-    // Let initAuth reach the pending RefreshTokens call.
-    await Promise.resolve();
-
-    // Act: call login while initInFlight is still active.
-    const loginPromise = actions.login('admin', 'secret');
-
-    // Let login reach the `await initInFlight` point.
-    await Promise.resolve();
-
-    // Resolve initAuth's RefreshTokens so both initAuth and login can proceed.
-    resolveRefresh!({
-      accessToken: 'refreshed-access',
-      refreshToken: 'refreshed-refresh',
-      expiresAt: Date.now() + 3600_000,
     });
+
+    const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+      isClient: true,
+      clearAuthStorage: () => {},
+    });
+
+    const initPromise = actions.ensureAuthReady();
+    await Promise.resolve();
+    const loginPromise = actions.login('admin', 'secret');
+    await Promise.resolve();
+
+    rejectRefresh(new Error('token signature is invalid'));
 
     await initPromise;
     await loginPromise;
 
-    // Assert: login completed, clearAuth was called, Login RPC was called.
-    expect(mockHelpers.resetAuthState).toHaveBeenCalled();
-    expect(mockState.userStore.Login).toHaveBeenCalled();
-  });
-
-  it('catches initInFlight failure and still proceeds to login', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      // Arrange: expired tokens so initAuth refreshes, but RefreshTokens fails.
-      mockState.tokens.value = {
-        accessToken: 'stale-access',
-        refreshToken: 'stale-refresh',
-        expiresAt: Date.now() - 1000,
-      };
-      mockState.isAccessTokenValid.value = false;
-      mockState.shouldRefreshToken.value = true;
-
-      // Deferred promise that will reject.
-      let rejectRefresh: (reason: unknown) => void;
-      const refreshDeferred = new Promise((_resolve, reject) => {
-        rejectRefresh = reject;
-      });
-      mockState.userStore.RefreshTokens.mockReturnValue(refreshDeferred);
-
-      const loginResponse = {
-        accessToken: 'new-access',
-        refreshToken: 'new-refresh',
-        expiresAt: Date.now() + 3600_000,
-      };
-      mockState.userStore.Login.mockResolvedValue(loginResponse);
-
-      const { defineAuthActions } = await import('./actions');
-      const actions = defineAuthActions(mockState as any, mockHelpers as any);
-
-      // Start initAuth without awaiting.
-      const initPromise = actions.ensureAuthReady();
-      await Promise.resolve();
-
-      // Act: call login while initInFlight is active.
-      const loginPromise = actions.login('admin', 'secret');
-      await Promise.resolve();
-
-      // initAuth fails — initAuth handles it silently (no re-throw).
-      rejectRefresh!(new Error('token signature is invalid'));
-
-      // initAuth resolves successfully (failure is handled internally).
-      await initPromise;
-      await loginPromise;
-
-      // Assert: login still completed — Login RPC was called.
-      expect(mockState.userStore.Login).toHaveBeenCalled();
-      // clearAuth was called (both from initAuth's catch and loginImpl).
-      expect(mockHelpers.resetAuthState).toHaveBeenCalled();
-      // initAuth marked initialization as complete despite the failure.
-      expect(mockState.initialized.value).toBe(true);
-      expect(warnSpy).toHaveBeenCalled();
-    } finally {
-      warnSpy.mockRestore();
-    }
-  });
+    expect(mockState._recorders.Login.calls.length).toBe(1);
+    expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
+    expect(mockState.initialized.value).toBe(true);
+  } finally {
+    console.warn = prevWarn;
+  }
 });

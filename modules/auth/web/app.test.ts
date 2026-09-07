@@ -1,157 +1,106 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { getTokenProvider, setTokenProvider } from '@/core/web/rpc/providers';
+import { setupTokenProvider } from './setup_token_provider';
 
-let mockAuthStore: any;
-let capturedTokenProvider: any = null;
+type Call = { args: unknown[] };
 
-// Mock useAuthStore.
-vi.mock('./stores/auth', () => {
-  return {
-    useAuthStore: () => mockAuthStore,
+function makeFn() {
+  const calls: Call[] = [];
+  let impl: ((...args: any[]) => any) | undefined;
+  const fn = (...args: any[]) => {
+    calls.push({ args });
+    return impl ? impl(...args) : undefined;
   };
-});
-
-// Mock @/core/web/rpc to capture the token provider.
-vi.mock('@/core/web/rpc', () => {
   return {
-    setTokenProvider: (provider: any) => {
-      capturedTokenProvider = typeof provider === 'function' ? provider() : provider;
+    fn,
+    calls,
+    reject(err: unknown) {
+      impl = async () => {
+        throw err;
+      };
     },
-    setCSRFProvider: vi.fn(),
-  };
-});
-
-// Mock Vue reactivity APIs used by app.ts.
-vi.mock('vue', () => {
-  return {
-    watch: vi.fn(),
-    ref: (val: any) => ({ value: val }),
-    computed: (fn: Function) => ({ value: fn() }),
-  };
-});
-
-// Mock @/web/web (the app instance).
-vi.mock('@/web/web', () => {
-  return {
-    default: {
-      setup: (fn: Function) => fn({} as any),
-      menu: { getMenus: () => [] },
-      unmount: vi.fn(),
+    impl(next: (...args: any[]) => any) {
+      impl = next;
     },
   };
-});
-
-// Mock @/web/web/directives/action.
-vi.mock('@/web/web/directives/action', () => {
-  return { setGlobalActionChecker: vi.fn() };
-});
-
-// Mock the route module.
-vi.mock('./route', () => {
-  return { setupRouter: vi.fn() };
-});
-
-// Mock the menu module.
-vi.mock('./menu', () => {
-  return { setupAppMenu: vi.fn() };
-});
-
-// Mock menu/applyPermissionToMenus.
-vi.mock('./menu/applyPermissionToMenus', () => {
-  return { applyPermissionToMenus: vi.fn() };
-});
-
-// Mock permission module.
-vi.mock('@/auth/web/permission', () => {
-  return { hasAction: () => true };
-});
+}
 
 function buildMockAuthStore(overrides: Record<string, unknown> = {}) {
   return {
-    tokens: null,
+    tokens: null as null | { accessToken: string; refreshToken: string; expiresAt: number },
     shouldRefreshToken: false,
-    refreshToken: vi.fn(),
-    logout: vi.fn(),
+    refreshToken: makeFn().fn,
+    logout: makeFn().fn,
     isAuthenticated: false,
     identity: null,
     permissionState: null,
-    loadPermissionState: vi.fn(),
-    clearAuth: vi.fn(),
-    getCsrfToken: vi.fn(() => null),
+    loadPermissionState: makeFn().fn,
+    clearAuth: makeFn().fn,
+    getCsrfToken: () => null,
     ...overrides,
   };
 }
 
-describe('setupTokenProvider refreshToken', () => {
-  beforeEach(() => {
-    capturedTokenProvider = null;
-    vi.clearAllMocks();
-    // Reset module cache so app.ts re-evaluates with fresh mocks.
-    vi.resetModules();
-    // setupApp logs configuration via console.debug; keep suite output quiet.
-    vi.spyOn(console, 'debug').mockImplementation(() => {});
+test('setupTokenProvider: uses console.warn (not console.error) when token refresh fails', async () => {
+  setTokenProvider(null);
+  const refreshToken = makeFn();
+  refreshToken.reject(new Error('token signature is invalid'));
+  const mockAuthStore = buildMockAuthStore({
+    tokens: { accessToken: 'old-access', refreshToken: 'old-refresh', expiresAt: Date.now() + 1000 },
+    refreshToken: refreshToken.fn,
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  const prevWarn = console.warn;
+  const prevError = console.error;
+  const warnCalls: unknown[][] = [];
+  const errorCalls: unknown[][] = [];
+  console.warn = (...args: unknown[]) => {
+    warnCalls.push(args);
+  };
+  console.error = (...args: unknown[]) => {
+    errorCalls.push(args);
+  };
 
-  it('uses console.warn (not console.error) when token refresh fails', async () => {
-    // Arrange: auth store has a refresh token, but refresh fails.
-    mockAuthStore = buildMockAuthStore({
-      tokens: { accessToken: 'old-access', refreshToken: 'old-refresh', expiresAt: Date.now() + 1000 },
-      refreshToken: vi.fn(async () => {
-        throw new Error('token signature is invalid');
-      }),
-      shouldRefreshToken: false,
-    });
-
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    // Act: import app.ts to trigger setupApp -> setupTokenProvider.
-    await import('./app');
-
-    // The token provider should have been captured.
-    expect(capturedTokenProvider).not.toBeNull();
-
-    // Call the refreshToken callback.
-    const result = await capturedTokenProvider.refreshToken();
-
-    // Assert: refresh failed (returns false).
+  try {
+    setupTokenProvider(mockAuthStore as any);
+    const provider = getTokenProvider();
+    expect(provider).toBeTruthy();
+    const result = await provider!.refreshToken();
     expect(result).toBe(false);
+    expect(warnCalls.length).toBe(1);
+    expect(String(warnCalls[0]?.[0])).toContain('[Auth] Token refresh failed:');
+    const refreshErrorCalls = errorCalls.filter(args => typeof args[0] === 'string' && String(args[0]).includes('Token refresh failed'));
+    expect(refreshErrorCalls.length).toBe(0);
+  } finally {
+    console.warn = prevWarn;
+    console.error = prevError;
+    setTokenProvider(null);
+  }
+});
 
-    // console.warn should have been called (not console.error).
-    expect(warnSpy).toHaveBeenCalledWith('[Auth] Token refresh failed:', expect.any(Error));
-    // No console.error for the refresh failure path.
-    const refreshErrorCalls = errorSpy.mock.calls.filter(args => typeof args[0] === 'string' && args[0].includes('Token refresh failed'));
-    expect(refreshErrorCalls).toHaveLength(0);
+test('setupTokenProvider: returns false when token refresh fails', async () => {
+  setTokenProvider(null);
+  const refreshToken = makeFn();
+  const mockAuthStore = buildMockAuthStore({
+    tokens: { accessToken: 'old-access', refreshToken: 'old-refresh', expiresAt: Date.now() + 1000 },
+    refreshToken: refreshToken.fn,
+  });
+  refreshToken.impl(async () => {
+    mockAuthStore.tokens = null;
+    throw new Error('token signature is invalid');
   });
 
-  it('returns false when token refresh fails', async () => {
-    // Arrange: auth store has a refresh token; refresh fails and clears tokens.
-    mockAuthStore = buildMockAuthStore({
-      tokens: { accessToken: 'old-access', refreshToken: 'old-refresh', expiresAt: Date.now() + 1000 },
-      refreshToken: vi.fn(async () => {
-        // Simulate the store action clearing tokens on failure.
-        mockAuthStore.tokens = null;
-        throw new Error('token signature is invalid');
-      }),
-      shouldRefreshToken: false,
-    });
-
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    // Act: import app.ts to trigger setupApp -> setupTokenProvider.
-    await import('./app');
-
-    // Call the refreshToken callback.
-    const result = await capturedTokenProvider.refreshToken();
-
-    // Assert: returns false on failure.
+  const prevWarn = console.warn;
+  console.warn = () => {};
+  try {
+    setupTokenProvider(mockAuthStore as any);
+    const provider = getTokenProvider();
+    const result = await provider!.refreshToken();
     expect(result).toBe(false);
-    expect(warnSpy).toHaveBeenCalled();
-  });
+  } finally {
+    console.warn = prevWarn;
+    setTokenProvider(null);
+  }
 });

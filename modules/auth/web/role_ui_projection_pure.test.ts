@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, test, expect } from 'vitest';
-
 // Inlined from _role_ui_projection.ts for pure-function testing.
 function normalizeRefId(value: unknown): string | null {
   if (value == null) return null;
@@ -50,116 +48,106 @@ function wantsAccessField(selection: any): boolean {
   return false;
 }
 
-describe('isAllowResourceScope', () => {
-  test('returns true for allow mode with resource id and no app id', () => {
-    expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1' })).toBe(true);
-    expect(isAllowResourceScope({ Mode: 'ALLOW', MetaUiResourceId: 'R1', MetaApplicationId: null })).toBe(true);
-  });
-
-  test('returns false for deny mode', () => {
-    expect(isAllowResourceScope({ Mode: 'deny', MetaUiResourceId: 'R1' })).toBe(false);
-  });
-
-  test('returns false when app id is present', () => {
-    expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1', MetaApplicationId: 'A1' })).toBe(false);
-    expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1', MetaApplicationId: { Id: 'A1' } })).toBe(false);
-  });
-
-  test('returns false when resource id is missing', () => {
-    expect(isAllowResourceScope({ Mode: 'allow' })).toBe(false);
-    expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: null })).toBe(false);
-  });
-
-  test('defaults mode to allow', () => {
-    expect(isAllowResourceScope({ MetaUiResourceId: 'R1' })).toBe(true);
-  });
+test('isAllowResourceScope: returns true for allow mode with resource id and no app id', () => {
+  expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1' })).toBe(true);
+  expect(isAllowResourceScope({ Mode: 'ALLOW', MetaUiResourceId: 'R1', MetaApplicationId: null })).toBe(true);
 });
 
-describe('makeAllowResourceEntries', () => {
-  test('returns array of allow entries', () => {
-    const result = makeAllowResourceEntries(['R1', 'R2']);
-    expect(result).toEqual([
-      { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R1' },
-      { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R2' },
-    ]);
-  });
-
-  test('returns empty for empty ids', () => {
-    expect(makeAllowResourceEntries([])).toEqual([]);
-  });
+test('isAllowResourceScope: returns false for deny mode', () => {
+  expect(isAllowResourceScope({ Mode: 'deny', MetaUiResourceId: 'R1' })).toBe(false);
 });
 
-describe('extractUiResourcesArray', () => {
-  test('returns array as-is', () => {
-    expect(extractUiResourcesArray(['a', 'b'])).toEqual(['a', 'b']);
-  });
-
-  test('returns replace property from object', () => {
-    expect(extractUiResourcesArray({ replace: ['x'] })).toEqual(['x']);
-  });
-
-  test('returns null for non-array non-object', () => {
-    expect(extractUiResourcesArray('foo')).toBeNull();
-    expect(extractUiResourcesArray(null)).toBeNull();
-    expect(extractUiResourcesArray(42)).toBeNull();
-  });
-
-  test('returns null for object without replace array', () => {
-    expect(extractUiResourcesArray({})).toBeNull();
-  });
+test('isAllowResourceScope: returns false when app id is present', () => {
+  expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1', MetaApplicationId: 'A1' })).toBe(false);
+  expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: 'R1', MetaApplicationId: { Id: 'A1' } })).toBe(false);
 });
 
-describe('mergeAccessIntoUiResources', () => {
-  test('preserves non-allow rows and appends allow entries', () => {
-    const base = [
-      { Mode: 'deny', MetaUiResourceId: 'R1' },
-      { Mode: 'allow', MetaUiResourceId: 'R2' },
-    ];
-    const result = mergeAccessIntoUiResources(base, ['R3']);
-    // Only the deny row is preserved; allow rows are replaced.
-    expect(result).toHaveLength(2);
-    expect(result[0].Mode).toBe('deny');
-    expect(result[1].Mode).toBe('allow');
-    expect(result[1].MetaUiResourceId).toBe('R3');
-  });
-
-  test('handles empty base and empty access ids', () => {
-    expect(mergeAccessIntoUiResources([], [])).toEqual([]);
-    expect(mergeAccessIntoUiResources([], ['R1'])).toEqual([
-      { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R1' },
-    ]);
-  });
+test('isAllowResourceScope: returns false when resource id is missing', () => {
+  expect(isAllowResourceScope({ Mode: 'allow' })).toBe(false);
+  expect(isAllowResourceScope({ Mode: 'allow', MetaUiResourceId: null })).toBe(false);
 });
 
-describe('wantsAccessField', () => {
-  test('returns false for null/undefined', () => {
-    expect(wantsAccessField(null)).toBe(false);
-    expect(wantsAccessField(undefined)).toBe(false);
-  });
+test('isAllowResourceScope: defaults mode to allow', () => {
+  expect(isAllowResourceScope({ MetaUiResourceId: 'R1' })).toBe(true);
+});
 
-  test('returns true for exact string match', () => {
-    expect(wantsAccessField('AccessUiResourceIds')).toBe(true);
-  });
+test('makeAllowResourceEntries: returns array of allow entries', () => {
+  const result = makeAllowResourceEntries(['R1', 'R2']);
+  expect(result).toEqual([
+    { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R1' },
+    { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R2' },
+  ]);
+});
 
-  test('returns false for different string', () => {
-    expect(wantsAccessField('OtherField')).toBe(false);
-  });
+test('makeAllowResourceEntries: returns empty for empty ids', () => {
+  expect(makeAllowResourceEntries([])).toEqual([]);
+});
 
-  test('returns true if any element in array matches', () => {
-    expect(wantsAccessField(['Id', 'AccessUiResourceIds'])).toBe(true);
-  });
+test('extractUiResourcesArray: returns array as-is', () => {
+  expect(extractUiResourcesArray(['a', 'b'])).toEqual(['a', 'b']);
+});
 
-  test('returns false if no element matches', () => {
-    expect(wantsAccessField(['Id', 'Name'])).toBe(false);
-  });
+test('extractUiResourcesArray: returns replace property from object', () => {
+  expect(extractUiResourcesArray({ replace: ['x'] })).toEqual(['x']);
+});
 
-  test('recurse into nested fields objects', () => {
-    expect(wantsAccessField({ fields: ['AccessUiResourceIds'] })).toBe(true);
-    expect(wantsAccessField({ fields: ['Id'] })).toBe(false);
-    expect(wantsAccessField({ fields: [{ fields: ['AccessUiResourceIds'] }] })).toBe(true);
-  });
+test('extractUiResourcesArray: returns null for non-array non-object', () => {
+  expect(extractUiResourcesArray('foo')).toBeNull();
+  expect(extractUiResourcesArray(null)).toBeNull();
+  expect(extractUiResourcesArray(42)).toBeNull();
+});
 
-  test('returns false for non-matching object', () => {
-    expect(wantsAccessField({ x: 1 })).toBe(false);
-  });
+test('extractUiResourcesArray: returns null for object without replace array', () => {
+  expect(extractUiResourcesArray({})).toBeNull();
+});
+
+test('mergeAccessIntoUiResources: preserves non-allow rows and appends allow entries', () => {
+  const base = [
+    { Mode: 'deny', MetaUiResourceId: 'R1' },
+    { Mode: 'allow', MetaUiResourceId: 'R2' },
+  ];
+  const result = mergeAccessIntoUiResources(base, ['R3']);
+  // Only the deny row is preserved; allow rows are replaced.
+  expect(result).toHaveLength(2);
+  expect(result[0].Mode).toBe('deny');
+  expect(result[1].Mode).toBe('allow');
+  expect(result[1].MetaUiResourceId).toBe('R3');
+});
+
+test('mergeAccessIntoUiResources: handles empty base and empty access ids', () => {
+  expect(mergeAccessIntoUiResources([], [])).toEqual([]);
+  expect(mergeAccessIntoUiResources([], ['R1'])).toEqual([
+    { Mode: 'allow', MetaApplicationId: null, MetaUiResourceId: 'R1' },
+  ]);
+});
+
+test('wantsAccessField: returns false for null/undefined', () => {
+  expect(wantsAccessField(null)).toBe(false);
+  expect(wantsAccessField(undefined)).toBe(false);
+});
+
+test('wantsAccessField: returns true for exact string match', () => {
+  expect(wantsAccessField('AccessUiResourceIds')).toBe(true);
+});
+
+test('wantsAccessField: returns false for different string', () => {
+  expect(wantsAccessField('OtherField')).toBe(false);
+});
+
+test('wantsAccessField: returns true if any element in array matches', () => {
+  expect(wantsAccessField(['Id', 'AccessUiResourceIds'])).toBe(true);
+});
+
+test('wantsAccessField: returns false if no element matches', () => {
+  expect(wantsAccessField(['Id', 'Name'])).toBe(false);
+});
+
+test('wantsAccessField: recurse into nested fields objects', () => {
+  expect(wantsAccessField({ fields: ['AccessUiResourceIds'] })).toBe(true);
+  expect(wantsAccessField({ fields: ['Id'] })).toBe(false);
+  expect(wantsAccessField({ fields: [{ fields: ['AccessUiResourceIds'] }] })).toBe(true);
+});
+
+test('wantsAccessField: returns false for non-matching object', () => {
+  expect(wantsAccessField({ x: 1 })).toBe(false);
 });

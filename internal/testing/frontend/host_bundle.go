@@ -116,6 +116,16 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			"@":   modulesDir,
 			"vue": vueSpec,
 		},
+		// vueplugin resolves `@/` inside SFCs via tsconfig paths (esbuild Alias alone is not enough).
+		TsconfigRaw: `{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./modules/*"]}}}`,
+		Loader: map[string]api.Loader{
+			".svg":  api.LoaderDataURL,
+			".png":  api.LoaderDataURL,
+			".jpg":  api.LoaderDataURL,
+			".css":  api.LoaderEmpty,
+			".scss": api.LoaderEmpty,
+			".sass": api.LoaderEmpty,
+		},
 		Plugins: plugins,
 		Define: map[string]string{
 			"import.meta.env.MODE":                    "'test'",

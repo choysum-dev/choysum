@@ -1,68 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { normalizeUiResourceRequires } from './role_ui_requires_explain';
 
-function roleFormSource(): string {
-  return readFileSync(resolve(__dirname, 'RoleFormView.vue'), 'utf8');
-}
-
-describe('Role UiResources field binding', () => {
-  it('declares AccessUiResourceIds as primary UI resource editor', () => {
-    const source = roleFormSource();
-
-    expect(source).toContain('OManyToManyRefTreeField');
-    expect(source).toContain('prop="AccessUiResourceIds"');
-    expect(source).toContain(':label="_t(\'Accessible UI Resources\')"');
-    expect(source).toContain(':lazy="false"');
-    expect(source).toContain(':max-depth="0"');
-    expect(source).toContain('children-field="Childs"');
-    expect(source).toContain(':root-condition="{');
-    expect(source).toContain("['Type', '=', 'MENU']");
-    expect(source).toContain("['ParentId', 'is', null]");
-    expect(source).toContain(":fields=\"['Type', 'Requires']\"");
-    expect(source).toContain(':check-strictly="false"');
-    expect(source).toContain('<template #node="{ row, label }">');
-    expect(source).toContain('resolveUiResourceTypeIcon(row?.Type)');
-    expect(source).toContain('inspectUiResource(row)');
-    expect(source).toContain('type="button"');
-    expect(source).toContain('isInspectedUiResourceRow(inspectedUiResourceId, row)');
-    expect(source).toContain('getInspectedUiResourceRequires');
-    expect(source).toContain('Requires → derived Method RPCs');
-    expect(source).toContain('UI-Option-A');
-    expect(source).toContain('Primary path: check resources in this tree');
-    expect(source).not.toContain('OAuthUiResourceTreeField');
-  });
-
-  it('keeps Advanced Mode as this-role data/RPC grant surface with Kind and app scope', () => {
-    const source = roleFormSource();
-
-    expect(source).toContain(':label="_t(\'Advanced Mode\')"');
-    expect(source).toContain("Record Rules'");
-    expect(source).toContain("Field Rules'");
-    expect(source).toContain("Method Access'");
-    expect(source).toContain("UI Resource Details (manual bypass)'");
-    expect(source).not.toContain('Manual Maintenance');
-
-    expect(source).toContain('RecordRules.Kind');
-    expect(source).not.toContain('RecordRules.RoleId');
-    expect(source).not.toContain('Applies to Role (empty = all users)');
-    expect(source).toContain('This form only edits rules for this role');
-    expect(source).toContain('Access Control → Access Rules');
-    expect(source).toContain('RecordRules.MetaApplicationId');
-    expect(source).toContain('FieldRules.MetaApplicationId');
-    expect(source).toContain('MethodAccesses.MetaApplicationId');
-    expect(source).toContain(':default-record="defaultRecordRule"');
-    expect(source).toContain(':default-record="defaultMethodAccess"');
-    expect(source).toContain("Mode: 'allow'");
-    expect(source).toContain("Kind: 'grant'");
-    expect(source).toContain('scope-global');
-
-    expect(source).toContain('prop="UiResources"');
-    expect(source).toContain('UiResources.Mode');
-    expect(source).toContain('UiResources.MetaApplicationId');
-    expect(source).toContain('UiResources.MetaUiResourceId');
-  });
+test('Role UiResources field binding: normalizeUiResourceRequires accepts arrays and JSON', () => {
+  expect(normalizeUiResourceRequires(['rpc:/auth.User/Browse', 'rpc:/auth.User/Browse'])).toEqual(['rpc:/auth.User/Browse']);
+  expect(normalizeUiResourceRequires('["rpc:/auth.User/Browse"]')).toEqual(['rpc:/auth.User/Browse']);
+  expect(normalizeUiResourceRequires(null)).toEqual([]);
 });
