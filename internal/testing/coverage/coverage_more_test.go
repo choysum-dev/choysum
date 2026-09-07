@@ -110,6 +110,44 @@ func TestEnrichCoverageJSONWithMeta(t *testing.T) {
 	if got := enrichCoverageJSONWithMeta(string(nilEntry)); !strings.Contains(got, "x") {
 		t.Fatalf("nil entry enrich = %q", got)
 	}
+
+	// Marshal failure keeps the original JSON instead of returning "".
+	prev := jsonMarshal
+	jsonMarshal = func(any) ([]byte, error) { return nil, errors.New("marshal failed") }
+	t.Cleanup(func() { jsonMarshal = prev })
+	before := string(raw)
+	if got := enrichCoverageJSONWithMeta(before); got != before {
+		t.Fatalf("marshal failure should return original, got %q", got)
+	}
+}
+
+func TestInstrumentJSFile_FnIDsFollowSourceOrder(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "order.js")
+	// Nested functions: DFS stack alone would reverse child order.
+	src := "function outer(){ function inner(){ return 1 } return inner() }\nouter();\n"
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := InstrumentJSFile(path); err != nil {
+		t.Fatal(err)
+	}
+	metaRaw, err := os.ReadFile(path + ".coverage-meta.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var meta coverageFileData
+	if err := json.Unmarshal(metaRaw, &meta); err != nil {
+		t.Fatal(err)
+	}
+	if len(meta.FnMap) < 2 {
+		t.Fatalf("expected >=2 functions, got %#v", meta.FnMap)
+	}
+	outer := meta.FnMap["0"]
+	inner := meta.FnMap["1"]
+	if outer.Name != "outer" || inner.Name != "inner" {
+		t.Fatalf("fn IDs should follow source order, got 0=%q 1=%q", outer.Name, inner.Name)
+	}
 }
 
 func TestWriteCoverageJSONEnrichesFromMeta(t *testing.T) {

@@ -171,6 +171,10 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 		}
 		measurable = append(measurable, fn)
 	}
+	// DFS stack walk visits children right-to-left; sort so fn IDs follow source order.
+	sort.SliceStable(measurable, func(i, j int) bool {
+		return measurable[i].EntryPos < measurable[j].EntryPos
+	})
 	for i, fn := range measurable {
 		id := strconv.Itoa(i)
 		fnMap[id] = coverageFn{Name: fn.Name, Decl: fn.Decl, Loc: fn.Loc, Line: fn.Line}

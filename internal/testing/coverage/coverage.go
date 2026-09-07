@@ -23,6 +23,7 @@ import (
 var (
 	osGetwd        = os.Getwd
 	cryptoRandRead = rand.Read
+	jsonMarshal    = json.Marshal
 )
 
 type coverageRunIDContextKey struct{}
@@ -284,7 +285,10 @@ func enrichCoverageJSONWithMeta(coverageJSON string) string {
 	if !changed {
 		return coverageJSON
 	}
-	out, _ := json.Marshal(fileMap)
+	out, err := jsonMarshal(fileMap)
+	if err != nil {
+		return coverageJSON
+	}
 	return string(out)
 }
 
