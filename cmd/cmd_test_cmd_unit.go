@@ -271,7 +271,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 	cmd.Flags().BoolVar(&tapStdout, "tap-stdout", true, "print TAP to stdout and logs to stderr (set false to revert legacy mixed output)")
 	cmd.Flags().StringVar(&runtimeLogLevel, "runtime-log-level", "warn", "runtime log level during backend test setup/execution (debug|info|warn|error; default: warn)")
 	cmd.Flags().BoolVar(&scopeBE, "be", false, "run backend (QuickJS) tests")
-	cmd.Flags().BoolVar(&scopeFE, "fe", false, "run frontend (Vitest) tests")
+	cmd.Flags().BoolVar(&scopeFE, "fe", false, "run frontend tests (default: Vitest; set CHOYSUM_FE_UNIT_ENGINE=qjs for QuickJS host bypass until final-fe)")
 	cmd.Flags().BoolVar(&coverage, "coverage", false, "enable coverage collection (Istanbul __coverage__ -> <CLI test tmp root>/testing/<workspace-hash>/<run-id>/coverage/nyc_output)")
 	cmd.Flags().BoolVar(&coverageReport, "coverage-report", false, "generate coverage report artifacts for Codecov and local inspection (Go lcov/text; no node/nyc)")
 	cmd.Flags().BoolVar(&coverageCheck, "coverage-check", false, "fail if coverage is below thresholds (Go check; no node/nyc)")

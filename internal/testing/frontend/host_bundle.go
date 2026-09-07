@@ -77,6 +77,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		return nil, xfmt.Errorf("vue host bundle: mkdir: %w", err)
 	}
 
+	modulesDir := filepath.Join(repoRoot, "modules")
 	vueSpec := "vue@" + choysummount.VuePackageVersion
 	plugins := []api.Plugin{
 		{
@@ -112,7 +113,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		LogLevel:      api.LogLevelWarning,
 		AbsWorkingDir: strings.TrimSpace(opts.WorkingDir),
 		Alias: map[string]string{
-			// Pin Vue for the host; esmresolver resolves vue@x.y.z via esm.sh.
+			"@":   modulesDir,
 			"vue": vueSpec,
 		},
 		Plugins: plugins,
