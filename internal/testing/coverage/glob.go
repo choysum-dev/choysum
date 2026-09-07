@@ -21,13 +21,6 @@ func matchCoverageGlob(pattern, path string) bool {
 	path = strings.TrimPrefix(path, "./")
 	pattern = strings.TrimPrefix(pattern, "./")
 
-	// Absolute patterns: try matching against full path and path-relative forms.
-	if strings.HasPrefix(pattern, "/") || (len(pattern) > 1 && pattern[1] == ':') {
-		if matchGlobSegments(splitGlob(pattern), splitGlob(path)) {
-			return true
-		}
-	}
-
 	// Match the full path only (nyc/minimatch semantics for bare basenames:
 	// `service.ts` matches a repo-root file, not every nested `**/service.ts`).
 	return matchGlobSegments(splitGlob(pattern), splitGlob(path))
