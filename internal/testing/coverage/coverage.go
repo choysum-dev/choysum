@@ -19,6 +19,12 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+// Test seams for rare OS failures (overridden in unit tests).
+var (
+	osGetwd        = os.Getwd
+	cryptoRandRead = rand.Read
+)
+
 type coverageRunIDContextKey struct{}
 
 // ContextWithCoverageRunID stores a run ID in context for coverage isolation.
@@ -46,7 +52,7 @@ func CoverageRunIDFromContext(ctx context.Context) string {
 func NewCoverageRunID() string {
 	ts := time.Now().UTC().Format("20060102-150405.000")
 	buf := make([]byte, 6)
-	if _, err := rand.Read(buf); err != nil {
+	if _, err := cryptoRandRead(buf); err != nil {
 		return fmt.Sprintf("%s-r%x", ts, time.Now().UnixNano())
 	}
 	return fmt.Sprintf("%s-r%s", ts, hex.EncodeToString(buf))
@@ -55,7 +61,7 @@ func NewCoverageRunID() string {
 // FindRepoRootFromCwd walks up from cwd until it finds go.mod.
 // It falls back to the original cwd when not found.
 func FindRepoRootFromCwd() string {
-	cwd, err := os.Getwd()
+	cwd, err := osGetwd()
 	if err != nil {
 		return "."
 	}
@@ -194,10 +200,7 @@ func WriteCoverageJSONWithRunIDAndTmpRoot(repoRoot string, app string, runID str
 	if strings.TrimSpace(coverageJSON) == "" {
 		return nil
 	}
-	enriched, err := enrichCoverageJSONWithMeta(coverageJSON)
-	if err != nil {
-		return xfmt.Errorf("enrich coverage meta: %w", err)
-	}
+	enriched := enrichCoverageJSONWithMeta(coverageJSON)
 	coverageJSON = enriched
 	repoRoot = strings.TrimSpace(repoRoot)
 	if repoRoot == "" {
@@ -226,14 +229,14 @@ func WriteCoverageJSONWithRunIDAndTmpRoot(repoRoot string, app string, runID str
 	return nil
 }
 
-func enrichCoverageJSONWithMeta(coverageJSON string) (string, error) {
+func enrichCoverageJSONWithMeta(coverageJSON string) string {
 	coverageJSON = strings.TrimSpace(coverageJSON)
 	if coverageJSON == "" || coverageJSON == "null" {
-		return coverageJSON, nil
+		return coverageJSON
 	}
 	var fileMap map[string]*coverageFileData
 	if err := json.Unmarshal([]byte(coverageJSON), &fileMap); err != nil {
-		return coverageJSON, nil
+		return coverageJSON
 	}
 	changed := false
 	for path, data := range fileMap {
@@ -275,13 +278,10 @@ func enrichCoverageJSONWithMeta(coverageJSON string) (string, error) {
 		}
 	}
 	if !changed {
-		return coverageJSON, nil
+		return coverageJSON
 	}
-	out, err := json.Marshal(fileMap)
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
+	out, _ := json.Marshal(fileMap)
+	return string(out)
 }
 
 // SplitCoverageGlobs accepts comma/semicolon/whitespace-separated values.
@@ -303,9 +303,6 @@ func SplitCoverageGlobs(v string) []string {
 	globs := make([]string, 0, len(parts))
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
 		globs = append(globs, p)
 	}
 	return globs

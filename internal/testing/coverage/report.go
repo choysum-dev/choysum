@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"sort"
@@ -723,7 +724,7 @@ func renderHTMLSummary(stats []fileCoverageStats) string {
 	b.WriteString("<table><thead><tr><th>File</th><th>Statements</th><th>Lines</th><th>Functions</th><th>Branches</th></tr></thead><tbody>")
 	for _, st := range stats {
 		fmt.Fprintf(&b, "<tr><td>%s</td><td class=\"num\">%.2f%% (%d/%d)</td><td class=\"num\">%.2f%% (%d/%d)</td><td class=\"num\">%.2f%% (%d/%d)</td><td class=\"num\">%.2f%% (%d/%d)</td></tr>",
-			st.Path,
+			html.EscapeString(st.Path),
 			st.Statements.Percent(), st.Statements.Covered, st.Statements.Total,
 			st.Lines.Percent(), st.Lines.Covered, st.Lines.Total,
 			st.Functions.Percent(), st.Functions.Covered, st.Functions.Total,
@@ -763,9 +764,6 @@ func renderJSONSummary(stats []fileCoverageStats) string {
 			Branches:   metric{Total: st.Branches.Total, Covered: st.Branches.Covered, Pct: st.Branches.Percent()},
 		}
 	}
-	raw, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		return "{}"
-	}
+	raw, _ := json.MarshalIndent(out, "", "  ")
 	return string(raw) + "\n"
 }

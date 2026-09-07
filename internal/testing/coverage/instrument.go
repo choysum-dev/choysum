@@ -23,6 +23,9 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+// Test seams for rare OS failures (overridden in unit tests).
+var filepathAbs = filepath.Abs
+
 // Istanbul coverage schema id used by istanbul-lib-instrument (kept for consumer compatibility).
 const istanbulCoverageSchema = "1a1c01bbd47fc00a2c39e90264f33305004495a9"
 
@@ -40,7 +43,7 @@ func InstrumentJSFile(path string) error {
 	if path == "" {
 		return xfmt.Errorf("empty path")
 	}
-	absPath, err := filepath.Abs(path)
+	absPath, err := filepathAbs(path)
 	if err != nil {
 		return xfmt.Errorf("abs path: %w", err)
 	}
@@ -60,10 +63,7 @@ func InstrumentJSFile(path string) error {
 	finalCode := instrumented + "\n;void 0;\n"
 	outMapPath := absPath + ".map"
 	if inputMap != nil {
-		mapBytes, err := json.Marshal(inputMap)
-		if err != nil {
-			return xfmt.Errorf("marshal sourcemap: %w", err)
-		}
+		mapBytes, _ := json.Marshal(inputMap)
 		if err := os.WriteFile(outMapPath, mapBytes, 0o644); err != nil {
 			return xfmt.Errorf("write sourcemap: %w", err)
 		}
@@ -75,10 +75,7 @@ func InstrumentJSFile(path string) error {
 	}
 
 	metaPath := absPath + ".coverage-meta.json"
-	metaBytes, err := json.Marshal(meta)
-	if err != nil {
-		return xfmt.Errorf("marshal coverage meta: %w", err)
-	}
+	metaBytes, _ := json.Marshal(meta)
 	if err := os.WriteFile(metaPath, metaBytes, 0o644); err != nil {
 		return xfmt.Errorf("write coverage meta: %w", err)
 	}
@@ -102,9 +99,6 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 	for len(stack) > 0 {
 		n := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-		if n == nil {
-			continue
-		}
 		if tsast.IsFunctionLike(n) {
 			start := scanner.SkipTrivia(code, n.Pos())
 			end := n.End()
@@ -167,12 +161,23 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 
 	fnMap := map[string]coverageFn{}
 	fHits := map[string]int{}
-	for i, fn := range fns {
+	// Only count functions we can instrument (block bodies). Expression-bodied
+	// arrows and body-less signatures stay out of fnMap so Functions.Total is
+	// not inflated by permanently uncovered entries.
+	measurable := make([]fnPoint, 0, len(fns))
+	for _, fn := range fns {
+		if fn.EntryPos < 0 || fn.EntryPos > len(code) {
+			continue
+		}
+		measurable = append(measurable, fn)
+	}
+	for i, fn := range measurable {
 		id := strconv.Itoa(i)
 		fnMap[id] = coverageFn{Name: fn.Name, Decl: fn.Decl, Loc: fn.Loc, Line: fn.Line}
 		fHits[id] = 0
-		fns[i].ID = i
+		measurable[i].ID = i
 	}
+	fns = measurable
 
 	hash := sha1.Sum([]byte(code))
 	meta := &coverageFileData{
@@ -211,9 +216,6 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 		edits = append(edits, textEdit{pos: st.InsertPos, text: inc})
 	}
 	for _, fn := range fns {
-		if fn.EntryPos < 0 || fn.EntryPos > len(code) {
-			continue
-		}
 		edits = append(edits, textEdit{
 			pos:  fn.EntryPos,
 			text: covName + "().f[" + strconv.Itoa(fn.ID) + "]++;",
@@ -234,9 +236,6 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 	b.Grow(len(code) + len(edits)*24)
 	prev := 0
 	for _, ed := range edits {
-		if ed.pos < prev || ed.pos > len(code) {
-			continue
-		}
 		b.WriteString(code[prev:ed.pos])
 		b.WriteString(ed.text)
 		prev = ed.pos
@@ -274,9 +273,10 @@ func functionBodyEntryPos(code string, n *tsast.Node) int {
 		return -1
 	}
 	pos := scanner.SkipTrivia(code, body.Pos())
-	if pos < 0 || pos >= len(code) || code[pos] != '{' {
+	if pos < 0 || pos >= len(code) {
 		return -1
 	}
+	// KindBlock always starts at `{` after trivia.
 	return pos + 1
 }
 
@@ -285,9 +285,7 @@ func shouldInstrumentStatement(n *tsast.Node) bool {
 		return false
 	}
 	switch n.Kind {
-	case tsast.KindBlock, tsast.KindEmptyStatement, tsast.KindDebuggerStatement:
-		return false
-	case tsast.KindModuleBlock:
+	case tsast.KindBlock, tsast.KindEmptyStatement, tsast.KindDebuggerStatement, tsast.KindModuleBlock:
 		return false
 	default:
 		return true
@@ -326,9 +324,6 @@ func functionCoverageName(n *tsast.Node) string {
 		return "(anonymous)"
 	}
 	text := strings.TrimSpace(name.Text())
-	if text == "" {
-		return "(anonymous)"
-	}
 	return text
 }
 

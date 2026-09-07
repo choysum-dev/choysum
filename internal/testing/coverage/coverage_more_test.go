@@ -7,10 +7,16 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
+	tscore "github.com/buke/typescript-go-internal/v7/pkg/core"
+	tsparser "github.com/buke/typescript-go-internal/v7/pkg/parser"
+	tspath "github.com/buke/typescript-go-internal/v7/pkg/tspath"
 )
 
 func TestNewCoverageRunIDAndContextNil(t *testing.T) {
@@ -86,25 +92,22 @@ func TestEnrichCoverageJSONWithMeta(t *testing.T) {
 		},
 	}
 	raw, _ := json.Marshal(runtime)
-	out, err := enrichCoverageJSONWithMeta(string(raw))
-	if err != nil {
-		t.Fatalf("enrich: %v", err)
-	}
+	out := enrichCoverageJSONWithMeta(string(raw))
 	if !strings.Contains(out, "statementMap") || !strings.Contains(out, "inputSourceMap") {
 		t.Fatalf("expected meta merged, got %s", out)
 	}
-	if got, err := enrichCoverageJSONWithMeta(""); err != nil || got != "" {
-		t.Fatalf("empty enrich = %q %v", got, err)
+	if got := enrichCoverageJSONWithMeta(""); got != "" {
+		t.Fatalf("empty enrich = %q", got)
 	}
-	if got, err := enrichCoverageJSONWithMeta("null"); err != nil || got != "null" {
-		t.Fatalf("null enrich = %q %v", got, err)
+	if got := enrichCoverageJSONWithMeta("null"); got != "null" {
+		t.Fatalf("null enrich = %q", got)
 	}
-	if got, err := enrichCoverageJSONWithMeta("not-json"); err != nil || got != "not-json" {
-		t.Fatalf("invalid json should pass through, got %q %v", got, err)
+	if got := enrichCoverageJSONWithMeta("not-json"); got != "not-json" {
+		t.Fatalf("invalid json should pass through, got %q", got)
 	}
 	nilEntry, _ := json.Marshal(map[string]*coverageFileData{"x": nil})
-	if got, err := enrichCoverageJSONWithMeta(string(nilEntry)); err != nil || !strings.Contains(got, "x") {
-		t.Fatalf("nil entry enrich = %q %v", got, err)
+	if got := enrichCoverageJSONWithMeta(string(nilEntry)); !strings.Contains(got, "x") {
+		t.Fatalf("nil entry enrich = %q", got)
 	}
 }
 
@@ -245,13 +248,16 @@ func TestInstrumentJSFile_ArrowExpressionBodyNoFnInsert(t *testing.T) {
 	if err := InstrumentJSFile(path); err != nil {
 		t.Fatal(err)
 	}
-	// Expression-bodied arrows are tracked in fnMap but have no entry insert.
 	metaRaw, err := os.ReadFile(path + ".coverage-meta.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(metaRaw), "fnMap") {
-		t.Fatalf("expected fnMap: %s", metaRaw)
+	var meta coverageFileData
+	if err := json.Unmarshal(metaRaw, &meta); err != nil {
+		t.Fatal(err)
+	}
+	if len(meta.FnMap) != 0 {
+		t.Fatalf("expression-bodied arrows must be omitted from fnMap, got %#v", meta.FnMap)
 	}
 }
 
@@ -686,6 +692,9 @@ func TestMatchGlobPartStarVariants(t *testing.T) {
 }
 
 func TestInstrumentJSFile_WriteFailures(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("chmod-based write denial is unreliable as root")
+	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "ro.js")
 	if err := os.WriteFile(path, []byte("var a=1;\n"), 0o644); err != nil {
@@ -972,10 +981,7 @@ func TestEnrichCoverageUsesMapKeyWhenPathEmpty(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload := `{"` + key + `":{"s":{"0":1},"f":{},"b":{}}}`
-	out, err := enrichCoverageJSONWithMeta(payload)
-	if err != nil {
-		t.Fatal(err)
-	}
+	out := enrichCoverageJSONWithMeta(payload)
 	if !strings.Contains(out, "statementMap") || !strings.Contains(out, `"_coverageSchema":"x"`) {
 		t.Fatalf("enrich = %s", out)
 	}
@@ -1055,6 +1061,9 @@ func TestRemapInvalidSourceMapMappings(t *testing.T) {
 }
 
 func TestInstrumentDistBundlePropagatesInstrumentError(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("chmod-based write denial is unreliable as root")
+	}
 	distPath := t.TempDir()
 	appIndex := filepath.Join(distPath, "apps", "portal", "index.js")
 	if err := os.MkdirAll(filepath.Dir(appIndex), 0o755); err != nil {
@@ -1073,6 +1082,9 @@ func TestInstrumentDistBundlePropagatesInstrumentError(t *testing.T) {
 }
 
 func TestWriteCoverageJSONReadOnlyDir(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("chmod-based write denial is unreliable as root")
+	}
 	repoRoot := t.TempDir()
 	tmpRoot := t.TempDir()
 	// Create nyc_output then freeze the coverage base dir.
@@ -1093,6 +1105,9 @@ func TestWriteCoverageJSONReadOnlyDir(t *testing.T) {
 }
 
 func TestLoadMergedCoverageUnreadableJSON(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("chmod-based read denial is unreliable as root")
+	}
 	repoRoot := t.TempDir()
 	tmpRoot := t.TempDir()
 	runID := "unreadable"
@@ -1310,10 +1325,7 @@ func TestEnrichSkipsInvalidMetaJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload := `{"` + js + `":{"path":"` + js + `","s":{},"f":{},"b":{}}}`
-	out, err := enrichCoverageJSONWithMeta(payload)
-	if err != nil {
-		t.Fatal(err)
-	}
+	out := enrichCoverageJSONWithMeta(payload)
 	if out != payload {
 		t.Fatalf("expected unchanged payload, got %s", out)
 	}
@@ -1412,6 +1424,9 @@ func TestAccumulateEnsureEmptyPath(t *testing.T) {
 }
 
 func TestWriteCoverageMkdirFailure(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("chmod-based write denial is unreliable as root")
+	}
 	repoRoot := t.TempDir()
 	tmpRoot := t.TempDir()
 	base, err := resolveCoverageTmpBaseDirWithRunID(repoRoot, tmpRoot, "mk")
@@ -1458,5 +1473,199 @@ func TestBuildGeneratedLineWithSourceRoot(t *testing.T) {
 	}
 	if len(m) == 0 {
 		t.Fatal("expected mapping")
+	}
+}
+
+func TestOSFailureSeams(t *testing.T) {
+	t.Run("filepathAbs error", func(t *testing.T) {
+		prev := filepathAbs
+		filepathAbs = func(string) (string, error) { return "", errors.New("abs failed") }
+		t.Cleanup(func() { filepathAbs = prev })
+		if err := InstrumentJSFile(filepath.Join(t.TempDir(), "x.js")); err == nil || !strings.Contains(err.Error(), "abs path") {
+			t.Fatalf("got %v", err)
+		}
+	})
+	t.Run("getwd error", func(t *testing.T) {
+		prev := osGetwd
+		osGetwd = func() (string, error) { return "", errors.New("cwd failed") }
+		t.Cleanup(func() { osGetwd = prev })
+		if got := FindRepoRootFromCwd(); got != "." {
+			t.Fatalf("got %q", got)
+		}
+	})
+	t.Run("rand read error", func(t *testing.T) {
+		prev := cryptoRandRead
+		cryptoRandRead = func([]byte) (int, error) { return 0, errors.New("rand failed") }
+		t.Cleanup(func() { cryptoRandRead = prev })
+		id := NewCoverageRunID()
+		if id == "" || !strings.Contains(id, "-r") {
+			t.Fatalf("got %q", id)
+		}
+	})
+}
+
+func TestPathLikeRunIDErrors(t *testing.T) {
+	repo := t.TempDir()
+	tmp := t.TempDir()
+	if _, err := ResolveCoverageReportDirWithRunID(repo, tmp, "bad/id"); err == nil {
+		t.Fatal("expected report dir resolve error")
+	}
+	if _, err := resolveCoverageNycOutputDirWithRunID(repo, tmp, "bad/id"); err == nil {
+		t.Fatal("expected nyc resolve error")
+	}
+	if err := WriteCoverageJSONWithRunIDAndTmpRoot(repo, "a", "bad/id", `{"x":{}}`, tmp); err == nil {
+		t.Fatal("expected write resolve error")
+	}
+	if _, err := loadMergedCoverage(repo, tmp, "bad/id"); err == nil {
+		t.Fatal("expected loadMerged resolve error")
+	}
+	if err := WriteLcov(context.Background(), ReportOptions{
+		RepoRoot: repo, TmpRoot: tmp, RunID: "bad/id",
+	}); err == nil {
+		t.Fatal("expected WriteLcov resolve error")
+	}
+	if err := CheckCoverage(context.Background(), CheckOptions{
+		RepoRoot: repo, TmpRoot: tmp, RunID: "bad/id", Statements: 1,
+	}); err == nil {
+		t.Fatal("expected CheckCoverage resolve error")
+	}
+}
+
+func TestLoadMergedNilFileEntryAndTwoFileSort(t *testing.T) {
+	repoRoot := t.TempDir()
+	tmpRoot := t.TempDir()
+	runID := "nil-entry"
+	nyc, err := resolveCoverageNycOutputDirWithRunID(repoRoot, tmpRoot, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nyc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	a := filepath.Join(repoRoot, "a.ts")
+	b := filepath.Join(repoRoot, "b.ts")
+	payload := map[string]*coverageFileData{
+		"nil": nil,
+		a: {
+			Path:         "",
+			StatementMap: map[string]coverageRange{"0": {Start: coveragePos{Line: 1, Column: 0}, End: coveragePos{Line: 1, Column: 1}}},
+			S:            hitMap{"0": 1},
+		},
+		b: {
+			Path:         b,
+			StatementMap: map[string]coverageRange{"0": {Start: coveragePos{Line: 1, Column: 0}, End: coveragePos{Line: 1, Column: 1}}},
+			S:            hitMap{"0": 0},
+		},
+	}
+	raw, _ := json.Marshal(payload)
+	if err := os.WriteFile(filepath.Join(nyc, "choysum-app-nil-entry-1.json"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	merged, err := loadMergedCoverage(repoRoot, tmpRoot, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if merged[a].Path != a {
+		t.Fatalf("expected path filled from key, got %#v", merged[a])
+	}
+	stats, err := computeCoverageStats(repoRoot, merged, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stats) < 2 {
+		t.Fatalf("expected sorted multi-file stats, got %#v", stats)
+	}
+}
+
+func TestHTMLEscapesPath(t *testing.T) {
+	htmlOut := renderHTMLSummary([]fileCoverageStats{{
+		Path:       `a<b>&c.ts`,
+		Statements: hitCount{Covered: 1, Total: 1},
+		Lines:      hitCount{Covered: 1, Total: 1},
+	}})
+	if strings.Contains(htmlOut, `a<b>&c.ts`) {
+		t.Fatalf("path should be escaped: %s", htmlOut)
+	}
+	if !strings.Contains(htmlOut, "a&lt;b&gt;&amp;c.ts") {
+		t.Fatalf("expected escaped path, got %s", htmlOut)
+	}
+}
+
+func TestMergeCoverageCopiesInputSourceMap(t *testing.T) {
+	dst := map[string]*coverageFileData{}
+	path := "/x.js"
+	mergeCoverageFile(dst, path, &coverageFileData{
+		Path: path,
+		S:    hitMap{"0": 1},
+	})
+	mergeCoverageFile(dst, path, &coverageFileData{
+		Path:           path,
+		S:              hitMap{"0": 1},
+		InputSourceMap: &rawSourceMap{Version: 3, Sources: []string{"x.ts"}, Mappings: "AAAA"},
+	})
+	if dst[path].InputSourceMap == nil {
+		t.Fatal("expected inputSourceMap copied onto existing entry")
+	}
+}
+
+func TestBuildGeneratedLineSkipsNonSourceMappings(t *testing.T) {
+	sm := &rawSourceMap{
+		Version:  3,
+		Sources:  []string{"a.ts"},
+		Mappings: "A", // generated-column-only segment (not a source mapping)
+	}
+	m, err := buildGeneratedLineToSource("/out.js", sm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m) != 0 {
+		t.Fatalf("expected no source mappings, got %#v", m)
+	}
+}
+
+func TestFunctionBodyEntryPosOutOfRangeCode(t *testing.T) {
+	normalized := tspath.NormalizePath("/tmp/entry.js")
+	sf := tsparser.ParseSourceFile(tsast.SourceFileParseOptions{
+		FileName: normalized,
+		Path:     tspath.ToPath(normalized, "", true),
+	}, "function f(){ return 1 }", tscore.ScriptKindJS)
+	var fn *tsast.Node
+	stack := []*tsast.Node{sf.AsNode()}
+	for len(stack) > 0 {
+		n := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if tsast.IsFunctionLike(n) && n.Body() != nil && n.Body().Kind == tsast.KindBlock {
+			fn = n
+			break
+		}
+		n.ForEachChild(func(child *tsast.Node) bool {
+			if child != nil {
+				stack = append(stack, child)
+			}
+			return false
+		})
+	}
+	if fn == nil {
+		t.Fatal("expected function node")
+	}
+	if got := functionBodyEntryPos("", fn); got != -1 {
+		t.Fatalf("expected -1 for empty code, got %d", got)
+	}
+}
+
+func TestCheckCoverageMissingJSON(t *testing.T) {
+	repo := t.TempDir()
+	tmp := t.TempDir()
+	nyc, err := resolveCoverageNycOutputDirWithRunID(repo, tmp, "missing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nyc, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckCoverage(context.Background(), CheckOptions{
+		RepoRoot: repo, TmpRoot: tmp, RunID: "missing", Statements: 1,
+	}); err == nil {
+		t.Fatal("expected missing coverage json")
 	}
 }
