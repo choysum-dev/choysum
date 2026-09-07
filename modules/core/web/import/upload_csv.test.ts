@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { __setUploadImportCsvDepsForTest, uploadImportCsv } from './upload_csv';
+import { clearGlobalRequestContextProvider, setGlobalRequestContextProvider } from '@/core/rpc/context';
+import { setCSRFProvider as bindCSRFProvider, setTokenProvider as bindTokenProvider } from '@/core/web/rpc/providers';
+import { registerStoreFactory } from '@/core/web/stores/registry';
+import { uploadImportCsv, type UploadImportCsvOptions } from './upload_csv';
 
 // QuickJS FE unit host may lack File / Headers / Blob.
 (function polyfillUploadPrimitives() {
@@ -81,6 +84,7 @@ type Harness = {
   setRequestContext: (ctx: unknown | (() => unknown)) => void;
   setCSRFProvider: (provider: unknown) => void;
   setTokenProvider: (provider: unknown) => void;
+  upload: (options: Omit<UploadImportCsvOptions, 'fetch'>) => Promise<string>;
   clear: () => void;
 };
 
@@ -94,20 +98,11 @@ function installHarness(): Harness {
     PrepareUpload: prepareUpload.fn,
     FinalizeUpload: finalizeUpload.fn,
   };
-  let requestContext: unknown | (() => unknown) = { activeCompanyId: 'cmp-1', lang: 'en' };
-  let csrfProvider: unknown = undefined;
-  let tokenProvider: unknown = undefined;
 
-  __setUploadImportCsvDepsForTest({
-    createStoreByModel: () => store,
-    getCurrentRequestContext: (() => {
-      if (typeof requestContext === 'function') return (requestContext as () => unknown)();
-      return requestContext;
-    }) as any,
-    getCSRFProvider: (() => csrfProvider) as any,
-    getTokenProvider: (() => tokenProvider) as any,
-    fetch: fetchFn.fn as any,
-  });
+  registerStoreFactory('document.AttachmentContent', () => store);
+  setGlobalRequestContextProvider({ activeCompanyId: 'cmp-1', lang: 'en' });
+  bindCSRFProvider(null);
+  bindTokenProvider(null);
 
   return {
     prepareUpload,
@@ -115,18 +110,30 @@ function installHarness(): Harness {
     fetchFn,
     setStore(next) {
       store = next;
+      registerStoreFactory('document.AttachmentContent', () => store);
     },
     setRequestContext(ctx) {
-      requestContext = ctx;
+      if (typeof ctx === 'function') {
+        setGlobalRequestContextProvider(ctx as () => Record<string, string>);
+      } else if (ctx == null) {
+        setGlobalRequestContextProvider(() => ({}));
+      } else {
+        setGlobalRequestContextProvider(ctx as Record<string, string>);
+      }
     },
     setCSRFProvider(provider) {
-      csrfProvider = provider;
+      bindCSRFProvider(provider as any);
     },
     setTokenProvider(provider) {
-      tokenProvider = provider;
+      bindTokenProvider(provider as any);
+    },
+    upload(options) {
+      return uploadImportCsv({ ...options, fetch: fetchFn.fn as any });
     },
     clear() {
-      __setUploadImportCsvDepsForTest(null);
+      clearGlobalRequestContextProvider();
+      bindCSRFProvider(null);
+      bindTokenProvider(null);
     },
   };
 }
@@ -153,7 +160,7 @@ test('uploadImportCsv: uploads CSV and returns attachment object id', async () =
     });
     h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-1' });
 
-    const sourceRef = await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile() });
+    const sourceRef = await h.upload({ ownerModel: 'partner.Partner', file: csvFile() });
     expect(sourceRef).toBe('att-obj-1');
     expect(h.prepareUpload.calls.length).toBe(1);
     expect(h.finalizeUpload.calls[0]?.args[0]).toMatchObject({ uploadId: 'upl-1' });
@@ -178,7 +185,7 @@ test('uploadImportCsv: applies internal upload auth headers', async () => {
     });
     h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-2' });
 
-    await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x'), businessRequestId: 'req.fixed' });
+    await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x'), businessRequestId: 'req.fixed' });
 
     const headers = (h.fetchFn.calls[0]?.args[1] as any).headers as Headers;
     expect(headers.get('Authorization')).toBe('Bearer jwt-token');
@@ -194,7 +201,7 @@ test('uploadImportCsv: fails when prepare upload returns no target', async () =>
   try {
     h.prepareUpload.resolve({ uploadId: '' });
     await expectRejects(
-      () => uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') }),
+      () => h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') }),
       'PrepareUpload did not return upload target',
     );
   } finally {
@@ -210,7 +217,7 @@ test('uploadImportCsv: fails when upload target url is empty', async () => {
       uploadTarget: { method: 'PUT', url: '', headers: {} },
     });
     await expectRejects(
-      () => uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') }),
+      () => h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') }),
       'upload target url is empty',
     );
   } finally {
@@ -226,7 +233,7 @@ test('uploadImportCsv: fails when upload uses unsupported method', async () => {
       uploadTarget: { method: 'POST', url: 'https://example/upload', headers: {} },
     });
     await expectRejects(
-      () => uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') }),
+      () => h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') }),
       'unsupported upload method POST',
     );
   } finally {
@@ -243,7 +250,7 @@ test('uploadImportCsv: fails when finalize returns no attachment id', async () =
     });
     h.finalizeUpload.resolve({});
     await expectRejects(
-      () => uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') }),
+      () => h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') }),
       'FinalizeUpload did not return attachmentObjectId',
     );
   } finally {
@@ -256,7 +263,7 @@ test('uploadImportCsv: fails when attachment service is unavailable', async () =
   try {
     h.setStore({});
     await expectRejects(
-      () => uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') }),
+      () => h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') }),
       'document.AttachmentContent service is unavailable',
     );
   } finally {
@@ -281,7 +288,7 @@ test('uploadImportCsv: continues when sha256 digest fails', async () => {
           uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: {} },
         });
         h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-7' });
-        const sourceRef = await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+        const sourceRef = await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
         expect(sourceRef).toBe('att-obj-7');
       },
     );
@@ -299,7 +306,7 @@ test('uploadImportCsv: uploads without crypto.subtle and without randomUUID', as
         uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: {} },
       });
       h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-8' });
-      const sourceRef = await uploadImportCsv({
+      const sourceRef = await h.upload({
         ownerModel: 'partner.Partner',
         file: csvFile('x'),
         fieldName: ' CustomField ',
@@ -344,7 +351,7 @@ test('uploadImportCsv: ignores auth provider failures and skips duplicate header
     });
     h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-9' });
 
-    await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+    await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
     const headers = (h.fetchFn.calls[0]?.args[1] as any).headers as Headers;
     expect(headers.get('Authorization')).toBe('Bearer preset');
     expect(headers.get('baggage')).toBe('preset');
@@ -370,7 +377,7 @@ test('uploadImportCsv: refreshes token when provider says so', async () => {
     });
     h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-10' });
 
-    await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+    await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
     expect(refreshCalls).toBe(1);
   } finally {
     h.clear();
@@ -389,7 +396,7 @@ test('uploadImportCsv: skips baggage when request context lookup fails', async (
     });
     h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-11' });
 
-    await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+    await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
     const headers = (h.fetchFn.calls[0]?.args[1] as any).headers as Headers;
     expect(headers.has('baggage')).toBe(false);
   } finally {
@@ -417,7 +424,7 @@ test('uploadImportCsv: computes sha256 checksum when crypto.subtle works', async
           uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: { '': 'skip', ' ': 'skip2' } },
         });
         h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-12' });
-        await uploadImportCsv({ ownerModel: 'partner.Partner', file: new File([''], '', { type: '' }) });
+        await h.upload({ ownerModel: 'partner.Partner', file: new File([''], '', { type: '' }) });
         expect(digestCalls).toBe(1);
         expect((h.prepareUpload.calls[0]?.args[0] as any).proposedFileName).toBe('import.csv');
         expect((h.prepareUpload.calls[0]?.args[0] as any).proposedContentType).toBe('text/csv');
@@ -441,7 +448,7 @@ test('uploadImportCsv: uses fallback business request id and skips missing auth 
     });
     h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-13' });
 
-    await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+    await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
     const init = h.fetchFn.calls[0]?.args[1] as any;
     expect(init.method).toBe('PUT');
     expect(init.credentials).toBe('include');
@@ -460,7 +467,7 @@ test('uploadImportCsv: skips baggage when all context values are empty', async (
     });
     h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-15' });
 
-    await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+    await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
     const headers = (h.fetchFn.calls[0]?.args[1] as any).headers as Headers;
     expect(headers.has('baggage')).toBe(false);
   } finally {
@@ -482,7 +489,7 @@ test('uploadImportCsv: uses randomUUID for business request id when available', 
           uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: undefined },
         });
         h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-16' });
-        await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+        await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
         expect((h.prepareUpload.calls[0]?.args[0] as any).businessRequestId).toBe('import.csv.req-uuid-1');
       },
     );
@@ -505,7 +512,7 @@ test('uploadImportCsv: falls back when randomUUID returns empty', async () => {
           uploadTarget: { method: 'PUT', url: 'https://example/upload', headers: {} },
         });
         h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-17' });
-        await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+        await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
         expect(String((h.prepareUpload.calls[0]?.args[0] as any).businessRequestId).startsWith('import.csv.')).toBe(true);
       },
     );
@@ -525,7 +532,7 @@ test('uploadImportCsv: ignores empty csrf and token values', async () => {
     });
     h.finalizeUpload.resolve({ attachmentObjectId: 'att-obj-14' });
 
-    await uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') });
+    await h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') });
     const headers = (h.fetchFn.calls[0]?.args[1] as any).headers as Headers;
     expect(headers.has('Authorization')).toBe(false);
     expect(headers.has('X-XSRF-TOKEN')).toBe(false);
@@ -543,7 +550,7 @@ test('uploadImportCsv: fails when upload HTTP response is not ok', async () => {
     });
     h.fetchFn.resolve({ ok: false, status: 500 });
     await expectRejects(
-      () => uploadImportCsv({ ownerModel: 'partner.Partner', file: csvFile('x') }),
+      () => h.upload({ ownerModel: 'partner.Partner', file: csvFile('x') }),
       'upload failed with HTTP 500',
     );
   } finally {

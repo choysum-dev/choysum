@@ -2,13 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { create } from '@bufbuild/protobuf';
-import {
-  __setExportHubClientForTest,
-  describeExportFields,
-  previewExport,
-  runExport,
-  runTerminologyExport,
-} from './client';
+import { createExportClient, type ExportHubClient } from './client';
 import { ExportMode, ExportRunRequestSchema, DescribeFieldsRequestSchema } from './pb/export_pb';
 import { ensureAbortController } from '../testing/qjs_polyfills';
 
@@ -26,53 +20,49 @@ function makeFn() {
   return {
     fn,
     calls,
-    reset() {
-      calls.length = 0;
-      impl = undefined;
-    },
     resolve(value: unknown) {
       impl = async () => value;
     },
   };
 }
 
-function installHub() {
+function installClient() {
   const describeFields = makeFn();
   const preview = makeFn();
   const run = makeFn();
-  __setExportHubClientForTest({
+  const hub: ExportHubClient = {
     describeFields: describeFields.fn as any,
     preview: preview.fn as any,
     run: run.fn as any,
-  });
-  return { describeFields, preview, run };
+  };
+  const client = createExportClient({ hub });
+  return { client, describeFields, preview, run };
 }
 
 test('core/web export client: calls ExportHub describeFields with model', async () => {
-  const hub = installHub();
-  hub.describeFields.resolve({ fields: [], defaultFields: ['Name'] });
-  const resp = await describeExportFields('partner.Partner');
+  const { client, describeFields } = installClient();
+  describeFields.resolve({ fields: [], defaultFields: ['Name'] });
+  const resp = await client.describeExportFields('partner.Partner');
   expect(resp.defaultFields).toEqual(['Name']);
-  expect(hub.describeFields.calls[0]?.args).toEqual([
+  expect(describeFields.calls[0]?.args).toEqual([
     create(DescribeFieldsRequestSchema, { model: 'partner.Partner' }),
     undefined,
   ]);
-  __setExportHubClientForTest(null);
 });
 
 test('core/web export client: calls previewExport and runExport with ids and domain', async () => {
-  const hub = installHub();
-  hub.preview.resolve({ report: { stats: { ok: 1 } } });
-  hub.run.resolve({ report: { stats: { ok: 2 } }, csvData: new Uint8Array([1, 2]) });
+  const { client, preview, run } = installClient();
+  preview.resolve({ report: { stats: { ok: 1 } } });
+  run.resolve({ report: { stats: { ok: 2 } }, csvData: new Uint8Array([1, 2]) });
   const input = {
     model: 'partner.Partner',
     companyId: 'cmp-1',
     ids: ['p1'],
     fields: ['Name', 'Code'],
   };
-  await previewExport(input);
-  await runExport(input);
-  expect(hub.preview.calls[0]?.args).toEqual([
+  await client.previewExport(input);
+  await client.runExport(input);
+  expect(preview.calls[0]?.args).toEqual([
     create(ExportRunRequestSchema, {
       model: 'partner.Partner',
       mode: ExportMode.DATA,
@@ -83,33 +73,31 @@ test('core/web export client: calls previewExport and runExport with ids and dom
     }),
     undefined,
   ]);
-  expect(hub.run.calls.length).toBe(1);
-  __setExportHubClientForTest(null);
+  expect(run.calls.length).toBe(1);
 });
 
 test('core/web export client: passes abort signal to export hub calls', async () => {
-  const hub = installHub();
-  hub.describeFields.resolve({ fields: [] });
-  hub.preview.resolve({ report: {} });
-  hub.run.resolve({ report: {} });
+  const { client, describeFields, preview, run } = installClient();
+  describeFields.resolve({ fields: [] });
+  preview.resolve({ report: {} });
+  run.resolve({ report: {} });
   const signal = new AbortController().signal;
-  await describeExportFields('base.Country', signal);
-  await previewExport({ model: 'base.Country' }, signal);
-  await runExport({ model: 'base.Country' }, signal);
-  expect(hub.describeFields.calls[0]?.args).toEqual([
+  await client.describeExportFields('base.Country', signal);
+  await client.previewExport({ model: 'base.Country' }, signal);
+  await client.runExport({ model: 'base.Country' }, signal);
+  expect(describeFields.calls[0]?.args).toEqual([
     create(DescribeFieldsRequestSchema, { model: 'base.Country' }),
     { signal },
   ]);
-  expect(hub.preview.calls[0]?.args[1]).toEqual({ signal });
-  expect(hub.run.calls[0]?.args[1]).toEqual({ signal });
-  __setExportHubClientForTest(null);
+  expect(preview.calls[0]?.args[1]).toEqual({ signal });
+  expect(run.calls[0]?.args[1]).toEqual({ signal });
 });
 
 test('core/web export client: calls runTerminologyExport with terminology profile fields', async () => {
-  const hub = installHub();
-  hub.run.resolve({ report: { stats: { ok: 1 } }, poData: new Uint8Array([112, 111]) });
-  await runTerminologyExport({ application: 'auth', module: 'base', lang: 'zh_CN' });
-  expect(hub.run.calls[0]?.args).toEqual([
+  const { client, run } = installClient();
+  run.resolve({ report: { stats: { ok: 1 } }, poData: new Uint8Array([112, 111]) });
+  await client.runTerminologyExport({ application: 'auth', module: 'base', lang: 'zh_CN' });
+  expect(run.calls[0]?.args).toEqual([
     create(ExportRunRequestSchema, {
       profile: 'terminology',
       application: 'auth',
@@ -118,5 +106,4 @@ test('core/web export client: calls runTerminologyExport with terminology profil
     }),
     undefined,
   ]);
-  __setExportHubClientForTest(null);
 });

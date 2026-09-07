@@ -6,26 +6,22 @@ import { TipHub, type Tip } from './pb/tip_pb';
 
 type TipCallOptions = { signal?: AbortSignal };
 
-type TipHubClient = {
+export type TipHubClient = {
   subscribeThread(req: { model: string; resId: string }, options?: TipCallOptions): AsyncIterable<Tip>;
   subscribeNotifications(req?: object, options?: TipCallOptions): AsyncIterable<Tip>;
   subscribeModuleOp(req: { jobId: string }, options?: TipCallOptions): AsyncIterable<Tip>;
 };
 
-const tipHubClient = CreateWebClient(TipHub);
-let tipHubOverride: TipHubClient | undefined;
+export type TipClientDeps = {
+  /** Injected hub (tests / alternate transports). Default: CreateWebClient(TipHub). */
+  hub?: TipHubClient;
+};
 
-/** Test-only hub override (QuickJS has no vi.mock). Pass null/undefined to clear. */
-export function __setTipHubClientForTest(client?: TipHubClient | null): void {
-  tipHubOverride = client ?? undefined;
-}
-
-function tipHub(): TipHubClient {
-  if (tipHubOverride) {
-    return tipHubOverride;
-  }
-  return tipHubClient() as unknown as TipHubClient;
-}
+export type TipClient = {
+  subscribeThread(model: string, resId: string, signal?: AbortSignal): AsyncIterable<Tip>;
+  subscribeNotifications(signal?: AbortSignal): AsyncIterable<Tip>;
+  subscribeModuleOp(jobId: string, signal?: AbortSignal): AsyncIterable<Tip>;
+};
 
 function callOptions(signal?: AbortSignal): TipCallOptions | undefined {
   if (signal == null) {
@@ -34,17 +30,29 @@ function callOptions(signal?: AbortSignal): TipCallOptions | undefined {
   return { signal };
 }
 
-export function subscribeThread(model: string, resId: string, signal?: AbortSignal): AsyncIterable<Tip> {
-  return tipHub().subscribeThread({ model, resId }, callOptions(signal));
+/** Composable TipHub API. Pass `hub` in tests instead of mocking CreateWebClient. */
+export function createTipClient(deps: TipClientDeps = {}): TipClient {
+  const defaultHub = CreateWebClient(TipHub);
+  const hub = (): TipHubClient => deps.hub ?? (defaultHub() as unknown as TipHubClient);
+
+  return {
+    subscribeThread(model, resId, signal) {
+      return hub().subscribeThread({ model, resId }, callOptions(signal));
+    },
+    subscribeNotifications(signal) {
+      return hub().subscribeNotifications({}, callOptions(signal));
+    },
+    subscribeModuleOp(jobId, signal) {
+      return hub().subscribeModuleOp({ jobId }, callOptions(signal));
+    },
+  };
 }
 
-export function subscribeNotifications(signal?: AbortSignal): AsyncIterable<Tip> {
-  return tipHub().subscribeNotifications({}, callOptions(signal));
-}
+const defaultTipClient = createTipClient();
 
-export function subscribeModuleOp(jobId: string, signal?: AbortSignal): AsyncIterable<Tip> {
-  return tipHub().subscribeModuleOp({ jobId }, callOptions(signal));
-}
+export const subscribeThread = defaultTipClient.subscribeThread;
+export const subscribeNotifications = defaultTipClient.subscribeNotifications;
+export const subscribeModuleOp = defaultTipClient.subscribeModuleOp;
 
 export async function onTips(
   tips: AsyncIterable<Tip>,

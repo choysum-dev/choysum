@@ -6,33 +6,6 @@ import { getCSRFProvider, getTokenProvider } from '@/core/web/rpc/providers';
 import { createStoreByModel } from '@/core/web/stores/registry';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
-type UploadImportCsvDeps = {
-  createStoreByModel?: typeof createStoreByModel;
-  getCurrentRequestContext?: typeof getCurrentRequestContext;
-  getCSRFProvider?: typeof getCSRFProvider;
-  getTokenProvider?: typeof getTokenProvider;
-  fetch?: typeof fetch;
-};
-
-let uploadDepsOverride: UploadImportCsvDeps | undefined;
-
-/** Test-only dependency override (QuickJS has no vi.mock). Pass null/undefined to clear. */
-export function __setUploadImportCsvDepsForTest(deps?: UploadImportCsvDeps | null): void {
-  uploadDepsOverride = deps ?? undefined;
-}
-
-function deps(): Required<Pick<UploadImportCsvDeps, 'createStoreByModel' | 'getCurrentRequestContext' | 'getCSRFProvider' | 'getTokenProvider'>> & {
-  fetch: typeof fetch;
-} {
-  return {
-    createStoreByModel: uploadDepsOverride?.createStoreByModel ?? createStoreByModel,
-    getCurrentRequestContext: uploadDepsOverride?.getCurrentRequestContext ?? getCurrentRequestContext,
-    getCSRFProvider: uploadDepsOverride?.getCSRFProvider ?? getCSRFProvider,
-    getTokenProvider: uploadDepsOverride?.getTokenProvider ?? getTokenProvider,
-    fetch: uploadDepsOverride?.fetch ?? fetch,
-  };
-}
-
 type PrepareUploadReq = {
   ownerModel: string;
   fieldName: string;
@@ -64,6 +37,8 @@ export type UploadImportCsvOptions = {
   fieldName?: string;
   file: File;
   businessRequestId?: string;
+  /** Optional fetch (tests). Defaults to global fetch. */
+  fetch?: typeof fetch;
 };
 
 function newBusinessRequestId(prefix: string): string {
@@ -89,7 +64,7 @@ async function sha256Hex(blob: Blob): Promise<string | undefined> {
 }
 
 function resolveAttachmentContentService(): AttachmentContentServiceLike {
-  const service = deps().createStoreByModel('document.AttachmentContent') as unknown as AttachmentContentServiceLike;
+  const service = createStoreByModel('document.AttachmentContent') as unknown as AttachmentContentServiceLike;
   if (!service || typeof service.PrepareUpload !== 'function' || typeof service.FinalizeUpload !== 'function') {
     throw new Error('document.AttachmentContent service is unavailable');
   }
@@ -97,9 +72,8 @@ function resolveAttachmentContentService(): AttachmentContentServiceLike {
 }
 
 async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
-  const d = deps();
   if (!headers.has('x-xsrf-token')) {
-    const csrfProvider = d.getCSRFProvider();
+    const csrfProvider = getCSRFProvider();
     if (csrfProvider) {
       try {
         const csrfToken = normalizeOptionalString(await csrfProvider.getCSRFToken());
@@ -111,7 +85,7 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
   }
 
   if (!headers.has('authorization')) {
-    const tokenProvider = d.getTokenProvider();
+    const tokenProvider = getTokenProvider();
     if (tokenProvider) {
       try {
         const needRefresh = await tokenProvider.shouldRefreshToken?.();
@@ -130,7 +104,7 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
 
   if (!headers.has('baggage')) {
     try {
-      const ctx = d.getCurrentRequestContext();
+      const ctx = getCurrentRequestContext();
       const pairs: string[] = [];
       for (const [key, value] of Object.entries(ctx || {})) {
         const normalizedKey = key.trim().toLowerCase();
@@ -146,7 +120,12 @@ async function applyInternalUploadAuthHeaders(headers: Headers): Promise<void> {
   }
 }
 
-async function uploadToTarget(fieldName: string, target: NonNullable<PrepareUploadResp['uploadTarget']>, body: Blob): Promise<void> {
+async function uploadToTarget(
+  fieldName: string,
+  target: NonNullable<PrepareUploadResp['uploadTarget']>,
+  body: Blob,
+  fetchImpl: typeof fetch,
+): Promise<void> {
   const url = normalizeOptionalString(target?.url);
   if (!url) {
     throw new Error(`${fieldName}: upload target url is empty`);
@@ -168,7 +147,7 @@ async function uploadToTarget(fieldName: string, target: NonNullable<PrepareUplo
     await applyInternalUploadAuthHeaders(headers);
   }
 
-  const response = await deps().fetch(url, {
+  const response = await fetchImpl(url, {
     method,
     headers,
     body,
@@ -189,6 +168,7 @@ export async function uploadImportCsv(options: UploadImportCsvOptions): Promise<
   const file = options.file;
   const contentType = normalizeOptionalString(file.type) || 'text/csv';
   const checksumSha256 = await sha256Hex(file);
+  const fetchImpl = options.fetch ?? fetch;
 
   const prepared = await service.PrepareUpload({
     ownerModel: options.ownerModel,
@@ -206,7 +186,7 @@ export async function uploadImportCsv(options: UploadImportCsvOptions): Promise<
     throw new Error('PrepareUpload did not return upload target');
   }
 
-  await uploadToTarget(fieldName, prepared.uploadTarget, file);
+  await uploadToTarget(fieldName, prepared.uploadTarget, file, fetchImpl);
 
   const finalized = await service.FinalizeUpload({ uploadId, businessRequestId });
   const sourceRef = normalizeOptionalString(finalized.attachmentObjectId);

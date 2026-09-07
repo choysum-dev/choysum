@@ -2,14 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { create } from '@bufbuild/protobuf';
-import {
-  __setImportHubClientForTest,
-  describeImportFields,
-  parseHeaders,
-  previewImport,
-  runImport,
-  runImportAsync,
-} from './client';
+import { createImportClient, type ImportHubClient } from './client';
 import {
   DescribeImportFieldsRequestSchema,
   ImportPolicy,
@@ -38,74 +31,71 @@ function makeFn() {
   };
 }
 
-function installHub() {
+function installClient() {
   const describeImportFieldsFn = makeFn();
   const parseHeadersFn = makeFn();
   const preview = makeFn();
   const run = makeFn();
   const runAsync = makeFn();
-  __setImportHubClientForTest({
+  const hub: ImportHubClient = {
     describeImportFields: describeImportFieldsFn.fn as any,
     parseHeaders: parseHeadersFn.fn as any,
     preview: preview.fn as any,
     run: run.fn as any,
     runAsync: runAsync.fn as any,
-  });
-  return { describeImportFieldsFn, parseHeadersFn, preview, run, runAsync };
+  };
+  const client = createImportClient({ hub });
+  return { client, describeImportFieldsFn, parseHeadersFn, preview, run, runAsync };
 }
 
 test('core/web import client: calls ImportHub describeImportFields with model', async () => {
-  const hub = installHub();
-  hub.describeImportFieldsFn.resolve({ fields: [], defaultFields: ['Name'] });
-  const resp = await describeImportFields('partner.Partner');
+  const { client, describeImportFieldsFn } = installClient();
+  describeImportFieldsFn.resolve({ fields: [], defaultFields: ['Name'] });
+  const resp = await client.describeImportFields('partner.Partner');
   expect(resp.defaultFields).toEqual(['Name']);
-  expect(hub.describeImportFieldsFn.calls[0]?.args).toEqual([
+  expect(describeImportFieldsFn.calls[0]?.args).toEqual([
     create(DescribeImportFieldsRequestSchema, { model: 'partner.Partner' }),
     undefined,
   ]);
-  __setImportHubClientForTest(null);
 });
 
 test('core/web import client: passes abort signal to describeImportFields', async () => {
-  const hub = installHub();
-  hub.describeImportFieldsFn.resolve({ fields: [] });
+  const { client, describeImportFieldsFn } = installClient();
+  describeImportFieldsFn.resolve({ fields: [] });
   const controller = new AbortController();
-  await describeImportFields('base.Country', controller.signal);
-  expect(hub.describeImportFieldsFn.calls[0]?.args).toEqual([
+  await client.describeImportFields('base.Country', controller.signal);
+  expect(describeImportFieldsFn.calls[0]?.args).toEqual([
     create(DescribeImportFieldsRequestSchema, { model: 'base.Country' }),
     { signal: controller.signal },
   ]);
-  __setImportHubClientForTest(null);
 });
 
 test('core/web import client: calls ImportHub parseHeaders with source ref', async () => {
-  const hub = installHub();
-  hub.parseHeadersFn.resolve({ headers: ['Name', 'Code'] });
-  const resp = await parseHeaders('src-1');
+  const { client, parseHeadersFn } = installClient();
+  parseHeadersFn.resolve({ headers: ['Name', 'Code'] });
+  const resp = await client.parseHeaders('src-1');
   expect(resp.headers).toEqual(['Name', 'Code']);
-  expect(hub.parseHeadersFn.calls[0]?.args).toEqual([
+  expect(parseHeadersFn.calls[0]?.args).toEqual([
     create(ParseHeadersRequestSchema, { sourceRef: 'src-1' }),
     undefined,
   ]);
-  __setImportHubClientForTest(null);
 });
 
 test('core/web import client: passes abort signal to parseHeaders', async () => {
-  const hub = installHub();
-  hub.parseHeadersFn.resolve({ headers: [] });
+  const { client, parseHeadersFn } = installClient();
+  parseHeadersFn.resolve({ headers: [] });
   const controller = new AbortController();
-  await parseHeaders('src-2', controller.signal);
-  expect(hub.parseHeadersFn.calls[0]?.args).toEqual([
+  await client.parseHeaders('src-2', controller.signal);
+  expect(parseHeadersFn.calls[0]?.args).toEqual([
     create(ParseHeadersRequestSchema, { sourceRef: 'src-2' }),
     { signal: controller.signal },
   ]);
-  __setImportHubClientForTest(null);
 });
 
 test('core/web import client: calls previewImport and runImport with atomic policy', async () => {
-  const hub = installHub();
-  hub.preview.resolve({ report: { stats: { ok: 1 } } });
-  hub.run.resolve({ report: { stats: { ok: 2 } } });
+  const { client, preview, run } = installClient();
+  preview.resolve({ report: { stats: { ok: 1 } } });
+  run.resolve({ report: { stats: { ok: 2 } } });
   const fullInput = {
     targetModel: 'partner.Partner',
     sourceRef: 'src-3',
@@ -116,9 +106,9 @@ test('core/web import client: calls previewImport and runImport with atomic poli
     targetModel: 'partner.Partner',
     sourceRef: 'src-4',
   };
-  await previewImport(fullInput);
-  await runImport(minimalInput);
-  expect(hub.preview.calls[0]?.args).toEqual([
+  await client.previewImport(fullInput);
+  await client.runImport(minimalInput);
+  expect(preview.calls[0]?.args).toEqual([
     create(ImportRunRequestSchema, {
       targetModel: fullInput.targetModel,
       sourceRef: fullInput.sourceRef,
@@ -128,7 +118,7 @@ test('core/web import client: calls previewImport and runImport with atomic poli
     }),
     undefined,
   ]);
-  expect(hub.run.calls[0]?.args).toEqual([
+  expect(run.calls[0]?.args).toEqual([
     create(ImportRunRequestSchema, {
       targetModel: minimalInput.targetModel,
       sourceRef: minimalInput.sourceRef,
@@ -138,15 +128,13 @@ test('core/web import client: calls previewImport and runImport with atomic poli
     }),
     undefined,
   ]);
-  __setImportHubClientForTest(null);
 });
 
 test('core/web import client: calls runImportAsync with async request wrapper', async () => {
-  const hub = installHub();
-  hub.runAsync.resolve({ dataTransferJobId: 'ij-1', taskJobId: 'tj-1' });
+  const { client, runAsync } = installClient();
+  runAsync.resolve({ dataTransferJobId: 'ij-1', taskJobId: 'tj-1' });
   const input = { targetModel: 'base.Country', sourceRef: 'src-async' };
-  const resp = await runImportAsync(input);
+  const resp = await client.runImportAsync(input);
   expect(resp.dataTransferJobId).toBe('ij-1');
-  expect(hub.runAsync.calls.length).toBe(1);
-  __setImportHubClientForTest(null);
+  expect(runAsync.calls.length).toBe(1);
 });
