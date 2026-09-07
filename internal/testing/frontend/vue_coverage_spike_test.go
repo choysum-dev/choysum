@@ -4,9 +4,7 @@
 package frontend
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -16,67 +14,23 @@ import (
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	"github.com/choysum-dev/choysum/internal/testing/coverage"
-	"github.com/choysum-dev/choysum/internal/vueplugin"
-	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
-	"github.com/choysum-dev/choysum/pkg/jsexecutor"
-	"github.com/choysum-dev/choysum/pkg/scope"
-	"github.com/evanw/esbuild/pkg/api"
 )
 
-// spikeBuildScope is a minimal scope for NewCompilerExecutor (mirrors bootstrap web gen).
-type spikeBuildScope struct {
-	ctx context.Context
-	cfg *config.Config
-}
-
-func (s *spikeBuildScope) Run(fn func(scope.Scope) error) error { return fn(s) }
-func (s *spikeBuildScope) Session() *scope.Session              { return nil }
-func (s *spikeBuildScope) Transactor() scope.Transactor         { return nil }
-func (s *spikeBuildScope) WithContext(ctx context.Context) scope.Scope {
-	clone := *s
-	clone.ctx = ctx
-	return &clone
-}
-func (s *spikeBuildScope) Context() context.Context { return s.ctx }
-func (s *spikeBuildScope) Logger() *slog.Logger     { return slog.Default() }
-func (s *spikeBuildScope) FactoryInput() scope.FactoryInput {
-	if s.cfg == nil {
-		return nil
-	}
-	return &spikeFactoryInput{cfg: s.cfg}
-}
-
-type spikeFactoryInput struct{ cfg *config.Config }
-
-func (i *spikeFactoryInput) Environment() string                  { return "" }
-func (i *spikeFactoryInput) ModulesPath() string                  { return "" }
-func (i *spikeFactoryInput) DistPath() string                     { return "" }
-func (i *spikeFactoryInput) TmpPath() string                      { return "" }
-func (i *spikeFactoryInput) DefaultChoysumPath() string           { return "" }
-func (i *spikeFactoryInput) ConfigPath() string                   { return "" }
-func (i *spikeFactoryInput) ESMUpstreamURL() string               { return "" }
-func (i *spikeFactoryInput) NpmRegistryURL() string               { return "" }
-func (i *spikeFactoryInput) ModuleCatalogIndexURL() string        { return "" }
-func (i *spikeFactoryInput) CompileConfig() *config.CompileConfig { return nil }
-func (i *spikeFactoryInput) AuthConfig() *config.AuthConfig       { return nil }
-func (i *spikeFactoryInput) TaskConfig() *config.TaskConfig       { return nil }
-func (i *spikeFactoryInput) LogConfig() *config.LogConfig         { return nil }
-func (i *spikeFactoryInput) ServerConfig() *config.ServerConfig   { return i.cfg.Server }
-
-// TestVueSFCCoverageSpike_P0 proves narrowed-A P0:
-// vuesfc → esbuild+sourcemap → InstrumentJSFile → QuickJS createApp().mount()
-// → WriteLcov contains hits on SpikeCounter.vue script lines.
+// TestVueSFCCoverageSpike_P0 proves narrowed-A P0 with the product host path:
+// vuesfc → esbuild+real vue+sourcemap → InstrumentJSFile → QuickJS createApp().mount()
+// (minimal DOM) → WriteLcov contains hits on SpikeCounter.vue script lines.
 func TestVueSFCCoverageSpike_P0(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("no caller")
 	}
 	fixtureDir := filepath.Join(filepath.Dir(thisFile), "testdata", "vue_cov_spike")
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
 
 	work := t.TempDir()
-	for _, name := range []string{"SpikeCounter.vue", "entry.ts", "vue_stub.js"} {
+	for _, name := range []string{"SpikeCounter.vue", "entry.ts"} {
 		raw, err := os.ReadFile(filepath.Join(fixtureDir, name))
 		if err != nil {
 			t.Fatal(err)
@@ -86,65 +40,24 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 		}
 	}
 
-	vuePath := filepath.Join(work, "SpikeCounter.vue")
 	entryPath := filepath.Join(work, "entry.ts")
-	stubPath := filepath.Join(work, "vue_stub.js")
 	outJS := filepath.Join(work, "out", "bundle.js")
-	if err := os.MkdirAll(filepath.Dir(outJS), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	executor := newVueHostCompiler(t)
 
-	cfg := &config.Config{
-		Server: &config.ServerConfig{
-			JsEngineFactory:   "quickjs",
-			JsExecutorFactory: "default",
-		},
-	}
-	runtimeScope := &spikeBuildScope{ctx: t.Context(), cfg: cfg}
-	executor, err := jsexecutor.NewCompilerExecutor(runtimeScope)
-	if err != nil {
-		t.Fatalf("NewCompilerExecutor: %v", err)
-	}
-	if err := executor.Start(); err != nil {
-		t.Fatalf("Start: %v", err)
-	}
-	t.Cleanup(func() { _ = executor.Stop() })
-
-	result := api.Build(api.BuildOptions{
-		EntryPoints: []string{entryPath},
-		Outfile:     outJS,
-		Bundle:      true,
-		Format:      api.FormatIIFE,
-		Platform:    api.PlatformBrowser,
-		Target:      api.ES2020,
-		Write:       true,
-		Sourcemap:   api.SourceMapLinked,
-		Alias: map[string]string{
-			"vue": stubPath,
-		},
-		Plugins: []api.Plugin{
-			vueplugin.NewPlugin(vueplugin.WithJsExecutor(executor)),
-		},
-		Define: map[string]string{
-			"import.meta.env.MODE": "'test'",
-			"import.meta.env.PROD": "false",
-			"import.meta.env.DEV":  "true",
-			"import.meta.env.SSR":  "false",
-		},
+	bundle, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
+		RepoRoot:      repoRoot,
+		EntryPath:     entryPath,
+		Outfile:       outJS,
+		Sourcemap:     true,
+		WorkingDir:    work,
+		JsExecutor:    executor,
+		WithVuePlugin: true,
 	})
-	if len(result.Errors) > 0 {
-		var b strings.Builder
-		for _, e := range result.Errors {
-			b.WriteString(e.Text)
-			b.WriteByte('\n')
-		}
-		t.Fatalf("esbuild: %s", b.String())
+	if err != nil {
+		t.Fatalf("BuildFrontendVueHostBundle: %v", err)
 	}
-	if _, err := os.Stat(outJS); err != nil {
-		t.Fatalf("missing bundle: %v", err)
-	}
-	if _, err := os.Stat(outJS + ".map"); err != nil {
-		t.Fatalf("missing sourcemap: %v", err)
+	if bundle.MapPath == "" {
+		t.Fatal("missing sourcemap")
 	}
 
 	if err := coverage.InstrumentJSFile(outJS); err != nil {
@@ -160,6 +73,9 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = engine.Close() })
+	if err := PrepareVueHostEngine(engine); err != nil {
+		t.Fatalf("PrepareVueHostEngine: %v", err)
+	}
 	if err := engine.Load([]*jsengine.JsScript{
 		{FileName: outJS, Content: string(bundleJS)},
 	}); err != nil {
@@ -205,7 +121,6 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 	if !strings.Contains(lcov, "SpikeCounter.vue") {
 		t.Fatalf("lcov missing SpikeCounter.vue; got:\n%s", lcov)
 	}
-	// Require distinctive SpikeCounter.vue script lines (not any nonzero DA in the record).
 	vueIdx := strings.Index(lcov, "SpikeCounter.vue")
 	chunk := lcov[vueIdx:]
 	if end := strings.Index(chunk, "\nend_of_record"); end >= 0 {
@@ -226,11 +141,9 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 			hitLines[n] = true
 		}
 	}
-	// Script lines in testdata/vue_cov_spike/SpikeCounter.vue (SPIKE_MARKER, spikeLabel body, call site).
 	for _, want := range []int{8, 11, 14} {
 		if !hitLines[want] {
 			t.Fatalf("expected DA hit for SpikeCounter.vue script line %d; hits=%v chunk:\n%s\nfull:\n%s", want, hitLines, chunk, lcov)
 		}
 	}
-	_ = vuePath
 }

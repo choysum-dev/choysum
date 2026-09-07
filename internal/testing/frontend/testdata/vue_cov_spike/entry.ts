@@ -4,4 +4,6 @@
 import { createApp } from 'vue';
 import App from './SpikeCounter.vue';
 
-createApp(App).mount({ nodeType: 1 });
+const el = document.createElement('div');
+document.body.appendChild(el);
+createApp(App).mount(el);
