@@ -212,6 +212,15 @@ func TestInstrumentJSFile_ErrorsAndInlineSourceMap(t *testing.T) {
 	if err := InstrumentJSFile(path3); err != nil {
 		t.Fatal(err)
 	}
+
+	// Both the URL path and the sibling .map are missing → detectSourceMap returns nil.
+	path4 := filepath.Join(dir, "nomap.js")
+	if err := os.WriteFile(path4, []byte("var n=1;\n//# sourceMappingURL=does-not-exist.map\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := InstrumentJSFile(path4); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestInstrumentJSFile_BlockWrapClosingOrder(t *testing.T) {
@@ -747,6 +756,38 @@ func TestInstrumentJSFile_ClassMethodAndDebugger(t *testing.T) {
 	out, _ := os.ReadFile(path)
 	if !strings.Contains(string(out), ".f[") {
 		t.Fatalf("expected method fn counter:\n%s", out)
+	}
+}
+
+func TestInstrumentJSFile_ComputedMethodNameAnonymous(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "computed.js")
+	// ComputedPropertyName is not Identifier/PrivateIdentifier/StringLiteral, so
+	// functionCoverageName must fall back to "(anonymous)" without calling Text().
+	src := "class C { [\"x\"](){ return 1 } }\nnew C()[\"x\"]();\n"
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := InstrumentJSFile(path); err != nil {
+		t.Fatal(err)
+	}
+	metaRaw, err := os.ReadFile(path + ".coverage-meta.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var meta coverageFileData
+	if err := json.Unmarshal(metaRaw, &meta); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, fn := range meta.FnMap {
+		if fn.Name == "(anonymous)" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected anonymous computed method in fnMap, got %#v", meta.FnMap)
 	}
 }
 
