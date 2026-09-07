@@ -102,7 +102,7 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 		if tsast.IsFunctionLike(n) {
 			start := scanner.SkipTrivia(code, n.Pos())
 			end := n.End()
-			if start >= 0 && end >= start && end <= len(code) {
+			if end >= start && end <= len(code) {
 				name := functionCoverageName(n)
 				line, col := tscore.PositionToLineAndByteOffset(start, lineMap)
 				endLine, endCol := tscore.PositionToLineAndByteOffset(end, lineMap)
@@ -124,7 +124,7 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 		if shouldInstrumentStatement(n) {
 			start := scanner.SkipTrivia(code, n.Pos())
 			end := n.End()
-			if start >= 0 && end >= start && end <= len(code) {
+			if end >= start && end <= len(code) {
 				line, col := tscore.PositionToLineAndByteOffset(start, lineMap)
 				endLine, endCol := tscore.PositionToLineAndByteOffset(end, lineMap)
 				stmts = append(stmts, instrumentPoint{
@@ -166,7 +166,7 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 	// not inflated by permanently uncovered entries.
 	measurable := make([]fnPoint, 0, len(fns))
 	for _, fn := range fns {
-		if fn.EntryPos < 0 || fn.EntryPos > len(code) {
+		if fn.EntryPos < 0 {
 			continue
 		}
 		measurable = append(measurable, fn)
@@ -273,7 +273,7 @@ func functionBodyEntryPos(code string, n *tsast.Node) int {
 		return -1
 	}
 	pos := scanner.SkipTrivia(code, body.Pos())
-	if pos < 0 || pos >= len(code) {
+	if pos >= len(code) {
 		return -1
 	}
 	// KindBlock always starts at `{` after trivia.

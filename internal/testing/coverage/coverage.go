@@ -330,9 +330,6 @@ func ValidateCoverageReporters(reporters []string) ([]string, error) {
 	for _, item := range reporters {
 		for _, reporter := range SplitCoverageReporters(item) {
 			reporter = strings.ToLower(strings.TrimSpace(reporter))
-			if reporter == "" {
-				continue
-			}
 			if _, ok := allowedReporterSet[reporter]; !ok {
 				return nil, xfmt.Errorf("unsupported coverage reporter %q", reporter)
 			}
