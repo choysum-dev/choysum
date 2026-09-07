@@ -194,14 +194,16 @@ func TestDiscoverFrontendTestsGuardsAndSkips(t *testing.T) {
 
 func TestIsFrontendUnitTestFile(t *testing.T) {
 	cases := map[string]bool{
-		"a.test.ts":  true,
-		"a.spec.tsx": true,
-		"a.test.js":  true,
-		"a.spec.jsx": true,
-		"a.test.mjs": true,
-		"a.spec.cjs": true,
-		"a.test.md":  false,
-		"a.ts":       false,
+		"a.test.ts":     true,
+		"a.spec.tsx":    true,
+		"a.test.js":     true,
+		"a.spec.jsx":    true,
+		"a.test.mjs":    true,
+		"a.spec.cjs":    true,
+		"a.test.md":     false,
+		"a.ts":          false,
+		"a.test.d.ts":   false,
+		"foo.spec.d.ts": false,
 	}
 	for name, want := range cases {
 		if got := isFrontendUnitTestFile(name); got != want {
@@ -282,6 +284,8 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 		"await import(`happy-dom`)",
 		"await import(`@vue/test-utils`)",
 		"import Comp from './Comp.vue?raw'",
+		"from 'happy-dom/lib/index.js'",
+		"from '@vue/test-utils/dist/vue-test-utils.esm-bundler.js'",
 		"",
 	}, "\n")
 	cjsHits := scanIllegalContent("x.cjs", cjs)

@@ -55,8 +55,8 @@ var (
 	// Match the from/import/require clause itself so line numbers stay on the package specifier
 	// (avoids [\s\S]*? spanning back to an earlier unrelated import/export).
 	// Quote class includes backticks for dynamic import()/require() template literals.
-	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)['\"`]")
-	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils['\"`]")
+	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)(?:/[^'\"`]*)?['\"`]")
+	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
 	reMountCall  = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
 	// Matches from '...vue', side-effect/dynamic/require imports, optional Vite query (?raw), and backticks.
 	reVueImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]+\\.vue(?:\\?[^'\"`]*)?['\"`]")
@@ -115,6 +115,9 @@ func DiscoverFrontendTests(repoRoot, app string) ([]string, error) {
 
 func isFrontendUnitTestFile(name string) bool {
 	lower := strings.ToLower(name)
+	if strings.HasSuffix(lower, ".d.ts") {
+		return false
+	}
 	if !strings.Contains(lower, ".test.") && !strings.Contains(lower, ".spec.") {
 		return false
 	}

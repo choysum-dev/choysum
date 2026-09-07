@@ -84,11 +84,8 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 					if !ent.IsDir() || strings.HasPrefix(ent.Name(), ".") {
 						continue
 					}
-					files, discErr := frontend.DiscoverFrontendTests(repoRoot, ent.Name())
-					if discErr != nil {
-						return xfmt.Errorf("test unit-fe-illegal: %w", discErr)
-					}
-					if len(files) > 0 {
+					webDir := filepath.Join(modulesRoot, ent.Name(), "web")
+					if st, err := os.Stat(webDir); err == nil && st.IsDir() {
 						apps = append(apps, ent.Name())
 					}
 				}
