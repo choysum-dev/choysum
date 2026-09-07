@@ -194,8 +194,10 @@ func WriteLcov(ctx context.Context, opts ReportOptions) error {
 	if err != nil {
 		return err
 	}
+	// Empty stats after include/exclude is valid for report generation (e.g. all
+	// hits still on generated dist paths). CheckCoverage rejects that case.
 	if len(stats) == 0 {
-		return xfmt.Errorf("no coverage data matched include/exclude filters")
+		fmt.Fprintf(os.Stderr, "choysum test: coverage report: no files matched include/exclude filters (writing empty report)\n")
 	}
 
 	for _, reporter := range validated {

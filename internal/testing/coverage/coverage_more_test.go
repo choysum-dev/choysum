@@ -780,8 +780,21 @@ func TestWriteLcovMkdirAndEmptyFilterErrors(t *testing.T) {
 	if err := WriteLcov(context.Background(), ReportOptions{
 		RepoRoot: repoRoot, TmpRoot: tmpRoot, ReportDir: filepath.Join(tmpRoot, "ok"), RunID: runID,
 		Reporters: []string{"lcovonly"}, Includes: []string{"nomatch/**"},
+	}); err != nil {
+		t.Fatalf("WriteLcov should allow empty filtered stats, got %v", err)
+	}
+	lcovPath := filepath.Join(tmpRoot, "ok", "lcov.info")
+	rawLcov, err := os.ReadFile(lcovPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rawLcov) != 0 {
+		t.Fatalf("expected empty lcov, got %q", rawLcov)
+	}
+	if err := CheckCoverage(context.Background(), CheckOptions{
+		RepoRoot: repoRoot, TmpRoot: tmpRoot, RunID: runID, Statements: 50, Includes: []string{"nomatch/**"},
 	}); err == nil || !strings.Contains(err.Error(), "no coverage data matched") {
-		t.Fatalf("expected empty filter, got %v", err)
+		t.Fatalf("expected CheckCoverage empty filter error, got %v", err)
 	}
 }
 
