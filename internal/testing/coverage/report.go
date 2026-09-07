@@ -178,7 +178,7 @@ func WriteLcov(ctx context.Context, opts ReportOptions) error {
 
 	reporters := opts.Reporters
 	if len(reporters) == 0 {
-		reporters = []string{"text", "html"}
+		reporters = []string{"text", "lcovonly"}
 	}
 	validated, err := ValidateCoverageReporters(reporters)
 	if err != nil {
@@ -193,6 +193,9 @@ func WriteLcov(ctx context.Context, opts ReportOptions) error {
 	stats, err := computeCoverageStats(repoRoot, merged, trimGlobs(opts.Includes), mergeExcludeGlobs(opts.Excludes))
 	if err != nil {
 		return err
+	}
+	if len(stats) == 0 {
+		return xfmt.Errorf("no coverage data matched include/exclude filters")
 	}
 
 	for _, reporter := range validated {
@@ -210,7 +213,7 @@ func WriteLcov(ctx context.Context, opts ReportOptions) error {
 			if err := os.MkdirAll(htmlDir, 0o755); err != nil {
 				return xfmt.Errorf("mkdir html report dir: %w", err)
 			}
-			if err := os.WriteFile(filepath.Join(htmlDir, "index.html"), []byte(renderHTMLStub(stats)), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(htmlDir, "index.html"), []byte(renderHTMLSummary(stats)), 0o644); err != nil {
 				return xfmt.Errorf("write html report: %w", err)
 			}
 		case "json-summary":
@@ -248,6 +251,9 @@ func CheckCoverage(ctx context.Context, opts CheckOptions) error {
 	stats, err := computeCoverageStats(repoRoot, merged, trimGlobs(opts.Includes), mergeExcludeGlobs(opts.Excludes))
 	if err != nil {
 		return err
+	}
+	if len(stats) == 0 {
+		return xfmt.Errorf("no coverage data matched include/exclude filters")
 	}
 
 	totals := aggregateTotals(stats)
@@ -425,7 +431,11 @@ func computeCoverageStats(repoRoot string, merged map[string]*coverageFileData, 
 		}
 		for sourcePath, fileStats := range perFile {
 			rel := relativizeCoveragePath(repoRoot, sourcePath)
-			if !coveragePathIncluded(rel, includes, excludes) && !coveragePathIncluded(sourcePath, includes, excludes) {
+			// Exclude wins on either path form; includes OR across rel/abs.
+			if coveragePathExcluded(rel, sourcePath, excludes) {
+				continue
+			}
+			if len(includes) > 0 && !coveragePathIncluded(rel, includes, nil) && !coveragePathIncluded(sourcePath, includes, nil) {
 				continue
 			}
 			agg, ok := bySource[rel]
@@ -696,11 +706,30 @@ func renderTextSummary(stats []fileCoverageStats) string {
 	return b.String()
 }
 
-func renderHTMLStub(stats []fileCoverageStats) string {
+// renderHTMLSummary writes a per-file summary table. It is not a full nyc-style
+// annotated source browser; use lcov + an external viewer for line detail.
+func renderHTMLSummary(stats []fileCoverageStats) string {
 	totals := aggregateTotals(stats)
-	return fmt.Sprintf(`<!doctype html><html><body><h1>Coverage</h1><pre>%s</pre></body></html>`,
-		fmt.Sprintf("statements %.2f%% lines %.2f%% functions %.2f%% branches %.2f%%",
-			totals.Statements.Percent(), totals.Lines.Percent(), totals.Functions.Percent(), totals.Branches.Percent()))
+	var b strings.Builder
+	b.WriteString("<!doctype html><html><head><meta charset=\"utf-8\"><title>Coverage</title>")
+	b.WriteString("<style>body{font-family:sans-serif;margin:1.5rem}table{border-collapse:collapse;width:100%}")
+	b.WriteString("th,td{border:1px solid #ccc;padding:.4rem .6rem;text-align:left}th{background:#f5f5f5}")
+	b.WriteString("td.num{text-align:right}</style></head><body>")
+	b.WriteString("<h1>Coverage summary</h1>")
+	fmt.Fprintf(&b, "<p>Statements %.2f%% · Lines %.2f%% · Functions %.2f%% · Branches %.2f%%</p>",
+		totals.Statements.Percent(), totals.Lines.Percent(), totals.Functions.Percent(), totals.Branches.Percent())
+	b.WriteString("<table><thead><tr><th>File</th><th>Statements</th><th>Lines</th><th>Functions</th><th>Branches</th></tr></thead><tbody>")
+	for _, st := range stats {
+		fmt.Fprintf(&b, "<tr><td>%s</td><td class=\"num\">%.2f%% (%d/%d)</td><td class=\"num\">%.2f%% (%d/%d)</td><td class=\"num\">%.2f%% (%d/%d)</td><td class=\"num\">%.2f%% (%d/%d)</td></tr>",
+			st.Path,
+			st.Statements.Percent(), st.Statements.Covered, st.Statements.Total,
+			st.Lines.Percent(), st.Lines.Covered, st.Lines.Total,
+			st.Functions.Percent(), st.Functions.Covered, st.Functions.Total,
+			st.Branches.Percent(), st.Branches.Covered, st.Branches.Total,
+		)
+	}
+	b.WriteString("</tbody></table></body></html>\n")
+	return b.String()
 }
 
 func renderJSONSummary(stats []fileCoverageStats) string {

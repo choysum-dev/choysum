@@ -29,10 +29,12 @@ const istanbulCoverageSchema = "1a1c01bbd47fc00a2c39e90264f33305004495a9"
 var sourceMappingURLRe = regexp.MustCompile(`(?m)\n?//[#@]\s*sourceMappingURL=([^\s]+)\s*$`)
 
 // InstrumentJSFile instruments a single esbuild bundle JS file in place with
-// Istanbul-shaped statement counters on globalThis.__coverage__.
+// Istanbul-shaped statement and function counters on globalThis.__coverage__.
 //
 // It inherits an input sourcemap (stored as inputSourceMap on the coverage
 // object and written back to path+".map" when present), and appends ";void 0;".
+// Statement maps / fnMap live in path+".coverage-meta.json" and are merged when
+// coverage JSON is written; the JS preamble only allocates hit arrays.
 func InstrumentJSFile(path string) error {
 	path = strings.TrimSpace(path)
 	if path == "" {
@@ -51,19 +53,10 @@ func InstrumentJSFile(path string) error {
 	inputMap := detectSourceMap(code, absPath)
 	code = stripSourceMappingURL(code)
 
-	instrumented, meta, err := instrumentJSSource(absPath, code, inputMap)
-	if err != nil {
-		return err
-	}
-	metaPath := absPath + ".coverage-meta.json"
-	metaBytes, err := json.Marshal(meta)
-	if err != nil {
-		return xfmt.Errorf("marshal coverage meta: %w", err)
-	}
-	if err := os.WriteFile(metaPath, metaBytes, 0o644); err != nil {
-		return xfmt.Errorf("write coverage meta: %w", err)
-	}
+	instrumented, meta := instrumentJSSource(absPath, code, inputMap)
 
+	// Write JS (and sourcemap) before the meta sidecar so a failed write cannot
+	// leave a stale *.coverage-meta.json paired with an older bundle.
 	finalCode := instrumented + "\n;void 0;\n"
 	outMapPath := absPath + ".map"
 	if inputMap != nil {
@@ -80,10 +73,19 @@ func InstrumentJSFile(path string) error {
 	if err := os.WriteFile(absPath, []byte(finalCode), 0o644); err != nil {
 		return xfmt.Errorf("write instrumented %s: %w", absPath, err)
 	}
+
+	metaPath := absPath + ".coverage-meta.json"
+	metaBytes, err := json.Marshal(meta)
+	if err != nil {
+		return xfmt.Errorf("marshal coverage meta: %w", err)
+	}
+	if err := os.WriteFile(metaPath, metaBytes, 0o644); err != nil {
+		return xfmt.Errorf("write coverage meta: %w", err)
+	}
 	return nil
 }
 
-func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *coverageFileData, error) {
+func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *coverageFileData) {
 	normalized := tspath.NormalizePath(absPath)
 	sf := tsparser.ParseSourceFile(tsast.SourceFileParseOptions{
 		FileName: normalized,
@@ -111,7 +113,8 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 				line, col := tscore.PositionToLineAndByteOffset(start, lineMap)
 				endLine, endCol := tscore.PositionToLineAndByteOffset(end, lineMap)
 				fns = append(fns, fnPoint{
-					Name: name,
+					Name:     name,
+					EntryPos: functionBodyEntryPos(code, n),
 					Decl: coverageRange{
 						Start: coveragePos{Line: line + 1, Column: col},
 						End:   coveragePos{Line: line + 1, Column: col + 1},
@@ -168,6 +171,7 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 		id := strconv.Itoa(i)
 		fnMap[id] = coverageFn{Name: fn.Name, Decl: fn.Decl, Loc: fn.Loc, Line: fn.Line}
 		fHits[id] = 0
+		fns[i].ID = i
 	}
 
 	hash := sha1.Sum([]byte(code))
@@ -190,24 +194,39 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 	preamble := buildCoveragePreamble(covName, absPath, meta.Hash, len(stmts), len(fns))
 
 	type textEdit struct {
-		pos  int
-		text string
+		pos     int
+		text    string
+		closing bool
 	}
-	edits := make([]textEdit, 0, len(stmts)*2)
+	edits := make([]textEdit, 0, len(stmts)*2+len(fns))
 	for _, st := range stmts {
 		inc := covName + "().s[" + strconv.Itoa(st.ID) + "]++;"
 		if st.BlockWrap {
 			edits = append(edits,
-				textEdit{pos: st.EndPos, text: "}"},
+				textEdit{pos: st.EndPos, text: "}", closing: true},
 				textEdit{pos: st.InsertPos, text: "{" + inc},
 			)
 			continue
 		}
 		edits = append(edits, textEdit{pos: st.InsertPos, text: inc})
 	}
+	for _, fn := range fns {
+		if fn.EntryPos < 0 || fn.EntryPos > len(code) {
+			continue
+		}
+		edits = append(edits, textEdit{
+			pos:  fn.EntryPos,
+			text: covName + "().f[" + strconv.Itoa(fn.ID) + "]++;",
+		})
+	}
 	sort.SliceStable(edits, func(i, j int) bool {
 		if edits[i].pos != edits[j].pos {
 			return edits[i].pos < edits[j].pos
+		}
+		// At the same offset, emit closing braces before opening inserts so
+		// trailing statements after a braced if-body are not nested inside it.
+		if edits[i].closing != edits[j].closing {
+			return edits[i].closing
 		}
 		return edits[i].text < edits[j].text
 	})
@@ -223,7 +242,7 @@ func instrumentJSSource(absPath, code string, inputMap *rawSourceMap) (string, *
 		prev = ed.pos
 	}
 	b.WriteString(code[prev:])
-	return preamble + b.String(), meta, nil
+	return preamble + b.String(), meta
 }
 
 type instrumentPoint struct {
@@ -235,10 +254,30 @@ type instrumentPoint struct {
 }
 
 type fnPoint struct {
-	Name string
-	Decl coverageRange
-	Loc  coverageRange
-	Line int
+	ID       int
+	EntryPos int // byte offset after `{` of a block body; -1 if no block body
+	Name     string
+	Decl     coverageRange
+	Loc      coverageRange
+	Line     int
+}
+
+// functionBodyEntryPos returns the insert position for a function hit counter
+// (immediately after the opening `{` of a block body). Expression-bodied
+// arrows and body-less signatures return -1.
+func functionBodyEntryPos(code string, n *tsast.Node) int {
+	if n == nil {
+		return -1
+	}
+	body := n.Body()
+	if body == nil || body.Kind != tsast.KindBlock {
+		return -1
+	}
+	pos := scanner.SkipTrivia(code, body.Pos())
+	if pos < 0 || pos >= len(code) || code[pos] != '{' {
+		return -1
+	}
+	return pos + 1
 }
 
 func shouldInstrumentStatement(n *tsast.Node) bool {

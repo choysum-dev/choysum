@@ -41,6 +41,9 @@ func TestInstrumentJSFile_StatementCountersAndVoid0(t *testing.T) {
 	if !strings.Contains(text, ".s[") {
 		t.Fatalf("expected statement counters, got:\n%s", text)
 	}
+	if !strings.Contains(text, ".f[") {
+		t.Fatalf("expected function counters, got:\n%s", text)
+	}
 	metaRaw, err := os.ReadFile(path + ".coverage-meta.json")
 	if err != nil {
 		t.Fatalf("expected coverage meta sidecar: %v", err)
@@ -181,6 +184,16 @@ func TestMatchCoverageGlob(t *testing.T) {
 		{"modules/**/*.ts", "modules/a/service/x.ts", true},
 		{"**/node_modules/**", "a/node_modules/b/c.js", true},
 		{"**/*.test.ts", "modules/a/service/x.ts", false},
+		// Bare basename must not match nested paths (nyc semantics).
+		{"service.ts", "modules/demo/service/service.ts", false},
+		{"service.ts", "service.ts", true},
+		{"", "anything.ts", false},
+		{"./modules/**", "./modules/a/x.ts", true},
+		{"*", "file.ts", true},
+		{"f?o.ts", "foo.ts", true},
+		{"f?o.ts", "fo.ts", false},
+		{"**/", "a/b", true},
+		{"/abs/**", "/abs/x.ts", true},
 	}
 	for _, tc := range cases {
 		if got := matchCoverageGlob(tc.pattern, tc.path); got != tc.want {

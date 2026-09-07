@@ -279,7 +279,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 	cmd.Flags().StringArrayVar(&coverageInclude, "coverage-include", nil, "coverage include glob(s) used for report/check (repeatable)")
 	cmd.Flags().StringArrayVar(&coverageExclude, "coverage-exclude", nil, "coverage exclude glob(s) used for report/check (repeatable)")
 	cmd.Flags().StringVar(&coverageReportDir, "coverage-report-dir", "", "directory for coverage reports (default: <CLI test tmp root>/testing/<workspace-hash>/<run-id>/coverage/reports)")
-	cmd.Flags().StringArrayVar(&coverageReporters, "coverage-reporters", nil, "reporter(s) for --coverage-report (repeatable; default: text,html; supports lcovonly,text,html,json-summary)")
+	cmd.Flags().StringArrayVar(&coverageReporters, "coverage-reporters", nil, "reporter(s) for --coverage-report (repeatable; default: text,lcovonly; supports lcovonly,text,html,json-summary)")
 	cmd.Flags().IntVar(&coverageLines, "coverage-lines", 0, "coverage-check --lines threshold (0 disables)")
 	cmd.Flags().IntVar(&coverageFunctions, "coverage-functions", 0, "coverage-check --functions threshold (0 disables)")
 	cmd.Flags().IntVar(&coverageBranches, "coverage-branches", 0, "coverage-check --branches threshold (0 disables)")

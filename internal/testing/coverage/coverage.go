@@ -76,11 +76,10 @@ func FindRepoRootFromCwd() string {
 //
 // It instruments every existing target among:
 // - dist/apps/<app>/index.js
-// - dist/apps/<app>/tests.js
 // - dist/bundles/index.js
-// - dist/bundles/tests.js
 //
-// Each target writes/updates its corresponding .map file when possible.
+// Test bundles (tests.js) are left uninstrumented. Each target writes/updates its
+// corresponding .map file when possible.
 func InstrumentDistBundle(ctx context.Context, repoRoot string, distPath string, app string) error {
 	return InstrumentDistBundleWithTmpRoot(ctx, repoRoot, distPath, app, "")
 }

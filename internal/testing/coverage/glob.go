@@ -4,7 +4,6 @@
 package coverage
 
 import (
-	"path/filepath"
 	"strings"
 )
 
@@ -29,15 +28,9 @@ func matchCoverageGlob(pattern, path string) bool {
 		}
 	}
 
-	// Prefer matching against the path as-is and against a repo-relative suffix.
-	if matchGlobSegments(splitGlob(pattern), splitGlob(path)) {
-		return true
-	}
-	base := filepath.Base(path)
-	if matchGlobSegments(splitGlob(pattern), splitGlob(base)) {
-		return true
-	}
-	return false
+	// Match the full path only (nyc/minimatch semantics for bare basenames:
+	// `service.ts` matches a repo-root file, not every nested `**/service.ts`).
+	return matchGlobSegments(splitGlob(pattern), splitGlob(path))
 }
 
 func splitGlob(s string) []string {
@@ -152,4 +145,12 @@ func coveragePathIncluded(path string, includes, excludes []string) bool {
 		return true
 	}
 	return pathMatchesAnyGlob(path, includes)
+}
+
+// coveragePathExcluded is true when either the repo-relative or absolute path
+// matches an exclude glob (exclude wins before include OR semantics).
+func coveragePathExcluded(rel, abs string, excludes []string) bool {
+	rel = strings.ReplaceAll(rel, "\\", "/")
+	abs = strings.ReplaceAll(abs, "\\", "/")
+	return pathMatchesAnyGlob(rel, excludes) || pathMatchesAnyGlob(abs, excludes)
 }
