@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/evanw/esbuild/pkg/api"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -24,13 +25,19 @@ var (
 	filepathRel  = filepath.Rel
 )
 
-// BundleOptions configures a thin FE unit esbuild (no Vue plugin / ModuleBuilder).
+// BundleOptions configures a thin FE unit esbuild (Vue optional; no ModuleBuilder).
 type BundleOptions struct {
 	RepoRoot   string
 	EntryPath  string
 	Outfile    string
 	Sourcemap  bool
 	WorkingDir string
+	// Vue enables vueplugin + real vue + @choysum/test-utils alias (PR-unit-fe-runner).
+	Vue bool
+	// JsExecutor is required when Vue is true.
+	JsExecutor jsexecutor.ScriptExecutor
+	// CacheDir for esmresolver when Vue is true.
+	CacheDir string
 }
 
 // BundleResult is the esbuild output for a FE unit fixture bundle.
@@ -42,8 +49,25 @@ type BundleResult struct {
 }
 
 // BuildFrontendUnitBundle bundles a FE unit entry with `@/*` → `<repo>/modules/*`.
-// It does not resolve `.vue` SFCs (callers must keep entries free of illegal marks).
+// When Vue is false, `.vue` stays external (pure TS fixtures). When Vue is true,
+// delegates to BuildFrontendVueHostBundle (vuesfc + real vue + choysumMount).
 func BuildFrontendUnitBundle(opts BundleOptions) (*BundleResult, error) {
+	if opts.Vue {
+		if opts.JsExecutor == nil {
+			return nil, xfmt.Errorf("frontend bundle: JsExecutor required when Vue is true")
+		}
+		return BuildFrontendVueHostBundle(VueHostBundleOptions{
+			RepoRoot:      opts.RepoRoot,
+			EntryPath:     opts.EntryPath,
+			Outfile:       opts.Outfile,
+			Sourcemap:     opts.Sourcemap,
+			WorkingDir:    opts.WorkingDir,
+			CacheDir:      opts.CacheDir,
+			JsExecutor:    opts.JsExecutor,
+			WithVuePlugin: true,
+		})
+	}
+
 	repoRoot := strings.TrimSpace(opts.RepoRoot)
 	entry := strings.TrimSpace(opts.EntryPath)
 	if repoRoot == "" {

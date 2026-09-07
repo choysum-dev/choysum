@@ -43,7 +43,12 @@ var errVitestEnvironmentMarkerFound = xfmt.Errorf("vitest environment marker fou
 
 // ValidateFrontendTestDependencies checks whether required frontend tooling and
 // modules are available in local module roots or global npm root.
+// When CHOYSUM_FE_UNIT_ENGINE=qjs, Vitest/npx are not required (QuickJS path).
 func ValidateFrontendTestDependencies(repoRoot string, app string, coverage bool) error {
+	if UseQJSFrontendEngine() {
+		return nil
+	}
+
 	repoRoot = strings.TrimSpace(repoRoot)
 	if repoRoot == "" {
 		wd, _ := os.Getwd()
@@ -98,6 +103,27 @@ func RunOneAppFrontendTests(
 	}
 	if err := ctx.Err(); err != nil {
 		return true, err
+	}
+
+	if UseQJSFrontendEngine() {
+		return runOneAppFrontendTestsQJS(
+			ctx,
+			repoRoot,
+			app,
+			junitPath,
+			pattern,
+			coverage,
+			coverageReport,
+			coverageCheck,
+			feCoverageAll,
+			coverageReportDir,
+			coverageLines,
+			coverageFunctions,
+			coverageBranches,
+			coverageStatements,
+			tmpRoot,
+			keep,
+		)
 	}
 
 	if err := ValidateFrontendTestDependencies(repoRoot, app, coverage); err != nil {
