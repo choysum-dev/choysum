@@ -4,6 +4,7 @@
 package frontend
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"encoding/xml"
@@ -23,12 +24,40 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysumtest"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
+	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 // EnvFEUnitEngine selects the FE unit engine. Temporary until PR-unit-final-fe.
 // Only "qjs" enables the QuickJS path; anything else (including unset) keeps Vitest.
 const EnvFEUnitEngine = "CHOYSUM_FE_UNIT_ENGINE"
+
+// Test seams for rare OS / engine / coverage failures (overridden in unit tests).
+var (
+	osGetwdQJS                   = os.Getwd
+	osMkdirAllQJS                = os.MkdirAll
+	osRemoveAllQJS               = os.RemoveAll
+	osReadFileQJS                = os.ReadFile
+	osWriteFileQJS               = os.WriteFile
+	jsonMarshalQJS               = json.Marshal
+	xmlMarshalIndentQJS          = xml.MarshalIndent
+	resolveTestingTmpDirQJS      = testingpathing.ResolveTestingTmpDirFromContext
+	discoverFrontendTestsQJS     = DiscoverFrontendTests
+	writeFrontendTestsEntryQJS   = WriteFrontendTestsEntry
+	buildFrontendUnitBundleQJS   = BuildFrontendUnitBundle
+	newFrontendCompilerExecutorQ = newFrontendCompilerExecutor
+	prepareVueHostEngineQJS      = PrepareVueHostEngine
+	bootstrapTimersQJS           = func(e *quickjsengine.QuickjsEngine) bool { return e.Ctx.BootstrapTimers() }
+	newQuickJSEngineQJS          = func() (jsengine.JsEngine, error) { return quickjsengine.NewFactory()() }
+	preflightCoverageQJS         = coverage.PreflightInstrumentationPrerequisites
+	instrumentJSFileQJS          = coverage.InstrumentJSFile
+	writeCoverageJSONQJS         = coverage.WriteCoverageJSONWithRunIDAndTmpRoot
+	writeLcovQJS                 = coverage.WriteLcov
+	checkCoverageQJS             = coverage.CheckCoverage
+	newCompilerExecutorFn        = func(runtimeScope scope.Scope) (jsexecutor.JsExecutor, error) {
+		return jsexecutor.NewCompilerExecutor(runtimeScope)
+	}
+)
 
 // UseQJSFrontendEngine reports whether FE unit should run via QuickJS host.
 func UseQJSFrontendEngine() bool {
@@ -89,7 +118,7 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 
 	repoRoot := strings.TrimSpace(opts.RepoRoot)
 	if repoRoot == "" {
-		wd, _ := os.Getwd()
+		wd, _ := osGetwdQJS()
 		repoRoot = wd
 	}
 	app := strings.TrimSpace(opts.App)
@@ -99,7 +128,7 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 
 	testFiles := opts.TestFiles
 	if len(testFiles) == 0 {
-		discovered, err := DiscoverFrontendTests(repoRoot, app)
+		discovered, err := discoverFrontendTestsQJS(repoRoot, app)
 		if err != nil {
 			return true, err
 		}
@@ -110,22 +139,22 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 		return false, nil
 	}
 
-	workspaceTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, repoRoot, testingpathing.EffectiveCLITestTmpRoot(ctx, opts.TmpRoot), "frontend")
+	workspaceTmpDir, err := resolveTestingTmpDirQJS(ctx, repoRoot, testingpathing.EffectiveCLITestTmpRoot(ctx, opts.TmpRoot), "frontend")
 	if err != nil {
 		return true, xfmt.Errorf("fe-qjs: resolve tmp dir: %w", err)
 	}
 	runDir := filepath.Join(workspaceTmpDir, "fe-qjs", sanitizeFrontendAppToken(app))
-	if err := os.MkdirAll(runDir, 0o755); err != nil {
+	if err := osMkdirAllQJS(runDir, 0o755); err != nil {
 		return true, xfmt.Errorf("fe-qjs: mkdir: %w", err)
 	}
 	if !opts.Keep {
-		defer func() { _ = os.RemoveAll(runDir) }()
+		defer func() { _ = osRemoveAllQJS(runDir) }()
 	} else {
 		fmt.Fprintf(os.Stderr, "choysum test: kept frontend qjs dir: %s\n", runDir)
 	}
 
 	entryPath := filepath.Join(runDir, "entry.ts")
-	if err := WriteFrontendTestsEntry(entryPath, testFiles); err != nil {
+	if err := writeFrontendTestsEntryQJS(entryPath, testFiles); err != nil {
 		return true, err
 	}
 	outJS := filepath.Join(runDir, "bundle.js")
@@ -133,7 +162,7 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 
 	var executor jsexecutor.JsExecutor
 	if needVue {
-		ex, err := newFrontendCompilerExecutor(ctx)
+		ex, err := newFrontendCompilerExecutorQ(ctx)
 		if err != nil {
 			return true, err
 		}
@@ -147,7 +176,7 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 	}
 
 	fmt.Fprintf(os.Stderr, "# fe-qjs %s (%d files, vue=%v)\n", app, len(testFiles), needVue)
-	bundle, err := BuildFrontendUnitBundle(BundleOptions{
+	bundle, err := buildFrontendUnitBundleQJS(BundleOptions{
 		RepoRoot:   repoRoot,
 		EntryPath:  entryPath,
 		Outfile:    outJS,
@@ -162,31 +191,33 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 	}
 
 	if opts.Coverage {
-		if err := coverage.PreflightInstrumentationPrerequisites(repoRoot); err != nil {
+		if err := preflightCoverageQJS(repoRoot); err != nil {
 			return true, err
 		}
-		if err := coverage.InstrumentJSFile(bundle.JSPath); err != nil {
+		if err := instrumentJSFileQJS(bundle.JSPath); err != nil {
 			return true, xfmt.Errorf("fe-qjs: instrument: %w", err)
 		}
-		raw, readErr := os.ReadFile(bundle.JSPath)
+		raw, readErr := osReadFileQJS(bundle.JSPath)
 		if readErr != nil {
 			return true, xfmt.Errorf("fe-qjs: read instrumented: %w", readErr)
 		}
 		bundle.JS = string(raw)
 	}
 
-	engine, err := quickjsengine.NewFactory()()
+	engine, err := newQuickJSEngineQJS()
 	if err != nil {
 		return true, xfmt.Errorf("fe-qjs: engine: %w", err)
 	}
 	defer func() { _ = engine.Close() }()
 
 	if needVue {
-		if err := PrepareVueHostEngine(engine); err != nil {
+		if err := prepareVueHostEngineQJS(engine); err != nil {
 			return true, err
 		}
 	} else if qjs, ok := engine.(*quickjsengine.QuickjsEngine); ok {
-		_ = qjs.Ctx.BootstrapTimers()
+		if !bootstrapTimersQJS(qjs) {
+			return true, xfmt.Errorf("frontend host: BootstrapTimers failed")
+		}
 	}
 
 	if err := engine.Load([]*jsengine.JsScript{
@@ -206,7 +237,7 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 
 	if opts.Coverage && report.CoverageJSON != nil && strings.TrimSpace(*report.CoverageJSON) != "" {
 		runID := fmt.Sprintf("fe-qjs-%s-%d", sanitizeFrontendAppToken(app), time.Now().UnixNano())
-		if err := coverage.WriteCoverageJSONWithRunIDAndTmpRoot(repoRoot, app, runID, *report.CoverageJSON, workspaceTmpDir); err != nil {
+		if err := writeCoverageJSONQJS(repoRoot, app, runID, *report.CoverageJSON, workspaceTmpDir); err != nil {
 			return true, xfmt.Errorf("fe-qjs: write coverage json: %w", err)
 		}
 		reportDir := strings.TrimSpace(opts.CoverageReportDir)
@@ -214,7 +245,7 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 			reportDir = filepath.Join(workspaceTmpDir, "coverage", "reports")
 		}
 		if opts.CoverageReport {
-			if err := coverage.WriteLcov(ctx, coverage.ReportOptions{
+			if err := writeLcovQJS(ctx, coverage.ReportOptions{
 				RepoRoot:  repoRoot,
 				TmpRoot:   workspaceTmpDir,
 				ReportDir: reportDir,
@@ -225,7 +256,7 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 			}
 		}
 		if opts.CoverageCheck {
-			if err := coverage.CheckCoverage(ctx, coverage.CheckOptions{
+			if err := checkCoverageQJS(ctx, coverage.CheckOptions{
 				RepoRoot:   repoRoot,
 				TmpRoot:    workspaceTmpDir,
 				RunID:      runID,
@@ -290,11 +321,11 @@ func runOneAppFrontendTestsQJS(
 
 func frontendTestsNeedVue(testFiles []string) bool {
 	for _, path := range testFiles {
-		raw, err := os.ReadFile(path)
+		raw, err := osReadFileQJS(path)
 		if err != nil {
 			continue
 		}
-		if reVueImport.Match(raw) || strings.Contains(string(raw), "@choysum/test-utils") || strings.Contains(string(raw), "@vue/test-utils") {
+		if reVueImport.Match(raw) || bytes.Contains(raw, []byte("@choysum/test-utils")) || bytes.Contains(raw, []byte("@vue/test-utils")) {
 			return true
 		}
 	}
@@ -309,7 +340,7 @@ func newFrontendCompilerExecutor(ctx context.Context) (jsexecutor.JsExecutor, er
 		},
 	}
 	runtimeScope := &spikeBuildScope{ctx: ctx, cfg: cfg}
-	executor, err := jsexecutor.NewCompilerExecutor(runtimeScope)
+	executor, err := newCompilerExecutorFn(runtimeScope)
 	if err != nil {
 		return nil, xfmt.Errorf("fe-qjs: NewCompilerExecutor: %w", err)
 	}
@@ -324,7 +355,7 @@ func evalChoysumTestRun(engine jsengine.JsEngine, pattern string) (*qjsRunReport
 	if !ok {
 		return nil, xfmt.Errorf("fe-qjs: unexpected engine type %T", engine)
 	}
-	patJSON, err := json.Marshal(strings.TrimSpace(pattern))
+	patJSON, err := jsonMarshalQJS(strings.TrimSpace(pattern))
 	if err != nil {
 		return nil, err
 	}
@@ -335,6 +366,7 @@ func evalChoysumTestRun(engine jsengine.JsEngine, pattern string) (*qjsRunReport
 	val := qjs.Ctx.Eval(script, quickjs.EvalAwait(true))
 	defer val.Free()
 	if val.IsException() {
+		// Exception() clears and returns the pending QuickJS error (buke/quickjs-go).
 		return nil, xfmt.Errorf("fe-qjs: run: %v", qjs.Ctx.Exception())
 	}
 	raw := val.String()
@@ -420,17 +452,17 @@ func writeQJSJUnitIfNeeded(app string, report *qjsRunReport, junitPath string) e
 		Failures:   report.Failed,
 		TestSuites: []qjsJUnitSuite{suite},
 	}
-	out, err := xml.MarshalIndent(doc, "", "  ")
+	out, err := xmlMarshalIndentQJS(doc, "", "  ")
 	if err != nil {
 		return xfmt.Errorf("fe-qjs: marshal junit: %w", err)
 	}
 	if dir := filepath.Dir(junitPath); dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := osMkdirAllQJS(dir, 0o755); err != nil {
 			return xfmt.Errorf("fe-qjs: mkdir junit: %w", err)
 		}
 	}
 	payload := append([]byte(xml.Header), out...)
-	if err := os.WriteFile(junitPath, payload, 0o644); err != nil {
+	if err := osWriteFileQJS(junitPath, payload, 0o644); err != nil {
 		return xfmt.Errorf("fe-qjs: write junit: %w", err)
 	}
 	return nil
