@@ -205,8 +205,6 @@ func Run(ctx context.Context, opts RunOptions) error {
 	overallFailed := false
 	ranAnyBE := false
 	needsJUnitAppDisambiguation := len(apps) > 1
-	coveragePreflightChecked := false
-	var coveragePreflightErr error
 	for _, app := range apps {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -228,16 +226,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 			hasFETests = f
 		}
 
-		preflightIssues := make([]preflightIssue, 0, 2)
-		if opts.Coverage && hasBETests {
-			if !coveragePreflightChecked {
-				coveragePreflightErr = cov.PreflightInstrumentationPrerequisites(opts.RepoRoot)
-				coveragePreflightChecked = true
-			}
-			if coveragePreflightErr != nil {
-				preflightIssues = append(preflightIssues, preflightIssue{stage: "coverage dependency preflight", err: coveragePreflightErr})
-			}
-		}
+		preflightIssues := make([]preflightIssue, 0, 1)
 		if hasFETests {
 			if err := preflightFrontend(opts.RepoRoot, app, opts.Coverage); err != nil {
 				preflightIssues = append(preflightIssues, preflightIssue{stage: "frontend dependency preflight", err: err})
@@ -299,12 +288,28 @@ func Run(ctx context.Context, opts RunOptions) error {
 
 	if opts.Coverage && ranAnyBE {
 		if opts.CoverageReport {
-			if err := cov.RunNycReport(ctx, opts.RepoRoot, opts.CoverageReportDir, opts.CoverageReporters, opts.CoverageInclude, opts.CoverageExclude, runtimeOpts.tmpPath); err != nil {
+			if err := cov.WriteLcov(ctx, cov.ReportOptions{
+				RepoRoot:  opts.RepoRoot,
+				TmpRoot:   runtimeOpts.tmpPath,
+				ReportDir: opts.CoverageReportDir,
+				Reporters: opts.CoverageReporters,
+				Includes:  opts.CoverageInclude,
+				Excludes:  opts.CoverageExclude,
+			}); err != nil {
 				return err
 			}
 		}
 		if opts.CoverageCheck {
-			if err := cov.RunNycCheckCoverageWithTmpRoot(ctx, opts.RepoRoot, opts.CoverageInclude, opts.CoverageExclude, opts.CoverageLines, opts.CoverageFunctions, opts.CoverageBranches, opts.CoverageStatements, runtimeOpts.tmpPath); err != nil {
+			if err := cov.CheckCoverage(ctx, cov.CheckOptions{
+				RepoRoot:   opts.RepoRoot,
+				TmpRoot:    runtimeOpts.tmpPath,
+				Includes:   opts.CoverageInclude,
+				Excludes:   opts.CoverageExclude,
+				Lines:      opts.CoverageLines,
+				Functions:  opts.CoverageFunctions,
+				Branches:   opts.CoverageBranches,
+				Statements: opts.CoverageStatements,
+			}); err != nil {
 				return err
 			}
 		}

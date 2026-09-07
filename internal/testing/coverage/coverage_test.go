@@ -5,14 +5,10 @@ package coverage
 
 import (
 	"context"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
-
-	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 )
 
 func TestReadGoModulePathAndFilterHandwrittenGoCoverProfile(t *testing.T) {
@@ -68,10 +64,6 @@ func TestReadGoModulePathAndFilterHandwrittenGoCoverProfile(t *testing.T) {
 	if got := strings.Join(excluded, ","); got != "pkg/autogen/glue.go,pkg/genpb/types.pb.go" {
 		t.Fatalf("excluded files = %q", got)
 	}
-
-	if _, _, err := writeInstrumentScriptTempFile(repoRoot); err != nil {
-		t.Fatalf("expected existing coverage helpers to keep working, got %v", err)
-	}
 }
 
 func TestReadGoModulePathErrorsAndFallback(t *testing.T) {
@@ -120,15 +112,6 @@ func TestReadGoModulePathErrorsAndFallback(t *testing.T) {
 	})
 }
 
-func writeExecutable(t *testing.T, dir string, name string, script string) string {
-	t.Helper()
-	path := filepath.Join(dir, name)
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
-		t.Fatalf("write executable %s: %v", name, err)
-	}
-	return path
-}
-
 func canonicalPath(t *testing.T, path string) string {
 	t.Helper()
 	resolved, err := filepath.EvalSymlinks(path)
@@ -166,276 +149,6 @@ func TestFindRepoRootFromCwd(t *testing.T) {
 	}
 	if got := canonicalPath(t, FindRepoRootFromCwd()); got != canonicalPath(t, noRepo) {
 		t.Fatalf("FindRepoRootFromCwd() without go.mod = %q, want %q", got, canonicalPath(t, noRepo))
-	}
-}
-
-func TestWriteInstrumentScriptTempFile(t *testing.T) {
-	repoRoot := t.TempDir()
-	path, cleanup, err := writeInstrumentScriptTempFile(repoRoot)
-	if err != nil {
-		t.Fatalf("writeInstrumentScriptTempFile: %v", err)
-	}
-	t.Cleanup(cleanup)
-
-	content, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile temp script: %v", err)
-	}
-	if len(content) == 0 || string(content) != instrumentScript {
-		t.Fatalf("unexpected instrument script content length=%d", len(content))
-	}
-
-	cleanup()
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatalf("expected cleanup to remove temp file, got err=%v", err)
-	}
-}
-
-func TestWriteInstrumentScriptTempFileFallsBackWhenRepoRootUnavailable(t *testing.T) {
-	repoRootFile := filepath.Join(t.TempDir(), "not-a-dir")
-	if err := os.WriteFile(repoRootFile, []byte("x"), 0o644); err != nil {
-		t.Fatalf("WriteFile repoRoot file: %v", err)
-	}
-
-	path, cleanup, err := writeInstrumentScriptTempFile(repoRootFile)
-	if err != nil {
-		t.Fatalf("writeInstrumentScriptTempFile fallback: %v", err)
-	}
-	defer cleanup()
-
-	if filepath.Dir(path) == repoRootFile {
-		t.Fatalf("expected fallback temp file outside non-directory repoRoot, got %q", path)
-	}
-	if content, err := os.ReadFile(path); err != nil {
-		t.Fatalf("ReadFile fallback temp script: %v", err)
-	} else if string(content) != instrumentScript {
-		t.Fatalf("fallback temp script content mismatch")
-	}
-}
-
-func TestWriteInstrumentScriptTempFileRejectsEmptyScript(t *testing.T) {
-	original := instrumentScript
-	instrumentScript = ""
-	t.Cleanup(func() { instrumentScript = original })
-
-	if _, _, err := writeInstrumentScriptTempFile(t.TempDir()); err == nil || !strings.Contains(err.Error(), "embedded instrument script is empty") {
-		t.Fatalf("expected empty script error, got %v", err)
-	}
-}
-
-func TestResolveCoverageModuleRoot(t *testing.T) {
-	t.Run("does not include relative nyc candidate when global root is empty", func(t *testing.T) {
-		repoRoot := t.TempDir()
-		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", "")
-
-		candidates := coverageModuleRootCandidates(repoRoot)
-		for _, candidate := range candidates {
-			if candidate == "nyc" {
-				t.Fatalf("unexpected relative nyc candidate: %#v", candidates)
-			}
-		}
-	})
-
-	t.Run("falls back to repo node_modules marker", func(t *testing.T) {
-		repoRoot := t.TempDir()
-		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global"))
-		marker := filepath.Join(repoRoot, "node_modules", "istanbul-lib-instrument", "package.json")
-		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
-			t.Fatalf("MkdirAll repo marker dir: %v", err)
-		}
-		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
-			t.Fatalf("WriteFile repo marker: %v", err)
-		}
-
-		if got := resolveCoverageModuleRoot(repoRoot); got != repoRoot {
-			t.Fatalf("resolveCoverageModuleRoot() = %q, want repoRoot %q", got, repoRoot)
-		}
-	})
-
-	t.Run("supports modules node_modules marker", func(t *testing.T) {
-		repoRoot := t.TempDir()
-		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global"))
-		modulesRoot := filepath.Join(repoRoot, "modules")
-		marker := filepath.Join(modulesRoot, "node_modules", "istanbul-lib-instrument", "package.json")
-		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
-			t.Fatalf("MkdirAll modules marker dir: %v", err)
-		}
-		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
-			t.Fatalf("WriteFile modules marker: %v", err)
-		}
-
-		if got := resolveCoverageModuleRoot(repoRoot); got != modulesRoot {
-			t.Fatalf("resolveCoverageModuleRoot() = %q, want modules root %q", got, modulesRoot)
-		}
-	})
-
-	t.Run("uses configured global module root when repo missing marker", func(t *testing.T) {
-		repoRoot := t.TempDir()
-		globalRoot := filepath.Join(t.TempDir(), "global-root")
-		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
-		marker := filepath.Join(globalRoot, "istanbul-lib-instrument", "package.json")
-		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
-			t.Fatalf("MkdirAll global marker dir: %v", err)
-		}
-		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
-			t.Fatalf("WriteFile global marker: %v", err)
-		}
-
-		if got := resolveCoverageModuleRoot(repoRoot); got != globalRoot {
-			t.Fatalf("resolveCoverageModuleRoot() = %q, want globalRoot %q", got, globalRoot)
-		}
-	})
-
-	t.Run("uses nyc nested dependency under global root", func(t *testing.T) {
-		repoRoot := t.TempDir()
-		globalRoot := filepath.Join(t.TempDir(), "global-root")
-		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
-		nycRoot := filepath.Join(globalRoot, "nyc")
-		marker := filepath.Join(nycRoot, "node_modules", "istanbul-lib-instrument", "package.json")
-		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
-			t.Fatalf("MkdirAll nyc marker dir: %v", err)
-		}
-		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
-			t.Fatalf("WriteFile nyc marker: %v", err)
-		}
-
-		if got := resolveCoverageModuleRoot(repoRoot); got != nycRoot {
-			t.Fatalf("resolveCoverageModuleRoot() = %q, want nyc root %q", got, nycRoot)
-		}
-	})
-}
-
-func TestRunCoverageInstrumentWithNodeMapsMissingModuleError(t *testing.T) {
-	nodePath := writeExecutable(t, t.TempDir(), "node", "#!/bin/sh\necho \"Error: Cannot find module 'istanbul-lib-instrument'\" 1>&2\nexit 1\n")
-
-	err := runCoverageInstrumentWithNode(
-		context.Background(),
-		nodePath,
-		t.TempDir(),
-		filepath.Join(t.TempDir(), "instrument.cjs"),
-		filepath.Join(t.TempDir(), "in.js"),
-		filepath.Join(t.TempDir(), "out.js.map"),
-		"/tmp/fake-base",
-	)
-	if err == nil {
-		t.Fatal("expected missing module error")
-	}
-	if !strings.Contains(err.Error(), "missing 1 required module(s): istanbul-lib-instrument") {
-		t.Fatalf("expected missing module mapping, got %v", err)
-	}
-}
-
-func TestRunCoverageInstrumentWithNodeMapsMissingModuleSentinelError(t *testing.T) {
-	nodePath := writeExecutable(t, t.TempDir(), "node", "#!/bin/sh\necho \"missing required module istanbul-lib-instrument\" 1>&2\nexit 1\n")
-
-	err := runCoverageInstrumentWithNode(
-		context.Background(),
-		nodePath,
-		t.TempDir(),
-		filepath.Join(t.TempDir(), "instrument.cjs"),
-		filepath.Join(t.TempDir(), "in.js"),
-		filepath.Join(t.TempDir(), "out.js.map"),
-		"/tmp/fake-base",
-	)
-	if err == nil {
-		t.Fatal("expected missing module error")
-	}
-	if !strings.Contains(err.Error(), "missing 1 required module(s): istanbul-lib-instrument") {
-		t.Fatalf("expected missing module mapping, got %v", err)
-	}
-}
-
-func TestBuildCoverageNodePathSplitsExistingNodePathEntries(t *testing.T) {
-	repoRoot := t.TempDir()
-	first := filepath.Join(t.TempDir(), "first")
-	second := filepath.Join(t.TempDir(), "second")
-	t.Setenv("NODE_PATH", first+string(os.PathListSeparator)+second)
-
-	nodePath := buildCoverageNodePath(repoRoot, "")
-	entries := filepath.SplitList(nodePath)
-	for _, want := range []string{first, second} {
-		found := false
-		for _, entry := range entries {
-			if entry == want {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatalf("expected NODE_PATH entry %q in %q", want, nodePath)
-		}
-	}
-}
-
-func TestBuildCoverageNodePathNormalizesAndDeduplicatesEntries(t *testing.T) {
-	repoRoot := t.TempDir()
-	localModules := filepath.Join(repoRoot, "modules", "node_modules")
-	if err := os.MkdirAll(localModules, 0o755); err != nil {
-		t.Fatalf("mkdir local modules root: %v", err)
-	}
-
-	moduleRoot := filepath.Join(t.TempDir(), "module-root")
-	moduleManifest := filepath.Join(moduleRoot, "node_modules", "istanbul-lib-instrument", "package.json")
-	if err := os.MkdirAll(filepath.Dir(moduleManifest), 0o755); err != nil {
-		t.Fatalf("mkdir module manifest dir: %v", err)
-	}
-	if err := os.WriteFile(moduleManifest, []byte("{}"), 0o644); err != nil {
-		t.Fatalf("write module manifest: %v", err)
-	}
-
-	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-root"))
-	t.Setenv(
-		"NODE_PATH",
-		filepath.Join(localModules, ".")+
-			string(os.PathListSeparator)+
-			localModules+string(filepath.Separator)+
-			string(os.PathListSeparator)+
-			filepath.Join(moduleRoot, "..", "module-root", "node_modules"),
-	)
-
-	nodePath := buildCoverageNodePath(repoRoot, moduleRoot)
-	entries := filepath.SplitList(nodePath)
-	if len(entries) != 2 {
-		t.Fatalf("buildCoverageNodePath() entries = %#v, want 2 normalized unique entries", entries)
-	}
-	if entries[0] != localModules {
-		t.Fatalf("first node path entry = %q, want %q", entries[0], localModules)
-	}
-	if entries[1] != filepath.Join(moduleRoot, "node_modules") {
-		t.Fatalf("second node path entry = %q, want %q", entries[1], filepath.Join(moduleRoot, "node_modules"))
-	}
-}
-
-func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
-	env := []string{"Node_Path=/old", "PATH=/bin"}
-	updated := noderuntime.ReplaceOrAppendEnv(env, "NODE_PATH", "/new")
-
-	if len(updated) != 2 {
-		t.Fatalf("ReplaceOrAppendEnv() len = %d, want 2 (%#v)", len(updated), updated)
-	}
-	if updated[0] != "NODE_PATH=/new" {
-		t.Fatalf("ReplaceOrAppendEnv() first entry = %q, want %q", updated[0], "NODE_PATH=/new")
-	}
-}
-
-func TestRunCoverageInstrumentWithNodeFailsFastWhenModuleRootMissing(t *testing.T) {
-	err := runCoverageInstrumentWithNode(
-		context.Background(),
-		"node",
-		t.TempDir(),
-		filepath.Join(t.TempDir(), "instrument.cjs"),
-		filepath.Join(t.TempDir(), "in.js"),
-		filepath.Join(t.TempDir(), "out.js.map"),
-		"",
-	)
-	if err == nil {
-		t.Fatal("expected missing module-root error")
-	}
-	if !strings.Contains(err.Error(), "missing 1 required module(s): istanbul-lib-instrument") {
-		t.Fatalf("expected missing module guidance, got %v", err)
-	}
-	if !strings.Contains(err.Error(), "npm install -g istanbul-lib-instrument") {
-		t.Fatalf("expected npm global install hint in guidance, got %v", err)
 	}
 }
 
@@ -508,7 +221,7 @@ func TestCoverageRunIDContextAndWriteCoverageJSONWithRunID(t *testing.T) {
 	}
 }
 
-func TestValidateCoverageReportersAndNycArgs(t *testing.T) {
+func TestValidateCoverageReportersAndDefaultExcludes(t *testing.T) {
 	validated, err := ValidateCoverageReporters([]string{" text ", "HTML", "text", "json-summary"})
 	if err != nil {
 		t.Fatalf("ValidateCoverageReporters: %v", err)
@@ -520,87 +233,69 @@ func TestValidateCoverageReportersAndNycArgs(t *testing.T) {
 		t.Fatalf("expected unsupported reporter error, got %v", err)
 	}
 
-	args := nycCommonArgs([]string{"src/**", " test/** "}, []string{"custom/**"})
-	joined := strings.Join(args, " ")
-	for _, want := range []string{"--exclude-after-remap", "--include src/**", "--include test/**", "--exclude **/*.test.ts", "--exclude **/dist/**", "--exclude custom/**"} {
+	excludes := mergeExcludeGlobs([]string{"custom/**", "  "})
+	joined := strings.Join(excludes, " ")
+	for _, want := range []string{"**/*.test.ts", "**/dist/**", "custom/**"} {
 		if !strings.Contains(joined, want) {
-			t.Fatalf("nycCommonArgs missing %q in %q", want, joined)
+			t.Fatalf("mergeExcludeGlobs missing %q in %q", want, joined)
 		}
 	}
 }
 
-func TestRunNycCheckCoverageValidatesThresholdsBeforeExternalDeps(t *testing.T) {
-	err := RunNycCheckCoverage(context.Background(), t.TempDir(), nil, nil, 0, 0, 0, 0)
+func TestCheckCoverageRequiresThreshold(t *testing.T) {
+	err := CheckCoverage(context.Background(), CheckOptions{RepoRoot: t.TempDir()})
 	if err == nil || !strings.Contains(err.Error(), "requires at least one threshold") {
 		t.Fatalf("expected threshold validation error, got %v", err)
 	}
 }
 
-func TestInstrumentDistBundleValidatesInputsAndInvokesNode(t *testing.T) {
-	t.Run("validates inputs and missing node", func(t *testing.T) {
-		t.Setenv("PATH", t.TempDir())
+func TestPreflightInstrumentationPrerequisitesNoop(t *testing.T) {
+	if err := PreflightInstrumentationPrerequisites(t.TempDir()); err != nil {
+		t.Fatalf("PreflightInstrumentationPrerequisites: %v", err)
+	}
+	if err := PreflightInstrumentationPrerequisites(""); err != nil {
+		t.Fatalf("PreflightInstrumentationPrerequisites(empty): %v", err)
+	}
+}
+
+func TestInstrumentDistBundlePureGo(t *testing.T) {
+	t.Run("validates inputs and missing targets", func(t *testing.T) {
 		if err := InstrumentDistBundle(context.Background(), t.TempDir(), "", "portal"); err == nil || !strings.Contains(err.Error(), "empty distPath") {
 			t.Fatalf("expected empty distPath error, got %v", err)
 		}
 		if err := InstrumentDistBundle(context.Background(), t.TempDir(), "/tmp/dist", ""); err == nil || !strings.Contains(err.Error(), "empty app") {
 			t.Fatalf("expected empty app error, got %v", err)
 		}
-		if err := InstrumentDistBundle(context.Background(), t.TempDir(), "/tmp/dist", "portal"); err == nil || !strings.Contains(err.Error(), "requires node in PATH") {
-			t.Fatalf("expected missing node error, got %v", err)
+		if err := InstrumentDistBundle(context.Background(), t.TempDir(), t.TempDir(), "portal"); err == nil || !strings.Contains(err.Error(), "no dist bundle found") {
+			t.Fatalf("expected missing bundle error, got %v", err)
 		}
 	})
 
-	t.Run("prefers app bundle then falls back to bundles", func(t *testing.T) {
+	t.Run("instruments app then bundle index layouts in place", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		marker := filepath.Join(repoRoot, "node_modules", "istanbul-lib-instrument", "package.json")
-		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
-			t.Fatalf("MkdirAll repo marker dir: %v", err)
-		}
-		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
-			t.Fatalf("WriteFile repo marker: %v", err)
-		}
-
-		binDir := t.TempDir()
-		capture := filepath.Join(t.TempDir(), "node.args")
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nprintf '%s\n' \"$@\" >> \"$CHOYSUM_CAPTURE\"\nprintf '%s\n' '---' >> \"$CHOYSUM_CAPTURE\"\n")
-		t.Setenv("PATH", binDir)
-		t.Setenv("CHOYSUM_CAPTURE", capture)
-
 		distPath := filepath.Join(t.TempDir(), "dist")
+
 		appIndex := filepath.Join(distPath, "apps", "portal", "index.js")
 		if err := os.MkdirAll(filepath.Dir(appIndex), 0o755); err != nil {
 			t.Fatalf("MkdirAll app index: %v", err)
 		}
-		if err := os.WriteFile(appIndex, []byte("console.log('app')"), 0o644); err != nil {
+		if err := os.WriteFile(appIndex, []byte("function hi(){ return 1; }\nhi();\n"), 0o644); err != nil {
 			t.Fatalf("WriteFile app index: %v", err)
 		}
-
-		if err := InstrumentDistBundle(context.Background(), repoRoot, distPath, "portal"); err != nil {
-			t.Fatalf("InstrumentDistBundle(app layout): %v", err)
-		}
-		captured, err := os.ReadFile(capture)
-		if err != nil {
-			t.Fatalf("ReadFile captured app args: %v", err)
-		}
-		args := string(captured)
-		if !strings.Contains(args, appIndex) || !strings.Contains(args, appIndex+".map") {
-			t.Fatalf("unexpected node args for app layout: %q", args)
-		}
-
 		appTests := filepath.Join(distPath, "apps", "portal", "tests.js")
-		if err := os.WriteFile(appTests, []byte("console.log('app-tests')"), 0o644); err != nil {
+		if err := os.WriteFile(appTests, []byte("var n = 2;\n"), 0o644); err != nil {
 			t.Fatalf("WriteFile app tests: %v", err)
 		}
 		if err := InstrumentDistBundle(context.Background(), repoRoot, distPath, "portal"); err != nil {
-			t.Fatalf("InstrumentDistBundle(app tests): %v", err)
+			t.Fatalf("InstrumentDistBundle(app layout): %v", err)
 		}
-		captured, err = os.ReadFile(capture)
+		assertInstrumentedJS(t, appIndex)
+		rawTests, err := os.ReadFile(appTests)
 		if err != nil {
-			t.Fatalf("ReadFile captured app tests args: %v", err)
+			t.Fatalf("ReadFile app tests: %v", err)
 		}
-		args = string(captured)
-		if !strings.Contains(args, appTests) || !strings.Contains(args, appTests+".map") {
-			t.Fatalf("expected app tests bundle to be instrumented, got args: %q", args)
+		if strings.Contains(string(rawTests), "__coverage__") {
+			t.Fatalf("expected tests.js to remain uninstrumented")
 		}
 
 		if err := os.Remove(appIndex); err != nil {
@@ -609,326 +304,57 @@ func TestInstrumentDistBundleValidatesInputsAndInvokesNode(t *testing.T) {
 		if err := os.Remove(appTests); err != nil {
 			t.Fatalf("Remove app tests: %v", err)
 		}
+
 		bundleIndex := filepath.Join(distPath, "bundles", "index.js")
 		if err := os.MkdirAll(filepath.Dir(bundleIndex), 0o755); err != nil {
 			t.Fatalf("MkdirAll bundle index: %v", err)
 		}
-		if err := os.WriteFile(bundleIndex, []byte("console.log('bundle')"), 0o644); err != nil {
+		if err := os.WriteFile(bundleIndex, []byte("var x = 1;\n"), 0o644); err != nil {
 			t.Fatalf("WriteFile bundle index: %v", err)
 		}
-
 		if err := InstrumentDistBundle(context.Background(), repoRoot, distPath, "portal"); err != nil {
 			t.Fatalf("InstrumentDistBundle(bundle fallback): %v", err)
 		}
-		captured, err = os.ReadFile(capture)
-		if err != nil {
-			t.Fatalf("ReadFile captured bundle args: %v", err)
-		}
-		args = string(captured)
-		if !strings.Contains(args, bundleIndex) || !strings.Contains(args, bundleIndex+".map") {
-			t.Fatalf("unexpected node args for bundle fallback: %q", args)
-		}
-
-		bundleTests := filepath.Join(distPath, "bundles", "tests.js")
-		if err := os.WriteFile(bundleTests, []byte("console.log('bundle-tests')"), 0o644); err != nil {
-			t.Fatalf("WriteFile bundle tests: %v", err)
-		}
-		if err := InstrumentDistBundle(context.Background(), repoRoot, distPath, "portal"); err != nil {
-			t.Fatalf("InstrumentDistBundle(bundle tests): %v", err)
-		}
-		captured, err = os.ReadFile(capture)
-		if err != nil {
-			t.Fatalf("ReadFile captured bundle tests args: %v", err)
-		}
-		args = string(captured)
-		if !strings.Contains(args, bundleTests) || !strings.Contains(args, bundleTests+".map") {
-			t.Fatalf("expected bundle tests bundle to be instrumented, got args: %q", args)
-		}
+		assertInstrumentedJS(t, bundleIndex)
 	})
 }
 
-func TestRunNycReportCoversDependencyChecksAndArgs(t *testing.T) {
-	t.Run("missing node and npx", func(t *testing.T) {
-		tmpRoot := t.TempDir()
-		t.Setenv("PATH", t.TempDir())
-		if err := RunNycReport(context.Background(), t.TempDir(), "", nil, nil, nil, tmpRoot); err == nil || !strings.Contains(err.Error(), "requires node in PATH") {
-			t.Fatalf("expected missing node error, got %v", err)
+func assertInstrumentedJS(t *testing.T, path string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile %s: %v", path, err)
+	}
+	text := string(raw)
+	for _, want := range []string{"globalThis", "__coverage__", ";void 0;", ".s["} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("instrumented %s missing %q:\n%s", path, want, text)
 		}
-
-		binDir := t.TempDir()
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
-		if err := RunNycReport(context.Background(), t.TempDir(), "", nil, nil, nil, tmpRoot); err == nil || !strings.Contains(err.Error(), "requires npx in PATH") {
-			t.Fatalf("expected missing npx error, got %v", err)
-		}
-	})
-
-	t.Run("runs nyc report with defaults", func(t *testing.T) {
-		binDir := t.TempDir()
-		capture := filepath.Join(t.TempDir(), "npx.args")
-		captureList := filepath.Join(t.TempDir(), "npx.temp.list")
-		captureJSON := filepath.Join(t.TempDir(), "npx.temp.json")
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		writeExecutable(t, binDir, "npx", "#!/bin/sh\nprintf '%s\n' \"$@\" > \"$CHOYSUM_CAPTURE\"\ntemp_dir=\"\"\nprev=\"\"\nfor arg in \"$@\"; do\n  if [ \"$prev\" = \"--temp-dir\" ]; then\n    temp_dir=\"$arg\"\n    break\n  fi\n  prev=\"$arg\"\ndone\nif [ -n \"$temp_dir\" ]; then\n  : > \"$CHOYSUM_CAPTURE_LIST\"\n  : > \"$CHOYSUM_CAPTURE_JSON\"\n  found=0\n  for f in \"$temp_dir\"/*.json; do\n    if [ -f \"$f\" ]; then\n      found=1\n      printf '%s\n' \"${f##*/}\" >> \"$CHOYSUM_CAPTURE_LIST\"\n      content=\"\"\n      while IFS= read -r line || [ -n \"$line\" ]; do\n        content=\"${content}${line}\"\n      done < \"$f\"\n      printf '%s' \"$content\" >> \"$CHOYSUM_CAPTURE_JSON\"\n    fi\n  done\n  if [ \"$found\" -eq 0 ]; then\n    exit 1\n  fi\nfi\n")
-		t.Setenv("PATH", binDir)
-		t.Setenv("CHOYSUM_CAPTURE", capture)
-		t.Setenv("CHOYSUM_CAPTURE_LIST", captureList)
-		t.Setenv("CHOYSUM_CAPTURE_JSON", captureJSON)
-
-		repoRoot := t.TempDir()
-		runID := "run123"
-		nycOutDir, err := resolveCoverageNycOutputDirWithRunID(repoRoot, repoRoot, runID)
-		if err != nil {
-			t.Fatalf("resolveCoverageNycOutputDir: %v", err)
-		}
-		if err := os.MkdirAll(nycOutDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll nyc_output: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(nycOutDir, "choysum-a-"+runID+"-1.json"), []byte(`{"a":true}`), 0o644); err != nil {
-			t.Fatalf("WriteFile run-scoped coverage a: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(nycOutDir, "choysum-b-"+runID+"-2.json"), []byte(`{"b":true}`), 0o644); err != nil {
-			t.Fatalf("WriteFile run-scoped coverage b: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(nycOutDir, "choysum-c-other-3.json"), []byte(`{"other":true}`), 0o644); err != nil {
-			t.Fatalf("WriteFile other-run coverage: %v", err)
-		}
-
-		runCtx := ContextWithCoverageRunID(context.Background(), runID)
-		if err := RunNycReport(runCtx, repoRoot, "", nil, []string{"src/**"}, []string{"custom/**"}, repoRoot); err != nil {
-			t.Fatalf("RunNycReport: %v", err)
-		}
-		captured, err := os.ReadFile(capture)
-		if err != nil {
-			t.Fatalf("ReadFile captured npx args: %v", err)
-		}
-		args := string(captured)
-		for _, want := range []string{"--no-install", "nyc", "report", "--temp-dir", "--reporter", "text", "--reporter", "html", "--include", "src/**", "--exclude", "custom/**"} {
-			if !strings.Contains(args, want) {
-				t.Fatalf("captured npx args missing %q in %q", want, args)
-			}
-		}
-		if strings.Contains(args, ".nyc_output") {
-			t.Fatalf("expected report temp-dir to avoid full nyc_output scan, got args %q", args)
-		}
-		tempList, err := os.ReadFile(captureList)
-		if err != nil {
-			t.Fatalf("ReadFile captured temp-dir listing: %v", err)
-		}
-		files := strings.Fields(string(tempList))
-		if len(files) != 2 {
-			t.Fatalf("expected exactly two run-scoped coverage files in temp-dir, got %d", len(files))
-		}
-		copiedContent, err := os.ReadFile(captureJSON)
-		if err != nil {
-			t.Fatalf("ReadFile copied coverage payload: %v", err)
-		}
-		payload := string(copiedContent)
-		if !strings.Contains(payload, `{"a":true}`) || !strings.Contains(payload, `{"b":true}`) {
-			t.Fatalf("expected run-scoped payloads in temp-dir copy, got %q", payload)
-		}
-		if strings.Contains(payload, `{"other":true}`) {
-			t.Fatalf("unexpected cross-run payload in temp-dir copy, got %q", payload)
-		}
-		defaultReportDir, err := ResolveCoverageReportDirWithRunID(repoRoot, repoRoot, runID)
-		if err != nil {
-			t.Fatalf("ResolveCoverageReportDir: %v", err)
-		}
-		if _, err := os.Stat(defaultReportDir); err != nil {
-			t.Fatalf("expected default coverage dir to be created: %v", err)
-		}
-	})
-
-	t.Run("falls back to latest when run-id missing", func(t *testing.T) {
-		binDir := t.TempDir()
-		capture := filepath.Join(t.TempDir(), "npx.latest.args")
-		captureJSON := filepath.Join(t.TempDir(), "npx.latest.json")
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		writeExecutable(t, binDir, "npx", "#!/bin/sh\nprintf '%s\n' \"$@\" > \"$CHOYSUM_CAPTURE\"\ntemp_dir=\"\"\nprev=\"\"\nfor arg in \"$@\"; do\n  if [ \"$prev\" = \"--temp-dir\" ]; then\n    temp_dir=\"$arg\"\n    break\n  fi\n  prev=\"$arg\"\ndone\nif [ -n \"$temp_dir\" ]; then\n  : > \"$CHOYSUM_CAPTURE_JSON\"\n  found=0\n  for f in \"$temp_dir\"/*.json; do\n    if [ -f \"$f\" ]; then\n      found=1\n      content=\"\"\n      while IFS= read -r line || [ -n \"$line\" ]; do\n        content=\"${content}${line}\"\n      done < \"$f\"\n      printf '%s' \"$content\" >> \"$CHOYSUM_CAPTURE_JSON\"\n    fi\n  done\n  if [ \"$found\" -eq 0 ]; then\n    exit 1\n  fi\nfi\n")
-		t.Setenv("PATH", binDir)
-		t.Setenv("CHOYSUM_CAPTURE", capture)
-		t.Setenv("CHOYSUM_CAPTURE_JSON", captureJSON)
-
-		repoRoot := t.TempDir()
-		nycOutDir, err := resolveCoverageNycOutputDir(repoRoot, repoRoot)
-		if err != nil {
-			t.Fatalf("resolveCoverageNycOutputDir: %v", err)
-		}
-		if err := os.MkdirAll(nycOutDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll nyc_output: %v", err)
-		}
-		oldCoverage := filepath.Join(nycOutDir, "choysum-old.json")
-		newCoverage := filepath.Join(nycOutDir, "choysum-new.json")
-		if err := os.WriteFile(oldCoverage, []byte(`{"old":true}`), 0o644); err != nil {
-			t.Fatalf("WriteFile old coverage: %v", err)
-		}
-		if err := os.WriteFile(newCoverage, []byte(`{"new":true}`), 0o644); err != nil {
-			t.Fatalf("WriteFile new coverage: %v", err)
-		}
-		olderTime := time.Now().Add(-2 * time.Minute)
-		newerTime := time.Now().Add(-1 * time.Minute)
-		if err := os.Chtimes(oldCoverage, olderTime, olderTime); err != nil {
-			t.Fatalf("Chtimes old coverage: %v", err)
-		}
-		if err := os.Chtimes(newCoverage, newerTime, newerTime); err != nil {
-			t.Fatalf("Chtimes new coverage: %v", err)
-		}
-
-		if err := RunNycReport(context.Background(), repoRoot, "", nil, nil, nil, repoRoot); err != nil {
-			t.Fatalf("RunNycReport fallback latest: %v", err)
-		}
-		copiedContent, err := os.ReadFile(captureJSON)
-		if err != nil {
-			t.Fatalf("ReadFile fallback copied payload: %v", err)
-		}
-		if string(copiedContent) != `{"new":true}` {
-			t.Fatalf("fallback copied coverage json = %q, want newest file content", string(copiedContent))
-		}
-	})
-
-	t.Run("warns when run-id missing", func(t *testing.T) {
-		binDir := t.TempDir()
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		writeExecutable(t, binDir, "npx", "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
-
-		repoRoot := t.TempDir()
-		nycOutDir, err := resolveCoverageNycOutputDir(repoRoot, repoRoot)
-		if err != nil {
-			t.Fatalf("resolveCoverageNycOutputDir: %v", err)
-		}
-		if err := os.MkdirAll(nycOutDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll nyc_output: %v", err)
-		}
-		coveragePath := filepath.Join(nycOutDir, "choysum-latest.json")
-		if err := os.WriteFile(coveragePath, []byte(`{"ok":true}`), 0o644); err != nil {
-			t.Fatalf("WriteFile fallback coverage: %v", err)
-		}
-
-		originalStderr := os.Stderr
-		r, w, err := os.Pipe()
-		if err != nil {
-			t.Fatalf("os.Pipe: %v", err)
-		}
-		os.Stderr = w
-		t.Cleanup(func() {
-			os.Stderr = originalStderr
-			_ = r.Close()
-			_ = w.Close()
-		})
-
-		if err := RunNycReport(context.Background(), repoRoot, "", []string{"text"}, nil, nil, repoRoot); err != nil {
-			t.Fatalf("RunNycReport missing run-id warning path: %v", err)
-		}
-		_ = w.Close()
-		warnOutput, err := io.ReadAll(r)
-		if err != nil {
-			t.Fatalf("io.ReadAll(stderr): %v", err)
-		}
-		if !strings.Contains(string(warnOutput), "missing run-id, using latest fallback") {
-			t.Fatalf("expected missing run-id warning, got %q", string(warnOutput))
-		}
-	})
-
-	t.Run("fails when no coverage json exists", func(t *testing.T) {
-		binDir := t.TempDir()
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		writeExecutable(t, binDir, "npx", "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
-
-		repoRoot := t.TempDir()
-		nycOutDir, err := resolveCoverageNycOutputDir(repoRoot, repoRoot)
-		if err != nil {
-			t.Fatalf("resolveCoverageNycOutputDir: %v", err)
-		}
-		if err := os.MkdirAll(nycOutDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll nyc_output: %v", err)
-		}
-
-		err = RunNycReport(context.Background(), repoRoot, "", nil, nil, nil, repoRoot)
-		if err == nil || !strings.Contains(err.Error(), "no coverage json found") {
-			t.Fatalf("expected missing coverage json error, got %v", err)
-		}
-	})
-
-	t.Run("wraps command failure", func(t *testing.T) {
-		binDir := t.TempDir()
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		writeExecutable(t, binDir, "npx", "#!/bin/sh\nexit 2\n")
-		t.Setenv("PATH", binDir)
-		repoRoot := t.TempDir()
-		nycOutDir, err := resolveCoverageNycOutputDir(repoRoot, repoRoot)
-		if err != nil {
-			t.Fatalf("resolveCoverageNycOutputDir: %v", err)
-		}
-		if err := os.MkdirAll(nycOutDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll nyc_output: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(nycOutDir, "choysum-only.json"), []byte(`{"ok":true}`), 0o644); err != nil {
-			t.Fatalf("WriteFile coverage json: %v", err)
-		}
-		if err := RunNycReport(context.Background(), repoRoot, "reports", []string{"text"}, nil, nil, repoRoot); err == nil || !strings.Contains(err.Error(), "nyc report failed") {
-			t.Fatalf("expected wrapped nyc report error, got %v", err)
-		}
-	})
+	}
 }
 
-func TestRunNycCheckCoverageCoversDependencyChecksArgsAndFailures(t *testing.T) {
-	t.Run("missing node and npx", func(t *testing.T) {
-		t.Setenv("PATH", t.TempDir())
-		if err := RunNycCheckCoverage(context.Background(), t.TempDir(), nil, nil, 80, 0, 0, 0); err == nil || !strings.Contains(err.Error(), "requires node in PATH") {
-			t.Fatalf("expected missing node error, got %v", err)
-		}
-
-		binDir := t.TempDir()
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
-		if err := RunNycCheckCoverage(context.Background(), t.TempDir(), nil, nil, 80, 0, 0, 0); err == nil || !strings.Contains(err.Error(), "requires npx in PATH") {
-			t.Fatalf("expected missing npx error, got %v", err)
-		}
+func TestWriteLcovFailsWhenNoCoverageJSON(t *testing.T) {
+	repoRoot := t.TempDir()
+	tmpRoot := t.TempDir()
+	runID := "run-empty"
+	nycOutDir, err := resolveCoverageNycOutputDirWithRunID(repoRoot, tmpRoot, runID)
+	if err != nil {
+		t.Fatalf("resolveCoverageNycOutputDirWithRunID: %v", err)
+	}
+	if err := os.MkdirAll(nycOutDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll nyc_output: %v", err)
+	}
+	ctx := ContextWithCoverageRunID(context.Background(), runID)
+	err = WriteLcov(ctx, ReportOptions{
+		RepoRoot:  repoRoot,
+		TmpRoot:   tmpRoot,
+		ReportDir: filepath.Join(tmpRoot, "reports"),
+		Reporters: []string{"lcovonly"},
+		RunID:     runID,
 	})
-
-	t.Run("runs nyc check with thresholds", func(t *testing.T) {
-		binDir := t.TempDir()
-		capture := filepath.Join(t.TempDir(), "npx-check.args")
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		writeExecutable(t, binDir, "npx", "#!/bin/sh\nprintf '%s\n' \"$@\" > \"$CHOYSUM_CAPTURE\"\n")
-		t.Setenv("PATH", binDir)
-		t.Setenv("CHOYSUM_CAPTURE", capture)
-		repoRoot := t.TempDir()
-		tmpRoot := t.TempDir()
-		nycOutputDir, err := resolveCoverageNycOutputDir(repoRoot, tmpRoot)
-		if err != nil {
-			t.Fatalf("resolveCoverageNycOutputDir: %v", err)
-		}
-
-		if err := RunNycCheckCoverageWithTmpRoot(context.Background(), repoRoot, []string{"src/**"}, []string{"custom/**"}, 80, 70, 60, 50, tmpRoot); err != nil {
-			t.Fatalf("RunNycCheckCoverageWithTmpRoot: %v", err)
-		}
-		captured, err := os.ReadFile(capture)
-		if err != nil {
-			t.Fatalf("ReadFile captured check args: %v", err)
-		}
-		args := string(captured)
-		for _, want := range []string{"--no-install", "nyc", "check-coverage", "--lines", "80", "--functions", "70", "--branches", "60", "--statements", "50", "--include", "src/**", "--exclude", "custom/**"} {
-			if !strings.Contains(args, want) {
-				t.Fatalf("captured npx check args missing %q in %q", want, args)
-			}
-		}
-		if !strings.Contains(args, nycOutputDir) {
-			t.Fatalf("captured npx check args missing nyc_output dir %q in %q", nycOutputDir, args)
-		}
-	})
-
-	t.Run("wraps command failure", func(t *testing.T) {
-		binDir := t.TempDir()
-		writeExecutable(t, binDir, "node", "#!/bin/sh\nexit 0\n")
-		writeExecutable(t, binDir, "npx", "#!/bin/sh\nexit 3\n")
-		t.Setenv("PATH", binDir)
-		if err := RunNycCheckCoverage(context.Background(), t.TempDir(), nil, nil, 80, 0, 0, 0); err == nil || !strings.Contains(err.Error(), "nyc check-coverage failed") {
-			t.Fatalf("expected wrapped nyc check error, got %v", err)
-		}
-	})
+	if err == nil || !strings.Contains(err.Error(), "no coverage json found") {
+		t.Fatalf("expected missing coverage json error, got %v", err)
+	}
 }
 
 func TestGoCoverageHelperEdgeCases(t *testing.T) {
