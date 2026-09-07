@@ -300,11 +300,39 @@ func TestBuildFrontendVueHostBundleGuards(t *testing.T) {
 	osStatBundle = prevStat
 	esbuildBuild = prevBuild
 
+	// Default outfile path (empty Outfile → beside entry) via mocked build.
+	prevBuildDefault := esbuildBuild
+	esbuildBuild = func(opts api.BuildOptions) api.BuildResult {
+		if !strings.HasSuffix(opts.Outfile, "vue-host.bundle.js") {
+			t.Fatalf("default outfile = %q", opts.Outfile)
+		}
+		_ = os.WriteFile(opts.Outfile, []byte("/*default*/"), 0o644)
+		return api.BuildResult{}
+	}
+	tmpEntry := filepath.Join(t.TempDir(), "x.ts")
+	if err := os.WriteFile(tmpEntry, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	def, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
+		RepoRoot:  repo,
+		EntryPath: tmpEntry,
+		CacheDir:  t.TempDir(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(def.JSPath, "vue-host.bundle.js") {
+		t.Fatalf("default path: %#v", def)
+	}
+	esbuildBuild = prevBuildDefault
+
 	executor := newVueHostCompiler(t)
 	bundled, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
 		RepoRoot:      repo,
 		EntryPath:     entry,
+		Outfile:       filepath.Join(t.TempDir(), "vue-host.bundle.js"),
 		Sourcemap:     true,
+		WorkingDir:    fixtureDir,
 		JsExecutor:    executor,
 		WithVuePlugin: true,
 	})
@@ -312,6 +340,6 @@ func TestBuildFrontendVueHostBundleGuards(t *testing.T) {
 		t.Fatal(err)
 	}
 	if bundled.MapPath == "" || !strings.Contains(bundled.JSPath, "vue-host.bundle.js") {
-		t.Fatalf("default outfile/map: %#v", bundled)
+		t.Fatalf("outfile/map: %#v", bundled)
 	}
 }
