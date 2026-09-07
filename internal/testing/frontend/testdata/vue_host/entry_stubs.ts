@@ -7,12 +7,8 @@ import HostWithChild from './HostWithChild.vue';
 
 const w = shallowMount(HostWithChild, {
   stubs: {
-    ChildWidget: {
-      name: 'ChildWidget',
-      setup() {
-        return () => h('div', { class: 'stub-child' }, 'stubbed');
-      },
-    },
+    // Functional / render-function stubs must be accepted (Vue 3 component form).
+    ChildWidget: () => h('div', { class: 'stub-child' }, 'stubbed'),
   },
 });
 

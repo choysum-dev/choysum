@@ -208,6 +208,19 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
   try { parent.querySelector('div.a'); } catch (_) { unsupported = true; }
   if (!unsupported) throw new Error('expected unsupported compound selector');
 
+  unsupported = false;
+  try { parent.querySelector('.a.b'); } catch (_) { unsupported = true; }
+  if (!unsupported) throw new Error('expected unsupported .a.b');
+
+  unsupported = false;
+  try { parent.querySelector('#a.b'); } catch (_) { unsupported = true; }
+  if (!unsupported) throw new Error('expected unsupported #a.b');
+
+  child.setAttribute('data-x', 'p.q');
+  if (!parent.querySelector('[data-x="p.q"]')) {
+    throw new Error('attr selector with dot in value should work');
+  }
+
   let bubbled = false;
   let sawTarget = false;
   parent.addEventListener('click', (e) => {
@@ -232,6 +245,12 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
   const before = parent.childNodes.slice();
   parent.insertBefore(a, a);
   if (parent.childNodes.length !== before.length) throw new Error('insertBefore same-node mutated');
+
+  const old = document.createElement('em');
+  parent.appendChild(old);
+  parent.textContent = 'replaced';
+  if (old.parentNode !== null) throw new Error('textContent must clear parentNode');
+  if (parent.textContent !== 'replaced') throw new Error('textContent set failed');
 
   return 'ok';
 })()

@@ -36,7 +36,7 @@ function normalizeStubs(stubs) {
     var val = stubs[name];
     if (val === true) {
       out[name] = makeDefaultStub(name);
-    } else if (val && typeof val === 'object') {
+    } else if (val && (typeof val === 'object' || typeof val === 'function')) {
       out[name] = val;
     }
   });

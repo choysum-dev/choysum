@@ -162,15 +162,22 @@
     function match(el, s) {
       if (!s) return false;
       // Fail loud on forms this host does not implement (avoid false-negative finds).
-      if (/[\s,>+~]/.test(s) || /^[a-zA-Z][\w-]*[.#\[]/.test(s)) {
+      if (/[\s,>+~]/.test(s)) {
         throw new Error('choysum minimal DOM: unsupported selector: ' + s);
       }
       if (s.charAt(0) === '.') {
+        // Reject .a.b / .a#id / .a[attr] (but allow simple .class-name).
+        if (/[.#\[]/.test(s.slice(1))) {
+          throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+        }
         var cls = s.slice(1);
         var cn = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
         return (' ' + cn + ' ').indexOf(' ' + cls + ' ') >= 0;
       }
       if (s.charAt(0) === '#') {
+        if (/[.#\[]/.test(s.slice(1))) {
+          throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+        }
         return el.id === s.slice(1) || el.getAttribute('id') === s.slice(1);
       }
       if (s.charAt(0) === '[') {
@@ -182,6 +189,7 @@
         if (m[2] === undefined) return got != null;
         return got === m[2];
       }
+      // Tag name only — reject div.class / span#id / etc.
       if (!/^[a-zA-Z][\w-]*$/.test(s)) {
         throw new Error('choysum minimal DOM: unsupported selector: ' + s);
       }
@@ -205,6 +213,9 @@
       return parts.join('');
     },
     set: function (v) {
+      for (var i = 0; i < this._children.length; i++) {
+        this._children[i].parentNode = null;
+      }
       this._children = [];
       syncChildNodes(this);
       this._text = String(v == null ? '' : v);
