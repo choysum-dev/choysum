@@ -23,13 +23,15 @@ func newTestUnitFEIllegalCmd(_ func() scope.Scope, runtimeOptionsGetter func() c
 
 	cmd := &cobra.Command{
 		Use:   "unit-fe-illegal [app]",
-		Short: "Scan FE unit tests for illegal marks (warn by default)",
+		Short: "Inventory FE unit tests still on Node DOM/VTU (warn by default)",
 		Long: strings.TrimSpace(`
-Scan modules/<app>/web unit tests for patterns banned after the FE hard-cut:
-DOM environment pragmas, @vue/test-utils mount, *.vue imports, and happy-dom/jsdom imports.
+Scan modules/<app>/web unit tests for legacy Node/Vitest DOM patterns:
+happy-dom/jsdom environment pragmas or imports, @vue/test-utils, and *.vue imports.
 
-Importing from 'vitest' is allowed during corpus migration. Default mode always
-exits 0 and prints warnings (optionally as GitHub Actions annotations).
+Hits are an inventory of tests still on the Vitest/VTU stack (to migrate onto the
+QuickJS + vuesfc + choysumMount host). They are not a mandate to delete mount tests.
+Importing from 'vitest' is allowed until FE hard-cut. Default mode exits 0 and
+prints warnings (optionally as GitHub Actions annotations).
 `),
 		Args: func(cmd *cobra.Command, args []string) error {
 			if all {

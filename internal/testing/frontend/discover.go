@@ -26,13 +26,15 @@ var (
 type ScanMode int
 
 const (
-	// ScanModeWarn reports hits without failing (corpus migration).
+	// ScanModeWarn reports legacy Node/VTU inventory hits without failing (migration).
 	ScanModeWarn ScanMode = iota
-	// ScanModeError treats any hit as a hard failure (FE hard-cut).
+	// ScanModeError treats configured illegal patterns as a hard failure (FE hard-cut).
 	ScanModeError
 )
 
-// IllegalKind identifies a banned FE unit-test pattern.
+// IllegalKind identifies a legacy Node/VTU FE unit-test pattern.
+// During corpus migration these are inventory hits (CI warn), not a mandate to delete mount tests.
+// After FE hard-cut, ScanModeError rejects vitest/Node DOM packages; choysumMount + .vue imports are allowed.
 type IllegalKind string
 
 const (
@@ -42,7 +44,7 @@ const (
 	IllegalDOMPackage     IllegalKind = "dom-package"
 )
 
-// IllegalMark is one illegal FE unit-test hit.
+// IllegalMark is one legacy FE unit-test inventory hit (see IllegalKind).
 type IllegalMark struct {
 	Path    string
 	Line    int
