@@ -150,6 +150,32 @@ func TestNewTestUnitFEIllegalCmd_ArgsAndScan(t *testing.T) {
 	}
 }
 
+func TestNewTestUnitFEIllegalCmd_RepoRootWhenModulesPathIsWorkspace(t *testing.T) {
+	repo := t.TempDir()
+	modulesPath := filepath.Join(repo, "modules")
+	web := filepath.Join(modulesPath, "demo", "web")
+	if err := os.MkdirAll(web, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(web, "bad.test.ts"), []byte("import { mount } from '@vue/test-utils'\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// ModulesPath points at workspace root (contains modules/), not at modules/ itself.
+	cfg := newCommandTestConfig(repo)
+	cfg.ModulesPath = repo
+	cmd := newTestUnitFEIllegalCmdFromScope(func() scope.Scope {
+		return &commandTestScope{cfg: cfg}
+	})
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+	if err := cmd.RunE(cmd, []string{"demo"}); err != nil {
+		t.Fatalf("workspace ModulesPath: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "illegal FE unit mark") {
+		t.Fatalf("expected hits under workspace ModulesPath, stderr = %q", stderr.String())
+	}
+}
+
 func TestNewTestUnitFEIllegalCmd_CwdFallbackAndReadError(t *testing.T) {
 	repo := t.TempDir()
 	modulesPath := filepath.Join(repo, "modules")

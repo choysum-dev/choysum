@@ -54,11 +54,12 @@ var (
 	reVitestEnvHappy = regexp.MustCompile(`(?i)@(?:vitest|jest)-environment\s+(happy-dom|jsdom)\b`)
 	// Match the from/import/require clause itself so line numbers stay on the package specifier
 	// (avoids [\s\S]*? spanning back to an earlier unrelated import/export).
-	reDOMPackage = regexp.MustCompile(`(?m)(?:\bfrom\s+|import\s*(?:\(\s*)?|require\s*\(\s*)['"](happy-dom|jsdom)['"]`)
-	reVTUImport  = regexp.MustCompile(`(?m)(?:\bfrom\s+|import\s*(?:\(\s*)?|require\s*\(\s*)['"]@vue/test-utils['"]`)
+	// Quote class includes backticks for dynamic import()/require() template literals.
+	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)['\"`]")
+	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils['\"`]")
 	reMountCall  = regexp.MustCompile(`\b(?:shallowMount|mount)\s*\(`)
-	// Matches from '...vue', side-effect/dynamic/require imports, and optional Vite query (?raw).
-	reVueImport = regexp.MustCompile(`(?m)(?:\bfrom\s+|import\s*(?:\(\s*)?|require\s*\(\s*)['"][^'"]+\.vue(?:\?[^'"]*)?['"]`)
+	// Matches from '...vue', side-effect/dynamic/require imports, optional Vite query (?raw), and backticks.
+	reVueImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]+\\.vue(?:\\?[^'\"`]*)?['\"`]")
 )
 
 // DiscoverFrontendTests lists FE unit files under modules/<app>/web.

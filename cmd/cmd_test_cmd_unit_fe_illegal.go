@@ -49,10 +49,14 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 				return err
 			}
 			modulesPath := strings.TrimSpace(runtimeOptions.ModulesPath)
-			repoRoot := filepath.Dir(modulesPath)
+			// ModulesPath is normally <repo>/modules; if it already is the repo root
+			// (contains a modules/ child), keep it. Otherwise take the parent.
+			repoRoot := modulesPath
+			if st, err := os.Stat(filepath.Join(modulesPath, "modules")); err != nil || !st.IsDir() {
+				repoRoot = filepath.Dir(modulesPath)
+			}
 			if st, statErr := os.Stat(filepath.Join(repoRoot, "modules")); statErr != nil || !st.IsDir() {
-				// modulesPath may already be the repo root's modules dir; Dir is correct.
-				// If layout is unusual, fall back to cwd.
+				// Layout is unusual; fall back to cwd when it looks like a workspace root.
 				if cwd, cwdErr := os.Getwd(); cwdErr == nil {
 					if st2, err2 := os.Stat(filepath.Join(cwd, "modules")); err2 == nil && st2.IsDir() {
 						repoRoot = cwd

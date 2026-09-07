@@ -274,10 +274,10 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 	cjs := strings.Join([]string{
 		`require('jsdom')`,
 		`require("@vue/test-utils")`,
-		`require('./Comp.vue')`,
-		`await import('happy-dom')`,
-		`await import("@vue/test-utils")`,
-		`import Comp from './Comp.vue?raw'`,
+		"require(`./Comp.vue`)",
+		"await import(`happy-dom`)",
+		"await import(`@vue/test-utils`)",
+		"import Comp from './Comp.vue?raw'",
 		"",
 	}, "\n")
 	cjsHits := scanIllegalContent("x.cjs", cjs)
