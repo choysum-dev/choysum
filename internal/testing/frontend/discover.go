@@ -268,6 +268,14 @@ func relativizeRepoPath(repoRoot, path string) string {
 	if repoRoot == "" || repoRoot == "." {
 		return filepath.ToSlash(path)
 	}
+	absRoot, err1 := filepathAbs(repoRoot)
+	absPath, err2 := filepathAbs(path)
+	if err1 == nil && err2 == nil {
+		if rel, err := filepath.Rel(absRoot, absPath); err == nil && rel != "" && !strings.HasPrefix(rel, "..") {
+			return filepath.ToSlash(rel)
+		}
+		return filepath.ToSlash(absPath)
+	}
 	if rel, err := filepath.Rel(repoRoot, path); err == nil && rel != "" && !strings.HasPrefix(rel, "..") {
 		return filepath.ToSlash(rel)
 	}

@@ -134,6 +134,11 @@ func TestNewTestUnitFEIllegalCmd_ArgsAndScan(t *testing.T) {
 		t.Fatalf("clean stderr = %q", stderr.String())
 	}
 
+	cmd = newTestUnitFEIllegalCmdFromScope(scopeGetter)
+	if err := cmd.RunE(cmd, []string{"does-not-exist"}); err == nil || !strings.Contains(err.Error(), "does not exist") {
+		t.Fatalf("missing module = %v", err)
+	}
+
 	blocked := filepath.Join(web, "blocked.test.ts")
 	if err := os.WriteFile(blocked, []byte("mount(x)\n"), 0o644); err != nil {
 		t.Fatal(err)

@@ -65,6 +65,14 @@ exits 0 and prints warnings (optionally as GitHub Actions annotations).
 			}
 
 			apps := args
+			if !all {
+				for _, app := range apps {
+					appDir := filepath.Join(repoRoot, "modules", app)
+					if st, err := os.Stat(appDir); err != nil || !st.IsDir() {
+						return xfmt.Errorf("test unit-fe-illegal: module %q does not exist", app)
+					}
+				}
+			}
 			if all {
 				modulesRoot := filepath.Join(repoRoot, "modules")
 				entries, readErr := os.ReadDir(modulesRoot)

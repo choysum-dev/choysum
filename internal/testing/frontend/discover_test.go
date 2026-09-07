@@ -335,6 +335,12 @@ func TestFormatAndRelativizeHelpers(t *testing.T) {
 	if got := relativizeRepoPath(repo, filepath.Join(t.TempDir(), "out.ts")); strings.HasPrefix(got, "modules/") {
 		t.Fatalf("outside should stay absolute-ish, got %q", got)
 	}
+	prevAbs := filepathAbs
+	filepathAbs = func(string) (string, error) { return "", os.ErrInvalid }
+	t.Cleanup(func() { filepathAbs = prevAbs })
+	if got := relativizeRepoPath(repo, inside); !strings.HasPrefix(got, "modules/") {
+		t.Fatalf("abs-fallback rel = %q", got)
+	}
 }
 
 func TestWarnIllegalFrontendMarks(t *testing.T) {
