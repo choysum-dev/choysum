@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-// OFieldTranslationsDialog needs registry stores and i18n at setup;
-// full mount needs store/composable stubs at setup; import smoke only for this knife.
+// OFieldTranslationsDialog needs registry stores and i18n for a green mount;
+// leave import smoke; OFieldBase stubs this dialog for action wiring coverage.
 
 test('OFieldTranslationsDialog smoke: default export is a named Vue component', async () => {
   const mod = await import('./OFieldTranslationsDialog.vue');

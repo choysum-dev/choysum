@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { inject, type InjectionKey } from 'vue';
 import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
 import type { PostMessageReq } from '@/message/service/models/message';
 import type { FollowRecordReq, UnfollowRecordReq } from '@/message/service/models/follower';
@@ -57,4 +58,22 @@ export function getFollowerStore(deps?: ChatterStoreDeps): FollowerStoreLike {
 
 export function getNotificationStore(deps?: ChatterStoreDeps): NotificationStoreLike {
   return createStore('message.Notification', deps) as unknown as NotificationStoreLike;
+}
+
+/** Optional override for `getMessageStore` (unit harness). */
+export const GetMessageStoreKey: InjectionKey<typeof getMessageStore> = Symbol('GetMessageStore');
+
+/** Optional override for `getFollowerStore` (unit harness). */
+export const GetFollowerStoreKey: InjectionKey<typeof getFollowerStore> = Symbol('GetFollowerStore');
+
+/** Resolve injected message store factory, else the product default. */
+export function useInjectedMessageStore(deps?: ChatterStoreDeps): MessageStoreLike {
+  const override = inject(GetMessageStoreKey, null);
+  return (override ?? getMessageStore)(deps);
+}
+
+/** Resolve injected follower store factory, else the product default. */
+export function useInjectedFollowerStore(deps?: ChatterStoreDeps): FollowerStoreLike {
+  const override = inject(GetFollowerStoreKey, null);
+  return (override ?? getFollowerStore)(deps);
 }

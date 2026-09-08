@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-// OHtmlField needs TipTap editor mocks and useField at setup;
-// full mount needs store/composable stubs at setup; import smoke only for this knife.
+// OHtmlField calls TipTap useEditor at setup; QJS FE unit has no package stub for @tiptap/*.
+// Sanitize/plaintext helpers remain covered in ohtml_helpers.test.ts.
 
 test('OHtmlField smoke: default export is a named Vue component', async () => {
   const mod = await import('./OHtmlField.vue');

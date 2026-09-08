@@ -34,8 +34,8 @@ import { computed, toRef } from 'vue';
 import { ElCard } from 'element-plus';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
-import { useChatterTimeline } from '@/web/web/composables/chatter/useChatterTimeline';
-import { useChatterThreadTips } from '@/web/web/composables/chatter/useChatterThreadTips';
+import { useInjectedChatterTimeline } from '@/web/web/composables/chatter/useChatterTimeline';
+import { useInjectedChatterThreadTips } from '@/web/web/composables/chatter/useChatterThreadTips';
 import OChatterComposer from './OChatterComposer.vue';
 import OChatterTimeline from './OChatterTimeline.vue';
 import OChatterFollowerBar from './OChatterFollowerBar.vue';
@@ -60,9 +60,9 @@ const { _t } = createTranslate('web', { scope: 'web/components/chatter/OChatter'
 const authStore = useAuthStore();
 const modelRef = toRef(props, 'model');
 const resIdRef = toRef(props, 'resId');
-const { entries, loading, error, refresh } = useChatterTimeline(modelRef, resIdRef);
+const { entries, loading, error, refresh } = useInjectedChatterTimeline(modelRef, resIdRef);
 
-useChatterThreadTips(modelRef, resIdRef, refresh);
+useInjectedChatterThreadTips(modelRef, resIdRef, refresh);
 
 const showComposer = computed(() => props.showComposer && !!String(props.resId || '').trim() && !props.disabled);
 

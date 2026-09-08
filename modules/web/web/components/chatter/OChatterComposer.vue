@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { ElButton, ElInput } from 'element-plus';
-import { getMessageStore } from '@/web/web/composables/chatter/chatterStores';
+import { useInjectedMessageStore } from '@/web/web/composables/chatter/chatterStores';
 import { createTranslate } from '@/web/web/i18n';
 
 const props = defineProps<{
@@ -40,7 +40,7 @@ const emit = defineEmits<{
 }>();
 
 const { _t } = createTranslate('web', { scope: 'web/components/chatter/OChatterComposer' });
-const messageStore = getMessageStore();
+const messageStore = useInjectedMessageStore();
 const body = ref('');
 const posting = ref(false);
 const error = ref<string | null>(null);

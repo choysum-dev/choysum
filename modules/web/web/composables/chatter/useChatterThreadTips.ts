@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { onScopeDispose, watch, type Ref } from 'vue';
+import { inject, onScopeDispose, watch, type InjectionKey, type Ref } from 'vue';
 import { onTips as defaultOnTips, subscribeThread as defaultSubscribeThread } from '@/core/web/tip';
 
 const POLL_FALLBACK_MS = 30_000;
@@ -12,6 +12,21 @@ export type UseChatterThreadTipsDeps = {
   /** Override poll interval (default 30s); tests pass a short value with real timers. */
   pollFallbackMs?: number;
 };
+
+/** Optional override for `useChatterThreadTips` (unit harness). */
+export type UseChatterThreadTipsFn = typeof useChatterThreadTips;
+export const UseChatterThreadTipsKey: InjectionKey<UseChatterThreadTipsFn> = Symbol('UseChatterThreadTips');
+
+/** Resolve injected tips factory, else the product default. */
+export function useInjectedChatterThreadTips(
+  model: Ref<string>,
+  resId: Ref<string | undefined>,
+  refresh: () => Promise<void>,
+  deps?: UseChatterThreadTipsDeps
+): void {
+  const override = inject(UseChatterThreadTipsKey, null);
+  (override ?? useChatterThreadTips)(model, resId, refresh, deps);
+}
 
 export function useChatterThreadTips(
   model: Ref<string>,

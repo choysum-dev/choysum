@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, onScopeDispose, ref } from 'vue';
+import { computed, inject, onScopeDispose, ref, type InjectionKey } from 'vue';
 import { onTips as defaultOnTips, subscribeNotifications as defaultSubscribeNotifications } from '@/core/web/tip';
 import { getNotificationStore as defaultGetNotificationStore } from './chatterStores';
 import type { InboxNotificationRow } from './chatterTypes';
@@ -18,6 +18,19 @@ export type UseNotificationInboxDeps = {
   /** Override poll interval (default 30s); tests pass a short value with real timers. */
   pollFallbackMs?: number;
 };
+
+/** Optional override for `useNotificationInbox` (unit harness). */
+export type UseNotificationInboxFn = typeof useNotificationInbox;
+export const UseNotificationInboxKey: InjectionKey<UseNotificationInboxFn> = Symbol('UseNotificationInbox');
+
+/** Resolve injected inbox factory, else the product default. */
+export function useInjectedNotificationInbox(
+  enabled: () => boolean,
+  deps?: UseNotificationInboxDeps
+): ReturnType<typeof useNotificationInbox> {
+  const override = inject(UseNotificationInboxKey, null);
+  return (override ?? useNotificationInbox)(enabled, deps);
+}
 
 export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificationInboxDeps) {
   const rows = ref<InboxNotificationRow[]>([]);

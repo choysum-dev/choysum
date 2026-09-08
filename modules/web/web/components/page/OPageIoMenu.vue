@@ -54,6 +54,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { Setting } from '@element-plus/icons-vue';
+import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon } from 'element-plus';
 import { createTranslate } from '@/web/web/i18n';
 import { useRecordIoMenu } from '@/web/web/composables/useRecordIoMenu';
 import type { PageIoMenuItem, RecordIoConfig } from '@/web/web/composables/recordIoTypes';
