@@ -149,13 +149,13 @@ describe('formController attachment protocol', () => {
     const service = newAttachmentService();
     const ctx = newCtx(service);
 
-    await expect(__resolveAttachmentFieldValueForTest({ kind: 'set', attachmentObjectId: 'ao-kind-set' }, ctx)).resolves.toEqual({
+    expect(await __resolveAttachmentFieldValueForTest({ kind: 'set', attachmentObjectId: 'ao-kind-set' }, ctx)).toEqual({
       kind: 'set',
       attachmentObjectId: 'ao-kind-set',
     });
 
-    await expect(__resolveAttachmentFieldValueForTest({ kind: 'clear' }, ctx)).resolves.toEqual({ kind: 'clear' });
-    await expect(__resolveAttachmentFieldValueForTest({ kind: 'noop' }, ctx)).resolves.toEqual({ kind: 'omit' });
+    expect(await __resolveAttachmentFieldValueForTest({ kind: 'clear' }, ctx)).toEqual({ kind: 'clear' });
+    expect(await __resolveAttachmentFieldValueForTest({ kind: 'noop' }, ctx)).toEqual({ kind: 'omit' });
 
     expect(service.PrepareUpload.calls.length).toBe(0);
     expect(service.FinalizeUpload.calls.length).toBe(0);
@@ -165,7 +165,8 @@ describe('formController attachment protocol', () => {
     const service = newAttachmentService();
     const ctx = newCtx(service);
 
-    await expect(__resolveAttachmentFieldValueForTest([], ctx)).rejects.toThrow(
+    await expectRejects(
+      () => __resolveAttachmentFieldValueForTest([], ctx),
       '[Attachment] Avatar: array payload is not supported for binary/image fields.'
     );
   });
@@ -248,7 +249,7 @@ describe('formController attachment protocol', () => {
       downloadDisposition: 'attachment',
     });
 
-    await expect(
+    await expectRejects(() =>
       __normalizeAttachmentFieldsInPayloadForTest(
         store,
         {
@@ -261,7 +262,7 @@ describe('formController attachment protocol', () => {
         { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] },
         deps
       )
-    ).rejects.toThrow();
+    );
   });
 
   test('upload failure surfaces JSON error metadata from response body', async () => {
@@ -280,7 +281,8 @@ describe('formController attachment protocol', () => {
         }),
     })) as any;
 
-    await expect(__resolveAttachmentFieldValueForTest(blob, ctx)).rejects.toThrow(
+    await expectRejects(
+      () => __resolveAttachmentFieldValueForTest(blob, ctx),
       /upload failed with HTTP 502 \(upload_denied \| quota exceeded \| reason=size \| stage=put\)/
     );
   });

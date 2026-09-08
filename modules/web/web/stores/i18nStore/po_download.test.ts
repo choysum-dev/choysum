@@ -21,13 +21,16 @@ function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
 describe('downloadTerminologyPo', () => {
   test('requires lang, application, and module before fetching', async () => {
     const fetchImpl = fnRecorder();
-    await expect(downloadTerminologyPo({ lang: '', application: 'web', module: 'web', fetchImpl: fetchImpl as any })).rejects.toThrow(
+    await expectRejects(
+      () => downloadTerminologyPo({ lang: '', application: 'web', module: 'web', fetchImpl: fetchImpl as any }),
       'lang is required'
     );
-    await expect(downloadTerminologyPo({ lang: 'zh-CN', application: '', module: 'web', fetchImpl: fetchImpl as any })).rejects.toThrow(
+    await expectRejects(
+      () => downloadTerminologyPo({ lang: 'zh-CN', application: '', module: 'web', fetchImpl: fetchImpl as any }),
       'application is required'
     );
-    await expect(downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: '', fetchImpl: fetchImpl as any })).rejects.toThrow(
+    await expectRejects(
+      () => downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: '', fetchImpl: fetchImpl as any }),
       'module is required'
     );
     expect(fetchImpl.calls.length).toBe(0);
@@ -102,9 +105,10 @@ describe('downloadTerminologyPo', () => {
       json: async () => ({ error: 'module is required' }),
     }));
 
-    await expect(
-      downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl: fetchImpl as any })
-    ).rejects.toThrow('module is required');
+    await expectRejects(
+      () => downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl: fetchImpl as any }),
+      'module is required'
+    );
   });
 
   test('falls back to statusText when error JSON is invalid', async () => {
@@ -117,9 +121,10 @@ describe('downloadTerminologyPo', () => {
       },
     }));
 
-    await expect(
-      downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl: fetchImpl as any })
-    ).rejects.toThrow('Bad Gateway');
+    await expectRejects(
+      () => downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl: fetchImpl as any }),
+      'Bad Gateway'
+    );
   });
 
   test('falls back to status code when body and statusText are empty', async () => {
@@ -130,8 +135,9 @@ describe('downloadTerminologyPo', () => {
       json: async () => ({}),
     }));
 
-    await expect(
-      downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl: fetchImpl as any })
-    ).rejects.toThrow('PO download failed (503)');
+    await expectRejects(
+      () => downloadTerminologyPo({ lang: 'zh-CN', application: 'web', module: 'web', fetchImpl: fetchImpl as any }),
+      'PO download failed (503)'
+    );
   });
 });

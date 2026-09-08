@@ -413,6 +413,9 @@ func writeQJSTap(w io.Writer, report *qjsRunReport) {
 		msg := "failed"
 		if c.Error != nil && c.Error.Message != "" {
 			msg = c.Error.Message
+			if c.Error.Stack != "" {
+				msg = msg + "\n" + c.Error.Stack
+			}
 		}
 		fmt.Fprintf(w, "not ok %d - %s\n  ---\n  message: %s\n  ...\n", n, c.Name, strconv.Quote(msg))
 	}

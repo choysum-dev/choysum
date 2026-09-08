@@ -41,11 +41,37 @@
     this.parentNode = null;
     this._text = '';
     this._html = '';
-    this.style = {};
+    this.style = createStyle();
     this.className = '';
     this.id = '';
     this._listeners = Object.create(null);
     this.ownerDocument = null;
+  }
+
+  function cssCamel(name) {
+    return String(name || '').replace(/-([a-z])/g, function (_m, c) {
+      return c.toUpperCase();
+    });
+  }
+
+  function createStyle() {
+    var style = {
+      getPropertyValue: function (name) {
+        var key = cssCamel(name);
+        var v = style[key];
+        return v == null ? '' : String(v);
+      },
+      setProperty: function (name, value) {
+        style[cssCamel(name)] = String(value == null ? '' : value);
+      },
+      removeProperty: function (name) {
+        var key = cssCamel(name);
+        var prev = style[key] == null ? '' : String(style[key]);
+        style[key] = '';
+        return prev;
+      },
+    };
+    return style;
   }
 
   Element.prototype.appendChild = function (child) {
@@ -69,6 +95,12 @@
       syncChildNodes(this);
     }
     return child;
+  };
+
+  Element.prototype.remove = function () {
+    if (this.parentNode && typeof this.parentNode.removeChild === 'function') {
+      this.parentNode.removeChild(this);
+    }
   };
 
   Element.prototype.insertBefore = function (newNode, ref) {
@@ -337,7 +369,20 @@
         if (m[2] === undefined) return got != null;
         return got === m[2];
       }
-      // Tag name only — reject div.class / span#id / etc.
+      // tag, tag.class, or tag#id (single class / id only).
+      var tagClass = /^([a-zA-Z][\w-]*)\.([^\s.#\[]+)$/.exec(s);
+      if (tagClass) {
+        if (el.tagName !== tagClass[1].toUpperCase()) return false;
+        var cls2 = tagClass[2];
+        var cn2 = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
+        return (' ' + cn2 + ' ').indexOf(' ' + cls2 + ' ') >= 0;
+      }
+      var tagId = /^([a-zA-Z][\w-]*)#([^\s.#\[]+)$/.exec(s);
+      if (tagId) {
+        if (el.tagName !== tagId[1].toUpperCase()) return false;
+        return el.id === tagId[2] || el.getAttribute('id') === tagId[2];
+      }
+      // Tag name only — reject unsupported compound selectors.
       if (!/^[a-zA-Z][\w-]*$/.test(s)) {
         throw new Error('choysum minimal DOM: unsupported selector: ' + s);
       }
@@ -522,6 +567,8 @@
   global.Node = Node;
   global.Element = Element;
   global.HTMLElement = Element;
+  global.HTMLButtonElement = Element;
+  global.HTMLInputElement = Element;
   global.SVGElement = Element;
   global.Text = TextNode;
   global.Comment = CommentNode;

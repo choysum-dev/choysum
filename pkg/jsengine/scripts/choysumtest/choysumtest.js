@@ -214,6 +214,18 @@
     this._assert(this.received === null, `Expected ${stringifySafe(this.received)} to be null`, `Expected ${stringifySafe(this.received)} not to be null`);
   };
 
+  Expectation.prototype.toBeInstanceOf = function (expected) {
+    if (typeof expected !== 'function') {
+      throw new Error(`toBeInstanceOf requires a constructor, got ${typeof expected}`);
+    }
+    const pass = this.received instanceof expected;
+    this._assert(
+      pass,
+      `Expected ${stringifySafe(this.received)} to be instance of ${expected.name || 'Function'}`,
+      `Expected ${stringifySafe(this.received)} not to be instance of ${expected.name || 'Function'}`
+    );
+  };
+
   Expectation.prototype.toMatch = function (expected) {
     if (typeof this.received !== 'string') {
       throw new Error(`toMatch requires a string value, got ${typeof this.received}`);

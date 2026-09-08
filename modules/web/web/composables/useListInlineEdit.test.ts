@@ -1,4 +1,3 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
@@ -154,7 +153,7 @@ describe('useListInlineEdit', () => {
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A', Sequence: 1 } });
     api.editingDraft.value!.Name = 'B';
     expect(api.isDirty()).toBe(true);
-    await expect(api.save()).resolves.toBe(true);
+    expect(await api.save()).toBe(true);
     expect(UpdateById.calls[0]).toEqual(['1', { Name: 'B' }]);
     expect(success.calls.length).toBeGreaterThan(0);
     expect(onSaved.calls.length).toBe(1);
@@ -168,7 +167,7 @@ describe('useListInlineEdit', () => {
     });
     const { api, UpdateById, unmount } = mountInline({ onSaved });
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
-    await expect(api.save()).resolves.toBe(true);
+    expect(await api.save()).toBe(true);
     expect(UpdateById.calls.length).toBe(0);
     expect(onSaved.calls.length).toBe(1);
     unmount();
@@ -182,7 +181,7 @@ describe('useListInlineEdit', () => {
     });
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
-    await expect(api.save()).rejects.toThrow('boom');
+    await expectRejects(() => api.save(), 'boom');
     expect(error.calls.length).toBeGreaterThan(0);
     expect(api.saving.value).toBe(false);
     unmount();
@@ -229,7 +228,7 @@ describe('useListInlineEdit', () => {
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
     confirm.mockImplementation(async () => true);
-    await expect(api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).rejects.toThrow('fail');
+    await expectRejects(() => api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } }), 'fail');
     unmount();
   });
 
@@ -305,7 +304,7 @@ describe('useListInlineEdit', () => {
     expect(api.saving.value).toBe(true);
     expect(await api.save()).toBe(false);
     release();
-    await expect(first).resolves.toBe(true);
+    expect(await first).toBe(true);
     expect(UpdateById.calls.length).toBe(1);
     unmount();
   });

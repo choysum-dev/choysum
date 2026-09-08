@@ -1,4 +1,3 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
@@ -11,6 +10,8 @@ import {
   resolveCreateRouteLocation,
   useResolvedCreateAction,
 } from './resolveCreateRoute';
+
+const EmptyRoute = { render: () => h('div') };
 
 describe('deriveCreateRouteName', () => {
   test('maps List/Detail/Kanban stems to Create', () => {
@@ -78,10 +79,10 @@ describe('useResolvedCreateAction', () => {
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [
-        { path: '/', name: 'home', component: { template: '<div />' } },
-        { path: '/partners', name: 'PartnerList', component: { template: '<div />' } },
-        { path: '/partners/new', name: 'PartnerCreate', component: { template: '<div />' } },
-        { path: '/other', name: 'Other', component: { template: '<div />' } },
+        { path: '/', name: 'home', component: EmptyRoute },
+        { path: '/partners', name: 'PartnerList', component: EmptyRoute },
+        { path: '/partners/new', name: 'PartnerCreate', component: EmptyRoute },
+        { path: '/other', name: 'Other', component: EmptyRoute },
       ],
     });
     return { router, initialName };
@@ -158,8 +159,8 @@ describe('useResolvedCreateAction', () => {
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [
-        { path: '/partners', name: 'PartnerList', component: { template: '<div />' } },
-        { path: '/partners/new', name: 'PartnerCreate', component: { template: '<div />' } },
+        { path: '/partners', name: 'PartnerList', component: EmptyRoute },
+        { path: '/partners/new', name: 'PartnerCreate', component: EmptyRoute },
       ],
     });
     await router.push({ name: 'PartnerList' });
