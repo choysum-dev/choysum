@@ -248,12 +248,6 @@ const minimalConsoleScript = `(function () {
   if (typeof g.Headers !== "function") {
     g.Headers = function Headers(init) {
       this._map = Object.create(null);
-      var self = this;
-      if (init && typeof init === "object") {
-        Object.keys(init).forEach(function (k) {
-          self.set(k, init[k]);
-        });
-      }
       this.set = function (k, v) {
         this._map[String(k).toLowerCase()] = String(v);
       };
@@ -269,6 +263,32 @@ const minimalConsoleScript = `(function () {
         if (this._map[key] != null) this._map[key] += ", " + String(v);
         else this._map[key] = String(v);
       };
+      this.delete = function (k) {
+        delete this._map[String(k).toLowerCase()];
+      };
+      this.forEach = function (fn, thisArg) {
+        var keys = Object.keys(this._map);
+        for (var i = 0; i < keys.length; i++) {
+          fn.call(thisArg, this._map[keys[i]], keys[i], this);
+        }
+      };
+      if (init == null) return;
+      var self = this;
+      if (Array.isArray(init)) {
+        for (var i = 0; i < init.length; i++) {
+          var pair = init[i];
+          if (pair && pair.length >= 2) self.append(pair[0], pair[1]);
+        }
+      } else if (typeof init.forEach === "function") {
+        // Headers/Map forEach: (value, key)
+        init.forEach(function (v, k) {
+          self.append(k, v);
+        });
+      } else if (typeof init === "object") {
+        Object.keys(init).forEach(function (k) {
+          self.set(k, init[k]);
+        });
+      }
     };
   }
 })();`
