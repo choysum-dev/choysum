@@ -18,7 +18,9 @@ NProgress.configure({ showSpinner: false });
 
 function defaultAppName(env: ImportMetaEnv | undefined = import.meta.env): string {
   const appNameRaw = env?.CHOYSUM_APP_NAME;
-  return typeof appNameRaw === 'string' && appNameRaw.trim() !== '' ? appNameRaw : 'Choysum';
+  if (typeof appNameRaw !== 'string') return 'Choysum';
+  const appName = appNameRaw.trim();
+  return appName !== '' ? appName : 'Choysum';
 }
 
 export { defaultAppName };

@@ -690,7 +690,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
       const ctx = runBuildBrowseContext(store, recordId);
       const bundle = runBuildPlan(ctx);
       const snap = await aborts.execute('form.load', async signal => {
-        const r = await runExecute(bundle, store, 'form', { signal });
+        const r = await runExecute(bundle, store, 'form', { signal, createStoreByModel: createStore });
         if (signal.aborted) throw new CancellationError();
         return r;
       });
@@ -865,7 +865,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
                 vm.mode = 'display';
               }
             }
-            runHandoffSet(String(recordId), vm.original as any);
+            runHandoffSet(String(recordId), (vm.original as any) ?? updated);
           }
         } else {
           // Fallback to a reload when the backend does not return an updated object.

@@ -19,6 +19,7 @@ describe('defaultAppName', () => {
 
   test('uses CHOYSUM_APP_NAME when present and non-blank', () => {
     expect(defaultAppName({ CHOYSUM_APP_NAME: 'Acme' } as any)).toBe('Acme');
+    expect(defaultAppName({ CHOYSUM_APP_NAME: '  Acme  ' } as any)).toBe('Acme');
   });
 });
 

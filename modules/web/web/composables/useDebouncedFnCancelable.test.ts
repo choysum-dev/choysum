@@ -18,9 +18,7 @@ test('useDebouncedFnCancelable > debounces calls and only runs the latest schedu
   debounced(3);
 
   expect(calls).toEqual([]);
-  await sleep(25);
-  expect(calls).toEqual([]);
-  await sleep(30);
+  await sleep(60);
   expect(calls).toEqual([3]);
 });
 

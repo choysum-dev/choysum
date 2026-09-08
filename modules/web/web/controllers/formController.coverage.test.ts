@@ -49,6 +49,8 @@ test('formController > beginDisplay awaits field selection when export is empty'
 
   expect(exportFieldSelection.calls.length).toBeGreaterThan(0);
   expect(awaitFieldSelection.calls.length).toBe(1);
+  expect(execute.calls.length).toBe(1);
+  expect(typeof (execute.calls[0]?.[3] as any)?.createStoreByModel).toBe('function');
   expect(controller.vm.original).toMatchObject({ Id: '1', Name: 'n' });
 });
 

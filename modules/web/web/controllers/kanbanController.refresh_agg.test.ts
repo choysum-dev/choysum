@@ -42,13 +42,15 @@ test('refreshLaneAggregates combines lane conditions for the batch query', async
         key: 'todo',
         label: 'Todo',
         __condition: { Stage: 'todo' },
-        count: 1,
+        count: 10,
+        Amount__sum: 100,
       },
       {
         key: 'done',
         label: 'Done',
         __condition: { Stage: 'done' },
-        count: 2,
+        count: 20,
+        Amount__sum: 200,
       },
     ],
   }));
@@ -109,6 +111,18 @@ test('refreshLaneAggregates combines lane conditions for the batch query', async
 
   await controller.refreshLaneAggregates(['todo', 'done']);
 
-  // Batch aggregate path must have attempted at least one store read.
-  expect(ReadGroup.calls.length + Search.calls.length).toBeGreaterThan(0);
+  expect(ReadGroup.calls.length).toBe(1);
+  expect(Search.calls.length).toBe(0);
+  const [, condition] = ReadGroup.calls[0] as [unknown, unknown, unknown];
+  expect(condition).toEqual({
+    Or: [{ Stage: 'todo' }, { Stage: 'done' }],
+  });
+
+  const rows = (controller.vm.result as any).rows as Array<{ key: string; count?: number; Amount__sum?: number }>;
+  const todo = rows.find(r => r.key === 'todo');
+  const done = rows.find(r => r.key === 'done');
+  expect(todo?.count).toBe(10);
+  expect(todo?.Amount__sum).toBe(100);
+  expect(done?.count).toBe(20);
+  expect(done?.Amount__sum).toBe(200);
 });
