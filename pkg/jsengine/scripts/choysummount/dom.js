@@ -429,18 +429,27 @@
     },
     set: function (v) {
       this._html = String(v == null ? '' : v);
-      // Strip markup markers by deleting < and > (single-char) — avoids incomplete
-      // multi-character tag sanitization (CodeQL js/incomplete-multi-character-sanitization).
-      this.textContent = this._html.replace(/[<>]/g, '');
+      // Test-host plaintext projection only (not a sanitizer): drop tags so blank
+      // markup like <p></p> yields empty textContent for normalizeHtmlForStore.
+      this.textContent = this._html.replace(/<[^>]*>/g, '');
     },
   });
 
   Object.defineProperty(Element.prototype, 'nextSibling', {
     get: function () {
-      if (!this.parentNode) return null;
+      if (!this.parentNode || !this.parentNode._children) return null;
       var sibs = this.parentNode._children;
       var i = sibs.indexOf(this);
       return i >= 0 && i + 1 < sibs.length ? sibs[i + 1] : null;
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'previousSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i > 0 ? sibs[i - 1] : null;
     },
   });
 
@@ -455,6 +464,34 @@
       return this.parentNode && this.parentNode.nodeType === NODE_ELEMENT ? this.parentNode : null;
     },
   });
+
+  Element.prototype.getBoundingClientRect = function () {
+    return { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 };
+  };
+
+  Element.prototype.closest = function (sel) {
+    var el = this;
+    var selector = String(sel || '');
+    while (el && el.nodeType === NODE_ELEMENT) {
+      if (typeof el.matches === 'function' && el.matches(selector)) return el;
+      el = el.parentElement || el.parentNode;
+    }
+    return null;
+  };
+
+  Element.prototype.matches = function (sel) {
+    var s = String(sel || '').trim();
+    if (!s) return false;
+    if (s.charAt(0) === '.') {
+      var cls = s.slice(1);
+      var cn = (this.className || this.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
+      return (' ' + cn + ' ').indexOf(' ' + cls + ' ') >= 0;
+    }
+    if (s.charAt(0) === '#') {
+      return this.id === s.slice(1) || this.getAttribute('id') === s.slice(1);
+    }
+    return this.tagName === s.toUpperCase();
+  };
 
   function TextNode(data) {
     this.nodeType = NODE_TEXT;
@@ -479,6 +516,22 @@
       this.data = String(v == null ? '' : v);
     },
   });
+  Object.defineProperty(TextNode.prototype, 'nextSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i >= 0 && i + 1 < sibs.length ? sibs[i + 1] : null;
+    },
+  });
+  Object.defineProperty(TextNode.prototype, 'previousSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i > 0 ? sibs[i - 1] : null;
+    },
+  });
 
   function CommentNode(data) {
     this.nodeType = NODE_COMMENT;
@@ -487,6 +540,28 @@
     this.parentNode = null;
     this.ownerDocument = null;
   }
+  Object.defineProperty(CommentNode.prototype, 'nextSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i >= 0 && i + 1 < sibs.length ? sibs[i + 1] : null;
+    },
+  });
+  Object.defineProperty(CommentNode.prototype, 'previousSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i > 0 ? sibs[i - 1] : null;
+    },
+  });
+  Object.defineProperty(CommentNode.prototype, 'textContent', {
+    get: function () {
+      return '';
+    },
+    set: function () {},
+  });
 
   function Document() {
     this.nodeType = NODE_DOCUMENT;
@@ -577,6 +652,8 @@
   global.CustomEvent = Event;
   global.navigator = global.navigator || { userAgent: 'choysum-minimal-dom' };
   global.location = global.location || { href: 'http://localhost/', protocol: 'http:' };
+  if (typeof global.innerHeight !== 'number') global.innerHeight = 768;
+  if (typeof global.innerWidth !== 'number') global.innerWidth = 1024;
   global.getComputedStyle =
     global.getComputedStyle ||
     function () {

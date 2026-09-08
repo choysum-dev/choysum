@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // density backfill from main before merge
-// Full suite needs listController / create-route DI; mount needs heavy mocks.
+// New-button click paths need createListController / first-frame isolation under QJS
+// (main used vi.mock). Empty createAction + export surface still covered below.
 
-test('OListView create_action smoke: default export is a named Vue component', async () => {
-  const mod = await import('./OListView.vue');
-  expect(mod.default).toBeTruthy();
-  const name = (mod.default as { name?: string; __name?: string }).name
-    || (mod.default as { name?: string; __name?: string }).__name;
+import OListView from './OListView.vue';
+
+test('OListView create action: default export is a named Vue component', () => {
+  expect(OListView).toBeTruthy();
+  const name = (OListView as { name?: string; __name?: string }).name || (OListView as { __name?: string }).__name;
   expect(name).toBeTruthy();
 });

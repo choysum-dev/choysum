@@ -49,8 +49,12 @@ function makeSearchQueue() {
 }
 
 describe('useChatterTimeline', () => {
-  // density backfill from main before merge
-  // Default registry factory throw path differs under FE unit registry stub.
+  test('uses default store getters when deps are omitted', () => {
+    // FE unit host stubs the store registry factory, so the default path resolves instead of throwing.
+    const timeline = useChatterTimeline(ref('partner.Partner'), ref('r1'));
+    expect(timeline).toBeTruthy();
+    expect(typeof timeline.refresh).toBe('function');
+  });
 
   test('ignores stale refresh results after the record changes', async () => {
     let resolveFirst: ((rows: unknown[]) => void) | undefined;

@@ -4,18 +4,26 @@
 import { defineComponent, h, inject, provide, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
-import { disposeOnchange } from '@/web/web/composables/useOnchange';
-import { useListInlineEdit } from '@/web/web/composables/useListInlineEdit';
-import { fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
+import {
+  disposeOnchange,
+  provideOnchange,
+} from '@/web/web/composables/useOnchange';
+import { useListInlineEdit, type UseListInlineEditDeps } from '@/web/web/composables/useListInlineEdit';
+import { fnRecorder, flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 
 const origConfirm = ElMessageBox.confirm;
 const origSuccess = ElMessage.success;
 const origError = ElMessage.error;
 
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function mountInline(opts?: {
   enabled?: boolean;
   onSaved?: () => void | Promise<void>;
   updateImpl?: (id: string, payload: any) => Promise<any>;
+  deps?: UseListInlineEditDeps;
 }) {
   const enabled = ref(opts?.enabled ?? true);
   const UpdateById = fnRecorder(opts?.updateImpl ?? (async () => ({})));
@@ -43,6 +51,7 @@ function mountInline(opts?: {
         store,
         enabled,
         onSaved: opts?.onSaved,
+        deps: opts?.deps,
       });
 
       const HeaderProbe = defineComponent({
@@ -308,7 +317,187 @@ describe('useListInlineEdit', () => {
     expect(UpdateById.calls.length).toBe(1);
     unmount();
   });
-});
 
-// density backfill from main before merge
-// Remaining mock-driven flush / onchange-wiring cases need optional DI on provideOnchange.
+  test('dirty switch aborts when save returns false', async () => {
+    const { api, unmount } = mountInline();
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    confirm.mockImplementation(async () => {
+      // Clear draft so save() returns false without throwing.
+      api.editingDraft.value = null;
+      return true;
+    });
+    expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(false);
+    expect(api.editingRowId.value).toBe('1');
+    unmount();
+  });
+
+  test('exitEdit tolerates a missing onchange controller', async () => {
+    const { api, unmount } = mountInline({
+      deps: {
+        useProvidedOnchange: () => null,
+      },
+    });
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    await api.discard();
+    expect(api.isEditing.value).toBe(false);
+    unmount();
+  });
+
+  test('provideOnchange uses draft root while editing and store fallback when idle', async () => {
+    let capturedOpts: any;
+    const { api, enabled, store, unmount } = mountInline({
+      deps: {
+        provideOnchange: ((s, session, opts) => {
+          capturedOpts = opts;
+          return provideOnchange(s, session, opts);
+        }) as any,
+      },
+    });
+
+    expect(capturedOpts.getRoot().Id).toBe('store-rec');
+
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    expect(capturedOpts.getRoot().Id).toBe('1');
+    capturedOpts.onPatch({ Name: 'Z' });
+    expect(api.editingDraft.value?.Name).toBe('Z');
+    // Truthy non-object must hit the typeof!=='object' branch while a draft exists.
+    capturedOpts.onPatch('x');
+    capturedOpts.onPatch(42);
+    expect(api.editingDraft.value?.Name).toBe('Z');
+
+    api.editingDraft.value = null;
+    expect(capturedOpts.getRoot().Id).toBe('store-rec');
+    capturedOpts.onPatch({ Name: 'ignored' });
+    capturedOpts.onPatch(null);
+    capturedOpts.onPatch('x');
+    expect(api.editingDraft.value).toBeNull();
+
+    enabled.value = false;
+    expect(capturedOpts.getRoot().Id).toBe('store-rec');
+    store.state._draftRecord = { Id: 'draft', Name: 'D' };
+    expect(capturedOpts.getRoot().Id).toBe('draft');
+    unmount();
+  });
+
+  test('re-pauses onchange after reset on enter and exit edit', async () => {
+    const { api, Onchange, unmount } = mountInline();
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    Onchange.mockClear();
+    // Controller is paused after enter — draft mutation must not auto-RPC.
+    api.editingDraft.value = { Id: '1', Name: 'B' };
+    await flushPromises();
+    await sleep(40);
+    expect(Onchange.calls.length).toBe(0);
+
+    await api.discard();
+    Onchange.mockClear();
+    // After discard, controller is reset+paused again; no auto flush expected.
+    expect(Onchange.calls.length).toBe(0);
+    unmount();
+  });
+
+  test('exits edit when flush clears draft during save', async () => {
+    const afterFlushHandlers = new Set<(p: any) => void>();
+    const flush = fnRecorder(async () => undefined);
+    const oc = {
+      flush,
+      reset: fnRecorder(),
+      pause: fnRecorder(),
+      force: fnRecorder(),
+      running: ref(false),
+      registerAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.add(cb);
+      },
+      unregisterAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.delete(cb);
+      },
+    };
+    const { api, UpdateById, unmount } = mountInline({
+      deps: {
+        provideOnchange: (() => oc) as any,
+        useProvidedOnchange: (() => oc) as any,
+      },
+    });
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    flush.mockImplementation(async () => {
+      api.editingDraft.value = null;
+    });
+    expect(await api.save()).toBe(true);
+    expect(UpdateById.calls.length).toBe(0);
+    expect(api.isEditing.value).toBe(false);
+    expect(api.editingRowId.value).toBeNull();
+    unmount();
+  });
+
+  test('blocks UpdateById when onchange flush reports error messages', async () => {
+    const afterFlushHandlers = new Set<(p: any) => void>();
+    let flushImpl: () => Promise<void> = async () => undefined;
+    const oc = {
+      flush: async () => flushImpl(),
+      reset: fnRecorder(),
+      pause: fnRecorder(),
+      force: fnRecorder(),
+      running: ref(false),
+      registerAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.add(cb);
+      },
+      unregisterAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.delete(cb);
+      },
+    };
+    const { api, UpdateById, unmount } = mountInline({
+      deps: {
+        provideOnchange: (() => oc) as any,
+        useProvidedOnchange: (() => oc) as any,
+      },
+    });
+    flushImpl = async () => {
+      for (const cb of afterFlushHandlers) {
+        cb({ result: { messages: [{ level: 'error', message: 'bad' }] } });
+      }
+    };
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    expect(await api.save()).toBe(false);
+    expect(UpdateById.calls.length).toBe(0);
+    expect(api.isEditing.value).toBe(true);
+    expect(error.calls.length).toBeGreaterThan(0);
+    unmount();
+  });
+
+  test('dirty switch continues after flush-cleared draft save exits edit', async () => {
+    const afterFlushHandlers = new Set<(p: any) => void>();
+    const flush = fnRecorder(async () => undefined);
+    const oc = {
+      flush,
+      reset: fnRecorder(),
+      pause: fnRecorder(),
+      force: fnRecorder(),
+      running: ref(false),
+      registerAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.add(cb);
+      },
+      unregisterAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.delete(cb);
+      },
+    };
+    const { api, UpdateById, unmount } = mountInline({
+      deps: {
+        provideOnchange: (() => oc) as any,
+        useProvidedOnchange: (() => oc) as any,
+      },
+    });
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    flush.mockImplementation(async () => {
+      api.editingDraft.value = null;
+    });
+    confirm.mockImplementation(async () => true);
+    expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(true);
+    expect(UpdateById.calls.length).toBe(0);
+    expect(api.editingRowId.value).toBe('2');
+    unmount();
+  });
+});

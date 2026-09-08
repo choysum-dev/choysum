@@ -27,13 +27,21 @@ import {
 } from '@/web/web/composables/listRowEdit';
 import { createTranslate } from '@/web/web/i18n';
 
+export type UseListInlineEditDeps = {
+  provideOnchange?: typeof provideOnchange;
+  useProvidedOnchange?: typeof useProvidedOnchange;
+};
+
 export function useListInlineEdit<T extends BaseModel>(opts: {
   store: WebModelStore<T>;
   enabled: Ref<boolean>;
   translateScope?: string;
   onSaved?: () => void | Promise<void>;
+  deps?: UseListInlineEditDeps;
 }) {
   const { _t } = createTranslate('web', { scope: opts.translateScope ?? 'web/composables/useListInlineEdit' });
+  const resolveProvideOnchange = opts.deps?.provideOnchange ?? provideOnchange;
+  const resolveUseProvidedOnchange = opts.deps?.useProvidedOnchange ?? useProvidedOnchange;
 
   const editingRowId = ref<string | null>(null);
   const editingDraft = ref<Record<string, any> | null>(null);
@@ -62,7 +70,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     },
   };
 
-  provideOnchange(opts.store, 'ListView', {
+  resolveProvideOnchange(opts.store, 'ListView', {
     getRoot: () => {
       // Prefer the active S2 row draft; otherwise keep the legacy store record fallback
       // so non-editable / idle ListView sessions still have an onchange root.
@@ -110,7 +118,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     editingDraft.value = null;
     editingOriginal.value = null;
     tableViewMode.value = 'display';
-    const oc = useProvidedOnchange();
+    const oc = resolveUseProvidedOnchange();
     oc?.reset();
     // reset() unpauses; keep paused so list display mode does not auto-RPC.
     oc?.pause();
@@ -125,7 +133,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     if (!editingDraft.value || !editingOriginal.value || !editingRowId.value) return false;
     saving.value = true;
     try {
-      const oc = useProvidedOnchange();
+      const oc = resolveUseProvidedOnchange();
       let flushHadError = false;
       const onAfterFlush = (p: { result?: { messages?: Array<{ level?: string } | null> | null } }) => {
         const msgs = p.result?.messages;
@@ -206,7 +214,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
     editingDraft.value = cloneRowDraft(record);
     editingRowId.value = id;
     tableViewMode.value = 'edit';
-    const oc = useProvidedOnchange();
+    const oc = resolveUseProvidedOnchange();
     oc?.reset();
     // S2: explicit Save/Discard only — do not leave onchange unpaused after reset().
     oc?.pause();

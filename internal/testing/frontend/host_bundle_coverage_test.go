@@ -29,6 +29,10 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		Scope:          "scope",
 		Permission:     "perm",
 		PageComposable: "pageComp",
+		Vicons:         "vicons",
+		VueEcharts:     "vchart",
+		Vuedraggable:   "drag",
+		Echarts:        "echarts",
 	}
 	for _, tt := range []struct {
 		path string
@@ -37,8 +41,12 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 	}{
 		{"element-plus", "ep", true},
 		{"@element-plus/icons-vue", "icons", true},
+		{"@vicons/material", "vicons", true},
 		{"vue-router", "router", true},
 		{"@choysum/page-mount", "pm", true},
+		{"vue-echarts", "vchart", true},
+		{"vuedraggable", "drag", true},
+		{"echarts/core", "echarts", true},
 		{"other", "", false},
 	} {
 		got, ok := feUnitPackageStubPath(tt.path, stubs)
@@ -56,6 +64,8 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 	}{
 		{"@/web/web/components/OPage.vue", "/x/OPage.vue", page, "opage", true},
 		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", page, "child", true},
+		{"./OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.test.ts", "", false},
+		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", "/other.ts", "", false},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", page, "child", true},
 		{"./PartnerListView.vue", "/x/PartnerListView.vue", page, "child", true},
 		{"./ModuleKanbanView.vue", "/x/ModuleKanbanView.vue", view, "child", true},
@@ -168,7 +178,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			OnDispose:      func(func()) {},
 			OnResolve: func(o api.OnResolveOptions, cb func(api.OnResolveArgs) (api.OnResolveResult, error)) {
 				switch o.Filter {
-				case `^(element-plus|@element-plus/icons-vue|vue-router|@choysum/page-mount)$`:
+				case `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?)$`:
 					pkgCB = cb
 				case `OPage\.vue$`:
 					opageCB = cb

@@ -92,7 +92,8 @@ describe('ohtml_helpers', () => {
     const purify = createTestPurify();
     expect(normalizeHtmlForStore(null, { purify })).toBeNull();
     expect(normalizeHtmlForStore('', { purify })).toBeNull();
-    // Minimal DOM does not parse innerHTML into text nodes; blank <p></p> detection needs density backfill.
+    expect(normalizeHtmlForStore('<p></p>', { purify })).toBeNull();
     expect(normalizeHtmlForStore('<p>ok</p>', { purify })).toBe('<p>ok</p>');
+    expect(normalizeHtmlForStore('<hr>', { purify })).toBe('<hr>');
   });
 });

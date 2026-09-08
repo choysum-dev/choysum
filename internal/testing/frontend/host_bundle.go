@@ -126,11 +126,15 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			Scope:          filepath.Join(stubDir, "store_scope_manager.js"),
 			Permission:     filepath.Join(stubDir, "use_permission.js"),
 			PageComposable: filepath.Join(stubDir, "page_composables.js"),
+			Vicons:         filepath.Join(stubDir, "vicons_material.js"),
+			VueEcharts:     filepath.Join(stubDir, "vue_echarts.js"),
+			Vuedraggable:   filepath.Join(stubDir, "vuedraggable.js"),
+			Echarts:        filepath.Join(stubDir, "echarts.js"),
 		}
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|vue-router|@choysum/page-mount)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						// Filter only admits known package names; lookup always succeeds.
 						path, _ := feUnitPackageStubPath(args.Path, stubs)

@@ -20,6 +20,10 @@ type feUnitStubPaths struct {
 	Scope          string
 	Permission     string
 	PageComposable string
+	Vicons         string
+	VueEcharts     string
+	Vuedraggable   string
+	Echarts        string
 }
 
 func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bool) {
@@ -28,11 +32,20 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 		return stubs.ElementPlus, true
 	case "@element-plus/icons-vue":
 		return stubs.Icons, true
+	case "@vicons/material":
+		return stubs.Vicons, true
 	case "vue-router":
 		return stubs.Router, true
 	case "@choysum/page-mount":
 		return stubs.PageMount, true
+	case "vue-echarts":
+		return stubs.VueEcharts, true
+	case "vuedraggable":
+		return stubs.Vuedraggable, true
 	default:
+		if importPath == "echarts" || strings.HasPrefix(importPath, "echarts/") {
+			return stubs.Echarts, true
+		}
 		return "", false
 	}
 }
@@ -45,6 +58,10 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 
 	switch {
 	case strings.Contains(joined, "/web/web/components/") || strings.Contains(p, "/web/web/components/") || strings.Contains(p, "@/web/web/components/"):
+		// Page/view SFCs stub layout children; FE unit tests mount the real SUT.
+		if !isPageOrView {
+			return "", false
+		}
 		if strings.Contains(p, "OPage.vue") || strings.Contains(joined, "OPage.vue") {
 			return stubs.OPage, true
 		}

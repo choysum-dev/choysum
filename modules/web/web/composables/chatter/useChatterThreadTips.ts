@@ -2,30 +2,42 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { onScopeDispose, watch, type Ref } from 'vue';
-import { onTips, subscribeThread } from '@/core/web/tip';
+import { onTips as defaultOnTips, subscribeThread as defaultSubscribeThread } from '@/core/web/tip';
 
 const POLL_FALLBACK_MS = 30_000;
+
+export type UseChatterThreadTipsDeps = {
+  onTips?: typeof defaultOnTips;
+  subscribeThread?: typeof defaultSubscribeThread;
+  /** Override poll interval (default 30s); tests pass a short value with real timers. */
+  pollFallbackMs?: number;
+};
 
 export function useChatterThreadTips(
   model: Ref<string>,
   resId: Ref<string | undefined>,
-  refresh: () => Promise<void>
+  refresh: () => Promise<void>,
+  deps?: UseChatterThreadTipsDeps
 ): void {
+  const onTips = deps?.onTips ?? defaultOnTips;
+  const subscribeThread = deps?.subscribeThread ?? defaultSubscribeThread;
+  const pollFallbackMs = deps?.pollFallbackMs ?? POLL_FALLBACK_MS;
+
   let tipController: AbortController | null = null;
   let pollTimer: ReturnType<typeof setInterval> | undefined;
 
   function stopPollFallback(): void {
     if (pollTimer != null) {
       clearInterval(pollTimer);
-      pollTimer = undefined;
     }
+    pollTimer = undefined;
   }
 
   function startPollFallback(): void {
     stopPollFallback();
     pollTimer = setInterval(() => {
       void refresh();
-    }, POLL_FALLBACK_MS);
+    }, pollFallbackMs);
   }
 
   function stopTips(): void {
