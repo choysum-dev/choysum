@@ -101,6 +101,21 @@ globalThis.sessionStorage = undefined;
 	if !strings.Contains(got, `"sameStorage":false`) {
 		t.Fatalf("expected distinct storage objects, got %s", got)
 	}
+	abortVal := qjs.Ctx.Eval(`(function () {
+  var c = new AbortController();
+  var hit = false;
+  c.signal.addEventListener("abort", function () { hit = true; });
+  c.abort();
+  return JSON.stringify({ aborted: c.signal.aborted, hit: hit });
+})()`)
+	defer abortVal.Free()
+	if abortVal.IsException() {
+		t.Fatalf("abort eval: %v", qjs.Ctx.Exception())
+	}
+	abortGot := abortVal.String()
+	if !strings.Contains(abortGot, `"aborted":true`) || !strings.Contains(abortGot, `"hit":true`) {
+		t.Fatalf("expected AbortController polyfill, got %s", abortGot)
+	}
 }
 
 func TestPrepareVueHostEngineBranches(t *testing.T) {

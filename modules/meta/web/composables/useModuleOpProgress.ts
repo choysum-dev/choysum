@@ -28,6 +28,16 @@ export type ModuleOpProgressHooks = {
   onHardError?: (message: string) => void;
 };
 
+/** Optional tip/timer injection for FE unit tests (defaults: production tip + host timers). */
+export type ModuleOpProgressDeps = {
+  onTips?: typeof onTips;
+  subscribeModuleOp?: typeof subscribeModuleOp;
+  now?: () => number;
+  schedule?: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>;
+  clearSchedule?: (id: ReturnType<typeof setTimeout>) => void;
+  reloadWeb?: () => void;
+};
+
 const TERMINAL = new Set(['succeeded', 'failed', 'cancelled']);
 const MAX_DURATION_MS = 10 * 60 * 1000;
 const TIP_DEBOUNCE_MS = 80;
@@ -63,7 +73,20 @@ function errorMessage(error: unknown): string {
  * C1 Meta module-op progress session: boot Unary + tip-driven refresh +
  * short-backoff poll only after tip stream ends/errors while still non-terminal.
  */
-export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
+export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps: ModuleOpProgressDeps = {}) {
+  const tipOn = deps.onTips ?? onTips;
+  const tipSubscribe = deps.subscribeModuleOp ?? subscribeModuleOp;
+  const now = deps.now ?? (() => Date.now());
+  const schedule = deps.schedule ?? setTimeout;
+  const clearSchedule = deps.clearSchedule ?? clearTimeout;
+  const reloadWeb =
+    deps.reloadWeb ??
+    (() => {
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    });
+
   let tipController: AbortController | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
   let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
@@ -74,14 +97,14 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
 
   function clearPoll(): void {
     if (pollTimer != null) {
-      clearTimeout(pollTimer);
+      clearSchedule(pollTimer);
       pollTimer = undefined;
     }
   }
 
   function clearDeadline(): void {
     if (deadlineTimer != null) {
-      clearTimeout(deadlineTimer);
+      clearSchedule(deadlineTimer);
       deadlineTimer = undefined;
     }
   }
@@ -133,8 +156,8 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
       clearPoll();
       clearDeadline();
       hooks.onTerminal(status);
-      if (status.reload_web && typeof window !== 'undefined') {
-        window.location.reload();
+      if (status.reload_web) {
+        reloadWeb();
       }
     }
     return status;
@@ -173,14 +196,14 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
       if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
         return;
       }
-      if (Date.now() - startAt > MAX_DURATION_MS) {
+      if (now() - startAt > MAX_DURATION_MS) {
         fireTimeout(generation);
         return;
       }
 
       const nextDelay = clampRetryDelay(status?.retryAfterMs, intervalMs);
       intervalMs = Math.min(POLL_MAX_MS, intervalMs + POLL_STEP_MS);
-      pollTimer = setTimeout(() => {
+      pollTimer = schedule(() => {
         void tick();
       }, nextDelay);
     };
@@ -202,7 +225,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     reachedTerminal = false;
     transientNotified = false;
     timedOut = false;
-    const startAt = Date.now();
+    const startAt = now();
 
     try {
       const boot = await applyFetched(id, generation);
@@ -234,15 +257,15 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
     let refreshChain: Promise<void> = Promise.resolve();
 
-    deadlineTimer = setTimeout(() => {
+    deadlineTimer = schedule(() => {
       fireTimeout(generation);
-    }, Math.max(0, MAX_DURATION_MS - (Date.now() - startAt)));
+    }, Math.max(0, MAX_DURATION_MS - (now() - startAt)));
 
     const scheduleTipRefresh = () => {
       if (debounceTimer != null) {
-        clearTimeout(debounceTimer);
+        clearSchedule(debounceTimer);
       }
-      debounceTimer = setTimeout(() => {
+      debounceTimer = schedule(() => {
         refreshChain = refreshChain
           .then(async () => {
             if (signal.aborted || generation !== sessionGeneration || reachedTerminal || timedOut) {
@@ -270,8 +293,8 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     };
 
     try {
-      await onTips(
-        subscribeModuleOp(id, signal),
+      await tipOn(
+        tipSubscribe(id, signal),
         async () => {
           scheduleTipRefresh();
         },
@@ -282,7 +305,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks) {
     } finally {
       clearDeadline();
       if (debounceTimer != null) {
-        clearTimeout(debounceTimer);
+        clearSchedule(debounceTimer);
       }
       await refreshChain;
     }
