@@ -58,6 +58,12 @@ describe('actorUserId', () => {
     ).toBe('');
   });
 
+  test('uses default auth store resolver when deps are omitted', () => {
+    delete (globalThis as any).$choysum;
+    // No Pinia active in FE unit → default useAuthStore throws and falls through to ''.
+    expect(actorUserId()).toBe('');
+  });
+
   test('returns empty when context identity access throws', () => {
     Object.defineProperty(globalThis, '$choysum', {
       configurable: true,

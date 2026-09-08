@@ -462,3 +462,41 @@ test('setupApp > merges terminology catalog updates from the i18n store', async 
   expect(terminologyMerger.calls).toEqual([[{ auth: { menu: { Users: '用户' } } }, 'zh-CN']]);
   expect(mergeLocaleMessage.calls.length).toBeGreaterThan(0);
 });
+
+test('setupApp > uses production defaults for omitted deps', () => {
+  const app = makeApp();
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const i18nLocale = ref('en');
+  const exposeBrowserI18nOnWindow = fnRecorder();
+
+  // Omit baseUrl/hasWindow/ElementPlus/sourceMessages/piniaPlugin/timezone helpers/
+  // terminology project/notify/track so those `deps.x ?? default` arms execute.
+  setupApp(app as any, {
+    registerGlobalDirectives: fnRecorder() as any,
+    createPinia: (() => {
+      const pinia = { name: 'pinia' };
+      return { use: () => pinia };
+    }) as any,
+    useI18nStore: (() => ({
+      currentLocale,
+      terminologyLang: 'en_US',
+      lastTerminologyLoad: null,
+      getDateTimeFormats: () => ({}),
+      getNumberFormats: () => ({}),
+      loadVueI18nMessages: async () => null,
+    })) as any,
+    setUserTimeZoneResolver: fnRecorder() as any,
+    setGlobalRequestContextProvider: fnRecorder() as any,
+    useAuthStore: (() => ({})) as any,
+    createI18n: (() => ({
+      global: { locale: i18nLocale, mergeLocaleMessage: fnRecorder() },
+    })) as any,
+    createTerminologyCatalogMerger: (() => fnRecorder()) as any,
+    exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
+    createAppRouter: (() => ({})) as any,
+    createAppMenu: (() => ({})) as any,
+  });
+
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
+  expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
+});

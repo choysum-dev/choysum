@@ -38,3 +38,7 @@ test('chatterStores resolves typed stores for message, audit, and notification m
     'message.Notification',
   ]);
 });
+
+test('chatterStores uses the default registry factory when deps are omitted', () => {
+  expect(() => getMessageStore()).toThrow(/Store factory|not found|createStoreByModel/i);
+});

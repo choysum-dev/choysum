@@ -47,6 +47,12 @@ function makeSearchQueue() {
 }
 
 describe('useChatterTimeline', () => {
+  test('uses default store getters when deps are omitted', () => {
+    expect(() => useChatterTimeline(ref('partner.Partner'), ref('r1'))).toThrow(
+      /Store factory|not found|createStoreByModel/i
+    );
+  });
+
   test('ignores stale refresh results after the record changes', async () => {
     let resolveFirst: ((rows: unknown[]) => void) | undefined;
     const messages = makeSearchQueue();

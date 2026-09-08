@@ -16,10 +16,12 @@ export { resolveDocumentTitle } from './documentTitle';
 // Configure navigation progress feedback.
 NProgress.configure({ showSpinner: false });
 
-function defaultAppName(): string {
-  const appNameRaw = import.meta.env?.CHOYSUM_APP_NAME;
+function defaultAppName(env: ImportMetaEnv | undefined = import.meta.env): string {
+  const appNameRaw = env?.CHOYSUM_APP_NAME;
   return typeof appNameRaw === 'string' && appNameRaw.trim() !== '' ? appNameRaw : 'Choysum';
 }
+
+export { defaultAppName };
 
 /**
  * Creates the application router.

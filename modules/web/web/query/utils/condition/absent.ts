@@ -20,6 +20,6 @@ export function combinePresentConditions(a?: unknown, b?: unknown): unknown {
 }
 
 /** List/controller filter merge alias; same semantics as `combinePresentConditions`. */
-export function combineFilters(a?: unknown, b?: unknown): unknown {
-  return combinePresentConditions(a, b);
+export function combineFilters(a?: any, b?: any): any | undefined {
+  return combinePresentConditions(a, b) as any;
 }

@@ -5,6 +5,7 @@ import { combineLaneAggregateConditions } from './kanbanController';
 
 test('combineLaneAggregateConditions: uses the single-lane present condition', () => {
   expect(combineLaneAggregateConditions([{ Stage: 'todo' }])).toEqual({ Stage: 'todo' });
+  expect(combineLaneAggregateConditions([])).toBeUndefined();
 });
 
 test('combineLaneAggregateConditions: drops combined Or when any selected lane is unconditioned', () => {
