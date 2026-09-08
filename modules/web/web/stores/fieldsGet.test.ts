@@ -129,7 +129,7 @@ describe('createFieldsGetHelpers', () => {
       expect.arrayContaining(['help', 'helpText', 'string', 'stringText', 'maxUploadBytes', 'maxWidth', 'maxHeight'])
     );
 
-    let fieldsGetImpl: FieldsGetHost['FieldsGet'] = async () => ({
+    let fieldsGetImpl: FieldsGetHost['FieldsGet'] = async (_fields?: string[], _attrs?: string[]) => ({
       Code: {
         id: '1',
         type: 'varchar',
@@ -161,14 +161,14 @@ describe('createFieldsGetHelpers', () => {
     expect(helpers.getFieldsGetTranslatedHelp('Code')).toBe('用于引用的短唯一编码');
     expect(helpers.getFieldsGetTranslatedHelp('  Code  ')).toBe('用于引用的短唯一编码');
 
-    fieldsGetImpl = async () => ({
+    fieldsGetImpl = async (_fields?: string[], _attrs?: string[]) => ({
       Code: { id: '1', type: 'varchar', typeAnnotation: 'string', help: '   ' },
     });
     helpers.clearFieldsGetCache();
     await helpers.ensureFieldsGet(['Code']);
     expect(helpers.getFieldsGetTranslatedHelp('Code')).toBeUndefined();
 
-    fieldsGetImpl = async () => ({
+    fieldsGetImpl = async (_fields?: string[], _attrs?: string[]) => ({
       Code: { id: '1', type: 'varchar', typeAnnotation: 'string', help: 42 as any },
     });
     helpers.clearFieldsGetCache();

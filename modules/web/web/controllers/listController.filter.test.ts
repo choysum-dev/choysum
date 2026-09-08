@@ -1,15 +1,16 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { combinePresentConditions } from '@/web/web/query/utils/condition/absent';
+import { combineFilters, combinePresentConditions } from '@/web/web/query/utils/condition/absent';
 
-/** Mirrors listController.apply forced-filter merge. */
+/** Mirrors listController.apply forced-filter merge (state then call-site override). */
 function mergeListForcedFilters(compiledFromUi: unknown, forcedInState: unknown, forcedOverride: unknown): unknown {
-  const withState = forcedInState !== undefined ? combinePresentConditions(compiledFromUi, forcedInState) : compiledFromUi;
+  const withState =
+    forcedInState !== undefined ? combineFilters(compiledFromUi, forcedInState) : compiledFromUi;
   return combinePresentConditions(withState, forcedOverride);
 }
 
-test('listController filter: merges forcedCondition from state through combinePresentConditions', () => {
+test('listController filter: merges forcedCondition from state through combineFilters', () => {
   expect(mergeListForcedFilters(undefined, { Status: 'open' }, { AssigneeId: 'u1' })).toEqual({
     And: [{ Status: 'open' }, { AssigneeId: 'u1' }],
   });

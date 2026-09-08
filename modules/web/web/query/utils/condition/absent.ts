@@ -18,3 +18,8 @@ export function combinePresentConditions(a?: unknown, b?: unknown): unknown {
   if (right == null) return left;
   return { And: [left, right] };
 }
+
+/** List/controller filter merge alias; same semantics as `combinePresentConditions`. */
+export function combineFilters(a?: unknown, b?: unknown): unknown {
+  return combinePresentConditions(a, b);
+}
