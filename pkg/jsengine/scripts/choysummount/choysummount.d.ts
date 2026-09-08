@@ -14,7 +14,7 @@ export type ChoysumMountStubs =
   | Record<string, true | Component | Record<string, unknown>>;
 
 export type ChoysumMountGlobalOptions = {
-  plugins?: Array<Plugin | [Plugin, unknown?]>;
+  plugins?: Array<Plugin | [Plugin, ...unknown[]]>;
   provide?: Record<string | symbol, unknown>;
   components?: Record<string, Component>;
 };

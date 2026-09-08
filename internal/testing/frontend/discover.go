@@ -67,8 +67,8 @@ var (
 	reMountCall           = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
 	// Matches from '...vue', side-effect/dynamic/require imports, optional Vite query (?raw), and backticks.
 	reVueImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]+\\.vue(?:\\?[^'\"`]*)?['\"`]")
-	// CoverageProbe sampling SFC imports (banned after host-2 / real-page policy).
-	reCoverageProbeImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]*CoverageProbe\\.vue(?:\\?[^'\"`]*)?['\"`]")
+	// CoverageProbe sampling SFC imports (banned). Basename must be exactly CoverageProbe.vue.
+	reCoverageProbeImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](?:[^'\"`]*[/\\\\])?CoverageProbe\\.vue(?:\\?[^'\"`]*)?['\"`]")
 )
 
 // DiscoverFrontendTests lists FE unit files under modules/<app>/web.

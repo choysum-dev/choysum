@@ -100,8 +100,7 @@
     delete this.attrs[key];
     if (key === 'class') this.className = '';
     if (key === 'id') this.id = '';
-    if (key === 'value') this._formValue = undefined;
-    if (key === 'checked') this._checked = undefined;
+    // Live IDL state (_formValue / _checked) is independent of content attributes.
   };
 
   Object.defineProperty(Element.prototype, 'classList', {
@@ -196,14 +195,49 @@
     },
   });
 
-  Element.prototype.focus = function () {};
-  Element.prototype.blur = function () {};
+  Element.prototype.focus = function () {
+    var doc = this.ownerDocument;
+    if (doc && doc.activeElement && doc.activeElement !== this && typeof doc.activeElement.blur === 'function') {
+      doc.activeElement.blur();
+    }
+    if (doc) doc.activeElement = this;
+    this.dispatchEvent(new Event('focus', { bubbles: false }));
+  };
+  Element.prototype.blur = function () {
+    var doc = this.ownerDocument;
+    if (doc && doc.activeElement === this) doc.activeElement = null;
+    this.dispatchEvent(new Event('blur', { bubbles: false }));
+  };
   Element.prototype.click = function () {
     var tag = String(this.tagName || '').toLowerCase();
     var typ = String(this.getAttribute('type') || this.type || '').toLowerCase();
     var disabled = this.getAttribute('disabled') != null || this.disabled === true;
-    if (!disabled && tag === 'input' && (typ === 'checkbox' || typ === 'radio')) {
+    if (disabled) return;
+    var checkedChanged = false;
+    if (tag === 'input' && typ === 'checkbox') {
       this.checked = !this.checked;
+      checkedChanged = true;
+    }
+    if (tag === 'input' && typ === 'radio') {
+      var name = String(this.getAttribute('name') || this.name || '');
+      var wasChecked = !!this.checked;
+      this.checked = true;
+      if (name && this.ownerDocument && typeof this.ownerDocument.querySelectorAll === 'function') {
+        var peers = this.ownerDocument.querySelectorAll('input');
+        for (var i = 0; i < peers.length; i++) {
+          var peer = peers[i];
+          if (peer === this) continue;
+          var peerTyp = String(peer.getAttribute('type') || peer.type || '').toLowerCase();
+          if (peerTyp !== 'radio') continue;
+          var peerName = String(peer.getAttribute('name') || peer.name || '');
+          if (peerName === name) peer.checked = false;
+        }
+      }
+      checkedChanged = !wasChecked;
+    }
+    if (checkedChanged) {
+      this.dispatchEvent(new Event('input', { bubbles: true }));
+      this.dispatchEvent(new Event('change', { bubbles: true }));
     }
     this.dispatchEvent(new Event('click', { bubbles: true }));
   };
@@ -412,6 +446,7 @@
     this.nodeType = NODE_DOCUMENT;
     this.nodeName = '#document';
     this.__choysumMinimalDOM = true;
+    this.activeElement = null;
     this.body = new Element('body');
     this.body.ownerDocument = this;
     this.documentElement = new Element('html');

@@ -13,12 +13,12 @@ function stub(name) {
   return cache[name];
 }
 
-export var ElMessage = {
-  success: function () {},
-  error: function () {},
-  warning: function () {},
-  info: function () {},
-};
+function messageStub() {}
+messageStub.success = function () {};
+messageStub.error = function () {};
+messageStub.warning = function () {};
+messageStub.info = function () {};
+export var ElMessage = messageStub;
 export var ElMessageBox = {
   confirm: function () {
     return Promise.resolve();

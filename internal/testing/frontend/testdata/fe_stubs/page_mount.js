@@ -13,8 +13,12 @@ import { createFeStubRouter } from 'vue-router';
  */
 export function buildPageMountGlobal(overrides) {
   overrides = overrides || {};
+  var routeOverrides = Object.assign({}, overrides.route || {});
+  if (routeOverrides.fullPath == null && routeOverrides.path != null) {
+    routeOverrides.fullPath = routeOverrides.path;
+  }
   var { router } = createFeStubRouter({
-    route: Object.assign({ path: '/', fullPath: '/', query: {} }, overrides.route || {}),
+    route: Object.assign({ path: '/', fullPath: '/', query: {} }, routeOverrides),
     router: overrides.router || {},
   });
   return {

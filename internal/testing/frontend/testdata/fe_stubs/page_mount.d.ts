@@ -14,7 +14,7 @@ export type PageMountOverrides = {
 
 /** Matches ChoysumMountGlobalOptions so callers can pass the result as mount `global`. */
 export type PageMountGlobal = {
-  plugins: Array<Plugin | [Plugin, unknown?]>;
+  plugins: Array<Plugin | [Plugin, ...unknown[]]>;
 };
 
 export function buildPageMountGlobal(overrides?: PageMountOverrides): PageMountGlobal;

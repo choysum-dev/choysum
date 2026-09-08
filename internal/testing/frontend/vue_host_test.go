@@ -273,6 +273,60 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
   if (old.parentNode !== null) throw new Error('textContent must clear parentNode');
   if (parent.textContent !== 'replaced') throw new Error('textContent set failed');
 
+  // Property-assigned live state survives content-attribute removal.
+  const input = document.createElement('input');
+  input.value = 'live';
+  input.removeAttribute('value');
+  if (input.getAttribute('value') != null) throw new Error('value attr should be gone');
+  if (input.value !== 'live') throw new Error('live value must survive removeAttribute');
+  input.checked = true;
+  input.removeAttribute('checked');
+  if (input.hasAttribute('checked')) throw new Error('checked attr should be gone');
+  if (!input.checked) throw new Error('live checked must survive removeAttribute');
+
+  // Radio group: activate sets checked and clears same-name peers; fires input/change.
+  const r1 = document.createElement('input');
+  r1.setAttribute('type', 'radio');
+  r1.setAttribute('name', 'g');
+  r1.checked = true;
+  const r2 = document.createElement('input');
+  r2.setAttribute('type', 'radio');
+  r2.setAttribute('name', 'g');
+  document.body.appendChild(r1);
+  document.body.appendChild(r2);
+  let radioInput = 0;
+  let radioChange = 0;
+  r2.addEventListener('input', () => { radioInput++; });
+  r2.addEventListener('change', () => { radioChange++; });
+  r2.click();
+  if (!r2.checked || r1.checked) throw new Error('radio peer clear failed');
+  if (radioInput !== 1 || radioChange !== 1) throw new Error('radio input/change missing');
+  r2.click();
+  if (!r2.checked) throw new Error('already-checked radio must stay checked');
+
+  // Disabled controls must not dispatch click.
+  const btn = document.createElement('button');
+  btn.setAttribute('disabled', '');
+  let disabledClicked = false;
+  btn.addEventListener('click', () => { disabledClicked = true; });
+  btn.click();
+  if (disabledClicked) throw new Error('disabled click must not dispatch');
+
+  // focus/blur track document.activeElement and fire events.
+  const f1 = document.createElement('input');
+  const f2 = document.createElement('input');
+  document.body.appendChild(f1);
+  document.body.appendChild(f2);
+  let blurCount = 0;
+  f1.addEventListener('blur', () => { blurCount++; });
+  f1.focus();
+  if (document.activeElement !== f1) throw new Error('focus activeElement');
+  f2.focus();
+  if (document.activeElement !== f2) throw new Error('refocus activeElement');
+  if (blurCount !== 1) throw new Error('previous element blur missing');
+  f2.blur();
+  if (document.activeElement !== null) throw new Error('blur should clear activeElement');
+
   return 'ok';
 })()
 `

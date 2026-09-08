@@ -660,3 +660,24 @@ func TestScanCoverageProbeBanned(t *testing.T) {
 		t.Fatal("expected hard-cut failure for CoverageProbe")
 	}
 }
+
+func TestCoverageProbeImportIgnoresSimilarBasenames(t *testing.T) {
+	repo := t.TempDir()
+	web := filepath.Join(repo, "modules", "demo", "web")
+	if err := os.MkdirAll(web, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testFile := filepath.Join(web, "similar.test.ts")
+	if err := os.WriteFile(testFile, []byte("import X from './PartnerCoverageProbe.vue';\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hits, err := ScanAppIllegalFrontendMarks(repo, "demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range hits {
+		if h.Kind == IllegalCoverageProbe {
+			t.Fatalf("PartnerCoverageProbe.vue must not be flagged: %#v", hits)
+		}
+	}
+}

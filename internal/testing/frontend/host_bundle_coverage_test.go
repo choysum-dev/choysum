@@ -322,7 +322,7 @@ func TestScanAppIllegalFrontendMarksErrors(t *testing.T) {
 	if err := os.WriteFile(testFile, []byte("test('x', () => {})\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" && os.Geteuid() != 0 {
 		if err := os.Chmod(testFile, 0); err != nil {
 			t.Fatal(err)
 		}
