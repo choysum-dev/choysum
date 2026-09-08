@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref, type Ref } from 'vue';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
 import type { NamedFilter } from '@/web/web/query/types';
-import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
-import { actorUserId } from './actorUserId';
+import { filtersToQuery as defaultFiltersToQuery } from '@/web/web/query/utils/condition/builder';
+import { actorUserId as defaultActorUserId } from './actorUserId';
 import {
   mergeUserFilterDefaults,
   pickLatestIsDefault,
@@ -23,6 +23,12 @@ export type UserFavoriteItem = UserFilterRow & {
   canDelete: boolean;
 };
 
+export type UserFiltersDeps = {
+  createStoreByModel?: typeof defaultCreateStoreByModel;
+  actorUserId?: typeof defaultActorUserId;
+  filtersToQuery?: typeof defaultFiltersToQuery;
+};
+
 /**
  * Load / apply / save / remove web.UserFilter favorites for the given view store.
  */
@@ -34,8 +40,14 @@ export function useUserFilters(params: {
   codeDefaults?: () => NamedFilter[] | NamedFilter | undefined;
   /** Current route path (normalized to ScopeKey). */
   scopeKey?: () => string;
+  createStoreByModel?: UserFiltersDeps['createStoreByModel'];
+  actorUserId?: UserFiltersDeps['actorUserId'];
+  filtersToQuery?: UserFiltersDeps['filtersToQuery'];
 }) {
   const { store, filtersRef, keywordRef, applyNamedFilter, codeDefaults } = params;
+  const createStoreByModel = params.createStoreByModel ?? defaultCreateStoreByModel;
+  const resolveActorUserId = params.actorUserId ?? defaultActorUserId;
+  const runFiltersToQuery = params.filtersToQuery ?? defaultFiltersToQuery;
   const favorites = ref<UserFavoriteItem[]>([]);
   const loading = ref(false);
   const loadError = ref<string | null>(null);
@@ -69,7 +81,7 @@ export function useUserFilters(params: {
     loading.value = true;
     loadError.value = null;
     try {
-      const me = actorUserId();
+      const me = resolveActorUserId();
       const scope = currentScopeKey();
       const uf = userFilterStore() as any;
       const rows = (await uf.Search(
@@ -159,9 +171,9 @@ export function useUserFilters(params: {
     const keyword = keywordRef?.value?.trim() || undefined;
     const fieldsMeta = (store as any)?.fieldsMetadata as Record<string, any> | undefined;
     const keywordFields = ((store as any)?.state?.queryState?.keywordFields || undefined) as string[] | undefined;
-    const condition = filtersToQuery(conditionGroups as any, keyword, keywordFields, fieldsMeta) ?? {};
+    const condition = runFiltersToQuery(conditionGroups as any, keyword, keywordFields, fieldsMeta) ?? {};
 
-    const me = actorUserId();
+    const me = resolveActorUserId();
     const uf = userFilterStore() as any;
     // Private: omit UserId so the service defaults to the actor (avoids empty→shared).
     // Shared: explicit null.
@@ -207,7 +219,7 @@ export function useUserFilters(params: {
     const favId = String(id || '').trim();
     if (!favId || !name) return;
 
-    const me = actorUserId();
+    const me = resolveActorUserId();
     const uf = userFilterStore() as any;
     const values: Record<string, any> = {
       Name: name,
