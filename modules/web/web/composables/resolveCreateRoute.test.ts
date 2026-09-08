@@ -2,40 +2,29 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { defineComponent, h, nextTick, ref } from 'vue';
-import { mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter, type Router } from 'vue-router';
+
+import { fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import {
   deriveCreateRouteName,
   resolveCreateRouteLocation,
   useResolvedCreateAction,
 } from './resolveCreateRoute';
-import type { Router } from 'vue-router';
-
-const routeState = { name: 'PartnerList' as string | undefined };
-const resolveMock = vi.fn((loc: { name?: string }) => ({
-  name: loc?.name,
-  matched: loc?.name === 'PartnerCreate' ? [{ path: '/partner/partners/new' }] : [],
-}));
-
-vi.mock('vue-router', () => ({
-  useRouter: () => ({ resolve: resolveMock }),
-  useRoute: () => routeState,
-}));
 
 describe('deriveCreateRouteName', () => {
-  it('maps List/Detail/Kanban stems to Create', () => {
+  test('maps List/Detail/Kanban stems to Create', () => {
     expect(deriveCreateRouteName('PartnerList')).toBe('PartnerCreate');
     expect(deriveCreateRouteName('PartnerDetail')).toBe('PartnerCreate');
     expect(deriveCreateRouteName('TokenKanban')).toBe('TokenCreate');
     expect(deriveCreateRouteName('FieldRuleList')).toBe('FieldRuleCreate');
   });
 
-  it('keeps Create names for form New on the create screen', () => {
+  test('keeps Create names for form New on the create screen', () => {
     expect(deriveCreateRouteName('PartnerCreate')).toBe('PartnerCreate');
   });
 
-  it('returns undefined for non-surface names', () => {
+  test('returns undefined for non-surface names', () => {
     expect(deriveCreateRouteName('MetaModuleListTable')).toBeUndefined();
     expect(deriveCreateRouteName('MetaModuleHistory')).toBeUndefined();
     expect(deriveCreateRouteName('login')).toBeUndefined();
@@ -46,37 +35,37 @@ describe('deriveCreateRouteName', () => {
 });
 
 describe('resolveCreateRouteLocation', () => {
-  it('returns a named location when the Create route matches', () => {
-    const router = {
-      resolve: vi.fn(() => ({ name: 'PartnerCreate', matched: [{ path: '/partner/partners/new' }] })),
-    } as unknown as Router;
+  test('returns a named location when the Create route matches', () => {
+    const resolve = fnRecorder(() => ({ name: 'PartnerCreate', matched: [{ path: '/partner/partners/new' }] }));
+    const router = { resolve } as unknown as Router;
     expect(resolveCreateRouteLocation(router, 'PartnerList')).toEqual({ name: 'PartnerCreate' });
-    expect(router.resolve).toHaveBeenCalledWith({ name: 'PartnerCreate' });
+    expect(resolve.calls).toEqual([[{ name: 'PartnerCreate' }]]);
   });
 
-  it('returns undefined when resolve has no match', () => {
+  test('returns undefined when resolve has no match', () => {
     const router = {
-      resolve: vi.fn(() => ({ name: 'MetaModuleCreate', matched: [] })),
+      resolve: fnRecorder(() => ({ name: 'MetaModuleCreate', matched: [] })),
     } as unknown as Router;
     expect(resolveCreateRouteLocation(router, 'MetaModuleList')).toBeUndefined();
   });
 
-  it('returns undefined when resolved name mismatches', () => {
+  test('returns undefined when resolved name mismatches', () => {
     const router = {
-      resolve: vi.fn(() => ({ name: 'Other', matched: [{ path: '/x' }] })),
+      resolve: fnRecorder(() => ({ name: 'Other', matched: [{ path: '/x' }] })),
     } as unknown as Router;
     expect(resolveCreateRouteLocation(router, 'PartnerList')).toBeUndefined();
   });
 
-  it('returns undefined when derive yields nothing', () => {
-    const router = { resolve: vi.fn() } as unknown as Router;
+  test('returns undefined when derive yields nothing', () => {
+    const resolve = fnRecorder();
+    const router = { resolve } as unknown as Router;
     expect(resolveCreateRouteLocation(router, 'login')).toBeUndefined();
-    expect(router.resolve).not.toHaveBeenCalled();
+    expect(resolve.calls).toEqual([]);
   });
 
-  it('returns undefined when resolve throws', () => {
+  test('returns undefined when resolve throws', () => {
     const router = {
-      resolve: vi.fn(() => {
+      resolve: fnRecorder(() => {
         throw new Error('No match');
       }),
     } as unknown as Router;
@@ -85,72 +74,97 @@ describe('resolveCreateRouteLocation', () => {
 });
 
 describe('useResolvedCreateAction', () => {
-  beforeEach(() => {
-    routeState.name = 'PartnerList';
-    resolveMock.mockClear();
-    resolveMock.mockImplementation((loc: { name?: string }) => ({
-      name: loc?.name,
-      matched: loc?.name === 'PartnerCreate' ? [{ path: '/partner/partners/new' }] : [],
-    }));
-  });
+  function makeRouter(initialName = 'PartnerList') {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', name: 'home', component: { template: '<div />' } },
+        { path: '/partners', name: 'PartnerList', component: { template: '<div />' } },
+        { path: '/partners/new', name: 'PartnerCreate', component: { template: '<div />' } },
+        { path: '/other', name: 'Other', component: { template: '<div />' } },
+      ],
+    });
+    return { router, initialName };
+  }
 
-  function mountHook(
+  async function mountHook(
     prop: unknown,
-    enabled?: boolean | (() => boolean)
+    enabled?: boolean | (() => boolean),
+    initialName = 'PartnerList'
   ) {
+    const { router } = makeRouter(initialName);
+    await router.push({ name: initialName });
+    await router.isReady();
+
     let result: ReturnType<typeof useResolvedCreateAction> | undefined;
     const Host = defineComponent({
       setup() {
         result = useResolvedCreateAction(
           () => prop as any,
-          enabled === undefined ? undefined : { enabled: typeof enabled === 'function' ? enabled : () => enabled }
+          enabled === undefined
+            ? undefined
+            : { enabled: typeof enabled === 'function' ? enabled : () => enabled }
         );
         return () => h('div', String(result?.value ?? ''));
       },
     });
-    const wrapper = mount(Host);
-    return { wrapper, get value() { return result!.value; } };
+    const mounted = mountApp(Host, { plugins: [router] });
+    return {
+      ...mounted,
+      get value() {
+        return result!.value;
+      },
+    };
   }
 
-  it('uses explicit prop when provided', () => {
-    const { value, wrapper } = mountHook('/explicit/new');
+  test('uses explicit prop when provided', async () => {
+    const { value, unmount } = await mountHook('/explicit/new');
     expect(value).toBe('/explicit/new');
-    expect(resolveMock).not.toHaveBeenCalled();
-    wrapper.unmount();
+    unmount();
   });
 
-  it('treats null prop as omitted and derives from route', () => {
-    const { value, wrapper } = mountHook(null);
+  test('treats null prop as omitted and derives from route', async () => {
+    const { value, unmount } = await mountHook(null);
     expect(value).toEqual({ name: 'PartnerCreate' });
-    wrapper.unmount();
+    unmount();
   });
 
-  it('treats empty string as disabled', () => {
-    const { value, wrapper } = mountHook('');
+  test('treats empty string as disabled', async () => {
+    const { value, unmount } = await mountHook('');
     expect(value).toBeUndefined();
-    wrapper.unmount();
+    unmount();
   });
 
-  it('derives from route name when prop is omitted', () => {
-    const { value, wrapper } = mountHook(undefined);
+  test('derives from route name when prop is omitted', async () => {
+    const { value, unmount } = await mountHook(undefined);
     expect(value).toEqual({ name: 'PartnerCreate' });
-    wrapper.unmount();
+    unmount();
   });
 
-  it('skips route fallback when enabled is false', () => {
-    const { value, wrapper } = mountHook(undefined, false);
+  test('skips route fallback when enabled is false', async () => {
+    const { value, unmount } = await mountHook(undefined, false);
     expect(value).toBeUndefined();
-    wrapper.unmount();
+    unmount();
   });
 
-  it('still honors explicit prop when enabled is false', () => {
-    const { value, wrapper } = mountHook({ name: 'ForcedCreate' }, false);
+  test('still honors explicit prop when enabled is false', async () => {
+    const { value, unmount } = await mountHook({ name: 'ForcedCreate' }, false);
     expect(value).toEqual({ name: 'ForcedCreate' });
-    wrapper.unmount();
+    unmount();
   });
 
-  it('reacts when enabled getter flips on', async () => {
+  test('reacts when enabled getter flips on', async () => {
     const enabled = ref(false);
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/partners', name: 'PartnerList', component: { template: '<div />' } },
+        { path: '/partners/new', name: 'PartnerCreate', component: { template: '<div />' } },
+      ],
+    });
+    await router.push({ name: 'PartnerList' });
+    await router.isReady();
+
     let result: ReturnType<typeof useResolvedCreateAction> | undefined;
     const Host = defineComponent({
       setup() {
@@ -158,11 +172,11 @@ describe('useResolvedCreateAction', () => {
         return () => h('div');
       },
     });
-    const wrapper = mount(Host);
+    const { unmount } = mountApp(Host, { plugins: [router] });
     expect(result!.value).toBeUndefined();
     enabled.value = true;
     await nextTick();
     expect(result!.value).toEqual({ name: 'PartnerCreate' });
-    wrapper.unmount();
+    unmount();
   });
 });

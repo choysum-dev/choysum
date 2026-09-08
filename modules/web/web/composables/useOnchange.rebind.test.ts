@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { nextTick, ref, defineComponent, provide } from 'vue';
-import { mount, flushPromises } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+
+import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import { disposeOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 
-function makeStore(onchange = vi.fn(async () => ({ value: {}, messages: [] }))) {
+function makeStore(onchange = fnRecorder(async () => ({ value: {}, messages: [] }))) {
   return {
     fieldsMetadata: { Name: { id: '1', type: 'varchar', typeAnnotation: '' } },
     state: {} as Record<string, any>,
@@ -15,9 +15,17 @@ function makeStore(onchange = vi.fn(async () => ({ value: {}, messages: [] }))) 
   } as any;
 }
 
+async function waitUntil(pred: () => boolean, timeoutMs = 1000): Promise<void> {
+  const start = Date.now();
+  while (!pred()) {
+    if (Date.now() - start > timeoutMs) throw new Error('waitUntil timeout');
+    await new Promise<void>(resolve => setTimeout(resolve, 5));
+  }
+}
+
 describe('getOnchangeController rebindOptions', () => {
-  it('rebinds getRoot when the same store/session controller is reused', async () => {
-    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+  test('rebinds getRoot when the same store/session controller is reused', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);
 
     const draft1 = ref<Record<string, any> | null>({ Id: '1', Name: 'A' });
@@ -34,14 +42,14 @@ describe('getOnchangeController rebindOptions', () => {
     expect(again).toBe(ctrl);
 
     await ctrl.markChanged('Name', { flush: true });
-    expect(onchange).toHaveBeenCalled();
-    expect(onchange.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: '2', Name: 'B' }));
+    expect(onchange.calls.length).toBeGreaterThan(0);
+    expect(onchange.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: '2', Name: 'B' }));
 
     disposeOnchange(store);
   });
 
-  it('clears pending from the previous root on rebind', async () => {
-    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+  test('clears pending from the previous root on rebind', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);
 
     const draft1 = ref<Record<string, any>>({ Id: '1', Name: 'A' });
@@ -49,7 +57,6 @@ describe('getOnchangeController rebindOptions', () => {
       getRoot: () => draft1.value,
     });
 
-    // Pause so markChanged keeps pending; debounceMs: 0 would flush synchronously and clear it.
     ctrl.pause();
     await ctrl.markChanged('Name');
     expect(ctrl.hasPending()).toBe(true);
@@ -62,13 +69,13 @@ describe('getOnchangeController rebindOptions', () => {
 
     draft2.value = { Id: '2', Name: 'B2' };
     await ctrl.markChanged('Name', { flush: true });
-    expect(onchange.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: '2', Name: 'B2' }));
+    expect(onchange.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: '2', Name: 'B2' }));
 
     disposeOnchange(store);
   });
 
-  it('rebinds singleton controller when sessionId is omitted', async () => {
-    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+  test('rebinds singleton controller when sessionId is omitted', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);
 
     const draft1 = ref({ Id: '1', Name: 'A' });
@@ -82,19 +89,18 @@ describe('getOnchangeController rebindOptions', () => {
     expect(again).toBe(ctrl);
 
     await ctrl.markChanged('Name', { flush: true });
-    expect(onchange.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: '2', Name: 'B' }));
+    expect(onchange.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: '2', Name: 'B' }));
 
-    // Omitting opts must not rebind away from the current getRoot.
     getOnchangeController(store);
     draft2.value = { Id: '2', Name: 'B2' };
     await ctrl.markChanged('Name', { flush: true });
-    expect(onchange.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: '2', Name: 'B2' }));
+    expect(onchange.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: '2', Name: 'B2' }));
 
     disposeOnchange(store);
   });
 
-  it('rebindOptions(undefined) falls back to store record root', async () => {
-    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+  test('rebindOptions(undefined) falls back to store record root', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);
     store.state.record = { Id: 'store', Name: 'S' };
 
@@ -104,15 +110,15 @@ describe('getOnchangeController rebindOptions', () => {
     });
     ctrl.rebindOptions(undefined);
     await ctrl.markChanged('Name', { flush: true });
-    expect(onchange.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: 'store', Name: 'S' }));
+    expect(onchange.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Id: 'store', Name: 'S' }));
 
     disposeOnchange(store);
   });
 
-  it('routes patch through rebound onPatch when root disappears mid-flush', async () => {
+  test('routes patch through rebound onPatch when root disappears mid-flush', async () => {
     let root: Record<string, any> | null = { Id: '1', Name: 'A' };
-    const onPatch = vi.fn();
-    const onchange = vi.fn(async () => {
+    const onPatch = fnRecorder();
+    const onchange = fnRecorder(async () => {
       root = null;
       return { value: { Name: 'Patched' }, messages: [] };
     });
@@ -123,115 +129,102 @@ describe('getOnchangeController rebindOptions', () => {
     });
 
     await ctrl.markChanged('Name', { flush: true });
-    expect(onPatch).toHaveBeenCalledWith({ Name: 'Patched' }, expect.anything());
+    expect(onPatch.calls[0]?.[0]).toEqual({ Name: 'Patched' });
 
-    const onPatch2 = vi.fn();
+    const onPatch2 = fnRecorder();
     root = { Id: '2', Name: 'B' };
     getOnchangeController(store, 'ListViewPatch', {
       getRoot: () => root ?? undefined,
-      onPatch: onPatch2,
+      onPatch: onPatch2 as any,
     });
     await ctrl.markChanged('Name', { flush: true });
-    expect(onPatch2).toHaveBeenCalled();
-    expect(onPatch).toHaveBeenCalledTimes(1);
+    expect(onPatch2.calls.length).toBeGreaterThan(0);
+    expect(onPatch.calls.length).toBe(1);
 
     disposeOnchange(store);
   });
 
-  it('honors rebound immediateFirst on the first watched change', async () => {
-    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+  test('honors rebound immediateFirst on the first watched change', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);
     const draft = ref<Record<string, any> | null>(null);
     getOnchangeController(store, 'ListViewImmediate', {
       getRoot: () => draft.value ?? undefined,
       immediateFirst: true,
-      debounceMs: 50,
+      debounceMs: 10,
     });
 
-    // First non-null root only seeds baseline; second mutation schedules immediate flush.
     draft.value = { Id: '1', Name: 'A' };
     await nextTick();
     draft.value = { Id: '1', Name: 'B' };
     await nextTick();
-    await vi.waitFor(() => expect(onchange).toHaveBeenCalled());
-    expect(onchange.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Name: 'B' }));
+    await waitUntil(() => onchange.calls.length > 0);
+    expect(onchange.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ Name: 'B' }));
 
     disposeOnchange(store);
   });
 
-  it('schedules debounced flush when immediateFirst is unset', async () => {
-    vi.useFakeTimers();
-    try {
-      const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
-      const store = makeStore(onchange);
-      const draft = ref<Record<string, any> | null>(null);
-      getOnchangeController(store, 'ListViewDebounced', {
-        getRoot: () => draft.value ?? undefined,
-        debounceMs: 30,
-      });
-      // Touch session again without opts so the else-if(opts) false branch is hit.
-      getOnchangeController(store, 'ListViewDebounced');
+  test('schedules debounced flush when immediateFirst is unset', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
+    const store = makeStore(onchange);
+    const draft = ref<Record<string, any> | null>(null);
+    getOnchangeController(store, 'ListViewDebounced', {
+      getRoot: () => draft.value ?? undefined,
+      debounceMs: 30,
+    });
+    getOnchangeController(store, 'ListViewDebounced');
 
-      draft.value = { Id: '1', Name: 'A' };
-      await nextTick();
-      draft.value = { Id: '1', Name: 'B' };
-      await nextTick();
-      expect(onchange).not.toHaveBeenCalled();
-      await vi.advanceTimersByTimeAsync(40);
-      await vi.waitFor(() => expect(onchange).toHaveBeenCalled());
-      disposeOnchange(store);
-    } finally {
-      vi.useRealTimers();
-    }
+    draft.value = { Id: '1', Name: 'A' };
+    await nextTick();
+    draft.value = { Id: '1', Name: 'B' };
+    await nextTick();
+    expect(onchange.calls.length).toBe(0);
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    await waitUntil(() => onchange.calls.length > 0);
+    disposeOnchange(store);
   });
 
-  it('rebindOptions clears pause and applies a new debounceMs', async () => {
-    vi.useFakeTimers();
-    try {
-      const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
-      const store = makeStore(onchange);
-      const draft = ref<Record<string, any> | null>(null);
-      const ctrl = getOnchangeController(store, 'ListViewRebindDebounce', {
-        getRoot: () => draft.value ?? undefined,
-        debounceMs: 200,
-      });
-      ctrl.pause();
-      ctrl.rebindOptions({
-        getRoot: () => draft.value ?? undefined,
-        debounceMs: 20,
-      });
+  test('rebindOptions clears pause and applies a new debounceMs', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
+    const store = makeStore(onchange);
+    const draft = ref<Record<string, any> | null>(null);
+    const ctrl = getOnchangeController(store, 'ListViewRebindDebounce', {
+      getRoot: () => draft.value ?? undefined,
+      debounceMs: 200,
+    });
+    ctrl.pause();
+    ctrl.rebindOptions({
+      getRoot: () => draft.value ?? undefined,
+      debounceMs: 20,
+    });
 
-      draft.value = { Id: '1', Name: 'A' };
-      await nextTick();
-      draft.value = { Id: '1', Name: 'B' };
-      await nextTick();
-      expect(onchange).not.toHaveBeenCalled();
-      await vi.advanceTimersByTimeAsync(25);
-      await vi.waitFor(() => expect(onchange).toHaveBeenCalled());
-      disposeOnchange(store);
-    } finally {
-      vi.useRealTimers();
-    }
+    draft.value = { Id: '1', Name: 'A' };
+    await nextTick();
+    draft.value = { Id: '1', Name: 'B' };
+    await nextTick();
+    expect(onchange.calls.length).toBe(0);
+    await new Promise<void>(resolve => setTimeout(resolve, 40));
+    await waitUntil(() => onchange.calls.length > 0);
+    disposeOnchange(store);
   });
 });
 
 describe('getOnchangeController view-mode inject gating', () => {
-  it('skips inject outside setup and still creates a usable controller', async () => {
-    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+  test('skips inject outside setup and still creates a usable controller', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);
     const draft = ref({ Id: '1', Name: 'A' });
-    // Call site is a plain test body (no currentInstance) — must not Vue-warn on inject.
     const ctrl = getOnchangeController(store, 'OutsideSetup', {
       getRoot: () => draft.value,
     });
     draft.value = { Id: '1', Name: 'B' };
     await ctrl.markChanged('Name', { flush: true });
-    expect(onchange).toHaveBeenCalled();
+    expect(onchange.calls.length).toBeGreaterThan(0);
     disposeOnchange(store);
   });
 
-  it('honors injected view-mode when created inside setup', async () => {
-    const onchange = vi.fn(async () => ({ value: {}, messages: [] }));
+  test('honors injected view-mode when created inside setup', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);
     const draft = ref({ Id: '1', Name: 'A' });
     const viewMode = ref<'display' | 'edit'>('display');
@@ -246,21 +239,20 @@ describe('getOnchangeController view-mode inject gating', () => {
         return () => null;
       },
     });
-    const wrapper = mount(Host);
+    const { unmount } = mountApp(Host);
     try {
       expect(ctrl).toBeTruthy();
-      // Immediate display watch pauses auto-flush.
       draft.value = { Id: '1', Name: 'B' };
       await ctrl!.markChanged('Name');
       expect(ctrl!.hasPending()).toBe(true);
-      expect(onchange).not.toHaveBeenCalled();
+      expect(onchange.calls.length).toBe(0);
 
       viewMode.value = 'edit';
       await nextTick();
       await flushPromises();
-      await vi.waitFor(() => expect(onchange).toHaveBeenCalled());
+      await waitUntil(() => onchange.calls.length > 0);
     } finally {
-      wrapper.unmount();
+      unmount();
       disposeOnchange(store);
     }
   });

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, h, provide, ref } from 'vue';
-import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+
+import { mountApp } from '@/web/web/__tests__/mountApp';
 import { useField } from '@/web/web/composables/useField';
 import type { ViewContainer, ViewMode } from '@/web/web/components/view/OViewScope.vue';
 
@@ -29,40 +29,45 @@ function mountFieldEnv(opts: {
     },
   });
 
-  return mount(Host);
+  return mountApp(Host);
 }
 
 describe('useField FieldEnv.isEditMode (List + form-root, D4)', () => {
-  it('is false for List display without form-root', () => {
-    const wrapper = mountFieldEnv({ viewContainer: 'List', viewMode: 'display', formRoot: null });
-    expect(wrapper.get('span').attributes('data-edit')).toBe('false');
+  test('is false for List display without form-root', () => {
+    const { unmount, q } = mountFieldEnv({ viewContainer: 'List', viewMode: 'display', formRoot: null });
+    expect(q('span')?.getAttribute('data-edit')).toBe('false');
+    unmount();
   });
 
-  it('is false for List edit mode without form-root', () => {
-    const wrapper = mountFieldEnv({ viewContainer: 'List', viewMode: 'edit', formRoot: null });
-    expect(wrapper.get('span').attributes('data-edit')).toBe('false');
+  test('is false for List edit mode without form-root', () => {
+    const { unmount, q } = mountFieldEnv({ viewContainer: 'List', viewMode: 'edit', formRoot: null });
+    expect(q('span')?.getAttribute('data-edit')).toBe('false');
+    unmount();
   });
 
-  it('is false for List edit mode with form-root but null draft', () => {
-    const wrapper = mountFieldEnv({
+  test('is false for List edit mode with form-root but null draft', () => {
+    const { unmount, q } = mountFieldEnv({
       viewContainer: 'List',
       viewMode: 'edit',
       formRoot: { draft: null as any },
     });
-    expect(wrapper.get('span').attributes('data-edit')).toBe('false');
+    expect(q('span')?.getAttribute('data-edit')).toBe('false');
+    unmount();
   });
 
-  it('is true for List edit mode with row form-root draft', () => {
-    const wrapper = mountFieldEnv({
+  test('is true for List edit mode with row form-root draft', () => {
+    const { unmount, q } = mountFieldEnv({
       viewContainer: 'List',
       viewMode: 'edit',
       formRoot: { draft: { Id: '1', Name: 'Row' } },
     });
-    expect(wrapper.get('span').attributes('data-edit')).toBe('true');
+    expect(q('span')?.getAttribute('data-edit')).toBe('true');
+    unmount();
   });
 
-  it('is true for Form edit mode without form-root', () => {
-    const wrapper = mountFieldEnv({ viewContainer: 'Form', viewMode: 'edit', formRoot: null });
-    expect(wrapper.get('span').attributes('data-edit')).toBe('true');
+  test('is true for Form edit mode without form-root', () => {
+    const { unmount, q } = mountFieldEnv({ viewContainer: 'Form', viewMode: 'edit', formRoot: null });
+    expect(q('span')?.getAttribute('data-edit')).toBe('true');
+    unmount();
   });
 });

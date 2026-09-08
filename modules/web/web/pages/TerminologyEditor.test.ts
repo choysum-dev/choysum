@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // TerminologyEditor needs pinia + vue-router + registry stores at setup;
-// full mount without vi.mock is out of scope for this knife — import smoke only.
+// import smoke only until QJS mount backfill from main.
 
 test('TerminologyEditor smoke: default export is a named Vue component', async () => {
   const mod = await import('./TerminologyEditor.vue');

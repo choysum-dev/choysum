@@ -105,6 +105,34 @@ const minimalConsoleScript = `(function () {
   if (typeof g.sessionStorage === "undefined" || g.sessionStorage === null) {
     g.sessionStorage = makeStorage();
   }
+  if (typeof g.Blob !== "function") {
+    g.Blob = function Blob(parts, options) {
+      this._parts = parts || [];
+      this.type = (options && options.type) || "";
+      this.size = 0;
+      for (var i = 0; i < this._parts.length; i++) {
+        var p = this._parts[i];
+        this.size += typeof p === "string" ? p.length : p && p.byteLength != null ? p.byteLength : String(p).length;
+      }
+    };
+  }
+  if (typeof g.File !== "function") {
+    g.File = function File(parts, name, options) {
+      g.Blob.call(this, parts, options);
+      this.name = name == null ? "" : String(name);
+      this.lastModified = (options && options.lastModified) || Date.now();
+    };
+    g.File.prototype = Object.create(g.Blob.prototype);
+    g.File.prototype.constructor = g.File;
+  }
+  if (!g.URL || typeof g.URL.createObjectURL !== "function") {
+    var urlBase = g.URL || function URL() {};
+    urlBase.createObjectURL = function () {
+      return "blob:choysum-fe-unit/" + Math.random().toString(36).slice(2);
+    };
+    urlBase.revokeObjectURL = function () {};
+    g.URL = urlBase;
+  }
 })();`
 
 // InstallMinimalConsole injects browser-like console/storage helpers for QuickJS FE unit hosts.

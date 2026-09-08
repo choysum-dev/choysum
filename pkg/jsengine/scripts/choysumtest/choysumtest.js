@@ -411,6 +411,60 @@
     }
   }
 
+  // Suite nesting for Vitest-style describe/it; hooks run around each leaf test.
+  const suiteStack = [];
+  const beforeEachStack = [[]];
+  const afterEachStack = [[]];
+
+  function describe(name, fn) {
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error('describe(name, fn): name must be a non-empty string');
+    }
+    if (typeof fn !== 'function') {
+      throw new Error('describe(name, fn): fn must be a function');
+    }
+    suiteStack.push(name.trim());
+    beforeEachStack.push([]);
+    afterEachStack.push([]);
+    try {
+      fn();
+    } finally {
+      suiteStack.pop();
+      beforeEachStack.pop();
+      afterEachStack.pop();
+    }
+  }
+
+  function beforeEach(fn) {
+    if (typeof fn !== 'function') {
+      throw new Error('beforeEach(fn): fn must be a function');
+    }
+    beforeEachStack[beforeEachStack.length - 1].push(fn);
+  }
+
+  function afterEach(fn) {
+    if (typeof fn !== 'function') {
+      throw new Error('afterEach(fn): fn must be a function');
+    }
+    afterEachStack[afterEachStack.length - 1].push(fn);
+  }
+
+  function collectHooks(stack) {
+    const out = [];
+    for (let i = 0; i < stack.length; i++) {
+      const list = stack[i];
+      for (let j = 0; j < list.length; j++) out.push(list[j]);
+    }
+    return out;
+  }
+
+  async function runHookList(hooks) {
+    for (let i = 0; i < hooks.length; i++) {
+      const r = hooks[i]();
+      if (r && typeof r.then === 'function') await r;
+    }
+  }
+
   function test(name, fn) {
     if (typeof name !== 'string' || name.trim() === '') {
       throw new Error('test(name, fn): name must be a non-empty string');
@@ -418,8 +472,25 @@
     if (typeof fn !== 'function') {
       throw new Error('test(name, fn): fn must be a function');
     }
-    registry.push({ name, fn });
+    const prefix = suiteStack.length ? suiteStack.join(' ') + ' ' : '';
+    const fullName = prefix + name;
+    const befores = collectHooks(beforeEachStack);
+    const afters = collectHooks(afterEachStack);
+    registry.push({
+      name: fullName,
+      fn: async function () {
+        await runHookList(befores);
+        try {
+          const r = fn();
+          if (r && typeof r.then === 'function') await r;
+        } finally {
+          await runHookList(afters);
+        }
+      },
+    });
   }
+
+  const it = test;
 
   function compilePattern(pattern) {
     if (!pattern) return null;
@@ -515,6 +586,10 @@
   }
 
   globalThis.test = test;
+  globalThis.it = it;
+  globalThis.describe = describe;
+  globalThis.beforeEach = beforeEach;
+  globalThis.afterEach = afterEach;
   globalThis.expect = expect;
   globalThis.expectRejects = expectRejects;
   globalThis.__choysum_test_run__ = runAll;

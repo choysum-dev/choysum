@@ -2,12 +2,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { defineComponent, h, nextTick } from 'vue';
 import { createI18n } from 'vue-i18n';
-import { defineComponent, nextTick } from 'vue';
 
 import { createTermReference } from '@/core/service/i18n';
+import { mountApp } from '@/web/web/__tests__/mountApp';
 import { projectTerminologyMessages } from './terminology';
 import {
   notifyComposerMessagesChanged,
@@ -15,7 +14,7 @@ import {
 } from './translate';
 
 describe('native template terminology reactivity', () => {
-  it('updates current and dropdown app titles after an asynchronous catalog merge', async () => {
+  test('updates current and dropdown app titles after an asynchronous catalog merge', async () => {
     const activeTitle = createTermReference('base', 'Settings', {
       scope: 'base.menu.settings',
     });
@@ -39,10 +38,10 @@ describe('native template terminology reactivity', () => {
       messages: { en: {}, 'zh-CN': {} },
       postTranslation: trackComposerMessageRevision,
     });
-    const wrapper = mount(component, { global: { plugins: [i18n] } });
+    const { unmount, q } = mountApp(component as any, { plugins: [i18n] });
 
-    expect(wrapper.get('[data-current]').text()).toBe('Settings');
-    expect(wrapper.get('[data-dropdown]').text()).toBe('Users');
+    expect(q('[data-current]')?.textContent).toBe('Settings');
+    expect(q('[data-dropdown]')?.textContent).toBe('Users');
 
     i18n.global.mergeLocaleMessage('zh-CN', projectTerminologyMessages({
       base: {
@@ -53,7 +52,8 @@ describe('native template terminology reactivity', () => {
     notifyComposerMessagesChanged();
     await nextTick();
 
-    expect(wrapper.get('[data-current]').text()).toBe('设置');
-    expect(wrapper.get('[data-dropdown]').text()).toBe('用户');
+    expect(q('[data-current]')?.textContent).toBe('设置');
+    expect(q('[data-dropdown]')?.textContent).toBe('用户');
+    unmount();
   });
 });
