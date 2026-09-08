@@ -18,4 +18,15 @@ export function listRegisteredModelNames() {
   return [];
 }
 
-export default { createStoreByModel: createStoreByModel, listRegisteredModelNames: listRegisteredModelNames };
+export function registerStoreFactory(_modelName, _factory) {}
+
+export function getStoreFactoryRegistryVersion() {
+  return 0;
+}
+
+export default {
+  createStoreByModel: createStoreByModel,
+  listRegisteredModelNames: listRegisteredModelNames,
+  registerStoreFactory: registerStoreFactory,
+  getStoreFactoryRegistryVersion: getStoreFactoryRegistryVersion,
+};

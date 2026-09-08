@@ -57,10 +57,18 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 		if isPageOrView {
 			return stubs.ChildView, true
 		}
-	case strings.Contains(p, "web/stores/registry") || strings.Contains(joined, "/web/web/stores/registry"):
-		return stubs.Registry, true
+	case strings.Contains(p, "web/web/stores/registry") || strings.Contains(joined, "/web/web/stores/registry"):
+		// Do not stub @/core/web/stores/registry (shared by core unit tests).
+		if strings.Contains(importer, ".test.ts") || strings.Contains(importer, ".spec.ts") {
+			return "", false
+		}
+		if isPageOrView {
+			return stubs.Registry, true
+		}
 	case strings.Contains(p, "storeScopeManager") || strings.Contains(joined, "storeScopeManager"):
-		return stubs.Scope, true
+		if isPageOrView {
+			return stubs.Scope, true
+		}
 	case strings.Contains(p, "composables/usePermission") || strings.HasSuffix(p, "/usePermission") || strings.HasSuffix(p, "/usePermission.ts"):
 		if isPageOrView {
 			return stubs.Permission, true
