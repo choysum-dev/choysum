@@ -74,7 +74,10 @@ tryon/
 # Local dev files
 .dev/
 /cert/
+# Local / generated tsconfigs (modules type-fetch writes modules/tsconfig.json).
 **/tsconfig.json
+# FE unit fixtures use a committed tsconfig for IDE globals (test/expect, @choysum/test-utils).
+!internal/testing/frontend/testdata/fixtures/tsconfig.json
 
 # E2E runner stages generated *_pb.ts here for Playwright transforms
 modules/**/e2e/.generated/

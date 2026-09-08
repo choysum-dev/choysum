@@ -2,18 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import { defineComponent, h } from 'vue';
+import Partner from './Partner.vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('partner PartnerList page mount coverage: mounts a trivial host under choysumMount', async () => {
-  const Comp = defineComponent({
-    name: 'PartnerListPageMountSmoke',
-    setup() {
-      return () => h('div', { class: 'partner-list-page-mount-smoke', 'data-testid': 'partner-list-page-smoke' }, 'ok');
-    },
+test('PartnerList page coverage: mounts real Partner.vue under choysumMount', async () => {
+  const wrapper = mount(Partner as any, {
+    global: buildPageMountGlobal({ route: { path: '/partner/1', fullPath: '/partner/1' } }),
   });
-  const wrapper = mount(Comp);
   await flushPromises();
-  expect(wrapper.find('[data-testid="partner-list-page-smoke"]').exists()).toBe(true);
-  expect(wrapper.find('[data-testid="partner-list-page-smoke"]').text()).toBe('ok');
+  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
   wrapper.unmount();
 });

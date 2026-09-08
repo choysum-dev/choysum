@@ -11,7 +11,8 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 )
 
-// FrozenVTUSubsetAPIs is the PR-unit-vue-host mount surface (changes need a follow-up PR).
+// FrozenVTUSubsetAPIs is the mount surface after PR-unit-vue-host + host-2.
+// Out of subset: findComponent, setProps family, wrapper.html, happy-dom.
 var FrozenVTUSubsetAPIs = []string{
 	"mount",
 	"shallowMount",
@@ -20,6 +21,9 @@ var FrozenVTUSubsetAPIs = []string{
 	"wrapper.find",
 	"wrapper.trigger",
 	"wrapper.unmount",
+	"global.plugins",
+	"global.provide",
+	"global.components",
 }
 
 // Test seams for ChoysumMountSourcePath (overridden in unit tests).

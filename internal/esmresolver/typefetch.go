@@ -1933,7 +1933,16 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 		}
 	}
 
-	if pruned == 0 && applied == 0 {
+	modulesDir := filepath.Dir(tsconfigPath)
+	if absModules, absErr := filepathAbs(modulesDir); absErr == nil {
+		modulesDir = absModules
+	}
+	feApplied, err := applyChoysumFEUnitTsconfigPaths(modulesDir, paths)
+	if err != nil {
+		return fmt.Errorf("choysum FE unit paths: %w", err)
+	}
+
+	if pruned == 0 && applied == 0 && feApplied == 0 {
 		return nil
 	}
 

@@ -4,7 +4,6 @@
 package frontend
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +19,7 @@ import (
 // Test seams for rare OS / path failures (overridden in unit tests).
 var (
 	hostFilepathAbs = filepath.Abs
+	hostFilepathRel = filepath.Rel
 	hostUserHomeDir = os.UserHomeDir
 )
 
@@ -36,6 +36,11 @@ type VueHostBundleOptions struct {
 	JsExecutor jsexecutor.ScriptExecutor
 	// WithVuePlugin enables vueplugin (needed for .vue entries/imports).
 	WithVuePlugin bool
+	// ExtraStubAliases maps import paths (package names or absolute file paths) to stub files.
+	// Default FE unit stubs (element-plus, icons, vue-router, OPage, auth store) always apply.
+	ExtraStubAliases map[string]string
+	// DisableDefaultFEStubs skips built-in package/path stubs (host unit tests only).
+	DisableDefaultFEStubs bool
 }
 
 // BuildFrontendVueHostBundle bundles an entry with real vue (esmresolver) and choysummount alias.
@@ -80,6 +85,21 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 
 	modulesDir := filepath.Join(repoRoot, "modules")
 	vueSpec := "vue@" + choysummount.VuePackageVersion
+	stubDir := filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "stubs")
+
+	alias := map[string]string{
+		"@":   modulesDir,
+		"vue": vueSpec,
+	}
+	for k, v := range opts.ExtraStubAliases {
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		if k == "" || v == "" {
+			continue
+		}
+		alias[k] = v
+	}
+
 	plugins := []api.Plugin{
 		{
 			Name: "choysum-test-utils-alias",
@@ -90,12 +110,67 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 					})
 			},
 		},
-		esmresolver.New(
-			esmresolver.WithCacheDir(cacheDir),
-			esmresolver.WithTarget("es2020"),
-			esmresolver.WithModulePath(repoRoot),
-		).Plugin(),
 	}
+	if !opts.DisableDefaultFEStubs {
+		stubs := feUnitStubPaths{
+			ElementPlus:    filepath.Join(stubDir, "element_plus.js"),
+			Icons:          filepath.Join(stubDir, "element_plus_icons.js"),
+			Router:         filepath.Join(stubDir, "vue_router.js"),
+			PageMount:      filepath.Join(stubDir, "page_mount.js"),
+			OPage:          filepath.Join(stubDir, "OPage.stub.vue"),
+			ChildView:      filepath.Join(stubDir, "ChildView.stub.vue"),
+			AuthStore:      filepath.Join(stubDir, "auth_store.js"),
+			I18n:           filepath.Join(stubDir, "i18n_create_translate.js"),
+			I18nStore:      filepath.Join(stubDir, "i18n_store.js"),
+			Registry:       filepath.Join(stubDir, "store_registry.js"),
+			Scope:          filepath.Join(stubDir, "store_scope_manager.js"),
+			Permission:     filepath.Join(stubDir, "use_permission.js"),
+			PageComposable: filepath.Join(stubDir, "page_composables.js"),
+		}
+		plugins = append(plugins, api.Plugin{
+			Name: "choysum-fe-unit-package-stubs",
+			Setup: func(build api.PluginBuild) {
+				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|vue-router|@choysum/page-mount)$`},
+					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						// Filter only admits known package names; lookup always succeeds.
+						path, _ := feUnitPackageStubPath(args.Path, stubs)
+						return api.OnResolveResult{Path: path, Namespace: "file"}, nil
+					})
+			},
+		})
+		plugins = append(plugins, api.Plugin{
+			Name: "choysum-fe-unit-opage-stub",
+			Setup: func(build api.PluginBuild) {
+				build.OnResolve(api.OnResolveOptions{Filter: `OPage\.vue$`},
+					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						return api.OnResolveResult{Path: stubs.OPage, Namespace: "file"}, nil
+					})
+			},
+		})
+		plugins = append(plugins, api.Plugin{
+			Name: "choysum-fe-unit-path-stubs",
+			Setup: func(build api.PluginBuild) {
+				build.OnResolve(api.OnResolveOptions{Filter: `.*`},
+					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						p := filepath.ToSlash(args.Path)
+						importer := filepath.ToSlash(args.Importer)
+						joined := p
+						if !filepath.IsAbs(args.Path) && args.ResolveDir != "" {
+							joined = filepath.ToSlash(filepath.Clean(filepath.Join(args.ResolveDir, args.Path)))
+						}
+						if path, ok := feUnitPathStubPath(p, joined, importer, stubs); ok {
+							return api.OnResolveResult{Path: path, Namespace: "file"}, nil
+						}
+						return api.OnResolveResult{}, nil
+					})
+			},
+		})
+	}
+	plugins = append(plugins, esmresolver.New(
+		esmresolver.WithCacheDir(cacheDir),
+		esmresolver.WithTarget("es2020"),
+		esmresolver.WithModulePath(repoRoot),
+	).Plugin())
 	if opts.WithVuePlugin {
 		if opts.JsExecutor == nil {
 			return nil, xfmt.Errorf("vue host bundle: JsExecutor required when WithVuePlugin is set")
@@ -109,12 +184,12 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	}
 	// vueplugin resolves `@/` via TsconfigRaw relative to AbsWorkingDir; keep that
 	// mapping pointed at repoRoot/modules even when WorkingDir differs (fixture dirs).
-	modulesFromWork, err := filepath.Rel(absWorkingDir, modulesDir)
+	modulesFromWork, err := hostFilepathRel(absWorkingDir, modulesDir)
 	if err != nil {
 		return nil, xfmt.Errorf("vue host bundle: modules relpath: %w", err)
 	}
 	modulesGlob := filepath.ToSlash(filepath.Join(modulesFromWork, "*"))
-	tsconfigRawBytes, err := json.Marshal(map[string]any{
+	tsconfigRawBytes, err := jsonMarshal(map[string]any{
 		"compilerOptions": map[string]any{
 			"baseUrl": ".",
 			"paths": map[string][]string{
@@ -136,11 +211,8 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		Target:        api.ES2020,
 		LogLevel:      api.LogLevelWarning,
 		AbsWorkingDir: absWorkingDir,
-		Alias: map[string]string{
-			"@":   modulesDir,
-			"vue": vueSpec,
-		},
-		TsconfigRaw: string(tsconfigRawBytes),
+		Alias:         alias,
+		TsconfigRaw:   string(tsconfigRawBytes),
 		Loader: map[string]api.Loader{
 			".svg":  api.LoaderDataURL,
 			".png":  api.LoaderDataURL,
@@ -151,14 +223,15 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		},
 		Plugins: plugins,
 		Define: map[string]string{
-			"import.meta.env.MODE":                    "'test'",
-			"import.meta.env.PROD":                    "false",
-			"import.meta.env.DEV":                     "true",
-			"import.meta.env.SSR":                     "false",
-			"process.env.NODE_ENV":                    "'test'",
-			"__VUE_OPTIONS_API__":                     "true",
-			"__VUE_PROD_DEVTOOLS__":                   "false",
-			"__VUE_PROD_HYDRATION_MISMATCH_DETAILS__": "false",
+			"import.meta.env.MODE":                        "'test'",
+			"import.meta.env.PROD":                        "false",
+			"import.meta.env.DEV":                         "true",
+			"import.meta.env.SSR":                         "false",
+			"import.meta.env.CHOYSUM_ENABLE_REGISTRATION": "true",
+			"process.env.NODE_ENV":                        "'test'",
+			"__VUE_OPTIONS_API__":                         "true",
+			"__VUE_PROD_DEVTOOLS__":                       "false",
+			"__VUE_PROD_HYDRATION_MISMATCH_DETAILS__":     "false",
 		},
 	}
 	if opts.Sourcemap {

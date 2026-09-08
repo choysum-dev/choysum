@@ -89,7 +89,7 @@ function effectiveUiSet(state: PermissionState, ctx: PermissionCtx, scope: Compa
  * Check whether one resource Id is allowed within the chosen UI bucket.
  */
 function canResource(
-  id: string | undefined,
+  id: string | null | undefined,
   kind: keyof PermissionUiSet,
   state: PermissionState | null | undefined,
   ctx: PermissionCtx,
@@ -110,20 +110,20 @@ function canResource(
 /**
  * Check whether a route resource is allowed.
  */
-export function canRoute(id: string | undefined, state: PermissionState | null | undefined, ctx: PermissionCtx, scope: CompanyScope = 'enabled'): boolean {
+export function canRoute(id: string | null | undefined, state: PermissionState | null | undefined, ctx: PermissionCtx, scope: CompanyScope = 'enabled'): boolean {
   return canResource(id, 'routes', state, ctx, scope);
 }
 
 /**
  * Check whether a menu resource is allowed.
  */
-export function canMenu(id: string | undefined, state: PermissionState | null | undefined, ctx: PermissionCtx, scope: CompanyScope = 'enabled'): boolean {
+export function canMenu(id: string | null | undefined, state: PermissionState | null | undefined, ctx: PermissionCtx, scope: CompanyScope = 'enabled'): boolean {
   return canResource(id, 'menus', state, ctx, scope);
 }
 
 /**
  * Check whether an action resource is allowed.
  */
-export function hasAction(id: string | undefined, state: PermissionState | null | undefined, ctx: PermissionCtx, scope: CompanyScope = 'enabled'): boolean {
+export function hasAction(id: string | null | undefined, state: PermissionState | null | undefined, ctx: PermissionCtx, scope: CompanyScope = 'enabled'): boolean {
   return canResource(id, 'actions', state, ctx, scope);
 }

@@ -2,18 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import { defineComponent, h } from 'vue';
+import Currency from './Currency.vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('base page mount coverage: mounts a trivial host under choysumMount', async () => {
-  const Comp = defineComponent({
-    name: 'BasePageMountSmoke',
-    setup() {
-      return () => h('div', { class: 'base-page-mount-smoke', 'data-testid': 'base-page-smoke' }, 'ok');
-    },
+test('base page mount: mounts real Currency.vue under choysumMount', async () => {
+  const wrapper = mount(Currency as any, {
+    global: buildPageMountGlobal({ route: { path: '/base/currency/1', fullPath: '/base/currency/1' } }),
   });
-  const wrapper = mount(Comp);
   await flushPromises();
-  expect(wrapper.find('[data-testid="base-page-smoke"]').exists()).toBe(true);
-  expect(wrapper.find('[data-testid="base-page-smoke"]').text()).toBe('ok');
+  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
   wrapper.unmount();
 });

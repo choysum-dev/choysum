@@ -2,18 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import { defineComponent, h } from 'vue';
+import Login from './Login.vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('auth page mount coverage: mounts a trivial host under choysumMount', async () => {
-  const Comp = defineComponent({
-    name: 'AuthPageMountSmoke',
-    setup() {
-      return () => h('div', { class: 'auth-page-mount-smoke', 'data-testid': 'auth-page-smoke' }, 'ok');
-    },
+test('auth page mount: mounts real Login.vue under choysumMount', async () => {
+  const wrapper = mount(Login as any, {
+    global: buildPageMountGlobal({ route: { path: '/login', query: {} } }),
   });
-  const wrapper = mount(Comp);
   await flushPromises();
-  expect(wrapper.find('[data-testid="auth-page-smoke"]').exists()).toBe(true);
-  expect(wrapper.find('[data-testid="auth-page-smoke"]').text()).toBe('ok');
+  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
+  expect(wrapper.text().includes('User Login') || wrapper.find('.fe-stub-ElCard').exists()).toBe(true);
   wrapper.unmount();
 });

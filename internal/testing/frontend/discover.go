@@ -18,8 +18,9 @@ import (
 
 // Test seams for rare OS failures (overridden in unit tests).
 var (
-	osStat      = os.Stat
-	filepathAbs = filepath.Abs
+	osStat          = os.Stat
+	filepathAbs     = filepath.Abs
+	filepathWalkDir = filepath.WalkDir
 )
 
 // ScanMode controls whether illegal FE marks fail the scan.
@@ -42,6 +43,8 @@ const (
 	IllegalVTU            IllegalKind = "vue-test-utils"
 	IllegalVueImport      IllegalKind = "vue-sfc-import"
 	IllegalDOMPackage     IllegalKind = "dom-package"
+	// IllegalCoverageProbe is a fake lcov sampling SFC / import (banned; mount real business pages).
+	IllegalCoverageProbe IllegalKind = "coverage-probe"
 )
 
 // IllegalMark is one legacy FE unit-test inventory hit (see IllegalKind).
@@ -64,6 +67,8 @@ var (
 	reMountCall           = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
 	// Matches from '...vue', side-effect/dynamic/require imports, optional Vite query (?raw), and backticks.
 	reVueImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]+\\.vue(?:\\?[^'\"`]*)?['\"`]")
+	// CoverageProbe sampling SFC imports (banned). Basename must be exactly CoverageProbe.vue.
+	reCoverageProbeImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](?:[^'\"`]*[/\\\\])?CoverageProbe\\.vue(?:\\?[^'\"`]*)?['\"`]")
 )
 
 // DiscoverFrontendTests lists FE unit files under modules/<app>/web.
@@ -169,7 +174,64 @@ func ScanAppIllegalFrontendMarks(repoRoot, app string) ([]IllegalMark, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanIllegalFrontendMarks(files)
+	hits, err := ScanIllegalFrontendMarks(files)
+	if err != nil {
+		return nil, err
+	}
+	probeHits, err := scanCoverageProbeFiles(repoRoot, app)
+	if err != nil {
+		return nil, err
+	}
+	hits = append(hits, probeHits...)
+	return hits, nil
+}
+
+// scanCoverageProbeFiles flags modules/<app>/web/**/CoverageProbe.vue on disk.
+func scanCoverageProbeFiles(repoRoot, app string) ([]IllegalMark, error) {
+	repoRoot = strings.TrimSpace(repoRoot)
+	app = strings.TrimSpace(app)
+	webRoot := filepath.Join(repoRoot, "modules", app, "web")
+	st, err := osStat(webRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, xfmt.Errorf("frontend discover: coverage-probe walk: %w", err)
+	}
+	if !st.IsDir() {
+		return nil, nil
+	}
+	var hits []IllegalMark
+	err = filepathWalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if name == "node_modules" || name == "dist" || name == ".choysum" || name == "tmp" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Name() != "CoverageProbe.vue" {
+			return nil
+		}
+		abs, absErr := filepathAbs(path)
+		if absErr != nil {
+			abs = path
+		}
+		hits = append(hits, IllegalMark{
+			Path:    abs,
+			Line:    1,
+			Kind:    IllegalCoverageProbe,
+			Snippet: "CoverageProbe.vue",
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, xfmt.Errorf("frontend discover: coverage-probe walk: %w", err)
+	}
+	return hits, nil
 }
 
 func scanIllegalContent(path, content string) []IllegalMark {
@@ -208,6 +270,7 @@ func scanIllegalContent(path, content string) []IllegalMark {
 	addRegexHits(content, lines, reVueImport, IllegalVueImport, add)
 	addRegexHits(content, lines, reVTUImport, IllegalVTU, add)
 	addRegexHits(content, lines, reDOMPackage, IllegalDOMPackage, add)
+	addRegexHits(content, lines, reCoverageProbeImport, IllegalCoverageProbe, add)
 	return hits
 }
 
@@ -294,6 +357,7 @@ func relativizeRepoPath(repoRoot, path string) string {
 
 // IsHardCutFailKind reports whether a mark fails ScanModeError / unit-fe-illegal --fail.
 // IllegalVueImport stays inventory-only (warn): .vue imports are allowed at FE hard-cut.
+// IllegalCoverageProbe always fails hard-cut (banned sampling SFCs).
 func IsHardCutFailKind(kind IllegalKind) bool {
 	return kind != IllegalVueImport
 }

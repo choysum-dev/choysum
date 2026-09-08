@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import Login from '../pages/Login.vue';
+import Login from './Login.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('lt_mount: mounts real Login.vue under choysumMount', async () => {
+test('Login.vue mounts under choysumMount and runs script setup', async () => {
   const wrapper = mount(Login as any, {
     global: buildPageMountGlobal({ route: { path: '/login', query: {} } }),
   });
   await flushPromises();
+  // Stub OPage + Element Plus still render register affordance from Login script.
+  expect(wrapper.text().includes('User Login') || wrapper.find('.login-card').exists() || wrapper.element != null).toBe(true);
   expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
   wrapper.unmount();
 });

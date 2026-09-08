@@ -92,6 +92,7 @@
     this.attrs[key] = val;
     if (key === 'class') this.className = val;
     if (key === 'id') this.id = val;
+    if (key === 'value' && this._formValue !== undefined) this._formValue = val;
   };
 
   Element.prototype.removeAttribute = function (name) {
@@ -99,6 +100,147 @@
     delete this.attrs[key];
     if (key === 'class') this.className = '';
     if (key === 'id') this.id = '';
+    // Live IDL state (_formValue / _checked) is independent of content attributes.
+  };
+
+  Object.defineProperty(Element.prototype, 'classList', {
+    get: function () {
+      var el = this;
+      function tokens() {
+        return String(el.className || '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .split(' ')
+          .filter(Boolean);
+      }
+      function write(list) {
+        el.className = list.join(' ');
+        el.attrs.class = el.className;
+      }
+      return {
+        add: function () {
+          var list = tokens();
+          for (var i = 0; i < arguments.length; i++) {
+            var t = String(arguments[i] || '');
+            if (t && list.indexOf(t) < 0) list.push(t);
+          }
+          write(list);
+        },
+        remove: function () {
+          var list = tokens();
+          for (var i = 0; i < arguments.length; i++) {
+            var t = String(arguments[i] || '');
+            var idx = list.indexOf(t);
+            if (idx >= 0) list.splice(idx, 1);
+          }
+          write(list);
+        },
+        toggle: function (token, force) {
+          var t = String(token || '').trim();
+          if (!t) return false;
+          var list = tokens();
+          var idx = list.indexOf(t);
+          var shouldAdd = force === undefined ? idx < 0 : !!force;
+          if (shouldAdd && idx < 0) list.push(t);
+          if (!shouldAdd && idx >= 0) list.splice(idx, 1);
+          write(list);
+          return shouldAdd;
+        },
+        contains: function (token) {
+          return tokens().indexOf(String(token || '')) >= 0;
+        },
+        toString: function () {
+          return tokens().join(' ');
+        },
+      };
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'dataset', {
+    get: function () {
+      var el = this;
+      var out = {};
+      Object.keys(el.attrs).forEach(function (key) {
+        if (key.slice(0, 5) !== 'data-') return;
+        var raw = key.slice(5);
+        var camel = raw.replace(/-([a-z])/g, function (_m, c) {
+          return c.toUpperCase();
+        });
+        out[camel] = el.attrs[key];
+      });
+      return out;
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'value', {
+    get: function () {
+      if (this._formValue !== undefined) return this._formValue;
+      var attr = this.getAttribute('value');
+      return attr == null ? '' : attr;
+    },
+    set: function (v) {
+      this._formValue = String(v == null ? '' : v);
+      this.attrs.value = this._formValue;
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'checked', {
+    get: function () {
+      if (this._checked !== undefined) return !!this._checked;
+      return this.hasAttribute('checked');
+    },
+    set: function (v) {
+      this._checked = !!v;
+      if (this._checked) this.attrs.checked = '';
+      else delete this.attrs.checked;
+    },
+  });
+
+  Element.prototype.focus = function () {
+    var doc = this.ownerDocument;
+    if (doc && doc.activeElement && doc.activeElement !== this && typeof doc.activeElement.blur === 'function') {
+      doc.activeElement.blur();
+    }
+    if (doc) doc.activeElement = this;
+    this.dispatchEvent(new Event('focus', { bubbles: false }));
+  };
+  Element.prototype.blur = function () {
+    var doc = this.ownerDocument;
+    if (doc && doc.activeElement === this) doc.activeElement = null;
+    this.dispatchEvent(new Event('blur', { bubbles: false }));
+  };
+  Element.prototype.click = function () {
+    var tag = String(this.tagName || '').toLowerCase();
+    var typ = String(this.getAttribute('type') || this.type || '').toLowerCase();
+    var disabled = this.getAttribute('disabled') != null || this.disabled === true;
+    if (disabled) return;
+    var checkedChanged = false;
+    if (tag === 'input' && typ === 'checkbox') {
+      this.checked = !this.checked;
+      checkedChanged = true;
+    }
+    if (tag === 'input' && typ === 'radio') {
+      var name = String(this.getAttribute('name') || this.name || '');
+      var wasChecked = !!this.checked;
+      this.checked = true;
+      if (name && this.ownerDocument && typeof this.ownerDocument.querySelectorAll === 'function') {
+        var peers = this.ownerDocument.querySelectorAll('input');
+        for (var i = 0; i < peers.length; i++) {
+          var peer = peers[i];
+          if (peer === this) continue;
+          var peerTyp = String(peer.getAttribute('type') || peer.type || '').toLowerCase();
+          if (peerTyp !== 'radio') continue;
+          var peerName = String(peer.getAttribute('name') || peer.name || '');
+          if (peerName === name) peer.checked = false;
+        }
+      }
+      checkedChanged = !wasChecked;
+    }
+    if (checkedChanged) {
+      this.dispatchEvent(new Event('input', { bubbles: true }));
+      this.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    this.dispatchEvent(new Event('click', { bubbles: true }));
   };
 
   Element.prototype.getAttribute = function (name) {
@@ -305,6 +447,7 @@
     this.nodeType = NODE_DOCUMENT;
     this.nodeName = '#document';
     this.__choysumMinimalDOM = true;
+    this.activeElement = null;
     this.body = new Element('body');
     this.body.ownerDocument = this;
     this.documentElement = new Element('html');

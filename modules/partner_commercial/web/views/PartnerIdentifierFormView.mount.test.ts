@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import Login from '../pages/Login.vue';
+import PartnerIdentifierFormView from './PartnerIdentifierFormView.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('lt_mount: mounts real Login.vue under choysumMount', async () => {
-  const wrapper = mount(Login as any, {
-    global: buildPageMountGlobal({ route: { path: '/login', query: {} } }),
+test('PartnerIdentifierFormView mount coverage', async () => {
+  const store = { $id: 'fe-stub-id-store', records: {} };
+  const wrapper = mount(PartnerIdentifierFormView as any, {
+    props: { store, viewMode: 'create' },
+    global: buildPageMountGlobal(),
   });
   await flushPromises();
   expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);

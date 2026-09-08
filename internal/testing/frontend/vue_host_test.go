@@ -25,7 +25,7 @@ func vueHostFixtureDir(t *testing.T) string {
 	if !ok {
 		t.Fatal("no caller")
 	}
-	return filepath.Join(filepath.Dir(thisFile), "testdata", "vue_host")
+	return filepath.Join(filepath.Dir(thisFile), "testdata", "fixtures", "host")
 }
 
 func vueHostRepoRoot(t *testing.T) string {
@@ -273,6 +273,69 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
   if (old.parentNode !== null) throw new Error('textContent must clear parentNode');
   if (parent.textContent !== 'replaced') throw new Error('textContent set failed');
 
+  // Empty / whitespace classList.toggle must not pollute className.
+  child.className = 'keep';
+  if (child.classList.toggle('') !== false) throw new Error('empty toggle should return false');
+  if (child.classList.toggle('   ') !== false) throw new Error('whitespace toggle should return false');
+  if (child.className !== 'keep') throw new Error('empty toggle polluted className');
+  if (child.classList.toggle('keep') !== false) throw new Error('toggle off keep');
+  if (child.classList.toggle('keep') !== true) throw new Error('toggle on keep');
+  if (child.className !== 'keep') throw new Error('toggle keep failed');
+
+  // Property-assigned live state survives content-attribute removal.
+  const input = document.createElement('input');
+  input.value = 'live';
+  input.removeAttribute('value');
+  if (input.getAttribute('value') != null) throw new Error('value attr should be gone');
+  if (input.value !== 'live') throw new Error('live value must survive removeAttribute');
+  input.checked = true;
+  input.removeAttribute('checked');
+  if (input.hasAttribute('checked')) throw new Error('checked attr should be gone');
+  if (!input.checked) throw new Error('live checked must survive removeAttribute');
+
+  // Radio group: activate sets checked and clears same-name peers; fires input/change.
+  const r1 = document.createElement('input');
+  r1.setAttribute('type', 'radio');
+  r1.setAttribute('name', 'g');
+  r1.checked = true;
+  const r2 = document.createElement('input');
+  r2.setAttribute('type', 'radio');
+  r2.setAttribute('name', 'g');
+  document.body.appendChild(r1);
+  document.body.appendChild(r2);
+  let radioInput = 0;
+  let radioChange = 0;
+  r2.addEventListener('input', () => { radioInput++; });
+  r2.addEventListener('change', () => { radioChange++; });
+  r2.click();
+  if (!r2.checked || r1.checked) throw new Error('radio peer clear failed');
+  if (radioInput !== 1 || radioChange !== 1) throw new Error('radio input/change missing');
+  r2.click();
+  if (!r2.checked) throw new Error('already-checked radio must stay checked');
+
+  // Disabled controls must not dispatch click.
+  const btn = document.createElement('button');
+  btn.setAttribute('disabled', '');
+  let disabledClicked = false;
+  btn.addEventListener('click', () => { disabledClicked = true; });
+  btn.click();
+  if (disabledClicked) throw new Error('disabled click must not dispatch');
+
+  // focus/blur track document.activeElement and fire events.
+  const f1 = document.createElement('input');
+  const f2 = document.createElement('input');
+  document.body.appendChild(f1);
+  document.body.appendChild(f2);
+  let blurCount = 0;
+  f1.addEventListener('blur', () => { blurCount++; });
+  f1.focus();
+  if (document.activeElement !== f1) throw new Error('focus activeElement');
+  f2.focus();
+  if (document.activeElement !== f2) throw new Error('refocus activeElement');
+  if (blurCount !== 1) throw new Error('previous element blur missing');
+  f2.blur();
+  if (document.activeElement !== null) throw new Error('blur should clear activeElement');
+
   return 'ok';
 })()
 `
@@ -289,14 +352,45 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
 	}
 }
 
+func TestChoysumMount_globalPlugins(t *testing.T) {
+	result := runVueHostEntry(t, "entry_global_plugins.ts")
+	if errMsg, _ := result["error"].(string); errMsg != "" {
+		t.Fatalf("host error: %s", errMsg)
+	}
+	if text, _ := result["text"].(string); !strings.Contains(text, "from-provide-override") ||
+		!strings.Contains(text, "from-symbol-provide") ||
+		!strings.Contains(text, "extra") {
+		t.Fatalf("text = %v (want provide override + symbol + extra)", result["text"])
+	}
+	if extra, _ := result["extra"].(bool); !extra {
+		t.Fatalf("extra = %v (want true; global.components must render)", result["extra"])
+	}
+}
+
 func TestFrozenVTUSubsetAPIs(t *testing.T) {
-	if len(FrozenVTUSubsetAPIs) < 6 {
+	if len(FrozenVTUSubsetAPIs) < 9 {
 		t.Fatalf("FrozenVTUSubsetAPIs = %v", FrozenVTUSubsetAPIs)
+	}
+	want := []string{"global.plugins", "global.provide", "global.components"}
+	for _, api := range want {
+		found := false
+		for _, got := range FrozenVTUSubsetAPIs {
+			if got == api {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("FrozenVTUSubsetAPIs missing %q: %v", api, FrozenVTUSubsetAPIs)
+		}
 	}
 	if VueHostPackageVersion() == "" {
 		t.Fatal("empty VueHostPackageVersion")
 	}
 	if ChoysumMountScript() == "" || !strings.Contains(ChoysumMountScript(), "export function mount") {
 		t.Fatal("ChoysumMountScript missing mount export")
+	}
+	if !strings.Contains(ChoysumMountScript(), "installGlobalOptions") {
+		t.Fatal("ChoysumMountScript missing installGlobalOptions (host-2)")
 	}
 }
