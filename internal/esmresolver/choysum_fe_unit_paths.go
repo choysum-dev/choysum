@@ -17,7 +17,7 @@ func choysumFEUnitTsconfigPathEntries(modulesDir string) (map[string][]string, e
 	repoRoot := filepath.Clean(filepath.Join(modulesDir, ".."))
 	abs := map[string]string{
 		"@choysum/test-utils": filepath.Join(repoRoot, "pkg", "jsengine", "scripts", "choysummount", "choysummount.d.ts"),
-		"@choysum/page-mount": filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "fe_stubs", "page_mount.d.ts"),
+		"@choysum/page-mount": filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "stubs", "page_mount.d.ts"),
 	}
 	out := make(map[string][]string, len(abs))
 	for pkg, target := range abs {

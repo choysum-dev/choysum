@@ -30,7 +30,7 @@ func feQjsFixtureDir(t *testing.T) string {
 	if !ok {
 		t.Fatal("no caller")
 	}
-	return filepath.Join(filepath.Dir(thisFile), "testdata", "fe_qjs")
+	return filepath.Join(filepath.Dir(thisFile), "testdata", "fixtures", "runner")
 }
 
 func TestUseQJSFrontendEngine(t *testing.T) {

@@ -85,7 +85,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 
 	modulesDir := filepath.Join(repoRoot, "modules")
 	vueSpec := "vue@" + choysummount.VuePackageVersion
-	stubDir := filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "fe_stubs")
+	stubDir := filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "stubs")
 
 	alias := map[string]string{
 		"@":   modulesDir,

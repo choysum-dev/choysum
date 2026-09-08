@@ -3,7 +3,7 @@
 
 /**
  * Type surface for `@choysum/page-mount` (FE unit QJS helper).
- * Runtime: esbuild aliases this to fe_stubs/page_mount.js (see host_bundle.go).
+ * Runtime: esbuild aliases this to stubs/page_mount.js (see host_bundle.go).
  */
 import type { Plugin } from 'vue';
 

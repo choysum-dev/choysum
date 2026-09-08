@@ -543,7 +543,7 @@ func TestBuildFrontendUnitBundleAndChoysumtestFixture(t *testing.T) {
 		t.Fatal("no caller")
 	}
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
-	fixtureDir := filepath.Join(filepath.Dir(thisFile), "testdata", "fe_qjs")
+	fixtureDir := filepath.Join(filepath.Dir(thisFile), "testdata", "fixtures", "runner")
 	if _, err := os.Stat(filepath.Join(fixtureDir, "math.test.ts")); err != nil {
 		t.Fatalf("fixture missing: %v", err)
 	}

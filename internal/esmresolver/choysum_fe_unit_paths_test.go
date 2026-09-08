@@ -19,7 +19,7 @@ func TestApplyChoysumFEUnitTsconfigPaths(t *testing.T) {
 	}
 
 	testUtils := filepath.Join(root, "pkg", "jsengine", "scripts", "choysummount", "choysummount.d.ts")
-	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "fe_stubs", "page_mount.d.ts")
+	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "stubs", "page_mount.d.ts")
 	for _, p := range []string{testUtils, pageMount} {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
@@ -40,7 +40,7 @@ func TestApplyChoysumFEUnitTsconfigPaths(t *testing.T) {
 	if !tsconfigPathMappingEquals(paths["@choysum/test-utils"], []string{"../pkg/jsengine/scripts/choysummount/choysummount.d.ts"}) {
 		t.Fatalf("test-utils path = %#v", paths["@choysum/test-utils"])
 	}
-	if !tsconfigPathMappingEquals(paths["@choysum/page-mount"], []string{"../internal/testing/frontend/testdata/fe_stubs/page_mount.d.ts"}) {
+	if !tsconfigPathMappingEquals(paths["@choysum/page-mount"], []string{"../internal/testing/frontend/testdata/stubs/page_mount.d.ts"}) {
 		t.Fatalf("page-mount path = %#v", paths["@choysum/page-mount"])
 	}
 
@@ -65,7 +65,7 @@ func TestUpdateTsconfigPaths_WritesChoysumFEUnitPaths(t *testing.T) {
 	}
 
 	testUtils := filepath.Join(root, "pkg", "jsengine", "scripts", "choysummount", "choysummount.d.ts")
-	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "fe_stubs", "page_mount.d.ts")
+	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "stubs", "page_mount.d.ts")
 	for _, p := range []string{testUtils, pageMount} {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
@@ -156,7 +156,7 @@ func TestUpdateTsconfigPaths_ChoysumFEUnitPathsAbsFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	testUtils := filepath.Join(root, "pkg", "jsengine", "scripts", "choysummount", "choysummount.d.ts")
-	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "fe_stubs", "page_mount.d.ts")
+	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "stubs", "page_mount.d.ts")
 	for _, p := range []string{testUtils, pageMount} {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)

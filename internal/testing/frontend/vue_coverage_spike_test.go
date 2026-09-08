@@ -26,7 +26,7 @@ func TestVueSFCCoverageSpike_P0(t *testing.T) {
 	if !ok {
 		t.Fatal("no caller")
 	}
-	fixtureDir := filepath.Join(filepath.Dir(thisFile), "testdata", "vue_cov_spike")
+	fixtureDir := filepath.Join(filepath.Dir(thisFile), "testdata", "fixtures", "coverage")
 	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
 
 	work := t.TempDir()

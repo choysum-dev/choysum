@@ -5,7 +5,7 @@ package frontend
 
 import "strings"
 
-// feUnitStubPaths holds absolute paths to FE unit stub files under testdata/fe_stubs.
+// feUnitStubPaths holds absolute paths to FE unit stub files under testdata/stubs.
 type feUnitStubPaths struct {
 	ElementPlus    string
 	Icons          string
