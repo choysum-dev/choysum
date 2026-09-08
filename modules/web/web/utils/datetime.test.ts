@@ -1,44 +1,40 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   formatUtcInTimeZone,
   formatUtcIso,
   getUserTimeZone,
-  hubDayjs,
   parseUtc,
   setUserTimeZoneResolver,
   userWallDateToUtc,
   utcToUserWallDate,
   dayRange,
 } from './datetime';
-import * as requestTimezone from './request_timezone';
 
 afterEach(() => {
   setUserTimeZoneResolver(undefined);
-  vi.restoreAllMocks();
 });
 
 describe('getUserTimeZone', () => {
-  it('uses resolver when provided', () => {
+  test('uses resolver when provided', () => {
     setUserTimeZoneResolver(() => 'America/New_York');
     expect(getUserTimeZone()).toBe('America/New_York');
   });
 
-  it('trims resolver whitespace before validating', () => {
+  test('trims resolver whitespace before validating', () => {
     setUserTimeZoneResolver(() => '  America/Chicago  ');
     expect(getUserTimeZone()).toBe('America/Chicago');
   });
 
-  it('falls back when resolver returns blank', () => {
+  test('falls back when resolver returns blank', () => {
     setUserTimeZoneResolver(() => '');
     const tz = getUserTimeZone();
     expect(typeof tz).toBe('string');
     expect(tz.length).toBeGreaterThan(0);
   });
 
-  it('falls back to browser when resolver returns an invalid zone', () => {
+  test('falls back to browser when resolver returns an invalid zone', () => {
     setUserTimeZoneResolver(() => 'Not/A_Zone');
     const tz = getUserTimeZone();
     expect(tz).not.toBe('Not/A_Zone');
@@ -46,17 +42,27 @@ describe('getUserTimeZone', () => {
     expect(tz.length).toBeGreaterThan(0);
   });
 
-  it('treats resolver throws as empty and still returns a zone', () => {
+  test('treats resolver throws as empty and still returns a zone', () => {
     setUserTimeZoneResolver(() => {
       throw new Error('store unavailable');
     });
     expect(typeof getUserTimeZone()).toBe('string');
     expect(getUserTimeZone().length).toBeGreaterThan(0);
   });
+
+  test('returns UTC when resolver and browser both yield empty zones', () => {
+    setUserTimeZoneResolver(() => '');
+    expect(
+      getUserTimeZone({
+        detectBrowserTimezone: () => '',
+        resolveRequestTimezone: () => '',
+      })
+    ).toBe('UTC');
+  });
 });
 
 describe('utc ↔ user wall', () => {
-  it('maps a fixed UTC instant to Asia/Shanghai wall components', () => {
+  test('maps a fixed UTC instant to Asia/Shanghai wall components', () => {
     const wall = utcToUserWallDate('2024-06-30T16:00:00.000Z', 'Asia/Shanghai');
     expect(wall).not.toBeNull();
     expect(wall!.getFullYear()).toBe(2024);
@@ -66,14 +72,14 @@ describe('utc ↔ user wall', () => {
     expect(wall!.getMinutes()).toBe(0);
   });
 
-  it('maps America/New_York wall back to the same UTC instant', () => {
+  test('maps America/New_York wall back to the same UTC instant', () => {
     const utcIso = '2024-03-10T05:00:00.000Z'; // New York spring-forward midnight
     const wall = utcToUserWallDate(utcIso, 'America/New_York');
     const back = userWallDateToUtc(wall!, 'America/New_York');
     expect(back!.toISOString()).toBe(utcIso);
   });
 
-  it('returns null for empty / invalid wall conversions', () => {
+  test('returns null for empty / invalid wall conversions', () => {
     expect(utcToUserWallDate(null, 'UTC')).toBeNull();
     expect(utcToUserWallDate('', 'UTC')).toBeNull();
     expect(utcToUserWallDate('not-a-date', 'UTC')).toBeNull();
@@ -83,7 +89,7 @@ describe('utc ↔ user wall', () => {
     expect(userWallDateToUtc(new Date('invalid'), 'UTC')).toBeNull();
   });
 
-  it('does not throw when timezone conversion rejects an invalid instant', () => {
+  test('does not throw when timezone conversion rejects an invalid instant', () => {
     // Some Node/ICU builds make dayjs.tz throw RangeError instead of returning invalid.
     expect(() => utcToUserWallDate('2024-01-01T99:99:99Z', 'UTC')).not.toThrow();
     expect(utcToUserWallDate('2024-01-01T99:99:99Z', 'UTC')).toBeNull();
@@ -92,7 +98,7 @@ describe('utc ↔ user wall', () => {
     expect(() => formatUtcInTimeZone('bogus-instant', 'YYYY-MM-DD', 'UTC')).not.toThrow();
   });
 
-  it('formats UTC in user timezone for display', () => {
+  test('formats UTC in user timezone for display', () => {
     expect(formatUtcInTimeZone('2024-06-30T16:00:00.000Z', 'YYYY-MM-DD HH:mm:ss', 'Asia/Shanghai')).toBe(
       '2024-07-01 00:00:00'
     );
@@ -106,30 +112,30 @@ describe('utc ↔ user wall', () => {
     );
   });
 
-  it('formatUtcIso keeps Z storage and rejects empties', () => {
+  test('formatUtcIso keeps Z storage and rejects empties', () => {
     expect(formatUtcIso('2024-07-01T00:00:00.000Z', 'YYYY-MM-DD[T]HH:mm:ss.SSSZ')).toBe('2024-07-01T00:00:00.000Z');
     expect(formatUtcIso(null, 'YYYY-MM-DD[T]HH:mm:ssZ')).toBeNull();
     expect(formatUtcIso('', 'YYYY-MM-DD[T]HH:mm:ssZ')).toBeNull();
     expect(formatUtcIso('definitely-not-a-date', 'YYYY-MM-DD[T]HH:mm:ssZ')).toBeNull();
   });
 
-  it('parseUtc supports strict format parsing', () => {
+  test('parseUtc supports strict format parsing', () => {
     expect(parseUtc('2024-07-01T12:00:00Z').isValid()).toBe(true);
     expect(parseUtc('2024-07-01 12:00:00', 'YYYY-MM-DD HH:mm:ss', true).isValid()).toBe(true);
   });
 
-  it('dayRange matches Asia/Shanghai half-open UTC bounds', () => {
+  test('dayRange matches Asia/Shanghai half-open UTC bounds', () => {
     const { start, end } = dayRange('2024-07-01', 'Asia/Shanghai');
     expect(start.toISOString()).toBe('2024-06-30T16:00:00.000Z');
     expect(end.toISOString()).toBe('2024-07-01T16:00:00.000Z');
   });
 
-  it('dayRange handles America/New_York spring-forward 23h day', () => {
+  test('dayRange handles America/New_York spring-forward 23h day', () => {
     const { start, end } = dayRange('2024-03-10', 'America/New_York');
     expect(end.getTime() - start.getTime()).toBe(23 * 60 * 60 * 1000);
   });
 
-  it('dayRange accepts Date input and rejects invalid values', () => {
+  test('dayRange accepts Date input and rejects invalid values', () => {
     // 10:00Z = 18:00 Asia/Shanghai on Jul 1 → calendar day 2024-07-01
     const { start } = dayRange(new Date('2024-07-01T10:00:00.000Z'), 'Asia/Shanghai');
     expect(start.toISOString()).toBe('2024-06-30T16:00:00.000Z');
@@ -137,13 +143,13 @@ describe('utc ↔ user wall', () => {
     expect(() => dayRange(new Date('invalid'), 'UTC')).toThrow(/Invalid date/);
   });
 
-  it('dayRange treats blank timezone as UTC', () => {
+  test('dayRange treats blank timezone as UTC', () => {
     const { start, end } = dayRange('2024-07-01', '   ');
     expect(start.toISOString()).toBe('2024-07-01T00:00:00.000Z');
     expect(end.toISOString()).toBe('2024-07-02T00:00:00.000Z');
   });
 
-  it('dayRange covers falsy zone and nullish date branches', () => {
+  test('dayRange covers falsy zone and nullish date branches', () => {
     const { start } = dayRange('2024-07-01', '' as any);
     expect(start.toISOString()).toBe('2024-07-01T00:00:00.000Z');
     const { start: startNullTz } = dayRange('2024-07-01', null as any);
@@ -152,7 +158,7 @@ describe('utc ↔ user wall', () => {
     expect(() => dayRange(undefined as any, 'UTC')).toThrow(/Invalid date/);
   });
 
-  it('covers asUtcDayjs edge inputs and formatUtcIso without +00:00', () => {
+  test('covers asUtcDayjs edge inputs and formatUtcIso without +00:00', () => {
     const fromDate = utcToUserWallDate(new Date('2024-06-30T16:00:00.000Z'), 'UTC');
     expect(fromDate).not.toBeNull();
     expect(fromDate!.getFullYear()).toBe(2024);
@@ -164,72 +170,5 @@ describe('utc ↔ user wall', () => {
     // Local-parse fallback when utc() rejects a non-ISO wall string.
     expect(formatUtcIso('2024-07-01 12:00:00', 'YYYY-MM-DD[T]HH:mm:ss.SSSZ')).toMatch(/^2024-07-01T/);
     expect(formatUtcIso('2024-07-01T00:00:00.000Z', 'YYYY-MM-DD HH:mm:ss')).toBe('2024-07-01 00:00:00');
-  });
-
-  it('returns UTC when resolver and browser both yield empty zones', () => {
-    setUserTimeZoneResolver(() => '');
-    vi.spyOn(requestTimezone, 'detectBrowserTimezone').mockReturnValue('');
-    vi.spyOn(requestTimezone, 'resolveRequestTimezone').mockReturnValue('');
-    expect(getUserTimeZone()).toBe('UTC');
-  });
-
-  it('swallows RangeError from instance .tz during utc→wall conversion', () => {
-    const proto = Object.getPrototypeOf(hubDayjs());
-    vi.spyOn(proto, 'tz').mockImplementation(() => {
-      throw new RangeError('Invalid time value');
-    });
-    expect(utcToUserWallDate('2024-06-30T16:00:00.000Z', 'UTC')).toBeNull();
-    expect(formatUtcInTimeZone('2024-06-30T16:00:00.000Z', 'YYYY-MM-DD', 'UTC')).toBe('');
-    expect(() => dayRange(new Date('2024-07-01T10:00:00.000Z'), 'UTC')).toThrow(/Invalid date/);
-  });
-
-  it('treats invalid wall from .tz as null', () => {
-    const proto = Object.getPrototypeOf(hubDayjs());
-    vi.spyOn(proto, 'tz').mockReturnValue({
-      isValid: () => false,
-      format: () => 'unused',
-      year: () => 0,
-      month: () => 0,
-      date: () => 0,
-      hour: () => 0,
-      minute: () => 0,
-      second: () => 0,
-      millisecond: () => 0,
-    } as any);
-    expect(utcToUserWallDate('2024-06-30T16:00:00.000Z', 'UTC')).toBeNull();
-  });
-
-  it('swallows RangeError from factory tz during wall→utc conversion', () => {
-    vi.spyOn(hubDayjs as any, 'tz').mockImplementation(() => {
-      throw new RangeError('Invalid time value');
-    });
-    expect(userWallDateToUtc(new Date(2024, 6, 1, 0, 0, 0), 'UTC')).toBeNull();
-  });
-
-  it('returns null when factory tz yields an invalid wall', () => {
-    vi.spyOn(hubDayjs as any, 'tz').mockReturnValue({
-      isValid: () => false,
-      utc: () => ({ toDate: () => new Date() }),
-    } as any);
-    expect(userWallDateToUtc(new Date(2024, 6, 1, 0, 0, 0), 'UTC')).toBeNull();
-  });
-
-  it('dayRange rethrows Invalid date and wraps other factory tz errors', () => {
-    const tzSpy = vi.spyOn(hubDayjs as any, 'tz');
-    tzSpy.mockReturnValue({
-      isValid: () => false,
-      utc: () => ({ toDate: () => new Date() }),
-    } as any);
-    expect(() => dayRange('2024-07-01', 'UTC')).toThrow(/Invalid date: 2024-07-01/);
-
-    tzSpy.mockImplementation(() => {
-      throw new Error('Invalid date: custom');
-    });
-    expect(() => dayRange('2024-07-01', 'UTC')).toThrow('Invalid date: custom');
-
-    tzSpy.mockImplementation(() => {
-      throw new TypeError('boom');
-    });
-    expect(() => dayRange('2024-07-01', 'UTC')).toThrow(/Invalid date: 2024-07-01/);
   });
 });

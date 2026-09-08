@@ -1,24 +1,28 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
-
 import { createTermReference } from '@/core/service/i18n';
+import type { ComposerLike } from '@/web/web/i18n';
 import { useGroupingOptions } from './useGroupingOptions';
 
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    getGlobalComposer: () => ({
-      t: (_key: string, fallback: string) => (fallback === 'Status' ? '状态' : fallback),
-    }),
-  };
+function installComposer(composer: ComposerLike) {
+  (globalThis as { $i18n?: ComposerLike }).$i18n = composer;
+}
+
+function clearComposer() {
+  delete (globalThis as { $i18n?: ComposerLike }).$i18n;
+  delete (globalThis as { window?: { $i18n?: ComposerLike } }).window;
+}
+
+afterEach(() => {
+  clearComposer();
 });
 
-describe('useGroupingOptions field labels (T4.1)', () => {
-  it('resolves labels via resolveFieldLabel (stringText), not bare prop names', () => {
+describe('useGroupingOptions field labels', () => {
+  test('resolves labels via resolveFieldLabel (stringText), not bare prop names', () => {
+    installComposer({
+      t: (_key: string, fallback: string) => (fallback === 'Status' ? '状态' : fallback),
+    });
     const statusText = createTermReference('demo', 'Status', {
       scope: 'demo.model.Widget.fields',
     });
@@ -43,7 +47,7 @@ describe('useGroupingOptions field labels (T4.1)', () => {
     expect(statusNode?.label).toBe('状态');
   });
 
-  it('prefers warm FieldsGet translated string when present', () => {
+  test('prefers warm FieldsGet translated string when present', () => {
     const store = {
       fieldsMetadata: {
         Status: { id: '1', type: 'selection', string: 'Status' },

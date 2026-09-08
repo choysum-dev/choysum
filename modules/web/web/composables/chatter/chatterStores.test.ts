@@ -1,14 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const createStoreByModel = vi.fn((modelName: string) => ({ modelName }));
-
-vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: (...args: unknown[]) => createStoreByModel(...(args as [string])),
-}));
-
 import {
   getFieldChangeStore,
   getFollowerStore,
@@ -16,21 +8,33 @@ import {
   getNotificationStore,
 } from './chatterStores';
 
-describe('chatterStores', () => {
-  beforeEach(() => {
-    createStoreByModel.mockClear();
-  });
+type CallRecorder = { calls: unknown[][] };
 
-  it('resolves typed stores for message, audit, and notification models', () => {
-    expect(getMessageStore()).toEqual({ modelName: 'message.Message' });
-    expect(getFieldChangeStore()).toEqual({ modelName: 'audit.FieldChange' });
-    expect(getFollowerStore()).toEqual({ modelName: 'message.Follower' });
-    expect(getNotificationStore()).toEqual({ modelName: 'message.Notification' });
-    expect(createStoreByModel.mock.calls.map(call => call[0])).toEqual([
-      'message.Message',
-      'audit.FieldChange',
-      'message.Follower',
-      'message.Notification',
-    ]);
-  });
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
+
+test('chatterStores resolves typed stores for message, audit, and notification models', () => {
+  const createStoreByModel = fnRecorder((modelName: string) => ({ modelName }));
+  const deps = { createStoreByModel: createStoreByModel as any };
+
+  expect(getMessageStore(deps)).toEqual({ modelName: 'message.Message' });
+  expect(getFieldChangeStore(deps)).toEqual({ modelName: 'audit.FieldChange' });
+  expect(getFollowerStore(deps)).toEqual({ modelName: 'message.Follower' });
+  expect(getNotificationStore(deps)).toEqual({ modelName: 'message.Notification' });
+  expect(createStoreByModel.calls.map(call => call[0])).toEqual([
+    'message.Message',
+    'audit.FieldChange',
+    'message.Follower',
+    'message.Notification',
+  ]);
 });

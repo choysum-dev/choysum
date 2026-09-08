@@ -1,15 +1,20 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { useAuthStore } from '@/auth/web/stores/auth';
+import { useAuthStore as defaultUseAuthStore } from '@/auth/web/stores/auth';
+
+export type ActorUserIdDeps = {
+  useAuthStore?: typeof defaultUseAuthStore;
+};
 
 /**
  * Resolve the current actor user id for UserFilter queries/creates.
  * Browser SPA identity lives on the auth store; unit harness may use request context.
  */
-export function actorUserId(): string {
+export function actorUserId(deps?: ActorUserIdDeps): string {
+  const resolveAuthStore = deps?.useAuthStore ?? defaultUseAuthStore;
   try {
-    const auth = useAuthStore();
+    const auth = resolveAuthStore();
     const fromStore = String((auth.currentUser as any)?.Id || (auth.identity as any)?.userId || '').trim();
     if (fromStore) return fromStore;
   } catch {
