@@ -1,47 +1,36 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import { useDebouncedFnCancelable } from './useDebouncedFnCancelable';
 
-describe('useDebouncedFnCancelable', () => {
-  it('debounces calls and only runs the latest scheduled call', () => {
-    vi.useFakeTimers();
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-    const calls: number[] = [];
-    const fn = (n: number) => {
-      calls.push(n);
-    };
+test('useDebouncedFnCancelable > debounces calls and only runs the latest scheduled call', async () => {
+  const calls: number[] = [];
+  const debounced = useDebouncedFnCancelable((n: number) => {
+    calls.push(n);
+  }, 40);
 
-    const debounced = useDebouncedFnCancelable(fn, 100);
+  debounced(1);
+  debounced(2);
+  debounced(3);
 
-    debounced(1);
-    debounced(2);
-    debounced(3);
+  expect(calls).toEqual([]);
+  await sleep(25);
+  expect(calls).toEqual([]);
+  await sleep(30);
+  expect(calls).toEqual([3]);
+});
 
-    expect(calls).toEqual([]);
+test('useDebouncedFnCancelable > cancel prevents the pending call from running', async () => {
+  const calls: number[] = [];
+  const debounced = useDebouncedFnCancelable((n: number) => calls.push(n), 40);
 
-    vi.advanceTimersByTime(99);
-    expect(calls).toEqual([]);
+  debounced(1);
+  debounced.cancel();
 
-    vi.advanceTimersByTime(1);
-    expect(calls).toEqual([3]);
-
-    vi.useRealTimers();
-  });
-
-  it('cancel prevents the pending call from running', () => {
-    vi.useFakeTimers();
-
-    const calls: number[] = [];
-    const debounced = useDebouncedFnCancelable((n: number) => calls.push(n), 100);
-
-    debounced(1);
-    debounced.cancel();
-
-    vi.runAllTimers();
-    expect(calls).toEqual([]);
-
-    vi.useRealTimers();
-  });
+  await sleep(60);
+  expect(calls).toEqual([]);
 });

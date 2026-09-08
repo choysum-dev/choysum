@@ -24,35 +24,82 @@ import { setUserTimeZoneResolver } from './utils/datetime';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import ElementPlus from 'element-plus';
 
-export function setupApp(app: ChoysumWebApp): void {
-  registerGlobalDirectives(app);
+/** Optional overrides for unit tests; production callers omit this. */
+export type SetupAppDeps = {
+  registerGlobalDirectives?: typeof registerGlobalDirectives;
+  createPinia?: typeof createPinia;
+  piniaPluginPersistedstate?: typeof piniaPluginPersistedstate;
+  useI18nStore?: typeof useI18nStore;
+  setUserTimeZoneResolver?: typeof setUserTimeZoneResolver;
+  setGlobalRequestContextProvider?: typeof setGlobalRequestContextProvider;
+  resolveRequestTimezone?: typeof resolveRequestTimezone;
+  detectBrowserTimezone?: typeof detectBrowserTimezone;
+  useAuthStore?: typeof useAuthStore;
+  createI18n?: typeof createI18n;
+  sourceMessages?: typeof sourceMessages;
+  createTerminologyCatalogMerger?: typeof createTerminologyCatalogMerger;
+  projectTerminologyMessages?: typeof projectTerminologyMessages;
+  exposeBrowserI18nOnWindow?: typeof exposeBrowserI18nOnWindow;
+  notifyComposerMessagesChanged?: typeof notifyComposerMessagesChanged;
+  trackComposerMessageRevision?: typeof trackComposerMessageRevision;
+  createAppRouter?: typeof createAppRouter;
+  createAppMenu?: typeof createAppMenu;
+  ElementPlus?: typeof ElementPlus;
+  baseUrl?: string;
+  hasWindow?: () => boolean;
+};
 
-  const pinia = createPinia().use(piniaPluginPersistedstate);
+export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
+  const registerDirectives = deps.registerGlobalDirectives ?? registerGlobalDirectives;
+  const makePinia = deps.createPinia ?? createPinia;
+  const piniaPersist = deps.piniaPluginPersistedstate ?? piniaPluginPersistedstate;
+  const resolveI18nStore = deps.useI18nStore ?? useI18nStore;
+  const setTzResolver = deps.setUserTimeZoneResolver ?? setUserTimeZoneResolver;
+  const setRequestContext = deps.setGlobalRequestContextProvider ?? setGlobalRequestContextProvider;
+  const resolveTz = deps.resolveRequestTimezone ?? resolveRequestTimezone;
+  const detectBrowserTz = deps.detectBrowserTimezone ?? detectBrowserTimezone;
+  const resolveAuthStore = deps.useAuthStore ?? useAuthStore;
+  const makeI18n = deps.createI18n ?? createI18n;
+  const messages = deps.sourceMessages ?? sourceMessages;
+  const makeTerminologyMerger = deps.createTerminologyCatalogMerger ?? createTerminologyCatalogMerger;
+  const projectTerminology = deps.projectTerminologyMessages ?? projectTerminologyMessages;
+  const exposeBrowserI18n = deps.exposeBrowserI18nOnWindow ?? exposeBrowserI18nOnWindow;
+  const notifyMessagesChanged = deps.notifyComposerMessagesChanged ?? notifyComposerMessagesChanged;
+  const trackRevision = deps.trackComposerMessageRevision ?? trackComposerMessageRevision;
+  const makeRouter = deps.createAppRouter ?? createAppRouter;
+  const makeMenu = deps.createAppMenu ?? createAppMenu;
+  const elementPlus = deps.ElementPlus ?? ElementPlus;
+  const baseUrl = deps.baseUrl ?? import.meta.env.BASE_URL;
+  const hasWindow = deps.hasWindow ?? (() => typeof window !== 'undefined');
+
+  registerDirectives(app);
+
+  const pinia = makePinia().use(piniaPersist);
   app.usePlugin('pinia', pinia, {}, false);
 
-  const i18nStore = useI18nStore();
+  const i18nStore = resolveI18nStore();
 
-  setUserTimeZoneResolver(() => {
+  setTzResolver(() => {
     try {
-      const authStore = useAuthStore();
+      const authStore = resolveAuthStore();
       return (authStore.currentUser as any)?.Timezone ?? (authStore.identity as any)?.metadata?.timezone;
     } catch {
       return null;
     }
   });
 
-  setGlobalRequestContextProvider(() => {
+  setRequestContext(() => {
     let userTz = '';
     try {
-      const authStore = useAuthStore();
-      userTz = resolveRequestTimezone(
+      const authStore = resolveAuthStore();
+      userTz = resolveTz(
         (authStore.currentUser as any)?.Timezone ?? (authStore.identity as any)?.metadata?.timezone,
         null
       );
     } catch {
       userTz = '';
     }
-    const tz = resolveRequestTimezone(userTz, detectBrowserTimezone());
+    const tz = resolveTz(userTz, detectBrowserTz());
     return {
       locale: i18nStore.currentLocale.code,
       lang: i18nStore.terminologyLang,
@@ -60,28 +107,28 @@ export function setupApp(app: ChoysumWebApp): void {
     };
   });
 
-  const i18n = createI18n<false, { [key: string]: any }>({
+  const i18n = makeI18n<false, { [key: string]: any }>({
     legacy: false,
     locale: i18nStore.currentLocale.code,
     fallbackLocale: 'en',
     missingWarn: false,
     fallbackWarn: false,
     messages: {
-      en: sourceMessages,
+      en: messages,
     },
-    postTranslation: trackComposerMessageRevision,
+    postTranslation: trackRevision,
     datetimeFormats: i18nStore.getDateTimeFormats(),
     numberFormats: i18nStore.getNumberFormats(),
   });
-  const mergeTerminologyCatalog = createTerminologyCatalogMerger({
-    merge: (locale, messages) => {
-      i18n.global.mergeLocaleMessage(locale, projectTerminologyMessages(messages));
+  const mergeTerminologyCatalog = makeTerminologyMerger({
+    merge: (locale, messagesToMerge) => {
+      i18n.global.mergeLocaleMessage(locale, projectTerminology(messagesToMerge));
     },
-    notify: notifyComposerMessagesChanged,
+    notify: notifyMessagesChanged,
   });
 
-  if (typeof window !== 'undefined') {
-    exposeBrowserI18nOnWindow(i18n.global);
+  if (hasWindow()) {
+    exposeBrowserI18n(i18n.global);
   }
 
   watch(
@@ -116,13 +163,13 @@ export function setupApp(app: ChoysumWebApp): void {
 
   app.usePlugin('i18n', i18n);
 
-  const router = createAppRouter(import.meta.env.BASE_URL, i18n.global);
+  const router = makeRouter(baseUrl, i18n.global);
   app.usePlugin('router', router);
 
-  const menuPlugin = createAppMenu();
+  const menuPlugin = makeMenu();
   app.usePlugin('menu', menuPlugin);
 
-  app.usePlugin('element-plus', ElementPlus, {
+  app.usePlugin('element-plus', elementPlus, {
     locale: i18nStore.currentLocale.elementLocale,
   });
 }
