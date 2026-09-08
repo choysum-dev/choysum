@@ -200,4 +200,29 @@ describe('formController submit attachment refresh', () => {
     expect((controller.vm.original as any)?.Avatar).toBe('bind-old');
     expect((controller.vm.original as any)?.Username).toBe('root');
   });
+
+  test('handoff falls back to updated record when post-submit refresh returns no payload', async () => {
+    executeMock = fnRecorder(async () => ({
+      kind: 'search',
+      rows: [],
+      total: 0,
+      ts: Date.now(),
+    }));
+    deps.execute = executeMock as any;
+
+    const store = newStore({ Id: 'u4', Avatar: 'bind-new' });
+    const controller = createFormController(store, deps);
+
+    controller.vm.mode = 'edit';
+    controller.vm.original = { Id: 'u4', Avatar: 'bind-old', Username: 'admin' } as any;
+    controller.vm.draft = { Id: 'u4', Avatar: 'bind-new', Username: 'admin' } as any;
+
+    await controller.submit();
+
+    expect(executeMock.calls.length).toBe(1);
+    expect(controller.vm.original).toBeNull();
+    expect(handoffSetMock.calls.length).toBe(1);
+    expect(handoffSetMock.calls[0]?.[0]).toBe('u4');
+    expect(handoffSetMock.calls[0]?.[1]).toMatchObject({ Id: 'u4', Avatar: 'bind-new' });
+  });
 });
