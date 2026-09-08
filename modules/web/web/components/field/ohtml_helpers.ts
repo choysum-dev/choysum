@@ -55,8 +55,8 @@ function resolvePurify(deps?: SanitizeHtmlDeps): DomPurifyLike {
 }
 
 function ensureDomPurifyHooks(purify: DomPurifyLike): void {
-  if (hooksInstalled.has(purify as object)) return;
-  hooksInstalled.add(purify as object);
+  if (hooksInstalled.has(purify)) return;
+  hooksInstalled.add(purify);
   purify.addHook('afterSanitizeAttributes', node => {
     if (node.nodeName === 'A' && node.getAttribute('target') === '_blank') {
       node.setAttribute('rel', 'noopener noreferrer');

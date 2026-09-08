@@ -73,7 +73,7 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   const makeRouter = pickDep(deps.createAppRouter, createAppRouter);
   const makeMenu = pickDep(deps.createAppMenu, createAppMenu);
   const elementPlus = pickDep(deps.ElementPlus, ElementPlus);
-  const baseUrl = pickDep(deps.baseUrl, import.meta.env.BASE_URL);
+  const baseUrl = pickDep(deps.baseUrl, import.meta.env?.BASE_URL ?? '/');
   const hasWindow = pickDep(deps.hasWindow, () => typeof window !== 'undefined');
 
   registerDirectives(app);
