@@ -3,7 +3,7 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import Currency from './Currency.vue';
-import { buildPageMountGlobal } from '../testing/page_mount';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
 test('base page mount: mounts real Currency.vue under choysumMount', async () => {
   const wrapper = mount(Currency as any, {

@@ -118,7 +118,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|vue-router)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|vue-router|@choysum/page-mount)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						switch args.Path {
 						case "element-plus":
@@ -127,6 +127,8 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 							return api.OnResolveResult{Path: iconsStub, Namespace: "file"}, nil
 						case "vue-router":
 							return api.OnResolveResult{Path: routerStub, Namespace: "file"}, nil
+						case "@choysum/page-mount":
+							return api.OnResolveResult{Path: filepath.Join(stubDir, "page_mount.js"), Namespace: "file"}, nil
 						}
 						return api.OnResolveResult{}, nil
 					})

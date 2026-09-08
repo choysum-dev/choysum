@@ -3,7 +3,7 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import PartnerBankAccountFormView from './PartnerBankAccountFormView.vue';
-import { buildPageMountGlobal } from '../testing/page_mount';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
 test('PartnerBankAccountFormView mount coverage', async () => {
   const store = { $id: 'fe-stub-bank-store', records: {} };

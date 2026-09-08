@@ -3,7 +3,7 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import Partner from './Partner.vue';
-import { buildPageMountGlobal } from '../testing/page_mount';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
 test('Partner.vue mounts under choysumMount and runs script setup', async () => {
   const wrapper = mount(Partner as any, {

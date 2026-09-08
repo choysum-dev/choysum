@@ -3,7 +3,7 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import PartnerListView from './PartnerListView.vue';
-import { buildPageMountGlobal } from '../testing/page_mount';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
 test('PartnerListView.vue mounts under choysumMount and runs script setup', async () => {
   const store = { $id: 'fe-stub-partner-list-store', records: {} };

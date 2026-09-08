@@ -3,7 +3,7 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import Login from './Login.vue';
-import { buildPageMountGlobal } from '../testing/page_mount';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
 test('Login.vue mounts under choysumMount and runs script setup', async () => {
   const wrapper = mount(Login as any, {

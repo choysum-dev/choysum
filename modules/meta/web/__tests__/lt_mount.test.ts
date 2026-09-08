@@ -3,7 +3,7 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import ModuleList from '../pages/ModuleList.vue';
-import { buildPageMountGlobal } from '../testing/page_mount';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
 test('lt_mount: mounts real ModuleList.vue under choysumMount', async () => {
   const wrapper = mount(ModuleList as any, {

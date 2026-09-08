@@ -3,7 +3,7 @@
 
 import { mount, flushPromises } from '@choysum/test-utils';
 import PartnerIdentifierFormView from '../views/PartnerIdentifierFormView.vue';
-import { buildPageMountGlobal } from '../testing/page_mount';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
 test('lt_mount: mounts real PartnerIdentifierFormView under choysumMount', async () => {
   const store = { $id: 'fe-stub-id-store', records: {} };
