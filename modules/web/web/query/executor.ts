@@ -22,11 +22,7 @@ type ExecutorStoreDeps = {
  * Hydrates ManyToOneRef fields in bulk.
  * Replaces string ids in the result set with { Id, DisplayName } objects.
  */
-async function hydrateManyToOneRefs(
-  store: WebModelStore<any>,
-  items: any[],
-  deps: ExecutorStoreDeps = { createStoreByModel }
-) {
+async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[], deps: ExecutorStoreDeps) {
   if (!items || items.length === 0) return;
 
   try {
@@ -97,11 +93,7 @@ async function hydrateManyToOneRefs(
  * Hydrates ManyToManyRef fields in bulk.
  * Replaces id lists with target-model objects that at least contain Id and DisplayName.
  */
-async function hydrateManyToManyRefs(
-  store: WebModelStore<any>,
-  items: any[],
-  deps: ExecutorStoreDeps = { createStoreByModel }
-) {
+async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[], deps: ExecutorStoreDeps) {
   if (!items || items.length === 0) return;
 
   try {

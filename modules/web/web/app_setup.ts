@@ -49,28 +49,32 @@ export type SetupAppDeps = {
   hasWindow?: () => boolean;
 };
 
+function pickDep<T>(override: T | undefined, fallback: T): T {
+  return override !== undefined ? override : fallback;
+}
+
 export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
-  const registerDirectives = deps.registerGlobalDirectives ?? registerGlobalDirectives;
-  const makePinia = deps.createPinia ?? createPinia;
-  const piniaPersist = deps.piniaPluginPersistedstate ?? piniaPluginPersistedstate;
-  const resolveI18nStore = deps.useI18nStore ?? useI18nStore;
-  const setTzResolver = deps.setUserTimeZoneResolver ?? setUserTimeZoneResolver;
-  const setRequestContext = deps.setGlobalRequestContextProvider ?? setGlobalRequestContextProvider;
-  const resolveTz = deps.resolveRequestTimezone ?? resolveRequestTimezone;
-  const detectBrowserTz = deps.detectBrowserTimezone ?? detectBrowserTimezone;
-  const resolveAuthStore = deps.useAuthStore ?? useAuthStore;
-  const makeI18n = deps.createI18n ?? createI18n;
-  const messages = deps.sourceMessages ?? sourceMessages;
-  const makeTerminologyMerger = deps.createTerminologyCatalogMerger ?? createTerminologyCatalogMerger;
-  const projectTerminology = deps.projectTerminologyMessages ?? projectTerminologyMessages;
-  const exposeBrowserI18n = deps.exposeBrowserI18nOnWindow ?? exposeBrowserI18nOnWindow;
-  const notifyMessagesChanged = deps.notifyComposerMessagesChanged ?? notifyComposerMessagesChanged;
-  const trackRevision = deps.trackComposerMessageRevision ?? trackComposerMessageRevision;
-  const makeRouter = deps.createAppRouter ?? createAppRouter;
-  const makeMenu = deps.createAppMenu ?? createAppMenu;
-  const elementPlus = deps.ElementPlus ?? ElementPlus;
-  const baseUrl = deps.baseUrl ?? import.meta.env.BASE_URL;
-  const hasWindow = deps.hasWindow ?? (() => typeof window !== 'undefined');
+  const registerDirectives = pickDep(deps.registerGlobalDirectives, registerGlobalDirectives);
+  const makePinia = pickDep(deps.createPinia, createPinia);
+  const piniaPersist = pickDep(deps.piniaPluginPersistedstate, piniaPluginPersistedstate);
+  const resolveI18nStore = pickDep(deps.useI18nStore, useI18nStore);
+  const setTzResolver = pickDep(deps.setUserTimeZoneResolver, setUserTimeZoneResolver);
+  const setRequestContext = pickDep(deps.setGlobalRequestContextProvider, setGlobalRequestContextProvider);
+  const resolveTz = pickDep(deps.resolveRequestTimezone, resolveRequestTimezone);
+  const detectBrowserTz = pickDep(deps.detectBrowserTimezone, detectBrowserTimezone);
+  const resolveAuthStore = pickDep(deps.useAuthStore, useAuthStore);
+  const makeI18n = pickDep(deps.createI18n, createI18n);
+  const messages = pickDep(deps.sourceMessages, sourceMessages);
+  const makeTerminologyMerger = pickDep(deps.createTerminologyCatalogMerger, createTerminologyCatalogMerger);
+  const projectTerminology = pickDep(deps.projectTerminologyMessages, projectTerminologyMessages);
+  const exposeBrowserI18n = pickDep(deps.exposeBrowserI18nOnWindow, exposeBrowserI18nOnWindow);
+  const notifyMessagesChanged = pickDep(deps.notifyComposerMessagesChanged, notifyComposerMessagesChanged);
+  const trackRevision = pickDep(deps.trackComposerMessageRevision, trackComposerMessageRevision);
+  const makeRouter = pickDep(deps.createAppRouter, createAppRouter);
+  const makeMenu = pickDep(deps.createAppMenu, createAppMenu);
+  const elementPlus = pickDep(deps.ElementPlus, ElementPlus);
+  const baseUrl = pickDep(deps.baseUrl, import.meta.env.BASE_URL);
+  const hasWindow = pickDep(deps.hasWindow, () => typeof window !== 'undefined');
 
   registerDirectives(app);
 

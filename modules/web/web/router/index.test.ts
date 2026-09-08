@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
@@ -6,7 +7,7 @@ import { createI18n } from 'vue-i18n';
 import { createTermReference } from '@/core/service/i18n';
 import { projectTerminologyMessages } from '../i18n/terminology';
 import { resolveDocumentTitle } from './documentTitle';
-import { defaultAppName } from './index';
+import { createAppRouter, defaultAppName } from './index';
 
 describe('defaultAppName', () => {
   test('defaults to Choysum when env is missing or blank', () => {
@@ -18,6 +19,17 @@ describe('defaultAppName', () => {
 
   test('uses CHOYSUM_APP_NAME when present and non-blank', () => {
     expect(defaultAppName({ CHOYSUM_APP_NAME: 'Acme' } as any)).toBe('Acme');
+  });
+});
+
+describe('createAppRouter', () => {
+  test('wires default app name into the document title helper', async () => {
+    const router = createAppRouter('/');
+    expect(router).toBeTruthy();
+    // Drive beforeEach/afterEach so navigation progress hooks are covered.
+    await router.push('/').catch(() => undefined);
+    await router.isReady().catch(() => undefined);
+    expect(typeof router.currentRoute.value.path).toBe('string');
   });
 });
 

@@ -552,7 +552,7 @@ async function normalizeAttachmentFieldsInPayload(
   if (!options.fields.length) return payload;
 
   const nextPayload: Record<string, unknown> = { ...payload };
-  const service = resolveAttachmentContentService(store, deps.createStoreByModel ?? createStoreByModel);
+  const service = resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel));
 
   for (const fieldName of options.fields) {
     if (!Object.prototype.hasOwnProperty.call(nextPayload, fieldName)) continue;
@@ -625,15 +625,23 @@ export type FormControllerDeps = {
   handoffSet?: (id: string, record: unknown) => void;
 };
 
+function pickDep<T>(override: T | undefined, fallback: T): T {
+  return override !== undefined ? override : fallback;
+}
+
+function defaultHandoffSet(id: string, record: unknown): void {
+  handoffCache.set(id, record);
+}
+
 export function createFormController(store: WebModelStore<any>, deps: FormControllerDeps = {}): IFormViewController {
-  const createStore = deps.createStoreByModel ?? createStoreByModel;
-  const runBuildBrowseContext = deps.buildBrowseContext ?? buildBrowseContext;
-  const runBuildPlan = deps.buildPlan ?? buildPlan;
-  const runExecute = deps.execute ?? execute;
-  const runFlashRead = deps.flashRead ?? flashRead;
-  const runAwaitFieldSelection = deps.awaitFieldSelection ?? awaitFieldSelection;
-  const runExportFieldSelection = deps.exportFieldSelection ?? exportFieldSelection;
-  const runHandoffSet = deps.handoffSet ?? ((id: string, record: unknown) => handoffCache.set(id, record));
+  const createStore = pickDep(deps.createStoreByModel, createStoreByModel);
+  const runBuildBrowseContext = pickDep(deps.buildBrowseContext, buildBrowseContext);
+  const runBuildPlan = pickDep(deps.buildPlan, buildPlan);
+  const runExecute = pickDep(deps.execute, execute);
+  const runFlashRead = pickDep(deps.flashRead, flashRead);
+  const runAwaitFieldSelection = pickDep(deps.awaitFieldSelection, awaitFieldSelection);
+  const runExportFieldSelection = pickDep(deps.exportFieldSelection, exportFieldSelection);
+  const runHandoffSet = pickDep(deps.handoffSet, defaultHandoffSet);
   const attachmentDeps: AttachmentNormalizeDeps = { createStoreByModel: createStore };
 
   const vm = reactive<FormViewModel>({
@@ -811,7 +819,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
         const fieldsMeta = (store as any)?.fieldsMetadata;
         const draftForDiff = await preNormalizeDraftForDiff(
           store,
-          payload || {},
+          payload,
           {
             ownerModel,
             ownerRecordId,
@@ -822,7 +830,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
         const patch = buildUpdatePayload(original || {}, draftForDiff || {}, fieldsMeta) as Record<string, unknown>;
         const normalizedPatch = await normalizeAttachmentFieldsInPayload(
           store,
-          patch || {},
+          patch,
           {
             operation: 'update',
             ownerModel,
@@ -857,7 +865,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
                 vm.mode = 'display';
               }
             }
-            runHandoffSet(String(recordId), (vm.original as any) || updated);
+            runHandoffSet(String(recordId), vm.original as any);
           }
         } else {
           // Fallback to a reload when the backend does not return an updated object.

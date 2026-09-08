@@ -46,7 +46,7 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
       return { top: 0 };
     },
   });
-  const titleRoute = shallowRef<RouteLocationNormalized | null>(router.currentRoute?.value ?? null);
+  const titleRoute = shallowRef<RouteLocationNormalized | null>(router.currentRoute.value);
   const appName = defaultAppName();
   useTitle(computed(() => resolveDocumentTitle(titleRoute.value, composer, appName)));
 

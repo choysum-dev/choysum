@@ -305,6 +305,31 @@ test('setupApp > builds request context with terminology lang and resolved tz', 
   });
 });
 
+test('setupApp > falls back to identity metadata timezone when currentUser has none', () => {
+  let userTimeZoneResolver: (() => string | null) | undefined;
+  let requestContextProvider: (() => Record<string, string>) | undefined;
+
+  setupApp(
+    makeApp() as any,
+    baseDeps({
+      setUserTimeZoneResolver: (resolver: () => string | null) => {
+        userTimeZoneResolver = resolver;
+      },
+      setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+        requestContextProvider = provider;
+      },
+      useAuthStore: (() => ({
+        currentUser: {},
+        identity: { metadata: { timezone: 'America/Chicago' } },
+      })) as any,
+      resolveRequestTimezone: ((a: string, b: string | null) => a || b || '') as any,
+    })
+  );
+
+  expect(userTimeZoneResolver?.()).toBe('America/Chicago');
+  expect(requestContextProvider?.()).toMatchObject({ tz: 'America/Chicago' });
+});
+
 test('setupApp > omits tz from request context when unresolved', () => {
   let requestContextProvider: (() => Record<string, string>) | undefined;
   setupApp(
