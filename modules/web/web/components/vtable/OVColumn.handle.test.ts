@@ -3,39 +3,37 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, h, nextTick, provide, ref } from 'vue';
-import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+
+import { fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
-
-const columnsRef = ref<any[]>([]);
-
-vi.mock('@/web/web/composables/useVTable', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/composables/useVTable')>('@/web/web/composables/useVTable');
-  return {
-    ...actual,
-    useVTableUseColumnRegistry: () => ({ columns: columnsRef, register: vi.fn() }),
-    useVTableUseBuildContext: () => ({ getRows: () => [], baseIndex: ref(1) }),
-  };
-});
+import { useVTableProvideColumnRegistry, useVTableProvideBuildContext } from '@/web/web/composables/useVTable';
 
 function mountHandleColumn(opts?: { enabled?: boolean; width?: number; colKey?: string; type?: string }) {
-  columnsRef.value = [];
   const enabled = ref(opts?.enabled ?? true);
   const rows = [
     { Id: '1', Sequence: 1 },
     { Id: '2', Sequence: 2 },
   ];
-  const onReorder = vi.fn(async () => {});
+  const onReorder = fnRecorder(async () => {});
   const handleApi = useListHandleReorder({
     rows: () => rows,
     enabled,
     onReorder,
   });
 
+  let columnsRef: any = null;
+
   const Host = defineComponent({
     setup() {
+      const reg = useVTableProvideColumnRegistry();
+      columnsRef = reg.columns;
+      useVTableProvideBuildContext({
+        getRows: () => rows,
+        baseIndex: ref(1),
+      });
       provide(LIST_HANDLE_API_KEY, handleApi);
+
       const columnProps: Record<string, any> = {
         type: opts?.type ?? 'handle',
         colKey: opts?.colKey ?? '__handle__',
@@ -43,28 +41,27 @@ function mountHandleColumn(opts?: { enabled?: boolean; width?: number; colKey?: 
       if (opts?.width !== undefined) {
         columnProps.vColumnProps = { width: opts.width, align: 'center' };
       } else if (opts?.type == null || opts?.type === 'handle') {
-        // omit width to hit colProps.width ?? 36 fallback
         columnProps.vColumnProps = { align: 'center' };
       }
       return () => h(OVColumn, columnProps);
     },
   });
 
-  mount(Host);
-  return { handleApi, onReorder };
+  const m = mountApp(Host);
+  return { handleApi, onReorder, get columns() { return columnsRef?.value ?? []; }, unmount: m.unmount };
 }
 
 describe('OVColumn handle type', () => {
-  it('registers handle column with drag handlers', async () => {
-    const { handleApi } = mountHandleColumn({ width: 36 });
+  test('registers handle column with drag handlers', async () => {
+    const { handleApi, columns, unmount } = mountHandleColumn({ width: 36 });
     await nextTick();
-    expect(columnsRef.value).toHaveLength(1);
-    const col = columnsRef.value[0];
+    expect(columns).toHaveLength(1);
+    const col = columns[0];
     expect(col.dataKey).toBe('__handle__');
 
-    const preventDefault = vi.fn();
-    const stopPropagation = vi.fn();
-    const setData = vi.fn();
+    const preventDefault = fnRecorder();
+    const stopPropagation = fnRecorder();
+    const setData = fnRecorder();
     const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });
     expect(cell.props.class).toContain('o-list-handle');
     expect(cell.props.draggable).toBe('true');
@@ -73,7 +70,7 @@ describe('OVColumn handle type', () => {
     expect(handleApi.draggingIndex.value).toBe(0);
 
     cell.props.onDragover({ preventDefault, stopPropagation, dataTransfer: { dropEffect: '' } });
-    expect(preventDefault).toHaveBeenCalled();
+    expect(preventDefault.calls.length).toBeGreaterThan(0);
 
     cell.props.onDrop({ preventDefault, stopPropagation });
     await nextTick();
@@ -82,34 +79,41 @@ describe('OVColumn handle type', () => {
     expect(handleApi.draggingIndex.value).toBeNull();
 
     cell.props.onClick({ stopPropagation });
-    expect(stopPropagation).toHaveBeenCalled();
+    expect(stopPropagation.calls.length).toBeGreaterThan(0);
+    unmount();
   });
 
-  it('uses default handle width when vColumnProps.width is omitted', async () => {
-    mountHandleColumn();
+  test('uses default handle width when vColumnProps.width is omitted', async () => {
+    const { columns, unmount } = mountHandleColumn();
     await nextTick();
-    expect(columnsRef.value[0].width).toBe(36);
+    expect(columns[0].width).toBe(36);
+    unmount();
   });
 
-  it('falls through handle branch when type is not handle', async () => {
-    mountHandleColumn({ type: 'default', colKey: 'Name' });
+  test('falls through handle branch when type is not handle', async () => {
+    const { columns, unmount } = mountHandleColumn({ type: 'default', colKey: 'Name' });
     await nextTick();
-    // default column still registers; ensures `type === 'handle'` false arm is hit
-    expect(columnsRef.value.length).toBeGreaterThanOrEqual(1);
+    expect(columns.length).toBeGreaterThanOrEqual(1);
+    unmount();
   });
 
-  it('disables handle when reorder api is disabled', async () => {
-    const { handleApi } = mountHandleColumn({ enabled: false, width: 36 });
+  test('disables handle when reorder api is disabled', async () => {
+    const { handleApi, columns, unmount } = mountHandleColumn({ enabled: false, width: 36 });
     await nextTick();
-    const col = columnsRef.value[0];
+    const col = columns[0];
     const cell = col.cellRenderer({ rowData: { Id: '1' }, rowIndex: 0 });
     expect(cell.props.class).toContain('o-list-handle--disabled');
     expect(cell.props.draggable).toBe('false');
     expect(cell.props.title).toBe('');
 
-    const preventDefault = vi.fn();
-    cell.props.onDragstart({ preventDefault, stopPropagation: vi.fn(), dataTransfer: { setData: vi.fn() } });
-    expect(preventDefault).toHaveBeenCalled();
+    const preventDefault = fnRecorder();
+    cell.props.onDragstart({
+      preventDefault,
+      stopPropagation: fnRecorder(),
+      dataTransfer: { setData: fnRecorder() },
+    });
+    expect(preventDefault.calls.length).toBeGreaterThan(0);
     expect(handleApi.draggingIndex.value).toBeNull();
+    unmount();
   });
 });

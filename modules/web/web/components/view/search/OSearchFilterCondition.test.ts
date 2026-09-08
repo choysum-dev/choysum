@@ -2,26 +2,133 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick, reactive } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { h, nextTick, reactive, unref } from 'vue';
 
+import { flushPromises, fnRecorder, mountApp, stub, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
 import OSearchFilterCondition from './OSearchFilterCondition.vue';
 
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({
-      _t: (msg: string) => msg,
-    }),
-  };
-});
+import OCharField from '@/web/web/components/field/OCharField.vue';
+import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
+import OTextField from '@/web/web/components/field/OTextField.vue';
+import OIntField from '@/web/web/components/field/OIntField.vue';
+import OBigintField from '@/web/web/components/field/OBigintField.vue';
+import ONumberField from '@/web/web/components/field/ONumberField.vue';
+import ODecimalField from '@/web/web/components/field/ODecimalField.vue';
+import OMonetaryField from '@/web/web/components/field/OMonetaryField.vue';
+import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
+import ODateField from '@/web/web/components/field/ODateField.vue';
+import OTimeField from '@/web/web/components/field/OTimeField.vue';
+import ODatetimeField from '@/web/web/components/field/ODatetimeField.vue';
+import OJsonobjectField from '@/web/web/components/field/OJsonobjectField.vue';
+import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
+import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
+import OBinaryField from '@/web/web/components/field/OBinaryField.vue';
+import OImageField from '@/web/web/components/field/OImageField.vue';
+import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
+
+const fieldSfcs = [
+  OCharField,
+  OVarCharField,
+  OTextField,
+  OIntField,
+  OBigintField,
+  ONumberField,
+  ODecimalField,
+  OMonetaryField,
+  OBooleanField,
+  ODateField,
+  OTimeField,
+  ODatetimeField,
+  OJsonobjectField,
+  OManyToOneField,
+  OManyToOneRefField,
+  OBinaryField,
+  OImageField,
+  OSelectionField,
+];
+
+const fieldStubClass: Array<[any, string]> = [
+  [OCharField, 'f-char'],
+  [OVarCharField, 'f-varchar'],
+  [OTextField, 'f-text'],
+  [OIntField, 'f-int'],
+  [OBigintField, 'f-bigint'],
+  [ONumberField, 'f-number'],
+  [ODecimalField, 'f-decimal'],
+  [OMonetaryField, 'f-monetary'],
+  [OBooleanField, 'f-bool'],
+  [ODateField, 'f-date'],
+  [OTimeField, 'f-time'],
+  [ODatetimeField, 'f-dt'],
+  [OJsonobjectField, 'f-json'],
+  [OManyToOneField, 'f-m2o'],
+  [OManyToOneRefField, 'f-m2oref'],
+  [OBinaryField, 'f-bin'],
+  [OImageField, 'f-img'],
+  [OSelectionField, 'f-selection'],
+];
+
+function installFieldStubs() {
+  for (const [Comp, cls] of fieldStubClass) {
+    stubSfc(Comp, {
+      name: (Comp as any).__name || cls,
+      setup() {
+        return () => h('div', { class: cls });
+      },
+    });
+  }
+}
+
+function restoreFieldStubs() {
+  for (const Comp of fieldSfcs) restoreSfc(Comp);
+}
+
+const epStubs = {
+  ElSelect: {
+    name: 'ElSelect',
+    props: {
+      modelValue: { default: undefined },
+      disabled: { type: Boolean, default: false },
+      multiple: { type: Boolean, default: false },
+    },
+    emits: ['update:modelValue'],
+    setup(props: any, { slots, emit }: any) {
+      return () =>
+        h(
+          'div',
+          {
+            class: 'el-select',
+            'data-disabled': String(!!props.disabled),
+            'data-multi': String(!!props.multiple),
+            onClick: () => emit('update:modelValue', props.modelValue),
+          },
+          slots.default?.()
+        );
+    },
+  },
+  ElOption: stub('ElOption'),
+  ElButton: {
+    name: 'ElButton',
+    emits: ['click'],
+    setup(_, { slots, emit }: any) {
+      return () =>
+        h('button', { class: 'rm', type: 'button', onClick: () => emit('click') }, slots.default?.());
+    },
+  },
+  ElInput: stub('ElInput'),
+};
 
 describe('OSearchFilterCondition', () => {
+  beforeEach(() => {
+    installFieldStubs();
+  });
+  afterEach(() => {
+    restoreFieldStubs();
+  });
+
   function mountRow(condition: any, extras: Record<string, any> = {}) {
-    const onUpdateCondition = vi.fn();
-    const onRemoveCondition = vi.fn();
+    const onUpdateCondition = fnRecorder();
+    const onRemoveCondition = fnRecorder();
     const store = {
       fieldsMetadata: {
         Name: { type: 'varchar', string: 'Name' },
@@ -34,11 +141,11 @@ describe('OSearchFilterCondition', () => {
       getFieldMeta(name: string) {
         return this.fieldsMetadata[name];
       },
-      ensureFieldsGet: vi.fn(async () => ({})),
+      ensureFieldsGet: fnRecorder(async () => ({})),
       getFieldsGetTranslatedString: () => undefined,
       ...extras.store,
     };
-    const wrapper = mount(OSearchFilterCondition as any, {
+    const m = mountApp(OSearchFilterCondition as any, {
       props: {
         condition,
         fields: [
@@ -53,148 +160,124 @@ describe('OSearchFilterCondition', () => {
         onUpdateCondition,
         onRemoveCondition,
       },
-      global: {
-        stubs: {
-          'el-select': {
-            props: {
-              modelValue: { default: undefined },
-              disabled: { type: Boolean, default: false },
-              multiple: { type: Boolean, default: false },
-            },
-            emits: ['update:modelValue'],
-            template: `<div class="el-select" :data-disabled="String(!!disabled)" :data-multi="String(!!multiple)" @click="$emit('update:modelValue', modelValue)"><slot /></div>`,
-          },
-          'el-option': true,
-          'el-button': {
-            template: `<button class="rm" @click="$emit('click')"><slot /></button>`,
-          },
-          'el-input': true,
-          OVarCharField: { template: `<div class="f-varchar" />` },
-          OSelectionField: { template: `<div class="f-selection" />` },
-          OManyToOneField: { template: `<div class="f-m2o" />` },
-          ODatetimeField: { template: `<div class="f-dt" />` },
-          OCharField: { template: `<div class="f-char" />` },
-          OTextField: { template: `<div class="f-text" />` },
-          OIntField: { template: `<div class="f-int" />` },
-          OBigintField: { template: `<div class="f-bigint" />` },
-          ONumberField: { template: `<div class="f-number" />` },
-          ODecimalField: { template: `<div class="f-decimal" />` },
-          OMonetaryField: { template: `<div class="f-monetary" />` },
-          OBooleanField: { template: `<div class="f-bool" />` },
-          ODateField: { template: `<div class="f-date" />` },
-          OTimeField: { template: `<div class="f-time" />` },
-          OJsonobjectField: { template: `<div class="f-json" />` },
-          OManyToOneRefField: { template: `<div class="f-m2oref" />` },
-          OBinaryField: { template: `<div class="f-bin" />` },
-          OImageField: { template: `<div class="f-img" />` },
-        },
-      },
+      stubs: epStubs,
     });
-    return { wrapper, onUpdateCondition, onRemoveCondition, store };
+    return { ...m, onUpdateCondition, onRemoveCondition, store };
   }
 
-  it('patches field change with first operator and clears value', async () => {
+  test('patches field change with first operator and clears value', async () => {
     const condition = reactive({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
-    const { wrapper, onUpdateCondition } = mountRow(condition);
-    await (wrapper.vm as any).onFieldChange('Status');
-    expect(onUpdateCondition).toHaveBeenCalled();
-    const patch = onUpdateCondition.mock.calls[0][1];
+    const { unmount, setupState, onUpdateCondition } = mountRow(condition);
+    await setupState().onFieldChange('Status');
+    expect(onUpdateCondition.calls.length).toBeGreaterThan(0);
+    const patch = onUpdateCondition.calls[0]![1] as any;
     expect(patch.field).toBe('Status');
     expect(patch.value).toBeUndefined();
     expect(typeof patch.operator).toBe('string');
+    unmount();
   });
 
-  it('maps null / multi-value / default operators', async () => {
+  test('maps null / multi-value / default operators', async () => {
     const condition = reactive({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
-    const { wrapper, onUpdateCondition } = mountRow(condition);
+    const { unmount, setupState, onUpdateCondition } = mountRow(condition);
 
-    await (wrapper.vm as any).onOperatorChange('is');
-    expect(onUpdateCondition.mock.calls.at(-1)![1]).toEqual({ operator: 'is', value: null });
+    await setupState().onOperatorChange('is');
+    expect(onUpdateCondition.calls.at(-1)![1]).toEqual({ operator: 'is', value: null });
 
     condition.value = 'solo';
-    await (wrapper.vm as any).onOperatorChange('in');
-    expect(onUpdateCondition.mock.calls.at(-1)![1]).toEqual({ operator: 'in', value: ['solo'] });
+    await setupState().onOperatorChange('in');
+    expect(onUpdateCondition.calls.at(-1)![1]).toEqual({ operator: 'in', value: ['solo'] });
 
     condition.value = null;
     condition.field = 'Name';
-    await (wrapper.vm as any).onOperatorChange('=');
-    const last = onUpdateCondition.mock.calls.at(-1)![1];
+    await setupState().onOperatorChange('=');
+    const last = onUpdateCondition.calls.at(-1)![1] as any;
     expect(last.operator).toBe('=');
+    unmount();
   });
 
-  it('renders multi-value select for in operator on scalars', async () => {
+  test('renders multi-value select for in operator on scalars', async () => {
     const condition = reactive({ id: 'c1', field: 'Name', operator: 'in', value: ['a', 'b'] });
-    const { wrapper, onUpdateCondition } = mountRow(condition);
+    const { unmount, setupState, onUpdateCondition, qa } = mountRow(condition);
     await nextTick();
-    const multi = wrapper.findAll('.el-select').find(s => s.attributes('data-multi') === 'true');
+    const multi = qa('.el-select').find(s => s.getAttribute('data-multi') === 'true');
     expect(multi).toBeTruthy();
-    await (wrapper.vm as any).onMultiValuesChange(['x', 'y']);
-    expect(onUpdateCondition).toHaveBeenCalledWith('c1', { value: ['x', 'y'] });
+    await setupState().onMultiValuesChange(['x', 'y']);
+    expect(onUpdateCondition.calls.at(-1)).toEqual(['c1', { value: ['x', 'y'] }]);
+    unmount();
   });
 
-  it('keeps value editor writable for form-readonly fields', async () => {
+  test('keeps value editor writable for form-readonly fields', async () => {
     const condition = reactive({ id: 'c1', field: 'DisplayName', operator: '=', value: '' });
-    const { wrapper } = mountRow(condition);
+    const { unmount, setupState, q } = mountRow(condition);
     await flushPromises();
-    expect(wrapper.find('.f-varchar').exists()).toBe(true);
-    const meta = (wrapper.vm as any).fieldMeta;
+    expect(q('.f-varchar')).toBeTruthy();
+    const meta = unref(setupState().fieldMeta);
     expect(meta.isReadonly).toBe(false);
+    unmount();
   });
 
-  it('uses manytoone component for relation fields', async () => {
+  test('uses manytoone component for relation fields', async () => {
     const condition = reactive({ id: 'c1', field: 'PartnerId', operator: '=', value: null });
-    const { wrapper } = mountRow(condition);
+    const { unmount, q } = mountRow(condition);
     await nextTick();
-    expect(wrapper.find('.f-m2o').exists()).toBe(true);
+    expect(q('.f-m2o')).toBeTruthy();
+    unmount();
   });
 
-  it('removes the condition row', async () => {
+  test('removes the condition row', async () => {
     const condition = reactive({ id: 'c1', field: 'Name', operator: '=', value: '' });
-    const { wrapper, onRemoveCondition } = mountRow(condition);
-    await wrapper.find('.rm').trigger('click');
-    expect(onRemoveCondition).toHaveBeenCalledWith('c1');
+    const { unmount, click, onRemoveCondition } = mountRow(condition);
+    click('.rm');
+    expect(onRemoveCondition.calls[0]).toEqual(['c1']);
+    unmount();
   });
 
-  it('renders NULL flag and selection / datetime field components', async () => {
+  test('renders NULL flag and selection / datetime field components', async () => {
     const nullCond = reactive({ id: 'c1', field: 'Name', operator: 'is', value: null });
-    const { wrapper: nullRow } = mountRow(nullCond);
-    expect(nullRow.find('.o-null-flag').text()).toBe('NULL');
+    const nullRow = mountRow(nullCond);
+    expect(nullRow.q('.o-null-flag')?.textContent).toBe('NULL');
+    nullRow.unmount();
 
     const sel = reactive({ id: 'c2', field: 'Status', operator: '=', value: 'a' });
-    const { wrapper: selRow } = mountRow(sel);
-    expect(selRow.find('.f-selection').exists()).toBe(true);
+    const selRow = mountRow(sel);
+    expect(selRow.q('.f-selection')).toBeTruthy();
+    selRow.unmount();
 
     const dt = reactive({ id: 'c3', field: 'CreatedAt', operator: '=', value: null });
-    const { wrapper: dtRow } = mountRow(dt);
-    expect(dtRow.find('.f-dt').exists()).toBe(true);
+    const dtRow = mountRow(dt);
+    expect(dtRow.q('.f-dt')).toBeTruthy();
+    dtRow.unmount();
   });
 
-  it('exposes toView/fromView helpers for manytoone value binding', async () => {
+  test('exposes toView/fromView helpers for manytoone value binding', async () => {
     const condition = reactive({ id: 'c1', field: 'PartnerId', operator: '=', value: 'p1' });
-    const { wrapper } = mountRow(condition);
+    const { unmount, setupState } = mountRow(condition);
     await nextTick();
-    const extras = (wrapper.vm as any).extraProps;
+    const extras = unref(setupState().extraProps);
     expect(extras.toView(null)).toBeNull();
     expect(extras.toView({ Id: 'x' })).toEqual({ Id: 'x' });
     expect(extras.toView('y')).toEqual({ Id: 'y' });
     expect(extras.fromView(null)).toBeNull();
     expect(extras.fromView({ Id: 'z' })).toBe('z');
     expect(extras.fromView('w')).toBe('w');
+    unmount();
   });
 
-  it('normalizes multiValues from scalar and empty values', async () => {
+  test('normalizes multiValues from scalar and empty values', async () => {
     const condition = reactive({ id: 'c1', field: 'Name', operator: 'in', value: 'solo' });
-    const { wrapper } = mountRow(condition);
-    expect((wrapper.vm as any).multiValues).toEqual(['solo']);
+    const { unmount, setupState } = mountRow(condition);
+    expect(unref(setupState().multiValues)).toEqual(['solo']);
     condition.value = '';
     await nextTick();
-    expect((wrapper.vm as any).multiValues).toEqual([]);
+    expect(unref(setupState().multiValues)).toEqual([]);
     condition.value = ['', 'a', null];
     await nextTick();
-    expect((wrapper.vm as any).multiValues).toEqual(['a']);
+    expect(unref(setupState().multiValues)).toEqual(['a']);
+    unmount();
   });
 
-  it('maps every field type to a value editor and placeholder', async () => {
+  test('maps every field type to a value editor and placeholder', async () => {
     const types: Array<[string, string, string]> = [
       ['Char', 'char', 'f-char'],
       ['Text', 'text', 'f-text'],
@@ -218,23 +301,24 @@ describe('OSearchFilterCondition', () => {
     );
     for (const [prop, , cls] of types) {
       const condition = reactive({ id: 'c1', field: prop, operator: '=', value: null });
-      const { wrapper } = mountRow(condition, {
+      const { unmount, q, setupState } = mountRow(condition, {
         store: {
           fieldsMetadata,
           getFieldMeta: undefined,
         },
       });
       await nextTick();
-      expect(wrapper.find(`.${cls}`).exists(), prop).toBe(true);
-      const ph = (wrapper.vm as any).valuePlaceholder;
+      expect(q(`.${cls}`), prop).toBeTruthy();
+      const ph = unref(setupState().valuePlaceholder);
       expect(typeof ph).toBe('string');
       expect(ph.length).toBeGreaterThan(0);
+      unmount();
     }
   });
 
-  it('applies boolean default value and keeps multi-value arrays intact', async () => {
+  test('applies boolean default value and keeps multi-value arrays intact', async () => {
     const condition = reactive({ id: 'c1', field: 'Bool', operator: 'is', value: null });
-    const { wrapper, onUpdateCondition } = mountRow(condition, {
+    const { unmount, setupState, onUpdateCondition } = mountRow(condition, {
       store: {
         fieldsMetadata: {
           Bool: { type: 'boolean', string: 'Bool' },
@@ -242,41 +326,44 @@ describe('OSearchFilterCondition', () => {
         },
       },
     });
-    await (wrapper.vm as any).onOperatorChange('=');
-    expect(onUpdateCondition.mock.calls.at(-1)![1]).toEqual({ operator: '=', value: false });
+    await setupState().onOperatorChange('=');
+    expect(onUpdateCondition.calls.at(-1)![1]).toEqual({ operator: '=', value: false });
 
     condition.field = 'Name';
     condition.value = ['a', 'b'];
-    await (wrapper.vm as any).onOperatorChange('in');
-    expect(onUpdateCondition.mock.calls.at(-1)![1]).toEqual({ operator: 'in' });
+    await setupState().onOperatorChange('in');
+    expect(onUpdateCondition.calls.at(-1)![1]).toEqual({ operator: 'in' });
 
-    await (wrapper.vm as any).onMultiValuesChange('not-array' as any);
-    expect(onUpdateCondition).toHaveBeenCalledWith('c1', { value: [] });
+    await setupState().onMultiValuesChange('not-array' as any);
+    expect(onUpdateCondition.calls.at(-1)).toEqual(['c1', { value: [] }]);
+    unmount();
   });
 
-  it('falls back getFieldMeta via fieldsMetadata and clears relationStore on scalar fields', async () => {
+  test('falls back getFieldMeta via fieldsMetadata and clears relationStore on scalar fields', async () => {
     const condition = reactive({ id: 'c1', field: 'PartnerId', operator: '=', value: null });
-    const { wrapper, store } = mountRow(condition, {
+    const { unmount, setupState, store } = mountRow(condition, {
       store: {
         getFieldMeta: undefined,
-        getRelationStore: vi.fn(() => ({ destroy: vi.fn() })),
+        getRelationStore: fnRecorder(() => ({ destroy: fnRecorder() })),
       },
     });
     await nextTick();
-    expect((wrapper.vm as any).binding.store.getFieldMeta('PartnerId')?.type).toBe('manytoone');
-    expect((wrapper.vm as any).binding.store.getFieldMeta('Missing')).toBeUndefined();
+    expect(setupState().binding.store.getFieldMeta('PartnerId')?.type).toBe('manytoone');
+    expect(setupState().binding.store.getFieldMeta('Missing')).toBeUndefined();
     condition.field = 'Name';
     await nextTick();
-    expect((wrapper.vm as any).binding.relationStore).toBeUndefined();
-    expect(store.getRelationStore).toHaveBeenCalled();
+    expect(setupState().binding.relationStore).toBeUndefined();
+    expect((store.getRelationStore as any).calls.length).toBeGreaterThan(0);
+    unmount();
   });
 
-  it('uses tempId as condition identity when present', async () => {
+  test('uses tempId as condition identity when present', async () => {
     const condition = reactive({ id: 'c1', tempId: 'tmp-9', field: 'Name', operator: '=', value: 'x' });
-    const { wrapper, onUpdateCondition, onRemoveCondition } = mountRow(condition);
-    await (wrapper.vm as any).onFieldChange('Status');
-    expect(onUpdateCondition.mock.calls[0][0]).toBe('tmp-9');
-    await wrapper.find('.rm').trigger('click');
-    expect(onRemoveCondition).toHaveBeenCalledWith('tmp-9');
+    const { unmount, setupState, click, onUpdateCondition, onRemoveCondition } = mountRow(condition);
+    await setupState().onFieldChange('Status');
+    expect(onUpdateCondition.calls[0]![0]).toBe('tmp-9');
+    click('.rm');
+    expect(onRemoveCondition.calls[0]).toEqual(['tmp-9']);
+    unmount();
   });
 });

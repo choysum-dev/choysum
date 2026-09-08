@@ -2,28 +2,32 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { h } from 'vue';
 
+import { fnRecorder, mountApp, stub, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
 import OSearchFilterGroup from './OSearchFilterGroup.vue';
-
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({ _t: (msg: string) => msg }),
-  };
-});
+import OSearchFilterCondition from './OSearchFilterCondition.vue';
 
 describe('OSearchFilterGroup interactions', () => {
-  it('emits logic / add / remove via header controls and nests groups', async () => {
-    const onSetLogic = vi.fn();
-    const onAddGroup = vi.fn();
-    const onRemoveGroup = vi.fn();
-    const onAddCondition = vi.fn();
+  afterEach(() => {
+    restoreSfc(OSearchFilterCondition);
+  });
+
+  test('emits logic / add / remove via header controls and nests groups', async () => {
+    stubSfc(OSearchFilterCondition, {
+      name: 'OSearchFilterCondition',
+      setup() {
+        return () => h('div', { class: 'cond' });
+      },
+    });
+
+    const onSetLogic = fnRecorder();
+    const onAddGroup = fnRecorder();
+    const onRemoveGroup = fnRecorder();
+    const onAddCondition = fnRecorder();
     const store = { fieldsMetadata: { Name: { type: 'varchar' } } } as any;
 
-    const wrapper = mount(OSearchFilterGroup as any, {
+    const { unmount, qa, q, click } = mountApp(OSearchFilterGroup as any, {
       props: {
         group: {
           id: 'g1',
@@ -46,44 +50,68 @@ describe('OSearchFilterGroup interactions', () => {
         onAddGroup,
         onRemoveGroup,
         onAddCondition,
-        onUpdateCondition: vi.fn(),
-        onRemoveCondition: vi.fn(),
+        onUpdateCondition: fnRecorder(),
+        onRemoveCondition: fnRecorder(),
       },
-      global: {
-        stubs: {
-          'el-radio-group': {
-            props: ['modelValue'],
-            emits: ['update:modelValue'],
-            template: `<div class="rg"><slot /><button class="to-or" @click="$emit('update:modelValue', 'Or')" /></div>`,
+      stubs: {
+        ElRadioGroup: {
+          name: 'ElRadioGroup',
+          props: ['modelValue'],
+          emits: ['update:modelValue'],
+          setup(props: any, { slots, emit }: any) {
+            return () =>
+              h('div', { class: 'rg' }, [
+                slots.default?.(),
+                h('button', {
+                  class: 'to-or',
+                  type: 'button',
+                  onClick: () => emit('update:modelValue', 'Or'),
+                }),
+              ]);
           },
-          'el-radio': {
-            props: ['value', 'label'],
-            template: `<div class="radio" :data-value="value ?? label" />`,
-          },
-          'el-button': {
-            template: `<button class="btn" @click="$emit('click')"><slot /></button>`,
-          },
-          'el-divider': true,
-          OSearchFilterCondition: { template: `<div class="cond" />` },
         },
+        ElRadio: {
+          name: 'ElRadio',
+          props: ['value', 'label'],
+          setup(props: any) {
+            return () => h('div', { class: 'radio', 'data-value': props.value ?? props.label });
+          },
+        },
+        ElButton: {
+          name: 'ElButton',
+          emits: ['click'],
+          setup(_, { slots, emit }: any) {
+            return () =>
+              h(
+                'button',
+                { class: 'btn', type: 'button', onClick: () => emit('click') },
+                slots.default?.()
+              );
+          },
+        },
+        ElDivider: stub('ElDivider'),
       },
     });
 
-    // Guard the Element Plus radio binding (`value`, not deprecated `label`).
-    expect(wrapper.findAll('.rg')[0]!.findAll('.radio').map(r => r.attributes('data-value'))).toEqual(['And', 'Or']);
+    const firstRg = qa('.rg')[0]!;
+    expect(
+      Array.from(firstRg.querySelectorAll('.radio')).map(r => r.getAttribute('data-value'))
+    ).toEqual(['And', 'Or']);
 
-    expect(wrapper.findAll('.cond').length).toBeGreaterThan(0);
-    expect(wrapper.find('.osf-group--or').exists()).toBe(true);
+    expect(qa('.cond').length).toBeGreaterThan(0);
+    expect(q('.osf-group--or')).toBeTruthy();
 
-    await wrapper.find('.to-or').trigger('click');
-    expect(onSetLogic).toHaveBeenCalledWith('Or', 'g1');
+    click('.to-or');
+    expect(onSetLogic.calls[0]).toEqual(['Or', 'g1']);
 
-    const buttons = wrapper.findAll('.btn');
-    await buttons[0]!.trigger('click');
-    expect(onAddCondition).toHaveBeenCalledWith('g1');
-    await buttons[1]!.trigger('click');
-    expect(onAddGroup).toHaveBeenCalledWith('g1');
-    await buttons[2]!.trigger('click');
-    expect(onRemoveGroup).toHaveBeenCalledWith('g1');
+    const buttons = qa('.btn');
+    (buttons[0] as HTMLElement).click();
+    expect(onAddCondition.calls[0]).toEqual(['g1']);
+    (buttons[1] as HTMLElement).click();
+    expect(onAddGroup.calls[0]).toEqual(['g1']);
+    (buttons[2] as HTMLElement).click();
+    expect(onRemoveGroup.calls[0]).toEqual(['g1']);
+
+    unmount();
   });
 });

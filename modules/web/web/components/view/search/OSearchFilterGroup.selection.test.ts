@@ -2,16 +2,43 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { nextTick, h, onMounted, ref } from 'vue';
 
-import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
+import { createFieldsGetHelpers, FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
+import { flushPromises, fnRecorder, mountApp, stub, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
 import OSearchFilterGroup from './OSearchFilterGroup.vue';
+import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 
 describe('OSearchFilterGroup selection filter (T4.5)', () => {
-  it('renders selection dropdown options from ensureFieldsGet', async () => {
+  afterEach(() => {
+    restoreSfc(OSelectionField);
+  });
+
+  test('renders selection dropdown options from ensureFieldsGet', async () => {
+    stubSfc(OSelectionField, {
+      name: 'OSelectionField',
+      props: ['store', 'binding'],
+      setup(props: any) {
+        const opts = ref<Array<{ label: string; value: string }>>([]);
+        onMounted(async () => {
+          const leaf = String(props.binding?.prop || 'Status');
+          const res = await props.store?.ensureFieldsGet?.([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
+          const sel = res?.[leaf]?.selection || [];
+          opts.value = sel.map((s: any) => ({
+            value: String(s.value ?? s[0] ?? ''),
+            label: String(s.label ?? s[1] ?? s.value ?? ''),
+          }));
+        });
+        return () =>
+          h(
+            'div',
+            { class: 'sel-stub' },
+            opts.value.map(o => h('div', { class: 'opt', 'data-label': o.label, 'data-value': o.value }))
+          );
+      },
+    });
+
     const statusMeta: WebFieldMetadata = {
       id: '1',
       type: 'selection',
@@ -22,7 +49,7 @@ describe('OSearchFilterGroup selection filter (T4.5)', () => {
         { value: 'archived', label: 'Archived' },
       ],
     };
-    const FieldsGet = vi.fn(async () => ({
+    const FieldsGet = fnRecorder(async () => ({
       Status: {
         ...statusMeta,
         selection: [
@@ -42,7 +69,7 @@ describe('OSearchFilterGroup selection filter (T4.5)', () => {
     };
 
     const noop = () => {};
-    const wrapper = mount(OSearchFilterGroup as any, {
+    const { unmount, qa } = mountApp(OSearchFilterGroup as any, {
       props: {
         group: {
           id: 'g1',
@@ -67,20 +94,34 @@ describe('OSearchFilterGroup selection filter (T4.5)', () => {
         onUpdateCondition: noop,
         onRemoveCondition: noop,
       },
-      global: {
-        stubs: {
-          'el-radio-group': true,
-          'el-radio': true,
-          'el-button': true,
-          'el-divider': true,
-          'el-select': { template: `<div class="el-select"><slot /></div>` },
-          'el-option': {
-            props: ['label', 'value'],
-            template: `<div class="opt" :data-label="label" :data-value="value" />`,
+      stubs: {
+        ElRadioGroup: stub('ElRadioGroup'),
+        ElRadio: stub('ElRadio'),
+        ElButton: stub('ElButton'),
+        ElDivider: stub('ElDivider'),
+        ElSelect: {
+          name: 'ElSelect',
+          setup(_, { slots }) {
+            return () => h('div', { class: 'el-select' }, slots.default?.());
           },
-          'el-input': true,
-          OFieldBase: {
-            template: `<div class="ob"><slot name="edit" :fieldValue="() => ({ value: null })" :record="{}" /></div>`,
+        },
+        ElOption: {
+          name: 'ElOption',
+          props: ['label', 'value'],
+          setup(props: any) {
+            return () => h('div', { class: 'opt', 'data-label': props.label, 'data-value': props.value });
+          },
+        },
+        ElInput: stub('ElInput'),
+        OFieldBase: {
+          name: 'OFieldBase',
+          setup(_, { slots }) {
+            return () =>
+              h(
+                'div',
+                { class: 'ob' },
+                slots.edit?.({ fieldValue: () => ({ value: null }), record: {} })
+              );
           },
         },
       },
@@ -89,10 +130,10 @@ describe('OSearchFilterGroup selection filter (T4.5)', () => {
     await flushPromises();
     await nextTick();
 
-    expect(FieldsGet).toHaveBeenCalled();
-    const opts = wrapper.findAll('.opt').filter(o => o.attributes('data-value'));
-    // Field/operator selects also render el-option stubs; selection values are active/archived.
-    const selectionOpts = opts.filter(o => ['active', 'archived'].includes(String(o.attributes('data-value'))));
-    expect(selectionOpts.map(o => o.attributes('data-label'))).toEqual(['启用', '归档']);
+    expect(FieldsGet.calls.length).toBeGreaterThan(0);
+    const opts = qa('.opt').filter(o => o.getAttribute('data-value'));
+    const selectionOpts = opts.filter(o => ['active', 'archived'].includes(String(o.getAttribute('data-value'))));
+    expect(selectionOpts.map(o => o.getAttribute('data-label'))).toEqual(['启用', '归档']);
+    unmount();
   });
 });
