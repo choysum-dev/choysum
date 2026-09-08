@@ -329,64 +329,68 @@
     return all.length ? all[0] : null;
   };
 
+  // Shared with Element.prototype.matches so closest/matches honor the same
+  // selector contract as querySelectorAll (class/id/tag/attr/tag.class/tag#id).
+  function matchSelector(el, s) {
+    s = String(s || '').trim();
+    if (!s) return false;
+    // Fail loud on forms this host does not implement (avoid false-negative finds).
+    if (/[\s,>+~]/.test(s)) {
+      throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+    }
+    if (s.charAt(0) === '.') {
+      // Reject .a.b / .a#id / .a[attr] (but allow simple .class-name).
+      if (/[.#\[]/.test(s.slice(1))) {
+        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+      }
+      var cls = s.slice(1);
+      var cn = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
+      return (' ' + cn + ' ').indexOf(' ' + cls + ' ') >= 0;
+    }
+    if (s.charAt(0) === '#') {
+      if (/[.#\[]/.test(s.slice(1))) {
+        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+      }
+      return el.id === s.slice(1) || el.getAttribute('id') === s.slice(1);
+    }
+    if (s.charAt(0) === '[') {
+      var m = /^\[([^=\]]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(s);
+      if (!m) {
+        throw new Error('choysum minimal DOM: unsupported attribute selector: ' + s);
+      }
+      var got = el.getAttribute(m[1]);
+      if (m[2] === undefined) return got != null;
+      return got === m[2];
+    }
+    // tag, tag.class, or tag#id (single class / id only).
+    var tagClass = /^([a-zA-Z][\w-]*)\.([^\s.#\[]+)$/.exec(s);
+    if (tagClass) {
+      if (el.tagName !== tagClass[1].toUpperCase()) return false;
+      var cls2 = tagClass[2];
+      var cn2 = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
+      return (' ' + cn2 + ' ').indexOf(' ' + cls2 + ' ') >= 0;
+    }
+    var tagId = /^([a-zA-Z][\w-]*)#([^\s.#\[]+)$/.exec(s);
+    if (tagId) {
+      if (el.tagName !== tagId[1].toUpperCase()) return false;
+      return el.id === tagId[2] || el.getAttribute('id') === tagId[2];
+    }
+    // Tag name only — reject unsupported compound selectors.
+    if (!/^[a-zA-Z][\w-]*$/.test(s)) {
+      throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+    }
+    return el.tagName === s.toUpperCase();
+  }
+
   Element.prototype.querySelectorAll = function (sel) {
     var out = [];
     var selector = String(sel || '').trim();
     function walk(node) {
       if (node.nodeType !== NODE_ELEMENT) return;
-      if (match(node, selector)) out.push(node);
+      if (matchSelector(node, selector)) out.push(node);
       for (var i = 0; i < node._children.length; i++) {
         walk(node._children[i]);
       }
-    }
-    function match(el, s) {
-      if (!s) return false;
-      // Fail loud on forms this host does not implement (avoid false-negative finds).
-      if (/[\s,>+~]/.test(s)) {
-        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
-      }
-      if (s.charAt(0) === '.') {
-        // Reject .a.b / .a#id / .a[attr] (but allow simple .class-name).
-        if (/[.#\[]/.test(s.slice(1))) {
-          throw new Error('choysum minimal DOM: unsupported selector: ' + s);
-        }
-        var cls = s.slice(1);
-        var cn = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
-        return (' ' + cn + ' ').indexOf(' ' + cls + ' ') >= 0;
-      }
-      if (s.charAt(0) === '#') {
-        if (/[.#\[]/.test(s.slice(1))) {
-          throw new Error('choysum minimal DOM: unsupported selector: ' + s);
-        }
-        return el.id === s.slice(1) || el.getAttribute('id') === s.slice(1);
-      }
-      if (s.charAt(0) === '[') {
-        var m = /^\[([^=\]]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(s);
-        if (!m) {
-          throw new Error('choysum minimal DOM: unsupported attribute selector: ' + s);
-        }
-        var got = el.getAttribute(m[1]);
-        if (m[2] === undefined) return got != null;
-        return got === m[2];
-      }
-      // tag, tag.class, or tag#id (single class / id only).
-      var tagClass = /^([a-zA-Z][\w-]*)\.([^\s.#\[]+)$/.exec(s);
-      if (tagClass) {
-        if (el.tagName !== tagClass[1].toUpperCase()) return false;
-        var cls2 = tagClass[2];
-        var cn2 = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
-        return (' ' + cn2 + ' ').indexOf(' ' + cls2 + ' ') >= 0;
-      }
-      var tagId = /^([a-zA-Z][\w-]*)#([^\s.#\[]+)$/.exec(s);
-      if (tagId) {
-        if (el.tagName !== tagId[1].toUpperCase()) return false;
-        return el.id === tagId[2] || el.getAttribute('id') === tagId[2];
-      }
-      // Tag name only — reject unsupported compound selectors.
-      if (!/^[a-zA-Z][\w-]*$/.test(s)) {
-        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
-      }
-      return el.tagName === s.toUpperCase();
     }
     for (var i = 0; i < this._children.length; i++) {
       walk(this._children[i]);
@@ -480,17 +484,7 @@
   };
 
   Element.prototype.matches = function (sel) {
-    var s = String(sel || '').trim();
-    if (!s) return false;
-    if (s.charAt(0) === '.') {
-      var cls = s.slice(1);
-      var cn = (this.className || this.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
-      return (' ' + cn + ' ').indexOf(' ' + cls + ' ') >= 0;
-    }
-    if (s.charAt(0) === '#') {
-      return this.id === s.slice(1) || this.getAttribute('id') === s.slice(1);
-    }
-    return this.tagName === s.toUpperCase();
+    return matchSelector(this, sel);
   };
 
   function TextNode(data) {

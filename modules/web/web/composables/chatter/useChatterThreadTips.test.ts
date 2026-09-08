@@ -124,6 +124,7 @@ describe('useChatterThreadTips', () => {
 
   test('does not start poll fallback when a tip stream is aborted by a newer subscription', async () => {
     let resolveFirst: (() => void) | undefined;
+    let resolveSecond: (() => void) | undefined;
     let call = 0;
     onTips.mockImplementation(() => {
       call += 1;
@@ -132,7 +133,9 @@ describe('useChatterThreadTips', () => {
           resolveFirst = resolve;
         });
       }
-      return Promise.resolve(undefined);
+      return new Promise<void>(resolve => {
+        resolveSecond = resolve;
+      });
     });
     const refresh = fnRecorder(async () => undefined);
     const model = ref('partner.Partner');
@@ -142,11 +145,18 @@ describe('useChatterThreadTips', () => {
     await flushPromises();
     resId.value = 'r2';
     await flushPromises();
+
+    // Aborted first stream settles while the live second stream is still pending.
     resolveFirst?.();
     await flushPromises();
     refresh.mockClear();
     await sleep(POLL_MS + 20);
-    // Only the second (non-aborted) subscription should poll.
+    expect(refresh.calls.length).toBe(0);
+
+    resolveSecond?.();
+    await flushPromises();
+    refresh.mockClear();
+    await sleep(POLL_MS + 20);
     expect(refresh.calls.length).toBeGreaterThan(0);
     scope.stop();
   });

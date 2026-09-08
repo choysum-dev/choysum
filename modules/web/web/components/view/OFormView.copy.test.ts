@@ -18,7 +18,7 @@ const NoopLoading = {
   },
 };
 
-function fakeStore() {
+function fakeStore(opts?: { DefaultGet?: (seed: any) => Promise<any> }) {
   return {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget',
@@ -27,7 +27,9 @@ function fakeStore() {
     setContext: () => {},
     getContext: () => ({}),
     withContext: async (_ctx: any, fn: any) => fn(),
-    DefaultGet: async (seed: any) => ({ ...(seed || {}), Code: 'server' }),
+    DefaultGet:
+      opts?.DefaultGet ??
+      (async (seed: any) => ({ ...(seed || {}), Code: 'server' })),
   } as any;
 }
 
@@ -36,13 +38,15 @@ describe('OFormView handleCopy awaits beginCreate', () => {
     setActivePinia(createPinia());
   });
 
-  function mountForm(extra?: { on?: Record<string, (...args: any[]) => void> }) {
+  function mountForm(
+    extra?: { on?: Record<string, (...args: any[]) => void>; store?: any }
+  ) {
     const { plugins } = buildPageMountGlobal({
       route: { path: '/demo/widget/1', params: { recordId: '1' }, query: {}, meta: {} },
     });
     return mountApp(OFormView as any, {
       props: {
-        store: fakeStore(),
+        store: extra?.store ?? fakeStore(),
         recordId: undefined,
         showHeader: true,
         showActions: true,
@@ -62,9 +66,16 @@ describe('OFormView handleCopy awaits beginCreate', () => {
   }
 
   test('Copy action awaits beginCreate with Id stripped from seed', async () => {
+    let resolveDefaultGet: ((row: any) => void) | undefined;
+    const store = fakeStore({
+      DefaultGet: () =>
+        new Promise(resolve => {
+          resolveDefaultGet = resolve;
+        }),
+    });
     const onCopy = fnRecorder();
     const onModeChange = fnRecorder();
-    const wrapper = mountForm({ on: { onCopy, onModeChange } });
+    const wrapper = mountForm({ on: { onCopy, onModeChange }, store });
     await flushPromises();
 
     const ss = wrapper.setupState();
@@ -73,15 +84,28 @@ describe('OFormView handleCopy awaits beginCreate', () => {
     ss.controller.vm.mode = 'display';
 
     expect(typeof wrapper.root.copy).toBe('function');
-    await wrapper.root.copy();
+    let copySettled = false;
+    const copyPromise = wrapper.root.copy().then(() => {
+      copySettled = true;
+    });
+    await flushPromises();
+    // beginCreate opens create mode immediately with the seed, then awaits DefaultGet.
+    expect(copySettled).toBe(false);
+    expect(ss.controller.vm.mode).toBe('create');
+    expect(ss.controller.vm.draft).toEqual({ Name: 'orig' });
+
+    resolveDefaultGet?.({ Name: 'from-server', Code: 'server' });
+    await copyPromise;
     await flushPromises();
 
+    expect(copySettled).toBe(true);
     expect(ss.controller.vm.mode).toBe('create');
-    expect(ss.controller.vm.draft).toMatchObject({ Name: 'orig' });
+    // Seed wins over DefaultGet for overlapping keys (Name); server fills the rest.
+    expect(ss.controller.vm.draft).toMatchObject({ Name: 'orig', Code: 'server' });
     expect(ss.controller.vm.draft).not.toHaveProperty('Id');
     expect(onCopy.calls.length).toBe(1);
     expect(onModeChange.calls.at(-1)).toEqual([{ mode: 'create' }]);
-    expect(wrapper.root.getFormData()).toMatchObject({ Name: 'orig' });
+    expect(wrapper.root.getFormData()).toMatchObject({ Name: 'orig', Code: 'server' });
     expect(wrapper.root.getViewMode()).toBe('create');
     expect(wrapper.root.isLoading()).toBe(false);
 

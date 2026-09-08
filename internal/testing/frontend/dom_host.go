@@ -248,6 +248,7 @@ const minimalConsoleScript = `(function () {
       var syncSearch = function () {
         var s = self.searchParams.toString();
         self.search = s ? "?" + s : "";
+        self.href = self.origin + self.pathname + self.search + self.hash;
       };
       var origSet = this.searchParams.set;
       this.searchParams.set = function (k, v) {

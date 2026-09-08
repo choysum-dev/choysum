@@ -491,8 +491,8 @@
     registry.push({
       name: fullName,
       fn: async function () {
-        await runHookList(befores);
         try {
+          await runHookList(befores);
           const r = fn();
           if (r && typeof r.then === 'function') await r;
         } finally {

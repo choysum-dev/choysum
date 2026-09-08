@@ -23,16 +23,24 @@ test('web shell _lt bindings: pins TermReference titles on web menus and routes'
   expect(routes.length).toBeGreaterThan(0);
 });
 
-test('web shell _lt bindings: breadcrumbStore factory-default _lt titles stay TermReferences', async () => {
+test('web shell _lt bindings: breadcrumbStore push preserves TermReference titles', async () => {
   const expectedPage = createTranslate('web', { scope: 'web/stores/breadcrumbStore' })._lt('Page');
   const expectedDetails = createTranslate('web', { scope: 'web/stores/breadcrumbStore' })._lt('Details');
+  setActivePinia(createPinia());
   const mod = await import('../stores/breadcrumbStore/index');
-  expect(typeof mod.useBreadcrumbStore).toBe('function');
-  expect(expectedPage.src).toBe('Page');
-  expect(expectedDetails.src).toBe('Details');
+  const store = mod.useBreadcrumbStore();
+  store.clearBreadcrumb();
+  store.pushBreadcrumb(expectedPage, '/demo');
+  expect(store.breadcrumbStack[0]?.title).toBe('Page');
+  expect(store.breadcrumbStack[0]?.titleText).toEqual(expectedPage);
+  store.pushBreadcrumb(expectedDetails, '/demo/abc1234567890123');
+  expect(store.breadcrumbStack[1]?.title).toBe('Details');
+  expect(store.breadcrumbStack[1]?.titleText).toEqual(expectedDetails);
 });
 
 test('web shell _lt bindings: mounts OFormView so detailsTitle _lt runs', async () => {
+  // Full /new create-success breadcrumb wiring is covered by form/breadcrumb suites;
+  // this pin keeps the OFormView module + detailsTitle _lt import graph exercised under QJS.
   setActivePinia(createPinia());
   const i18n = createI18n({
     legacy: false,

@@ -392,7 +392,10 @@ describe('useListInlineEdit', () => {
 
     await api.discard();
     Onchange.mockClear();
-    // After discard, controller is reset+paused again; no auto flush expected.
+    // After discard, controller is reset+paused again; mutation must not auto-RPC.
+    api.editingDraft.value = { Id: '1', Name: 'C' };
+    await flushPromises();
+    await sleep(40);
     expect(Onchange.calls.length).toBe(0);
     unmount();
   });
