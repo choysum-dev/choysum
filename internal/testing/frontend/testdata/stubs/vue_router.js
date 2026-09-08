@@ -6,7 +6,7 @@
  * Real vue-router is not required when this module is aliased.
  * Supports createRouter({ routes }) enough for named push / isReady / resolve.
  */
-import { inject, defineComponent, h } from 'vue';
+import { inject, defineComponent, h, reactive } from 'vue';
 
 var ROUTER_KEY = 'choysumFeStubRouter';
 var ROUTE_KEY = 'choysumFeStubRoute';
@@ -42,18 +42,20 @@ function applyRoute(route, next) {
 
 export function createFeStubRouter(overrides) {
   overrides = overrides || {};
-  var route = Object.assign(
-    {
-      path: '/',
-      fullPath: '/',
-      query: {},
-      params: {},
-      name: undefined,
-      meta: {},
-      matched: [],
-      redirectedFrom: undefined,
-    },
-    overrides.route || {}
+  var route = reactive(
+    Object.assign(
+      {
+        path: '/',
+        fullPath: '/',
+        query: {},
+        params: {},
+        name: undefined,
+        meta: {},
+        matched: [],
+        redirectedFrom: undefined,
+      },
+      overrides.route || {}
+    )
   );
   var router = Object.assign(
     {
