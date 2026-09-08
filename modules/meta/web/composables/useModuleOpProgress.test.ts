@@ -9,11 +9,11 @@ import {
 
 type CallRecorder = { calls: unknown[][] };
 
-function fnRecorder<T = undefined>(
-  impl?: (...args: unknown[]) => T | Promise<T>
-): CallRecorder & ((...args: unknown[]) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: unknown[]) => T | Promise<T>) = Object.assign(
-    (...args: unknown[]) => {
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
       rec.calls.push(args);
       return impl ? impl(...args) : (undefined as T);
     },
