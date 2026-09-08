@@ -8,44 +8,69 @@ function icon(name) {
   return makeIconStub(name);
 }
 
-export var User = icon('User');
-export var Lock = icon('Lock');
-export var Loading = icon('Loading');
-export var Plus = icon('Plus');
-export var Edit = icon('Edit');
-export var Delete = icon('Delete');
-export var Search = icon('Search');
-export var Setting = icon('Setting');
-export var Close = icon('Close');
 export var ArrowDown = icon('ArrowDown');
-export var ArrowRight = icon('ArrowRight');
 export var ArrowLeft = icon('ArrowLeft');
+export var ArrowRight = icon('ArrowRight');
+export var Bell = icon('Bell');
+export var Calendar = icon('Calendar');
+export var ChatDotRound = icon('ChatDotRound');
 export var Check = icon('Check');
-export var Warning = icon('Warning');
-export var InfoFilled = icon('InfoFilled');
+export var CircleCheckFilled = icon('CircleCheckFilled');
 export var CircleClose = icon('CircleClose');
-export var Refresh = icon('Refresh');
-export var RefreshRight = icon('RefreshRight');
+export var CircleCloseFilled = icon('CircleCloseFilled');
+export var Clock = icon('Clock');
+export var Close = icon('Close');
+export var Compass = icon('Compass');
+export var Connection = icon('Connection');
+export var Delete = icon('Delete');
+export var Document = icon('Document');
 export var Download = icon('Download');
-export var Upload = icon('Upload');
-export var View = icon('View');
+export var Edit = icon('Edit');
+export var EditPen = icon('EditPen');
+export var Filter = icon('Filter');
+export var Finished = icon('Finished');
+export var Folder = icon('Folder');
 export var Hide = icon('Hide');
+export var House = icon('House');
+export var InfoFilled = icon('InfoFilled');
+export var Key = icon('Key');
+export var Loading = icon('Loading');
+export var Lock = icon('Lock');
+export var Menu = icon('Menu');
+export var Message = icon('Message');
 export var More = icon('More');
 export var MoreFilled = icon('MoreFilled');
-export var Filter = icon('Filter');
+export var OfficeBuilding = icon('OfficeBuilding');
+export var Operation = icon('Operation');
+export var Picture = icon('Picture');
+export var Plus = icon('Plus');
+export var QuestionFilled = icon('QuestionFilled');
+export var Refresh = icon('Refresh');
+export var RefreshRight = icon('RefreshRight');
+export var School = icon('School');
+export var Search = icon('Search');
+export var SetUp = icon('SetUp');
+export var Setting = icon('Setting');
 export var Sort = icon('Sort');
-export var Calendar = icon('Calendar');
-export var Clock = icon('Clock');
-export var Document = icon('Document');
-export var Folder = icon('Folder');
-export var House = icon('House');
-export var Menu = icon('Menu');
 export var Star = icon('Star');
 export var StarFilled = icon('StarFilled');
+export var TrendCharts = icon('TrendCharts');
+export var Upload = icon('Upload');
+export var UploadFilled = icon('UploadFilled');
+export var User = icon('User');
+export var UserFilled = icon('UserFilled');
+export var VideoPlay = icon('VideoPlay');
+export var View = icon('View');
+export var Warning = icon('Warning');
+export var WarningFilled = icon('WarningFilled');
 
 export default {
-  User: User,
-  Lock: Lock,
-  Loading: Loading,
-  Refresh: Refresh,
+  ArrowDown: ArrowDown,
+  ArrowLeft: ArrowLeft,
+  ArrowRight: ArrowRight,
+  Bell: Bell,
+  Calendar: Calendar,
+  ChatDotRound: ChatDotRound,
+  Check: Check,
+  CircleCheckFilled: CircleCheckFilled,
 };

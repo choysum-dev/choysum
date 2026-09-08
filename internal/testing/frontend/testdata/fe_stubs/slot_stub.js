@@ -14,7 +14,11 @@ export function makeSlotStub(name) {
         if (ctx.slots && typeof ctx.slots.default === 'function') {
           children = children.concat(ctx.slots.default());
         }
-        return h('div', { class: 'fe-stub-' + String(name || 'x'), ...ctx.attrs }, children);
+        var stubClass = 'fe-stub-' + String(name || 'x');
+        var attrs = Object.assign({}, ctx.attrs || {});
+        var mergedClass = attrs.class ? stubClass + ' ' + attrs.class : stubClass;
+        attrs.class = mergedClass;
+        return h('div', attrs, children);
       };
     },
   });

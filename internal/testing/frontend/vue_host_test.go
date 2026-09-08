@@ -294,8 +294,13 @@ func TestChoysumMount_globalPlugins(t *testing.T) {
 	if errMsg, _ := result["error"].(string); errMsg != "" {
 		t.Fatalf("host error: %s", errMsg)
 	}
-	if text, _ := result["text"].(string); text != "from-provide-override" {
-		t.Fatalf("text = %v (want from-provide-override)", result["text"])
+	if text, _ := result["text"].(string); !strings.Contains(text, "from-provide-override") ||
+		!strings.Contains(text, "from-symbol-provide") ||
+		!strings.Contains(text, "extra") {
+		t.Fatalf("text = %v (want provide override + symbol + extra)", result["text"])
+	}
+	if extra, _ := result["extra"].(bool); !extra {
+		t.Fatalf("extra = %v (want true; global.components must render)", result["extra"])
 	}
 }
 

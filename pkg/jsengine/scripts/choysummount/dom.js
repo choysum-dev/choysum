@@ -93,7 +93,6 @@
     if (key === 'class') this.className = val;
     if (key === 'id') this.id = val;
     if (key === 'value' && this._formValue !== undefined) this._formValue = val;
-    if (key === 'checked') this._checked = val !== 'false' && val !== '0';
   };
 
   Element.prototype.removeAttribute = function (name) {
@@ -101,6 +100,8 @@
     delete this.attrs[key];
     if (key === 'class') this.className = '';
     if (key === 'id') this.id = '';
+    if (key === 'value') this._formValue = undefined;
+    if (key === 'checked') this._checked = undefined;
   };
 
   Object.defineProperty(Element.prototype, 'classList', {
@@ -198,6 +199,12 @@
   Element.prototype.focus = function () {};
   Element.prototype.blur = function () {};
   Element.prototype.click = function () {
+    var tag = String(this.tagName || '').toLowerCase();
+    var typ = String(this.getAttribute('type') || this.type || '').toLowerCase();
+    var disabled = this.getAttribute('disabled') != null || this.disabled === true;
+    if (!disabled && tag === 'input' && (typ === 'checkbox' || typ === 'radio')) {
+      this.checked = !this.checked;
+    }
     this.dispatchEvent(new Event('click', { bubbles: true }));
   };
 

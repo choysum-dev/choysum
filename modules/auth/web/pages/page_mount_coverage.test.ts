@@ -11,6 +11,6 @@ test('auth page mount: mounts real Login.vue under choysumMount', async () => {
   });
   await flushPromises();
   expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
-  expect(wrapper.text().includes('User Login') || wrapper.find('.fe-stub-ElCard').exists() || true).toBe(true);
+  expect(wrapper.text().includes('User Login') || wrapper.find('.fe-stub-ElCard').exists()).toBe(true);
   wrapper.unmount();
 });

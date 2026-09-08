@@ -646,7 +646,7 @@ func TestScanCoverageProbeBanned(t *testing.T) {
 		if h.Kind != IllegalCoverageProbe {
 			continue
 		}
-		if strings.Contains(h.Snippet, "CoverageProbe.vue") {
+		if h.Path == testFile && strings.Contains(h.Snippet, "CoverageProbe.vue") {
 			sawImport = true
 		}
 		if strings.HasSuffix(filepath.Base(h.Path), "CoverageProbe.vue") {

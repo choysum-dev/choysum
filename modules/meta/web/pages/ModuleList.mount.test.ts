@@ -11,6 +11,6 @@ test('ModuleList.vue mounts under choysumMount and runs script setup', async () 
   });
   await flushPromises();
   expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
-  expect(wrapper.text().includes('Module List') || true).toBe(true);
+  expect(wrapper.text().includes('Module List') || wrapper.find('[data-testid="fe-stub-opage"]').exists()).toBe(true);
   wrapper.unmount();
 });

@@ -59,7 +59,7 @@ function installGlobalOptions(app, globalOpts) {
       var plugin = plugins[i];
       if (!plugin) continue;
       if (Array.isArray(plugin)) {
-        app.use(plugin[0], plugin[1]);
+        app.use.apply(app, plugin);
       } else {
         app.use(plugin);
       }
@@ -67,7 +67,11 @@ function installGlobalOptions(app, globalOpts) {
   }
   var provideMap = globalOpts.provide;
   if (provideMap && typeof provideMap === 'object') {
-    Object.keys(provideMap).forEach(function (key) {
+    var provideKeys =
+      typeof Reflect !== 'undefined' && typeof Reflect.ownKeys === 'function'
+        ? Reflect.ownKeys(provideMap)
+        : Object.keys(provideMap);
+    provideKeys.forEach(function (key) {
       app.provide(key, provideMap[key]);
     });
   }

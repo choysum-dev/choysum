@@ -18,8 +18,9 @@ import (
 
 // Test seams for rare OS failures (overridden in unit tests).
 var (
-	osStat      = os.Stat
-	filepathAbs = filepath.Abs
+	osStat          = os.Stat
+	filepathAbs     = filepath.Abs
+	filepathWalkDir = filepath.WalkDir
 )
 
 // ScanMode controls whether illegal FE marks fail the scan.
@@ -187,6 +188,8 @@ func ScanAppIllegalFrontendMarks(repoRoot, app string) ([]IllegalMark, error) {
 
 // scanCoverageProbeFiles flags modules/<app>/web/**/CoverageProbe.vue on disk.
 func scanCoverageProbeFiles(repoRoot, app string) ([]IllegalMark, error) {
+	repoRoot = strings.TrimSpace(repoRoot)
+	app = strings.TrimSpace(app)
 	webRoot := filepath.Join(repoRoot, "modules", app, "web")
 	st, err := osStat(webRoot)
 	if err != nil {
@@ -199,7 +202,7 @@ func scanCoverageProbeFiles(repoRoot, app string) ([]IllegalMark, error) {
 		return nil, nil
 	}
 	var hits []IllegalMark
-	err = filepath.WalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
+	err = filepathWalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
