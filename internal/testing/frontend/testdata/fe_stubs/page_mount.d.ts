@@ -5,13 +5,16 @@
  * Type surface for `@choysum/page-mount` (FE unit QJS helper).
  * Runtime: esbuild aliases this to fe_stubs/page_mount.js (see host_bundle.go).
  */
+import type { Plugin } from 'vue';
+
 export type PageMountOverrides = {
   route?: Record<string, unknown>;
   router?: Record<string, unknown>;
 };
 
+/** Matches ChoysumMountGlobalOptions so callers can pass the result as mount `global`. */
 export type PageMountGlobal = {
-  plugins: unknown[];
+  plugins: Array<Plugin | [Plugin, unknown?]>;
 };
 
 export function buildPageMountGlobal(overrides?: PageMountOverrides): PageMountGlobal;
