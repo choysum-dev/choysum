@@ -19,6 +19,7 @@ import PartnerFormView from '../views/PartnerFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Partner from '@/partner/service/models/partner';
 import { useAuthStore } from '@/auth/web/stores/auth';
+import { buildPartnerPageInitialValues } from './partner_page_initial_values';
 
 defineOptions({ name: 'PartnerPage' });
 
@@ -30,29 +31,11 @@ const partnerStore = createStoreByModel<typeof Partner>('partner.Partner', {
 });
 
 /**
- * Auth metadata used to derive the default company for new partner records.
+ * Seed values used when the page creates a new partner record.
  */
 const identityMeta = ((authStore.identity as any)?.metadata ?? {}) as {
   activeCompanyId?: string;
   enabledCompanyIds?: string[];
 };
-const normalizedActiveCompanyId = String(identityMeta.activeCompanyId ?? '').trim();
-const normalizedEnabledCompanyIds = Array.isArray(identityMeta.enabledCompanyIds)
-  ? identityMeta.enabledCompanyIds.map(id => String(id ?? '').trim()).filter(Boolean)
-  : [];
-const defaultCompanyId =
-  normalizedActiveCompanyId && normalizedEnabledCompanyIds.includes(normalizedActiveCompanyId) ? normalizedActiveCompanyId : normalizedEnabledCompanyIds[0];
-
-/**
- * Seed values used when the page creates a new partner record.
- */
-const initialValues: Partial<Partner> = {
-  CompanyId: defaultCompanyId,
-  IsActive: true,
-  IsCompany: true,
-  CustomerRank: 0,
-  SupplierRank: 0,
-  Contacts: [],
-  Sequence: 10,
-};
+const initialValues: Partial<Partner> = buildPartnerPageInitialValues(identityMeta);
 </script>

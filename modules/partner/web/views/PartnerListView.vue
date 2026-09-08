@@ -41,12 +41,12 @@ import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vu
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { partnerActions, partnerOpenDetailAction } from './partner_actions';
 
 defineOptions({ name: 'PartnerListView', inheritAttrs: true });
-const { _t, _lt } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
+const { _t } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
 
 /**
  * Props consumed by the partner list view.
@@ -63,11 +63,6 @@ const router = useRouter();
 /**
  * Action descriptor used to open the partner detail page from the list.
  */
-const partnerOpenDetailAction = defineAction('partner.action.partner_open_detail', {
-  title: _lt('Open Partner Detail'),
-  requires: [{ model: 'partner.Partner' }],
-});
-const partnerActions = defineModelActions('partner.Partner', { entityTitle: _lt('Partner') });
 const { hasAction } = usePermission();
 
 /**
