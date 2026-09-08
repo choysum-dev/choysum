@@ -1,16 +1,29 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
 import { ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
 import { useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
+
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
 function dragEvent(partial?: Partial<DragEvent> & { throwTransfer?: boolean }): DragEvent {
   const transfer: any = {
     effectAllowed: '',
     dropEffect: '',
-    setData: vi.fn(),
+    setData: fnRecorder(),
   };
   if (partial?.throwTransfer) {
     Object.defineProperty(transfer, 'effectAllowed', {
@@ -23,17 +36,17 @@ function dragEvent(partial?: Partial<DragEvent> & { throwTransfer?: boolean }): 
     });
   }
   return {
-    preventDefault: vi.fn(),
-    stopPropagation: vi.fn(),
+    preventDefault: fnRecorder(),
+    stopPropagation: fnRecorder(),
     dataTransfer: transfer,
     ...partial,
   } as any;
 }
 
 describe('useListHandleReorder', () => {
-  it('ignores drag when disabled', () => {
+  test('ignores drag when disabled', () => {
     const enabled = ref(false);
-    const onReorder = vi.fn();
+    const onReorder = fnRecorder();
     const api = useListHandleReorder({
       rows: () => [{ Id: '1', Sequence: 1 }],
       enabled,
@@ -41,18 +54,18 @@ describe('useListHandleReorder', () => {
     });
     const e = dragEvent();
     api.onDragStart(0, e);
-    expect(e.preventDefault).toHaveBeenCalled();
+    expect((e.preventDefault as any).calls.length).toBe(1);
     expect(api.draggingIndex.value).toBeNull();
   });
 
-  it('reorders and renumbers with sequenceStart and getRecord', async () => {
+  test('reorders and renumbers with sequenceStart and getRecord', async () => {
     const enabled = ref(true);
     const rows = [
       { kind: 'record', payload: { Id: 'a', Sequence: 21 } },
       { kind: 'record', payload: { Id: 'b', Sequence: 22 } },
       { kind: 'record', payload: { Id: 'c', Sequence: 23 } },
     ];
-    const onReorder = vi.fn(async () => {});
+    const onReorder = fnRecorder(async () => {});
     const api = useListHandleReorder({
       rows: () => rows,
       enabled,
@@ -65,16 +78,16 @@ describe('useListHandleReorder', () => {
     const start = dragEvent();
     api.onDragStart(0, start);
     expect(api.draggingIndex.value).toBe(0);
-    expect(start.dataTransfer!.setData).toHaveBeenCalled();
+    expect((start.dataTransfer!.setData as any).calls.length).toBe(1);
 
     const over = dragEvent();
     api.onDragOver(2, over);
-    expect(over.preventDefault).toHaveBeenCalled();
+    expect((over.preventDefault as any).calls.length).toBe(1);
 
     const drop = dragEvent();
     await api.onDrop(2, drop);
-    expect(onReorder).toHaveBeenCalled();
-    const [nextRows, changed] = onReorder.mock.calls[0];
+    expect(onReorder.calls.length).toBe(1);
+    const [nextRows, changed] = onReorder.calls[0] as [any[], any[]];
     expect(nextRows.map((r: any) => r.payload.Id)).toEqual(['b', 'c', 'a']);
     expect(nextRows.map((r: any) => r.payload.Sequence)).toEqual([21, 22, 23]);
     expect(changed.map((c: any) => [c.row.payload.Id, c.previous, c.next])).toEqual([
@@ -87,9 +100,9 @@ describe('useListHandleReorder', () => {
     expect(api.draggingIndex.value).toBeNull();
   });
 
-  it('no-ops when drop index equals drag index or out of range', async () => {
+  test('no-ops when drop index equals drag index or out of range', async () => {
     const enabled = ref(true);
-    const onReorder = vi.fn();
+    const onReorder = fnRecorder();
     const api = useListHandleReorder({
       rows: () => [
         { Id: '1', Sequence: 1 },
@@ -100,61 +113,61 @@ describe('useListHandleReorder', () => {
     });
     api.onDragStart(1, dragEvent());
     await api.onDrop(1, dragEvent());
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onReorder.calls.length).toBe(0);
 
     api.onDragStart(0, dragEvent());
     await api.onDrop(99, dragEvent());
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onReorder.calls.length).toBe(0);
   });
 
-  it('no-ops drop when disabled or draggingIndex null', async () => {
+  test('no-ops drop when disabled or draggingIndex null', async () => {
     const enabled = ref(true);
-    const onReorder = vi.fn();
+    const onReorder = fnRecorder();
     const api = useListHandleReorder({
       rows: () => [{ Id: '1', Sequence: 1 }],
       enabled,
       onReorder,
     });
     await api.onDrop(0, dragEvent());
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onReorder.calls.length).toBe(0);
 
     enabled.value = false;
     api.draggingIndex.value = 0;
     await api.onDrop(0, dragEvent());
-    expect(onReorder).not.toHaveBeenCalled();
+    expect(onReorder.calls.length).toBe(0);
   });
 
-  it('tolerates dataTransfer assignment failures', () => {
+  test('tolerates dataTransfer assignment failures', () => {
     const enabled = ref(true);
     const api = useListHandleReorder({
       rows: () => [{ Id: '1', Sequence: 1 }],
       enabled,
-      onReorder: vi.fn(),
+      onReorder: fnRecorder(),
     });
     expect(() => api.onDragStart(0, dragEvent({ throwTransfer: true }))).not.toThrow();
     api.draggingIndex.value = 0;
     expect(() => api.onDragOver(0, dragEvent({ throwTransfer: true }))).not.toThrow();
   });
 
-  it('skips dragOver when not dragging', () => {
+  test('skips dragOver when not dragging', () => {
     const enabled = ref(true);
     const api = useListHandleReorder({
       rows: () => [{ Id: '1', Sequence: 1 }],
       enabled,
-      onReorder: vi.fn(),
+      onReorder: fnRecorder(),
     });
     const e = dragEvent();
     api.onDragOver(0, e);
-    expect(e.preventDefault).not.toHaveBeenCalled();
+    expect((e.preventDefault as any).calls.length).toBe(0);
   });
 
-  it('defaults handleField to Sequence when omitted', async () => {
+  test('defaults handleField to Sequence when omitted', async () => {
     const enabled = ref(true);
     const rows = [
       { Id: 'a', Sequence: 1 },
       { Id: 'b', Sequence: 2 },
     ];
-    const onReorder = vi.fn(async () => {});
+    const onReorder = fnRecorder(async () => {});
     const api = useListHandleReorder({
       rows: () => rows,
       enabled,
@@ -162,8 +175,8 @@ describe('useListHandleReorder', () => {
     });
     api.onDragStart(0, dragEvent());
     await api.onDrop(1, dragEvent());
-    expect(onReorder).toHaveBeenCalled();
-    const [nextRows] = onReorder.mock.calls[0];
+    expect(onReorder.calls.length).toBe(1);
+    const [nextRows] = onReorder.calls[0] as [any[]];
     expect(nextRows.map((r: any) => r.Id)).toEqual(['b', 'a']);
     expect(nextRows.map((r: any) => r.Sequence)).toEqual([1, 2]);
   });

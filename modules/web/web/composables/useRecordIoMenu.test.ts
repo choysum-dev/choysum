@@ -1,39 +1,43 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
+import {
+  clearGlobalRequestContextProvider,
+  setGlobalRequestContextProvider,
+} from '@/core/rpc/context';
+import { clearFieldsByStore, registerFieldPath } from '@/web/web/query/utils/registry/field';
 import { useRecordIoMenu } from './useRecordIoMenu';
 import { useRecordExportScope } from './useRecordExportScope';
 import { useRecordImportScope } from './useRecordImportScope';
 
-const { getCurrentRequestContext, buildUnifiedQuery, exportFieldSelection } = vi.hoisted(() => ({
-  getCurrentRequestContext: vi.fn(() => ({ activeCompanyId: 'cmp-1' })),
-  buildUnifiedQuery: vi.fn(() => ({ filters: { And: [] } })),
-  exportFieldSelection: vi.fn(() => ['Name', 'Id']),
-}));
+type CallRecorder = { calls: unknown[][] };
 
-vi.mock('@/core/rpc/context', () => ({
-  getCurrentRequestContext,
-}));
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
-vi.mock('@/web/web/query/context', () => ({
-  buildUnifiedQuery,
-}));
-
-vi.mock('@/web/web/query/utils/registry/field', () => ({
-  exportFieldSelection,
-}));
-
-vi.mock('@/core/web/export/field_paths', () => ({
-  normalizeExportFieldPaths: (paths: string[]) => paths.map(p => p.replace(/\./g, '/')),
-}));
+afterEach(() => {
+  clearGlobalRequestContextProvider();
+  clearFieldsByStore('s1');
+  clearFieldsByStore('s2');
+  clearFieldsByStore('s2b');
+  clearFieldsByStore('s3');
+});
 
 describe('useRecordIoMenu', () => {
-  it('builds import and export items when enabled', () => {
-    const openImport = vi.fn();
-    const openExport = vi.fn();
+  test('builds import and export items when enabled', () => {
+    const openImport = fnRecorder();
+    const openExport = fnRecorder();
     const { items, visible } = useRecordIoMenu({
       config: {
         import: { enabled: true },
@@ -46,11 +50,11 @@ describe('useRecordIoMenu', () => {
     expect(items.value.map(i => i.key)).toEqual(['import', 'export']);
     items.value[0].onClick();
     items.value[1].onClick();
-    expect(openImport).toHaveBeenCalled();
-    expect(openExport).toHaveBeenCalled();
+    expect(openImport.calls.length).toBe(1);
+    expect(openExport.calls.length).toBe(1);
   });
 
-  it('hides menu when neither import nor export is enabled', () => {
+  test('hides menu when neither import nor export is enabled', () => {
     const { visible, items } = useRecordIoMenu({
       config: {},
     });
@@ -58,9 +62,9 @@ describe('useRecordIoMenu', () => {
     expect(items.value).toEqual([]);
   });
 
-  it('reads config from a ref and accepts custom labels', () => {
-    const openImport = vi.fn();
-    const openExport = vi.fn();
+  test('reads config from a ref and accepts custom labels', () => {
+    const openImport = fnRecorder();
+    const openExport = fnRecorder();
     const config = ref({
       import: { enabled: true },
       export: { enabled: true },
@@ -84,9 +88,10 @@ describe('useRecordIoMenu', () => {
       { key: 'export', label: 'Ship out' },
     ]);
     menu.items.value[0].onClick();
-    expect(openExport).toHaveBeenCalled();
+    expect(openExport.calls.length).toBe(1);
   });
-  it('skips items when open callbacks are missing', () => {
+
+  test('skips items when open callbacks are missing', () => {
     const { items, visible } = useRecordIoMenu({
       config: {
         import: { enabled: true },
@@ -97,7 +102,7 @@ describe('useRecordIoMenu', () => {
     expect(visible.value).toBe(false);
   });
 
-  it('tolerates a nullish config value', () => {
+  test('tolerates a nullish config value', () => {
     const { items, visible } = useRecordIoMenu({
       config: ref(null) as any,
       openImport: () => undefined,
@@ -110,12 +115,11 @@ describe('useRecordIoMenu', () => {
 
 describe('useRecordExportScope', () => {
   beforeEach(() => {
-    getCurrentRequestContext.mockReturnValue({ activeCompanyId: 'cmp-1' });
-    buildUnifiedQuery.mockReturnValue({ filters: { And: [] } });
-    exportFieldSelection.mockReturnValue(['Name', 'Id']);
+    setGlobalRequestContextProvider({ activeCompanyId: 'cmp-1' });
   });
 
-  it('collects ids domain default fields and count', () => {
+  test('collects ids domain default fields and count', () => {
+    registerFieldPath('s1', 'Name');
     const listRef = ref({
       selectedItems: { value: [{ Id: 'a' }, { Id: '' }] },
     });
@@ -130,8 +134,8 @@ describe('useRecordExportScope', () => {
     expect(scope.filteredCount.value).toBe(9);
   });
 
-  it('reads selected ids from a plain array and companyId fallback', () => {
-    getCurrentRequestContext.mockReturnValue({ companyId: 'cmp-fallback' });
+  test('reads selected ids from a plain array and companyId fallback', () => {
+    setGlobalRequestContextProvider({ companyId: 'cmp-fallback' });
     const scope = useRecordExportScope({
       store: { storeId: 's2', state: { result: { total: 0 } } },
       getListRef: () => ({ selectedItems: [{ Id: 'x' }, { Id: 'y' }] }),
@@ -140,10 +144,10 @@ describe('useRecordExportScope', () => {
     expect(scope.ids.value).toEqual(['x', 'y']);
   });
 
-  it('returns empty ids when selectedItems value is not an array', () => {
-    getCurrentRequestContext.mockReturnValue(null);
+  test('returns empty ids when selectedItems value is not an array', () => {
+    clearGlobalRequestContextProvider();
     const scope = useRecordExportScope({
-      store: {},
+      store: { storeId: 's2' },
       getListRef: () => ({ selectedItems: { value: { unexpected: true } as any } }),
     });
     expect(scope.companyId.value).toBe('');
@@ -151,7 +155,7 @@ describe('useRecordExportScope', () => {
     expect(scope.filteredCount.value).toBe(0);
   });
 
-  it('filters blank ids from a plain selectedItems array', () => {
+  test('filters blank ids from a plain selectedItems array', () => {
     const scope = useRecordExportScope({
       store: { storeId: 's2', state: { result: {} } },
       getListRef: () => ({
@@ -162,7 +166,7 @@ describe('useRecordExportScope', () => {
     expect(scope.filteredCount.value).toBe(0);
   });
 
-  it('filters nullish ids from selectedItems.value', () => {
+  test('filters nullish ids from selectedItems.value', () => {
     const scope = useRecordExportScope({
       store: { storeId: 's2b' },
       getListRef: () => ({
@@ -172,27 +176,25 @@ describe('useRecordExportScope', () => {
     expect(scope.ids.value).toEqual(['ok']);
   });
 
-  it('returns empty ids when list ref has no selectedItems', () => {
+  test('returns empty ids when list ref has no selectedItems', () => {
     const scope = useRecordExportScope({
-      store: { state: { result: { total: 2 } } },
+      store: { storeId: 's2', state: { result: { total: 2 } } },
       getListRef: () => ({}),
     });
     expect(scope.ids.value).toEqual([]);
     expect(scope.filteredCount.value).toBe(2);
   });
 
-  it('returns empty default fields when selection is missing', () => {
-    exportFieldSelection.mockReturnValue(null);
+  test('returns empty default fields when selection is missing', () => {
     const scope = useRecordExportScope({
-      store: {},
+      store: { storeId: 's3' },
       getListRef: () => null,
     });
     expect(scope.defaultFields.value).toEqual([]);
     expect(scope.ids.value).toEqual([]);
   });
 
-  it('uses empty filters when buildUnifiedQuery omits filters', () => {
-    buildUnifiedQuery.mockReturnValue({});
+  test('uses empty filters when buildUnifiedQuery omits filters', () => {
     const scope = useRecordExportScope({
       store: { storeId: 's3' },
       getListRef: () => null,
@@ -203,10 +205,10 @@ describe('useRecordExportScope', () => {
 
 describe('useRecordImportScope', () => {
   beforeEach(() => {
-    getCurrentRequestContext.mockReturnValue({ activeCompanyId: 'cmp-1' });
+    setGlobalRequestContextProvider({ activeCompanyId: 'cmp-1' });
   });
 
-  it('resolves model mapping hint and company', () => {
+  test('resolves model mapping hint and company', () => {
     const scope = useRecordImportScope({
       model: 'partner.Partner',
       config: {
@@ -223,8 +225,8 @@ describe('useRecordImportScope', () => {
     expect(scope.uploadHint.value).toBe('hint');
   });
 
-  it('reads config from a ref and defaults mapping', () => {
-    getCurrentRequestContext.mockReturnValue({ companyId: 'from-company' });
+  test('reads config from a ref and defaults mapping', () => {
+    setGlobalRequestContextProvider({ companyId: 'from-company' });
     const model = ref('partner.Partner');
     const config = ref({
       import: { enabled: true },
@@ -241,7 +243,7 @@ describe('useRecordImportScope', () => {
     expect(scope.uploadHint.value).toBe('next');
   });
 
-  it('tolerates a nullish config value', () => {
+  test('tolerates a nullish config value', () => {
     const scope = useRecordImportScope({ model: 'partner.Partner', config: ref(null) as any });
     expect(scope.model.value).toBe('partner.Partner');
     expect(scope.columnMapping.value).toEqual({});

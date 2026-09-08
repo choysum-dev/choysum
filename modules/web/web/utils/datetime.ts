@@ -44,18 +44,25 @@ export function setUserTimeZoneResolver(resolver: UserTimeZoneResolver | undefin
   userTimeZoneResolver = resolver;
 }
 
+export type GetUserTimeZoneDeps = {
+  detectBrowserTimezone?: () => string;
+  resolveRequestTimezone?: typeof resolveRequestTimezone;
+};
+
 /**
  * Client-side display TZ aligned with §5.1 (without company fallback):
  * User.Timezone → browser IANA → UTC.
  */
-export function getUserTimeZone(): string {
+export function getUserTimeZone(deps?: GetUserTimeZoneDeps): string {
   let fromUser = '';
   try {
     fromUser = String(userTimeZoneResolver?.() || '').trim();
   } catch {
     fromUser = '';
   }
-  const resolved = resolveRequestTimezone(fromUser, detectBrowserTimezone());
+  const detect = deps?.detectBrowserTimezone ?? detectBrowserTimezone;
+  const resolve = deps?.resolveRequestTimezone ?? resolveRequestTimezone;
+  const resolved = resolve(fromUser, detect());
   return resolved || 'UTC';
 }
 

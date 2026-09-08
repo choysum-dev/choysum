@@ -341,8 +341,13 @@ async function sha256Hex(blob: Blob): Promise<string | undefined> {
   }
 }
 
-function resolveAttachmentContentService(store: WebModelStore<any>): AttachmentContentServiceLike {
-  const service = createStoreByModel('document.AttachmentContent') as unknown as AttachmentContentServiceLike;
+type CreateStoreByModel = typeof createStoreByModel;
+
+function resolveAttachmentContentService(
+  store: WebModelStore<any>,
+  createStore: CreateStoreByModel = createStoreByModel
+): AttachmentContentServiceLike {
+  const service = createStore('document.AttachmentContent') as unknown as AttachmentContentServiceLike;
   if (!service || typeof service.PrepareUpload !== 'function' || typeof service.FinalizeUpload !== 'function') {
     throw new Error(
       "[Attachment] document.AttachmentContent service is unavailable. Ensure module 'document' is installed and web dist artifacts are up to date."
@@ -529,6 +534,10 @@ async function resolveAttachmentFieldValue(raw: unknown, ctx: AttachmentResoluti
   throw new Error(`[Attachment] ${ctx.fieldName}: invalid attachment payload.`);
 }
 
+type AttachmentNormalizeDeps = {
+  createStoreByModel?: CreateStoreByModel;
+};
+
 async function normalizeAttachmentFieldsInPayload(
   store: WebModelStore<any>,
   payload: Record<string, unknown>,
@@ -537,12 +546,13 @@ async function normalizeAttachmentFieldsInPayload(
     ownerModel: string;
     ownerRecordId?: string;
     fields: string[];
-  }
+  },
+  deps: AttachmentNormalizeDeps = {}
 ): Promise<Record<string, unknown>> {
   if (!options.fields.length) return payload;
 
   const nextPayload: Record<string, unknown> = { ...payload };
-  const service = resolveAttachmentContentService(store);
+  const service = resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel));
 
   for (const fieldName of options.fields) {
     if (!Object.prototype.hasOwnProperty.call(nextPayload, fieldName)) continue;
@@ -579,7 +589,8 @@ async function preNormalizeDraftForDiff(
     ownerModel: string;
     ownerRecordId?: string;
     fields: string[];
-  }
+  },
+  deps: AttachmentNormalizeDeps = {}
 ): Promise<Record<string, unknown>> {
   if (!options.fields.length) return payload;
   const candidatePayload: Record<string, unknown> = { ...payload };
@@ -589,15 +600,50 @@ async function preNormalizeDraftForDiff(
   });
   if (!candidateFields.length) return candidatePayload;
 
-  return await normalizeAttachmentFieldsInPayload(store, candidatePayload, {
-    operation: 'update',
-    ownerModel: options.ownerModel,
-    ownerRecordId: options.ownerRecordId,
-    fields: candidateFields,
-  });
+  return await normalizeAttachmentFieldsInPayload(
+    store,
+    candidatePayload,
+    {
+      operation: 'update',
+      ownerModel: options.ownerModel,
+      ownerRecordId: options.ownerRecordId,
+      fields: candidateFields,
+    },
+    deps
+  );
 }
 
-export function createFormController(store: WebModelStore<any>): IFormViewController {
+/** Optional overrides used by unit tests; production callers omit this. */
+export type FormControllerDeps = {
+  createStoreByModel?: CreateStoreByModel;
+  buildBrowseContext?: typeof buildBrowseContext;
+  buildPlan?: typeof buildPlan;
+  execute?: typeof execute;
+  flashRead?: typeof flashRead;
+  awaitFieldSelection?: typeof awaitFieldSelection;
+  exportFieldSelection?: typeof exportFieldSelection;
+  handoffSet?: (id: string, record: unknown) => void;
+};
+
+function pickDep<T>(override: T | undefined, fallback: T): T {
+  return override !== undefined ? override : fallback;
+}
+
+function defaultHandoffSet(id: string, record: unknown): void {
+  handoffCache.set(id, record);
+}
+
+export function createFormController(store: WebModelStore<any>, deps: FormControllerDeps = {}): IFormViewController {
+  const createStore = pickDep(deps.createStoreByModel, createStoreByModel);
+  const runBuildBrowseContext = pickDep(deps.buildBrowseContext, buildBrowseContext);
+  const runBuildPlan = pickDep(deps.buildPlan, buildPlan);
+  const runExecute = pickDep(deps.execute, execute);
+  const runFlashRead = pickDep(deps.flashRead, flashRead);
+  const runAwaitFieldSelection = pickDep(deps.awaitFieldSelection, awaitFieldSelection);
+  const runExportFieldSelection = pickDep(deps.exportFieldSelection, exportFieldSelection);
+  const runHandoffSet = pickDep(deps.handoffSet, defaultHandoffSet);
+  const attachmentDeps: AttachmentNormalizeDeps = { createStoreByModel: createStore };
+
   const vm = reactive<FormViewModel>({
     mode: 'display',
     draft: null,
@@ -617,7 +663,7 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
     vm.mode = 'display';
 
     // Handoff Optimization: Check if we have a fresh object passed from a previous action
-    const cached = flashRead(recordId);
+    const cached = runFlashRead(recordId);
     if (cached) {
       vm.original = clone(cached);
       vm.draft = clone(cached);
@@ -637,14 +683,14 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
     try {
       // Wait once for field registration so the request can use a reduced field selection.
       try {
-        if (!exportFieldSelection((store as any).storeId)?.length) {
-          await awaitFieldSelection(store as any, { maxTries: 5, requireNonEmpty: false });
+        if (!runExportFieldSelection((store as any).storeId)?.length) {
+          await runAwaitFieldSelection(store as any, { maxTries: 5, requireNonEmpty: false });
         }
       } catch {}
-      const ctx = buildBrowseContext(store, recordId);
-      const bundle = buildPlan(ctx);
+      const ctx = runBuildBrowseContext(store, recordId);
+      const bundle = runBuildPlan(ctx);
       const snap = await aborts.execute('form.load', async signal => {
-        const r = await execute(bundle, store, 'form', { signal });
+        const r = await runExecute(bundle, store, 'form', { signal, createStoreByModel: createStore });
         if (signal.aborted) throw new CancellationError();
         return r;
       });
@@ -724,15 +770,20 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
       const attachmentFields = attachmentFieldNames(store);
 
       // Use the currently registered view fields to request fresh data from the backend.
-      const rawPaths = exportFieldSelection(store.storeId);
+      const rawPaths = runExportFieldSelection(store.storeId);
       const returnFields = ensureRootId(pathsToFieldSelection(rawPaths));
 
       if (vm.mode === 'create') {
-        const normalizedPayload = await normalizeAttachmentFieldsInPayload(store, payload, {
-          operation: 'create',
-          ownerModel,
-          fields: attachmentFields,
-        });
+        const normalizedPayload = await normalizeAttachmentFieldsInPayload(
+          store,
+          payload,
+          {
+            operation: 'create',
+            ownerModel,
+            fields: attachmentFields,
+          },
+          attachmentDeps
+        );
 
         // Create(payload, returnFields) -> T
         const createRes = await store.Create(normalizedPayload, returnFields);
@@ -746,7 +797,7 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
             vm.original = clone(record);
             vm.draft = clone(record);
             // The outer route decides when to leave create mode, but the data is ready now.
-            handoffCache.set(String(newId), record);
+            runHandoffSet(String(newId), record);
           }
         } else if (typeof createRes === 'string') {
           // Compatibility fallback for the legacy id-only response shape.
@@ -766,18 +817,28 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
 
         const original = toRaw(vm.original);
         const fieldsMeta = (store as any)?.fieldsMetadata;
-        const draftForDiff = await preNormalizeDraftForDiff(store, payload || {}, {
-          ownerModel,
-          ownerRecordId,
-          fields: attachmentFields,
-        });
+        const draftForDiff = await preNormalizeDraftForDiff(
+          store,
+          payload,
+          {
+            ownerModel,
+            ownerRecordId,
+            fields: attachmentFields,
+          },
+          attachmentDeps
+        );
         const patch = buildUpdatePayload(original || {}, draftForDiff || {}, fieldsMeta) as Record<string, unknown>;
-        const normalizedPatch = await normalizeAttachmentFieldsInPayload(store, patch || {}, {
-          operation: 'update',
-          ownerModel,
-          ownerRecordId,
-          fields: attachmentFields,
-        });
+        const normalizedPatch = await normalizeAttachmentFieldsInPayload(
+          store,
+          patch,
+          {
+            operation: 'update',
+            ownerModel,
+            ownerRecordId,
+            fields: attachmentFields,
+          },
+          attachmentDeps
+        );
         const touchedAttachmentFields = hasAttachmentFieldMutation(normalizedPatch, attachmentFields);
 
         // UpdateById(id, patch, returnFields) -> Partial<T>
@@ -804,7 +865,7 @@ export function createFormController(store: WebModelStore<any>): IFormViewContro
                 vm.mode = 'display';
               }
             }
-            handoffCache.set(String(recordId), (vm.original as any) || updated);
+            runHandoffSet(String(recordId), (vm.original as any) ?? updated);
           }
         } else {
           // Fallback to a reload when the backend does not return an updated object.

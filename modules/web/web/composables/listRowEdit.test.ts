@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import {
   cloneRowDraft,
   collectRowDirtyPayload,
@@ -17,10 +16,9 @@ import {
   withEditingPayload,
 } from '@/web/web/composables/listRowEdit';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import * as diff from '@/core/utils/diff';
 
 describe('listRowEdit helpers', () => {
-  it('unwrapListRecord covers wrappers and passthrough', () => {
+  test('unwrapListRecord covers wrappers and passthrough', () => {
     expect(unwrapListRecord(null)).toBeNull();
     expect(unwrapListRecord(undefined)).toBeUndefined();
     const payload = { Id: '1', Name: 'A' };
@@ -30,7 +28,7 @@ describe('listRowEdit helpers', () => {
     expect(unwrapListRecord(payload)).toEqual(payload);
   });
 
-  it('isListRecordRow rejects invalid and accepts record shapes', () => {
+  test('isListRecordRow rejects invalid and accepts record shapes', () => {
     expect(isListRecordRow(null)).toBe(false);
     expect(isListRecordRow('x')).toBe(false);
     expect(isListRecordRow({ kind: 'group' })).toBe(false);
@@ -41,14 +39,14 @@ describe('listRowEdit helpers', () => {
     expect(isListRecordRow({ Name: 'no-id' })).toBe(false);
   });
 
-  it('listRecordId reads Id/id and returns empty when missing', () => {
+  test('listRecordId reads Id/id and returns empty when missing', () => {
     expect(listRecordId({ Id: 7 })).toBe('7');
     expect(listRecordId({ kind: 'record', payload: { id: 'x' } })).toBe('x');
     expect(listRecordId({ Name: 'n' })).toBe('');
     expect(listRecordId(null)).toBe('');
   });
 
-  it('cloneRowDraft deep-clones plain row data', () => {
+  test('cloneRowDraft deep-clones plain row data', () => {
     const src = { Id: '1', Name: 'A', nested: { x: 1 } };
     const draft = cloneRowDraft(src);
     expect(draft).toEqual(src);
@@ -57,7 +55,7 @@ describe('listRowEdit helpers', () => {
     expect(src.nested.x).toBe(1);
   });
 
-  it('isNumericHandleField accepts numeric types only', () => {
+  test('isNumericHandleField accepts numeric types only', () => {
     expect(isNumericHandleField(undefined)).toBe(false);
     expect(isNumericHandleField({ id: '1', type: '' } as any)).toBe(false);
     expect(isNumericHandleField({ id: '1', type: undefined } as any)).toBe(false);
@@ -69,7 +67,7 @@ describe('listRowEdit helpers', () => {
     expect(isNumericHandleField({ id: '1', type: 'varchar', typeAnnotation: '' } as any)).toBe(false);
   });
 
-  it('hasHandleField requires store, field, writable numeric meta', () => {
+  test('hasHandleField requires store, field, writable numeric meta', () => {
     expect(hasHandleField(undefined)).toBe(false);
     expect(hasHandleField({ fieldsMetadata: {} } as any, '')).toBe(false);
     expect(hasHandleField({ fieldsMetadata: null } as any, 'Sequence')).toBe(false);
@@ -87,7 +85,7 @@ describe('listRowEdit helpers', () => {
     expect(hasHandleField(store, 'Missing')).toBe(false);
   });
 
-  it('renumberSequence writes sequences and skips unchanged', () => {
+  test('renumberSequence writes sequences and skips unchanged', () => {
     const rows = [{ Sequence: 10 }, { Sequence: 20 }, { Sequence: 30 }];
     expect(renumberSequence(rows, 'Sequence')).toHaveLength(3);
     expect(rows.map(r => r.Sequence)).toEqual([1, 2, 3]);
@@ -104,7 +102,7 @@ describe('listRowEdit helpers', () => {
     expect(badStart[0].Sequence).toBe(1);
   });
 
-  it('collectRowDirtyPayload skips dotted paths and readonly fields', () => {
+  test('collectRowDirtyPayload skips dotted paths and readonly fields', () => {
     const original = { Id: '1', Name: 'A', Sequence: 1, Nested: { x: 1 } };
     const draft = { Id: '1', Name: 'B', Sequence: 2, Nested: { x: 1 } };
     const payload = collectRowDirtyPayload(original, draft, {
@@ -117,16 +115,19 @@ describe('listRowEdit helpers', () => {
     expect(isRowDraftDirty(original, null)).toBe(false);
   });
 
-  it('collectRowDirtyPayload skips empty paths from collectChangedPaths', () => {
-    const spy = vi.spyOn(diff, 'collectChangedPaths').mockReturnValue(new Set(['', 'Name']));
-    const payload = collectRowDirtyPayload({ Name: 'A' }, { Name: 'B' }, {
-      Name: { id: '1', type: 'string', typeAnnotation: '' },
-    });
+  test('collectRowDirtyPayload skips empty paths from collectChangedPaths', () => {
+    const payload = collectRowDirtyPayload(
+      { Name: 'A' },
+      { Name: 'B' },
+      {
+        Name: { id: '1', type: 'string', typeAnnotation: '' },
+      },
+      () => new Set(['', 'Name'])
+    );
     expect(payload).toEqual({ Name: 'B' });
-    spy.mockRestore();
   });
 
-  it('withEditingPayload swaps kind/type/plain rows', () => {
+  test('withEditingPayload swaps kind/type/plain rows', () => {
     const draft = { Id: '1', Name: 'Draft' };
     expect(withEditingPayload({ kind: 'record', payload: { Id: '1' } }, null, draft)).toEqual({
       kind: 'record',
@@ -144,7 +145,7 @@ describe('listRowEdit helpers', () => {
     expect(withEditingPayload({ kind: 'record', payload: { Id: '1' } }, '2', draft).payload.Id).toBe('1');
   });
 
-  it('getDraftField and setDraftField handle nested paths', () => {
+  test('getDraftField and setDraftField handle nested paths', () => {
     expect(getDraftField(null, 'a.b')).toBeNull();
     const draft: any = {};
     setDraftField(null, 'a', 1);
@@ -157,7 +158,7 @@ describe('listRowEdit helpers', () => {
     expect(draft.a.b).toBe(1);
   });
 
-  it('setDraftField and collectRowDirtyPayload reject prototype-pollution keys', () => {
+  test('setDraftField and collectRowDirtyPayload reject prototype-pollution keys', () => {
     const draft: any = { Name: 'A' };
     setDraftField(draft, '__proto__.polluted', true);
     setDraftField(draft, 'constructor.prototype.x', 1);
@@ -165,10 +166,13 @@ describe('listRowEdit helpers', () => {
     expect(draft.Name).toBe('A');
     expect(Object.prototype.hasOwnProperty.call(draft, '__proto__')).toBe(false);
 
-    const spy = vi.spyOn(diff, 'collectChangedPaths').mockReturnValue(new Set(['__proto__', 'Name']));
-    const payload = collectRowDirtyPayload({ Name: 'A' }, { Name: 'B', __proto__: { x: 1 } } as any);
+    const payload = collectRowDirtyPayload(
+      { Name: 'A' },
+      { Name: 'B', __proto__: { x: 1 } } as any,
+      undefined,
+      () => new Set(['__proto__', 'Name'])
+    );
     expect(payload).toEqual({ Name: 'B' });
     expect(Object.getPrototypeOf(payload)).toBe(Object.prototype);
-    spy.mockRestore();
   });
 });

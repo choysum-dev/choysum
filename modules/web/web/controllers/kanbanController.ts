@@ -17,6 +17,14 @@ import { asPresentCondition } from '@/web/web/query/utils/condition/absent';
 
 // Lane & IKanbanController centralized in query/types.ts
 
+/** Combine per-lane conditions for a batch aggregate refresh. */
+export function combineLaneAggregateConditions(laneConditions: unknown[]): unknown {
+  const present = laneConditions.map(c => asPresentCondition(c));
+  if (laneConditions.length <= 1) return present[0];
+  if (present.some(c => c === undefined)) return undefined;
+  return { Or: present };
+}
+
 /**
  * Creates a kanban controller backed by the shared list controller.
  */
@@ -233,13 +241,7 @@ export function createKanbanController(store: WebModelStore<any>): IKanbanContro
 
     // Combine lane conditions with OR. A lane without a condition means "all":
     // if any selected lane is unconditioned, do not constrain the batch query.
-    const presentLaneConditions = targetLanes.map(l => asPresentCondition(l.condition));
-    const combinedCondition =
-      targetLanes.length === 1
-        ? presentLaneConditions[0]
-        : presentLaneConditions.some(c => c === undefined)
-          ? undefined
-          : { Or: presentLaneConditions };
+    const combinedCondition = combineLaneAggregateConditions(targetLanes.map(l => l.condition));
 
     // Let the unified query builder merge global and lane-specific conditions.
     const ctx = buildUnifiedQuery(store, {

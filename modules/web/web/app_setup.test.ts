@@ -2,107 +2,24 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { nextTick } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const exposeBrowserI18nOnWindow = vi.hoisted(() => vi.fn());
-const registerGlobalDirectives = vi.hoisted(() => vi.fn());
-const setGlobalRequestContextProvider = vi.hoisted(() => vi.fn());
-const setUserTimeZoneResolver = vi.hoisted(() => vi.fn());
-const mergeLocaleMessage = vi.hoisted(() => vi.fn());
-const loadVueI18nMessages = vi.hoisted(() => vi.fn());
-const createAppRouter = vi.hoisted(() => vi.fn(() => ({ name: 'router' })));
-const createAppMenu = vi.hoisted(() => vi.fn(() => ({ name: 'menu' })));
-const createTerminologyCatalogMerger = vi.hoisted(() => vi.fn());
-const resolveRequestTimezone = vi.hoisted(() => vi.fn());
-const detectBrowserTimezone = vi.hoisted(() => vi.fn());
-
-const storeState = vi.hoisted(() => {
-  const { reactive, ref } = require('vue') as typeof import('vue');
-  return {
-    currentLocale: reactive({ code: 'en', elementLocale: { name: 'en' } }),
-    lastTerminologyLoad: ref<unknown>(null),
-    i18nLocale: ref('en'),
-  };
-});
-
-let mockAuthStore: Record<string, unknown>;
-let requestContextProvider: (() => Record<string, string>) | undefined;
-let userTimeZoneResolver: (() => string | null) | undefined;
-let terminologyMerger: ((terminology: unknown, locale: string) => void) | undefined;
-let catalogMerge: ((locale: string, messages: unknown) => void) | undefined;
-
-vi.mock('./i18n', async importOriginal => {
-  const actual = await importOriginal<typeof import('./i18n')>();
-  return {
-    ...actual,
-    exposeBrowserI18nOnWindow,
-  };
-});
-vi.mock('./directives', () => ({ registerGlobalDirectives }));
-vi.mock('pinia', () => ({ createPinia: () => ({ use: () => ({}) }) }));
-vi.mock('pinia-plugin-persistedstate', () => ({ default: vi.fn() }));
-vi.mock('./stores/i18nStore', () => ({
-  useI18nStore: () => ({
-    get currentLocale() {
-      return storeState.currentLocale;
-    },
-    terminologyLang: 'en_US',
-    get lastTerminologyLoad() {
-      return storeState.lastTerminologyLoad.value;
-    },
-    getDateTimeFormats: () => ({ short: {} }),
-    getNumberFormats: () => ({ currency: {} }),
-    loadVueI18nMessages,
-  }),
-}));
-vi.mock('@/auth/web/stores/auth', () => ({
-  useAuthStore: () => mockAuthStore,
-}));
-vi.mock('@/core/rpc/context', () => ({
-  setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
-    setGlobalRequestContextProvider(provider);
-    requestContextProvider = provider;
-  },
-}));
-vi.mock('./utils/request_timezone', () => ({
-  detectBrowserTimezone,
-  resolveRequestTimezone,
-}));
-vi.mock('./utils/datetime', () => ({
-  setUserTimeZoneResolver: (resolver: () => string | null) => {
-    setUserTimeZoneResolver(resolver);
-    userTimeZoneResolver = resolver;
-  },
-}));
-vi.mock('vue-i18n', () => ({
-  createI18n: vi.fn(() => ({
-    global: {
-      locale: storeState.i18nLocale,
-      mergeLocaleMessage,
-    },
-  })),
-}));
-vi.mock('./i18n/source', () => ({ default: { hello: 'Hello' } }));
-vi.mock('./stores/i18nStore/merge', () => ({
-  createTerminologyCatalogMerger: (opts: {
-    merge: (locale: string, messages: unknown) => void;
-    notify: () => void;
-  }) => {
-    createTerminologyCatalogMerger(opts);
-    catalogMerge = opts.merge;
-    terminologyMerger = vi.fn((terminology: unknown, locale: string) => {
-      opts.merge(locale, terminology);
-    });
-    return terminologyMerger;
-  },
-}));
-vi.mock('./router', () => ({ createAppRouter }));
-vi.mock('./menu', () => ({ createAppMenu }));
-vi.mock('element-plus', () => ({ default: { name: 'ElementPlus' } }));
-
-import { setupApp } from './app_setup';
+import { nextTick, reactive, ref } from 'vue';
+import { setupApp, type SetupAppDeps } from './app_setup';
 import { notifyComposerMessagesChanged } from './i18n';
+
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
 function makeApp(elementLocale: Record<string, unknown> = { name: 'en' }) {
   return {
@@ -111,174 +28,500 @@ function makeApp(elementLocale: Record<string, unknown> = { name: 'en' }) {
         $ELEMENT: { locale: elementLocale },
       },
     },
-    usePlugin: vi.fn(),
+    usePlugin: fnRecorder(),
   };
 }
 
-describe('setupApp', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    storeState.currentLocale.code = 'en';
-    storeState.currentLocale.elementLocale = { name: 'en' };
-    storeState.lastTerminologyLoad.value = null;
-    storeState.i18nLocale.value = 'en';
-    mockAuthStore = {};
-    requestContextProvider = undefined;
-    userTimeZoneResolver = undefined;
-    terminologyMerger = undefined;
-    catalogMerge = undefined;
-    loadVueI18nMessages.mockResolvedValue(null);
-    resolveRequestTimezone.mockImplementation((userTz: string, browserTz: string | null) => userTz || browserTz || '');
-    detectBrowserTimezone.mockReturnValue('Asia/Shanghai');
+function pluginNames(app: ReturnType<typeof makeApp>): string[] {
+  return app.usePlugin.calls.map(call => String(call[0]));
+}
+
+test('setupApp > registers plugins and exposes browser i18n globals', () => {
+  const registerGlobalDirectives = fnRecorder();
+  const exposeBrowserI18nOnWindow = fnRecorder();
+  const createAppRouter = fnRecorder(() => ({ name: 'router' }));
+  const createAppMenu = fnRecorder(() => ({ name: 'menu' }));
+  const createTerminologyCatalogMerger = fnRecorder(() => fnRecorder());
+  const pinia = { name: 'pinia' };
+  const createPinia = () => ({ use: () => pinia }) as any;
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const lastTerminologyLoad = ref<unknown>(null);
+  const i18nLocale = ref('en');
+  const mergeLocaleMessage = fnRecorder();
+  const loadVueI18nMessages = fnRecorder(async () => null);
+  const createI18n = fnRecorder(() => ({
+    global: {
+      locale: i18nLocale,
+      mergeLocaleMessage,
+    },
+  })) as any;
+
+  const app = makeApp();
+  setupApp(app as any, {
+    registerGlobalDirectives: registerGlobalDirectives as any,
+    createPinia,
+    piniaPluginPersistedstate: (() => {}) as any,
+    useI18nStore: (() => ({
+      currentLocale,
+      terminologyLang: 'en_US',
+      lastTerminologyLoad: lastTerminologyLoad.value,
+      getDateTimeFormats: () => ({ short: {} }),
+      getNumberFormats: () => ({ currency: {} }),
+      loadVueI18nMessages,
+    })) as any,
+    setUserTimeZoneResolver: fnRecorder() as any,
+    setGlobalRequestContextProvider: fnRecorder() as any,
+    resolveRequestTimezone: ((userTz: string, browserTz: string | null) => userTz || browserTz || '') as any,
+    detectBrowserTimezone: (() => 'Asia/Shanghai') as any,
+    useAuthStore: (() => ({})) as any,
+    createI18n,
+    sourceMessages: { hello: 'Hello' } as any,
+    createTerminologyCatalogMerger: createTerminologyCatalogMerger as any,
+    projectTerminologyMessages: (m: unknown) => m as any,
+    exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
+    notifyComposerMessagesChanged,
+    trackComposerMessageRevision: ((v: unknown) => v) as any,
+    createAppRouter: createAppRouter as any,
+    createAppMenu: createAppMenu as any,
+    ElementPlus: { name: 'ElementPlus' } as any,
+    baseUrl: '/',
+    hasWindow: () => true,
   });
 
-  it('registers plugins and exposes browser i18n globals', () => {
-    const app = makeApp();
+  expect(registerGlobalDirectives.calls.length).toBe(1);
+  expect(registerGlobalDirectives.calls[0][0]).toBe(app);
+  expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
+  expect(createAppRouter.calls.length).toBe(1);
+  expect(createAppMenu.calls.length).toBe(1);
+  expect(createTerminologyCatalogMerger.calls.length).toBe(1);
+  const mergerOpts = createTerminologyCatalogMerger.calls[0][0] as {
+    merge: unknown;
+    notify: unknown;
+  };
+  expect(typeof mergerOpts.merge).toBe('function');
+  expect(mergerOpts.notify).toBe(notifyComposerMessagesChanged);
+});
 
-    setupApp(app as any);
+test('setupApp > skips browser i18n expose without window', () => {
+  const exposeBrowserI18nOnWindow = fnRecorder();
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const i18nLocale = ref('en');
 
-    expect(registerGlobalDirectives).toHaveBeenCalledWith(app);
-    expect(exposeBrowserI18nOnWindow).toHaveBeenCalledTimes(1);
-    expect(app.usePlugin).toHaveBeenCalledWith('pinia', expect.anything(), {}, false);
-    expect(app.usePlugin).toHaveBeenCalledWith('i18n', expect.anything());
-    expect(app.usePlugin).toHaveBeenCalledWith('router', expect.anything());
-    expect(app.usePlugin).toHaveBeenCalledWith('menu', expect.anything());
-    expect(app.usePlugin).toHaveBeenCalledWith('element-plus', expect.anything(), expect.anything());
-    expect(createAppRouter).toHaveBeenCalled();
-    expect(createAppMenu).toHaveBeenCalled();
-    expect(createTerminologyCatalogMerger).toHaveBeenCalledWith({
-      merge: expect.any(Function),
-      notify: notifyComposerMessagesChanged,
-    });
+  setupApp(makeApp() as any, {
+    registerGlobalDirectives: fnRecorder() as any,
+    createPinia: (() => ({ use: () => ({}) })) as any,
+    piniaPluginPersistedstate: (() => {}) as any,
+    useI18nStore: (() => ({
+      currentLocale,
+      terminologyLang: 'en_US',
+      lastTerminologyLoad: null,
+      getDateTimeFormats: () => ({}),
+      getNumberFormats: () => ({}),
+      loadVueI18nMessages: async () => null,
+    })) as any,
+    setUserTimeZoneResolver: fnRecorder() as any,
+    setGlobalRequestContextProvider: fnRecorder() as any,
+    resolveRequestTimezone: ((a: string, b: string | null) => a || b || '') as any,
+    detectBrowserTimezone: (() => '') as any,
+    useAuthStore: (() => ({})) as any,
+    createI18n: (() => ({
+      global: { locale: i18nLocale, mergeLocaleMessage: fnRecorder() },
+    })) as any,
+    sourceMessages: {} as any,
+    createTerminologyCatalogMerger: (() => fnRecorder()) as any,
+    projectTerminologyMessages: (m: unknown) => m as any,
+    exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
+    notifyComposerMessagesChanged,
+    trackComposerMessageRevision: ((v: unknown) => v) as any,
+    createAppRouter: (() => ({})) as any,
+    createAppMenu: (() => ({})) as any,
+    ElementPlus: {} as any,
+    baseUrl: '/',
+    hasWindow: () => false,
   });
 
-  it('skips browser i18n expose without window', () => {
-    const originalWindow = globalThis.window;
-    // @ts-expect-error simulate non-browser runtime
-    delete globalThis.window;
-    setupApp(makeApp() as any);
-    expect(exposeBrowserI18nOnWindow).not.toHaveBeenCalled();
-    globalThis.window = originalWindow;
-  });
+  expect(exposeBrowserI18nOnWindow.calls.length).toBe(0);
+});
 
-  it('resolves user timezone from auth store', () => {
-    mockAuthStore = {
+test('setupApp > resolves user timezone from auth store', () => {
+  let userTimeZoneResolver: (() => string | null) | undefined;
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const i18nLocale = ref('en');
+
+  setupApp(makeApp() as any, {
+    registerGlobalDirectives: fnRecorder() as any,
+    createPinia: (() => ({ use: () => ({}) })) as any,
+    piniaPluginPersistedstate: (() => {}) as any,
+    useI18nStore: (() => ({
+      currentLocale,
+      terminologyLang: 'en_US',
+      lastTerminologyLoad: null,
+      getDateTimeFormats: () => ({}),
+      getNumberFormats: () => ({}),
+      loadVueI18nMessages: async () => null,
+    })) as any,
+    setUserTimeZoneResolver: (resolver: () => string | null) => {
+      userTimeZoneResolver = resolver;
+    },
+    setGlobalRequestContextProvider: fnRecorder() as any,
+    resolveRequestTimezone: ((a: string, b: string | null) => a || b || '') as any,
+    detectBrowserTimezone: (() => '') as any,
+    useAuthStore: (() => ({
       currentUser: { Timezone: 'Europe/Berlin' },
       identity: { metadata: { timezone: 'UTC' } },
-    };
-
-    setupApp(makeApp() as any);
-
-    expect(userTimeZoneResolver?.()).toBe('Europe/Berlin');
+    })) as any,
+    createI18n: (() => ({
+      global: { locale: i18nLocale, mergeLocaleMessage: fnRecorder() },
+    })) as any,
+    sourceMessages: {} as any,
+    createTerminologyCatalogMerger: (() => fnRecorder()) as any,
+    projectTerminologyMessages: (m: unknown) => m as any,
+    exposeBrowserI18nOnWindow: fnRecorder() as any,
+    notifyComposerMessagesChanged,
+    trackComposerMessageRevision: ((v: unknown) => v) as any,
+    createAppRouter: (() => ({})) as any,
+    createAppMenu: (() => ({})) as any,
+    ElementPlus: {} as any,
+    baseUrl: '/',
+    hasWindow: () => false,
   });
 
-  it('falls back to identity timezone and swallows auth lookup failures', () => {
-    mockAuthStore = {
+  expect(userTimeZoneResolver?.()).toBe('Europe/Berlin');
+});
+
+test('setupApp > falls back to identity timezone and swallows auth lookup failures', () => {
+  let userTimeZoneResolver: (() => string | null) | undefined;
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const i18nLocale = ref('en');
+
+  setupApp(makeApp() as any, {
+    registerGlobalDirectives: fnRecorder() as any,
+    createPinia: (() => ({ use: () => ({}) })) as any,
+    piniaPluginPersistedstate: (() => {}) as any,
+    useI18nStore: (() => ({
+      currentLocale,
+      terminologyLang: 'en_US',
+      lastTerminologyLoad: null,
+      getDateTimeFormats: () => ({}),
+      getNumberFormats: () => ({}),
+      loadVueI18nMessages: async () => null,
+    })) as any,
+    setUserTimeZoneResolver: (resolver: () => string | null) => {
+      userTimeZoneResolver = resolver;
+    },
+    setGlobalRequestContextProvider: fnRecorder() as any,
+    resolveRequestTimezone: ((a: string, b: string | null) => a || b || '') as any,
+    detectBrowserTimezone: (() => '') as any,
+    useAuthStore: (() => ({
       get currentUser() {
         throw new Error('auth unavailable');
       },
       identity: { metadata: { timezone: 'America/New_York' } },
-    };
-
-    setupApp(makeApp() as any);
-
-    expect(userTimeZoneResolver?.()).toBeNull();
+    })) as any,
+    createI18n: (() => ({
+      global: { locale: i18nLocale, mergeLocaleMessage: fnRecorder() },
+    })) as any,
+    sourceMessages: {} as any,
+    createTerminologyCatalogMerger: (() => fnRecorder()) as any,
+    projectTerminologyMessages: (m: unknown) => m as any,
+    exposeBrowserI18nOnWindow: fnRecorder() as any,
+    notifyComposerMessagesChanged,
+    trackComposerMessageRevision: ((v: unknown) => v) as any,
+    createAppRouter: (() => ({})) as any,
+    createAppMenu: (() => ({})) as any,
+    ElementPlus: {} as any,
+    baseUrl: '/',
+    hasWindow: () => false,
   });
 
-  it('builds request context with terminology lang and resolved tz', () => {
-    mockAuthStore = {
-      currentUser: { Timezone: 'Europe/Berlin' },
-    };
-    resolveRequestTimezone.mockReturnValue('Europe/Berlin');
-    storeState.currentLocale.code = 'zh-CN';
-    storeState.currentLocale.elementLocale = { name: 'zh-CN' };
+  expect(userTimeZoneResolver?.()).toBeNull();
+});
 
-    setupApp(makeApp() as any);
+function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {}): SetupAppDeps {
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const lastTerminologyLoad = ref<unknown>(null);
+  const i18nLocale = ref('en');
+  const store = {
+    currentLocale,
+    terminologyLang: 'en_US',
+    get lastTerminologyLoad() {
+      return lastTerminologyLoad.value;
+    },
+    getDateTimeFormats: () => ({}),
+    getNumberFormats: () => ({}),
+    loadVueI18nMessages: async () => null as unknown,
+  };
+  const deps: SetupAppDeps & { _store: typeof store; _lastTerminologyLoad: typeof lastTerminologyLoad; _i18nLocale: typeof i18nLocale } = {
+    registerGlobalDirectives: fnRecorder() as any,
+    createPinia: (() => ({ use: () => ({}) })) as any,
+    piniaPluginPersistedstate: (() => {}) as any,
+    useI18nStore: (() => store) as any,
+    setUserTimeZoneResolver: fnRecorder() as any,
+    setGlobalRequestContextProvider: fnRecorder() as any,
+    resolveRequestTimezone: ((userTz: string, browserTz: string | null) => userTz || browserTz || '') as any,
+    detectBrowserTimezone: (() => 'Asia/Shanghai') as any,
+    useAuthStore: (() => ({})) as any,
+    createI18n: (() => ({
+      global: { locale: i18nLocale, mergeLocaleMessage: fnRecorder() },
+    })) as any,
+    sourceMessages: {} as any,
+    createTerminologyCatalogMerger: (() => fnRecorder()) as any,
+    projectTerminologyMessages: (m: unknown) => m as any,
+    exposeBrowserI18nOnWindow: fnRecorder() as any,
+    notifyComposerMessagesChanged,
+    trackComposerMessageRevision: ((v: unknown) => v) as any,
+    createAppRouter: (() => ({})) as any,
+    createAppMenu: (() => ({})) as any,
+    ElementPlus: {} as any,
+    baseUrl: '/',
+    hasWindow: () => false,
+    _store: store,
+    _lastTerminologyLoad: lastTerminologyLoad,
+    _i18nLocale: i18nLocale,
+    ...overrides,
+  };
+  return deps;
+}
 
-    expect(requestContextProvider?.()).toEqual({
-      locale: 'zh-CN',
-      lang: 'en_US',
-      tz: 'Europe/Berlin',
-    });
+test('setupApp > builds request context with terminology lang and resolved tz', () => {
+  let requestContextProvider: (() => Record<string, string>) | undefined;
+  const deps = baseDeps({
+    useAuthStore: (() => ({ currentUser: { Timezone: 'Europe/Berlin' } })) as any,
+    resolveRequestTimezone: (() => 'Europe/Berlin') as any,
+    setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+      requestContextProvider = provider;
+    },
   });
+  (deps as any)._store.currentLocale.code = 'zh-CN';
+  (deps as any)._store.currentLocale.elementLocale = { name: 'zh-CN' };
 
-  it('omits tz from request context when unresolved', () => {
-    resolveRequestTimezone.mockReturnValue('');
+  setupApp(makeApp() as any, deps);
 
-    setupApp(makeApp() as any);
-
-    expect(requestContextProvider?.()).toEqual({
-      locale: 'en',
-      lang: 'en_US',
-    });
+  expect(requestContextProvider?.()).toEqual({
+    locale: 'zh-CN',
+    lang: 'en_US',
+    tz: 'Europe/Berlin',
   });
+});
 
-  it('swallows auth errors while building request context timezone', () => {
-    mockAuthStore = {
-      get currentUser() {
-        throw new Error('auth unavailable');
+test('setupApp > falls back to identity metadata timezone when currentUser has none', () => {
+  let userTimeZoneResolver: (() => string | null) | undefined;
+  let requestContextProvider: (() => Record<string, string>) | undefined;
+
+  setupApp(
+    makeApp() as any,
+    baseDeps({
+      setUserTimeZoneResolver: (resolver: () => string | null) => {
+        userTimeZoneResolver = resolver;
       },
-    };
-    resolveRequestTimezone.mockReturnValue('UTC');
+      setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+        requestContextProvider = provider;
+      },
+      useAuthStore: (() => ({
+        currentUser: {},
+        identity: { metadata: { timezone: 'America/Chicago' } },
+      })) as any,
+      resolveRequestTimezone: ((a: string, b: string | null) => a || b || '') as any,
+    })
+  );
 
-    setupApp(makeApp() as any);
+  expect(userTimeZoneResolver?.()).toBe('America/Chicago');
+  expect(requestContextProvider?.()).toMatchObject({ tz: 'America/Chicago' });
+});
 
-    expect(requestContextProvider?.()).toEqual({
-      locale: 'en',
-      lang: 'en_US',
-      tz: 'UTC',
+test('setupApp > omits tz from request context when unresolved', () => {
+  let requestContextProvider: (() => Record<string, string>) | undefined;
+  setupApp(
+    makeApp() as any,
+    baseDeps({
+      resolveRequestTimezone: (() => '') as any,
+      setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+        requestContextProvider = provider;
+      },
+    })
+  );
+
+  expect(requestContextProvider?.()).toEqual({
+    locale: 'en',
+    lang: 'en_US',
+  });
+});
+
+test('setupApp > swallows auth errors while building request context timezone', () => {
+  let requestContextProvider: (() => Record<string, string>) | undefined;
+  setupApp(
+    makeApp() as any,
+    baseDeps({
+      useAuthStore: (() => ({
+        get currentUser() {
+          throw new Error('auth unavailable');
+        },
+      })) as any,
+      resolveRequestTimezone: (() => 'UTC') as any,
+      setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+        requestContextProvider = provider;
+      },
+    })
+  );
+
+  expect(requestContextProvider?.()).toEqual({
+    locale: 'en',
+    lang: 'en_US',
+    tz: 'UTC',
+  });
+});
+
+test('setupApp > updates Element Plus locale and legacy messages on locale change', async () => {
+  const elementLocale = { name: 'zh-CN' };
+  const app = makeApp(elementLocale);
+  const mergeLocaleMessage = fnRecorder();
+  const loadVueI18nMessages = fnRecorder(async () => ({ legacy: 'messages' }));
+  const i18nLocale = ref('en');
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const store = {
+    currentLocale,
+    terminologyLang: 'en_US',
+    lastTerminologyLoad: null as unknown,
+    getDateTimeFormats: () => ({}),
+    getNumberFormats: () => ({}),
+    loadVueI18nMessages,
+  };
+
+  setupApp(app as any, {
+    ...baseDeps(),
+    useI18nStore: (() => store) as any,
+    createI18n: (() => ({
+      global: { locale: i18nLocale, mergeLocaleMessage },
+    })) as any,
+  });
+
+  currentLocale.code = 'zh-CN';
+  currentLocale.elementLocale = elementLocale;
+  await nextTick();
+  await nextTick();
+
+  expect(app.config.globalProperties.$ELEMENT.locale).toEqual(elementLocale);
+  expect(loadVueI18nMessages.calls.map(c => c[0])).toEqual(['zh-CN']);
+  expect(mergeLocaleMessage.calls).toEqual([['zh-CN', { legacy: 'messages' }]]);
+  expect(i18nLocale.value).toBe('zh-CN');
+});
+
+test('setupApp > warns when legacy locale messages fail to load', async () => {
+  const warns: unknown[][] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warns.push(args);
+  };
+  try {
+    const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+    const i18nLocale = ref('en');
+    const loadVueI18nMessages = fnRecorder(async () => {
+      throw new Error('network');
     });
+    setupApp(makeApp() as any, {
+      ...baseDeps(),
+      useI18nStore: (() => ({
+        currentLocale,
+        terminologyLang: 'en_US',
+        lastTerminologyLoad: null,
+        getDateTimeFormats: () => ({}),
+        getNumberFormats: () => ({}),
+        loadVueI18nMessages,
+      })) as any,
+      createI18n: (() => ({
+        global: { locale: i18nLocale, mergeLocaleMessage: fnRecorder() },
+      })) as any,
+    });
+
+    currentLocale.code = 'zh-CN';
+    currentLocale.elementLocale = { name: 'zh-CN' };
+    await nextTick();
+    await nextTick();
+
+    expect(warns.length).toBe(1);
+    expect(String(warns[0][0])).toContain('Failed to load legacy locale messages for zh-CN');
+    expect(warns[0][1] instanceof Error).toBe(true);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test('setupApp > merges terminology catalog updates from the i18n store', async () => {
+  const mergeLocaleMessage = fnRecorder();
+  const terminologyMerger = fnRecorder();
+  const lastTerminologyLoad = ref<unknown>(null);
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const i18nLocale = ref('en');
+  const store = {
+    currentLocale,
+    terminologyLang: 'en_US',
+    get lastTerminologyLoad() {
+      return lastTerminologyLoad.value;
+    },
+    getDateTimeFormats: () => ({}),
+    getNumberFormats: () => ({}),
+    loadVueI18nMessages: async () => null,
+  };
+
+  setupApp(makeApp() as any, {
+    ...baseDeps(),
+    useI18nStore: (() => store) as any,
+    createI18n: (() => ({
+      global: { locale: i18nLocale, mergeLocaleMessage },
+    })) as any,
+    createTerminologyCatalogMerger: ((opts: { merge: (locale: string, messages: unknown) => void }) => {
+      return (terminology: unknown, locale: string) => {
+        terminologyMerger(terminology, locale);
+        opts.merge(locale, terminology);
+      };
+    }) as any,
+    projectTerminologyMessages: (m: unknown) => m as any,
   });
 
-  it('updates Element Plus locale and legacy messages on locale change', async () => {
-    const elementLocale = { name: 'zh-CN' };
-    const app = makeApp(elementLocale);
-    loadVueI18nMessages.mockResolvedValue({ legacy: 'messages' });
+  lastTerminologyLoad.value = { auth: { menu: { Users: '用户' } } };
+  currentLocale.code = 'zh-CN';
+  currentLocale.elementLocale = { name: 'zh-CN' };
+  await nextTick();
 
-    setupApp(app as any);
-    storeState.currentLocale.code = 'zh-CN';
-    storeState.currentLocale.elementLocale = elementLocale;
+  expect(terminologyMerger.calls).toEqual([[{ auth: { menu: { Users: '用户' } } }, 'zh-CN']]);
+  expect(mergeLocaleMessage.calls.length).toBeGreaterThan(0);
+});
 
-    await nextTick();
-    await nextTick();
+test('setupApp > uses production defaults for omitted deps', () => {
+  const app = makeApp();
+  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const i18nLocale = ref('en');
+  const exposeBrowserI18nOnWindow = fnRecorder();
 
-    expect(app.config.globalProperties.$ELEMENT.locale).toStrictEqual(elementLocale);
-    expect(loadVueI18nMessages).toHaveBeenCalledWith('zh-CN');
-    expect(mergeLocaleMessage).toHaveBeenCalledWith('zh-CN', { legacy: 'messages' });
-    expect(storeState.i18nLocale.value).toBe('zh-CN');
+  // Omit baseUrl/hasWindow/ElementPlus/sourceMessages/piniaPlugin/timezone helpers/
+  // terminology project/notify/track so those `deps.x ?? default` arms execute.
+  setupApp(app as any, {
+    registerGlobalDirectives: fnRecorder() as any,
+    createPinia: (() => {
+      const pinia = { name: 'pinia' };
+      return { use: () => pinia };
+    }) as any,
+    useI18nStore: (() => ({
+      currentLocale,
+      terminologyLang: 'en_US',
+      lastTerminologyLoad: null,
+      getDateTimeFormats: () => ({}),
+      getNumberFormats: () => ({}),
+      loadVueI18nMessages: async () => null,
+    })) as any,
+    setUserTimeZoneResolver: fnRecorder() as any,
+    setGlobalRequestContextProvider: fnRecorder() as any,
+    useAuthStore: (() => ({})) as any,
+    createI18n: (() => ({
+      global: { locale: i18nLocale, mergeLocaleMessage: fnRecorder() },
+    })) as any,
+    createTerminologyCatalogMerger: (() => fnRecorder()) as any,
+    exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
+    createAppRouter: (() => ({})) as any,
+    createAppMenu: (() => ({})) as any,
   });
 
-  it('warns when legacy locale messages fail to load', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    loadVueI18nMessages.mockRejectedValue(new Error('network'));
-
-    setupApp(makeApp() as any);
-    storeState.currentLocale.code = 'zh-CN';
-    storeState.currentLocale.elementLocale = { name: 'zh-CN' };
-
-    await nextTick();
-    await nextTick();
-
-    expect(warn).toHaveBeenCalledWith(
-      'Failed to load legacy locale messages for zh-CN',
-      expect.any(Error)
-    );
-    warn.mockRestore();
-  });
-
-  it('merges terminology catalog updates from the i18n store', async () => {
-    setupApp(makeApp() as any);
-
-    storeState.lastTerminologyLoad.value = { auth: { menu: { Users: '用户' } } };
-    storeState.currentLocale.code = 'zh-CN';
-    storeState.currentLocale.elementLocale = { name: 'zh-CN' };
-
-    await nextTick();
-
-    expect(terminologyMerger).toHaveBeenCalledWith(
-      { auth: { menu: { Users: '用户' } } },
-      'zh-CN'
-    );
-    expect(mergeLocaleMessage).toHaveBeenCalled();
-  });
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
+  expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
 });

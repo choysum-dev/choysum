@@ -7,265 +7,265 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/partner.ts:77
+#: service/models/partner.ts:81
 msgctxt "partner.model.Partner.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/partner.ts:51
+#: service/models/partner.ts:55
 msgctxt "partner.model.Partner.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/partner.ts:67
+#: service/models/partner.ts:71
 msgctxt "partner.model.Partner.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/partner.ts:203
-#: service/models/partner.ts:222
-#: service/models/partner.ts:241
+#: service/models/partner.ts:207
+#: service/models/partner.ts:226
+#: service/models/partner.ts:245
 msgctxt "partner.model.Partner.fields"
 msgid "Computed from contacts; edit contacts to change defaults."
 msgstr ""
 
-#: service/models/partner.ts:193
+#: service/models/partner.ts:197
 msgctxt "partner.model.Partner.fields"
 msgid "Contacts and Addresses"
 msgstr ""
 
-#: service/models/partner.ts:149
+#: service/models/partner.ts:153
 msgctxt "partner.model.Partner.fields"
 msgid "Country"
 msgstr ""
 
-#: service/models/partner.ts:100
+#: service/models/partner.ts:104
 msgctxt "partner.model.Partner.fields"
 msgid "Customer Rank"
 msgstr ""
 
-#: service/models/partner.ts:221
+#: service/models/partner.ts:225
 msgctxt "partner.model.Partner.fields"
 msgid "Default Billing Address"
 msgstr ""
 
-#: service/models/partner.ts:202
+#: service/models/partner.ts:206
 msgctxt "partner.model.Partner.fields"
 msgid "Default Contact"
 msgstr ""
 
-#: service/models/partner.ts:138
+#: service/models/partner.ts:142
 msgctxt "partner.model.Partner.fields"
 msgid "Default Currency"
 msgstr ""
 
-#: service/models/partner.ts:127
+#: service/models/partner.ts:131
 msgctxt "partner.model.Partner.fields"
 msgid "Default Language"
 msgstr ""
 
-#: service/models/partner.ts:240
+#: service/models/partner.ts:244
 msgctxt "partner.model.Partner.fields"
 msgid "Default Shipping Address"
 msgstr ""
 
-#: service/models/partner.ts:167
+#: service/models/partner.ts:171
 msgctxt "partner.model.Partner.fields"
 msgid "Email"
 msgstr ""
 
-#: service/models/partner.ts:158
+#: service/models/partner.ts:162
 msgctxt "partner.model.Partner.fields"
 msgid "External Reference"
 msgstr ""
 
-#: service/models/partner.ts:185
+#: service/models/partner.ts:189
 msgctxt "partner.model.Partner.fields"
 msgid "Mobile"
 msgstr ""
 
-#: service/models/partner.ts:40
+#: service/models/partner.ts:44
 msgctxt "partner.model.Partner.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/partner.ts:101
+#: service/models/partner.ts:105
 msgctxt "partner.model.Partner.fields"
 msgid "Non-zero marks the partner as a customer; higher ranks sort first."
 msgstr ""
 
-#: service/models/partner.ts:114
+#: service/models/partner.ts:118
 msgctxt "partner.model.Partner.fields"
 msgid "Non-zero marks the partner as a supplier; higher ranks sort first."
 msgstr ""
 
-#: service/models/partner.ts:269
+#: service/models/partner.ts:273
 msgctxt "partner.model.Partner.fields"
 msgid "Notes"
 msgstr ""
 
-#: service/models/partner.ts:87
+#: service/models/partner.ts:91
 msgctxt "partner.model.Partner.fields"
 msgid "Organization"
 msgstr ""
 
-#: service/models/partner.ts:176
+#: service/models/partner.ts:180
 msgctxt "partner.model.Partner.fields"
 msgid "Phone"
 msgstr ""
 
-#: service/models/partner.ts:260
+#: service/models/partner.ts:264
 msgctxt "partner.model.Partner.fields"
 msgid "Sequence"
 msgstr ""
 
-#: service/models/partner.ts:113
+#: service/models/partner.ts:117
 msgctxt "partner.model.Partner.fields"
 msgid "Supplier Rank"
 msgstr ""
 
-#: service/models/partner.ts:88
+#: service/models/partner.ts:92
 msgctxt "partner.model.Partner.fields"
 msgid "Uncheck for an individual person rather than an organization."
 msgstr ""
 
-#: service/models/partner.ts:52
+#: service/models/partner.ts:56
 msgctxt "partner.model.Partner.fields"
 msgid "Unique within the company; stored in uppercase."
 msgstr ""
 
-#: service/models/partner_contact.ts:151
+#: service/models/partner_contact.ts:155
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/partner_contact.ts:116
+#: service/models/partner_contact.ts:120
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Address"
 msgstr ""
 
-#: service/models/partner_contact.ts:125
+#: service/models/partner_contact.ts:129
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Address Type"
 msgstr ""
 
-#: service/models/partner_contact.ts:169
+#: service/models/partner_contact.ts:173
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Attention To"
 msgstr ""
 
-#: service/models/partner_contact.ts:41
+#: service/models/partner_contact.ts:45
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/partner_contact.ts:138
+#: service/models/partner_contact.ts:142
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Default"
 msgstr ""
 
-#: service/models/partner_contact.ts:97
+#: service/models/partner_contact.ts:101
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Department"
 msgstr ""
 
-#: service/models/partner_contact.ts:59
+#: service/models/partner_contact.ts:63
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Email"
 msgstr ""
 
-#: service/models/partner_contact.ts:77
+#: service/models/partner_contact.ts:81
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Mobile"
 msgstr ""
 
-#: service/models/partner_contact.ts:50
+#: service/models/partner_contact.ts:54
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/partner_contact.ts:178
+#: service/models/partner_contact.ts:182
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Notes"
 msgstr ""
 
-#: service/models/partner_contact.ts:139
+#: service/models/partner_contact.ts:143
 msgctxt "partner.model.PartnerContact.fields"
 msgid "One default contact per partner and address type; used by partner default pickers."
 msgstr ""
 
-#: service/models/partner_contact.ts:30
+#: service/models/partner_contact.ts:34
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Partner"
 msgstr ""
 
-#: service/models/partner_contact.ts:68
+#: service/models/partner_contact.ts:72
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Phone"
 msgstr ""
 
-#: service/models/partner_contact.ts:106
+#: service/models/partner_contact.ts:110
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/partner_contact.ts:161
+#: service/models/partner_contact.ts:165
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Sequence"
 msgstr ""
 
-#: service/models/partner_contact.ts:87
+#: service/models/partner_contact.ts:91
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Title"
 msgstr ""
 
-#: service/models/partner_contact.ts:126
+#: service/models/partner_contact.ts:130
 msgctxt "partner.model.PartnerContact.fields"
 msgid "billing/shipping/office/registered/other; drives partner default addresses."
 msgstr ""
 
-#: service/models/partner.ts:317
+#: service/models/partner.ts:321
 msgctxt "service/models/partner"
 msgid "CompanyId is required"
 msgstr ""
 
-#: service/models/partner.ts:329
+#: service/models/partner.ts:333
 msgctxt "service/models/partner"
 msgid "Partner Code must be unique within the company"
 msgstr ""
 
-#: service/models/partner_contact.ts:187
+#: service/models/partner_contact.ts:191
 msgctxt "service/models/partner_contact"
 msgid "AddressType must be one of billing, shipping, office, registered, other"
 msgstr ""
 
-#: service/models/partner_contact.ts:281
+#: service/models/partner_contact.ts:285
 msgctxt "service/models/partner_contact"
 msgid "CompanyId is required"
 msgstr ""
 
-#: service/models/partner_contact.ts:215
+#: service/models/partner_contact.ts:219
 msgctxt "service/models/partner_contact"
 msgid "Only one default %s contact is allowed for the same partner"
 msgstr ""
 
-#: service/models/partner_contact.ts:227
+#: service/models/partner_contact.ts:231
 msgctxt "service/models/partner_contact"
 msgid "PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile"
 msgstr ""
 
-#: service/models/partner_contact.ts:199
-#: service/models/partner_contact.ts:280
+#: service/models/partner_contact.ts:203
+#: service/models/partner_contact.ts:284
 msgctxt "service/models/partner_contact"
 msgid "PartnerId is required"
 msgstr ""
 
-#: web/menu/menus.ts:21
+#: web/menu/titles.ts:10
 msgctxt "web/menu/menus"
 msgid "Partner List"
 msgstr ""
 
-#: web/menu/menus.ts:16
+#: web/menu/titles.ts:9
 msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr ""
@@ -315,12 +315,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Basic Information"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:86
+#: web/views/PartnerFormView.vue:85
 msgctxt "web/views/PartnerFormView"
 msgid "Billing Address"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:108
+#: web/views/PartnerFormView.vue:107
 msgctxt "web/views/PartnerFormView"
 msgid "Billing Contact"
 msgstr ""
@@ -340,16 +340,6 @@ msgctxt "web/views/PartnerFormView"
 msgid "Contacts and Addresses"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:57
-msgctxt "web/views/PartnerFormView"
-msgid "Copy Partner"
-msgstr ""
-
-#: web/views/PartnerFormView.vue:57
-msgctxt "web/views/PartnerFormView"
-msgid "Create Partner"
-msgstr ""
-
 #: web/views/PartnerFormView.vue:121
 msgctxt "web/views/PartnerFormView"
 msgid "Default"
@@ -365,11 +355,6 @@ msgctxt "web/views/PartnerFormView"
 msgid "Delete"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:57
-msgctxt "web/views/PartnerFormView"
-msgid "Delete Partner"
-msgstr ""
-
 #: web/views/PartnerFormView.vue:130
 msgctxt "web/views/PartnerFormView"
 msgid "Edit"
@@ -380,22 +365,17 @@ msgctxt "web/views/PartnerFormView"
 msgid "Edit Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:57
-msgctxt "web/views/PartnerFormView"
-msgid "Edit Partner"
-msgstr ""
-
 #: web/views/PartnerFormView.vue:127
 msgctxt "web/views/PartnerFormView"
 msgid "Email"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:116
+#: web/views/PartnerFormView.vue:115
 msgctxt "web/views/PartnerFormView"
 msgid "Finance Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:106
+#: web/views/PartnerFormView.vue:105
 msgctxt "web/views/PartnerFormView"
 msgid "General Contact"
 msgstr ""
@@ -405,7 +385,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Inactive"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:118
+#: web/views/PartnerFormView.vue:117
 msgctxt "web/views/PartnerFormView"
 msgid "Legal Contact"
 msgstr ""
@@ -415,19 +395,14 @@ msgctxt "web/views/PartnerFormView"
 msgid "New Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:90
+#: web/views/PartnerFormView.vue:89
 msgctxt "web/views/PartnerFormView"
 msgid "Office Address"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:94
+#: web/views/PartnerFormView.vue:93
 msgctxt "web/views/PartnerFormView"
 msgid "Other"
-msgstr ""
-
-#: web/views/PartnerFormView.vue:57
-msgctxt "web/views/PartnerFormView"
-msgid "Partner"
 msgstr ""
 
 #: web/views/PartnerFormView.vue:128
@@ -435,12 +410,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Phone"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:112
+#: web/views/PartnerFormView.vue:111
 msgctxt "web/views/PartnerFormView"
 msgid "Procurement Contact"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:92
+#: web/views/PartnerFormView.vue:91
 msgctxt "web/views/PartnerFormView"
 msgid "Registered Address"
 msgstr ""
@@ -460,7 +435,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Role"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:114
+#: web/views/PartnerFormView.vue:113
 msgctxt "web/views/PartnerFormView"
 msgid "Sales Contact"
 msgstr ""
@@ -485,12 +460,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Select Language"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:88
+#: web/views/PartnerFormView.vue:87
 msgctxt "web/views/PartnerFormView"
 msgid "Shipping Address"
 msgstr ""
 
-#: web/views/PartnerFormView.vue:110
+#: web/views/PartnerFormView.vue:109
 msgctxt "web/views/PartnerFormView"
 msgid "Shipping Contact"
 msgstr ""
@@ -503,35 +478,5 @@ msgstr ""
 #: web/views/PartnerFormView.vue:115
 msgctxt "web/views/PartnerFormView"
 msgid "View Contact"
-msgstr ""
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Copy Partner"
-msgstr ""
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Create Partner"
-msgstr ""
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Delete Partner"
-msgstr ""
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Edit Partner"
-msgstr ""
-
-#: web/views/PartnerListView.vue:39
-msgctxt "web/views/PartnerListView"
-msgid "Open Partner Detail"
-msgstr ""
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Partner"
 msgstr ""
 

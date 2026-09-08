@@ -39,12 +39,25 @@ const purifyConfig = {
   ALLOW_DATA_ATTR: false,
 };
 
-let domPurifyHooksInstalled = false;
+export type DomPurifyLike = {
+  addHook: (name: string, fn: (node: any) => void) => void;
+  sanitize: (html: string, config?: unknown) => string;
+};
 
-function ensureDomPurifyHooks(): void {
-  if (domPurifyHooksInstalled) return;
-  domPurifyHooksInstalled = true;
-  DOMPurify.addHook('afterSanitizeAttributes', node => {
+export type SanitizeHtmlDeps = {
+  purify?: DomPurifyLike;
+};
+
+const hooksInstalled = new WeakSet<object>();
+
+function resolvePurify(deps?: SanitizeHtmlDeps): DomPurifyLike {
+  return deps?.purify ?? (DOMPurify as unknown as DomPurifyLike);
+}
+
+function ensureDomPurifyHooks(purify: DomPurifyLike): void {
+  if (hooksInstalled.has(purify)) return;
+  hooksInstalled.add(purify);
+  purify.addHook('afterSanitizeAttributes', node => {
     if (node.nodeName === 'A' && node.getAttribute('target') === '_blank') {
       node.setAttribute('rel', 'noopener noreferrer');
     }
@@ -52,22 +65,23 @@ function ensureDomPurifyHooks(): void {
 }
 
 /** FE display / outbound sanitize (defense in depth; server remains authoritative). */
-export function sanitizeHtmlForClient(html: string | null | undefined): string {
+export function sanitizeHtmlForClient(html: string | null | undefined, deps?: SanitizeHtmlDeps): string {
   if (html == null) return '';
   const raw = String(html);
   if (!raw) return '';
-  ensureDomPurifyHooks();
-  return DOMPurify.sanitize(raw, purifyConfig);
+  const purify = resolvePurify(deps);
+  ensureDomPurifyHooks(purify);
+  return purify.sanitize(raw, purifyConfig);
 }
 
 /** Strip tags for List / Search plaintext projection (D9). Prefer DOM textContent. */
-export function htmlToPlaintext(html: string | null | undefined): string {
+export function htmlToPlaintext(html: string | null | undefined, deps?: SanitizeHtmlDeps): string {
   if (html == null) return '';
   const raw = String(html);
   if (!raw) return '';
   if (typeof document !== 'undefined') {
     const el = document.createElement('div');
-    el.innerHTML = sanitizeHtmlForClient(raw);
+    el.innerHTML = sanitizeHtmlForClient(raw, deps);
     return String(el.textContent || '')
       .replace(/\s+/g, ' ')
       .trim();
@@ -80,12 +94,12 @@ export function htmlToPlaintext(html: string | null | undefined): string {
 }
 
 /** Empty / blank-tag HTML → null for store writes (align D10). */
-export function normalizeHtmlForStore(html: string | null | undefined): string | null {
+export function normalizeHtmlForStore(html: string | null | undefined, deps?: SanitizeHtmlDeps): string | null {
   if (html == null) return null;
-  const cleaned = sanitizeHtmlForClient(html);
+  const cleaned = sanitizeHtmlForClient(html, deps);
   if (!cleaned) return null;
   // Allowlisted void/structural markup (e.g. <hr>) is content even without text.
   if (/<hr\b/i.test(cleaned)) return cleaned;
-  if (htmlToPlaintext(cleaned) === '') return null;
+  if (htmlToPlaintext(cleaned, deps) === '') return null;
   return cleaned;
 }

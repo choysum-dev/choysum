@@ -96,9 +96,11 @@ function isSafePathKey(key: string): boolean {
 export function collectRowDirtyPayload(
   original: Record<string, any>,
   draft: Record<string, any>,
-  fieldsMetadata?: Record<string, WebFieldMetadata | undefined>
+  fieldsMetadata?: Record<string, WebFieldMetadata | undefined>,
+  /** Optional path collector for tests; defaults to core `collectChangedPaths`. */
+  collectPaths: typeof collectChangedPaths = collectChangedPaths
 ): Record<string, any> {
-  const paths = collectChangedPaths(original, draft, {
+  const paths = collectPaths(original, draft, {
     includeTopLevel: true,
     includeFullPath: false,
     pruneRelationChildren: true,

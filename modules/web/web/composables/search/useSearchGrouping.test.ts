@@ -1,23 +1,23 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { useSearchGrouping } from './useSearchGrouping';
 
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({
-      _t: (msg: string) => msg,
-    }),
-    getGlobalComposer: () => ({
-      t: (_key: string, fallback: string) => fallback,
-    }),
-  };
-});
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
 function makeStore() {
   return {
@@ -32,9 +32,9 @@ function makeStore() {
 }
 
 describe('useSearchGrouping', () => {
-  it('normalizes string and object group specs from props', () => {
+  test('normalizes string and object group specs from props', () => {
     const groups = ref<any[]>(['Status', { field: 'CreatedAt', granularity: 'month' }, { name: 'Code' }, { prop: 'X', gran: 'year' }]);
-    const onGroupsChange = vi.fn();
+    const onGroupsChange = fnRecorder();
     const api = useSearchGrouping({
       store: makeStore(),
       currentAppliedGroups: () => groups.value,
@@ -48,9 +48,9 @@ describe('useSearchGrouping', () => {
     ]);
   });
 
-  it('toggles plain and temporal groupby and notifies parent', () => {
+  test('toggles plain and temporal groupby and notifies parent', () => {
     const groups = ref<any[]>(['Status']);
-    const onGroupsChange = vi.fn((next: any[]) => {
+    const onGroupsChange = fnRecorder((next: any[]) => {
       groups.value = next;
     });
     const api = useSearchGrouping({
@@ -60,7 +60,7 @@ describe('useSearchGrouping', () => {
     });
 
     api.togglePlainGroupby('Status');
-    expect(onGroupsChange).toHaveBeenCalled();
+    expect(onGroupsChange.calls.length).toBeGreaterThan(0);
     expect(groups.value).not.toContain('Status');
 
     api.togglePlainGroupby('Status');
@@ -73,9 +73,9 @@ describe('useSearchGrouping', () => {
     expect(groups.value.some((g: any) => typeof g === 'object' && g.field === 'CreatedAt' && g.granularity === 'month')).toBe(false);
   });
 
-  it('toggles temporal groupby encoded as legacy string', () => {
+  test('toggles temporal groupby encoded as legacy string', () => {
     const groups = ref<any[]>(['CreatedAt:week']);
-    const onGroupsChange = vi.fn((next: any[]) => {
+    const onGroupsChange = fnRecorder((next: any[]) => {
       groups.value = next;
     });
     const api = useSearchGrouping({
@@ -87,7 +87,7 @@ describe('useSearchGrouping', () => {
     expect(groups.value.some((g: any) => g === 'CreatedAt:week' || (g?.field === 'CreatedAt' && g?.granularity === 'week'))).toBe(false);
   });
 
-  it('builds appliedGroupItems for plain and temporal entries', () => {
+  test('builds appliedGroupItems for plain and temporal entries', () => {
     const api = useSearchGrouping({
       store: makeStore(),
       currentAppliedGroups: () => ['Status', { field: 'CreatedAt', granularity: 'day' }, 'CreatedAt:month'] as any,
@@ -100,9 +100,9 @@ describe('useSearchGrouping', () => {
     expect(api.appliedGroupItems.value.find(i => i.field === 'Status')?.label).toBe('Status');
   });
 
-  it('handles tree select change for plain, temporal, and dummy root', () => {
+  test('handles tree select change for plain, temporal, and dummy root', () => {
     const groups = ref<any[]>([]);
-    const onGroupsChange = vi.fn((next: any[]) => {
+    const onGroupsChange = fnRecorder((next: any[]) => {
       groups.value = next;
     });
     const api = useSearchGrouping({
@@ -112,10 +112,10 @@ describe('useSearchGrouping', () => {
     });
 
     api.onTreeSelectChange(undefined);
-    expect(onGroupsChange).not.toHaveBeenCalled();
+    expect(onGroupsChange.calls.length).toBe(0);
 
     api.onTreeSelectChange(`d:CreatedAt:${api.DUMMY_ROOT_SUFFIX}`);
-    expect(onGroupsChange).not.toHaveBeenCalled();
+    expect(onGroupsChange.calls.length).toBe(0);
 
     api.onTreeSelectChange('f:Status');
     expect(groups.value.some((g: any) => g === 'Status' || g?.field === 'Status')).toBe(true);
@@ -124,7 +124,7 @@ describe('useSearchGrouping', () => {
     expect(groups.value.some((g: any) => g?.field === 'CreatedAt' && g?.granularity === 'year')).toBe(true);
   });
 
-  it('exposes group tree data from useGroupingOptions', () => {
+  test('exposes group tree data from useGroupingOptions', () => {
     const api = useSearchGrouping({
       store: makeStore(),
       currentAppliedGroups: () => [],
@@ -136,7 +136,7 @@ describe('useSearchGrouping', () => {
     expect(api.temporalComboLabel('CreatedAt', 'month')).toContain('Month');
   });
 
-  it('skips empty group specs and labels unknown plain object fields', () => {
+  test('skips empty group specs and labels unknown plain object fields', () => {
     const api = useSearchGrouping({
       store: makeStore(),
       currentAppliedGroups: () => [null, {}, { field: 'Ghost' }, { field: 'Status' }] as any,
@@ -147,9 +147,9 @@ describe('useSearchGrouping', () => {
     expect(api.appliedGroupItems.value.find(i => i.field === 'Status')?.label).toBe('Status');
   });
 
-  it('toggles plain group when current list already uses object form', () => {
+  test('toggles plain group when current list already uses object form', () => {
     const groups = ref<any[]>([{ field: 'Status' }]);
-    const onGroupsChange = vi.fn((next: any[]) => {
+    const onGroupsChange = fnRecorder((next: any[]) => {
       groups.value = next;
     });
     const api = useSearchGrouping({
@@ -160,6 +160,6 @@ describe('useSearchGrouping', () => {
     api.togglePlainGroupby('Status');
     expect(groups.value.some((g: any) => g === 'Status' || g?.field === 'Status')).toBe(false);
     api.setGroupbyLocal(['Status', { field: 'CreatedAt', granularity: 'day' }]);
-    expect(onGroupsChange).toHaveBeenCalled();
+    expect(onGroupsChange.calls.length).toBeGreaterThan(0);
   });
 });

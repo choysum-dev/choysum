@@ -1,27 +1,39 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-
-vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: vi.fn(),
-}));
-
-import { createStoreByModel } from '@/web/web/stores/registry';
-import { __normalizeAttachmentFieldsInPayloadForTest, __resolveAttachmentFieldValueForTest, __looksLikeUploadEnvelopeForTest } from './formController';
+import {
+  __normalizeAttachmentFieldsInPayloadForTest,
+  __resolveAttachmentFieldValueForTest,
+  __looksLikeUploadEnvelopeForTest,
+} from './formController';
 import { setTokenProvider, setCSRFProvider } from '@/core/web/rpc';
 import { setGlobalRequestContextProvider, clearGlobalRequestContextProvider } from '@/core/rpc/context';
 
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
+
 type AttachmentServiceStub = {
-  PrepareUpload: ReturnType<typeof vi.fn>;
-  FinalizeUpload: ReturnType<typeof vi.fn>;
+  PrepareUpload: CallRecorder & ((...args: any[]) => Promise<any>);
+  FinalizeUpload: CallRecorder & ((...args: any[]) => Promise<any>);
   setContext?: (ctx: Record<string, string>) => void;
   withContext?: <T>(ctx: Record<string, string>, fn: () => Promise<T>) => Promise<T>;
 };
 
 function newAttachmentService(attachmentObjectId = 'ao-test', uploadUrl = 'https://example.com/upload'): AttachmentServiceStub {
   return {
-    PrepareUpload: vi.fn(async () => ({
+    PrepareUpload: fnRecorder(async () => ({
       uploadId: 'upload-1',
       uploadTarget: {
         method: 'PUT',
@@ -31,7 +43,7 @@ function newAttachmentService(attachmentObjectId = 'ao-test', uploadUrl = 'https
         },
       },
     })),
-    FinalizeUpload: vi.fn(async () => ({
+    FinalizeUpload: fnRecorder(async () => ({
       attachmentObjectId,
     })),
   };
@@ -52,9 +64,17 @@ function newCtx(service: AttachmentServiceStub) {
   } as any;
 }
 
+function createStoreForNormalize(service: AttachmentServiceStub) {
+  return (modelName: string) => {
+    if (modelName === 'document.AttachmentContent') return service;
+    throw new Error(`unexpected model: ${modelName}`);
+  };
+}
+
 describe('formController attachment protocol', () => {
   const originalFetch = globalThis.fetch;
   const originalFile = (globalThis as any).File;
+  let fetchMock: CallRecorder & ((...args: any[]) => Promise<any>);
 
   const resetTokenProvider = () => {
     setTokenProvider({
@@ -71,15 +91,14 @@ describe('formController attachment protocol', () => {
   };
 
   beforeEach(() => {
-    globalThis.fetch = vi.fn(async () => ({ ok: true, status: 200 })) as any;
+    fetchMock = fnRecorder(async () => ({ ok: true, status: 200 }));
+    globalThis.fetch = fetchMock as any;
     resetTokenProvider();
     resetCSRFProvider();
     clearGlobalRequestContextProvider();
-    (createStoreByModel as any).mockReset();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     globalThis.fetch = originalFetch;
     resetTokenProvider();
     resetCSRFProvider();
@@ -99,9 +118,9 @@ describe('formController attachment protocol', () => {
     const resolved = await __resolveAttachmentFieldValueForTest(blob, ctx);
 
     expect(resolved).toEqual({ kind: 'set', attachmentObjectId: 'ao-blob' });
-    expect(service.PrepareUpload).toHaveBeenCalledTimes(1);
-    expect(service.FinalizeUpload).toHaveBeenCalledTimes(1);
-    expect(globalThis.fetch as any).toHaveBeenCalledTimes(1);
+    expect(service.PrepareUpload.calls.length).toBe(1);
+    expect(service.FinalizeUpload.calls.length).toBe(1);
+    expect(fetchMock.calls.length).toBe(1);
   });
 
   test('accepts File payload and keeps filename in PrepareUpload request', async () => {
@@ -121,8 +140,8 @@ describe('formController attachment protocol', () => {
     const resolved = await __resolveAttachmentFieldValueForTest(file, ctx);
 
     expect(resolved).toEqual({ kind: 'set', attachmentObjectId: 'ao-file' });
-    expect(service.PrepareUpload).toHaveBeenCalledTimes(1);
-    const prepareReq = service.PrepareUpload.mock.calls[0]?.[0] as any;
+    expect(service.PrepareUpload.calls.length).toBe(1);
+    const prepareReq = service.PrepareUpload.calls[0]?.[0] as any;
     expect(prepareReq?.proposedFileName).toBe('avatar.png');
   });
 
@@ -138,15 +157,17 @@ describe('formController attachment protocol', () => {
     await expect(__resolveAttachmentFieldValueForTest({ kind: 'clear' }, ctx)).resolves.toEqual({ kind: 'clear' });
     await expect(__resolveAttachmentFieldValueForTest({ kind: 'noop' }, ctx)).resolves.toEqual({ kind: 'omit' });
 
-    expect(service.PrepareUpload).not.toHaveBeenCalled();
-    expect(service.FinalizeUpload).not.toHaveBeenCalled();
+    expect(service.PrepareUpload.calls.length).toBe(0);
+    expect(service.FinalizeUpload.calls.length).toBe(0);
   });
 
   test('rejects array payload for binary/image fields', async () => {
     const service = newAttachmentService();
     const ctx = newCtx(service);
 
-    await expect(__resolveAttachmentFieldValueForTest([], ctx)).rejects.toThrow('[Attachment] Avatar: array payload is not supported for binary/image fields.');
+    await expect(__resolveAttachmentFieldValueForTest([], ctx)).rejects.toThrow(
+      '[Attachment] Avatar: array payload is not supported for binary/image fields.'
+    );
   });
 
   test('internal upload target carries auth/context headers and include credentials', async () => {
@@ -154,7 +175,7 @@ describe('formController attachment protocol', () => {
     const ctx = newCtx(service);
     const blob = new Blob([new Uint8Array([10, 11, 12])], { type: 'application/octet-stream' });
 
-    const refreshToken = vi.fn(async () => true);
+    const refreshToken = fnRecorder(async () => true);
     setTokenProvider({
       getToken: async () => 'token-upload',
       refreshToken,
@@ -168,9 +189,9 @@ describe('formController attachment protocol', () => {
     const resolved = await __resolveAttachmentFieldValueForTest(blob, ctx);
 
     expect(resolved).toEqual({ kind: 'set', attachmentObjectId: 'ao-auth' });
-    expect(refreshToken).toHaveBeenCalledTimes(1);
+    expect(refreshToken.calls.length).toBe(1);
 
-    const fetchCall = (globalThis.fetch as any).mock.calls[0] as [string, RequestInit];
+    const fetchCall = fetchMock.calls[0] as [string, RequestInit];
     const [, requestInit] = fetchCall;
     const headers = requestInit.headers as Headers;
     expect(requestInit.credentials).toBe('include');
@@ -182,17 +203,13 @@ describe('formController attachment protocol', () => {
 
   test('buildAttachmentWritePayload keeps displayFileName and downloadDisposition', async () => {
     const service = newAttachmentService('ao-meta');
-    (createStoreByModel as any).mockImplementation((modelName: string) => {
-      if (modelName === 'document.AttachmentContent') return service;
-      throw new Error(`unexpected model: ${modelName}`);
-    });
-
     const store = {
       fullModelName: 'demo.Asset',
       storeId: 'demo.Asset',
       getContext: () => ({}),
       fieldsMetadata: { Avatar: { type: 'image' } },
     } as any;
+    const deps = { createStoreByModel: createStoreForNormalize(service) };
 
     const withDisposition = await __normalizeAttachmentFieldsInPayloadForTest(
       store,
@@ -204,7 +221,8 @@ describe('formController attachment protocol', () => {
           downloadDisposition: 'Inline',
         },
       },
-      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] },
+      deps
     );
     expect(withDisposition.Avatar).toEqual({
       attachmentObjectId: 'ao-meta',
@@ -222,7 +240,8 @@ describe('formController attachment protocol', () => {
           downloadDisposition: 'ATTACHMENT',
         },
       },
-      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] },
+      deps
     );
     expect(withAttachmentDisp.Avatar).toMatchObject({
       displayFileName: 'from-display-name',
@@ -239,7 +258,8 @@ describe('formController attachment protocol', () => {
             downloadDisposition: 'stream',
           },
         },
-        { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+        { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] },
+        deps
       )
     ).rejects.toThrow();
   });
@@ -249,7 +269,7 @@ describe('formController attachment protocol', () => {
     const ctx = newCtx(service);
     const blob = new Blob([new Uint8Array([1])], { type: 'application/octet-stream' });
 
-    globalThis.fetch = vi.fn(async () => ({
+    globalThis.fetch = fnRecorder(async () => ({
       ok: false,
       status: 502,
       text: async () =>
@@ -281,7 +301,7 @@ describe('formController attachment protocol', () => {
     );
 
     expect(resolved).toEqual({ kind: 'set', attachmentObjectId: 'ao-fallback' });
-    const prepareReq = service.PrepareUpload.mock.calls[0]?.[0] as any;
+    const prepareReq = service.PrepareUpload.calls[0]?.[0] as any;
     expect(prepareReq?.proposedFileName).toBe('doc.pdf');
     expect(prepareReq?.proposedContentType).toBe('application/pdf');
 
@@ -296,7 +316,7 @@ describe('formController attachment protocol', () => {
       },
       ctx2
     );
-    const prepareReq2 = service2.PrepareUpload.mock.calls[0]?.[0] as any;
+    const prepareReq2 = service2.PrepareUpload.calls[0]?.[0] as any;
     expect(prepareReq2?.proposedFileName).toBe('orig.pdf');
     expect(prepareReq2?.proposedContentType).toBe('application/x-pdf');
   });
@@ -311,16 +331,13 @@ describe('formController attachment protocol', () => {
 
   test('displayFileName falls back through name fields', async () => {
     const service = newAttachmentService('ao-names');
-    (createStoreByModel as any).mockImplementation((modelName: string) => {
-      if (modelName === 'document.AttachmentContent') return service;
-      throw new Error(`unexpected model: ${modelName}`);
-    });
     const store = {
       fullModelName: 'demo.Asset',
       storeId: 'demo.Asset',
       getContext: () => ({}),
       fieldsMetadata: { Avatar: { type: 'image' } },
     } as any;
+    const deps = { createStoreByModel: createStoreForNormalize(service) };
 
     for (const [key, value] of [
       ['fileName', 'from-file-name'],
@@ -330,7 +347,8 @@ describe('formController attachment protocol', () => {
       const out = await __normalizeAttachmentFieldsInPayloadForTest(
         store,
         { Avatar: { kind: 'set', attachmentObjectId: 'ao-names', [key]: value } },
-        { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+        { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] },
+        deps
       );
       expect(out.Avatar).toMatchObject({ displayFileName: value });
     }
@@ -344,7 +362,8 @@ describe('formController attachment protocol', () => {
           file: { name: '  nested-file.bin  ' },
         },
       },
-      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] }
+      { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'RID-1', fields: ['Avatar'] },
+      deps
     );
     expect(fromFileLike.Avatar).toMatchObject({ displayFileName: 'nested-file.bin' });
   });
@@ -363,12 +382,12 @@ describe('formController attachment protocol', () => {
       },
       ctx
     );
-    const prepareProposed = service.PrepareUpload.mock.calls[0]?.[0] as any;
+    const prepareProposed = service.PrepareUpload.calls[0]?.[0] as any;
     expect(prepareProposed?.proposedFileName).toBe('proposed.bin');
     expect(prepareProposed?.proposedContentType).toBe('application/x-proposed');
 
     const serviceDefault = newAttachmentService('ao-default-ct');
-    serviceDefault.PrepareUpload = vi.fn(async () => ({
+    serviceDefault.PrepareUpload = fnRecorder(async () => ({
       uploadId: 'upload-1',
       uploadTarget: {
         method: undefined,
@@ -377,9 +396,9 @@ describe('formController attachment protocol', () => {
       },
     }));
     const ctxDefault = newCtx(serviceDefault);
-    const bareBlob = new Blob([new Uint8Array([2])]); // empty type
+    const bareBlob = new Blob([new Uint8Array([2])]);
     await __resolveAttachmentFieldValueForTest({ kind: 'set', file: bareBlob }, ctxDefault);
-    const prepareDefault = serviceDefault.PrepareUpload.mock.calls[0]?.[0] as any;
+    const prepareDefault = serviceDefault.PrepareUpload.calls[0]?.[0] as any;
     expect(prepareDefault?.proposedContentType).toBe('application/octet-stream');
   });
 });

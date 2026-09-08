@@ -202,6 +202,8 @@ func RunOneAppFrontendTests(
 	b.WriteString("  test: {\n")
 	b.WriteString("    include: ['" + includeGlob + "'],\n")
 	b.WriteString("    environment: 'node',\n")
+	// Allow incremental FE migrate: choysumtest-style bare test/expect while Vitest remains default.
+	b.WriteString("    globals: true,\n")
 	b.WriteString("    passWithNoTests: true,\n")
 	// Node --localstorage-file is a single SQLite DB shared via NODE_OPTIONS; parallel
 	// vitest workers contend on it ("database is locked"). Keep FE runs single-worker.

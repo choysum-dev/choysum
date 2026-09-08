@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import { createTermReference } from '@/core/service/i18n';
+import type { ComposerLike } from '@/web/web/i18n';
 import {
   isFilterableSearchField,
   isGroupableSearchField,
@@ -12,18 +12,24 @@ import {
   useFilterableSearchFields,
 } from './useSearchFieldOptions';
 
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    getGlobalComposer: () => ({
-      t: (_key: string, fallback: string) => (fallback === 'Status' ? '状态' : fallback),
-    }),
-  };
+function installComposer(composer: ComposerLike) {
+  (globalThis as { $i18n?: ComposerLike }).$i18n = composer;
+}
+
+function clearComposer() {
+  delete (globalThis as { $i18n?: ComposerLike }).$i18n;
+  delete (globalThis as { window?: { $i18n?: ComposerLike } }).window;
+}
+
+afterEach(() => {
+  clearComposer();
 });
 
 describe('useSearchFieldOptions', () => {
-  it('lists filterable fields with resolved labels and excludes collections', () => {
+  test('lists filterable fields with resolved labels and excludes collections', () => {
+    installComposer({
+      t: (_key: string, fallback: string) => (fallback === 'Status' ? '状态' : fallback),
+    });
     const statusText = createTermReference('demo', 'Status', { scope: 'demo.model.Widget.fields' });
     const store = {
       fieldsMetadata: {
@@ -48,7 +54,7 @@ describe('useSearchFieldOptions', () => {
     expect(filterable[0]?.label).toBe('状态');
   });
 
-  it('sorts by id then label and resolves labels via helper APIs', () => {
+  test('sorts by id then label and resolves labels via helper APIs', () => {
     const sorted = sortSearchFieldOptions([
       { prop: 'B', label: 'Beta', id: '2' },
       { prop: 'A', label: 'Alpha', id: '1' },
@@ -85,7 +91,7 @@ describe('useSearchFieldOptions', () => {
     expect(resolveSearchFieldLabel(store, 'Name')).toBe('名称');
   });
 
-  it('covers sort ties, scalar filterables, and metadata-less options', () => {
+  test('covers sort ties, scalar filterables, and metadata-less options', () => {
     const tied = sortSearchFieldOptions([
       { prop: 'B', label: 'Beta', id: '1' },
       { prop: 'A', label: 'Alpha', id: '1' },

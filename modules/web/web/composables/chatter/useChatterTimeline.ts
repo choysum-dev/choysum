@@ -9,14 +9,25 @@ import { mergeChatterTimeline } from './mergeChatterTimeline';
 const MESSAGE_FIELDS = ['Id', 'Type', 'Body', 'AuthorUid', 'CreatedAt'] as const;
 const FIELD_CHANGE_FIELDS = ['Id', 'Field', 'Kind', 'OldValue', 'NewValue', 'ActorUid', 'At'] as const;
 
-export function useChatterTimeline(model: Ref<string>, resId: Ref<string | undefined>) {
+export type UseChatterTimelineDeps = {
+  getMessageStore?: typeof getMessageStore;
+  getFieldChangeStore?: typeof getFieldChangeStore;
+};
+
+export function useChatterTimeline(
+  model: Ref<string>,
+  resId: Ref<string | undefined>,
+  deps?: UseChatterTimelineDeps
+) {
   const entries = ref<ChatterTimelineEntry[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   let refreshGeneration = 0;
 
-  const messageStore = getMessageStore();
-  const fieldChangeStore = getFieldChangeStore();
+  const resolveMessageStore = deps?.getMessageStore ?? getMessageStore;
+  const resolveFieldChangeStore = deps?.getFieldChangeStore ?? getFieldChangeStore;
+  const messageStore = resolveMessageStore();
+  const fieldChangeStore = resolveFieldChangeStore();
 
   async function refresh(): Promise<void> {
     const generation = ++refreshGeneration;

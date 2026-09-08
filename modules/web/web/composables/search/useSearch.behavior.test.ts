@@ -1,8 +1,6 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import { ref, nextTick } from 'vue';
 import { useSearch } from './useSearch';
 import { useSearchEditor } from './useSearchEditor';
@@ -10,18 +8,23 @@ import { useFilterPresets } from './useFilterPresets';
 import { deepCloneFilter, createFilter, createCondition } from '@/web/web/query/utils/filter/structures';
 import type { ConditionGroup, NamedFilter } from '@/web/web/query/types';
 
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({
-      _t: (msg: string) => msg,
-    }),
-  };
-});
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
 describe('useSearch summarizeFilter', () => {
-  it('joins sibling conditions with OR when group logic is Or', () => {
+  test('joins sibling conditions with OR when group logic is Or', () => {
     const { helpers } = useSearch({});
     const group: ConditionGroup = {
       id: 'g1',
@@ -34,7 +37,7 @@ describe('useSearch summarizeFilter', () => {
     expect(helpers.summarizeFilter(group)).toBe('Name = OR Code like');
   });
 
-  it('reapplies dynamicInitialFilters when empty', async () => {
+  test('reapplies dynamicInitialFilters when empty', async () => {
     const initial = ref<ConditionGroup[]>([
       {
         id: 'g0',
@@ -66,7 +69,7 @@ describe('useSearch summarizeFilter', () => {
 });
 
 describe('useSearchEditor clone/ids', () => {
-  it('preserves ids when opening an edit draft', () => {
+  test('preserves ids when opening an edit draft', () => {
     const filters = ref<ConditionGroup[]>([
       {
         id: 'root-1',
@@ -84,7 +87,7 @@ describe('useSearchEditor clone/ids', () => {
     expect((filters.value[0].children[0] as any).value).toBe('a');
   });
 
-  it('rejects save when all conditions are incomplete', () => {
+  test('rejects save when all conditions are incomplete', () => {
     const filters = ref<ConditionGroup[]>([]);
     const editor = useSearchEditor({ filters });
     editor.openNewFilter();
@@ -93,7 +96,7 @@ describe('useSearchEditor clone/ids', () => {
     expect(filters.value).toHaveLength(0);
   });
 
-  it('saves only complete conditions after normalize', () => {
+  test('saves only complete conditions after normalize', () => {
     const filters = ref<ConditionGroup[]>([]);
     const editor = useSearchEditor({ filters });
     editor.openNewFilter();
@@ -110,7 +113,7 @@ describe('useSearchEditor clone/ids', () => {
     expect((filters.value[0].children[0] as any).field).toBe('Name');
   });
 
-  it('clears draft when closeEditor(true)', () => {
+  test('clears draft when closeEditor(true)', () => {
     const filters = ref<ConditionGroup[]>([]);
     const editor = useSearchEditor({ filters });
     editor.openNewFilter();
@@ -122,7 +125,7 @@ describe('useSearchEditor clone/ids', () => {
 });
 
 describe('deepCloneFilter', () => {
-  it('clones nested groups without sharing references', () => {
+  test('clones nested groups without sharing references', () => {
     const original = createFilter('Or', [createCondition('Name', '=', 'a')]);
     const cloned = deepCloneFilter(original);
     expect(cloned).not.toBe(original);
@@ -134,12 +137,12 @@ describe('deepCloneFilter', () => {
 });
 
 describe('useSearch actions and helpers', () => {
-  it('applies named filters, blocks duplicates, and clears/pops with trigger', () => {
-    const onTrigger = vi.fn();
+  test('applies named filters, blocks duplicates, and clears/pops with trigger', () => {
+    const onTrigger = fnRecorder();
     const api = useSearch({ onTrigger, allowDuplicateNamedFilter: false });
     api.actions.applyNamedFilter({ name: 'Active', query: ['Active', '=', true] } as any);
     expect(api.state.filters.value).toHaveLength(1);
-    expect(onTrigger).toHaveBeenCalledTimes(1);
+    expect(onTrigger.calls.length).toBe(1);
 
     api.actions.applyNamedFilter({ name: 'Active', query: ['Active', '=', false] } as any);
     expect(api.state.filters.value).toHaveLength(1);
@@ -155,7 +158,7 @@ describe('useSearch actions and helpers', () => {
     expect(api.state.keyword.value).toBe('');
   });
 
-  it('summarizes nested groups, fields, tooltips, and buildQuery', () => {
+  test('summarizes nested groups, fields, tooltips, and buildQuery', () => {
     const store = {
       fieldsMetadata: {
         Name: { type: 'varchar', string: 'Name' },
@@ -188,7 +191,7 @@ describe('useSearch actions and helpers', () => {
     expect(helpers.buildQuery(nested)).toBeTruthy();
   });
 
-  it('editor setLogic / groups / update / delete through structured API', () => {
+  test('editor setLogic / groups / update / delete through structured API', () => {
     const { state, editor } = useSearch({});
     editor.openNew();
     editor.addCondition();
@@ -208,17 +211,17 @@ describe('useSearch actions and helpers', () => {
     expect(state.filters.value).toHaveLength(0);
   });
 
-  it('allows duplicate named filters and triggers explicitly', () => {
-    const onTrigger = vi.fn();
+  test('allows duplicate named filters and triggers explicitly', () => {
+    const onTrigger = fnRecorder();
     const api = useSearch({ onTrigger, allowDuplicateNamedFilter: true });
     api.actions.applyNamedFilter({ name: 'Dup', query: ['A', '=', 1] } as any);
     api.actions.applyNamedFilter({ name: 'Dup', query: ['A', '=', 2] } as any);
     expect(api.state.filters.value).toHaveLength(2);
     api.actions.trigger();
-    expect(onTrigger.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(onTrigger.calls.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('buildQuery returns undefined when conversion throws', () => {
+  test('buildQuery returns undefined when conversion throws', () => {
     const { helpers } = useSearch({
       attachStore: {
         get fieldsMetadata() {
@@ -231,7 +234,7 @@ describe('useSearch actions and helpers', () => {
 });
 
 describe('useSearchEditor nested draft ops', () => {
-  it('removes nested groups/conditions and saves named edit drafts', () => {
+  test('removes nested groups/conditions and saves named edit drafts', () => {
     const filters = ref<ConditionGroup[]>([
       {
         id: 'root-1',
@@ -279,7 +282,7 @@ describe('useSearchEditor nested draft ops', () => {
     expect(editor.saveDraft()).toBe(false);
   });
 
-  it('no-ops draft mutations when editor is closed', () => {
+  test('no-ops draft mutations when editor is closed', () => {
     const filters = ref<ConditionGroup[]>([]);
     const editor = useSearchEditor({ filters });
     editor.setDraftLogic('Or');
@@ -293,9 +296,9 @@ describe('useSearchEditor nested draft ops', () => {
 });
 
 describe('useFilterPresets', () => {
-  it('toggles named presets and builds menu items from override/store', () => {
+  test('toggles named presets and builds menu items from override/store', () => {
     const filters = ref<ConditionGroup[]>([]);
-    const applyNamedFilter = vi.fn((nf: NamedFilter) => {
+    const applyNamedFilter = fnRecorder((nf: NamedFilter) => {
       filters.value.push({
         id: nf.name,
         name: nf.name,
@@ -317,18 +320,18 @@ describe('useFilterPresets', () => {
       defaultFiltersOverride: () => [{ name: 'Active', query: ['Active', '=', true] }],
     });
     expect(api.defaultFilterItems.value.map(i => i.name)).toEqual(['Active']);
-    const onChange = vi.fn();
+    const onChange = fnRecorder();
     api.toggleDefaultFilter(api.defaultFilterItems.value[0]!, onChange);
-    expect(applyNamedFilter).toHaveBeenCalled();
-    expect(onChange).toHaveBeenCalledWith(true);
+    expect(applyNamedFilter.calls.length).toBeGreaterThan(0);
+    expect(onChange.calls).toEqual([[true]]);
     expect(api.appliedFilterNameSet.value.has('Active')).toBe(true);
     api.toggleDefaultFilter({ name: 'Active', filter: ['Active', '=', true] }, onChange);
     expect(filters.value.some(f => f.name === 'Active')).toBe(false);
   });
 
-  it('reads store defaultFilters and named filters without query', () => {
+  test('reads store defaultFilters and named filters without query', () => {
     const filters = ref<ConditionGroup[]>([]);
-    const applyNamedFilter = vi.fn();
+    const applyNamedFilter = fnRecorder();
     const store = {
       state: {
         queryState: {
@@ -347,9 +350,9 @@ describe('useFilterPresets', () => {
     };
     const api = useFilterPresets({ store, filtersRef: filters, applyNamedFilter });
     expect(api.defaultFilterItems.value.map(i => i.name)).toEqual(['FromStore', 'AsGroup']);
-    const onChange = vi.fn();
+    const onChange = fnRecorder();
     api.toggleDefaultFilter({ name: 'Missing', filter: [] }, onChange);
     // Already absent — remove is a no-op; apply still runs for missing names.
-    expect(applyNamedFilter).toHaveBeenCalled();
+    expect(applyNamedFilter.calls.length).toBeGreaterThan(0);
   });
 });

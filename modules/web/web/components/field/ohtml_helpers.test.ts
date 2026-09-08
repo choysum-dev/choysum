@@ -1,25 +1,19 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
-import { htmlToPlaintext, normalizeHtmlForStore, sanitizeHtmlForClient } from './ohtml_helpers';
+import { htmlToPlaintext, normalizeHtmlForStore, sanitizeHtmlForClient, type DomPurifyLike } from './ohtml_helpers';
 
-const purifyState = vi.hoisted(() => {
+function createTestPurify(): DomPurifyLike & { hooks: Array<(node: any) => void> } {
   const hooks: Array<(node: any) => void> = [];
-  return { hooks };
-});
-
-vi.mock('dompurify', () => ({
-  default: {
+  return {
+    hooks,
     addHook: (_name: string, fn: (node: any) => void) => {
-      purifyState.hooks.push(fn);
+      hooks.push(fn);
     },
     sanitize: (html: string) => {
       const run = (node: any) => {
-        for (const fn of purifyState.hooks) fn(node);
+        for (const fn of hooks) fn(node);
       };
-      // Exercise hook predicate branches.
       run({
         nodeName: 'P',
         getAttribute: () => null,
@@ -46,17 +40,21 @@ vi.mock('dompurify', () => ({
         '<p>Hello <strong>world</strong></p>': '<p>Hello <strong>world</strong></p>',
         '<a href="https://example.com" target="_blank">x</a>':
           '<a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>',
+        '<a href="https://example.com" target="_blank">y</a>':
+          '<a href="https://example.com" target="_blank" rel="noopener noreferrer">y</a>',
       };
       if (html === 'HOOK') return blankAttrs.rel || '';
       return fixtures[String(html)] ?? String(html);
     },
-  },
-}));
+  };
+}
 
 describe('ohtml_helpers', () => {
-  it('sanitizeHtmlForClient strips script and dangerous protocols', () => {
+  test('sanitizeHtmlForClient strips script and dangerous protocols', () => {
+    const purify = createTestPurify();
     const cleaned = sanitizeHtmlForClient(
-      `<script>alert(1)</script><p onclick="x">Hi</p><a href="javascript:alert(1)">x</a>`
+      `<script>alert(1)</script><p onclick="x">Hi</p><a href="javascript:alert(1)">x</a>`,
+      { purify }
     );
     expect(cleaned).not.toContain('<script');
     expect(cleaned).not.toContain('onclick');
@@ -64,35 +62,39 @@ describe('ohtml_helpers', () => {
     expect(cleaned).toContain('Hi');
   });
 
-  it('sanitizeHtmlForClient handles null/empty and installs hooks once', () => {
-    expect(sanitizeHtmlForClient(null)).toBe('');
-    expect(sanitizeHtmlForClient(undefined)).toBe('');
-    expect(sanitizeHtmlForClient('')).toBe('');
-    const before = purifyState.hooks.length;
-    expect(sanitizeHtmlForClient('HOOK')).toBe('noopener noreferrer');
-    sanitizeHtmlForClient('HOOK');
-    expect(purifyState.hooks.length).toBe(before);
+  test('sanitizeHtmlForClient handles null/empty and installs hooks once', () => {
+    const purify = createTestPurify();
+    expect(sanitizeHtmlForClient(null, { purify })).toBe('');
+    expect(sanitizeHtmlForClient(undefined, { purify })).toBe('');
+    expect(sanitizeHtmlForClient('', { purify })).toBe('');
+    expect(sanitizeHtmlForClient('HOOK', { purify })).toBe('noopener noreferrer');
+    const afterFirst = purify.hooks.length;
+    expect(afterFirst).toBe(1);
+    sanitizeHtmlForClient('HOOK', { purify });
+    expect(purify.hooks.length).toBe(afterFirst);
   });
 
-  it('htmlToPlaintext strips tags and supports non-DOM fallback', () => {
-    expect(htmlToPlaintext('<p>Hello <strong>world</strong></p>')).toBe('Hello world');
-    expect(htmlToPlaintext(null)).toBe('');
-    expect(htmlToPlaintext('')).toBe('');
+  test('htmlToPlaintext strips tags and supports non-DOM fallback', () => {
+    const purify = createTestPurify();
+    expect(htmlToPlaintext('<p>Hello <strong>world</strong></p>', { purify })).toBe('Hello world');
+    expect(htmlToPlaintext(null, { purify })).toBe('');
+    expect(htmlToPlaintext('', { purify })).toBe('');
 
     const originalDocument = globalThis.document;
     Object.defineProperty(globalThis, 'document', { value: undefined, configurable: true });
     try {
-      expect(htmlToPlaintext('<b>hi</b>')).toBe('hi');
+      expect(htmlToPlaintext('<b>hi</b>', { purify })).toBe('hi');
     } finally {
       Object.defineProperty(globalThis, 'document', { value: originalDocument, configurable: true });
     }
   });
 
-  it('normalizeHtmlForStore nulls blank markup', () => {
-    expect(normalizeHtmlForStore(null)).toBeNull();
-    expect(normalizeHtmlForStore('')).toBeNull();
-    expect(normalizeHtmlForStore('<p></p>')).toBeNull();
-    expect(normalizeHtmlForStore('<p>ok</p>')).toBe('<p>ok</p>');
-    expect(normalizeHtmlForStore('<hr>')).toBe('<hr>');
+  test('normalizeHtmlForStore nulls blank markup', () => {
+    const purify = createTestPurify();
+    expect(normalizeHtmlForStore(null, { purify })).toBeNull();
+    expect(normalizeHtmlForStore('', { purify })).toBeNull();
+    expect(normalizeHtmlForStore('<p></p>', { purify })).toBeNull();
+    expect(normalizeHtmlForStore('<p>ok</p>', { purify })).toBe('<p>ok</p>');
+    expect(normalizeHtmlForStore('<hr>', { purify })).toBe('<hr>');
   });
 });
