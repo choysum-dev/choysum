@@ -16,15 +16,16 @@ SPDX-License-Identifier: Apache-2.0
       <el-dropdown-menu class="o-notification-bell__menu">
         <div class="o-notification-bell__toolbar">
           <span>{{ _t('Notifications') }}</span>
-          <button
+          <el-button
             v-if="unreadCount > 0"
-            type="button"
-            class="o-notification-bell__mark-all"
+            link
+            type="primary"
+            size="small"
             data-test="notification-mark-all-read"
             @click.stop="markAllRead"
           >
             {{ _t('Mark all read') }}
-          </button>
+          </el-button>
         </div>
         <div v-if="loading" class="o-notification-bell__empty">{{ _t('Loading...') }}</div>
         <div v-else-if="error" class="o-notification-bell__empty o-notification-bell__empty--error">{{ error }}</div>
@@ -155,16 +156,6 @@ async function handleItemClick(row: InboxNotificationRow): Promise<void> {
   padding: 8px 12px;
   font-weight: 600;
   border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.o-notification-bell__mark-all {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  color: var(--el-color-primary);
-  font: inherit;
-  font-size: 12px;
 }
 
 .o-notification-bell__empty {

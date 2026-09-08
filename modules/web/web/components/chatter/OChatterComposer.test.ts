@@ -50,7 +50,7 @@ describe('OChatterComposer', () => {
               type: 'button',
               class: 'composer-post',
               disabled: props.disabled || undefined,
-              onClick: () => emit('click'),
+              onClick: (event: any) => emit('click', event ?? { stopPropagation: () => undefined }),
             },
             slots.default?.()
           );

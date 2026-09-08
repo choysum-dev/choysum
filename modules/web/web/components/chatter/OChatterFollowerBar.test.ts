@@ -49,7 +49,7 @@ describe('OChatterFollowerBar', () => {
               class: 'follower-toggle',
               'data-disabled': props.disabled ? 'true' : 'false',
               disabled: props.disabled || undefined,
-              onClick: () => emit('click'),
+              onClick: (event: any) => emit('click', event ?? { stopPropagation: () => undefined }),
             },
             slots.default?.()
           );

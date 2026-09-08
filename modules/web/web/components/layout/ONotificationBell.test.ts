@@ -47,24 +47,32 @@ describe('ONotificationBell', () => {
       },
     });
     stubSfc(ElButton as any, {
+      name: 'ElButton',
+      inheritAttrs: false,
       props: { disabled: { type: Boolean, default: false } },
       emits: ['click'],
       setup(props: any, { slots, emit, attrs }: any) {
-        return () =>
-          h(
+        // Forward attrs.onClick: @click.stop may land as fallthrough when emits
+        // wiring differs across suites that also stub ElButton.
+        return () => {
+          const { onClick: attrOnClick, class: attrClass, ...rest } = attrs;
+          return h(
             'button',
             {
               type: 'button',
-              class: 'el-button',
-              disabled: props.disabled,
-              ...attrs,
+              class: ['el-button', attrClass],
+              disabled: props.disabled || undefined,
+              ...rest,
               onClick: (event: any) => {
-                event?.stopPropagation?.();
-                emit('click', { stopPropagation: () => undefined });
+                const payload = event ?? { stopPropagation: () => undefined };
+                payload?.stopPropagation?.();
+                emit('click', payload);
+                if (typeof attrOnClick === 'function') attrOnClick(payload);
               },
             },
             slots.default?.()
           );
+        };
       },
     });
     stubSfc(ElDropdown as any, {
