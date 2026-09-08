@@ -166,7 +166,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 
 	// Drive FE stub OnResolve callbacks without network by invoking Setup on a capture PluginBuild.
-	var pkgCB, opageCB func(api.OnResolveArgs) (api.OnResolveResult, error)
+	var pkgCB func(api.OnResolveArgs) (api.OnResolveResult, error)
 	var pathCBs []func(api.OnResolveArgs) (api.OnResolveResult, error)
 	esbuildBuild = func(opts api.BuildOptions) api.BuildResult {
 		pb := api.PluginBuild{
@@ -180,8 +180,6 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 				switch o.Filter {
 				case `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?)$`:
 					pkgCB = cb
-				case `OPage\.vue$`:
-					opageCB = cb
 				case `.*`:
 					pathCBs = append(pathCBs, cb)
 				}
@@ -205,7 +203,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 	esbuildBuild = prevBuild
 
-	if pkgCB == nil || opageCB == nil || len(pathCBs) == 0 {
+	if pkgCB == nil || len(pathCBs) == 0 {
 		t.Fatal("expected FE stub OnResolve callbacks to be registered")
 	}
 	for _, path := range []string{"element-plus", "@element-plus/icons-vue", "vue-router", "@choysum/page-mount"} {
@@ -214,11 +212,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			t.Fatalf("package stub %q: %#v err=%v", path, res, err)
 		}
 	}
-	opageRes, err := opageCB(api.OnResolveArgs{Path: "./OPage.vue"})
-	if err != nil || !strings.HasSuffix(opageRes.Path, "OPage.stub.vue") {
-		t.Fatalf("opage stub: %#v err=%v", opageRes, err)
-	}
-	var pathHit bool
+	var pathHit, opageFromPage, opageFromTest bool
 	for _, pathCB := range pathCBs {
 		pathRes, err := pathCB(api.OnResolveArgs{
 			Path:       "@/web/web/stores/registry",
@@ -231,6 +225,28 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 		if strings.HasSuffix(pathRes.Path, "store_registry.js") {
 			pathHit = true
 		}
+		pageOPage, err := pathCB(api.OnResolveArgs{
+			Path:       "@/web/web/components/page/OPage.vue",
+			Importer:   "/modules/auth/web/pages/Login.vue",
+			ResolveDir: dir,
+		})
+		if err != nil {
+			t.Fatalf("opage from page err: %v", err)
+		}
+		if strings.HasSuffix(pageOPage.Path, "OPage.stub.vue") {
+			opageFromPage = true
+		}
+		testOPage, err := pathCB(api.OnResolveArgs{
+			Path:       "./OPage.vue",
+			Importer:   "/modules/web/web/components/page/OPage.mapping.test.ts",
+			ResolveDir: "/modules/web/web/components/page",
+		})
+		if err != nil {
+			t.Fatalf("opage from test err: %v", err)
+		}
+		if testOPage.Path == "" {
+			opageFromTest = true
+		}
 		// Relative join branch + miss path.
 		miss, err := pathCB(api.OnResolveArgs{Path: "./nope.ts", Importer: "/x.ts", ResolveDir: dir})
 		if err != nil {
@@ -240,6 +256,12 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 	if !pathHit {
 		t.Fatal("expected FE path stub to resolve registry")
+	}
+	if !opageFromPage {
+		t.Fatal("expected OPage stub for page/view importers")
+	}
+	if !opageFromTest {
+		t.Fatal("expected real OPage for FE unit test importers")
 	}
 }
 

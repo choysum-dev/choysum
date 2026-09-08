@@ -37,7 +37,8 @@ type VueHostBundleOptions struct {
 	// WithVuePlugin enables vueplugin (needed for .vue entries/imports).
 	WithVuePlugin bool
 	// ExtraStubAliases maps import paths (package names or absolute file paths) to stub files.
-	// Default FE unit stubs (element-plus, icons, vue-router, OPage, auth store) always apply.
+	// Default FE unit stubs (element-plus, icons, vue-router, path stubs, auth store) always apply.
+	// OPage.vue is stubbed only for page/view product importers (see feUnitPathStubPath).
 	ExtraStubAliases map[string]string
 	// DisableDefaultFEStubs skips built-in package/path stubs (host unit tests only).
 	DisableDefaultFEStubs bool
@@ -142,15 +143,8 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 					})
 			},
 		})
-		plugins = append(plugins, api.Plugin{
-			Name: "choysum-fe-unit-opage-stub",
-			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `OPage\.vue$`},
-					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
-						return api.OnResolveResult{Path: stubs.OPage, Namespace: "file"}, nil
-					})
-			},
-		})
+		// OPage.vue is stubbed only for page/view product importers via feUnitPathStubPath
+		// (not a blanket OPage.vue$ rewrite), so OPage.mapping and similar FE units mount the real SUT.
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-path-stubs",
 			Setup: func(build api.PluginBuild) {

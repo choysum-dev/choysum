@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, ref, type Ref } from 'vue';
+import { computed, inject, ref, type InjectionKey, type Ref } from 'vue';
 import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
 import type { NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery as defaultFiltersToQuery } from '@/web/web/query/utils/condition/builder';
@@ -28,6 +28,18 @@ export type UserFiltersDeps = {
   actorUserId?: typeof defaultActorUserId;
   filtersToQuery?: typeof defaultFiltersToQuery;
 };
+
+/** Optional override for `useUserFilters` (unit harness / specialized shells). */
+export type UseUserFiltersFn = typeof useUserFilters;
+export const UseUserFiltersKey: InjectionKey<UseUserFiltersFn> = Symbol('UseUserFilters');
+
+/** Resolve injected `useUserFilters` factory, else the product default. */
+export function useInjectedUserFilters(
+  params: Parameters<typeof useUserFilters>[0]
+): ReturnType<typeof useUserFilters> {
+  const override = inject(UseUserFiltersKey, null);
+  return (override ?? useUserFilters)(params);
+}
 
 /**
  * Load / apply / save / remove web.UserFilter favorites for the given view store.

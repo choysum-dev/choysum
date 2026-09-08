@@ -14,3 +14,4 @@ export * from './userFilterDefaults';
 export * from './defaultFavoriteName';
 export * from './scopeKey';
 export * from './trySetupHook';
+export * from './oSearchNavContext';
