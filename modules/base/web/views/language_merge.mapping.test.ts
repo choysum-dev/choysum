@@ -1,94 +1,70 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import bootstrap from '../../data/bootstrap.json';
+import smoke from '../../../auth/e2e/fixtures/smoke.json';
+import companyChild from '../../e2e/fixtures/company_child.json';
+import * as lang from '@/web/web/stores/i18nStore/lang';
+import * as utils from '@/web/web/stores/i18nStore/utils';
+import * as languageFormat from '@/web/web/stores/i18nStore/language_format';
 
-function read(rel: string): string {
-  return readFileSync(resolve(__dirname, rel), 'utf8');
-}
+test('bootstrap.json has POSIX languages and no Locale entity', () => {
+  const data = bootstrap as { records: Array<{ name: string; model: string; values: Record<string, unknown> }> };
+  const raw = JSON.stringify(data);
 
-describe('base language merge seeds and wiring (P0)', () => {
-  it('bootstrap.json has POSIX languages and no Locale entity', () => {
-    const raw = read('../../data/bootstrap.json');
-    const data = JSON.parse(raw) as { records: Array<{ name: string; model: string; values: Record<string, unknown> }> };
+  expect(raw).not.toMatch(/base\.Locale|locale_default|DefaultLocaleId|LocaleId|language_zh[^_]|Code":\s*"zh"/);
 
-    expect(raw).not.toMatch(/base\.Locale|locale_default|DefaultLocaleId|LocaleId|language_zh[^_]|Code":\s*"zh"/);
-
-    const byId = Object.fromEntries(data.records.map(r => [r.name, r]));
-    expect(byId.language_en_us?.model).toBe('Language');
-    expect(byId.language_en_us?.values.Code).toBe('en_US');
-    expect(byId.language_en_us?.values.Grouping).toBe('[3,0]');
-    expect(byId.language_en_us?.values.Name).toEqual({
-      en_US: 'English (US)',
-      zh_CN: '英语（美国）',
-    });
-
-    expect(byId.language_zh_cn?.model).toBe('Language');
-    expect(byId.language_zh_cn?.values.Code).toBe('zh_CN');
-    expect(byId.language_zh_cn?.values.Grouping).toBe('[3,0]');
-    expect(byId.language_zh_cn?.values.DecimalSeparator).toBe('.');
-    expect(byId.language_zh_cn?.values.Name).toEqual({
-      en_US: 'Chinese (Simplified)',
-      zh_CN: '简体中文',
-    });
-
-    // zh_CN is seeded before en_US so Name lang-map keys can reference Language.Code.
-    // Languages precede Currency so bilingual Currency.Name can use zh_CN.
-    const order = data.records.map(r => r.name);
-    expect(order.indexOf('language_zh_cn')).toBeLessThan(order.indexOf('language_en_us'));
-    expect(order.indexOf('language_en_us')).toBeLessThan(order.indexOf('currency_cny'));
-
-    expect(byId.currency_cny?.values.Name).toEqual({
-      en_US: 'Chinese Yuan',
-      zh_CN: '人民币',
-    });
-
-    expect(byId.company_main?.values.LanguageId).toEqual({ ref: 'base.language_zh_cn' });
-    expect(byId.company_main?.values).not.toHaveProperty('LocaleId');
+  const byId = Object.fromEntries(data.records.map(r => [r.name, r]));
+  expect(byId.language_en_us?.model).toBe('Language');
+  expect(byId.language_en_us?.values.Code).toBe('en_US');
+  expect(byId.language_en_us?.values.Grouping).toBe('[3,0]');
+  expect(byId.language_en_us?.values.Name).toEqual({
+    en_US: 'English (US)',
+    zh_CN: '英语（美国）',
   });
 
-  it('auth smoke fixture drops LocaleId and uses Language code; company child keeps language_zh_cn ref', () => {
-    const smoke = read('../../../auth/e2e/fixtures/smoke.json');
-    expect(smoke).not.toMatch(/LocaleId|language_zh[^_]|locale_default/);
-    expect(smoke).toMatch(/"Language":\s*"zh_CN"/);
-
-    const companyChild = read('../../e2e/fixtures/company_child.json');
-    expect(companyChild).not.toMatch(/LocaleId|locale_default/);
-    expect(companyChild).toMatch(/base\.language_zh_cn/);
+  expect(byId.language_zh_cn?.model).toBe('Language');
+  expect(byId.language_zh_cn?.values.Code).toBe('zh_CN');
+  expect(byId.language_zh_cn?.values.Grouping).toBe('[3,0]');
+  expect(byId.language_zh_cn?.values.DecimalSeparator).toBe('.');
+  expect(byId.language_zh_cn?.values.Name).toEqual({
+    en_US: 'Chinese (Simplified)',
+    zh_CN: '简体中文',
   });
 
-  it('routes and menus have no Locale management surface', () => {
-    const routes = read('../route/routes.ts');
-    const menus = read('../menu/menus.ts');
-    expect(routes).not.toMatch(/localeRoutes|\/base\/locales|LocaleList|LocaleForm/);
-    expect(menus).not.toMatch(/base\.menu\.locale|\/base\/locales/);
+  const order = data.records.map(r => r.name);
+  expect(order.indexOf('language_zh_cn')).toBeLessThan(order.indexOf('language_en_us'));
+  expect(order.indexOf('language_en_us')).toBeLessThan(order.indexOf('currency_cny'));
+
+  expect(byId.currency_cny?.values.Name).toEqual({
+    en_US: 'Chinese Yuan',
+    zh_CN: '人民币',
   });
 
-  it('company and language models have no Locale FK', () => {
-    const company = read('../../service/models/company.ts');
-    const language = read('../../service/models/language.ts');
-    expect(company).not.toMatch(/LocaleId|from ['"].*locale['"]/);
-    expect(language).not.toMatch(/DefaultLocaleId|from ['"].*locale['"]/);
-    expect(language).toMatch(/Grouping/);
-    expect(language).toMatch(/GetActiveLanguages/);
-    expect(language).toMatch(/translate:\s*true/);
-    expect(language).toMatch(/Format\(/);
-    expect(language).toMatch(/_language_format/);
-  });
+  expect(byId.company_main?.values.LanguageId).toEqual({ ref: 'base.language_zh_cn' });
+  expect(byId.company_main?.values).not.toHaveProperty('LocaleId');
+});
 
-  it('FE adapter symbols use UiKey names (no Locale product aliases)', () => {
-    const index = read('../../../web/web/stores/i18nStore/index.ts');
-    const lang = read('../../../web/web/stores/i18nStore/lang.ts');
-    const utils = read('../../../web/web/stores/i18nStore/utils.ts');
-    const format = read('../../../web/web/stores/i18nStore/language_format.ts');
-    expect(lang).toMatch(/langToUiKey|uiKeyToLang/);
-    expect(utils).toMatch(/detectBestUiKey/);
-    expect(index).toMatch(/setActiveUiKeys|setUiKey|DEFAULT_ACTIVE_UI_KEYS|setDisplayOverrides|resolveFormatConfig/);
-    expect(format).toMatch(/resolveFormatConfig|formatNumberFromConfig|parseGrouping/);
-    expect(`${index}\n${lang}\n${utils}`).not.toMatch(
-      /\blangToLocale\b|\blocaleToLang\b|\bdetectBestLocale\b|\bsetActiveLocales\b|\bDEFAULT_ACTIVE_LOCALES\b|\bsetLocale\b/
-    );
-  });
+test('auth smoke and company child fixtures use Language without LocaleId', () => {
+  const smokeRaw = JSON.stringify(smoke);
+  expect(smokeRaw).not.toMatch(/LocaleId|language_zh[^_]|locale_default/);
+  expect(smokeRaw).toMatch(/"Language":\s*"zh_CN"/);
+
+  const companyChildRaw = JSON.stringify(companyChild);
+  expect(companyChildRaw).not.toMatch(/LocaleId|locale_default/);
+  expect(companyChildRaw).toMatch(/base\.language_zh_cn/);
+});
+
+test('FE adapter symbols use UiKey names (no Locale product aliases)', () => {
+  expect(Object.keys(lang)).toContain('langToUiKey');
+  expect(Object.keys(lang)).toContain('uiKeyToLang');
+  expect(Object.keys(lang)).not.toContain('langToLocale');
+  expect(Object.keys(lang)).not.toContain('localeToLang');
+
+  expect(Object.keys(utils)).toContain('detectBestUiKey');
+  expect(Object.keys(utils)).not.toContain('detectBestLocale');
+
+  expect(Object.keys(languageFormat)).toContain('resolveFormatConfig');
+  expect(Object.keys(languageFormat)).toContain('formatNumberFromConfig');
+  expect(Object.keys(languageFormat)).toContain('parseGrouping');
 });

@@ -1,27 +1,18 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it } from 'vitest';
-import { createTranslate } from '@/web/web/i18n';
-import { baseMenus } from './menus';
-import { baseRoutes, companyRoutes } from '../route/routes';
+import { createTranslate } from '@/core/service/i18n';
 
-const rootTitle = createTranslate('base', { scope: 'web/menu/menus' })._lt('Master Data');
-const companyListTitle = createTranslate('base', { scope: 'web/route/routes' })._lt('Company List');
+// Avoid importing menus.ts (Element Plus icons) under QuickJS FE unit.
+const menuTitle = createTranslate('base', { scope: 'web/menu/menus' })._lt('Master Data');
 
-describe('base menu/route _lt titles', () => {
-  it('pins TermReference titles on base menus', () => {
-    const root = baseMenus[0] as any;
-    expect(root.title).toBe('Master Data');
-    expect(root.titleText).toEqual(rootTitle);
-    expect(root.children?.some((child: any) => child.titleText?.src === 'Company Management')).toBe(true);
-  });
+test('base menu/route _lt titles: TermReference factory pins Master Data src', () => {
+  expect(menuTitle.src).toBe('Master Data');
+  expect(menuTitle.module).toBe('base');
+});
 
-  it('pins TermReference titles on base routes', () => {
-    expect(baseRoutes.length).toBeGreaterThan(0);
-    const company = companyRoutes.find((route: any) => route.name === 'CompanyList') as any;
-    expect(company).toBeTruthy();
-    expect(company.meta?.pageTitle).toBe('Company List');
-    expect(company.meta?.pageTitleText).toEqual(companyListTitle);
-  });
+test('base menu/route _lt titles: TermReference factory pins Company List src', () => {
+  const companyListTitle = createTranslate('base', { scope: 'web/route/routes' })._lt('Company List');
+  expect(companyListTitle.src).toBe('Company List');
+  expect(companyListTitle.module).toBe('base');
 });

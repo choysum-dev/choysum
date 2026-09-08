@@ -1,65 +1,95 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import { createModuleKanbanOpProgressHooks } from './moduleKanbanOpProgress';
 
-describe('createModuleKanbanOpProgressHooks', () => {
-  it('wires status, terminal, timeout, and error callbacks', async () => {
-    const setOpStatus = vi.fn();
-    const setDialogStep = vi.fn();
-    const warn = vi.fn();
-    const error = vi.fn();
-    const fetchStatus = vi.fn(async () => ({ status: 'queued' }));
-    const jobStillRunning = vi.fn(() => 'Job is still running in the background; refresh later');
-    const serviceRestarting = vi.fn(() => 'Service is restarting; status will retry automatically');
-    const failedToGetStatus = vi.fn(() => 'Failed to get status');
+function fnRecorder() {
+  const rec: any = Object.assign(
+    (...args: unknown[]) => {
+      rec.calls.push(args);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
-    const hooks = createModuleKanbanOpProgressHooks({
-      fetchStatus,
-      isDialogOpen: () => true,
-      setOpStatus,
-      setDialogStep,
-      warn,
-      error,
-      messages: {
-        jobStillRunning,
-        serviceRestarting,
-        failedToGetStatus,
-      },
-    });
+function asyncFnRecorder(result: unknown) {
+  const rec: any = Object.assign(
+    async (...args: unknown[]) => {
+      rec.calls.push(args);
+      return result;
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
-    expect(hooks.isActive()).toBe(true);
-    await expect(hooks.fetchStatus('job-1')).resolves.toEqual({ status: 'queued' });
+function valueFnRecorder(result: unknown) {
+  const rec: any = Object.assign(
+    (...args: unknown[]) => {
+      rec.calls.push(args);
+      return result;
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
-    hooks.onStatus({ status: 'dispatching' });
-    expect(setOpStatus).toHaveBeenCalledWith({ status: 'dispatching' });
+test('createModuleKanbanOpProgressHooks: wires status, terminal, timeout, and error callbacks', async () => {
+  const setOpStatus = fnRecorder();
+  const setDialogStep = fnRecorder();
+  const warn = fnRecorder();
+  const error = fnRecorder();
+  const fetchStatus = asyncFnRecorder({ status: 'queued' });
+  const jobStillRunning = valueFnRecorder('Job is still running in the background; refresh later');
+  const serviceRestarting = valueFnRecorder('Service is restarting; status will retry automatically');
+  const failedToGetStatus = valueFnRecorder('Failed to get status');
 
-    hooks.onTerminal({ status: 'succeeded' });
-    expect(setDialogStep).toHaveBeenCalledWith('result');
+  const hooks = createModuleKanbanOpProgressHooks({
+    fetchStatus,
+    isDialogOpen: () => true,
+    setOpStatus,
+    setDialogStep,
+    warn,
+    error,
+    messages: {
+      jobStillRunning,
+      serviceRestarting,
+      failedToGetStatus,
+    },
+  });
 
-    hooks.onTimeout();
-    expect(setDialogStep).toHaveBeenLastCalledWith('result');
-    expect(setOpStatus).toHaveBeenLastCalledWith({
+  expect(hooks.isActive()).toBe(true);
+  expect(await hooks.fetchStatus('job-1')).toEqual({ status: 'queued' });
+
+  hooks.onStatus({ status: 'dispatching' });
+  expect(setOpStatus.calls[setOpStatus.calls.length - 1]).toEqual([{ status: 'dispatching' }]);
+
+  hooks.onTerminal({ status: 'succeeded' });
+  expect(setDialogStep.calls[setDialogStep.calls.length - 1]).toEqual(['result']);
+
+  hooks.onTimeout();
+  expect(setDialogStep.calls[setDialogStep.calls.length - 1]).toEqual(['result']);
+  expect(setOpStatus.calls[setOpStatus.calls.length - 1]).toEqual([
+    {
       status: 'dispatching',
       resultStatus: undefined,
-    });
-    expect(jobStillRunning).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith('Job is still running in the background; refresh later');
+    },
+  ]);
+  expect(jobStillRunning.calls.length).toBe(1);
+  expect(warn.calls[warn.calls.length - 1]).toEqual(['Job is still running in the background; refresh later']);
 
-    hooks.onTransientNetworkError?.();
-    expect(serviceRestarting).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith('Service is restarting; status will retry automatically');
+  hooks.onTransientNetworkError?.();
+  expect(serviceRestarting.calls.length).toBe(1);
+  expect(warn.calls[warn.calls.length - 1]).toEqual(['Service is restarting; status will retry automatically']);
 
-    hooks.onHardError?.('boom');
-    expect(error).toHaveBeenCalledWith('boom');
-    expect(failedToGetStatus).not.toHaveBeenCalled();
-    hooks.onHardError?.('');
-    expect(failedToGetStatus).toHaveBeenCalledTimes(1);
-    expect(error).toHaveBeenCalledWith('Failed to get status');
-    hooks.onHardError?.('Failed to get status');
-    expect(failedToGetStatus).toHaveBeenCalledTimes(2);
-    expect(error).toHaveBeenLastCalledWith('Failed to get status');
-  });
+  hooks.onHardError?.('boom');
+  expect(error.calls[error.calls.length - 1]).toEqual(['boom']);
+  expect(failedToGetStatus.calls.length).toBe(0);
+  hooks.onHardError?.('');
+  expect(failedToGetStatus.calls.length).toBe(1);
+  expect(error.calls[error.calls.length - 1]).toEqual(['Failed to get status']);
+  hooks.onHardError?.('Failed to get status');
+  expect(failedToGetStatus.calls.length).toBe(2);
+  expect(error.calls[error.calls.length - 1]).toEqual(['Failed to get status']);
 });

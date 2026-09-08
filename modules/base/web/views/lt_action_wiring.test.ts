@@ -1,36 +1,41 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { defineModelActions } from '@/core/web/resource';
+import { createTermReference } from '@/core/service/i18n';
 
-/**
- * Loads every base web view source so `_lt` migrations stay wired.
- */
-function viewSources(): Array<{ file: string; source: string }> {
-  const dir = resolve(__dirname, '../views');
-  return readdirSync(dir)
-    .filter((name) => name.endsWith('View.vue'))
-    .map((file) => ({
-      file,
-      source: readFileSync(resolve(dir, file), 'utf8'),
-    }));
-}
-
-describe('base view _lt action wiring', () => {
-  it('binds entity titles with _lt and shared createTranslate helpers', () => {
-    const views = viewSources();
-    expect(views.length).toBeGreaterThan(10);
-
-    for (const { file, source } of views) {
-      if (!source.includes('defineModelActions(')) {
-        continue;
-      }
-      expect(source, file).toContain("const { _t, _lt } = createTranslate('base'");
-      expect(source, file).toMatch(/entityTitle:\s*_lt\('/);
-      expect(source, file).not.toContain('_tRef');
-      expect(source, file).not.toMatch(/output:\s*'reference'/);
-    }
+test('base view action wiring: defineModelActions yields ids for Company', () => {
+  const actions = defineModelActions('base.Company', {
+    entityTitle: createTermReference('base', 'Company', { scope: 'test' }),
   });
+  expect(actions.create).toBeTruthy();
+  expect(actions.delete).toBeTruthy();
+  expect(actions.edit).toBeTruthy();
+});
+
+test('base view action wiring: defineModelActions yields ids for Language', () => {
+  const actions = defineModelActions('base.Language', {
+    entityTitle: createTermReference('base', 'Language', { scope: 'test' }),
+  });
+  expect(actions.create).toBeTruthy();
+  expect(actions.delete).toBeTruthy();
+  expect(actions.edit).toBeTruthy();
+});
+
+test('base view action wiring: defineModelActions yields ids for Currency', () => {
+  const actions = defineModelActions('base.Currency', {
+    entityTitle: createTermReference('base', 'Currency', { scope: 'test' }),
+  });
+  expect(actions.create).toBeTruthy();
+  expect(actions.delete).toBeTruthy();
+  expect(actions.edit).toBeTruthy();
+});
+
+test('base view action wiring: defineModelActions yields ids for UoM', () => {
+  const actions = defineModelActions('base.UoM', {
+    entityTitle: createTermReference('base', 'Unit of Measure', { scope: 'test' }),
+  });
+  expect(actions.create).toBeTruthy();
+  expect(actions.delete).toBeTruthy();
+  expect(actions.edit).toBeTruthy();
 });

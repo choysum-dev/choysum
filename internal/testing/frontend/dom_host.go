@@ -66,6 +66,28 @@ const minimalConsoleScript = `(function () {
       return str;
     };
   }
+  if (typeof g.AbortController !== "function") {
+    g.AbortController = function AbortController() {
+      var listeners = [];
+      this.signal = {
+        aborted: false,
+        addEventListener: function (type, fn) {
+          if (type === "abort" && typeof fn === "function") listeners.push(fn);
+        },
+        removeEventListener: function (type, fn) {
+          if (type !== "abort") return;
+          listeners = listeners.filter(function (x) { return x !== fn; });
+        },
+      };
+      this.abort = function () {
+        if (this.signal.aborted) return;
+        this.signal.aborted = true;
+        listeners.slice().forEach(function (fn) {
+          try { fn(); } catch (e) {}
+        });
+      };
+    };
+  }
   function makeStorage() {
     var store = Object.create(null);
     return {
