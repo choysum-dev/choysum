@@ -136,7 +136,8 @@
           write(list);
         },
         toggle: function (token, force) {
-          var t = String(token || '');
+          var t = String(token || '').trim();
+          if (!t) return false;
           var list = tokens();
           var idx = list.indexOf(t);
           var shouldAdd = force === undefined ? idx < 0 : !!force;

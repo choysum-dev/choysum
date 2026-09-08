@@ -273,6 +273,15 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
   if (old.parentNode !== null) throw new Error('textContent must clear parentNode');
   if (parent.textContent !== 'replaced') throw new Error('textContent set failed');
 
+  // Empty / whitespace classList.toggle must not pollute className.
+  child.className = 'keep';
+  if (child.classList.toggle('') !== false) throw new Error('empty toggle should return false');
+  if (child.classList.toggle('   ') !== false) throw new Error('whitespace toggle should return false');
+  if (child.className !== 'keep') throw new Error('empty toggle polluted className');
+  if (child.classList.toggle('keep') !== false) throw new Error('toggle off keep');
+  if (child.classList.toggle('keep') !== true) throw new Error('toggle on keep');
+  if (child.className !== 'keep') throw new Error('toggle keep failed');
+
   // Property-assigned live state survives content-attribute removal.
   const input = document.createElement('input');
   input.value = 'live';
