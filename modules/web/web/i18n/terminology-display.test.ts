@@ -19,7 +19,7 @@ test('frontend terminology display contract: keeps non-template term reference c
   for (const path of [
     '../composables/useMenu.ts',
     '../composables/resolveFieldLabel.ts',
-    '../router/index.ts',
+    '../router/documentTitle.ts',
   ]) {
     expect(source(path)).toContain('translateTerm(');
   }
@@ -39,6 +39,7 @@ test('frontend terminology display contract: does not reintroduce object-specifi
     '../composables/useBreadcrumb.ts',
     '../composables/useMenu.ts',
     '../router/index.ts',
+    '../router/documentTitle.ts',
     '../stores/breadcrumbStore/index.ts',
   ].map(source).join('\n');
 

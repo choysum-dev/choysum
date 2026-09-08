@@ -12,11 +12,21 @@ import { createStoreByModel } from '../stores/registry';
 import { getTokenProvider } from '@/core/web/rpc/providers';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
+type CreateStoreByModel = typeof createStoreByModel;
+
+type ExecutorStoreDeps = {
+  createStoreByModel: CreateStoreByModel;
+};
+
 /**
  * Hydrates ManyToOneRef fields in bulk.
  * Replaces string ids in the result set with { Id, DisplayName } objects.
  */
-async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[]) {
+async function hydrateManyToOneRefs(
+  store: WebModelStore<any>,
+  items: any[],
+  deps: ExecutorStoreDeps = { createStoreByModel }
+) {
   if (!items || items.length === 0) return;
 
   try {
@@ -49,7 +59,7 @@ async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[]) {
       Array.from(batch.entries()).map(async ([model, ids]) => {
         if (ids.size === 0) return;
         try {
-          const targetStore = createStoreByModel(model);
+          const targetStore = deps.createStoreByModel(model);
           const cond: any = ['Id', 'in', Array.from(ids)];
           const results = await targetStore.Search(cond, { fields: ['Id', 'DisplayName'] });
 
@@ -87,7 +97,11 @@ async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[]) {
  * Hydrates ManyToManyRef fields in bulk.
  * Replaces id lists with target-model objects that at least contain Id and DisplayName.
  */
-async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[]) {
+async function hydrateManyToManyRefs(
+  store: WebModelStore<any>,
+  items: any[],
+  deps: ExecutorStoreDeps = { createStoreByModel }
+) {
   if (!items || items.length === 0) return;
 
   try {
@@ -118,7 +132,7 @@ async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[]) {
       Array.from(batch.entries()).map(async ([model, ids]) => {
         if (ids.size === 0) return;
         try {
-          const targetStore = createStoreByModel(model);
+          const targetStore = deps.createStoreByModel(model);
           const selectionPaths = exportFieldSelection(targetStore.storeId) || [];
           const selection = ensureRootId(pathsToFieldSelection(selectionPaths) ?? ['DisplayName']);
           const results = await targetStore.Search(['Id', 'in', Array.from(ids)] as any, { fields: selection });
@@ -329,7 +343,7 @@ function decodeBinaryImageFields(store: WebModelStore<any>, items: any[]) {
 }
 
 type AttachmentDescriptorEnrichDeps = {
-  createStoreByModel: typeof createStoreByModel;
+  createStoreByModel: CreateStoreByModel;
 };
 
 function isAttachmentDescriptor(value: unknown): value is AttachmentFieldDescriptor {
@@ -561,10 +575,18 @@ function toGroupRows(groups: any[]): GroupRow[] {
   });
 }
 
-export async function execute(bundle: PlanBundle, store: WebModelStore<any>, uiView?: string, options?: { signal?: AbortSignal }): Promise<DataSetSnapshot> {
+export async function execute(
+  bundle: PlanBundle,
+  store: WebModelStore<any>,
+  uiView?: string,
+  options?: { signal?: AbortSignal; createStoreByModel?: CreateStoreByModel }
+): Promise<DataSetSnapshot> {
   const storeId: string = store.storeId;
   const main = withSelections(bundle.main, storeId);
   const aux = bundle.auxiliary?.map(p => withSelections(p, storeId)) ?? [];
+  const storeDeps: ExecutorStoreDeps = {
+    createStoreByModel: options?.createStoreByModel ?? createStoreByModel,
+  };
   // Removed debug logging for execution plans
 
   // Early abort check
@@ -578,10 +600,10 @@ export async function execute(bundle: PlanBundle, store: WebModelStore<any>, uiV
     const rec = Array.isArray(mainRes) ? mainRes[0] : mainRes;
     // Keep browse decoding consistent with search decoding.
     if (rec) {
-      await hydrateManyToOneRefs(store, [rec]);
-      await hydrateManyToManyRefs(store, [rec]);
+      await hydrateManyToOneRefs(store, [rec], storeDeps);
+      await hydrateManyToManyRefs(store, [rec], storeDeps);
       decodeBinaryImageFields(store, [rec]);
-      await enrichBinaryImageDescriptors(store, [rec]);
+      await enrichBinaryImageDescriptors(store, [rec], storeDeps);
       normalizeRelationProjectionPayload([rec]);
     }
     const rows = rec ? toRecordRows([rec]) : [];
@@ -597,12 +619,12 @@ export async function execute(bundle: PlanBundle, store: WebModelStore<any>, uiV
   const items = Array.isArray(mainRes) ? mainRes : (mainRes?.items ?? []);
 
   // Hydrate reference fields before normalization for top-level fields.
-  await hydrateManyToOneRefs(store, items);
-  await hydrateManyToManyRefs(store, items);
+  await hydrateManyToOneRefs(store, items, storeDeps);
+  await hydrateManyToManyRefs(store, items, storeDeps);
 
   // Decode binary and image fields into descriptors for field-view components.
   decodeBinaryImageFields(store, items);
-  await enrichBinaryImageDescriptors(store, items);
+  await enrichBinaryImageDescriptors(store, items, storeDeps);
 
   normalizeRelationProjectionPayload(items);
   const total = typeof auxRes[0] === 'number' ? auxRes[0] : (mainRes?.total ?? items.length);

@@ -1,28 +1,28 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
-
-vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: vi.fn(),
-}));
-
-import { createStoreByModel } from '@/web/web/stores/registry';
 import { setTokenProvider } from '@/core/web/rpc';
 import { execute } from './executor';
 
+function resetTokenProvider() {
+  setTokenProvider({
+    getToken: async () => null,
+    refreshToken: async () => false,
+    shouldRefreshToken: async () => false,
+  });
+}
+
 describe('query executor browse attachment descriptor regression', () => {
   beforeEach(() => {
-    (createStoreByModel as any).mockReset();
-    setTokenProvider({
-      getToken: async () => null,
-      refreshToken: async () => false,
-      shouldRefreshToken: async () => false,
-    });
+    resetTokenProvider();
+  });
+
+  afterEach(() => {
+    resetTokenProvider();
   });
 
   test('browse path decodes and enriches image descriptor from binding id', async () => {
-    (createStoreByModel as any).mockImplementation((modelName: string) => {
+    const createStoreByModel = (modelName: string) => {
       if (modelName === 'base.Company') {
         return {
           Search: async () => [
@@ -53,7 +53,7 @@ describe('query executor browse attachment descriptor regression', () => {
       }
 
       throw new Error(`unexpected model: ${modelName}`);
-    });
+    };
 
     const store = {
       storeId: 'auth.User',
@@ -78,7 +78,9 @@ describe('query executor browse attachment descriptor regression', () => {
         },
         auxiliary: [],
       } as any,
-      store
+      store,
+      undefined,
+      { createStoreByModel }
     );
 
     const row = snapshot.rows[0] as any;
@@ -100,7 +102,7 @@ describe('query executor browse attachment descriptor regression', () => {
   });
 
   test('browse path decodes and enriches binary descriptor without preview for non-image mime', async () => {
-    (createStoreByModel as any).mockImplementation((modelName: string) => {
+    const createStoreByModel = (modelName: string) => {
       if (modelName === 'document.AttachmentBinding') {
         return {
           BatchDescribe: async () => ({
@@ -120,7 +122,7 @@ describe('query executor browse attachment descriptor regression', () => {
       }
 
       throw new Error(`unexpected model: ${modelName}`);
-    });
+    };
 
     const store = {
       storeId: 'auth.User',
@@ -143,7 +145,9 @@ describe('query executor browse attachment descriptor regression', () => {
         },
         auxiliary: [],
       } as any,
-      store
+      store,
+      undefined,
+      { createStoreByModel }
     );
 
     const row = snapshot.rows[0] as any;

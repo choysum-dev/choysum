@@ -8,11 +8,18 @@ import type { RouteLocationNormalized, Router } from 'vue-router';
 import routes from './routes';
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
-import { translateTerm, type ComposerLike } from '../i18n';
-import { isTermReference } from '@/core/service/i18n';
+import type { ComposerLike } from '../i18n';
+import { resolveDocumentTitle } from './documentTitle';
+
+export { resolveDocumentTitle } from './documentTitle';
 
 // Configure navigation progress feedback.
 NProgress.configure({ showSpinner: false });
+
+function defaultAppName(): string {
+  const appNameRaw = import.meta.env?.CHOYSUM_APP_NAME;
+  return typeof appNameRaw === 'string' && appNameRaw.trim() !== '' ? appNameRaw : 'Choysum';
+}
 
 /**
  * Creates the application router.
@@ -38,24 +45,8 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     },
   });
   const titleRoute = shallowRef<RouteLocationNormalized | null>(router.currentRoute?.value ?? null);
-  const appNameRaw = import.meta.env?.CHOYSUM_APP_NAME;
-  const appName = typeof appNameRaw === 'string' && appNameRaw.trim() !== '' ? appNameRaw : 'Choysum';
-  useTitle(
-    computed(() => {
-      const route = titleRoute.value;
-      const pageTitle = route?.meta?.pageTitle;
-      const fallback = typeof pageTitle === 'function'
-        ? String(pageTitle(route!))
-        : typeof pageTitle === 'string'
-          ? pageTitle
-          : '';
-      const reference = isTermReference(route?.meta?.pageTitleText)
-        ? route.meta.pageTitleText
-        : undefined;
-      const title = translateTerm(composer, reference, fallback);
-      return title ? `${title} - ${appName}` : appName;
-    })
-  );
+  const appName = defaultAppName();
+  useTitle(computed(() => resolveDocumentTitle(titleRoute.value, composer, appName)));
 
   router.beforeEach(async to => {
     NProgress.start();
@@ -71,7 +62,7 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     }
   });
 
-  router.afterEach((to, from) => {
+  router.afterEach((_to, _from) => {
     NProgress.done();
   });
 

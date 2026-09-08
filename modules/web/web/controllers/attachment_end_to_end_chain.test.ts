@@ -1,21 +1,27 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-
-vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: vi.fn(),
-}));
-
-import { createStoreByModel } from '@/web/web/stores/registry';
 import { __normalizeAttachmentFieldsInPayloadForTest } from './formController';
 import { execute } from '@/web/web/query/executor';
 
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
+
 type AttachmentContentServiceStub = {
-  PrepareUpload: ReturnType<typeof vi.fn>;
-  FinalizeUpload: ReturnType<typeof vi.fn>;
-  setContext?: (ctx: Record<string, string>) => void;
-  withContext?: <T>(ctx: Record<string, string>, fn: () => Promise<T>) => Promise<T>;
+  PrepareUpload: CallRecorder & ((...args: any[]) => Promise<any>);
+  FinalizeUpload: CallRecorder & ((...args: any[]) => Promise<any>);
 };
 
 class TestFile extends Blob {
@@ -30,15 +36,15 @@ class TestFile extends Blob {
 describe('attachment end-to-end chain regression', () => {
   const originalFetch = globalThis.fetch;
   const originalFile = (globalThis as any).File;
+  let fetchMock: CallRecorder & ((...args: any[]) => Promise<any>);
 
   beforeEach(() => {
-    (createStoreByModel as any).mockReset();
-    globalThis.fetch = vi.fn(async () => ({ ok: true, status: 200 })) as any;
+    fetchMock = fnRecorder(async () => ({ ok: true, status: 200 }));
+    globalThis.fetch = fetchMock as any;
     (globalThis as any).File = TestFile;
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     globalThis.fetch = originalFetch;
     if (originalFile === undefined) {
       delete (globalThis as any).File;
@@ -50,7 +56,7 @@ describe('attachment end-to-end chain regression', () => {
   test('covers Create(Blob/File) -> Read(descriptor enrich) -> Update(clear/noop/set)', async () => {
     const finalizedQueue = ['ao-create-blob', 'ao-create-file', 'ao-update-file'];
     const attachmentContentService: AttachmentContentServiceStub = {
-      PrepareUpload: vi.fn(async () => ({
+      PrepareUpload: fnRecorder(async () => ({
         uploadId: `upload-${Math.random().toString(16).slice(2)}`,
         uploadTarget: {
           method: 'PUT',
@@ -60,12 +66,12 @@ describe('attachment end-to-end chain regression', () => {
           },
         },
       })),
-      FinalizeUpload: vi.fn(async () => ({
+      FinalizeUpload: fnRecorder(async () => ({
         attachmentObjectId: finalizedQueue.shift(),
       })),
     };
 
-    (createStoreByModel as any).mockImplementation((modelName: string) => {
+    const createStoreByModel = (modelName: string) => {
       if (modelName === 'document.AttachmentBinding') {
         return {
           BatchDescribe: async () => ({
@@ -87,7 +93,7 @@ describe('attachment end-to-end chain regression', () => {
         return attachmentContentService;
       }
       throw new Error(`unexpected model: ${modelName}`);
-    });
+    };
 
     const store = {
       fullModelName: 'auth.User',
@@ -96,6 +102,7 @@ describe('attachment end-to-end chain regression', () => {
       },
       getContext: () => ({}),
     } as any;
+    const normalizeDeps = { createStoreByModel };
 
     const createBlobPayload = await __normalizeAttachmentFieldsInPayloadForTest(
       store,
@@ -106,7 +113,8 @@ describe('attachment end-to-end chain regression', () => {
         operation: 'create',
         ownerModel: 'auth.User',
         fields: ['Avatar'],
-      }
+      },
+      normalizeDeps
     );
     expect(createBlobPayload).toEqual({ Avatar: 'ao-create-blob' });
 
@@ -119,7 +127,8 @@ describe('attachment end-to-end chain regression', () => {
         operation: 'create',
         ownerModel: 'auth.User',
         fields: ['Avatar'],
-      }
+      },
+      normalizeDeps
     );
     expect(createFilePayload).toEqual({
       Avatar: {
@@ -162,7 +171,9 @@ describe('attachment end-to-end chain regression', () => {
           },
         ],
       } as any,
-      readStore
+      readStore,
+      undefined,
+      { createStoreByModel }
     );
 
     const readRow = (readSnapshot.rows[0] as any)?.payload;
@@ -187,7 +198,8 @@ describe('attachment end-to-end chain regression', () => {
         ownerModel: 'auth.User',
         ownerRecordId: 'USR-1',
         fields: ['Avatar'],
-      }
+      },
+      normalizeDeps
     );
     expect(updateClearPayload).toEqual({ Avatar: null });
 
@@ -202,7 +214,8 @@ describe('attachment end-to-end chain regression', () => {
         ownerModel: 'auth.User',
         ownerRecordId: 'USR-1',
         fields: ['Avatar'],
-      }
+      },
+      normalizeDeps
     );
     expect(updateNoopPayload).toEqual({ Username: 'alice' });
 
@@ -216,7 +229,8 @@ describe('attachment end-to-end chain regression', () => {
         ownerModel: 'auth.User',
         ownerRecordId: 'USR-1',
         fields: ['Avatar'],
-      }
+      },
+      normalizeDeps
     );
     expect(updateSetPayload).toEqual({ Avatar: 'ao-direct-set' });
 
@@ -230,7 +244,8 @@ describe('attachment end-to-end chain regression', () => {
         ownerModel: 'auth.User',
         ownerRecordId: 'USR-1',
         fields: ['Avatar'],
-      }
+      },
+      normalizeDeps
     );
     expect(updateFilePayload).toEqual({
       Avatar: {
@@ -239,8 +254,8 @@ describe('attachment end-to-end chain regression', () => {
       },
     });
 
-    expect(attachmentContentService.PrepareUpload).toHaveBeenCalledTimes(3);
-    expect(attachmentContentService.FinalizeUpload).toHaveBeenCalledTimes(3);
-    expect(globalThis.fetch as any).toHaveBeenCalledTimes(3);
+    expect(attachmentContentService.PrepareUpload.calls.length).toBe(3);
+    expect(attachmentContentService.FinalizeUpload.calls.length).toBe(3);
+    expect(fetchMock.calls.length).toBe(3);
   });
 });
