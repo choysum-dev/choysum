@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@choysum/test-utils": [
+        "../../../../../pkg/jsengine/scripts/choysummount/choysummount.d.ts"
+      ]
+    },
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2020"
+  },
+  "include": [
+    "./runner/**/*.ts",
+    "./vue-shim.d.ts",
+    "../../../../../modules/core/service/integration/choysumtest-globals.d.ts"
+  ]
+}
