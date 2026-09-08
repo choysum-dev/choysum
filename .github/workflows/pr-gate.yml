@@ -415,7 +415,7 @@ jobs:
           set +e
           CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
           # Migrated FE apps use QuickJS until PR-unit-final-fe hard-cuts default --fe.
-          if [ "$MODULE" = "core" ]; then
+          if [ "$MODULE" = "core" ] || [ "$MODULE" = "auth" ]; then
             export CHOYSUM_FE_UNIT_ENGINE=qjs
           fi
           "$CHOYSUM_BIN" test unit "$MODULE" \

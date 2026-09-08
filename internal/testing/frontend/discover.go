@@ -58,7 +58,7 @@ var (
 	// (avoids [\s\S]*? spanning back to an earlier unrelated import/export).
 	// Quote class includes backticks for dynamic import()/require() template literals.
 	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)(?:/[^'\"`]*)?['\"`]")
-	reVTUImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
+	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
 	// Suppress IllegalVTU for mount/shallowMount only when those names are imported from choysumMount.
 	reChoysumMountBinding = regexp.MustCompile(`(?m)import\s*\{[^}]*\b(?:mount|shallowMount)\b[^}]*\}\s*from\s*['"\x60]@choysum/test-utils(?:/[^'"\x60]*)?['"\x60]`)
 	reMountCall           = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)

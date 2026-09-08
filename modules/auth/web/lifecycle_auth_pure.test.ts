@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, test, expect } from 'vitest';
-
 // Minimal stubs for auth error helpers used by the functions under test.
 const AuthErrCode = {
   VALIDATION_FAILED: 'VALIDATION_FAILED',
@@ -110,26 +108,23 @@ function ensureCreatedUserIdOrThrow(createdUserId: any): string {
   return userId;
 }
 
-describe('validateAndHashRegistrationInput', () => {
-  test('throws when username is missing', () => {
-    expect(() => validateAndHashRegistrationInput({ Username: '' }, 'pw')).toThrow();
-  });
-
-  test('throws when password is missing', () => {
-    expect(() => validateAndHashRegistrationInput({ Username: 'u' }, '')).toThrow();
-  });
-
-  test('throws when userData is nullish', () => {
-    expect(() => validateAndHashRegistrationInput(undefined as any, 'pw')).toThrow();
-  });
-
-  test('returns hashed password on success', () => {
-    const result = validateAndHashRegistrationInput({ Username: 'user1' }, 'secret');
-    expect(result).toBeTruthy();
-  });
+test('validateAndHashRegistrationInput: throws when username is missing', () => {
+  expect(() => validateAndHashRegistrationInput({ Username: '' }, 'pw')).toThrow();
 });
 
-describe('validateLoginCandidateOrThrow', () => {
+test('validateAndHashRegistrationInput: throws when password is missing', () => {
+  expect(() => validateAndHashRegistrationInput({ Username: 'u' }, '')).toThrow();
+});
+
+test('validateAndHashRegistrationInput: throws when userData is nullish', () => {
+  expect(() => validateAndHashRegistrationInput(undefined as any, 'pw')).toThrow();
+});
+
+test('validateAndHashRegistrationInput: returns hashed password on success', () => {
+  const result = validateAndHashRegistrationInput({ Username: 'user1' }, 'secret');
+  expect(result).toBeTruthy();
+});
+
   const activeUser: LoginUserLike = {
     Id: 'U1',
     Username: 'user1',
@@ -140,51 +135,48 @@ describe('validateLoginCandidateOrThrow', () => {
 
   const inactiveUser: LoginUserLike = { ...activeUser, IsActive: false };
 
-  test('throws USER_NOT_FOUND when user is undefined', () => {
-    try {
-      validateLoginCandidateOrThrow(undefined, 'u', 'pw');
-      expect.unreachable();
-    } catch (e: any) {
-      expect(e.code).toBe(AuthErrCode.USER_NOT_FOUND);
-      expect(e.grpcCode).toBe(GrpcCode.NotFound);
-    }
-  });
-
-  test('throws INVALID_PASSWORD for wrong password', () => {
-    try {
-      validateLoginCandidateOrThrow(activeUser, 'user1', 'wrong');
-      expect.unreachable();
-    } catch (e: any) {
-      expect(e.code).toBe(AuthErrCode.INVALID_PASSWORD);
-      expect(e.metadata.username).toBe('user1');
-    }
-  });
-
-  test('throws ACCOUNT_DISABLED for inactive user', () => {
-    try {
-      validateLoginCandidateOrThrow(inactiveUser, 'user1', 'correct');
-      expect.unreachable();
-    } catch (e: any) {
-      expect(e.code).toBe(AuthErrCode.ACCOUNT_DISABLED);
-      expect(e.metadata.userId).toBe('U1');
-    }
-  });
-
-  test('returns user on successful validation', () => {
-    const result = validateLoginCandidateOrThrow(activeUser, 'user1', 'correct');
-    expect(result).toBe(activeUser);
-  });
+test('validateLoginCandidateOrThrow: throws USER_NOT_FOUND when user is undefined', () => {
+  try {
+    validateLoginCandidateOrThrow(undefined, 'u', 'pw');
+    expect.unreachable();
+  } catch (e: any) {
+    expect(e.code).toBe(AuthErrCode.USER_NOT_FOUND);
+    expect(e.grpcCode).toBe(GrpcCode.NotFound);
+  }
 });
 
-describe('ensureCreatedUserIdOrThrow', () => {
-  test('returns trimmed string id', () => {
-    expect(ensureCreatedUserIdOrThrow('  U1  ')).toBe('U1');
-    expect(ensureCreatedUserIdOrThrow(123)).toBe('123');
-  });
+test('validateLoginCandidateOrThrow: throws INVALID_PASSWORD for wrong password', () => {
+  try {
+    validateLoginCandidateOrThrow(activeUser, 'user1', 'wrong');
+    expect.unreachable();
+  } catch (e: any) {
+    expect(e.code).toBe(AuthErrCode.INVALID_PASSWORD);
+    expect(e.metadata.username).toBe('user1');
+  }
+});
 
-  test('throws for missing id', () => {
-    expect(() => ensureCreatedUserIdOrThrow(null)).toThrow();
-    expect(() => ensureCreatedUserIdOrThrow('')).toThrow();
-    expect(() => ensureCreatedUserIdOrThrow(undefined)).toThrow();
-  });
+test('validateLoginCandidateOrThrow: throws ACCOUNT_DISABLED for inactive user', () => {
+  try {
+    validateLoginCandidateOrThrow(inactiveUser, 'user1', 'correct');
+    expect.unreachable();
+  } catch (e: any) {
+    expect(e.code).toBe(AuthErrCode.ACCOUNT_DISABLED);
+    expect(e.metadata.userId).toBe('U1');
+  }
+});
+
+test('validateLoginCandidateOrThrow: returns user on successful validation', () => {
+  const result = validateLoginCandidateOrThrow(activeUser, 'user1', 'correct');
+  expect(result).toBe(activeUser);
+});
+
+test('ensureCreatedUserIdOrThrow: returns trimmed string id', () => {
+  expect(ensureCreatedUserIdOrThrow('  U1  ')).toBe('U1');
+  expect(ensureCreatedUserIdOrThrow(123)).toBe('123');
+});
+
+test('ensureCreatedUserIdOrThrow: throws for missing id', () => {
+  expect(() => ensureCreatedUserIdOrThrow(null)).toThrow();
+  expect(() => ensureCreatedUserIdOrThrow('')).toThrow();
+  expect(() => ensureCreatedUserIdOrThrow(undefined)).toThrow();
 });

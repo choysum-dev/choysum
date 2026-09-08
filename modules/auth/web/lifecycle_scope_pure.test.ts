@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, test, expect } from 'vitest';
-
 // Inline helpers under test to avoid backend import dependencies.
 function normalizeScopeId(value: unknown): string {
   if (value == null) return '';
@@ -107,102 +105,94 @@ function validateSwitchCompanyScopeInput(user: any, activeCompanyId: string, ena
   return { ok: true, active, enabled, allowed, prefs };
 }
 
-describe('buildAllowedCompanyIds', () => {
-  test('returns deduplicated non-empty ids from CompanyId and CompanyIds', () => {
-    const user = { CompanyId: 'C1', CompanyIds: ['C2', 'C3'] };
-    expect(buildAllowedCompanyIds(user)).toEqual(['C1', 'C2', 'C3']);
-  });
-
-  test('deduplicates when CompanyId appears in CompanyIds', () => {
-    const user = { CompanyId: 'C1', CompanyIds: ['C1', 'C2'] };
-    expect(buildAllowedCompanyIds(user)).toEqual(['C1', 'C2']);
-  });
-
-  test('handles missing CompanyIds', () => {
-    const user = { CompanyId: 'C1' };
-    expect(buildAllowedCompanyIds(user)).toEqual(['C1']);
-  });
-
-  test('filters empty and whitespace ids', () => {
-    const user = { CompanyId: '  C1  ', CompanyIds: ['', '  ', 'C2'] };
-    expect(buildAllowedCompanyIds(user)).toEqual(['C1', 'C2']);
-  });
+test('buildAllowedCompanyIds: returns deduplicated non-empty ids from CompanyId and CompanyIds', () => {
+  const user = { CompanyId: 'C1', CompanyIds: ['C2', 'C3'] };
+  expect(buildAllowedCompanyIds(user)).toEqual(['C1', 'C2', 'C3']);
 });
 
-describe('computeTokenCompanyScope', () => {
-  test('picks active from preferences when within allowed scope', () => {
-    const user = { CompanyId: 'C1', CompanyIds: ['C1', 'C2'], Preferences: { activeCompanyId: 'C2', enabledCompanyIds: ['C2'] } };
-    const scope = computeTokenCompanyScope(user);
-    expect(scope.activeCompanyId).toBe('C2');
-    expect(scope.enabledCompanyIds).toEqual(['C2']);
-  });
-
-  test('falls back to CompanyId when pref active is outside allowed', () => {
-    const user = { CompanyId: 'C1', CompanyIds: ['C1'], Preferences: { activeCompanyId: 'C99', enabledCompanyIds: ['C99'] } };
-    const scope = computeTokenCompanyScope(user);
-    expect(scope.activeCompanyId).toBe('C1');
-  });
-
-  test('returns empty scope for user with no companies', () => {
-    const scope = computeTokenCompanyScope({});
-    expect(scope.activeCompanyId).toBeUndefined();
-    expect(scope.enabledCompanyIds).toEqual([]);
-  });
+test('buildAllowedCompanyIds: deduplicates when CompanyId appears in CompanyIds', () => {
+  const user = { CompanyId: 'C1', CompanyIds: ['C1', 'C2'] };
+  expect(buildAllowedCompanyIds(user)).toEqual(['C1', 'C2']);
 });
 
-describe('normalizeRequestedEnabledCompanyIds', () => {
-  test('returns null for non-array', () => {
-    expect(normalizeRequestedEnabledCompanyIds(undefined)).toBeNull();
-    expect(normalizeRequestedEnabledCompanyIds('C1')).toBeNull();
-  });
-
-  test('returns normalized and filtered array', () => {
-    expect(normalizeRequestedEnabledCompanyIds(['  C1  ', '', 'C2'])).toEqual(['C1', 'C2']);
-  });
+test('buildAllowedCompanyIds: handles missing CompanyIds', () => {
+  const user = { CompanyId: 'C1' };
+  expect(buildAllowedCompanyIds(user)).toEqual(['C1']);
 });
 
-describe('validateSwitchCompanyScopeInput', () => {
+test('buildAllowedCompanyIds: filters empty and whitespace ids', () => {
+  const user = { CompanyId: '  C1  ', CompanyIds: ['', '  ', 'C2'] };
+  expect(buildAllowedCompanyIds(user)).toEqual(['C1', 'C2']);
+});
+
+test('computeTokenCompanyScope: picks active from preferences when within allowed scope', () => {
+  const user = { CompanyId: 'C1', CompanyIds: ['C1', 'C2'], Preferences: { activeCompanyId: 'C2', enabledCompanyIds: ['C2'] } };
+  const scope = computeTokenCompanyScope(user);
+  expect(scope.activeCompanyId).toBe('C2');
+  expect(scope.enabledCompanyIds).toEqual(['C2']);
+});
+
+test('computeTokenCompanyScope: falls back to CompanyId when pref active is outside allowed', () => {
+  const user = { CompanyId: 'C1', CompanyIds: ['C1'], Preferences: { activeCompanyId: 'C99', enabledCompanyIds: ['C99'] } };
+  const scope = computeTokenCompanyScope(user);
+  expect(scope.activeCompanyId).toBe('C1');
+});
+
+test('computeTokenCompanyScope: returns empty scope for user with no companies', () => {
+  const scope = computeTokenCompanyScope({});
+  expect(scope.activeCompanyId).toBeUndefined();
+  expect(scope.enabledCompanyIds).toEqual([]);
+});
+
+test('normalizeRequestedEnabledCompanyIds: returns null for non-array', () => {
+  expect(normalizeRequestedEnabledCompanyIds(undefined)).toBeNull();
+  expect(normalizeRequestedEnabledCompanyIds('C1')).toBeNull();
+});
+
+test('normalizeRequestedEnabledCompanyIds: returns normalized and filtered array', () => {
+  expect(normalizeRequestedEnabledCompanyIds(['  C1  ', '', 'C2'])).toEqual(['C1', 'C2']);
+});
+
   const baseUser = { CompanyId: 'C1', CompanyIds: ['C1', 'C2'] };
 
-  test('rejects empty active company id', () => {
-    const result = validateSwitchCompanyScopeInput(baseUser, '', undefined);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('active_empty');
-  });
+test('validateSwitchCompanyScopeInput: rejects empty active company id', () => {
+  const result = validateSwitchCompanyScopeInput(baseUser, '', undefined);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.code).toBe('active_empty');
+});
 
-  test('rejects non-array enabled type', () => {
-    const result = validateSwitchCompanyScopeInput(baseUser, 'C1', 'not-an-array');
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('enabled_type');
-  });
+test('validateSwitchCompanyScopeInput: rejects non-array enabled type', () => {
+  const result = validateSwitchCompanyScopeInput(baseUser, 'C1', 'not-an-array');
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.code).toBe('enabled_type');
+});
 
-  test('rejects enabled company outside allowed scope', () => {
-    const result = validateSwitchCompanyScopeInput(baseUser, 'C1', ['C99']);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('enabled_unauthorized');
-  });
+test('validateSwitchCompanyScopeInput: rejects enabled company outside allowed scope', () => {
+  const result = validateSwitchCompanyScopeInput(baseUser, 'C1', ['C99']);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.code).toBe('enabled_unauthorized');
+});
 
-  test('rejects active outside allowed scope (caught by enabled check when enabled defaults to active)', () => {
-    const result = validateSwitchCompanyScopeInput(baseUser, 'C99', undefined);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('enabled_unauthorized');
-  });
+test('validateSwitchCompanyScopeInput: rejects active outside allowed scope (caught by enabled check when enabled defaults to active)', () => {
+  const result = validateSwitchCompanyScopeInput(baseUser, 'C99', undefined);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.code).toBe('enabled_unauthorized');
+});
 
-  test('rejects active not in enabled', () => {
-    const result = validateSwitchCompanyScopeInput(baseUser, 'C2', ['C1']);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('active_not_in_enabled');
-  });
+test('validateSwitchCompanyScopeInput: rejects active not in enabled', () => {
+  const result = validateSwitchCompanyScopeInput(baseUser, 'C2', ['C1']);
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.code).toBe('active_not_in_enabled');
+});
 
-  test('accepts valid switch with explicit enabled', () => {
-    const result = validateSwitchCompanyScopeInput(baseUser, 'C1', ['C1', 'C2']);
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.enabled).toEqual(['C1', 'C2']);
-  });
+test('validateSwitchCompanyScopeInput: accepts valid switch with explicit enabled', () => {
+  const result = validateSwitchCompanyScopeInput(baseUser, 'C1', ['C1', 'C2']);
+  expect(result.ok).toBe(true);
+  if (result.ok) expect(result.enabled).toEqual(['C1', 'C2']);
+});
 
-  test('accepts valid switch with omitted enabled', () => {
-    const result = validateSwitchCompanyScopeInput(baseUser, 'C2', undefined);
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.enabled).toEqual(['C2']);
-  });
+test('validateSwitchCompanyScopeInput: accepts valid switch with omitted enabled', () => {
+  const result = validateSwitchCompanyScopeInput(baseUser, 'C2', undefined);
+  expect(result.ok).toBe(true);
+  if (result.ok) expect(result.enabled).toEqual(['C2']);
 });

@@ -5,11 +5,16 @@ import { computed } from 'vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { canRoute as canRouteRaw, canMenu as canMenuRaw, hasAction as hasActionRaw } from '@/auth/web/permission';
 
+/** Optional store injection for FE unit tests (default: Pinia useAuthStore). */
+export type UsePermissionDeps = {
+  getAuthStore?: () => ReturnType<typeof useAuthStore>;
+};
+
 /**
  * Expose permission helpers bound to the current auth state.
  */
-export function usePermission() {
-  const authStore = useAuthStore();
+export function usePermission(deps?: UsePermissionDeps) {
+  const authStore = (deps?.getAuthStore ?? useAuthStore)();
 
   const ctx = computed(() => {
     const meta = (authStore.identity as any)?.metadata as any;

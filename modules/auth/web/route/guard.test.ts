@@ -1,231 +1,265 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { PermissionState } from '@/auth/web/permission';
+import { authGuard, permissionGuard, type AuthGuardDeps } from './guard';
 
-let mockAuthStore: any;
-const canRouteMock = vi.fn<(resourceId: string, permissionState: any, ctx: any) => boolean>(() => true);
+type CallRecorder = { calls: unknown[][] };
 
-vi.mock('../stores/auth', () => {
+function fnRecorder(): CallRecorder & ((...args: unknown[]) => Promise<undefined>) {
+  const rec: CallRecorder & ((...args: unknown[]) => Promise<undefined>) = Object.assign(
+    async (...args: unknown[]) => {
+      rec.calls.push(args);
+      return undefined;
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
+
+function depsFor(store: any): AuthGuardDeps {
+  return { getAuthStore: () => store };
+}
+
+function routesState(routes: string[]): PermissionState {
   return {
-    useAuthStore: () => mockAuthStore,
+    permStateVersion: 1,
+    byCompany: {
+      '*': { ui: { routes, menus: [], actions: [] } },
+    },
   };
+}
+
+test('authGuard redirects unauthenticated users to login', async () => {
+  const ensureAuthReady = fnRecorder();
+  const mockAuthStore = {
+    ensureAuthReady,
+    isAuthenticated: false,
+  };
+
+  const result = await authGuard(
+    {
+      path: '/auth/users',
+      fullPath: '/auth/users?page=1',
+      meta: { requiresAuth: true },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(ensureAuthReady.calls.length).toBe(1);
+  expect(result).toEqual({
+    path: '/login',
+    query: { redirect: '/auth/users?page=1' },
+    replace: true,
+  });
 });
 
-vi.mock('@/auth/web/permission', () => {
-  return {
-    canRoute: canRouteMock,
+test('permissionGuard redirects to 403 when resource is not allowed', async () => {
+  const loadPermissionState = fnRecorder();
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState,
+    permissionState: routesState([]),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
   };
+
+  const result = await permissionGuard(
+    {
+      path: '/auth/users',
+      fullPath: '/auth/users',
+      meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
+
+  expect(loadPermissionState.calls).toEqual([[false]]);
+  expect(result).toEqual({
+    path: '/error/403',
+    query: {
+      reason: 'permission',
+      message: 'PermissionDenied',
+      from: '/auth/users',
+    },
+    replace: true,
+  });
 });
 
-describe('route guards', () => {
-  beforeEach(() => {
-    canRouteMock.mockReset();
-    canRouteMock.mockReturnValue(true);
-  });
+test('permissionGuard allows route when no resource id is declared', async () => {
+  const loadPermissionState = fnRecorder();
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState,
+    permissionState: routesState([]),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
 
-  it('authGuard redirects unauthenticated users to login', async () => {
-    mockAuthStore = {
-      ensureAuthReady: vi.fn(async () => undefined),
-      isAuthenticated: false,
-    };
+  const result = await permissionGuard(
+    {
+      path: '/public/help',
+      fullPath: '/public/help',
+      meta: { requiresAuth: true },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
 
-    const { authGuard } = await import('./guard');
+  expect(result).toBe(true);
+  expect(loadPermissionState.calls.length).toBe(0);
+});
 
-    const result = await authGuard(
-      {
-        path: '/auth/users',
-        fullPath: '/auth/users?page=1',
-        meta: { requiresAuth: true },
-      } as any,
-      {} as any
-    );
+test('permissionGuard bypasses /error/** routes to avoid redirect loop', async () => {
+  const loadPermissionState = fnRecorder();
+  const mockAuthStore = {
+    isAuthenticated: false,
+    loadPermissionState,
+    permissionState: null,
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
 
-    expect(mockAuthStore.ensureAuthReady).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({
-      path: '/login',
-      query: { redirect: '/auth/users?page=1' },
-      replace: true,
-    });
-  });
-
-  it('permissionGuard redirects to 403 when resource is not allowed', async () => {
-    mockAuthStore = {
-      isAuthenticated: true,
-      loadPermissionState: vi.fn(async () => undefined),
-      permissionState: { byCompany: {} },
-      identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-    };
-    canRouteMock.mockReturnValue(false);
-
-    const { permissionGuard } = await import('./guard');
-
-    const result = await permissionGuard(
-      {
-        path: '/auth/users',
-        fullPath: '/auth/users',
-        meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
-      } as any,
-      {} as any
-    );
-
-    expect(mockAuthStore.loadPermissionState).toHaveBeenCalledWith(false);
-    expect(canRouteMock).toHaveBeenCalledWith('auth.route.user_list', mockAuthStore.permissionState, { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] });
-    expect(result).toEqual({
+  const result = await permissionGuard(
+    {
       path: '/error/403',
-      query: {
-        reason: 'permission',
-        message: 'PermissionDenied',
-        from: '/auth/users',
-      },
-      replace: true,
-    });
-  });
+      fullPath: '/error/403?from=/auth/users',
+      meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
 
-  it('permissionGuard allows route when no resource id is declared', async () => {
-    mockAuthStore = {
-      isAuthenticated: true,
-      loadPermissionState: vi.fn(async () => undefined),
-      permissionState: { byCompany: {} },
-      identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-    };
+  expect(result).toBe(true);
+  expect(loadPermissionState.calls.length).toBe(0);
+});
 
-    const { permissionGuard } = await import('./guard');
+test('permissionGuard bypasses public route when requiresAuth=false', async () => {
+  const loadPermissionState = fnRecorder();
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState,
+    permissionState: routesState([]),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
 
-    const result = await permissionGuard(
-      {
-        path: '/public/help',
-        fullPath: '/public/help',
-        meta: { requiresAuth: true },
-      } as any,
-      {} as any
-    );
+  const result = await permissionGuard(
+    {
+      path: '/login',
+      fullPath: '/login',
+      meta: { requiresAuth: false, resourceId: 'auth.route.login' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
 
-    expect(result).toBe(true);
-    expect(canRouteMock).not.toHaveBeenCalled();
-  });
+  expect(result).toBe(true);
+  expect(loadPermissionState.calls.length).toBe(0);
+});
 
-  it('permissionGuard bypasses /error/** routes to avoid redirect loop', async () => {
-    mockAuthStore = {
-      isAuthenticated: false,
-      loadPermissionState: vi.fn(async () => undefined),
-      permissionState: null,
-      identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-    };
+test('permissionGuard delegates unauthenticated case to authGuard path', async () => {
+  const loadPermissionState = fnRecorder();
+  const mockAuthStore = {
+    isAuthenticated: false,
+    loadPermissionState,
+    permissionState: routesState([]),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
 
-    const { permissionGuard } = await import('./guard');
+  const result = await permissionGuard(
+    {
+      path: '/auth/users',
+      fullPath: '/auth/users',
+      meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
 
-    const result = await permissionGuard(
-      {
-        path: '/error/403',
-        fullPath: '/error/403?from=/auth/users',
-        meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
-      } as any,
-      {} as any
-    );
+  expect(result).toBe(true);
+  expect(loadPermissionState.calls.length).toBe(0);
+});
 
-    expect(result).toBe(true);
-    expect(mockAuthStore.loadPermissionState).not.toHaveBeenCalled();
-    expect(canRouteMock).not.toHaveBeenCalled();
-  });
+test('permissionGuard soft-lands denied /home to first allowed app route', async () => {
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState: fnRecorder(),
+    permissionState: routesState(['auth.route.user_list']),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
 
-  it('permissionGuard bypasses public route when requiresAuth=false', async () => {
-    mockAuthStore = {
-      isAuthenticated: true,
-      loadPermissionState: vi.fn(async () => undefined),
-      permissionState: { byCompany: {} },
-      identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-    };
+  const result = await permissionGuard(
+    {
+      path: '/home',
+      fullPath: '/home',
+      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
 
-    const { permissionGuard } = await import('./guard');
+  expect(result).toEqual({ path: '/auth/users', replace: true });
+});
 
-    const result = await permissionGuard(
-      {
-        path: '/login',
-        fullPath: '/login',
-        meta: { requiresAuth: false, resourceId: 'auth.route.login' },
-      } as any,
-      {} as any
-    );
+test('permissionGuard soft-landing keeps deterministic order under same permission set', async () => {
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState: fnRecorder(),
+    permissionState: routesState(['auth.route.user_create', 'auth.route.role_list', 'auth.route.token_list']),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
 
-    expect(result).toBe(true);
-    expect(mockAuthStore.loadPermissionState).not.toHaveBeenCalled();
-    expect(canRouteMock).not.toHaveBeenCalled();
-  });
+  const result = await permissionGuard(
+    {
+      path: '/',
+      fullPath: '/',
+      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
 
-  it('permissionGuard delegates unauthenticated case to authGuard path', async () => {
-    mockAuthStore = {
-      isAuthenticated: false,
-      loadPermissionState: vi.fn(async () => undefined),
-      permissionState: { byCompany: {} },
-      identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-    };
+  // role_list and token_list both routeSequence=10, so parent menu sequence decides (30 < 50).
+  // user_create has routeSequence=30 and should never win over the two list pages.
+  expect(result).toEqual({ path: '/auth/roles', replace: true });
+});
 
-    const { permissionGuard } = await import('./guard');
+test('permissionGuard soft-lands to access-rule create when that is the only grant', async () => {
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState: fnRecorder(),
+    permissionState: routesState(['auth.route.field_rule_create']),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
 
-    const result = await permissionGuard(
-      {
-        path: '/auth/users',
-        fullPath: '/auth/users',
-        meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
-      } as any,
-      {} as any
-    );
+  const result = await permissionGuard(
+    {
+      path: '/',
+      fullPath: '/',
+      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
 
-    expect(result).toBe(true);
-    expect(mockAuthStore.loadPermissionState).not.toHaveBeenCalled();
-    expect(canRouteMock).not.toHaveBeenCalled();
-  });
+  expect(result).toEqual({ path: '/auth/field-rules/new', replace: true });
+});
 
-  it('permissionGuard soft-lands denied /home to first allowed app route', async () => {
-    mockAuthStore = {
-      isAuthenticated: true,
-      loadPermissionState: vi.fn(async () => undefined),
-      permissionState: { byCompany: {} },
-      identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-    };
+test('permissionGuard soft-landing prefers record-rules before field-rules by leaf menu order', async () => {
+  const mockAuthStore = {
+    isAuthenticated: true,
+    loadPermissionState: fnRecorder(),
+    permissionState: routesState(['auth.route.field_rule_list', 'auth.route.record_rule_list']),
+    identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
+  };
 
-    canRouteMock.mockImplementation((resourceId: string) => resourceId === 'auth.route.user_list');
+  const result = await permissionGuard(
+    {
+      path: '/home',
+      fullPath: '/home',
+      meta: { requiresAuth: true, resourceId: 'web.route.home' },
+    } as any,
+    {} as any,
+    depsFor(mockAuthStore)
+  );
 
-    const { permissionGuard } = await import('./guard');
-
-    const result = await permissionGuard(
-      {
-        path: '/home',
-        fullPath: '/home',
-        meta: { requiresAuth: true, resourceId: 'web.route.home' },
-      } as any,
-      {} as any
-    );
-
-    expect(result).toEqual({ path: '/auth/users', replace: true });
-  });
-
-  it('permissionGuard soft-landing keeps deterministic order under same permission set', async () => {
-    mockAuthStore = {
-      isAuthenticated: true,
-      loadPermissionState: vi.fn(async () => undefined),
-      permissionState: { byCompany: {} },
-      identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
-    };
-
-    canRouteMock.mockImplementation((resourceId: string) => {
-      return resourceId === 'auth.route.user_create' || resourceId === 'auth.route.role_list' || resourceId === 'auth.route.token_list';
-    });
-
-    const { permissionGuard } = await import('./guard');
-
-    const result = await permissionGuard(
-      {
-        path: '/',
-        fullPath: '/',
-        meta: { requiresAuth: true, resourceId: 'web.route.home' },
-      } as any,
-      {} as any
-    );
-
-    // role_list and token_list both routeSequence=10, so parent menu sequence decides (30 < 50).
-    // user_create has routeSequence=30 and should never win over the two list pages.
-    expect(result).toEqual({ path: '/auth/roles', replace: true });
-  });
+  expect(result).toEqual({ path: '/auth/record-rules', replace: true });
 });

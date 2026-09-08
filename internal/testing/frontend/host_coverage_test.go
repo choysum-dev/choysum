@@ -36,9 +36,76 @@ func TestInstallMinimalDOMGuards(t *testing.T) {
 	}
 }
 
+func TestInstallMinimalConsoleGuards(t *testing.T) {
+	if err := InstallMinimalConsole(nil); err == nil || !strings.Contains(err.Error(), "nil engine") {
+		t.Fatalf("nil engine: %v", err)
+	}
+	if err := InstallMinimalConsole(stubJsEngine{loadErr: os.ErrInvalid}); err == nil || !strings.Contains(err.Error(), "InstallMinimalConsole") {
+		t.Fatalf("load err: %v", err)
+	}
+}
+
+func TestInstallMinimalConsolePolyfills(t *testing.T) {
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = engine.Close() })
+	qjs, ok := engine.(*quickjsengine.QuickjsEngine)
+	if !ok {
+		t.Fatal("expected QuickjsEngine")
+	}
+
+	// Drop host builtins so the console script installs its fallbacks.
+	if err := engine.Load([]*jsengine.JsScript{{
+		FileName: "drop.js",
+		Content: `
+globalThis.TextEncoder = undefined;
+globalThis.atob = undefined;
+globalThis.localStorage = undefined;
+globalThis.sessionStorage = undefined;
+`,
+	}}); err != nil {
+		t.Fatalf("drop builtins: %v", err)
+	}
+	if err := InstallMinimalConsole(engine); err != nil {
+		t.Fatal(err)
+	}
+	val := qjs.Ctx.Eval(`(function () {
+  var enc = new TextEncoder().encode("é");
+  var utf8 = Array.from(enc);
+  localStorage.setItem("k", "local");
+  sessionStorage.setItem("k", "session");
+  return JSON.stringify({
+    utf8: utf8,
+    local: localStorage.getItem("k"),
+    session: sessionStorage.getItem("k"),
+    decoded: atob("YQ=="),
+    sameStorage: localStorage === sessionStorage
+  });
+})()`)
+	defer val.Free()
+	if val.IsException() {
+		t.Fatalf("eval exception: %v", qjs.Ctx.Exception())
+	}
+	got := val.String()
+	if !strings.Contains(got, `"utf8":[195,169]`) {
+		t.Fatalf("expected UTF-8 for é, got %s", got)
+	}
+	if !strings.Contains(got, `"local":"local"`) || !strings.Contains(got, `"session":"session"`) {
+		t.Fatalf("expected independent storage, got %s", got)
+	}
+	if !strings.Contains(got, `"decoded":"a"`) {
+		t.Fatalf("expected atob, got %s", got)
+	}
+	if !strings.Contains(got, `"sameStorage":false`) {
+		t.Fatalf("expected distinct storage objects, got %s", got)
+	}
+}
+
 func TestPrepareVueHostEngineBranches(t *testing.T) {
-	if err := PrepareVueHostEngine(stubJsEngine{loadErr: os.ErrInvalid}); err == nil || !strings.Contains(err.Error(), "InstallMinimalDOM") {
-		t.Fatalf("dom load fail: %v", err)
+	if err := PrepareVueHostEngine(stubJsEngine{loadErr: os.ErrInvalid}); err == nil || !strings.Contains(err.Error(), "InstallMinimalConsole") {
+		t.Fatalf("console load fail: %v", err)
 	}
 	if err := PrepareVueHostEngine(stubJsEngine{}); err != nil {
 		t.Fatalf("non-quickjs engine: %v", err)
@@ -274,6 +341,30 @@ func TestBuildFrontendVueHostBundleGuards(t *testing.T) {
 	}
 	if got.JS != "/*ok*/" || len(got.Warnings) != 1 || got.MapPath != "" {
 		t.Fatalf("got = %#v", got)
+	}
+
+	// WorkingDir outside repoRoot: TsconfigRaw @/* must still resolve under repoRoot/modules.
+	workOutside := t.TempDir()
+	var capturedTsconfig string
+	esbuildBuild = func(opts api.BuildOptions) api.BuildResult {
+		capturedTsconfig = opts.TsconfigRaw
+		if opts.AbsWorkingDir != workOutside {
+			t.Fatalf("AbsWorkingDir = %q, want %q", opts.AbsWorkingDir, workOutside)
+		}
+		_ = os.WriteFile(opts.Outfile, []byte("/*rel*/"), 0o644)
+		return api.BuildResult{}
+	}
+	if _, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
+		RepoRoot:   repo,
+		EntryPath:  entry,
+		Outfile:    filepath.Join(t.TempDir(), "rel.js"),
+		CacheDir:   t.TempDir(),
+		WorkingDir: workOutside,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(capturedTsconfig, `"@/*"`) || strings.Contains(capturedTsconfig, `"./modules/*"`) {
+		t.Fatalf("expected @/* relpath from WorkingDir to repo modules, got %s", capturedTsconfig)
 	}
 	osStatBundle = func(string) (os.FileInfo, error) {
 		return os.Stat(outFile)

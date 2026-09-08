@@ -2,154 +2,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RouteLocationNormalized } from 'vue-router';
-import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { useAuthStore } from '../stores/auth';
 import { canRoute } from '@/auth/web/permission';
-import { appRoutes } from './routes';
-import { authMenus } from '../menu/menus';
+import { pickFirstAllowedSoftLandPath } from './soft_land_nav';
 
-const DEFAULT_SEQUENCE = Number.POSITIVE_INFINITY;
-
-/**
- * Normalize a route path into an absolute application path.
- */
-function normalizeRoutePath(path: unknown): string {
-  const raw = normalizeOptionalString(path);
-  if (!raw) return '';
-  return raw.startsWith('/') ? raw : `/${raw}`;
-}
-
-/**
- * Check whether a route path can be used as a navigation target.
- */
-function isNavigablePath(path: string): boolean {
-  if (!path) return false;
-  if (path.startsWith('/error/')) return false;
-  if (path.includes(':')) return false;
-  return true;
-}
-
-/**
- * Normalize a route or menu sequence value.
- */
-function asSequence(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : DEFAULT_SEQUENCE;
-}
-
-type MenuPathEntry = {
-  path: string;
-  sequence: number;
+/** Optional store injection for FE unit tests (default: Pinia useAuthStore). */
+export type AuthGuardDeps = {
+  getAuthStore?: () => ReturnType<typeof useAuthStore>;
 };
 
-/**
- * Build a flattened list of menu paths and their ordering metadata.
- */
-function buildMenuPathEntries(): MenuPathEntry[] {
-  const out: MenuPathEntry[] = [];
-
-  const walk = (items: any[]) => {
-    for (const item of items || []) {
-      const path = normalizeRoutePath(item?.path);
-      if (path && !String(item?.externalLink || '').trim()) {
-        out.push({ path, sequence: asSequence(item?.order) });
-      }
-      const children = Array.isArray(item?.children) ? item.children : [];
-      if (children.length > 0) walk(children);
-    }
-  };
-
-  walk(authMenus as any[]);
-  return out;
-}
-
-const menuPathEntries = buildMenuPathEntries();
-
-/**
- * Check whether one route path is covered by a menu path entry.
- */
-function matchesMenuPath(routePath: string, menuPath: string): boolean {
-  if (!routePath || !menuPath) return false;
-  if (routePath === menuPath) return true;
-  if (!routePath.startsWith(menuPath)) return false;
-  const next = routePath.charAt(menuPath.length);
-  return next === '/' || next === '';
-}
-
-/**
- * Resolve the most specific menu ordering for a route path.
- */
-function findMenuSequenceForRoutePath(routePath: string): number {
-  let bestLength = -1;
-  let bestSequence = DEFAULT_SEQUENCE;
-  let ambiguous = false;
-
-  for (const entry of menuPathEntries) {
-    if (!matchesMenuPath(routePath, entry.path)) continue;
-    const length = entry.path.length;
-    if (length > bestLength) {
-      bestLength = length;
-      bestSequence = entry.sequence;
-      ambiguous = false;
-      continue;
-    }
-    if (length == bestLength && entry.sequence !== bestSequence) {
-      ambiguous = true;
-    }
-  }
-
-  if (ambiguous) return DEFAULT_SEQUENCE;
-  return bestSequence;
-}
-
-/**
- * Pick the first route path that is allowed by the current permission snapshot.
- */
-function pickFirstAllowedRoutePath(state: any, ctx: { activeCompanyId?: string; enabledCompanyIds?: string[] }): string {
-  const candidates: Array<{
-    path: string;
-    resourceId: string;
-    routeSequence: number;
-    menuSequence: number;
-  }> = [];
-
-  for (const route of appRoutes) {
-    const resourceId = String((route as any)?.meta?.resourceId || '').trim();
-    const routePath = normalizeRoutePath((route as any)?.path);
-    if (!resourceId || !isNavigablePath(routePath)) continue;
-    if (!canRoute(resourceId, state, ctx)) continue;
-
-    const routeSequence = asSequence((route as any)?.meta?.routeSequence ?? (route as any)?.meta?.sequence);
-    const menuSequence = findMenuSequenceForRoutePath(routePath);
-
-    candidates.push({
-      path: routePath,
-      resourceId,
-      routeSequence,
-      menuSequence,
-    });
-  }
-
-  candidates.sort((a, b) => {
-    if (a.routeSequence !== b.routeSequence) return a.routeSequence - b.routeSequence;
-    if (a.menuSequence !== b.menuSequence) return a.menuSequence - b.menuSequence;
-    const idCmp = a.resourceId.localeCompare(b.resourceId);
-    if (idCmp !== 0) return idCmp;
-    return a.path.localeCompare(b.path);
-  });
-
-  return candidates[0]?.path || '';
+function resolveAuthStore(deps?: AuthGuardDeps) {
+  return (deps?.getAuthStore ?? useAuthStore)();
 }
 
 /**
  * Redirect unauthenticated users to the login page.
  */
-export async function authGuard(to: RouteLocationNormalized, _from: RouteLocationNormalized) {
+export async function authGuard(
+  to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  // Default keeps Function.length at 2 so a direct beforeEach(authGuard) registration
+  // is not treated as a legacy next-callback guard by vue-router.
+  deps: AuthGuardDeps = {}
+) {
   if (to.meta.requiresAuth === false || to.meta.isAuthPage) {
     return true;
   }
 
-  const authStore = useAuthStore();
+  const authStore = resolveAuthStore(deps);
 
   // Ensure auth initialization, including refresh-token recovery, finishes before checking state.
   try {
@@ -167,7 +47,11 @@ export async function authGuard(to: RouteLocationNormalized, _from: RouteLocatio
 /**
  * Redirect users to the permission error page when the route resource is not allowed.
  */
-export async function permissionGuard(to: RouteLocationNormalized, _from: RouteLocationNormalized) {
+export async function permissionGuard(
+  to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  deps: AuthGuardDeps = {}
+) {
   // Error pages bypass the permission guard to avoid redirect loops.
   if (String(to.path || '').startsWith('/error/')) {
     return true;
@@ -179,7 +63,7 @@ export async function permissionGuard(to: RouteLocationNormalized, _from: RouteL
     return true;
   }
 
-  const authStore = useAuthStore();
+  const authStore = resolveAuthStore(deps);
 
   // Let the auth guard handle unauthenticated navigation.
   if (!authStore.isAuthenticated) {
@@ -202,7 +86,7 @@ export async function permissionGuard(to: RouteLocationNormalized, _from: RouteL
   const ok = canRoute(resourceId, authStore.permissionState, ctx);
   if (!ok) {
     if (to.path === '/' || to.path === '/home') {
-      const fallbackPath = pickFirstAllowedRoutePath(authStore.permissionState, ctx);
+      const fallbackPath = pickFirstAllowedSoftLandPath(canRoute, authStore.permissionState, ctx);
       if (fallbackPath && fallbackPath !== to.path) {
         return { path: fallbackPath, replace: true };
       }

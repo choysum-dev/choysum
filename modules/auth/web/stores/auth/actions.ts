@@ -13,14 +13,22 @@ import type { PermissionState } from '@/auth/web/permission';
 
 const { _t } = createTranslate('auth', { scope: 'web/stores/auth/actions' });
 
+/** Optional client/storage injection for FE unit tests. */
+export type AuthActionDeps = {
+  isClient?: boolean;
+  clearAuthStorage?: () => void;
+};
+
 /**
  * Build the auth store action set.
  */
-export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
+export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?: AuthActionDeps) {
   // Ensure auth initialization only runs once at a time.
   // Declared at the top of the function scope so it is visible to all
   // inner functions that reference it (loginImpl, ensureAuthReady, etc.).
   let initInFlight: Promise<void> | null = null;
+  const clientSide = deps?.isClient ?? isClient;
+  const clearStoredAuth = deps?.clearAuthStorage ?? (() => authStorage.clearAuthStorage());
 
   /**
    * Resolve the device info payload that should be sent with auth RPCs.
@@ -42,16 +50,20 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
 
     // Clear Preferences.display format overrides (guest sessions use Language/catalog only).
     try {
-      void import('@/web/web/stores/i18nStore').then(({ useI18nStore }) => {
-        useI18nStore().setDisplayOverrides(null);
-      });
+      void import('@/web/web/stores/i18nStore')
+        .then(({ useI18nStore }) => {
+          useI18nStore().setDisplayOverrides(null);
+        })
+        .catch(() => {
+          // Best-effort when Pinia/i18n is unavailable (FE unit host).
+        });
     } catch {
       // Best-effort.
     }
 
     // Clear persisted auth storage in the browser.
-    if (isClient) {
-      authStorage.clearAuthStorage();
+    if (clientSide) {
+      clearStoredAuth();
     }
   }
 
@@ -381,7 +393,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     }
 
     // Initialization is only meaningful in the browser.
-    if (!isClient) return;
+    if (!clientSide) return;
 
     try {
       // Without a refresh token, there is no persisted auth session to recover.
