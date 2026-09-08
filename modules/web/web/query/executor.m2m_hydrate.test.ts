@@ -50,9 +50,12 @@ test('execute hydrates ManyToManyRef id lists via createStoreByModel', async () 
   );
 
   expect(tagSearch.calls.length).toBe(1);
-  const row = (snapshot.rows[0] as any)?.payload ?? (snapshot.rows[0] as any);
-  const tags = row?.Tags ?? (snapshot.rows[0] as any)?.raw?.Tags;
-  // Hydration mutates the search items in place before row mapping.
   expect(store.Search.calls.length).toBe(1);
   expect(tagSearch.calls[0]?.[0]).toEqual(['Id', 'in', ['t1', 't2']]);
+
+  const row = snapshot.rows[0] as any;
+  expect(row?.payload?.Tags).toEqual([
+    { Id: 't1', DisplayName: 'Red' },
+    { Id: 't2', DisplayName: 'Blue' },
+  ]);
 });
