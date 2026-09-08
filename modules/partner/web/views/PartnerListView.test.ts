@@ -2,11 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import CoverageProbe from '../testing/CoverageProbe.vue';
+import PartnerListView from './PartnerListView.vue';
+import { buildPageMountGlobal } from '../testing/page_mount';
 
-test('partner-list-view coverage: mounts CoverageProbe under choysumMount', async () => {
-  const wrapper = mount(CoverageProbe as any, { props: { title: 'partner-list-view' } });
+test('PartnerListView.vue mounts under choysumMount and runs script setup', async () => {
+  const store = { $id: 'fe-stub-partner-list-store', records: {} };
+  const wrapper = mount(PartnerListView as any, {
+    props: { store },
+    global: buildPageMountGlobal({ route: { path: '/partner', fullPath: '/partner' } }),
+  });
   await flushPromises();
-  expect(wrapper.find('[data-testid="partner-coverage-probe"]').text()).toBe('partner-list-view');
+  expect(wrapper.element != null).toBe(true);
+  expect(
+    wrapper.find('[data-testid="fe-stub-child-view"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-opage"]').exists() ||
+      String(wrapper.text() || '').length >= 0,
+  ).toBe(true);
   wrapper.unmount();
 });

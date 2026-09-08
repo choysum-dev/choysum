@@ -289,14 +289,40 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
 	}
 }
 
+func TestChoysumMount_globalPlugins(t *testing.T) {
+	result := runVueHostEntry(t, "entry_global_plugins.ts")
+	if errMsg, _ := result["error"].(string); errMsg != "" {
+		t.Fatalf("host error: %s", errMsg)
+	}
+	if text, _ := result["text"].(string); text != "from-provide-override" {
+		t.Fatalf("text = %v (want from-provide-override)", result["text"])
+	}
+}
+
 func TestFrozenVTUSubsetAPIs(t *testing.T) {
-	if len(FrozenVTUSubsetAPIs) < 6 {
+	if len(FrozenVTUSubsetAPIs) < 9 {
 		t.Fatalf("FrozenVTUSubsetAPIs = %v", FrozenVTUSubsetAPIs)
+	}
+	want := []string{"global.plugins", "global.provide", "global.components"}
+	for _, api := range want {
+		found := false
+		for _, got := range FrozenVTUSubsetAPIs {
+			if got == api {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("FrozenVTUSubsetAPIs missing %q: %v", api, FrozenVTUSubsetAPIs)
+		}
 	}
 	if VueHostPackageVersion() == "" {
 		t.Fatal("empty VueHostPackageVersion")
 	}
 	if ChoysumMountScript() == "" || !strings.Contains(ChoysumMountScript(), "export function mount") {
 		t.Fatal("ChoysumMountScript missing mount export")
+	}
+	if !strings.Contains(ChoysumMountScript(), "installGlobalOptions") {
+		t.Fatal("ChoysumMountScript missing installGlobalOptions (host-2)")
 	}
 }

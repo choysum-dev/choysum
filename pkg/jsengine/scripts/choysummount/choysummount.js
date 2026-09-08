@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 /**
- * Choysum FE unit mount host — VTU subset (frozen for PR-unit-vue-host).
- * In: mount, shallowMount, stubs (object | string[] | true), flushPromises,
- *     wrapper.find/trigger/unmount.
+ * Choysum FE unit mount host — VTU subset (PR-unit-vue-host + host-2).
+ * In: mount, shallowMount, stubs, flushPromises, wrapper.find/trigger/unmount,
+ *     options.global.plugins / provide / components.
  * Out: findComponent, setProps family, wrapper.html, happy-dom.
  *
  * Bundle this module with esbuild (imports vue). Do not eval as a bare global
@@ -49,6 +49,34 @@ function installStubs(app, stubs) {
     if (name === '__all') return;
     app.component(name, map[name]);
   });
+}
+
+function installGlobalOptions(app, globalOpts) {
+  if (!globalOpts || typeof globalOpts !== 'object') return;
+  var plugins = globalOpts.plugins;
+  if (Array.isArray(plugins)) {
+    for (var i = 0; i < plugins.length; i++) {
+      var plugin = plugins[i];
+      if (!plugin) continue;
+      if (Array.isArray(plugin)) {
+        app.use(plugin[0], plugin[1]);
+      } else {
+        app.use(plugin);
+      }
+    }
+  }
+  var provideMap = globalOpts.provide;
+  if (provideMap && typeof provideMap === 'object') {
+    Object.keys(provideMap).forEach(function (key) {
+      app.provide(key, provideMap[key]);
+    });
+  }
+  var components = globalOpts.components;
+  if (components && typeof components === 'object') {
+    Object.keys(components).forEach(function (name) {
+      app.component(name, components[name]);
+    });
+  }
 }
 
 function makeWrapper(app, el, vm) {
@@ -132,7 +160,7 @@ function withComponentStubs(component, stubs, shallow) {
     return component;
   }
   // Options-API / defineComponent: merge into components so template lookups hit stubs.
-  // script-setup local imports are closed over and are not stubbed (use defineComponent fixtures).
+  // script-setup local imports are closed over and are not stubbed (use bundle aliases).
   var merged = Object.assign({}, base);
   merged.components = Object.assign({}, base.components || {}, map);
   return merged;
@@ -151,6 +179,8 @@ export function mount(component, options) {
   var shallow = !!options.shallow;
   var root = withComponentStubs(component, options.stubs, shallow);
   var app = createApp(root, options.props || {});
+  // Order: plugins → provide → components → stubs (VTU-like).
+  installGlobalOptions(app, options.global);
   installStubs(app, options.stubs);
   if (shallow) {
     app.config.warnHandler = function () {};

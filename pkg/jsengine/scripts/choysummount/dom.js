@@ -92,6 +92,8 @@
     this.attrs[key] = val;
     if (key === 'class') this.className = val;
     if (key === 'id') this.id = val;
+    if (key === 'value' && this._formValue !== undefined) this._formValue = val;
+    if (key === 'checked') this._checked = val !== 'false' && val !== '0';
   };
 
   Element.prototype.removeAttribute = function (name) {
@@ -99,6 +101,104 @@
     delete this.attrs[key];
     if (key === 'class') this.className = '';
     if (key === 'id') this.id = '';
+  };
+
+  Object.defineProperty(Element.prototype, 'classList', {
+    get: function () {
+      var el = this;
+      function tokens() {
+        return String(el.className || '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .split(' ')
+          .filter(Boolean);
+      }
+      function write(list) {
+        el.className = list.join(' ');
+        el.attrs.class = el.className;
+      }
+      return {
+        add: function () {
+          var list = tokens();
+          for (var i = 0; i < arguments.length; i++) {
+            var t = String(arguments[i] || '');
+            if (t && list.indexOf(t) < 0) list.push(t);
+          }
+          write(list);
+        },
+        remove: function () {
+          var list = tokens();
+          for (var i = 0; i < arguments.length; i++) {
+            var t = String(arguments[i] || '');
+            var idx = list.indexOf(t);
+            if (idx >= 0) list.splice(idx, 1);
+          }
+          write(list);
+        },
+        toggle: function (token, force) {
+          var t = String(token || '');
+          var list = tokens();
+          var idx = list.indexOf(t);
+          var shouldAdd = force === undefined ? idx < 0 : !!force;
+          if (shouldAdd && idx < 0) list.push(t);
+          if (!shouldAdd && idx >= 0) list.splice(idx, 1);
+          write(list);
+          return shouldAdd;
+        },
+        contains: function (token) {
+          return tokens().indexOf(String(token || '')) >= 0;
+        },
+        toString: function () {
+          return tokens().join(' ');
+        },
+      };
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'dataset', {
+    get: function () {
+      var el = this;
+      var out = {};
+      Object.keys(el.attrs).forEach(function (key) {
+        if (key.slice(0, 5) !== 'data-') return;
+        var raw = key.slice(5);
+        var camel = raw.replace(/-([a-z])/g, function (_m, c) {
+          return c.toUpperCase();
+        });
+        out[camel] = el.attrs[key];
+      });
+      return out;
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'value', {
+    get: function () {
+      if (this._formValue !== undefined) return this._formValue;
+      var attr = this.getAttribute('value');
+      return attr == null ? '' : attr;
+    },
+    set: function (v) {
+      this._formValue = String(v == null ? '' : v);
+      this.attrs.value = this._formValue;
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'checked', {
+    get: function () {
+      if (this._checked !== undefined) return !!this._checked;
+      return this.hasAttribute('checked');
+    },
+    set: function (v) {
+      this._checked = !!v;
+      if (this._checked) this.attrs.checked = '';
+      else delete this.attrs.checked;
+    },
+  });
+
+  Element.prototype.focus = function () {};
+  Element.prototype.blur = function () {};
+  Element.prototype.click = function () {
+    this.dispatchEvent(new Event('click', { bubbles: true }));
   };
 
   Element.prototype.getAttribute = function (name) {

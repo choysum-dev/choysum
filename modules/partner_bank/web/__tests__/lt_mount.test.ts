@@ -2,11 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import CoverageProbe from '../testing/CoverageProbe.vue';
+import PartnerBankAccountFormView from '../views/PartnerBankAccountFormView.vue';
+import { buildPageMountGlobal } from '../testing/page_mount';
 
-test('lt_mount coverage: mounts CoverageProbe under choysumMount', async () => {
-  const wrapper = mount(CoverageProbe as any, { props: { title: 'lt' } });
+test('PartnerBankAccountFormView.vue mounts under choysumMount and runs script setup', async () => {
+  const store = { $id: 'fe-stub-bank-store', records: {} };
+  const wrapper = mount(PartnerBankAccountFormView as any, {
+    props: { store, viewMode: 'create' },
+    global: buildPageMountGlobal({ route: { path: '/partner/bank', fullPath: '/partner/bank' } }),
+  });
   await flushPromises();
-  expect(wrapper.find('[data-testid="partner-bank-coverage-probe"]').text()).toBe('lt');
+  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
   wrapper.unmount();
 });

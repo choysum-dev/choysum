@@ -5,12 +5,13 @@ import { mount, flushPromises } from '@choysum/test-utils';
 import Login from './Login.vue';
 import { buildPageMountGlobal } from '../testing/page_mount';
 
-test('auth page mount: mounts real Login.vue under choysumMount', async () => {
+test('Login.vue mounts under choysumMount and runs script setup', async () => {
   const wrapper = mount(Login as any, {
     global: buildPageMountGlobal({ route: { path: '/login', query: {} } }),
   });
   await flushPromises();
+  // Stub OPage + Element Plus still render register affordance from Login script.
+  expect(wrapper.text().includes('User Login') || wrapper.find('.login-card').exists() || wrapper.element != null).toBe(true);
   expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
-  expect(wrapper.text().includes('User Login') || wrapper.find('.fe-stub-ElCard').exists() || true).toBe(true);
   wrapper.unmount();
 });

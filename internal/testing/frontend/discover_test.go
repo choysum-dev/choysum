@@ -621,3 +621,42 @@ func TestBuildFrontendUnitBundleAndChoysumtestFixture(t *testing.T) {
 		t.Fatalf("report = %+v raw=%s", report, raw)
 	}
 }
+
+func TestScanCoverageProbeBanned(t *testing.T) {
+	repo := t.TempDir()
+	web := filepath.Join(repo, "modules", "demo", "web", "testing")
+	if err := os.MkdirAll(web, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	probe := filepath.Join(web, "CoverageProbe.vue")
+	if err := os.WriteFile(probe, []byte("<template><div/></template>\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testFile := filepath.Join(web, "coverage_probe.test.ts")
+	if err := os.WriteFile(testFile, []byte("import CoverageProbe from './CoverageProbe.vue';\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	hits, err := ScanAppIllegalFrontendMarks(repo, "demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawImport, sawFile bool
+	for _, h := range hits {
+		if h.Kind != IllegalCoverageProbe {
+			continue
+		}
+		if strings.Contains(h.Snippet, "CoverageProbe.vue") {
+			sawImport = true
+		}
+		if strings.HasSuffix(filepath.Base(h.Path), "CoverageProbe.vue") {
+			sawFile = true
+		}
+	}
+	if !sawImport || !sawFile {
+		t.Fatalf("expected CoverageProbe import+file hits, got %#v", hits)
+	}
+	if _, err := CheckIllegalFrontendMarks(repo, "demo", ScanModeError); err == nil {
+		t.Fatal("expected hard-cut failure for CoverageProbe")
+	}
+}

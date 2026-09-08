@@ -2,15 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import Login from './Login.vue';
+import Currency from './Currency.vue';
 import { buildPageMountGlobal } from '../testing/page_mount';
 
-test('auth page mount: mounts real Login.vue under choysumMount', async () => {
-  const wrapper = mount(Login as any, {
-    global: buildPageMountGlobal({ route: { path: '/login', query: {} } }),
+test('Currency.vue mounts under choysumMount and runs script setup', async () => {
+  const wrapper = mount(Currency as any, {
+    global: buildPageMountGlobal({ route: { path: '/base/currency/1', fullPath: '/base/currency/1' } }),
   });
   await flushPromises();
   expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
-  expect(wrapper.text().includes('User Login') || wrapper.find('.fe-stub-ElCard').exists() || true).toBe(true);
   wrapper.unmount();
 });

@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import CoverageProbe from '../testing/CoverageProbe.vue';
+import ModuleList from '../pages/ModuleList.vue';
+import { buildPageMountGlobal } from '../testing/page_mount';
 
-// ModuleKanbanView progress behavior is covered by composable unit tests.
-test('moduleKanbanProgress coverage: mounts CoverageProbe under choysumMount', async () => {
-  const wrapper = mount(CoverageProbe as any, { props: { title: 'kanban-progress' } });
+test('moduleKanbanProgress: mounts real ModuleList.vue (kanban host page) under choysumMount', async () => {
+  const wrapper = mount(ModuleList as any, {
+    global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+  });
   await flushPromises();
-  expect(wrapper.find('[data-testid="meta-coverage-probe"]').text()).toBe('kanban-progress');
+  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
   wrapper.unmount();
 });
