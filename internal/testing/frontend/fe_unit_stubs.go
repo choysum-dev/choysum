@@ -55,11 +55,17 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (string, bool) {
 	isPageOrView := strings.HasSuffix(importer, ".vue") &&
 		(strings.Contains(importer, "/web/pages/") || strings.Contains(importer, "/web/views/"))
+	// vueplugin/path-alias resolves sometimes omit Importer; treat that like product page
+	// so ChildView/OPage path stubs still apply for Currency-style mounts.
+	stubProductChildren := isPageOrView || importer == ""
+	// FE unit tests under web/web/components must see real SFCs (OPage.mapping, OVColumn, …).
+	isWebComponentUnit := strings.Contains(importer, "/web/web/components/") &&
+		(strings.Contains(importer, ".test.ts") || strings.Contains(importer, ".spec.ts") ||
+			strings.HasSuffix(importer, ".vue"))
 
 	switch {
 	case strings.Contains(joined, "/web/web/components/") || strings.Contains(p, "/web/web/components/") || strings.Contains(p, "@/web/web/components/"):
-		// Page/view SFCs stub layout children; FE unit tests mount the real SUT.
-		if !isPageOrView {
+		if isWebComponentUnit || !stubProductChildren {
 			return "", false
 		}
 		if strings.Contains(p, "OPage.vue") || strings.Contains(joined, "OPage.vue") {
@@ -71,7 +77,7 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 	case strings.HasSuffix(p, "FormView.vue") || strings.HasSuffix(joined, "FormView.vue") ||
 		strings.HasSuffix(p, "ListView.vue") || strings.HasSuffix(joined, "ListView.vue") ||
 		strings.HasSuffix(p, "KanbanView.vue") || strings.HasSuffix(joined, "KanbanView.vue"):
-		if isPageOrView {
+		if stubProductChildren && !isWebComponentUnit {
 			return stubs.ChildView, true
 		}
 	case strings.Contains(p, "web/web/stores/registry") || strings.Contains(joined, "/web/web/stores/registry"):
@@ -87,16 +93,16 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 		}
 		return stubs.Scope, true
 	case strings.Contains(p, "composables/usePermission") || strings.HasSuffix(p, "/usePermission") || strings.HasSuffix(p, "/usePermission.ts"):
-		if isPageOrView {
+		if stubProductChildren {
 			return stubs.Permission, true
 		}
 	case strings.Contains(p, "composables/usePageContext") || strings.Contains(joined, "composables/usePageContext") ||
 		strings.Contains(p, "composables/useListView") || strings.Contains(joined, "composables/useListView"):
-		if isPageOrView {
+		if stubProductChildren {
 			return stubs.PageComposable, true
 		}
 	case strings.Contains(joined, "/auth/web/stores/auth") || (strings.Contains(p, "stores/auth") && !strings.Contains(importer, "/stores/auth/")):
-		fromProduct := isPageOrView || strings.Contains(importer, "Login.vue")
+		fromProduct := stubProductChildren || strings.Contains(importer, "Login.vue")
 		barrel := strings.HasSuffix(p, "/stores/auth") ||
 			p == "../stores/auth" ||
 			p == "./stores/auth" ||
@@ -110,7 +116,7 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 		}
 	case (strings.Contains(p, "web/web/i18n") || strings.Contains(joined, "/web/web/i18n")) &&
 		!strings.Contains(p, "i18nStore") && !strings.Contains(joined, "i18nStore"):
-		if isPageOrView {
+		if stubProductChildren {
 			return stubs.I18n, true
 		}
 	case strings.HasSuffix(p, "/stores/i18nStore") ||
@@ -127,7 +133,7 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 		return stubs.I18nStore, true
 	case strings.Contains(p, "web/stores/i18nStore/") || strings.Contains(joined, "/stores/i18nStore/"):
 		// Subpath imports from product SFCs → avoid dayjs locale graph.
-		if isPageOrView {
+		if stubProductChildren {
 			return stubs.I18nStore, true
 		}
 	}

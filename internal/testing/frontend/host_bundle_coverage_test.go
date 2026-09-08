@@ -63,9 +63,11 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		ok                        bool
 	}{
 		{"@/web/web/components/OPage.vue", "/x/OPage.vue", page, "opage", true},
+		{"@/web/web/components/OPage.vue", "/x/OPage.vue", "", "opage", true},
 		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", page, "child", true},
 		{"./OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.test.ts", "", false},
 		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", "/other.ts", "", false},
+		{"./OPage.vue", "/repo/modules/web/web/components/page/OPage.vue", "/repo/modules/web/web/components/page/OPage.mapping.test.ts", "", false},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", page, "child", true},
 		{"./PartnerListView.vue", "/x/PartnerListView.vue", page, "child", true},
 		{"./ModuleKanbanView.vue", "/x/ModuleKanbanView.vue", view, "child", true},
@@ -166,7 +168,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 
 	// Drive FE stub OnResolve callbacks without network by invoking Setup on a capture PluginBuild.
-	var pkgCB func(api.OnResolveArgs) (api.OnResolveResult, error)
+	var pkgCB, opageCB, childViewCB func(api.OnResolveArgs) (api.OnResolveResult, error)
 	var pathCBs []func(api.OnResolveArgs) (api.OnResolveResult, error)
 	esbuildBuild = func(opts api.BuildOptions) api.BuildResult {
 		pb := api.PluginBuild{
@@ -180,6 +182,10 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 				switch o.Filter {
 				case `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?)$`:
 					pkgCB = cb
+				case `OPage\.vue$`:
+					opageCB = cb
+				case `(FormView|ListView|KanbanView)\.vue$`:
+					childViewCB = cb
 				case `.*`:
 					pathCBs = append(pathCBs, cb)
 				}
@@ -203,7 +209,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 	esbuildBuild = prevBuild
 
-	if pkgCB == nil || len(pathCBs) == 0 {
+	if pkgCB == nil || opageCB == nil || childViewCB == nil || len(pathCBs) == 0 {
 		t.Fatal("expected FE stub OnResolve callbacks to be registered")
 	}
 	for _, path := range []string{"element-plus", "@element-plus/icons-vue", "vue-router", "@choysum/page-mount"} {
@@ -211,6 +217,22 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 		if err != nil || res.Path == "" {
 			t.Fatalf("package stub %q: %#v err=%v", path, res, err)
 		}
+	}
+	opageRes, err := opageCB(api.OnResolveArgs{Path: "./OPage.vue", Importer: "/modules/auth/web/pages/Login.vue"})
+	if err != nil || !strings.HasSuffix(opageRes.Path, "OPage.stub.vue") {
+		t.Fatalf("opage stub: %#v err=%v", opageRes, err)
+	}
+	opageSkip, err := opageCB(api.OnResolveArgs{Path: "./OPage.vue", Importer: "/modules/web/web/components/page/OPage.mapping.test.ts"})
+	if err != nil || opageSkip.Path != "" {
+		t.Fatalf("opage skip for mapping test: %#v err=%v", opageSkip, err)
+	}
+	childRes, err := childViewCB(api.OnResolveArgs{Path: "@/web/web/components/view/OFormView.vue", Importer: "/modules/partner_commercial/web/views/PartnerIdentifierFormView.vue"})
+	if err != nil || !strings.HasSuffix(childRes.Path, "ChildView.stub.vue") {
+		t.Fatalf("child view stub: %#v err=%v", childRes, err)
+	}
+	childSkip, err := childViewCB(api.OnResolveArgs{Path: "./OFormView.vue", Importer: "/modules/web/web/components/view/OFormView.route_reload.test.ts"})
+	if err != nil || childSkip.Path != "" {
+		t.Fatalf("child view skip for web unit test: %#v err=%v", childSkip, err)
 	}
 	var pathHit, opageFromPage, opageFromTest bool
 	for _, pathCB := range pathCBs {

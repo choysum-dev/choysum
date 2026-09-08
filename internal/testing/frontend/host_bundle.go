@@ -38,7 +38,7 @@ type VueHostBundleOptions struct {
 	WithVuePlugin bool
 	// ExtraStubAliases maps import paths (package names or absolute file paths) to stub files.
 	// Default FE unit stubs (element-plus, icons, vue-router, path stubs, auth store) always apply.
-	// OPage.vue is stubbed only for page/view product importers (see feUnitPathStubPath).
+	// OPage.vue uses a dedicated OPage.vue$ rewrite (skips OPage*.test.ts importers) plus path stubs.
 	ExtraStubAliases map[string]string
 	// DisableDefaultFEStubs skips built-in package/path stubs (host unit tests only).
 	DisableDefaultFEStubs bool
@@ -143,8 +143,41 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 					})
 			},
 		})
-		// OPage.vue is stubbed only for page/view product importers via feUnitPathStubPath
-		// (not a blanket OPage.vue$ rewrite), so OPage.mapping and similar FE units mount the real SUT.
+		plugins = append(plugins, api.Plugin{
+			Name: "choysum-fe-unit-opage-stub",
+			Setup: func(build api.PluginBuild) {
+				// Blanket OPage.vue$ rewrite for product pages (path-alias resolves often
+				// leave Importer empty, so feUnitPathStubPath alone is not enough).
+				// Skip when a web OPage unit test imports the real SUT.
+				build.OnResolve(api.OnResolveOptions{Filter: `OPage\.vue$`},
+					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						importer := filepath.ToSlash(args.Importer)
+						if strings.Contains(importer, "OPage.mapping.test.") ||
+							strings.Contains(importer, "OPage.test.") {
+							return api.OnResolveResult{}, nil
+						}
+						return api.OnResolveResult{Path: stubs.OPage, Namespace: "file"}, nil
+					})
+			},
+		})
+		plugins = append(plugins, api.Plugin{
+			Name: "choysum-fe-unit-child-view-stub",
+			Setup: func(build api.PluginBuild) {
+				// Same Importer-empty problem as OPage: stub nested Form/List/Kanban for
+				// product page/view mounts. Skip when a FE unit test imports the *View SUT,
+				// or when web/web/components code is the importer (real child mounts).
+				build.OnResolve(api.OnResolveOptions{Filter: `(FormView|ListView|KanbanView)\.vue$`},
+					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						importer := filepath.ToSlash(args.Importer)
+						if strings.Contains(importer, "/web/web/components/") ||
+							strings.HasSuffix(importer, ".test.ts") ||
+							strings.HasSuffix(importer, ".spec.ts") {
+							return api.OnResolveResult{}, nil
+						}
+						return api.OnResolveResult{Path: stubs.ChildView, Namespace: "file"}, nil
+					})
+			},
+		})
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-path-stubs",
 			Setup: func(build api.PluginBuild) {
