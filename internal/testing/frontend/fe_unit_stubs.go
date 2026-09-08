@@ -58,17 +58,17 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 			return stubs.ChildView, true
 		}
 	case strings.Contains(p, "web/web/stores/registry") || strings.Contains(joined, "/web/web/stores/registry"):
-		// Do not stub @/core/web/stores/registry (shared by core unit tests).
+		// Never stub @/core/web/stores/registry (core unit tests need registerStoreFactory).
+		// Skip FE *.test.ts importers that assert the real registry surface.
 		if strings.Contains(importer, ".test.ts") || strings.Contains(importer, ".spec.ts") {
 			return "", false
 		}
-		if isPageOrView {
-			return stubs.Registry, true
-		}
+		return stubs.Registry, true
 	case strings.Contains(p, "storeScopeManager") || strings.Contains(joined, "storeScopeManager"):
-		if isPageOrView {
-			return stubs.Scope, true
+		if strings.Contains(importer, ".test.ts") || strings.Contains(importer, ".spec.ts") {
+			return "", false
 		}
+		return stubs.Scope, true
 	case strings.Contains(p, "composables/usePermission") || strings.HasSuffix(p, "/usePermission") || strings.HasSuffix(p, "/usePermission.ts"):
 		if isPageOrView {
 			return stubs.Permission, true
