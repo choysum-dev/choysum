@@ -1,9 +1,23 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import { createFieldsGetHelpers, FIELD_PRESENTATION_FIELDS_GET_ATTRS, type FieldsGetHost } from './fieldsGet';
 import type { WebFieldMetadata } from './modelStore';
+
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
 
 function makeHost(
   fieldsMetadata: Record<string, WebFieldMetadata>,
@@ -13,8 +27,8 @@ function makeHost(
 }
 
 describe('createFieldsGetHelpers', () => {
-  it('dedupes same cacheKey and does not re-RPC (T1.5)', async () => {
-    const FieldsGet = vi.fn(async () => ({
+  test('dedupes same cacheKey and does not re-RPC (T1.5)', async () => {
+    const FieldsGet = fnRecorder(async () => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
     }));
     let lang = 'zh_CN';
@@ -25,23 +39,24 @@ describe('createFieldsGetHelpers', () => {
     const first = await helpers.ensureFieldsGet(['Name'], ['string', 'type']);
     const second = await helpers.ensureFieldsGet(['Name'], ['string', 'type']);
     expect(first).toBe(second);
-    expect(FieldsGet).toHaveBeenCalledTimes(1);
+    expect(FieldsGet.calls.length).toBe(1);
 
     // Concurrent callers share one in-flight promise.
-    FieldsGet.mockClear();
+    FieldsGet.calls.length = 0;
     helpers.clearFieldsGetCache();
     const [a, b] = await Promise.all([
       helpers.ensureFieldsGet(['Name']),
       helpers.ensureFieldsGet(['Name']),
     ]);
     expect(a).toBe(b);
-    expect(FieldsGet).toHaveBeenCalledTimes(1);
+    expect(FieldsGet.calls.length).toBe(1);
   });
 
-  it('re-RPCs after lang change or clearFieldsGetCache (T1.6)', async () => {
-    const FieldsGet = vi.fn(async (_fields?: string[], _attrs?: string[]) => ({
+  test('re-RPCs after lang change or clearFieldsGetCache (T1.6)', async () => {
+    let fieldsGetImpl: FieldsGetHost['FieldsGet'] = async (_fields?: string[], _attrs?: string[]) => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
-    }));
+    });
+    const FieldsGet = fnRecorder(async (fields?: string[], attrs?: string[]) => fieldsGetImpl(fields, attrs));
     let lang = 'zh_CN';
     const helpers = createFieldsGetHelpers(
       makeHost(
@@ -54,25 +69,25 @@ describe('createFieldsGetHelpers', () => {
     );
 
     await helpers.ensureFieldsGet(['Name']);
-    expect(FieldsGet).toHaveBeenCalledTimes(1);
+    expect(FieldsGet.calls.length).toBe(1);
     expect(helpers.getFieldsGetTranslatedString('Name')).toBe('名称');
 
     lang = 'ja_JP';
-    FieldsGet.mockImplementation(async () => ({
+    fieldsGetImpl = async () => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名前' },
-    }));
+    });
     await helpers.ensureFieldsGet(['Name']);
-    expect(FieldsGet).toHaveBeenCalledTimes(2);
+    expect(FieldsGet.calls.length).toBe(2);
     expect(helpers.getFieldsGetTranslatedString('Name')).toBe('名前');
 
     helpers.clearFieldsGetCache();
     expect(helpers.getFieldsGetTranslatedString('Name')).toBeUndefined();
     await helpers.ensureFieldsGet(['Name']);
-    expect(FieldsGet).toHaveBeenCalledTimes(3);
+    expect(FieldsGet.calls.length).toBe(3);
   });
 
-  it('getFieldMeta merges overlay over static structural fields (T1.7)', async () => {
-    const FieldsGet = vi.fn(async () => ({
+  test('getFieldMeta merges overlay over static structural fields (T1.7)', async () => {
+    const FieldsGet = fnRecorder(async () => ({
       Status: {
         id: '2',
         type: 'selection',
@@ -109,19 +124,20 @@ describe('createFieldsGetHelpers', () => {
     expect(meta?.selection).toEqual([{ value: 'a', label: '启用' }]);
   });
 
-  it('exposes presentation attrs and FieldsGet translated help overlay', async () => {
+  test('exposes presentation attrs and FieldsGet translated help overlay', async () => {
     expect(FIELD_PRESENTATION_FIELDS_GET_ATTRS).toEqual(
       expect.arrayContaining(['help', 'helpText', 'string', 'stringText', 'maxUploadBytes', 'maxWidth', 'maxHeight'])
     );
 
-    const FieldsGet = vi.fn(async () => ({
+    let fieldsGetImpl: FieldsGetHost['FieldsGet'] = async () => ({
       Code: {
         id: '1',
         type: 'varchar',
         typeAnnotation: 'string',
         help: '用于引用的短唯一编码',
       },
-    }));
+    });
+    const FieldsGet = fnRecorder(async (fields?: string[], attrs?: string[]) => fieldsGetImpl(fields, attrs));
     const helpers = createFieldsGetHelpers(
       makeHost(
         {
@@ -145,16 +161,16 @@ describe('createFieldsGetHelpers', () => {
     expect(helpers.getFieldsGetTranslatedHelp('Code')).toBe('用于引用的短唯一编码');
     expect(helpers.getFieldsGetTranslatedHelp('  Code  ')).toBe('用于引用的短唯一编码');
 
-    FieldsGet.mockImplementation(async () => ({
+    fieldsGetImpl = async () => ({
       Code: { id: '1', type: 'varchar', typeAnnotation: 'string', help: '   ' },
-    }));
+    });
     helpers.clearFieldsGetCache();
     await helpers.ensureFieldsGet(['Code']);
     expect(helpers.getFieldsGetTranslatedHelp('Code')).toBeUndefined();
 
-    FieldsGet.mockImplementation(async () => ({
+    fieldsGetImpl = async () => ({
       Code: { id: '1', type: 'varchar', typeAnnotation: 'string', help: 42 as any },
-    }));
+    });
     helpers.clearFieldsGetCache();
     await helpers.ensureFieldsGet(['Code']);
     expect(helpers.getFieldsGetTranslatedHelp('Code')).toBeUndefined();

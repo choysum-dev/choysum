@@ -1,8 +1,6 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import {
   applyStatusbarSelect,
   canSelectStatusbarValue,
@@ -19,6 +17,21 @@ import {
   validateStatusbarValue,
 } from './ostatusbar_helpers';
 
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
+
 const meta = [
   { value: 'draft', label: 'Draft' },
   { value: 'confirmed', label: 'Confirmed' },
@@ -27,7 +40,7 @@ const meta = [
 ];
 
 describe('toStatusbarView / fromStatusbarView / normalizeSegmentedModelValue', () => {
-  it('normalizes view and model values', () => {
+  test('normalizes view and model values', () => {
     expect(toStatusbarView(null)).toBeNull();
     expect(toStatusbarView(undefined)).toBeNull();
     expect(toStatusbarView('done')).toBe('done');
@@ -41,7 +54,7 @@ describe('toStatusbarView / fromStatusbarView / normalizeSegmentedModelValue', (
 });
 
 describe('resolveStatusbarWhitelist', () => {
-  it('prefers statusbarVisible over selection', () => {
+  test('prefers statusbarVisible over selection', () => {
     expect(resolveStatusbarWhitelist(['a'], ['b'])).toEqual(['a']);
     expect(resolveStatusbarWhitelist([], ['b'])).toEqual(['b']);
     expect(resolveStatusbarWhitelist(undefined, [])).toBeNull();
@@ -50,13 +63,13 @@ describe('resolveStatusbarWhitelist', () => {
 });
 
 describe('pickRootOnchangeSelection', () => {
-  it('returns null for missing / unmatched payloads', () => {
+  test('returns null for missing / unmatched payloads', () => {
     expect(pickRootOnchangeSelection(null, 'State')).toBeNull();
     expect(pickRootOnchangeSelection({ selection: [] }, 'State')).toBeNull();
     expect(pickRootOnchangeSelection({ selection: [{ field: 'Other', selection: ['a'] }] }, 'State')).toBeNull();
   });
 
-  it('reads selection and optional disabled', () => {
+  test('reads selection and optional disabled', () => {
     expect(
       pickRootOnchangeSelection(
         { selection: [{ field: 'State', selection: ['draft', 'done'], disabled: ['done'] }] },
@@ -72,7 +85,7 @@ describe('pickRootOnchangeSelection', () => {
 });
 
 describe('currentFromRowRef / currentFromFieldValue', () => {
-  it('reads current from row refs and field values', () => {
+  test('reads current from row refs and field values', () => {
     expect(currentFromRowRef(null, 'State')).toBeNull();
     expect(currentFromRowRef({ State: 'done' }, '')).toBeNull();
     expect(currentFromRowRef({ State: 'done' }, 'State')).toBe('done');
@@ -98,11 +111,11 @@ describe('currentFromRowRef / currentFromFieldValue', () => {
 });
 
 describe('resolveStatusbarOptions', () => {
-  it('returns meta options in order by default', () => {
+  test('returns meta options in order by default', () => {
     expect(resolveStatusbarOptions({ meta }).map(o => o.value)).toEqual(['draft', 'confirmed', 'done', 'cancel']);
   });
 
-  it('handles non-array meta, blanks, duplicates, and missing labels', () => {
+  test('handles non-array meta, blanks, duplicates, and missing labels', () => {
     expect(resolveStatusbarOptions({ meta: null as any })).toEqual([]);
     expect(
       resolveStatusbarOptions({
@@ -116,7 +129,7 @@ describe('resolveStatusbarOptions', () => {
     ).toEqual([{ value: 'a', label: 'a', disabled: false }]);
   });
 
-  it('applies whitelist order and filters (statusbarVisible)', () => {
+  test('applies whitelist order and filters (statusbarVisible)', () => {
     expect(
       resolveStatusbarOptions({
         meta,
@@ -125,11 +138,11 @@ describe('resolveStatusbarOptions', () => {
     ).toEqual(['done', 'draft']);
   });
 
-  it('uses bare whitelist when pool is empty', () => {
+  test('uses bare whitelist when pool is empty', () => {
     expect(resolveStatusbarOptions({ meta: [], whitelist: ['x', 'y'] }).map(o => o.value)).toEqual(['x', 'y']);
   });
 
-  it('keeps current value when missing from whitelist (D5 fallback)', () => {
+  test('keeps current value when missing from whitelist (D5 fallback)', () => {
     const opts = resolveStatusbarOptions({
       meta,
       whitelist: ['draft', 'done'],
@@ -139,7 +152,7 @@ describe('resolveStatusbarOptions', () => {
     expect(opts[2]?.label).toBe('Cancelled');
   });
 
-  it('falls back current label when not in meta', () => {
+  test('falls back current label when not in meta', () => {
     expect(
       resolveStatusbarOptions({
         meta: [],
@@ -153,7 +166,7 @@ describe('resolveStatusbarOptions', () => {
     ]);
   });
 
-  it('ignores empty current and already-visible current', () => {
+  test('ignores empty current and already-visible current', () => {
     expect(resolveStatusbarOptions({ meta, current: '' }).map(o => o.value)).toEqual([
       'draft',
       'confirmed',
@@ -168,7 +181,7 @@ describe('resolveStatusbarOptions', () => {
     ]);
   });
 
-  it('intersects onchange values with meta and marks disabled', () => {
+  test('intersects onchange values with meta and marks disabled', () => {
     const opts = resolveStatusbarOptions({
       meta,
       onchangeValues: ['draft', 'done', 'unknown', '', null as any, 'draft'],
@@ -181,7 +194,7 @@ describe('resolveStatusbarOptions', () => {
     ]);
   });
 
-  it('honors explicit empty onchange domain (no fallthrough to meta)', () => {
+  test('honors explicit empty onchange domain (no fallthrough to meta)', () => {
     expect(resolveStatusbarOptions({ meta, onchangeValues: [] }).map(o => o.value)).toEqual([]);
     expect(
       resolveStatusbarOptions({
@@ -193,7 +206,7 @@ describe('resolveStatusbarOptions', () => {
     ).toEqual(['draft']);
   });
 
-  it('ignores non-array whitelist and empty whitelist arrays', () => {
+  test('ignores non-array whitelist and empty whitelist arrays', () => {
     expect(resolveStatusbarOptions({ meta, whitelist: 'nope' as any }).map(o => o.value)).toEqual([
       'draft',
       'confirmed',
@@ -214,7 +227,7 @@ describe('resolveStatusbarOptions', () => {
     ]);
   });
 
-  it('uses label when present and value when label is nullish', () => {
+  test('uses label when present and value when label is nullish', () => {
     expect(
       resolveStatusbarOptions({
         meta: [
@@ -228,7 +241,7 @@ describe('resolveStatusbarOptions', () => {
     ]);
   });
 
-  it('keeps onchange values when meta is empty', () => {
+  test('keeps onchange values when meta is empty', () => {
     expect(
       resolveStatusbarOptions({
         meta: [],
@@ -237,7 +250,7 @@ describe('resolveStatusbarOptions', () => {
     ).toEqual(['a', 'b']);
   });
 
-  it('applies whitelist after onchange filter', () => {
+  test('applies whitelist after onchange filter', () => {
     expect(
       resolveStatusbarOptions({
         meta,
@@ -247,7 +260,7 @@ describe('resolveStatusbarOptions', () => {
     ).toEqual(['done', 'draft']);
   });
 
-  it('dedupes duplicate whitelist entries in the final options list', () => {
+  test('dedupes duplicate whitelist entries in the final options list', () => {
     expect(
       resolveStatusbarOptions({
         meta,
@@ -258,7 +271,7 @@ describe('resolveStatusbarOptions', () => {
 });
 
 describe('toSegmentedOptions / canSelect / validate', () => {
-  it('maps and validates options', () => {
+  test('maps and validates options', () => {
     const opts = resolveStatusbarOptions({ meta, onchangeDisabled: ['done'] });
     expect(toSegmentedOptions(opts)[0]).toEqual({ label: 'Draft', value: 'draft', disabled: false });
     expect(canSelectStatusbarValue('draft', opts)).toBe(true);
@@ -275,17 +288,17 @@ describe('toSegmentedOptions / canSelect / validate', () => {
 });
 
 describe('gateBeforeChange / applyStatusbarSelect', () => {
-  it('allows when hook is omitted', async () => {
+  test('allows when hook is omitted', async () => {
     expect(await gateBeforeChange(undefined, 'done', 'draft')).toBe(true);
   });
 
-  it('allows only when hook returns true', async () => {
+  test('allows only when hook returns true', async () => {
     expect(await gateBeforeChange(() => true, 'done', 'draft')).toBe(true);
     expect(await gateBeforeChange(() => false, 'done', 'draft')).toBe(false);
     expect(await gateBeforeChange(() => undefined as any, 'done', 'draft')).toBe(false);
   });
 
-  it('cancels on throw / reject', async () => {
+  test('cancels on throw / reject', async () => {
     expect(
       await gateBeforeChange(() => {
         throw new Error('nope');
@@ -294,15 +307,15 @@ describe('gateBeforeChange / applyStatusbarSelect', () => {
     expect(await gateBeforeChange(async () => Promise.reject(new Error('nope')), 'done', 'draft')).toBe(false);
   });
 
-  it('awaits async hooks', async () => {
-    const hook = vi.fn(async () => true);
+  test('awaits async hooks', async () => {
+    const hook = fnRecorder(async () => true);
     expect(await gateBeforeChange(hook, 'done', 'draft')).toBe(true);
-    expect(hook).toHaveBeenCalledWith('done', 'draft');
+    expect(hook.calls).toEqual([['done', 'draft']]);
   });
 
-  it('covers applyStatusbarSelect branches', async () => {
+  test('covers applyStatusbarSelect branches', async () => {
     const opts = resolveStatusbarOptions({ meta, onchangeDisabled: ['done'] });
-    const write = vi.fn();
+    const write = fnRecorder();
     expect(
       await applyStatusbarSelect({
         interactive: false,
@@ -374,6 +387,6 @@ describe('gateBeforeChange / applyStatusbarSelect', () => {
         write,
       })
     ).toBe('written');
-    expect(write).toHaveBeenCalledWith('confirmed');
+    expect(write.calls).toEqual([['confirmed']]);
   });
 });

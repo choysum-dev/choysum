@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi } from 'vitest';
 import {
   extractNameCreateRecordId,
   formatNameCreateError,
@@ -9,8 +8,23 @@ import {
   trimSearchKeyword,
 } from './nameCreateQuickCreate';
 
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
+
 describe('trimSearchKeyword', () => {
-  it('trims and nullish-coalesces', () => {
+  test('trims and nullish-coalesces', () => {
     expect(trimSearchKeyword('  a  ')).toBe('a');
     expect(trimSearchKeyword(null)).toBe('');
     expect(trimSearchKeyword(undefined)).toBe('');
@@ -19,7 +33,7 @@ describe('trimSearchKeyword', () => {
 });
 
 describe('extractNameCreateRecordId', () => {
-  it('reads Id or id and rejects empty', () => {
+  test('reads Id or id and rejects empty', () => {
     expect(extractNameCreateRecordId({ Id: 'a1' })).toBe('a1');
     expect(extractNameCreateRecordId({ id: 'b2' })).toBe('b2');
     expect(extractNameCreateRecordId({ Id: '  c3  ' })).toBe('c3');
@@ -33,7 +47,7 @@ describe('extractNameCreateRecordId', () => {
 });
 
 describe('formatNameCreateError', () => {
-  it('prefers message, then error, then fallback', () => {
+  test('prefers message, then error, then fallback', () => {
     expect(formatNameCreateError(new Error('boom'), 'fallback')).toBe('boom');
     expect(formatNameCreateError('raw', 'fallback')).toBe('raw');
     expect(formatNameCreateError(null, 'fallback')).toBe('fallback');
@@ -45,10 +59,10 @@ describe('formatNameCreateError', () => {
 });
 
 describe('runNameCreateQuickCreate', () => {
-  it('guards busy, missing store, and empty keyword', async () => {
-    const onError = vi.fn();
-    const onSuccess = vi.fn();
-    const NameCreate = vi.fn();
+  test('guards busy, missing store, and empty keyword', async () => {
+    const onError = fnRecorder();
+    const onSuccess = fnRecorder();
+    const NameCreate = fnRecorder();
 
     expect(
       await runNameCreateQuickCreate({
@@ -60,7 +74,7 @@ describe('runNameCreateQuickCreate', () => {
         onSuccess,
       })
     ).toBe(false);
-    expect(NameCreate).not.toHaveBeenCalled();
+    expect(NameCreate.calls.length).toBe(0);
 
     expect(
       await runNameCreateQuickCreate({
@@ -72,9 +86,9 @@ describe('runNameCreateQuickCreate', () => {
         onSuccess,
       })
     ).toBe(false);
-    expect(onError).toHaveBeenCalledWith('fail');
+    expect(onError.calls).toEqual([['fail']]);
 
-    onError.mockClear();
+    onError.calls.length = 0;
     expect(
       await runNameCreateQuickCreate({
         busy: { value: false },
@@ -85,8 +99,8 @@ describe('runNameCreateQuickCreate', () => {
         onSuccess,
       })
     ).toBe(false);
-    expect(NameCreate).not.toHaveBeenCalled();
-    expect(onError).not.toHaveBeenCalled();
+    expect(NameCreate.calls.length).toBe(0);
+    expect(onError.calls.length).toBe(0);
 
     // Cover keyword ?? '' when keyword is null/undefined.
     expect(
@@ -111,11 +125,11 @@ describe('runNameCreateQuickCreate', () => {
     ).toBe(false);
   });
 
-  it('creates, passes nameField, and clears busy', async () => {
+  test('creates, passes nameField, and clears busy', async () => {
     const busy = { value: false };
-    const onError = vi.fn();
-    const onSuccess = vi.fn();
-    const NameCreate = vi.fn(async () => ({ Id: 'n1', Name: 'Acme' }));
+    const onError = fnRecorder();
+    const onSuccess = fnRecorder();
+    const NameCreate = fnRecorder(async () => ({ Id: 'n1', Name: 'Acme' }));
 
     const ok = await runNameCreateQuickCreate({
       busy,
@@ -128,57 +142,57 @@ describe('runNameCreateQuickCreate', () => {
     });
 
     expect(ok).toBe(true);
-    expect(NameCreate).toHaveBeenCalledWith('Acme', undefined, { nameField: 'Code' });
-    expect(onSuccess).toHaveBeenCalledWith({ Id: 'n1', Name: 'Acme' }, 'n1');
+    expect(NameCreate.calls).toEqual([['Acme', undefined, { nameField: 'Code' }]]);
+    expect(onSuccess.calls).toEqual([[{ Id: 'n1', Name: 'Acme' }, 'n1']]);
     expect(busy.value).toBe(false);
   });
 
-  it('omits options when nameField is unset', async () => {
-    const NameCreate = vi.fn(async () => ({ id: 'legacy' }));
+  test('omits options when nameField is unset', async () => {
+    const NameCreate = fnRecorder(async () => ({ id: 'legacy' }));
     await runNameCreateQuickCreate({
       busy: { value: false },
       store: { NameCreate },
       keyword: 'x',
       failedMessage: 'fail',
-      onError: vi.fn(),
-      onSuccess: vi.fn(),
+      onError: fnRecorder(),
+      onSuccess: fnRecorder(),
     });
-    expect(NameCreate).toHaveBeenCalledWith('x', undefined, undefined);
+    expect(NameCreate.calls).toEqual([['x', undefined, undefined]]);
   });
 
-  it('errors when created row has no id', async () => {
-    const onError = vi.fn();
+  test('errors when created row has no id', async () => {
+    const onError = fnRecorder();
     const busy = { value: false };
     const ok = await runNameCreateQuickCreate({
       busy,
-      store: { NameCreate: vi.fn(async () => ({ Name: 'no-id' })) },
+      store: { NameCreate: fnRecorder(async () => ({ Name: 'no-id' })) },
       keyword: 'x',
       failedMessage: 'fail',
       onError,
-      onSuccess: vi.fn(),
+      onSuccess: fnRecorder(),
     });
     expect(ok).toBe(false);
-    expect(onError).toHaveBeenCalledWith('fail');
+    expect(onError.calls).toEqual([['fail']]);
     expect(busy.value).toBe(false);
   });
 
-  it('surfaces NameCreate throw via onError', async () => {
-    const onError = vi.fn();
+  test('surfaces NameCreate throw via onError', async () => {
+    const onError = fnRecorder();
     const busy = { value: false };
     const ok = await runNameCreateQuickCreate({
       busy,
       store: {
-        NameCreate: vi.fn(async () => {
+        NameCreate: fnRecorder(async () => {
           throw new Error('denied');
         }),
       },
       keyword: 'x',
       failedMessage: 'fail',
       onError,
-      onSuccess: vi.fn(),
+      onSuccess: fnRecorder(),
     });
     expect(ok).toBe(false);
-    expect(onError).toHaveBeenCalledWith('denied');
+    expect(onError.calls).toEqual([['denied']]);
     expect(busy.value).toBe(false);
   });
 });
