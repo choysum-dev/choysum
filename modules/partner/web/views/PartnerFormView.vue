@@ -208,11 +208,11 @@ import CurrencyListView from '@/base/web/views/CurrencyListView.vue';
 import CountryListView from '@/base/web/views/CountryListView.vue';
 import PartnerContactFormView from '@/partner/web/views/PartnerContactFormView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
-import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ElButton, ElTag } from 'element-plus';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import { partnerActions } from './partner_actions';
 
 defineOptions({ name: 'PartnerFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('partner', { scope: 'web/views/PartnerFormView' });
@@ -238,7 +238,6 @@ const props = withDefaults(
 
 const store = resolvePageStore(props.store, 'PartnerFormView');
 const { recordId, initialValues, viewMode, showHeader, createAction } = props;
-const partnerActions = defineModelActions('partner.Partner', { entityTitle: _lt('Partner') });
 const { hasAction } = usePermission();
 const router = useRouter();
 const activeTab = ref('contacts');

@@ -58,9 +58,9 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { ElButton, ElTabPane, ElTag } from 'element-plus';
 import OOneToManyKanbanField from '@/web/web/components/field/OOneToManyKanbanField.vue';
 import PartnerBankAccountFormView from '@/partner_bank/web/views/PartnerBankAccountFormView.vue';
-import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { bankAccountActions } from './bank_account_actions';
 
 /**
  * Extends the base partner form with partner bank account management UI.
@@ -82,8 +82,7 @@ export default defineComponent({
   setup(props, ctx) {
     const baseSetup = PartnerFormView?.setup?.(props, ctx) || {};
     const store = (baseSetup as { store: WebModelStore<Partner> }).store;
-    const { _t, _lt } = createTranslate('partner_bank', { scope: 'web/views/PartnerFormView' });
-    const bankAccountActions = defineModelActions('partner.BankAccount', { entityTitle: _lt('Bank Account') });
+    const { _t } = createTranslate('partner_bank', { scope: 'web/views/PartnerFormView' });
     const { hasAction } = usePermission();
 
     /**

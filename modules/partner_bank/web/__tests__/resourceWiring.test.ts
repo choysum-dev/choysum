@@ -1,14 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineModelActions } from '@/core/web/resource';
-import { createTermReference } from '@/core/service/i18n';
+import { bankAccountActions } from '../views/bank_account_actions';
 
-test('partner_bank resource wiring: defineModelActions yields ids for BankAccount', () => {
-  const actions = defineModelActions('partner.BankAccount', {
-    entityTitle: createTermReference('partner', 'Bank Account', { scope: 'test' }),
-  });
-  expect(actions.create).toBeTruthy();
-  expect(actions.edit).toBeTruthy();
-  expect(actions.delete).toBeTruthy();
+test('partner_bank resource wiring: shared bank_account_actions yields BankAccount ids', () => {
+  expect(bankAccountActions.create).toBe('partner.action.bank_account_create');
+  expect(bankAccountActions.edit).toBe('partner.action.bank_account_edit');
+  expect(bankAccountActions.delete).toBe('partner.action.bank_account_delete');
 });

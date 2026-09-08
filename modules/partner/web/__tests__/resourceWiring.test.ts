@@ -1,11 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createTranslate } from '@/core/service/i18n';
-import { defineAction, getResourceDeclarationFromMeta } from '@/core/web/resource';
+import { getResourceDeclarationFromMeta } from '@/core/web/resource';
 import { partnerRoutes } from '../route/routes';
-
-const { _lt } = createTranslate('partner', { scope: 'web/views' });
+import { partnerActions, partnerOpenDetailAction } from '../views/partner_actions';
 
 test('partner resource wiring: each route declares expected actions', () => {
   const byName = Object.fromEntries(partnerRoutes.map(route => [String(route.name), route]));
@@ -31,8 +29,10 @@ test('partner resource wiring: each route declares expected actions', () => {
   ]);
 });
 
-test('partner resource wiring: defineAction returns the registered action id', () => {
-  expect(defineAction('partner.action.partner_open_detail', { title: _lt('Open Partner Detail') })).toBe(
-    'partner.action.partner_open_detail'
-  );
+test('partner resource wiring: shared partner_actions matches list/form declarations', () => {
+  expect(partnerOpenDetailAction).toBe('partner.action.partner_open_detail');
+  expect(partnerActions.create).toBe('partner.action.partner_create');
+  expect(partnerActions.edit).toBe('partner.action.partner_edit');
+  expect(partnerActions.copy).toBe('partner.action.partner_copy');
+  expect(partnerActions.delete).toBe('partner.action.partner_delete');
 });

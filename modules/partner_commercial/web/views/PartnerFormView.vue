@@ -54,9 +54,9 @@ import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
 import { ElButton, ElTabPane, ElTag } from 'element-plus';
 import OOneToManyKanbanField from '@/web/web/components/field/OOneToManyKanbanField.vue';
 import PartnerIdentifierFormView from '@/partner_commercial/web/views/PartnerIdentifierFormView.vue';
-import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { partnerIdentifierActions } from './partner_identifier_actions';
 
 /**
  * Extends the base partner form with commercial identifier management UI.
@@ -78,8 +78,7 @@ export default defineComponent({
   setup(props, ctx) {
     const baseSetup = PartnerFormView?.setup?.(props, ctx) || {};
     const store = (baseSetup as any)?.store as any;
-    const { _t, _lt } = createTranslate('partner_commercial', { scope: 'web/views/PartnerFormView' });
-    const partnerIdentifierActions = defineModelActions('partner.PartnerIdentifier', { entityTitle: _lt('Identifier') });
+    const { _t } = createTranslate('partner_commercial', { scope: 'web/views/PartnerFormView' });
     const { hasAction } = usePermission();
 
     /**
