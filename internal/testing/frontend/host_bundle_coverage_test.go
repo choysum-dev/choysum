@@ -16,23 +16,27 @@ import (
 
 func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 	stubs := feUnitStubPaths{
-		ElementPlus:    "ep",
-		Icons:          "icons",
-		Router:         "router",
-		PageMount:      "pm",
-		OPage:          "opage",
-		ChildView:      "child",
-		AuthStore:      "auth",
-		I18n:           "i18n",
-		I18nStore:      "i18nStore",
-		Registry:       "reg",
-		Scope:          "scope",
-		Permission:     "perm",
-		PageComposable: "pageComp",
-		Vicons:         "vicons",
-		VueEcharts:     "vchart",
-		Vuedraggable:   "drag",
-		Echarts:        "echarts",
+		ElementPlus:         "ep",
+		Icons:               "icons",
+		Router:              "router",
+		PageMount:           "pm",
+		OPage:               "opage",
+		ChildView:           "child",
+		AuthStore:           "auth",
+		I18n:                "i18n",
+		I18nStore:           "i18nStore",
+		Registry:            "reg",
+		Scope:               "scope",
+		Permission:          "perm",
+		PageComposable:      "pageComp",
+		Vicons:              "vicons",
+		VueEcharts:          "vchart",
+		Vuedraggable:        "drag",
+		Echarts:             "echarts",
+		TipTapVue3:          "tiptap-vue3",
+		TipTapStarterKit:    "tiptap-starter",
+		TipTapExtensionLink: "tiptap-link",
+		DOMPurify:           "dompurify",
 	}
 	for _, tt := range []struct {
 		path string
@@ -47,6 +51,10 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		{"vue-echarts", "vchart", true},
 		{"vuedraggable", "drag", true},
 		{"echarts/core", "echarts", true},
+		{"@tiptap/vue-3", "tiptap-vue3", true},
+		{"@tiptap/starter-kit", "tiptap-starter", true},
+		{"@tiptap/extension-link", "tiptap-link", true},
+		{"dompurify", "dompurify", true},
 		{"other", "", false},
 	} {
 		got, ok := feUnitPackageStubPath(tt.path, stubs)
@@ -180,7 +188,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			OnDispose:      func(func()) {},
 			OnResolve: func(o api.OnResolveOptions, cb func(api.OnResolveArgs) (api.OnResolveResult, error)) {
 				switch o.Filter {
-				case `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?)$`:
+				case `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify)$`:
 					pkgCB = cb
 				case `OPage\.vue$`:
 					opageCB = cb

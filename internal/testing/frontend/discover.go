@@ -27,20 +27,19 @@ var (
 type ScanMode int
 
 const (
-	// ScanModeWarn reports legacy Node/VTU inventory hits without failing (migration).
+	// ScanModeWarn reports banned FE marks without failing (scan-only helpers / tests).
 	ScanModeWarn ScanMode = iota
-	// ScanModeError treats configured illegal patterns as a hard failure (FE hard-cut).
+	// ScanModeError treats banned FE unit patterns as a hard failure (unit preflight).
 	ScanModeError
 )
 
-// IllegalKind identifies a banned or inventory FE unit-test pattern.
-// After FE hard-cut, ScanModeError rejects vitest/Node DOM packages; choysumMount + .vue imports are allowed.
+// IllegalKind identifies a banned FE unit-test pattern.
+// After FE hard-cut, .vue imports and choysumMount are allowed; vitest/Node DOM/VTU/CoverageProbe are not.
 type IllegalKind string
 
 const (
 	IllegalDOMEnvironment IllegalKind = "dom-environment"
 	IllegalVTU            IllegalKind = "vue-test-utils"
-	IllegalVueImport      IllegalKind = "vue-sfc-import"
 	IllegalDOMPackage     IllegalKind = "dom-package"
 	// IllegalCoverageProbe is a fake lcov sampling SFC / import (banned; mount real business pages).
 	IllegalCoverageProbe IllegalKind = "coverage-probe"
@@ -68,7 +67,7 @@ var (
 	// Suppress IllegalVTU for mount/shallowMount only when those names are imported from choysumMount.
 	reChoysumMountBinding = regexp.MustCompile(`(?m)import\s*\{[^}]*\b(?:mount|shallowMount)\b[^}]*\}\s*from\s*['"\x60]@choysum/test-utils(?:/[^'"\x60]*)?['"\x60]`)
 	reMountCall           = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
-	// Matches from '...vue', side-effect/dynamic/require imports, optional Vite query (?raw), and backticks.
+	// Matches from '...vue' (host-need detection in frontendTestsNeedVue; not an illegal mark).
 	reVueImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`][^'\"`]+\\.vue(?:\\?[^'\"`]*)?['\"`]")
 	// CoverageProbe sampling SFC imports (banned). Basename must be exactly CoverageProbe.vue.
 	reCoverageProbeImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](?:[^'\"`]*[/\\\\])?CoverageProbe\\.vue(?:\\?[^'\"`]*)?['\"`]")
@@ -283,7 +282,6 @@ func scanIllegalContent(path, content string) []IllegalMark {
 		}
 	}
 
-	addRegexHits(content, lines, reVueImport, IllegalVueImport, add)
 	addRegexHits(code, lines, reVTUImport, IllegalVTU, add)
 	addRegexHits(code, lines, reVitestImport, IllegalVitestImport, add)
 	addRegexHits(code, lines, reDOMPackage, IllegalDOMPackage, add)
@@ -612,11 +610,10 @@ func relativizeRepoPath(repoRoot, path string) string {
 	return filepath.ToSlash(path)
 }
 
-// IsHardCutFailKind reports whether a mark fails ScanModeError / unit-fe-illegal --fail.
-// IllegalVueImport stays inventory-only (warn): .vue imports are allowed at FE hard-cut.
-// IllegalCoverageProbe always fails hard-cut (banned sampling SFCs).
-func IsHardCutFailKind(kind IllegalKind) bool {
-	return kind != IllegalVueImport
+// IsHardCutFailKind reports whether a mark fails ScanModeError / unit FE preflight.
+// All remaining IllegalKind values are banned (vue SFC imports are not scanned).
+func IsHardCutFailKind(_ IllegalKind) bool {
+	return true
 }
 
 // FilterHardCutFailHits keeps marks that should fail hard-cut mode.
@@ -630,8 +627,7 @@ func FilterHardCutFailHits(hits []IllegalMark) []IllegalMark {
 	return out
 }
 
-// CheckIllegalFrontendMarks scans and, in error mode, returns an error when hard-cut hits exist.
-// All hits (including IllegalVueImport inventory) are still returned for warn formatting.
+// CheckIllegalFrontendMarks scans and, in error mode, returns an error when banned hits exist.
 func CheckIllegalFrontendMarks(repoRoot, app string, mode ScanMode) ([]IllegalMark, error) {
 	hits, err := ScanAppIllegalFrontendMarks(repoRoot, app)
 	if err != nil {

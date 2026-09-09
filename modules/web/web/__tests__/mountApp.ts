@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Vitest + happy-dom mount helper for FE unit tests that cannot use VTU.
+ * Lightweight Vue mount helper for FE unit tests on the QuickJS host.
  * Registers global/unresolved tag stubs via app.component; for script-setup
  * local imports, use stubSfc() to mutate the shared component export in place.
+ * Prefer @choysum/test-utils (choysumMount) when its frozen subset is enough.
  */
 
 import {

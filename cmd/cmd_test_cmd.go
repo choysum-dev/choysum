@@ -18,12 +18,11 @@ func newTestCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirun
 			lightweightScopeAnnotation: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return xfmt.Errorf("test: requires a subcommand (unit|unit-fe-illegal|typecheck|e2e)")
+			return xfmt.Errorf("test: requires a subcommand (unit|typecheck|e2e)")
 		},
 	}
 	cmd.AddCommand(
 		newTestUnitCmd(envGetter, runtimeOptionsGetter),
-		newTestUnitFEIllegalCmd(envGetter, runtimeOptionsGetter),
 		newTypecheckCmd(envGetter, runtimeOptionsGetter),
 		newE2ECmd(envGetter, runtimeOptionsGetter),
 	)

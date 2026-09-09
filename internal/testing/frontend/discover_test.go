@@ -84,10 +84,13 @@ func TestDiscoverAndScanIllegalFrontendMarks(t *testing.T) {
 	for _, h := range hits {
 		kinds[h.Kind] = true
 	}
-	for _, want := range []IllegalKind{IllegalDOMEnvironment, IllegalVTU, IllegalVueImport, IllegalDOMPackage} {
+	for _, want := range []IllegalKind{IllegalDOMEnvironment, IllegalVTU, IllegalDOMPackage} {
 		if !kinds[want] {
 			t.Fatalf("missing kind %s in %#v", want, hits)
 		}
+	}
+	if kinds[IllegalKind("vue-sfc-import")] {
+		t.Fatalf(".vue imports must not be scanned: %#v", hits)
 	}
 
 	warn := FormatIllegalMarksWarn(hits, repo)
@@ -115,19 +118,11 @@ func TestDiscoverAndScanIllegalFrontendMarks(t *testing.T) {
 		t.Fatal(err)
 	}
 	vueHits, err := CheckIllegalFrontendMarks(vueOnlyRepo, "vueonly", ScanModeWarn)
-	if err != nil || len(vueHits) == 0 {
-		t.Fatalf("vue-only warn = %v hits=%#v", err, vueHits)
-	}
-	for _, h := range vueHits {
-		if h.Kind != IllegalVueImport {
-			t.Fatalf("unexpected hard-cut kind in vue-only inventory: %#v", h)
-		}
-	}
-	if failHits := FilterHardCutFailHits(vueHits); len(failHits) != 0 {
-		t.Fatalf("vue-only hard-cut hits = %#v", failHits)
+	if err != nil || len(vueHits) != 0 {
+		t.Fatalf(".vue-only app must have zero illegal hits: err=%v hits=%#v", err, vueHits)
 	}
 	if _, err := CheckIllegalFrontendMarks(vueOnlyRepo, "vueonly", ScanModeError); err != nil {
-		t.Fatalf("vue-only ScanModeError must allow .vue imports: %v", err)
+		t.Fatalf(".vue imports must pass ScanModeError: %v", err)
 	}
 
 	pureHits, err := ScanIllegalFrontendMarks([]string{pure})
@@ -562,10 +557,10 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 	}
 
 	var snippets []string
-	addRegexHits("from './X.vue'", nil, reVueImport, IllegalVueImport, func(_ int, _ IllegalKind, snippet string) {
+	addRegexHits("from 'happy-dom'", nil, reDOMPackage, IllegalDOMPackage, func(_ int, _ IllegalKind, snippet string) {
 		snippets = append(snippets, snippet)
 	})
-	if len(snippets) != 1 || !strings.Contains(snippets[0], ".vue") {
+	if len(snippets) != 1 || !strings.Contains(snippets[0], "happy-dom") {
 		t.Fatalf("fallback snippets = %#v", snippets)
 	}
 
@@ -585,10 +580,13 @@ func TestScanIllegalFrontendMarksEdgeCases(t *testing.T) {
 	for _, h := range cjsHits {
 		wantKinds[h.Kind] = true
 	}
-	for _, kind := range []IllegalKind{IllegalDOMPackage, IllegalVTU, IllegalVueImport} {
+	for _, kind := range []IllegalKind{IllegalDOMPackage, IllegalVTU} {
 		if !wantKinds[kind] {
 			t.Fatalf("cjs/dynamic/query missing %s in %#v", kind, cjsHits)
 		}
+	}
+	if wantKinds[IllegalKind("vue-sfc-import")] {
+		t.Fatalf(".vue imports must not be scanned: %#v", cjsHits)
 	}
 }
 
@@ -649,19 +647,32 @@ func TestFormatAndRelativizeHelpers(t *testing.T) {
 	}
 }
 
-func TestWarnIllegalFrontendMarks(t *testing.T) {
-	warnIllegalFrontendMarks("", "x")
-
+func TestCheckIllegalFrontendMarks_PreflightRejectsBanned(t *testing.T) {
 	repo := t.TempDir()
 	web := filepath.Join(repo, "modules", "demo", "web")
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(web, "a.test.ts"), []byte("import { mount } from '@vue/test-utils'\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(web, "ok.test.ts"), []byte("import Comp from './Comp.vue'\nit('ok', () => {})\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	warnIllegalFrontendMarks(repo, "demo")
-	warnIllegalFrontendMarks(repo, "missing")
+	if _, err := CheckIllegalFrontendMarks(repo, "demo", ScanModeError); err != nil {
+		t.Fatalf("clean .vue app must pass preflight: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(web, "bad.test.ts"), []byte("import { describe } from 'vitest'\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := CheckIllegalFrontendMarks(repo, "demo", ScanModeError)
+	if err == nil {
+		t.Fatal("expected preflight failure for vitest import")
+	}
+	if !strings.Contains(err.Error(), "illegal mark") || !strings.Contains(err.Error(), "vitest") {
+		t.Fatalf("preflight err should list fail hits only: %v", err)
+	}
+	if strings.Contains(err.Error(), "vue-sfc-import") {
+		t.Fatalf("preflight must not mention vue-sfc-import: %v", err)
+	}
 }
 
 func TestBuildFrontendUnitBundleGuards(t *testing.T) {

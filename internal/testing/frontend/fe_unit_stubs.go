@@ -7,23 +7,27 @@ import "strings"
 
 // feUnitStubPaths holds absolute paths to FE unit stub files under testdata/stubs.
 type feUnitStubPaths struct {
-	ElementPlus    string
-	Icons          string
-	Router         string
-	PageMount      string
-	OPage          string
-	ChildView      string
-	AuthStore      string
-	I18n           string
-	I18nStore      string
-	Registry       string
-	Scope          string
-	Permission     string
-	PageComposable string
-	Vicons         string
-	VueEcharts     string
-	Vuedraggable   string
-	Echarts        string
+	ElementPlus         string
+	Icons               string
+	Router              string
+	PageMount           string
+	OPage               string
+	ChildView           string
+	AuthStore           string
+	I18n                string
+	I18nStore           string
+	Registry            string
+	Scope               string
+	Permission          string
+	PageComposable      string
+	Vicons              string
+	VueEcharts          string
+	Vuedraggable        string
+	Echarts             string
+	TipTapVue3          string
+	TipTapStarterKit    string
+	TipTapExtensionLink string
+	DOMPurify           string
 }
 
 func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bool) {
@@ -42,6 +46,14 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 		return stubs.VueEcharts, true
 	case "vuedraggable":
 		return stubs.Vuedraggable, true
+	case "@tiptap/vue-3":
+		return stubs.TipTapVue3, true
+	case "@tiptap/starter-kit":
+		return stubs.TipTapStarterKit, true
+	case "@tiptap/extension-link":
+		return stubs.TipTapExtensionLink, true
+	case "dompurify":
+		return stubs.DOMPurify, true
 	default:
 		if importPath == "echarts" || strings.HasPrefix(importPath, "echarts/") {
 			return stubs.Echarts, true

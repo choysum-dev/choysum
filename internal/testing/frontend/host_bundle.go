@@ -114,28 +114,32 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	}
 	if !opts.DisableDefaultFEStubs {
 		stubs := feUnitStubPaths{
-			ElementPlus:    filepath.Join(stubDir, "element_plus.js"),
-			Icons:          filepath.Join(stubDir, "element_plus_icons.js"),
-			Router:         filepath.Join(stubDir, "vue_router.js"),
-			PageMount:      filepath.Join(stubDir, "page_mount.js"),
-			OPage:          filepath.Join(stubDir, "OPage.stub.vue"),
-			ChildView:      filepath.Join(stubDir, "ChildView.stub.vue"),
-			AuthStore:      filepath.Join(stubDir, "auth_store.js"),
-			I18n:           filepath.Join(stubDir, "i18n_create_translate.js"),
-			I18nStore:      filepath.Join(stubDir, "i18n_store.js"),
-			Registry:       filepath.Join(stubDir, "store_registry.js"),
-			Scope:          filepath.Join(stubDir, "store_scope_manager.js"),
-			Permission:     filepath.Join(stubDir, "use_permission.js"),
-			PageComposable: filepath.Join(stubDir, "page_composables.js"),
-			Vicons:         filepath.Join(stubDir, "vicons_material.js"),
-			VueEcharts:     filepath.Join(stubDir, "vue_echarts.js"),
-			Vuedraggable:   filepath.Join(stubDir, "vuedraggable.js"),
-			Echarts:        filepath.Join(stubDir, "echarts.js"),
+			ElementPlus:         filepath.Join(stubDir, "element_plus.js"),
+			Icons:               filepath.Join(stubDir, "element_plus_icons.js"),
+			Router:              filepath.Join(stubDir, "vue_router.js"),
+			PageMount:           filepath.Join(stubDir, "page_mount.js"),
+			OPage:               filepath.Join(stubDir, "OPage.stub.vue"),
+			ChildView:           filepath.Join(stubDir, "ChildView.stub.vue"),
+			AuthStore:           filepath.Join(stubDir, "auth_store.js"),
+			I18n:                filepath.Join(stubDir, "i18n_create_translate.js"),
+			I18nStore:           filepath.Join(stubDir, "i18n_store.js"),
+			Registry:            filepath.Join(stubDir, "store_registry.js"),
+			Scope:               filepath.Join(stubDir, "store_scope_manager.js"),
+			Permission:          filepath.Join(stubDir, "use_permission.js"),
+			PageComposable:      filepath.Join(stubDir, "page_composables.js"),
+			Vicons:              filepath.Join(stubDir, "vicons_material.js"),
+			VueEcharts:          filepath.Join(stubDir, "vue_echarts.js"),
+			Vuedraggable:        filepath.Join(stubDir, "vuedraggable.js"),
+			Echarts:             filepath.Join(stubDir, "echarts.js"),
+			TipTapVue3:          filepath.Join(stubDir, "tiptap_vue3.js"),
+			TipTapStarterKit:    filepath.Join(stubDir, "tiptap_starter_kit.js"),
+			TipTapExtensionLink: filepath.Join(stubDir, "tiptap_extension_link.js"),
+			DOMPurify:           filepath.Join(stubDir, "dompurify.js"),
 		}
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						// Filter only admits known package names; lookup always succeeds.
 						path, _ := feUnitPackageStubPath(args.Path, stubs)

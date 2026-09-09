@@ -297,7 +297,9 @@ func runOneAppFrontendTestsQJS(
 	tmpRoot string,
 	keep bool,
 ) (bool, error) {
-	warnIllegalFrontendMarks(repoRoot, app)
+	if _, err := CheckIllegalFrontendMarks(repoRoot, app, ScanModeError); err != nil {
+		return true, err
+	}
 	return RunFrontendQJS(ctx, QJSRunOptions{
 		RepoRoot:           repoRoot,
 		App:                app,

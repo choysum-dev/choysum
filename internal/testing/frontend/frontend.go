@@ -5,8 +5,6 @@ package frontend
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"strings"
 )
 
@@ -72,15 +70,4 @@ func sanitizeFrontendAppToken(app string) string {
 		return "app"
 	}
 	return token
-}
-
-func warnIllegalFrontendMarks(repoRoot, app string) {
-	hits, err := ScanAppIllegalFrontendMarks(repoRoot, app)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "choysum test: FE illegal scan failed for %s: %v\n", app, err)
-		return
-	}
-	if msg := FormatIllegalMarksWarn(hits, repoRoot); msg != "" {
-		fmt.Fprint(os.Stderr, msg)
-	}
 }
