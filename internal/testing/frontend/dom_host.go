@@ -150,9 +150,12 @@ const minimalConsoleScript = `(function () {
     g.File.prototype.constructor = g.File;
   }
   // URLSearchParams must expose has/set for document binding token append.
+  // Methods live on the prototype so Object.keys(init) / cloning does not treat
+  // set/get/append as query parameter names.
   if (typeof g.URLSearchParams !== "function" || typeof g.URLSearchParams.prototype?.has !== "function") {
     g.URLSearchParams = function URLSearchParams(init) {
       this._pairs = [];
+      if (init == null || init === "") return;
       var self = this;
       function appendPair(k, v) {
         self._pairs.push([String(k), String(v)]);
@@ -171,38 +174,43 @@ const minimalConsoleScript = `(function () {
               );
           });
         }
-      } else if (init && typeof init === "object") {
+      } else if (Array.isArray(init._pairs)) {
+        init._pairs.forEach(function (p) {
+          if (p && p.length >= 2) appendPair(p[0], p[1]);
+        });
+      } else if (typeof init === "object") {
         Object.keys(init).forEach(function (k) {
+          if (k.charAt(0) === "_" || typeof init[k] === "function") return;
           appendPair(k, init[k]);
         });
       }
-      this.append = function (k, v) {
-        appendPair(k, v);
-      };
-      this.set = function (k, v) {
-        var key = String(k);
-        this._pairs = this._pairs.filter(function (p) {
-          return p[0] !== key;
-        });
-        appendPair(k, v);
-      };
-      this.get = function (k) {
-        var key = String(k);
-        for (var i = 0; i < this._pairs.length; i++) {
-          if (this._pairs[i][0] === key) return this._pairs[i][1];
-        }
-        return null;
-      };
-      this.has = function (k) {
-        return this.get(k) != null;
-      };
-      this.toString = function () {
-        return this._pairs
-          .map(function (p) {
-            return encodeURIComponent(p[0]) + "=" + encodeURIComponent(p[1]);
-          })
-          .join("&");
-      };
+    };
+    g.URLSearchParams.prototype.append = function (k, v) {
+      this._pairs.push([String(k), String(v)]);
+    };
+    g.URLSearchParams.prototype.set = function (k, v) {
+      var key = String(k);
+      this._pairs = this._pairs.filter(function (p) {
+        return p[0] !== key;
+      });
+      this._pairs.push([key, String(v)]);
+    };
+    g.URLSearchParams.prototype.get = function (k) {
+      var key = String(k);
+      for (var i = 0; i < this._pairs.length; i++) {
+        if (this._pairs[i][0] === key) return this._pairs[i][1];
+      }
+      return null;
+    };
+    g.URLSearchParams.prototype.has = function (k) {
+      return this.get(k) != null;
+    };
+    g.URLSearchParams.prototype.toString = function () {
+      return this._pairs
+        .map(function (p) {
+          return encodeURIComponent(p[0]) + "=" + encodeURIComponent(p[1]);
+        })
+        .join("&");
     };
   }
   // Minimal URL: pathname/search/searchParams enough for binding preview token rewrite.
@@ -437,32 +445,10 @@ const minimalConsoleScript = `(function () {
     };
   }
   if (typeof g.Headers !== "function") {
+    // Methods on the prototype so Object.keys(plainInit) / cloning never treats
+    // set/get/append as header field names.
     g.Headers = function Headers(init) {
       this._map = Object.create(null);
-      this.set = function (k, v) {
-        this._map[String(k).toLowerCase()] = String(v);
-      };
-      this.get = function (k) {
-        var v = this._map[String(k).toLowerCase()];
-        return v == null ? null : v;
-      };
-      this.has = function (k) {
-        return Object.prototype.hasOwnProperty.call(this._map, String(k).toLowerCase());
-      };
-      this.append = function (k, v) {
-        var key = String(k).toLowerCase();
-        if (this._map[key] != null) this._map[key] += ", " + String(v);
-        else this._map[key] = String(v);
-      };
-      this.delete = function (k) {
-        delete this._map[String(k).toLowerCase()];
-      };
-      this.forEach = function (fn, thisArg) {
-        var keys = Object.keys(this._map);
-        for (var i = 0; i < keys.length; i++) {
-          fn.call(thisArg, this._map[keys[i]], keys[i], this);
-        }
-      };
       if (init == null) return;
       var self = this;
       if (Array.isArray(init)) {
@@ -477,8 +463,33 @@ const minimalConsoleScript = `(function () {
         });
       } else if (typeof init === "object") {
         Object.keys(init).forEach(function (k) {
+          if (k === "_map" || typeof init[k] === "function") return;
           self.set(k, init[k]);
         });
+      }
+    };
+    g.Headers.prototype.set = function (k, v) {
+      this._map[String(k).toLowerCase()] = String(v);
+    };
+    g.Headers.prototype.get = function (k) {
+      var v = this._map[String(k).toLowerCase()];
+      return v == null ? null : v;
+    };
+    g.Headers.prototype.has = function (k) {
+      return Object.prototype.hasOwnProperty.call(this._map, String(k).toLowerCase());
+    };
+    g.Headers.prototype.append = function (k, v) {
+      var key = String(k).toLowerCase();
+      if (this._map[key] != null) this._map[key] += ", " + String(v);
+      else this._map[key] = String(v);
+    };
+    g.Headers.prototype.delete = function (k) {
+      delete this._map[String(k).toLowerCase()];
+    };
+    g.Headers.prototype.forEach = function (fn, thisArg) {
+      var keys = Object.keys(this._map);
+      for (var i = 0; i < keys.length; i++) {
+        fn.call(thisArg, this._map[keys[i]], keys[i], this);
       }
     };
   }

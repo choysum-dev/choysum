@@ -118,6 +118,75 @@ globalThis.sessionStorage = undefined;
 	}
 }
 
+func TestInstallMinimalConsole_HeadersAndSearchParamsPrototype(t *testing.T) {
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = engine.Close() })
+	qjs, ok := engine.(*quickjsengine.QuickjsEngine)
+	if !ok {
+		t.Fatal("expected QuickjsEngine")
+	}
+	if err := engine.Load([]*jsengine.JsScript{{
+		FileName: "drop.js",
+		Content: `
+globalThis.Headers = undefined;
+globalThis.URLSearchParams = undefined;
+globalThis.URL = undefined;
+`,
+	}}); err != nil {
+		t.Fatalf("drop builtins: %v", err)
+	}
+	// Headers / URL / URLSearchParams ship with InstallMinimalConsole (host globals).
+	if err := InstallMinimalConsole(engine); err != nil {
+		t.Fatal(err)
+	}
+	val := qjs.Ctx.Eval(`(function () {
+  var h1 = new Headers({ "X-A": "1" });
+  h1.set("X-B", "2");
+  var h2 = new Headers(h1);
+  var ownHeaderKeys = Object.keys(h1).filter(function (k) { return k !== "_map"; });
+  var sp1 = new URLSearchParams("a=1");
+  sp1.set("b", "2");
+  var sp2 = new URLSearchParams(sp1);
+  var ownParamKeys = Object.keys(sp1).filter(function (k) { return k !== "_pairs"; });
+  var url = new URL("http://choysum.local/p");
+  url.searchParams.set("q", "1");
+  return JSON.stringify({
+    h2a: h2.get("x-a"),
+    h2b: h2.get("x-b"),
+    hHasSetOwn: Object.prototype.hasOwnProperty.call(h1, "set"),
+    headerOwnExtras: ownHeaderKeys,
+    sp2: sp2.toString(),
+    spHasSetOwn: Object.prototype.hasOwnProperty.call(sp1, "set"),
+    paramOwnExtras: ownParamKeys,
+    href: url.href,
+    noMethodQuery: sp2.get("set") == null && sp2.get("append") == null
+  });
+})()`)
+	defer val.Free()
+	if val.IsException() {
+		t.Fatalf("eval exception: %v", qjs.Ctx.Exception())
+	}
+	got := val.String()
+	if !strings.Contains(got, `"h2a":"1"`) || !strings.Contains(got, `"h2b":"2"`) {
+		t.Fatalf("expected Headers clone via forEach, got %s", got)
+	}
+	if !strings.Contains(got, `"hHasSetOwn":false`) || !strings.Contains(got, `"spHasSetOwn":false`) {
+		t.Fatalf("expected methods on prototype, got %s", got)
+	}
+	if !strings.Contains(got, `"headerOwnExtras":[]`) || !strings.Contains(got, `"paramOwnExtras":[]`) {
+		t.Fatalf("expected no leaked own method keys, got %s", got)
+	}
+	if !strings.Contains(got, `"sp2":"a=1&b=2"`) || !strings.Contains(got, `"noMethodQuery":true`) {
+		t.Fatalf("expected URLSearchParams clone without method names, got %s", got)
+	}
+	if !strings.Contains(got, `"href":"http://choysum.local/p?q=1"`) {
+		t.Fatalf("expected URL.href synced with searchParams, got %s", got)
+	}
+}
+
 func TestPrepareVueHostEngineBranches(t *testing.T) {
 	if err := PrepareVueHostEngine(stubJsEngine{loadErr: os.ErrInvalid}); err == nil || !strings.Contains(err.Error(), "InstallMinimalConsole") {
 		t.Fatalf("console load fail: %v", err)

@@ -461,10 +461,10 @@
     afterEachStack[afterEachStack.length - 1].push(fn);
   }
 
-  function collectHooks(stack) {
+  function collectHooksFromLists(lists) {
     const out = [];
-    for (let i = 0; i < stack.length; i++) {
-      const list = stack[i];
+    for (let i = 0; i < lists.length; i++) {
+      const list = lists[i];
       for (let j = 0; j < list.length; j++) out.push(list[j]);
     }
     return out;
@@ -486,17 +486,20 @@
     }
     const prefix = suiteStack.length ? suiteStack.join(' ') + ' ' : '';
     const fullName = prefix + name;
-    const befores = collectHooks(beforeEachStack);
-    const afters = collectHooks(afterEachStack);
+    // Keep references to each suite's hook arrays (not a flattened snapshot).
+    // beforeEach/afterEach declared after test() in the same describe still apply,
+    // matching Vitest/Jest (describe pops the stack but the arrays stay alive).
+    const beforeLists = beforeEachStack.slice();
+    const afterLists = afterEachStack.slice();
     registry.push({
       name: fullName,
       fn: async function () {
         try {
-          await runHookList(befores);
+          await runHookList(collectHooksFromLists(beforeLists));
           const r = fn();
           if (r && typeof r.then === 'function') await r;
         } finally {
-          await runHookList(afters);
+          await runHookList(collectHooksFromLists(afterLists));
         }
       },
     });
