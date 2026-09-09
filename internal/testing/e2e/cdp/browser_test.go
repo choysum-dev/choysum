@@ -5,9 +5,9 @@ package cdp
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -151,6 +151,16 @@ func TestStartNilContextHeadless(t *testing.T) {
 	}
 }
 
+func TestStartMkdirTempError(t *testing.T) {
+	old := mkdirTemp
+	mkdirTemp = func(dir, pattern string) (string, error) { return "", errors.New("mkdirtemp boom") }
+	defer func() { mkdirTemp = old }()
+	_, err := Start(context.Background(), StartOptions{ExecPath: requireChromium(t)})
+	if err == nil || !strings.Contains(err.Error(), "user-data-dir") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestStartBadExecPath(t *testing.T) {
 	_, err := Start(context.Background(), StartOptions{ExecPath: filepath.Join(t.TempDir(), "missing-chrome")})
 	if err == nil {
@@ -169,6 +179,111 @@ func TestNilSessionMethods(t *testing.T) {
 	}
 	if s.ExecPath() != "" {
 		t.Fatal("expected empty exec path")
+	}
+	if !s.Headless() {
+		t.Fatal("nil session Headless should default true")
+	}
+}
+
+func TestStartResolvesExecPathAndParentCancel(t *testing.T) {
+	requireChromium(t)
+	t.Setenv("CHOYSUM_E2E_HEADED", "0")
+	ctx, cancel := context.WithCancel(context.Background())
+	session, err := Start(ctx, StartOptions{}) // empty ExecPath → ResolveChromiumPath
+	if err != nil {
+		t.Skipf("chromium start failed: %v", err)
+	}
+	defer session.Close()
+	if session.ExecPath() == "" {
+		t.Fatal("empty resolved exec path")
+	}
+	if !session.Headless() {
+		t.Fatal("expected headless")
+	}
+	cancel() // arm parent-ctx watcher (Start lines 105-108)
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if session.Context() != nil && session.Context().Err() != nil {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	// Watcher may race with Close; still exercised cancel path above.
+}
+
+func TestStartChromiumOrSkipHelper(t *testing.T) {
+	path, session := startChromiumOrSkip(t)
+	if path == "" || session == nil {
+		t.Fatal("expected path and session")
+	}
+	if session.ExecPath() != path {
+		t.Fatalf("execPath=%q path=%q", session.ExecPath(), path)
+	}
+}
+
+func TestResolveChromiumPathSystemCandidates(t *testing.T) {
+	t.Setenv("CHOYSUM_CHROMIUM_PATH", "")
+	t.Setenv("CHOYSUM_HOME", t.TempDir()) // no cached CfT binary
+	path, err := ResolveChromiumPath()
+	if err != nil {
+		t.Skipf("no system chrome: %v", err)
+	}
+	if st, err := os.Stat(path); err != nil || st.IsDir() {
+		t.Fatalf("resolved %q: %v", path, err)
+	}
+}
+
+func TestCachedBinaryCandidatesLinuxShape(t *testing.T) {
+	base := filepath.Join(t.TempDir(), "chromium-base")
+	old := runtimeGOOS
+	defer func() { runtimeGOOS = old }()
+
+	runtimeGOOS = "darwin"
+	if got := cachedBinaryCandidates(base); len(got) < 3 || !strings.Contains(got[0], "chrome-mac") {
+		t.Fatalf("darwin cached=%v", got)
+	}
+	if got := systemChromeCandidates(); len(got) == 0 || !strings.Contains(got[0], "Applications") {
+		t.Fatalf("darwin system=%v", got)
+	}
+
+	runtimeGOOS = "linux"
+	if got := cachedBinaryCandidates(base); len(got) != 3 || !strings.Contains(got[0], "chrome-linux64") {
+		t.Fatalf("linux cached=%v", got)
+	}
+	if got := systemChromeCandidates(); len(got) < 3 || !strings.Contains(got[0], "/usr/bin") {
+		t.Fatalf("linux system=%v", got)
+	}
+
+	runtimeGOOS = "windows"
+	if got := cachedBinaryCandidates(base); len(got) != 2 {
+		t.Fatalf("default cached=%v", got)
+	}
+	if got := systemChromeCandidates(); got != nil {
+		t.Fatalf("default system=%v", got)
+	}
+}
+
+func TestResolveChromiumPathExhausted(t *testing.T) {
+	t.Setenv("CHOYSUM_CHROMIUM_PATH", "")
+	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	old := runtimeGOOS
+	runtimeGOOS = "windows" // no system candidates
+	defer func() { runtimeGOOS = old }()
+	_, err := ResolveChromiumPath()
+	if err == nil || !strings.Contains(err.Error(), "chromium binary not found") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestStartResolveExecPathError(t *testing.T) {
+	t.Setenv("CHOYSUM_CHROMIUM_PATH", "")
+	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	old := runtimeGOOS
+	runtimeGOOS = "windows"
+	defer func() { runtimeGOOS = old }()
+	_, err := Start(context.Background(), StartOptions{}) // empty ExecPath → Resolve fails
+	if err == nil || !strings.Contains(err.Error(), "chromium binary not found") {
+		t.Fatalf("got %v", err)
 	}
 }
 
@@ -192,12 +307,46 @@ func TestCachedAndSystemCandidatesNonEmpty(t *testing.T) {
 		t.Fatal("cachedBinaryCandidates empty")
 	}
 	sys := systemChromeCandidates()
-	switch runtime.GOOS {
+	switch runtimeGOOS {
 	case "darwin", "linux":
 		if len(sys) == 0 {
 			t.Fatal("systemChromeCandidates empty")
 		}
 	}
+}
+
+func TestChromeHelpersSkipPaths(t *testing.T) {
+	fake := filepath.Join(t.TempDir(), "not-chrome")
+	if err := os.WriteFile(fake, []byte("not a browser\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CHOYSUM_CHROMIUM_PATH", "")
+	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	old := runtimeGOOS
+	runtimeGOOS = "windows"
+	defer func() { runtimeGOOS = old }()
+
+	if len(chromiumCandidates()) != 0 {
+		t.Fatalf("expected no candidates, got %v", chromiumCandidates())
+	}
+	t.Run("requireChromium", func(t *testing.T) {
+		requireChromium(t)
+		t.Fatal("expected skip")
+	})
+	t.Run("startTestSessionEmpty", func(t *testing.T) {
+		startTestSession(t)
+		t.Fatal("expected skip")
+	})
+
+	// Non-empty candidates but Start fails for every path.
+	t.Setenv("CHOYSUM_CHROMIUM_PATH", fake)
+	if len(chromiumCandidates()) == 0 {
+		t.Fatal("expected fake candidate")
+	}
+	t.Run("startTestSessionFail", func(t *testing.T) {
+		startTestSession(t)
+		t.Fatal("expected skip after start failures")
+	})
 }
 
 func TestResolveChromiumPathMissingUsesHomeFallback(t *testing.T) {

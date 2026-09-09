@@ -11,7 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/internal/testing/e2e/cdp"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 )
@@ -210,6 +212,394 @@ func TestInstallHostMethodsErrorPathsWithoutPage(t *testing.T) {
 func TestHostDrainNilSafe(t *testing.T) {
 	var host *Host
 	host.Drain()
+}
+
+func TestScheduleEarlyReturnAndClosed(t *testing.T) {
+	var host *Host
+	if host.schedule(nil, nil) {
+		t.Fatal("nil host should not schedule")
+	}
+	host = &Host{}
+	if host.schedule(nil, func(ctx *quickjs.Context) {}) {
+		t.Fatal("nil ctx should not schedule")
+	}
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	if host.schedule(qjs.Ctx, nil) {
+		t.Fatal("nil job should not schedule")
+	}
+	host.closed.Store(true)
+	if host.schedule(qjs.Ctx, func(ctx *quickjs.Context) {}) {
+		t.Fatal("closed host should not schedule")
+	}
+}
+
+func TestScheduleTimeoutPaths(t *testing.T) {
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	host := &Host{}
+
+	oldSched := ctxSchedule
+	oldT1, oldT2 := scheduleSelectTimeout, scheduleSelectTimeout2
+	defer func() {
+		ctxSchedule = oldSched
+		scheduleSelectTimeout = oldT1
+		scheduleSelectTimeout2 = oldT2
+	}()
+
+	scheduleSelectTimeout = 30 * time.Millisecond
+	scheduleSelectTimeout2 = 40 * time.Millisecond
+
+	// Block Schedule past both timeouts → return false.
+	ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
+		time.Sleep(200 * time.Millisecond)
+		return true
+	}
+	if host.schedule(qjs.Ctx, func(ctx *quickjs.Context) {}) {
+		t.Fatal("expected false after full timeout")
+	}
+
+	// First timeout fires while closed → return false without waiting second window.
+	host.closed.Store(false)
+	ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
+		time.Sleep(150 * time.Millisecond)
+		return true
+	}
+	go func() {
+		time.Sleep(5 * time.Millisecond)
+		host.closed.Store(true)
+	}()
+	if host.schedule(qjs.Ctx, func(ctx *quickjs.Context) {}) {
+		t.Fatal("expected false when closed during first wait")
+	}
+
+	// First timeout, not closed, then Schedule completes in second window.
+	host.closed.Store(false)
+	ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
+		time.Sleep(50 * time.Millisecond)
+		return true
+	}
+	if !host.schedule(qjs.Ctx, func(ctx *quickjs.Context) {}) {
+		t.Fatal("expected true when schedule finishes in second window")
+	}
+}
+
+func TestInstallWaitForResponseTimeoutAndClosedDelay(t *testing.T) {
+	session := startPagehostChrome(t)
+	defer session.Close()
+
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	if !engine.(*quickjsengine.QuickjsEngine).Ctx.BootstrapTimers() {
+		t.Fatal("BootstrapTimers failed")
+	}
+	host, err = Install(engine, session, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<!doctype html><html><body>ok</body></html>`))
+	}))
+	defer srv.Close()
+
+	_ = awaitHost(t, qjs, `
+await globalThis.__choysum_e2e_host__.newPage();
+await globalThis.__choysum_e2e_host__.goto(`+jsonQuote(srv.URL)+`, 'load');
+return 'ready';
+`)
+	// Timeout → reject(waitErr) via schedule callback.
+	raw := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.waitForResponse(JSON.stringify({urlIncludes:'/never'}), 80)`)
+	if !strings.Contains(raw, `"ok":false`) {
+		t.Fatalf("waitForResponse timeout: %s", raw)
+	}
+
+	// Mark closed inside schedule and run the job synchronously so the
+	// closed-at-callback branches execute without needing a QJS job pump.
+	oldSched := ctxSchedule
+	defer func() { ctxSchedule = oldSched }()
+	ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
+		host.closed.Store(true)
+		job(ctx)
+		return true
+	}
+	val := qjs.Ctx.Eval(`globalThis.__choysum_e2e_host__.delay(5)`)
+	if val.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	val.Free()
+	time.Sleep(30 * time.Millisecond)
+	// Also exercise waitForResponse post-wait closed-in-callback (short timeout).
+	host.closed.Store(false)
+	val = qjs.Ctx.Eval(`globalThis.__choysum_e2e_host__.waitForResponse(JSON.stringify({urlIncludes:'/never2'}), 40)`)
+	if val.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	val.Free()
+	time.Sleep(200 * time.Millisecond)
+	host.Drain()
+}
+
+func TestInstallWaitForResponseScheduleFailAfterTimeout(t *testing.T) {
+	session := startPagehostChrome(t)
+	defer session.Close()
+
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	if !engine.(*quickjsengine.QuickjsEngine).Ctx.BootstrapTimers() {
+		t.Fatal("BootstrapTimers failed")
+	}
+	host, err = Install(engine, session, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<!doctype html><html><body>ok</body></html>`))
+	}))
+	defer srv.Close()
+	_ = awaitHost(t, qjs, `
+await globalThis.__choysum_e2e_host__.newPage();
+await globalThis.__choysum_e2e_host__.goto(`+jsonQuote(srv.URL)+`, 'load');
+return 'ready';
+`)
+
+	oldSched := ctxSchedule
+	oldT1, oldT2 := scheduleSelectTimeout, scheduleSelectTimeout2
+	defer func() {
+		ctxSchedule = oldSched
+		scheduleSelectTimeout = oldT1
+		scheduleSelectTimeout2 = oldT2
+	}()
+	scheduleSelectTimeout = 15 * time.Millisecond
+	scheduleSelectTimeout2 = 15 * time.Millisecond
+	// Block schedule so waitForResponse timeout cannot deliver reject via Schedule.
+	ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
+		time.Sleep(200 * time.Millisecond)
+		return false
+	}
+
+	// Fire-and-forget: promise may never settle; Drain after short wait.
+	val := qjs.Ctx.Eval(`globalThis.__choysum_e2e_host__.waitForResponse(JSON.stringify({urlIncludes:'/never'}), 50)`)
+	if val.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	val.Free()
+	time.Sleep(400 * time.Millisecond)
+	host.Drain()
+}
+
+func TestInstallHostOpFailuresWithChrome(t *testing.T) {
+	session := startPagehostChrome(t)
+
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	if !engine.(*quickjsengine.QuickjsEngine).Ctx.BootstrapTimers() {
+		t.Fatal("BootstrapTimers failed")
+	}
+	host, err = Install(engine, session, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	raw := awaitHost(t, qjs, `await globalThis.__choysum_e2e_host__.newPage(); return 'ok'`)
+	if raw != `"ok"` {
+		t.Fatalf("newPage: %s", raw)
+	}
+	// Replace existing page (closes prior tab).
+	raw = awaitHost(t, qjs, `await globalThis.__choysum_e2e_host__.newPage(); return 'ok2'`)
+	if raw != `"ok2"` {
+		t.Fatalf("newPage replace: %s", raw)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<!doctype html><html><body><div id="x">hi</div></body></html>`))
+	}))
+	defer srv.Close()
+
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.goto(`+jsonQuote(srv.URL)+`, 'bogus')`)
+	if !strings.Contains(raw, `"ok":false`) {
+		t.Fatalf("goto bad waitUntil: %s", raw)
+	}
+	raw = awaitHost(t, qjs, `await globalThis.__choysum_e2e_host__.goto(`+jsonQuote(srv.URL)+`, 'load'); return 'nav'`)
+	if raw != `"nav"` {
+		t.Fatalf("goto: %s", raw)
+	}
+
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.evaluate('throw new Error("x")')`)
+	if !strings.Contains(raw, `"ok":false`) {
+		t.Fatalf("evaluate throw: %s", raw)
+	}
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.waitForFunction('false', 50)`)
+	if !strings.Contains(raw, `"ok":false`) {
+		t.Fatalf("waitForFunction timeout: %s", raw)
+	}
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.screenshot('')`)
+	if !strings.Contains(raw, `"ok":false`) {
+		t.Fatalf("screenshot empty: %s", raw)
+	}
+
+	// Kill browser under the host so subsequent CDP ops fail quickly (avoid long WaitVisible).
+	// Keep the active page pointer so click/fill/isVisible hit CDP errors (not "no active page").
+	session.Close()
+	for _, call := range []string{
+		`await globalThis.__choysum_e2e_host__.click('#x')`,
+		`await globalThis.__choysum_e2e_host__.fill('#x','y')`,
+		`await globalThis.__choysum_e2e_host__.isVisible('#x')`,
+		`await globalThis.__choysum_e2e_host__.isEnabled('#x')`,
+		`await globalThis.__choysum_e2e_host__.count('#x')`,
+		`await globalThis.__choysum_e2e_host__.url()`,
+		`await globalThis.__choysum_e2e_host__.screenshot(` + jsonQuote(filepath.Join(t.TempDir(), "dead.png")) + `)`,
+		`await globalThis.__choysum_e2e_host__.goto('about:blank','load')`,
+		`await globalThis.__choysum_e2e_host__.newPage()`,
+	} {
+		raw = awaitHostErr(t, qjs, call)
+		if !strings.Contains(raw, `"ok":false`) {
+			t.Fatalf("%s => %s", call, raw)
+		}
+	}
+
+	raw = awaitHost(t, qjs, `await globalThis.__choysum_e2e_host__.closePage(); return 'c'`)
+	if raw != `"c"` {
+		t.Fatalf("close: %s", raw)
+	}
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.waitForResponse('{"urlIncludes":"/x"}', 100)`)
+	if !strings.Contains(raw, "no active page") {
+		t.Fatalf("waitForResponse no page: %s", raw)
+	}
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.isVisible()`)
+	if !strings.Contains(raw, "no active page") {
+		t.Fatalf("isVisible no args: %s", raw)
+	}
+}
+
+func TestInstallDelayDrainBeforeResolve(t *testing.T) {
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	host, err = Install(engine, nil, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	// Fire a long delay then Drain immediately so the goroutine sees closed before resolve.
+	val := qjs.Ctx.Eval(`globalThis.__choysum_e2e_host__.delay(5000)`)
+	if val.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	val.Free()
+	host.Drain()
+}
+
+func TestInstallWaitForResponseDrainWhilePending(t *testing.T) {
+	session := startPagehostChrome(t)
+	defer session.Close()
+
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	if !engine.(*quickjsengine.QuickjsEngine).Ctx.BootstrapTimers() {
+		t.Fatal("BootstrapTimers failed")
+	}
+	host, err = Install(engine, session, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<!doctype html><html><body>ok</body></html>`))
+	}))
+	defer srv.Close()
+
+	_ = awaitHost(t, qjs, `
+await globalThis.__choysum_e2e_host__.newPage();
+await globalThis.__choysum_e2e_host__.goto(`+jsonQuote(srv.URL)+`, 'load');
+globalThis.__choysum_e2e_host__.waitForResponse(JSON.stringify({urlIncludes:'/never'}), 5000);
+await globalThis.__choysum_e2e_host__.delay(30);
+return 'armed';
+`)
+	host.Drain() // closed while waitForResponse / delay may still be pending
+}
+
+func startPagehostChrome(t *testing.T) *cdp.Session {
+	t.Helper()
+	cands := []string{}
+	if p, err := cdp.ResolveChromiumPath(); err == nil {
+		cands = append(cands, p)
+	}
+	for _, p := range []string{
+		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+		"/Applications/Chromium.app/Contents/MacOS/Chromium",
+		"/usr/bin/google-chrome",
+		"/usr/bin/chromium",
+		"/usr/bin/chromium-browser",
+	} {
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			cands = append(cands, p)
+		}
+	}
+	if len(cands) == 0 {
+		t.Skip("chromium unavailable")
+	}
+	headless := true
+	var session *cdp.Session
+	var lastErr error
+	for _, path := range cands {
+		session, lastErr = cdp.Start(nil, cdp.StartOptions{ExecPath: path, Headless: &headless})
+		if lastErr == nil {
+			return session
+		}
+	}
+	t.Skipf("chromium start failed: %v", lastErr)
+	return nil
 }
 
 func TestInstallDriveHostWithChrome(t *testing.T) {

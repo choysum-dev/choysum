@@ -18,6 +18,17 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 )
 
+// ctxSchedule is Context.Schedule; tests may override to simulate a blocked job queue.
+var ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
+	return ctx.Schedule(job)
+}
+
+// scheduleSelectTimeout / scheduleSelectTimeout2 bound schedule waits (overridable in tests).
+var (
+	scheduleSelectTimeout  = 500 * time.Millisecond
+	scheduleSelectTimeout2 = 1500 * time.Millisecond
+)
+
 // Host owns the active page for one QuickJS e2e engine.
 type Host struct {
 	mu      sync.Mutex
@@ -95,19 +106,19 @@ func (h *Host) schedule(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
 	// not waiting unbounded once the host is marked closed.
 	done := make(chan bool, 1)
 	go func() {
-		done <- ctx.Schedule(job)
+		done <- ctxSchedule(ctx, job)
 	}()
 	select {
 	case ok := <-done:
 		return ok
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(scheduleSelectTimeout):
 		if h.closed.Load() {
 			return false
 		}
 		select {
 		case ok := <-done:
 			return ok
-		case <-time.After(1500 * time.Millisecond):
+		case <-time.After(scheduleSelectTimeout2):
 			return false
 		}
 	}

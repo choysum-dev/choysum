@@ -23,6 +23,65 @@ func TestRunE2EHostEmptySpecs(t *testing.T) {
 	if err := runE2EHost(context.Background(), RunOptions{}, "", "", "", nil); err != nil {
 		t.Fatalf("empty specs: %v", err)
 	}
+	// nil ctx + empty WorkDir (cwd fallback) with empty specs still no-ops after ctx defaulting.
+	if err := runE2EHost(nil, RunOptions{}, "", "", "", nil); err != nil {
+		t.Fatalf("nil ctx empty: %v", err)
+	}
+}
+
+func TestRunE2EHostChromeSmokeNilStdout(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("caller")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
+	runDir := t.TempDir()
+	runtimePath := filepath.Join(runDir, "runtime.json")
+	if err := os.WriteFile(runtimePath, []byte(`{"baseURL":"http://example.test"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	spec := filepath.Join(runDir, "pass2.spec.ts")
+	if err := os.WriteFile(spec, []byte(`
+import { test } from '@choysum/e2e';
+test('pass2', async () => {});
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldStart := cdpStart
+	cdpStart = e2eStartChromiumOrSkip(t)
+	defer func() { cdpStart = oldStart }()
+
+	// Stdout and Stderr nil → os.Stdout / os.Stderr (stderr nil guard from review).
+	err := runE2EHost(nil, RunOptions{
+		WorkDir: repoRoot,
+		Stdout:  nil,
+		Stderr:  nil,
+	}, runDir, "http://example.test", runtimePath, []string{spec})
+	if err != nil {
+		t.Fatalf("runE2EHost: %v", err)
+	}
+}
+
+func TestRunE2EHostEmptyWorkDirUsesCwd(t *testing.T) {
+	runDir := t.TempDir()
+	runtimePath := filepath.Join(runDir, "runtime.json")
+	_ = os.WriteFile(runtimePath, []byte(`{}`), 0o644)
+	spec := filepath.Join(runDir, "x.spec.ts")
+	_ = os.WriteFile(spec, []byte(`import { test } from '@choysum/e2e'; test('x', async () => {});`), 0o644)
+
+	old := cdpStart
+	cdpStart = func(ctx context.Context, opts cdp.StartOptions) (*cdp.Session, error) {
+		return nil, errors.New("cdp boom")
+	}
+	defer func() { cdpStart = old }()
+
+	// WorkDir "" → Getwd(); still reaches cdpStart after bundling from cwd as repo root.
+	err := runE2EHost(context.Background(), RunOptions{WorkDir: "", Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}}, runDir, "http://x", runtimePath, []string{spec})
+	// May fail at bundle (cwd not repo) or cdp boom — either exercises empty WorkDir branch.
+	if err == nil {
+		t.Fatal("expected error")
+	}
 }
 
 func TestRunE2EHostCDPStartError(t *testing.T) {
@@ -243,6 +302,152 @@ test('fail', async () => { throw new Error('boom'); });
 	}
 	if !strings.Contains(stderr.String(), "e2e-qjs failed") {
 		t.Fatalf("stderr=%s", stderr.String())
+	}
+}
+
+func TestRunE2EHostMkdirAndEntryErrors(t *testing.T) {
+	runDirParent := t.TempDir()
+	blocker := filepath.Join(runDirParent, "notadir")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Dir(runtimePath) is a file → MkdirAll(.e2e) fails.
+	runtimePath := filepath.Join(blocker, "runtime.json")
+	err := runE2EHost(context.Background(), RunOptions{Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}}, "", "http://x", runtimePath, []string{"x.spec.ts"})
+	if err == nil || !strings.Contains(err.Error(), "mkdir") {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("caller")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
+	runDir := t.TempDir()
+	runtimePath = filepath.Join(runDir, "runtime.json")
+	_ = os.WriteFile(runtimePath, []byte(`{}`), 0o644)
+	oldAbs := e2eFilepathAbs
+	e2eFilepathAbs = func(path string) (string, error) { return "", errors.New("abs boom") }
+	defer func() { e2eFilepathAbs = oldAbs }()
+	err = runE2EHost(context.Background(), RunOptions{WorkDir: repoRoot, Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{}}, runDir, "http://x", runtimePath, []string{filepath.Join(runDir, "x.spec.ts")})
+	if err == nil || !strings.Contains(err.Error(), "resolve spec path") {
+		t.Fatalf("entry: %v", err)
+	}
+}
+
+func TestRunE2EHostBundleAndInstallErrors(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("caller")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
+	runDir := t.TempDir()
+	runtimePath := filepath.Join(runDir, "runtime.json")
+	_ = os.WriteFile(runtimePath, []byte(`{}`), 0o644)
+	spec := filepath.Join(runDir, "bad.spec.ts")
+	// Spec that cannot bundle (syntax error).
+	_ = os.WriteFile(spec, []byte(`import { from '@choysum/e2e';`), 0o644)
+
+	err := runE2EHost(context.Background(), RunOptions{
+		WorkDir: repoRoot,
+		Stdout:  &bytes.Buffer{},
+		Stderr:  &bytes.Buffer{},
+	}, runDir, "http://x", runtimePath, []string{spec})
+	if err == nil {
+		t.Fatal("expected bundle error")
+	}
+}
+
+func TestRunE2EHostLoadError(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("caller")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
+	runDir := t.TempDir()
+	runtimePath := filepath.Join(runDir, "runtime.json")
+	_ = os.WriteFile(runtimePath, []byte(`{`), 0o644) // invalid runtime JSON → Install fails
+	spec := filepath.Join(runDir, "x.spec.ts")
+	_ = os.WriteFile(spec, []byte(`import { test } from '@choysum/e2e'; test('x', async () => {});`), 0o644)
+
+	oldStart := cdpStart
+	cdpStart = e2eStartChromiumOrSkip(t)
+	defer func() { cdpStart = oldStart }()
+
+	err := runE2EHost(context.Background(), RunOptions{
+		WorkDir: repoRoot,
+		Stdout:  &bytes.Buffer{},
+		Stderr:  &bytes.Buffer{},
+	}, runDir, "http://x", runtimePath, []string{spec})
+	if err == nil || !strings.Contains(err.Error(), "parse runtime json") {
+		t.Fatalf("expected install/parse error, got %v", err)
+	}
+}
+
+func TestEvalE2ETestRunEvalException(t *testing.T) {
+	engine, err := newQJSEngine()
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	// Break Eval by making __choysum_test_run__ a non-callable that still passes typeof check... 
+	// Use a getter that throws when invoked via the async IIFE path:
+	v := qjs.Ctx.Eval(`Object.defineProperty(globalThis, '__choysum_test_run__', {
+  get() { throw new Error('getter boom'); }
+})`)
+	if v.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	v.Free()
+	_, err = evalE2ETestRun(context.Background(), engine)
+	if err == nil {
+		t.Fatal("expected eval error")
+	}
+}
+
+func TestEvalE2ETestRunAwaitException(t *testing.T) {
+	engine, err := newQJSEngine()
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	v := qjs.Ctx.Eval(`globalThis.__choysum_test_run__ = async () => { throw new Error('await boom'); }`)
+	if v.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	v.Free()
+	_, err = evalE2ETestRun(context.Background(), engine)
+	if err == nil || !strings.Contains(err.Error(), "e2e host: run:") {
+		t.Fatalf("expected await/run error, got %v", err)
+	}
+}
+
+func TestRunE2EHostFailedCaseNilStderr(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("caller")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
+	runDir := t.TempDir()
+	runtimePath := filepath.Join(runDir, "runtime.json")
+	_ = os.WriteFile(runtimePath, []byte(`{}`), 0o644)
+	spec := filepath.Join(runDir, "fail2.spec.ts")
+	_ = os.WriteFile(spec, []byte(`
+import { test } from '@choysum/e2e';
+test('fail2', async () => { throw new Error('boom2'); });
+`), 0o644)
+
+	oldStart := cdpStart
+	cdpStart = e2eStartChromiumOrSkip(t)
+	defer func() { cdpStart = oldStart }()
+
+	err := runE2EHost(context.Background(), RunOptions{
+		WorkDir: repoRoot,
+		Stdout:  &bytes.Buffer{},
+		Stderr:  nil, // exercises errOut = os.Stderr on failure path
+	}, runDir, "http://example.test", runtimePath, []string{spec})
+	if err == nil || !strings.Contains(err.Error(), "failed") {
+		t.Fatalf("expected failure, got %v", err)
 	}
 }
 

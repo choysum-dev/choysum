@@ -35,6 +35,43 @@ func TestFilterE2ESpecsByArgs(t *testing.T) {
 	if len(all) != 3 || len(pass2) != 0 {
 		t.Fatalf("all=%v pass=%v", all, pass2)
 	}
+	// Empty args skipped; path substring / full path / patBase matches.
+	filtered2, pass3 := filterE2ESpecsByArgs(files, []string{"", "  ", "/m/auth/e2e/register.spec.ts", "--headed"})
+	if len(filtered2) != 1 || !strings.HasSuffix(filtered2[0], "register.spec.ts") {
+		t.Fatalf("path filter=%v", filtered2)
+	}
+	if len(pass3) != 1 || pass3[0] != "--headed" {
+		t.Fatalf("pass3=%v", pass3)
+	}
+	none, _ := filterE2ESpecsByArgs(files, []string{"no-such-spec"})
+	if len(none) != 0 {
+		t.Fatalf("expected empty, got %v", none)
+	}
+	// Invalid regex still falls through without panic (Compile fails → skip).
+	_, _ = filterE2ESpecsByArgs(files, []string{"[invalid"})
+}
+
+func TestPartitionE2ESpecFiles(t *testing.T) {
+	dir := t.TempDir()
+	pw := filepath.Join(dir, "pw.spec.ts")
+	qjs := filepath.Join(dir, "qjs.spec.ts")
+	_ = os.WriteFile(pw, []byte("import { test } from '@playwright/test';\n"), 0o644)
+	_ = os.WriteFile(qjs, []byte("import { test } from '@choysum/e2e';\n"), 0o644)
+	pwFiles, qjsFiles, err := partitionE2ESpecFiles([]string{pw, qjs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pwFiles) != 1 || len(qjsFiles) != 1 {
+		t.Fatalf("pw=%v qjs=%v", pwFiles, qjsFiles)
+	}
+	_, _, err = partitionE2ESpecFiles([]string{filepath.Join(dir, "missing.spec.ts")})
+	if err == nil {
+		t.Fatal("expected read error")
+	}
+	_, err = specImportsPlaywright(filepath.Join(dir, "missing.spec.ts"))
+	if err == nil {
+		t.Fatal("expected read error")
+	}
 }
 
 func TestPartitionAndRunOrderQJSThenPW(t *testing.T) {

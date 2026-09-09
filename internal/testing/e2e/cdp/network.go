@@ -113,7 +113,7 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 				if listenerCtx.Err() != nil {
 					return
 				}
-				fetchErr := chromedp.Run(p.ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+				fetchErr := chromedp.Run(listenerCtx, chromedp.ActionFunc(func(ctx context.Context) error {
 					b, err := network.GetResponseBody(reqID).Do(ctx)
 					if err != nil {
 						return err

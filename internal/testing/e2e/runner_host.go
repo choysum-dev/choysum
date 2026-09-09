@@ -128,6 +128,10 @@ func runE2EHost(ctx context.Context, opts RunOptions, specsDir string, baseURL s
 	if out == nil {
 		out = os.Stdout
 	}
+	errOut := opts.Stderr
+	if errOut == nil {
+		errOut = os.Stderr
+	}
 	tapReport := &tap.Report{Total: report.Total}
 	for _, c := range report.Cases {
 		tc := tap.Case{Name: c.Name, OK: c.OK}
@@ -143,10 +147,10 @@ func runE2EHost(ctx context.Context, opts RunOptions, specsDir string, baseURL s
 		_ = os.MkdirAll(shotDir, 0o755)
 		// Capture the current tab; NewPage() would navigate to about:blank first.
 		_ = session.ScreenshotCurrent(filepath.Join(shotDir, "failure.png"))
-		fmt.Fprintf(opts.Stderr, "# e2e-qjs failed (%d/%d) baseURL=%s specsDir=%s\n", report.Failed, report.Total, baseURL, specsDir)
+		fmt.Fprintf(errOut, "# e2e-qjs failed (%d/%d) baseURL=%s specsDir=%s\n", report.Failed, report.Total, baseURL, specsDir)
 		return xfmt.Errorf("e2e host: %d failed", report.Failed)
 	}
-	fmt.Fprintf(opts.Stderr, "# e2e-qjs ok (%d) (%s)\n", report.Total, time.Now().Format(time.RFC3339))
+	fmt.Fprintf(errOut, "# e2e-qjs ok (%d) (%s)\n", report.Total, time.Now().Format(time.RFC3339))
 	return nil
 }
 

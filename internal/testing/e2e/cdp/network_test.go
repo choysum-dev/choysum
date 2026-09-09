@@ -100,6 +100,88 @@ document.getElementById('go').onclick = () => fetch('/api/ping', {method:'POST',
 	// with a very short race: arm then navigate away quickly is hard — call with 0 and cancel page.
 }
 
+func TestWaitForResponseCancelDuringBodyFetch(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/slow":
+			w.Header().Set("Content-Type", "application/json")
+			// Flush headers/body then hang briefly so listener can arm GetResponseBody.
+			_, _ = w.Write([]byte(`{"ok":true}`))
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+			time.Sleep(200 * time.Millisecond)
+		case "/":
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte(`<!doctype html><html><body>
+<button id="go">go</button>
+<script>
+document.getElementById('go').onclick = () => fetch('/api/slow');
+</script></body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	if err := page.Goto(srv.URL+"/", "load"); err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, waitErr := page.WaitForResponse(ResponseMatch{URLIncludes: "/api/slow"}, 3*time.Second)
+		done <- waitErr
+	}()
+	time.Sleep(50 * time.Millisecond)
+	if err := page.Click("#go"); err != nil {
+		t.Fatal(err)
+	}
+	// Cancel listenerCtx via page/session teardown mid body fetch.
+	time.Sleep(30 * time.Millisecond)
+	page.Close()
+	session.Close()
+	<-done
+}
+
+func TestWaitForResponseResponseWithoutPriorRequest(t *testing.T) {
+	// Matching a navigation document response (no RequestWillBeSent pending entry
+	// for some events) exercises the pending-miss fallback construction.
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>hi</body></html>`))
+	}))
+	defer srv.Close()
+
+	done := make(chan error, 1)
+	go func() {
+		_, waitErr := page.WaitForResponse(ResponseMatch{
+			URLIncludes: srv.URL,
+		}, 5*time.Second)
+		done <- waitErr
+	}()
+	time.Sleep(50 * time.Millisecond)
+	if err := page.Goto(srv.URL+"/", "load"); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("WaitForResponse nav: %v", err)
+	}
+}
+
 func TestWaitForResponseDefaultTimeoutBranch(t *testing.T) {
 	session := startTestSession(t)
 	page, err := session.NewPage()
@@ -115,5 +197,70 @@ func TestWaitForResponseDefaultTimeoutBranch(t *testing.T) {
 	_, err = page.WaitForResponse(ResponseMatch{URLIncludes: "/nope"}, 0)
 	if err == nil {
 		t.Fatal("expected error from canceled/timeout wait")
+	}
+}
+
+func TestWaitForResponseFilterMismatches(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/get":
+			w.Header().Set("Content-Type", "text/plain")
+			_, _ = w.Write([]byte("ok"))
+		case "/":
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte(`<!doctype html><html><body>
+<button id="go">go</button>
+<script>
+document.getElementById('go').onclick = () => fetch('/api/get');
+</script></body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	if err := page.Goto(srv.URL+"/", "load"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Method mismatch: response is GET, wait wants POST → timeout (covers matches false).
+	done := make(chan error, 1)
+	go func() {
+		_, waitErr := page.WaitForResponse(ResponseMatch{
+			URLIncludes: "/api/get",
+			Method:      "POST",
+		}, 200*time.Millisecond)
+		done <- waitErr
+	}()
+	time.Sleep(30 * time.Millisecond)
+	if err := page.Click("#go"); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err == nil || !strings.Contains(err.Error(), "timeout") {
+		t.Fatalf("expected method-mismatch timeout, got %v", err)
+	}
+
+	// Content-Type prefix mismatch.
+	done2 := make(chan error, 1)
+	go func() {
+		_, waitErr := page.WaitForResponse(ResponseMatch{
+			URLIncludes:       "/api/get",
+			ContentTypePrefix: "application/json",
+		}, 200*time.Millisecond)
+		done2 <- waitErr
+	}()
+	time.Sleep(30 * time.Millisecond)
+	if err := page.Click("#go"); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done2; err == nil || !strings.Contains(err.Error(), "timeout") {
+		t.Fatalf("expected ct-mismatch timeout, got %v", err)
 	}
 }

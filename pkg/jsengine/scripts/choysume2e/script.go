@@ -20,6 +20,8 @@ var PlaywrightShimScript string
 var (
 	materializeMu   sync.Mutex
 	materializedDir string
+	osMkdirTemp     = os.MkdirTemp
+	runtimeCaller   = runtime.Caller
 )
 
 // SourcePath returns a filesystem path to choysume2e.js for esbuild aliasing.
@@ -40,7 +42,7 @@ func PlaywrightShimPath() (string, error) {
 }
 
 func packageFile(name string) (string, error) {
-	_, thisFile, _, ok := runtime.Caller(0)
+	_, thisFile, _, ok := runtimeCaller(0)
 	if !ok {
 		return "", os.ErrNotExist
 	}
@@ -55,7 +57,7 @@ func materializeFile(name, content string) (string, error) {
 	materializeMu.Lock()
 	defer materializeMu.Unlock()
 	if materializedDir == "" {
-		dir, err := os.MkdirTemp("", "choysume2e-*")
+		dir, err := osMkdirTemp("", "choysume2e-*")
 		if err != nil {
 			return "", err
 		}

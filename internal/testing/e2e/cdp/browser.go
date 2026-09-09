@@ -19,6 +19,12 @@ import (
 // PinnedCfTRevision matches scripts/ci/install_chromium.py (Chrome for Testing).
 const PinnedCfTRevision = "1669021"
 
+// runtimeGOOS is overridable in tests to exercise candidate path layouts.
+var runtimeGOOS = runtime.GOOS
+
+// mkdirTemp is os.MkdirTemp; tests may override to force user-data-dir errors.
+var mkdirTemp = os.MkdirTemp
+
 // Session is a chromedp browser allocator + tab context for one e2e scenario.
 type Session struct {
 	allocCtx    context.Context
@@ -73,7 +79,7 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 	}
 	headless := WantHeadless(opts)
 
-	udir, err := os.MkdirTemp("", "choysum-e2e-chrome-*")
+	udir, err := mkdirTemp("", "choysum-e2e-chrome-*")
 	if err != nil {
 		return nil, fmt.Errorf("cdp: user-data-dir: %w", err)
 	}
@@ -203,7 +209,7 @@ func missingBinaryError(detail string) error {
 }
 
 func cachedBinaryCandidates(base string) []string {
-	switch runtime.GOOS {
+	switch runtimeGOOS {
 	case "darwin":
 		return []string{
 			filepath.Join(base, "chrome-mac-arm64", "Google Chrome for Testing.app", "Contents", "MacOS", "Google Chrome for Testing"),
@@ -227,7 +233,7 @@ func cachedBinaryCandidates(base string) []string {
 }
 
 func systemChromeCandidates() []string {
-	switch runtime.GOOS {
+	switch runtimeGOOS {
 	case "darwin":
 		return []string{
 			"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",

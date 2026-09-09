@@ -55,6 +55,9 @@ func (s *Session) ScreenshotCurrent(path string) error {
 	if err := s.browserCtx.Err(); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
 	var buf []byte
 	if err := chromedp.Run(s.browserCtx, chromedp.FullScreenshot(&buf, 100)); err != nil {
 		return err

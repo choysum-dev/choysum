@@ -4,8 +4,10 @@
 package choysume2e
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -69,5 +71,95 @@ func TestPackageFileAndMaterialize(t *testing.T) {
 	got2, err := materializeFile("probe.js", "ignored")
 	if err != nil || got2 != got {
 		t.Fatalf("reuse: got2=%q err=%v", got2, err)
+	}
+}
+
+func TestMaterializeFileMkdirTempError(t *testing.T) {
+	materializeMu.Lock()
+	oldDir := materializedDir
+	materializedDir = ""
+	materializeMu.Unlock()
+	oldMkdir := osMkdirTemp
+	osMkdirTemp = func(dir, pattern string) (string, error) { return "", errors.New("mkdirtemp boom") }
+	defer func() {
+		osMkdirTemp = oldMkdir
+		materializeMu.Lock()
+		materializedDir = oldDir
+		materializeMu.Unlock()
+	}()
+	if _, err := materializeFile("x.js", "y"); err == nil || !strings.Contains(err.Error(), "mkdirtemp") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestPackageFileCallerFail(t *testing.T) {
+	old := runtimeCaller
+	runtimeCaller = func(skip int) (uintptr, string, int, bool) { return 0, "", 0, false }
+	defer func() { runtimeCaller = old }()
+	if _, err := packageFile("choysume2e.js"); err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestMaterializeFileWriteError(t *testing.T) {
+	materializeMu.Lock()
+	old := materializedDir
+	// Point at a non-existent directory so WriteFile fails (parent missing).
+	materializedDir = filepath.Join(t.TempDir(), "missing-parent", "child")
+	materializeMu.Unlock()
+	defer func() {
+		materializeMu.Lock()
+		materializedDir = old
+		materializeMu.Unlock()
+	}()
+	if _, err := materializeFile("boom.js", "x"); err == nil {
+		t.Fatal("expected write error")
+	}
+}
+
+func TestSourcePathAndShimMaterializeFallback(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("caller")
+	}
+	pkgDir := filepath.Dir(thisFile)
+
+	// Rename package sources so packageFile fails and SourcePath/PlaywrightShimPath materialize.
+	type pair struct{ name, bak string }
+	pairs := []pair{
+		{"choysume2e.js", ""},
+		{"choysume2e_pw_shim.mjs", ""},
+	}
+	for i := range pairs {
+		src := filepath.Join(pkgDir, pairs[i].name)
+		bak := src + ".bak_covtest"
+		if err := os.Rename(src, bak); err != nil {
+			t.Fatalf("rename %s: %v", pairs[i].name, err)
+		}
+		pairs[i].bak = bak
+	}
+	defer func() {
+		for _, p := range pairs {
+			_ = os.Rename(p.bak, filepath.Join(pkgDir, p.name))
+		}
+	}()
+
+	materializeMu.Lock()
+	materializedDir = ""
+	materializeMu.Unlock()
+
+	jsPath, err := SourcePath()
+	if err != nil {
+		t.Fatalf("SourcePath materialize: %v", err)
+	}
+	if !strings.Contains(jsPath, "choysume2e.js") {
+		t.Fatalf("path=%q", jsPath)
+	}
+	shimPath, err := PlaywrightShimPath()
+	if err != nil {
+		t.Fatalf("PlaywrightShimPath materialize: %v", err)
+	}
+	if !strings.Contains(shimPath, "choysume2e_pw_shim.mjs") {
+		t.Fatalf("shim=%q", shimPath)
 	}
 }

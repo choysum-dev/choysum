@@ -136,16 +136,19 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 				build.OnResolve(api.OnResolveOptions{Filter: `.*_pb(\.ts)?$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						base := filepath.Base(args.Path)
-						cand := filepath.Join(generatedRoot, "web", base)
-						if _, err := os.Stat(cand); err == nil {
-							return api.OnResolveResult{Path: cand, Namespace: "file"}, nil
+						baseNoExt := strings.TrimSuffix(base, ".ts")
+						for _, candName := range []string{base, baseNoExt + ".ts"} {
+							cand := filepath.Join(generatedRoot, "web", candName)
+							if _, err := os.Stat(cand); err == nil {
+								return api.OnResolveResult{Path: cand, Namespace: "file"}, nil
+							}
 						}
 						found := ""
 						_ = filepath.WalkDir(generatedRoot, func(path string, d os.DirEntry, err error) error {
 							if err != nil || d.IsDir() {
 								return err
 							}
-							if d.Name() == base {
+							if d.Name() == base || strings.TrimSuffix(d.Name(), ".ts") == baseNoExt {
 								found = path
 								return filepath.SkipAll
 							}

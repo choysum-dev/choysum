@@ -44,7 +44,7 @@ def chrome_download_url(version: str, plat: str) -> str:
     return f"https://storage.googleapis.com/chrome-for-testing-public/{version}/{plat}/chrome-{plat}.zip"
 
 
-def resolve_binary(dest: Path, plat: str) -> Path:
+def resolve_binary(dest: Path, plat: str) -> Path | None:
     if plat.startswith("mac"):
         candidates = [
             dest / f"chrome-{plat}" / "Google Chrome for Testing.app" / "Contents" / "MacOS" / "Google Chrome for Testing",
@@ -58,7 +58,7 @@ def resolve_binary(dest: Path, plat: str) -> Path:
     for c in candidates:
         if c.is_file():
             return c
-    raise SystemExit(f"chrome binary not found under {dest}")
+    return None
 
 
 def install(version: str = PINNED_VERSION, revision: str = PINNED_REVISION) -> Path:
@@ -75,16 +75,13 @@ def install(version: str = PINNED_VERSION, revision: str = PINNED_REVISION) -> P
     if version == PINNED_VERSION and revision == PINNED_REVISION:
         dest = home / "browsers" / f"chromium-{revision}"
     dest.mkdir(parents=True, exist_ok=True)
-    try:
-        existing = resolve_binary(dest, plat)
+    existing = resolve_binary(dest, plat)
+    if existing is not None:
         _ensure_executable_tree(dest)
         if platform.system().lower() == "darwin":
             _clear_macos_quarantine(dest)
         print(existing)
         return existing
-    except SystemExit:
-        # Not cached yet; fall through to download.
-        pass
 
     url = chrome_download_url(version, plat)
     print(f"downloading {url}", file=sys.stderr)
@@ -100,6 +97,8 @@ def install(version: str = PINNED_VERSION, revision: str = PINNED_REVISION) -> P
         _clear_macos_quarantine(dest)
 
     binary = resolve_binary(dest, plat)
+    if binary is None:
+        raise SystemExit(f"chrome binary not found under {dest}")
     # Ensure executable bit on unix.
     mode = binary.stat().st_mode
     binary.chmod(mode | 0o111)

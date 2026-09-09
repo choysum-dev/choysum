@@ -65,6 +65,122 @@ func TestNilPageMethods(t *testing.T) {
 	}
 }
 
+func TestScreenshotCurrent(t *testing.T) {
+	var s *Session
+	if err := s.ScreenshotCurrent(filepath.Join(t.TempDir(), "x.png")); err == nil || !strings.Contains(err.Error(), "nil session") {
+		t.Fatalf("nil session: %v", err)
+	}
+	s = &Session{}
+	if err := s.ScreenshotCurrent(filepath.Join(t.TempDir(), "x.png")); err == nil || !strings.Contains(err.Error(), "nil session") {
+		t.Fatalf("nil browserCtx: %v", err)
+	}
+
+	session := startTestSession(t)
+	if err := session.ScreenshotCurrent("   "); err == nil || !strings.Contains(err.Error(), "empty screenshot path") {
+		t.Fatalf("empty path: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "current.png")
+	if err := session.ScreenshotCurrent(path); err != nil {
+		t.Fatalf("ScreenshotCurrent: %v", err)
+	}
+	if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+		t.Fatalf("screenshot missing: %v", err)
+	}
+
+	// MkdirAll fails when parent path is a file (new review path).
+	badParent := filepath.Join(t.TempDir(), "notadir")
+	if err := os.WriteFile(badParent, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := session.ScreenshotCurrent(filepath.Join(badParent, "shot.png")); err == nil {
+		t.Fatal("expected MkdirAll error")
+	}
+
+	// Race: close during FullScreenshot to exercise chromedp.Run error path.
+	session2 := startTestSession(t)
+	shotPath := filepath.Join(t.TempDir(), "race.png")
+	go func() {
+		time.Sleep(5 * time.Millisecond)
+		session2.Close()
+	}()
+	_ = session2.ScreenshotCurrent(shotPath) // error expected; covers Run-fail when racing
+}
+
+func TestNewPageDeadBrowserContext(t *testing.T) {
+	session := startTestSession(t)
+	session.Close()
+	if _, err := session.NewPage(); err == nil || !strings.Contains(err.Error(), "browser context dead") {
+		t.Fatalf("expected dead context error, got %v", err)
+	}
+}
+
+func TestPageOpsErrorAndCancelPaths(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := page.WaitForFunction("true", 0); err != nil {
+		t.Fatalf("timeout<=0 should default and succeed: %v", err)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<!doctype html><html><body><div id="ok">x</div></body></html>`))
+	}))
+	defer srv.Close()
+	if err := page.Goto(srv.URL, "load"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := page.Evaluate(`throw new Error("eval boom")`); err == nil {
+		t.Fatal("expected evaluate error")
+	}
+
+	// Parent path is a file → MkdirAll fails.
+	badShot := filepath.Join(t.TempDir(), "notadir")
+	if err := os.WriteFile(badShot, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := page.Screenshot(filepath.Join(badShot, "x.png")); err == nil {
+		t.Fatal("expected mkdir screenshot error")
+	}
+
+	// Cancel mid-poll.
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		page.Close()
+		session.Close()
+	}()
+	if err := page.WaitForFunction("false", 2*time.Second); err == nil {
+		t.Fatal("expected cancel/timeout error")
+	}
+}
+
+func TestPageMethodsOnDeadContext(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	session.Close()
+	if _, err := page.QueryCount("div"); err == nil {
+		t.Fatal("expected QueryCount error")
+	}
+	if _, err := page.IsVisible("div"); err == nil {
+		t.Fatal("expected IsVisible error")
+	}
+	if _, err := page.IsEnabled("div"); err == nil {
+		t.Fatal("expected IsEnabled error")
+	}
+	if _, err := page.URL(); err == nil {
+		t.Fatal("expected URL error")
+	}
+	if err := page.Screenshot(filepath.Join(t.TempDir(), "dead.png")); err == nil {
+		t.Fatal("expected Screenshot error")
+	}
+}
+
 func TestPageOpsWithChrome(t *testing.T) {
 	session := startTestSession(t)
 	page, err := session.NewPage()
@@ -197,4 +313,19 @@ func TestNewPageReusesTab(t *testing.T) {
 		t.Fatal(err)
 	}
 	p2.Close()
+}
+
+func TestWaitForFunctionSessionClosed(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		time.Sleep(40 * time.Millisecond)
+		session.Close()
+	}()
+	if err := page.WaitForFunction("false", 2*time.Second); err == nil {
+		t.Fatal("expected WaitForFunction error after session close")
+	}
 }
