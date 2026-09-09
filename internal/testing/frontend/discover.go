@@ -269,7 +269,8 @@ func scanIllegalContent(path, content string) []IllegalMark {
 		}
 	}
 
-	// vi.mock: scan code with comments/strings blanked so docs/fixtures do not false-fail --fail.
+	// Import-like banned patterns: scan with comments/strings blanked so docs/fixtures
+	// do not false-fail --fail. Template ${...} stays scannable (see blankJSCommentsAndStrings).
 	code := blankJSCommentsAndStrings(content)
 	codeLines := strings.Split(code, "\n")
 	for i, line := range codeLines {
@@ -282,17 +283,18 @@ func scanIllegalContent(path, content string) []IllegalMark {
 		}
 	}
 
-	// Match-span based reporting for import forms that may span lines.
 	addRegexHits(content, lines, reVueImport, IllegalVueImport, add)
-	addRegexHits(content, lines, reVTUImport, IllegalVTU, add)
-	addRegexHits(content, lines, reVitestImport, IllegalVitestImport, add)
-	addRegexHits(content, lines, reDOMPackage, IllegalDOMPackage, add)
-	addRegexHits(content, lines, reCoverageProbeImport, IllegalCoverageProbe, add)
+	addRegexHits(code, lines, reVTUImport, IllegalVTU, add)
+	addRegexHits(code, lines, reVitestImport, IllegalVitestImport, add)
+	addRegexHits(code, lines, reDOMPackage, IllegalDOMPackage, add)
+	addRegexHits(code, lines, reCoverageProbeImport, IllegalCoverageProbe, add)
 	return hits
 }
 
-// blankJSCommentsAndStrings replaces // and /* */ comments plus ', ", and ` string
-// literals with spaces (newlines preserved) so inventory regexes can ignore noise.
+// blankJSCommentsAndStrings replaces // and /* */ comments plus non-module
+// ', ", and ` literal text with spaces (newlines preserved) so inventory
+// regexes ignore noise. from/import/require module strings are kept intact.
+// Backtick ${...} interpolations stay scannable (e.g. vi.mock).
 func blankJSCommentsAndStrings(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -327,6 +329,25 @@ func blankJSCommentsAndStrings(s string) string {
 		}
 		if s[i] == '\'' || s[i] == '"' || s[i] == '`' {
 			quote := s[i]
+			if isModuleSpecifierContext(s, i) {
+				// Keep from/import/require module strings so import regexes still match.
+				b.WriteByte(s[i])
+				i++
+				for i < len(s) {
+					b.WriteByte(s[i])
+					if s[i] == '\\' && i+1 < len(s) {
+						b.WriteByte(s[i+1])
+						i += 2
+						continue
+					}
+					if s[i] == quote {
+						i++
+						break
+					}
+					i++
+				}
+				continue
+			}
 			b.WriteByte(' ')
 			i++
 			for i < len(s) {
@@ -340,6 +361,24 @@ func blankJSCommentsAndStrings(s string) string {
 						b.WriteByte(' ')
 					}
 					i += 2
+					continue
+				}
+				if quote == '`' && s[i] == '$' && i+1 < len(s) && s[i+1] == '{' {
+					b.WriteByte('$')
+					b.WriteByte('{')
+					i += 2
+					depth := 1
+					for i < len(s) && depth > 0 {
+						ch := s[i]
+						switch ch {
+						case '{':
+							depth++
+						case '}':
+							depth--
+						}
+						b.WriteByte(ch)
+						i++
+					}
 					continue
 				}
 				ch := s[i]
@@ -361,6 +400,51 @@ func blankJSCommentsAndStrings(s string) string {
 		i++
 	}
 	return b.String()
+}
+
+func isIdentByte(c byte) bool {
+	return c == '_' || c == '$' ||
+		(c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9')
+}
+
+// isModuleSpecifierContext reports whether quoteIdx opens a from/import/require module string.
+func isModuleSpecifierContext(s string, quoteIdx int) bool {
+	j := quoteIdx - 1
+	for j >= 0 && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
+		j--
+	}
+	if j < 0 {
+		return false
+	}
+	if j >= 3 && s[j-3:j+1] == "from" && (j-4 < 0 || !isIdentByte(s[j-4])) {
+		return true
+	}
+	// Side-effect import 'pkg' (no braces / from).
+	if hasIdentSuffixAt(s, j, "import") {
+		return true
+	}
+	if s[j] != '(' {
+		return false
+	}
+	k := j - 1
+	for k >= 0 && (s[k] == ' ' || s[k] == '\t') {
+		k--
+	}
+	return hasIdentSuffixAt(s, k, "import") || hasIdentSuffixAt(s, k, "require")
+}
+
+func hasIdentSuffixAt(s string, endIdx int, word string) bool {
+	n := len(word)
+	if endIdx+1 < n {
+		return false
+	}
+	start := endIdx - n + 1
+	if s[start:endIdx+1] != word {
+		return false
+	}
+	return start == 0 || !isIdentByte(s[start-1])
 }
 
 func addRegexHits(content string, lines []string, re *regexp.Regexp, kind IllegalKind, add func(int, IllegalKind, string)) {

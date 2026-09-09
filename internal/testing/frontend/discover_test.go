@@ -171,9 +171,12 @@ func TestScanIllegal_ViMockAndChoysumMountMultiline(t *testing.T) {
 	noisePath := filepath.Join(dir, "noise.test.ts")
 	noise := strings.Join([]string{
 		"// do not call vi.mock( in comments",
+		"// import { it } from 'vitest'",
 		"const msg = \"vi.mock('x')\"",
+		"const note = \"from 'vitest'\"",
 		"const tpl = `vi.mock('y')`",
 		"/* vi.mock('z') */",
+		"/* from 'vitest' */",
 		"it('ok', () => {})",
 		"",
 	}, "\n")
@@ -185,7 +188,19 @@ func TestScanIllegal_ViMockAndChoysumMountMultiline(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(noiseHits) != 0 {
-		t.Fatalf("comments/strings must not flag vi.mock: %#v", noiseHits)
+		t.Fatalf("comments/strings must not flag vitest/vi.mock: %#v", noiseHits)
+	}
+
+	interpPath := filepath.Join(dir, "interp.test.ts")
+	if err := os.WriteFile(interpPath, []byte("const x = `${vi.mock('x')}`\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	interpHits, err := ScanIllegalFrontendMarks([]string{interpPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(interpHits) != 1 || interpHits[0].Kind != IllegalVitestImport {
+		t.Fatalf("vi.mock inside template ${...} must be flagged: %#v", interpHits)
 	}
 
 	multiPath := filepath.Join(dir, "multi_mount.test.ts")
@@ -233,6 +248,15 @@ func TestBlankJSCommentsAndStrings_EdgeCases(t *testing.T) {
 	// Newlines preserved for line mapping.
 	if strings.Count(out, "\n") != strings.Count(in, "\n") {
 		t.Fatalf("newline count changed: in=%d out=%d", strings.Count(in, "\n"), strings.Count(out, "\n"))
+	}
+
+	interp := "const x = `${vi.mock('x')}`\n"
+	interpOut := blankJSCommentsAndStrings(interp)
+	if !strings.Contains(interpOut, "vi.mock('x')") {
+		t.Fatalf("template ${...} body must remain scannable: %q", interpOut)
+	}
+	if strings.Contains(interpOut, "const x = `${vi") {
+		t.Fatalf("template literal text outside ${} should be blanked: %q", interpOut)
 	}
 
 	// Escaped newline inside a string (JS line continuation) must keep the \n byte.
