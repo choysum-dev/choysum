@@ -151,6 +151,91 @@ func TestDiscoverAndScanIllegalFrontendMarks(t *testing.T) {
 	}
 }
 
+func TestScanIllegal_ViMockAndChoysumMountMultiline(t *testing.T) {
+	dir := t.TempDir()
+	viMockPath := filepath.Join(dir, "vi.mock.test.ts")
+	if err := os.WriteFile(viMockPath, []byte("vi.mock('x', () => ({}))\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hits, err := ScanIllegalFrontendMarks([]string{viMockPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 || hits[0].Kind != IllegalVitestImport {
+		t.Fatalf("vi.mock hits = %#v", hits)
+	}
+	if fail := FilterHardCutFailHits(hits); len(fail) != 1 {
+		t.Fatalf("vi.mock must hard-cut fail: %#v", fail)
+	}
+
+	noisePath := filepath.Join(dir, "noise.test.ts")
+	noise := strings.Join([]string{
+		"// do not call vi.mock( in comments",
+		"const msg = \"vi.mock('x')\"",
+		"const tpl = `vi.mock('y')`",
+		"/* vi.mock('z') */",
+		"it('ok', () => {})",
+		"",
+	}, "\n")
+	if err := os.WriteFile(noisePath, []byte(noise), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	noiseHits, err := ScanIllegalFrontendMarks([]string{noisePath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(noiseHits) != 0 {
+		t.Fatalf("comments/strings must not flag vi.mock: %#v", noiseHits)
+	}
+
+	multiPath := filepath.Join(dir, "multi_mount.test.ts")
+	multi := strings.Join([]string{
+		"import {",
+		"  mount,",
+		"} from '@choysum/test-utils'",
+		"mount(Comp)",
+		"",
+	}, "\n")
+	if err := os.WriteFile(multiPath, []byte(multi), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	multiHits, err := ScanIllegalFrontendMarks([]string{multiPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range multiHits {
+		if h.Kind == IllegalVTU {
+			t.Fatalf("multiline choysumMount import must suppress mount(): %#v", multiHits)
+		}
+	}
+}
+
+func TestBlankJSCommentsAndStrings_EdgeCases(t *testing.T) {
+	in := strings.Join([]string{
+		"/* block",
+		"comment */",
+		`const s = "a\"b"`,
+		"const t = `line1",
+		"line2`",
+		"keep",
+		"",
+	}, "\n")
+	out := blankJSCommentsAndStrings(in)
+	if strings.Contains(out, "block") || strings.Contains(out, "comment") {
+		t.Fatalf("block comment body should be blanked: %q", out)
+	}
+	if strings.Contains(out, `a\"b`) || strings.Contains(out, "line1") || strings.Contains(out, "line2") {
+		t.Fatalf("string bodies should be blanked: %q", out)
+	}
+	if !strings.Contains(out, "keep") {
+		t.Fatalf("code tokens must remain: %q", out)
+	}
+	// Newlines preserved for line mapping.
+	if strings.Count(out, "\n") != strings.Count(in, "\n") {
+		t.Fatalf("newline count changed: in=%d out=%d", strings.Count(in, "\n"), strings.Count(out, "\n"))
+	}
+}
+
 func TestDiscoverFrontendTestsGuardsAndSkips(t *testing.T) {
 	if _, err := DiscoverFrontendTests("", "x"); err == nil {
 		t.Fatal("expected empty repo error")

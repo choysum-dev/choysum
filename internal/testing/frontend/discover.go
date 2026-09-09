@@ -260,14 +260,25 @@ func scanIllegalContent(path, content string) []IllegalMark {
 		if reVitestEnvHappy.MatchString(line) {
 			add(lineNo, IllegalDOMEnvironment, line)
 		}
-		if reViMock.MatchString(line) {
-			add(lineNo, IllegalVitestImport, line)
-		}
 		if reMountCall.MatchString(line) {
 			// choysumMount: suppress only when mount/shallowMount are imported from @choysum/test-utils.
+			// Binding regex uses [^}]* so multiline named imports are recognized against full content.
 			if !reChoysumMountBinding.MatchString(content) {
 				add(lineNo, IllegalVTU, line)
 			}
+		}
+	}
+
+	// vi.mock: scan code with comments/strings blanked so docs/fixtures do not false-fail --fail.
+	code := blankJSCommentsAndStrings(content)
+	codeLines := strings.Split(code, "\n")
+	for i, line := range codeLines {
+		if reViMock.MatchString(line) {
+			snippet := line
+			if i < len(lines) {
+				snippet = lines[i]
+			}
+			add(i+1, IllegalVitestImport, snippet)
 		}
 	}
 
@@ -278,6 +289,71 @@ func scanIllegalContent(path, content string) []IllegalMark {
 	addRegexHits(content, lines, reDOMPackage, IllegalDOMPackage, add)
 	addRegexHits(content, lines, reCoverageProbeImport, IllegalCoverageProbe, add)
 	return hits
+}
+
+// blankJSCommentsAndStrings replaces // and /* */ comments plus ', ", and ` string
+// literals with spaces (newlines preserved) so inventory regexes can ignore noise.
+func blankJSCommentsAndStrings(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		if i+1 < len(s) && s[i] == '/' && s[i+1] == '/' {
+			for i < len(s) && s[i] != '\n' {
+				b.WriteByte(' ')
+				i++
+			}
+			continue
+		}
+		if i+1 < len(s) && s[i] == '/' && s[i+1] == '*' {
+			b.WriteByte(' ')
+			b.WriteByte(' ')
+			i += 2
+			for i+1 < len(s) && !(s[i] == '*' && s[i+1] == '/') {
+				if s[i] == '\n' {
+					b.WriteByte('\n')
+				} else {
+					b.WriteByte(' ')
+				}
+				i++
+			}
+			if i+1 < len(s) {
+				b.WriteByte(' ')
+				b.WriteByte(' ')
+				i += 2
+			}
+			continue
+		}
+		if s[i] == '\'' || s[i] == '"' || s[i] == '`' {
+			quote := s[i]
+			b.WriteByte(' ')
+			i++
+			for i < len(s) {
+				if s[i] == '\\' && i+1 < len(s) {
+					b.WriteByte(' ')
+					b.WriteByte(' ')
+					i += 2
+					continue
+				}
+				ch := s[i]
+				if ch == quote {
+					b.WriteByte(' ')
+					i++
+					break
+				}
+				if ch == '\n' {
+					b.WriteByte('\n')
+				} else {
+					b.WriteByte(' ')
+				}
+				i++
+			}
+			continue
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
 }
 
 func addRegexHits(content string, lines []string, re *regexp.Regexp, kind IllegalKind, add func(int, IllegalKind, string)) {

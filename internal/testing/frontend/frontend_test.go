@@ -7,8 +7,31 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
+
+func seedMathFEApp(t *testing.T, repoRoot, app string) {
+	t.Helper()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("no caller")
+	}
+	fixture := filepath.Join(filepath.Dir(thisFile), "testdata", "fixtures", "runner")
+	web := filepath.Join(repoRoot, "modules", app, "web")
+	if err := os.MkdirAll(web, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"math.ts", "math.test.ts"} {
+		raw, err := os.ReadFile(filepath.Join(fixture, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(web, name), raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
 
 func TestValidateFrontendTestDependenciesNoOp(t *testing.T) {
 	if err := ValidateFrontendTestDependencies("", "", false); err != nil {
@@ -22,7 +45,7 @@ func TestValidateFrontendTestDependenciesNoOp(t *testing.T) {
 func TestRunOneAppFrontendTests_NoNpx(t *testing.T) {
 	t.Setenv("PATH", t.TempDir()) // no node/npx/vitest on PATH
 	repoRoot := t.TempDir()
-	// Empty discover (no modules/<app>/web) → success without exec'ing Node.
+	seedMathFEApp(t, repoRoot, "no_fe_app")
 	failed, err := RunOneAppFrontendTests(
 		context.Background(),
 		repoRoot,
@@ -42,7 +65,7 @@ func TestRunOneAppFrontendTests_NoNpx(t *testing.T) {
 		t.Fatal(err)
 	}
 	if failed {
-		t.Fatal("empty discover should not fail")
+		t.Fatal("expected QJS FE run without Node on PATH")
 	}
 }
 

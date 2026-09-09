@@ -33,8 +33,8 @@ func feQjsFixtureDir(t *testing.T) string {
 	return filepath.Join(filepath.Dir(thisFile), "testdata", "fixtures", "runner")
 }
 
-func TestBuildFrontendUnitBundle_WithVue(t *testing.T) {
-	repoRoot := feQjsRepoRoot(t)
+func copyVueFixture(t *testing.T) string {
+	t.Helper()
 	fixture := filepath.Join(feQjsFixtureDir(t), "vue")
 	work := t.TempDir()
 	for _, name := range []string{"Counter.vue", "counter.test.ts"} {
@@ -46,6 +46,12 @@ func TestBuildFrontendUnitBundle_WithVue(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	return work
+}
+
+func TestBuildFrontendUnitBundle_WithVue(t *testing.T) {
+	repoRoot := feQjsRepoRoot(t)
+	work := copyVueFixture(t)
 	entry := filepath.Join(work, "entry.ts")
 	if err := WriteFrontendTestsEntry(entry, []string{filepath.Join(work, "counter.test.ts")}); err != nil {
 		t.Fatal(err)
@@ -124,17 +130,7 @@ func TestRunFrontendQJS_FeQjsMath(t *testing.T) {
 
 func TestRunFrontendQJS_VueCoverage(t *testing.T) {
 	repoRoot := feQjsRepoRoot(t)
-	fixture := filepath.Join(feQjsFixtureDir(t), "vue")
-	work := t.TempDir()
-	for _, name := range []string{"Counter.vue", "counter.test.ts"} {
-		raw, err := os.ReadFile(filepath.Join(fixture, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(work, name), raw, 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	work := copyVueFixture(t)
 	reportDir := filepath.Join(t.TempDir(), "reports")
 	tmpRoot := t.TempDir()
 	failed, err := RunFrontendQJS(context.Background(), QJSRunOptions{
@@ -171,17 +167,7 @@ func TestRunFrontendQJS_VueCoverage(t *testing.T) {
 
 func TestFrontendQJS_LcovPath_FeApp(t *testing.T) {
 	repoRoot := feQjsRepoRoot(t)
-	fixture := filepath.Join(feQjsFixtureDir(t), "vue")
-	work := t.TempDir()
-	for _, name := range []string{"Counter.vue", "counter.test.ts"} {
-		raw, err := os.ReadFile(filepath.Join(fixture, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(work, name), raw, 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	work := copyVueFixture(t)
 	reportDir := filepath.Join(t.TempDir(), "cov-root")
 	failed, err := RunFrontendQJS(context.Background(), QJSRunOptions{
 		RepoRoot:          repoRoot,
@@ -230,14 +216,14 @@ func TestRunFrontendQJS_DiscoverAuthSmoke(t *testing.T) {
 
 func TestRunOneAppFrontendTests_DefaultsToQJS(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
-	repoRoot := feQjsRepoRoot(t)
-	// No modules/fe_qjs_math/web — discover empty → ok with no tests.
+	repoRoot := t.TempDir()
+	seedMathFEApp(t, repoRoot, "fe_qjs_math")
 	failed, err := RunOneAppFrontendTests(context.Background(), repoRoot, "fe_qjs_math", "", "", false, false, false, false, "", 0, 0, 0, 0, t.TempDir(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if failed {
-		t.Fatal("empty discover should not fail")
+		t.Fatal("expected QJS FE math fixture to pass without Node on PATH")
 	}
 }
 
