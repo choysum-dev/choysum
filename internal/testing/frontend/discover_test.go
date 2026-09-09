@@ -314,6 +314,46 @@ func TestBlankJSCommentsAndStrings_EdgeCases(t *testing.T) {
 		t.Fatalf("} inside a string must not truncate ${...}: %q", braceOut)
 	}
 
+	// Module-specifier keep path must copy escapes (from 'a\\b').
+	modEsc := "import { x } from 'a\\\\b'\n"
+	modOut := blankJSCommentsAndStrings(modEsc)
+	if strings.Count(modOut, `\`) < 2 {
+		t.Fatalf("escaped backslashes in module string must remain: %q", modOut)
+	}
+
+	// Line comment, object braces, nested template (+ escape / nested ${}), and
+	// escaped quotes inside ${...} must be skipped by findTemplateInterpClose.
+	deep := strings.Join([]string{
+		"const a = `${ // noise vi.mock('a')",
+		"1}`",
+		"const b = `${ /* block vi.mock('b') */ {x:1}.x }`",
+		"const c = `${`nest\\`ed${1}` + vi.mock('c')}`",
+		"const d = `${\"a\\\"b\" + vi.mock('d')}`",
+		"const e = `${" + `'a\'b'` + " + vi.mock('e')}`",
+		"",
+	}, "\n")
+	deepOut := blankJSCommentsAndStrings(deep)
+	if strings.Count(deepOut, "vi.mock(") < 3 {
+		t.Fatalf("executable vi.mock after nested noise must remain: %q", deepOut)
+	}
+	if strings.Contains(deepOut, "vi.mock('a')") || strings.Contains(deepOut, "vi.mock('b')") {
+		t.Fatalf("comment noise inside ${...} must be blanked: %q", deepOut)
+	}
+	if strings.Contains(deepOut, "nest") {
+		t.Fatalf("nested template literal text must be blanked: %q", deepOut)
+	}
+
+	// Unclosed ${, quote, block comment, and nested template at EOF (no panic / hang).
+	for _, raw := range []string{
+		"${vi.mock('x')",
+		"${ /* dangling",
+		`${"unclosed`,
+		"${`unclosed",
+		"${`pre${1}",
+	} {
+		_ = blankJSCommentsAndStrings("const x = `" + raw)
+	}
+
 	// Escaped newline inside a string (JS line continuation) must keep the \n byte.
 	cont := "const x = \"foo\\\nbar\"\nvi.mock('z')\n"
 	contOut := blankJSCommentsAndStrings(cont)
