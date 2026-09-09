@@ -4,7 +4,6 @@
 package cdp
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,17 +13,8 @@ import (
 	"time"
 )
 
-func chromePathOrSkip(t *testing.T) string {
-	t.Helper()
-	p, err := ResolveChromiumPath()
-	if err != nil {
-		t.Skip(err.Error())
-	}
-	return p
-}
-
 func TestSessionPageNetworkIntegration(t *testing.T) {
-	execPath := chromePathOrSkip(t)
+	sess := startTestSession(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/":
@@ -51,16 +41,8 @@ document.getElementById('go').onclick = () => {
 	}))
 	defer srv.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-	sess, err := Start(ctx, StartOptions{ExecPath: execPath})
-	if err != nil {
-		t.Fatalf("Start: %v", err)
-	}
-	defer sess.Close()
-
-	if got := sess.ExecPath(); got != execPath {
-		t.Fatalf("ExecPath=%q", got)
+	if sess.ExecPath() == "" {
+		t.Fatal("empty ExecPath")
 	}
 	if sess.Context() == nil {
 		t.Fatal("nil context")

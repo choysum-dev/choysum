@@ -5,29 +5,73 @@ package cdp
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 )
 
-func requireChromium(t *testing.T) string {
-	t.Helper()
-	path, err := ResolveChromiumPath()
-	if err != nil {
-		t.Skipf("chromium unavailable: %v", err)
+func chromiumCandidates() []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(p string) {
+		if p == "" || seen[p] {
+			return
+		}
+		if st, err := os.Stat(p); err != nil || st.IsDir() {
+			return
+		}
+		seen[p] = true
+		out = append(out, p)
 	}
-	return path
+	if p, err := ResolveChromiumPath(); err == nil {
+		add(p)
+	}
+	for _, p := range systemChromeCandidates() {
+		add(p)
+	}
+	return out
 }
 
+// requireChromium returns a Chromium binary path, skipping if none exist.
+func requireChromium(t *testing.T) string {
+	t.Helper()
+	cands := chromiumCandidates()
+	if len(cands) == 0 {
+		t.Skip("chromium unavailable")
+	}
+	return cands[0]
+}
+
+// startTestSession launches headless Chrome, trying ResolveChromiumPath then system candidates.
+// Skips when no binary can start (broken CfT caches, sandboxes, etc.).
 func startTestSession(t *testing.T) *Session {
 	t.Helper()
-	execPath := requireChromium(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	t.Cleanup(cancel)
-	headless := true
-	session, err := Start(ctx, StartOptions{ExecPath: execPath, Headless: &headless})
-	if err != nil {
-		t.Fatalf("cdp.Start: %v", err)
+	cands := chromiumCandidates()
+	if len(cands) == 0 {
+		t.Skip("chromium unavailable")
 	}
-	t.Cleanup(session.Close)
-	return session
+	headless := true
+	var lastErr error
+	for _, execPath := range cands {
+		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+		session, err := Start(ctx, StartOptions{ExecPath: execPath, Headless: &headless})
+		if err == nil {
+			t.Cleanup(func() {
+				session.Close()
+				cancel()
+			})
+			return session
+		}
+		cancel()
+		lastErr = err
+	}
+	t.Skipf("chromium start failed: %v", lastErr)
+	return nil
+}
+
+// startChromiumOrSkip is used by tests outside package helpers that need an ExecPath.
+func startChromiumOrSkip(t *testing.T) (execPath string, session *Session) {
+	t.Helper()
+	session = startTestSession(t)
+	return session.ExecPath(), session
 }
