@@ -309,18 +309,19 @@ func blankJSCommentsAndStrings(s string) string {
 			b.WriteByte(' ')
 			b.WriteByte(' ')
 			i += 2
-			for i+1 < len(s) && !(s[i] == '*' && s[i+1] == '/') {
+			for i < len(s) {
+				if i+1 < len(s) && s[i] == '*' && s[i+1] == '/' {
+					b.WriteByte(' ')
+					b.WriteByte(' ')
+					i += 2
+					break
+				}
 				if s[i] == '\n' {
 					b.WriteByte('\n')
 				} else {
 					b.WriteByte(' ')
 				}
 				i++
-			}
-			if i+1 < len(s) {
-				b.WriteByte(' ')
-				b.WriteByte(' ')
-				i += 2
 			}
 			continue
 		}
@@ -330,8 +331,14 @@ func blankJSCommentsAndStrings(s string) string {
 			i++
 			for i < len(s) {
 				if s[i] == '\\' && i+1 < len(s) {
-					b.WriteByte(' ')
-					b.WriteByte(' ')
+					// Preserve escaped newline (line continuation) so line maps stay aligned.
+					if s[i+1] == '\n' {
+						b.WriteByte(' ')
+						b.WriteByte('\n')
+					} else {
+						b.WriteByte(' ')
+						b.WriteByte(' ')
+					}
 					i += 2
 					continue
 				}

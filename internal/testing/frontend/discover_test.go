@@ -234,6 +234,26 @@ func TestBlankJSCommentsAndStrings_EdgeCases(t *testing.T) {
 	if strings.Count(out, "\n") != strings.Count(in, "\n") {
 		t.Fatalf("newline count changed: in=%d out=%d", strings.Count(in, "\n"), strings.Count(out, "\n"))
 	}
+
+	// Escaped newline inside a string (JS line continuation) must keep the \n byte.
+	cont := "const x = \"foo\\\nbar\"\nvi.mock('z')\n"
+	contOut := blankJSCommentsAndStrings(cont)
+	if strings.Count(contOut, "\n") != strings.Count(cont, "\n") {
+		t.Fatalf("escaped newline dropped line map: in=%d out=%d out=%q", strings.Count(cont, "\n"), strings.Count(contOut, "\n"), contOut)
+	}
+	if !strings.Contains(contOut, "vi.mock") {
+		t.Fatalf("code after continued string must remain: %q", contOut)
+	}
+
+	// Unclosed block comment at EOF must blank the trailing char (not leak it).
+	unclosed := "ok /* dangling"
+	unclosedOut := blankJSCommentsAndStrings(unclosed)
+	if strings.Contains(unclosedOut, "dangling") || strings.Contains(unclosedOut, "/") || strings.Contains(unclosedOut, "*") {
+		t.Fatalf("unclosed block comment must be fully blanked: %q", unclosedOut)
+	}
+	if !strings.HasPrefix(strings.TrimRight(unclosedOut, " "), "ok") {
+		t.Fatalf("prefix code must remain: %q", unclosedOut)
+	}
 }
 
 func TestDiscoverFrontendTestsGuardsAndSkips(t *testing.T) {
