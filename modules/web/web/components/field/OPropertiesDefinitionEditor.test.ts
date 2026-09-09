@@ -4,7 +4,6 @@
 import { h, nextTick } from 'vue';
 import { ElButton, ElInput, ElOption, ElSelect, ElSwitch } from 'element-plus';
 
-import { registerStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import OPropertiesDefinitionEditor from './OPropertiesDefinitionEditor.vue';
 
@@ -142,9 +141,6 @@ describe('OPropertiesDefinitionEditor', () => {
     const Create = fnRecorder(async () => ({ Id: 'new' }));
     const store = { Search, UpdateById, Create } as any;
 
-    // Document the Product model name; FE path stubs ignore registry for createStoreByModel.
-    registerStoreFactory('partner.PropertyDefinition', () => store);
-
     const mounted = mountApp(OPropertiesDefinitionEditor as any, {
       props: {
         application: 'partner',
@@ -181,7 +177,6 @@ describe('OPropertiesDefinitionEditor', () => {
     const Create = fnRecorder(async (vals: any) => ({ Id: 'new-1', ...vals }));
     const UpdateById = fnRecorder(async () => ({}));
     const store = { Search, Create, UpdateById } as any;
-    registerStoreFactory('project.PropertyDefinition', () => store);
 
     const mounted = mountApp(OPropertiesDefinitionEditor as any, {
       props: {

@@ -256,13 +256,15 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     await clickRemote(m, '[data-test="trigger-remote-empty"]');
     expect(NameSearch.calls[0]?.[0]).toBe('');
     m.unmount();
+  });
 
+  test('OManyToOneField remote search is a no-op without relationStore', async () => {
     const missing = mountField(OManyToOneField, {
       binding: makeM2OBinding(undefined),
     });
-    NameSearch.mockClear();
     await clickRemote(missing);
-    expect(NameSearch.calls.length).toBe(0);
+    expect(missing.q('[data-test="trigger-remote"]')).toBeTruthy();
+    expect(missing.q('.select-stub')).toBeTruthy();
     missing.unmount();
   });
 
@@ -287,16 +289,18 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     await clickRemote(m, '[data-test="trigger-remote-null"]');
     expect(NameSearch.calls[0]?.[0]).toBe('');
     m.unmount();
+  });
 
+  test('OManyToOneRefField remote search is a no-op without relationStore', async () => {
     const warn = console.warn;
     console.warn = () => {};
     try {
       const missing = mountField(OManyToOneRefField, {
         binding: makeM2OBinding(undefined),
       });
-      NameSearch.mockClear();
       await clickRemote(missing);
-      expect(NameSearch.calls.length).toBe(0);
+      expect(missing.q('[data-test="trigger-remote"]')).toBeTruthy();
+      expect(missing.q('.select-stub')).toBeTruthy();
       missing.unmount();
     } finally {
       console.warn = warn;

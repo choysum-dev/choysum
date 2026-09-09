@@ -18,6 +18,30 @@ export function registerStoreFactory(modelName: string, factory: (options?: any)
   storeFactoryRegistryVersion.value += 1;
 }
 
+/**
+ * Removes a store factory. No-op when the model name is not registered.
+ */
+export function unregisterStoreFactory(modelName: string): void {
+  if (!storeFactoryRegistry.delete(modelName)) return;
+  storeFactoryRegistryVersion.value += 1;
+}
+
+/**
+ * Registers a factory and returns a restore function that puts back the previous
+ * factory, or unregisters when none existed. Use in FE unit afterEach for isolation.
+ */
+export function replaceStoreFactory(modelName: string, factory: (options?: any) => any): () => void {
+  const previous = storeFactoryRegistry.get(modelName);
+  registerStoreFactory(modelName, factory);
+  return () => {
+    if (previous) {
+      registerStoreFactory(modelName, previous);
+      return;
+    }
+    unregisterStoreFactory(modelName);
+  };
+}
+
 export function getStoreFactoryRegistryVersion() {
   return readonly(storeFactoryRegistryVersion);
 }

@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElMessage } from 'element-plus';
 
 import { useAuthStore } from '@/auth/web/stores/auth';
-import { registerStoreFactory } from '@/web/web/stores/registry';
+import { replaceStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import OFieldCompanyValuesDialog from './OFieldCompanyValuesDialog.vue';
 
@@ -41,6 +41,7 @@ function labelsOf(el: HTMLElement): string[] {
 
 describe('OFieldCompanyValuesDialog', () => {
   let pinia: ReturnType<typeof createPinia>;
+  let restoreCompanyFactory: (() => void) | undefined;
   const companySearch = fnRecorder(async () => DEFAULT_COMPANY_ROWS.map(r => ({ ...r })));
   const messageSuccess = fnRecorder();
   const messageError = fnRecorder();
@@ -130,12 +131,14 @@ describe('OFieldCompanyValuesDialog', () => {
     messageError.mockClear();
     (ElMessage as any).success = messageSuccess;
     (ElMessage as any).error = messageError;
-    registerStoreFactory('base.Company', () => ({ Search: companySearch }));
+    restoreCompanyFactory = replaceStoreFactory('base.Company', () => ({ Search: companySearch }));
     seedAuth();
     installStubs();
   });
 
   afterEach(() => {
+    restoreCompanyFactory?.();
+    restoreCompanyFactory = undefined;
     (ElMessage as any).success = origSuccess;
     (ElMessage as any).error = origError;
     restoreSfc(ElDialog as any);

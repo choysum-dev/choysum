@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElMessage } from 'element-plus';
 
 import { useI18nStore } from '@/web/web/stores/i18nStore';
-import { registerStoreFactory } from '@/web/web/stores/registry';
+import { replaceStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import OFieldTranslationsDialog from './OFieldTranslationsDialog.vue';
 
@@ -35,6 +35,7 @@ function labelsOf(el: HTMLElement): string[] {
 
 describe('OFieldTranslationsDialog', () => {
   let pinia: ReturnType<typeof createPinia>;
+  let restoreLanguageFactory: (() => void) | undefined;
   const getActiveLanguages = fnRecorder(async () => DEFAULT_LANGS.map(r => ({ ...r })));
   const messageSuccess = fnRecorder();
   const messageError = fnRecorder();
@@ -120,13 +121,17 @@ describe('OFieldTranslationsDialog', () => {
     messageError.mockClear();
     (ElMessage as any).success = messageSuccess;
     (ElMessage as any).error = messageError;
-    registerStoreFactory('base.Language', () => ({ GetActiveLanguages: getActiveLanguages }));
+    restoreLanguageFactory = replaceStoreFactory('base.Language', () => ({
+      GetActiveLanguages: getActiveLanguages,
+    }));
     // terminologyLang is computed from locale; leave default en_US unless a test sets draftLang.
     void useI18nStore();
     installStubs();
   });
 
   afterEach(() => {
+    restoreLanguageFactory?.();
+    restoreLanguageFactory = undefined;
     (ElMessage as any).success = origSuccess;
     (ElMessage as any).error = origError;
     restoreSfc(ElDialog as any);

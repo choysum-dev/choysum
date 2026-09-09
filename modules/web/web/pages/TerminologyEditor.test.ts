@@ -6,7 +6,6 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createFeStubRouter } from 'vue-router';
 import { ElButton, ElEmpty, ElInput, ElOption, ElSelect } from 'element-plus';
 
-import { registerStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import OPage from '@/web/web/components/page/OPage.vue';
 import OListView from '@/web/web/components/view/OListView.vue';
@@ -60,11 +59,6 @@ describe('TerminologyEditor page', () => {
     });
     reloadTerminology.mockReset();
     reloadTerminology.mockImplementation(async () => ({}));
-
-    // Real registry (test import); page uses deps because FE path stubs replace registry on pages.
-    registerStoreFactory('web.TranslationTerm', () => createStore('web.TranslationTerm'));
-    registerStoreFactory('auth.TranslationTerm', () => createStore('auth.TranslationTerm'));
-    registerStoreFactory('core.TranslationTerm', () => createStore('core.TranslationTerm'));
 
     stubSfc(OPage as any, {
       name: 'OPage',
