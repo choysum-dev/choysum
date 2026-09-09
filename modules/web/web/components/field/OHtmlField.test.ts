@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-// OHtmlField calls TipTap useEditor at setup; QJS FE unit has no package stub for @tiptap/*.
-// Sanitize/plaintext helpers remain covered in ohtml_helpers.test.ts.
+// OHtmlField: accept-thin by policy — TipTap useEditor has no QJS package stub.
+// Unit covers ohtml_helpers + this smoke; deep editor interaction stays in E2E.
 
 import {
   HTML_ALLOWED_ATTR,
