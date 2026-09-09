@@ -246,6 +246,31 @@ func TestScanIllegal_ViMockAndChoysumMountMultiline(t *testing.T) {
 		t.Fatalf("multiline import('vitest') must be flagged: %#v", dynHits)
 	}
 
+	commentedFromPath := filepath.Join(dir, "commented_from.test.ts")
+	commentedFrom := strings.Join([]string{
+		"import { it } from /* banned */ 'vitest'",
+		"const m = import(/* x */ 'vitest')",
+		"import { describe } from // trailing",
+		"'vitest'",
+		"",
+	}, "\n")
+	if err := os.WriteFile(commentedFromPath, []byte(commentedFrom), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commentedHits, err := ScanIllegalFrontendMarks([]string{commentedFromPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	vitestHits := 0
+	for _, h := range commentedHits {
+		if h.Kind == IllegalVitestImport {
+			vitestHits++
+		}
+	}
+	if vitestHits < 3 {
+		t.Fatalf("from/import with intervening comments must still flag vitest: %#v", commentedHits)
+	}
+
 	multiPath := filepath.Join(dir, "multi_mount.test.ts")
 	multi := strings.Join([]string{
 		"import {",

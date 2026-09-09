@@ -330,7 +330,8 @@ func blankJSCommentsAndStrings(s string) string {
 		}
 		if s[i] == '\'' || s[i] == '"' || s[i] == '`' {
 			quote := s[i]
-			if isModuleSpecifierContext(s, i) {
+			// Use the blanked prefix so from/*c*/'pkg' still sees "from" (comment → spaces).
+			if isModuleSpecifierContext(b.String(), b.Len()) {
 				// Keep from/import/require module strings so import regexes still match.
 				b.WriteByte(s[i])
 				i++
@@ -490,7 +491,9 @@ func skipJSTemplateLiteral(s string, i int) int {
 	return i
 }
 
-// isModuleSpecifierContext reports whether quoteIdx opens a from/import/require module string.
+// isModuleSpecifierContext reports whether quoteIdx opens a from/import/require
+// module string in already-blanked source (comments/strings → spaces), so
+// from /* c */ 'pkg' still matches.
 func isModuleSpecifierContext(s string, quoteIdx int) bool {
 	j := quoteIdx - 1
 	for j >= 0 && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
