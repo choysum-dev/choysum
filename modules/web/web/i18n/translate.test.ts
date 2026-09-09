@@ -52,8 +52,11 @@ function installI18n(locale = 'zh-CN'): TestComposer {
 }
 
 afterEach(() => {
-  delete (globalThis as { window?: unknown }).window;
   delete (globalThis as { $choysum?: unknown }).$choysum;
+  delete (globalThis as { $i18n?: unknown }).$i18n;
+  // FE QJS host expects globalThis.window; restore after cases that delete it.
+  (globalThis as { window?: unknown }).window = globalThis;
+  delete (globalThis as { window: { $i18n?: unknown } }).window.$i18n;
 });
 
 test('createTranslate > falls back to msgid when i18n is missing', () => {

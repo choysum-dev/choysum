@@ -277,3 +277,25 @@ describe('suite', () => {
 `
 	runNodeWithScript(t, script)
 }
+
+func TestChoysumTestScriptRootAfterEachDoesNotRetroactivelyApply(t *testing.T) {
+	script := ChoysumTestScript + `
+let afterHits = 0;
+
+test('early', () => {});
+
+afterEach(() => {
+  afterHits += 1;
+});
+
+test('late', () => {});
+
+(async () => {
+  const report = await globalThis.__choysum_test_run__();
+  if (!report || report.failed !== 0) throw new Error('cases failed: ' + JSON.stringify(report));
+  // Root afterEach is snapshotted at test() registration: only "late" sees it.
+  if (afterHits !== 1) throw new Error('expected 1 root afterEach run, got ' + afterHits);
+})();
+`
+	runNodeWithScript(t, script)
+}

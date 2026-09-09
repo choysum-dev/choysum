@@ -486,11 +486,12 @@
     }
     const prefix = suiteStack.length ? suiteStack.join(' ') + ' ' : '';
     const fullName = prefix + name;
-    // Keep references to each suite's hook arrays (not a flattened snapshot).
-    // beforeEach/afterEach declared after test() in the same describe still apply,
-    // matching Vitest/Jest (describe pops the stack but the arrays stay alive).
-    const beforeLists = beforeEachStack.slice();
-    const afterLists = afterEachStack.slice();
+    // Nested describe lists stay live so beforeEach/afterEach declared after test()
+    // in the same describe still apply (Vitest/Jest). The root list (index 0) is
+    // shared across the whole FE bundle, so snapshot it at registration — otherwise
+    // a later file's root afterEach (e.g. delete window) would run for every test.
+    const beforeLists = beforeEachStack.map((list, i) => (i === 0 ? list.slice() : list));
+    const afterLists = afterEachStack.map((list, i) => (i === 0 ? list.slice() : list));
     registry.push({
       name: fullName,
       fn: async function () {
