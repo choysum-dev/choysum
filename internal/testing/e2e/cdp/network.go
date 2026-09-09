@@ -82,6 +82,12 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 		return true
 	}
 
+	// Permanent: resource already dropped (e.g. navigated away). Transient
+	// "No data found…" must keep retrying until the body is ready.
+	bodyGone := func(err error) bool {
+		return err != nil && strings.Contains(err.Error(), "No resource with given identifier")
+	}
+
 	listenerCtx, stopListener := context.WithCancel(p.ctx)
 	defer stopListener()
 
@@ -115,9 +121,7 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 					body = b
 					return nil
 				}))
-				// "No data found…" is often transient before the body is ready;
-				// keep retrying until success or the waiter is canceled.
-				if fetchErr == nil {
+				if fetchErr == nil || bodyGone(fetchErr) {
 					break
 				}
 				select {
