@@ -307,7 +307,7 @@ describe('OSearchFilterCondition', () => {
         },
       });
       await nextTick();
-      expect(q(`.${cls}`), prop).toBeTruthy();
+      expect(`${prop}:${q(`.${cls}`) ? 'found' : 'missing'}`).toBe(`${prop}:found`);
       const ph = unref(setupState().valuePlaceholder);
       expect(typeof ph).toBe('string');
       expect(ph.length).toBeGreaterThan(0);

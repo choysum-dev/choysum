@@ -131,6 +131,7 @@ describe('OListView create action', () => {
       await flushPromises();
       expect(push.calls[0]?.[0]).toBe('/partner/partners/new');
     } else {
+      // QJS host: list chrome may not paint New yet; keep mount/expose smoke.
       expect(root).toBeTruthy();
       expect(typeof root.load).toBe('function');
       expect(push.calls.length).toBe(0);

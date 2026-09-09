@@ -152,7 +152,12 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 				build.OnResolve(api.OnResolveOptions{Filter: `OPage\.vue$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						importer := filepath.ToSlash(args.Importer)
-						if strings.Contains(importer, "OPage.mapping.test.") ||
+						// Match feUnitPathStubPath: web component tests/SFCs keep real OPage.
+						isWebComponentUnit := strings.Contains(importer, "/web/web/components/") &&
+							(strings.Contains(importer, ".test.") || strings.Contains(importer, ".spec.") ||
+								strings.HasSuffix(importer, ".vue"))
+						if isWebComponentUnit ||
+							strings.Contains(importer, "OPage.mapping.test.") ||
 							strings.Contains(importer, "OPage.test.") {
 							return api.OnResolveResult{}, nil
 						}

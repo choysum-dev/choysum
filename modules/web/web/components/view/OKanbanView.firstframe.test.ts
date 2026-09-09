@@ -200,8 +200,7 @@ describe('OKanbanView first-frame load', () => {
     try {
       await flushPromises();
       // onSearch marks firstApplied and schedules apply; mount fallback must not double-apply.
-      // With a real controller both paths share Search — assert at most one Search after settle.
-      expect(search.calls.length).toBeLessThanOrEqual(1);
+      expect(search.calls.length).toBe(1);
     } finally {
       unmount();
     }

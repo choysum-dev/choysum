@@ -226,6 +226,10 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	if err != nil || opageSkip.Path != "" {
 		t.Fatalf("opage skip for mapping test: %#v err=%v", opageSkip, err)
 	}
+	opageSkipVue, err := opageCB(api.OnResolveArgs{Path: "./OPage.vue", Importer: "/modules/web/web/components/page/OPageIoMenu.vue"})
+	if err != nil || opageSkipVue.Path != "" {
+		t.Fatalf("opage skip for web component SFC: %#v err=%v", opageSkipVue, err)
+	}
 	childRes, err := childViewCB(api.OnResolveArgs{Path: "@/web/web/components/view/OFormView.vue", Importer: "/modules/partner_commercial/web/views/PartnerIdentifierFormView.vue"})
 	if err != nil || !strings.HasSuffix(childRes.Path, "ChildView.stub.vue") {
 		t.Fatalf("child view stub: %#v err=%v", childRes, err)
