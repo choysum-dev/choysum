@@ -1,15 +1,13 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import OChatterMessageItem from './OChatterMessageItem.vue';
 
 describe('OChatterMessageItem', () => {
-  it('renders the author label, body, and formatted time', () => {
+  test('renders the author label, body, and formatted time', async () => {
     const at = Date.parse('2024-01-01T12:00:00.000Z');
-    const wrapper = mount(OChatterMessageItem, {
+    const { unmount, text, q } = mountApp(OChatterMessageItem as any, {
       props: {
         authorLabel: 'Tester',
         entry: {
@@ -22,15 +20,18 @@ describe('OChatterMessageItem', () => {
         },
       },
     });
-    expect(wrapper.text()).toContain('Tester');
-    expect(wrapper.text()).toContain('hello world');
+    await flushPromises();
+    expect(text()).toContain('Tester');
+    expect(text()).toContain('hello world');
     const local = new Date(at);
     const expected = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`;
-    expect(wrapper.text()).toContain(expected);
+    expect(text()).toContain(expected);
+    expect(q('.o-chatter-message__time')).toBeTruthy();
+    unmount();
   });
 
-  it('renders an empty time label for invalid timestamps', () => {
-    const wrapper = mount(OChatterMessageItem, {
+  test('renders an empty time label for invalid timestamps', async () => {
+    const { unmount, text, q } = mountApp(OChatterMessageItem as any, {
       props: {
         authorLabel: 'Tester',
         entry: {
@@ -43,7 +44,9 @@ describe('OChatterMessageItem', () => {
         },
       },
     });
-    expect(wrapper.text()).toContain('no time');
-    expect(wrapper.find('.o-chatter-message__time').text()).toBe('');
+    await flushPromises();
+    expect(text()).toContain('no time');
+    expect(q('.o-chatter-message__time')?.textContent).toBe('');
+    unmount();
   });
 });

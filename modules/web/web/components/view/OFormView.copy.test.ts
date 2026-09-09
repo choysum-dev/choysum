@@ -1,186 +1,130 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { config, flushPromises, shallowMount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { reactive } from 'vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
+import type { App } from 'vue';
 
-config.global.renderStubDefaultSlot = true;
-
-const beginCreate = vi.fn(async (_seed?: any) => {});
-const beginDisplay = vi.fn(async () => ({ Id: '1', Name: 'orig' }));
-const onchangeReset = vi.fn();
-const onchangeAggReset = vi.fn();
-
-const controllerVm = reactive({
-  mode: 'display' as string,
-  draft: { Id: '1', Name: 'orig' } as Record<string, unknown> | null,
-  original: { Id: '1', Name: 'orig' } as Record<string, unknown> | null,
-  loading: false,
-  error: null as unknown,
-  result: null as unknown,
-});
-
-vi.mock('vue-router', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    resolve: vi.fn((loc: { name?: string }) => ({ name: loc?.name, matched: [] })),
-    currentRoute: { value: { path: '/demo/widget/1', params: { recordId: '1' }, query: {}, meta: {} } },
-  }),
-  useRoute: () => ({ name: undefined, path: '/demo/widget/1', params: { recordId: '1' }, query: {}, meta: {} }),
-}));
-
-vi.mock('@/web/web/controllers/formController', () => ({
-  createFormController: () => ({
-    vm: controllerVm,
-    beginCreate,
-    beginDisplay,
-    beginEdit: vi.fn(),
-    reset: vi.fn(),
-    validate: vi.fn(async () => ({ valid: true, errors: [] })),
-    submit: vi.fn(async () => null),
-    delete: vi.fn(async () => null),
-    provideToChildren: vi.fn(),
-  }),
-}));
-
-vi.mock('@/web/web/composables/useOnchange', () => ({
-  provideOnchange: () => ({
-    reset: onchangeReset,
-    resume: vi.fn(),
-    pause: vi.fn(),
-    registerAfterFlush: vi.fn(),
-    unregisterAfterFlush: vi.fn(),
-  }),
-}));
-
-vi.mock('@/web/web/composables/useOnchangeAggregation', () => ({
-  useOnchangeAggregation: () => ({
-    lastOnchangeResult: { value: null },
-    fieldErrors: { value: {} },
-    afterFlushHandler: vi.fn(),
-    reset: onchangeAggReset,
-  }),
-}));
-
-vi.mock('@/web/web/composables/useCancelableEmit', () => ({
-  useCancelableEmit: () => ({
-    emitCancelable: vi.fn(async () => true),
-  }),
-}));
-
-vi.mock('@/web/web/stores/breadcrumbStore', () => ({
-  useBreadcrumbStore: () => ({
-    breadcrumbStack: [],
-  }),
-}));
-
-vi.mock('@/web/web/i18n', () => ({
-  createTranslate: () => ({
-    _t: (msg: string) => msg,
-    _lt: (msg: string) => ({ src: msg }),
-  }),
-}));
-
+import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import OFormView from './OFormView.vue';
 
-function fakeStore() {
+const NoopLoading = {
+  install(app: App) {
+    app.directive('loading', {
+      mounted() {},
+      updated() {},
+      unmounted() {},
+    });
+  },
+};
+
+function fakeStore(opts?: { DefaultGet?: (seed: any) => Promise<any> }) {
   return {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget',
     fieldsMetadata: { Name: { type: 'varchar' } },
     state: { queryState: {}, result: undefined, selection: [], planCache: new Map() },
-    setContext: vi.fn(),
-    getContext: vi.fn(() => ({})),
-    withContext: vi.fn(async (_ctx: any, fn: any) => fn()),
-    DefaultGet: vi.fn(async (seed: any) => ({ ...(seed || {}), Code: 'server' })),
+    setContext: () => {},
+    getContext: () => ({}),
+    withContext: async (_ctx: any, fn: any) => fn(),
+    DefaultGet:
+      opts?.DefaultGet ??
+      (async (seed: any) => ({ ...(seed || {}), Code: 'server' })),
   } as any;
 }
 
-describe('OFormView handleCopy awaits beginCreate (FD-4)', () => {
+describe('OFormView handleCopy awaits beginCreate', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     setActivePinia(createPinia());
-    controllerVm.mode = 'display';
-    controllerVm.draft = { Id: '1', Name: 'orig' };
-    controllerVm.original = { Id: '1', Name: 'orig' };
-    controllerVm.loading = false;
-    controllerVm.error = null;
-    controllerVm.result = null;
-    beginCreate.mockImplementation(async (seed?: any) => {
-      controllerVm.mode = 'create';
-      controllerVm.original = null;
-      controllerVm.draft = { ...(seed || {}) };
-    });
   });
 
-  function mountForm() {
-    return shallowMount(OFormView as any, {
+  function mountForm(
+    extra?: { on?: Record<string, (...args: any[]) => void>; store?: any }
+  ) {
+    const { plugins } = buildPageMountGlobal({
+      route: { path: '/demo/widget/1', params: { recordId: '1' }, query: {}, meta: {} },
+    });
+    return mountApp(OFormView as any, {
       props: {
-        store: fakeStore(),
-        recordId: '1',
+        store: extra?.store ?? fakeStore(),
+        recordId: undefined,
         showHeader: true,
         showActions: true,
         showMessages: false,
         resolveRecordIdFromRoute: false,
+        initialValues: { Name: 'seed' },
       },
-      global: {
-        stubs: {
-          OViewContainer: true,
-          OPage: true,
-          OBreadcrumb: true,
-          'el-button': true,
-          'el-icon': true,
-          'el-form': true,
-        },
-        directives: {
-          loading: {
-            mounted() {},
-            updated() {},
-          },
-        },
+      plugins: [...plugins, NoopLoading],
+      on: extra?.on,
+      stubs: {
+        ElButton: true,
+        ElIcon: true,
+        ElForm: true,
+        OBreadcrumb: true,
       },
     });
   }
 
   test('Copy action awaits beginCreate with Id stripped from seed', async () => {
-    const wrapper = mountForm();
+    let resolveDefaultGet: ((row: any) => void) | undefined;
+    const store = fakeStore({
+      DefaultGet: () =>
+        new Promise(resolve => {
+          resolveDefaultGet = resolve;
+        }),
+    });
+    const onCopy = fnRecorder();
+    const onModeChange = fnRecorder();
+    const wrapper = mountForm({ on: { onCopy, onModeChange }, store });
     await flushPromises();
 
-    expect(typeof (wrapper.vm as any).copy).toBe('function');
-    await (wrapper.vm as any).copy();
+    const ss = wrapper.setupState();
+    ss.controller.vm.original = { Id: '1', Name: 'orig' };
+    ss.controller.vm.draft = { Id: '1', Name: 'orig' };
+    ss.controller.vm.mode = 'display';
+
+    expect(typeof wrapper.root.copy).toBe('function');
+    let copySettled = false;
+    const copyPromise = wrapper.root.copy().then(() => {
+      copySettled = true;
+    });
+    await flushPromises();
+    // beginCreate opens create mode immediately with the seed, then awaits DefaultGet.
+    expect(copySettled).toBe(false);
+    expect(ss.controller.vm.mode).toBe('create');
+    expect(ss.controller.vm.draft).toEqual({ Name: 'orig' });
+
+    resolveDefaultGet?.({ Name: 'from-server', Code: 'server' });
+    await copyPromise;
     await flushPromises();
 
-    expect(beginCreate).toHaveBeenCalledTimes(1);
-    const seed = beginCreate.mock.calls[0]?.[0] as Record<string, unknown>;
-    expect(seed).toMatchObject({ Name: 'orig' });
-    expect(seed).not.toHaveProperty('Id');
-    expect(controllerVm.mode).toBe('create');
-    expect(onchangeAggReset).toHaveBeenCalled();
-    expect(onchangeReset).toHaveBeenCalled();
-    expect(wrapper.emitted('copy')?.length).toBe(1);
-    expect(wrapper.emitted('mode-change')?.at(-1)).toEqual([{ mode: 'create' }]);
-    expect((wrapper.vm as any).getFormData()).toMatchObject({ Name: 'orig' });
-    expect((wrapper.vm as any).getViewMode()).toBe('create');
-    expect((wrapper.vm as any).isLoading()).toBe(false);
+    expect(copySettled).toBe(true);
+    expect(ss.controller.vm.mode).toBe('create');
+    // Seed wins over DefaultGet for overlapping keys (Name); server fills the rest.
+    expect(ss.controller.vm.draft).toMatchObject({ Name: 'orig', Code: 'server' });
+    expect(ss.controller.vm.draft).not.toHaveProperty('Id');
+    expect(onCopy.calls.length).toBe(1);
+    expect(onModeChange.calls.at(-1)).toEqual([{ mode: 'create' }]);
+    expect(wrapper.root.getFormData()).toMatchObject({ Name: 'orig', Code: 'server' });
+    expect(wrapper.root.getViewMode()).toBe('create');
+    expect(wrapper.root.isLoading()).toBe(false);
 
     wrapper.unmount();
   });
 
   test('Copy is a no-op when there is no original record', async () => {
-    controllerVm.original = null;
-    controllerVm.draft = null;
-    const wrapper = mountForm();
+    const onCopy = fnRecorder();
+    const wrapper = mountForm({ on: { onCopy } });
     await flushPromises();
 
-    await (wrapper.vm as any).copy();
+    const ss = wrapper.setupState();
+    ss.controller.vm.original = null;
+    ss.controller.vm.draft = null;
+
+    await wrapper.root.copy();
     await flushPromises();
 
-    expect(beginCreate).not.toHaveBeenCalled();
-    expect(wrapper.emitted('copy')).toBeUndefined();
+    expect(onCopy.calls.length).toBe(0);
     wrapper.unmount();
   });
 });

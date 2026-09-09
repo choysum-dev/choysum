@@ -80,6 +80,6 @@ describe('fetchWebTranslations', () => {
       json: async () => ({}),
     }));
 
-    await expect(fetchWebTranslations('en_US', undefined, { fetchImpl: fetchImpl as any })).rejects.toThrow(/502/);
+    await expectRejects(() => fetchWebTranslations('en_US', undefined, { fetchImpl: fetchImpl as any }), /502/);
   });
 });

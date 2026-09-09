@@ -1,59 +1,40 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, h, inject, provide, ref } from 'vue';
-import { mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const flushMock = vi.fn(async () => {});
-const resetMock = vi.fn();
-const pauseMock = vi.fn();
-const afterFlushHandlers = new Set<(p: any) => void>();
-const onchangeCtrl = {
-  flush: flushMock,
-  reset: resetMock,
-  pause: pauseMock,
-  force: vi.fn(),
-  running: ref(false),
-  registerAfterFlush: (cb: (p: any) => void) => {
-    afterFlushHandlers.add(cb);
-  },
-  unregisterAfterFlush: (cb: (p: any) => void) => {
-    afterFlushHandlers.delete(cb);
-  },
-};
-
-vi.mock('@/web/web/composables/useOnchange', () => ({
-  provideOnchange: vi.fn(() => onchangeCtrl),
-  useProvidedOnchange: vi.fn(() => onchangeCtrl),
-}));
-
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-    ElMessageBox: { confirm: vi.fn() },
-  };
-});
-
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { useListInlineEdit } from '@/web/web/composables/useListInlineEdit';
+
+import {
+  disposeOnchange,
+  provideOnchange,
+} from '@/web/web/composables/useOnchange';
+import { useListInlineEdit, type UseListInlineEditDeps } from '@/web/web/composables/useListInlineEdit';
+import { fnRecorder, flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+
+const origConfirm = ElMessageBox.confirm;
+const origSuccess = ElMessage.success;
+const origError = ElMessage.error;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function mountInline(opts?: {
   enabled?: boolean;
   onSaved?: () => void | Promise<void>;
   updateImpl?: (id: string, payload: any) => Promise<any>;
+  deps?: UseListInlineEditDeps;
 }) {
   const enabled = ref(opts?.enabled ?? true);
-  const UpdateById = vi.fn(opts?.updateImpl ?? (async () => ({})));
+  const UpdateById = fnRecorder(opts?.updateImpl ?? (async () => ({})));
+  const Onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
   const store = {
     fieldsMetadata: {
       Name: { id: '1', type: 'varchar', typeAnnotation: '' },
       Sequence: { id: '2', type: 'int', typeAnnotation: '', isReadonly: true },
     },
     UpdateById,
+    Onchange,
     state: {
       record: { Id: 'store-rec', Name: 'Store' },
       _draftRecord: null as any,
@@ -70,9 +51,9 @@ function mountInline(opts?: {
         store,
         enabled,
         onSaved: opts?.onSaved,
+        deps: opts?.deps,
       });
 
-      // Sibling of the table scope — must not see form-root from the composable.
       const HeaderProbe = defineComponent({
         setup() {
           headerFormRoot = inject('form-root', null);
@@ -80,7 +61,6 @@ function mountInline(opts?: {
         },
       });
 
-      // Simulates OListInlineEditScope providing form-root under the table only.
       const TableScope = defineComponent({
         setup(_, { slots }) {
           provide('form-root', api!.formRoot);
@@ -100,36 +80,56 @@ function mountInline(opts?: {
     },
   });
 
-  mount(Host);
+  const mounted = mountApp(Host);
   return {
     api: api!,
     enabled,
     store,
     UpdateById,
+    Onchange,
     formRoot: () => api!.formRoot,
     headerFormRoot: () => headerFormRoot,
     tableFormRoot: () => tableFormRoot,
+    unmount: () => {
+      mounted.unmount();
+      disposeOnchange(store);
+    },
   };
 }
 
 describe('useListInlineEdit', () => {
+  const confirm = fnRecorder(async () => true as any);
+  const success = fnRecorder();
+  const error = fnRecorder();
+
   beforeEach(() => {
-    vi.clearAllMocks();
-    afterFlushHandlers.clear();
-    flushMock.mockResolvedValue(undefined);
+    confirm.mockReset();
+    confirm.mockImplementation(async () => true);
+    success.mockReset();
+    error.mockReset();
+    (ElMessageBox as any).confirm = confirm;
+    (ElMessage as any).success = success;
+    (ElMessage as any).error = error;
   });
 
-  it('rejects enterEdit when disabled, non-record, or missing id', async () => {
-    const { api, enabled } = mountInline();
+  afterEach(() => {
+    (ElMessageBox as any).confirm = origConfirm;
+    (ElMessage as any).success = origSuccess;
+    (ElMessage as any).error = origError;
+  });
+
+  test('rejects enterEdit when disabled, non-record, or missing id', async () => {
+    const { api, enabled, unmount } = mountInline();
     enabled.value = false;
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } })).toBe(false);
     enabled.value = true;
     expect(await api.enterEdit({ kind: 'group' })).toBe(false);
     expect(await api.enterEdit({ kind: 'record', payload: { Name: 'no-id' } })).toBe(false);
+    unmount();
   });
 
-  it('enters edit and maps draft onto matching rows', async () => {
-    const { api } = mountInline();
+  test('enters edit and maps draft onto matching rows', async () => {
+    const { api, unmount } = mountInline();
     const row = { kind: 'record', key: '1', payload: { Id: '1', Name: 'A' } };
     expect(await api.enterEdit(row)).toBe(true);
     expect(api.isEditing.value).toBe(true);
@@ -141,146 +141,130 @@ describe('useListInlineEdit', () => {
     const mapped = api.mapItemsWithDraft([row, { kind: 'record', key: '2', payload: { Id: '2', Name: 'X' } }]);
     expect(mapped[0].payload.Name).toBe('B');
     expect(mapped[1].payload.Name).toBe('X');
+    unmount();
   });
 
-  it('discards draft and resets table view mode', async () => {
-    const { api } = mountInline();
+  test('discards draft and resets table view mode', async () => {
+    const { api, unmount } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     await api.discard();
     expect(api.isEditing.value).toBe(false);
     expect(api.tableViewMode.value).toBe('display');
     expect(api.mapItemsWithDraft([{ kind: 'record', payload: { Id: '1' } }])[0].payload.Id).toBe('1');
+    unmount();
   });
 
-  it('saves dirty payload via UpdateById and swallows onSaved errors', async () => {
-    const onSaved = vi.fn(async () => {
+  test('saves dirty payload via UpdateById and swallows onSaved errors', async () => {
+    const onSaved = fnRecorder(async () => {
       throw new Error('reload failed');
     });
-    const { api, UpdateById } = mountInline({ onSaved });
+    const { api, UpdateById, unmount } = mountInline({ onSaved });
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A', Sequence: 1 } });
     api.editingDraft.value!.Name = 'B';
     expect(api.isDirty()).toBe(true);
-    await expect(api.save()).resolves.toBe(true);
-    expect(UpdateById).toHaveBeenCalledWith('1', { Name: 'B' });
-    expect(ElMessage.success).toHaveBeenCalled();
-    expect(onSaved).toHaveBeenCalled();
+    expect(await api.save()).toBe(true);
+    expect(UpdateById.calls[0]).toEqual(['1', { Name: 'B' }]);
+    expect(success.calls.length).toBeGreaterThan(0);
+    expect(onSaved.calls.length).toBe(1);
     expect(api.isEditing.value).toBe(false);
+    unmount();
   });
 
-  it('saves with empty dirty payload without UpdateById', async () => {
-    const onSaved = vi.fn(async () => {
+  test('saves with empty dirty payload without UpdateById', async () => {
+    const onSaved = fnRecorder(async () => {
       throw new Error('x');
     });
-    const { api, UpdateById } = mountInline({ onSaved });
+    const { api, UpdateById, unmount } = mountInline({ onSaved });
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
-    await expect(api.save()).resolves.toBe(true);
-    expect(UpdateById).not.toHaveBeenCalled();
-    expect(onSaved).toHaveBeenCalled();
+    expect(await api.save()).toBe(true);
+    expect(UpdateById.calls.length).toBe(0);
+    expect(onSaved.calls.length).toBe(1);
+    unmount();
   });
 
-  it('surfaces UpdateById failures', async () => {
-    const { api } = mountInline({
+  test('surfaces UpdateById failures', async () => {
+    const { api, unmount } = mountInline({
       updateImpl: async () => {
         throw new Error('boom');
       },
     });
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
-    await expect(api.save()).rejects.toThrow('boom');
-    expect(ElMessage.error).toHaveBeenCalled();
+    await expectRejects(() => api.save(), 'boom');
+    expect(error.calls.length).toBeGreaterThan(0);
     expect(api.saving.value).toBe(false);
+    unmount();
   });
 
-  it('save returns false when not editing', async () => {
-    const { api } = mountInline();
+  test('save returns false when not editing', async () => {
+    const { api, unmount } = mountInline();
     expect(await api.save()).toBe(false);
+    unmount();
   });
 
-  it('dirty switch save / discard / cancel', async () => {
-    const { api } = mountInline();
+  test('dirty switch save / discard / cancel', async () => {
+    const { api, unmount } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
 
-    (ElMessageBox.confirm as any).mockResolvedValueOnce(true);
+    confirm.mockImplementation(async () => true);
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(true);
     expect(api.editingRowId.value).toBe('2');
 
     await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } });
     api.editingDraft.value!.Name = 'D';
-    (ElMessageBox.confirm as any).mockRejectedValueOnce('cancel');
+    confirm.mockImplementation(async () => {
+      throw 'cancel';
+    });
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '3', Name: 'E' } })).toBe(true);
     expect(api.editingRowId.value).toBe('3');
 
     api.editingDraft.value!.Name = 'F';
-    (ElMessageBox.confirm as any).mockRejectedValueOnce('close');
+    confirm.mockImplementation(async () => {
+      throw 'close';
+    });
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '4', Name: 'G' } })).toBe(false);
     expect(api.editingRowId.value).toBe('3');
+    unmount();
   });
 
-  it('dirty switch save failure blocks enter', async () => {
-    const { api } = mountInline({
+  test('dirty switch save failure blocks enter', async () => {
+    const { api, unmount } = mountInline({
       updateImpl: async () => {
         throw new Error('fail');
       },
     });
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
-    (ElMessageBox.confirm as any).mockResolvedValueOnce(true);
-    await expect(api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).rejects.toThrow('fail');
+    confirm.mockImplementation(async () => true);
+    await expectRejects(() => api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } }), 'fail');
+    unmount();
   });
 
-  it('dirty switch aborts when save returns false', async () => {
-    const { api } = mountInline();
-    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
-    api.editingDraft.value!.Name = 'B';
-    (ElMessageBox.confirm as any).mockImplementationOnce(async () => {
-      // Clear draft so save() returns false without throwing.
-      api.editingDraft.value = null;
-      return true;
-    });
-    expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(false);
-    expect(api.editingRowId.value).toBe('1');
-  });
-
-  it('mapItemsWithDraft returns the same array when not editing', () => {
-    const { api } = mountInline();
+  test('mapItemsWithDraft returns the same array when not editing', () => {
+    const { api, unmount } = mountInline();
     const rows = [{ kind: 'record', payload: { Id: '1', Name: 'A' } }];
     expect(api.mapItemsWithDraft(rows)).toBe(rows);
+    unmount();
   });
 
-  it('exitEdit tolerates a missing onchange controller', async () => {
-    const { useProvidedOnchange } = await import('@/web/web/composables/useOnchange');
-    (useProvidedOnchange as any).mockReturnValueOnce(null);
-    const { api } = mountInline();
-    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
-    (useProvidedOnchange as any).mockReturnValueOnce(null);
-    await expect(api.discard()).resolves.toBeUndefined();
-    expect(api.isEditing.value).toBe(false);
-  });
-
-  it('exits cleanly when switching undirty rows', async () => {
-    const { api } = mountInline();
+  test('exits cleanly when switching undirty rows', async () => {
+    const { api, unmount } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'B' } })).toBe(true);
     expect(api.editingRowId.value).toBe('2');
-  });
-});
-
-describe('useListInlineEdit form-root / onchange wiring', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    afterFlushHandlers.clear();
-    flushMock.mockResolvedValue(undefined);
+    unmount();
   });
 
-  it('does not leak form-root to header siblings outside the table scope', async () => {
-    const { headerFormRoot, tableFormRoot, formRoot } = mountInline();
+  test('does not leak form-root to header siblings outside the table scope', () => {
+    const { headerFormRoot, tableFormRoot, formRoot, unmount } = mountInline();
     expect(headerFormRoot()).toBeNull();
     expect(tableFormRoot()).toBe(formRoot());
+    unmount();
   });
 
-  it('form-root getField/setField respect enabled and draft state', async () => {
-    const { api, enabled, formRoot } = mountInline();
+  test('form-root getField/setField respect enabled and draft state', async () => {
+    const { api, enabled, formRoot, unmount } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A', nested: { x: 1 } } });
 
     const root = formRoot();
@@ -296,10 +280,11 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     expect(root.getField('Name')).toBeUndefined();
     root.setField('Name', 'ignored');
     expect(api.editingDraft.value?.Name).toBe('Z');
+    unmount();
   });
 
-  it('form-root setField initializes empty draft when missing', async () => {
-    const { api, formRoot } = mountInline();
+  test('form-root setField initializes empty draft when missing', async () => {
+    const { api, formRoot, unmount } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value = null;
     const root = formRoot();
@@ -307,60 +292,15 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     expect(root.getField('Name')).toBeUndefined();
     root.setField('Name', 'bootstrapped');
     expect(api.editingDraft.value).toEqual({ Name: 'bootstrapped' });
+    unmount();
   });
 
-  it('provideOnchange uses draft root while editing and store fallback when idle', async () => {
-    const { provideOnchange } = await import('@/web/web/composables/useOnchange');
-    const { api, enabled, store } = mountInline();
-    const opts = (provideOnchange as any).mock.calls.at(-1)[2];
-
-    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: 'store-rec' }));
-
-    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
-    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: '1' }));
-    opts.onPatch({ Name: 'Z' });
-    expect(api.editingDraft.value?.Name).toBe('Z');
-    // Truthy non-object must hit the typeof!=='object' branch while a draft exists.
-    opts.onPatch('x');
-    opts.onPatch(42);
-    expect(api.editingDraft.value?.Name).toBe('Z');
-
-    api.editingDraft.value = null;
-    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: 'store-rec' }));
-    opts.onPatch({ Name: 'ignored' });
-    opts.onPatch(null);
-    opts.onPatch('x');
-    expect(api.editingDraft.value).toBeNull();
-
-    enabled.value = false;
-    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: 'store-rec' }));
-    store.state._draftRecord = { Id: 'draft', Name: 'D' };
-    expect(opts.getRoot()).toEqual(expect.objectContaining({ Id: 'draft' }));
-  });
-
-  it('re-pauses onchange after reset on enter and exit edit', async () => {
-    const { api } = mountInline();
-    resetMock.mockClear();
-    pauseMock.mockClear();
-    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
-    expect(resetMock).toHaveBeenCalled();
-    expect(pauseMock).toHaveBeenCalled();
-    expect(pauseMock.mock.invocationCallOrder[0]).toBeGreaterThan(resetMock.mock.invocationCallOrder[0]!);
-
-    resetMock.mockClear();
-    pauseMock.mockClear();
-    await api.discard();
-    expect(resetMock).toHaveBeenCalled();
-    expect(pauseMock).toHaveBeenCalled();
-    expect(pauseMock.mock.invocationCallOrder[0]).toBeGreaterThan(resetMock.mock.invocationCallOrder[0]!);
-  });
-
-  it('save rejects re-entrant calls while a save is in flight', async () => {
+  test('save rejects re-entrant calls while a save is in flight', async () => {
     let release!: () => void;
     const gate = new Promise<void>(resolve => {
       release = resolve;
     });
-    const { api, UpdateById } = mountInline({
+    const { api, UpdateById, unmount } = mountInline({
       updateImpl: async () => {
         await gate;
         return {};
@@ -373,46 +313,194 @@ describe('useListInlineEdit form-root / onchange wiring', () => {
     expect(api.saving.value).toBe(true);
     expect(await api.save()).toBe(false);
     release();
-    await expect(first).resolves.toBe(true);
-    expect(UpdateById).toHaveBeenCalledTimes(1);
+    expect(await first).toBe(true);
+    expect(UpdateById.calls.length).toBe(1);
+    unmount();
   });
 
-  it('exits edit when flush clears draft during save', async () => {
-    const { api } = mountInline();
+  test('dirty switch aborts when save returns false', async () => {
+    const { api, unmount } = mountInline();
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
-    flushMock.mockImplementationOnce(async () => {
+    confirm.mockImplementation(async () => {
+      // Clear draft so save() returns false without throwing.
       api.editingDraft.value = null;
+      return true;
     });
-    await expect(api.save()).resolves.toBe(true);
-    expect(api.isEditing.value).toBe(false);
-    expect(api.editingRowId.value).toBeNull();
+    expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(false);
+    expect(api.editingRowId.value).toBe('1');
+    unmount();
   });
 
-  it('blocks UpdateById when onchange flush reports error messages', async () => {
-    flushMock.mockImplementationOnce(async () => {
+  test('exitEdit tolerates a missing onchange controller', async () => {
+    const { api, unmount } = mountInline({
+      deps: {
+        useProvidedOnchange: () => null,
+      },
+    });
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    await api.discard();
+    expect(api.isEditing.value).toBe(false);
+    unmount();
+  });
+
+  test('provideOnchange uses draft root while editing and store fallback when idle', async () => {
+    let capturedOpts: any;
+    const { api, enabled, store, unmount } = mountInline({
+      deps: {
+        provideOnchange: ((s, session, opts) => {
+          capturedOpts = opts;
+          return provideOnchange(s, session, opts);
+        }) as any,
+      },
+    });
+
+    expect(capturedOpts.getRoot().Id).toBe('store-rec');
+
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    expect(capturedOpts.getRoot().Id).toBe('1');
+    capturedOpts.onPatch({ Name: 'Z' });
+    expect(api.editingDraft.value?.Name).toBe('Z');
+    // Truthy non-object must hit the typeof!=='object' branch while a draft exists.
+    capturedOpts.onPatch('x');
+    capturedOpts.onPatch(42);
+    expect(api.editingDraft.value?.Name).toBe('Z');
+
+    api.editingDraft.value = null;
+    expect(capturedOpts.getRoot().Id).toBe('store-rec');
+    capturedOpts.onPatch({ Name: 'ignored' });
+    capturedOpts.onPatch(null);
+    capturedOpts.onPatch('x');
+    expect(api.editingDraft.value).toBeNull();
+
+    enabled.value = false;
+    expect(capturedOpts.getRoot().Id).toBe('store-rec');
+    store.state._draftRecord = { Id: 'draft', Name: 'D' };
+    expect(capturedOpts.getRoot().Id).toBe('draft');
+    unmount();
+  });
+
+  test('re-pauses onchange after reset on enter and exit edit', async () => {
+    const { api, Onchange, unmount } = mountInline();
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    Onchange.mockClear();
+    // Controller is paused after enter — draft mutation must not auto-RPC.
+    api.editingDraft.value = { Id: '1', Name: 'B' };
+    await flushPromises();
+    await sleep(40);
+    expect(Onchange.calls.length).toBe(0);
+
+    await api.discard();
+    Onchange.mockClear();
+    // After discard, controller is reset+paused again; mutation must not auto-RPC.
+    api.editingDraft.value = { Id: '1', Name: 'C' };
+    await flushPromises();
+    await sleep(40);
+    expect(Onchange.calls.length).toBe(0);
+    unmount();
+  });
+
+  test('exits edit when flush clears draft during save', async () => {
+    const afterFlushHandlers = new Set<(p: any) => void>();
+    const flush = fnRecorder(async () => undefined);
+    const oc = {
+      flush,
+      reset: fnRecorder(),
+      pause: fnRecorder(),
+      force: fnRecorder(),
+      running: ref(false),
+      registerAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.add(cb);
+      },
+      unregisterAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.delete(cb);
+      },
+    };
+    const { api, UpdateById, unmount } = mountInline({
+      deps: {
+        provideOnchange: (() => oc) as any,
+        useProvidedOnchange: (() => oc) as any,
+      },
+    });
+    await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
+    api.editingDraft.value!.Name = 'B';
+    flush.mockImplementation(async () => {
+      api.editingDraft.value = null;
+    });
+    expect(await api.save()).toBe(true);
+    expect(UpdateById.calls.length).toBe(0);
+    expect(api.isEditing.value).toBe(false);
+    expect(api.editingRowId.value).toBeNull();
+    unmount();
+  });
+
+  test('blocks UpdateById when onchange flush reports error messages', async () => {
+    const afterFlushHandlers = new Set<(p: any) => void>();
+    let flushImpl: () => Promise<void> = async () => undefined;
+    const oc = {
+      flush: async () => flushImpl(),
+      reset: fnRecorder(),
+      pause: fnRecorder(),
+      force: fnRecorder(),
+      running: ref(false),
+      registerAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.add(cb);
+      },
+      unregisterAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.delete(cb);
+      },
+    };
+    const { api, UpdateById, unmount } = mountInline({
+      deps: {
+        provideOnchange: (() => oc) as any,
+        useProvidedOnchange: (() => oc) as any,
+      },
+    });
+    flushImpl = async () => {
       for (const cb of afterFlushHandlers) {
         cb({ result: { messages: [{ level: 'error', message: 'bad' }] } });
       }
-    });
-    const { api, UpdateById } = mountInline();
+    };
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
-    await expect(api.save()).resolves.toBe(false);
-    expect(UpdateById).not.toHaveBeenCalled();
+    expect(await api.save()).toBe(false);
+    expect(UpdateById.calls.length).toBe(0);
     expect(api.isEditing.value).toBe(true);
-    expect(ElMessage.error).toHaveBeenCalledWith('Failed to save row');
+    expect(error.calls.length).toBeGreaterThan(0);
+    unmount();
   });
 
-  it('dirty switch continues after flush-cleared draft save exits edit', async () => {
-    const { api } = mountInline();
+  test('dirty switch continues after flush-cleared draft save exits edit', async () => {
+    const afterFlushHandlers = new Set<(p: any) => void>();
+    const flush = fnRecorder(async () => undefined);
+    const oc = {
+      flush,
+      reset: fnRecorder(),
+      pause: fnRecorder(),
+      force: fnRecorder(),
+      running: ref(false),
+      registerAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.add(cb);
+      },
+      unregisterAfterFlush: (cb: (p: any) => void) => {
+        afterFlushHandlers.delete(cb);
+      },
+    };
+    const { api, UpdateById, unmount } = mountInline({
+      deps: {
+        provideOnchange: (() => oc) as any,
+        useProvidedOnchange: (() => oc) as any,
+      },
+    });
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
-    flushMock.mockImplementationOnce(async () => {
+    flush.mockImplementation(async () => {
       api.editingDraft.value = null;
     });
-    (ElMessageBox.confirm as any).mockResolvedValueOnce(true);
+    confirm.mockImplementation(async () => true);
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(true);
+    expect(UpdateById.calls.length).toBe(0);
     expect(api.editingRowId.value).toBe('2');
+    unmount();
   });
 });

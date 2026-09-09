@@ -1,70 +1,11 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, h, reactive, ref } from 'vue';
+import { h } from 'vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
-const routerPush = vi.fn(async () => undefined);
-
-vi.mock('vue-router', () => ({
-  useRouter: () => ({
-    push: routerPush,
-    resolve: vi.fn((loc: { name?: string }) => ({
-      name: loc?.name,
-      matched: loc?.name ? [{ path: '/x' }] : [],
-    })),
-  }),
-  useRoute: () => ({ name: 'TokenKanban', fullPath: '/auth/tokens/kanban', params: {}, query: {} }),
-}));
-
-vi.mock('@/web/web/controllers/kanbanController', () => ({
-  createKanbanController: vi.fn(() => ({
-    vm: reactive({
-      result: { kind: 'search', total: 0, rows: [] },
-    }),
-    lanes: ref([]),
-    laneRecords: ref({}),
-    apply: vi.fn(async () => {}),
-    paginate: vi.fn(async () => {}),
-    getLaneField: () => null,
-    getLaneRemain: () => 0,
-    preloadLane: vi.fn(async () => {}),
-    loadMoreLane: vi.fn(async () => {}),
-  })),
-}));
-
-vi.mock('@/web/web/components/view/kanbanFirstFrame', () => ({
-  shouldDeferViewFirstFrame: () => false,
-  shouldDeferKanbanFirstFrame: () => false,
-}));
-
-vi.mock('@/web/web/query/utils/registry/fieldReady', () => ({
-  awaitFieldSelection: vi.fn(async () => {}),
-}));
-
-vi.mock('@/web/web/i18n', () => ({
-  createTranslate: () => ({ _t: (msg: string) => msg, _lt: (msg: string) => msg }),
-}));
-
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-  };
-});
-
-vi.mock('vuedraggable', () => ({
-  default: defineComponent({
-    name: 'DraggableStub',
-    setup(_, { slots }) {
-      return () => h('div', { class: 'draggable-stub' }, slots.default?.());
-    },
-  }),
-}));
-
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OPagination from './OPagination.vue';
 import OKanbanView from './OKanbanView.vue';
 
 function makeStore() {
@@ -84,27 +25,56 @@ function makeStore() {
       selection: [],
       planCache: new Map(),
     },
-    setContext: vi.fn(),
-    getContext: vi.fn(() => ({})),
-    withContext: vi.fn(async (_c: any, fn: any) => fn()),
+    setContext: () => {},
+    getContext: () => ({}),
+    withContext: async (_c: any, fn: any) => fn(),
+    Search: async () => [],
   };
 }
 
-const stubs = {
-  OViewContainer: { template: '<div><slot name="header" /><slot /></div>' },
-  OPagination: true,
-  'el-button': { template: '<button type="button" v-bind="$attrs"><slot /></button>' },
-  'el-icon': true,
-};
+function buttonStub() {
+  return {
+    name: 'ElButton',
+    emits: ['click'],
+    setup(_props: any, { slots, emit }: any) {
+      return () =>
+        h(
+          'button',
+          { type: 'button', class: 'el-btn', onClick: (e: Event) => emit('click', e) },
+          slots.default?.()
+        );
+    },
+  };
+}
+
+function findNewButton(el: HTMLElement) {
+  return Array.from(el.querySelectorAll('button')).find(b => (b.textContent || '').includes('New'));
+}
 
 describe('OKanbanView create action', () => {
+  const push = fnRecorder(async (to: unknown) => to);
+
   beforeEach(() => {
-    routerPush.mockReset();
-    routerPush.mockImplementation(async () => undefined);
+    push.mockReset();
+    push.mockImplementation(async (to: unknown) => to);
+    stubSfc(OPagination, {
+      name: 'OPagination',
+      setup() {
+        return () => h('div', { 'data-stub': 'OPagination' });
+      },
+    });
   });
 
-  it('pushes createAction when New is clicked', async () => {
-    const wrapper = mount(OKanbanView as any, {
+  afterEach(() => {
+    restoreSfc(OPagination);
+  });
+
+  test('pushes createAction when New is clicked', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'TokenKanban', path: '/auth/tokens/kanban', fullPath: '/auth/tokens/kanban' },
+      router: { push },
+    });
+    const { unmount, el } = mountApp(OKanbanView as any, {
       props: {
         store: makeStore(),
         createAction: '/auth/tokens/new',
@@ -113,21 +83,32 @@ describe('OKanbanView create action', () => {
         refreshAction: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: {
+        ElButton: buttonStub(),
+        ElIcon: true,
+      },
     });
     await flushPromises();
 
-    const newBtn = wrapper.findAll('button').find(b => b.text().includes('New'));
+    const newBtn = findNewButton(el);
     expect(newBtn).toBeTruthy();
-    await newBtn!.trigger('click');
+    (newBtn as HTMLElement).click();
     await flushPromises();
-    expect(routerPush).toHaveBeenCalledWith('/auth/tokens/new');
-    wrapper.unmount();
+    expect(push.calls[0]?.[0]).toBe('/auth/tokens/new');
+    unmount();
   });
 
-  it('emits action-error when create navigation fails with a non-Error', async () => {
-    routerPush.mockRejectedValueOnce('boom');
-    const wrapper = mount(OKanbanView as any, {
+  test('emits action-error when create navigation fails with a non-Error', async () => {
+    push.mockImplementation(async () => {
+      throw 'boom';
+    });
+    const onActionError = fnRecorder();
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'TokenKanban', path: '/auth/tokens/kanban', fullPath: '/auth/tokens/kanban' },
+      router: { push },
+    });
+    const { unmount, el } = mountApp(OKanbanView as any, {
       props: {
         store: makeStore(),
         createAction: '/auth/tokens/new',
@@ -136,23 +117,31 @@ describe('OKanbanView create action', () => {
         refreshAction: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      on: { onActionError },
+      stubs: {
+        ElButton: buttonStub(),
+        ElIcon: true,
+      },
     });
     await flushPromises();
 
-    const newBtn = wrapper.findAll('button').find(b => b.text().includes('New'));
+    const newBtn = findNewButton(el);
     expect(newBtn).toBeTruthy();
-    await newBtn!.trigger('click');
+    (newBtn as HTMLElement).click();
     await flushPromises();
-    expect(wrapper.emitted('action-error')?.[0]?.[0]).toMatchObject({
-      action: 'create',
-      error: expect.objectContaining({ message: 'boom' }),
-    });
-    wrapper.unmount();
+    expect(onActionError.calls[0]?.[0]?.action).toBe('create');
+    expect(onActionError.calls[0]?.[0]?.error).toBeInstanceOf(Error);
+    expect(onActionError.calls[0]?.[0]?.error?.message).toBe('boom');
+    unmount();
   });
 
-  it('hides New when createAction is empty', async () => {
-    const wrapper = mount(OKanbanView as any, {
+  test('hides New when createAction is empty', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'TokenKanban', path: '/auth/tokens/kanban', fullPath: '/auth/tokens/kanban' },
+      router: { push },
+    });
+    const { unmount, el, setupState } = mountApp(OKanbanView as any, {
       props: {
         store: makeStore(),
         createAction: '',
@@ -161,12 +150,16 @@ describe('OKanbanView create action', () => {
         refreshAction: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: {
+        ElButton: buttonStub(),
+        ElIcon: true,
+      },
     });
     await flushPromises();
-    expect(wrapper.findAll('button').some(b => b.text().includes('New'))).toBe(false);
-    await (wrapper.vm as any).$.setupState.handleCreate();
-    expect(routerPush).not.toHaveBeenCalled();
-    wrapper.unmount();
+    expect(findNewButton(el)).toBeFalsy();
+    await setupState().handleCreate();
+    expect(push.calls.length).toBe(0);
+    unmount();
   });
 });

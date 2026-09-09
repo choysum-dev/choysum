@@ -1,21 +1,16 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, defineComponent, h, inject, nextTick, ref } from 'vue';
-import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
-import type { UseField } from '@/web/web/composables/useField';
-import OOneToManyField from '@/web/web/components/field/OOneToManyField.vue';
-import { LIST_HANDLE_API_KEY } from '@/web/web/composables/useListHandleReorder';
 
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({ _t: (msg: string) => msg }),
-  };
-});
+import type { UseField } from '@/web/web/composables/useField';
+import { LIST_HANDLE_API_KEY } from '@/web/web/composables/useListHandleReorder';
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OFieldBase from './OFieldBase.vue';
+import OOneToManyField from './OOneToManyField.vue';
+import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
+import OVTable from '@/web/web/components/vtable/OVTable.vue';
+import OViewScope from '@/web/web/components/view/OViewScope.vue';
 
 function makeBinding(opts: {
   items?: any[];
@@ -50,106 +45,158 @@ function makeBinding(opts: {
     } as any,
     asMutableArray: () => ({
       getItems: () => items.value,
-      insertItem: vi.fn(),
-      removeItemAt: vi.fn(),
+      insertItem: fnRecorder(),
+      removeItemAt: fnRecorder(),
     }),
     store: undefined,
     asView: () => ({ fieldValue: () => fieldValue }) as any,
   } as any;
-  return { binding, fieldValue };
+  return { binding, fieldValue, items };
 }
 
-const OFieldBaseStub = defineComponent({
-  name: 'OFieldBaseStub',
-  props: { binding: { type: Object, required: true } },
-  setup(props, { slots }) {
-    return () =>
-      h('div', { class: 'field-base-stub' }, [
-        props.binding.env.isEditMode ? slots.edit?.({}) : slots.display?.({}),
-      ]);
-  },
-});
+const capturedHandleApi: { current: any } = { current: null };
 
-const OVColumnStub = defineComponent({
-  name: 'OVColumnStub',
-  props: { type: String, colKey: String },
-  setup(props) {
-    return () => h('div', { class: 'ov-column-stub', 'data-type': props.type, 'data-key': props.colKey });
-  },
-});
-
-const OVTableStub = defineComponent({
-  name: 'OVTableStub',
-  setup(_, { slots }) {
-    const handleApi = inject(LIST_HANDLE_API_KEY, null);
-    (globalThis as any).__o2mHandleApi = handleApi;
-    return () => h('div', { class: 'ov-table-stub' }, slots.default?.());
-  },
-});
-
-const globalStubs = {
-  OFieldBase: OFieldBaseStub,
-  OVTable: OVTableStub,
-  OVColumn: OVColumnStub,
-  OViewScope: { template: '<div><slot /></div>' },
-  ElButton: { template: '<button><slot /></button>' },
-};
+function installStubs() {
+  stubSfc(OFieldBase as any, {
+    name: 'OFieldBase',
+    props: { binding: { type: Object, required: true } },
+    setup(props: any, { slots }: any) {
+      return () =>
+        h('div', { class: 'field-base-stub' }, [
+          props.binding.env.isEditMode ? slots.edit?.({}) : slots.display?.({}),
+        ]);
+    },
+  });
+  stubSfc(OVColumn as any, {
+    name: 'OVColumn',
+    props: { type: String, colKey: String },
+    setup(props: any) {
+      const cls = props.type === 'handle' ? 'ov-column-handle' : 'ov-column-stub';
+      return () => h('div', { class: cls, 'data-type': props.type, 'data-key': props.colKey });
+    },
+  });
+  stubSfc(OVTable as any, {
+    name: 'OVTable',
+    setup(_: any, { slots }: any) {
+      capturedHandleApi.current = inject(LIST_HANDLE_API_KEY, null);
+      return () => h('div', { class: 'ov-table-stub' }, slots.default?.());
+    },
+  });
+  stubSfc(OViewScope as any, {
+    name: 'OViewScope',
+    setup(_: any, { slots }: any) {
+      return () => h('div', { class: 'view-scope-stub' }, slots.default?.());
+    },
+  });
+}
 
 describe('OOneToManyField handle column', () => {
-  it('shows handle column in edit mode when Sequence metadata exists', async () => {
-    const { binding } = makeBinding({});
-    const wrapper = mount(OOneToManyField, {
-      props: { binding, showHandle: true },
-      global: { stubs: globalStubs },
-    });
-    await nextTick();
-    expect(wrapper.find('.ov-column-stub[data-type="handle"]').exists()).toBe(true);
+  afterEach(() => {
+    restoreSfc(OFieldBase as any);
+    restoreSfc(OVColumn as any);
+    restoreSfc(OVTable as any);
+    restoreSfc(OViewScope as any);
+    capturedHandleApi.current = null;
   });
 
-  it('hides handle column when showHandle is false or metadata lacks Sequence', async () => {
-    const noMeta = makeBinding({ sequenceMeta: false });
-    const w1 = mount(OOneToManyField, {
-      props: { binding: noMeta.binding, showHandle: true },
-      global: { stubs: globalStubs },
+  test('shows handle column in edit mode when Sequence metadata exists', async () => {
+    installStubs();
+    const { binding } = makeBinding({});
+    const m = mountApp(OOneToManyField as any, {
+      props: { binding, showHandle: true },
+      stubs: {
+        'el-button': defineComponent({
+          name: 'ElButtonStub',
+          setup(_, { slots }) {
+            return () => h('button', {}, slots.default?.());
+          },
+        }),
+      },
     });
-    expect(w1.find('.ov-column-stub[data-type="handle"]').exists()).toBe(false);
+    await nextTick();
+    expect(m.q('.ov-column-handle')).toBeTruthy();
+    m.unmount();
+  });
+
+  test('hides handle column when showHandle is false or metadata lacks Sequence', async () => {
+    installStubs();
+    const noMeta = makeBinding({ sequenceMeta: false });
+    const w1 = mountApp(OOneToManyField as any, {
+      props: { binding: noMeta.binding, showHandle: true },
+      stubs: {
+        'el-button': defineComponent({
+          name: 'ElButtonStub',
+          setup(_, { slots }) {
+            return () => h('button', {}, slots.default?.());
+          },
+        }),
+      },
+    });
+    expect(w1.q('.ov-column-handle')).toBeFalsy();
+    w1.unmount();
 
     const withMeta = makeBinding({});
-    const w2 = mount(OOneToManyField, {
+    const w2 = mountApp(OOneToManyField as any, {
       props: { binding: withMeta.binding, showHandle: false },
-      global: { stubs: globalStubs },
+      stubs: {
+        'el-button': defineComponent({
+          name: 'ElButtonStub',
+          setup(_, { slots }) {
+            return () => h('button', {}, slots.default?.());
+          },
+        }),
+      },
     });
-    expect(w2.find('.ov-column-stub[data-type="handle"]').exists()).toBe(false);
+    expect(w2.q('.ov-column-handle')).toBeFalsy();
+    w2.unmount();
   });
 
-  it('onReorder assigns reordered rows to fieldRef', async () => {
+  test('onReorder assigns reordered rows to fieldRef', async () => {
+    installStubs();
+    capturedHandleApi.current = null;
     const { binding, fieldValue } = makeBinding({});
-    (globalThis as any).__o2mHandleApi = undefined;
-
-    mount(OOneToManyField, {
+    const m = mountApp(OOneToManyField as any, {
       props: { binding, showHandle: true },
-      global: { stubs: { ...globalStubs, OVTable: OVTableStub } },
+      stubs: {
+        'el-button': defineComponent({
+          name: 'ElButtonStub',
+          setup(_, { slots }) {
+            return () => h('button', {}, slots.default?.());
+          },
+        }),
+      },
     });
     await nextTick();
+    await flushPromises();
 
-    const capturedApi = (globalThis as any).__o2mHandleApi;
-    expect(capturedApi).toBeTruthy();
-    capturedApi.onDragStart(0, {
-      preventDefault: vi.fn(),
-      dataTransfer: { effectAllowed: '', setData: vi.fn() },
+    const api = capturedHandleApi.current;
+    expect(api).toBeTruthy();
+    api.onDragStart(0, {
+      preventDefault: fnRecorder(),
+      dataTransfer: { effectAllowed: '', setData: fnRecorder() },
     });
-    await capturedApi.onDrop(1, { preventDefault: vi.fn() });
+    await api.onDrop(1, { preventDefault: fnRecorder() });
     expect(fieldValue.value.map((r: any) => r.Id)).toEqual(['2', '1']);
     expect(fieldValue.value.map((r: any) => r.Sequence)).toEqual([1, 2]);
+    m.unmount();
   });
 
-  it('shows handle column with explicit handleField prop', async () => {
+  test('shows handle column with explicit handleField prop', async () => {
+    installStubs();
     const { binding } = makeBinding({});
-    const wrapper = mount(OOneToManyField, {
+    const m = mountApp(OOneToManyField as any, {
       props: { binding, showHandle: true, handleField: 'Sequence' },
-      global: { stubs: globalStubs },
+      stubs: {
+        'el-button': defineComponent({
+          name: 'ElButtonStub',
+          setup(_, { slots }) {
+            return () => h('button', {}, slots.default?.());
+          },
+        }),
+      },
     });
     await nextTick();
-    expect(wrapper.find('.ov-column-stub[data-type="handle"]').exists()).toBe(true);
+    expect(m.q('.ov-column-handle')).toBeTruthy();
+    m.unmount();
   });
 });

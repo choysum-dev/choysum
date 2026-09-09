@@ -204,17 +204,22 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
     throw new Error('class whitespace match failed');
   }
 
-  let unsupported = false;
-  try { parent.querySelector('div.a'); } catch (_) { unsupported = true; }
-  if (!unsupported) throw new Error('expected unsupported compound selector');
+  // tag.class is supported (single class); multi-class compounds stay unsupported.
+  if (!parent.querySelector('span.a')) {
+    throw new Error('tag.class selector should match');
+  }
 
-  unsupported = false;
+  let unsupported = false;
   try { parent.querySelector('.a.b'); } catch (_) { unsupported = true; }
   if (!unsupported) throw new Error('expected unsupported .a.b');
 
   unsupported = false;
   try { parent.querySelector('#a.b'); } catch (_) { unsupported = true; }
   if (!unsupported) throw new Error('expected unsupported #a.b');
+
+  unsupported = false;
+  try { parent.querySelector('div.a.b'); } catch (_) { unsupported = true; }
+  if (!unsupported) throw new Error('expected unsupported div.a.b');
 
   child.setAttribute('data-x', 'p.q');
   if (!parent.querySelector('[data-x="p.q"]')) {

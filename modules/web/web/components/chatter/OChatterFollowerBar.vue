@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { ElButton } from 'element-plus';
-import { getFollowerStore } from '@/web/web/composables/chatter/chatterStores';
+import { useInjectedFollowerStore } from '@/web/web/composables/chatter/chatterStores';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -28,7 +28,7 @@ const props = defineProps<{
 }>();
 
 const { _t } = createTranslate('web', { scope: 'web/components/chatter/OChatterFollowerBar' });
-const followerStore = getFollowerStore();
+const followerStore = useInjectedFollowerStore();
 const authStore = useAuthStore();
 const following = ref(false);
 const followerCount = ref(0);

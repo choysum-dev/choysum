@@ -16,7 +16,14 @@ SPDX-License-Identifier: Apache-2.0
       <el-dropdown-menu class="o-notification-bell__menu">
         <div class="o-notification-bell__toolbar">
           <span>{{ _t('Notifications') }}</span>
-          <el-button v-if="unreadCount > 0" link type="primary" size="small" @click.stop="markAllRead">
+          <el-button
+            v-if="unreadCount > 0"
+            link
+            type="primary"
+            size="small"
+            data-test="notification-mark-all-read"
+            @click.stop="markAllRead"
+          >
             {{ _t('Mark all read') }}
           </el-button>
         </div>
@@ -49,7 +56,10 @@ SPDX-License-Identifier: Apache-2.0
 import { onMounted, onUnmounted, ref } from 'vue';
 import { Bell } from '@element-plus/icons-vue';
 import { ElBadge, ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon } from 'element-plus';
-import { useNotificationInbox, type InboxNotificationRow } from '@/web/web/composables/chatter/useNotificationInbox';
+import {
+  useInjectedNotificationInbox,
+  type InboxNotificationRow,
+} from '@/web/web/composables/chatter/useNotificationInbox';
 import { formatUtcIso } from '@/web/web/utils/datetime';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -58,7 +68,7 @@ const isAuthenticated = ref(false);
 let stopAuthSubscribe: (() => void) | undefined;
 let disposed = false;
 
-const inbox = useNotificationInbox(() => isAuthenticated.value);
+const inbox = useInjectedNotificationInbox(() => isAuthenticated.value);
 const { rows, loading, error, unreadCount, markRead, markAllRead, activate, deactivate } = inbox;
 
 onMounted(async () => {

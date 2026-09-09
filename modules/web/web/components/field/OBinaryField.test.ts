@@ -1,20 +1,12 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
 import { computed, defineComponent, h, ref } from 'vue';
-import type { UseField } from '@/web/web/composables/useField';
-import OBinaryField from './OBinaryField.vue';
 
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-  };
-});
+import type { UseField } from '@/web/web/composables/useField';
+import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OBinaryField from './OBinaryField.vue';
+import OFieldBase from './OFieldBase.vue';
 
 function makeBinding(opts?: { value?: unknown }): UseField {
   const value = ref(opts?.value ?? null);
@@ -37,65 +29,86 @@ function makeBinding(opts?: { value?: unknown }): UseField {
   } as UseField;
 }
 
-const ElUploadStub = defineComponent({
-  name: 'ElUploadStub',
-  props: {
-    onChange: { type: Function, default: undefined },
-  },
-  setup(props, { expose }) {
-    expose({
-      async trigger(file: File) {
-        await props.onChange?.({ raw: file, name: file.name, status: 'ready' });
-      },
-    });
-    return () => h('div', { class: 'el-upload-stub' });
-  },
-});
+const uploadOnChange: { fn: null | ((file: any) => Promise<void> | void) } = { fn: null };
 
-const OFieldBaseStub = defineComponent({
-  name: 'OFieldBase',
-  props: {
-    binding: { type: Object, required: false },
-  },
-  setup(props, { slots }) {
-    return () =>
-      h(
-        'div',
-        { class: 'field-base-stub' },
-        slots.edit?.({
-          fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
-          onFieldChange: async () => {},
-        })
-      );
-  },
-});
+function installFieldBaseEditStub() {
+  stubSfc(OFieldBase as any, {
+    name: 'OFieldBase',
+    props: { binding: { type: Object, required: false } },
+    setup(props: any, { slots }: any) {
+      return () =>
+        h(
+          'div',
+          { class: 'field-base-stub' },
+          slots.edit?.({
+            fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+            onFieldChange: async () => {},
+          })
+        );
+    },
+  });
+}
+
+function installFieldBaseDisplayStub() {
+  stubSfc(OFieldBase as any, {
+    name: 'OFieldBase',
+    props: { binding: { type: Object, required: false } },
+    setup(props: any, { slots }: any) {
+      return () =>
+        h(
+          'div',
+          slots.display?.({
+            fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+            renderMode: 'form',
+          })
+        );
+    },
+  });
+}
+
+function mountField(binding: UseField, mode: 'edit' | 'display' = 'edit') {
+  if (mode === 'display') installFieldBaseDisplayStub();
+  else installFieldBaseEditStub();
+  uploadOnChange.fn = null;
+  return mountApp(OBinaryField as any, {
+    props: {
+      binding,
+      renderMode: mode === 'display' ? 'display' : 'form',
+      uploadProps: { drag: false, showFileList: false },
+    },
+    stubs: {
+      'el-upload': defineComponent({
+        name: 'ElUploadStub',
+        props: {
+          onChange: { type: Function, default: undefined },
+        },
+        setup(props) {
+          uploadOnChange.fn = props.onChange as any;
+          return () => h('div', { class: 'el-upload-stub' });
+        },
+      }),
+      'el-button': defineComponent({
+        name: 'ElButtonStub',
+        setup(_, { slots }) {
+          return () => h('button', { class: 'btn' }, slots.default?.());
+        },
+      }),
+      'el-icon': defineComponent({
+        name: 'ElIconStub',
+        setup(_, { slots }) {
+          return () => h('i', {}, slots.default?.());
+        },
+      }),
+    },
+  });
+}
 
 describe('OBinaryField normalize helpers', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
+  afterEach(() => {
+    restoreSfc(OFieldBase as any);
   });
 
-  async function mountField(binding: UseField) {
-    return mount(OBinaryField as any, {
-      props: {
-        binding,
-        renderMode: 'form',
-        uploadProps: { drag: false, showFileList: false },
-      },
-      global: {
-        stubs: {
-          OFieldBase: OFieldBaseStub,
-          'el-upload': ElUploadStub,
-          'el-button': { template: '<button class="btn"><slot /></button>' },
-          'el-icon': { template: '<i><slot /></i>' },
-          Document: true,
-          UploadFilled: true,
-        },
-      },
-    });
-  }
-
-  it('renders attachment metadata via normalizeOptionalString helpers', async () => {
+  test('renders attachment metadata via normalizeOptionalString helpers', async () => {
     const binding = makeBinding({
       value: {
         attachmentBindingId: '  bind-1  ',
@@ -106,66 +119,40 @@ describe('OBinaryField normalize helpers', () => {
         kind: 'set',
       },
     });
-    const wrapper = await mountField(binding);
+    const m = mountField(binding);
     await flushPromises();
-    expect(wrapper.text()).toContain('report.pdf');
-    expect(wrapper.find('.o-binary-current').exists()).toBe(true);
+    expect(m.text()).toContain('report.pdf');
+    expect(m.q('.o-binary-current')).toBeTruthy();
+    m.unmount();
   });
 
-  async function mountDisplay(binding: UseField) {
-    return mount(OBinaryField as any, {
-      props: {
-        binding,
-        renderMode: 'display',
-        uploadProps: { drag: false, showFileList: false },
-      },
-      global: {
-        stubs: {
-          OFieldBase: defineComponent({
-            name: 'OFieldBase',
-            props: { binding: { type: Object, required: false } },
-            setup(props, { slots }) {
-              return () =>
-                h(
-                  'div',
-                  slots.display?.({
-                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
-                    renderMode: 'form',
-                  })
-                );
-            },
-          }),
-          'el-upload': ElUploadStub,
-          'el-button': { template: '<button class="btn"><slot /></button>' },
-          'el-icon': { template: '<i><slot /></i>' },
-          Document: true,
-          UploadFilled: true,
-        },
-      },
-    });
-  }
-
-  it('covers objectId-only and downloadUrl-only attachment resolution', async () => {
+  test('covers objectId-only and downloadUrl-only attachment resolution', async () => {
     const objectOnly = makeBinding({
       value: { attachmentObjectId: '  obj-only  ', kind: 'set' },
     });
-    const objectWrapper = await mountField(objectOnly);
-    expect(objectWrapper.find('.o-binary-current').exists()).toBe(true);
+    const objectMount = mountField(objectOnly);
+    expect(objectMount.q('.o-binary-current')).toBeTruthy();
+    objectMount.unmount();
+    restoreSfc(OFieldBase as any);
 
     const objectIdAlias = makeBinding({
       value: { objectId: '  alias-obj  ', kind: 'set' },
     });
-    expect((await mountField(objectIdAlias)).find('.o-binary-current').exists()).toBe(true);
+    const aliasMount = mountField(objectIdAlias);
+    expect(aliasMount.q('.o-binary-current')).toBeTruthy();
+    aliasMount.unmount();
+    restoreSfc(OFieldBase as any);
 
     const downloadOnly = makeBinding({
       value: { downloadUrl: '  /files/only.bin  ', kind: 'set' },
     });
-    const downloadWrapper = await mountDisplay(downloadOnly);
+    const downloadMount = mountField(downloadOnly, 'display');
     await flushPromises();
-    expect(downloadWrapper.html()).toContain('/files/only.bin');
+    expect(downloadMount.q('a')?.getAttribute('href')).toBe('/files/only.bin');
+    downloadMount.unmount();
   });
 
-  it('covers resolveDownloadUrl fallback chain', async () => {
+  test('covers resolveDownloadUrl fallback chain', async () => {
     const cases: Array<{ value: Record<string, unknown>; expectHref: string }> = [
       { value: { url: '  /files/via-url.bin  ', kind: 'set' }, expectHref: '/files/via-url.bin' },
       { value: { previewUrl: '  /files/via-preview.bin  ', kind: 'set' }, expectHref: '/files/via-preview.bin' },
@@ -180,33 +167,39 @@ describe('OBinaryField normalize helpers', () => {
     ];
 
     for (const c of cases) {
-      const wrapper = await mountDisplay(makeBinding({ value: c.value }));
+      const m = mountField(makeBinding({ value: c.value }), 'display');
       await flushPromises();
-      expect(wrapper.html()).toContain(c.expectHref);
+      expect(m.q('a')?.getAttribute('href')).toBe(c.expectHref);
+      m.unmount();
+      restoreSfc(OFieldBase as any);
     }
   });
 
-  it('treats string values and clear/noop kinds via hasAttachment', async () => {
+  test('treats string values and clear/noop kinds via hasAttachment', async () => {
     const stringBinding = makeBinding({ value: '  plain-name.bin  ' });
-    const stringWrapper = await mountField(stringBinding);
-    expect(stringWrapper.find('.o-binary-current').exists()).toBe(true);
+    const stringMount = mountField(stringBinding);
+    expect(stringMount.q('.o-binary-current')).toBeTruthy();
+    stringMount.unmount();
+    restoreSfc(OFieldBase as any);
 
     const clearBinding = makeBinding({ value: { kind: 'clear' } });
-    const clearWrapper = await mountField(clearBinding);
-    expect(clearWrapper.find('.o-binary-current').exists()).toBe(false);
+    const clearMount = mountField(clearBinding);
+    expect(clearMount.q('.o-binary-current')).toBeFalsy();
+    clearMount.unmount();
+    restoreSfc(OFieldBase as any);
 
     const noopBinding = makeBinding({ value: { kind: 'noop' } });
-    const noopWrapper = await mountField(noopBinding);
-    expect(noopWrapper.find('.o-binary-current').exists()).toBe(false);
+    const noopMount = mountField(noopBinding);
+    expect(noopMount.q('.o-binary-current')).toBeFalsy();
+    noopMount.unmount();
   });
 
-  it('writes pending set envelope with normalized file metadata on upload', async () => {
+  test('writes pending set envelope with normalized file metadata on upload', async () => {
     const binding = makeBinding();
-    const wrapper = await mountField(binding);
-    const upload = wrapper.findComponent({ name: 'ElUploadStub' });
-    const onChange = upload.props('onChange') as (file: any) => Promise<void>;
+    const m = mountField(binding);
+    expect(uploadOnChange.fn).toBeTruthy();
     const file = new File([new Uint8Array([1, 2])], 'note.txt', { type: 'text/plain' });
-    await onChange({ raw: file, name: file.name, status: 'ready' });
+    await uploadOnChange.fn!({ raw: file, name: file.name, status: 'ready' });
     await flushPromises();
 
     expect(binding.fieldRef().value).toMatchObject({
@@ -218,5 +211,6 @@ describe('OBinaryField normalize helpers', () => {
       clientContentType: 'text/plain',
       displayName: 'note.txt',
     });
+    m.unmount();
   });
 });

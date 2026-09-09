@@ -1,130 +1,173 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { h, nextTick, reactive, toRef } from 'vue';
+import {
+  ElButton,
+  ElCheckbox,
+  ElDialog,
+  ElDivider,
+  ElForm,
+  ElFormItem,
+  ElIcon,
+  ElInput,
+  ElPopover,
+  ElTag,
+  ElTooltip,
+  ElTreeSelect,
+} from 'element-plus';
+
 import { createTermReference } from '@/core/service/i18n';
+import { OSearchNavContextKey } from '@/web/web/composables/search/oSearchNavContext';
+import { UseUserFiltersKey } from '@/web/web/composables/search/useUserFilters';
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import OSearch from './OSearch.vue';
+import OSearchFilter from './OSearchFilter.vue';
 
-const { savedFiltersApi, breadcrumbState, menuState, routeState } = vi.hoisted(() => ({
-  savedFiltersApi: {
-    state: null as null | {
-      favoriteMenuItems: any[];
-      loading: boolean;
-      loadError: string | null;
-      defaultsForOpen: any[];
+const savedFiltersApi = {
+  state: null as null | {
+    favoriteMenuItems: any[];
+    loading: boolean;
+    loadError: string | null;
+    defaultsForOpen: any[];
+  },
+  load: fnRecorder(async () => {}),
+  apply: fnRecorder(),
+  saveCurrent: fnRecorder(async () => ({ Id: '1' })),
+  remove: fnRecorder(async () => {}),
+  lastScopeKey: '' as string,
+};
+
+const breadcrumbState = {
+  breadcrumbStack: [] as Array<{ title?: string; titleText?: any }>,
+};
+const menuState = {
+  activeMenu: null as null | { title?: string; titleText?: any },
+};
+const routeState = {
+  path: '/web/partners/42',
+  meta: {} as Record<string, unknown>,
+};
+
+const epSfcs = [
+  ElButton,
+  ElTag,
+  ElTooltip,
+  ElDialog,
+  ElDivider,
+  ElIcon,
+  ElPopover,
+  ElTreeSelect,
+  ElForm,
+  ElFormItem,
+  ElInput,
+  ElCheckbox,
+];
+
+function installEpStubs() {
+  stubSfc(ElButton as any, {
+    name: 'ElButton',
+    emits: ['click'],
+    setup(_, { slots, emit }: any) {
+      return () =>
+        h('button', { type: 'button', class: 'el-btn', onClick: (e: any) => emit('click', e) }, slots.default?.());
     },
-    load: vi.fn(async () => {}),
-    apply: vi.fn(),
-    saveCurrent: vi.fn(async () => ({ Id: '1' })),
-    remove: vi.fn(async () => {}),
-    lastScopeKey: '' as string,
-  },
-  breadcrumbState: {
-    breadcrumbStack: [] as Array<{ title?: string; titleText?: any }>,
-  },
-  menuState: {
-    activeMenu: null as null | { title?: string; titleText?: any },
-  },
-  routeState: {
-    path: '/web/partners/42',
-    meta: {} as Record<string, unknown>,
-  },
-}));
+  });
+  stubSfc(ElTag as any, { name: 'ElTag', setup: () => () => h('span', { class: 'el-tag' }) });
+  stubSfc(ElTooltip as any, {
+    name: 'ElTooltip',
+    setup(_, { slots }: any) {
+      return () => h('div', {}, slots.default?.());
+    },
+  });
+  stubSfc(ElPopover as any, {
+    name: 'ElPopover',
+    setup(_, { slots }: any) {
+      return () =>
+        h('div', { class: 'el-popover' }, [slots.reference?.(), h('div', { class: 'pop' }, slots.default?.())]);
+    },
+  });
+  stubSfc(ElDialog as any, {
+    name: 'ElDialog',
+    props: ['modelValue', 'title'],
+    setup(props: any, { slots }: any) {
+      return () =>
+        props.modelValue
+          ? h('div', { class: 'el-dialog' }, [slots.default?.(), slots.footer?.()])
+          : null;
+    },
+  });
+  stubSfc(ElForm as any, {
+    name: 'ElForm',
+    setup(_, { slots }: any) {
+      return () => h('form', {}, slots.default?.());
+    },
+  });
+  stubSfc(ElFormItem as any, {
+    name: 'ElFormItem',
+    setup(_, { slots }: any) {
+      return () => h('div', {}, slots.default?.());
+    },
+  });
+  stubSfc(ElInput as any, {
+    name: 'ElInput',
+    props: ['modelValue'],
+    emits: ['update:modelValue'],
+    setup(props: any, { emit }: any) {
+      return () =>
+        h('input', {
+          class: 'fav-name',
+          value: props.modelValue,
+          onInput: (e: any) => emit('update:modelValue', e.target.value),
+        });
+    },
+  });
+  stubSfc(ElCheckbox as any, { name: 'ElCheckbox', setup: () => () => h('label', { class: 'fav-check' }) });
+  stubSfc(ElDivider as any, { name: 'ElDivider', setup: () => () => h('hr') });
+  stubSfc(ElIcon as any, {
+    name: 'ElIcon',
+    setup(_, { slots }: any) {
+      return () => h('i', {}, slots.default?.());
+    },
+  });
+  stubSfc(ElTreeSelect as any, { name: 'ElTreeSelect', setup: () => () => h('div', { class: 'tree' }) });
+  stubSfc(OSearchFilter as any, {
+    name: 'OSearchFilter',
+    setup: () => () => h('div', { 'data-stub': 'OSearchFilter' }),
+  });
+}
 
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({
-      _t: (msg: string) => msg,
-      _lt: (msg: string) => msg,
-    }),
-  };
-});
+function restoreEpStubs() {
+  for (const Comp of epSfcs) restoreSfc(Comp as any);
+  restoreSfc(OSearchFilter as any);
+}
 
-vi.mock('@/web/web/stores/breadcrumbStore', () => ({
-  useBreadcrumbStore: () => breadcrumbState,
-}));
-
-vi.mock('@/web/web/stores/menuStore', () => ({
-  useMenuStore: () => menuState,
-}));
-
-vi.mock('vue-router', async () => {
-  const actual = await vi.importActual<any>('vue-router');
-  return {
-    ...actual,
-    useRoute: () => routeState,
-  };
-});
-
-vi.mock('@/web/web/composables/search/useUserFilters', async () => {
-  const { reactive, toRef } = await import('vue');
+function makeUserFiltersFactory() {
   savedFiltersApi.state = reactive({
     favoriteMenuItems: [] as any[],
     loading: false,
     loadError: null as string | null,
     defaultsForOpen: [] as any[],
   });
-  return {
-    useUserFilters: (params: { scopeKey?: () => string }) => {
-      savedFiltersApi.lastScopeKey = String(params.scopeKey?.() ?? '');
-      return {
-        favoriteMenuItems: toRef(savedFiltersApi.state!, 'favoriteMenuItems'),
-        loading: toRef(savedFiltersApi.state!, 'loading'),
-        loadError: toRef(savedFiltersApi.state!, 'loadError'),
-        defaultsForOpen: toRef(savedFiltersApi.state!, 'defaultsForOpen'),
-        load: savedFiltersApi.load,
-        apply: savedFiltersApi.apply,
-        saveCurrent: savedFiltersApi.saveCurrent,
-        remove: savedFiltersApi.remove,
-      };
-    },
+  return (params: { scopeKey?: () => string }) => {
+    savedFiltersApi.lastScopeKey = String(params.scopeKey?.() ?? '');
+    return {
+      favoriteMenuItems: toRef(savedFiltersApi.state!, 'favoriteMenuItems'),
+      loading: toRef(savedFiltersApi.state!, 'loading'),
+      loadError: toRef(savedFiltersApi.state!, 'loadError'),
+      defaultsForOpen: toRef(savedFiltersApi.state!, 'defaultsForOpen'),
+      load: savedFiltersApi.load,
+      apply: savedFiltersApi.apply,
+      saveCurrent: savedFiltersApi.saveCurrent,
+      remove: savedFiltersApi.remove,
+      updateMeta: fnRecorder(async () => {}),
+    };
   };
-});
-
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { warning: vi.fn(), success: vi.fn(), error: vi.fn() },
-    ElMessageBox: { confirm: vi.fn(async () => true) },
-  };
-});
-
-const elementStubs = {
-  'el-tooltip': { template: `<div><slot /></div>` },
-  'el-button': {
-    emits: ['click'],
-    template: `<button type="button" class="el-btn" @click="$emit('click', $event)"><slot /></button>`,
-  },
-  'el-tag': true,
-  'el-popover': {
-    template: `<div class="el-popover"><slot name="reference" /><div class="pop"><slot /></div></div>`,
-  },
-  'el-dialog': {
-    props: ['modelValue', 'title'],
-    template: `<div v-if="modelValue" class="el-dialog"><slot /><slot name="footer" /></div>`,
-  },
-  'el-form': { template: `<form><slot /></form>` },
-  'el-form-item': { template: `<div><slot /></div>` },
-  'el-input': {
-    props: ['modelValue'],
-    emits: ['update:modelValue'],
-    template: `<input class="fav-name" :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
-  },
-  'el-checkbox': true,
-  'el-divider': true,
-  'el-icon': true,
-  OSearchFilter: true,
-  OSearchGroup: true,
-};
+}
 
 function mountSearch() {
-  return mount(OSearch as any, {
+  installEpStubs();
+  return mountApp(OSearch as any, {
     props: {
       store: {
         storeId: 'demo.Widget',
@@ -135,18 +178,29 @@ function mountSearch() {
       },
       placeholder: 'Find…',
     },
-    global: { stubs: elementStubs },
+    provide: {
+      [OSearchNavContextKey as symbol]: {
+        breadcrumbStore: breadcrumbState,
+        menuStore: menuState,
+        route: routeState,
+      },
+      [UseUserFiltersKey as symbol]: makeUserFiltersFactory(),
+    },
   });
 }
 
-async function openSaveDialog(wrapper: ReturnType<typeof mountSearch>) {
-  const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
+async function openSaveDialog(m: ReturnType<typeof mountSearch>) {
+  const saveOpen = m.qa('.el-btn').find(b => (b.textContent || '').includes('Save current filters'));
   expect(saveOpen).toBeTruthy();
-  await saveOpen!.trigger('click');
+  (saveOpen as HTMLElement).click();
   await nextTick();
 }
 
 describe('OSearch default favorite name + scopeKey', () => {
+  afterEach(() => {
+    restoreEpStubs();
+  });
+
   beforeEach(() => {
     breadcrumbState.breadcrumbStack = [];
     menuState.activeMenu = null;
@@ -156,37 +210,41 @@ describe('OSearch default favorite name + scopeKey', () => {
     savedFiltersApi.load.mockClear();
   });
 
-  it('passes route path as scopeKey and prefills Name from breadcrumb src', async () => {
+  test('passes route path as scopeKey and prefills Name from breadcrumb src', async () => {
     breadcrumbState.breadcrumbStack = [
       { title: 'ignored', titleText: createTermReference('web', 'Partners', { scope: 'web/pages' }) },
     ];
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
     expect(savedFiltersApi.lastScopeKey).toBe('/web/partners/42');
-    await openSaveDialog(wrapper);
-    expect((wrapper.find('input.fav-name').element as HTMLInputElement).value).toBe('Partners');
+    await openSaveDialog(m);
+    expect((m.q('input.fav-name') as HTMLInputElement).value).toBe('Partners');
+    m.unmount();
   });
 
-  it('falls back to menu title when breadcrumb/route empty', async () => {
+  test('falls back to menu title when breadcrumb/route empty', async () => {
     menuState.activeMenu = { titleText: createTermReference('web', 'Menu Label', { scope: 'web/menu' }) };
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
-    await openSaveDialog(wrapper);
-    expect((wrapper.find('input.fav-name').element as HTMLInputElement).value).toBe('Menu Label');
+    await openSaveDialog(m);
+    expect((m.q('input.fav-name') as HTMLInputElement).value).toBe('Menu Label');
+    m.unmount();
   });
 
-  it('uses route meta pageTitle when higher sources are empty', async () => {
+  test('uses route meta pageTitle when higher sources are empty', async () => {
     routeState.meta = { pageTitle: 'Route Title' };
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
-    await openSaveDialog(wrapper);
-    expect((wrapper.find('input.fav-name').element as HTMLInputElement).value).toBe('Route Title');
+    await openSaveDialog(m);
+    expect((m.q('input.fav-name') as HTMLInputElement).value).toBe('Route Title');
+    m.unmount();
   });
 
-  it('falls back to model identity when all titles empty', async () => {
-    const wrapper = mountSearch();
+  test('falls back to model identity when all titles empty', async () => {
+    const m = mountSearch();
     await flushPromises();
-    await openSaveDialog(wrapper);
-    expect((wrapper.find('input.fav-name').element as HTMLInputElement).value).toBe('demo.Widget');
+    await openSaveDialog(m);
+    expect((m.q('input.fav-name') as HTMLInputElement).value).toBe('demo.Widget');
+    m.unmount();
   });
 });

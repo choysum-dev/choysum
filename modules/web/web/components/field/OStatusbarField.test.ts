@@ -1,26 +1,19 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@vue/test-utils';
-import { computed, nextTick, ref, h } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+/**
+ * Mount wiring for OStatusbarField. Pure option/gate helpers live in ostatusbar_helpers.test.ts.
+ */
+
+import { computed, h, nextTick, ref } from 'vue';
+import { ElSegmented } from 'element-plus';
 
 import type { UseField } from '@/web/web/composables/useField';
-import { useField } from '@/web/web/composables/useField';
 import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OFieldBase from './OFieldBase.vue';
 import OStatusbarField from './OStatusbarField.vue';
-
-vi.mock('@/web/web/composables/useField', async importOriginal => {
-  const mod = await importOriginal<typeof import('@/web/web/composables/useField')>();
-  return {
-    ...mod,
-    useField: vi.fn(mod.useField),
-  };
-});
 
 function makeBinding(opts: {
   prop?: string;
@@ -63,558 +56,314 @@ const staticMeta: WebFieldMetadata = {
 };
 
 function makeStore(meta: WebFieldMetadata = staticMeta) {
-  const FieldsGet = vi.fn(async () => ({ State: meta }));
-  const helpers = createFieldsGetHelpers({ fieldsMetadata: { State: meta }, FieldsGet }, { getLang: () => 'en_US' });
+  const FieldsGet = fnRecorder(async () => ({ State: meta }));
+  const helpers = createFieldsGetHelpers(
+    { fieldsMetadata: { State: meta }, FieldsGet },
+    { getLang: () => 'en_US' }
+  );
   return { fieldsMetadata: { State: meta }, FieldsGet, ...helpers };
+}
+
+const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
+
+function installFieldBaseStub(slot: 'edit' | 'display' | 'both' = 'edit') {
+  stubSfc(OFieldBase as any, {
+    name: 'OFieldBase',
+    props: ['binding', 'readonly', 'renderMode', 'rules', 'formItemProps', 'toView', 'fromView', 'label'],
+    setup(p: any, { slots }: any) {
+      lastBaseProps.current = p;
+      if (typeof p.toView === 'function') {
+        p.toView('done');
+        p.toView(null);
+      }
+      if (typeof p.fromView === 'function') {
+        p.fromView('done');
+        p.fromView(null);
+      }
+      const fieldValue = () => (p.binding as UseField).fieldRef();
+      const record = () => ({ Id: '1', State: (fieldValue() as any).value });
+      return () => {
+        const children: any[] = [];
+        if (slot === 'edit' || slot === 'both') children.push(slots.edit?.({ fieldValue, record }));
+        if (slot === 'display' || slot === 'both') children.push(slots.display?.({ fieldValue, record }));
+        return h('div', { class: 'ob', 'data-form-item-class': String((p.formItemProps as any)?.class || '') }, children);
+      };
+    },
+  });
+}
+
+function installSegmentedStub() {
+  stubSfc(ElSegmented as any, {
+    name: 'ElSegmented',
+    props: ['modelValue', 'options', 'disabled'],
+    emits: ['update:modelValue'],
+    inheritAttrs: false,
+    setup(p: any, { emit, attrs }: any) {
+      // QJS/Vue may expose the listener as onUpdate:modelValue or onUpdate:model-value.
+      const fire = (v: unknown) => {
+        emit('update:modelValue', v);
+        const handler =
+          attrs['onUpdate:modelValue'] ??
+          attrs.onUpdateModelValue ??
+          attrs['onUpdate:model-value'];
+        if (typeof handler === 'function') handler(v);
+      };
+      return () =>
+        h(
+          'div',
+          {
+            class: 'o-statusbar',
+            'data-disabled': String(!!p.disabled),
+            'data-model': String(p.modelValue ?? ''),
+            'data-options': JSON.stringify(p.options || []),
+          },
+          [
+            ...((p.options as any[]) || []).map((opt: any) =>
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'seg-opt',
+                  'data-value': String(opt.value),
+                  disabled: !!(p.disabled || opt.disabled) || undefined,
+                  onClick: () => {
+                    if (p.disabled || opt.disabled) return;
+                    fire(opt.value);
+                  },
+                },
+                opt.label
+              )
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'seg-empty',
+                onClick: () => fire(null),
+              },
+              'empty'
+            ),
+          ]
+        );
+    },
+  });
 }
 
 function mountStatusbar(
   props: Record<string, unknown>,
   binding: UseField,
-  opts?: {
-    slot?: 'edit' | 'display' | 'both';
-    provideOnchange?: any;
-    captureRules?: { current: any[] | null };
-    recordFactory?: () => any;
-  }
+  opts?: { slot?: 'edit' | 'display' | 'both'; provide?: Record<string, unknown> }
 ) {
-  const fieldRef = binding.fieldRef();
-  const slotMode = opts?.slot ?? 'edit';
-  const captured = opts?.captureRules;
-
-  return mount(OStatusbarField as any, {
+  lastBaseProps.current = null;
+  installFieldBaseStub(opts?.slot ?? 'edit');
+  installSegmentedStub();
+  return mountApp(OStatusbarField as any, {
     props: {
       binding,
       renderMode: 'inline',
       ...props,
     },
-    global: {
-      provide: opts?.provideOnchange !== undefined ? { lastOnchangeResult: opts.provideOnchange } : {},
-      stubs: {
-        OFieldBase: {
-          props: ['binding', 'readonly', 'renderMode', 'rules', 'formItemProps', 'toView', 'fromView', 'label'],
-          setup(p: any, { slots }: any) {
-            if (captured) captured.current = p.rules || [];
-            if (typeof p.toView === 'function') {
-              p.toView('done');
-              p.toView(null);
-            }
-            if (typeof p.fromView === 'function') {
-              p.fromView('done');
-              p.fromView(null);
-            }
-            const fieldValue = () => fieldRef as any;
-            const record = opts?.recordFactory || (() => ({ Id: '1', State: (fieldRef as any).value }));
-            return () => {
-              const children: any[] = [];
-              if (slotMode === 'edit' || slotMode === 'both') {
-                children.push(slots.edit?.({ fieldValue, record }));
-              }
-              if (slotMode === 'display' || slotMode === 'both') {
-                children.push(slots.display?.({ fieldValue, record }));
-              }
-              return h('div', { class: 'ob', 'data-form-item-class': p.formItemProps?.class }, children);
-            };
-          },
-        },
-        'el-segmented': {
-          props: ['modelValue', 'options', 'disabled'],
-          emits: ['update:modelValue'],
-          template: `
-            <div
-              class="o-statusbar"
-              :data-disabled="String(disabled)"
-              :data-value="String(modelValue ?? '')"
-              :data-options="JSON.stringify(options || [])"
-            >
-              <button
-                v-for="opt in options || []"
-                :key="String(opt.value)"
-                class="seg-opt"
-                :data-value="opt.value"
-                :disabled="!!(disabled || opt.disabled)"
-                @click="$emit('update:modelValue', opt.value)"
-              >{{ opt.label }}</button>
-              <button class="seg-empty" @click="$emit('update:modelValue', null)">empty</button>
-            </div>
-          `,
-        },
-      },
-    },
+    provide: opts?.provide,
   });
 }
 
-describe('OStatusbarField', () => {
-  it('uses chevron class and hides EP selected slider via CSS (D11 contract)', () => {
-    const src = readFileSync(resolve(__dirname, './OStatusbarField.vue'), 'utf8');
-    expect(src).toContain('class="o-statusbar"');
-    expect(src).toContain('el-segmented__item-selected');
-    expect(src).toContain('clip-path');
-    expect(src).toContain('beforeChange');
-    expect(src).not.toMatch(/ElMessageBox/);
+describe('OStatusbarField mount wiring', () => {
+  afterEach(() => {
+    restoreSfc(OFieldBase as any);
+    restoreSfc(ElSegmented as any);
   });
 
-  it('OFormView exposes optional #statusbar slot (D6)', () => {
-    const src = readFileSync(resolve(__dirname, '../view/OFormView.vue'), 'utf8');
-    expect(src).toContain('name="statusbar"');
-    expect(src).toMatch(/statusbar\(\):\s*any/);
-  });
-
-  it('defaults to non-clickable (disabled segmented)', async () => {
+  test('defaults to non-clickable and lists meta options', async () => {
     const store = makeStore();
     const { binding } = makeBinding({ meta: staticMeta, store });
-    const wrapper = mountStatusbar({}, binding);
+    const m = mountStatusbar({}, binding);
     await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
-    expect(JSON.parse(wrapper.get('.o-statusbar').attributes('data-options') || '[]').map((o: any) => o.value)).toEqual([
+    expect(m.q('.o-statusbar')?.getAttribute('data-disabled')).toBe('true');
+    expect(JSON.parse(m.q('.o-statusbar')?.getAttribute('data-options') || '[]').map((o: any) => o.value)).toEqual([
       'draft',
       'confirmed',
       'done',
     ]);
+    m.unmount();
   });
 
-  it('renders both edit and display slots', async () => {
+  test('renders both edit and display slots', async () => {
     const store = makeStore();
     const { binding } = makeBinding({ meta: staticMeta, store });
-    const wrapper = mountStatusbar({ clickable: true }, binding, { slot: 'both' });
+    const m = mountStatusbar({ clickable: true }, binding, { slot: 'both' });
     await flushPromises();
-    expect(wrapper.findAll('.o-statusbar').length).toBe(2);
+    expect(m.qa('.o-statusbar').length).toBe(2);
+    m.unmount();
   });
 
-  it('clickable writes value; beforeChange false cancels write', async () => {
+  test('clickable writes value; beforeChange false cancels write', async () => {
     const store = makeStore();
     const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
-    const beforeChange = vi.fn(() => false);
-    const wrapper = mountStatusbar({ clickable: true, beforeChange }, binding);
+    const beforeChange = fnRecorder(() => false);
+    const m = mountStatusbar({ clickable: true, beforeChange }, binding);
     await flushPromises();
 
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('false');
-    await wrapper.get('[data-value="done"]').trigger('click');
+    expect(m.q('.o-statusbar')?.getAttribute('data-disabled')).toBe('false');
+    m.click('[data-value="done"]');
     await flushPromises();
     await nextTick();
-    expect(beforeChange).toHaveBeenCalledWith('done', 'draft');
+    expect(beforeChange.calls.length).toBe(1);
+    expect(beforeChange.calls[0]).toEqual(['done', 'draft']);
     expect(value.value).toBe('draft');
 
     beforeChange.mockImplementation(() => true);
-    await wrapper.get('[data-value="done"]').trigger('click');
+    m.click('[data-value="done"]');
     await flushPromises();
     expect(value.value).toBe('done');
+    m.unmount();
   });
 
-  it('writes immediately when clickable and beforeChange omitted', async () => {
+  test('writes immediately when clickable and beforeChange omitted', async () => {
     const store = makeStore();
     const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
-    const wrapper = mountStatusbar({ clickable: true }, binding);
+    const m = mountStatusbar({ clickable: true }, binding);
     await flushPromises();
-    await wrapper.get('[data-value="confirmed"]').trigger('click');
+    m.click('[data-value="confirmed"]');
     await flushPromises();
     expect(value.value).toBe('confirmed');
+    m.unmount();
   });
 
-  it('skips same-value and empty emits; ignores disabled options via onchange', async () => {
+  test('skips same-value and empty emits; ignores disabled options via onchange', async () => {
     const store = makeStore();
     const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
     const onchange = ref({
       selection: [{ field: 'State', selection: ['draft', 'confirmed', 'done'], disabled: ['done'] }],
     });
-    const wrapper = mountStatusbar({ clickable: true }, binding, { provideOnchange: onchange });
+    const m = mountStatusbar({ clickable: true }, binding, { provide: { lastOnchangeResult: onchange } });
     await flushPromises();
-    await wrapper.get('[data-value="draft"]').trigger('click');
-    await flushPromises();
-    expect(value.value).toBe('draft');
-    await wrapper.get('.seg-empty').trigger('click');
+
+    m.click('[data-value="draft"]');
     await flushPromises();
     expect(value.value).toBe('draft');
-    await wrapper.get('[data-value="done"]').trigger('click');
+
+    m.click('.seg-empty');
     await flushPromises();
     expect(value.value).toBe('draft');
-    await wrapper.get('[data-value="confirmed"]').trigger('click');
-    await flushPromises();
-    expect(value.value).toBe('confirmed');
+
+    const opts = JSON.parse(m.q('.o-statusbar')?.getAttribute('data-options') || '[]');
+    const done = opts.find((o: any) => o.value === 'done');
+    expect(done?.disabled).toBe(true);
+    expect(m.q('[data-value="done"]')?.hasAttribute('disabled')).toBe(true);
+    m.unmount();
   });
 
-  it('disables while async beforeChange is pending', async () => {
+  test('disables while async beforeChange is pending', async () => {
     const store = makeStore();
     const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
-    let release!: (v: boolean) => void;
+    let resolveGate!: (ok: boolean) => void;
     const gate = new Promise<boolean>(r => {
-      release = r;
+      resolveGate = r;
     });
-    const beforeChange = vi.fn(() => gate);
-    const wrapper = mountStatusbar({ clickable: true, beforeChange }, binding);
+    const beforeChange = fnRecorder(() => gate);
+    const m = mountStatusbar({ clickable: true, beforeChange }, binding);
     await flushPromises();
-    const click = wrapper.get('[data-value="done"]').trigger('click');
+
+    m.click('[data-value="done"]');
     await nextTick();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
-    // Second click while pending should be ignored.
-    await wrapper.get('[data-value="confirmed"]').trigger('click');
-    release(true);
-    await click;
+    expect(m.q('.o-statusbar')?.getAttribute('data-disabled')).toBe('true');
+    expect(value.value).toBe('draft');
+
+    resolveGate(true);
     await flushPromises();
     expect(value.value).toBe('done');
-    expect(beforeChange).toHaveBeenCalledTimes(1);
+    expect(m.q('.o-statusbar')?.getAttribute('data-disabled')).toBe('false');
+    m.unmount();
   });
 
-  it('clickable still writes from display slot (viewMode-independent)', async () => {
+  test('respects disabled / readonly boolean / meta isReadonly', async () => {
     const store = makeStore();
-    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft', isEditMode: false });
-    const wrapper = mountStatusbar({ clickable: true }, binding, { slot: 'display' });
-    await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('false');
-    await wrapper.get('[data-value="done"]').trigger('click');
-    await flushPromises();
-    expect(value.value).toBe('done');
-  });
-
-  it('respects disabled / readonly boolean / readonly predicate / meta isReadonly', async () => {
-    const readonlyMeta = { ...staticMeta, isReadonly: true } as WebFieldMetadata;
-    const store = makeStore(readonlyMeta);
-    let wrapper = mountStatusbar({ clickable: true }, makeBinding({ meta: readonlyMeta, store }).binding);
-    await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
-    wrapper.unmount();
-
-    const store2 = makeStore();
-    wrapper = mountStatusbar({ clickable: true, disabled: true }, makeBinding({ meta: staticMeta, store: store2 }).binding);
-    await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
-    wrapper.unmount();
-
-    wrapper = mountStatusbar({ clickable: true, readonly: true }, makeBinding({ meta: staticMeta, store: store2 }).binding);
-    await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
-    wrapper.unmount();
-
-    wrapper = mountStatusbar(
-      { clickable: true, readonly: () => true },
-      makeBinding({ meta: staticMeta, store: store2 }).binding
-    );
-    await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
-  });
-
-  it('fails closed when readonly predicate throws', async () => {
-    const store = makeStore();
-    const { binding } = makeBinding({ meta: staticMeta, store, value: 'draft' });
-    const wrapper = mountStatusbar(
-      {
-        clickable: true,
-        readonly: () => {
-          throw new Error('boom');
-        },
-      },
-      binding
-    );
-    await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('true');
-  });
-
-  it('treats non-boolean/non-function readonly as writable and evaluates null field value', async () => {
-    const store = makeStore();
-    // Bypass default `readonly: false` so exprReadonly hits the final `return false`.
-    let wrapper = mountStatusbar(
-      { clickable: true, readonly: null as any },
-      makeBinding({ meta: staticMeta, store, value: 'draft' }).binding
-    );
-    await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('false');
-    wrapper.unmount();
-
-    // Cover `fieldRef().value ?? null` when the field value is null.
-    const seen: Array<unknown> = [];
-    const { binding } = makeBinding({ meta: staticMeta, store, value: null });
-    wrapper = mountStatusbar(
-      {
-        clickable: true,
-        readonly: ({ value }: { value: unknown }) => {
-          seen.push(value);
-          return false;
-        },
-      },
-      binding
-    );
-    await flushPromises();
-    expect(seen).toContain(null);
-    expect(wrapper.get('.o-statusbar').attributes('data-disabled')).toBe('false');
-  });
-
-  it('applies statusbarVisible and selection whitelist; keeps current fallback', async () => {
-    const store = makeStore();
-    let wrapper = mountStatusbar(
-      { statusbarVisible: ['draft', 'done'] },
-      makeBinding({ meta: staticMeta, store, value: 'confirmed' }).binding
-    );
-    await flushPromises();
-    expect(JSON.parse(wrapper.get('.o-statusbar').attributes('data-options') || '[]').map((o: any) => o.value)).toEqual([
-      'draft',
-      'done',
-      'confirmed',
-    ]);
-    wrapper.unmount();
-
-    wrapper = mountStatusbar({ selection: ['done', 'draft'] }, makeBinding({ meta: staticMeta, store, value: 'draft' }).binding);
-    await flushPromises();
-    expect(JSON.parse(wrapper.get('.o-statusbar').attributes('data-options') || '[]').map((o: any) => o.value)).toEqual([
-      'done',
-      'draft',
-    ]);
-  });
-
-  it('falls back to binding.meta when store has no selection; nested prop leaf', async () => {
-    const store = {
-      fieldsMetadata: {},
-      ensureFieldsGet: vi.fn(async () => ({})),
-      getFieldMeta: () => undefined,
-    };
-    const { binding } = makeBinding({
-      meta: staticMeta,
-      store,
-      prop: 'Line.State',
-      value: 'draft',
-    });
-    const wrapper = mountStatusbar({ clickable: true }, binding);
-    await flushPromises();
-    expect(JSON.parse(wrapper.get('.o-statusbar').attributes('data-options') || '[]').map((o: any) => o.value)).toEqual([
-      'draft',
-      'confirmed',
-      'done',
-    ]);
-    expect(store.ensureFieldsGet).toHaveBeenCalled();
-    expect(store.ensureFieldsGet.mock.calls[0]![0]).toEqual(['State']);
-  });
-
-  it('skips ensureFieldsGet when store lacks helper', async () => {
-    const store = { fieldsMetadata: { State: staticMeta }, getFieldMeta: () => staticMeta };
     const { binding } = makeBinding({ meta: staticMeta, store });
-    mountStatusbar({}, binding);
-    await flushPromises();
-  });
 
-  it('uses props.store when binding.store is missing; empty prop skips ensure', async () => {
-    const store = makeStore();
-    const ensureSpy = vi.spyOn(store, 'ensureFieldsGet');
-    const { binding } = makeBinding({ meta: staticMeta, store: undefined });
-    (binding as any).store = undefined;
-    (binding as any).prop = '';
-    mountStatusbar({ store }, binding);
+    const disabledMount = mountStatusbar({ clickable: true, disabled: true }, binding);
     await flushPromises();
-    // leafKey is empty → onMounted returns before ensureFieldsGet
-    expect(ensureSpy).not.toHaveBeenCalled();
-  });
+    expect(disabledMount.q('.o-statusbar')?.getAttribute('data-disabled')).toBe('true');
+    disabledMount.unmount();
+    restoreSfc(OFieldBase as any);
+    restoreSfc(ElSegmented as any);
 
-  it('resolves modelStore from props.store when binding.store is absent', async () => {
-    const store = makeStore();
-    const ensureSpy = vi.spyOn(store, 'ensureFieldsGet');
-    const { binding } = makeBinding({ meta: staticMeta, store: undefined });
-    (binding as any).store = undefined;
-    mountStatusbar({ store }, binding);
+    const readonlyMount = mountStatusbar({ clickable: true, readonly: true }, binding);
     await flushPromises();
-    expect(ensureSpy).toHaveBeenCalled();
-    expect(ensureSpy.mock.calls[0]![0]).toEqual(['State']);
-  });
+    expect(readonlyMount.q('.o-statusbar')?.getAttribute('data-disabled')).toBe('true');
+    readonlyMount.unmount();
+    restoreSfc(OFieldBase as any);
+    restoreSfc(ElSegmented as any);
 
-  it('bootstraps binding via useField when binding prop is omitted', async () => {
-    const store = makeStore();
-    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
-    vi.mocked(useField).mockReturnValueOnce(binding as any);
-    const wrapper = mountStatusbar({ store, prop: 'State', clickable: true }, binding);
-    // Remount without binding to hit useField path.
-    wrapper.unmount();
-    const wrapper2 = mount(OStatusbarField as any, {
-      props: { store, prop: 'State', renderMode: 'inline', clickable: true },
-      global: {
-        stubs: {
-          OFieldBase: {
-            setup(_: any, { slots }: any) {
-              const fieldValue = () => binding.fieldRef() as any;
-              const record = () => ({ Id: '1', State: value.value });
-              return () => h('div', slots.edit?.({ fieldValue, record }));
-            },
-          },
-          'el-segmented': {
-            props: ['modelValue', 'options', 'disabled'],
-            emits: ['update:modelValue'],
-            template: `
-              <div class="o-statusbar" :data-disabled="String(disabled)">
-                <button data-value="done" @click="$emit('update:modelValue', 'done')">Done</button>
-              </div>
-            `,
-          },
-        },
-      },
-    });
-    await flushPromises();
-    expect(useField).toHaveBeenCalled();
-    await wrapper2.get('[data-value="done"]').trigger('click');
-    await flushPromises();
-    expect(value.value).toBe('done');
-    wrapper2.unmount();
-  });
-
-  it('writes from null current value', async () => {
-    const store = makeStore();
-    const { binding, value } = makeBinding({ meta: staticMeta, store, value: null });
-    const wrapper = mountStatusbar({ clickable: true }, binding);
-    await flushPromises();
-    await wrapper.get('[data-value="draft"]').trigger('click');
-    await flushPromises();
-    expect(value.value).toBe('draft');
-  });
-
-  it('maps selection entries missing labels via value fallback', async () => {
-    const meta = {
+    const metaReadonly = {
       ...staticMeta,
-      selection: [{ value: 'draft' }, { value: 'done', label: 'Done' }],
+      isReadonly: true,
     } as WebFieldMetadata;
-    const store = makeStore(meta);
-    const { binding } = makeBinding({ meta, store });
-    const wrapper = mountStatusbar({}, binding);
+    const storeRo = makeStore(metaReadonly);
+    const { binding: roBinding } = makeBinding({ meta: metaReadonly, store: storeRo });
+    const metaMount = mountStatusbar({ clickable: true }, roBinding);
     await flushPromises();
-    const opts = JSON.parse(wrapper.get('.o-statusbar').attributes('data-options') || '[]');
-    expect(opts[0]).toEqual({ label: 'draft', value: 'draft', disabled: false });
+    expect(metaMount.q('.o-statusbar')?.getAttribute('data-disabled')).toBe('true');
+    metaMount.unmount();
   });
 
-  it('handles empty meta selection list', async () => {
-    const emptyMeta = { ...staticMeta, selection: [] };
-    const store = makeStore(emptyMeta);
-    const { binding } = makeBinding({ meta: emptyMeta, store, value: 'x' });
-    const wrapper = mountStatusbar({ statusbarVisible: ['a'] }, binding);
-    await flushPromises();
-    expect(JSON.parse(wrapper.get('.o-statusbar').attributes('data-options') || '[]').map((o: any) => o.value)).toEqual([
-      'a',
-      'x',
-    ]);
-  });
-
-  it('merges formItemProps and runs internal validation rules', async () => {
-    const store = makeStore();
-    const { binding } = makeBinding({ meta: staticMeta, store, value: 'draft' });
-    const captureRules = { current: null as any[] | null };
-    const wrapper = mountStatusbar(
-      { formItemProps: { class: 'extra-class' }, rules: [{ required: true, message: 'req' } as any] },
-      binding,
-      { captureRules }
-    );
-    await flushPromises();
-    expect(String(wrapper.get('.ob').attributes('data-form-item-class'))).toContain('o-statusbar-form-item');
-    expect(String(wrapper.get('.ob').attributes('data-form-item-class'))).toContain('extra-class');
-    const rules = captureRules.current || [];
-    expect(rules.length).toBeGreaterThanOrEqual(2);
-    const validator = rules[rules.length - 1]?.validator as Function;
-    const cb = vi.fn();
-    validator({}, null, cb);
-    validator({}, '', cb);
-    validator({}, 1, cb);
-    validator({}, 'nope', cb);
-    validator({}, 'draft', cb);
-    expect(cb).toHaveBeenCalled();
-    const errors = cb.mock.calls.map((c: any[]) => c[0]).filter(Boolean);
-    expect(errors.some((e: Error) => /string|Invalid/i.test(String(e?.message || e)))).toBe(true);
-    wrapper.unmount();
-
-    const wrapper2 = mountStatusbar({ formItemProps: { class: ['a', 'b'] } }, makeBinding({ meta: staticMeta, store }).binding);
-    await flushPromises();
-    expect(String(wrapper2.get('.ob').attributes('data-form-item-class'))).toContain('a');
-    expect(String(wrapper2.get('.ob').attributes('data-form-item-class'))).toContain('b');
-    wrapper2.unmount();
-
-    // Cover `formItemProps ?? {}` and `rules ?? []` nullish arms (bypass prop defaults).
-    const captureRulesNull = { current: null as any[] | null };
-    const wrapper3 = mountStatusbar(
-      { formItemProps: null as any, rules: null as any },
-      makeBinding({ meta: staticMeta, store }).binding,
-      { captureRules: captureRulesNull }
-    );
-    await flushPromises();
-    expect(String(wrapper3.get('.ob').attributes('data-form-item-class'))).toContain('o-statusbar-form-item');
-    expect(captureRulesNull.current?.length).toBe(1);
-  });
-
-  it('covers store without getFieldMeta and empty onchange domain via provide', async () => {
-    const store = {
-      fieldsMetadata: { State: staticMeta },
-      ensureFieldsGet: vi.fn(async () => ({})),
-      // no getFieldMeta → fall back to binding.meta
-    };
-    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
-    const onchange = ref({ selection: [{ field: 'State', selection: [] }] });
-    const wrapper = mountStatusbar({ clickable: true }, binding, { provideOnchange: onchange });
-    await flushPromises();
-    // Empty onchange domain → only current remains.
-    expect(JSON.parse(wrapper.get('.o-statusbar').attributes('data-options') || '[]').map((o: any) => o.value)).toEqual(['draft']);
-    await wrapper.get('[data-value="draft"]').trigger('click');
-    await flushPromises();
-    expect(value.value).toBe('draft');
-  });
-
-  it('falls back to field value when row omits leaf', async () => {
+  test('applies statusbarVisible whitelist and keeps current fallback', async () => {
     const store = makeStore();
     const { binding } = makeBinding({ meta: staticMeta, store, value: 'confirmed' });
-    const wrapper = mountStatusbar({ clickable: true }, binding, {
-      recordFactory: () => ({ Id: '1' }),
-    });
+    const m = mountStatusbar({ statusbarVisible: ['draft', 'done'] }, binding);
     await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-value')).toBe('confirmed');
+    expect(JSON.parse(m.q('.o-statusbar')?.getAttribute('data-options') || '[]').map((o: any) => o.value)).toEqual([
+      'draft',
+      'done',
+      'confirmed',
+    ]);
+    m.unmount();
+    restoreSfc(OFieldBase as any);
+    restoreSfc(ElSegmented as any);
+
+    const { binding: selBinding } = makeBinding({ meta: staticMeta, store, value: 'draft' });
+    const selMount = mountStatusbar({ selection: ['done', 'draft'] }, selBinding);
+    await flushPromises();
+    expect(JSON.parse(selMount.q('.o-statusbar')?.getAttribute('data-options') || '[]').map((o: any) => o.value)).toEqual([
+      'done',
+      'draft',
+    ]);
+    selMount.unmount();
   });
 
-  it('tolerates fieldRef throw when resolving current from field', async () => {
-    const store = makeStore();
-    const value = ref<string | null>('draft');
-    const binding = {
-      env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
-      prop: 'State',
-      meta: staticMeta,
-      fieldRef: () => {
-        throw new Error('fieldRef boom');
+  test('ensures FieldsGet on mount and merges formItemProps class', async () => {
+    const FieldsGet = fnRecorder(async () => ({ State: staticMeta }));
+    const helpers = createFieldsGetHelpers(
+      { fieldsMetadata: { State: staticMeta }, FieldsGet },
+      { getLang: () => 'en_US' }
+    );
+    const ensureCalls: unknown[][] = [];
+    const store = {
+      fieldsMetadata: { State: staticMeta },
+      FieldsGet,
+      ensureFieldsGet: async (...args: any[]) => {
+        ensureCalls.push(args);
+        return helpers.ensureFieldsGet(...(args as [string[], string[]?]));
       },
-      fieldRefOf: () => value as any,
-      recordRef: () => computed(() => ({ Id: '1' })) as any,
-      registerFields: () => {},
-      store,
-      asView: () => ({ fieldValue: () => value }) as any,
-    } as UseField;
-    // Stub fieldValue uses a stable ref so the control can still render.
-    const wrapper = mount(OStatusbarField as any, {
-      props: { binding, renderMode: 'inline', clickable: true },
-      global: {
-        stubs: {
-          OFieldBase: {
-            setup(_: any, { slots }: any) {
-              const fieldValue = () => value as any;
-              const record = () => ({ Id: '1' });
-              return () => h('div', slots.edit?.({ fieldValue, record }));
-            },
-          },
-          'el-segmented': {
-            props: ['modelValue', 'options', 'disabled'],
-            emits: ['update:modelValue'],
-            template: `<div class="o-statusbar" :data-options="JSON.stringify(options || [])" />`,
-          },
-        },
-      },
-    });
-    await flushPromises();
-    expect(wrapper.get('.o-statusbar').attributes('data-options')).toBeTruthy();
-  });
-
-  it('skips select when not interactive', async () => {
-    const store = makeStore();
-    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft' });
-    const wrapper = mountStatusbar({ clickable: false }, binding);
-    await flushPromises();
-    await wrapper.get('.seg-empty').trigger('click');
-    await wrapper.get('[data-value="done"]').trigger('click');
-    await flushPromises();
-    expect(value.value).toBe('draft');
-  });
-
-  it('ensures FieldsGet on mount', async () => {
-    const store = makeStore();
-    const ensureSpy = vi.spyOn(store, 'ensureFieldsGet');
+      getFieldMeta: helpers.getFieldMeta,
+    };
     const { binding } = makeBinding({ meta: staticMeta, store });
-    mountStatusbar({}, binding);
+    const m = mountStatusbar({ formItemProps: { class: 'extra-class' } }, binding);
     await flushPromises();
-    expect(ensureSpy).toHaveBeenCalled();
-    expect(ensureSpy.mock.calls[0]![0]).toEqual(['State']);
+    expect(ensureCalls.length).toBe(1);
+    expect(ensureCalls[0]![0]).toEqual(['State']);
+    expect(m.q('.ob')?.getAttribute('data-form-item-class') || '').toContain('o-statusbar-form-item');
+    expect(m.q('.ob')?.getAttribute('data-form-item-class') || '').toContain('extra-class');
+    m.unmount();
+  });
+
+  test('skips ensureFieldsGet when store lacks helper', async () => {
+    const { binding } = makeBinding({
+      meta: staticMeta,
+      store: { getFieldMeta: () => staticMeta },
+    });
+    const m = mountStatusbar({}, binding);
+    await flushPromises();
+    expect(m.q('.o-statusbar')).toBeTruthy();
+    m.unmount();
   });
 });

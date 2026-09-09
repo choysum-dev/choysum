@@ -221,7 +221,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, inject } from 'vue';
 import { Search as SearchIcon, ArrowDown, Check, EditPen } from '@element-plus/icons-vue';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -252,7 +252,7 @@ import { formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
-import { useUserFilters } from '@/web/web/composables/search/useUserFilters';
+import { useInjectedUserFilters } from '@/web/web/composables/search/useUserFilters';
 import {
   modelIdentityFromStore,
   pickDefaultFavoriteName,
@@ -260,6 +260,7 @@ import {
   stableTitleSource,
 } from '@/web/web/composables/search/defaultFavoriteName';
 import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
+import { OSearchNavContextKey } from '@/web/web/composables/search/oSearchNavContext';
 import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
 import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
 import { createTranslate } from '@/web/web/i18n';
@@ -270,9 +271,12 @@ import { useRoute } from 'vue-router';
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearch' });
 
 /** Captured in setup so click handlers never call inject()-based APIs. */
-const breadcrumbStore = trySetupHook(() => useBreadcrumbStore());
-const menuStore = trySetupHook(() => useMenuStore());
-const currentRoute = trySetupHook(() => useRoute());
+const navCtx = inject(OSearchNavContextKey, null);
+const breadcrumbStore = navCtx
+  ? (navCtx.breadcrumbStore ?? null)
+  : trySetupHook(() => useBreadcrumbStore());
+const menuStore = navCtx ? (navCtx.menuStore ?? null) : trySetupHook(() => useMenuStore());
+const currentRoute = navCtx ? (navCtx.route ?? null) : trySetupHook(() => useRoute());
 
 function resolveDefaultFavoriteName(viewStore: { application?: unknown; modelName?: unknown }): string {
   const stack = breadcrumbStore?.breadcrumbStack as Array<{ title?: string; titleText?: any }> | undefined;
@@ -387,7 +391,7 @@ const {
   updateMeta: updateFavoriteMeta,
   remove: removeFavorite,
   defaultsForOpen,
-} = useUserFilters({
+} = useInjectedUserFilters({
   store,
   filtersRef: filters as any,
   keywordRef: keyword as any,

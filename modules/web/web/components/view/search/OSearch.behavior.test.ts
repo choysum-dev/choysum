@@ -1,108 +1,253 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { h, nextTick, reactive, toRef } from 'vue';
+import {
+  ElButton,
+  ElCheckbox,
+  ElDialog,
+  ElDivider,
+  ElForm,
+  ElFormItem,
+  ElIcon,
+  ElInput,
+  ElMessage,
+  ElMessageBox,
+  ElPopover,
+  ElTag,
+  ElTooltip,
+  ElTreeSelect,
+} from 'element-plus';
 
+import { UseUserFiltersKey } from '@/web/web/composables/search/useUserFilters';
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import OSearch from './OSearch.vue';
+import OSearchFilter from './OSearchFilter.vue';
 
-const { savedFiltersApi } = vi.hoisted(() => ({
-  savedFiltersApi: {
-    state: null as null | {
-      favoriteMenuItems: any[];
-      loading: boolean;
-      loadError: string | null;
-      defaultsForOpen: any[];
+const savedFiltersApi = {
+  state: null as null | {
+    favoriteMenuItems: any[];
+    loading: boolean;
+    loadError: string | null;
+    defaultsForOpen: any[];
+  },
+  load: fnRecorder(async () => {}),
+  apply: fnRecorder(),
+  saveCurrent: fnRecorder(async () => ({ Id: '1' })),
+  updateMeta: fnRecorder(async () => {}),
+  remove: fnRecorder(async () => {}),
+  lastCodeDefaults: undefined as unknown,
+  lastScopeKey: undefined as unknown,
+};
+
+const msgWarning = fnRecorder();
+const msgSuccess = fnRecorder();
+const msgError = fnRecorder();
+const boxConfirm = fnRecorder(async () => true);
+
+const epSfcs = [
+  ElButton,
+  ElTag,
+  ElTooltip,
+  ElDialog,
+  ElDivider,
+  ElIcon,
+  ElPopover,
+  ElTreeSelect,
+  ElForm,
+  ElFormItem,
+  ElInput,
+  ElCheckbox,
+];
+
+function installEpStubs() {
+  (ElMessage as any).warning = msgWarning;
+  (ElMessage as any).success = msgSuccess;
+  (ElMessage as any).error = msgError;
+  (ElMessageBox as any).confirm = boxConfirm;
+
+  stubSfc(ElButton as any, {
+    name: 'ElButton',
+    inheritAttrs: false,
+    emits: ['click'],
+    setup(_, { slots, emit, attrs }: any) {
+      return () =>
+        h(
+          'button',
+          {
+            type: 'button',
+            ...attrs,
+            class: ['el-btn', attrs.class],
+            onClick: (e: any) => emit('click', e),
+          },
+          slots.default?.()
+        );
     },
-    load: vi.fn(async () => {}),
-    apply: vi.fn(),
-    saveCurrent: vi.fn(async () => ({ Id: '1' })),
-    updateMeta: vi.fn(async () => {}),
-    remove: vi.fn(async () => {}),
-    lastCodeDefaults: undefined as unknown,
-    lastScopeKey: undefined as unknown,
-  },
-}));
-
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({
-      _t: (msg: string, ...args: unknown[]) => (args.length ? `${msg}:${args.join(',')}` : msg),
-      // breadcrumbStore evaluates _lt('Page') at import time when OSearch loads stores.
-      _lt: (msg: string) => msg,
-    }),
-  };
-});
-
-vi.mock('@/web/web/stores/breadcrumbStore', () => ({
-  useBreadcrumbStore: () => {
-    throw new Error('breadcrumb store unavailable in OSearch unit harness');
-  },
-}));
-
-vi.mock('@/web/web/stores/menuStore', () => ({
-  useMenuStore: () => {
-    throw new Error('menu store unavailable in OSearch unit harness');
-  },
-}));
-
-vi.mock('vue-router', async () => {
-  const actual = await vi.importActual<any>('vue-router');
-  return {
-    ...actual,
-    useRoute: () => {
-      throw new Error('vue-router unavailable in OSearch unit harness');
-    },
-  };
-});
-
-vi.mock('@/web/web/composables/search/useUserFilters', async () => {
-  const { reactive, toRef } = await import('vue');
-  savedFiltersApi.state = reactive({
-    favoriteMenuItems: [] as any[],
-    loading: false,
-    loadError: null as string | null,
-    defaultsForOpen: [] as any[],
   });
-  return {
-    useUserFilters: (params: {
-      applyNamedFilter: (nf: any) => void;
-      codeDefaults?: () => any;
-      scopeKey?: () => string;
-    }) => {
-      // Exercise OSearch scopeKey wiring even though Search is mocked.
-      savedFiltersApi.lastScopeKey = params.scopeKey?.();
-      savedFiltersApi.lastCodeDefaults = params.codeDefaults?.();
-      savedFiltersApi.apply.mockImplementation((fav: { name: string; filter: any }) => {
-        params.applyNamedFilter({ name: fav.name, query: fav.filter });
-      });
-      return {
-        favoriteMenuItems: toRef(savedFiltersApi.state!, 'favoriteMenuItems'),
-        loading: toRef(savedFiltersApi.state!, 'loading'),
-        loadError: toRef(savedFiltersApi.state!, 'loadError'),
-        defaultsForOpen: toRef(savedFiltersApi.state!, 'defaultsForOpen'),
-        load: savedFiltersApi.load,
-        apply: savedFiltersApi.apply,
-        saveCurrent: savedFiltersApi.saveCurrent,
-        updateMeta: savedFiltersApi.updateMeta,
-        remove: savedFiltersApi.remove,
-      };
+  stubSfc(ElTag as any, {
+    name: 'ElTag',
+    inheritAttrs: false,
+    props: { closable: { type: Boolean, default: false } },
+    emits: ['close', 'click'],
+    setup(props: any, { slots, emit, attrs }: any) {
+      return () =>
+        h(
+          'span',
+          {
+            ...attrs,
+            class: ['el-tag', attrs.class],
+            onClick: (e: any) => emit('click', e),
+          },
+          [
+            slots.default?.(),
+            props.closable
+              ? h('button', {
+                  type: 'button',
+                  class: 'tag-close',
+                  onClick: (e: any) => {
+                    e.stopPropagation?.();
+                    emit('close', e);
+                  },
+                })
+              : null,
+          ]
+        );
     },
-  };
-});
+  });
+  stubSfc(ElTooltip as any, {
+    name: 'ElTooltip',
+    setup(_, { slots }: any) {
+      return () => h('div', {}, slots.default?.());
+    },
+  });
+  stubSfc(ElPopover as any, {
+    name: 'ElPopover',
+    setup(_, { slots }: any) {
+      return () =>
+        h('div', { class: 'el-popover' }, [slots.reference?.(), h('div', { class: 'pop' }, slots.default?.())]);
+    },
+  });
+  stubSfc(ElDialog as any, {
+    name: 'ElDialog',
+    props: ['modelValue', 'title'],
+    setup(props: any, { slots }: any) {
+      return () =>
+        props.modelValue
+          ? h('div', { class: 'el-dialog', 'data-title': props.title }, [slots.default?.(), slots.footer?.()])
+          : null;
+    },
+  });
+  stubSfc(ElDivider as any, { name: 'ElDivider', setup: () => () => h('hr') });
+  stubSfc(ElIcon as any, {
+    name: 'ElIcon',
+    inheritAttrs: false,
+    setup(_, { slots, attrs }: any) {
+      return () => h('i', { ...attrs, class: attrs.class }, slots.default?.());
+    },
+  });
+  stubSfc(ElForm as any, {
+    name: 'ElForm',
+    setup(_, { slots }: any) {
+      return () => h('form', {}, slots.default?.());
+    },
+  });
+  stubSfc(ElFormItem as any, {
+    name: 'ElFormItem',
+    setup(_, { slots }: any) {
+      return () => h('div', { class: 'form-item' }, slots.default?.());
+    },
+  });
+  stubSfc(ElInput as any, {
+    name: 'ElInput',
+    props: ['modelValue'],
+    emits: ['update:modelValue'],
+    setup(props: any, { emit }: any) {
+      return () =>
+        h('input', {
+          class: 'fav-name',
+          value: props.modelValue,
+          onInput: (e: any) => emit('update:modelValue', e.target.value),
+        });
+    },
+  });
+  stubSfc(ElCheckbox as any, {
+    name: 'ElCheckbox',
+    props: ['modelValue'],
+    emits: ['update:modelValue'],
+    setup(props: any, { slots, emit }: any) {
+      return () =>
+        h('label', { class: 'fav-check' }, [
+          h('input', {
+            type: 'checkbox',
+            checked: !!props.modelValue,
+            onChange: (e: any) => emit('update:modelValue', !!(e.target as HTMLInputElement).checked),
+          }),
+          slots.default?.(),
+        ]);
+    },
+  });
+  stubSfc(ElTreeSelect as any, {
+    name: 'ElTreeSelect',
+    emits: ['change', 'update:modelValue'],
+    setup(_, { emit }: any) {
+      return () =>
+        h('button', {
+          type: 'button',
+          class: 'tree',
+          onClick: () => emit('change', 'f:Status'),
+        });
+    },
+  });
+  stubSfc(OSearchFilter as any, {
+    name: 'OSearchFilter',
+    props: ['store', 'draft', 'fields'],
+    emits: ['cancel', 'confirm'],
+    setup(_, { emit }: any) {
+      return () =>
+        h('div', { class: 'filter-editor' }, [
+          h('button', { type: 'button', class: 'confirm', onClick: () => emit('confirm') }),
+          h('button', { type: 'button', class: 'cancel', onClick: () => emit('cancel') }),
+        ]);
+    },
+  });
+}
 
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { warning: vi.fn(), success: vi.fn(), error: vi.fn() },
-    ElMessageBox: { confirm: vi.fn(async () => true) },
+function restoreEpStubs() {
+  for (const Comp of epSfcs) restoreSfc(Comp as any);
+  restoreSfc(OSearchFilter as any);
+}
+
+function makeUserFiltersFactory() {
+  const prev = savedFiltersApi.state;
+  savedFiltersApi.state = reactive({
+    favoriteMenuItems: (prev?.favoriteMenuItems || []).slice(),
+    loading: false,
+    loadError: prev?.loadError ?? null,
+    defaultsForOpen: (prev?.defaultsForOpen || [{ name: 'CodeDefault', query: ['A', '=', 1] }]).slice(),
+  });
+  return (params: {
+    applyNamedFilter: (nf: any) => void;
+    codeDefaults?: () => any;
+    scopeKey?: () => string;
+  }) => {
+    savedFiltersApi.lastScopeKey = params.scopeKey?.();
+    savedFiltersApi.lastCodeDefaults = params.codeDefaults?.();
+    savedFiltersApi.apply.mockImplementation((fav: { name: string; filter: any }) => {
+      params.applyNamedFilter({ name: fav.name, query: fav.filter });
+    });
+    return {
+      favoriteMenuItems: toRef(savedFiltersApi.state!, 'favoriteMenuItems'),
+      loading: toRef(savedFiltersApi.state!, 'loading'),
+      loadError: toRef(savedFiltersApi.state!, 'loadError'),
+      defaultsForOpen: toRef(savedFiltersApi.state!, 'defaultsForOpen'),
+      load: savedFiltersApi.load,
+      apply: savedFiltersApi.apply,
+      saveCurrent: savedFiltersApi.saveCurrent,
+      updateMeta: savedFiltersApi.updateMeta,
+      remove: savedFiltersApi.remove,
+    };
   };
-});
+}
 
 function makeStore() {
   return {
@@ -117,140 +262,132 @@ function makeStore() {
   } as any;
 }
 
-const elementStubs = {
-  'el-tooltip': { template: `<div><slot /></div>` },
-  'el-button': {
-    emits: ['click'],
-    template: `<button type="button" class="el-btn" @click="$emit('click', $event)"><slot /></button>`,
-  },
-  'el-tag': {
-    props: { closable: { type: Boolean, default: false } },
-    emits: ['close', 'click'],
-    template: `<span class="el-tag" @click="$emit('click', $event)">
-      <slot />
-      <button v-if="closable" type="button" class="tag-close" @click.stop="$emit('close', $event)" />
-    </span>`,
-  },
-  'el-popover': {
-    props: ['visible'],
-    emits: ['update:visible'],
-    template: `<div class="el-popover"><slot name="reference" /><div class="pop"><slot /></div></div>`,
-  },
-  'el-dialog': {
-    props: ['modelValue', 'title'],
-    emits: ['update:modelValue', 'close'],
-    template: `<div v-if="modelValue" class="el-dialog" :data-title="title"><slot /><slot name="footer" /></div>`,
-  },
-  'el-divider': true,
-  'el-icon': { template: `<i><slot /></i>` },
-  'el-form': { template: `<form><slot /></form>` },
-  'el-form-item': { template: `<div class="form-item"><slot /></div>` },
-  'el-input': {
-    props: ['modelValue'],
-    emits: ['update:modelValue'],
-    template: `<input class="fav-name" :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
-  },
-  'el-checkbox': {
-    props: ['modelValue'],
-    emits: ['update:modelValue'],
-    template: `<label class="fav-check"><input type="checkbox" :checked="modelValue" @change="$emit('update:modelValue', $event.target.checked)" /><slot /></label>`,
-  },
-  'el-tree-select': {
-    emits: ['change', 'update:modelValue'],
-    template: `<button type="button" class="tree" @click="$emit('change', 'f:Status')" />`,
-  },
-  OSearchFilter: {
-    props: ['store', 'draft', 'fields'],
-    emits: ['cancel', 'confirm'],
-    template: `<div class="filter-editor">
-      <button type="button" class="confirm" @click="$emit('confirm')" />
-      <button type="button" class="cancel" @click="$emit('cancel')" />
-    </div>`,
-  },
-};
+function btnByText(m: { qa: (s: string) => Element[] }, substr: string) {
+  return m.qa('.el-btn').find(b => (b.textContent || '').includes(substr));
+}
+
+function setInputValue(el: Element | null, value: string) {
+  const input = el as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
 
 describe('OSearch behavior', () => {
   beforeEach(() => {
-    const st = savedFiltersApi.state!;
+    const st = savedFiltersApi.state || {
+      favoriteMenuItems: [],
+      loading: false,
+      loadError: null,
+      defaultsForOpen: [],
+    };
+    savedFiltersApi.state = st as any;
     st.favoriteMenuItems = [];
     st.loading = false;
     st.loadError = null;
     st.defaultsForOpen = [{ name: 'CodeDefault', query: ['A', '=', 1] }];
-    savedFiltersApi.load.mockClear();
-    savedFiltersApi.apply.mockClear();
-    savedFiltersApi.saveCurrent.mockClear();
-    savedFiltersApi.updateMeta.mockClear();
-    savedFiltersApi.remove.mockClear();
-    savedFiltersApi.load.mockResolvedValue(undefined);
-    savedFiltersApi.saveCurrent.mockResolvedValue({ Id: '1' });
-    savedFiltersApi.updateMeta.mockResolvedValue(undefined);
-    savedFiltersApi.remove.mockResolvedValue(undefined);
+    savedFiltersApi.load.mockReset();
+    savedFiltersApi.apply.mockReset();
+    savedFiltersApi.saveCurrent.mockReset();
+    savedFiltersApi.updateMeta.mockReset();
+    savedFiltersApi.remove.mockReset();
+    savedFiltersApi.load.mockImplementation(async () => {});
+    savedFiltersApi.saveCurrent.mockImplementation(async () => ({ Id: '1' }));
+    savedFiltersApi.updateMeta.mockImplementation(async () => {});
+    savedFiltersApi.remove.mockImplementation(async () => {});
     savedFiltersApi.lastScopeKey = undefined;
     savedFiltersApi.lastCodeDefaults = undefined;
+    msgWarning.mockClear();
+    msgSuccess.mockClear();
+    msgError.mockClear();
+    boxConfirm.mockReset();
+    boxConfirm.mockImplementation(async () => true);
+  });
+
+  afterEach(() => {
+    restoreEpStubs();
   });
 
   function mountSearch(props: Record<string, any> = {}) {
-    return mount(OSearch as any, {
+    installEpStubs();
+    const emitted: Record<string, any[][]> = {};
+    const track = (name: string) => (...args: any[]) => {
+      (emitted[name] ||= []).push(args);
+    };
+    const m = mountApp(OSearch as any, {
+      reactiveProps: true,
       props: {
         store: makeStore(),
         placeholder: 'Find…',
         defaultFilters: [{ name: 'Active', query: ['Active', '=', true] }],
         ...props,
       },
-      global: { stubs: elementStubs },
+      on: {
+        onQueryUpdate: track('query-update'),
+        onDefaultsReady: track('defaults-ready'),
+      },
+      provide: {
+        [UseUserFiltersKey as symbol]: makeUserFiltersFactory(),
+      },
     });
+    return { ...m, emitted };
   }
 
-  it('wires empty scopeKey when route inject is unavailable', async () => {
-    mountSearch();
+  test('wires empty scopeKey when route inject is unavailable', async () => {
+    const m = mountSearch();
     await flushPromises();
     expect(savedFiltersApi.lastScopeKey).toBe('');
+    m.unmount();
   });
 
-  it('emits query-update on enter / search icon and syncs controlled keyword', async () => {
-    const wrapper = mountSearch({ currentKeyword: 'hello' });
+  test('emits query-update on enter / search icon and syncs controlled keyword', async () => {
+    const m = mountSearch({ currentKeyword: 'hello' });
     await flushPromises();
-    const input = wrapper.find('input.o-search__input');
-    expect((input.element as HTMLInputElement).value).toBe('hello');
+    const input = m.q('input.o-search__input') as HTMLInputElement;
+    expect(input.value).toBe('hello');
 
-    await input.trigger('keydown.enter');
-    expect(wrapper.emitted('query-update')?.length).toBeGreaterThan(0);
+    m.setupState().onEnter();
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
 
-    const before = wrapper.emitted('query-update')!.length;
-    await wrapper.findAll('.el-btn')[0]!.trigger('click');
-    expect(wrapper.emitted('query-update')!.length).toBeGreaterThan(before);
+    const before = (m.emitted['query-update'] || []).length;
+    m.qa('.el-btn')[0]!.dispatchEvent(new Event('click', { bubbles: true }));
+    await nextTick();
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(before);
+    m.unmount();
   });
 
-  it('shows grouping tag and clears grouping', async () => {
-    const wrapper = mountSearch({
+  test('shows grouping tag and clears grouping', async () => {
+    const m = mountSearch({
       currentAppliedGroups: [{ field: 'Status' }, { field: 'CreatedAt', granularity: 'month' }],
     });
     await nextTick();
-    expect(wrapper.find('.o-search__grouptag').exists()).toBe(true);
-    await wrapper.find('.o-search__grouptag .tag-close').trigger('click');
-    const payload = wrapper.emitted('query-update')!.at(-1)![0] as any;
+    expect(m.q('.o-search__grouptag')).toBeTruthy();
+    (m.q('.tag-close') as HTMLElement).click();
+    await flushPromises();
+    const payload = m.emitted['query-update']!.at(-1)![0] as any;
     expect(payload.appliedGroups).toEqual([]);
+    m.unmount();
   });
 
-  it('opens custom filter editor, warns on incomplete save, and cancels', async () => {
-    const { ElMessage } = await import('element-plus');
-    const wrapper = mountSearch();
+  test('opens custom filter editor, warns on incomplete save, and cancels', async () => {
+    const m = mountSearch();
     await nextTick();
-    const custom = wrapper.findAll('.el-btn').find(b => b.text().includes('Custom filter'));
+    const custom = btnByText(m, 'Custom filter');
     expect(custom).toBeTruthy();
-    await custom!.trigger('click');
+    (custom as HTMLElement).click();
     await nextTick();
-    expect(wrapper.find('.filter-editor').exists()).toBe(true);
+    expect(m.q('.filter-editor')).toBeTruthy();
 
-    await wrapper.find('.filter-editor .confirm').trigger('click');
-    expect(ElMessage.warning).toHaveBeenCalled();
-
-    await wrapper.find('.filter-editor .cancel').trigger('click');
+    (m.q('.confirm') as HTMLElement).click();
     await nextTick();
-    expect(wrapper.find('.filter-editor').exists()).toBe(false);
+    expect(msgWarning.calls.length).toBeGreaterThan(0);
+
+    (m.q('.cancel') as HTMLElement).click();
+    await nextTick();
+    expect(m.q('.filter-editor')).toBeFalsy();
+    m.unmount();
   });
 
-  it('applies controlled filters and supports tag close / backspace delete', async () => {
+  test('applies controlled filters and supports tag close / backspace delete', async () => {
     const filters = [
       {
         id: 'f1',
@@ -259,59 +396,62 @@ describe('OSearch behavior', () => {
         children: [{ id: 'c1', field: 'Active', operator: '=', value: true }],
       },
     ];
-    const wrapper = mountSearch({ currentAppliedFilters: filters });
+    const m = mountSearch({ currentAppliedFilters: filters });
     await flushPromises();
-    expect(wrapper.find('.o-search__tag').exists()).toBe(true);
+    expect(m.q('.o-search__tag')).toBeTruthy();
 
-    await wrapper.find('.o-search__tag').trigger('click');
+    (m.q('.o-search__tag') as HTMLElement).click();
     await nextTick();
-    expect(wrapper.find('.filter-editor').exists()).toBe(true);
-    await wrapper.find('.filter-editor .cancel').trigger('click');
+    expect(m.q('.filter-editor')).toBeTruthy();
+    (m.q('.cancel') as HTMLElement).click();
     await nextTick();
 
-    await wrapper.find('.o-search__tag .tag-close').trigger('click');
-    expect(wrapper.emitted('query-update')?.length).toBeGreaterThan(0);
+    (m.q('.tag-close') as HTMLElement).click();
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
 
-    // Acknowledge the clear echo, then push a new controlled snapshot.
-    await wrapper.setProps({ currentAppliedFilters: [] });
+    m.props.currentAppliedFilters = [];
     await flushPromises();
-    await wrapper.setProps({
-      currentAppliedFilters: [
-        {
-          id: 'f2',
-          name: 'X',
-          logic: 'And',
-          children: [{ id: 'c2', field: 'Name', operator: '=', value: 'a' }],
-        },
-      ],
-    });
+    m.props.currentAppliedFilters = [
+      {
+        id: 'f2',
+        name: 'X',
+        logic: 'And',
+        children: [{ id: 'c2', field: 'Name', operator: '=', value: 'a' }],
+      },
+    ];
     await flushPromises();
-    expect(wrapper.find('.o-search__tag').text()).toContain('X');
-    await wrapper.find('.o-search__tag').trigger('click');
+    expect(m.q('.o-search__tag')?.textContent || '').toContain('X');
+    (m.q('.o-search__tag') as HTMLElement).click();
     await nextTick();
-    expect(wrapper.find('.filter-editor').exists()).toBe(true);
+    expect(m.q('.filter-editor')).toBeTruthy();
+    (m.q('.cancel') as HTMLElement).click();
+    m.unmount();
   });
 
-  it('toggles default filter from menu', async () => {
-    const wrapper = mountSearch();
+  test('toggles default filter from menu', async () => {
+    const m = mountSearch();
     await nextTick();
-    const item = wrapper.findAll('.el-btn').find(b => b.text().includes('Active'));
+    const item = btnByText(m, 'Active');
     expect(item).toBeTruthy();
-    await item!.trigger('click');
-    expect(wrapper.emitted('query-update')?.length).toBeGreaterThan(0);
+    (item as HTMLElement).click();
+    await flushPromises();
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
+    m.unmount();
   });
 
-  it('applies tree select change for grouping', async () => {
-    const wrapper = mountSearch();
+  test('applies tree select change for grouping', async () => {
+    const m = mountSearch();
     await nextTick();
-    await wrapper.find('.tree').trigger('click');
-    expect(wrapper.emitted('query-update')?.length).toBeGreaterThan(0);
-    const payload = wrapper.emitted('query-update')!.at(-1)![0] as any;
+    (m.q('.tree') as HTMLElement).click();
+    await flushPromises();
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
+    const payload = m.emitted['query-update']!.at(-1)![0] as any;
     expect(payload.appliedGroups?.some((g: any) => g.field === 'Status' || g === 'Status')).toBe(true);
+    m.unmount();
   });
 
-  it('saves a complete edited draft and closes the editor', async () => {
-    const wrapper = mountSearch({
+  test('saves a complete edited draft and closes the editor', async () => {
+    const m = mountSearch({
       currentAppliedFilters: [
         {
           id: 'f1',
@@ -322,20 +462,20 @@ describe('OSearch behavior', () => {
       ],
     });
     await flushPromises();
-    await wrapper.find('.o-search__tag').trigger('click');
+    (m.q('.o-search__tag') as HTMLElement).click();
     await nextTick();
-    expect(wrapper.find('.filter-editor').exists()).toBe(true);
-    const before = wrapper.emitted('query-update')?.length ?? 0;
-    await wrapper.find('.filter-editor .confirm').trigger('click');
+    expect(m.q('.filter-editor')).toBeTruthy();
+    const before = (m.emitted['query-update'] || []).length;
+    (m.q('.confirm') as HTMLElement).click();
     await flushPromises();
-    expect(wrapper.find('.filter-editor').exists()).toBe(false);
-    expect((wrapper.emitted('query-update')?.length ?? 0)).toBeGreaterThan(before);
+    expect(m.q('.filter-editor')).toBeFalsy();
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(before);
+    m.unmount();
   });
 
-  it('closes quietly when edited filter disappears before save', async () => {
-    const { ElMessage } = await import('element-plus');
-    (ElMessage.warning as any).mockClear?.();
-    const wrapper = mountSearch({
+  test('closes quietly when edited filter disappears before save', async () => {
+    msgWarning.mockClear();
+    const m = mountSearch({
       currentAppliedFilters: [
         {
           id: 'f-gone',
@@ -345,33 +485,36 @@ describe('OSearch behavior', () => {
       ],
     });
     await flushPromises();
-    await wrapper.find('.o-search__tag').trigger('click');
+    (m.q('.o-search__tag') as HTMLElement).click();
     await nextTick();
-    expect(wrapper.find('.filter-editor').exists()).toBe(true);
+    expect(m.q('.filter-editor')).toBeTruthy();
 
-    // Parent clears tags while the editor is still open.
-    await wrapper.setProps({ currentAppliedFilters: [] });
+    m.props.currentAppliedFilters = [];
     await flushPromises();
-    await wrapper.find('.filter-editor .confirm').trigger('click');
+    (m.q('.confirm') as HTMLElement).click();
     await flushPromises();
-    expect(wrapper.find('.filter-editor').exists()).toBe(false);
-    expect(ElMessage.warning).not.toHaveBeenCalled();
+    expect(m.q('.filter-editor')).toBeFalsy();
+    expect(msgWarning.calls.length).toBe(0);
+    m.unmount();
   });
 
-  it('opens grouping menu from group tag and toggles applied menu items', async () => {
-    const wrapper = mountSearch({
+  test('opens grouping menu from group tag and toggles applied menu items', async () => {
+    const m = mountSearch({
       currentAppliedGroups: [{ field: 'Status' }, { field: 'CreatedAt', granularity: 'month' }],
     });
     await nextTick();
-    await wrapper.find('.o-search__grouptag').trigger('click');
-    const statusItem = wrapper.findAll('.el-btn').find(b => b.text().includes('Status'));
+    (m.q('.o-search__grouptag') as HTMLElement).click();
+    await nextTick();
+    const statusItem = btnByText(m, 'Status');
     expect(statusItem).toBeTruthy();
-    await statusItem!.trigger('click');
-    expect(wrapper.emitted('query-update')?.length).toBeGreaterThan(0);
+    (statusItem as HTMLElement).click();
+    await flushPromises();
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
+    m.unmount();
   });
 
-  it('pending-deletes last filter tag via backspace then removes it', async () => {
-    const wrapper = mountSearch({
+  test('pending-deletes last filter tag via backspace then removes it', async () => {
+    const m = mountSearch({
       currentAppliedFilters: [
         {
           id: 'f1',
@@ -382,74 +525,77 @@ describe('OSearch behavior', () => {
       ],
     });
     await flushPromises();
-    const input = wrapper.find('input.o-search__input');
-    const el = input.element as HTMLInputElement;
-    Object.defineProperty(el, 'selectionStart', { configurable: true, get: () => 0 });
-    Object.defineProperty(el, 'selectionEnd', { configurable: true, get: () => 0 });
-
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    const fakeEvt = {
+      key: 'Backspace',
+      target: { selectionStart: 0, selectionEnd: 0 },
+      preventDefault() {},
+    };
+    m.setupState().onInputKeydown(fakeEvt);
     await nextTick();
-    expect(wrapper.find('.o-search__tag--pending-delete').exists()).toBe(true);
+    expect(m.q('.o-search__tag--pending-delete')).toBeTruthy();
 
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    m.setupState().onInputKeydown(fakeEvt);
     await flushPromises();
-    expect(wrapper.find('.o-search__tag').exists()).toBe(false);
+    expect(m.q('.o-search__tag')).toBeFalsy();
 
-    // Typing clears pending marker when a tag remains.
-    await wrapper.setProps({
-      currentAppliedFilters: [
-        {
-          id: 'f2',
-          name: 'Two',
-          logic: 'And',
-          children: [{ id: 'c2', field: 'Name', operator: '=', value: 'b' }],
-        },
-      ],
-    });
+    m.props.currentAppliedFilters = [
+      {
+        id: 'f2',
+        name: 'Two',
+        logic: 'And',
+        children: [{ id: 'c2', field: 'Name', operator: '=', value: 'b' }],
+      },
+    ];
     await flushPromises();
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    m.setupState().onInputKeydown(fakeEvt);
     await nextTick();
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+    m.setupState().onInputKeydown({ key: 'a', target: { selectionStart: 0, selectionEnd: 0 }, preventDefault() {} });
     await nextTick();
-    expect(wrapper.find('.o-search__tag--pending-delete').exists()).toBe(false);
+    expect(m.q('.o-search__tag--pending-delete')).toBeFalsy();
+    m.unmount();
   });
 
-  it('focuses the keyword input when the shell is clicked', async () => {
-    const wrapper = mountSearch();
-    const input = wrapper.find('input.o-search__input');
-    const focus = vi.spyOn(input.element as HTMLInputElement, 'focus');
-    await wrapper.find('.o-search__main').trigger('click');
-    expect(focus).toHaveBeenCalled();
+  test('focuses the keyword input when the shell is clicked', async () => {
+    const m = mountSearch();
+    const input = m.q('input.o-search__input') as HTMLInputElement;
+    const focus = fnRecorder();
+    input.focus = focus as any;
+    (m.q('.o-search__main') as HTMLElement).click();
+    expect(focus.calls.length).toBeGreaterThan(0);
+    m.unmount();
   });
 
-  it('loads favorites on mount and emits defaults-ready for OSearchView first frame', async () => {
-    const wrapper = mountSearch();
+  test('loads favorites on mount and emits defaults-ready for OSearchView first frame', async () => {
+    const m = mountSearch();
     await flushPromises();
-    expect(savedFiltersApi.load).toHaveBeenCalled();
-    expect(wrapper.emitted('defaults-ready')?.[0]?.[0]).toEqual([{ name: 'CodeDefault', query: ['A', '=', 1] }]);
-    expect(wrapper.text()).toContain('No favorites yet');
+    expect(savedFiltersApi.load.calls.length).toBeGreaterThan(0);
+    expect(m.emitted['defaults-ready']?.[0]?.[0]).toEqual([{ name: 'CodeDefault', query: ['A', '=', 1] }]);
+    expect(m.text()).toContain('No favorites yet');
 
     savedFiltersApi.state!.loadError = 'boom';
     await nextTick();
-    expect(wrapper.text()).toContain('Failed to load favorites');
-    const before = savedFiltersApi.load.mock.calls.length;
-    const retry = wrapper.findAll('.el-btn').find(b => b.text().includes('Retry'));
+    expect(m.text()).toContain('Failed to load favorites');
+    const before = savedFiltersApi.load.calls.length;
+    const retry = btnByText(m, 'Retry');
     expect(retry).toBeTruthy();
-    await retry!.trigger('click');
-    expect(savedFiltersApi.load.mock.calls.length).toBeGreaterThan(before);
+    (retry as HTMLElement).click();
+    expect(savedFiltersApi.load.calls.length).toBeGreaterThan(before);
+    m.unmount();
   });
 
-  it('covers codeDefaults singleton/undefined branches', async () => {
-    mountSearch({ defaultFilters: undefined as any });
+  test('covers codeDefaults singleton/undefined branches', async () => {
+    const a = mountSearch({ defaultFilters: undefined as any });
     await flushPromises();
     expect(savedFiltersApi.lastCodeDefaults).toBeUndefined();
+    a.unmount();
 
-    mountSearch({ defaultFilters: { name: 'Solo', query: ['X', '=', 1] } as any });
+    const b = mountSearch({ defaultFilters: { name: 'Solo', query: ['X', '=', 1] } as any });
     await flushPromises();
     expect(savedFiltersApi.lastCodeDefaults).toEqual([{ name: 'Solo', query: ['X', '=', 1] }]);
+    b.unmount();
   });
 
-  it('shows Check icon for applied favorite names', async () => {
+  test('shows Check icon for applied favorite names', async () => {
     savedFiltersApi.state!.favoriteMenuItems = [
       {
         id: 'fav-check',
@@ -460,7 +606,7 @@ describe('OSearch behavior', () => {
         filter: {},
       },
     ];
-    const wrapper = mountSearch({
+    const m = mountSearch({
       currentAppliedFilters: [
         {
           id: 'f-mine',
@@ -471,13 +617,12 @@ describe('OSearch behavior', () => {
       ],
     });
     await flushPromises();
-    expect(wrapper.find('.o-search__menu-icon--applied').exists()).toBe(true);
-    expect(wrapper.text()).toContain('Shared');
+    expect(m.q('.o-search__menu-icon--applied')).toBeTruthy();
+    expect(m.text()).toContain('Shared');
+    m.unmount();
   });
 
-  it('applies and removes favorites (confirm), and saves with empty-name warning', async () => {
-    const { ElMessage, ElMessageBox } = await import('element-plus');
-    (ElMessageBox.confirm as any).mockResolvedValue(true);
+  test('applies and removes favorites (confirm), and saves with empty-name warning', async () => {
     savedFiltersApi.state!.favoriteMenuItems = [
       {
         id: 'fav-1',
@@ -488,53 +633,58 @@ describe('OSearch behavior', () => {
         filter: { And: [['Active', '=', true]] },
       },
     ];
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
 
-    const applyBtn = wrapper.findAll('.el-btn').find(b => b.text().includes('Mine'));
+    const applyBtn = btnByText(m, 'Mine');
     expect(applyBtn).toBeTruthy();
-    const beforeEmit = wrapper.emitted('query-update')?.length ?? 0;
-    await applyBtn!.trigger('click');
-    expect(savedFiltersApi.apply).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Mine', filter: { And: [['Active', '=', true]] } })
-    );
-    expect((wrapper.emitted('query-update')?.length ?? 0)).toBeGreaterThan(beforeEmit);
-
-    const del = wrapper.find('.o-search__menu-item-delete');
-    await del.trigger('click');
+    const beforeEmit = (m.emitted['query-update'] || []).length;
+    (applyBtn as HTMLElement).click();
     await flushPromises();
-    expect(ElMessageBox.confirm).toHaveBeenCalled();
-    expect(savedFiltersApi.remove).toHaveBeenCalledWith('fav-1');
-    expect(ElMessage.success).toHaveBeenCalled();
+    expect(savedFiltersApi.apply.calls[0]![0]).toMatchObject({
+      name: 'Mine',
+      filter: { And: [['Active', '=', true]] },
+    });
+    expect((m.emitted['query-update'] || []).length).toBeGreaterThan(beforeEmit);
 
-    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
-    await saveOpen!.trigger('click');
+    (m.q('.o-search__menu-item-delete') as HTMLElement).click();
+    await flushPromises();
+    expect(boxConfirm.calls.length).toBeGreaterThan(0);
+    expect(savedFiltersApi.remove.calls[0]).toEqual(['fav-1']);
+    expect(msgSuccess.calls.length).toBeGreaterThan(0);
+
+    const saveOpen = btnByText(m, 'Save current filters');
+    (saveOpen as HTMLElement).click();
     await nextTick();
-    expect(wrapper.find('.el-dialog').exists()).toBe(true);
+    expect(m.q('.el-dialog')).toBeTruthy();
 
-    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
-    // Clear any Odoo-style default title so empty-name validation is exercised.
-    await wrapper.find('input.fav-name').setValue('');
-    await saveBtn!.trigger('click');
-    expect(ElMessage.warning).toHaveBeenCalled();
-    expect(savedFiltersApi.saveCurrent).not.toHaveBeenCalled();
+    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save');
+    setInputValue(m.q('input.fav-name'), '');
+    await nextTick();
+    (saveBtn as HTMLElement).click();
+    await nextTick();
+    expect(msgWarning.calls.length).toBeGreaterThan(0);
+    expect(savedFiltersApi.saveCurrent.calls.length).toBe(0);
 
-    await wrapper.find('input.fav-name').setValue('NewFav');
-    await saveBtn!.trigger('click');
+    setInputValue(m.q('input.fav-name'), 'NewFav');
+    await nextTick();
+    (saveBtn as HTMLElement).click();
     await flushPromises();
-    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
+    expect(savedFiltersApi.saveCurrent.calls[0]![0]).toEqual({
       name: 'NewFav',
       isDefault: false,
       shared: false,
     });
-    expect(wrapper.emitted('defaults-ready')?.length).toBe(3);
+    expect((m.emitted['defaults-ready'] || []).length).toBe(3);
+    m.unmount();
   });
 
-  it('cancels favorite delete when ElMessageBox rejects', async () => {
-    const { ElMessage, ElMessageBox } = await import('element-plus');
-    (ElMessageBox.confirm as any).mockRejectedValueOnce('cancel');
-    (ElMessage.error as any).mockClear?.();
-    (ElMessage.success as any).mockClear?.();
+  test('cancels favorite delete when ElMessageBox rejects', async () => {
+    boxConfirm.mockImplementation(async () => {
+      throw 'cancel';
+    });
+    msgError.mockClear();
+    msgSuccess.mockClear();
     savedFiltersApi.state!.favoriteMenuItems = [
       {
         id: 'fav-cancel',
@@ -545,20 +695,22 @@ describe('OSearch behavior', () => {
         filter: {},
       },
     ];
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
-    await wrapper.find('.o-search__menu-item-delete').trigger('click');
+    (m.q('.o-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
-    expect(savedFiltersApi.remove).not.toHaveBeenCalled();
-    expect(ElMessage.success).not.toHaveBeenCalled();
-    expect(ElMessage.error).not.toHaveBeenCalled();
+    expect(savedFiltersApi.remove.calls.length).toBe(0);
+    expect(msgSuccess.calls.length).toBe(0);
+    expect(msgError.calls.length).toBe(0);
+    m.unmount();
   });
 
-  it('shows ElMessage.error when remove or save fails', async () => {
-    const { ElMessage, ElMessageBox } = await import('element-plus');
-    (ElMessageBox.confirm as any).mockResolvedValue(true);
-    (ElMessage.error as any).mockClear?.();
-    savedFiltersApi.remove.mockRejectedValueOnce(new Error('delete failed'));
+  test('shows ElMessage.error when remove or save fails', async () => {
+    boxConfirm.mockImplementation(async () => true);
+    msgError.mockClear();
+    savedFiltersApi.remove.mockImplementation(async () => {
+      throw new Error('delete failed');
+    });
     savedFiltersApi.state!.favoriteMenuItems = [
       {
         id: 'fav-err',
@@ -569,29 +721,35 @@ describe('OSearch behavior', () => {
         filter: {},
       },
     ];
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
-    await wrapper.find('.o-search__menu-item-delete').trigger('click');
+    (m.q('.o-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
-    expect(ElMessage.error).toHaveBeenCalledWith('delete failed');
+    expect(msgError.calls[0]).toEqual(['delete failed']);
 
-    (ElMessage.error as any).mockClear?.();
-    savedFiltersApi.saveCurrent.mockRejectedValueOnce('save blew up');
-    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
-    await saveOpen!.trigger('click');
+    msgError.mockClear();
+    savedFiltersApi.remove.mockImplementation(async () => {});
+    savedFiltersApi.saveCurrent.mockImplementation(async () => {
+      throw 'save blew up';
+    });
+    const saveOpen = btnByText(m, 'Save current filters');
+    (saveOpen as HTMLElement).click();
     await nextTick();
-    await wrapper.find('input.fav-name').setValue('FailFav');
-    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
-    await saveBtn!.trigger('click');
+    setInputValue(m.q('input.fav-name'), 'FailFav');
+    await nextTick();
+    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save');
+    (saveBtn as HTMLElement).click();
     await flushPromises();
-    expect(ElMessage.error).toHaveBeenCalledWith('save blew up');
+    expect(msgError.calls[0]).toEqual(['save blew up']);
+    m.unmount();
   });
 
-  it('stringifies non-Error remove failures and Error save failures', async () => {
-    const { ElMessage, ElMessageBox } = await import('element-plus');
-    (ElMessageBox.confirm as any).mockResolvedValue(true);
-    (ElMessage.error as any).mockClear?.();
-    savedFiltersApi.remove.mockRejectedValueOnce('delete-string');
+  test('stringifies non-Error remove failures and Error save failures', async () => {
+    boxConfirm.mockImplementation(async () => true);
+    msgError.mockClear();
+    savedFiltersApi.remove.mockImplementation(async () => {
+      throw 'delete-string';
+    });
     savedFiltersApi.state!.favoriteMenuItems = [
       {
         id: 'fav-str',
@@ -602,51 +760,55 @@ describe('OSearch behavior', () => {
         filter: {},
       },
     ];
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
-    await wrapper.find('.o-search__menu-item-delete').trigger('click');
+    (m.q('.o-search__menu-item-delete') as HTMLElement).click();
     await flushPromises();
-    expect(ElMessage.error).toHaveBeenCalledWith('delete-string');
+    expect(msgError.calls[0]).toEqual(['delete-string']);
 
-    (ElMessage.error as any).mockClear?.();
-    savedFiltersApi.saveCurrent.mockRejectedValueOnce(new Error('save failed'));
-    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
-    await saveOpen!.trigger('click');
+    msgError.mockClear();
+    savedFiltersApi.remove.mockImplementation(async () => {});
+    savedFiltersApi.saveCurrent.mockImplementation(async () => {
+      throw new Error('save failed');
+    });
+    const saveOpen = btnByText(m, 'Save current filters');
+    (saveOpen as HTMLElement).click();
     await nextTick();
-    await wrapper.find('input.fav-name').setValue('ErrFav');
-    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
-    await saveBtn!.trigger('click');
+    setInputValue(m.q('input.fav-name'), 'ErrFav');
+    await nextTick();
+    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save');
+    (saveBtn as HTMLElement).click();
     await flushPromises();
-    expect(ElMessage.error).toHaveBeenCalledWith('save failed');
+    expect(msgError.calls[0]).toEqual(['save failed']);
+    m.unmount();
   });
 
-  it('guards re-entrant save while saveFavoriteSaving is true', async () => {
+  test('guards re-entrant save while saveFavoriteSaving is true', async () => {
     let resolveSave!: (v: any) => void;
-    savedFiltersApi.saveCurrent.mockImplementationOnce(
+    savedFiltersApi.saveCurrent.mockImplementation(
       () =>
         new Promise(resolve => {
           resolveSave = resolve;
         })
     );
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
-    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
-    await saveOpen!.trigger('click');
+    const saveOpen = btnByText(m, 'Save current filters');
+    (saveOpen as HTMLElement).click();
     await nextTick();
-    await wrapper.find('input.fav-name').setValue('Once');
-    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
-    await saveBtn!.trigger('click');
-    await saveBtn!.trigger('click');
+    setInputValue(m.q('input.fav-name'), 'Once');
     await nextTick();
-    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledTimes(1);
+    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
+    saveBtn.click();
+    saveBtn.click();
+    await nextTick();
+    expect(savedFiltersApi.saveCurrent.calls.length).toBe(1);
     resolveSave!({ Id: '1' });
     await flushPromises();
+    m.unmount();
   });
 
-  it('does not emit query-update when applying a favorite leaves filter length unchanged', async () => {
-    savedFiltersApi.apply.mockImplementationOnce(() => {
-      /* no-op: filters length stays the same */
-    });
+  test('does not emit query-update when applying a favorite leaves filter length unchanged', async () => {
     savedFiltersApi.state!.favoriteMenuItems = [
       {
         id: 'fav-noop',
@@ -657,52 +819,66 @@ describe('OSearch behavior', () => {
         filter: { And: [['Active', '=', true]] },
       },
     ];
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
-    const beforeEmit = wrapper.emitted('query-update')?.length ?? 0;
-    const applyBtn = wrapper.findAll('.el-btn').find(b => b.text().includes('Noop'));
-    await applyBtn!.trigger('click');
-    expect(savedFiltersApi.apply).toHaveBeenCalled();
-    expect(wrapper.emitted('query-update')?.length ?? 0).toBe(beforeEmit);
+    // Override after mount: factory wires applyNamedFilter during setup.
+    savedFiltersApi.apply.mockImplementation(() => {
+      /* no-op: filters length stays the same */
+    });
+    const beforeEmit = (m.emitted['query-update'] || []).length;
+    const applyBtn = btnByText(m, 'Noop');
+    (applyBtn as HTMLElement).click();
+    await flushPromises();
+    expect(savedFiltersApi.apply.calls.length).toBeGreaterThan(0);
+    expect((m.emitted['query-update'] || []).length).toBe(beforeEmit);
+    m.unmount();
   });
 
-  it('saves with isDefault and shared checkboxes enabled', async () => {
-    const wrapper = mountSearch();
+  test('saves with isDefault and shared checkboxes enabled', async () => {
+    const m = mountSearch();
     await flushPromises();
-    const saveOpen = wrapper.findAll('.el-btn').find(b => b.text().includes('Save current filters'));
-    await saveOpen!.trigger('click');
+    const saveOpen = btnByText(m, 'Save current filters');
+    (saveOpen as HTMLElement).click();
     await nextTick();
-    await wrapper.find('input.fav-name').setValue('DefaultOnly');
-    const defaultCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Use by default'));
+    setInputValue(m.q('input.fav-name'), 'DefaultOnly');
+    await nextTick();
+    const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     expect(defaultCheck).toBeTruthy();
-    await defaultCheck!.find('input').setValue(true);
-    const saveBtn = wrapper.findAll('.el-btn').find(b => b.text() === 'Save');
-    await saveBtn!.trigger('click');
+    const defaultInput = defaultCheck!.querySelector('input') as HTMLInputElement;
+    defaultInput.checked = true;
+    defaultInput.dispatchEvent(new Event('change', { bubbles: true }));
+    await nextTick();
+    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
+    saveBtn.click();
     await flushPromises();
-    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
+    expect(savedFiltersApi.saveCurrent.calls[0]![0]).toEqual({
       name: 'DefaultOnly',
       isDefault: true,
       shared: false,
     });
 
     savedFiltersApi.saveCurrent.mockClear();
-    await saveOpen!.trigger('click');
+    (saveOpen as HTMLElement).click();
     await nextTick();
-    await wrapper.find('input.fav-name').setValue('SharedOnly');
-    const sharedCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Share with all users'));
+    setInputValue(m.q('input.fav-name'), 'SharedOnly');
+    await nextTick();
+    const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
     expect(sharedCheck).toBeTruthy();
-    await sharedCheck!.find('input').setValue(true);
-    await wrapper.findAll('.el-btn').find(b => b.text() === 'Save')!.trigger('click');
+    const sharedInput = sharedCheck!.querySelector('input') as HTMLInputElement;
+    sharedInput.checked = true;
+    sharedInput.dispatchEvent(new Event('change', { bubbles: true }));
+    await nextTick();
+    (m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();
-    expect(savedFiltersApi.saveCurrent).toHaveBeenCalledWith({
+    expect(savedFiltersApi.saveCurrent.calls[0]![0]).toEqual({
       name: 'SharedOnly',
       isDefault: false,
       shared: true,
     });
+    m.unmount();
   });
 
-  it('edits favorite metadata via dialog without create', async () => {
-    const { ElMessage } = await import('element-plus');
+  test('edits favorite metadata via dialog without create', async () => {
     savedFiltersApi.state!.favoriteMenuItems = [
       {
         id: 'fav-edit',
@@ -721,34 +897,38 @@ describe('OSearch behavior', () => {
         filter: {},
       },
     ];
-    const wrapper = mountSearch();
+    const m = mountSearch();
     await flushPromises();
-    expect(wrapper.findAll('.o-search__menu-item-edit')).toHaveLength(1);
-    expect(wrapper.findAll('.o-search__menu-item-delete')).toHaveLength(1);
+    expect(m.qa('.o-search__menu-item-edit').length).toBe(1);
+    expect(m.qa('.o-search__menu-item-delete').length).toBe(1);
 
-    await wrapper.find('.o-search__menu-item-edit').trigger('click');
+    (m.q('.o-search__menu-item-edit') as HTMLElement).click();
     await nextTick();
-    const dialog = wrapper.find('.el-dialog');
-    expect(dialog.exists()).toBe(true);
-    expect(dialog.attributes('data-title')).toBe('Edit favorite');
-    expect((wrapper.find('input.fav-name').element as HTMLInputElement).value).toBe('Company Management');
-    const defaultCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Use by default'));
-    const sharedCheck = wrapper.findAll('.fav-check').find(l => l.text().includes('Share with all users'));
-    expect((defaultCheck!.find('input').element as HTMLInputElement).checked).toBe(true);
-    expect((sharedCheck!.find('input').element as HTMLInputElement).checked).toBe(true);
+    const dialog = m.q('.el-dialog');
+    expect(dialog).toBeTruthy();
+    expect(dialog!.getAttribute('data-title')).toBe('Edit favorite');
+    expect((m.q('input.fav-name') as HTMLInputElement).value).toBe('Company Management');
+    const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
+    const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
+    expect((defaultCheck!.querySelector('input') as HTMLInputElement).checked).toBe(true);
+    expect((sharedCheck!.querySelector('input') as HTMLInputElement).checked).toBe(true);
 
-    await wrapper.find('input.fav-name').setValue('Renamed Fav');
-    await sharedCheck!.find('input').setValue(false);
-    const beforeReady = wrapper.emitted('defaults-ready')?.length ?? 0;
-    await wrapper.findAll('.el-btn').find(b => b.text() === 'Save')!.trigger('click');
+    setInputValue(m.q('input.fav-name'), 'Renamed Fav');
+    await nextTick();
+    const sharedInput = sharedCheck!.querySelector('input') as HTMLInputElement;
+    sharedInput.checked = false;
+    sharedInput.dispatchEvent(new Event('change', { bubbles: true }));
+    await nextTick();
+    const beforeReady = (m.emitted['defaults-ready'] || []).length;
+    (m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();
-    expect(savedFiltersApi.updateMeta).toHaveBeenCalledWith('fav-edit', {
-      name: 'Renamed Fav',
-      isDefault: true,
-      shared: false,
-    });
-    expect(savedFiltersApi.saveCurrent).not.toHaveBeenCalled();
-    expect(ElMessage.success).toHaveBeenCalledWith('Favorite updated');
-    expect((wrapper.emitted('defaults-ready')?.length ?? 0)).toBe(beforeReady + 1);
+    expect(savedFiltersApi.updateMeta.calls[0]).toEqual([
+      'fav-edit',
+      { name: 'Renamed Fav', isDefault: true, shared: false },
+    ]);
+    expect(savedFiltersApi.saveCurrent.calls.length).toBe(0);
+    expect(msgSuccess.calls[0]).toEqual(['Favorite updated']);
+    expect((m.emitted['defaults-ready'] || []).length).toBe(beforeReady + 1);
+    m.unmount();
   });
 });

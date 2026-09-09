@@ -31,9 +31,10 @@ export function installBrowserI18nBridge(): void {
  * Expose the vue-i18n composer on `window.$i18n` and install `$choysum.i18n.t`.
  */
 export function exposeBrowserI18nOnWindow(composer: unknown): void {
-  if (typeof window === 'undefined') {
+  const win = (globalThis as { window?: { $i18n?: unknown } }).window;
+  if (!win) {
     return;
   }
-  (window as { $i18n?: unknown }).$i18n = composer;
+  win.$i18n = composer;
   installBrowserI18nBridge();
 }

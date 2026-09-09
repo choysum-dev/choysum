@@ -1,58 +1,18 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@vue/test-utils';
-import { computed, defineComponent, h, nextTick, reactive, ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+/**
+ * Mount wiring for ODecimalField. Pure format/scale helpers live in odecimal_helpers.test.ts.
+ */
+
+import { computed, defineComponent, h, nextTick, provide, reactive, ref } from 'vue';
+import { ElInput } from 'element-plus';
 import Decimal from '@/core/utils/decimal';
+
 import type { UseField } from '@/web/web/composables/useField';
+import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ODecimalField from './ODecimalField.vue';
-
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({
-      _t: (msg: string, ...args: unknown[]) => (args.length ? `${msg}:${args.join(',')}` : msg),
-    }),
-  };
-});
-
-const i18nStoreMock = vi.hoisted(() => ({
-  throwOnAccess: false,
-  currentLocale: {
-    numberFormat: { thousandsSeparator: ',', decimalSeparator: '.', decimalDigits: 2 },
-  } as { numberFormat?: Record<string, unknown> } | null,
-}));
-
-const useFieldMock = vi.hoisted(() => ({
-  impl: null as null | ((...args: any[]) => any),
-}));
-
-vi.mock('@/web/web/stores/i18nStore', async () => {
-  const formatters = await vi.importActual<typeof import('@/web/web/stores/i18nStore/language_format')>(
-    '@/web/web/stores/i18nStore/language_format'
-  );
-  return {
-    ...formatters,
-    useI18nStore: () => {
-      if (i18nStoreMock.throwOnAccess) throw new Error('i18n boom');
-      return { currentLocale: i18nStoreMock.currentLocale };
-    },
-  };
-});
-
-vi.mock('@/web/web/composables/useField', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/composables/useField')>('@/web/web/composables/useField');
-  return {
-    ...actual,
-    useField: (...args: any[]) => {
-      if (useFieldMock.impl) return useFieldMock.impl(...args);
-      return (actual as any).useField(...args);
-    },
-  };
-});
+import OFieldBase from './OFieldBase.vue';
 
 function makeBinding(
   record: Record<string, unknown>,
@@ -80,56 +40,72 @@ function makeBinding(
   } as any;
 }
 
-const fieldBaseStub = defineComponent({
-  name: 'OFieldBaseStub',
-  inheritAttrs: false,
-  props: {
-    binding: { type: Object, required: true },
-    toView: { type: Function, default: undefined },
-    fromView: { type: Function, default: undefined },
-    rules: { type: Array, default: undefined },
-    label: { type: String, default: undefined },
-    formItemProps: { type: Object, default: undefined },
-    vColumnProps: { type: Object, default: undefined },
-    required: { type: [Boolean, Function, Object], default: undefined },
-    readonly: { type: [Boolean, Function, Object], default: undefined },
-    visible: { type: [Boolean, Function, Object], default: undefined },
-    cellVisible: { type: [Boolean, Function, Object], default: undefined },
-    renderMode: { type: String, default: undefined },
-    showInlineError: { type: Boolean, default: undefined },
-  },
-  setup(p, { slots }) {
-    const fieldValue = () => (p.binding as any).fieldRef();
-    const record = () => ({ value: (p.binding as any).recordRef().value });
-    return () =>
-      h('div', { class: 'base' }, [slots.display?.({ fieldValue, record }), slots.edit?.({ fieldValue, record })]);
-  },
-});
+const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
 
-const elInputStub = defineComponent({
-  name: 'ElInput',
-  inheritAttrs: false,
-  props: {
-    modelValue: { type: [String, Number, null] as any, default: null },
-    placeholder: { type: String, default: undefined },
-    inputmode: { type: String, default: undefined },
-    class: { type: [String, Object, Array], default: undefined },
-  },
-  emits: ['update:modelValue', 'blur'],
-  setup(p, { emit }) {
-    return () =>
-      h('input', {
-        class: 'el-input',
-        value: p.modelValue ?? '',
-        placeholder: p.placeholder,
-        onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLInputElement).value),
-        onBlur: () => emit('blur'),
-      });
-  },
-});
+function installFieldBaseStub(mode: 'slots' | 'rules' = 'slots') {
+  stubSfc(OFieldBase as any, {
+    name: 'OFieldBase',
+    inheritAttrs: false,
+    props: {
+      binding: { type: Object, required: false },
+      toView: { type: Function, default: undefined },
+      fromView: { type: Function, default: undefined },
+      rules: { type: Array, default: undefined },
+      label: { type: String, default: undefined },
+      formItemProps: { type: Object, default: undefined },
+      vColumnProps: { type: Object, default: undefined },
+      required: { type: [Boolean, Function, Object], default: undefined },
+      readonly: { type: [Boolean, Function, Object], default: undefined },
+      visible: { type: [Boolean, Function, Object], default: undefined },
+      cellVisible: { type: [Boolean, Function, Object], default: undefined },
+      renderMode: { type: String, default: undefined },
+      showInlineError: { type: Boolean, default: undefined },
+    },
+    setup(p: any, { slots }: any) {
+      lastBaseProps.current = p;
+      if (mode === 'rules') {
+        return () => h('div', { class: 'rules', 'data-count': String((p.rules as any[])?.length || 0) });
+      }
+      const fieldValue = () => (p.binding as any).fieldRef();
+      const record = () => ({ value: (p.binding as any).recordRef().value });
+      return () =>
+        h('div', { class: 'base' }, [slots.display?.({ fieldValue, record }), slots.edit?.({ fieldValue, record })]);
+    },
+  });
+}
 
-function mountField(binding: any, props: Record<string, unknown> = {}) {
-  return mount(ODecimalField as any, {
+function installElInputStub() {
+  stubSfc(ElInput as any, {
+    name: 'ElInput',
+    inheritAttrs: false,
+    props: {
+      modelValue: { type: [String, Number, null] as any, default: null },
+      placeholder: { type: String, default: undefined },
+    },
+    emits: ['update:modelValue', 'blur'],
+    setup(p: any, { emit }: any) {
+      return () =>
+        h('input', {
+          class: 'el-input',
+          value: p.modelValue ?? '',
+          placeholder: p.placeholder,
+          onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLInputElement).value),
+          onBlur: () => emit('blur'),
+        });
+    },
+  });
+}
+
+function setInput(el: HTMLInputElement, value: string) {
+  el.value = value;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function mountField(binding: any, props: Record<string, unknown> = {}, baseMode: 'slots' | 'rules' = 'slots') {
+  lastBaseProps.current = null;
+  installFieldBaseStub(baseMode);
+  installElInputStub();
+  return mountApp(ODecimalField as any, {
     props: {
       binding,
       renderMode: 'form',
@@ -137,45 +113,40 @@ function mountField(binding: any, props: Record<string, unknown> = {}) {
       commitOnBlur: true,
       ...props,
     },
-    global: {
-      stubs: {
-        OFieldBase: fieldBaseStub,
-        ElInput: elInputStub,
-        'el-input': elInputStub,
-      },
-    },
   });
 }
 
-describe('ODecimalField', () => {
-  it('displays free decimals without zero pad when scale is unset', async () => {
-    const binding = makeBinding({ Amount: new Decimal('0.01') });
-    const wrapper = mountField(binding, { readonly: true });
-    await flushPromises();
-    expect(wrapper.find('.o-field-display-text').text()).toBe('0.01');
+describe('ODecimalField mount wiring', () => {
+  afterEach(() => {
+    restoreSfc(OFieldBase as any);
+    restoreSfc(ElInput as any);
   });
 
-  it('pads display when meta.scale or props.scale is declared', async () => {
+  test('pads display when meta.scale or props.scale is declared (mount wiring)', async () => {
     const withMeta = makeBinding({ Amount: new Decimal('0.01') }, { type: 'decimal', scale: 4 });
-    const metaWrapper = mountField(withMeta, { readonly: true });
+    const metaMount = mountField(withMeta, { readonly: true });
     await flushPromises();
-    expect(metaWrapper.find('.o-field-display-text').text()).toBe('0.0100');
+    expect(metaMount.q('.o-field-display-text')?.textContent).toBe('0.0100');
+    metaMount.unmount();
+    restoreSfc(OFieldBase as any);
+    restoreSfc(ElInput as any);
 
     const withProps = makeBinding({ Amount: new Decimal('1.2') });
-    const propsWrapper = mountField(withProps, { readonly: true, scale: 2 });
+    const propsMount = mountField(withProps, { readonly: true, scale: 2 });
     await flushPromises();
-    expect(propsWrapper.find('.o-field-display-text').text()).toBe('1.20');
+    expect(propsMount.q('.o-field-display-text')?.textContent).toBe('1.20');
+    propsMount.unmount();
   });
 
-  it('resolves scaleField from sibling / metrics__max and registers the path', async () => {
+  test('resolves scaleField from sibling / metrics__max and registers the path', async () => {
     const binding = makeBinding(
       { Amount: new Decimal('1.2345'), AmountScale: 2 },
       { type: 'decimal', scaleField: 'AmountScale' }
     );
-    const wrapper = mountField(binding, { readonly: true });
+    const m = mountField(binding, { readonly: true });
     await flushPromises();
     expect(binding.__registered).toContain('AmountScale');
-    expect(wrapper.find('.o-field-display-text').text()).toBe('1.23');
+    expect(m.q('.o-field-display-text')?.textContent).toBe('1.23');
 
     binding.__value.value = new Decimal('9.999');
     binding.__recordRef.value = {
@@ -184,98 +155,44 @@ describe('ODecimalField', () => {
     };
     await nextTick();
     await flushPromises();
-    expect(wrapper.find('.o-field-display-text').text()).toBe('10.0');
+    expect(m.q('.o-field-display-text')?.textContent).toBe('10.0');
+    m.unmount();
   });
 
-  it('falls back when i18n store throws and still renders significant digits', async () => {
-    i18nStoreMock.throwOnAccess = true;
-    try {
-      const binding = makeBinding({ Amount: new Decimal('12.3') });
-      const wrapper = mountField(binding, { readonly: true });
-      await flushPromises();
-      expect(wrapper.find('.o-field-display-text').text()).toBe('12.3');
-    } finally {
-      i18nStoreMock.throwOnAccess = false;
-    }
-  });
-
-  it('renders when currentLocale is null (no numberFormat)', async () => {
-    const prev = i18nStoreMock.currentLocale;
-    i18nStoreMock.currentLocale = null;
-    try {
-      const binding = makeBinding({ Amount: new Decimal('3.5') }, { type: 'decimal', scale: 2 });
-      const wrapper = mountField(binding, { readonly: true });
-      await flushPromises();
-      expect(wrapper.find('.o-field-display-text').text()).toBe('3.50');
-    } finally {
-      i18nStoreMock.currentLocale = prev;
-    }
-  });
-
-  it('live-commits edits using DB soft max 18 when scale is unset', async () => {
+  test('live-commits edits using DB soft max 18 when scale is unset', async () => {
     const binding = makeBinding({ Amount: new Decimal('1') });
-    const wrapper = mountField(binding);
+    const m = mountField(binding);
     await flushPromises();
-    const input = wrapper.find('input.el-input');
-    await input.setValue('1.234567890123456789');
+    const input = m.q('input.el-input') as HTMLInputElement;
+    setInput(input, '1.234567890123456789');
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('1.234567890123456789');
 
-    await input.setValue('1.2345678901234567890');
+    setInput(input, '1.2345678901234567890');
     await flushPromises();
-    // 19 fractional places exceed soft max → parseStrict rejects; value stays.
     expect(new Decimal(binding.__value.value).toString()).toBe('1.234567890123456789');
+    m.unmount();
   });
 
-  it('quantizes edits to declared props.scale', async () => {
+  test('quantizes edits to declared props.scale', async () => {
     const binding = makeBinding({ Amount: new Decimal('1') });
-    const wrapper = mountField(binding, { scale: 2 });
+    const m = mountField(binding, { scale: 2 });
     await flushPromises();
-    const input = wrapper.find('input.el-input');
-    await input.setValue('1.239');
+    const input = m.q('input.el-input') as HTMLInputElement;
+    setInput(input, '1.239');
     await flushPromises();
-    // parseStrict rejects > scale; value unchanged until a valid commit
     expect(new Decimal(binding.__value.value).toString()).toBe('1');
-    await input.setValue('1.23');
+    setInput(input, '1.23');
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('1.23');
+    m.unmount();
   });
 
-  it('validates via internal rule using edit scale (fixed or soft max 18)', async () => {
+  test('validates via internal rule using edit scale', async () => {
     const binding = makeBinding({ Amount: '1.239' }, { type: 'decimal', scale: 2 });
-    const wrapper = mount(ODecimalField as any, {
-      props: { binding, renderMode: 'form' },
-      global: {
-        stubs: {
-          OFieldBase: defineComponent({
-            name: 'OFieldBaseStub',
-            inheritAttrs: false,
-            props: {
-              rules: { type: Array, default: undefined },
-              binding: { type: Object, default: undefined },
-              toView: { type: Function, default: undefined },
-              fromView: { type: Function, default: undefined },
-              label: { type: String, default: undefined },
-              formItemProps: { type: Object, default: undefined },
-              vColumnProps: { type: Object, default: undefined },
-              required: { type: [Boolean, Function, Object], default: undefined },
-              readonly: { type: [Boolean, Function, Object], default: undefined },
-              visible: { type: [Boolean, Function, Object], default: undefined },
-              cellVisible: { type: [Boolean, Function, Object], default: undefined },
-              renderMode: { type: String, default: undefined },
-              showInlineError: { type: Boolean, default: undefined },
-            },
-            setup(p) {
-              return () => h('div', { class: 'rules', 'data-count': String((p.rules as any[])?.length || 0) });
-            },
-          }),
-          ElInput: elInputStub,
-          'el-input': elInputStub,
-        },
-      },
-    });
+    const m = mountField(binding, {}, 'rules');
     await flushPromises();
-    const rules = (wrapper.findComponent({ name: 'OFieldBaseStub' }).props('rules') || []) as any[];
+    const rules = (lastBaseProps.current?.rules || []) as any[];
     const rule = rules[rules.length - 1];
     let err: Error | undefined;
     await new Promise<void>(resolve => {
@@ -293,63 +210,59 @@ describe('ODecimalField', () => {
       });
     });
     expect(err).toBeUndefined();
+    m.unmount();
   });
 
-  it('maps toView/fromView and displays aggregate metrics', async () => {
+  test('maps toView/fromView and displays aggregate metrics', async () => {
     const binding = makeBinding({
       Amount: null,
       metrics: { Amount__sum: new Decimal('9.5') },
     });
-    const wrapper = mountField(binding, { agg: 'sum', readonly: true });
+    const m = mountField(binding, { agg: 'sum', readonly: true });
     await flushPromises();
-    expect(wrapper.find('.o-field-display-text').text()).toContain('9.5');
+    expect(m.q('.o-field-display-text')?.textContent || '').toContain('9.5');
 
-    const base = wrapper.findComponent({ name: 'OFieldBaseStub' });
-    expect(base.props('toView')(new Decimal('1'))).toBe('1');
-    expect(base.props('fromView')('2.5')).toBeTruthy();
-    expect(base.props('fromView')(null)).toBeNull();
-    expect(base.props('toView')('nope')).toBeNull();
+    const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
+    const fromView = lastBaseProps.current?.fromView as (v: unknown) => unknown;
+    expect(toView(new Decimal('1'))).toBe('1');
+    expect(fromView('2.5')).toBeTruthy();
+    expect(fromView(null)).toBeNull();
+    expect(toView('nope')).toBeNull();
+    m.unmount();
   });
 
-  it('bootstraps via useField when binding is omitted', async () => {
-    const binding = makeBinding({ Amount: new Decimal('1') });
-    let called = false;
-    useFieldMock.impl = () => {
-      called = true;
-      return binding;
-    };
-    try {
-      const wrapper = mount(ODecimalField as any, {
-        props: {
-          store: {} as any,
-          prop: 'Amount',
-          renderMode: 'form',
-          readonly: true,
-        },
-        global: {
-          stubs: {
-            OFieldBase: fieldBaseStub,
-            ElInput: elInputStub,
-            'el-input': elInputStub,
-          },
-        },
-      });
-      await flushPromises();
-      expect(called).toBe(true);
-      expect(wrapper.find('.o-field-display-text').exists()).toBe(true);
-    } finally {
-      useFieldMock.impl = null;
-    }
+  test('bootstraps via useField when binding is omitted', async () => {
+    installFieldBaseStub('slots');
+    installElInputStub();
+    const draft = reactive({ Amount: new Decimal('1') });
+    const Host = defineComponent({
+      setup() {
+        provide('view-container', ref('Form'));
+        provide('view-mode', ref('edit'));
+        provide('form-root', { draft });
+        return () =>
+          h(ODecimalField as any, {
+            store: {} as any,
+            prop: 'Amount',
+            renderMode: 'form',
+            readonly: true,
+          });
+      },
+    });
+    const m = mountApp(Host);
+    await flushPromises();
+    expect(m.q('.o-field-display-text')?.textContent).toBe('1');
+    m.unmount();
   });
 
-  it('falls back currentScale to 18 when getScale returns out of range', async () => {
+  test('falls back currentScale to 18 when getScale returns out of range', async () => {
     const binding = makeBinding({ Amount: new Decimal('1') });
-    const wrapper = mountField(binding, { scale: 99 });
+    const m = mountField(binding, { scale: 99 });
     await flushPromises();
-    const input = wrapper.find('input.el-input');
-    // props.scale=99 is rejected by resolveFixedScaleFrom → edit scale 18
-    await input.setValue('1.5');
+    const input = m.q('input.el-input') as HTMLInputElement;
+    setInput(input, '1.5');
     await flushPromises();
     expect(new Decimal(binding.__value.value).toString()).toBe('1.5');
+    m.unmount();
   });
 });

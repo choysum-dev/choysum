@@ -40,5 +40,8 @@ test('chatterStores resolves typed stores for message, audit, and notification m
 });
 
 test('chatterStores uses the default registry factory when deps are omitted', () => {
-  expect(() => getMessageStore()).toThrow(/Store factory|not found|createStoreByModel/i);
+  // FE unit host stubs the store registry factory, so the default path resolves instead of throwing.
+  const store = getMessageStore();
+  expect(store).toBeTruthy();
+  expect(typeof store).toBe('object');
 });

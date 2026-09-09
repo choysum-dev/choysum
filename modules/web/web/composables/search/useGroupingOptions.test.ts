@@ -11,7 +11,8 @@ function installComposer(composer: ComposerLike) {
 
 function clearComposer() {
   delete (globalThis as { $i18n?: ComposerLike }).$i18n;
-  delete (globalThis as { window?: { $i18n?: ComposerLike } }).window;
+  const win = (globalThis as { window?: { $i18n?: ComposerLike } }).window;
+  if (win) delete win.$i18n;
 }
 
 afterEach(() => {

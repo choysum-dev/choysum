@@ -214,6 +214,18 @@
     this._assert(this.received === null, `Expected ${stringifySafe(this.received)} to be null`, `Expected ${stringifySafe(this.received)} not to be null`);
   };
 
+  Expectation.prototype.toBeInstanceOf = function (expected) {
+    if (typeof expected !== 'function') {
+      throw new Error(`toBeInstanceOf requires a constructor, got ${typeof expected}`);
+    }
+    const pass = this.received instanceof expected;
+    this._assert(
+      pass,
+      `Expected ${stringifySafe(this.received)} to be instance of ${expected.name || 'Function'}`,
+      `Expected ${stringifySafe(this.received)} not to be instance of ${expected.name || 'Function'}`
+    );
+  };
+
   Expectation.prototype.toMatch = function (expected) {
     if (typeof this.received !== 'string') {
       throw new Error(`toMatch requires a string value, got ${typeof this.received}`);
@@ -411,6 +423,60 @@
     }
   }
 
+  // Suite nesting for Vitest-style describe/it; hooks run around each leaf test.
+  const suiteStack = [];
+  const beforeEachStack = [[]];
+  const afterEachStack = [[]];
+
+  function describe(name, fn) {
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error('describe(name, fn): name must be a non-empty string');
+    }
+    if (typeof fn !== 'function') {
+      throw new Error('describe(name, fn): fn must be a function');
+    }
+    suiteStack.push(name.trim());
+    beforeEachStack.push([]);
+    afterEachStack.push([]);
+    try {
+      fn();
+    } finally {
+      suiteStack.pop();
+      beforeEachStack.pop();
+      afterEachStack.pop();
+    }
+  }
+
+  function beforeEach(fn) {
+    if (typeof fn !== 'function') {
+      throw new Error('beforeEach(fn): fn must be a function');
+    }
+    beforeEachStack[beforeEachStack.length - 1].push(fn);
+  }
+
+  function afterEach(fn) {
+    if (typeof fn !== 'function') {
+      throw new Error('afterEach(fn): fn must be a function');
+    }
+    afterEachStack[afterEachStack.length - 1].push(fn);
+  }
+
+  function collectHooksFromLists(lists) {
+    const out = [];
+    for (let i = 0; i < lists.length; i++) {
+      const list = lists[i];
+      for (let j = 0; j < list.length; j++) out.push(list[j]);
+    }
+    return out;
+  }
+
+  async function runHookList(hooks) {
+    for (let i = 0; i < hooks.length; i++) {
+      const r = hooks[i]();
+      if (r && typeof r.then === 'function') await r;
+    }
+  }
+
   function test(name, fn) {
     if (typeof name !== 'string' || name.trim() === '') {
       throw new Error('test(name, fn): name must be a non-empty string');
@@ -418,8 +484,29 @@
     if (typeof fn !== 'function') {
       throw new Error('test(name, fn): fn must be a function');
     }
-    registry.push({ name, fn });
+    const prefix = suiteStack.length ? suiteStack.join(' ') + ' ' : '';
+    const fullName = prefix + name;
+    // Nested describe lists stay live so beforeEach/afterEach declared after test()
+    // in the same describe still apply (Vitest/Jest). The root list (index 0) is
+    // shared across the whole FE bundle, so snapshot it at registration — otherwise
+    // a later file's root afterEach (e.g. delete window) would run for every test.
+    const beforeLists = beforeEachStack.map((list, i) => (i === 0 ? list.slice() : list));
+    const afterLists = afterEachStack.map((list, i) => (i === 0 ? list.slice() : list));
+    registry.push({
+      name: fullName,
+      fn: async function () {
+        try {
+          await runHookList(collectHooksFromLists(beforeLists));
+          const r = fn();
+          if (r && typeof r.then === 'function') await r;
+        } finally {
+          await runHookList(collectHooksFromLists(afterLists));
+        }
+      },
+    });
   }
+
+  const it = test;
 
   function compilePattern(pattern) {
     if (!pattern) return null;
@@ -515,6 +602,10 @@
   }
 
   globalThis.test = test;
+  globalThis.it = it;
+  globalThis.describe = describe;
+  globalThis.beforeEach = beforeEach;
+  globalThis.afterEach = afterEach;
   globalThis.expect = expect;
   globalThis.expectRejects = expectRejects;
   globalThis.__choysum_test_run__ = runAll;

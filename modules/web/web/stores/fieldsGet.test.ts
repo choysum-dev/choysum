@@ -125,9 +125,9 @@ describe('createFieldsGetHelpers', () => {
   });
 
   test('exposes presentation attrs and FieldsGet translated help overlay', async () => {
-    expect(FIELD_PRESENTATION_FIELDS_GET_ATTRS).toEqual(
-      expect.arrayContaining(['help', 'helpText', 'string', 'stringText', 'maxUploadBytes', 'maxWidth', 'maxHeight'])
-    );
+    for (const key of ['help', 'helpText', 'string', 'stringText', 'maxUploadBytes', 'maxWidth', 'maxHeight']) {
+      expect(FIELD_PRESENTATION_FIELDS_GET_ATTRS.includes(key as any)).toBe(true);
+    }
 
     let fieldsGetImpl: FieldsGetHost['FieldsGet'] = async (_fields?: string[], _attrs?: string[]) => ({
       Code: {

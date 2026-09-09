@@ -1,27 +1,25 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { h, nextTick } from 'vue';
 
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OSearchFilterGroup from './OSearchFilterGroup.vue';
 import OSearchFilter from './OSearchFilter.vue';
 
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({
-      _t: (msg: string, ...args: unknown[]) => {
-        if (args.length) return `${msg}:${args.join(',')}`;
-        return msg;
-      },
-    }),
-  };
-});
-
 describe('OSearchFilter preview labels', () => {
-  it('renders field labels in preview for equals / in / is operators', () => {
+  afterEach(() => {
+    restoreSfc(OSearchFilterGroup);
+  });
+
+  test('renders field labels in preview for equals / in / is operators', async () => {
+    stubSfc(OSearchFilterGroup, {
+      name: 'OSearchFilterGroup',
+      setup() {
+        return () => h('div', { 'data-stub': 'OSearchFilterGroup' });
+      },
+    });
+
     const store = {
       fieldsMetadata: {
         Name: { type: 'varchar' },
@@ -41,7 +39,7 @@ describe('OSearchFilter preview labels', () => {
         ],
       },
     };
-    const wrapper = mount(OSearchFilter as any, {
+    const { unmount, q } = mountApp(OSearchFilter as any, {
       props: {
         store,
         draft,
@@ -51,22 +49,28 @@ describe('OSearchFilter preview labels', () => {
           { prop: 'Active', label: '启用' },
         ],
       },
-      global: {
-        stubs: {
-          OSearchFilterGroup: true,
-          'el-button': true,
-        },
+      stubs: {
+        ElButton: true,
       },
     });
-    const expr = wrapper.find('.expr').text();
+    await flushPromises();
+    const expr = q('.expr')?.textContent || '';
     expect(expr).toContain('名称');
     expect(expr).toContain('合作伙伴');
     expect(expr).toContain('启用');
     expect(expr).toContain('(incomplete)');
-    expect(wrapper.find('.label').text()).toContain('4');
+    expect(q('.label')?.textContent || '').toContain('4');
+    unmount();
   });
 
-  it('formats nested Or groups and empty roots', async () => {
+  test('formats nested Or groups and empty roots', async () => {
+    stubSfc(OSearchFilterGroup, {
+      name: 'OSearchFilterGroup',
+      setup() {
+        return () => h('div', { 'data-stub': 'OSearchFilterGroup' });
+      },
+    });
+
     const store = { fieldsMetadata: { Name: { type: 'varchar' }, PartnerId: { type: 'manytoone' } } } as any;
     const draft = {
       root: {
@@ -85,7 +89,7 @@ describe('OSearchFilter preview labels', () => {
         ],
       },
     };
-    const wrapper = mount(OSearchFilter as any, {
+    const { unmount, q, props } = mountApp(OSearchFilter as any, {
       props: {
         store,
         draft,
@@ -94,74 +98,115 @@ describe('OSearchFilter preview labels', () => {
           { prop: 'PartnerId', label: '合作伙伴' },
         ],
       },
-      global: { stubs: { OSearchFilterGroup: true, 'el-button': true } },
+      reactiveProps: true,
+      stubs: { ElButton: true },
     });
-    const expr = wrapper.find('.expr').text();
+    await flushPromises();
+    const expr = q('.expr')?.textContent || '';
     expect(expr).toContain('名称');
     expect(expr).toContain('合作伙伴');
     expect(expr).toContain('AND');
-    expect(wrapper.find('.label').text()).toContain('3');
+    expect(q('.label')?.textContent || '').toContain('3');
 
-    await wrapper.setProps({
-      draft: { root: { id: 'empty', logic: 'And', children: [] } },
-    });
-    expect(wrapper.find('.expr').text()).toContain('(empty)');
+    props.draft = { root: { id: 'empty', logic: 'And', children: [] } };
+    await nextTick();
+    expect(q('.expr')?.textContent || '').toContain('(empty)');
+    unmount();
   });
 
-  it('forwards footer and group events', async () => {
+  test('forwards footer and group events', async () => {
+    stubSfc(OSearchFilterGroup, {
+      name: 'OSearchFilterGroup',
+      props: [
+        'group',
+        'isRoot',
+        'fields',
+        'store',
+        'onSetLogic',
+        'onAddCondition',
+        'onUpdateCondition',
+        'onRemoveCondition',
+        'onAddGroup',
+        'onRemoveGroup',
+      ],
+      setup(props: any) {
+        return () =>
+          h('div', { class: 'stub-group' }, [
+            h('button', { class: 'logic', type: 'button', onClick: () => props.onSetLogic('Or', props.group.id) }),
+            h('button', { class: 'add-c', type: 'button', onClick: () => props.onAddCondition(props.group.id) }),
+            h('button', { class: 'add-g', type: 'button', onClick: () => props.onAddGroup(props.group.id) }),
+            h('button', { class: 'rm-g', type: 'button', onClick: () => props.onRemoveGroup(props.group.id) }),
+            h('button', {
+              class: 'upd',
+              type: 'button',
+              onClick: () => props.onUpdateCondition('c1', { value: 1 }),
+            }),
+            h('button', { class: 'rm-c', type: 'button', onClick: () => props.onRemoveCondition('c1') }),
+          ]);
+      },
+    });
+
+    const onLogicChange = fnRecorder();
+    const onAddCondition = fnRecorder();
+    const onAddGroup = fnRecorder();
+    const onRemoveGroup = fnRecorder();
+    const onUpdateCondition = fnRecorder();
+    const onRemoveCondition = fnRecorder();
+    const onCancel = fnRecorder();
+    const onConfirm = fnRecorder();
+
     const store = { fieldsMetadata: {} } as any;
-    const wrapper = mount(OSearchFilter as any, {
+    const { unmount, click, qa } = mountApp(OSearchFilter as any, {
       props: {
         store,
         draft: { root: { id: 'g', logic: 'And', children: [] } },
         fields: [],
       },
-      global: {
-        stubs: {
-          OSearchFilterGroup: {
-            props: [
-              'group',
-              'isRoot',
-              'fields',
-              'store',
-              'onSetLogic',
-              'onAddCondition',
-              'onUpdateCondition',
-              'onRemoveCondition',
-              'onAddGroup',
-              'onRemoveGroup',
-            ],
-            template: `<div class="stub-group">
-              <button class="logic" @click="onSetLogic('Or', group.id)" />
-              <button class="add-c" @click="onAddCondition(group.id)" />
-              <button class="add-g" @click="onAddGroup(group.id)" />
-              <button class="rm-g" @click="onRemoveGroup(group.id)" />
-              <button class="upd" @click="onUpdateCondition('c1', { value: 1 })" />
-              <button class="rm-c" @click="onRemoveCondition('c1')" />
-            </div>`,
-          },
-          'el-button': {
-            template: `<button class="btn" @click="$emit('click')"><slot /></button>`,
+      on: {
+        onLogicChange,
+        onAddCondition,
+        onAddGroup,
+        onRemoveGroup,
+        onUpdateCondition,
+        onRemoveCondition,
+        onCancel,
+        onConfirm,
+      },
+      stubs: {
+        ElButton: {
+          name: 'ElButton',
+          emits: ['click'],
+          setup(_props: any, { slots, emit }: any) {
+            return () =>
+              h(
+                'button',
+                { class: 'btn', type: 'button', onClick: (e: Event) => emit('click', e) },
+                slots.default?.()
+              );
           },
         },
       },
     });
-    await wrapper.find('.logic').trigger('click');
-    await wrapper.find('.add-c').trigger('click');
-    await wrapper.find('.add-g').trigger('click');
-    await wrapper.find('.rm-g').trigger('click');
-    await wrapper.find('.upd').trigger('click');
-    await wrapper.find('.rm-c').trigger('click');
-    const buttons = wrapper.findAll('.btn');
-    await buttons[0]!.trigger('click');
-    await buttons[1]!.trigger('click');
-    expect(wrapper.emitted('logic-change')?.[0]).toEqual(['Or', 'g']);
-    expect(wrapper.emitted('add-condition')?.[0]).toEqual(['g']);
-    expect(wrapper.emitted('add-group')?.[0]).toEqual(['g']);
-    expect(wrapper.emitted('remove-group')?.[0]).toEqual(['g']);
-    expect(wrapper.emitted('update-condition')?.[0]).toEqual(['c1', { value: 1 }]);
-    expect(wrapper.emitted('remove-condition')?.[0]).toEqual(['c1']);
-    expect(wrapper.emitted('cancel')).toBeTruthy();
-    expect(wrapper.emitted('confirm')).toBeTruthy();
+    await flushPromises();
+
+    click('.logic');
+    click('.add-c');
+    click('.add-g');
+    click('.rm-g');
+    click('.upd');
+    click('.rm-c');
+    const buttons = qa('.btn');
+    (buttons[0] as HTMLElement).click();
+    (buttons[1] as HTMLElement).click();
+
+    expect(onLogicChange.calls[0]).toEqual(['Or', 'g']);
+    expect(onAddCondition.calls[0]).toEqual(['g']);
+    expect(onAddGroup.calls[0]).toEqual(['g']);
+    expect(onRemoveGroup.calls[0]).toEqual(['g']);
+    expect(onUpdateCondition.calls[0]).toEqual(['c1', { value: 1 }]);
+    expect(onRemoveCondition.calls[0]).toEqual(['c1']);
+    expect(onCancel.calls.length).toBe(1);
+    expect(onConfirm.calls.length).toBe(1);
+    unmount();
   });
 });

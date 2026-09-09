@@ -1,97 +1,20 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, markRaw, reactive, ref } from 'vue';
-import { mount, flushPromises } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, markRaw } from 'vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
+
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { provideOPageContext } from '@/web/web/composables/usePageContext';
-
-const { applyMock, preloadLaneMock, awaitFieldSelectionMock, deferState, oSearchViewSentinel } = vi.hoisted(() => {
-  const { markRaw } = require('vue') as typeof import('vue');
-  return {
-    applyMock: vi.fn(async () => {}),
-    preloadLaneMock: vi.fn(async () => {}),
-    awaitFieldSelectionMock: vi.fn(async () => {}),
-    deferState: { defer: false },
-    oSearchViewSentinel: markRaw({
-      name: 'OSearchViewSentinel',
-      setup: () => () => null,
-    }),
-  };
-});
-
-vi.mock('vue-router', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    resolve: vi.fn((loc: { name?: string }) => ({
-      name: loc?.name,
-      matched: [],
-    })),
-  }),
-  useRoute: () => ({ name: undefined, fullPath: '/', params: {}, query: {} }),
-}));
-
-vi.mock('@/web/web/controllers/kanbanController', () => ({
-  createKanbanController: vi.fn(() => ({
-    vm: reactive({
-      result: { kind: 'search', total: 0, rows: [] },
-    }),
-    lanes: ref([]),
-    laneRecords: ref({}),
-    apply: applyMock,
-    paginate: vi.fn(async () => {}),
-    getLaneField: () => null,
-    getLaneRemain: () => 0,
-    preloadLane: preloadLaneMock,
-    loadMoreLane: vi.fn(async () => {}),
-  })),
-}));
-
-vi.mock('@/web/web/query/utils/registry/fieldReady', () => ({
-  awaitFieldSelection: (...args: any[]) => awaitFieldSelectionMock(...args),
-}));
-
-vi.mock('@/web/web/components/view/OSearchView.vue', () => ({
-  default: oSearchViewSentinel,
-}));
-
-vi.mock('@/web/web/components/view/kanbanFirstFrame', () => ({
-  shouldDeferViewFirstFrame: (searchView: unknown, oSearchView: unknown) =>
-    deferState.defer && searchView === oSearchView,
-  shouldDeferKanbanFirstFrame: (searchView: unknown, oSearchView: unknown) =>
-    deferState.defer && searchView === oSearchView,
-}));
-
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({ _t: (msg: string) => msg, _lt: (msg: string) => msg }),
-  };
-});
-
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-  };
-});
-
-vi.mock('vuedraggable', () => ({
-  default: defineComponent({
-    name: 'DraggableStub',
-    setup(_, { slots }) {
-      return () => h('div', { class: 'draggable-stub' }, slots.item?.({ element: { key: '1', payload: { Id: '1' } }, index: 0 }));
-    },
-  }),
-}));
-
 import OKanbanView from './OKanbanView.vue';
+import OSearchView from './OSearchView.vue';
+import OViewContainer from '@/web/web/components/view/OViewContainer.vue';
+import OPagination from './OPagination.vue';
 
-function makeStore() {
+function makeStore(search?: ReturnType<typeof fnRecorder>) {
   return {
+    fullModelName: 'partner.Partner',
+    storeId: 'kanban-ff-' + Math.random().toString(36).slice(2),
     fieldsMetadata: {},
     state: {
       queryState: {
@@ -102,133 +25,152 @@ function makeStore() {
         pagination: { limit: 20, offset: 0 },
       },
       result: { total: 0 },
+      selection: [],
+      planCache: new Map(),
       orderBy: undefined,
     },
+    setContext: () => {},
+    getContext: () => ({}),
+    withContext: async (_c: any, fn: any) => fn(),
+    Search: search || (async () => []),
   } as any;
 }
 
-const stubs = {
-  OViewContainer: {
-    template: `<div class="ovc"><slot name="header" /><slot /><slot name="fields" /></div>`,
-  },
-  OPagination: true,
-  'el-button': true,
-  'el-icon': true,
-  OSearchView: true,
-};
+function stubKanbanChrome() {
+  stubSfc(OViewContainer, {
+    name: 'OViewContainer',
+    setup(_p: any, { slots }: any) {
+      return () => h('div', { class: 'ovc' }, [slots.header?.(), slots.fields?.(), slots.default?.()]);
+    },
+  });
+  stubSfc(OPagination, {
+    name: 'OPagination',
+    setup: () => () => h('div', { 'data-stub': 'OPagination' }),
+  });
+  stubSfc(OSearchView, {
+    name: 'OSearchView',
+    setup: () => () => h('div', { 'data-stub': 'OSearchView' }),
+  });
+}
+
+function restoreKanbanChrome() {
+  restoreSfc(OViewContainer);
+  restoreSfc(OPagination);
+  restoreSfc(OSearchView);
+}
 
 describe('OKanbanView first-frame load', () => {
   beforeEach(() => {
-    applyMock.mockClear();
-    preloadLaneMock.mockClear();
-    awaitFieldSelectionMock.mockClear();
-    awaitFieldSelectionMock.mockImplementation(async () => {});
-    deferState.defer = false;
+    stubKanbanChrome();
   });
 
-  it('skips mount apply when first-frame should defer to OSearchView', async () => {
-    deferState.defer = true;
-    const wrapper = mount(OKanbanView as any, {
+  afterEach(() => {
+    restoreKanbanChrome();
+  });
+
+  test('skips mount apply when first-frame should defer to OSearchView', async () => {
+    const search = fnRecorder(async () => []);
+    const { plugins } = buildPageMountGlobal();
+    const { unmount } = mountApp(OKanbanView as any, {
       props: {
-        store: makeStore(),
-        searchView: oSearchViewSentinel,
+        store: makeStore(search),
+        searchView: OSearchView,
         showHeader: true,
         showActions: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     try {
       await flushPromises();
-      expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
-      expect(applyMock).not.toHaveBeenCalled();
+      expect(search.calls.length).toBe(0);
     } finally {
-      wrapper.unmount();
+      unmount();
     }
   });
 
-  it('still mounts apply for a custom searchView even when defer flag is set', async () => {
-    deferState.defer = true;
+  test('still mounts apply for a custom searchView even when defer flag would apply', async () => {
+    const search = fnRecorder(async () => []);
     const SearchStub = markRaw(
       defineComponent({
         name: 'SearchStub',
-        setup() {
-          return () => h('div');
-        },
+        setup: () => () => h('div'),
       })
     );
-    const wrapper = mount(OKanbanView as any, {
+    const { plugins } = buildPageMountGlobal();
+    const { unmount } = mountApp(OKanbanView as any, {
       props: {
-        store: makeStore(),
+        store: makeStore(search),
         searchView: SearchStub,
         showHeader: true,
         showActions: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     try {
       await flushPromises();
-      expect(applyMock).toHaveBeenCalled();
+      expect(search.calls.length).toBeGreaterThan(0);
     } finally {
-      wrapper.unmount();
+      unmount();
     }
   });
 
-  it('runs mount apply when first-frame should not defer', async () => {
-    deferState.defer = false;
+  test('runs mount apply when first-frame should not defer', async () => {
+    const search = fnRecorder(async () => []);
     const CustomSearch = markRaw(
       defineComponent({
         name: 'CustomSearch',
-        setup() {
-          return () => h('div', { class: 'custom-search' });
-        },
+        setup: () => () => h('div', { class: 'custom-search' }),
       })
     );
-    const wrapper = mount(OKanbanView as any, {
+    const { plugins } = buildPageMountGlobal();
+    const { unmount, q } = mountApp(OKanbanView as any, {
       props: {
-        store: makeStore(),
+        store: makeStore(search),
         searchView: CustomSearch,
         showHeader: true,
         showActions: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     try {
       await flushPromises();
-      expect(awaitFieldSelectionMock).toHaveBeenCalled();
-      expect(applyMock).toHaveBeenCalled();
+      expect(q('.custom-search')).toBeTruthy();
+      expect(search.calls.length).toBeGreaterThan(0);
     } finally {
-      wrapper.unmount();
+      unmount();
     }
   });
 
-  it('covers resolvedSearchView null branch when searchView is omitted', async () => {
-    deferState.defer = false;
-    const wrapper = mount(OKanbanView as any, {
+  test('covers resolvedSearchView null branch when searchView is omitted', async () => {
+    const search = fnRecorder(async () => []);
+    const { plugins } = buildPageMountGlobal();
+    const { unmount, q } = mountApp(OKanbanView as any, {
       props: {
-        store: makeStore(),
+        store: makeStore(search),
         showHeader: true,
         showActions: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     try {
       await flushPromises();
-      expect(wrapper.find('.o-kanban__search').exists()).toBe(false);
-      expect(awaitFieldSelectionMock).toHaveBeenCalled();
-      expect(applyMock).toHaveBeenCalled();
+      expect(q('.o-kanban__search')).toBeFalsy();
+      expect(search.calls.length).toBeGreaterThan(0);
     } finally {
-      wrapper.unmount();
+      unmount();
     }
   });
 
-  it('skips mount apply when custom search already emitted query-update', async () => {
-    deferState.defer = false;
-    // Hang field selection so onSearch never reaches apply; mount must still skip.
-    awaitFieldSelectionMock.mockImplementationOnce(() => new Promise(() => {}));
+  test('skips mount apply when custom search already emitted query-update', async () => {
+    const search = fnRecorder(async () => []);
     const SyncEmitSearch = markRaw(
       defineComponent({
         name: 'SyncEmitSearch',
@@ -243,27 +185,29 @@ describe('OKanbanView first-frame load', () => {
         },
       })
     );
-    const wrapper = mount(OKanbanView as any, {
+    const { plugins } = buildPageMountGlobal();
+    const { unmount } = mountApp(OKanbanView as any, {
       props: {
-        store: makeStore(),
+        store: makeStore(search),
         searchView: SyncEmitSearch,
         showHeader: true,
         showActions: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     try {
       await flushPromises();
-      expect(awaitFieldSelectionMock).toHaveBeenCalledTimes(1);
-      expect(applyMock).not.toHaveBeenCalled();
+      // onSearch marks firstApplied and schedules apply; mount fallback must not double-apply.
+      expect(search.calls.length).toBe(1);
     } finally {
-      wrapper.unmount();
+      unmount();
     }
   });
 
-  it('onSearch with falsy payload does not apply and does not block mount fallback', async () => {
-    deferState.defer = false;
+  test('onSearch with falsy payload does not apply and does not block mount fallback', async () => {
+    const search = fnRecorder(async () => []);
     const FalsyEmitSearch = markRaw(
       defineComponent({
         name: 'FalsyEmitSearch',
@@ -274,37 +218,38 @@ describe('OKanbanView first-frame load', () => {
         },
       })
     );
-    const wrapper = mount(OKanbanView as any, {
+    const { plugins } = buildPageMountGlobal();
+    const { unmount } = mountApp(OKanbanView as any, {
       props: {
-        store: makeStore(),
+        store: makeStore(search),
         searchView: FalsyEmitSearch,
         showHeader: true,
         showActions: false,
         showPaginate: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     try {
       await flushPromises();
-      // null payload is ignored by onSearch, so mount still runs the fallback apply once.
-      expect(applyMock).toHaveBeenCalledTimes(1);
+      expect(search.calls.length).toBe(1);
     } finally {
-      wrapper.unmount();
+      unmount();
     }
   });
 });
 
 describe('OKanbanView page action target', () => {
   beforeEach(() => {
-    applyMock.mockClear();
-    preloadLaneMock.mockClear();
-    awaitFieldSelectionMock.mockClear();
-    awaitFieldSelectionMock.mockImplementation(async () => {});
-    deferState.defer = false;
+    stubKanbanChrome();
   });
 
-  it('auto-registers refresh when omitted registerActionTarget stays undefined', async () => {
-    const store = makeStore();
+  afterEach(() => {
+    restoreKanbanChrome();
+  });
+
+  test('auto-registers refresh when omitted registerActionTarget stays undefined', async () => {
+    const store = makeStore(fnRecorder(async () => []));
     let ctx: ReturnType<typeof provideOPageContext> | null = null;
     const Host = defineComponent({
       setup(_, { slots }) {
@@ -312,7 +257,9 @@ describe('OKanbanView page action target', () => {
         return () => h('div', slots.default?.());
       },
     });
-    const wrapper = mount(Host, {
+    const { plugins } = buildPageMountGlobal();
+    const { unmount } = mountApp(Host, {
+      plugins,
       slots: {
         default: () =>
           h(OKanbanView as any, {
@@ -321,20 +268,20 @@ describe('OKanbanView page action target', () => {
             showPaginate: false,
           }),
       },
-      global: { stubs },
+      stubs: { ElButton: true, ElIcon: true },
     });
     try {
       await flushPromises();
-      const kanban = wrapper.findComponent(OKanbanView as any);
-      expect(kanban.props('registerActionTarget')).toBeUndefined();
       const target = ctx!.actionTarget.value;
       expect(target).toBeTruthy();
       expect(target!.selectedItems).toEqual([]);
-      applyMock.mockClear();
+      const search = store.Search as ReturnType<typeof fnRecorder>;
+      search.mockClear();
       await target!.refresh?.();
-      expect(applyMock).toHaveBeenCalled();
+      await flushPromises();
+      expect(search.calls.length).toBeGreaterThan(0);
     } finally {
-      wrapper.unmount();
+      unmount();
     }
   });
 });

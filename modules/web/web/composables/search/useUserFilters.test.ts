@@ -1,44 +1,67 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
 import { createApp, defineComponent, h, reactive, ref } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const { sfMocks, actorState } = vi.hoisted(() => ({
-  sfMocks: {
-    Search: vi.fn(async () => [] as any[]),
-    Create: vi.fn(async (values: any) => ({
-      Id: 'created-1',
-      Name: values.Name,
-      Condition: values.Condition,
-      IsDefault: values.IsDefault,
-      UserId: values.UserId,
-      CreatedUid: 'me',
-    })),
-    UpdateById: vi.fn(async () => ({})),
-    DeleteById: vi.fn(async () => 1),
-  },
-  actorState: { id: 'me' as string },
-}));
-
-vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: (model: string) => {
-    if (model === 'web.UserFilter') return sfMocks;
-    return {};
-  },
-}));
-
-vi.mock('./actorUserId', () => ({
-  actorUserId: () => actorState.id,
-}));
-
-vi.mock('@/web/web/query/utils/condition/builder', () => ({
-  filtersToQuery: vi.fn(() => ({ And: [['Name', '=', 'x']] })),
-}));
-
-import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
 import { useUserFilters } from './useUserFilters';
+
+type CallRecorder = { calls: unknown[][] };
+
+function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
+  impl?: (...args: A) => T | Promise<T>
+): CallRecorder & ((...args: A) => T | Promise<T>) {
+  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
+    (...args: A) => {
+      rec.calls.push(args);
+      return impl ? impl(...args) : (undefined as T);
+    },
+    { calls: [] as unknown[][] }
+  );
+  return rec;
+}
+
+function mutableFn<T = any>(initial?: (...a: any[]) => T) {
+  let impl = initial ?? (async () => undefined as T);
+  const fn = Object.assign(
+    (...args: any[]) => {
+      fn.calls.push(args);
+      return impl(...args);
+    },
+    {
+      calls: [] as unknown[][],
+      setImpl(next: any) {
+        impl = next;
+      },
+      reset(next?: any) {
+        fn.calls.length = 0;
+        impl = next ?? (async () => undefined as T);
+      },
+    }
+  );
+  return fn;
+}
+
+let actorId = 'me';
+const Search = mutableFn(async () => [] as any[]);
+const Create = mutableFn(async (values: any) => ({
+  Id: 'created-1',
+  Name: values.Name,
+  Condition: values.Condition,
+  IsDefault: values.IsDefault,
+  UserId: values.UserId,
+  CreatedUid: 'me',
+}));
+const UpdateById = mutableFn(async () => ({}));
+const DeleteById = mutableFn(async () => 1);
+const filtersToQuery = mutableFn(() => ({ And: [['Name', '=', 'x']] }) as any);
+
+function deps() {
+  return {
+    createStoreByModel: ((model: string) =>
+      model === 'web.UserFilter' ? { Search, Create, UpdateById, DeleteById } : {}) as any,
+    actorUserId: (() => actorId) as any,
+    filtersToQuery: filtersToQuery as any,
+  };
+}
 
 function runInSetup<T>(fn: () => T): T {
   let result!: T;
@@ -57,13 +80,9 @@ function runInSetup<T>(fn: () => T): T {
 
 describe('useUserFilters', () => {
   beforeEach(() => {
-    actorState.id = 'me';
-    sfMocks.Search.mockReset();
-    sfMocks.Create.mockReset();
-    sfMocks.UpdateById.mockReset();
-    sfMocks.DeleteById.mockReset();
-    sfMocks.Search.mockResolvedValue([]);
-    sfMocks.Create.mockImplementation(async (values: any) => ({
+    actorId = 'me';
+    Search.reset(async () => []);
+    Create.reset(async (values: any) => ({
       Id: 'created-1',
       Name: values.Name,
       Condition: values.Condition,
@@ -71,39 +90,41 @@ describe('useUserFilters', () => {
       UserId: values.UserId,
       CreatedUid: 'me',
     }));
-    sfMocks.UpdateById.mockResolvedValue({});
-    sfMocks.DeleteById.mockResolvedValue(1);
-    (filtersToQuery as any).mockClear?.();
+    UpdateById.reset(async () => ({}));
+    DeleteById.reset(async () => 1);
+    filtersToQuery.reset(() => ({ And: [['Name', '=', 'x']] }));
   });
 
-  it('load clears favorites when app or model is missing', async () => {
+  test('load clears favorites when app or model is missing', async () => {
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: '', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     api.favorites.value = [{ Id: 'x', Name: 'Y' } as any];
     await api.load();
     expect(api.favorites.value).toEqual([]);
-    expect(sfMocks.Search).not.toHaveBeenCalled();
+    expect(Search.calls.length).toBe(0);
 
     const apiModel = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: '' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     apiModel.favorites.value = [{ Id: 'x', Name: 'Y' } as any];
     await apiModel.load();
     expect(apiModel.favorites.value).toEqual([]);
-    expect(sfMocks.Search).not.toHaveBeenCalled();
+    expect(Search.calls.length).toBe(0);
   });
 
-  it('load maps shared/private canDelete and exposes defaults', async () => {
-    sfMocks.Search.mockResolvedValue([
+  test('load maps shared/private canDelete and exposes defaults', async () => {
+    Search.setImpl(async () => [
       {
         Id: 'p1',
         Name: 'Mine',
@@ -130,13 +151,14 @@ describe('useUserFilters', () => {
       },
       { Id: '', Name: 'skip' },
     ]);
-    const applyNamedFilter = vi.fn();
+    const applyNamedFilter = fnRecorder();
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter,
         codeDefaults: () => [{ name: 'Code', query: ['X', '=', 1], selected: true }],
+        ...deps(),
       })
     );
     await api.load();
@@ -156,13 +178,16 @@ describe('useUserFilters', () => {
     });
   });
 
-  it('load records error and clears favorites', async () => {
-    sfMocks.Search.mockRejectedValue(new Error('network'));
+  test('load records error and clears favorites', async () => {
+    Search.setImpl(async () => {
+      throw new Error('network');
+    });
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await api.load();
@@ -171,26 +196,30 @@ describe('useUserFilters', () => {
     expect(api.loading.value).toBe(false);
   });
 
-  it('load ignores stale responses when a newer load started', async () => {
+  test('load ignores stale responses when a newer load started', async () => {
     let resolveFirst!: (rows: any[]) => void;
     const first = new Promise<any[]>(resolve => {
       resolveFirst = resolve;
     });
-    sfMocks.Search.mockImplementationOnce(() => first).mockResolvedValueOnce([
-      {
-        Id: 'new',
-        Name: 'Newer',
-        Condition: {},
-        IsDefault: false,
-        UserId: 'me',
-        CreatedUid: 'me',
-      },
-    ]);
+    Search.setImpl(() => {
+      Search.setImpl(async () => [
+        {
+          Id: 'new',
+          Name: 'Newer',
+          Condition: {},
+          IsDefault: false,
+          UserId: 'me',
+          CreatedUid: 'me',
+        },
+      ]);
+      return first;
+    });
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     const p1 = api.load();
@@ -211,13 +240,16 @@ describe('useUserFilters', () => {
     expect(api.loading.value).toBe(false);
   });
 
-  it('load stringifies non-Error throws', async () => {
-    sfMocks.Search.mockRejectedValue('plain-string-fail');
+  test('load stringifies non-Error throws', async () => {
+    Search.setImpl(async () => {
+      throw 'plain-string-fail';
+    });
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await api.load();
@@ -225,86 +257,94 @@ describe('useUserFilters', () => {
     expect(api.favorites.value).toEqual([]);
   });
 
-  it('load without me only requests shared favorites', async () => {
-    actorState.id = '';
-    sfMocks.Search.mockResolvedValue([
+  test('load without me only requests shared favorites', async () => {
+    actorId = '';
+    Search.setImpl(async () => [
       { Id: 's1', Name: 'Shared', UserId: null, CreatedUid: 'x', IsDefault: false, Condition: {} },
     ]);
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await api.load();
-    const cond = sfMocks.Search.mock.calls[0]![0] as any;
-    expect(cond.And).toEqual(
-      expect.arrayContaining([
-        ['Application', '=', 'demo'],
-        ['ModelName', '=', 'Widget'],
-        ['ScopeKey', '=', ''],
-        { Or: [['UserId', '=', null]] },
-      ])
-    );
+    const cond = Search.calls[0]![0] as any;
+    expect(cond.And).toEqual([
+      ['Application', '=', 'demo'],
+      ['ModelName', '=', 'Widget'],
+      ['ScopeKey', '=', ''],
+      { Or: [['UserId', '=', null]] },
+    ]);
     expect(api.favorites.value[0].canDelete).toBe(false);
   });
 
-  it('load and saveCurrent filter/write ScopeKey from scopeKey()', async () => {
-    sfMocks.Search.mockResolvedValue([]);
+  test('load and saveCurrent filter/write ScopeKey from scopeKey()', async () => {
+    Search.setImpl(async () => []);
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
         scopeKey: () => '/web/partners/42/edit?x=1',
+        ...deps(),
       })
     );
     await api.load();
-    expect(sfMocks.Search.mock.calls[0]![0].And).toEqual(
-      expect.arrayContaining([['ScopeKey', '=', '/web/partners/:id/edit']])
-    );
+    expect(Search.calls[0]![0]).toMatchObject({
+      And: [
+        ['Application', '=', 'demo'],
+        ['ModelName', '=', 'Widget'],
+        ['ScopeKey', '=', '/web/partners/:id/edit'],
+        { Or: [['UserId', '=', 'me'], ['UserId', '=', null]] },
+      ],
+    });
     await api.saveCurrent({ name: 'Scoped' });
-    expect(sfMocks.Create.mock.calls[0]![0]).toMatchObject({
+    expect(Create.calls[0]![0]).toMatchObject({
       Name: 'Scoped',
       ScopeKey: '/web/partners/:id/edit',
     });
   });
 
-  it('saveCurrent returns null when name/app/model missing', async () => {
+  test('saveCurrent returns null when name/app/model missing', async () => {
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     expect(await api.saveCurrent({ name: '  ' })).toBeNull();
-    expect(sfMocks.Create).not.toHaveBeenCalled();
+    expect(Create.calls.length).toBe(0);
 
     const noApp = runInSetup(() =>
       useUserFilters({
         store: { application: '', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     expect(await noApp.saveCurrent({ name: 'X' })).toBeNull();
   });
 
-  it('load tolerates null Search rows and missing Condition', async () => {
-    sfMocks.Search.mockResolvedValue(null as any);
+  test('load tolerates null Search rows and missing Condition', async () => {
+    Search.setImpl(async () => null as any);
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await api.load();
     expect(api.favorites.value).toEqual([]);
 
-    sfMocks.Search.mockResolvedValue([
+    Search.setImpl(async () => [
       { Id: 'p1', Name: 'NoCond', IsDefault: false, UserId: 'me', CreatedUid: 'me' },
       { Id: 'p2', Name: 'OtherPriv', IsDefault: false, UserId: 'other', CreatedUid: 'other' },
       { Id: 'p3', Name: 'NullCond', IsDefault: false, UserId: 'me', CreatedUid: 'me', Condition: null },
@@ -316,7 +356,7 @@ describe('useUserFilters', () => {
     expect(api.defaultsForOpen.value).toEqual([]);
   });
 
-  it('saveCurrent creates private and shared favorites', async () => {
+  test('saveCurrent creates private and shared favorites', async () => {
     const groups = [{ id: 'g', logic: 'And', children: [] }];
     const fieldsMeta = { Name: { type: 'varchar' } };
     const api = runInSetup(() =>
@@ -329,12 +369,14 @@ describe('useUserFilters', () => {
         },
         filtersRef: ref(groups),
         keywordRef: ref('  find-me  '),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     const privateCreated = await api.saveCurrent({ name: 'Priv', isDefault: true });
-    expect(filtersToQuery).toHaveBeenCalledWith(groups, 'find-me', ['Name', 'Code'], fieldsMeta);
-    expect(sfMocks.Create.mock.calls[0]![0]).toMatchObject({
+    expect(filtersToQuery.calls.length).toBe(1);
+    expect(filtersToQuery.calls[0]).toEqual([groups, 'find-me', ['Name', 'Code'], fieldsMeta]);
+    expect(Create.calls[0]![0]).toMatchObject({
       Name: 'Priv',
       ScopeKey: '',
       UserId: 'me',
@@ -344,58 +386,61 @@ describe('useUserFilters', () => {
     expect(privateCreated).toMatchObject({ Id: 'created-1', shared: false, canDelete: true });
 
     const sharedCreated = await api.saveCurrent({ name: 'Shared', shared: true });
-    expect(sfMocks.Create.mock.calls[1]![0]).toMatchObject({
+    expect(Create.calls[1]![0]).toMatchObject({
       Name: 'Shared',
       UserId: null,
     });
     expect(sharedCreated?.shared).toBe(true);
   });
 
-  it('saveCurrent omits UserId when actor is empty (private)', async () => {
-    actorState.id = '';
+  test('saveCurrent omits UserId when actor is empty (private)', async () => {
+    actorId = '';
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await api.saveCurrent({ name: 'NoActor' });
-    const values = sfMocks.Create.mock.calls[0]![0] as Record<string, unknown>;
+    const values = Create.calls[0]![0] as Record<string, unknown>;
     expect(values).toMatchObject({ Name: 'NoActor', Application: 'demo', ModelName: 'Widget' });
-    expect(values).not.toHaveProperty('UserId');
+    expect(!('UserId' in values)).toBe(true);
   });
 
-  it('saveCurrent uses empty Condition when filtersToQuery returns null', async () => {
-    (filtersToQuery as any).mockReturnValueOnce(null);
+  test('saveCurrent uses empty Condition when filtersToQuery returns null', async () => {
+    filtersToQuery.setImpl(() => null);
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref(null as any),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await api.saveCurrent({ name: 'NullCond' });
-    expect(sfMocks.Create.mock.calls[0]![0]).toMatchObject({
+    expect(Create.calls[0]![0]).toMatchObject({
       Name: 'NullCond',
       Condition: {},
       UserId: 'me',
     });
   });
 
-  it('saveCurrent treats empty UserId as shared and falls back createUid to actor', async () => {
-    sfMocks.Create.mockResolvedValueOnce({
+  test('saveCurrent treats empty UserId as shared and falls back createUid to actor', async () => {
+    Create.setImpl(async () => ({
       Id: 'created-shared',
       Name: 'SharedEmpty',
       Condition: {},
       IsDefault: false,
       UserId: '',
-    });
+    }));
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     const created = await api.saveCurrent({ name: 'SharedEmpty', shared: true });
@@ -407,63 +452,75 @@ describe('useUserFilters', () => {
     });
   });
 
-  it('apply and remove delegate to helpers/store', async () => {
-    const applyNamedFilter = vi.fn();
+  test('apply and remove delegate to helpers/store', async () => {
+    const applyNamedFilter = fnRecorder();
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter,
+        ...deps(),
       })
     );
     api.apply({ name: 'Fav', filter: { And: [['A', '=', 1]] } });
-    expect(applyNamedFilter).toHaveBeenCalledWith({ name: 'Fav', query: { And: [['A', '=', 1]] } });
+    expect(applyNamedFilter.calls.length).toBe(1);
+    expect(applyNamedFilter.calls[0]).toEqual([{ name: 'Fav', query: { And: [['A', '=', 1]] } }]);
 
     await api.remove('fav-1');
-    expect(sfMocks.DeleteById).toHaveBeenCalledWith('fav-1');
-    expect(sfMocks.Search).toHaveBeenCalled();
+    expect(DeleteById.calls.length).toBe(1);
+    expect(DeleteById.calls[0]).toEqual(['fav-1']);
+    expect(Search.calls.length).toBeGreaterThan(0);
   });
 
-  it('updateMeta writes Name/IsDefault/UserId only and reloads', async () => {
+  test('updateMeta writes Name/IsDefault/UserId only and reloads', async () => {
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([{ id: 'g1' }]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
-    sfMocks.Search.mockClear();
+    Search.calls.length = 0;
     await api.updateMeta('fav-9', { name: 'Renamed', isDefault: true, shared: false });
-    expect(sfMocks.UpdateById).toHaveBeenCalledWith('fav-9', {
-      Name: 'Renamed',
-      IsDefault: true,
-      UserId: 'me',
-    });
-    const payload = sfMocks.UpdateById.mock.calls[0]![1] as Record<string, unknown>;
-    expect(payload).not.toHaveProperty('Condition');
-    expect(sfMocks.Search).toHaveBeenCalled();
+    expect(UpdateById.calls.length).toBe(1);
+    expect(UpdateById.calls[0]).toEqual([
+      'fav-9',
+      {
+        Name: 'Renamed',
+        IsDefault: true,
+        UserId: 'me',
+      },
+    ]);
+    const payload = UpdateById.calls[0]![1] as Record<string, unknown>;
+    expect(!('Condition' in payload)).toBe(true);
+    expect(Search.calls.length).toBeGreaterThan(0);
 
-    sfMocks.UpdateById.mockClear();
+    UpdateById.calls.length = 0;
     await api.updateMeta('fav-9', { name: 'SharedNow', shared: true });
-    expect(sfMocks.UpdateById).toHaveBeenCalledWith('fav-9', {
-      Name: 'SharedNow',
-      IsDefault: false,
-      UserId: null,
-    });
+    expect(UpdateById.calls[0]).toEqual([
+      'fav-9',
+      {
+        Name: 'SharedNow',
+        IsDefault: false,
+        UserId: null,
+      },
+    ]);
   });
 
-  it('load clears loading when a newer load invalidates app/model', async () => {
+  test('load clears loading when a newer load invalidates app/model', async () => {
     let resolveSlow!: (rows: any[]) => void;
     const slow = new Promise<any[]>(resolve => {
       resolveSlow = resolve;
     });
-    sfMocks.Search.mockImplementationOnce(() => slow);
+    Search.setImpl(() => slow);
     const store = reactive({ application: 'demo', modelName: 'Widget' });
     const api = runInSetup(() =>
       useUserFilters({
         store,
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     const p1 = api.load();
@@ -477,12 +534,13 @@ describe('useUserFilters', () => {
     expect(api.loadError.value).toBeNull();
   });
 
-  it('load ignores stale empty-context clear when a newer load started', async () => {
+  test('load ignores stale empty-context clear when a newer load started', async () => {
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: '', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     api.favorites.value = [{ Id: 'keep', Name: 'Keep' } as any];
@@ -491,22 +549,24 @@ describe('useUserFilters', () => {
     await Promise.all([p1, p2]);
     // Newer empty load wins the clear; older gen skips after yield.
     expect(api.favorites.value).toEqual([]);
-    expect(sfMocks.Search).not.toHaveBeenCalled();
+    expect(Search.calls.length).toBe(0);
   });
 
-  it('load ignores stale Search rejection after a newer load', async () => {
+  test('load ignores stale Search rejection after a newer load', async () => {
     let rejectSlow!: (err: Error) => void;
     const slow = new Promise<any[]>((_resolve, reject) => {
       rejectSlow = reject;
     });
-    sfMocks.Search.mockImplementationOnce(() => slow).mockResolvedValueOnce([
-      { Id: 'ok', Name: 'Ok', UserId: 'me', CreatedUid: 'me' },
-    ]);
+    Search.setImpl(() => {
+      Search.setImpl(async () => [{ Id: 'ok', Name: 'Ok', UserId: 'me', CreatedUid: 'me' }]);
+      return slow;
+    });
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     const p1 = api.load();
@@ -518,12 +578,13 @@ describe('useUserFilters', () => {
     expect(api.loading.value).toBe(false);
   });
 
-  it('updateMeta no-ops when id or name missing', async () => {
+  test('updateMeta no-ops when id or name missing', async () => {
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await api.updateMeta('', { name: 'X' });
@@ -531,26 +592,27 @@ describe('useUserFilters', () => {
     await api.updateMeta(null as any, { name: 'X' });
     await api.updateMeta('fav-1', { name: null as any });
     await api.updateMeta('fav-1', { name: undefined as any });
-    expect(sfMocks.UpdateById).not.toHaveBeenCalled();
+    expect(UpdateById.calls.length).toBe(0);
   });
 
-  it('updateMeta omits UserId when actor empty and private', async () => {
-    actorState.id = '';
+  test('updateMeta omits UserId when actor empty and private', async () => {
+    actorId = '';
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await api.updateMeta('fav-1', { name: 'NoActor', shared: false });
-    const values = sfMocks.UpdateById.mock.calls[0]![1] as Record<string, unknown>;
+    const values = UpdateById.calls[0]![1] as Record<string, unknown>;
     expect(values).toMatchObject({ Name: 'NoActor', IsDefault: false });
-    expect(values).not.toHaveProperty('UserId');
+    expect(!('UserId' in values)).toBe(true);
   });
 
-  it('load maps missing CreatedUid and private canDelete when actor empty', async () => {
-    sfMocks.Search.mockResolvedValue([
+  test('load maps missing CreatedUid and private canDelete when actor empty', async () => {
+    Search.setImpl(async () => [
       { Id: 's1', Name: 'NoCreatedUid', IsDefault: false, UserId: null },
       { Id: 'p1', Name: 'Priv', IsDefault: false, UserId: 'other' },
       // Falsy non-null UserId stays private and hits `UserId || ''` in canDelete.
@@ -560,7 +622,8 @@ describe('useUserFilters', () => {
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await withMe.load();
@@ -568,41 +631,43 @@ describe('useUserFilters', () => {
     expect(withMe.favorites.value[1]).toMatchObject({ shared: false, canDelete: false });
     expect(withMe.favorites.value[2]).toMatchObject({ shared: false, canDelete: false });
 
-    actorState.id = '';
-    sfMocks.Search.mockResolvedValue([
+    actorId = '';
+    Search.setImpl(async () => [
       { Id: 'p2', Name: 'PrivNoMe', IsDefault: false, UserId: 'someone', CreatedUid: 'someone' },
     ]);
     const noMe = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     await noMe.load();
     expect(noMe.favorites.value[0].canDelete).toBe(false);
   });
 
-  it('saveCurrent null name and empty CreatedUid/Name fallbacks', async () => {
+  test('saveCurrent null name and empty CreatedUid/Name fallbacks', async () => {
     const api = runInSetup(() =>
       useUserFilters({
         store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
         filtersRef: ref([]),
-        applyNamedFilter: vi.fn(),
+        applyNamedFilter: fnRecorder(),
+        ...deps(),
       })
     );
     expect(await api.saveCurrent({ name: null as any })).toBeNull();
     expect(await api.saveCurrent({ name: undefined as any })).toBeNull();
-    expect(sfMocks.Create).not.toHaveBeenCalled();
+    expect(Create.calls.length).toBe(0);
 
-    actorState.id = '';
-    sfMocks.Create.mockResolvedValueOnce({
+    actorId = '';
+    Create.setImpl(async () => ({
       Id: 'created-2',
       Name: '',
       Condition: {},
       IsDefault: false,
       UserId: null,
-    });
+    }));
     const created = await api.saveCurrent({ name: 'FallbackName', shared: true });
     expect(created).toMatchObject({
       Name: 'FallbackName',

@@ -1,4 +1,3 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
@@ -16,7 +15,12 @@ import { projectTerminologyMessages } from './terminology';
 afterEach(() => {
   clearContextStack();
   delete (globalThis as { $choysum?: unknown }).$choysum;
-  delete (globalThis as { window?: { $i18n?: unknown } }).window?.$i18n;
+  const win = (globalThis as { window?: { $i18n?: unknown } }).window;
+  if (win && win !== (globalThis as unknown)) {
+    (globalThis as { window?: unknown }).window = globalThis;
+  } else if (win) {
+    delete win.$i18n;
+  }
 });
 
 test('installBrowserI18nBridge > falls back to msgid when the bridge is not installed', () => {
@@ -42,9 +46,8 @@ test('installBrowserI18nBridge > honors the requested terminology lang when the 
     },
     postTranslation: trackComposerMessageRevision,
   });
-  (globalThis as { window?: { $i18n?: unknown } }).window = {
-    $i18n: i18n.global,
-  };
+  (globalThis as { window?: { $i18n?: unknown } }).window = globalThis as any;
+  (globalThis as { window: { $i18n?: unknown } }).window.$i18n = i18n.global;
   installBrowserI18nBridge();
 
   const translated = (globalThis as {
@@ -59,6 +62,8 @@ test('installBrowserI18nBridge > honors the requested terminology lang when the 
 });
 
 test('installBrowserI18nBridge > exposeBrowserI18nOnWindow wires window.$i18n and createTranslate lookup', () => {
+  // ES modules do not resolve bare `window`; keep a real globalThis.window for the bridge.
+  (globalThis as { window?: unknown }).window = globalThis as any;
   const i18n = createI18n({
     legacy: false,
     locale: 'zh-CN',
@@ -76,7 +81,7 @@ test('installBrowserI18nBridge > exposeBrowserI18nOnWindow wires window.$i18n an
     postTranslation: trackComposerMessageRevision,
   });
   exposeBrowserI18nOnWindow(i18n.global);
-  expect((window as { $i18n?: unknown }).$i18n).toBe(i18n.global);
+  expect((globalThis as { window?: { $i18n?: unknown } }).window?.$i18n).toBe(i18n.global);
 
   runWithRequestContextSync({ lang: 'zh_CN', locale: 'zh-CN' }, () => {
     const { _t } = createTranslate('core', { scope: 'web/rpc/errors' });
@@ -85,10 +90,9 @@ test('installBrowserI18nBridge > exposeBrowserI18nOnWindow wires window.$i18n an
 });
 
 test('installBrowserI18nBridge > exposeBrowserI18nOnWindow is a no-op without window', () => {
-  const originalWindow = globalThis.window;
-  // @ts-expect-error simulate non-browser runtime
-  delete globalThis.window;
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  delete (globalThis as { window?: unknown }).window;
   expect(() => exposeBrowserI18nOnWindow({})).not.toThrow();
-  globalThis.window = originalWindow;
+  (globalThis as { window?: unknown }).window = originalWindow ?? globalThis;
 });
 

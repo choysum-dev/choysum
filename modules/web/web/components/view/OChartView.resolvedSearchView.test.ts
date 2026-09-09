@@ -1,65 +1,15 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, markRaw, reactive } from 'vue';
-import { mount, flushPromises } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, markRaw } from 'vue';
 
-const { applyMock, awaitFieldSelectionMock } = vi.hoisted(() => ({
-  applyMock: vi.fn(async () => {}),
-  awaitFieldSelectionMock: vi.fn(async () => {}),
-}));
-
-vi.mock('@/web/web/controllers/chartController', () => ({
-  createChartController: vi.fn(() => ({
-    vm: reactive({
-      loading: false,
-      error: null,
-      result: null,
-    }),
-    apply: applyMock,
-  })),
-}));
-
-vi.mock('@/web/web/query/utils/registry/fieldReady', () => ({
-  awaitFieldSelection: (...args: any[]) => awaitFieldSelectionMock(...args),
-}));
-
-vi.mock('@/web/web/query/utils/registry/metric', () => ({
-  exportMetrics: () => [],
-}));
-
-vi.mock('@/web/web/components/chart/chartTypeAdapter', () => ({
-  resolveChartAdapter: () => null,
-  ensureEChartsRegistered: () => {},
-  chartTypeRegistry: {},
-}));
-
-vi.mock('vue-echarts', () => ({
-  default: defineComponent({ name: 'VChartStub', setup: () => () => null }),
-}));
-
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({ _t: (msg: string) => msg, _lt: (msg: string) => msg }),
-  };
-});
-
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-  };
-});
-
+import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OViewContainer from './OViewContainer.vue';
 import OChartView from './OChartView.vue';
 
 function makeStore() {
   return {
+    storeId: 'chart-s',
     fieldsMetadata: {},
     state: {
       queryState: {
@@ -73,20 +23,19 @@ function makeStore() {
   } as any;
 }
 
-const stubs = {
-  OViewContainer: {
-    template: `<div class="ovc"><slot name="header" /><slot name="fields" /><slot /></div>`,
-  },
-  'el-button': true,
-  'el-icon': true,
-  'el-select': true,
-  'el-option': true,
-  'el-tooltip': true,
-  'el-button-group': true,
-};
-
 describe('OChartView resolvedSearchView', () => {
-  it('renders markRaw searchView and covers the falsy resolvedSearchView branch', async () => {
+  afterEach(() => {
+    restoreSfc(OViewContainer);
+  });
+
+  test('renders markRaw searchView and covers the falsy resolvedSearchView branch', async () => {
+    stubSfc(OViewContainer, {
+      name: 'OViewContainer',
+      setup(_props: any, { slots }: any) {
+        return () => h('div', { class: 'ovc' }, [slots.header?.(), slots.fields?.(), slots.default?.()]);
+      },
+    });
+
     const SearchProbe = markRaw(
       defineComponent({
         name: 'ChartSearchProbe',
@@ -94,7 +43,7 @@ describe('OChartView resolvedSearchView', () => {
       })
     );
 
-    const withSearch = mount(OChartView as any, {
+    const withSearch = mountApp(OChartView as any, {
       props: {
         store: makeStore(),
         searchView: SearchProbe,
@@ -103,17 +52,24 @@ describe('OChartView resolvedSearchView', () => {
         showChartControls: false,
         refreshAction: false,
       },
-      global: { stubs },
+      stubs: {
+        ElButton: true,
+        ElIcon: true,
+        ElSelect: true,
+        ElOption: true,
+        ElTooltip: true,
+        ElButtonGroup: true,
+      },
     });
     try {
       await flushPromises();
-      expect(withSearch.find('.chart-search-probe').exists()).toBe(true);
-      expect(withSearch.find('.o-chart__search').exists()).toBe(true);
+      expect(withSearch.q('.chart-search-probe')).toBeTruthy();
+      expect(withSearch.q('.o-chart__search')).toBeTruthy();
     } finally {
       withSearch.unmount();
     }
 
-    const withoutSearch = mount(OChartView as any, {
+    const withoutSearch = mountApp(OChartView as any, {
       props: {
         store: makeStore(),
         searchView: undefined,
@@ -122,11 +78,18 @@ describe('OChartView resolvedSearchView', () => {
         showChartControls: false,
         refreshAction: false,
       },
-      global: { stubs },
+      stubs: {
+        ElButton: true,
+        ElIcon: true,
+        ElSelect: true,
+        ElOption: true,
+        ElTooltip: true,
+        ElButtonGroup: true,
+      },
     });
     try {
       await flushPromises();
-      expect(withoutSearch.find('.o-chart__search').exists()).toBe(false);
+      expect(withoutSearch.q('.o-chart__search')).toBeFalsy();
     } finally {
       withoutSearch.unmount();
     }

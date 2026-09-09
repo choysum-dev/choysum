@@ -250,3 +250,52 @@ function assert(cond, msg) {
 
 	runNodeWithScript(t, script)
 }
+
+func TestChoysumTestScriptHooksApplyWhenDeclaredAfterTest(t *testing.T) {
+	script := ChoysumTestScript + `
+let beforeHits = 0;
+let afterHits = 0;
+
+describe('suite', () => {
+  test('sees hooks registered below the test()', () => {
+    if (beforeHits !== 1) throw new Error('beforeEach missed, hits=' + beforeHits);
+  });
+
+  beforeEach(() => {
+    beforeHits += 1;
+  });
+  afterEach(() => {
+    afterHits += 1;
+  });
+});
+
+(async () => {
+  const report = await globalThis.__choysum_test_run__();
+  if (!report || report.failed !== 0) throw new Error('cases failed: ' + JSON.stringify(report));
+  if (afterHits !== 1) throw new Error('afterEach missed, hits=' + afterHits);
+})();
+`
+	runNodeWithScript(t, script)
+}
+
+func TestChoysumTestScriptRootAfterEachDoesNotRetroactivelyApply(t *testing.T) {
+	script := ChoysumTestScript + `
+let afterHits = 0;
+
+test('early', () => {});
+
+afterEach(() => {
+  afterHits += 1;
+});
+
+test('late', () => {});
+
+(async () => {
+  const report = await globalThis.__choysum_test_run__();
+  if (!report || report.failed !== 0) throw new Error('cases failed: ' + JSON.stringify(report));
+  // Root afterEach is snapshotted at test() registration: only "late" sees it.
+  if (afterHits !== 1) throw new Error('expected 1 root afterEach run, got ' + afterHits);
+})();
+`
+	runNodeWithScript(t, script)
+}

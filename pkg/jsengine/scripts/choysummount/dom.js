@@ -41,11 +41,37 @@
     this.parentNode = null;
     this._text = '';
     this._html = '';
-    this.style = {};
+    this.style = createStyle();
     this.className = '';
     this.id = '';
     this._listeners = Object.create(null);
     this.ownerDocument = null;
+  }
+
+  function cssCamel(name) {
+    return String(name || '').replace(/-([a-z])/g, function (_m, c) {
+      return c.toUpperCase();
+    });
+  }
+
+  function createStyle() {
+    var style = {
+      getPropertyValue: function (name) {
+        var key = cssCamel(name);
+        var v = style[key];
+        return v == null ? '' : String(v);
+      },
+      setProperty: function (name, value) {
+        style[cssCamel(name)] = String(value == null ? '' : value);
+      },
+      removeProperty: function (name) {
+        var key = cssCamel(name);
+        var prev = style[key] == null ? '' : String(style[key]);
+        style[key] = '';
+        return prev;
+      },
+    };
+    return style;
   }
 
   Element.prototype.appendChild = function (child) {
@@ -69,6 +95,12 @@
       syncChildNodes(this);
     }
     return child;
+  };
+
+  Element.prototype.remove = function () {
+    if (this.parentNode && typeof this.parentNode.removeChild === 'function') {
+      this.parentNode.removeChild(this);
+    }
   };
 
   Element.prototype.insertBefore = function (newNode, ref) {
@@ -297,51 +329,68 @@
     return all.length ? all[0] : null;
   };
 
+  // Shared with Element.prototype.matches so closest/matches honor the same
+  // selector contract as querySelectorAll (class/id/tag/attr/tag.class/tag#id).
+  function matchSelector(el, s) {
+    s = String(s || '').trim();
+    if (!s) return false;
+    // Fail loud on forms this host does not implement (avoid false-negative finds).
+    if (/[\s,>+~]/.test(s)) {
+      throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+    }
+    if (s.charAt(0) === '.') {
+      // Reject .a.b / .a#id / .a[attr] (but allow simple .class-name).
+      if (/[.#\[]/.test(s.slice(1))) {
+        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+      }
+      var cls = s.slice(1);
+      var cn = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
+      return (' ' + cn + ' ').indexOf(' ' + cls + ' ') >= 0;
+    }
+    if (s.charAt(0) === '#') {
+      if (/[.#\[]/.test(s.slice(1))) {
+        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+      }
+      return el.id === s.slice(1) || el.getAttribute('id') === s.slice(1);
+    }
+    if (s.charAt(0) === '[') {
+      var m = /^\[([^=\]]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(s);
+      if (!m) {
+        throw new Error('choysum minimal DOM: unsupported attribute selector: ' + s);
+      }
+      var got = el.getAttribute(m[1]);
+      if (m[2] === undefined) return got != null;
+      return got === m[2];
+    }
+    // tag, tag.class, or tag#id (single class / id only).
+    var tagClass = /^([a-zA-Z][\w-]*)\.([^\s.#\[]+)$/.exec(s);
+    if (tagClass) {
+      if (el.tagName !== tagClass[1].toUpperCase()) return false;
+      var cls2 = tagClass[2];
+      var cn2 = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
+      return (' ' + cn2 + ' ').indexOf(' ' + cls2 + ' ') >= 0;
+    }
+    var tagId = /^([a-zA-Z][\w-]*)#([^\s.#\[]+)$/.exec(s);
+    if (tagId) {
+      if (el.tagName !== tagId[1].toUpperCase()) return false;
+      return el.id === tagId[2] || el.getAttribute('id') === tagId[2];
+    }
+    // Tag name only — reject unsupported compound selectors.
+    if (!/^[a-zA-Z][\w-]*$/.test(s)) {
+      throw new Error('choysum minimal DOM: unsupported selector: ' + s);
+    }
+    return el.tagName === s.toUpperCase();
+  }
+
   Element.prototype.querySelectorAll = function (sel) {
     var out = [];
     var selector = String(sel || '').trim();
     function walk(node) {
       if (node.nodeType !== NODE_ELEMENT) return;
-      if (match(node, selector)) out.push(node);
+      if (matchSelector(node, selector)) out.push(node);
       for (var i = 0; i < node._children.length; i++) {
         walk(node._children[i]);
       }
-    }
-    function match(el, s) {
-      if (!s) return false;
-      // Fail loud on forms this host does not implement (avoid false-negative finds).
-      if (/[\s,>+~]/.test(s)) {
-        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
-      }
-      if (s.charAt(0) === '.') {
-        // Reject .a.b / .a#id / .a[attr] (but allow simple .class-name).
-        if (/[.#\[]/.test(s.slice(1))) {
-          throw new Error('choysum minimal DOM: unsupported selector: ' + s);
-        }
-        var cls = s.slice(1);
-        var cn = (el.className || el.getAttribute('class') || '').replace(/\s+/g, ' ').trim();
-        return (' ' + cn + ' ').indexOf(' ' + cls + ' ') >= 0;
-      }
-      if (s.charAt(0) === '#') {
-        if (/[.#\[]/.test(s.slice(1))) {
-          throw new Error('choysum minimal DOM: unsupported selector: ' + s);
-        }
-        return el.id === s.slice(1) || el.getAttribute('id') === s.slice(1);
-      }
-      if (s.charAt(0) === '[') {
-        var m = /^\[([^=\]]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(s);
-        if (!m) {
-          throw new Error('choysum minimal DOM: unsupported attribute selector: ' + s);
-        }
-        var got = el.getAttribute(m[1]);
-        if (m[2] === undefined) return got != null;
-        return got === m[2];
-      }
-      // Tag name only — reject div.class / span#id / etc.
-      if (!/^[a-zA-Z][\w-]*$/.test(s)) {
-        throw new Error('choysum minimal DOM: unsupported selector: ' + s);
-      }
-      return el.tagName === s.toUpperCase();
     }
     for (var i = 0; i < this._children.length; i++) {
       walk(this._children[i]);
@@ -384,18 +433,27 @@
     },
     set: function (v) {
       this._html = String(v == null ? '' : v);
-      // Strip markup markers by deleting < and > (single-char) — avoids incomplete
-      // multi-character tag sanitization (CodeQL js/incomplete-multi-character-sanitization).
-      this.textContent = this._html.replace(/[<>]/g, '');
+      // Test-host plaintext projection only (not a sanitizer): drop tags so blank
+      // markup like <p></p> yields empty textContent for normalizeHtmlForStore.
+      this.textContent = this._html.replace(/<[^>]*>/g, '');
     },
   });
 
   Object.defineProperty(Element.prototype, 'nextSibling', {
     get: function () {
-      if (!this.parentNode) return null;
+      if (!this.parentNode || !this.parentNode._children) return null;
       var sibs = this.parentNode._children;
       var i = sibs.indexOf(this);
       return i >= 0 && i + 1 < sibs.length ? sibs[i + 1] : null;
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'previousSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i > 0 ? sibs[i - 1] : null;
     },
   });
 
@@ -410,6 +468,24 @@
       return this.parentNode && this.parentNode.nodeType === NODE_ELEMENT ? this.parentNode : null;
     },
   });
+
+  Element.prototype.getBoundingClientRect = function () {
+    return { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 };
+  };
+
+  Element.prototype.closest = function (sel) {
+    var el = this;
+    var selector = String(sel || '');
+    while (el && el.nodeType === NODE_ELEMENT) {
+      if (typeof el.matches === 'function' && el.matches(selector)) return el;
+      el = el.parentElement || el.parentNode;
+    }
+    return null;
+  };
+
+  Element.prototype.matches = function (sel) {
+    return matchSelector(this, sel);
+  };
 
   function TextNode(data) {
     this.nodeType = NODE_TEXT;
@@ -434,6 +510,22 @@
       this.data = String(v == null ? '' : v);
     },
   });
+  Object.defineProperty(TextNode.prototype, 'nextSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i >= 0 && i + 1 < sibs.length ? sibs[i + 1] : null;
+    },
+  });
+  Object.defineProperty(TextNode.prototype, 'previousSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i > 0 ? sibs[i - 1] : null;
+    },
+  });
 
   function CommentNode(data) {
     this.nodeType = NODE_COMMENT;
@@ -442,6 +534,28 @@
     this.parentNode = null;
     this.ownerDocument = null;
   }
+  Object.defineProperty(CommentNode.prototype, 'nextSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i >= 0 && i + 1 < sibs.length ? sibs[i + 1] : null;
+    },
+  });
+  Object.defineProperty(CommentNode.prototype, 'previousSibling', {
+    get: function () {
+      if (!this.parentNode || !this.parentNode._children) return null;
+      var sibs = this.parentNode._children;
+      var i = sibs.indexOf(this);
+      return i > 0 ? sibs[i - 1] : null;
+    },
+  });
+  Object.defineProperty(CommentNode.prototype, 'textContent', {
+    get: function () {
+      return '';
+    },
+    set: function () {},
+  });
 
   function Document() {
     this.nodeType = NODE_DOCUMENT;
@@ -522,6 +636,8 @@
   global.Node = Node;
   global.Element = Element;
   global.HTMLElement = Element;
+  global.HTMLButtonElement = Element;
+  global.HTMLInputElement = Element;
   global.SVGElement = Element;
   global.Text = TextNode;
   global.Comment = CommentNode;
@@ -530,6 +646,8 @@
   global.CustomEvent = Event;
   global.navigator = global.navigator || { userAgent: 'choysum-minimal-dom' };
   global.location = global.location || { href: 'http://localhost/', protocol: 'http:' };
+  if (typeof global.innerHeight !== 'number') global.innerHeight = 768;
+  if (typeof global.innerWidth !== 'number') global.innerWidth = 1024;
   global.getComputedStyle =
     global.getComputedStyle ||
     function () {

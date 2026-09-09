@@ -1,24 +1,20 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import OChatterFieldChangeItem from './OChatterFieldChangeItem.vue';
 
-vi.mock('@/web/web/i18n', () => ({
-  createTranslate: () => ({ _t: (msg: string, ...args: unknown[]) => (args.length ? `${msg}:${args.join(':')}` : msg) }),
-}));
-
 describe('OChatterFieldChangeItem', () => {
-  it('renders field-change summaries for create, field, and action kinds', () => {
-    const create = mount(OChatterFieldChangeItem, {
+  test('renders field-change summaries for create, field, action, and unlink kinds', async () => {
+    const at = Date.parse('2024-01-01T12:00:00.000Z');
+
+    const create = mountApp(OChatterFieldChangeItem as any, {
       props: {
         authorLabel: 'Tester',
         entry: {
           kind: 'fieldChange',
           id: 'f1',
-          at: Date.parse('2024-01-01T12:00:00.000Z'),
+          at,
           field: null,
           changeKind: 'create',
           oldValue: null,
@@ -27,15 +23,17 @@ describe('OChatterFieldChangeItem', () => {
         },
       },
     });
+    await flushPromises();
     expect(create.text()).toContain('Record created');
+    create.unmount();
 
-    const field = mount(OChatterFieldChangeItem, {
+    const field = mountApp(OChatterFieldChangeItem as any, {
       props: {
         authorLabel: 'Tester',
         entry: {
           kind: 'fieldChange',
           id: 'f2',
-          at: Date.parse('2024-01-01T12:00:00.000Z'),
+          at,
           field: 'Name',
           changeKind: 'field',
           oldValue: 'A',
@@ -44,15 +42,17 @@ describe('OChatterFieldChangeItem', () => {
         },
       },
     });
-    expect(field.text()).toContain('%s changed from %s to %s:Name:A:B');
+    await flushPromises();
+    expect(field.text()).toContain('Name changed from A to B');
+    field.unmount();
 
-    const action = mount(OChatterFieldChangeItem, {
+    const action = mountApp(OChatterFieldChangeItem as any, {
       props: {
         authorLabel: 'Tester',
         entry: {
           kind: 'fieldChange',
           id: 'f3',
-          at: Date.parse('2024-01-01T12:00:00.000Z'),
+          at,
           field: null,
           changeKind: 'action:confirm',
           oldValue: null,
@@ -61,9 +61,11 @@ describe('OChatterFieldChangeItem', () => {
         },
       },
     });
-    expect(action.text()).toContain('Action: %s:confirm');
+    await flushPromises();
+    expect(action.text()).toContain('Action: confirm');
+    action.unmount();
 
-    const unlinked = mount(OChatterFieldChangeItem, {
+    const unlinked = mountApp(OChatterFieldChangeItem as any, {
       props: {
         authorLabel: 'Tester',
         entry: {
@@ -78,7 +80,9 @@ describe('OChatterFieldChangeItem', () => {
         },
       },
     });
+    await flushPromises();
     expect(unlinked.text()).toContain('Record removed');
     expect(unlinked.text()).not.toMatch(/2024-/);
+    unlinked.unmount();
   });
 });

@@ -1,132 +1,146 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, h, ref } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { h, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { ElCard } from 'element-plus';
 
-const refresh = vi.fn(async () => undefined);
-const entries = ref<any[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
-const authState = { currentUser: { Id: 'usr_test', Name: 'Tester' } as { Id?: string; Name?: string } | null };
-
-vi.mock('@/web/web/composables/chatter/useChatterTimeline', () => ({
-  useChatterTimeline: () => ({ entries, loading, error, refresh }),
-}));
-
-vi.mock('@/web/web/composables/chatter/useChatterThreadTips', () => ({
-  useChatterThreadTips: vi.fn(),
-}));
-
-vi.mock('@/auth/web/stores/auth', () => ({
-  useAuthStore: () => authState,
-}));
-
-vi.mock('@/web/web/i18n', () => ({
-  createTranslate: () => ({ _t: (msg: string) => msg }),
-}));
-
-vi.mock('@/web/web/stores/registry', () => ({
-  createStoreByModel: () => ({
-    Post: vi.fn(async () => ({ Id: 'msg1' })),
-    SearchByRecord: vi.fn(async () => []),
-    Follow: vi.fn(async () => ({ Id: 'f1' })),
-    Unfollow: vi.fn(async () => 1),
-  }),
-}));
-
+import { useAuthStore } from '@/auth/web/stores/auth';
+import { UseChatterTimelineKey } from '@/web/web/composables/chatter/useChatterTimeline';
+import { UseChatterThreadTipsKey } from '@/web/web/composables/chatter/useChatterThreadTips';
+import {
+  flushPromises,
+  fnRecorder,
+  mountApp,
+  restoreSfc,
+  stubSfc,
+} from '@/web/web/__tests__/mountApp';
 import OChatter from './OChatter.vue';
+import OChatterComposer from './OChatterComposer.vue';
+import OChatterFollowerBar from './OChatterFollowerBar.vue';
+import OChatterTimeline from './OChatterTimeline.vue';
 
 describe('OChatter', () => {
+  const refresh = fnRecorder(async () => undefined);
+  const entries = ref<any[]>([]);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  let pinia: ReturnType<typeof createPinia>;
+
   beforeEach(() => {
+    pinia = createPinia();
+    setActivePinia(pinia);
     refresh.mockClear();
     entries.value = [];
     loading.value = false;
     error.value = null;
-    authState.currentUser = { Id: 'usr_test', Name: 'Tester' };
+    useAuthStore().currentUser = { Id: 'usr_test', Name: 'Tester' } as any;
+
+    stubSfc(ElCard as any, {
+      name: 'ElCard',
+      setup(_: any, { slots }: any) {
+        return () => h('div', { class: 'o-chatter-card' }, [slots.header?.(), slots.default?.()]);
+      },
+    });
+    stubSfc(OChatterFollowerBar, {
+      props: ['model', 'resId', 'disabled'],
+      setup: () => () => h('div', { class: 'follower-bar' }),
+    });
+    stubSfc(OChatterComposer, {
+      emits: ['posted'],
+      setup(_: any, { emit }: any) {
+        return () =>
+          h('button', {
+            type: 'button',
+            class: 'composer-post',
+            onClick: () => emit('posted'),
+          });
+      },
+    });
+    stubSfc(OChatterTimeline, {
+      props: ['resolveAuthorLabel'],
+      setup(props: any) {
+        return () =>
+          h('div', { class: 'timeline' }, [
+            h('span', { class: 'system-label' }, props.resolveAuthorLabel(null)),
+            h('span', { class: 'you-label' }, props.resolveAuthorLabel('usr_test')),
+            h('span', { class: 'other-label' }, props.resolveAuthorLabel('usr_other')),
+          ]);
+      },
+    });
+  });
+
+  afterEach(() => {
+    restoreSfc(ElCard as any);
+    restoreSfc(OChatterFollowerBar);
+    restoreSfc(OChatterComposer);
+    restoreSfc(OChatterTimeline);
   });
 
   function mountChatter(props?: Record<string, unknown>) {
-    return mount(OChatter, {
+    return mountApp(OChatter as any, {
       props: {
         model: 'partner.Partner',
         resId: 'res_partner_1',
         ...props,
       },
-      global: {
-        stubs: {
-          ElCard: defineComponent({
-            setup(_, { slots }) {
-              return () => h('div', [slots.header?.(), slots.default?.()]);
-            },
-          }),
-          OChatterFollowerBar: defineComponent({
-            props: ['model', 'resId', 'disabled'],
-            setup: () => () => h('div', { class: 'follower-bar' }),
-          }),
-          OChatterComposer: defineComponent({
-            emits: ['posted'],
-            setup(_, { emit }) {
-              return () =>
-                h('button', {
-                  class: 'composer-post',
-                  onClick: () => emit('posted'),
-                });
-            },
-          }),
-          OChatterTimeline: defineComponent({
-            props: ['resolveAuthorLabel'],
-            setup(props) {
-              return () =>
-                h('div', { class: 'timeline' }, [
-                  h('span', { class: 'system-label' }, props.resolveAuthorLabel(null)),
-                  h('span', { class: 'you-label' }, props.resolveAuthorLabel('usr_test')),
-                  h('span', { class: 'other-label' }, props.resolveAuthorLabel('usr_other')),
-                ]);
-            },
-          }),
-        },
+      plugins: [pinia],
+      provide: {
+        [UseChatterTimelineKey]: () => ({ entries, loading, error, refresh }),
+        [UseChatterThreadTipsKey]: () => undefined,
       },
     });
   }
 
-  it('renders empty timeline state and refreshes after post', async () => {
-    const wrapper = mountChatter();
-    expect(wrapper.text()).toContain('Activity');
-    await wrapper.find('.composer-post').trigger('click');
+  test('renders empty timeline state and refreshes after post', async () => {
+    const mounted = mountChatter();
+    expect(mounted.text()).toContain('Activity');
+    mounted.click('.composer-post');
     await flushPromises();
-    expect(refresh).toHaveBeenCalled();
+    expect(refresh.calls.length).toBe(1);
+    mounted.unmount();
   });
 
-  it('hides the composer when disabled or missing resId', () => {
-    expect(mountChatter({ resId: '' }).find('.composer-post').exists()).toBe(false);
-    expect(mountChatter({ disabled: true }).find('.composer-post').exists()).toBe(false);
-    expect(mountChatter({ showComposer: false }).find('.composer-post').exists()).toBe(false);
+  test('hides the composer when disabled or missing resId', () => {
+    const emptyRes = mountChatter({ resId: '' });
+    expect(emptyRes.q('.composer-post')).toBeFalsy();
+    emptyRes.unmount();
+
+    const disabled = mountChatter({ disabled: true });
+    expect(disabled.q('.composer-post')).toBeFalsy();
+    disabled.unmount();
+
+    const hidden = mountChatter({ showComposer: false });
+    expect(hidden.q('.composer-post')).toBeFalsy();
+    hidden.unmount();
   });
 
-  it('resolves author labels for system, current user, and other users', () => {
-    const wrapper = mountChatter();
-    expect(wrapper.find('.system-label').text()).toBe('System');
-    expect(wrapper.find('.you-label').text()).toBe('Tester');
-    expect(wrapper.find('.other-label').text()).toBe('usr_other');
+  test('resolves author labels for system, current user, and other users', () => {
+    const mounted = mountChatter();
+    expect(mounted.q('.system-label')?.textContent).toBe('System');
+    expect(mounted.q('.you-label')?.textContent).toBe('Tester');
+    expect(mounted.q('.other-label')?.textContent).toBe('usr_other');
+    mounted.unmount();
 
-    authState.currentUser = { Id: 'usr_test', Name: '  ' };
+    useAuthStore().currentUser = { Id: 'usr_test', Name: '  ' } as any;
     const unnamed = mountChatter();
-    expect(unnamed.find('.you-label').text()).toBe('You');
+    expect(unnamed.q('.you-label')?.textContent).toBe('You');
+    unnamed.unmount();
 
-    authState.currentUser = { Id: 'usr_test' };
+    useAuthStore().currentUser = { Id: 'usr_test' } as any;
     const missingName = mountChatter();
-    expect(missingName.find('.you-label').text()).toBe('You');
+    expect(missingName.q('.you-label')?.textContent).toBe('You');
+    missingName.unmount();
 
-    authState.currentUser = { Id: '  ', Name: 'Tester' };
+    useAuthStore().currentUser = { Id: '  ', Name: 'Tester' } as any;
     const noCurrentId = mountChatter();
-    expect(noCurrentId.find('.you-label').text()).toBe('usr_test');
+    expect(noCurrentId.q('.you-label')?.textContent).toBe('usr_test');
+    noCurrentId.unmount();
 
-    authState.currentUser = null;
+    useAuthStore().currentUser = null;
     const loggedOut = mountChatter();
-    expect(loggedOut.find('.you-label').text()).toBe('usr_test');
-    expect(loggedOut.find('.system-label').text()).toBe('System');
+    expect(loggedOut.q('.you-label')?.textContent).toBe('usr_test');
+    expect(loggedOut.q('.system-label')?.textContent).toBe('System');
+    loggedOut.unmount();
   });
 });

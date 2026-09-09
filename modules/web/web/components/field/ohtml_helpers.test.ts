@@ -74,15 +74,14 @@ describe('ohtml_helpers', () => {
     expect(purify.hooks.length).toBe(afterFirst);
   });
 
-  test('htmlToPlaintext strips tags and supports non-DOM fallback', () => {
+  test('htmlToPlaintext strips tags via non-DOM fallback', () => {
     const purify = createTestPurify();
-    expect(htmlToPlaintext('<p>Hello <strong>world</strong></p>', { purify })).toBe('Hello world');
-    expect(htmlToPlaintext(null, { purify })).toBe('');
-    expect(htmlToPlaintext('', { purify })).toBe('');
-
     const originalDocument = globalThis.document;
     Object.defineProperty(globalThis, 'document', { value: undefined, configurable: true });
     try {
+      expect(htmlToPlaintext('<p>Hello <strong>world</strong></p>', { purify })).toBe('Hello world');
+      expect(htmlToPlaintext(null, { purify })).toBe('');
+      expect(htmlToPlaintext('', { purify })).toBe('');
       expect(htmlToPlaintext('<b>hi</b>', { purify })).toBe('hi');
     } finally {
       Object.defineProperty(globalThis, 'document', { value: originalDocument, configurable: true });

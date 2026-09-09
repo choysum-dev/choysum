@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ref, watch, type Ref } from 'vue';
+import { inject, ref, watch, type InjectionKey, type Ref } from 'vue';
 import type { ChatterTimelineEntry } from './chatterTypes';
 import { getFieldChangeStore, getMessageStore } from './chatterStores';
 import { mergeChatterTimeline } from './mergeChatterTimeline';
@@ -13,6 +13,20 @@ export type UseChatterTimelineDeps = {
   getMessageStore?: typeof getMessageStore;
   getFieldChangeStore?: typeof getFieldChangeStore;
 };
+
+/** Optional override for `useChatterTimeline` (unit harness). */
+export type UseChatterTimelineFn = typeof useChatterTimeline;
+export const UseChatterTimelineKey: InjectionKey<UseChatterTimelineFn> = Symbol('UseChatterTimeline');
+
+/** Resolve injected timeline factory, else the product default. */
+export function useInjectedChatterTimeline(
+  model: Ref<string>,
+  resId: Ref<string | undefined>,
+  deps?: UseChatterTimelineDeps
+): ReturnType<typeof useChatterTimeline> {
+  const override = inject(UseChatterTimelineKey, null);
+  return (override ?? useChatterTimeline)(model, resId, deps);
+}
 
 export function useChatterTimeline(
   model: Ref<string>,

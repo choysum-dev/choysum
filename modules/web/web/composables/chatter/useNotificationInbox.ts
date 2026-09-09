@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, onScopeDispose, ref } from 'vue';
-import { onTips, subscribeNotifications } from '@/core/web/tip';
-import { getNotificationStore } from './chatterStores';
+import { computed, inject, onScopeDispose, ref, type InjectionKey } from 'vue';
+import { onTips as defaultOnTips, subscribeNotifications as defaultSubscribeNotifications } from '@/core/web/tip';
+import { getNotificationStore as defaultGetNotificationStore } from './chatterStores';
 import type { InboxNotificationRow } from './chatterTypes';
 
 export type { InboxNotificationRow } from './chatterTypes';
@@ -11,11 +11,36 @@ export type { InboxNotificationRow } from './chatterTypes';
 const INBOX_FIELDS = ['Id', 'MessageId', 'Model', 'ResId', 'AuthorUid', 'IsRead', 'CreatedAt'] as const;
 const POLL_FALLBACK_MS = 30_000;
 
-export function useNotificationInbox(enabled: () => boolean) {
+export type UseNotificationInboxDeps = {
+  getNotificationStore?: typeof defaultGetNotificationStore;
+  onTips?: typeof defaultOnTips;
+  subscribeNotifications?: typeof defaultSubscribeNotifications;
+  /** Override poll interval (default 30s); tests pass a short value with real timers. */
+  pollFallbackMs?: number;
+};
+
+/** Optional override for `useNotificationInbox` (unit harness). */
+export type UseNotificationInboxFn = typeof useNotificationInbox;
+export const UseNotificationInboxKey: InjectionKey<UseNotificationInboxFn> = Symbol('UseNotificationInbox');
+
+/** Resolve injected inbox factory, else the product default. */
+export function useInjectedNotificationInbox(
+  enabled: () => boolean,
+  deps?: UseNotificationInboxDeps
+): ReturnType<typeof useNotificationInbox> {
+  const override = inject(UseNotificationInboxKey, null);
+  return (override ?? useNotificationInbox)(enabled, deps);
+}
+
+export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificationInboxDeps) {
   const rows = ref<InboxNotificationRow[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
-  const notificationStore = getNotificationStore();
+  const resolveNotificationStore = deps?.getNotificationStore ?? defaultGetNotificationStore;
+  const onTips = deps?.onTips ?? defaultOnTips;
+  const subscribeNotifications = deps?.subscribeNotifications ?? defaultSubscribeNotifications;
+  const pollFallbackMs = deps?.pollFallbackMs ?? POLL_FALLBACK_MS;
+  const notificationStore = resolveNotificationStore();
   let tipController: AbortController | null = null;
   let pollTimer: ReturnType<typeof setInterval> | undefined;
   let refreshGeneration = 0;
@@ -78,7 +103,7 @@ export function useNotificationInbox(enabled: () => boolean) {
     stopPollFallback();
     pollTimer = setInterval(() => {
       void refresh();
-    }, POLL_FALLBACK_MS);
+    }, pollFallbackMs);
   }
 
   function stopTips(): void {

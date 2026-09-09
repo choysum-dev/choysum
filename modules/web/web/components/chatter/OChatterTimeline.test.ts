@@ -1,36 +1,57 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount } from '@vue/test-utils';
-import { defineComponent, h } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { h } from 'vue';
+
+import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OChatterFieldChangeItem from './OChatterFieldChangeItem.vue';
+import OChatterMessageItem from './OChatterMessageItem.vue';
 import OChatterTimeline from './OChatterTimeline.vue';
 
-vi.mock('@/web/web/i18n', () => ({
-  createTranslate: () => ({ _t: (msg: string) => msg }),
-}));
-
 describe('OChatterTimeline', () => {
-  it('renders loading, error, empty, and populated states', () => {
+  afterEach(() => {
+    restoreSfc(OChatterMessageItem);
+    restoreSfc(OChatterFieldChangeItem);
+  });
+
+  test('renders loading, error, empty, and populated states', async () => {
     const resolveAuthorLabel = (userId: string | null | undefined) => userId || 'System';
 
-    const loading = mount(OChatterTimeline, {
+    const loading = mountApp(OChatterTimeline as any, {
       props: { entries: [], loading: true, error: null, resolveAuthorLabel },
     });
+    await flushPromises();
     expect(loading.text()).toContain('Loading activity...');
+    loading.unmount();
 
-    const error = mount(OChatterTimeline, {
+    const error = mountApp(OChatterTimeline as any, {
       props: { entries: [], loading: false, error: 'boom', resolveAuthorLabel },
     });
+    await flushPromises();
     expect(error.text()).toContain('boom');
+    error.unmount();
 
-    const empty = mount(OChatterTimeline, {
+    const empty = mountApp(OChatterTimeline as any, {
       props: { entries: [], loading: false, error: null, resolveAuthorLabel },
     });
+    await flushPromises();
     expect(empty.text()).toContain('No activity yet');
+    empty.unmount();
 
-    const populated = mount(OChatterTimeline, {
+    stubSfc(OChatterMessageItem, {
+      props: ['entry', 'authorLabel'],
+      setup(props: any) {
+        return () => h('div', { class: 'message-item' }, `${props.authorLabel}:${props.entry.body}`);
+      },
+    });
+    stubSfc(OChatterFieldChangeItem, {
+      props: ['entry', 'authorLabel'],
+      setup(props: any) {
+        return () => h('div', { class: 'field-item' }, `${props.authorLabel}:${props.entry.field}`);
+      },
+    });
+
+    const populated = mountApp(OChatterTimeline as any, {
       props: {
         entries: [
           {
@@ -56,24 +77,10 @@ describe('OChatterTimeline', () => {
         error: null,
         resolveAuthorLabel,
       },
-      global: {
-        stubs: {
-          OChatterMessageItem: defineComponent({
-            props: ['entry', 'authorLabel'],
-            setup(props) {
-              return () => h('div', { class: 'message-item' }, `${props.authorLabel}:${props.entry.body}`);
-            },
-          }),
-          OChatterFieldChangeItem: defineComponent({
-            props: ['entry', 'authorLabel'],
-            setup(props) {
-              return () => h('div', { class: 'field-item' }, `${props.authorLabel}:${props.entry.field}`);
-            },
-          }),
-        },
-      },
     });
+    await flushPromises();
     expect(populated.text()).toContain('u1:hello');
     expect(populated.text()).toContain('u2:Name');
+    populated.unmount();
   });
 });

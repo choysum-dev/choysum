@@ -1,34 +1,20 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+/**
+ * Mount wiring for OImageField. Pure limit helpers live in imageFieldLimits.test.ts.
+ */
+
 import { computed, defineComponent, h, ref } from 'vue';
-import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
+import { ElMessage } from 'element-plus';
+
 import type { UseField } from '@/web/web/composables/useField';
-import {
-  formatImageByteLimit,
-  imageFieldLimitErrorMessage,
-  readImageNaturalDimensions,
-  reportImageFieldValidation,
-  resolveImageFieldLimits,
-  resolveImageFieldLimitsFromSources,
-  validateImageFieldFile,
-} from './imageFieldLimits';
+import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OFieldBase from './OFieldBase.vue';
 import OImageField from './OImageField.vue';
 
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-  };
-});
-
 function makeFile(size: number, type = 'image/png'): File {
-  const buffer = new Uint8Array(size);
-  return new File([buffer], 'photo.png', { type });
+  return new File([new Uint8Array(size)], 'photo.png', { type });
 }
 
 function makeBinding(opts?: {
@@ -57,327 +43,131 @@ function makeBinding(opts?: {
   } as UseField;
 }
 
-const ElUploadStub = defineComponent({
-  name: 'ElUploadStub',
-  props: {
-    onChange: { type: Function, default: undefined },
-  },
-  setup(props, { expose }) {
-    expose({
-      async trigger(file: File) {
-        await props.onChange?.({ raw: file, name: file.name, status: 'ready' });
-      },
-    });
-    return () => h('div', { class: 'el-upload-stub' });
-  },
-});
+const uploadOnChange: { fn: null | ((file: any) => Promise<void> | void) } = { fn: null };
+const messageErrors: string[] = [];
+const originalElMessageError = ElMessage.error;
 
-const OFieldBaseStub = defineComponent({
-  name: 'OFieldBase',
-  props: {
-    binding: { type: Object, required: false },
-  },
-  setup(props, { slots }) {
-    return () =>
-      h(
-        'div',
-        { class: 'field-base-stub' },
-        slots.edit?.({
-          fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
-          onFieldChange: async () => {},
-        })
-      );
-  },
-});
-
-describe('imageFieldLimits (PR-P2-F3)', () => {
-  const limits = {
-    maxUploadBytes: 1024,
-    maxWidth: 100,
-    maxHeight: 80,
-  };
-
-  it('resolveImageFieldLimits caps bytes and ignores invalid values', () => {
-    expect(resolveImageFieldLimits(null)).toEqual({});
-    expect(resolveImageFieldLimits(undefined)).toEqual({});
-    expect(resolveImageFieldLimits({ maxUploadBytes: 0, maxWidth: -1, maxHeight: 0 })).toEqual({});
-    expect(resolveImageFieldLimits({ maxUploadBytes: 100, maxWidth: 10, maxHeight: 20 })).toEqual({
-      maxUploadBytes: 100,
-      maxWidth: 10,
-      maxHeight: 20,
-    });
-    expect(resolveImageFieldLimits({ maxUploadBytes: DEFAULT_GLOBAL_MAX_UPLOAD_BYTES + 1 })).toEqual({
-      maxUploadBytes: DEFAULT_GLOBAL_MAX_UPLOAD_BYTES,
-    });
+function installFieldBaseEditStub() {
+  stubSfc(OFieldBase as any, {
+    name: 'OFieldBase',
+    props: { binding: { type: Object, required: false } },
+    setup(props: any, { slots }: any) {
+      return () =>
+        h(
+          'div',
+          { class: 'field-base-stub' },
+          slots.edit?.({
+            fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+            onFieldChange: async () => {},
+          })
+        );
+    },
   });
+}
 
-  it('formatImageByteLimit covers B/KB/MB', () => {
-    expect(formatImageByteLimit(500)).toBe('500 B');
-    expect(formatImageByteLimit(2048)).toBe('2 KB');
-    expect(formatImageByteLimit(3 * 1024 * 1024)).toBe('3 MB');
+function installFieldBaseDisplayStub() {
+  stubSfc(OFieldBase as any, {
+    name: 'OFieldBase',
+    props: { binding: { type: Object, required: false } },
+    setup(props: any, { slots }: any) {
+      return () =>
+        h(
+          'div',
+          slots.display?.({
+            fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
+            renderMode: 'form',
+          })
+        );
+    },
   });
+}
 
-  it('rejects oversized file', async () => {
-    const result = await validateImageFieldFile(makeFile(2048), limits, async () => ({ width: 50, height: 50 }));
-    expect(result).toEqual({ ok: false, reason: 'fileTooLarge', detail: '1 KB' });
-  });
-
-  it('rejects oversized width', async () => {
-    const result = await validateImageFieldFile(makeFile(512), limits, async () => ({ width: 200, height: 50 }));
-    expect(result).toEqual({ ok: false, reason: 'widthTooLarge', detail: '100' });
-  });
-
-  it('rejects oversized height', async () => {
-    const result = await validateImageFieldFile(makeFile(512), limits, async () => ({ width: 50, height: 120 }));
-    expect(result).toEqual({ ok: false, reason: 'heightTooLarge', detail: '80' });
-  });
-
-  it('accepts file within limits', async () => {
-    const readDimensions = vi.fn(async () => ({ width: 80, height: 60 }));
-    const result = await validateImageFieldFile(makeFile(512), limits, readDimensions);
-    expect(result).toEqual({ ok: true });
-    expect(readDimensions).toHaveBeenCalled();
-  });
-
-  it('skips dimension checks when no dimension limits or probe missing', async () => {
-    expect(await validateImageFieldFile(makeFile(10), { maxUploadBytes: 100 }, async () => ({ width: 999, height: 999 }))).toEqual({
-      ok: true,
-    });
-    expect(await validateImageFieldFile(makeFile(10), { maxWidth: 10 }, async () => undefined)).toEqual({ ok: true });
-  });
-
-  it('resolveImageFieldLimitsFromSources prefers store meta then binding meta', () => {
-    expect(
-      resolveImageFieldLimitsFromSources({
-        bindingProp: '',
-        propsProp: 'Photo',
-        propsStore: {
-          getFieldMeta: name => (name === 'Photo' ? { maxUploadBytes: 128, maxWidth: 9 } : undefined),
+function mountField(binding: UseField, mode: 'edit' | 'display' = 'edit') {
+  if (mode === 'display') installFieldBaseDisplayStub();
+  else installFieldBaseEditStub();
+  uploadOnChange.fn = null;
+  return mountApp(OImageField as any, {
+    props: {
+      binding,
+      renderMode: mode === 'display' ? 'display' : 'form',
+      uploadProps: { drag: false, showFileList: false },
+    },
+    stubs: {
+      'el-upload': defineComponent({
+        name: 'ElUploadStub',
+        props: {
+          onChange: { type: Function, default: undefined },
         },
-        bindingMeta: { maxHeight: 3 },
-      })
-    ).toEqual({ maxUploadBytes: 128, maxWidth: 9 });
-
-    expect(
-      resolveImageFieldLimitsFromSources({
-        bindingProp: 'Photo',
-        bindingStore: { getFieldMeta: () => undefined },
-        bindingMeta: { maxHeight: 12 },
-      })
-    ).toEqual({ maxHeight: 12 });
-
-    expect(
-      resolveImageFieldLimitsFromSources({
-        bindingProp: 'Photo',
-        propsStore: {},
-        bindingMeta: { maxWidth: 7 },
-      })
-    ).toEqual({ maxWidth: 7 });
-
-    // Both props falsy so `bindingProp || propsProp || ''` takes the final `''` branch.
-    expect(
-      resolveImageFieldLimitsFromSources({
-        bindingProp: undefined,
-        propsProp: '',
-        bindingStore: {
-          getFieldMeta: () => ({ maxUploadBytes: 999 }),
+        setup(props) {
+          uploadOnChange.fn = props.onChange as any;
+          return () => h('div', { class: 'el-upload-stub' });
         },
-        bindingMeta: { maxHeight: 4 },
-      })
-    ).toEqual({ maxHeight: 4 });
-
-    // Whitespace-only leaf after trim must also skip store lookup.
-    expect(
-      resolveImageFieldLimitsFromSources({
-        bindingProp: '   ',
-        propsProp: null,
-        bindingStore: {
-          getFieldMeta: () => ({ maxWidth: 1 }),
+      }),
+      'el-button': defineComponent({
+        name: 'ElButtonStub',
+        setup(_, { slots }) {
+          return () => h('button', { class: 'btn' }, slots.default?.());
         },
-        bindingMeta: { maxHeight: 5 },
-      })
-    ).toEqual({ maxHeight: 5 });
-  });
-
-  it('imageFieldLimitErrorMessage covers all reasons', () => {
-    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'fileTooLarge', detail: '1 KB' })).toMatch(/1 KB|上限/);
-    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'widthTooLarge', detail: '10' })).toMatch(/10/);
-    expect(imageFieldLimitErrorMessage({ ok: false, reason: 'heightTooLarge', detail: '20' })).toMatch(/20/);
-  });
-
-  it('reportImageFieldValidation invokes onError on failure and returns true on success', async () => {
-    const onError = vi.fn();
-    expect(await reportImageFieldValidation(makeFile(2048), limits, onError, async () => ({ width: 1, height: 1 }))).toBe(false);
-    expect(onError).toHaveBeenCalled();
-
-    onError.mockClear();
-    expect(await reportImageFieldValidation(makeFile(10), limits, onError, async () => ({ width: 1, height: 1 }))).toBe(true);
-    expect(onError).not.toHaveBeenCalled();
-  });
-
-  describe('readImageNaturalDimensions', () => {
-    const originalCreateImageBitmap = globalThis.createImageBitmap;
-    const originalImage = globalThis.Image;
-    const originalURL = globalThis.URL;
-
-    afterEach(() => {
-      if (originalCreateImageBitmap) {
-        (globalThis as any).createImageBitmap = originalCreateImageBitmap;
-      } else {
-        delete (globalThis as any).createImageBitmap;
-      }
-      (globalThis as any).Image = originalImage;
-      (globalThis as any).URL = originalURL;
-    });
-
-    it('uses createImageBitmap when available', async () => {
-      const close = vi.fn();
-      (globalThis as any).createImageBitmap = vi.fn(async () => ({ width: 11, height: 22, close }));
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toEqual({ width: 11, height: 22 });
-      expect(close).toHaveBeenCalled();
-
-      (globalThis as any).createImageBitmap = vi.fn(async () => ({ width: 3, height: 4 }));
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toEqual({ width: 3, height: 4 });
-    });
-
-    it('returns undefined when createImageBitmap throws', async () => {
-      (globalThis as any).createImageBitmap = vi.fn(async () => {
-        throw new Error('bad image');
-      });
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toBeUndefined();
-    });
-
-    it('falls back to Image onload / onerror / missing URL helpers', async () => {
-      delete (globalThis as any).createImageBitmap;
-
-      class FakeImage {
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        naturalWidth = 33;
-        naturalHeight = 44;
-        set src(_v: string) {
-          queueMicrotask(() => this.onload?.());
-        }
-      }
-      (globalThis as any).Image = FakeImage;
-      const createObjectURL = vi.fn(() => 'blob:test');
-      const revokeObjectURL = vi.fn();
-      (globalThis as any).URL = { createObjectURL, revokeObjectURL };
-
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toEqual({ width: 33, height: 44 });
-      expect(revokeObjectURL).toHaveBeenCalledWith('blob:test');
-
-      class ErrImage {
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        set src(_v: string) {
-          queueMicrotask(() => this.onerror?.());
-        }
-      }
-      (globalThis as any).Image = ErrImage;
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toBeUndefined();
-
-      (globalThis as any).URL = { createObjectURL: undefined, revokeObjectURL };
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toBeUndefined();
-
-      (globalThis as any).Image = FakeImage;
-      (globalThis as any).URL = { createObjectURL: vi.fn(() => 'blob:norevoke') };
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toEqual({ width: 33, height: 44 });
-
-      delete (globalThis as any).URL;
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toBeUndefined();
-
-      delete (globalThis as any).Image;
-      await expect(readImageNaturalDimensions(makeFile(8))).resolves.toBeUndefined();
-    });
-  });
-});
-
-describe('OImageField upload limit gate (PR-P2-F3)', () => {
-  beforeEach(async () => {
-    const { ElMessage } = await import('element-plus');
-    vi.mocked(ElMessage.error).mockClear();
-    vi.restoreAllMocks();
-  });
-
-  async function mountField(binding: UseField) {
-    return mount(OImageField as any, {
-      props: {
-        binding,
-        renderMode: 'form',
-        uploadProps: { drag: false, showFileList: false },
-      },
-      global: {
-        stubs: {
-          OFieldBase: OFieldBaseStub,
-          'el-upload': ElUploadStub,
-          'el-button': { template: '<button class="btn"><slot /></button>' },
-          'el-icon': { template: '<i><slot /></i>' },
-          Picture: true,
-          UploadFilled: true,
+      }),
+      'el-icon': defineComponent({
+        name: 'ElIconStub',
+        setup(_, { slots }) {
+          return () => h('i', {}, slots.default?.());
         },
-      },
-    });
-  }
+      }),
+    },
+  });
+}
 
-  it('rejects oversized upload via ElMessage and keeps value empty', async () => {
-    const limitsMod = await import('./imageFieldLimits');
-    vi.spyOn(limitsMod, 'reportImageFieldValidation').mockImplementation(async (_file, _limits, onError) => {
-      onError('Image exceeds maximum size (1 KB)');
-      return false;
-    });
+describe('OImageField mount wiring', () => {
+  afterEach(() => {
+    restoreSfc(OFieldBase as any);
+    (ElMessage as any).error = originalElMessageError;
+    messageErrors.length = 0;
+    delete (globalThis as any).createImageBitmap;
+  });
 
+  test('rejects oversized upload via ElMessage and keeps value empty', async () => {
+    (ElMessage as any).error = (msg: string) => {
+      messageErrors.push(String(msg));
+    };
     const binding = makeBinding({
       meta: { maxUploadBytes: 100, maxWidth: 50, maxHeight: 50 },
       store: {
         getFieldMeta: () => ({ maxUploadBytes: 100, maxWidth: 50, maxHeight: 50 }),
       },
     });
-    const wrapper = await mountField(binding);
-    const upload = wrapper.findComponent({ name: 'ElUploadStub' });
-    const onChange = upload.props('onChange') as (file: any) => Promise<void>;
-    await onChange({ raw: makeFile(200), name: 'photo.png', status: 'ready' });
+    const m = mountField(binding);
+    expect(uploadOnChange.fn).toBeTruthy();
+    await uploadOnChange.fn!({ raw: makeFile(200), name: 'photo.png', status: 'ready' });
     await flushPromises();
-
-    const { ElMessage } = await import('element-plus');
-    expect(ElMessage.error).toHaveBeenCalledWith('Image exceeds maximum size (1 KB)');
+    expect(messageErrors.length).toBe(1);
+    expect(messageErrors[0]).toMatch(/100 B|maximum size/i);
     expect(binding.fieldRef().value).toBeNull();
+    m.unmount();
   });
 
-  it('rejects oversized width and height using binding meta fallback', async () => {
-    const limitsMod = await import('./imageFieldLimits');
-    const spy = vi.spyOn(limitsMod, 'reportImageFieldValidation');
-    spy.mockImplementationOnce(async (_file, _limits, onError) => {
-      onError('Image width exceeds maximum (40 px)');
-      return false;
-    });
-
+  test('rejects oversized width using createImageBitmap probe', async () => {
+    (ElMessage as any).error = (msg: string) => {
+      messageErrors.push(String(msg));
+    };
+    (globalThis as any).createImageBitmap = async () => ({ width: 80, height: 20, close() {} });
     const binding = makeBinding({
       meta: { maxUploadBytes: 10_000, maxWidth: 40, maxHeight: 30 },
     });
-    const wrapper = await mountField(binding);
-    const upload = wrapper.findComponent({ name: 'ElUploadStub' });
-    const onChange = upload.props('onChange') as (file: any) => Promise<void>;
-
-    await onChange({ raw: makeFile(20), name: 'photo.png', status: 'ready' });
+    const m = mountField(binding);
+    await uploadOnChange.fn!({ raw: makeFile(20), name: 'photo.png', status: 'ready' });
     await flushPromises();
-    const { ElMessage } = await import('element-plus');
-    expect(ElMessage.error).toHaveBeenCalledWith('Image width exceeds maximum (40 px)');
-
-    vi.mocked(ElMessage.error).mockClear();
-    spy.mockImplementationOnce(async (_file, _limits, onError) => {
-      onError('Image height exceeds maximum (30 px)');
-      return false;
-    });
-    await onChange({ raw: makeFile(20), name: 'photo.png', status: 'ready' });
-    await flushPromises();
-    expect(ElMessage.error).toHaveBeenCalledWith('Image height exceeds maximum (30 px)');
+    expect(messageErrors[0]).toMatch(/40/);
+    expect(binding.fieldRef().value).toBeNull();
+    m.unmount();
   });
 
-  it('accepts valid image and writes pending attachment value', async () => {
-    const limitsMod = await import('./imageFieldLimits');
-    vi.spyOn(limitsMod, 'reportImageFieldValidation').mockResolvedValue(true);
-
+  test('accepts valid image and writes pending attachment value', async () => {
+    (ElMessage as any).error = (msg: string) => {
+      messageErrors.push(String(msg));
+    };
+    (globalThis as any).createImageBitmap = async () => ({ width: 20, height: 20, close() {} });
     const binding = makeBinding({
       meta: { maxUploadBytes: 10_000, maxWidth: 200, maxHeight: 200 },
       store: {
@@ -385,15 +175,10 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
           name === 'Photo' ? { maxUploadBytes: 10_000, maxWidth: 200, maxHeight: 200 } : undefined,
       },
     });
-
-    const wrapper = await mountField(binding);
-    const upload = wrapper.findComponent({ name: 'ElUploadStub' });
-    const onChange = upload.props('onChange') as (file: any) => Promise<void>;
-    await onChange({ raw: makeFile(32), name: 'photo.png', status: 'ready' });
+    const m = mountField(binding);
+    await uploadOnChange.fn!({ raw: makeFile(32), name: 'photo.png', status: 'ready' });
     await flushPromises();
-
-    const { ElMessage } = await import('element-plus');
-    expect(ElMessage.error).not.toHaveBeenCalled();
+    expect(messageErrors.length).toBe(0);
     expect(binding.fieldRef().value).toMatchObject({
       kind: 'set',
       fileName: 'photo.png',
@@ -403,109 +188,82 @@ describe('OImageField upload limit gate (PR-P2-F3)', () => {
       clientContentType: 'image/png',
       displayName: 'photo.png',
     });
+    m.unmount();
   });
 
-  it('resolves object id and download/preview urls for existing attachments', async () => {
+  test('resolves object id and preview urls for existing attachments', async () => {
     const binding = makeBinding({
-      value: {
-        attachmentObjectId: '  obj-img  ',
-        kind: 'set',
-      },
+      value: { attachmentObjectId: '  obj-img  ', kind: 'set' },
     });
-    const wrapper = await mountField(binding);
+    const m = mountField(binding);
     await flushPromises();
-    expect(wrapper.find('.o-image-current').exists()).toBe(true);
+    expect(m.q('.o-image-current')).toBeTruthy();
+    m.unmount();
+    restoreSfc(OFieldBase as any);
 
-    const objectIdAlias = makeBinding({
-      value: { objectId: '  alias-img  ', kind: 'set' },
-    });
-    expect((await mountField(objectIdAlias)).find('.o-image-current').exists()).toBe(true);
+    const aliasMount = mountField(makeBinding({ value: { objectId: '  alias-img  ', kind: 'set' } }));
+    expect(aliasMount.q('.o-image-current')).toBeTruthy();
+    aliasMount.unmount();
+    restoreSfc(OFieldBase as any);
 
-    const withPreview = makeBinding({
-      value: {
-        previewUrl: '  /preview/img.png  ',
-        fileName: 'img.png',
-        kind: 'set',
-      },
-    });
-    const previewWrapper = await mountField(withPreview);
+    const previewMount = mountField(
+      makeBinding({
+        value: { previewUrl: '  /preview/img.png  ', fileName: 'img.png', kind: 'set' },
+      })
+    );
     await flushPromises();
-    expect(previewWrapper.find('.o-image-current__preview').attributes('src')).toBe('/preview/img.png');
+    expect(previewMount.q('.o-image-current__preview')?.getAttribute('src')).toBe('/preview/img.png');
+    previewMount.unmount();
   });
 
-  async function mountImageDisplay(binding: UseField) {
-    return mount(OImageField as any, {
-      props: {
-        binding,
-        renderMode: 'display',
-        uploadProps: { drag: false, showFileList: false },
-      },
-      global: {
-        stubs: {
-          OFieldBase: defineComponent({
-            name: 'OFieldBase',
-            props: { binding: { type: Object, required: false } },
-            setup(props, { slots }) {
-              return () =>
-                h(
-                  'div',
-                  slots.display?.({
-                    fieldValue: () => (props.binding as UseField | undefined)?.fieldRef?.() ?? ref(null),
-                    renderMode: 'form',
-                  })
-                );
-            },
-          }),
-          'el-upload': ElUploadStub,
-          'el-button': { template: '<button class="btn"><slot /></button>' },
-          'el-icon': { template: '<i><slot /></i>' },
-          Picture: true,
-          UploadFilled: true,
-        },
-      },
-    });
-  }
-
-  it('covers resolveDownloadUrl and resolvePreviewUrl fallback chains', async () => {
-    const cases: Array<{ value: Record<string, unknown>; expectUrl: string }> = [
-      { value: { url: '  /dl/via-url.png  ', kind: 'set' }, expectUrl: '/dl/via-url.png' },
-      { value: { previewUrl: '  /dl/via-preview.png  ', kind: 'set' }, expectUrl: '/dl/via-preview.png' },
-      { value: { thumbnailUrl: '  /dl/via-thumb.png  ', kind: 'set' }, expectUrl: '/dl/via-thumb.png' },
+  test('covers resolveDownloadUrl and resolvePreviewUrl fallback chains', async () => {
+    const cases: Array<{ value: Record<string, unknown>; expectHref: string }> = [
+      { value: { url: '  /dl/via-url.png  ', kind: 'set' }, expectHref: '/dl/via-url.png' },
+      { value: { previewUrl: '  /dl/via-preview.png  ', kind: 'set' }, expectHref: '/dl/via-preview.png' },
+      { value: { thumbnailUrl: '  /dl/via-thumb.png  ', kind: 'set' }, expectHref: '/dl/via-thumb.png' },
       {
         value: { descriptor: { downloadUrl: '  /dl/desc-download.png  ' }, kind: 'set' },
-        expectUrl: '/dl/desc-download.png',
+        expectHref: '/dl/desc-download.png',
       },
       {
         value: { descriptor: { previewUrl: '  /dl/desc-preview.png  ' }, kind: 'set' },
-        expectUrl: '/dl/desc-preview.png',
+        expectHref: '/dl/desc-preview.png',
       },
     ];
 
     for (const c of cases) {
-      const wrapper = await mountImageDisplay(makeBinding({ value: c.value }));
+      const m = mountField(makeBinding({ value: c.value }), 'display');
       await flushPromises();
-      expect(wrapper.html()).toContain(c.expectUrl);
+      const href = m.q('a')?.getAttribute('href') || m.q('img')?.getAttribute('src') || '';
+      expect(href).toBe(c.expectHref);
+      m.unmount();
+      restoreSfc(OFieldBase as any);
     }
   });
 
-  it('treats string attachment values and clear/noop kinds', async () => {
-    const stringBinding = makeBinding({ value: '  photo.png  ' });
-    const stringWrapper = await mountField(stringBinding);
-    expect(stringWrapper.find('.o-image-current').exists()).toBe(true);
+  test('treats string attachment values and clear/noop kinds', async () => {
+    const stringMount = mountField(makeBinding({ value: '  photo.png  ' }));
+    expect(stringMount.q('.o-image-current')).toBeTruthy();
+    stringMount.unmount();
+    restoreSfc(OFieldBase as any);
 
-    const clearBinding = makeBinding({ value: { kind: 'CLEAR' } });
-    const clearWrapper = await mountField(clearBinding);
-    expect(clearWrapper.find('.o-image-current').exists()).toBe(false);
+    const clearMount = mountField(makeBinding({ value: { kind: 'CLEAR' } }));
+    expect(clearMount.q('.o-image-current')).toBeFalsy();
+    clearMount.unmount();
+    restoreSfc(OFieldBase as any);
 
-    const downloadOnly = makeBinding({
-      value: {
-        attachmentBindingId: 'bind-x',
-        downloadUrl: '  /dl/only.png  ',
-        kind: 'set',
-      },
-    });
-    const downloadWrapper = await mountImageDisplay(downloadOnly);
+    const downloadMount = mountField(
+      makeBinding({
+        value: {
+          attachmentBindingId: 'bind-x',
+          downloadUrl: '  /dl/only.png  ',
+          kind: 'set',
+        },
+      }),
+      'display'
+    );
     await flushPromises();
-    expect(downloadWrapper.html()).toContain('/dl/only.png');
+    expect(downloadMount.q('a')?.getAttribute('href')).toBe('/dl/only.png');
+    downloadMount.unmount();
   });
 });

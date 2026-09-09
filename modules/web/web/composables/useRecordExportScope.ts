@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed } from 'vue';
-import { getCurrentRequestContext } from '@/core/rpc/context';
+import { getCurrentRequestContext as defaultGetCurrentRequestContext } from '@/core/rpc/context';
 import { normalizeExportFieldPaths } from '@/core/web/export/field_paths';
-import { buildUnifiedQuery } from '@/web/web/query/context';
-import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
+import { buildUnifiedQuery as defaultBuildUnifiedQuery } from '@/web/web/query/context';
+import { exportFieldSelection as defaultExportFieldSelection } from '@/web/web/query/utils/registry/field';
 
 export type RecordExportListRef = {
   selectedItems?: { value?: Array<{ Id?: string }> } | Array<{ Id?: string }> | null;
@@ -14,6 +14,10 @@ export type RecordExportListRef = {
 export type UseRecordExportScopeOptions = {
   store: { storeId?: string; state?: { result?: { total?: number } } };
   getListRef: () => RecordExportListRef;
+  /** Optional overrides for request context / query helpers (tests inject stubs). */
+  getCurrentRequestContext?: typeof defaultGetCurrentRequestContext;
+  buildUnifiedQuery?: typeof defaultBuildUnifiedQuery;
+  exportFieldSelection?: typeof defaultExportFieldSelection;
 };
 
 function collectSelectedIds(listRef: RecordExportListRef): string[] {
@@ -32,15 +36,19 @@ function collectSelectedIds(listRef: RecordExportListRef): string[] {
  * Derives ExportPanel scope (ids / domain / defaultFields / filteredCount) from list + store.
  */
 export function useRecordExportScope(options: UseRecordExportScopeOptions) {
+  const getCtx = options.getCurrentRequestContext ?? defaultGetCurrentRequestContext;
+  const buildQuery = options.buildUnifiedQuery ?? defaultBuildUnifiedQuery;
+  const selectFields = options.exportFieldSelection ?? defaultExportFieldSelection;
+
   const companyId = computed(() => {
-    const ctx = getCurrentRequestContext();
+    const ctx = getCtx();
     return String(ctx?.activeCompanyId ?? ctx?.companyId ?? '').trim();
   });
 
   const ids = computed(() => collectSelectedIds(options.getListRef()));
 
   const domain = computed(() => {
-    const ctx = buildUnifiedQuery(options.store as any, {
+    const ctx = buildQuery(options.store as any, {
       execOptions: { skipPagination: true, skipCount: true },
     });
     return JSON.stringify(ctx.filters ?? { And: [] });
@@ -48,7 +56,7 @@ export function useRecordExportScope(options: UseRecordExportScopeOptions) {
 
   const defaultFields = computed(() => {
     const storeId = String(options.store.storeId ?? '');
-    const paths = exportFieldSelection(storeId) ?? [];
+    const paths = selectFields(storeId) ?? [];
     return normalizeExportFieldPaths(paths.filter(path => path !== 'Id'));
   });
 

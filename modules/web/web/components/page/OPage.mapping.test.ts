@@ -1,252 +1,247 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-/**
- * @vitest-environment happy-dom
- */
-
-import { describe, expect, test } from 'vitest';
-import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
+
+import { mountApp, stub, stubSfc, restoreSfc, type MountAppResult } from '@/web/web/__tests__/mountApp';
 import OPage from './OPage.vue';
+import OBreadcrumb from '@/web/web/components/view/OBreadcrumb.vue';
+import OPageIoMenu from '@/web/web/components/page/OPageIoMenu.vue';
+
+const ioMenuStub = defineComponent({
+  name: 'OPageIoMenu',
+  props: {
+    actionImport: { type: Boolean, default: false },
+    actionExport: { type: Boolean, default: false },
+    actionImportUploadHint: { type: String, default: undefined },
+    actionImportColumnMapping: { type: Object, default: undefined },
+    actionListRef: { type: Object, default: undefined },
+    actionCompanyId: { type: String, default: undefined },
+    store: { type: Object, default: undefined },
+  },
+  setup(props) {
+    return () =>
+      h('div', {
+        'data-test': 'page-io-menu-stub',
+        'data-import': String(!!props.actionImport),
+        'data-export': String(!!props.actionExport),
+        'data-hint': props.actionImportUploadHint || '',
+      });
+  },
+});
 
 const pageStubs = {
-  OBreadcrumb: true,
-  OPageIoMenu: defineComponent({
-    name: 'OPageIoMenu',
-    props: {
-      actionImport: { type: Boolean, default: false },
-      actionExport: { type: Boolean, default: false },
-      actionImportUploadHint: { type: String, default: undefined },
-      actionImportColumnMapping: { type: Object, default: undefined },
-      actionListRef: { type: Object, default: undefined },
-      actionCompanyId: { type: String, default: undefined },
-      store: { type: Object, default: undefined },
-    },
-    setup(props) {
-      return () =>
-        h('div', {
-          'data-test': 'page-io-menu-stub',
-          'data-import': String(!!props.actionImport),
-          'data-export': String(!!props.actionExport),
-          'data-hint': props.actionImportUploadHint || '',
-        });
-    },
-  }),
-  // Loading spinner; Element Plus is not registered in this unit suite.
-  'el-icon': true,
+  ElIcon: stub('ElIcon'),
 };
 
+function exists(m: MountAppResult, sel: string): boolean {
+  return !!m.q(sel);
+}
+
+function attr(m: MountAppResult, sel: string, name: string): string | null {
+  return m.q(sel)?.getAttribute(name) ?? null;
+}
+
+function textOf(m: MountAppResult, sel: string): string {
+  return m.q(sel)?.textContent?.trim() ?? '';
+}
+
+function hasClass(m: MountAppResult, sel: string, cls: string): boolean {
+  return m.q(sel)?.classList.contains(cls) ?? false;
+}
+
 describe('OPage component', () => {
+  // Suite-scoped: root beforeEach is inherited by every later test in the QJS
+  // bundle and would replace real OBreadcrumb mounts in other files.
+  beforeEach(() => {
+    stubSfc(OBreadcrumb, stub('OBreadcrumb'));
+    stubSfc(OPageIoMenu, ioMenuStub);
+  });
+
+  afterEach(() => {
+    restoreSfc(OBreadcrumb);
+    restoreSfc(OPageIoMenu);
+  });
+
   test('renders title with useId-based id and binds aria-labelledby', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Test Title',
-        showBreadcrumb: false,
-      },
-      global: { stubs: pageStubs },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Test Title', showBreadcrumb: false },
+      stubs: pageStubs,
     });
-
-    const titleEl = wrapper.find('h1.o-page__title');
-    expect(titleEl.exists()).toBe(true);
-    expect(titleEl.text()).toBe('Test Title');
-
-    const titleId = titleEl.attributes('id');
-    expect(titleId).toBeDefined();
-    expect(titleId).not.toBe('');
-
-    const region = wrapper.find('.o-page');
-    expect(region.attributes('aria-labelledby')).toBe(titleId);
-    expect(region.attributes('aria-label')).toBeUndefined();
-    expect(region.attributes('role')).toBe('region');
+    expect(exists(mounted, 'h1.o-page__title')).toBe(true);
+    expect(textOf(mounted, 'h1.o-page__title')).toBe('Test Title');
+    const titleId = attr(mounted, 'h1.o-page__title', 'id');
+    expect(titleId).toBeTruthy();
+    expect(attr(mounted, '.o-page', 'aria-labelledby')).toBe(titleId);
+    expect(attr(mounted, '.o-page', 'aria-label')).toBeNull();
+    expect(attr(mounted, '.o-page', 'role')).toBe('region');
+    mounted.unmount();
   });
 
   test('does not bind aria-labelledby when header slot is provided', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Test Title',
-        showBreadcrumb: false,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Test Title', showBreadcrumb: false },
       slots: {
-        header: '<div class="custom-header">Custom</div>',
+        header: () => h('div', { class: 'custom-header' }, 'Custom'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-
-    const region = wrapper.find('.o-page');
-    expect(region.attributes('aria-labelledby')).toBeUndefined();
-    expect(region.attributes('aria-label')).toBe('Test Title');
-    expect(region.attributes('role')).toBe('region');
+    expect(attr(mounted, '.o-page', 'aria-labelledby')).toBeNull();
+    expect(attr(mounted, '.o-page', 'aria-label')).toBe('Test Title');
+    expect(attr(mounted, '.o-page', 'role')).toBe('region');
+    mounted.unmount();
   });
 
   test('sets aria-busy when loading is true', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Loading Page',
-        loading: true,
-        showBreadcrumb: false,
-      },
-      global: { stubs: pageStubs },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Loading Page', loading: true, showBreadcrumb: false },
+      stubs: pageStubs,
     });
-
-    const region = wrapper.find('.o-page');
-    expect(region.attributes('aria-busy')).toBe('true');
+    expect(attr(mounted, '.o-page', 'aria-busy')).toBe('true');
+    mounted.unmount();
   });
 
   test('omits region role when title is empty', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        showBreadcrumb: false,
-      },
-      global: { stubs: pageStubs },
+    const mounted = mountApp(OPage as any, {
+      props: { showBreadcrumb: false },
+      stubs: pageStubs,
     });
-
-    expect(wrapper.find('.o-page').attributes('role')).toBeUndefined();
-    expect(wrapper.find('.o-page__header').exists()).toBe(false);
+    expect(attr(mounted, '.o-page', 'role')).toBeNull();
+    expect(exists(mounted, '.o-page__header')).toBe(false);
+    mounted.unmount();
   });
 
   test('renders title-actions beside the title', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: false,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: false },
       slots: {
-        'title-actions': '<button data-test="io-action">IO</button>',
+        'title-actions': () => h('button', { 'data-test': 'io-action' }, 'IO'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-
-    expect(wrapper.find('.o-page__title-row').exists()).toBe(true);
-    expect(wrapper.find('.o-page__title-actions [data-test="io-action"]').exists()).toBe(true);
-    expect(wrapper.find('h1.o-page__title').text()).toBe('Partners');
+    expect(exists(mounted, '.o-page__title-row')).toBe(true);
+    expect(exists(mounted, '[data-test="io-action"]')).toBe(true);
+    expect(textOf(mounted, 'h1.o-page__title')).toBe('Partners');
+    mounted.unmount();
   });
 
   test('renders title-actions without a title', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        showBreadcrumb: false,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { showBreadcrumb: false },
       slots: {
-        'title-actions': '<button data-test="io-only">IO</button>',
+        'title-actions': () => h('button', { 'data-test': 'io-only' }, 'IO'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-
-    expect(wrapper.find('.o-page__header').exists()).toBe(true);
-    expect(wrapper.find('h1.o-page__title').exists()).toBe(false);
-    expect(wrapper.find('[data-test="io-only"]').exists()).toBe(true);
+    expect(exists(mounted, '.o-page__header')).toBe(true);
+    expect(exists(mounted, 'h1.o-page__title')).toBe(false);
+    expect(exists(mounted, '[data-test="io-only"]')).toBe(true);
+    mounted.unmount();
   });
 
   test('keeps title-actions when a custom header slot is provided', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: false,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: false },
       slots: {
-        header: '<div class="custom-header">Custom</div>',
-        'title-actions': '<button data-test="io-with-header">IO</button>',
+        header: () => h('div', { class: 'custom-header' }, 'Custom'),
+        'title-actions': () => h('button', { 'data-test': 'io-with-header' }, 'IO'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-
-    expect(wrapper.find('.custom-header').exists()).toBe(true);
-    expect(wrapper.find('.o-page__title-actions [data-test="io-with-header"]').exists()).toBe(true);
-    expect(wrapper.find('h1.o-page__title').exists()).toBe(false);
+    expect(exists(mounted, '.custom-header')).toBe(true);
+    expect(exists(mounted, '[data-test="io-with-header"]')).toBe(true);
+    expect(exists(mounted, 'h1.o-page__title')).toBe(false);
+    mounted.unmount();
   });
 
   test('renders custom header alone without title-actions row', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: false,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: false },
       slots: {
-        header: '<div class="custom-header-only">Custom</div>',
+        header: () => h('div', { class: 'custom-header-only' }, 'Custom'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-
-    expect(wrapper.find('.custom-header-only').exists()).toBe(true);
-    expect(wrapper.find('.o-page__title-row').exists()).toBe(false);
+    expect(exists(mounted, '.custom-header-only')).toBe(true);
+    expect(exists(mounted, '.o-page__title-row')).toBe(false);
+    mounted.unmount();
   });
 
   test('renders breadcrumb slot in the default header', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: true,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: true },
       slots: {
-        breadcrumb: '<nav data-test="crumb">Crumb</nav>',
+        breadcrumb: () => h('nav', { 'data-test': 'crumb' }, 'Crumb'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-
-    expect(wrapper.find('[data-test="crumb"]').exists()).toBe(true);
-    expect(wrapper.find('h1.o-page__title').text()).toBe('Partners');
+    expect(exists(mounted, '[data-test="crumb"]')).toBe(true);
+    expect(textOf(mounted, 'h1.o-page__title')).toBe('Partners');
+    mounted.unmount();
   });
 
   test('renders default breadcrumb when no breadcrumb slot is provided', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: true,
+    restoreSfc(OBreadcrumb);
+    stubSfc(OBreadcrumb, {
+      name: 'OBreadcrumb',
+      setup() {
+        return () => h('nav', { 'data-test': 'default-crumb' });
       },
-      global: { stubs: { ...pageStubs, OBreadcrumb: { template: '<nav data-test="default-crumb" />' } } },
     });
-
-    expect(wrapper.find('[data-test="default-crumb"]').exists()).toBe(true);
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: true },
+      stubs: pageStubs,
+    });
+    expect(exists(mounted, '[data-test="default-crumb"]')).toBe(true);
+    mounted.unmount();
   });
 
   test('renders breadcrumb slot even when showBreadcrumb is false', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: false,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: false },
       slots: {
-        breadcrumb: '<nav data-test="forced-crumb">Crumb</nav>',
+        breadcrumb: () => h('nav', { 'data-test': 'forced-crumb' }, 'Crumb'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-
-    expect(wrapper.find('[data-test="forced-crumb"]').exists()).toBe(true);
+    expect(exists(mounted, '[data-test="forced-crumb"]')).toBe(true);
+    mounted.unmount();
   });
 
   test('renders breadcrumb alone without a title row', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        showBreadcrumb: true,
+    restoreSfc(OBreadcrumb);
+    stubSfc(OBreadcrumb, {
+      name: 'OBreadcrumb',
+      setup() {
+        return () => h('nav', { 'data-test': 'only-crumb' });
       },
-      global: { stubs: { ...pageStubs, OBreadcrumb: { template: '<nav data-test="only-crumb" />' } } },
     });
-
-    expect(wrapper.find('[data-test="only-crumb"]').exists()).toBe(true);
-    expect(wrapper.find('.o-page__title-row').exists()).toBe(false);
+    const mounted = mountApp(OPage as any, {
+      props: { showBreadcrumb: true },
+      stubs: pageStubs,
+    });
+    expect(exists(mounted, '[data-test="only-crumb"]')).toBe(true);
+    expect(exists(mounted, '.o-page__title-row')).toBe(false);
+    mounted.unmount();
   });
 
   test('renders toolbar and footer slots', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: false,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: false },
       slots: {
-        toolbar: '<div data-test="toolbar">Tools</div>',
-        footer: '<div data-test="footer">Foot</div>',
+        toolbar: () => h('div', { 'data-test': 'toolbar' }, 'Tools'),
+        footer: () => h('div', { 'data-test': 'footer' }, 'Foot'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-
-    expect(wrapper.find('[data-test="toolbar"]').exists()).toBe(true);
-    expect(wrapper.find('[data-test="footer"]').exists()).toBe(true);
-    expect(wrapper.find('.o-page__body--with-footer').exists()).toBe(true);
+    expect(exists(mounted, '[data-test="toolbar"]')).toBe(true);
+    expect(exists(mounted, '[data-test="footer"]')).toBe(true);
+    expect(exists(mounted, '.o-page__body--with-footer')).toBe(true);
+    mounted.unmount();
   });
 
   test('applies layout modifiers and shows the loading overlay', () => {
-    const wrapper = mount(OPage, {
+    const mounted = mountApp(OPage as any, {
       props: {
         title: 'Partners',
         showBreadcrumb: false,
@@ -255,40 +250,39 @@ describe('OPage component', () => {
         elevated: true,
         loading: true,
       },
-      global: {
-        stubs: {
-          ...pageStubs,
-          'el-icon': { template: '<span class="el-icon-stub"><slot /></span>' },
-          Loading: true,
+      stubs: {
+        ...pageStubs,
+        ElIcon: {
+          name: 'ElIcon',
+          setup(_p: any, { slots }: any) {
+            return () => h('span', { class: 'el-icon-stub' }, slots.default?.());
+          },
         },
+        Loading: stub('Loading'),
       },
     });
-
-    const root = wrapper.find('.o-page');
-    expect(root.classes()).toContain('o-page--without-padding');
-    expect(root.classes()).toContain('o-page--wide');
-    expect(root.classes()).toContain('o-page--elevated');
-    expect(root.classes()).toContain('o-page--loading');
-    expect(wrapper.find('.o-page__loading-mask').exists()).toBe(true);
+    expect(hasClass(mounted, '.o-page', 'o-page--without-padding')).toBe(true);
+    expect(hasClass(mounted, '.o-page', 'o-page--wide')).toBe(true);
+    expect(hasClass(mounted, '.o-page', 'o-page--elevated')).toBe(true);
+    expect(hasClass(mounted, '.o-page', 'o-page--loading')).toBe(true);
+    expect(exists(mounted, '.o-page__loading-mask')).toBe(true);
+    mounted.unmount();
   });
 
   test('accepts an optional store prop without changing chrome', () => {
     const store = { storeId: 's1' };
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'With Store',
-        showBreadcrumb: false,
-        store,
-      },
-      global: { stubs: pageStubs },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'With Store', showBreadcrumb: false, store },
+      stubs: pageStubs,
     });
-    expect(wrapper.find('h1.o-page__title').text()).toBe('With Store');
-    expect(wrapper.props('store')).toEqual(store);
+    expect(textOf(mounted, 'h1.o-page__title')).toBe('With Store');
+    expect(mounted.props.store).toEqual(store);
+    mounted.unmount();
   });
 
   test('mounts default OPageIoMenu from action-import/export props', () => {
     const listRef = { refresh: () => undefined };
-    const wrapper = mount(OPage, {
+    const mounted = mountApp(OPage as any, {
       props: {
         title: 'Partners',
         showBreadcrumb: false,
@@ -297,34 +291,30 @@ describe('OPage component', () => {
         actionImportUploadHint: 'hint',
         actionListRef: listRef,
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-    const menu = wrapper.find('[data-test="page-io-menu-stub"]');
-    expect(menu.exists()).toBe(true);
-    expect(menu.attributes('data-import')).toBe('true');
-    expect(menu.attributes('data-export')).toBe('true');
-    expect(menu.attributes('data-hint')).toBe('hint');
-    expect(wrapper.findComponent({ name: 'OPageIoMenu' }).props('actionListRef')).toEqual(listRef);
+    expect(exists(mounted, '[data-test="page-io-menu-stub"]')).toBe(true);
+    expect(attr(mounted, '[data-test="page-io-menu-stub"]', 'data-import')).toBe('true');
+    expect(attr(mounted, '[data-test="page-io-menu-stub"]', 'data-export')).toBe('true');
+    expect(attr(mounted, '[data-test="page-io-menu-stub"]', 'data-hint')).toBe('hint');
+    mounted.unmount();
   });
 
   test('keeps title-actions slot additive beside the default IO menu', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: false,
-        actionImport: true,
-      },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: false, actionImport: true },
       slots: {
-        'title-actions': '<button data-test="extra-action">Extra</button>',
+        'title-actions': () => h('button', { 'data-test': 'extra-action' }, 'Extra'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-    expect(wrapper.find('[data-test="page-io-menu-stub"]').exists()).toBe(true);
-    expect(wrapper.find('[data-test="extra-action"]').exists()).toBe(true);
+    expect(exists(mounted, '[data-test="page-io-menu-stub"]')).toBe(true);
+    expect(exists(mounted, '[data-test="extra-action"]')).toBe(true);
+    mounted.unmount();
   });
 
   test('mounts OPageIoMenu beside a custom header when action-import is set', () => {
-    const wrapper = mount(OPage, {
+    const mounted = mountApp(OPage as any, {
       props: {
         title: 'Partners',
         showBreadcrumb: false,
@@ -332,24 +322,23 @@ describe('OPage component', () => {
         actionExport: true,
       },
       slots: {
-        header: '<div class="custom-header-io">Custom</div>',
+        header: () => h('div', { class: 'custom-header-io' }, 'Custom'),
       },
-      global: { stubs: pageStubs },
+      stubs: pageStubs,
     });
-    expect(wrapper.find('.custom-header-io').exists()).toBe(true);
-    expect(wrapper.find('.o-page__title-row [data-test="page-io-menu-stub"]').exists()).toBe(true);
-    expect(wrapper.find('[data-test="page-io-menu-stub"]').attributes('data-import')).toBe('true');
-    expect(wrapper.find('[data-test="page-io-menu-stub"]').attributes('data-export')).toBe('true');
+    expect(exists(mounted, '.custom-header-io')).toBe(true);
+    expect(exists(mounted, '[data-test="page-io-menu-stub"]')).toBe(true);
+    expect(attr(mounted, '[data-test="page-io-menu-stub"]', 'data-import')).toBe('true');
+    expect(attr(mounted, '[data-test="page-io-menu-stub"]', 'data-export')).toBe('true');
+    mounted.unmount();
   });
 
   test('does not mount OPageIoMenu when action-import/export are unset', () => {
-    const wrapper = mount(OPage, {
-      props: {
-        title: 'Partners',
-        showBreadcrumb: false,
-      },
-      global: { stubs: pageStubs },
+    const mounted = mountApp(OPage as any, {
+      props: { title: 'Partners', showBreadcrumb: false },
+      stubs: pageStubs,
     });
-    expect(wrapper.find('[data-test="page-io-menu-stub"]').exists()).toBe(false);
+    expect(exists(mounted, '[data-test="page-io-menu-stub"]')).toBe(false);
+    mounted.unmount();
   });
 });

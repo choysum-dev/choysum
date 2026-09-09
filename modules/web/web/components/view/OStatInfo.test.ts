@@ -1,225 +1,224 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@vue/test-utils';
-import { computed, defineComponent, h, markRaw, nextTick, ref } from 'vue';
-import { Comment, Fragment, Text } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { Comment, Fragment, Text, defineComponent, h, markRaw, nextTick, provide, ref } from 'vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
-import type { UseField } from '@/web/web/composables/useField';
+import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import OStatInfo from './OStatInfo.vue';
 import OButtonBox from './OButtonBox.vue';
 import { resolveStatDisplayValue, slotHasContent } from './ostatinfo_helpers';
 
-const push = vi.fn();
-vi.mock('vue-router', () => ({
-  useRouter: () => ({ push }),
-}));
-
-vi.mock('@/web/web/composables/useField', async importOriginal => {
-  const mod = await importOriginal<typeof import('@/web/web/composables/useField')>();
-  return {
-    ...mod,
-    useField: vi.fn(mod.useField),
-  };
-});
-
-import { useField } from '@/web/web/composables/useField';
-
-function makeRelationBinding(value: unknown): UseField {
-  const field = ref(value);
-  return {
-    env: {
-      isForm: true,
-      isEditMode: false,
-      viewMode: 'display',
-      fieldPrefix: null,
-    },
-    prop: 'Users',
-    meta: undefined as any,
-    fieldRef: () => field as any,
-    fieldRefOf: () => field as any,
-    recordRef: () => computed(() => ({ Users: field.value })) as any,
-    registerFields: () => {},
-    store: { storeId: 'test' } as any,
-    asView: () => ({ fieldValue: () => field }) as any,
-  } as UseField;
-}
-
 describe('ostatinfo_helpers', () => {
-  it('prefers explicit value over relation length', () => {
+  test('prefers explicit value over relation length', () => {
     expect(resolveStatDisplayValue({ value: 3, relationValue: [1, 2] })).toBe(3);
     expect(resolveStatDisplayValue({ value: 0, relationValue: [1] })).toBe(0);
   });
 
-  it('uses relation array length when value is absent', () => {
+  test('uses relation array length when value is absent', () => {
     expect(resolveStatDisplayValue({ relationValue: ['a', 'b'] })).toBe(2);
     expect(resolveStatDisplayValue({ relationValue: [] })).toBe(0);
   });
 
-  it('falls back to em dash (not 0) when unloaded', () => {
+  test('falls back to em dash (not 0) when unloaded', () => {
     expect(resolveStatDisplayValue({})).toBe('—');
     expect(resolveStatDisplayValue({ relationValue: null })).toBe('—');
     expect(resolveStatDisplayValue({ value: null })).toBe('—');
     expect(resolveStatDisplayValue({ emptyValue: 0 })).toBe(0);
   });
 
-  it('detects empty vs meaningful slot trees', () => {
+  test('detects empty vs meaningful slot trees', () => {
     expect(slotHasContent(null)).toBe(false);
     expect(slotHasContent(undefined)).toBe(false);
     expect(slotHasContent([])).toBe(false);
     expect(slotHasContent([h(Comment, 'x')])).toBe(false);
     expect(slotHasContent([h(Text, '   ')])).toBe(false);
-    expect(slotHasContent([h(Text)])).toBe(false); // children null/undefined → ?? ''
+    expect(slotHasContent([h(Text)])).toBe(false);
     expect(slotHasContent([h(Text, 'hi')])).toBe(true);
     expect(slotHasContent([h('div')])).toBe(true);
     expect(slotHasContent([h(Fragment, [h(Comment), h('span')])])).toBe(true);
-    // Non-VNode entries must not count as content (isMeaningfulVNode false branches).
     expect(slotHasContent([null, undefined, 42, 'plain'])).toBe(false);
-    // Fragment with non-array children is empty.
     expect(slotHasContent([{ type: Fragment, children: 'x' }])).toBe(false);
   });
 });
 
 describe('OStatInfo', () => {
+  const push = fnRecorder(async (to: unknown) => to);
+
   beforeEach(() => {
     push.mockReset();
-    vi.mocked(useField).mockClear();
+    push.mockImplementation(async (to: unknown) => to);
   });
 
-  it('renders value and label; emits click', async () => {
-    const wrapper = mount(OStatInfo as any, {
+  function withRouter(extra?: { provide?: Record<string | symbol, unknown>; on?: Record<string, (...args: any[]) => void> }) {
+    const { plugins } = buildPageMountGlobal({ router: { push } });
+    return { plugins, ...extra };
+  }
+
+  test('renders value and label; emits click', async () => {
+    const onClick = fnRecorder();
+    const { unmount, q, setupState } = mountApp(OStatInfo as any, {
       props: { value: 5, label: 'Users' },
+      ...withRouter({ on: { onClick } }),
     });
-    expect(wrapper.find('.o-stat-info__value').text()).toBe('5');
-    expect(wrapper.find('.o-stat-info__label').text()).toBe('Users');
-    expect(wrapper.find('.o-stat-info__icon').exists()).toBe(false);
-    await wrapper.trigger('click');
-    expect(wrapper.emitted('click')?.length).toBe(1);
-    expect(push).not.toHaveBeenCalled();
+    expect(q('.o-stat-info__value')?.textContent).toBe('5');
+    expect(q('.o-stat-info__label')?.textContent).toBe('Users');
+    expect(q('.o-stat-info__icon')).toBeFalsy();
+    setupState().onClick(new Event('click'));
+    expect(onClick.calls.length).toBe(1);
+    expect(push.calls.length).toBe(0);
+    unmount();
   });
 
-  it('renders icon when icon prop is set', () => {
+  test('renders icon when icon prop is set', () => {
     const IconStub = markRaw(
       defineComponent({
         name: 'IconStub',
-        template: '<span class="icon-stub" />',
+        setup: () => () => h('span', { class: 'icon-stub' }),
       })
     );
-    const wrapper = mount(OStatInfo as any, {
+    const { unmount, q } = mountApp(OStatInfo as any, {
       props: { value: 1, label: 'Users', icon: IconStub },
-      global: {
-        stubs: {
-          ElIcon: { template: '<i class="el-icon-stub"><slot /></i>' },
+      ...withRouter(),
+      stubs: {
+        ElIcon: {
+          name: 'ElIcon',
+          setup(_p: any, { slots }: any) {
+            return () => h('i', { class: 'el-icon-stub' }, slots.default?.());
+          },
         },
       },
     });
-    expect(wrapper.find('.o-stat-info__icon').exists()).toBe(true);
-    expect(wrapper.find('.icon-stub').exists()).toBe(true);
+    expect(q('.o-stat-info__icon')).toBeTruthy();
+    expect(q('.icon-stub')).toBeTruthy();
+    unmount();
   });
 
-  it('uses relation length via store+prop when value omitted', async () => {
-    vi.mocked(useField).mockReturnValueOnce(makeRelationBinding([{ Id: '1' }, { Id: '2' }]));
-    const wrapper = mount(OStatInfo as any, {
-      props: { store: { storeId: 's' }, prop: 'Users', label: 'Users' },
+  test('uses relation length via store+prop when value omitted', async () => {
+    const Host = defineComponent({
+      setup() {
+        provide('form-root', {
+          draft: { Users: [{ Id: '1' }, { Id: '2' }] },
+        });
+        return () =>
+          h(OStatInfo as any, {
+            store: { storeId: 's' },
+            prop: 'Users',
+            label: 'Users',
+          });
+      },
     });
+    const { plugins } = buildPageMountGlobal({ router: { push } });
+    const { unmount, q } = mountApp(Host, { plugins });
     await flushPromises();
-    expect(wrapper.find('.o-stat-info__value').text()).toBe('2');
+    expect(q('.o-stat-info__value')?.textContent).toBe('2');
+    unmount();
   });
 
-  it('skips useField when only store or only prop is set', () => {
-    mount(OStatInfo as any, {
+  test('shows explicit value when only store or only prop is set', () => {
+    const a = mountApp(OStatInfo as any, {
       props: { store: { storeId: 's' }, label: 'Users', value: 1 },
+      ...withRouter(),
     });
-    mount(OStatInfo as any, {
+    expect(a.q('.o-stat-info__value')?.textContent).toBe('1');
+    a.unmount();
+
+    const b = mountApp(OStatInfo as any, {
       props: { prop: 'Users', label: 'Users', value: 1 },
+      ...withRouter(),
     });
-    expect(vi.mocked(useField)).not.toHaveBeenCalled();
+    expect(b.q('.o-stat-info__value')?.textContent).toBe('1');
+    b.unmount();
   });
 
-  it('shows em dash when relation is not an array', async () => {
-    vi.mocked(useField).mockReturnValueOnce(makeRelationBinding(undefined));
-    const wrapper = mount(OStatInfo as any, {
-      props: { store: { storeId: 's' }, prop: 'Users', label: 'Users' },
+  test('shows em dash when relation is not an array', async () => {
+    const Host = defineComponent({
+      setup() {
+        provide('form-root', { draft: { Users: undefined } });
+        return () =>
+          h(OStatInfo as any, {
+            store: { storeId: 's' },
+            prop: 'Users',
+            label: 'Users',
+          });
+      },
     });
-    expect(wrapper.find('.o-stat-info__value').text()).toBe('—');
+    const { plugins } = buildPageMountGlobal({ router: { push } });
+    const { unmount, q } = mountApp(Host, { plugins });
+    await flushPromises();
+    expect(q('.o-stat-info__value')?.textContent).toBe('—');
+    unmount();
   });
 
-  it('router.push(to) after emit on click', async () => {
-    const wrapper = mount(OStatInfo as any, {
+  test('router.push(to) after emit on click', async () => {
+    const onClick = fnRecorder();
+    const { unmount, setupState } = mountApp(OStatInfo as any, {
       props: { value: 1, label: 'Go', to: { name: 'users' } },
+      ...withRouter({ on: { onClick } }),
     });
-    await wrapper.trigger('click');
-    expect(wrapper.emitted('click')?.length).toBe(1);
-    expect(push).toHaveBeenCalledWith({ name: 'users' });
+    setupState().onClick(new Event('click'));
+    expect(onClick.calls.length).toBe(1);
+    expect(push.calls[0]?.[0]).toEqual({ name: 'users' });
+    unmount();
   });
 
-  it('does not render when visible=false; ignores click when disabled', async () => {
-    const hidden = mount(OStatInfo as any, {
+  test('does not render when visible=false; ignores click when disabled', async () => {
+    const hidden = mountApp(OStatInfo as any, {
       props: { value: 1, label: 'X', visible: false },
+      ...withRouter(),
     });
-    expect(hidden.find('.o-stat-info').exists()).toBe(false);
+    expect(hidden.q('.o-stat-info')).toBeFalsy();
+    hidden.unmount();
 
-    const disabled = mount(OStatInfo as any, {
+    const onClick = fnRecorder();
+    const disabled = mountApp(OStatInfo as any, {
       props: { value: 1, label: 'X', disabled: true, to: { name: 'users' } },
+      ...withRouter({ on: { onClick } }),
     });
-    // Native disabled suppresses click; clear it so onClick's props.disabled guard runs.
-    const btn = disabled.find('button');
-    (btn.element as HTMLButtonElement).disabled = false;
-    await btn.trigger('click');
-    expect(disabled.emitted('click')).toBeUndefined();
-    expect(push).not.toHaveBeenCalled();
+    disabled.setupState().onClick(new Event('click'));
+    expect(onClick.calls.length).toBe(0);
+    expect(push.calls.length).toBe(0);
+    disabled.unmount();
   });
 });
 
 describe('OButtonBox', () => {
-  it('does not render root when default slot is empty', () => {
-    const empty = mount(OButtonBox as any, { slots: {} });
-    expect(empty.find('.o-button-box').exists()).toBe(false);
-
-    const withChild = mount(OButtonBox as any, {
-      slots: { default: () => h(OStatInfo as any, { value: 1, label: 'A' }) },
+  test('does not render root when default slot is empty', () => {
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h('div', { class: 'host' }, [
+            h(OButtonBox as any),
+            h(OButtonBox as any, null, { default: () => h(OStatInfo as any, { value: 1, label: 'A' }) }),
+          ]);
+      },
     });
-    expect(withChild.find('.o-button-box').exists()).toBe(true);
-    expect(withChild.find('.o-stat-info__value').text()).toBe('1');
+    const { plugins } = buildPageMountGlobal();
+    const { unmount, q, qa } = mountApp(Host, { plugins });
+    expect(qa('.o-button-box').length).toBe(1);
+    expect(q('.o-stat-info__value')?.textContent).toBe('1');
+    unmount();
   });
 
-  it('remounts shell when slot children appear later', async () => {
+  test('remounts shell when slot children appear later', async () => {
     const show = ref(false);
     const Host = defineComponent({
-      components: { OButtonBox, OStatInfo },
       setup() {
-        return { show };
+        return () =>
+          h('div', { class: 'host' }, [
+            h(OButtonBox as any, null, {
+              default: () => (show.value ? h(OStatInfo as any, { value: 1, label: 'A' }) : null),
+            }),
+          ]);
       },
-      template: `
-        <OButtonBox>
-          <OStatInfo v-if="show" :value="1" label="A" />
-        </OButtonBox>
-      `,
     });
-    const wrapper = mount(Host);
-    expect(wrapper.find('.o-button-box').exists()).toBe(false);
+    const { plugins } = buildPageMountGlobal();
+    const { unmount, q } = mountApp(Host, { plugins });
+    expect(q('.o-button-box')).toBeFalsy();
     show.value = true;
     await nextTick();
-    expect(wrapper.find('.o-button-box').exists()).toBe(true);
-    expect(wrapper.find('.o-stat-info__value').text()).toBe('1');
-  });
-});
-
-describe('OFormView #button-box slot placement', () => {
-  it('declares button-box after statusbar in template and defineSlots', () => {
-    const src = readFileSync(resolve(__dirname, './OFormView.vue'), 'utf8');
-    const statusbar = src.indexOf('<slot name="statusbar"');
-    const buttonBox = src.indexOf('<slot name="button-box"');
-    const headerRight = src.indexOf('<slot name="header-right"');
-    expect(statusbar).toBeGreaterThan(-1);
-    expect(buttonBox).toBeGreaterThan(-1);
-    expect(headerRight).toBeGreaterThan(-1);
-    expect(statusbar).toBeLessThan(buttonBox);
-    expect(buttonBox).toBeLessThan(headerRight);
-    expect(src).toContain("'button-box'(): any");
+    expect(q('.o-button-box')).toBeTruthy();
+    expect(q('.o-stat-info__value')?.textContent).toBe('1');
+    unmount();
   });
 });

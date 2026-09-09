@@ -300,13 +300,18 @@ describe('gateBeforeChange / applyStatusbarSelect', () => {
 
   test('cancels on throw / reject', async () => {
     expect(
-      await gateBeforeChange(() => {
+      await gateBeforeChange(async () => {
         throw new Error('nope');
       }, 'done', 'draft')
     ).toBe(false);
-    expect(await gateBeforeChange(async () => Promise.reject(new Error('nope')), 'done', 'draft')).toBe(false);
+    // Prefer throwing inside async (not `return Promise.reject`) so QuickJS does not
+    // surface an unhandled rejection that aborts the FE unit EvalAwait run.
+    expect(
+      await gateBeforeChange(async () => {
+        throw new Error('nope');
+      }, 'done', 'draft')
+    ).toBe(false);
   });
-
   test('awaits async hooks', async () => {
     const hook = fnRecorder(async () => true);
     expect(await gateBeforeChange(hook, 'done', 'draft')).toBe(true);

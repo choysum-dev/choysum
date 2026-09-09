@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref } from 'vue';
-import { createStoreByModel } from '@/web/web/stores/registry';
-import { actorUserId } from '@/web/web/composables/search/actorUserId';
+import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
+import { actorUserId as defaultActorUserId } from '@/web/web/composables/search/actorUserId';
 import { resolveUserFilterUserId } from '@/web/web/composables/search/userFilterDefaults';
 
 export type ExportTemplateRow = {
@@ -25,6 +25,11 @@ export type ExportTemplateItem = ExportTemplateRow & {
   canDelete: boolean;
 };
 
+export type ExportTemplatesDeps = {
+  createStoreByModel?: typeof defaultCreateStoreByModel;
+  actorUserId?: typeof defaultActorUserId;
+};
+
 export function parseExportModelRef(model: string): { application: string; modelName: string } {
   const raw = String(model || '').trim();
   const idx = raw.indexOf('.');
@@ -37,7 +42,9 @@ export function parseExportModelRef(model: string): { application: string; model
 /**
  * Load / apply / save / remove web.ExportTemplate rows for one target model.
  */
-export function useExportTemplates(modelRef: () => string) {
+export function useExportTemplates(modelRef: () => string, deps: ExportTemplatesDeps = {}) {
+  const createStoreByModel = deps.createStoreByModel ?? defaultCreateStoreByModel;
+  const resolveActorUserId = deps.actorUserId ?? defaultActorUserId;
   const templates = ref<ExportTemplateItem[]>([]);
   const loading = ref(false);
   const loadError = ref<string | null>(null);
@@ -64,7 +71,7 @@ export function useExportTemplates(modelRef: () => string) {
     loading.value = true;
     loadError.value = null;
     try {
-      const me = actorUserId();
+      const me = resolveActorUserId();
       const store = exportTemplateStore() as any;
       const rows = (await store.Search(
         {
@@ -131,7 +138,7 @@ export function useExportTemplates(modelRef: () => string) {
     const fields = (opts.fields ?? []).map(String).filter(Boolean);
     if (!application || !modelName || !name || fields.length === 0) return null;
 
-    const me = actorUserId();
+    const me = resolveActorUserId();
     const store = exportTemplateStore() as any;
     const values: Record<string, unknown> = {
       Name: name,

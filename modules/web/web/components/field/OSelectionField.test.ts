@@ -1,16 +1,14 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@vue/test-utils';
-import { computed, defineComponent, h, nextTick, ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { computed, h, nextTick, ref } from 'vue';
+import { ElOption, ElSelect } from 'element-plus';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import OFieldBase from './OFieldBase.vue';
 import OSelectionField from './OSelectionField.vue';
 
 function makeBinding(opts: {
@@ -39,14 +37,56 @@ function makeBinding(opts: {
   } as UseField;
 }
 
-const EditStub = defineComponent({
-  name: 'EditStub',
-  setup(_, { slots }) {
-    return () => h('div', { class: 'edit-stub' }, slots.default?.({} as any));
-  },
-});
+const epSfcs = [ElSelect, ElOption];
 
-describe('OSelectionField FieldsGet wiring (P2)', () => {
+function installEpStubs() {
+  stubSfc(ElSelect as any, {
+    name: 'ElSelect',
+    props: ['loading', 'disabled', 'modelValue'],
+    setup(props: any, { slots }: any) {
+      return () =>
+        h(
+          'div',
+          {
+            class: 'sel',
+            'data-loading': String(!!props.loading),
+            'data-disabled': String(!!props.disabled),
+          },
+          slots.default?.()
+        );
+    },
+  });
+  stubSfc(ElOption as any, {
+    name: 'ElOption',
+    props: ['label', 'value', 'disabled'],
+    setup(props: any) {
+      return () =>
+        h('div', {
+          class: 'opt',
+          'data-label': props.label,
+          'data-value': props.value,
+          'data-disabled': props.disabled ? '1' : '0',
+        });
+    },
+  });
+}
+
+function installFieldBaseStub(slot: 'edit' | 'both' = 'edit') {
+  stubSfc(OFieldBase as any, {
+    name: 'OFieldBase',
+    props: ['binding'],
+    setup(_: any, { slots }: any) {
+      const editSlot = () =>
+        slots.edit?.({ fieldValue: () => ({ value: 'active' }), record: { Id: '1' } });
+      const displaySlot = () =>
+        slots.display?.({ fieldValue: () => ({ value: 'active' }), record: {} });
+      return () =>
+        h('div', { class: 'ob' }, slot === 'both' ? [editSlot(), displaySlot()] : [editSlot()]);
+    },
+  });
+}
+
+describe('OSelectionField FieldsGet wiring', () => {
   const staticMeta: WebFieldMetadata = {
     id: '1',
     type: 'selection',
@@ -58,14 +98,16 @@ describe('OSelectionField FieldsGet wiring (P2)', () => {
     ],
   };
 
-  it('source contract: no labelText / translateTerm for options (T2.3)', () => {
-    const src = readFileSync(resolve(__dirname, './OSelectionField.vue'), 'utf8');
-    expect(src).not.toMatch(/\blabelText\b/);
-    expect(src).not.toMatch(/translateTerm\s*\(/);
+  afterEach(() => {
+    restoreSfc(OFieldBase as any);
+    for (const Comp of epSfcs) restoreSfc(Comp as any);
   });
 
-  it('edit onMounted calls ensureFieldsGet and shows loading (T2.4 / T2.8)', async () => {
-    const FieldsGet = vi.fn(
+  test('edit onMounted calls ensureFieldsGet and shows loading', async () => {
+    installEpStubs();
+    installFieldBaseStub('edit');
+
+    const FieldsGet = fnRecorder(
       async () =>
         ({
           Status: {
@@ -85,58 +127,53 @@ describe('OSelectionField FieldsGet wiring (P2)', () => {
     const helpers = createFieldsGetHelpers(
       {
         fieldsMetadata: { Status: staticMeta },
-        FieldsGet: async (...args) => {
+        FieldsGet: async (...args: any[]) => {
           await gate;
-          return FieldsGet(...args);
+          return FieldsGet(...(args as []));
         },
       },
       { getLang: () => 'zh_CN' }
     );
-    const ensureSpy = vi.spyOn(helpers, 'ensureFieldsGet');
+    const ensureCalls: unknown[][] = [];
+    const ensureFieldsGet = async (...args: any[]) => {
+      ensureCalls.push(args);
+      return helpers.ensureFieldsGet(...(args as [string[], string[]?]));
+    };
     const store = {
       fieldsMetadata: { Status: staticMeta },
       FieldsGet,
-      ensureFieldsGet: helpers.ensureFieldsGet,
+      ensureFieldsGet,
       getFieldMeta: helpers.getFieldMeta,
       getFieldsGetTranslatedString: helpers.getFieldsGetTranslatedString,
       clearFieldsGetCache: helpers.clearFieldsGetCache,
     };
 
-    const wrapper = mount(OSelectionField as any, {
+    const m = mountApp(OSelectionField as any, {
       props: {
         binding: makeBinding({ meta: staticMeta, store, isEditMode: true }),
         renderMode: 'form',
       },
-      global: {
-        stubs: {
-          OFieldBase: {
-            props: ['binding'],
-            template: `<div class="ob"><slot name="edit" :fieldValue="() => ({ value: 'active' })" :record="{ Id: '1' }" /></div>`,
-          },
-          'el-select': {
-            props: ['loading', 'disabled', 'modelValue'],
-            template: `<div class="sel" :data-loading="String(loading)" :data-disabled="String(disabled)"><slot /></div>`,
-          },
-          'el-option': true,
-        },
-      },
     });
 
     await nextTick();
-    expect(ensureSpy).toHaveBeenCalledTimes(1);
-    expect(ensureSpy.mock.calls[0]![0]).toEqual(['Status']);
-    expect(wrapper.get('.sel').attributes('data-loading')).toBe('true');
+    expect(ensureCalls.length).toBe(1);
+    expect(ensureCalls[0]![0]).toEqual(['Status']);
+    expect(m.q('.sel')?.getAttribute('data-loading')).toBe('true');
 
     resolveEnsure();
     await flushPromises();
     await nextTick();
-    expect(wrapper.get('.sel').attributes('data-loading')).toBe('false');
-    expect(FieldsGet).toHaveBeenCalledTimes(1);
+    expect(m.q('.sel')?.getAttribute('data-loading')).toBe('false');
+    expect(FieldsGet.calls.length).toBe(1);
     expect(helpers.getFieldMeta('Status')?.selection?.[0]?.label).toBe('启用');
+    m.unmount();
   });
 
-  it('two instances share one RPC via ensureFieldsGet cache (T2.5 / T2.6)', async () => {
-    const FieldsGet = vi.fn(async () => ({
+  test('two instances share one RPC via ensureFieldsGet cache', async () => {
+    installEpStubs();
+    installFieldBaseStub('both');
+
+    const FieldsGet = fnRecorder(async () => ({
       Status: {
         ...staticMeta,
         selection: [{ value: 'active', label: '启用' }],
@@ -149,31 +186,28 @@ describe('OSelectionField FieldsGet wiring (P2)', () => {
     const store = { fieldsMetadata: { Status: staticMeta }, FieldsGet, ...helpers };
 
     const mountOne = (isEditMode: boolean) =>
-      mount(OSelectionField as any, {
+      mountApp(OSelectionField as any, {
         props: {
           binding: makeBinding({ meta: staticMeta, store, isEditMode }),
           renderMode: isEditMode ? 'form' : 'table',
         },
-        global: {
-          stubs: {
-            OFieldBase: {
-              template: `<div><slot name="edit" :fieldValue="() => ({ value: 'active' })" :record="{}" /><slot name="display" :fieldValue="() => ({ value: 'active' })" :record="{}" /></div>`,
-            },
-            'el-select': { template: '<div class="sel"><slot /></div>' },
-            'el-option': true,
-          },
-        },
       });
 
-    mountOne(true);
-    mountOne(false);
-    mountOne(false);
+    const a = mountOne(true);
+    const b = mountOne(false);
+    const c = mountOne(false);
     await flushPromises();
-    expect(FieldsGet).toHaveBeenCalledTimes(1);
+    expect(FieldsGet.calls.length).toBe(1);
+    a.unmount();
+    b.unmount();
+    c.unmount();
   });
 
-  it('merges FieldsGet options with props.selection filter (T2.7)', async () => {
-    const FieldsGet = vi.fn(async () => ({
+  test('merges FieldsGet options with props.selection filter', async () => {
+    installEpStubs();
+    installFieldBaseStub('edit');
+
+    const FieldsGet = fnRecorder(async () => ({
       Status: {
         ...staticMeta,
         selection: [
@@ -188,44 +222,34 @@ describe('OSelectionField FieldsGet wiring (P2)', () => {
     );
     const store = { fieldsMetadata: { Status: staticMeta }, FieldsGet, ...helpers };
 
-    const wrapper = mount(OSelectionField as any, {
+    const m = mountApp(OSelectionField as any, {
       props: {
         binding: makeBinding({ meta: staticMeta, store, isEditMode: true }),
         selection: ['archived'],
         renderMode: 'form',
       },
-      global: {
-        stubs: {
-          OFieldBase: {
-            template: `<div class="ob"><slot name="edit" :fieldValue="() => ({ value: null })" :record="{}" /></div>`,
-          },
-          'el-select': {
-            template: `<div class="sel"><slot /></div>`,
-          },
-          'el-option': {
-            props: ['label', 'value'],
-            template: `<div class="opt" :data-label="label" :data-value="value" />`,
-          },
-        },
-      },
     });
 
     await flushPromises();
     await nextTick();
-    const opts = wrapper.findAll('.opt');
+    const opts = m.qa('.opt');
     expect(opts).toHaveLength(1);
-    expect(opts[0]!.attributes('data-value')).toBe('archived');
-    expect(opts[0]!.attributes('data-label')).toBe('归档');
+    expect(opts[0]!.getAttribute('data-value')).toBe('archived');
+    expect(opts[0]!.getAttribute('data-label')).toBe('归档');
+    m.unmount();
   });
 
-  it('dynamic selectionKind loads options via ensureFieldsGet on mount (T3.5)', async () => {
+  test('dynamic selectionKind loads options via ensureFieldsGet on mount', async () => {
+    installEpStubs();
+    installFieldBaseStub('edit');
+
     const dynamicMeta: WebFieldMetadata = {
       id: '2',
       type: 'selection',
       typeAnnotation: 'string',
       selectionKind: 'dynamic',
     };
-    const FieldsGet = vi.fn(async () => ({
+    const FieldsGet = fnRecorder(async () => ({
       Status: {
         ...dynamicMeta,
         selectionKind: 'dynamic' as const,
@@ -241,35 +265,27 @@ describe('OSelectionField FieldsGet wiring (P2)', () => {
     );
     const store = { fieldsMetadata: { Status: dynamicMeta }, FieldsGet, ...helpers };
 
-    const wrapper = mount(OSelectionField as any, {
+    const m = mountApp(OSelectionField as any, {
       props: {
         binding: makeBinding({ meta: dynamicMeta, store, isEditMode: true }),
         renderMode: 'form',
-      },
-      global: {
-        stubs: {
-          OFieldBase: {
-            template: `<div class="ob"><slot name="edit" :fieldValue="() => ({ value: null })" :record="{}" /></div>`,
-          },
-          'el-select': { template: `<div class="sel"><slot /></div>` },
-          'el-option': {
-            props: ['label', 'value'],
-            template: `<div class="opt" :data-label="label" :data-value="value" />`,
-          },
-        },
       },
     });
 
     await flushPromises();
     await nextTick();
-    expect(FieldsGet).toHaveBeenCalled();
-    const opts = wrapper.findAll('.opt');
+    expect(FieldsGet.calls.length).toBeGreaterThan(0);
+    const opts = m.qa('.opt');
     expect(opts.length).toBe(2);
-    expect(opts[0]!.attributes('data-label')).toBe('启用');
+    expect(opts[0]!.getAttribute('data-label')).toBe('启用');
+    m.unmount();
   });
 
-  it('onchange selection narrows FieldsGet baseline options (T3.6)', async () => {
-    const FieldsGet = vi.fn(async () => ({
+  test('onchange selection narrows FieldsGet baseline options', async () => {
+    installEpStubs();
+    installFieldBaseStub('edit');
+
+    const FieldsGet = fnRecorder(async () => ({
       Status: {
         ...staticMeta,
         selection: [
@@ -288,31 +304,20 @@ describe('OSelectionField FieldsGet wiring (P2)', () => {
       selection: [{ field: 'Status', selection: ['archived', 'draft'], disabled: ['draft'] }],
     });
 
-    const wrapper = mount(OSelectionField as any, {
+    const m = mountApp(OSelectionField as any, {
       props: {
         binding: makeBinding({ meta: staticMeta, store, isEditMode: true }),
         renderMode: 'form',
       },
-      global: {
-        provide: { lastOnchangeResult },
-        stubs: {
-          OFieldBase: {
-            template: `<div class="ob"><slot name="edit" :fieldValue="() => ({ value: null })" :record="{}" /></div>`,
-          },
-          'el-select': { template: `<div class="sel"><slot /></div>` },
-          'el-option': {
-            props: ['label', 'value', 'disabled'],
-            template: `<div class="opt" :data-label="label" :data-value="value" :data-disabled="disabled ? '1' : '0'" />`,
-          },
-        },
-      },
+      provide: { lastOnchangeResult },
     });
 
     await flushPromises();
     await nextTick();
-    const opts = wrapper.findAll('.opt');
-    expect(opts.map(o => o.attributes('data-value'))).toEqual(['archived', 'draft']);
-    expect(opts[0]!.attributes('data-label')).toBe('归档');
-    expect(opts[1]!.attributes('data-disabled')).toBe('1');
+    const opts = m.qa('.opt');
+    expect(opts.map(o => o.getAttribute('data-value'))).toEqual(['archived', 'draft']);
+    expect(opts[0]!.getAttribute('data-label')).toBe('归档');
+    expect(opts[1]!.getAttribute('data-disabled')).toBe('1');
+    m.unmount();
   });
 });

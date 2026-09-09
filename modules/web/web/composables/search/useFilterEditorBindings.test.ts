@@ -1,12 +1,9 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { createApp, defineComponent, h } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
 
+import { fnRecorder } from '@/web/web/__tests__/mountApp';
 import { useFilterEditorBindings } from './useFilterEditorBindings';
 
 /**
@@ -27,10 +24,14 @@ function runInSetup<T>(fn: () => T): T {
   return result;
 }
 
-describe('useFilterEditorBindings static meta (T4.2)', () => {
-  it('metaTypeOf reads only static fieldsMetadata.type', () => {
-    const FieldsGet = vi.fn(async () => ({}));
-    const ensureFieldsGet = vi.fn(async () => ({}));
+function hasOp(ops: Array<{ value: string }>, value: string): boolean {
+  return ops.some(o => o.value === value);
+}
+
+describe('useFilterEditorBindings static meta', () => {
+  test('metaTypeOf reads only static fieldsMetadata.type', () => {
+    const FieldsGet = fnRecorder(async () => ({}));
+    const ensureFieldsGet = fnRecorder(async () => ({}));
     const store = {
       fieldsMetadata: {
         Status: { type: 'selection' },
@@ -44,17 +45,33 @@ describe('useFilterEditorBindings static meta (T4.2)', () => {
     expect(metaTypeOf('Status')).toBe('selection');
     expect(metaTypeOf('Name')).toBe('varchar');
     expect(getOperatorOptionsForField('Status').length).toBeGreaterThan(0);
-    expect(FieldsGet).not.toHaveBeenCalled();
-    expect(ensureFieldsGet).not.toHaveBeenCalled();
+    expect(FieldsGet.calls.length).toBe(0);
+    expect(ensureFieldsGet.calls.length).toBe(0);
   });
 
-  it('source does not await FieldsGet (D2 / D13)', () => {
-    const src = readFileSync(resolve(__dirname, './useFilterEditorBindings.ts'), 'utf8');
-    expect(src).not.toMatch(/\bensureFieldsGet\b/);
-    expect(src).not.toMatch(/\bFieldsGet\b/);
+  test('bindings do not call FieldsGet / ensureFieldsGet on operator lookup', () => {
+    // Dense substitute for the old source-text scan (no node:fs under QJS).
+    const FieldsGet = fnRecorder(async () => ({}));
+    const ensureFieldsGet = fnRecorder(async () => ({}));
+    const store = {
+      fieldsMetadata: {
+        Id: { type: 'char' },
+        ParentPath: { type: 'varchar' },
+        PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
+      },
+      FieldsGet,
+      ensureFieldsGet,
+    } as any;
+    const api = runInSetup(() => useFilterEditorBindings(store));
+    api.getOperatorOptionsForField('Id');
+    api.getOperatorOptionsForField('PartnerId');
+    api.relationModelOf('PartnerId');
+    api.isTreeManyToOne('PartnerId');
+    expect(FieldsGet.calls.length).toBe(0);
+    expect(ensureFieldsGet.calls.length).toBe(0);
   });
 
-  it('adds child_of/parent_of for tree Id and tree manytoone', () => {
+  test('adds child_of/parent_of for tree Id and tree manytoone', () => {
     const store = {
       storeId: 's1',
       fieldsMetadata: {
@@ -78,34 +95,39 @@ describe('useFilterEditorBindings static meta (T4.2)', () => {
     expect(api.isMultiValueOperator('in')).toBe(true);
     expect(api.isMultiValueOperator('=')).toBe(false);
 
-    const idOps = api.getOperatorOptionsForField('Id').map(o => o.value);
-    expect(idOps).toEqual(expect.arrayContaining(['child_of', 'parent_of']));
-    const parentOps = api.getOperatorOptionsForField('ParentId').map(o => o.value);
-    expect(parentOps).toEqual(expect.arrayContaining(['child_of', 'parent_of']));
+    const idOps = api.getOperatorOptionsForField('Id');
+    expect(hasOp(idOps, 'child_of')).toBe(true);
+    expect(hasOp(idOps, 'parent_of')).toBe(true);
+    const parentOps = api.getOperatorOptionsForField('ParentId');
+    expect(hasOp(parentOps, 'child_of')).toBe(true);
+    expect(hasOp(parentOps, 'parent_of')).toBe(true);
     // Base catalog always lists child_of/parent_of; tree enrichment is for Id / tree m2o only.
-    const partnerOps = api.getOperatorOptionsForField('PartnerId').map(o => o.value);
-    expect(partnerOps).toEqual(expect.arrayContaining(['=', 'in']));
+    const partnerOps = api.getOperatorOptionsForField('PartnerId');
+    expect(hasOp(partnerOps, '=')).toBe(true);
+    expect(hasOp(partnerOps, 'in')).toBe(true);
     expect(api.getOperatorOptionsForField().length).toBeGreaterThan(0);
     expect(api.isNullOperator('is')).toBe(true);
     expect(api.requiresValue('=')).toBe(true);
   });
 
-  it('caches relation stores from getRelationStore and destroys on unmount', () => {
-    const destroy = vi.fn();
+  test('caches relation stores from getRelationStore and destroys on unmount', () => {
+    const destroy = fnRecorder();
     const rel = { destroy };
+    const getRelationStore = fnRecorder(() => rel);
     const store = {
       storeId: 's2',
       fieldsMetadata: {
         PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
       },
-      getRelationStore: vi.fn(() => rel),
+      getRelationStore,
     } as any;
 
     let api!: ReturnType<typeof useFilterEditorBindings>;
     const app = createApp(
       defineComponent({
         setup() {
-          api = useFilterEditorBindings(store);
+          // Force the getRelationStore path (FE host may stub createStoreByModel).
+          api = useFilterEditorBindings(store, { createStoreByModel: (() => undefined) as any });
           return () => h('div');
         },
       })
@@ -115,9 +137,9 @@ describe('useFilterEditorBindings static meta (T4.2)', () => {
     const b = api.relationStoreOf('PartnerId');
     expect(a).toBe(rel);
     expect(b).toBe(rel);
-    expect(store.getRelationStore).toHaveBeenCalledTimes(1);
+    expect(getRelationStore.calls.length).toBe(1);
     expect(api.relationStoreOf()).toBeUndefined();
     app.unmount();
-    expect(destroy).toHaveBeenCalled();
+    expect(destroy.calls.length).toBe(1);
   });
 });

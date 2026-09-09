@@ -65,7 +65,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
       });
       const controller = createFormController(newStore(DefaultGet));
 
-      await expect(controller.beginCreate({ Name: 'seed-only' })).resolves.toBeUndefined();
+      expect(await controller.beginCreate({ Name: 'seed-only' })).toBeUndefined();
 
       expect(controller.vm.mode).toBe('create');
       expect(controller.vm.draft).toEqual({ Name: 'seed-only' });

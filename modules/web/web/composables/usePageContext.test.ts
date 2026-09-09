@@ -1,10 +1,9 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it } from 'vitest';
 import { defineComponent, h } from 'vue';
-import { mount } from '@vue/test-utils';
+
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import {
   provideOPageContext,
   resolvePageStore,
@@ -14,7 +13,7 @@ import {
 } from './usePageContext';
 
 describe('usePageContext', () => {
-  it('provides store for descendants', () => {
+  test('provides store for descendants', () => {
     const store = { storeId: 'page-store' };
     let seen: unknown = null;
     const Child = defineComponent({
@@ -29,11 +28,12 @@ describe('usePageContext', () => {
         return () => h(Child);
       },
     });
-    mount(Parent);
+    const { unmount } = mountApp(Parent);
     expect(seen).toBe(store);
+    unmount();
   });
 
-  it('provides store to default-slot content (OPage page pattern)', () => {
+  test('provides store to default-slot content (OPage page pattern)', () => {
     const store = { storeId: 'slot-store' };
     let seen: unknown = null;
     const Child = defineComponent({
@@ -42,7 +42,6 @@ describe('usePageContext', () => {
         return () => h('div');
       },
     });
-    // Mirrors OPage: provide in setup, render children via <slot />.
     const PageShell = defineComponent({
       setup(_, { slots }) {
         provideOPageContext({ store });
@@ -54,11 +53,12 @@ describe('usePageContext', () => {
         return () => h(PageShell, null, { default: () => h(Child) });
       },
     });
-    mount(Page);
+    const { unmount } = mountApp(Page);
     expect(seen).toBe(store);
+    unmount();
   });
 
-  it('prefers an explicit prop store over the page store', () => {
+  test('prefers an explicit prop store over the page store', () => {
     const pageStore = { storeId: 'page' };
     const propStore = { storeId: 'prop' };
     let seen: unknown = null;
@@ -74,11 +74,12 @@ describe('usePageContext', () => {
         return () => h(Child);
       },
     });
-    mount(Parent);
+    const { unmount } = mountApp(Parent);
     expect(seen).toBe(propStore);
+    unmount();
   });
 
-  it('throws when neither prop nor page store is available', () => {
+  test('throws when neither prop nor page store is available', () => {
     let threw: unknown;
     const Orphan = defineComponent({
       setup() {
@@ -90,11 +91,12 @@ describe('usePageContext', () => {
         return () => h('div');
       },
     });
-    mount(Orphan);
+    const { unmount } = mountApp(Orphan);
     expect(String((threw as Error)?.message || threw)).toMatch(/Missing requires a store/);
+    unmount();
   });
 
-  it('soft-resolves optional store from the page context', () => {
+  test('soft-resolves optional store from the page context', () => {
     const pageStore = { storeId: 'soft' };
     let resolved: { value: unknown } | null = null;
     const Child = defineComponent({
@@ -109,11 +111,12 @@ describe('usePageContext', () => {
         return () => h(Child);
       },
     });
-    mount(Parent);
+    const { unmount } = mountApp(Parent);
     expect(resolved!.value).toBe(pageStore);
+    unmount();
   });
 
-  it('registers and unregisters a page action target', async () => {
+  test('registers and unregisters a page action target', async () => {
     const store = { storeId: 'page' };
     const target = { refresh: () => undefined, selectedItems: [] as Array<{ Id?: string }> };
     let ctx: ReturnType<typeof provideOPageContext> | null = null;
@@ -129,13 +132,14 @@ describe('usePageContext', () => {
         return () => h(Child);
       },
     });
-    const wrapper = mount(Parent);
+    const { unmount } = mountApp(Parent);
     expect(ctx!.actionTarget.value).toBe(target);
-    wrapper.unmount();
+    unmount();
+    await flushPromises();
     expect(ctx!.actionTarget.value).toBeNull();
   });
 
-  it('skips auto-register when the view store differs from the page store', () => {
+  test('skips auto-register when the view store differs from the page store', () => {
     const pageStore = { storeId: 'page' };
     const viewStore = { storeId: 'other' };
     const target = { refresh: () => undefined };
@@ -152,11 +156,12 @@ describe('usePageContext', () => {
         return () => h(Child);
       },
     });
-    mount(Parent);
+    const { unmount } = mountApp(Parent);
     expect(ctx!.actionTarget.value).toBeNull();
+    unmount();
   });
 
-  it('respects enabled false to opt out of registration', () => {
+  test('respects enabled false to opt out of registration', () => {
     const store = { storeId: 'page' };
     const target = { refresh: () => undefined };
     let ctx: ReturnType<typeof provideOPageContext> | null = null;
@@ -172,11 +177,12 @@ describe('usePageContext', () => {
         return () => h(Child);
       },
     });
-    mount(Parent);
+    const { unmount } = mountApp(Parent);
     expect(ctx!.actionTarget.value).toBeNull();
+    unmount();
   });
 
-  it('forces registration when enabled is true even if stores differ', () => {
+  test('forces registration when enabled is true even if stores differ', () => {
     const pageStore = { storeId: 'page' };
     const viewStore = { storeId: 'other' };
     const target = { refresh: () => undefined };
@@ -193,11 +199,12 @@ describe('usePageContext', () => {
         return () => h(Child);
       },
     });
-    mount(Parent);
+    const { unmount } = mountApp(Parent);
     expect(ctx!.actionTarget.value).toBe(target);
+    unmount();
   });
 
-  it('no-ops unregister when the target is not the current action target', () => {
+  test('no-ops unregister when the target is not the current action target', () => {
     const store = { storeId: 'page' };
     const kept = { refresh: () => undefined };
     const other = { refresh: () => undefined };
@@ -208,13 +215,14 @@ describe('usePageContext', () => {
         return () => h('div');
       },
     });
-    mount(Parent);
+    const { unmount } = mountApp(Parent);
     ctx!.registerActionTarget(kept);
     ctx!.unregisterActionTarget(other);
     expect(ctx!.actionTarget.value).toBe(kept);
+    unmount();
   });
 
-  it('treats a nullish page store getter as null', () => {
+  test('treats a nullish page store getter as null', () => {
     let seen: unknown = 'unset';
     const Child = defineComponent({
       setup() {
@@ -228,11 +236,12 @@ describe('usePageContext', () => {
         return () => h(Child);
       },
     });
-    mount(Parent);
+    const { unmount } = mountApp(Parent);
     expect(seen).toBeNull();
+    unmount();
   });
 
-  it('skips registration when no page context is provided', () => {
+  test('skips registration when no page context is provided', () => {
     const store = { storeId: 'orphan' };
     const target = { refresh: () => undefined };
     const Orphan = defineComponent({
@@ -241,6 +250,9 @@ describe('usePageContext', () => {
         return () => h('div');
       },
     });
-    expect(() => mount(Orphan)).not.toThrow();
+    expect(() => {
+      const { unmount } = mountApp(Orphan);
+      unmount();
+    }).not.toThrow();
   });
 });

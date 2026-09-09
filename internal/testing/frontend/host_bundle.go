@@ -37,7 +37,8 @@ type VueHostBundleOptions struct {
 	// WithVuePlugin enables vueplugin (needed for .vue entries/imports).
 	WithVuePlugin bool
 	// ExtraStubAliases maps import paths (package names or absolute file paths) to stub files.
-	// Default FE unit stubs (element-plus, icons, vue-router, OPage, auth store) always apply.
+	// Default FE unit stubs (element-plus, icons, vue-router, path stubs, auth store) always apply.
+	// OPage.vue uses a dedicated OPage.vue$ rewrite (skips OPage*.test.ts importers) plus path stubs.
 	ExtraStubAliases map[string]string
 	// DisableDefaultFEStubs skips built-in package/path stubs (host unit tests only).
 	DisableDefaultFEStubs bool
@@ -126,11 +127,15 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			Scope:          filepath.Join(stubDir, "store_scope_manager.js"),
 			Permission:     filepath.Join(stubDir, "use_permission.js"),
 			PageComposable: filepath.Join(stubDir, "page_composables.js"),
+			Vicons:         filepath.Join(stubDir, "vicons_material.js"),
+			VueEcharts:     filepath.Join(stubDir, "vue_echarts.js"),
+			Vuedraggable:   filepath.Join(stubDir, "vuedraggable.js"),
+			Echarts:        filepath.Join(stubDir, "echarts.js"),
 		}
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|vue-router|@choysum/page-mount)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						// Filter only admits known package names; lookup always succeeds.
 						path, _ := feUnitPackageStubPath(args.Path, stubs)
@@ -141,9 +146,40 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-opage-stub",
 			Setup: func(build api.PluginBuild) {
+				// Blanket OPage.vue$ rewrite for product pages (path-alias resolves often
+				// leave Importer empty, so feUnitPathStubPath alone is not enough).
+				// Skip when a web OPage unit test imports the real SUT.
 				build.OnResolve(api.OnResolveOptions{Filter: `OPage\.vue$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						importer := filepath.ToSlash(args.Importer)
+						// Match feUnitPathStubPath: web component tests/SFCs keep real OPage.
+						isWebComponentUnit := strings.Contains(importer, "/web/web/components/") &&
+							(strings.Contains(importer, ".test.") || strings.Contains(importer, ".spec.") ||
+								strings.HasSuffix(importer, ".vue"))
+						if isWebComponentUnit ||
+							strings.Contains(importer, "OPage.mapping.test.") ||
+							strings.Contains(importer, "OPage.test.") {
+							return api.OnResolveResult{}, nil
+						}
 						return api.OnResolveResult{Path: stubs.OPage, Namespace: "file"}, nil
+					})
+			},
+		})
+		plugins = append(plugins, api.Plugin{
+			Name: "choysum-fe-unit-child-view-stub",
+			Setup: func(build api.PluginBuild) {
+				// Same Importer-empty problem as OPage: stub nested Form/List/Kanban for
+				// product page/view mounts. Skip when a FE unit test imports the *View SUT,
+				// or when web/web/components code is the importer (real child mounts).
+				build.OnResolve(api.OnResolveOptions{Filter: `(FormView|ListView|KanbanView)\.vue$`},
+					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+						importer := filepath.ToSlash(args.Importer)
+						if strings.Contains(importer, "/web/web/components/") ||
+							strings.HasSuffix(importer, ".test.ts") ||
+							strings.HasSuffix(importer, ".spec.ts") {
+							return api.OnResolveResult{}, nil
+						}
+						return api.OnResolveResult{Path: stubs.ChildView, Namespace: "file"}, nil
 					})
 			},
 		})

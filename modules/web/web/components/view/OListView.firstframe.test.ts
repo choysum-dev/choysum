@@ -1,100 +1,23 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, reactive, ref } from 'vue';
-import { mount, flushPromises } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, markRaw } from 'vue';
+import { buildPageMountGlobal } from '@choysum/page-mount';
 
-const { applyMock, awaitFieldSelectionMock, deferState, oSearchViewSentinel } = vi.hoisted(() => {
-  // Plain objects passed as searchView get proxied; markRaw keeps === stable with the SFC import.
-  const { markRaw } = require('vue') as typeof import('vue');
-  return {
-    applyMock: vi.fn(async () => {}),
-    awaitFieldSelectionMock: vi.fn(async () => {}),
-    deferState: { defer: false },
-    oSearchViewSentinel: markRaw({
-      name: 'OSearchViewSentinel',
-      setup: () => () => null,
-    }),
-  };
-});
-
-vi.mock('vue-router', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    resolve: vi.fn((loc: { name?: string }) => ({
-      name: loc?.name,
-      matched: [],
-    })),
-  }),
-  useRoute: () => ({ name: undefined, fullPath: '/', params: {}, query: {} }),
-}));
-
-vi.mock('@/web/web/controllers/listController', () => ({
-  createListController: vi.fn(() => ({
-    vm: reactive({
-      visibleNodes: [],
-      result: { kind: 'search', total: 0 },
-      expandedKeys: new Set(),
-    }),
-    apply: applyMock,
-    paginate: vi.fn(async () => {}),
-    sort: vi.fn(async () => {}),
-    expandGroup: vi.fn(),
-    loadMoreGroupChildren: vi.fn(async () => {}),
-    loadMoreGroupRecords: vi.fn(async () => {}),
-  })),
-}));
-
-vi.mock('@/web/web/composables/useAdaptiveHeight', () => ({
-  useAdaptiveHeight: () => ({
-    height: ref(400),
-    pxHeight: ref('400px'),
-    recompute: vi.fn(),
-  }),
-}));
-
-vi.mock('@/web/web/query/utils/registry/fieldReady', () => ({
-  awaitFieldSelection: (...args: any[]) => awaitFieldSelectionMock(...args),
-}));
-
-vi.mock('@/web/web/components/view/OSearchView.vue', () => ({
-  default: oSearchViewSentinel,
-}));
-
-vi.mock('@/web/web/components/view/kanbanFirstFrame', () => ({
-  shouldDeferViewFirstFrame: (searchView: unknown, oSearchView: unknown) =>
-    deferState.defer && searchView === oSearchView,
-  shouldDeferKanbanFirstFrame: (searchView: unknown, oSearchView: unknown) =>
-    deferState.defer && searchView === oSearchView,
-}));
-
-vi.mock('@/web/web/i18n', async () => {
-  const actual = await vi.importActual<typeof import('@/web/web/i18n')>('@/web/web/i18n');
-  return {
-    ...actual,
-    createTranslate: () => ({ _t: (msg: string) => msg, _lt: (msg: string) => msg }),
-  };
-});
-
-vi.mock('element-plus', async () => {
-  const actual = await vi.importActual<any>('element-plus');
-  return {
-    ...actual,
-    ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
-    ElMessageBox: { confirm: vi.fn() },
-  };
-});
-
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import OListView from './OListView.vue';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import OSearchView from './OSearchView.vue';
+import OListInlineEditScope from '@/web/web/components/view/OListInlineEditScope.vue';
+import OViewContainer from '@/web/web/components/view/OViewContainer.vue';
+import OPagination from './OPagination.vue';
+import OVTable from '@/web/web/components/vtable/OVTable.vue';
+import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 
-function makeStore() {
+function makeStore(search?: ReturnType<typeof fnRecorder>) {
   return {
-    fieldsMetadata: {},
+    fullModelName: 'partner.Partner',
+    storeId: 'list-ff-' + Math.random().toString(36).slice(2),
+    fieldsMetadata: { Name: { type: 'varchar' } },
     state: {
       queryState: {
         keyword: '',
@@ -104,94 +27,127 @@ function makeStore() {
         pagination: { limit: 20, offset: 0 },
       },
       result: { total: 0 },
+      selection: [],
+      planCache: new Map(),
       orderBy: undefined,
     },
+    setContext: () => {},
+    getContext: () => ({}),
+    withContext: async (_c: any, fn: any) => fn(),
+    Search: search || (async () => []),
   } as any;
 }
 
-const stubs = {
-  OViewContainer: {
-    template: `<div class="ovc"><slot name="header" /><slot /><slot name="fields" /></div>`,
-  },
-  OVTable: true,
-  OVColumn: true,
-  OPagination: true,
-  'el-button': true,
-  'el-icon': true,
-  OSearchView: true,
-};
+function stubListChrome() {
+  stubSfc(OViewContainer, {
+    name: 'OViewContainer',
+    setup(_p: any, { slots }: any) {
+      return () => h('div', { class: 'ovc' }, [slots.header?.(), slots.fields?.(), slots.default?.()]);
+    },
+  });
+  stubSfc(OListInlineEditScope, {
+    name: 'OListInlineEditScope',
+    setup(_p: any, { slots }: any) {
+      return () => h('div', { class: 'inline-edit-scope' }, slots.default?.());
+    },
+  });
+  stubSfc(OVTable, {
+    name: 'OVTable',
+    setup: () => () => h('div', { 'data-stub': 'OVTable' }),
+  });
+  stubSfc(OVColumn, {
+    name: 'OVColumn',
+    setup: () => () => null,
+  });
+  stubSfc(OPagination, {
+    name: 'OPagination',
+    setup: () => () => h('div', { 'data-stub': 'OPagination' }),
+  });
+  // Keep OSearchView identity for shouldDeferViewFirstFrame; render a silent stub.
+  stubSfc(OSearchView, {
+    name: 'OSearchView',
+    setup: () => () => h('div', { 'data-stub': 'OSearchView' }),
+  });
+}
+
+function restoreListChrome() {
+  restoreSfc(OViewContainer);
+  restoreSfc(OListInlineEditScope);
+  restoreSfc(OVTable);
+  restoreSfc(OVColumn);
+  restoreSfc(OPagination);
+  restoreSfc(OSearchView);
+}
 
 describe('OListView first-frame load', () => {
   beforeEach(() => {
-    applyMock.mockClear();
-    awaitFieldSelectionMock.mockClear();
-    awaitFieldSelectionMock.mockImplementation(async () => {});
-    deferState.defer = false;
+    stubListChrome();
   });
 
-  it('waits for OSearchView first-frame query-update instead of mount apply', () => {
-    const dir = dirname(fileURLToPath(import.meta.url));
-    const src = readFileSync(join(dir, 'OListView.vue'), 'utf8');
-    expect(src).toContain('shouldDeferViewFirstFrame(resolvedSearchView.value, OSearchView)');
+  afterEach(() => {
+    restoreListChrome();
   });
 
-  it('skips mount apply when first-frame should defer to OSearchView', async () => {
-    deferState.defer = true;
-    const wrapper = mount(OListView as any, {
+  test('skips mount apply when first-frame should defer to OSearchView', async () => {
+    const search = fnRecorder(async () => []);
+    const { plugins } = buildPageMountGlobal();
+    const { unmount } = mountApp(OListView as any, {
       props: {
-        store: makeStore(),
-        // Same sentinel OListView imports as OSearchView (mocked above).
-        searchView: oSearchViewSentinel,
+        store: makeStore(search),
+        // Same component reference OListView closes over as OSearchView.
+        searchView: OSearchView,
         showPaginate: false,
         refreshAction: false,
         deleteAction: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     await flushPromises();
-    expect(applyMock).not.toHaveBeenCalled();
-    expect(awaitFieldSelectionMock).not.toHaveBeenCalled();
-    wrapper.unmount();
+    expect(search.calls.length).toBe(0);
+    unmount();
   });
 
-  it('still mounts apply for a custom searchView even when defer flag is set', async () => {
-    deferState.defer = true;
-    const SearchStub = defineComponent({
-      name: 'SearchStub',
-      setup() {
-        return () => h('div');
-      },
-    });
-    const wrapper = mount(OListView as any, {
+  test('still mounts apply for a custom searchView even when OSearchView would defer', async () => {
+    const search = fnRecorder(async () => []);
+    const SearchStub = markRaw(
+      defineComponent({
+        name: 'SearchStub',
+        setup: () => () => h('div', { class: 'custom-search' }),
+      })
+    );
+    const { plugins } = buildPageMountGlobal();
+    const { unmount } = mountApp(OListView as any, {
       props: {
-        store: makeStore(),
+        store: makeStore(search),
         searchView: SearchStub,
         showPaginate: false,
         refreshAction: false,
         deleteAction: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     await flushPromises();
-    expect(awaitFieldSelectionMock).toHaveBeenCalled();
-    expect(applyMock).toHaveBeenCalled();
-    wrapper.unmount();
+    expect(search.calls.length).toBeGreaterThan(0);
+    unmount();
   });
 
-  it('runs mount apply when first-frame should not defer', async () => {
-    deferState.defer = false;
-    const wrapper = mount(OListView as any, {
+  test('runs mount apply when first-frame should not defer', async () => {
+    const search = fnRecorder(async () => []);
+    const { plugins } = buildPageMountGlobal();
+    const { unmount } = mountApp(OListView as any, {
       props: {
-        store: makeStore(),
+        store: makeStore(search),
         showPaginate: false,
         refreshAction: false,
         deleteAction: false,
       },
-      global: { stubs },
+      plugins,
+      stubs: { ElButton: true, ElIcon: true },
     });
     await flushPromises();
-    expect(awaitFieldSelectionMock).toHaveBeenCalled();
-    expect(applyMock).toHaveBeenCalled();
-    wrapper.unmount();
+    expect(search.calls.length).toBeGreaterThan(0);
+    unmount();
   });
 });

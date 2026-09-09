@@ -1,136 +1,158 @@
-// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, h } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { h } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { ElButton } from 'element-plus';
 
-const SearchByRecord = vi.fn();
-const Follow = vi.fn();
-const Unfollow = vi.fn();
-const authState = { currentUser: { Id: 'usr_1', Name: 'Tester' } as { Id?: string; Name?: string } | null };
-
-vi.mock('@/web/web/i18n', () => ({
-  createTranslate: () => ({ _t: (msg: string, ...args: unknown[]) => (args.length ? `${msg}:${args.join(',')}` : msg) }),
-}));
-
-vi.mock('@/web/web/composables/chatter/chatterStores', () => ({
-  getFollowerStore: () => ({ SearchByRecord, Follow, Unfollow }),
-}));
-
-vi.mock('@/auth/web/stores/auth', () => ({
-  useAuthStore: () => authState,
-}));
-
+import { useAuthStore } from '@/auth/web/stores/auth';
+import { GetFollowerStoreKey } from '@/web/web/composables/chatter/chatterStores';
+import {
+  flushPromises,
+  fnRecorder,
+  mountApp,
+  restoreSfc,
+  stubSfc,
+} from '@/web/web/__tests__/mountApp';
 import OChatterFollowerBar from './OChatterFollowerBar.vue';
 
 describe('OChatterFollowerBar', () => {
+  const SearchByRecord = fnRecorder(async () => [{ UserId: 'usr_1' }, { UserId: 'usr_2' }] as any[]);
+  const Follow = fnRecorder(async () => ({ Id: 'f1' }));
+  const Unfollow = fnRecorder(async () => 1);
+  let pinia: ReturnType<typeof createPinia>;
+
   beforeEach(() => {
+    pinia = createPinia();
+    setActivePinia(pinia);
+    useAuthStore().currentUser = { Id: 'usr_1', Name: 'Tester' } as any;
+
     SearchByRecord.mockReset();
     Follow.mockReset();
     Unfollow.mockReset();
-    authState.currentUser = { Id: 'usr_1', Name: 'Tester' };
-    SearchByRecord.mockResolvedValue([{ UserId: 'usr_1' }, { UserId: 'usr_2' }]);
-    Follow.mockResolvedValue({ Id: 'f1' });
-    Unfollow.mockResolvedValue(1);
+    SearchByRecord.mockImplementation(async () => [{ UserId: 'usr_1' }, { UserId: 'usr_2' }]);
+    Follow.mockImplementation(async () => ({ Id: 'f1' }));
+    Unfollow.mockImplementation(async () => 1);
+
+    stubSfc(ElButton as any, {
+      name: 'ElButton',
+      inheritAttrs: false,
+      props: { disabled: { type: Boolean, default: false }, loading: { type: Boolean, default: false } },
+      emits: ['click'],
+      setup(props: any, { slots, emit, attrs }: any) {
+        return () =>
+          h(
+            'button',
+            {
+              ...attrs,
+              type: 'button',
+              class: 'follower-toggle',
+              'data-disabled': props.disabled ? 'true' : 'false',
+              disabled: props.disabled || undefined,
+              onClick: (event: any) => emit('click', event ?? { stopPropagation: () => undefined }),
+            },
+            slots.default?.()
+          );
+      },
+    });
+  });
+
+  afterEach(() => {
+    restoreSfc(ElButton as any);
   });
 
   function mountBar(props?: Partial<{ model: string; resId: string; disabled: boolean }>) {
-    return mount(OChatterFollowerBar, {
+    return mountApp(OChatterFollowerBar as any, {
       props: {
         model: 'partner.Partner',
         resId: 'res1',
         ...props,
       },
-      global: {
-        stubs: {
-          ElButton: defineComponent({
-            props: { disabled: Boolean, loading: Boolean },
-            emits: ['click'],
-            setup(props, { slots, emit }) {
-              return () =>
-                h(
-                  'button',
-                  {
-                    class: 'el-button',
-                    disabled: props.disabled,
-                    onClick: () => emit('click'),
-                  },
-                  slots.default?.()
-                );
-            },
-          }),
-        },
+      reactiveProps: true,
+      plugins: [pinia],
+      provide: {
+        [GetFollowerStoreKey]: () => ({ SearchByRecord, Follow, Unfollow }),
       },
     });
   }
 
-  it('loads follower state and shows the count', async () => {
-    const wrapper = mountBar();
+  test('loads follower state and shows the count', async () => {
+    const mounted = mountBar();
     await flushPromises();
-    expect(SearchByRecord).toHaveBeenCalledWith('partner.Partner', 'res1', ['UserId']);
-    expect(wrapper.text()).toContain('Unfollow');
-    expect(wrapper.text()).toContain('%d followers:2');
+    expect(SearchByRecord.calls[0]).toEqual(['partner.Partner', 'res1', ['UserId']]);
+    expect(mounted.text()).toContain('Unfollow');
+    expect(mounted.text()).toContain('2 followers');
+    mounted.unmount();
   });
 
-  it('follows and unfollows the current record', async () => {
-    SearchByRecord.mockResolvedValueOnce([]).mockResolvedValueOnce([{ UserId: 'usr_1' }]);
-    const wrapper = mountBar();
+  test('follows and unfollows the current record', async () => {
+    let call = 0;
+    SearchByRecord.mockImplementation(async () => {
+      call += 1;
+      return call === 1 ? [] : [{ UserId: 'usr_1' }];
+    });
+    const mounted = mountBar();
     await flushPromises();
-    expect(wrapper.text()).toContain('Follow');
+    expect(mounted.text()).toContain('Follow');
 
-    await wrapper.find('button').trigger('click');
+    mounted.click('.follower-toggle');
     await flushPromises();
-    expect(Follow).toHaveBeenCalledWith({ Model: 'partner.Partner', ResId: 'res1' });
-    expect(wrapper.text()).toContain('Unfollow');
+    expect(Follow.calls[0]?.[0]).toEqual({ Model: 'partner.Partner', ResId: 'res1' });
+    expect(mounted.text()).toContain('Unfollow');
 
-    await wrapper.find('button').trigger('click');
+    mounted.click('.follower-toggle');
     await flushPromises();
-    expect(Unfollow).toHaveBeenCalledWith({ Model: 'partner.Partner', ResId: 'res1' });
+    expect(Unfollow.calls[0]?.[0]).toEqual({ Model: 'partner.Partner', ResId: 'res1' });
+    mounted.unmount();
   });
 
-  it('clears state when the thread identity is empty', async () => {
-    const wrapper = mountBar({ model: '  ', resId: '  ' });
+  test('clears state when the thread identity is empty', async () => {
+    const mounted = mountBar({ model: '  ', resId: '  ' });
     await flushPromises();
-    expect(SearchByRecord).not.toHaveBeenCalled();
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined();
+    expect(SearchByRecord.calls.length).toBe(0);
+    expect(mounted.q('.follower-toggle')?.getAttribute('data-disabled')).toBe('true');
+    mounted.unmount();
 
     SearchByRecord.mockClear();
     const missingModel = mountBar({ model: '', resId: 'res1' });
     await flushPromises();
-    expect(SearchByRecord).not.toHaveBeenCalled();
-    expect(missingModel.find('button').attributes('disabled')).toBeDefined();
+    expect(SearchByRecord.calls.length).toBe(0);
+    expect(missingModel.q('.follower-toggle')?.getAttribute('data-disabled')).toBe('true');
+    missingModel.unmount();
 
     const missingResId = mountBar({ model: 'partner.Partner', resId: '' });
     await flushPromises();
-    expect(SearchByRecord).not.toHaveBeenCalled();
-    expect(missingResId.find('button').attributes('disabled')).toBeDefined();
+    expect(SearchByRecord.calls.length).toBe(0);
+    expect(missingResId.q('.follower-toggle')?.getAttribute('data-disabled')).toBe('true');
+    missingResId.unmount();
   });
 
-  it('treats follower rows without UserId as not the current user', async () => {
-    SearchByRecord.mockResolvedValue([{ UserId: null }, { UserId: '  ' }, {}]);
-    const wrapper = mountBar();
+  test('treats follower rows without UserId as not the current user', async () => {
+    SearchByRecord.mockImplementation(async () => [{ UserId: null }, { UserId: '  ' }, {}]);
+    const mounted = mountBar();
     await flushPromises();
-    expect(wrapper.text()).toContain('Follow');
-    expect(wrapper.text()).toContain('%d followers:3');
+    expect(mounted.text()).toContain('Follow');
+    expect(mounted.text()).toContain('3 followers');
+    mounted.unmount();
   });
 
-  it('does not toggle when disabled or unauthenticated', async () => {
-    authState.currentUser = null;
-    const wrapper = mountBar();
+  test('does not toggle when disabled or unauthenticated', async () => {
+    useAuthStore().currentUser = null;
+    const mounted = mountBar();
     await flushPromises();
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined();
-    expect(Follow).not.toHaveBeenCalled();
+    expect(mounted.q('.follower-toggle')?.getAttribute('data-disabled')).toBe('true');
+    mounted.click('.follower-toggle');
+    expect(Follow.calls.length).toBe(0);
 
-    authState.currentUser = { Id: 'usr_1' };
-    await wrapper.setProps({ disabled: true });
+    useAuthStore().currentUser = { Id: 'usr_1' } as any;
+    mounted.props.disabled = true;
     await flushPromises();
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined();
-    expect(Follow).not.toHaveBeenCalled();
+    mounted.click('.follower-toggle');
+    expect(Follow.calls.length).toBe(0);
+    mounted.unmount();
   });
 
-  it('ignores toggle clicks while loading', async () => {
+  test('ignores toggle clicks while loading', async () => {
     let resolveSearch: ((rows: unknown[]) => void) | undefined;
     SearchByRecord.mockImplementation(
       () =>
@@ -138,11 +160,12 @@ describe('OChatterFollowerBar', () => {
           resolveSearch = resolve;
         })
     );
-    const wrapper = mountBar();
+    const mounted = mountBar();
     await Promise.resolve();
-    await wrapper.find('button').trigger('click');
-    expect(Follow).not.toHaveBeenCalled();
+    mounted.click('.follower-toggle');
+    expect(Follow.calls.length).toBe(0);
     resolveSearch?.([]);
     await flushPromises();
+    mounted.unmount();
   });
 });
