@@ -70,12 +70,47 @@ func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string)
 }
 
 // Drain marks the host closed and waits for in-flight async host ops (delay / waitForResponse).
+// Bounded so a goroutine blocked in ctx.Schedule (full job queue) cannot hang the runner forever.
 func (h *Host) Drain() {
 	if h == nil {
 		return
 	}
 	h.closed.Store(true)
-	h.pending.Wait()
+	done := make(chan struct{})
+	go func() {
+		h.pending.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+	}
+}
+
+func (h *Host) schedule(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
+	if h == nil || ctx == nil || job == nil || h.closed.Load() {
+		return false
+	}
+	// Schedule can block when the QuickJS job queue is full. Race with Drain by
+	// not waiting unbounded once the host is marked closed.
+	done := make(chan bool, 1)
+	go func() {
+		done <- ctx.Schedule(job)
+	}()
+	select {
+	case ok := <-done:
+		return ok
+	case <-time.After(500 * time.Millisecond):
+		if h.closed.Load() {
+			return false
+		}
+		select {
+		case ok := <-done:
+			return ok
+		case <-time.After(1500 * time.Millisecond):
+			return false
+		}
+	}
 }
 
 func stringsTrimJSON(s string) string {
@@ -289,7 +324,7 @@ func (h *Host) bindWaitForResponse() func(ctx *quickjs.Context, this *quickjs.Va
 				if h.closed.Load() {
 					return
 				}
-				scheduled := ctx.Schedule(func(inner *quickjs.Context) {
+				scheduled := h.schedule(ctx, func(inner *quickjs.Context) {
 					if h.closed.Load() {
 						return
 					}
@@ -339,7 +374,7 @@ func (h *Host) bindDelay() func(ctx *quickjs.Context, this *quickjs.Value, args 
 				if h.closed.Load() {
 					return
 				}
-				ctx.Schedule(func(inner *quickjs.Context) {
+				h.schedule(ctx, func(inner *quickjs.Context) {
 					if h.closed.Load() {
 						return
 					}

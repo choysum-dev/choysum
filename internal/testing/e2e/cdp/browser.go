@@ -78,6 +78,14 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 	// on first browser boot. A watcher still closes the session when parent ctx ends.
 	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), allocOpts...)
 	browserCtx, cancel := chromedp.NewContext(allocCtx)
+	if err := chromedp.Run(browserCtx, chromedp.Navigate("about:blank")); err != nil {
+		cancel()
+		allocCancel()
+		_ = os.RemoveAll(udir)
+		return nil, fmt.Errorf("cdp: start browser (%s): %w", execPath, err)
+	}
+	// Arm parent-ctx watcher only after the first navigation succeeds so an
+	// already-canceled parent cannot cancel browserCtx mid-boot.
 	watchCtx, stopWatch := context.WithCancel(context.Background())
 	go func() {
 		select {
@@ -87,13 +95,6 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 		case <-watchCtx.Done():
 		}
 	}()
-	if err := chromedp.Run(browserCtx, chromedp.Navigate("about:blank")); err != nil {
-		stopWatch()
-		cancel()
-		allocCancel()
-		_ = os.RemoveAll(udir)
-		return nil, fmt.Errorf("cdp: start browser (%s): %w", execPath, err)
-	}
 	return &Session{
 		allocCtx:    allocCtx,
 		allocCancel: allocCancel,

@@ -88,7 +88,7 @@ def install(version: str = PINNED_VERSION, revision: str = PINNED_REVISION) -> P
 
     url = chrome_download_url(version, plat)
     print(f"downloading {url}", file=sys.stderr)
-    with urllib.request.urlopen(url) as resp:
+    with urllib.request.urlopen(url, timeout=300) as resp:
         data = resp.read()
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
         zf.extractall(dest)

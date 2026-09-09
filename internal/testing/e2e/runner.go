@@ -1467,6 +1467,11 @@ func filterE2ESpecsByArgs(specFiles []string, playwrightArgs []string) (filtered
 				filtered = append(filtered, file)
 				break
 			}
+			// Playwright positional args are regexes against the full path.
+			if re, err := regexp.Compile(pat); err == nil && re.MatchString(file) {
+				filtered = append(filtered, file)
+				break
+			}
 		}
 	}
 	return filtered, passthrough

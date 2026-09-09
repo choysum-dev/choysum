@@ -130,6 +130,9 @@ function extractGrpcWebTrailerText(body: Uint8Array): string {
     offset += len;
 
     if ((flags & 0x80) !== 0) {
+      if (typeof TextDecoder !== 'undefined') {
+        return new TextDecoder('utf-8').decode(payload);
+      }
       let s = '';
       for (let i = 0; i < payload.length; i++) s += String.fromCharCode(payload[i]);
       return s;

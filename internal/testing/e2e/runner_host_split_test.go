@@ -27,6 +27,10 @@ func TestFilterE2ESpecsByArgs(t *testing.T) {
 	if len(pass) != 1 || pass[0] != "--workers=1" {
 		t.Fatalf("passthrough=%v", pass)
 	}
+	reFiltered, _ := filterE2ESpecsByArgs(files, []string{".*smoke.*"})
+	if len(reFiltered) != 1 || !strings.HasSuffix(reFiltered[0], "smoke.spec.ts") {
+		t.Fatalf("regex filtered=%v", reFiltered)
+	}
 	all, pass2 := filterE2ESpecsByArgs(files, nil)
 	if len(all) != 3 || len(pass2) != 0 {
 		t.Fatalf("all=%v pass=%v", all, pass2)
@@ -148,7 +152,9 @@ func TestPartitionSmokeFilterSkipsPlaywright(t *testing.T) {
 	applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 		return nil
 	}
-	seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error { return nil }
+	seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+		return nil
+	}
 	startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
 		return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
 	}

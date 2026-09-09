@@ -7,7 +7,6 @@ import (
 	"context"
 	"os"
 	"testing"
-	"time"
 )
 
 func chromiumCandidates() []string {
@@ -53,7 +52,9 @@ func startTestSession(t *testing.T) *Session {
 	headless := true
 	var lastErr error
 	for _, execPath := range cands {
-		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+		// Bind session lifetime to the test, not a short start deadline: Start
+		// watches the parent ctx and would tear down the browser when it ends.
+		ctx, cancel := context.WithCancel(context.Background())
 		session, err := Start(ctx, StartOptions{ExecPath: execPath, Headless: &headless})
 		if err == nil {
 			t.Cleanup(func() {

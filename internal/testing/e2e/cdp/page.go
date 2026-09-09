@@ -43,6 +43,25 @@ func (s *Session) NewPage() (*Page, error) {
 	return p, nil
 }
 
+// ScreenshotCurrent writes a PNG of the session's current tab without navigating away.
+func (s *Session) ScreenshotCurrent(path string) error {
+	if s == nil || s.browserCtx == nil {
+		return fmt.Errorf("cdp: nil session")
+	}
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return fmt.Errorf("cdp: empty screenshot path")
+	}
+	if err := s.browserCtx.Err(); err != nil {
+		return err
+	}
+	var buf []byte
+	if err := chromedp.Run(s.browserCtx, chromedp.FullScreenshot(&buf, 100)); err != nil {
+		return err
+	}
+	return os.WriteFile(path, buf, 0o644)
+}
+
 // Close closes the tab.
 func (p *Page) Close() {
 	if p == nil {
@@ -174,13 +193,18 @@ func (p *Page) WaitForFunction(jsExpr string, timeout time.Duration) error {
 		timeout = 30 * time.Second
 	}
 	deadline := time.Now().Add(timeout)
-	wrapped := fmt.Sprintf(`Boolean((function(){ return (%s); })())`, jsExpr)
+	// Swallow transient JS/DOM errors so polling continues until the deadline.
+	wrapped := fmt.Sprintf(`(() => { try { return Boolean((function(){ return (%s); })()); } catch (e) { return false; } })()`, jsExpr)
 	for {
 		var ok bool
 		if err := chromedp.Run(p.ctx, chromedp.Evaluate(wrapped, &ok)); err != nil {
-			return err
-		}
-		if ok {
+			if p.ctx.Err() != nil {
+				return p.ctx.Err()
+			}
+			if time.Now().After(deadline) {
+				return fmt.Errorf("cdp: waitForFunction: %w", err)
+			}
+		} else if ok {
 			return nil
 		}
 		if time.Now().After(deadline) {

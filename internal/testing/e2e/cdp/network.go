@@ -66,6 +66,7 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 	var mu sync.Mutex
 	pending := map[network.RequestID]pendingReq{}
 	matchedResp := map[network.RequestID]pendingResp{}
+	finishing := map[network.RequestID]bool{}
 	resultCh := make(chan *MatchedResponse, 1)
 
 	matches := func(method, url, ct string) bool {
@@ -81,30 +82,70 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 		return true
 	}
 
+	bodyUnavailable := func(err error) bool {
+		if err == nil {
+			return false
+		}
+		msg := err.Error()
+		return strings.Contains(msg, "No resource with given identifier") ||
+			strings.Contains(msg, "No data found for resource with given identifier") ||
+			strings.Contains(msg, "No data found")
+	}
+
 	listenerCtx, stopListener := context.WithCancel(p.ctx)
 	defer stopListener()
 
 	tryFinish := func(reqID network.RequestID) {
 		mu.Lock()
 		resp, ok := matchedResp[reqID]
-		if !ok {
+		if !ok || finishing[reqID] {
 			mu.Unlock()
 			return
 		}
-		delete(matchedResp, reqID)
-		delete(pending, reqID)
+		finishing[reqID] = true
 		mu.Unlock()
 
 		go func() {
+			defer func() {
+				mu.Lock()
+				delete(finishing, reqID)
+				mu.Unlock()
+			}()
+
 			var body []byte
-			// Body may be unavailable for some responses (redirects, opaque); still finish the match.
-			_ = chromedp.Run(p.ctx, chromedp.ActionFunc(func(ctx context.Context) error {
-				b, err := network.GetResponseBody(reqID).Do(ctx)
-				if err == nil {
-					body = b
+			for {
+				if listenerCtx.Err() != nil {
+					return
 				}
-				return nil
-			}))
+				fetchErr := chromedp.Run(p.ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+					b, err := network.GetResponseBody(reqID).Do(ctx)
+					if err != nil {
+						return err
+					}
+					body = b
+					return nil
+				}))
+				if fetchErr == nil || bodyUnavailable(fetchErr) {
+					break
+				}
+				// Body not ready yet; keep matchedResp and retry until ready,
+				// permanently unavailable, or the waiter is canceled.
+				select {
+				case <-listenerCtx.Done():
+					return
+				case <-time.After(25 * time.Millisecond):
+				}
+			}
+
+			mu.Lock()
+			if _, still := matchedResp[reqID]; !still {
+				mu.Unlock()
+				return
+			}
+			delete(matchedResp, reqID)
+			delete(pending, reqID)
+			mu.Unlock()
+
 			select {
 			case resultCh <- &MatchedResponse{Status: resp.status, Headers: resp.headers, Body: body, URL: resp.url}:
 			default:
@@ -143,9 +184,10 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 			if url == "" {
 				url = req.url
 			}
-			ct := req.ct
+			// Prefer response Content-Type; fall back to request only when absent.
+			ct := strings.ToLower(headerValue(e.Response.Headers, "content-type"))
 			if ct == "" {
-				ct = strings.ToLower(headerValue(e.Response.Headers, "content-type"))
+				ct = req.ct
 			}
 			if !matches(req.method, url, ct) && !matches(req.method, req.url, ct) {
 				mu.Unlock()
@@ -169,7 +211,7 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 			// Prefer LoadingFinished for body availability; also arm a fallback in case
 			// that event is skipped for some response types.
 			go func() {
-				time.Sleep(25 * time.Millisecond)
+				time.Sleep(50 * time.Millisecond)
 				tryFinish(reqID)
 			}()
 		case *network.EventLoadingFinished:

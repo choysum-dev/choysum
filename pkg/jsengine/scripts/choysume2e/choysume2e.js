@@ -101,9 +101,10 @@ function makeLocator(kind, value) {
 }
 
 async function ensureCSS(loc) {
-  if (loc._css) return loc._css;
-  loc._css = await resolveToCSS(loc.kind, loc.value);
-  return loc._css;
+  // CSS locators are stable selectors; dynamic (text/placeholder) stamps must
+  // be re-resolved each action in case the DOM re-rendered.
+  if (loc.kind === 'css') return String(loc.value);
+  return await resolveToCSS(loc.kind, loc.value);
 }
 
 async function resolveToCSS(kind, value) {
@@ -145,7 +146,10 @@ async function resolveToCSS(kind, value) {
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
       let n = walker.currentNode;
       while (n) {
-        if (n.childElementCount === 0) {
+        const hasDirectText = Array.from(n.childNodes).some(
+          c => c.nodeType === 3 && (c.nodeValue || '').trim().includes(needle)
+        );
+        if (n.childElementCount === 0 || hasDirectText) {
           const t = (n.textContent || '').trim();
           if (t && t.includes(needle)) {
             n.setAttribute('data-choysum-e2e-id', stamp);
@@ -187,7 +191,10 @@ async function countLocator(kind, value) {
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
       let n = walker.currentNode;
       while (n) {
-        if (n.childElementCount === 0) {
+        const hasDirectText = Array.from(n.childNodes).some(
+          c => c.nodeType === 3 && (c.nodeValue || '').trim().includes(needle)
+        );
+        if (n.childElementCount === 0 || hasDirectText) {
           const t = (n.textContent || '').trim();
           if (t && t.includes(needle)) c++;
         }
@@ -290,6 +297,15 @@ async function poll(timeoutMs, fn) {
   throw new Error('expect polling timeout');
 }
 
+async function pollOrFail(timeoutMs, diag, fn) {
+  try {
+    await poll(timeoutMs, fn);
+  } catch (e) {
+    const msg = e && e.message ? e.message : String(e);
+    throw new Error(diag ? `${diag}: ${msg}` : msg);
+  }
+}
+
 function e2eExpect(target, message) {
   const diag = message != null && message !== '' ? String(message) : '';
   const fail = msg => {
@@ -301,13 +317,13 @@ function e2eExpect(target, message) {
       if (!target || !target.__choysum_e2e_locator__) {
         fail('toBeVisible: expected locator');
       }
-      await poll(timeout, async () => {
+      await pollOrFail(timeout, diag, async () => {
         try {
           const sel = await ensureCSS(target);
           return await getHost().isVisible(sel);
-        } catch {
+        } catch (e) {
           target._css = '';
-          return false;
+          throw e;
         }
       });
     },
@@ -316,13 +332,13 @@ function e2eExpect(target, message) {
       if (!target || !target.__choysum_e2e_locator__) {
         fail('toBeEnabled: expected locator');
       }
-      await poll(timeout, async () => {
+      await pollOrFail(timeout, diag, async () => {
         try {
           const sel = await ensureCSS(target);
           return await getHost().isEnabled(sel);
-        } catch {
+        } catch (e) {
           target._css = '';
-          return false;
+          throw e;
         }
       });
     },
@@ -331,8 +347,7 @@ function e2eExpect(target, message) {
       if (!target || !target.__choysum_e2e_locator__) {
         fail('toHaveCount: expected locator');
       }
-      await poll(timeout, async () => {
-        target._css = '';
+      await pollOrFail(timeout, diag, async () => {
         const count = await countLocator(target.kind, target.value);
         return count === n;
       });
@@ -345,8 +360,15 @@ function e2eExpect(target, message) {
       const isRe =
         reOrString && typeof reOrString === 'object' && typeof reOrString.test === 'function';
       const re = isRe ? reOrString : null;
-      const exact = isRe ? '' : String(reOrString);
-      await poll(timeout, async () => {
+      let exact = '';
+      if (!isRe) {
+        exact = String(reOrString);
+        const base = getRuntime().baseURL;
+        if (base && !/^[a-z][a-z0-9+.-]*:\/\//i.test(exact)) {
+          exact = new URL(exact, base).href;
+        }
+      }
+      await pollOrFail(timeout, diag, async () => {
         const href = String(await getHost().url());
         if (re) return re.test(href);
         // String form: match the full URL (Playwright string semantics), not a RegExp.

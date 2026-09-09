@@ -105,9 +105,11 @@ func runE2EHost(ctx context.Context, opts RunOptions, specsDir string, baseURL s
 		return xfmt.Errorf("e2e host: BootstrapTimers failed")
 	}
 
-	if _, err := pagehost.Install(engine, session, string(runtimeRaw)); err != nil {
+	host, err := pagehost.Install(engine, session, string(runtimeRaw))
+	if err != nil {
 		return err
 	}
+	defer host.Drain()
 
 	if err := engine.Load([]*jsengine.JsScript{
 		{FileName: "scripts/choysumtest/choysumtest.js", Content: choysumtest.ChoysumTestScript},
@@ -138,11 +140,8 @@ func runE2EHost(ctx context.Context, opts RunOptions, specsDir string, baseURL s
 	if report.Failed > 0 {
 		shotDir := filepath.Join(bundleDir, "screenshots")
 		_ = os.MkdirAll(shotDir, 0o755)
-		// Best-effort screenshot of current page if still open.
-		if p, err := session.NewPage(); err == nil {
-			_ = p.Screenshot(filepath.Join(shotDir, "failure.png"))
-			p.Close()
-		}
+		// Capture the current tab; NewPage() would navigate to about:blank first.
+		_ = session.ScreenshotCurrent(filepath.Join(shotDir, "failure.png"))
 		fmt.Fprintf(opts.Stderr, "# e2e-qjs failed (%d/%d) baseURL=%s specsDir=%s\n", report.Failed, report.Total, baseURL, specsDir)
 		return xfmt.Errorf("e2e host: %d failed", report.Failed)
 	}
