@@ -433,9 +433,20 @@
     },
     set: function (v) {
       this._html = String(v == null ? '' : v);
-      // Test-host plaintext projection only (not a sanitizer): drop tags so blank
-      // markup like <p></p> yields empty textContent for normalizeHtmlForStore.
-      this.textContent = this._html.replace(/<[^>]*>/g, '');
+      // Test-host plaintext projection only (not a sanitizer): drop markup so blank
+      // tags like <p></p> yield empty textContent for normalizeHtmlForStore.
+      // Scan char-by-char (not a multi-char replace) so nested/open tags cannot
+      // reintroduce a leftover "<script" sequence after one pass.
+      var html = this._html;
+      var plain = '';
+      for (var i = 0; i < html.length; i++) {
+        if (html.charAt(i) === '<') {
+          while (i < html.length && html.charAt(i) !== '>') i++;
+          continue;
+        }
+        plain += html.charAt(i);
+      }
+      this.textContent = plain;
     },
   });
 
