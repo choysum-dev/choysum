@@ -108,16 +108,47 @@ func TestStartCloseContextExecPath(t *testing.T) {
 	}
 }
 
-func TestStartNilContextAndHeadedEnv(t *testing.T) {
-	execPath := requireChromium(t)
-	t.Setenv("CHOYSUM_E2E_HEADED", "1")
-	headless := true
-	session, err := Start(nil, StartOptions{ExecPath: execPath, Headless: &headless})
-	if err != nil {
-		// CHOYSUM_E2E_HEADED=1 forces headed mode; displayless CI runners fail to start.
-		t.Skipf("headed chromium start failed: %v", err)
+func TestWantHeadless(t *testing.T) {
+	t.Setenv("CHOYSUM_E2E_HEADED", "")
+	if !WantHeadless(StartOptions{}) {
+		t.Fatal("default should be headless")
 	}
-	session.Close()
+	for _, v := range []string{"0", "false", "no", "FALSE", " off "} {
+		t.Setenv("CHOYSUM_E2E_HEADED", v)
+		if !WantHeadless(StartOptions{}) {
+			t.Fatalf("CHOYSUM_E2E_HEADED=%q should stay headless", v)
+		}
+	}
+	for _, v := range []string{"1", "true", "yes", "TRUE"} {
+		t.Setenv("CHOYSUM_E2E_HEADED", v)
+		if WantHeadless(StartOptions{}) {
+			t.Fatalf("CHOYSUM_E2E_HEADED=%q should be headed", v)
+		}
+	}
+	// Explicit opts win over ambient env (unit tests / helpers force headless).
+	t.Setenv("CHOYSUM_E2E_HEADED", "1")
+	h := true
+	if !WantHeadless(StartOptions{Headless: &h}) {
+		t.Fatal("explicit Headless=true must win over CHOYSUM_E2E_HEADED=1")
+	}
+	h = false
+	t.Setenv("CHOYSUM_E2E_HEADED", "0")
+	if WantHeadless(StartOptions{Headless: &h}) {
+		t.Fatal("explicit Headless=false must win over CHOYSUM_E2E_HEADED=0")
+	}
+}
+
+func TestStartNilContextHeadless(t *testing.T) {
+	execPath := requireChromium(t)
+	t.Setenv("CHOYSUM_E2E_HEADED", "0")
+	session, err := Start(nil, StartOptions{ExecPath: execPath})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer session.Close()
+	if !session.Headless() {
+		t.Fatal("expected headless session")
+	}
 }
 
 func TestStartBadExecPath(t *testing.T) {

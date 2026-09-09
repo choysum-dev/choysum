@@ -83,6 +83,7 @@ func runE2EHost(ctx context.Context, opts RunOptions, specsDir string, baseURL s
 		return xfmt.Errorf("e2e host: read runtime: %w", err)
 	}
 
+	// Headless by default; set CHOYSUM_E2E_HEADED=1 only for local debugging.
 	session, err := cdpStart(ctx, cdp.StartOptions{})
 	if err != nil {
 		return err

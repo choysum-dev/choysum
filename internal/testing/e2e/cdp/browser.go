@@ -28,14 +28,34 @@ type Session struct {
 	execPath    string
 	userDataDir string
 	stopWatch   context.CancelFunc
+	headless    bool
 }
 
 // StartOptions configures browser launch.
 type StartOptions struct {
 	// ExecPath overrides binary discovery when non-empty.
 	ExecPath string
-	// Headless defaults to true; CHOYSUM_E2E_HEADED=1 forces headed.
+	// Headless selects headless mode when non-nil. When nil, WantHeadless
+	// falls back to CHOYSUM_E2E_HEADED (default headless).
 	Headless *bool
+}
+
+// WantHeadless reports whether Chromium should run headless.
+//
+// Default is headless. Explicit StartOptions.Headless wins when set.
+// Otherwise only CHOYSUM_E2E_HEADED=1|true|yes opts into headed mode for
+// local debugging; unset, 0, false, and no leave headless.
+func WantHeadless(opts StartOptions) bool {
+	if opts.Headless != nil {
+		return *opts.Headless
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("CHOYSUM_E2E_HEADED"))) {
+	case "1", "true", "yes":
+		return false
+	default:
+		// unset, "0", "false", "no", or anything else → headless
+		return true
+	}
 }
 
 // Start launches Chromium via chromedp ExecAllocator.
@@ -51,13 +71,7 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 			return nil, err
 		}
 	}
-	headless := true
-	if opts.Headless != nil {
-		headless = *opts.Headless
-	}
-	if strings.TrimSpace(os.Getenv("CHOYSUM_E2E_HEADED")) == "1" {
-		headless = false
-	}
+	headless := WantHeadless(opts)
 
 	udir, err := os.MkdirTemp("", "choysum-e2e-chrome-*")
 	if err != nil {
@@ -103,6 +117,7 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 		execPath:    execPath,
 		userDataDir: udir,
 		stopWatch:   stopWatch,
+		headless:    headless,
 	}, nil
 }
 
@@ -139,6 +154,14 @@ func (s *Session) ExecPath() string {
 		return ""
 	}
 	return s.execPath
+}
+
+// Headless reports whether this session was started headless.
+func (s *Session) Headless() bool {
+	if s == nil {
+		return true
+	}
+	return s.headless
 }
 
 // ResolveChromiumPath finds a Chromium/Chrome binary.

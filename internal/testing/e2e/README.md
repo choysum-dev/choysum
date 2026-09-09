@@ -25,7 +25,9 @@ Binary resolution order:
 2. `$CHOYSUM_HOME/browsers/chromium-<rev>/…` (default `CHOYSUM_HOME=~/.choysum`)
 3. Local system Chrome/Chromium (local only)
 
-Headless is the default; set `CHOYSUM_E2E_HEADED=1` for headed runs.
+Headless is the default (unset or `CHOYSUM_E2E_HEADED=0`). Set
+`CHOYSUM_E2E_HEADED=1` only for local debugging with a visible browser; do not
+set it in CI.
 
 ## Playwright note
 
