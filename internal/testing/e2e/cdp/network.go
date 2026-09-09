@@ -56,8 +56,16 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 		url    string
 		ct     string
 	}
+	type pendingResp struct {
+		status  int64
+		headers map[string]string
+		url     string
+		method  string
+		ct      string
+	}
 	var mu sync.Mutex
 	pending := map[network.RequestID]pendingReq{}
+	matchedResp := map[network.RequestID]pendingResp{}
 	resultCh := make(chan *MatchedResponse, 1)
 
 	matches := func(method, url, ct string) bool {
@@ -67,14 +75,44 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 		if methodWant != "" && method != "" && method != methodWant {
 			return false
 		}
-		// Only filter content-type when the request actually reported one.
 		if ctPrefix != "" && ct != "" && !strings.HasPrefix(ct, ctPrefix) {
 			return false
 		}
 		return true
 	}
 
-	chromedp.ListenTarget(p.ctx, func(ev interface{}) {
+	listenerCtx, stopListener := context.WithCancel(p.ctx)
+	defer stopListener()
+
+	tryFinish := func(reqID network.RequestID) {
+		mu.Lock()
+		resp, ok := matchedResp[reqID]
+		if !ok {
+			mu.Unlock()
+			return
+		}
+		delete(matchedResp, reqID)
+		delete(pending, reqID)
+		mu.Unlock()
+
+		go func() {
+			var body []byte
+			// Body may be unavailable for some responses (redirects, opaque); still finish the match.
+			_ = chromedp.Run(p.ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+				b, err := network.GetResponseBody(reqID).Do(ctx)
+				if err == nil {
+					body = b
+				}
+				return nil
+			}))
+			select {
+			case resultCh <- &MatchedResponse{Status: resp.status, Headers: resp.headers, Body: body, URL: resp.url}:
+			default:
+			}
+		}()
+	}
+
+	chromedp.ListenTarget(listenerCtx, func(ev interface{}) {
 		switch e := ev.(type) {
 		case *network.EventRequestWillBeSent:
 			if e.Request == nil {
@@ -100,10 +138,7 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 					method: methodWant,
 					ct:     strings.ToLower(headerValue(e.Response.Headers, "content-type")),
 				}
-				pending[e.RequestID] = req
 			}
-			mu.Unlock()
-
 			url := e.Response.URL
 			if url == "" {
 				url = req.url
@@ -113,31 +148,32 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 				ct = strings.ToLower(headerValue(e.Response.Headers, "content-type"))
 			}
 			if !matches(req.method, url, ct) && !matches(req.method, req.url, ct) {
+				mu.Unlock()
 				return
 			}
-
-			reqID := e.RequestID
-			status := e.Response.Status
 			headers := map[string]string{}
 			if e.Response.Headers != nil {
 				for k, v := range e.Response.Headers {
 					headers[strings.ToLower(k)] = fmt.Sprint(v)
 				}
 			}
+			matchedResp[e.RequestID] = pendingResp{
+				status:  e.Response.Status,
+				headers: headers,
+				url:     url,
+				method:  req.method,
+				ct:      ct,
+			}
+			reqID := e.RequestID
+			mu.Unlock()
+			// Prefer LoadingFinished for body availability; also arm a fallback in case
+			// that event is skipped for some response types.
 			go func() {
-				var body []byte
-				_ = chromedp.Run(p.ctx, chromedp.ActionFunc(func(ctx context.Context) error {
-					b, err := network.GetResponseBody(reqID).Do(ctx)
-					if err == nil {
-						body = b
-					}
-					return nil
-				}))
-				select {
-				case resultCh <- &MatchedResponse{Status: status, Headers: headers, Body: body, URL: url}:
-				default:
-				}
+				time.Sleep(25 * time.Millisecond)
+				tryFinish(reqID)
 			}()
+		case *network.EventLoadingFinished:
+			tryFinish(e.RequestID)
 		}
 	})
 

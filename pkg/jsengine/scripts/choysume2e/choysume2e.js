@@ -72,10 +72,6 @@ function wrapResponse(rawJSON) {
   };
 }
 
-function escapeRe(s) {
-  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 function placeholderNeedle(reOrString) {
   if (reOrString && typeof reOrString === 'object' && reOrString.source != null) {
     return String(reOrString.source).replace(/^\^/, '').replace(/\$$/, '').replace(/\\/g, '');
@@ -294,12 +290,16 @@ async function poll(timeoutMs, fn) {
   throw new Error('expect polling timeout');
 }
 
-function e2eExpect(target) {
+function e2eExpect(target, message) {
+  const diag = message != null && message !== '' ? String(message) : '';
+  const fail = msg => {
+    throw new Error(diag ? `${diag}: ${msg}` : msg);
+  };
   const api = {
     async toBeVisible(opts) {
       const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
       if (!target || !target.__choysum_e2e_locator__) {
-        throw new Error('toBeVisible: expected locator');
+        fail('toBeVisible: expected locator');
       }
       await poll(timeout, async () => {
         try {
@@ -314,7 +314,7 @@ function e2eExpect(target) {
     async toBeEnabled(opts) {
       const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
       if (!target || !target.__choysum_e2e_locator__) {
-        throw new Error('toBeEnabled: expected locator');
+        fail('toBeEnabled: expected locator');
       }
       await poll(timeout, async () => {
         try {
@@ -329,7 +329,7 @@ function e2eExpect(target) {
     async toHaveCount(n, opts) {
       const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
       if (!target || !target.__choysum_e2e_locator__) {
-        throw new Error('toHaveCount: expected locator');
+        fail('toHaveCount: expected locator');
       }
       await poll(timeout, async () => {
         target._css = '';
@@ -340,15 +340,17 @@ function e2eExpect(target) {
     async toHaveURL(reOrString, opts) {
       const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
       if (!target || !target.__choysum_e2e_page__) {
-        throw new Error('toHaveURL: expected page');
+        fail('toHaveURL: expected page');
       }
-      const re =
-        reOrString && typeof reOrString === 'object' && typeof reOrString.test === 'function'
-          ? reOrString
-          : new RegExp(String(reOrString));
+      const isRe =
+        reOrString && typeof reOrString === 'object' && typeof reOrString.test === 'function';
+      const re = isRe ? reOrString : null;
+      const exact = isRe ? '' : String(reOrString);
       await poll(timeout, async () => {
-        const href = await getHost().url();
-        return re.test(String(href));
+        const href = String(await getHost().url());
+        if (re) return re.test(href);
+        // String form: match the full URL (Playwright string semantics), not a RegExp.
+        return href === exact;
       });
     },
   };
@@ -357,9 +359,9 @@ function e2eExpect(target) {
     return api;
   }
   if (typeof globalThis.expect === 'function') {
-    return globalThis.expect(target);
+    return globalThis.expect(target, message);
   }
-  throw new Error('@choysum/e2e: expect target not supported');
+  fail('@choysum/e2e: expect target not supported');
 }
 
 function randomUUID() {
@@ -380,8 +382,7 @@ const runtime = new Proxy(
   {},
   {
     get(_t, prop) {
-      const r = getRuntime();
-      return r != null ? r[prop] : undefined;
+      return getRuntime()[prop];
     },
   }
 );

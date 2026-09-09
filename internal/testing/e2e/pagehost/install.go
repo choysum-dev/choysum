@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/buke/quickjs-go"
@@ -22,14 +23,17 @@ type Host struct {
 	mu      sync.Mutex
 	session *cdp.Session
 	page    *cdp.Page
+	pending sync.WaitGroup
+	closed  atomic.Bool
 }
 
 // Install registers __choysum_e2e_runtime__ and __choysum_e2e_host__ on engine.
 // runtimeJSON is the raw runtime.json object (or empty object "{}").
-func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string) error {
+// The returned Host can Drain before engine.Close to avoid QuickJS abort from late Schedule.
+func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string) (*Host, error) {
 	qjs, ok := engine.(*quickjsengine.QuickjsEngine)
 	if !ok || qjs == nil || qjs.Ctx == nil {
-		return fmt.Errorf("pagehost: engine must be *quickjsengine.QuickjsEngine")
+		return nil, fmt.Errorf("pagehost: engine must be *quickjsengine.QuickjsEngine")
 	}
 	runtimeJSON = stringsTrimJSON(runtimeJSON)
 	if runtimeJSON == "" {
@@ -42,7 +46,7 @@ func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string)
 
 	runtimeVal := ctx.ParseJSON(runtimeJSON)
 	if runtimeVal.IsException() {
-		return fmt.Errorf("pagehost: parse runtime json: %v", ctx.Exception())
+		return nil, fmt.Errorf("pagehost: parse runtime json: %v", ctx.Exception())
 	}
 	globals.Set("__choysum_e2e_runtime__", runtimeVal)
 
@@ -62,7 +66,16 @@ func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string)
 	hostObj.Set("url", ctx.NewFunction(host.bindURL()))
 	hostObj.Set("screenshot", ctx.NewFunction(host.bindScreenshot()))
 	globals.Set("__choysum_e2e_host__", hostObj)
-	return nil
+	return host, nil
+}
+
+// Drain marks the host closed and waits for in-flight async host ops (delay / waitForResponse).
+func (h *Host) Drain() {
+	if h == nil {
+		return
+	}
+	h.closed.Store(true)
+	h.pending.Wait()
 }
 
 func stringsTrimJSON(s string) string {
@@ -269,9 +282,17 @@ func (h *Host) bindWaitForResponse() func(ctx *quickjs.Context, this *quickjs.Va
 				ContentTypePrefix: match.ContentTypePrefix,
 			}
 			timeout := time.Duration(timeoutMs) * time.Millisecond
+			h.pending.Add(1)
 			go func() {
+				defer h.pending.Done()
 				res, waitErr := p.WaitForResponse(rm, timeout)
-				ctx.Schedule(func(inner *quickjs.Context) {
+				if h.closed.Load() {
+					return
+				}
+				scheduled := ctx.Schedule(func(inner *quickjs.Context) {
+					if h.closed.Load() {
+						return
+					}
 					if waitErr != nil {
 						reject(inner.Error(waitErr))
 						return
@@ -289,6 +310,10 @@ func (h *Host) bindWaitForResponse() func(ctx *quickjs.Context, this *quickjs.Va
 					}
 					resolve(inner.String(string(raw)))
 				})
+				if !scheduled && waitErr != nil {
+					// Context already shut down; drop the result.
+					_ = waitErr
+				}
 			}()
 		})
 	}
@@ -305,11 +330,19 @@ func (h *Host) bindDelay() func(ctx *quickjs.Context, this *quickjs.Value, args 
 			if ms < 0 {
 				ms = 0
 			}
+			h.pending.Add(1)
 			go func() {
+				defer h.pending.Done()
 				if ms > 0 {
 					time.Sleep(time.Duration(ms) * time.Millisecond)
 				}
+				if h.closed.Load() {
+					return
+				}
 				ctx.Schedule(func(inner *quickjs.Context) {
+					if h.closed.Load() {
+						return
+					}
 					resolve(inner.Undefined())
 				})
 			}()

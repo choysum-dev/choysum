@@ -67,7 +67,9 @@ export type E2EExpect = {
 };
 
 export declare const test: typeof globalThis extends { test: infer T } ? T : (name: string, fn: () => unknown) => void;
-export declare function expect(target: Locator | Page | unknown): E2EExpect | unknown;
+export declare function expect(target: Locator, message?: string): E2EExpect;
+export declare function expect(target: Page, message?: string): E2EExpect;
+export declare function expect(target: unknown, message?: string): unknown;
 export declare const page: Page;
 export declare const runtime: E2ERuntime;
 export declare function randomUUID(): string;

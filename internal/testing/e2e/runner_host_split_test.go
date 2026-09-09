@@ -14,6 +14,25 @@ import (
 	"time"
 )
 
+func TestFilterE2ESpecsByArgs(t *testing.T) {
+	files := []string{
+		"/m/auth/e2e/smoke.spec.ts",
+		"/m/auth/e2e/register.spec.ts",
+		"/m/auth/e2e/timezone_wallclock.spec.ts",
+	}
+	filtered, pass := filterE2ESpecsByArgs(files, []string{"smoke.spec.ts", "--workers=1"})
+	if len(filtered) != 1 || !strings.HasSuffix(filtered[0], "smoke.spec.ts") {
+		t.Fatalf("filtered=%v", filtered)
+	}
+	if len(pass) != 1 || pass[0] != "--workers=1" {
+		t.Fatalf("passthrough=%v", pass)
+	}
+	all, pass2 := filterE2ESpecsByArgs(files, nil)
+	if len(all) != 3 || len(pass2) != 0 {
+		t.Fatalf("all=%v pass=%v", all, pass2)
+	}
+}
+
 func TestPartitionAndRunOrderQJSThenPW(t *testing.T) {
 	setE2ETestGlobalPlaywrightRoot(t)
 
@@ -99,6 +118,80 @@ func TestPartitionAndRunOrderQJSThenPW(t *testing.T) {
 	}
 	if strings.Join(order, ",") != "qjs,pw" {
 		t.Fatalf("order=%v want qjs,pw", order)
+	}
+}
+
+func TestPartitionSmokeFilterSkipsPlaywright(t *testing.T) {
+	setE2ETestGlobalPlaywrightRoot(t)
+
+	oldInstall := installForE2EHook
+	oldApply := applyScenarioFixturesHook
+	oldSeed := seedModuleIndexHook
+	oldStart := startServerHook
+	oldStop := stopServerHook
+	oldWait := waitForHTTP200Hook
+	oldRunPW := runPlaywrightHook
+	oldRunHost := runE2EHostHook
+	defer func() {
+		installForE2EHook = oldInstall
+		applyScenarioFixturesHook = oldApply
+		seedModuleIndexHook = oldSeed
+		startServerHook = oldStart
+		stopServerHook = oldStop
+		waitForHTTP200Hook = oldWait
+		runPlaywrightHook = oldRunPW
+		runE2EHostHook = oldRunHost
+	}()
+
+	var order []string
+	installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error { return nil }
+	applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+		return nil
+	}
+	seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error { return nil }
+	startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
+		return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
+	}
+	stopServerHook = func(cmd *exec.Cmd) {}
+	waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
+	runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, qjsSpecFiles []string) error {
+		order = append(order, "qjs")
+		return nil
+	}
+	runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+		order = append(order, "pw")
+		return nil
+	}
+
+	modulesPath := t.TempDir()
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specsDir, "pw.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('pw', async () => {});\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specsDir, "smoke.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('smoke', async () => {});\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	manifests := map[string]*sourceModulePackage{
+		"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
+	}
+	err := runOneScenario(context.Background(), RunOptions{
+		Module:         "auth",
+		ModulesPath:    modulesPath,
+		WorkDir:        t.TempDir(),
+		TmpPath:        t.TempDir(),
+		Stdout:         io.Discard,
+		Stderr:         io.Discard,
+		PlaywrightArgs: []string{"smoke.spec.ts"},
+	}, manifests, "default")
+	if err != nil {
+		t.Fatalf("runOneScenario: %v", err)
+	}
+	if strings.Join(order, ",") != "qjs" {
+		t.Fatalf("order=%v want qjs only", order)
 	}
 }
 

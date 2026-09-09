@@ -88,13 +88,14 @@ func (p *Page) Click(css string) error {
 	if p == nil {
 		return fmt.Errorf("cdp: nil page")
 	}
-	cssJSON, _ := json.Marshal(css)
+	// Pass selector via JSON literal (not single-quoted) to avoid quote-break issues.
 	script := fmt.Sprintf(`(() => {
-  const el = document.querySelector(%s);
-  if (!el) throw new Error('click: no element for ' + %s);
+  const css = %s;
+  const el = document.querySelector(css);
+  if (!el) throw new Error('click: no element for ' + css);
   el.click();
   return true;
-})()`, string(cssJSON), string(cssJSON))
+})()`, jsonQuote(css))
 	return chromedp.Run(p.ctx,
 		chromedp.WaitVisible(css, chromedp.ByQuery),
 		chromedp.Evaluate(script, nil),
@@ -106,20 +107,20 @@ func (p *Page) Fill(css string, text string) error {
 	if p == nil {
 		return fmt.Errorf("cdp: nil page")
 	}
-	cssJSON, _ := json.Marshal(css)
-	textJSON, _ := json.Marshal(text)
 	script := fmt.Sprintf(`(() => {
-  const el = document.querySelector(%s);
-  if (!el) throw new Error('fill: no element for ' + %s);
+  const css = %s;
+  const text = %s;
+  const el = document.querySelector(css);
+  if (!el) throw new Error('fill: no element for ' + css);
   el.focus();
   const proto = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
     || Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
-  if (proto && proto.set) proto.set.call(el, %s);
-  else el.value = %s;
-  el.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: %s }));
+  if (proto && proto.set) proto.set.call(el, text);
+  else el.value = text;
+  el.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: text }));
   el.dispatchEvent(new Event('change', { bubbles: true }));
   return true;
-})()`, string(cssJSON), string(cssJSON), string(textJSON), string(textJSON), string(textJSON))
+})()`, jsonQuote(css), jsonQuote(text))
 	return chromedp.Run(p.ctx,
 		chromedp.WaitVisible(css, chromedp.ByQuery),
 		chromedp.Evaluate(script, nil),
@@ -131,7 +132,8 @@ func (p *Page) Evaluate(js string) (string, error) {
 	if p == nil {
 		return "", fmt.Errorf("cdp: nil page")
 	}
-	expr := fmt.Sprintf(`JSON.stringify((function(){ return (%s); })())`, js)
+	// Await then stringify so Promise-returning expressions serialize the resolved value.
+	expr := fmt.Sprintf(`Promise.resolve((function(){ return (%s); })()).then(v => JSON.stringify(v === undefined ? null : v))`, js)
 	var out string
 	if err := chromedp.Run(p.ctx, chromedp.Evaluate(expr, &out, func(p *runtime.EvaluateParams) *runtime.EvaluateParams {
 		return p.WithAwaitPromise(true)
@@ -157,7 +159,7 @@ func (p *Page) Screenshot(path string) error {
 		return err
 	}
 	var buf []byte
-	if err := chromedp.Run(p.ctx, chromedp.FullScreenshot(&buf, 90)); err != nil {
+	if err := chromedp.Run(p.ctx, chromedp.FullScreenshot(&buf, 100)); err != nil {
 		return err
 	}
 	return os.WriteFile(path, buf, 0o644)

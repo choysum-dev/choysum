@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import io
-import json
 import os
 import platform
 import sys
@@ -63,9 +62,18 @@ def resolve_binary(dest: Path, plat: str) -> Path:
 
 
 def install(version: str = PINNED_VERSION, revision: str = PINNED_REVISION) -> Path:
+    if version != PINNED_VERSION and revision == PINNED_REVISION:
+        raise SystemExit(
+            f"--version {version!r} requires a matching --revision "
+            f"(default pin is version={PINNED_VERSION} revision={PINNED_REVISION})"
+        )
     plat = platform_key()
     home = choysum_home()
-    dest = home / "browsers" / f"chromium-{revision}"
+    # Cache identity includes both version and revision so overrides cannot collide.
+    dest = home / "browsers" / f"chromium-{revision}-{version}"
+    # Keep the historical revision-only path for the pinned default.
+    if version == PINNED_VERSION and revision == PINNED_REVISION:
+        dest = home / "browsers" / f"chromium-{revision}"
     dest.mkdir(parents=True, exist_ok=True)
     try:
         existing = resolve_binary(dest, plat)
@@ -75,6 +83,7 @@ def install(version: str = PINNED_VERSION, revision: str = PINNED_REVISION) -> P
         print(existing)
         return existing
     except SystemExit:
+        # Not cached yet; fall through to download.
         pass
 
     url = chrome_download_url(version, plat)

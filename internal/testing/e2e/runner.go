@@ -267,6 +267,7 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	allSpecFiles, _ = filterE2ESpecsByArgs(allSpecFiles, opts.PlaywrightArgs)
 	pwSpecFiles, _, err := partitionE2ESpecFiles(allSpecFiles)
 	if err != nil {
 		return err
@@ -599,14 +600,15 @@ compile:
 	if err != nil {
 		return xfmt.Errorf("discover e2e specs: %w", err)
 	}
+	allSpecFiles, playwrightPassthrough := filterE2ESpecsByArgs(allSpecFiles, opts.PlaywrightArgs)
+	opts2 := opts
+	opts2.NpmPath = globalNodeModulesRoot
+	opts2.PlaywrightArgs = playwrightPassthrough
+
 	pwSpecFiles, qjsSpecFiles, err := partitionE2ESpecFiles(allSpecFiles)
 	if err != nil {
 		return err
 	}
-
-	// Resolve bare imports from the global npm root (not a local/empty node_modules).
-	opts2 := opts
-	opts2.NpmPath = globalNodeModulesRoot
 
 	if len(qjsSpecFiles) > 0 {
 		writeE2EProgress(opts.Stderr, "# e2e-qjs %s (%d specs)\n", opts.Module, len(qjsSpecFiles))
@@ -1435,6 +1437,39 @@ func discoverPlaywrightSpecFiles(specsDir string) ([]string, error) {
 	}
 	sort.Strings(specFiles)
 	return specFiles, nil
+}
+
+// filterE2ESpecsByArgs applies non-flag PlaywrightArgs as path/name filters before
+// QJS/PW partition. Remaining flag args (e.g. --workers=2) are returned for the
+// Playwright CLI. Without this, `choysum test e2e auth -- smoke.spec.ts` would
+// still launch every PW-partitioned file and append smoke.spec.ts as an extra path.
+func filterE2ESpecsByArgs(specFiles []string, playwrightArgs []string) (filtered []string, passthrough []string) {
+	var patterns []string
+	for _, arg := range playwrightArgs {
+		arg = strings.TrimSpace(arg)
+		if arg == "" {
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			passthrough = append(passthrough, arg)
+			continue
+		}
+		patterns = append(patterns, arg)
+	}
+	if len(patterns) == 0 {
+		return append([]string(nil), specFiles...), passthrough
+	}
+	for _, file := range specFiles {
+		base := filepath.Base(file)
+		for _, pat := range patterns {
+			patBase := filepath.Base(pat)
+			if file == pat || base == pat || base == patBase || strings.Contains(file, pat) {
+				filtered = append(filtered, file)
+				break
+			}
+		}
+	}
+	return filtered, passthrough
 }
 
 // partitionE2ESpecFiles splits specs by whether they import `@playwright/test`.

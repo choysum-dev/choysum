@@ -12,6 +12,7 @@ import (
 	"time"
 
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
+	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
@@ -27,16 +28,13 @@ func isNoE2ESpecsError(err error) bool {
 }
 
 func installChromiumBrowser() error {
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	script := filepath.Join(wd, "scripts", "ci", "install_chromium.py")
+	root := cov.FindRepoRootFromCwd()
+	script := filepath.Join(root, "scripts", "ci", "install_chromium.py")
 	if _, err := os.Stat(script); err != nil {
-		return fmt.Errorf("install-browser: %w (expected %s)", err, script)
+		return fmt.Errorf("install-browser: %w (expected %s; run from a choysum checkout)", err, script)
 	}
 	cmd := exec.Command("python3", script)
-	cmd.Dir = wd
+	cmd.Dir = root
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()

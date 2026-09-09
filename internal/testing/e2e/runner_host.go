@@ -105,7 +105,7 @@ func runE2EHost(ctx context.Context, opts RunOptions, specsDir string, baseURL s
 		return xfmt.Errorf("e2e host: BootstrapTimers failed")
 	}
 
-	if err := pagehost.Install(engine, session, string(runtimeRaw)); err != nil {
+	if _, err := pagehost.Install(engine, session, string(runtimeRaw)); err != nil {
 		return err
 	}
 

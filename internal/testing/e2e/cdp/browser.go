@@ -27,6 +27,7 @@ type Session struct {
 	cancel      context.CancelFunc
 	execPath    string
 	userDataDir string
+	stopWatch   context.CancelFunc
 }
 
 // StartOptions configures browser launch.
@@ -74,10 +75,20 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 	)
 	// Allocator uses Background so a parent deadline that already fired during
 	// long install/readyz does not surface as a misleading "context canceled"
-	// on first browser boot. Parent cancel still closes the session via Close.
+	// on first browser boot. A watcher still closes the session when parent ctx ends.
 	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), allocOpts...)
 	browserCtx, cancel := chromedp.NewContext(allocCtx)
+	watchCtx, stopWatch := context.WithCancel(context.Background())
+	go func() {
+		select {
+		case <-ctx.Done():
+			cancel()
+			allocCancel()
+		case <-watchCtx.Done():
+		}
+	}()
 	if err := chromedp.Run(browserCtx, chromedp.Navigate("about:blank")); err != nil {
+		stopWatch()
 		cancel()
 		allocCancel()
 		_ = os.RemoveAll(udir)
@@ -90,6 +101,7 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 		cancel:      cancel,
 		execPath:    execPath,
 		userDataDir: udir,
+		stopWatch:   stopWatch,
 	}, nil
 }
 
@@ -97,6 +109,9 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 func (s *Session) Close() {
 	if s == nil {
 		return
+	}
+	if s.stopWatch != nil {
+		s.stopWatch()
 	}
 	if s.cancel != nil {
 		s.cancel()

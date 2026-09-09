@@ -155,6 +155,13 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install Chromium for e2e unit coverage
+        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/install_chromium.py
+          echo "CHOYSUM_HOME=${CHOYSUM_HOME:-$HOME/.choysum}" >> "$GITHUB_ENV"
+
       # Coverage compile already typechecks; a separate `go build ./...` only doubles wall clock.
       - name: Run go test
         if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
