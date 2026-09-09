@@ -7,6 +7,8 @@ import {
   getStoreFactoryRegistryVersion,
   listRegisteredModelNames,
   registerStoreFactory,
+  replaceStoreFactory,
+  unregisterStoreFactory,
 } from './registry';
 
 test('core/web/stores/registry: registers and creates stores by model name', () => {
@@ -32,16 +34,34 @@ test('core/web/stores/registry: throws when model factory is missing', () => {
   );
 });
 
-test('core/web/stores/registry: passes options to the factory', () => {
-  const modelName = `test.options.${Date.now()}`;
-  const calls: unknown[] = [];
-  const factory = (opts?: { debug?: boolean }) => {
-    calls.push(opts);
-    return { opts };
-  };
-  registerStoreFactory(modelName, factory);
+test('core/web/stores/registry: replaceStoreFactory restores the previous factory', () => {
+  const modelName = `test.replace.${Date.now()}`;
+  const original = { id: 'original' };
+  registerStoreFactory(modelName, () => original);
+  const version = getStoreFactoryRegistryVersion();
+  const before = version.value;
 
-  const options = { debug: true };
-  expect(createStoreByModel(modelName, options)).toEqual({ opts: options });
-  expect(calls).toEqual([options]);
+  const restore = replaceStoreFactory(modelName, () => ({ id: 'override' }));
+  expect(createStoreByModel(modelName)).toEqual({ id: 'override' });
+  expect(version.value).toBeGreaterThan(before);
+
+  restore();
+  expect(createStoreByModel(modelName)).toBe(original);
+});
+
+test('core/web/stores/registry: replaceStoreFactory unregisters when no previous factory', () => {
+  const modelName = `test.replace.empty.${Date.now()}`;
+  const restore = replaceStoreFactory(modelName, () => ({ id: 'temp' }));
+  expect(getStoreFactory(modelName)).toBeTruthy();
+  restore();
+  expect(getStoreFactory(modelName)).toBeUndefined();
+  expect(() => createStoreByModel(modelName)).toThrow(`Store factory for model '${modelName}' not found`);
+});
+
+test('core/web/stores/registry: unregisterStoreFactory removes a registered factory', () => {
+  const modelName = `test.unregister.${Date.now()}`;
+  registerStoreFactory(modelName, () => ({ id: 'x' }));
+  unregisterStoreFactory(modelName);
+  expect(getStoreFactory(modelName)).toBeUndefined();
+  unregisterStoreFactory(modelName); // no-op
 });

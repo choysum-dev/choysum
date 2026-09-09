@@ -73,6 +73,15 @@ const i18nStore = useI18nStore();
 const authStore = useAuthStore();
 const scopeManager = useScopeManager().menuScopeManager;
 
+/** Optional deps overrides for list/create/reload (defaults use registry + i18n store). */
+const props = defineProps<{
+  deps?: {
+    listRegisteredModelNames?: () => string[];
+    createStoreByModel?: (modelName: string, options?: any) => WebModelStore<any>;
+    reloadTerminology?: () => Promise<unknown>;
+  };
+}>();
+
 const applications = ref<string[]>([]);
 const selectedApp = ref('');
 const moduleFilter = ref('');
@@ -86,7 +95,8 @@ const canDownloadPo = computed(
 const translationTermSuffix = '.TranslationTerm';
 
 function loadApplications() {
-  const names = listRegisteredModelNames()
+  const listNames = props.deps?.listRegisteredModelNames ?? listRegisteredModelNames;
+  const names = listNames()
     .filter((modelName) => modelName.endsWith(translationTermSuffix))
     .map((modelName) => modelName.slice(0, -translationTermSuffix.length).trim())
     .filter((app) => app && app !== 'core');
@@ -105,7 +115,8 @@ function wrapStoreForReload(store: WebModelStore<any>): WebModelStore<any> {
   const wrapped = (async (id: string, vals: Record<string, unknown>, fields?: string[]) => {
     const out = await original(id, vals, fields);
     try {
-      await i18nStore.reloadTerminology();
+      const reload = props.deps?.reloadTerminology ?? (() => i18nStore.reloadTerminology());
+      await reload();
     } catch {
       /* reload is best-effort; save already succeeded */
     }
@@ -123,7 +134,8 @@ function onApplicationChange(appName?: string) {
   moduleFilter.value = '';
   if (!app) return;
   try {
-    const store = createStoreByModel(`${app}.TranslationTerm`, {
+    const createStore = props.deps?.createStoreByModel ?? createStoreByModel;
+    const store = createStore(`${app}.TranslationTerm`, {
       storeId: `TerminologyEditor_${app}_${route.fullPath}`,
       scopeManager,
     });

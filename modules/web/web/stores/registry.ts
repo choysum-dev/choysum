@@ -6,6 +6,8 @@ import type { WebModelStore } from './modelStore';
 
 export {
   registerStoreFactory,
+  unregisterStoreFactory,
+  replaceStoreFactory,
   getStoreFactory,
   getStoreFactoryRegistryVersion,
   listRegisteredModelNames,
