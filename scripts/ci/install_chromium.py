@@ -127,8 +127,9 @@ def _clear_macos_quarantine(root: Path) -> None:
 
     try:
         subprocess.run(["xattr", "-cr", str(root)], check=False, capture_output=True)
-    except OSError:
-        pass
+    except OSError as err:
+        # Best-effort only: xattr may be missing or fail; do not abort install.
+        print(f"warning: clear quarantine skipped: {err}", file=sys.stderr)
 
 
 def main() -> None:

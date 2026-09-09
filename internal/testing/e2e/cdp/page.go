@@ -132,8 +132,9 @@ func (p *Page) Fill(css string, text string) error {
   const el = document.querySelector(css);
   if (!el) throw new Error('fill: no element for ' + css);
   el.focus();
-  const proto = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
-    || Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
+  const proto = el instanceof HTMLTextAreaElement
+    ? Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')
+    : Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
   if (proto && proto.set) proto.set.call(el, text);
   else el.value = text;
   el.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: text }));

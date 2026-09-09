@@ -82,16 +82,6 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 		return true
 	}
 
-	bodyUnavailable := func(err error) bool {
-		if err == nil {
-			return false
-		}
-		msg := err.Error()
-		return strings.Contains(msg, "No resource with given identifier") ||
-			strings.Contains(msg, "No data found for resource with given identifier") ||
-			strings.Contains(msg, "No data found")
-	}
-
 	listenerCtx, stopListener := context.WithCancel(p.ctx)
 	defer stopListener()
 
@@ -125,11 +115,11 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 					body = b
 					return nil
 				}))
-				if fetchErr == nil || bodyUnavailable(fetchErr) {
+				// "No data found…" is often transient before the body is ready;
+				// keep retrying until success or the waiter is canceled.
+				if fetchErr == nil {
 					break
 				}
-				// Body not ready yet; keep matchedResp and retry until ready,
-				// permanently unavailable, or the waiter is canceled.
 				select {
 				case <-listenerCtx.Done():
 					return
