@@ -18,7 +18,12 @@ type FeStubEditor = {
   getHTML: () => string;
   isActive: (name: string) => boolean;
   getAttributes: (name: string) => Record<string, unknown>;
-  __feStubSetHTML: (html: string, emitUpdate?: boolean) => void;
+  chain: () => any;
+  commands: { setContent: (content: string | null, emitUpdate?: boolean) => boolean };
+  on: (event: string, fn: () => void) => void;
+  off: (event: string, fn: () => void) => void;
+  destroy: () => void;
+  __feStubSetHTML: (html: string | null, emitUpdate?: boolean) => void;
 };
 
 function lastStubEditor(): FeStubEditor {
@@ -178,9 +183,13 @@ describe('OHtmlField mount wiring', () => {
     expect(buttons.length).toBeGreaterThanOrEqual(5);
     buttons[0].click(); // bold
     buttons[1].click(); // italic
+    buttons[2].click(); // bulletList
+    buttons[3].click(); // orderedList
     const ed = lastStubEditor();
     expect(ed.isActive('bold')).toBe(true);
     expect(ed.isActive('italic')).toBe(true);
+    expect(ed.isActive('bulletList')).toBe(true);
+    expect(ed.isActive('orderedList')).toBe(true);
 
     (window as any).prompt = () => 'https://example.com';
     buttons[4].click(); // link
@@ -190,6 +199,37 @@ describe('OHtmlField mount wiring', () => {
     (window as any).prompt = () => '';
     buttons[4].click(); // unset via empty prompt while active
     expect(ed.isActive('link')).toBe(false);
+    m.unmount();
+  });
+
+  test('TipTap stub covers setContent/__feStubSetHTML edge branches', async () => {
+    const binding = makeBinding({ Body: '<p>seed</p>' });
+    const m = mountField(binding, {}, 'edit');
+    await flushPromises();
+    const ed = lastStubEditor();
+
+    expect(ed.commands.setContent(null, true)).toBe(true);
+    expect(ed.getHTML()).toBe('');
+    expect(ed.getAttributes('missing')).toEqual({});
+
+    let updates = 0;
+    const onUpdate = () => {
+      updates += 1;
+    };
+    ed.on('update', onUpdate);
+    ed.__feStubSetHTML(null);
+    expect(ed.getHTML()).toBe('');
+    expect(updates).toBe(1);
+    ed.__feStubSetHTML('<p>quiet</p>', false);
+    expect(ed.getHTML()).toBe('<p>quiet</p>');
+    expect(updates).toBe(1);
+    ed.off('update', onUpdate);
+    ed.__feStubSetHTML('<p>after-off</p>', true);
+    expect(updates).toBe(1);
+
+    ed.chain().focus().extendMarkRange('link').setLink().run();
+    expect(ed.isActive('link')).toBe(true);
+    ed.destroy();
     m.unmount();
   });
 
