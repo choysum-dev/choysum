@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -87,14 +88,34 @@ func TestSanitizeFrontendAppToken(t *testing.T) {
 	}
 }
 
-func TestWarnIllegalFrontendMarks_NoPanic(t *testing.T) {
+func TestRunOneAppFrontendTests_IllegalPreflight(t *testing.T) {
 	repo := t.TempDir()
 	web := filepath.Join(repo, "modules", "demo", "web")
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(web, "ok.test.ts"), []byte("it('ok', () => {})\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(web, "bad.test.ts"), []byte("import { it } from 'vitest'\nit('x', () => {})\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	warnIllegalFrontendMarks(repo, "demo")
+	failed, err := RunOneAppFrontendTests(
+		context.Background(),
+		repo,
+		"demo",
+		"",
+		"",
+		false,
+		false,
+		false,
+		false,
+		"",
+		0, 0, 0, 0,
+		t.TempDir(),
+		false,
+	)
+	if err == nil || !failed {
+		t.Fatalf("expected failed preflight, failed=%v err=%v", failed, err)
+	}
+	if !strings.Contains(err.Error(), "illegal mark") {
+		t.Fatalf("err = %v", err)
+	}
 }
