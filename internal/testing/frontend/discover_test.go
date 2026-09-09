@@ -134,8 +134,8 @@ func TestDiscoverAndScanIllegalFrontendMarks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(pureHits) != 0 {
-		t.Fatalf("pure file hits = %#v", pureHits)
+	if len(pureHits) != 1 || pureHits[0].Kind != IllegalVitestImport {
+		t.Fatalf("pure vitest import hits = %#v", pureHits)
 	}
 
 	sameLine := filepath.Join(web, "same_line.test.ts")

@@ -45,7 +45,7 @@ func newTypeFetchCmd(envGetter func() scope.Scope) *cobra.Command {
 type definitions (.d.ts) from the configured ESM upstream, and caches them
 locally for IDE support.
 
-Also fetches fixed IDE tooling packages (for example vitest) that tests import
+Also fetches fixed IDE tooling packages (when configured) that tests import
 via bare specifiers but are not declared in module package.json.
 
 When called without arguments, fetches types for all installed modules.

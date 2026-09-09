@@ -3,17 +3,11 @@
 
 package esmresolver
 
-// IDEToolingTypePackages lists workspace test-runner packages that frontend
-// tests import via bare specifiers (for example `from 'vitest'`) but are not
-// declared in module package.json product dependencies.
+// IDEToolingTypePackages lists workspace packages that tests may import via bare
+// specifiers but are not declared in module package.json product dependencies.
 //
-// Keep this list focused on packages that need tsconfig paths for IDE module
-// resolution. Runtime preflight for `go run . test` may require a broader set
-// (vite, sass-embedded, coverage plugins, …) and lives separately in the
-// frontend test harness.
+// After FE unit hard-cut, Vitest/VTU are gone; keep this empty unless a new
+// IDE-only bare specifier needs tsconfig paths.
 func IDEToolingTypePackages() []string {
-	return []string{
-		"vitest",
-		"@vue/test-utils",
-	}
+	return nil
 }

@@ -5,81 +5,21 @@ package frontend
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
-
-	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
-	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
-	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
-	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-type vitestCoverageSummary struct {
-	Total struct {
-		Lines struct {
-			Pct float64 `json:"pct"`
-		} `json:"lines"`
-		Functions struct {
-			Pct float64 `json:"pct"`
-		} `json:"functions"`
-		Branches struct {
-			Pct float64 `json:"pct"`
-		} `json:"branches"`
-		Statements struct {
-			Pct float64 `json:"pct"`
-		} `json:"statements"`
-	} `json:"total"`
-}
-
-var errVitestEnvironmentMarkerFound = xfmt.Errorf("vitest environment marker found")
-
-// ValidateFrontendTestDependencies checks whether required frontend tooling and
-// modules are available in local module roots or global npm root.
-// When CHOYSUM_FE_UNIT_ENGINE=qjs, Vitest/npx are not required (QuickJS path).
+// ValidateFrontendTestDependencies is a no-op after FE hard-cut: QuickJS host
+// does not require Node/npx/Vitest packages.
 func ValidateFrontendTestDependencies(repoRoot string, app string, coverage bool) error {
-	if UseQJSFrontendEngine() {
-		return nil
-	}
-
-	repoRoot = strings.TrimSpace(repoRoot)
-	if repoRoot == "" {
-		wd, _ := os.Getwd()
-		repoRoot = wd
-	}
-	if strings.TrimSpace(repoRoot) == "" {
-		return xfmt.Errorf("vitest: cannot determine repo root")
-	}
-
-	app = strings.TrimSpace(app)
-	if app == "" {
-		return xfmt.Errorf("vitest: missing app")
-	}
-
-	if _, err := exec.LookPath("npx"); err != nil {
-		return xfmt.Errorf("vitest: npx not found. Install Node.js from https://nodejs.org")
-	}
-
-	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
-	requiredModules, err := collectRequiredFrontendModules(repoRoot, app, coverage)
-	if err != nil {
-		return err
-	}
-	moduleRoots := append(localFrontendModuleRoots(repoRoot), globalNodeModulesRoot)
-	if err := noderuntime.PreflightRequiredNodeModules("vitest", app, requiredModules, moduleRoots...); err != nil {
-		return err
-	}
-
+	_ = repoRoot
+	_ = app
+	_ = coverage
 	return nil
 }
 
+// RunOneAppFrontendTests runs one app's FE unit tests on QuickJS + choysumtest.
 func RunOneAppFrontendTests(
 	ctx context.Context,
 	repoRoot string,
@@ -105,205 +45,24 @@ func RunOneAppFrontendTests(
 		return true, err
 	}
 
-	if UseQJSFrontendEngine() {
-		return runOneAppFrontendTestsQJS(
-			ctx,
-			repoRoot,
-			app,
-			junitPath,
-			pattern,
-			coverage,
-			coverageReport,
-			coverageCheck,
-			feCoverageAll,
-			coverageReportDir,
-			coverageLines,
-			coverageFunctions,
-			coverageBranches,
-			coverageStatements,
-			tmpRoot,
-			keep,
-		)
-	}
-
-	if err := ValidateFrontendTestDependencies(repoRoot, app, coverage); err != nil {
-		return true, err
-	}
-
-	repoRoot = strings.TrimSpace(repoRoot)
-	if repoRoot == "" {
-		wd, _ := os.Getwd()
-		repoRoot = wd
-	}
-	app = strings.TrimSpace(app)
-	warnIllegalFrontendMarks(repoRoot, app)
-	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
-	requiredModules, err := collectRequiredFrontendModules(repoRoot, app, coverage)
-	if err != nil {
-		return true, err
-	}
-	localModuleRoots := localFrontendModuleRoots(repoRoot)
-	missingLocalModules := noderuntime.MissingRequiredNodeModules(requiredModules, localModuleRoots...)
-	if len(missingLocalModules) > 0 {
-		cleanupGlobalLinks, err := ensureGlobalModuleLinks(repoRoot, globalNodeModulesRoot, missingLocalModules)
-		if err != nil {
-			return true, err
-		}
-		defer cleanupGlobalLinks()
-	}
-
-	junitPath = strings.TrimSpace(junitPath)
-	if junitPath != "" {
-		junitDir := filepath.Dir(junitPath)
-		if junitDir != "" && junitDir != "." {
-			if err := os.MkdirAll(junitDir, 0o755); err != nil {
-				return true, xfmt.Errorf("vitest: create junit dir: %w", err)
-			}
-		}
-		junitPath = filepath.ToSlash(junitPath)
-	}
-
-	workspaceTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, repoRoot, testingpathing.EffectiveCLITestTmpRoot(ctx, tmpRoot), "frontend")
-	if err != nil {
-		return true, xfmt.Errorf("vitest: resolve tmp dir: %w", err)
-	}
-	vitestTmpDir := filepath.Join(workspaceTmpDir, "vitest", sanitizeFrontendAppToken(app))
-	if err := os.MkdirAll(vitestTmpDir, 0o755); err != nil {
-		return true, xfmt.Errorf("vitest: create tmp dir: %w", err)
-	}
-
-	configPath := filepath.Join(vitestTmpDir, fmt.Sprintf("%s.%d.vitest.config.cjs", app, time.Now().UnixNano()))
-	cleanup := func() { _ = os.Remove(configPath) }
-	if !keep {
-		defer cleanup()
-	} else {
-		fmt.Fprintf(os.Stderr, "choysum test: kept frontend vitest dir: %s\n", vitestTmpDir)
-	}
-
-	reportsDir := filepath.ToSlash(filepath.Join(coverageReportDir, "fe", app))
-	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}"))
-	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,js,jsx,mjs,cjs,vue}"))
-	viteCacheDir := filepath.ToSlash(filepath.Join(workspaceTmpDir, "vite-cache", app))
-
-	var b strings.Builder
-	b.WriteString("const path = require('node:path')\n")
-	b.WriteString("const { createRequire } = require('node:module')\n")
-	b.WriteString("const requireFromCwd = createRequire(path.resolve(process.cwd(), 'package.json'))\n")
-	b.WriteString("const { defineConfig } = requireFromCwd('vitest/config')\n")
-	b.WriteString("const vue = requireFromCwd('@vitejs/plugin-vue')\n\n")
-	b.WriteString("module.exports = defineConfig({\n")
-	b.WriteString("  cacheDir: " + strconv.Quote(viteCacheDir) + ",\n")
-	b.WriteString("  plugins: [vue()],\n")
-	b.WriteString("  resolve: {\n")
-	b.WriteString("    alias: {\n")
-	b.WriteString("      '@': path.resolve(process.cwd(), 'modules'),\n")
-	b.WriteString("    },\n")
-	b.WriteString("  },\n")
-	b.WriteString("  test: {\n")
-	b.WriteString("    include: ['" + includeGlob + "'],\n")
-	b.WriteString("    environment: 'node',\n")
-	// Allow incremental FE migrate: choysumtest-style bare test/expect while Vitest remains default.
-	b.WriteString("    globals: true,\n")
-	b.WriteString("    passWithNoTests: true,\n")
-	// Node --localstorage-file is a single SQLite DB shared via NODE_OPTIONS; parallel
-	// vitest workers contend on it ("database is locked"). Keep FE runs single-worker.
-	b.WriteString("    maxWorkers: 1,\n")
-	b.WriteString("    fileParallelism: false,\n")
-	if junitPath != "" {
-		b.WriteString("    reporters: ['default', 'junit'],\n")
-		b.WriteString("    outputFile: {\n")
-		b.WriteString("      junit: " + strconv.Quote(junitPath) + ",\n")
-		b.WriteString("    },\n")
-	}
-	if coverage {
-		b.WriteString("    coverage: {\n")
-		b.WriteString("      provider: 'v8',\n")
-		b.WriteString(fmt.Sprintf("      all: %t,\n", feCoverageAll))
-		b.WriteString("      include: ['" + coverageIncludeGlob + "'],\n")
-		b.WriteString("      exclude: [\n")
-		b.WriteString("        '**/node_modules/**',\n")
-		b.WriteString("        '**/dist/**',\n")
-		b.WriteString("        '**/pb/**',\n")
-		b.WriteString("        '**/*.d.ts',\n")
-		b.WriteString("        '**/*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}',\n")
-		b.WriteString("      ],\n")
-		b.WriteString("      excludeAfterRemap: true,\n")
-		b.WriteString("      reportsDirectory: '" + reportsDir + "',\n")
-		b.WriteString("      reporter: [\n")
-		b.WriteString("        'json-summary',\n")
-		b.WriteString("        'text',\n")
-		if coverageReport {
-			b.WriteString("        'lcovonly',\n")
-			b.WriteString("        'html',\n")
-		}
-		b.WriteString("      ],\n")
-		b.WriteString("    },\n")
-	}
-	b.WriteString("  },\n")
-	b.WriteString("})\n")
-
-	if err := os.WriteFile(configPath, []byte(b.String()), 0o644); err != nil {
-		return true, xfmt.Errorf("vitest: write tmp config: %w", err)
-	}
-
-	fmt.Fprintf(os.Stderr, "# vitest %s\n", app)
-	args := []string{"--no-install", "vitest", "run", "--config", configPath}
-	if coverage {
-		args = append(args, "--coverage")
-	}
-	if strings.TrimSpace(pattern) != "" {
-		args = append(args, "-t", pattern)
-	}
-
-	c := exec.CommandContext(ctx, "npx", args...)
-	c.Dir = repoRoot
-	nodePathValue := buildNodePath(repoRoot, globalNodeModulesRoot)
-	env := noderuntime.SanitizeNpmChildEnv(os.Environ())
-	env = noderuntime.ReplaceOrAppendEnv(env, "NODE_PATH", nodePathValue)
-	// Node 22+ emits ExperimentalWarning when code touches localStorage without
-	// --localstorage-file (common with Pinia persist under Vitest environment:node).
-	localStorageFile := filepath.Join(vitestTmpDir, "localstorage.json")
-	env = noderuntime.AppendNodeOption(env, "--localstorage-file="+localStorageFile)
-	c.Env = env
-	c.Stdout = os.Stderr
-	c.Stderr = os.Stderr
-	if err := c.Run(); err != nil {
-		return true, xfmt.Errorf("vitest failed for %s: %w", app, err)
-	}
-
-	if coverage && coverageCheck {
-		summaryPath := filepath.Join(repoRoot, coverageReportDir, "fe", app, "coverage-summary.json")
-		raw, err := os.ReadFile(summaryPath)
-		if err != nil {
-			return true, xfmt.Errorf("vitest: read coverage summary (%s): %w", summaryPath, err)
-		}
-		var sum vitestCoverageSummary
-		if err := json.Unmarshal(raw, &sum); err != nil {
-			return true, xfmt.Errorf("vitest: parse coverage summary: %w", err)
-		}
-		below := func(pct float64, threshold int) bool {
-			if threshold <= 0 {
-				return false
-			}
-			return pct+1e-9 < float64(threshold)
-		}
-		if below(sum.Total.Lines.Pct, coverageLines) ||
-			below(sum.Total.Functions.Pct, coverageFunctions) ||
-			below(sum.Total.Branches.Pct, coverageBranches) ||
-			below(sum.Total.Statements.Pct, coverageStatements) {
-			return true, xfmt.Errorf(
-				"vitest coverage check failed for %s (lines=%.2f%% functions=%.2f%% branches=%.2f%% statements=%.2f%%)",
-				app,
-				sum.Total.Lines.Pct,
-				sum.Total.Functions.Pct,
-				sum.Total.Branches.Pct,
-				sum.Total.Statements.Pct,
-			)
-		}
-	}
-
-	fmt.Fprintf(os.Stderr, "# vitest %s ok\n", app)
-	return false, nil
+	return runOneAppFrontendTestsQJS(
+		ctx,
+		repoRoot,
+		app,
+		junitPath,
+		pattern,
+		coverage,
+		coverageReport,
+		coverageCheck,
+		feCoverageAll,
+		coverageReportDir,
+		coverageLines,
+		coverageFunctions,
+		coverageBranches,
+		coverageStatements,
+		tmpRoot,
+		keep,
+	)
 }
 
 func sanitizeFrontendAppToken(app string) string {
@@ -315,133 +74,6 @@ func sanitizeFrontendAppToken(app string) string {
 	return token
 }
 
-func collectRequiredFrontendModules(repoRoot string, app string, coverage bool) ([]string, error) {
-	baseRequired := []string{
-		"vitest",
-		"vite",
-		"@bufbuild/protobuf",
-		"@vitejs/plugin-vue",
-		"vue",
-		"@vue/compiler-sfc",
-		"@vue/shared",
-		"@vue/server-renderer",
-		"@vue/test-utils",
-		"sass-embedded",
-	}
-	if coverage {
-		baseRequired = append(baseRequired, "@vitest/coverage-v8")
-	}
-
-	moduleDeps, err := moddeps.CollectExternalModuleDependencies(filepath.Join(repoRoot, "modules"), []string{app}, true)
-	if err != nil {
-		return nil, xfmt.Errorf("vitest: %w", err)
-	}
-
-	environmentDeps, err := collectVitestEnvironmentDependencies(repoRoot, app)
-	if err != nil {
-		return nil, err
-	}
-
-	return moddeps.MergeRequiredModules(baseRequired, moduleDeps, environmentDeps), nil
-}
-
-func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string, error) {
-	// Keep environment inference conservative and marker-driven to avoid forcing
-	// DOM runtimes unless tests explicitly request them.
-	environmentCandidates := []string{"happy-dom", "jsdom"}
-
-	webRoot := filepath.Join(repoRoot, "modules", app, "web")
-	st, err := os.Stat(webRoot)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, xfmt.Errorf("vitest: stat web root for %s: %w", app, err)
-	}
-	if !st.IsDir() {
-		return nil, nil
-	}
-
-	found := make(map[string]bool, len(environmentCandidates))
-	err = filepath.WalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() {
-			if d.Name() == "node_modules" || d.Name() == "dist" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		name := d.Name()
-		if !strings.Contains(name, ".test.") && !strings.Contains(name, ".spec.") {
-			return nil
-		}
-		if !strings.HasSuffix(name, ".ts") &&
-			!strings.HasSuffix(name, ".tsx") &&
-			!strings.HasSuffix(name, ".js") &&
-			!strings.HasSuffix(name, ".jsx") &&
-			!strings.HasSuffix(name, ".mjs") &&
-			!strings.HasSuffix(name, ".cjs") {
-			return nil
-		}
-
-		contentBytes, readErr := os.ReadFile(path)
-		if readErr != nil {
-			if os.IsNotExist(readErr) {
-				return nil
-			}
-			return readErr
-		}
-		content := string(contentBytes)
-		lines := strings.Split(content, "\n")
-		limit := 100
-		if len(lines) < limit {
-			limit = len(lines)
-		}
-		for i := 0; i < limit; i++ {
-			line := strings.TrimSpace(lines[i])
-			if line == "" {
-				continue
-			}
-			for _, environmentName := range environmentCandidates {
-				if found[environmentName] {
-					continue
-				}
-				if (strings.Contains(line, "@vitest-environment") && strings.Contains(line, environmentName)) ||
-					(strings.Contains(line, "@jest-environment") && strings.Contains(line, environmentName)) {
-					found[environmentName] = true
-				}
-			}
-			if len(found) == len(environmentCandidates) {
-				return errVitestEnvironmentMarkerFound
-			}
-		}
-		return nil
-	})
-	if err != nil && !errors.Is(err, errVitestEnvironmentMarkerFound) {
-		return nil, xfmt.Errorf("vitest: scan web tests for %s: %w", app, err)
-	}
-
-	required := make([]string, 0, len(environmentCandidates))
-	for _, environmentName := range environmentCandidates {
-		if found[environmentName] {
-			required = append(required, environmentName)
-		}
-	}
-	return required, nil
-}
-
-func localFrontendModuleRoots(repoRoot string) []string {
-	modulesNodeModules := filepath.Join(repoRoot, "modules", "node_modules")
-	rootNodeModules := filepath.Join(repoRoot, "node_modules")
-	return []string{
-		modulesNodeModules,
-		rootNodeModules,
-	}
-}
-
 func warnIllegalFrontendMarks(repoRoot, app string) {
 	hits, err := ScanAppIllegalFrontendMarks(repoRoot, app)
 	if err != nil {
@@ -451,37 +83,4 @@ func warnIllegalFrontendMarks(repoRoot, app string) {
 	if msg := FormatIllegalMarksWarn(hits, repoRoot); msg != "" {
 		fmt.Fprint(os.Stderr, msg)
 	}
-}
-
-func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, moduleNames []string) (func(), error) {
-	cleanup, err := noderuntime.EnsureGlobalModuleLinksAt(
-		filepath.Join(repoRoot, "modules", "node_modules"),
-		globalNodeModulesRoot,
-		moduleNames,
-	)
-	if err != nil {
-		return nil, xfmt.Errorf("vitest: %w", err)
-	}
-	return cleanup, nil
-}
-
-func buildNodePath(repoRoot string, globalNodeModulesRoot string) string {
-	nodePathEntries := make([]string, 0, 8)
-	localNodeModulesRoots := localFrontendModuleRoots(repoRoot)
-	for _, localNodeModulesRoot := range localNodeModulesRoots {
-		if st, err := os.Stat(localNodeModulesRoot); err == nil && st.IsDir() {
-			nodePathEntries = append(nodePathEntries, localNodeModulesRoot)
-		}
-	}
-	if globalNodeModulesRoot != "" {
-		if st, err := os.Stat(globalNodeModulesRoot); err == nil && st.IsDir() {
-			nodePathEntries = append(nodePathEntries, globalNodeModulesRoot)
-		}
-	}
-	if existingNodePath := strings.TrimSpace(os.Getenv("NODE_PATH")); existingNodePath != "" {
-		for _, nodePathEntry := range filepath.SplitList(existingNodePath) {
-			nodePathEntries = append(nodePathEntries, nodePathEntry)
-		}
-	}
-	return strings.Join(noderuntime.NormalizeModuleRoots(nodePathEntries...), string(os.PathListSeparator))
 }

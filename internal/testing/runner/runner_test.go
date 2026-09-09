@@ -755,44 +755,20 @@ func TestRunWithDefaults(t *testing.T) {
 	}
 }
 
-func TestRunWithDefaultsReportsMissingJsdomFromFrontendPreflight(t *testing.T) {
+func TestRunWithDefaultsFrontendPreflightNoOp(t *testing.T) {
 	repoRoot := t.TempDir()
 	modulesPath := filepath.Join(repoRoot, "modules")
 	webTestPath := filepath.Join(modulesPath, "meta", "web", "__tests__", "env.spec.ts")
 	if err := os.MkdirAll(filepath.Dir(webTestPath), 0o755); err != nil {
 		t.Fatalf("mkdir web test dir: %v", err)
 	}
-	if err := os.WriteFile(webTestPath, []byte("// @vitest-environment jsdom\nimport { describe, it } from 'vitest'\ndescribe('env', () => { it('ok', () => {}) })\n"), 0o644); err != nil {
+	if err := os.WriteFile(webTestPath, []byte("it('ok', () => {})\n"), 0o644); err != nil {
 		t.Fatalf("write web test file: %v", err)
 	}
 
-	binDir := t.TempDir()
-	writeRunnerExec(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nexit 0\n")
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-
-	globalNodeModulesRoot := filepath.Join(t.TempDir(), "global-node-modules")
-	requiredWithoutJSDOM := []string{
-		"vitest",
-		"vite",
-		"@bufbuild/protobuf",
-		"@vitejs/plugin-vue",
-		"vue",
-		"@vue/compiler-sfc",
-		"@vue/shared",
-		"@vue/server-renderer",
-		"@vue/test-utils",
-		"sass-embedded",
-	}
-	for _, moduleName := range requiredWithoutJSDOM {
-		moduleDir := filepath.Join(globalNodeModulesRoot, filepath.FromSlash(moduleName))
-		if err := os.MkdirAll(moduleDir, 0o755); err != nil {
-			t.Fatalf("mkdir required module %s: %v", moduleName, err)
-		}
-	}
-	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalNodeModulesRoot)
+	t.Setenv("PATH", t.TempDir()) // no node/npx
 
 	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, TmpPath: t.TempDir()}}
-	var stderr strings.Builder
 	err := RunWithDefaults(context.Background(), RunOptions{
 		Env:         runtimeScope,
 		ModulesPath: modulesPath,
@@ -801,27 +777,18 @@ func TestRunWithDefaultsReportsMissingJsdomFromFrontendPreflight(t *testing.T) {
 		RunFE:       true,
 		FailFast:    true,
 		Stdout:      io.Discard,
-		Stderr:      &stderr,
+		Stderr:      io.Discard,
 		ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 			return []string{"meta"}, nil
 		},
 		HasBackendTests:  func(modulesPath string, app string) (bool, error) { return false, nil },
 		HasFrontendTests: func(modulesPath string, app string) (bool, error) { return true, nil },
+		RunFrontend: func(ctx context.Context, repoRoot string, app string, junitPath string, pattern string, coverage bool, coverageReport bool, coverageCheck bool, feCoverageAll bool, coverageReportDir string, coverageLines int, coverageFunctions int, coverageBranches int, coverageStatements int) (bool, error) {
+			return false, nil
+		},
 	})
-	if err == nil {
-		t.Fatal("expected frontend preflight error for missing jsdom")
-	}
-	errText := err.Error()
-	for _, want := range []string{
-		"unit preflight failed for meta. tests were not started.",
-		"missing 1 required module(s): jsdom",
-		"npm install -g jsdom",
-		"retry:",
-		"go run . test unit meta",
-	} {
-		if !strings.Contains(errText, want) {
-			t.Fatalf("expected %q in preflight error, got %q", want, errText)
-		}
+	if err != nil {
+		t.Fatalf("FE preflight must be no-op after hard-cut: %v", err)
 	}
 }
 

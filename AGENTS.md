@@ -72,11 +72,12 @@ at `/web/register`, which auto-logs in — the simplest way to exercise the stac
 | Go build | `go build ./...` |
 | Go tests | `go test ./... -count=1` |
 | Module typecheck | `./choysum test typecheck <module>` or `--all` (Go-native; no Node) |
-| Module unit (BE+FE) | `./choysum test unit <module>` (`--be` / `--fe` to scope) |
+| Module unit (BE+FE) | `./choysum test unit <module>` (`--be` / `--fe` to scope; `--fe` = QuickJS) |
 | Module E2E | `./choysum test e2e <module>` (auth/base/meta/task; needs Playwright browsers) |
 
-Module `test unit`/`test e2e` need the root `node_modules` on PATH. Populate it
-(matches CI) and prepend its bin dir:
+Module unit tests (BE + FE) do **not** need root `node_modules`. Module `test e2e`
+(and some CI jobs like typecheck) still need the root `node_modules` on PATH.
+Populate it (matches CI) and prepend its bin dir:
 
 ```bash
 mkdir -p .choysum/tmp

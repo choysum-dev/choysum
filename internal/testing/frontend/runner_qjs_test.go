@@ -33,32 +33,6 @@ func feQjsFixtureDir(t *testing.T) string {
 	return filepath.Join(filepath.Dir(thisFile), "testdata", "fixtures", "runner")
 }
 
-func TestUseQJSFrontendEngine(t *testing.T) {
-	t.Setenv(EnvFEUnitEngine, "")
-	if UseQJSFrontendEngine() {
-		t.Fatal("empty env should be false")
-	}
-	t.Setenv(EnvFEUnitEngine, "qjs")
-	if !UseQJSFrontendEngine() {
-		t.Fatal("qjs should enable")
-	}
-	t.Setenv(EnvFEUnitEngine, "QJS")
-	if !UseQJSFrontendEngine() {
-		t.Fatal("case-insensitive qjs")
-	}
-	t.Setenv(EnvFEUnitEngine, "vitest")
-	if UseQJSFrontendEngine() {
-		t.Fatal("vitest must not enable qjs")
-	}
-}
-
-func TestValidateFrontendTestDependencies_QJSSkipsNpx(t *testing.T) {
-	t.Setenv(EnvFEUnitEngine, "qjs")
-	if err := ValidateFrontendTestDependencies("", "", false); err != nil {
-		t.Fatalf("qjs path should skip vitest deps: %v", err)
-	}
-}
-
 func TestBuildFrontendUnitBundle_WithVue(t *testing.T) {
 	repoRoot := feQjsRepoRoot(t)
 	fixture := filepath.Join(feQjsFixtureDir(t), "vue")
@@ -181,7 +155,7 @@ func TestRunFrontendQJS_VueCoverage(t *testing.T) {
 	if failed {
 		t.Fatal("expected vue fixture to pass")
 	}
-	lcovPath := filepath.Join(reportDir, "lcov.info")
+	lcovPath := filepath.Join(reportDir, "fe", "fe_qjs_vue", "lcov.info")
 	lcovRaw, err := os.ReadFile(lcovPath)
 	if err != nil {
 		t.Fatalf("read lcov: %v", err)
@@ -195,6 +169,51 @@ func TestRunFrontendQJS_VueCoverage(t *testing.T) {
 	}
 }
 
+func TestFrontendQJS_LcovPath_FeApp(t *testing.T) {
+	repoRoot := feQjsRepoRoot(t)
+	fixture := filepath.Join(feQjsFixtureDir(t), "vue")
+	work := t.TempDir()
+	for _, name := range []string{"Counter.vue", "counter.test.ts"} {
+		raw, err := os.ReadFile(filepath.Join(fixture, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(work, name), raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reportDir := filepath.Join(t.TempDir(), "cov-root")
+	failed, err := RunFrontendQJS(context.Background(), QJSRunOptions{
+		RepoRoot:          repoRoot,
+		App:               "web",
+		TestFiles:         []string{filepath.Join(work, "counter.test.ts")},
+		WorkingDir:        work,
+		Coverage:          true,
+		CoverageReport:    true,
+		CoverageReportDir: reportDir,
+		TmpRoot:           t.TempDir(),
+		ForceVue:          true,
+	})
+	if err != nil || failed {
+		t.Fatalf("run: failed=%v err=%v", failed, err)
+	}
+	lcovPath := filepath.Join(reportDir, "fe", "web", "lcov.info")
+	if _, err := os.Stat(lcovPath); err != nil {
+		t.Fatalf("expected %s: %v", lcovPath, err)
+	}
+	// Must not write lcov at the coverage root (would collide with BE).
+	if _, err := os.Stat(filepath.Join(reportDir, "lcov.info")); err == nil {
+		t.Fatal("FE must not write lcov.info at CoverageReportDir root")
+	}
+	raw, err := os.ReadFile(lcovPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "Counter.vue") {
+		t.Fatalf("expected .vue hits in %s", lcovPath)
+	}
+}
+
 func TestRunFrontendQJS_DiscoverAuthSmoke(t *testing.T) {
 	repoRoot := feQjsRepoRoot(t)
 	files, err := DiscoverFrontendTests(repoRoot, "auth")
@@ -204,14 +223,13 @@ func TestRunFrontendQJS_DiscoverAuthSmoke(t *testing.T) {
 	if len(files) == 0 {
 		t.Fatal("expected auth FE tests")
 	}
-	// Corpus is still Vitest; only assert discover + Vue detection wiring.
 	if !frontendTestsNeedVue(files) {
-		t.Fatal("auth FE corpus still uses VTU/.vue; needVue should be true")
+		t.Fatal("auth FE corpus uses .vue / choysumMount; needVue should be true")
 	}
 }
 
-func TestRunOneAppFrontendTests_RoutesToQJS(t *testing.T) {
-	t.Setenv(EnvFEUnitEngine, "qjs")
+func TestRunOneAppFrontendTests_DefaultsToQJS(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
 	repoRoot := feQjsRepoRoot(t)
 	// No modules/fe_qjs_math/web — discover empty → ok with no tests.
 	failed, err := RunOneAppFrontendTests(context.Background(), repoRoot, "fe_qjs_math", "", "", false, false, false, false, "", 0, 0, 0, 0, t.TempDir(), false)

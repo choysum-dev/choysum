@@ -33,8 +33,7 @@ const (
 	ScanModeError
 )
 
-// IllegalKind identifies a legacy Node/VTU FE unit-test pattern.
-// During corpus migration these are inventory hits (CI warn), not a mandate to delete mount tests.
+// IllegalKind identifies a banned or inventory FE unit-test pattern.
 // After FE hard-cut, ScanModeError rejects vitest/Node DOM packages; choysumMount + .vue imports are allowed.
 type IllegalKind string
 
@@ -45,9 +44,11 @@ const (
 	IllegalDOMPackage     IllegalKind = "dom-package"
 	// IllegalCoverageProbe is a fake lcov sampling SFC / import (banned; mount real business pages).
 	IllegalCoverageProbe IllegalKind = "coverage-probe"
+	// IllegalVitestImport is a bare vitest import or vi.mock (banned after FE hard-cut).
+	IllegalVitestImport IllegalKind = "vitest-import"
 )
 
-// IllegalMark is one legacy FE unit-test inventory hit (see IllegalKind).
+// IllegalMark is one FE unit-test scan hit (see IllegalKind).
 type IllegalMark struct {
 	Path    string
 	Line    int
@@ -60,8 +61,10 @@ var (
 	// Match the from/import/require clause itself so line numbers stay on the package specifier
 	// (avoids [\s\S]*? spanning back to an earlier unrelated import/export).
 	// Quote class includes backticks for dynamic import()/require() template literals.
-	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)(?:/[^'\"`]*)?['\"`]")
-	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
+	reDOMPackage   = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)(?:/[^'\"`]*)?['\"`]")
+	reVTUImport    = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
+	reVitestImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]vitest(?:/[^'\"`]*)?['\"`]")
+	reViMock       = regexp.MustCompile(`(?m)\bvi\.mock\s*\(`)
 	// Suppress IllegalVTU for mount/shallowMount only when those names are imported from choysumMount.
 	reChoysumMountBinding = regexp.MustCompile(`(?m)import\s*\{[^}]*\b(?:mount|shallowMount)\b[^}]*\}\s*from\s*['"\x60]@choysum/test-utils(?:/[^'"\x60]*)?['"\x60]`)
 	reMountCall           = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
@@ -139,7 +142,6 @@ func isFrontendUnitTestFile(name string) bool {
 }
 
 // ScanIllegalFrontendMarks scans FE unit files for banned patterns.
-// Importing from 'vitest' is allowed during the migration period.
 func ScanIllegalFrontendMarks(paths []string) ([]IllegalMark, error) {
 	var hits []IllegalMark
 	for _, path := range paths {
@@ -258,6 +260,9 @@ func scanIllegalContent(path, content string) []IllegalMark {
 		if reVitestEnvHappy.MatchString(line) {
 			add(lineNo, IllegalDOMEnvironment, line)
 		}
+		if reViMock.MatchString(line) {
+			add(lineNo, IllegalVitestImport, line)
+		}
 		if reMountCall.MatchString(line) {
 			// choysumMount: suppress only when mount/shallowMount are imported from @choysum/test-utils.
 			if !reChoysumMountBinding.MatchString(content) {
@@ -269,6 +274,7 @@ func scanIllegalContent(path, content string) []IllegalMark {
 	// Match-span based reporting for import forms that may span lines.
 	addRegexHits(content, lines, reVueImport, IllegalVueImport, add)
 	addRegexHits(content, lines, reVTUImport, IllegalVTU, add)
+	addRegexHits(content, lines, reVitestImport, IllegalVitestImport, add)
 	addRegexHits(content, lines, reDOMPackage, IllegalDOMPackage, add)
 	addRegexHits(content, lines, reCoverageProbeImport, IllegalCoverageProbe, add)
 	return hits
@@ -307,7 +313,7 @@ func FormatIllegalMarksWarn(hits []IllegalMark, repoRoot string) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("choysum test: %d illegal FE unit mark(s) (warn; hard-cut will fail):\n", len(hits)))
+	b.WriteString(fmt.Sprintf("choysum test: %d illegal FE unit mark(s):\n", len(hits)))
 	for _, hit := range hits {
 		rel := relativizeRepoPath(repoRoot, hit.Path)
 		fmt.Fprintf(&b, "  - %s:%d [%s] %s\n", rel, hit.Line, hit.Kind, hit.Snippet)

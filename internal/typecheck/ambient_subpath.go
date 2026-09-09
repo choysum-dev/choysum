@@ -24,8 +24,6 @@ func buildSubpathStubs() string {
 		"element-plus/es/locale/lang/*",
 		"@element-plus/icons-vue",
 		"nprogress",
-		"vitest",
-		"@vue/test-utils",
 	}
 	var b strings.Builder
 	b.WriteString("// Ambient declarations for subpath imports without individual types.\n")
