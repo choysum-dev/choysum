@@ -143,7 +143,7 @@ func TestNewTestUnitFEIllegalCmd_ArgsAndScan(t *testing.T) {
 	if err := os.MkdirAll(cleanWeb, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(cleanWeb, "ok.test.ts"), []byte("import { it } from 'vitest'\nit('ok', () => {})\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cleanWeb, "ok.test.ts"), []byte("it('ok', () => {})\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	stderr.Reset()
@@ -227,7 +227,7 @@ func TestNewTestUnitFEIllegalCmd_CwdFallbackAndReadError(t *testing.T) {
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(web, "ok.test.ts"), []byte("import { it } from 'vitest'\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(web, "ok.test.ts"), []byte("it('ok', () => {})\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	t.Chdir(repo)

@@ -33,8 +33,7 @@ const (
 	ScanModeError
 )
 
-// IllegalKind identifies a legacy Node/VTU FE unit-test pattern.
-// During corpus migration these are inventory hits (CI warn), not a mandate to delete mount tests.
+// IllegalKind identifies a banned or inventory FE unit-test pattern.
 // After FE hard-cut, ScanModeError rejects vitest/Node DOM packages; choysumMount + .vue imports are allowed.
 type IllegalKind string
 
@@ -45,9 +44,11 @@ const (
 	IllegalDOMPackage     IllegalKind = "dom-package"
 	// IllegalCoverageProbe is a fake lcov sampling SFC / import (banned; mount real business pages).
 	IllegalCoverageProbe IllegalKind = "coverage-probe"
+	// IllegalVitestImport is a bare vitest import or vi.mock (banned after FE hard-cut).
+	IllegalVitestImport IllegalKind = "vitest-import"
 )
 
-// IllegalMark is one legacy FE unit-test inventory hit (see IllegalKind).
+// IllegalMark is one FE unit-test scan hit (see IllegalKind).
 type IllegalMark struct {
 	Path    string
 	Line    int
@@ -60,8 +61,10 @@ var (
 	// Match the from/import/require clause itself so line numbers stay on the package specifier
 	// (avoids [\s\S]*? spanning back to an earlier unrelated import/export).
 	// Quote class includes backticks for dynamic import()/require() template literals.
-	reDOMPackage = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)(?:/[^'\"`]*)?['\"`]")
-	reVTUImport  = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
+	reDOMPackage   = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`](happy-dom|jsdom)(?:/[^'\"`]*)?['\"`]")
+	reVTUImport    = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]@vue/test-utils(?:/[^'\"`]*)?['\"`]")
+	reVitestImport = regexp.MustCompile("(?m)(?:\\bfrom\\s+|import\\s*(?:\\(\\s*)?|require\\s*\\(\\s*)['\"`]vitest(?:/[^'\"`]*)?['\"`]")
+	reViMock       = regexp.MustCompile(`(?m)\bvi\.mock\s*\(`)
 	// Suppress IllegalVTU for mount/shallowMount only when those names are imported from choysumMount.
 	reChoysumMountBinding = regexp.MustCompile(`(?m)import\s*\{[^}]*\b(?:mount|shallowMount)\b[^}]*\}\s*from\s*['"\x60]@choysum/test-utils(?:/[^'"\x60]*)?['"\x60]`)
 	reMountCall           = regexp.MustCompile(`(?:^|[^\.\w])(?:shallowMount|mount)\s*\(`)
@@ -139,7 +142,6 @@ func isFrontendUnitTestFile(name string) bool {
 }
 
 // ScanIllegalFrontendMarks scans FE unit files for banned patterns.
-// Importing from 'vitest' is allowed during the migration period.
 func ScanIllegalFrontendMarks(paths []string) ([]IllegalMark, error) {
 	var hits []IllegalMark
 	for _, path := range paths {
@@ -260,18 +262,273 @@ func scanIllegalContent(path, content string) []IllegalMark {
 		}
 		if reMountCall.MatchString(line) {
 			// choysumMount: suppress only when mount/shallowMount are imported from @choysum/test-utils.
+			// Binding regex uses [^}]* so multiline named imports are recognized against full content.
 			if !reChoysumMountBinding.MatchString(content) {
 				add(lineNo, IllegalVTU, line)
 			}
 		}
 	}
 
-	// Match-span based reporting for import forms that may span lines.
+	// Import-like banned patterns: scan with comments/strings blanked so docs/fixtures
+	// do not false-fail --fail. Template ${...} stays scannable (see blankJSCommentsAndStrings).
+	code := blankJSCommentsAndStrings(content)
+	codeLines := strings.Split(code, "\n")
+	for i, line := range codeLines {
+		if reViMock.MatchString(line) {
+			snippet := line
+			if i < len(lines) {
+				snippet = lines[i]
+			}
+			add(i+1, IllegalVitestImport, snippet)
+		}
+	}
+
 	addRegexHits(content, lines, reVueImport, IllegalVueImport, add)
-	addRegexHits(content, lines, reVTUImport, IllegalVTU, add)
-	addRegexHits(content, lines, reDOMPackage, IllegalDOMPackage, add)
-	addRegexHits(content, lines, reCoverageProbeImport, IllegalCoverageProbe, add)
+	addRegexHits(code, lines, reVTUImport, IllegalVTU, add)
+	addRegexHits(code, lines, reVitestImport, IllegalVitestImport, add)
+	addRegexHits(code, lines, reDOMPackage, IllegalDOMPackage, add)
+	addRegexHits(code, lines, reCoverageProbeImport, IllegalCoverageProbe, add)
 	return hits
+}
+
+// blankJSCommentsAndStrings replaces // and /* */ comments plus non-module
+// ', ", and ` literal text with spaces (newlines preserved) so inventory
+// regexes ignore noise. from/import/require module strings are kept intact.
+// Backtick ${...} bodies are blanked recursively so nested comments/strings are
+// ignored while executable tokens (e.g. vi.mock) stay scannable.
+func blankJSCommentsAndStrings(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	i := 0
+	for i < len(s) {
+		if i+1 < len(s) && s[i] == '/' && s[i+1] == '/' {
+			for i < len(s) && s[i] != '\n' {
+				b.WriteByte(' ')
+				i++
+			}
+			continue
+		}
+		if i+1 < len(s) && s[i] == '/' && s[i+1] == '*' {
+			b.WriteByte(' ')
+			b.WriteByte(' ')
+			i += 2
+			for i < len(s) {
+				if i+1 < len(s) && s[i] == '*' && s[i+1] == '/' {
+					b.WriteByte(' ')
+					b.WriteByte(' ')
+					i += 2
+					break
+				}
+				if s[i] == '\n' {
+					b.WriteByte('\n')
+				} else {
+					b.WriteByte(' ')
+				}
+				i++
+			}
+			continue
+		}
+		if s[i] == '\'' || s[i] == '"' || s[i] == '`' {
+			quote := s[i]
+			// Use the blanked prefix so from/*c*/'pkg' still sees "from" (comment → spaces).
+			if isModuleSpecifierContext(b.String(), b.Len()) {
+				// Keep from/import/require module strings so import regexes still match.
+				b.WriteByte(s[i])
+				i++
+				for i < len(s) {
+					b.WriteByte(s[i])
+					if s[i] == '\\' && i+1 < len(s) {
+						b.WriteByte(s[i+1])
+						i += 2
+						continue
+					}
+					if s[i] == quote {
+						i++
+						break
+					}
+					i++
+				}
+				continue
+			}
+			b.WriteByte(' ')
+			i++
+			for i < len(s) {
+				if s[i] == '\\' && i+1 < len(s) {
+					// Preserve escaped newline (line continuation) so line maps stay aligned.
+					if s[i+1] == '\n' {
+						b.WriteByte(' ')
+						b.WriteByte('\n')
+					} else {
+						b.WriteByte(' ')
+						b.WriteByte(' ')
+					}
+					i += 2
+					continue
+				}
+				if quote == '`' && s[i] == '$' && i+1 < len(s) && s[i+1] == '{' {
+					b.WriteByte('$')
+					b.WriteByte('{')
+					i += 2
+					end := findTemplateInterpClose(s, i)
+					bodyEnd := end
+					if bodyEnd > i && s[bodyEnd-1] == '}' {
+						bodyEnd--
+					}
+					b.WriteString(blankJSCommentsAndStrings(s[i:bodyEnd]))
+					if bodyEnd < end {
+						b.WriteByte('}')
+					}
+					i = end
+					continue
+				}
+				ch := s[i]
+				if ch == quote {
+					b.WriteByte(' ')
+					i++
+					break
+				}
+				if ch == '\n' {
+					b.WriteByte('\n')
+				} else {
+					b.WriteByte(' ')
+				}
+				i++
+			}
+			continue
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
+}
+
+func isIdentByte(c byte) bool {
+	return c == '_' || c == '$' ||
+		(c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9')
+}
+
+// findTemplateInterpClose returns the index after the matching '}' for a
+// `${` started at start (start points at the first body byte). Braces inside
+// comments, strings, and nested templates are ignored.
+func findTemplateInterpClose(s string, start int) int {
+	depth := 1
+	i := start
+	for i < len(s) && depth > 0 {
+		c := s[i]
+		if c == '/' && i+1 < len(s) {
+			if s[i+1] == '/' {
+				i += 2
+				for i < len(s) && s[i] != '\n' {
+					i++
+				}
+				continue
+			}
+			if s[i+1] == '*' {
+				i += 2
+				for i+1 < len(s) && !(s[i] == '*' && s[i+1] == '/') {
+					i++
+				}
+				if i+1 < len(s) {
+					i += 2
+				} else {
+					i = len(s)
+				}
+				continue
+			}
+		}
+		if c == '\'' || c == '"' {
+			i = skipJSQuoted(s, i)
+			continue
+		}
+		if c == '`' {
+			i = skipJSTemplateLiteral(s, i)
+			continue
+		}
+		if c == '{' {
+			depth++
+		} else if c == '}' {
+			depth--
+		}
+		i++
+	}
+	return i
+}
+
+func skipJSQuoted(s string, i int) int {
+	q := s[i]
+	i++
+	for i < len(s) {
+		if s[i] == '\\' && i+1 < len(s) {
+			i += 2
+			continue
+		}
+		if s[i] == q {
+			return i + 1
+		}
+		i++
+	}
+	return i
+}
+
+func skipJSTemplateLiteral(s string, i int) int {
+	i++ // opening `
+	for i < len(s) {
+		if s[i] == '\\' && i+1 < len(s) {
+			i += 2
+			continue
+		}
+		if s[i] == '`' {
+			return i + 1
+		}
+		if s[i] == '$' && i+1 < len(s) && s[i+1] == '{' {
+			i = findTemplateInterpClose(s, i+2)
+			continue
+		}
+		i++
+	}
+	return i
+}
+
+// isModuleSpecifierContext reports whether quoteIdx opens a from/import/require
+// module string in already-blanked source (comments/strings → spaces), so
+// from /* c */ 'pkg' still matches.
+func isModuleSpecifierContext(s string, quoteIdx int) bool {
+	j := quoteIdx - 1
+	for j >= 0 && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
+		j--
+	}
+	if j < 0 {
+		return false
+	}
+	if j >= 3 && s[j-3:j+1] == "from" && (j-4 < 0 || !isIdentByte(s[j-4])) {
+		return true
+	}
+	// Side-effect import 'pkg' (no braces / from).
+	if hasIdentSuffixAt(s, j, "import") {
+		return true
+	}
+	if s[j] != '(' {
+		return false
+	}
+	k := j - 1
+	for k >= 0 && (s[k] == ' ' || s[k] == '\t' || s[k] == '\n' || s[k] == '\r') {
+		k--
+	}
+	return hasIdentSuffixAt(s, k, "import") || hasIdentSuffixAt(s, k, "require")
+}
+
+func hasIdentSuffixAt(s string, endIdx int, word string) bool {
+	n := len(word)
+	if endIdx+1 < n {
+		return false
+	}
+	start := endIdx - n + 1
+	if s[start:endIdx+1] != word {
+		return false
+	}
+	return start == 0 || !isIdentByte(s[start-1])
 }
 
 func addRegexHits(content string, lines []string, re *regexp.Regexp, kind IllegalKind, add func(int, IllegalKind, string)) {
@@ -307,7 +564,7 @@ func FormatIllegalMarksWarn(hits []IllegalMark, repoRoot string) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("choysum test: %d illegal FE unit mark(s) (warn; hard-cut will fail):\n", len(hits)))
+	b.WriteString(fmt.Sprintf("choysum test: %d illegal FE unit mark(s):\n", len(hits)))
 	for _, hit := range hits {
 		rel := relativizeRepoPath(repoRoot, hit.Path)
 		fmt.Fprintf(&b, "  - %s:%d [%s] %s\n", rel, hit.Line, hit.Kind, hit.Snippet)

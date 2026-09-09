@@ -28,10 +28,6 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// EnvFEUnitEngine selects the FE unit engine. Temporary until PR-unit-final-fe.
-// Only "qjs" enables the QuickJS path; anything else (including unset) keeps Vitest.
-const EnvFEUnitEngine = "CHOYSUM_FE_UNIT_ENGINE"
-
 // Test seams for rare OS / engine / coverage failures (overridden in unit tests).
 var (
 	osGetwdQJS                   = os.Getwd
@@ -59,12 +55,7 @@ var (
 	}
 )
 
-// UseQJSFrontendEngine reports whether FE unit should run via QuickJS host.
-func UseQJSFrontendEngine() bool {
-	return strings.EqualFold(strings.TrimSpace(os.Getenv(EnvFEUnitEngine)), "qjs")
-}
-
-// QJSRunOptions configures an opt-in QuickJS FE unit run (discover → bundle → host → coverage).
+// QJSRunOptions configures a QuickJS FE unit run (discover → bundle → host → coverage).
 type QJSRunOptions struct {
 	RepoRoot           string
 	App                string
@@ -107,7 +98,6 @@ type qjsRunReport struct {
 }
 
 // RunFrontendQJS runs FE unit tests on QuickJS + choysumtest (+ Vue host when needed).
-// Default CLI --fe remains Vitest until PR-unit-final-fe; enable via CHOYSUM_FE_UNIT_ENGINE=qjs.
 func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -245,10 +235,12 @@ func RunFrontendQJS(ctx context.Context, opts QJSRunOptions) (bool, error) {
 		if err := writeCoverageJSONQJS(repoRoot, app, runID, *report.CoverageJSON, workspaceTmpDir); err != nil {
 			return true, xfmt.Errorf("fe-qjs: write coverage json: %w", err)
 		}
+		// Align with Vitest/CI: Codecov uploads $CoverageReportDir/fe/<app>/lcov.info.
 		reportDir := strings.TrimSpace(opts.CoverageReportDir)
 		if reportDir == "" {
 			reportDir = filepath.Join(workspaceTmpDir, "coverage", "reports")
 		}
+		reportDir = filepath.Join(reportDir, "fe", sanitizeFrontendAppToken(app))
 		if opts.CoverageReport {
 			if err := writeLcovQJS(ctx, coverage.ReportOptions{
 				RepoRoot:  repoRoot,

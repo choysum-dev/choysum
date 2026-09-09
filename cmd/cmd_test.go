@@ -6,7 +6,6 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -714,31 +713,14 @@ func TestNewTypeFetchCmd_Run_OfflineFetchesCompilerTypesFromTsconfig(t *testing.
 
 func TestResolveTypeFetchToolingTypeTargets(t *testing.T) {
 	modulesPath := t.TempDir()
-	vitestPkgPath := filepath.Join(modulesPath, "node_modules", "vitest", "package.json")
-	if err := os.MkdirAll(filepath.Dir(vitestPkgPath), 0o755); err != nil {
-		t.Fatalf("mkdir vitest package dir: %v", err)
-	}
-	if err := os.WriteFile(vitestPkgPath, []byte(`{"name":"vitest","version":"3.2.4"}`), 0o644); err != nil {
-		t.Fatalf("write vitest package.json: %v", err)
-	}
-
+	// After FE hard-cut, IDEToolingTypePackages is empty — no vitest/VTU targets.
 	targets := resolveTypeFetchToolingTypeTargets(modulesPath)
-	if len(targets) == 0 {
-		t.Fatal("expected tooling type targets")
-	}
-	index := make(map[string]typeFetchToolingTypeTarget, len(targets))
-	for _, target := range targets {
-		index[target.PackageName] = target
-	}
-	if got := index["vitest"]; got.Version != "3.2.4" {
-		t.Fatalf("vitest target = %+v, want version 3.2.4", got)
-	}
-	if got := index["@vue/test-utils"]; got.Version != "latest" {
-		t.Fatalf("@vue/test-utils target = %+v, want version latest", got)
+	if len(targets) != 0 {
+		t.Fatalf("expected no tooling type targets after FE hard-cut, got %#v", targets)
 	}
 }
 
-func TestNewTypeFetchCmd_Run_OfflineFetchesIDEToolingTypes(t *testing.T) {
+func TestNewTypeFetchCmd_Run_OfflineSkipsEmptyIDEToolingTypes(t *testing.T) {
 	modulesPath := t.TempDir()
 	cfg := newCommandTestConfig(modulesPath)
 	writeCommandPackage(t, modulesPath, "app", `{}`)
@@ -746,26 +728,6 @@ func TestNewTypeFetchCmd_Run_OfflineFetchesIDEToolingTypes(t *testing.T) {
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
 	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
 		t.Fatalf("write tsconfig: %v", err)
-	}
-
-	vitestPkgPath := filepath.Join(modulesPath, "node_modules", "vitest", "package.json")
-	if err := os.MkdirAll(filepath.Dir(vitestPkgPath), 0o755); err != nil {
-		t.Fatalf("mkdir vitest package dir: %v", err)
-	}
-	if err := os.WriteFile(vitestPkgPath, []byte(`{"name":"vitest","version":"3.2.4"}`), 0o644); err != nil {
-		t.Fatalf("write vitest package.json: %v", err)
-	}
-
-	typesDir := filepath.Join(cfg.DefaultChoysumPath, "pkg", "types")
-	vitestCache := filepath.Join(typesDir, "vitest@3.2.4.d.ts")
-	testUtilsCache := filepath.Join(typesDir, "@vue", "test-utils@latest.d.ts")
-	for _, cacheFile := range []string{vitestCache, testUtilsCache} {
-		if err := os.MkdirAll(filepath.Dir(cacheFile), 0o755); err != nil {
-			t.Fatalf("mkdir tooling cache dir: %v", err)
-		}
-		if err := os.WriteFile(cacheFile, []byte("export {};"), 0o644); err != nil {
-			t.Fatalf("write tooling cache file: %v", err)
-		}
 	}
 
 	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
@@ -779,25 +741,8 @@ func TestNewTypeFetchCmd_Run_OfflineFetchesIDEToolingTypes(t *testing.T) {
 	}
 
 	output := out.String()
-	if !strings.Contains(output, "IDE tooling types complete: targets=2 (cached=2, fetched=0, failed=0)") {
-		t.Fatalf("expected tooling types summary line, got %q", output)
-	}
-
-	tsconfigData, err := os.ReadFile(tsconfigPath)
-	if err != nil {
-		t.Fatalf("read modules tsconfig: %v", err)
-	}
-	var tsconfig map[string]any
-	if err := json.Unmarshal(tsconfigData, &tsconfig); err != nil {
-		t.Fatalf("parse modules tsconfig: %v", err)
-	}
-	compilerOptions, _ := tsconfig["compilerOptions"].(map[string]any)
-	paths, _ := compilerOptions["paths"].(map[string]any)
-	if paths["vitest"] == nil {
-		t.Fatalf("expected vitest path mapping, got %#v", paths)
-	}
-	if paths["@vue/test-utils"] == nil {
-		t.Fatalf("expected @vue/test-utils path mapping, got %#v", paths)
+	if strings.Contains(output, "IDE tooling types complete:") {
+		t.Fatalf("expected no IDE tooling summary when list is empty, got %q", output)
 	}
 }
 

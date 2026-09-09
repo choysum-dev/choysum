@@ -254,6 +254,13 @@ func TestMinimalDOM_selectorAndEvents(t *testing.T) {
   if (child._listeners.dup.length !== 1) throw new Error('addEventListener should dedupe');
 
   parent.innerHTML = '<b>x</b>';
+  if (parent.textContent !== 'x') throw new Error('innerHTML should project tag plaintext');
+  parent.innerHTML = '<p></p>';
+  if (parent.textContent !== '') throw new Error('blank tags should yield empty textContent');
+  parent.innerHTML = '<<b>y</b>';
+  if (parent.textContent !== 'y' || parent.textContent.indexOf('<') >= 0) {
+    throw new Error('nested/open markup must not leave angle brackets in textContent');
+  }
   parent.appendChild(document.createElement('i'));
   if (parent._html) throw new Error('appendChild should clear cached _html');
 

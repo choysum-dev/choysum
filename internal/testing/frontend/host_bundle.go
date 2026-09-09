@@ -45,7 +45,7 @@ type VueHostBundleOptions struct {
 }
 
 // BuildFrontendVueHostBundle bundles an entry with real vue (esmresolver) and choysummount alias.
-// It does not call NewModuleBuilder. Default --fe remains Vitest until PR-unit-final-fe.
+// It does not call NewModuleBuilder.
 func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error) {
 	repoRoot := strings.TrimSpace(opts.RepoRoot)
 	entry := strings.TrimSpace(opts.EntryPath)
