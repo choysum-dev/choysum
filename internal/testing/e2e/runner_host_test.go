@@ -390,7 +390,7 @@ func TestEvalE2ETestRunEvalException(t *testing.T) {
 		t.Fatal(err)
 	}
 	qjs := engine.(*quickjsengine.QuickjsEngine)
-	// Break Eval by making __choysum_test_run__ a non-callable that still passes typeof check... 
+	// Break Eval by making __choysum_test_run__ a non-callable that still passes typeof check...
 	// Use a getter that throws when invoked via the async IIFE path:
 	v := qjs.Ctx.Eval(`Object.defineProperty(globalThis, '__choysum_test_run__', {
   get() { throw new Error('getter boom'); }
@@ -484,9 +484,80 @@ func TestRunE2EHostNonQuickjsEngine(t *testing.T) {
 	}
 }
 
+func TestRunE2EHostBootstrapTimersLoadEvalHooks(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("caller")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
+	runDir := t.TempDir()
+	runtimePath := filepath.Join(runDir, "runtime.json")
+	_ = os.WriteFile(runtimePath, []byte(`{}`), 0o644)
+	spec := filepath.Join(runDir, "x.spec.ts")
+	_ = os.WriteFile(spec, []byte(`import { test } from '@choysum/e2e'; test('x', async () => {});`), 0o644)
+
+	oldStart := cdpStart
+	oldEng := newQJSEngine
+	oldLoad := engineLoadHook
+	oldEval := evalE2ETestRunHook
+	oldTimers := bootstrapTimersHook
+	t.Cleanup(func() {
+		cdpStart = oldStart
+		newQJSEngine = oldEng
+		engineLoadHook = oldLoad
+		evalE2ETestRunHook = oldEval
+		bootstrapTimersHook = oldTimers
+	})
+	cdpStart = e2eStartChromiumOrSkip(t)
+
+	bootstrapTimersHook = func(qjs *quickjsengine.QuickjsEngine) bool { return false }
+	err := runE2EHost(context.Background(), RunOptions{
+		WorkDir: repoRoot, Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{},
+	}, runDir, "http://x", runtimePath, []string{spec})
+	if err == nil || !strings.Contains(err.Error(), "BootstrapTimers failed") {
+		t.Fatalf("timers: %v", err)
+	}
+
+	bootstrapTimersHook = oldTimers
+	engineLoadHook = func(engine jsengine.JsEngine, scripts []*jsengine.JsScript) error {
+		return errors.New("load boom")
+	}
+	err = runE2EHost(context.Background(), RunOptions{
+		WorkDir: repoRoot, Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{},
+	}, runDir, "http://x", runtimePath, []string{spec})
+	if err == nil || !strings.Contains(err.Error(), "load boom") {
+		t.Fatalf("load: %v", err)
+	}
+
+	engineLoadHook = oldLoad
+	evalE2ETestRunHook = func(ctx context.Context, engine jsengine.JsEngine) (*e2eRunReport, error) {
+		return nil, errors.New("eval boom")
+	}
+	err = runE2EHost(context.Background(), RunOptions{
+		WorkDir: repoRoot, Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{},
+	}, runDir, "http://x", runtimePath, []string{spec})
+	if err == nil || !strings.Contains(err.Error(), "eval boom") {
+		t.Fatalf("eval: %v", err)
+	}
+}
+
+func TestEvalE2ETestRunSyncException(t *testing.T) {
+	engine, err := newQJSEngine()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := e2eTestRunScript
+	e2eTestRunScript = `throw new Error('sync eval boom')`
+	t.Cleanup(func() { e2eTestRunScript = old })
+	_, err = evalE2ETestRun(context.Background(), engine)
+	if err == nil || !strings.Contains(err.Error(), "sync eval boom") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 type fakeE2EEngine struct{}
 
-func (fakeE2EEngine) Load([]*jsengine.JsScript) error                          { return nil }
+func (fakeE2EEngine) Load([]*jsengine.JsScript) error { return nil }
 func (fakeE2EEngine) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	return nil, nil
 }
@@ -535,4 +606,3 @@ func e2eStartChromiumOrSkip(t *testing.T) func(ctx context.Context, opts cdp.Sta
 		return nil, last
 	}
 }
-

@@ -26,7 +26,8 @@ func TestSessionPageNetworkIntegration(t *testing.T) {
 <script>
 document.getElementById('go').onclick = () => {
   fetch('/auth.User/Login', {method:'POST', headers:{'content-type':'application/grpc-web+proto'}, body:'x'})
-    .then(() => { location.href = '/done'; });
+    // Delay navigation so WaitForResponse can fetch the body before the document is dropped.
+    .then(() => { setTimeout(() => { location.href = '/done'; }, 300); });
 };
 </script></body></html>`))
 		case "/auth.User/Login":

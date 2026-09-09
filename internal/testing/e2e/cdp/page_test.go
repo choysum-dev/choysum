@@ -4,6 +4,8 @@
 package cdp
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -106,11 +108,60 @@ func TestScreenshotCurrent(t *testing.T) {
 	_ = session2.ScreenshotCurrent(shotPath) // error expected; covers Run-fail when racing
 }
 
+func TestNewPageEnableNetworkError(t *testing.T) {
+	session := startTestSession(t)
+	old := enableNetworkForPage
+	enableNetworkForPage = func(p *Page) error { return errors.New("net enable boom") }
+	t.Cleanup(func() { enableNetworkForPage = old })
+	if _, err := session.NewPage(); err == nil || !strings.Contains(err.Error(), "net enable boom") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestNewPageDeadBrowserContext(t *testing.T) {
 	session := startTestSession(t)
 	session.Close()
 	if _, err := session.NewPage(); err == nil || !strings.Contains(err.Error(), "browser context dead") {
 		t.Fatalf("expected dead context error, got %v", err)
+	}
+}
+
+func TestScreenshotCurrentDeadContext(t *testing.T) {
+	session := startTestSession(t)
+	session.Close()
+	if err := session.ScreenshotCurrent(filepath.Join(t.TempDir(), "dead.png")); err == nil {
+		t.Fatal("expected dead browserCtx error")
+	}
+}
+
+func TestWaitForFunctionChromedpErrorDeadline(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := pageEvaluate
+	pageEvaluate = func(ctx context.Context, expr string, out *bool) error {
+		return errors.New("eval always fails")
+	}
+	t.Cleanup(func() { pageEvaluate = old })
+	if err := page.WaitForFunction("true", 80*time.Millisecond); err == nil || !strings.Contains(err.Error(), "waitForFunction") {
+		t.Fatalf("expected wrapped waitForFunction error, got %v", err)
+	}
+}
+
+func TestEvaluateEmptyResultAndJSONQuoteFallback(t *testing.T) {
+	if got := normalizeEvaluateOut(""); got != "null" {
+		t.Fatalf("empty evaluate: %q", got)
+	}
+	if got := normalizeEvaluateOut(`"x"`); got != `"x"` {
+		t.Fatalf("non-empty: %q", got)
+	}
+	oldJM := jsonMarshalString
+	jsonMarshalString = func(s string) ([]byte, error) { return nil, errors.New("marshal fail") }
+	t.Cleanup(func() { jsonMarshalString = oldJM })
+	if got := jsonQuote("x"); got != `""` {
+		t.Fatalf("jsonQuote fallback: %q", got)
 	}
 }
 
@@ -315,17 +366,63 @@ func TestNewPageReusesTab(t *testing.T) {
 	p2.Close()
 }
 
-func TestWaitForFunctionSessionClosed(t *testing.T) {
+func TestWaitForFunctionCancelBetweenPolls(t *testing.T) {
+	// Mock evaluate so we reach the between-polls select without CDP; cancel ctx there.
+	ctx, cancel := context.WithCancel(context.Background())
+	page := &Page{ctx: ctx, cancel: cancel}
+	old := pageEvaluate
+	n := 0
+	pageEvaluate = func(c context.Context, expr string, out *bool) error {
+		n++
+		*out = false
+		if n == 1 {
+			go func() {
+				time.Sleep(10 * time.Millisecond)
+				cancel()
+			}()
+		}
+		return nil
+	}
+	t.Cleanup(func() { pageEvaluate = old })
+	if err := page.WaitForFunction("false", 2*time.Second); err == nil {
+		t.Fatal("expected cancel between polls")
+	}
+}
+
+func TestWaitForFunctionEvaluateErrorWhenCtxCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	page := &Page{ctx: ctx, cancel: func() {}}
+	old := pageEvaluate
+	pageEvaluate = func(c context.Context, expr string, out *bool) error {
+		return errors.New("evaluate boom")
+	}
+	t.Cleanup(func() { pageEvaluate = old })
+	if err := page.WaitForFunction("true", time.Second); err == nil {
+		t.Fatal("expected ctx err from evaluate-fail path")
+	}
+}
+
+func TestWaitForFunctionFunctionSource(t *testing.T) {
 	session := startTestSession(t)
 	page, err := session.NewPage()
 	if err != nil {
 		t.Fatal(err)
 	}
-	go func() {
-		time.Sleep(40 * time.Millisecond)
-		session.Close()
-	}()
-	if err := page.WaitForFunction("false", 2*time.Second); err == nil {
-		t.Fatal("expected WaitForFunction error after session close")
+	defer page.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>
+<script>window.__ready = true;</script>
+</body></html>`))
+	}))
+	defer srv.Close()
+	if err := page.Goto(srv.URL, "load"); err != nil {
+		t.Fatal(err)
+	}
+	// Function-source form: wrapper must invoke via typeof __v === 'function' ? __v() : __v.
+	if err := page.WaitForFunction(`() => window.__ready === true`, 2*time.Second); err != nil {
+		t.Fatalf("function-source WaitForFunction: %v", err)
 	}
 }

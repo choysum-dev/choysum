@@ -36,7 +36,9 @@ def platform_key() -> str:
             return "mac-arm64"
         return "mac-x64"
     if system == "linux":
-        return "linux64"
+        if machine in ("x86_64", "amd64"):
+            return "linux64"
+        raise SystemExit(f"unsupported platform: {system}/{machine}")
     raise SystemExit(f"unsupported platform: {system}/{machine}")
 
 

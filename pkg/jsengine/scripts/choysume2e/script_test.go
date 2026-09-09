@@ -130,6 +130,14 @@ func TestSourcePathAndShimMaterializeFallback(t *testing.T) {
 		{"choysume2e.js", ""},
 		{"choysume2e_pw_shim.mjs", ""},
 	}
+	t.Cleanup(func() {
+		for _, p := range pairs {
+			if p.bak == "" {
+				continue
+			}
+			_ = os.Rename(p.bak, filepath.Join(pkgDir, p.name))
+		}
+	})
 	for i := range pairs {
 		src := filepath.Join(pkgDir, pairs[i].name)
 		bak := src + ".bak_covtest"
@@ -138,11 +146,6 @@ func TestSourcePathAndShimMaterializeFallback(t *testing.T) {
 		}
 		pairs[i].bak = bak
 	}
-	defer func() {
-		for _, p := range pairs {
-			_ = os.Rename(p.bak, filepath.Join(pkgDir, p.name))
-		}
-	}()
 
 	materializeMu.Lock()
 	materializedDir = ""

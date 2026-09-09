@@ -372,6 +372,14 @@ func TestBuildE2EBundleGeneratedPbPlugin(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(nested, "nested_pb.ts"), []byte("export const Nested = 2;\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// Lexically-before match so WalkDir visits a non-matching file (return nil) first.
+	noiseDir := filepath.Join(runDir, ".choysum", "generated", "aaa")
+	if err := os.MkdirAll(noiseDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(noiseDir, "noise.ts"), []byte("export const Noise = 0;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	dir := t.TempDir()
 	spec := filepath.Join(dir, "pb.spec.ts")

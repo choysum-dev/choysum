@@ -17,6 +17,17 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
+// enableNetworkForPage enables the CDP Network domain; tests may override.
+var enableNetworkForPage = EnableNetwork
+
+// emptyEvaluateJSON is returned when CDP yields an empty Evaluate string.
+var emptyEvaluateJSON = "null"
+
+// pageEvaluate runs a chromedp Evaluate; tests may override to force errors.
+var pageEvaluate = func(ctx context.Context, expr string, out *bool) error {
+	return chromedp.Run(ctx, chromedp.Evaluate(expr, out))
+}
+
 // Page is a browser tab owned by a Session.
 type Page struct {
 	session *Session
@@ -35,7 +46,7 @@ func (s *Session) NewPage() (*Page, error) {
 		return nil, fmt.Errorf("cdp: new page: browser context dead: %w", err)
 	}
 	p := &Page{session: s, ctx: s.browserCtx, cancel: func() {}}
-	if err := EnableNetwork(p); err != nil {
+	if err := enableNetworkForPage(p); err != nil {
 		return nil, err
 	}
 	// Reset document between tests.
@@ -163,10 +174,14 @@ func (p *Page) Evaluate(js string) (string, error) {
 	})); err != nil {
 		return "", err
 	}
+	return normalizeEvaluateOut(out), nil
+}
+
+func normalizeEvaluateOut(out string) string {
 	if out == "" {
-		return "null", nil
+		return emptyEvaluateJSON
 	}
-	return out, nil
+	return out
 }
 
 // Screenshot writes a PNG to path.
@@ -197,11 +212,14 @@ func (p *Page) WaitForFunction(jsExpr string, timeout time.Duration) error {
 		timeout = 30 * time.Second
 	}
 	deadline := time.Now().Add(timeout)
-	// Swallow transient JS/DOM errors so polling continues until the deadline.
-	wrapped := fmt.Sprintf(`(() => { try { return Boolean((function(){ return (%s); })()); } catch (e) { return false; } })()`, jsExpr)
+	// Evaluate expression or invoke function-source strings; swallow transient DOM errors.
+	wrapped := fmt.Sprintf(`(() => { try {
+  const __v = (%s);
+  return Boolean(typeof __v === 'function' ? __v() : __v);
+} catch (e) { return false; } })()`, jsExpr)
 	for {
 		var ok bool
-		if err := chromedp.Run(p.ctx, chromedp.Evaluate(wrapped, &ok)); err != nil {
+		if err := pageEvaluate(p.ctx, wrapped, &ok); err != nil {
 			if p.ctx.Err() != nil {
 				return p.ctx.Err()
 			}
@@ -295,9 +313,12 @@ func (p *Page) EnsureDOM() error {
 }
 
 func jsonQuote(s string) string {
-	b, err := json.Marshal(s)
+	b, err := jsonMarshalString(s)
 	if err != nil {
 		return `""`
 	}
 	return string(b)
 }
+
+// jsonMarshalString is json.Marshal for strings; tests may override.
+var jsonMarshalString = func(s string) ([]byte, error) { return json.Marshal(s) }

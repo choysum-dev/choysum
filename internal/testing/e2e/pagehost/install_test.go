@@ -5,6 +5,7 @@ package pagehost
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -254,7 +255,7 @@ func TestScheduleTimeoutPaths(t *testing.T) {
 	}()
 
 	scheduleSelectTimeout = 30 * time.Millisecond
-	scheduleSelectTimeout2 = 40 * time.Millisecond
+	scheduleSelectTimeout2 = 100 * time.Millisecond
 
 	// Block Schedule past both timeouts → return false.
 	ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
@@ -415,6 +416,7 @@ return 'ready';
 
 func TestInstallHostOpFailuresWithChrome(t *testing.T) {
 	session := startPagehostChrome(t)
+	t.Cleanup(session.Close)
 
 	var host *Host
 	engine, err := quickjsengine.NewFactory()()
@@ -595,6 +597,7 @@ func startPagehostChrome(t *testing.T) *cdp.Session {
 	for _, path := range cands {
 		session, lastErr = cdp.Start(nil, cdp.StartOptions{ExecPath: path, Headless: &headless})
 		if lastErr == nil {
+			t.Cleanup(session.Close)
 			return session
 		}
 	}
@@ -716,6 +719,72 @@ return {visible, enabled, n, u, status: resp.status, hasBody: !!resp.bodyBase64}
 	}
 	if st, err := os.Stat(shot); err != nil || st.Size() == 0 {
 		t.Fatalf("screenshot: %v", err)
+	}
+}
+
+func TestWaitForResponseMarshalError(t *testing.T) {
+	session := startPagehostChrome(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/m":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"ok":1}`))
+		case "/":
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte(`<!doctype html><html><body>
+<button id="go">go</button>
+<script>document.getElementById('go').onclick=()=>fetch('/api/m');</script>
+</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	old := jsonMarshal
+	jsonMarshal = func(v any) ([]byte, error) { return nil, errors.New("marshal boom") }
+	t.Cleanup(func() { jsonMarshal = old })
+
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	if !engine.(*quickjsengine.QuickjsEngine).Ctx.BootstrapTimers() {
+		t.Fatal("BootstrapTimers failed")
+	}
+	runtimeJSON, _ := json.Marshal(map[string]string{"baseURL": srv.URL})
+	host, err = Install(engine, session, string(runtimeJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	if err := page.Goto(srv.URL+"/", "load"); err != nil {
+		// Host opens its own page; navigate via host.
+		_ = err
+	}
+	raw := awaitHostErr(t, qjs, `
+const h = globalThis.__choysum_e2e_host__;
+await h.newPage();
+await h.goto(`+jsonQuote(srv.URL+"/")+`, 'load');
+const waitP = h.waitForResponse(JSON.stringify({urlIncludes:'/api/m'}), 10000);
+await h.delay(30);
+await h.click('#go');
+await waitP;
+`)
+	if !strings.Contains(raw, "marshal boom") {
+		t.Fatalf("expected marshal boom, got %s", raw)
 	}
 }
 

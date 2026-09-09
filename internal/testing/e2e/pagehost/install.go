@@ -23,6 +23,9 @@ var ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
 	return ctx.Schedule(job)
 }
 
+// jsonMarshal is encoding/json.Marshal; tests may override to force marshal failures.
+var jsonMarshal = json.Marshal
+
 // scheduleSelectTimeout / scheduleSelectTimeout2 bound schedule waits (overridable in tests).
 var (
 	scheduleSelectTimeout  = 500 * time.Millisecond
@@ -349,7 +352,7 @@ func (h *Host) bindWaitForResponse() func(ctx *quickjs.Context, this *quickjs.Va
 						"bodyBase64": base64.StdEncoding.EncodeToString(res.Body),
 						"url":        res.URL,
 					}
-					raw, marshalErr := json.Marshal(payload)
+					raw, marshalErr := jsonMarshal(payload)
 					if marshalErr != nil {
 						reject(inner.Error(marshalErr))
 						return

@@ -115,6 +115,8 @@ var (
 	runPlaywrightHook         = runPlaywright
 	runE2EHostHook            = runE2EHost
 	runOneScenarioHook        = runOneScenario
+	// requiredPlaywrightModulesFromSpecFilesHook scans PW specs for npm imports.
+	requiredPlaywrightModulesFromSpecFilesHook = requiredPlaywrightModulesFromSpecFiles
 )
 
 type e2eRuntimeOptions struct {
@@ -274,7 +276,7 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	}
 	var specRequiredModules []string
 	if len(pwSpecFiles) > 0 {
-		specRequiredModules, err = requiredPlaywrightModulesFromSpecFiles(pwSpecFiles)
+		specRequiredModules, err = requiredPlaywrightModulesFromSpecFilesHook(pwSpecFiles)
 		if err != nil {
 			return err
 		}
@@ -901,7 +903,7 @@ module.exports = {
 	requiredModules := cloneStringSlice(opts.staticSpecRequiredModules)
 	if len(requiredModules) == 0 {
 		var scanErr error
-		requiredModules, scanErr = requiredPlaywrightModulesFromSpecFiles(specFiles)
+		requiredModules, scanErr = requiredPlaywrightModulesFromSpecFilesHook(specFiles)
 		if scanErr != nil {
 			return xfmt.Errorf("scan playwright imports: %w", scanErr)
 		}
@@ -1402,7 +1404,7 @@ func collectRequiredPlaywrightModules(specsDir string) ([]string, error) {
 		return nil, nil
 	}
 
-	fromSpecs, err := requiredPlaywrightModulesFromSpecFiles(pwFiles)
+	fromSpecs, err := requiredPlaywrightModulesFromSpecFilesHook(pwFiles)
 	if err != nil {
 		return nil, err
 	}

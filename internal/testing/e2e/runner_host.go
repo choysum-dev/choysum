@@ -39,8 +39,22 @@ type e2eRunReport struct {
 }
 
 var (
-	cdpStart     = cdp.Start
-	newQJSEngine = func() (jsengine.JsEngine, error) { return quickjsengine.NewFactory()() }
+	cdpStart           = cdp.Start
+	newQJSEngine       = func() (jsengine.JsEngine, error) { return quickjsengine.NewFactory()() }
+	evalE2ETestRunHook = evalE2ETestRun
+	engineLoadHook     = func(engine jsengine.JsEngine, scripts []*jsengine.JsScript) error {
+		return engine.Load(scripts)
+	}
+	bootstrapTimersHook = func(qjs *quickjsengine.QuickjsEngine) bool {
+		return qjs.Ctx.BootstrapTimers()
+	}
+	e2eTestRunScript = `(async () => {
+  if (typeof globalThis.__choysum_test_run__ !== 'function') {
+    throw new Error('__choysum_test_run__ missing');
+  }
+  const report = await globalThis.__choysum_test_run__();
+  return JSON.stringify(report);
+})()`
 )
 
 // runE2EHost executes QJS e2e specs via chromedp + choysumtest + @choysum/e2e.
@@ -102,7 +116,7 @@ func runE2EHost(ctx context.Context, opts RunOptions, specsDir string, baseURL s
 	if !ok || qjs == nil || qjs.Ctx == nil {
 		return xfmt.Errorf("e2e host: expected QuickjsEngine")
 	}
-	if !qjs.Ctx.BootstrapTimers() {
+	if !bootstrapTimersHook(qjs) {
 		return xfmt.Errorf("e2e host: BootstrapTimers failed")
 	}
 
@@ -112,14 +126,14 @@ func runE2EHost(ctx context.Context, opts RunOptions, specsDir string, baseURL s
 	}
 	defer host.Drain()
 
-	if err := engine.Load([]*jsengine.JsScript{
+	if err := engineLoadHook(engine, []*jsengine.JsScript{
 		{FileName: "scripts/choysumtest/choysumtest.js", Content: choysumtest.ChoysumTestScript},
 		{FileName: bundle.JSPath, Content: bundle.JS},
 	}); err != nil {
 		return xfmt.Errorf("e2e host: load: %w", err)
 	}
 
-	report, err := evalE2ETestRun(ctx, engine)
+	report, err := evalE2ETestRunHook(ctx, engine)
 	if err != nil {
 		return err
 	}
@@ -168,16 +182,9 @@ func evalE2ETestRun(ctx context.Context, engine jsengine.JsEngine) (*e2eRunRepor
 	restore := qjs.SwapExecContext(ctx)
 	defer restore()
 
-	script := `(async () => {
-  if (typeof globalThis.__choysum_test_run__ !== 'function') {
-    throw new Error('__choysum_test_run__ missing');
-  }
-  const report = await globalThis.__choysum_test_run__();
-  return JSON.stringify(report);
-})()`
 	// Use Go Await (not EvalAwait): host methods resolve via ctx.Schedule from
 	// goroutines (waitForResponse/delay). EvalAwait's C poll does not ProcessJobs.
-	val := qjs.Ctx.Eval(script)
+	val := qjs.Ctx.Eval(e2eTestRunScript)
 	if val.IsException() {
 		return nil, xfmt.Errorf("e2e host: run: %v", qjs.Ctx.Exception())
 	}
