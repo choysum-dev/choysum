@@ -16,6 +16,8 @@ if (!globalRoot) {
   throw new Error('CHOYSUM_E2E_GLOBAL_NODE_MODULES is required for e2e global npm resolve');
 }
 
+const choysumE2EShim = String(process.env.CHOYSUM_E2E_CHOYSUM_E2E_SHIM || '').trim();
+
 // Resolve as if the importer lived next to the global node_modules directory
 // (so Node walks into <globalRoot>/<pkg>, including scoped packages).
 const parentURL = pathToFileURL(path.join(globalRoot, '..', '.choysum-e2e-resolve-anchor')).href;
@@ -44,6 +46,12 @@ function isUnderGlobal(parentURLValue) {
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    if (specifier === '@choysum/e2e' && choysumE2EShim) {
+      return {
+        shortCircuit: true,
+        url: pathToFileURL(choysumE2EShim).href,
+      };
+    }
     if (!isBareSpecifier(specifier)) {
       return nextResolve(specifier, context);
     }

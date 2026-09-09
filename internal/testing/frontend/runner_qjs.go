@@ -12,12 +12,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/internal/testing/coverage"
+	"github.com/choysum-dev/choysum/internal/testing/tap"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -397,22 +397,15 @@ func writeQJSTap(w io.Writer, report *qjsRunReport) {
 	if w == nil || report == nil {
 		return
 	}
-	fmt.Fprintf(w, "1..%d\n", report.Total)
-	for i, c := range report.Cases {
-		n := i + 1
-		if c.OK {
-			fmt.Fprintf(w, "ok %d - %s\n", n, c.Name)
-			continue
+	tapReport := &tap.Report{Total: report.Total}
+	for _, c := range report.Cases {
+		tc := tap.Case{Name: c.Name, OK: c.OK}
+		if c.Error != nil {
+			tc.Error = &tap.CaseError{Message: c.Error.Message, Stack: c.Error.Stack}
 		}
-		msg := "failed"
-		if c.Error != nil && c.Error.Message != "" {
-			msg = c.Error.Message
-			if c.Error.Stack != "" {
-				msg = msg + "\n" + c.Error.Stack
-			}
-		}
-		fmt.Fprintf(w, "not ok %d - %s\n  ---\n  message: %s\n  ...\n", n, c.Name, strconv.Quote(msg))
+		tapReport.Cases = append(tapReport.Cases, tc)
 	}
+	tap.Write(w, tapReport)
 }
 
 type qjsJUnitSuites struct {

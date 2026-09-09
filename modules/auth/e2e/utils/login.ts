@@ -1,14 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { expect, type Page } from '@playwright/test';
+import { expect, type Page } from '@choysum/e2e';
 import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 
 /**
  * Log in as the auth e2e fixture admin (`e2e-admin` / `e2e-admin`).
  *
  * Hardens against a known race: Login.vue `ensureAuthReady` / nprogress can still
- * be settling when Playwright fills and clicks, so the submit is ignored and the
+ * be settling when the runner fills and clicks, so the submit is ignored and the
  * suite stays on `/web/login?redirect=...`.
  */
 export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void> {

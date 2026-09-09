@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { expect, type Page, type Response } from '@playwright/test';
+import { expect, type Page, type E2EResponse } from '@choysum/e2e';
 
 /**
  * Options for waiting on a successful gRPC-Web unary response.
@@ -14,7 +14,7 @@ export type GrpcWebOkOptions = {
  * Parsed unary gRPC-Web result.
  */
 export type GrpcWebUnaryResult = {
-  response: Response;
+  response: E2EResponse;
   grpcStatus: string;
   grpcMessage: string;
 };
@@ -24,24 +24,39 @@ type GrpcWebStatus = {
   message: string;
 };
 
-async function waitForGrpcWebUnaryResponse(page: Page, fullMethod: string, timeoutMs: number): Promise<Response> {
-  const res = await page.waitForResponse(
-    r => {
-      const url = r.url();
-      if (!url.includes(fullMethod)) return false;
-      const req = r.request();
-      if (req.method() !== 'POST') return false;
-      const ct = String(req.headers()['content-type'] || '').toLowerCase();
-      return ct.startsWith('application/grpc-web');
-    },
-    { timeout: timeoutMs }
-  );
+type AnyPage = Page & {
+  __choysum_e2e_page__?: boolean;
+  waitForResponse: (...args: any[]) => Promise<any>;
+};
 
-  expect(res.status(), `HTTP status for ${fullMethod}`).toBe(200);
-  return res;
+async function waitForGrpcWebUnaryResponse(page: AnyPage, fullMethod: string, timeoutMs: number): Promise<E2EResponse> {
+  let res: any;
+  if (page.__choysum_e2e_page__) {
+    res = await page.waitForResponse(
+      { urlIncludes: fullMethod, method: 'POST', contentTypePrefix: 'application/grpc-web' },
+      { timeout: timeoutMs }
+    );
+  } else {
+    // Playwright dual-run path (remaining auth specs still import this util).
+    res = await page.waitForResponse(
+      (r: any) => {
+        const url = r.url();
+        if (!url.includes(fullMethod)) return false;
+        const req = r.request();
+        if (req.method() !== 'POST') return false;
+        const ct = String(req.headers()['content-type'] || '').toLowerCase();
+        return ct.startsWith('application/grpc-web');
+      },
+      { timeout: timeoutMs }
+    );
+  }
+
+  const status = typeof res.status === 'function' ? res.status() : Number(res.status);
+  expect(status, `HTTP status for ${fullMethod}`).toBe(200);
+  return res as E2EResponse;
 }
 
-async function readGrpcWebStatus(res: Response, fullMethod: string): Promise<GrpcWebStatus> {
+async function readGrpcWebStatus(res: E2EResponse, fullMethod: string): Promise<GrpcWebStatus> {
   // Strict mode: enforce gRPC status=0.
   // Note: grpc-status is typically a *trailer* in gRPC-Web and may not be visible via Response.headers().
   // We therefore parse the gRPC-Web body trailer frame (flag 0x80).
@@ -54,7 +69,8 @@ async function readGrpcWebStatus(res: Response, fullMethod: string): Promise<Grp
   }
 
   const body = await res.body();
-  const trailerText = extractGrpcWebTrailerText(body);
+  const bytes = body instanceof Uint8Array ? body : new Uint8Array(body as ArrayBuffer);
+  const trailerText = extractGrpcWebTrailerText(bytes);
   expect(trailerText, `missing grpc-web trailer frame for ${fullMethod}`).toBeTruthy();
 
   const trailerHeaders = parseTrailerHeaders(String(trailerText));
@@ -71,7 +87,7 @@ async function readGrpcWebStatus(res: Response, fullMethod: string): Promise<Grp
  */
 export async function waitForGrpcWebUnary(page: Page, fullMethod: string, opts: GrpcWebOkOptions = {}): Promise<GrpcWebUnaryResult> {
   const timeoutMs = typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 30_000;
-  const response = await waitForGrpcWebUnaryResponse(page, fullMethod, timeoutMs);
+  const response = await waitForGrpcWebUnaryResponse(page as AnyPage, fullMethod, timeoutMs);
   const grpc = await readGrpcWebStatus(response, fullMethod);
   return {
     response,
@@ -83,7 +99,7 @@ export async function waitForGrpcWebUnary(page: Page, fullMethod: string, opts: 
 /**
  * Wait for a unary gRPC-Web call to complete with grpc-status=0.
  */
-export async function waitForGrpcWebUnaryOk(page: Page, fullMethod: string, opts: GrpcWebOkOptions = {}): Promise<Response> {
+export async function waitForGrpcWebUnaryOk(page: Page, fullMethod: string, opts: GrpcWebOkOptions = {}): Promise<E2EResponse> {
   const unary = await waitForGrpcWebUnary(page, fullMethod, opts);
   expect(unary.grpcStatus, formatGrpcAssertMessage(fullMethod, unary.grpcMessage)).toBe('0');
   return unary.response;
@@ -99,22 +115,24 @@ function formatGrpcAssertMessage(fullMethod: string, decodedGrpcMessage: string)
 /**
  * Extract the trailing header block from a gRPC-Web response body.
  */
-function extractGrpcWebTrailerText(body: Buffer): string {
+function extractGrpcWebTrailerText(body: Uint8Array): string {
   // gRPC-Web framing: 1 byte flags + 4 bytes length (big-endian) + payload.
   // Trailer frame is indicated by MSB flag 0x80; payload is ASCII header block.
   if (!body || body.length < 5) return '';
 
   let offset = 0;
   while (offset + 5 <= body.length) {
-    const flags = body.readUInt8(offset);
-    const len = body.readUInt32BE(offset + 1);
+    const flags = body[offset];
+    const len = ((body[offset + 1] << 24) | (body[offset + 2] << 16) | (body[offset + 3] << 8) | body[offset + 4]) >>> 0;
     offset += 5;
     if (offset + len > body.length) break;
     const payload = body.subarray(offset, offset + len);
     offset += len;
 
     if ((flags & 0x80) !== 0) {
-      return payload.toString('utf8');
+      let s = '';
+      for (let i = 0; i < payload.length; i++) s += String.fromCharCode(payload[i]);
+      return s;
     }
   }
   return '';

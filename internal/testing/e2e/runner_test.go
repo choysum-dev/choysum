@@ -102,6 +102,13 @@ func TestRunModuleInputValidation(t *testing.T) {
 func TestRunModuleFastFailsWhenPlaywrightMissing(t *testing.T) {
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specsDir, "a.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('a', async () => {});\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	oldRunOneScenarioHook := runOneScenarioHook
 	runOneScenarioCalled := false
@@ -137,6 +144,13 @@ func TestRunModuleFastFailsWhenPlaywrightMissing(t *testing.T) {
 func TestRunModuleFastFailsWhenPlaywrightPackageMissing(t *testing.T) {
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specsDir, "a.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('a', async () => {});\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	oldRunOneScenarioHook := runOneScenarioHook
 	runOneScenarioCalled := false
@@ -336,7 +350,7 @@ func TestRunModuleCanceledContextCleansResources(t *testing.T) {
 		t.Fatalf("waitForHTTP200Hook should not run after canceled install")
 		return nil
 	}
-	runPlaywrightHook = func(context.Context, RunOptions, string, string, string) error {
+	runPlaywrightHook = func(context.Context, RunOptions, string, string, string, []string) error {
 		t.Fatalf("runPlaywrightHook should not run after canceled install")
 		return nil
 	}
@@ -640,7 +654,7 @@ func TestWriteE2EProgressAndRuntimeScopeValidation(t *testing.T) {
 
 func TestRunPlaywrightNoSpecs(t *testing.T) {
 	specsDir := t.TempDir()
-	err := runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir()}, specsDir, "http://127.0.0.1:9999", filepath.Join(t.TempDir(), "runtime.json"))
+	err := runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir()}, specsDir, "http://127.0.0.1:9999", filepath.Join(t.TempDir(), "runtime.json"), nil)
 	if err == nil || !strings.Contains(err.Error(), "no playwright specs found") {
 		t.Fatalf("expected no specs error, got %v", err)
 	}
@@ -679,7 +693,7 @@ func TestRunPlaywrightBranches(t *testing.T) {
 		t.Fatalf("expected specs to require @connectrpc/connect, got %#v", requiredFromSpecs)
 	}
 
-	err = runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir(), NpmPath: t.TempDir()}, specsDir, "http://127.0.0.1:9999", runtimePath)
+	err = runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir(), NpmPath: t.TempDir()}, specsDir, "http://127.0.0.1:9999", runtimePath, nil)
 	if err == nil || !strings.Contains(err.Error(), "missing 1 required module(s): @playwright/test") {
 		t.Fatalf("expected missing playwright error, got %v", err)
 	}
@@ -716,7 +730,7 @@ func TestRunPlaywrightBranches(t *testing.T) {
 		"printf '%s' \"$PW_DISABLE_TS_ESM\" > \""+envPath+"\"\n"+
 		"exit 0\n")
 
-	err = runPlaywright(context.Background(), RunOptions{WorkDir: repoRoot, NpmPath: npmPath}, specsDir, "http://127.0.0.1:9999", runtimePath)
+	err = runPlaywright(context.Background(), RunOptions{WorkDir: repoRoot, NpmPath: npmPath}, specsDir, "http://127.0.0.1:9999", runtimePath, nil)
 	if err != nil {
 		t.Fatalf("expected playwright success, got %v", err)
 	}

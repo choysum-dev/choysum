@@ -42,6 +42,7 @@ import (
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/config"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
+	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysume2e"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -112,6 +113,7 @@ var (
 	stopServerHook            = stopServer
 	waitForHTTP200Hook        = waitForHTTP200
 	runPlaywrightHook         = runPlaywright
+	runE2EHostHook            = runE2EHost
 	runOneScenarioHook        = runOneScenario
 )
 
@@ -261,9 +263,20 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil {
 		return err
 	}
-	specRequiredModules, err := collectRequiredPlaywrightModules(specsDir)
+	allSpecFiles, err := discoverPlaywrightSpecFiles(specsDir)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	pwSpecFiles, _, err := partitionE2ESpecFiles(allSpecFiles)
 	if err != nil {
 		return err
+	}
+	var specRequiredModules []string
+	if len(pwSpecFiles) > 0 {
+		specRequiredModules, err = requiredPlaywrightModulesFromSpecFiles(pwSpecFiles)
+		if err != nil {
+			return err
+		}
 	}
 	requiredModules, err := mergeRequiredE2ERuntimeModules(opts.ModulesPath, closure, packages, specRequiredModules)
 	if err != nil {
@@ -285,11 +298,13 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 		}
 	}
 
-	if err := preflightPlaywrightRuntimeDependency(opts, opts.Module, requiredModules); err != nil {
-		return err
-	}
-	if _, _, err := resolvePlaywrightCommand(opts); err != nil {
-		return err
+	if len(pwSpecFiles) > 0 {
+		if err := preflightPlaywrightRuntimeDependency(opts, opts.Module, requiredModules); err != nil {
+			return err
+		}
+		if _, _, err := resolvePlaywrightCommand(opts); err != nil {
+			return err
+		}
 	}
 
 	for _, scenario := range scenarioList {
@@ -357,8 +372,10 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 		}
 	}
 	globalNodeModulesRoot := resolvePlaywrightGlobalNodeModulesRoot(opts)
-	if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredRuntimeModules, globalNodeModulesRoot); err != nil {
-		return err
+	if len(requiredRuntimeModules) > 0 {
+		if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredRuntimeModules, globalNodeModulesRoot); err != nil {
+			return err
+		}
 	}
 
 	workspaceTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, opts.WorkDir, opts.TmpPath, "e2e")
@@ -578,12 +595,33 @@ compile:
 	}
 	writeE2EProgress(opts.Stderr, "# prepare runtime %s ok (%s)\n", opts.Module, time.Since(prepareStarted).Round(100*time.Millisecond))
 
-	// Run Playwright (no global setup; Go has already orchestrated env).
+	allSpecFiles, err := discoverPlaywrightSpecFiles(specsDir)
+	if err != nil {
+		return xfmt.Errorf("discover e2e specs: %w", err)
+	}
+	pwSpecFiles, qjsSpecFiles, err := partitionE2ESpecFiles(allSpecFiles)
+	if err != nil {
+		return err
+	}
+
 	// Resolve bare imports from the global npm root (not a local/empty node_modules).
 	opts2 := opts
 	opts2.NpmPath = globalNodeModulesRoot
-	if err := runPlaywrightHook(ctx, opts2, specsDir, baseURL, runtimePath); err != nil {
-		return err
+
+	if len(qjsSpecFiles) > 0 {
+		writeE2EProgress(opts.Stderr, "# e2e-qjs %s (%d specs)\n", opts.Module, len(qjsSpecFiles))
+		if err := runE2EHostHook(ctx, opts2, specsDir, baseURL, runtimePath, qjsSpecFiles); err != nil {
+			return err
+		}
+	}
+	if len(pwSpecFiles) > 0 {
+		writeE2EProgress(opts.Stderr, "# e2e-playwright %s (%d specs)\n", opts.Module, len(pwSpecFiles))
+		if err := runPlaywrightHook(ctx, opts2, specsDir, baseURL, runtimePath, pwSpecFiles); err != nil {
+			return err
+		}
+	}
+	if len(qjsSpecFiles) == 0 && len(pwSpecFiles) == 0 {
+		return xfmt.Errorf("no e2e specs found under %s", specsDir)
 	}
 
 	if opts.Keep {
@@ -821,7 +859,7 @@ func stopServer(cmd *exec.Cmd) {
 	_, _ = cmd.Process.Wait()
 }
 
-func runPlaywright(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
+func runPlaywright(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 	// Playwright defaults testDir to "tests" when not configured, which would not discover
 	// colocated module specs under modules/. Generate a minimal per-run config that sets
 	// testDir to the specs dir, and pass explicit spec file paths to avoid ambiguous directory matching.
@@ -847,18 +885,23 @@ module.exports = {
 		return xfmt.Errorf("write playwright config: %w", err)
 	}
 
-	specFiles, err := discoverPlaywrightSpecFiles(specsDir)
-	if err != nil {
-		return xfmt.Errorf("discover playwright specs: %w", err)
+	specFiles := cloneStringSlice(onlyFiles)
+	if len(specFiles) == 0 {
+		var err error
+		specFiles, err = discoverPlaywrightSpecFiles(specsDir)
+		if err != nil {
+			return xfmt.Errorf("discover playwright specs: %w", err)
+		}
 	}
 	if len(specFiles) == 0 {
 		return xfmt.Errorf("no playwright specs found under %s", specsDir)
 	}
 	requiredModules := cloneStringSlice(opts.staticSpecRequiredModules)
 	if len(requiredModules) == 0 {
-		requiredModules, err = requiredPlaywrightModulesFromSpecFiles(specFiles)
-		if err != nil {
-			return xfmt.Errorf("scan playwright imports: %w", err)
+		var scanErr error
+		requiredModules, scanErr = requiredPlaywrightModulesFromSpecFiles(specFiles)
+		if scanErr != nil {
+			return xfmt.Errorf("scan playwright imports: %w", scanErr)
 		}
 	}
 	runtimeGeneratedModules, err := collectRuntimeGeneratedModules(runtimePath)
@@ -913,6 +956,9 @@ module.exports = {
 		"CHOYSUM_E2E_RUNTIME_JSON="+runtimePath,
 		"CHOYSUM_E2E_GLOBAL_NODE_MODULES="+globalNodeModulesRoot,
 	)
+	if shimPath, shimErr := choysume2e.PlaywrightShimPath(); shimErr == nil {
+		cmd.Env = append(cmd.Env, "CHOYSUM_E2E_CHOYSUM_E2E_SHIM="+shimPath)
+	}
 	// Disable Playwright's legacy TS ESM loader path to avoid DEP0205
 	// module.register() warnings on newer Node releases.
 	cmd.Env = append(cmd.Env, "PW_DISABLE_TS_ESM=1")
@@ -1290,7 +1336,22 @@ func mergeRequiredE2ERuntimeModules(modulesPath string, closure []string, packag
 		return nil, xfmt.Errorf("collect module dependencies: %w", err)
 	}
 
-	return moddeps.MergeRequiredModules(specRequiredModules, moduleDeps), nil
+	merged := moddeps.MergeRequiredModules(specRequiredModules, moduleDeps)
+	return filterE2ENodePreflightModules(merged), nil
+}
+
+// filterE2ENodePreflightModules drops host-only packages that must not be
+// resolved from npm (QuickJS aliases / Playwright shims).
+func filterE2ENodePreflightModules(modules []string) []string {
+	out := make([]string, 0, len(modules))
+	for _, moduleName := range modules {
+		moduleName = strings.TrimSpace(moduleName)
+		if moduleName == "" || moduleName == "@choysum/e2e" {
+			continue
+		}
+		out = append(out, moduleName)
+	}
+	return out
 }
 
 func collectPackageModuleDependencies(pkg *sourceModulePackage) []string {
@@ -1321,29 +1382,34 @@ func collectPackageModuleDependencies(pkg *sourceModulePackage) []string {
 }
 
 func collectRequiredPlaywrightModules(specsDir string) ([]string, error) {
-	required := map[string]struct{}{"@playwright/test": {}}
-
 	specFiles, err := discoverPlaywrightSpecFiles(specsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []string{"@playwright/test"}, nil
+			return nil, nil
 		}
 		return nil, err
 	}
 	if len(specFiles) == 0 {
-		return []string{"@playwright/test"}, nil
+		return nil, nil
 	}
-
-	fromSpecs, err := requiredPlaywrightModulesFromSpecFiles(specFiles)
+	pwFiles, _, err := partitionE2ESpecFiles(specFiles)
 	if err != nil {
 		return nil, err
 	}
-	for _, moduleName := range fromSpecs {
-		required[moduleName] = struct{}{}
+	if len(pwFiles) == 0 {
+		return nil, nil
 	}
 
-	out := make([]string, 0, len(required))
-	for moduleName := range required {
+	fromSpecs, err := requiredPlaywrightModulesFromSpecFiles(pwFiles)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(fromSpecs))
+	for _, moduleName := range fromSpecs {
+		moduleName = strings.TrimSpace(moduleName)
+		if moduleName == "" || moduleName == "@choysum/e2e" {
+			continue
+		}
 		out = append(out, moduleName)
 	}
 	sort.Strings(out)
@@ -1371,6 +1437,37 @@ func discoverPlaywrightSpecFiles(specsDir string) ([]string, error) {
 	return specFiles, nil
 }
 
+// partitionE2ESpecFiles splits specs by whether they import `@playwright/test`.
+// QJS files are those without the Playwright import; PW files keep the legacy path.
+func partitionE2ESpecFiles(specFiles []string) (pwFiles, qjsFiles []string, err error) {
+	for _, path := range specFiles {
+		usesPW, perr := specImportsPlaywright(path)
+		if perr != nil {
+			return nil, nil, perr
+		}
+		if usesPW {
+			pwFiles = append(pwFiles, path)
+		} else {
+			qjsFiles = append(qjsFiles, path)
+		}
+	}
+	return pwFiles, qjsFiles, nil
+}
+
+// specImportsPlaywright reports whether a spec file imports `@playwright/test`.
+func specImportsPlaywright(path string) (bool, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false, xfmt.Errorf("read %s: %w", path, err)
+	}
+	for _, specifier := range parseJSImportSpecifiers(string(raw)) {
+		if normalizeJSImportModuleName(specifier) == "@playwright/test" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func requiredPlaywrightModulesFromSpecFiles(specFiles []string) ([]string, error) {
 	required := map[string]struct{}{"@playwright/test": {}}
 	for _, specFile := range specFiles {
@@ -1380,7 +1477,7 @@ func requiredPlaywrightModulesFromSpecFiles(specFiles []string) ([]string, error
 		}
 		for _, specifier := range parseJSImportSpecifiers(string(raw)) {
 			moduleName := normalizeJSImportModuleName(specifier)
-			if moduleName == "" {
+			if moduleName == "" || moduleName == "@choysum/e2e" {
 				continue
 			}
 			required[moduleName] = struct{}{}

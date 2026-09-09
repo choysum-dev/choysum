@@ -1,0 +1,273 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package cdp
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/runtime"
+	"github.com/chromedp/chromedp"
+)
+
+// Page is a browser tab owned by a Session.
+type Page struct {
+	session *Session
+	ctx     context.Context
+	cancel  context.CancelFunc
+}
+
+// NewPage returns the session's primary tab.
+// E2E runs workers=1; each test reuses one tab (about:blank between tests)
+// instead of spawning additional targets (which can cancel the root context).
+func (s *Session) NewPage() (*Page, error) {
+	if s == nil || s.browserCtx == nil {
+		return nil, fmt.Errorf("cdp: nil session")
+	}
+	if err := s.browserCtx.Err(); err != nil {
+		return nil, fmt.Errorf("cdp: new page: browser context dead: %w", err)
+	}
+	p := &Page{session: s, ctx: s.browserCtx, cancel: func() {}}
+	if err := EnableNetwork(p); err != nil {
+		return nil, err
+	}
+	// Reset document between tests.
+	_ = chromedp.Run(p.ctx, chromedp.Navigate("about:blank"))
+	return p, nil
+}
+
+// Close closes the tab.
+func (p *Page) Close() {
+	if p == nil {
+		return
+	}
+	if p.cancel != nil {
+		p.cancel()
+	}
+}
+
+// Context returns the tab context.
+func (p *Page) Context() context.Context {
+	if p == nil {
+		return nil
+	}
+	return p.ctx
+}
+
+// Goto navigates to url. waitUntil is "load" (default) or "domcontentloaded".
+func (p *Page) Goto(url string, waitUntil string) error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	waitUntil = strings.ToLower(strings.TrimSpace(waitUntil))
+	if waitUntil == "" {
+		waitUntil = "load"
+	}
+	actions := []chromedp.Action{chromedp.Navigate(url)}
+	switch waitUntil {
+	case "domcontentloaded":
+		actions = append(actions, chromedp.WaitReady("body", chromedp.ByQuery))
+	case "load", "networkidle":
+		actions = append(actions, chromedp.WaitReady("body", chromedp.ByQuery))
+		// chromedp.Navigate already waits for load event by default.
+	default:
+		return fmt.Errorf("cdp: unsupported waitUntil %q", waitUntil)
+	}
+	return chromedp.Run(p.ctx, actions...)
+}
+
+// Click clicks the first element matching css (DOM click for Vue handlers).
+func (p *Page) Click(css string) error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	cssJSON, _ := json.Marshal(css)
+	script := fmt.Sprintf(`(() => {
+  const el = document.querySelector(%s);
+  if (!el) throw new Error('click: no element for ' + %s);
+  el.click();
+  return true;
+})()`, string(cssJSON), string(cssJSON))
+	return chromedp.Run(p.ctx,
+		chromedp.WaitVisible(css, chromedp.ByQuery),
+		chromedp.Evaluate(script, nil),
+	)
+}
+
+// Fill focuses and sets text so Vue v-model / Element Plus pick up the value.
+func (p *Page) Fill(css string, text string) error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	cssJSON, _ := json.Marshal(css)
+	textJSON, _ := json.Marshal(text)
+	script := fmt.Sprintf(`(() => {
+  const el = document.querySelector(%s);
+  if (!el) throw new Error('fill: no element for ' + %s);
+  el.focus();
+  const proto = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
+    || Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
+  if (proto && proto.set) proto.set.call(el, %s);
+  else el.value = %s;
+  el.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: %s }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+  return true;
+})()`, string(cssJSON), string(cssJSON), string(textJSON), string(textJSON), string(textJSON))
+	return chromedp.Run(p.ctx,
+		chromedp.WaitVisible(css, chromedp.ByQuery),
+		chromedp.Evaluate(script, nil),
+	)
+}
+
+// Evaluate runs js in the page and returns a JSON string of the result.
+func (p *Page) Evaluate(js string) (string, error) {
+	if p == nil {
+		return "", fmt.Errorf("cdp: nil page")
+	}
+	expr := fmt.Sprintf(`JSON.stringify((function(){ return (%s); })())`, js)
+	var out string
+	if err := chromedp.Run(p.ctx, chromedp.Evaluate(expr, &out, func(p *runtime.EvaluateParams) *runtime.EvaluateParams {
+		return p.WithAwaitPromise(true)
+	})); err != nil {
+		return "", err
+	}
+	if out == "" {
+		return "null", nil
+	}
+	return out, nil
+}
+
+// Screenshot writes a PNG to path.
+func (p *Page) Screenshot(path string) error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return fmt.Errorf("cdp: empty screenshot path")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	var buf []byte
+	if err := chromedp.Run(p.ctx, chromedp.FullScreenshot(&buf, 90)); err != nil {
+		return err
+	}
+	return os.WriteFile(path, buf, 0o644)
+}
+
+// WaitForFunction polls jsExpr until it is truthy or timeout.
+func (p *Page) WaitForFunction(jsExpr string, timeout time.Duration) error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+	deadline := time.Now().Add(timeout)
+	wrapped := fmt.Sprintf(`Boolean((function(){ return (%s); })())`, jsExpr)
+	for {
+		var ok bool
+		if err := chromedp.Run(p.ctx, chromedp.Evaluate(wrapped, &ok)); err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("cdp: waitForFunction timeout after %s", timeout)
+		}
+		select {
+		case <-p.ctx.Done():
+			return p.ctx.Err()
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+}
+
+// QueryCount returns document.querySelectorAll(css).length.
+func (p *Page) QueryCount(css string) (int, error) {
+	if p == nil {
+		return 0, fmt.Errorf("cdp: nil page")
+	}
+	var n int
+	js := fmt.Sprintf(`document.querySelectorAll(%s).length`, jsonQuote(css))
+	if err := chromedp.Run(p.ctx, chromedp.Evaluate(js, &n)); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+// IsVisible reports whether the first matching element is visible.
+func (p *Page) IsVisible(css string) (bool, error) {
+	if p == nil {
+		return false, fmt.Errorf("cdp: nil page")
+	}
+	js := fmt.Sprintf(`(() => {
+  const el = document.querySelector(%s);
+  if (!el) return false;
+  const style = window.getComputedStyle(el);
+  if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0;
+})()`, jsonQuote(css))
+	var ok bool
+	if err := chromedp.Run(p.ctx, chromedp.Evaluate(js, &ok)); err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+// IsEnabled reports whether the first matching element is enabled.
+func (p *Page) IsEnabled(css string) (bool, error) {
+	if p == nil {
+		return false, fmt.Errorf("cdp: nil page")
+	}
+	js := fmt.Sprintf(`(() => {
+  const el = document.querySelector(%s);
+  if (!el) return false;
+  if (el.disabled) return false;
+  if (el.getAttribute && el.getAttribute('aria-disabled') === 'true') return false;
+  return true;
+})()`, jsonQuote(css))
+	var ok bool
+	if err := chromedp.Run(p.ctx, chromedp.Evaluate(js, &ok)); err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+// URL returns location.href.
+func (p *Page) URL() (string, error) {
+	if p == nil {
+		return "", fmt.Errorf("cdp: nil page")
+	}
+	var href string
+	if err := chromedp.Run(p.ctx, chromedp.Location(&href)); err != nil {
+		return "", err
+	}
+	return href, nil
+}
+
+// EnsureDOM is a no-op helper used by tests.
+func (p *Page) EnsureDOM() error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	return chromedp.Run(p.ctx, dom.Enable())
+}
+
+func jsonQuote(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return `""`
+	}
+	return string(b)
+}
