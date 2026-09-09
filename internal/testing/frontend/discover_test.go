@@ -203,6 +203,49 @@ func TestScanIllegal_ViMockAndChoysumMountMultiline(t *testing.T) {
 		t.Fatalf("vi.mock inside template ${...} must be flagged: %#v", interpHits)
 	}
 
+	interpNoisePath := filepath.Join(dir, "interp_noise.test.ts")
+	interpNoise := strings.Join([]string{
+		"const a = `${\"vi.mock('x')\"}`",
+		"const b = `${/* vi.mock('y') */ 1}`",
+		"const c = `${fn(\"}\") || 'ok'}`",
+		"it('ok', () => {})",
+		"",
+	}, "\n")
+	if err := os.WriteFile(interpNoisePath, []byte(interpNoise), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	interpNoiseHits, err := ScanIllegalFrontendMarks([]string{interpNoisePath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(interpNoiseHits) != 0 {
+		t.Fatalf("nested string/comment inside ${...} must not flag vi.mock: %#v", interpNoiseHits)
+	}
+
+	bracePath := filepath.Join(dir, "interp_brace.test.ts")
+	if err := os.WriteFile(bracePath, []byte("const x = `${fn(\"}\") || vi.mock('x')}`\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	braceHits, err := ScanIllegalFrontendMarks([]string{bracePath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(braceHits) != 1 || braceHits[0].Kind != IllegalVitestImport {
+		t.Fatalf("vi.mock after } inside a string must still be flagged: %#v", braceHits)
+	}
+
+	dynPath := filepath.Join(dir, "dyn_import.test.ts")
+	if err := os.WriteFile(dynPath, []byte("const m = import\n('vitest')\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dynHits, err := ScanIllegalFrontendMarks([]string{dynPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dynHits) != 1 || dynHits[0].Kind != IllegalVitestImport {
+		t.Fatalf("multiline import('vitest') must be flagged: %#v", dynHits)
+	}
+
 	multiPath := filepath.Join(dir, "multi_mount.test.ts")
 	multi := strings.Join([]string{
 		"import {",
@@ -252,11 +295,23 @@ func TestBlankJSCommentsAndStrings_EdgeCases(t *testing.T) {
 
 	interp := "const x = `${vi.mock('x')}`\n"
 	interpOut := blankJSCommentsAndStrings(interp)
-	if !strings.Contains(interpOut, "vi.mock('x')") {
+	if !strings.Contains(interpOut, "vi.mock(") {
 		t.Fatalf("template ${...} body must remain scannable: %q", interpOut)
 	}
 	if strings.Contains(interpOut, "const x = `${vi") {
 		t.Fatalf("template literal text outside ${} should be blanked: %q", interpOut)
+	}
+
+	nestedNoise := "const a = `${\"vi.mock('x')\"}`\nconst b = `${/* vi.mock('y') */ 1}`\n"
+	nestedOut := blankJSCommentsAndStrings(nestedNoise)
+	if strings.Contains(nestedOut, "vi.mock") {
+		t.Fatalf("nested string/comment inside ${...} must be blanked: %q", nestedOut)
+	}
+
+	brace := "const x = `${fn(\"}\") || vi.mock('x')}`\n"
+	braceOut := blankJSCommentsAndStrings(brace)
+	if !strings.Contains(braceOut, "vi.mock(") {
+		t.Fatalf("} inside a string must not truncate ${...}: %q", braceOut)
 	}
 
 	// Escaped newline inside a string (JS line continuation) must keep the \n byte.

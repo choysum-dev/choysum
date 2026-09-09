@@ -294,7 +294,8 @@ func scanIllegalContent(path, content string) []IllegalMark {
 // blankJSCommentsAndStrings replaces // and /* */ comments plus non-module
 // ', ", and ` literal text with spaces (newlines preserved) so inventory
 // regexes ignore noise. from/import/require module strings are kept intact.
-// Backtick ${...} interpolations stay scannable (e.g. vi.mock).
+// Backtick ${...} bodies are blanked recursively so nested comments/strings are
+// ignored while executable tokens (e.g. vi.mock) stay scannable.
 func blankJSCommentsAndStrings(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -367,18 +368,16 @@ func blankJSCommentsAndStrings(s string) string {
 					b.WriteByte('$')
 					b.WriteByte('{')
 					i += 2
-					depth := 1
-					for i < len(s) && depth > 0 {
-						ch := s[i]
-						switch ch {
-						case '{':
-							depth++
-						case '}':
-							depth--
-						}
-						b.WriteByte(ch)
-						i++
+					end := findTemplateInterpClose(s, i)
+					bodyEnd := end
+					if bodyEnd > i && s[bodyEnd-1] == '}' {
+						bodyEnd--
 					}
+					b.WriteString(blankJSCommentsAndStrings(s[i:bodyEnd]))
+					if bodyEnd < end {
+						b.WriteByte('}')
+					}
+					i = end
 					continue
 				}
 				ch := s[i]
@@ -409,6 +408,88 @@ func isIdentByte(c byte) bool {
 		(c >= '0' && c <= '9')
 }
 
+// findTemplateInterpClose returns the index after the matching '}' for a
+// `${` started at start (start points at the first body byte). Braces inside
+// comments, strings, and nested templates are ignored.
+func findTemplateInterpClose(s string, start int) int {
+	depth := 1
+	i := start
+	for i < len(s) && depth > 0 {
+		c := s[i]
+		if c == '/' && i+1 < len(s) {
+			if s[i+1] == '/' {
+				i += 2
+				for i < len(s) && s[i] != '\n' {
+					i++
+				}
+				continue
+			}
+			if s[i+1] == '*' {
+				i += 2
+				for i+1 < len(s) && !(s[i] == '*' && s[i+1] == '/') {
+					i++
+				}
+				if i+1 < len(s) {
+					i += 2
+				} else {
+					i = len(s)
+				}
+				continue
+			}
+		}
+		if c == '\'' || c == '"' {
+			i = skipJSQuoted(s, i)
+			continue
+		}
+		if c == '`' {
+			i = skipJSTemplateLiteral(s, i)
+			continue
+		}
+		if c == '{' {
+			depth++
+		} else if c == '}' {
+			depth--
+		}
+		i++
+	}
+	return i
+}
+
+func skipJSQuoted(s string, i int) int {
+	q := s[i]
+	i++
+	for i < len(s) {
+		if s[i] == '\\' && i+1 < len(s) {
+			i += 2
+			continue
+		}
+		if s[i] == q {
+			return i + 1
+		}
+		i++
+	}
+	return i
+}
+
+func skipJSTemplateLiteral(s string, i int) int {
+	i++ // opening `
+	for i < len(s) {
+		if s[i] == '\\' && i+1 < len(s) {
+			i += 2
+			continue
+		}
+		if s[i] == '`' {
+			return i + 1
+		}
+		if s[i] == '$' && i+1 < len(s) && s[i+1] == '{' {
+			i = findTemplateInterpClose(s, i+2)
+			continue
+		}
+		i++
+	}
+	return i
+}
+
 // isModuleSpecifierContext reports whether quoteIdx opens a from/import/require module string.
 func isModuleSpecifierContext(s string, quoteIdx int) bool {
 	j := quoteIdx - 1
@@ -429,7 +510,7 @@ func isModuleSpecifierContext(s string, quoteIdx int) bool {
 		return false
 	}
 	k := j - 1
-	for k >= 0 && (s[k] == ' ' || s[k] == '\t') {
+	for k >= 0 && (s[k] == ' ' || s[k] == '\t' || s[k] == '\n' || s[k] == '\r') {
 		k--
 	}
 	return hasIdentSuffixAt(s, k, "import") || hasIdentSuffixAt(s, k, "require")
