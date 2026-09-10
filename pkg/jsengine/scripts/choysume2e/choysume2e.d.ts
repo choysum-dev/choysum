@@ -53,9 +53,10 @@ export type Page = {
   /** Set by the QJS host page proxy; absent on Playwright pages. */
   __choysum_e2e_page__?: boolean;
   goto(...args: any[]): Promise<any>;
-  locator(selector: string): Locator;
-  getByPlaceholder(reOrString: RegExp | string): Locator;
-  getByText(text: string): Locator;
+  // Rest args stay loose so Playwright Page (options object, roles, etc.) stays assignable.
+  locator(...args: any[]): Locator;
+  getByPlaceholder(...args: any[]): Locator;
+  getByText(...args: any[]): Locator;
   click(...args: any[]): Promise<any>;
   fill(...args: any[]): Promise<any>;
   evaluate(...args: any[]): Promise<any>;

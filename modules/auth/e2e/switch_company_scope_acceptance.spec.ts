@@ -8,7 +8,7 @@ import { createClient, type Interceptor, ConnectError, Code } from '@connectrpc/
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
-import { loginAsE2EAdmin } from './utils/login';
+import { loginAsE2EAdmin } from './utils/login.ts';
 
 type RuntimeInfo = {
   baseURL: string;

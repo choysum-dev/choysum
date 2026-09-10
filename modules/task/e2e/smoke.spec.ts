@@ -8,7 +8,7 @@ import { createClient, type Interceptor } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
-import { loginAsE2EAdmin } from '../../auth/e2e/utils/login';
+import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 
 /**
  * Runtime metadata injected by the task e2e harness.

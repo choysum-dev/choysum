@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { test, expect, page, runtime } from '@choysum/e2e';
-import { loginAsE2EAdmin } from './utils/login';
+import { loginAsE2EAdmin } from './utils/login.ts';
 
 /**
  * Smoke test for auth module:

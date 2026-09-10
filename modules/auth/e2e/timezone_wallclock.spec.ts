@@ -3,7 +3,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
-import { loginAsE2EAdmin } from './utils/login';
+import { loginAsE2EAdmin } from './utils/login.ts';
 
 /**
  * Scenario #12 / §11.4 S2: changing User.Timezone updates list datetime wall-clock

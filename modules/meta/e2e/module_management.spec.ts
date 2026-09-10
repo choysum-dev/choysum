@@ -3,7 +3,7 @@
 
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import fs from 'node:fs';
-import { loginAsE2EAdmin } from '../../auth/e2e/utils/login';
+import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 
 test.setTimeout(10 * 60 * 1000);
 

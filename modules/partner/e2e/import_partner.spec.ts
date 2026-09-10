@@ -3,7 +3,7 @@
 
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
-import { loginAsE2EAdmin } from '../../auth/e2e/utils/login';
+import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 
 type RuntimeInfo = {
   baseURL: string;

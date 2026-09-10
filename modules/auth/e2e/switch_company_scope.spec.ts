@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { waitForGrpcWebUnary, waitForGrpcWebUnaryOk } from './utils/grpcweb';
-import { loginAsE2EAdmin } from './utils/login';
+import { loginAsE2EAdmin } from './utils/login.ts';
 
 type RuntimeInfo = {
   baseURL: string;
