@@ -69,13 +69,13 @@ export async function switchCompanyViaUI(): Promise<void> {
       await expect(trigger).toBeVisible();
 
       // Ensure panel is open (re-open after a previous apply that closed it).
-      const panelOpen = await page.evaluate(
-        () => !!document.querySelector('[data-testid="company-switch-panel"]')
-      );
-      if (!panelOpen) {
+      // Presence alone is not enough: Element Plus may keep the panel mounted while hidden.
+      const panel = page.getByTestId('company-switch-panel');
+      const panelVisible = await panel.isVisible().catch(() => false);
+      if (!panelVisible) {
         await trigger.click();
       }
-      await expect(page.getByTestId('company-switch-panel')).toBeVisible({ timeout: 10_000 });
+      await expect(panel).toBeVisible({ timeout: 10_000 });
 
       await pickOtherActiveCompanyOption();
 
