@@ -72,7 +72,7 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 	waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error {
 		return nil
 	}
-	runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
+	runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 		if _, err := os.Stat(runtimePath); err != nil {
 			t.Fatalf("expected runtime file created before playwright, err=%v", err)
 		}
@@ -84,7 +84,7 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 	if err := os.MkdirAll(specsDir, 0o755); err != nil {
 		t.Fatalf("mkdir specs dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 		t.Fatalf("write spec file: %v", err)
 	}
 
@@ -148,6 +148,9 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 	if err := os.MkdirAll(specsDir, 0o755); err != nil {
 		t.Fatalf("mkdir specs dir: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
 
 	manifests := map[string]*sourceModulePackage{
 		"auth": {
@@ -177,7 +180,7 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 
 	waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
 	playErr := errors.New("playwright failed")
-	runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
+	runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 		return playErr
 	}
 	err = runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
@@ -285,7 +288,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
+		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -294,7 +297,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 
@@ -347,7 +350,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
+		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -356,7 +359,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 		manifests := map[string]*sourceModulePackage{
@@ -418,7 +421,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
+		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -427,7 +430,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 		manifests := map[string]*sourceModulePackage{
@@ -491,7 +494,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
+		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -500,7 +503,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 		manifests := map[string]*sourceModulePackage{
@@ -548,7 +551,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
+		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -557,7 +560,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 		manifests := map[string]*sourceModulePackage{
