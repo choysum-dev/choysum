@@ -29,12 +29,12 @@ declare global {
     cases: ChoysumTestCaseResult[];
   };
 
-  function test(name: string, fn: (...args: any[]) => any): void;
+  function test(name: string, fn: () => void | Promise<void>): void;
 
   /** Vitest-style suite nesting (see choysumtest.js). */
-  function describe(name: string, fn: (...args: any[]) => any): void;
-  function beforeEach(fn: (...args: any[]) => any): void;
-  function afterEach(fn: (...args: any[]) => any): void;
+  function describe(name: string, fn: () => void | Promise<void>): void;
+  function beforeEach(fn: () => void | Promise<void>): void;
+  function afterEach(fn: () => void | Promise<void>): void;
 
   type ChoysumPropertyPath = string | number | Array<string | number>;
 

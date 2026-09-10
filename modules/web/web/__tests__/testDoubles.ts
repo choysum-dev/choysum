@@ -73,7 +73,11 @@ export function asyncFnRecorder(impl?: (...args: any[]) => any): AsyncFnRecorder
   const rec = Object.assign(
     (...args: any[]) => {
       rec.calls.push(args);
-      return Promise.resolve(current ? current(...args) : undefined);
+      try {
+        return Promise.resolve(current ? current(...args) : undefined);
+      } catch (error) {
+        return Promise.reject(error);
+      }
     },
     {
       calls: [] as unknown[][],

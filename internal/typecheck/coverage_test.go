@@ -186,6 +186,25 @@ func TestCheck_OverlayAmbient(t *testing.T) {
 	}
 }
 
+func TestCheck_ChoysumtestGlobalsOnDisk(t *testing.T) {
+	repo, modules := fixtureRoots(t, "service_ok")
+	globals := filepath.Join(modules, "core", "service", "integration", "choysumtest-globals.d.ts")
+	mustMkdir(t, filepath.Dir(globals))
+	mustWrite(t, globals, "export {};\n")
+	res, err := Check(t.Context(), Options{
+		ModulesPath: modules,
+		RepoRoot:    repo,
+		App:         "demo",
+		Scope:       ScopeService,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.HasErrors() {
+		t.Fatalf("unexpected: %#v", res.Diagnostics)
+	}
+}
+
 func TestCheck_OverlayOnlyRoots(t *testing.T) {
 	dir := t.TempDir()
 	modules := filepath.Join(dir, "modules")
@@ -299,6 +318,29 @@ func TestAppendOverlayRoots(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("ScopeAll vue overlay roots missing %s: %v", want, got)
 		}
+	}
+
+	// e2e overlays: .ts/.tsx kept; .vue skipped even under ScopeAll.
+	got = appendOverlayRoots(nil, modules, app, ScopeAll, map[string]string{
+		"/repo/modules/demo/e2e/smoke.spec.ts": "x",
+		"/repo/modules/demo/e2e/Widget.tsx":    "x",
+		"/repo/modules/demo/e2e/Skip.vue":      "x",
+	}, true)
+	joined = strings.Join(got, "\n")
+	if !strings.Contains(joined, "e2e/smoke.spec.ts") || !strings.Contains(joined, "e2e/Widget.tsx") {
+		t.Fatalf("e2e overlays missing ts roots: %v", got)
+	}
+	if strings.Contains(joined, "Skip.vue") {
+		t.Fatalf("e2e must skip .vue overlays: %v", got)
+	}
+
+	// Nested skip dirs under e2e/web still apply (tmp/coverage/...).
+	got = appendOverlayRoots(nil, modules, app, ScopeNoVue, map[string]string{
+		"/repo/modules/demo/e2e/tmp/hidden.ts": "x",
+		"/repo/modules/demo/web/tmp/hidden.ts": "x",
+	}, true)
+	if len(got) != 0 {
+		t.Fatalf("tmp nested overlays must be skipped: %v", got)
 	}
 }
 
@@ -567,6 +609,16 @@ func TestCollectRootFiles_StatErrors(t *testing.T) {
 		return orig(name)
 	}
 	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeNoVue); err == nil || !strings.Contains(err.Error(), "web stat boom") {
+		t.Fatalf("err = %v", err)
+	}
+
+	stat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "e2e" {
+			return nil, errors.New("e2e stat boom")
+		}
+		return orig(name)
+	}
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeNoVue); err == nil || !strings.Contains(err.Error(), "e2e stat boom") {
 		t.Fatalf("err = %v", err)
 	}
 
