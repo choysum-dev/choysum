@@ -23,6 +23,18 @@ test('exportReportErrorText: returns first error message text', () => {
   expect(exportReportErrorText({ messages: [{ type_: ExportMessageType.ERROR, text: 'duplicate code' }] })).toBe('duplicate code');
 });
 
+test('exportReportErrorText: skips blank error messages when a later message has text', () => {
+  expect(
+    exportReportErrorText({
+      messages: [
+        { type_: ExportMessageType.ERROR, text: '' },
+        { type_: ExportMessageType.ERROR, text: '   ' },
+        { type_: ExportMessageType.ERROR, text: 'row failed' },
+      ],
+    }),
+  ).toBe('row failed');
+});
+
 test('exportReportErrorText: falls back to stats error count', () => {
   expect(exportReportErrorText({ stats: { error: 2 }, messages: [{ text: '' }] })).toBe('Export finished with 2 error(s).');
   expect(exportReportErrorText({ stats: { error: 5 } })).toBe('Export finished with 5 error(s).');

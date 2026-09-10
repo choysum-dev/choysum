@@ -26,8 +26,10 @@ export function exportReportHasErrors(report: ExportReportLike | ExportReport): 
 export function exportReportErrorText(report: ExportReportLike | ExportReport): string {
   const first = report?.messages?.find(message => {
     if (!message) return false;
+    const text = String(message.text ?? '').trim();
+    if (!text) return false;
     const type = message.type_ ?? ExportMessageType.UNSPECIFIED;
-    return type === ExportMessageType.ERROR || (type === ExportMessageType.UNSPECIFIED && String(message.text ?? '').trim());
+    return type === ExportMessageType.ERROR || type === ExportMessageType.UNSPECIFIED;
   });
   if (first?.text) {
     return first.text;
