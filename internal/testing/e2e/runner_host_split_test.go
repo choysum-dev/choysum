@@ -420,6 +420,40 @@ func TestRunOneScenarioQJSHostError(t *testing.T) {
 	}
 }
 
+func TestRunOneScenarioPartitionError(t *testing.T) {
+	setE2ETestGlobalPlaywrightRoot(t)
+	withInjectedScenarioHooks(t)
+
+	modulesPath := t.TempDir()
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec := filepath.Join(specsDir, "unreadable.spec.ts")
+	if err := os.WriteFile(spec, []byte("import { test } from '@choysum/e2e';\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Discover finds the file by name; partition fails when reading it.
+	waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error {
+		return os.Chmod(spec, 0o000)
+	}
+	t.Cleanup(func() { _ = os.Chmod(spec, 0o644) })
+
+	err := runOneScenario(context.Background(), RunOptions{
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		WorkDir:     t.TempDir(),
+		TmpPath:     t.TempDir(),
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
+	}, map[string]*sourceModulePackage{
+		"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
+	}, "default")
+	if err == nil || !strings.Contains(err.Error(), "read ") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestRunOneScenarioDiscoverSpecsError(t *testing.T) {
 	setE2ETestGlobalPlaywrightRoot(t)
 	withInjectedScenarioHooks(t)

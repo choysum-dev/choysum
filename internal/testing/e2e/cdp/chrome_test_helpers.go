@@ -9,6 +9,12 @@ import (
 	"testing"
 )
 
+// Overridable in tests to force empty/duplicate candidate paths.
+var (
+	chromiumResolvePath = ResolveChromiumPath
+	chromiumSystemPaths = systemChromeCandidates
+)
+
 func chromiumCandidates() []string {
 	seen := map[string]bool{}
 	var out []string
@@ -22,10 +28,10 @@ func chromiumCandidates() []string {
 		seen[p] = true
 		out = append(out, p)
 	}
-	if p, err := ResolveChromiumPath(); err == nil {
+	if p, err := chromiumResolvePath(); err == nil {
 		add(p)
 	}
-	for _, p := range systemChromeCandidates() {
+	for _, p := range chromiumSystemPaths() {
 		add(p)
 	}
 	return out

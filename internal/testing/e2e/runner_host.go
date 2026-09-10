@@ -184,11 +184,13 @@ func evalE2ETestRun(ctx context.Context, engine jsengine.JsEngine) (*e2eRunRepor
 
 	// Use Go Await (not EvalAwait): host methods resolve via ctx.Schedule from
 	// goroutines (waitForResponse/delay). EvalAwait's C poll does not ProcessJobs.
-	val := qjs.Ctx.Eval(e2eTestRunScript)
-	if val.IsException() {
+	// Await steals the promise ref and leaves Undefined in promiseVal; Free both.
+	promiseVal := qjs.Ctx.Eval(e2eTestRunScript)
+	if promiseVal.IsException() {
 		return nil, xfmt.Errorf("e2e host: run: %v", qjs.Ctx.Exception())
 	}
-	val = qjs.Ctx.Await(val)
+	defer promiseVal.Free()
+	val := qjs.Ctx.Await(promiseVal)
 	defer val.Free()
 	if val.IsException() {
 		return nil, xfmt.Errorf("e2e host: run: %v", qjs.Ctx.Exception())

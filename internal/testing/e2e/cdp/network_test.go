@@ -591,3 +591,19 @@ document.getElementById('go').onclick = () => fetch('/api/get');
 		t.Fatalf("expected url-mismatch timeout, got %v", err)
 	}
 }
+
+func TestFetchResponseBodyGetBodyError(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+	if err := EnableNetwork(page); err != nil {
+		t.Fatal(err)
+	}
+	_, err = fetchResponseBody(page.ctx, network.RequestID("missing-request-id"))
+	if err == nil {
+		t.Fatal("expected GetResponseBody error")
+	}
+}

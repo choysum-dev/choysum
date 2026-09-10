@@ -181,7 +181,19 @@ func TestBuildE2EBundleErrorPaths(t *testing.T) {
 	}
 	e2eOsUserHome = oldHome
 
+	// Empty CacheDir + CHOYSUM_HOME → default ~/.choysum via UserHomeDir success.
+	homeDir := t.TempDir()
+	e2eOsUserHome = func() (string, error) { return homeDir, nil }
 	oldMkdir := e2eOsMkdirAll
+	e2eOsMkdirAll = func(path string, perm os.FileMode) error { return errors.New("outdir fail") }
+	e2eChoysumE2EPath = func() (string, error) { return e2ePathFile, nil }
+	if _, err := BuildE2EBundle(E2EBundleOptions{RepoRoot: t.TempDir(), EntryPath: filepath.Join(t.TempDir(), "e.js")}); err == nil || !strings.Contains(err.Error(), "mkdir") {
+		t.Fatalf("home cache default: %v", err)
+	}
+	e2eOsUserHome = oldHome
+	e2eOsMkdirAll = oldMkdir
+
+	oldMkdir = e2eOsMkdirAll
 	e2eOsMkdirAll = func(path string, perm os.FileMode) error { return errors.New("outdir fail") }
 	e2eChoysumE2EPath = func() (string, error) { return e2ePathFile, nil }
 	if _, err := BuildE2EBundle(E2EBundleOptions{RepoRoot: t.TempDir(), EntryPath: filepath.Join(t.TempDir(), "e.js"), CacheDir: t.TempDir()}); err == nil || !strings.Contains(err.Error(), "mkdir") {

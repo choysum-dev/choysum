@@ -315,6 +315,24 @@ func TestCachedAndSystemCandidatesNonEmpty(t *testing.T) {
 	}
 }
 
+func TestChromiumCandidatesEmptyAndDuplicate(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "chrome")
+	if err := os.WriteFile(bin, []byte("x\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldResolve, oldSystem := chromiumResolvePath, chromiumSystemPaths
+	t.Cleanup(func() {
+		chromiumResolvePath = oldResolve
+		chromiumSystemPaths = oldSystem
+	})
+	chromiumResolvePath = func() (string, error) { return bin, nil }
+	chromiumSystemPaths = func() []string { return []string{"", bin, bin} }
+	got := chromiumCandidates()
+	if len(got) != 1 || got[0] != bin {
+		t.Fatalf("got %v want [%s]", got, bin)
+	}
+}
+
 func TestChromeHelpersSkipPaths(t *testing.T) {
 	fake := filepath.Join(t.TempDir(), "not-chrome")
 	if err := os.WriteFile(fake, []byte("not a browser\n"), 0o755); err != nil {

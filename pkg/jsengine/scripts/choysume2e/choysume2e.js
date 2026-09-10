@@ -38,7 +38,7 @@ function decodeBase64ToUint8Array(b64) {
     return out;
   }
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  const clean = s.replace(/[^A-Za-z0-9+/]/g, '');
+  const clean = s.replace(/[^A-Za-z0-9+/=]/g, '');
   const len = clean.length;
   const out = [];
   for (let i = 0; i < len; i += 4) {
