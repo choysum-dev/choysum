@@ -91,7 +91,11 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 		if !isWebsocketURLTimeout(err) || attempt == attempts {
 			return nil, err
 		}
-		time.Sleep(time.Duration(attempt) * 250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(attempt) * 250 * time.Millisecond):
+		}
 	}
 	return nil, lastErr
 }

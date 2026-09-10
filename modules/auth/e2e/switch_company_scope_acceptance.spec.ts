@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect, page, runtime } from '@choysum/e2e';
+import { test, expect, page, runtime, readTextFile } from '@choysum/e2e';
 import { createClient, type Interceptor, ConnectError, Code } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
@@ -36,14 +36,6 @@ function getServerLogPath(): string {
   const runDir = String((runtime as any).runDir || '').trim();
   if (!runDir) throw new Error('runtime.runDir is not set');
   return `${runDir.replace(/\/$/, '')}/server.log`;
-}
-
-async function readTextFile(path: string): Promise<string> {
-  const host = (globalThis as any).__choysum_e2e_host__;
-  if (!host || typeof host.readTextFile !== 'function') {
-    throw new Error('@choysum/e2e: host.readTextFile is not available');
-  }
-  return String(await host.readTextFile(path));
 }
 
 async function readAuthTokens(): Promise<{ accessToken: string; refreshToken: string }> {
