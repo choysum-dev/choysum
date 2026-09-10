@@ -80,6 +80,7 @@ declare module '@playwright/test' {
       (name: string, fn: () => void): void;
       skip(name: string, fn: () => void): void;
       only(name: string, fn: () => void): void;
+      [key: string]: any;
     };
     beforeEach(fn: PlaywrightTestFn | (() => any)): void;
     afterEach(fn: PlaywrightTestFn | (() => any)): void;
@@ -89,6 +90,7 @@ declare module '@playwright/test' {
     skip(...args: any[]): any;
     only: PlaywrightTest;
     fixme: PlaywrightTest;
+    [key: string]: any;
   }
 
   export const test: PlaywrightTest;

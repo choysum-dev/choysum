@@ -190,7 +190,10 @@ func TestCheck_ChoysumtestGlobalsOnDisk(t *testing.T) {
 	repo, modules := fixtureRoots(t, "service_ok")
 	globals := filepath.Join(modules, "core", "service", "integration", "choysumtest-globals.d.ts")
 	mustMkdir(t, filepath.Dir(globals))
-	mustWrite(t, globals, "export {};\n")
+	// Declare a real choysumtest global and call it from a service test so Check
+	// fails unless this ambient file is included as a program root.
+	mustWrite(t, globals, "declare global {\n  function test(name: string, fn: () => void): void;\n}\nexport {};\n")
+	mustWrite(t, filepath.Join(modules, "demo", "service", "uses_globals.test.ts"), "test('x', () => {});\n")
 	res, err := Check(t.Context(), Options{
 		ModulesPath: modules,
 		RepoRoot:    repo,

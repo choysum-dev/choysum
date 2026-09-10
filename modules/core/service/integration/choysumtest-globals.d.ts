@@ -32,7 +32,10 @@ declare global {
   function test(name: string, fn: () => void | Promise<void>): void;
 
   /** Vitest-style suite nesting (see choysumtest.js). */
-  function describe(name: string, fn: () => void | Promise<void>): void;
+  // describe runs fn() synchronously and pops suite scope immediately; async
+  // callbacks can register tests after the suite has closed. `undefined` (not
+  // void) rejects Promise-returning callbacks while allowing `() => {}`.
+  function describe(name: string, fn: () => undefined): void;
   function beforeEach(fn: () => void | Promise<void>): void;
   function afterEach(fn: () => void | Promise<void>): void;
 

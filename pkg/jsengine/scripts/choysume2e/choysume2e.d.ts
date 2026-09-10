@@ -75,6 +75,7 @@ export type E2EExpect = {
 
 /** Value assertions used by shared utils (and PW shim → @playwright/test). */
 export type ValueExpect = {
+  readonly not: ValueExpect;
   toBe(expected: unknown): void;
   toEqual(expected: unknown): void;
   toBeTruthy(): void;
