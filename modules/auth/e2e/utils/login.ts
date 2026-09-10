@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect, type Page } from '@choysum/e2e';
-import { waitForGrpcWebUnaryOk } from './grpcweb';
+import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 
 /**
  * Log in as the auth e2e fixture admin (`e2e-admin` / `e2e-admin`).

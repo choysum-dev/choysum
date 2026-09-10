@@ -3,7 +3,7 @@
 
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
-import { waitForGrpcWebUnary, waitForGrpcWebUnaryOk } from './utils/grpcweb';
+import { waitForGrpcWebUnary, waitForGrpcWebUnaryOk } from './utils/grpcweb.ts';
 import { loginAsE2EAdmin } from './utils/login.ts';
 
 type RuntimeInfo = {
