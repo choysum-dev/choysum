@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect } from '@choysum/e2e';
+import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
-import { waitForGrpcWebUnary, waitForGrpcWebUnaryOk } from './utils/grpcweb.ts';
-import { loginAsE2EAdmin } from './utils/login.ts';
+import { waitForGrpcWebUnary, waitForGrpcWebUnaryOk } from './utils/grpcweb';
+import { loginAsE2EAdmin } from './utils/login';
 
 type RuntimeInfo = {
   baseURL: string;

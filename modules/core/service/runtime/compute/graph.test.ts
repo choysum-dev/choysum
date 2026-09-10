@@ -99,7 +99,7 @@ test('buildComputeGraph partitions persisted/virtual compute fields and builds p
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Name' as any],
             },
           },
@@ -111,7 +111,7 @@ test('buildComputeGraph partitions persisted/virtual compute fields and builds p
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Name' as any],
               store: false,
             },
@@ -146,7 +146,7 @@ test('buildComputeGraph rejects persisted compute depending on virtual compute',
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Name' as any],
               store: false,
             },
@@ -337,7 +337,7 @@ test('buildComputeGraph reverse-index path handles missing relation target and m
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Lines.Name' as any],
             },
           },
@@ -370,7 +370,7 @@ test('buildComputeGraph reverse-index path handles missing relation target and m
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Lines.Name' as any],
             },
           },
@@ -472,7 +472,7 @@ test('buildComputeGraph cycle error and reverse-index warn fallback to Unknown m
           'X',
           {
             type: 'int',
-            column: { compute: { expr: () => 1, deps: [] } },
+            column: { compute: { expr: (): number => 1, deps: [] } },
           },
         ],
       ]),
@@ -517,7 +517,7 @@ test('buildComputeGraph rejects persisted path dependency on virtual compute roo
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['VirtualOwner.Name' as any],
             },
           },
@@ -555,7 +555,7 @@ test('buildComputeGraph builds fastPersistReverseDeps for empty and mixed trigge
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Code' as any],
               store: false,
             },
@@ -568,7 +568,7 @@ test('buildComputeGraph builds fastPersistReverseDeps for empty and mixed trigge
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Name' as any],
             },
           },
@@ -580,7 +580,7 @@ test('buildComputeGraph builds fastPersistReverseDeps for empty and mixed trigge
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Name' as any],
               store: false,
             },
@@ -625,7 +625,7 @@ test('buildComputeGraph path dependency adds edge for persisted compute root fie
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['OwnerPersist.Name' as any],
             },
           },
@@ -668,7 +668,7 @@ test('buildComputeGraph path dependency rejects persisted field depending on vir
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['OwnerVirtual.Name' as any],
             },
           },
@@ -735,7 +735,7 @@ test('buildComputeGraph keeps non-decimal compute deps unchanged (scaleField fal
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Name' as any],
             },
           },
@@ -810,7 +810,7 @@ test('buildComputeGraph rejects persisted scalar dependency on virtual compute f
           type: 'int',
           column: {
             compute: {
-              expr: () => 1,
+              expr: (): number => 1,
               deps: ['Name' as any],
               store: false,
             },

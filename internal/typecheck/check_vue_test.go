@@ -225,9 +225,9 @@ func TestRewriteVueRootsAndAmbient(t *testing.T) {
 	}
 	dir := t.TempDir()
 	overlays := BuiltInVueAmbientOverlays(dir, dir)
-	// No resolvable vue types → vite + subpath + vue shim + directives + vue module stub.
-	if len(overlays) != 5 {
-		t.Fatalf("want vite+subpath+vue shim+directives+vue stub, got %d", len(overlays))
+	// No resolvable vue types → vite + subpath + playwright + vue shim + directives + vue module stub.
+	if len(overlays) != 6 {
+		t.Fatalf("want vite+subpath+playwright+vue shim+directives+vue stub, got %d", len(overlays))
 	}
 }
 
@@ -484,7 +484,7 @@ func TestCollectModulesWebVuePaths(t *testing.T) {
 			t.Fatalf("missing %s in %v", want, got)
 		}
 	}
-	for _, ban := range []string{"node_modules", "/dist/", "/tmp/", ".cache"} {
+	for _, ban := range []string{"node_modules", "/dist/", "/web/tmp/", ".cache"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, got)
 		}

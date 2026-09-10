@@ -66,11 +66,11 @@ func TestBuiltInAmbientOverlays_NoDiskVite(t *testing.T) {
 	mustMkdir(t, modules)
 	// Intentionally no node_modules/vite.
 	overlays := BuiltInAmbientOverlays(modules)
-	if len(overlays) != 2 {
+	if len(overlays) != 3 {
 		t.Fatalf("overlays = %#v", overlays)
 	}
 	files := AmbientRootFiles(modules)
-	if len(files) != 2 {
+	if len(files) != 3 {
 		t.Fatalf("files = %v", files)
 	}
 	for _, f := range files {

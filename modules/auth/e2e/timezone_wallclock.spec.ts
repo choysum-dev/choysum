@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect, type Page } from '@choysum/e2e';
+import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
-import { loginAsE2EAdmin } from './utils/login.ts';
+import { loginAsE2EAdmin } from './utils/login';
 
 /**
  * Scenario #12 / §11.4 S2: changing User.Timezone updates list datetime wall-clock

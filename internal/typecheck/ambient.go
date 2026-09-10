@@ -24,11 +24,14 @@ func AmbientRoot(modulesPath string) string {
 // absolute slash paths under AmbientRoot(modulesPath).
 func BuiltInAmbientOverlays(modulesPath string) map[string]string {
 	root := AmbientRoot(modulesPath)
-	out := make(map[string]string, 3)
+	out := make(map[string]string, 4)
 	if rel, content := ViteClientOverlay(); rel != "" {
 		out[normalizePathKey(filepath.Join(root, rel))] = content
 	}
 	if rel, content := SubpathStubOverlay(); rel != "" {
+		out[normalizePathKey(filepath.Join(root, rel))] = content
+	}
+	if rel, content := PlaywrightTestOverlay(); rel != "" {
 		out[normalizePathKey(filepath.Join(root, rel))] = content
 	}
 	return out

@@ -42,11 +42,11 @@ export function fnRecorder(impl?: (...args: any[]) => any): FnRecorder {
     {
       calls: [] as unknown[][],
       mockReset() {
-        rec.calls = [];
+        rec.calls.length = 0;
         current = impl;
       },
       mockClear() {
-        rec.calls = [];
+        rec.calls.length = 0;
       },
       mockImplementation(fn: (...args: any[]) => any) {
         current = fn;
@@ -64,22 +64,32 @@ export function syncFnRecorder(impl?: (...args: any[]) => any): SyncFnRecorder {
   return fnRecorder(impl);
 }
 
-/** Always returns a Promise so the stub matches `(...args) => Promise<T>` slots. */
+/**
+ * Always returns a Promise so the stub matches `(...args) => Promise<T>` slots.
+ * Owns its own `calls` array (no getters) so QuickJS setInterval/timers see updates.
+ */
 export function asyncFnRecorder(impl?: (...args: any[]) => any): AsyncFnRecorder {
-  const inner = fnRecorder(impl);
+  let current = impl;
   const rec = Object.assign(
-    (...args: any[]) => Promise.resolve(inner(...args)),
+    (...args: any[]) => {
+      rec.calls.push(args);
+      return Promise.resolve(current ? current(...args) : undefined);
+    },
     {
-      get calls() {
-        return inner.calls;
+      calls: [] as unknown[][],
+      mockReset() {
+        rec.calls.length = 0;
+        current = impl;
       },
-      set calls(v: unknown[][]) {
-        inner.calls = v;
+      mockClear() {
+        rec.calls.length = 0;
       },
-      mockReset: () => inner.mockReset(),
-      mockClear: () => inner.mockClear(),
-      mockImplementation: (fn: (...args: any[]) => any) => inner.mockImplementation(fn),
-      mockReturnValue: (value: any) => inner.mockReturnValue(value),
+      mockImplementation(fn: (...args: any[]) => any) {
+        current = fn;
+      },
+      mockReturnValue(value: any) {
+        current = () => value;
+      },
     }
   ) as AsyncFnRecorder;
   return rec;

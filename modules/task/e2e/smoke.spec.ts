@@ -1,14 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect } from '@choysum/e2e';
+import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createClient, type Interceptor } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
-import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
+import { loginAsE2EAdmin } from '../../auth/e2e/utils/login';
 
 /**
  * Runtime metadata injected by the task e2e harness.
