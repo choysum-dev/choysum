@@ -432,7 +432,7 @@ async function collectMatchedElements(loc) {
     return collectMatchedElements({
       kind: 'css',
       value: '[data-testid=' + JSON.stringify(String(value)) + ']',
-      hasText: null,
+      hasText: loc.hasText != null ? loc.hasText : null,
       parent: loc.parent,
     });
   }
@@ -856,6 +856,15 @@ async function readTextFile(path) {
 
 function normalizeFetchHeaders(headers) {
   if (!headers) return {};
+  // Arrays also have forEach; map [name, value] pairs before the Headers-like path.
+  if (Array.isArray(headers)) {
+    const out = {};
+    for (const pair of headers) {
+      if (!pair || pair.length < 2) continue;
+      out[String(pair[0])] = String(pair[1]);
+    }
+    return out;
+  }
   if (typeof headers.forEach === 'function') {
     const out = {};
     headers.forEach((v, k) => {
@@ -880,17 +889,18 @@ function installFetchPolyfill() {
       constructor(init) {
         this._map = {};
         if (!init) return;
-        if (typeof init.forEach === 'function') {
-          init.forEach((v, k) => {
-            this._map[String(k).toLowerCase()] = String(v);
-          });
-          return;
-        }
+        // Arrays also have forEach; handle [name, value] tuples first.
         if (Array.isArray(init)) {
           for (const pair of init) {
             if (!pair || pair.length < 2) continue;
             this._map[String(pair[0]).toLowerCase()] = String(pair[1]);
           }
+          return;
+        }
+        if (typeof init.forEach === 'function') {
+          init.forEach((v, k) => {
+            this._map[String(k).toLowerCase()] = String(v);
+          });
           return;
         }
         for (const [k, v] of Object.entries(init)) {

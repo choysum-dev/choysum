@@ -243,10 +243,7 @@ func (h *Host) bindReload() func(ctx *quickjs.Context, this *quickjs.Value, args
 func (h *Host) bindClearOriginStorage() func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
-			originURL := ""
-			if len(args) > 0 && args[0] != nil {
-				originURL = args[0].String()
-			}
+			originURL := argString(args, 0)
 			p, err := h.activePage()
 			if err != nil {
 				reject(ctx.Error(err))
@@ -619,7 +616,7 @@ func (h *Host) bindFetch() func(ctx *quickjs.Context, this *quickjs.Value, args 
 			headers := map[string]string{}
 			for k, vals := range resp.Header {
 				if len(vals) > 0 {
-					headers[k] = vals[0]
+					headers[k] = strings.Join(vals, ", ")
 				}
 			}
 			requestURL := url
@@ -644,6 +641,9 @@ func (h *Host) bindFetch() func(ctx *quickjs.Context, this *quickjs.Value, args 
 
 func argString(args []*quickjs.Value, i int) string {
 	if len(args) <= i || args[i] == nil {
+		return ""
+	}
+	if args[i].IsUndefined() || args[i].IsNull() {
 		return ""
 	}
 	return args[i].String()

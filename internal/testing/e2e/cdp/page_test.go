@@ -433,6 +433,58 @@ func TestClearOriginStorage(t *testing.T) {
 	}
 }
 
+func TestClearOriginStorageCrossOriginReject(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	srvA := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>a</body></html>`))
+	}))
+	defer srvA.Close()
+	srvB := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>b</body></html>`))
+	}))
+	defer srvB.Close()
+
+	if err := page.Goto(srvA.URL, "load"); err != nil {
+		t.Fatalf("Goto A: %v", err)
+	}
+	err = page.ClearOriginStorage(srvB.URL)
+	if err == nil || !strings.Contains(err.Error(), "active origin") {
+		t.Fatalf("expected active origin mismatch, got %v", err)
+	}
+}
+
+func TestClearOriginStorageFromAboutBlank(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>blank-target</body></html>`))
+	}))
+	defer srv.Close()
+
+	// NewPage leaves about:blank; ClearOriginStorage should navigate then clear.
+	if err := page.ClearOriginStorage(srv.URL); err != nil {
+		t.Fatalf("ClearOriginStorage from about:blank: %v", err)
+	}
+	href, err := page.URL()
+	if err != nil || !strings.HasPrefix(href, srv.URL) {
+		t.Fatalf("expected navigation to target origin, href=%q err=%v", href, err)
+	}
+}
+
 func TestNewPageReusesTab(t *testing.T) {
 	session := startTestSession(t)
 	p1, err := session.NewPage()

@@ -138,6 +138,18 @@ func TestWantHeadless(t *testing.T) {
 	}
 }
 
+func TestIsWebsocketURLTimeout(t *testing.T) {
+	if isWebsocketURLTimeout(nil) {
+		t.Fatal("nil")
+	}
+	if !isWebsocketURLTimeout(errors.New("cdp: start browser (/usr/bin/google-chrome): websocket url timeout reached")) {
+		t.Fatal("expected match")
+	}
+	if isWebsocketURLTimeout(errors.New("cdp: start browser: context canceled")) {
+		t.Fatal("non-timeout should not match")
+	}
+}
+
 func TestStartNilContextHeadless(t *testing.T) {
 	t.Setenv("CHOYSUM_E2E_HEADED", "0")
 	cands := chromiumCandidates()

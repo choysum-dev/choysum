@@ -79,6 +79,28 @@ func (p *Page) ClearOriginStorage(originURL string) error {
 		return fmt.Errorf("cdp: origin URL missing scheme/host")
 	}
 	origin := u.Scheme + "://" + u.Host
+
+	var href string
+	if err := chromedp.Run(p.ctx, chromedp.Location(&href)); err != nil {
+		return fmt.Errorf("cdp: current location: %w", err)
+	}
+	curOrigin := ""
+	if cu, err := url.Parse(href); err == nil && cu.Scheme != "" && cu.Host != "" {
+		curOrigin = cu.Scheme + "://" + cu.Host
+	}
+	if curOrigin != "" && curOrigin != origin {
+		return fmt.Errorf("cdp: clearOriginStorage active origin %q != requested %q", curOrigin, origin)
+	}
+	if curOrigin == "" {
+		// about:blank / data: — open the target origin so sessionStorage clear applies there.
+		if err := chromedp.Run(p.ctx,
+			chromedp.Navigate(origin+"/"),
+			chromedp.WaitReady("body", chromedp.ByQuery),
+		); err != nil {
+			return fmt.Errorf("cdp: navigate for clearOriginStorage: %w", err)
+		}
+	}
+
 	return chromedp.Run(p.ctx,
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			return network.ClearBrowserCookies().Do(ctx)

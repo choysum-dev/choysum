@@ -1011,12 +1011,12 @@ return cleared;
 	}
 
 	badReload := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.reload('bogus')`)
-	if !strings.Contains(badReload, "unsupported waitUntil") && !strings.Contains(badReload, `"ok":false`) {
+	if !strings.Contains(badReload, "unsupported waitUntil") {
 		t.Fatalf("reload bad waitUntil: %s", badReload)
 	}
 
 	badOrigin := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.clearOriginStorage('')`)
-	if !strings.Contains(badOrigin, "empty origin") && !strings.Contains(badOrigin, `"ok":false`) {
+	if !strings.Contains(badOrigin, "empty origin") {
 		t.Fatalf("clearOriginStorage empty: %s", badOrigin)
 	}
 }
