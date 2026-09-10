@@ -45,8 +45,11 @@ async function loadAuthPbModule(): Promise<AuthPbModule> {
   if (!fs.existsSync(staged)) {
     throw new Error(`Cannot find staged auth_pb.ts at ${staged} (e2e runner should link it)`);
   }
-  const mod = await import('./.generated/auth_pb.ts');
-  return mod as AuthPbModule;
+  // Staged under gitignored .generated/; cast keeps IDE/tsc happy without a committed file.
+  const mod = (await import(
+    /* @vite-ignore */ './.generated/auth_pb.ts' as string
+  )) as AuthPbModule;
+  return mod;
 }
 
 async function getAuthPbModule(): Promise<AuthPbModule> {

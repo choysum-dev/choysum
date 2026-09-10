@@ -19,10 +19,19 @@ var vueDirectivesDTS string
 //go:embed ambient/vue_module_stub.d.ts
 var vueModuleStubDTS string
 
+//go:embed ambient/playwright_test.d.ts
+var playwrightTestDTS string
+
 // ViteClientOverlay returns the relative ambient path (under the typecheck
 // ambient root) and embedded vite/client declarations.
 func ViteClientOverlay() (relPath, content string) {
 	return "vite/client.d.ts", viteClientDTS
+}
+
+// PlaywrightTestOverlay returns a loose @playwright/test module declaration for
+// legacy e2e specs still imported during the Playwright → @choysum/e2e cutover.
+func PlaywrightTestOverlay() (relPath, content string) {
+	return "playwright_test.d.ts", playwrightTestDTS
 }
 
 // VueShimOverlay returns vue/jsx-runtime ambient (does not declare module "vue").

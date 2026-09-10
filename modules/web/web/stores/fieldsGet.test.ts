@@ -1,34 +1,25 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createFieldsGetHelpers, FIELD_PRESENTATION_FIELDS_GET_ATTRS, type FieldsGetHost } from './fieldsGet';
+import {
+  createFieldsGetHelpers,
+  FIELD_PRESENTATION_FIELDS_GET_ATTRS,
+  type FieldsGetHost,
+  type FieldsGetRpcLike,
+} from './fieldsGet';
 import type { WebFieldMetadata } from './modelStore';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 function makeHost(
   fieldsMetadata: Record<string, WebFieldMetadata>,
-  FieldsGet: FieldsGetHost['FieldsGet']
+  FieldsGet: FieldsGetRpcLike
 ): FieldsGetHost {
-  return { fieldsMetadata, FieldsGet };
+  return { fieldsMetadata, FieldsGet: FieldsGet as FieldsGetHost['FieldsGet'] };
 }
 
 describe('createFieldsGetHelpers', () => {
   test('dedupes same cacheKey and does not re-RPC (T1.5)', async () => {
-    const FieldsGet = fnRecorder(async () => ({
+    const FieldsGet = asyncFnRecorder(async () => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
     }));
     let lang = 'zh_CN';
@@ -56,7 +47,7 @@ describe('createFieldsGetHelpers', () => {
     let fieldsGetImpl: FieldsGetHost['FieldsGet'] = async (_fields?: string[], _attrs?: string[]) => ({
       Name: { id: '1', type: 'varchar', typeAnnotation: 'string', string: '名称' },
     });
-    const FieldsGet = fnRecorder(async (fields?: string[], attrs?: string[]) => fieldsGetImpl(fields, attrs));
+    const FieldsGet = asyncFnRecorder(async (fields?: string[], attrs?: string[]) => fieldsGetImpl(fields, attrs));
     let lang = 'zh_CN';
     const helpers = createFieldsGetHelpers(
       makeHost(
@@ -87,7 +78,7 @@ describe('createFieldsGetHelpers', () => {
   });
 
   test('getFieldMeta merges overlay over static structural fields (T1.7)', async () => {
-    const FieldsGet = fnRecorder(async () => ({
+    const FieldsGet = asyncFnRecorder(async () => ({
       Status: {
         id: '2',
         type: 'selection',
@@ -137,7 +128,7 @@ describe('createFieldsGetHelpers', () => {
         help: '用于引用的短唯一编码',
       },
     });
-    const FieldsGet = fnRecorder(async (fields?: string[], attrs?: string[]) => fieldsGetImpl(fields, attrs));
+    const FieldsGet = asyncFnRecorder(async (fields?: string[], attrs?: string[]) => fieldsGetImpl(fields, attrs));
     const helpers = createFieldsGetHelpers(
       makeHost(
         {

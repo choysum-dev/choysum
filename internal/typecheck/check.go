@@ -104,6 +104,10 @@ func Check(ctx context.Context, opts Options) (Result, error) {
 	if coreAmbient := filepath.ToSlash(filepath.Join(modulesPath, "core", "types", "$choysum.d.ts")); fs.FileExists(coreAmbient) {
 		files = appendUniqueSlash(files, coreAmbient)
 	}
+	// Unit/e2e suites use choysumtest globals without imports; include ambient for every app.
+	if testGlobals := filepath.ToSlash(filepath.Join(modulesPath, "core", "service", "integration", "choysumtest-globals.d.ts")); fs.FileExists(testGlobals) {
+		files = appendUniqueSlash(files, testGlobals)
+	}
 	if len(files) == 0 {
 		return Result{}, ErrNoRootFiles
 	}
@@ -341,6 +345,11 @@ func appendOverlayRoots(files []string, modulesPath, app string, scope Scope, ov
 			}
 		case allowTSX && strings.HasPrefix(relLower, "web/"):
 			// web allows .ts/.tsx and, for ScopeAll, .vue
+		case allowTSX && strings.HasPrefix(relLower, "e2e/"):
+			// e2e allows .ts/.tsx (no .vue)
+			if isVue {
+				continue
+			}
 		default:
 			continue
 		}

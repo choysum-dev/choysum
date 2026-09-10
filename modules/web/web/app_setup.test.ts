@@ -4,21 +4,7 @@
 import { nextTick, reactive, ref } from 'vue';
 import { setupApp, type SetupAppDeps } from './app_setup';
 import { notifyComposerMessagesChanged } from './i18n';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
 function makeApp(elementLocale: Record<string, unknown> = { name: 'en' }) {
   return {
@@ -47,7 +33,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   const lastTerminologyLoad = ref<unknown>(null);
   const i18nLocale = ref('en');
   const mergeLocaleMessage = fnRecorder();
-  const loadVueI18nMessages = fnRecorder(async () => null);
+  const loadVueI18nMessages = asyncFnRecorder(async () => null);
   const createI18n = fnRecorder(() => ({
     global: {
       locale: i18nLocale,
@@ -160,9 +146,9 @@ test('setupApp > resolves user timezone from auth store', () => {
       getNumberFormats: () => ({}),
       loadVueI18nMessages: async () => null,
     })) as any,
-    setUserTimeZoneResolver: (resolver: () => string | null) => {
+    setUserTimeZoneResolver: ((resolver: any) => {
       userTimeZoneResolver = resolver;
-    },
+    }) as any,
     setGlobalRequestContextProvider: fnRecorder() as any,
     resolveRequestTimezone: ((a: string, b: string | null) => a || b || '') as any,
     detectBrowserTimezone: (() => '') as any,
@@ -206,9 +192,9 @@ test('setupApp > falls back to identity timezone and swallows auth lookup failur
       getNumberFormats: () => ({}),
       loadVueI18nMessages: async () => null,
     })) as any,
-    setUserTimeZoneResolver: (resolver: () => string | null) => {
+    setUserTimeZoneResolver: ((resolver: any) => {
       userTimeZoneResolver = resolver;
-    },
+    }) as any,
     setGlobalRequestContextProvider: fnRecorder() as any,
     resolveRequestTimezone: ((a: string, b: string | null) => a || b || '') as any,
     detectBrowserTimezone: (() => '') as any,
@@ -288,7 +274,7 @@ test('setupApp > builds request context with terminology lang and resolved tz', 
   const deps = baseDeps({
     useAuthStore: (() => ({ currentUser: { Timezone: 'Europe/Berlin' } })) as any,
     resolveRequestTimezone: (() => 'Europe/Berlin') as any,
-    setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+    setGlobalRequestContextProvider: (provider: any) => {
       requestContextProvider = provider;
     },
   });
@@ -311,10 +297,10 @@ test('setupApp > falls back to identity metadata timezone when currentUser has n
   setupApp(
     makeApp() as any,
     baseDeps({
-      setUserTimeZoneResolver: (resolver: () => string | null) => {
+      setUserTimeZoneResolver: (resolver: any) => {
         userTimeZoneResolver = resolver;
       },
-      setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+      setGlobalRequestContextProvider: (provider: any) => {
         requestContextProvider = provider;
       },
       useAuthStore: (() => ({
@@ -335,7 +321,7 @@ test('setupApp > omits tz from request context when unresolved', () => {
     makeApp() as any,
     baseDeps({
       resolveRequestTimezone: (() => '') as any,
-      setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+      setGlobalRequestContextProvider: (provider: any) => {
         requestContextProvider = provider;
       },
     })
@@ -358,7 +344,7 @@ test('setupApp > swallows auth errors while building request context timezone', 
         },
       })) as any,
       resolveRequestTimezone: (() => 'UTC') as any,
-      setGlobalRequestContextProvider: (provider: () => Record<string, string>) => {
+      setGlobalRequestContextProvider: (provider: any) => {
         requestContextProvider = provider;
       },
     })
@@ -375,7 +361,7 @@ test('setupApp > updates Element Plus locale and legacy messages on locale chang
   const elementLocale = { name: 'zh-CN' };
   const app = makeApp(elementLocale);
   const mergeLocaleMessage = fnRecorder();
-  const loadVueI18nMessages = fnRecorder(async () => ({ legacy: 'messages' }));
+  const loadVueI18nMessages = asyncFnRecorder(async () => ({ legacy: 'messages' }));
   const i18nLocale = ref('en');
   const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
   const store = {
@@ -415,7 +401,7 @@ test('setupApp > warns when legacy locale messages fail to load', async () => {
   try {
     const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
     const i18nLocale = ref('en');
-    const loadVueI18nMessages = fnRecorder(async () => {
+    const loadVueI18nMessages = asyncFnRecorder(async () => {
       throw new Error('network');
     });
     setupApp(makeApp() as any, {

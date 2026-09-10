@@ -224,6 +224,11 @@ export function getResourceDeclarationFromMeta(meta?: ObjectRecord | null): Reso
   return cloneDeclaration(declaration as ResourceDeclaration);
 }
 
+export function getRouteActionsFromMeta(meta?: ObjectRecord | null): string[] | undefined {
+  const declaration = getResourceDeclarationFromMeta(meta);
+  return declaration?.kind === 'route' ? declaration.actions : undefined;
+}
+
 export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: DefineRouteOptions<T>): T {
   const normalizedTitle = normalizeResourceTitle(config.title);
   const sequence = normalizeSequence(config.sequence);

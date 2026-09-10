@@ -2,21 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createFormController } from './formController';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 function newStore(defaultGet: (...args: unknown[]) => unknown) {
   return {
@@ -34,7 +20,7 @@ function newStore(defaultGet: (...args: unknown[]) => unknown) {
 
 describe('formController beginCreate DefaultGet prefetch', () => {
   test('prefetch success merges server defaults while keeping seed keys', async () => {
-    const DefaultGet = fnRecorder(async (seed: any) => ({
+    const DefaultGet = asyncFnRecorder(async (seed: any) => ({
       Name: 'from-server',
       Code: 'server-code',
       ...(seed || {}),
@@ -60,7 +46,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
       warnings.push(args);
     };
     try {
-      const DefaultGet = fnRecorder(async () => {
+      const DefaultGet = asyncFnRecorder(async () => {
         throw new Error('rpc down');
       });
       const controller = createFormController(newStore(DefaultGet));
@@ -76,7 +62,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
   });
 
   test('copy→create seed wins over overlapping server defaults', async () => {
-    const DefaultGet = fnRecorder(async () => ({
+    const DefaultGet = asyncFnRecorder(async () => ({
       Name: 'server-name',
       Code: 'server-code',
       Note: 'server-note',
@@ -94,7 +80,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
   });
 
   test('explicit null in seed is preserved over server default', async () => {
-    const DefaultGet = fnRecorder(async () => ({
+    const DefaultGet = asyncFnRecorder(async () => ({
       Name: 'server-name',
       Code: 'server-code',
     }));
@@ -109,7 +95,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
   });
 
   test('missing DefaultGet on store still opens create with seed', async () => {
-    const store = newStore(fnRecorder());
+    const store = newStore(asyncFnRecorder());
     delete (store as any).DefaultGet;
     const controller = createFormController(store);
 
@@ -120,7 +106,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
   });
 
   test('undefined initial uses empty seed object', async () => {
-    const DefaultGet = fnRecorder(async () => ({ Name: 'server-only' }));
+    const DefaultGet = asyncFnRecorder(async () => ({ Name: 'server-only' }));
     const controller = createFormController(newStore(DefaultGet));
 
     await controller.beginCreate();
@@ -131,7 +117,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
 
   test('non-object DefaultGet results collapse to empty server map', async () => {
     for (const bad of [null, 42, 'x', ['Name']]) {
-      const DefaultGet = fnRecorder(async () => bad as any);
+      const DefaultGet = asyncFnRecorder(async () => bad as any);
       const controller = createFormController(newStore(DefaultGet));
       await controller.beginCreate({ Name: 'seed' });
       expect(controller.vm.draft).toEqual({ Name: 'seed' });
@@ -139,7 +125,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
   });
 
   test('undefined seed keys are dropped by clone so server defaults remain', async () => {
-    const DefaultGet = fnRecorder(async () => ({ Name: 'server-name', Code: 'server-code' }));
+    const DefaultGet = asyncFnRecorder(async () => ({ Name: 'server-name', Code: 'server-code' }));
     const controller = createFormController(newStore(DefaultGet));
 
     await controller.beginCreate({ Name: undefined, Code: 'seed-code' });
@@ -151,7 +137,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
   });
 
   test('null initial uses empty seed object', async () => {
-    const DefaultGet = fnRecorder(async () => ({ Name: 'server-only' }));
+    const DefaultGet = asyncFnRecorder(async () => ({ Name: 'server-only' }));
     const controller = createFormController(newStore(DefaultGet));
     await controller.beginCreate(null);
     expect(controller.vm.draft).toEqual({ Name: 'server-only' });
@@ -159,7 +145,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
 
   test('superseded DefaultGet success does not clobber newer create draft', async () => {
     const resolvers: Array<(value: unknown) => void> = [];
-    const DefaultGet = fnRecorder(
+    const DefaultGet = asyncFnRecorder(
       () =>
         new Promise(resolve => {
           resolvers.push(resolve);
@@ -187,7 +173,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
 
   test('beginCreate clears loading when it supersedes beginDisplay', async () => {
     let resolveDefaults: ((value: unknown) => void) | undefined;
-    const DefaultGet = fnRecorder(
+    const DefaultGet = asyncFnRecorder(
       () =>
         new Promise(resolve => {
           resolveDefaults = resolve;
@@ -214,7 +200,7 @@ describe('formController beginCreate DefaultGet prefetch', () => {
     };
     try {
       const rejecters: Array<(reason?: unknown) => void> = [];
-      const DefaultGet = fnRecorder(
+      const DefaultGet = asyncFnRecorder(
         () =>
           new Promise((_resolve, reject) => {
             rejecters.push(reject);

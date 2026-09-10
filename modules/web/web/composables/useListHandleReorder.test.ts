@@ -3,21 +3,7 @@
 
 import { ref } from 'vue';
 import { useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
 function dragEvent(partial?: Partial<DragEvent> & { throwTransfer?: boolean }): DragEvent {
   const transfer: any = {
@@ -65,7 +51,7 @@ describe('useListHandleReorder', () => {
       { kind: 'record', payload: { Id: 'b', Sequence: 22 } },
       { kind: 'record', payload: { Id: 'c', Sequence: 23 } },
     ];
-    const onReorder = fnRecorder(async () => {});
+    const onReorder = asyncFnRecorder(async () => {});
     const api = useListHandleReorder({
       rows: () => rows,
       enabled,
@@ -167,7 +153,7 @@ describe('useListHandleReorder', () => {
       { Id: 'a', Sequence: 1 },
       { Id: 'b', Sequence: 2 },
     ];
-    const onReorder = fnRecorder(async () => {});
+    const onReorder = asyncFnRecorder(async () => {});
     const api = useListHandleReorder({
       rows: () => rows,
       enabled,

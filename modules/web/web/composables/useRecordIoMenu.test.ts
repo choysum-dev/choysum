@@ -10,21 +10,7 @@ import { clearFieldsByStore, registerFieldPath } from '@/web/web/query/utils/reg
 import { useRecordIoMenu } from './useRecordIoMenu';
 import { useRecordExportScope } from './useRecordExportScope';
 import { useRecordImportScope } from './useRecordImportScope';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { fnRecorder } from '@/web/web/__tests__/mountApp';
 
 afterEach(() => {
   clearGlobalRequestContextProvider();
@@ -83,7 +69,7 @@ describe('useRecordIoMenu', () => {
     ]);
     config.value = {
       export: { enabled: true },
-    };
+    } as any;
     expect(menu.items.value.map(i => ({ key: i.key, label: i.label }))).toEqual([
       { key: 'export', label: 'Ship out' },
     ]);
@@ -238,7 +224,7 @@ describe('useRecordImportScope', () => {
     model.value = 'other.Model';
     config.value = {
       import: { enabled: true, uploadHint: 'next' },
-    };
+    } as any;
     expect(scope.model.value).toBe('other.Model');
     expect(scope.uploadHint.value).toBe('next');
   });

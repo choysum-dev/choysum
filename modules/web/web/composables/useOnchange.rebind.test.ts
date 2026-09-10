@@ -4,7 +4,7 @@
 import { nextTick, ref, defineComponent, provide } from 'vue';
 
 import { disposeOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
-import { fnRecorder, flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { fnRecorder, flushPromises, mountApp, type CallRecorder } from '@/web/web/__tests__/mountApp';
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -26,7 +26,7 @@ function makeStore(onchange = fnRecorder(async () => ({ value: {}, messages: [] 
   } as any;
 }
 
-function lastDraft(onchange: ReturnType<typeof fnRecorder>): Record<string, any> | undefined {
+function lastDraft(onchange: CallRecorder): Record<string, any> | undefined {
   const args = onchange.calls.at(-1);
   return args?.[0] as Record<string, any> | undefined;
 }

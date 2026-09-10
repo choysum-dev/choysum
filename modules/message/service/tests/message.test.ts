@@ -418,7 +418,7 @@ test('message.Message: Post via dialOverride Bind with CompanyId and star fields
         dialBinds.push(req);
         return { status: 'active' };
       },
-    }));
+    }) as any);
     const withCompany = await Message.Post(
       {
         Model: 'partner.Partner',

@@ -7,21 +7,7 @@ import {
   shouldDiscardInvisibleEdit,
   syncFlatRowsFromVisibleItems,
 } from '@/web/web/composables/listViewHandlePersist';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 describe('listViewHandlePersist', () => {
   test('buildHandleReorderWrites skips rows without id', () => {
@@ -33,10 +19,10 @@ describe('listViewHandlePersist', () => {
   });
 
   test('persistHandleReorder updates sequences and refreshes on success', async () => {
-    const updateById = fnRecorder(async () => {});
-    const refresh = fnRecorder(async () => {});
-    const rollbackFlat = fnRecorder();
-    const onError = fnRecorder();
+    const updateById = asyncFnRecorder(async () => {});
+    const refresh = asyncFnRecorder(async () => {});
+    const rollbackFlat = asyncFnRecorder();
+    const onError = asyncFnRecorder();
 
     await persistHandleReorder({
       writes: [{ id: 'a', previous: 1, next: 2 }],
@@ -55,13 +41,13 @@ describe('listViewHandlePersist', () => {
 
   test('persistHandleReorder rolls back, restores flat rows, and reloads on failure', async () => {
     let n = 0;
-    const updateById = fnRecorder(async () => {
+    const updateById = asyncFnRecorder(async () => {
       n += 1;
       if (n === 2) throw new Error('fail');
     });
-    const refresh = fnRecorder(async () => {});
-    const rollbackFlat = fnRecorder();
-    const onError = fnRecorder();
+    const refresh = asyncFnRecorder(async () => {});
+    const rollbackFlat = asyncFnRecorder();
+    const onError = asyncFnRecorder();
 
     await persistHandleReorder({
       writes: [
@@ -85,10 +71,10 @@ describe('listViewHandlePersist', () => {
   });
 
   test('persistHandleReorder ignores refresh failure after rollback', async () => {
-    const updateById = fnRecorder(async () => {
+    const updateById = asyncFnRecorder(async () => {
       throw new Error('fail');
     });
-    const refresh = fnRecorder(async () => {
+    const refresh = asyncFnRecorder(async () => {
       throw new Error('reload failed');
     });
     await persistHandleReorder({
@@ -96,19 +82,19 @@ describe('listViewHandlePersist', () => {
       handleField: 'Sequence',
       updateById,
       refresh,
-      rollbackFlat: fnRecorder(),
-      onError: fnRecorder(),
+      rollbackFlat: asyncFnRecorder(),
+      onError: asyncFnRecorder(),
     });
     expect(refresh.calls.length).toBe(1);
   });
 
   test('persistHandleReorder does not roll back writes when only refresh fails', async () => {
-    const updateById = fnRecorder(async () => {});
-    const refresh = fnRecorder(async () => {
+    const updateById = asyncFnRecorder(async () => {});
+    const refresh = asyncFnRecorder(async () => {
       throw new Error('reload failed');
     });
-    const rollbackFlat = fnRecorder();
-    const onError = fnRecorder();
+    const rollbackFlat = asyncFnRecorder();
+    const onError = asyncFnRecorder();
     await persistHandleReorder({
       writes: [
         { id: 'a', previous: 1, next: 2 },
@@ -130,18 +116,18 @@ describe('listViewHandlePersist', () => {
 
   test('persistHandleReorder ignores rollback UpdateById errors', async () => {
     let n = 0;
-    const updateById = fnRecorder(async () => {
+    const updateById = asyncFnRecorder(async () => {
       n += 1;
       if (n === 1) throw new Error('fail');
       throw new Error('rollback fail');
     });
-    const onError = fnRecorder();
+    const onError = asyncFnRecorder();
     await persistHandleReorder({
       writes: [{ id: 'a', previous: 1, next: 2 }],
       handleField: 'Sequence',
       updateById,
-      refresh: fnRecorder(async () => {}),
-      rollbackFlat: fnRecorder(),
+      refresh: asyncFnRecorder(async () => {}),
+      rollbackFlat: asyncFnRecorder(),
       onError,
     });
     expect(onError.calls).toEqual([['write']]);
@@ -149,29 +135,29 @@ describe('listViewHandlePersist', () => {
   });
 
   test('persistHandleReorder skips rollback write when previous is undefined', async () => {
-    const updateById = fnRecorder(async () => {
+    const updateById = asyncFnRecorder(async () => {
       throw new Error('fail');
     });
     await persistHandleReorder({
       writes: [{ id: 'a', previous: undefined, next: 1 }],
       handleField: 'Sequence',
       updateById,
-      refresh: fnRecorder(async () => {}),
-      rollbackFlat: fnRecorder(),
-      onError: fnRecorder(),
+      refresh: asyncFnRecorder(async () => {}),
+      rollbackFlat: asyncFnRecorder(),
+      onError: asyncFnRecorder(),
     });
     expect(updateById.calls.length).toBe(1);
   });
 
   test('persistHandleReorder no-ops on empty writes', async () => {
-    const updateById = fnRecorder();
+    const updateById = asyncFnRecorder();
     await persistHandleReorder({
       writes: [],
       handleField: 'Sequence',
       updateById,
-      refresh: fnRecorder(),
-      rollbackFlat: fnRecorder(),
-      onError: fnRecorder(),
+      refresh: asyncFnRecorder(),
+      rollbackFlat: asyncFnRecorder(),
+      onError: asyncFnRecorder(),
     });
     expect(updateById.calls.length).toBe(0);
   });

@@ -8,20 +8,7 @@ import {
   trimSearchKeyword,
 } from './nameCreateQuickCreate';
 
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 describe('trimSearchKeyword', () => {
   test('trims and nullish-coalesces', () => {
@@ -60,14 +47,14 @@ describe('formatNameCreateError', () => {
 
 describe('runNameCreateQuickCreate', () => {
   test('guards busy, missing store, and empty keyword', async () => {
-    const onError = fnRecorder();
-    const onSuccess = fnRecorder();
-    const NameCreate = fnRecorder();
+    const onError = asyncFnRecorder();
+    const onSuccess = asyncFnRecorder();
+    const NameCreate = asyncFnRecorder();
 
     expect(
       await runNameCreateQuickCreate({
         busy: { value: true },
-        store: { NameCreate },
+        store: { NameCreate } as any,
         keyword: 'x',
         failedMessage: 'fail',
         onError,
@@ -92,7 +79,7 @@ describe('runNameCreateQuickCreate', () => {
     expect(
       await runNameCreateQuickCreate({
         busy: { value: false },
-        store: { NameCreate },
+        store: { NameCreate } as any,
         keyword: '   ',
         failedMessage: 'fail',
         onError,
@@ -106,7 +93,7 @@ describe('runNameCreateQuickCreate', () => {
     expect(
       await runNameCreateQuickCreate({
         busy: { value: false },
-        store: { NameCreate },
+        store: { NameCreate } as any,
         keyword: null as any,
         failedMessage: 'fail',
         onError,
@@ -116,7 +103,7 @@ describe('runNameCreateQuickCreate', () => {
     expect(
       await runNameCreateQuickCreate({
         busy: { value: false },
-        store: { NameCreate },
+        store: { NameCreate } as any,
         keyword: undefined as any,
         failedMessage: 'fail',
         onError,
@@ -127,13 +114,13 @@ describe('runNameCreateQuickCreate', () => {
 
   test('creates, passes nameField, and clears busy', async () => {
     const busy = { value: false };
-    const onError = fnRecorder();
-    const onSuccess = fnRecorder();
-    const NameCreate = fnRecorder(async () => ({ Id: 'n1', Name: 'Acme' }));
+    const onError = asyncFnRecorder();
+    const onSuccess = asyncFnRecorder();
+    const NameCreate = asyncFnRecorder(async () => ({ Id: 'n1', Name: 'Acme' }));
 
     const ok = await runNameCreateQuickCreate({
       busy,
-      store: { NameCreate },
+      store: { NameCreate } as any,
       keyword: '  Acme  ',
       nameField: 'Code',
       failedMessage: 'fail',
@@ -148,28 +135,28 @@ describe('runNameCreateQuickCreate', () => {
   });
 
   test('omits options when nameField is unset', async () => {
-    const NameCreate = fnRecorder(async () => ({ id: 'legacy' }));
+    const NameCreate = asyncFnRecorder(async () => ({ id: 'legacy' }));
     await runNameCreateQuickCreate({
       busy: { value: false },
-      store: { NameCreate },
+      store: { NameCreate } as any,
       keyword: 'x',
       failedMessage: 'fail',
-      onError: fnRecorder(),
-      onSuccess: fnRecorder(),
+      onError: asyncFnRecorder(),
+      onSuccess: asyncFnRecorder(),
     });
     expect(NameCreate.calls).toEqual([['x', undefined, undefined]]);
   });
 
   test('errors when created row has no id', async () => {
-    const onError = fnRecorder();
+    const onError = asyncFnRecorder();
     const busy = { value: false };
     const ok = await runNameCreateQuickCreate({
       busy,
-      store: { NameCreate: fnRecorder(async () => ({ Name: 'no-id' })) },
+      store: { NameCreate: asyncFnRecorder(async () => ({ Name: 'no-id' })) },
       keyword: 'x',
       failedMessage: 'fail',
       onError,
-      onSuccess: fnRecorder(),
+      onSuccess: asyncFnRecorder(),
     });
     expect(ok).toBe(false);
     expect(onError.calls).toEqual([['fail']]);
@@ -177,19 +164,19 @@ describe('runNameCreateQuickCreate', () => {
   });
 
   test('surfaces NameCreate throw via onError', async () => {
-    const onError = fnRecorder();
+    const onError = asyncFnRecorder();
     const busy = { value: false };
     const ok = await runNameCreateQuickCreate({
       busy,
       store: {
-        NameCreate: fnRecorder(async () => {
+        NameCreate: asyncFnRecorder(async () => {
           throw new Error('denied');
         }),
       },
       keyword: 'x',
       failedMessage: 'fail',
       onError,
-      onSuccess: fnRecorder(),
+      onSuccess: asyncFnRecorder(),
     });
     expect(ok).toBe(false);
     expect(onError.calls).toEqual([['denied']]);

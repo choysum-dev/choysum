@@ -82,9 +82,14 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	if !strings.Contains(joined, "test/helper.ts") {
 		t.Fatalf("singular test/ dir should be included: %v", files)
 	}
-	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
+	for _, ban := range []string{"skip.gen.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
+		}
+	}
+	for _, want := range []string{"ok.spec.ts", "ok.test.d.ts", "__tests__/t.ts"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing test root %s in %v", want, files)
 		}
 	}
 }
@@ -178,6 +183,28 @@ func TestCheck_OverlayAmbient(t *testing.T) {
 	}
 	if fileExists(filepath.Join(modules, "core", "types", "$choysum.d.ts")) {
 		t.Fatal("ambient should exist only via overlay")
+	}
+}
+
+func TestCheck_ChoysumtestGlobalsOnDisk(t *testing.T) {
+	repo, modules := fixtureRoots(t, "service_ok")
+	globals := filepath.Join(modules, "core", "service", "integration", "choysumtest-globals.d.ts")
+	mustMkdir(t, filepath.Dir(globals))
+	// Declare a real choysumtest global and call it from a service test so Check
+	// fails unless this ambient file is included as a program root.
+	mustWrite(t, globals, "declare global {\n  function test(name: string, fn: () => void): void;\n}\nexport {};\n")
+	mustWrite(t, filepath.Join(modules, "demo", "service", "uses_globals.test.ts"), "test('x', () => {});\n")
+	res, err := Check(t.Context(), Options{
+		ModulesPath: modules,
+		RepoRoot:    repo,
+		App:         "demo",
+		Scope:       ScopeService,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.HasErrors() {
+		t.Fatalf("unexpected: %#v", res.Diagnostics)
 	}
 }
 
@@ -283,14 +310,40 @@ func TestAppendOverlayRoots(t *testing.T) {
 	if len(got) != 0 {
 		t.Fatalf("ScopeService must skip tsx overlays: %v", got)
 	}
-	// ScopeAll: web .vue overlays included; __tests__ trees skipped.
+	// ScopeAll: web .vue overlays include tests / __tests__ trees.
 	got = appendOverlayRoots(nil, modules, app, ScopeAll, map[string]string{
 		"/repo/modules/demo/web/Ok.vue":          "x",
 		"/repo/modules/demo/web/__tests__/T.vue": "x",
 		"/repo/modules/demo/web/tests/H.vue":     "x",
 	}, true)
-	if len(got) != 1 || !strings.HasSuffix(got[0], "web/Ok.vue.ts") {
-		t.Fatalf("ScopeAll vue overlay roots = %v", got)
+	joined = strings.Join(got, "\n")
+	for _, want := range []string{"web/Ok.vue.ts", "web/__tests__/T.vue.ts", "web/tests/H.vue.ts"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("ScopeAll vue overlay roots missing %s: %v", want, got)
+		}
+	}
+
+	// e2e overlays: .ts/.tsx kept; .vue skipped even under ScopeAll.
+	got = appendOverlayRoots(nil, modules, app, ScopeAll, map[string]string{
+		"/repo/modules/demo/e2e/smoke.spec.ts": "x",
+		"/repo/modules/demo/e2e/Widget.tsx":    "x",
+		"/repo/modules/demo/e2e/Skip.vue":      "x",
+	}, true)
+	joined = strings.Join(got, "\n")
+	if !strings.Contains(joined, "e2e/smoke.spec.ts") || !strings.Contains(joined, "e2e/Widget.tsx") {
+		t.Fatalf("e2e overlays missing ts roots: %v", got)
+	}
+	if strings.Contains(joined, "Skip.vue") {
+		t.Fatalf("e2e must skip .vue overlays: %v", got)
+	}
+
+	// Nested skip dirs under e2e/web still apply (tmp/coverage/...).
+	got = appendOverlayRoots(nil, modules, app, ScopeNoVue, map[string]string{
+		"/repo/modules/demo/e2e/tmp/hidden.ts": "x",
+		"/repo/modules/demo/web/tmp/hidden.ts": "x",
+	}, true)
+	if len(got) != 0 {
+		t.Fatalf("tmp nested overlays must be skipped: %v", got)
 	}
 }
 
@@ -559,6 +612,16 @@ func TestCollectRootFiles_StatErrors(t *testing.T) {
 		return orig(name)
 	}
 	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeNoVue); err == nil || !strings.Contains(err.Error(), "web stat boom") {
+		t.Fatalf("err = %v", err)
+	}
+
+	stat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "e2e" {
+			return nil, errors.New("e2e stat boom")
+		}
+		return orig(name)
+	}
+	if _, err := CollectRootFiles(t.Context(), modules, "demo", ScopeNoVue); err == nil || !strings.Contains(err.Error(), "e2e stat boom") {
 		t.Fatalf("err = %v", err)
 	}
 
@@ -903,8 +966,12 @@ func TestShouldSkipTSFileName_Dts(t *testing.T) {
 	if shouldSkipTSFileName("types.d.ts") {
 		t.Fatal("ambient d.ts must not be skipped")
 	}
-	if !shouldSkipTSFileName("ok.test.d.ts") || !shouldSkipTSFileName("ok.spec.d.ts") {
-		t.Fatal("test declaration files must be skipped")
+	if shouldSkipTSFileName("ok.test.ts") || shouldSkipTSFileName("ok.spec.ts") ||
+		shouldSkipTSFileName("ok.test.d.ts") || shouldSkipTSFileName("ok.spec.d.ts") {
+		t.Fatal("unit/e2e test sources must not be skipped")
+	}
+	if !shouldSkipTSFileName("skip.gen.ts") || !shouldSkipTSFileName("x.gen.d.ts") {
+		t.Fatal("generated sources must be skipped")
 	}
 	if !shouldSkipTSFileName(".hidden.ts") {
 		t.Fatal("dotfiles must be skipped")

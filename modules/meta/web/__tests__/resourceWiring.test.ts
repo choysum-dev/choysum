@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createTranslate } from '@/core/service/i18n';
-import { defineAction, getResourceDeclarationFromMeta } from '@/core/web/resource';
+import { defineAction, getRouteActionsFromMeta } from '@/core/web/resource';
 import { metaRoutes } from '../route/routes';
 
 const { _lt } = createTranslate('meta', { scope: 'web/views' });
@@ -10,20 +10,20 @@ const { _lt } = createTranslate('meta', { scope: 'web/views' });
 test('meta resource wiring: each route declares expected actions', () => {
   const byName = Object.fromEntries(metaRoutes.map(route => [String(route.name), route]));
 
-  expect(getResourceDeclarationFromMeta(byName.MetaModuleList?.meta as any)?.actions).toEqual([
+  expect(getRouteActionsFromMeta(byName.MetaModuleList?.meta as any)).toEqual([
     'meta.action.module_install',
     'meta.action.module_upgrade',
     'meta.action.module_uninstall',
     'meta.action.module_sync_index',
   ]);
-  expect(getResourceDeclarationFromMeta(byName.MetaModuleListTable?.meta as any)?.actions).toEqual([
+  expect(getRouteActionsFromMeta(byName.MetaModuleListTable?.meta as any)).toEqual([
     'meta.action.module_sync_index',
     'meta.action.module_index_delete',
   ]);
-  expect(getResourceDeclarationFromMeta(byName.MetaModuleHistory?.meta as any)?.actions).toEqual([
+  expect(getRouteActionsFromMeta(byName.MetaModuleHistory?.meta as any)).toEqual([
     'meta.action.module_management_log_delete',
   ]);
-  expect(getResourceDeclarationFromMeta(byName.MetaModuleDetail?.meta as any)?.actions).toEqual([
+  expect(getRouteActionsFromMeta(byName.MetaModuleDetail?.meta as any)).toEqual([
     'meta.action.module_index_edit',
     'meta.action.module_index_delete',
     'meta.action.module_index_copy',

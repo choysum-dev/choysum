@@ -12,6 +12,7 @@ test('core/web resource entrypoint export surface: keeps the runtime facade limi
     'defineRoute',
     'getResourceDeclaration',
     'getResourceDeclarationFromMeta',
+    'getRouteActionsFromMeta',
     'listResourceDeclarations',
   ]);
 });

@@ -8,7 +8,7 @@ import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests_
 import OBinaryField from './OBinaryField.vue';
 import OFieldBase from './OFieldBase.vue';
 
-function makeBinding(opts?: { value?: unknown }): UseField {
+function makeBinding(opts?: { value?: unknown }): any {
   const value = ref(opts?.value ?? null);
   const record = ref({ Id: '1' });
   return {
@@ -26,7 +26,7 @@ function makeBinding(opts?: { value?: unknown }): UseField {
     registerFields: () => {},
     store: undefined,
     asView: () => ({ fieldValue: () => value }) as any,
-  } as UseField;
+  } as any;
 }
 
 const uploadOnChange: { fn: null | ((file: any) => Promise<void> | void) } = { fn: null };

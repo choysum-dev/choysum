@@ -67,6 +67,10 @@ func CollectRootFiles(ctx context.Context, modulesPath, app string, scope Scope)
 			if err := walkTSTree(ctx, filepath.Join(appRoot, "web"), add, true, allowVue); err != nil {
 				return nil, err
 			}
+			// App-root e2e suites (*.spec.ts) sit beside service/web.
+			if err := walkTSTree(ctx, filepath.Join(appRoot, "e2e"), add, true, false); err != nil {
+				return nil, err
+			}
 		}
 	default:
 		return nil, ErrUnsupportedScope
@@ -157,9 +161,7 @@ func shouldSkipScanDir(name string) bool {
 		return true
 	}
 	switch strings.ToLower(name) {
-	// Match historical vue-tsc excludes: skip plural tests trees, not singular
-	// `test/` or `e2e/` (those were typechecked under the old include globs).
-	case "node_modules", "dist", "tmp", "tests", "__tests__", "coverage":
+	case "node_modules", "dist", "tmp", "coverage":
 		return true
 	default:
 		return false
@@ -171,12 +173,7 @@ func shouldSkipTSFileName(name string) bool {
 		return true
 	}
 	lower := strings.ToLower(name)
-	if strings.HasSuffix(lower, ".test.ts") || strings.HasSuffix(lower, ".spec.ts") ||
-		strings.HasSuffix(lower, ".test.tsx") || strings.HasSuffix(lower, ".spec.tsx") ||
-		strings.HasSuffix(lower, ".test.d.ts") || strings.HasSuffix(lower, ".spec.d.ts") ||
-		strings.HasSuffix(lower, ".test.vue") || strings.HasSuffix(lower, ".spec.vue") {
-		return true
-	}
+	// Generated sources stay excluded; unit/e2e *.test.* / *.spec.* are checked.
 	if strings.Contains(lower, ".gen.") {
 		return true
 	}

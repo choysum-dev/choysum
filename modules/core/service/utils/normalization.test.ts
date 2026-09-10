@@ -661,7 +661,7 @@ test('asRecord returns the object for plain objects', () => {
 
 test('asRecord returns the object for class instances (non-array)', () => {
   const d = new Date();
-  expect(asRecord(d)).toBe(d);
+  expect(asRecord(d)).toBe(d as any);
 });
 
 // ---------------------------------------------------------------------------

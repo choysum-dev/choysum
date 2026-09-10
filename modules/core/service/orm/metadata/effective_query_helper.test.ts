@@ -60,20 +60,20 @@ test('priorityInRange returns true at exact boundaries', () => {
 });
 
 test('priorityInRange returns false when priority is below min', () => {
-  expect(priorityInRange({ priority: 2 }, { min: 5 })).toBe(false);
+  expect(priorityInRange({ priority: 2 }, { min: 5 } as any)).toBe(false);
 });
 
 test('priorityInRange returns false when priority is above max', () => {
-  expect(priorityInRange({ priority: 10 }, { max: 5 })).toBe(false);
+  expect(priorityInRange({ priority: 10 }, { max: 5 } as any)).toBe(false);
 });
 
 test('priorityInRange defaults missing priority to 0', () => {
   expect(priorityInRange({}, { min: -1, max: 1 })).toBe(true);
-  expect(priorityInRange({}, { min: 1 })).toBe(false);
+  expect(priorityInRange({}, { min: 1 } as any)).toBe(false);
 });
 
 test('priorityInRange defaults NaN priority to 0', () => {
-  expect(priorityInRange({ priority: NaN }, { min: -1 })).toBe(true);
+  expect(priorityInRange({ priority: NaN }, { min: -1 } as any)).toBe(true);
 });
 
 // matchesMethodPrefix

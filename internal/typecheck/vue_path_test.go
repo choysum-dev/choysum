@@ -40,8 +40,8 @@ func TestCollectRootFiles_All(t *testing.T) {
 	if !strings.Contains(joined, "ui.ts") || !strings.Contains(joined, "App.vue") {
 		t.Fatalf("missing roots: %v", files)
 	}
-	if strings.Contains(joined, "Skip.test.vue") {
-		t.Fatalf("unexpected test vue: %v", files)
+	if !strings.Contains(joined, "Skip.test.vue") {
+		t.Fatalf("missing test vue root: %v", files)
 	}
 
 	noVue, err := CollectRootFiles(t.Context(), modules, "demo", ScopeNoVue)

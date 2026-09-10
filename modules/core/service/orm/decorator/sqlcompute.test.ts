@@ -101,7 +101,7 @@ test('@SqlCompute filters empty deps strings', () => {
     @Field({ type: 'varchar', size: 64 } as any)
     Name?: string;
 
-    @SqlCompute<any>('Name', { deps: ['', 'Id', '  ', '  ', 'Name'] })
+    @SqlCompute<any>('Name', { deps: ['', 'Id', '  ', '  ', 'Name'] as any })
     sqlName() {
       return 'expr' as any;
     }

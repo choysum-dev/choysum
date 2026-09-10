@@ -38,7 +38,7 @@ function makeM2OBinding(relationStore: any): UseField {
     relationStore,
     store: undefined,
     asView: () => ({ fieldValue: () => value }) as any,
-  } as UseField;
+  } as any;
 }
 
 function makeM2MBinding(relationStore: any): UseField {
@@ -69,7 +69,7 @@ function makeM2MBinding(relationStore: any): UseField {
       },
     }),
     asView: () => ({ fieldValue: () => items }) as any,
-  } as UseField;
+  } as any;
 }
 
 const epSfcs = [ElSelectV2, ElDialog, ElButton, ElTag];

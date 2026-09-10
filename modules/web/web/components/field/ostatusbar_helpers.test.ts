@@ -16,21 +16,7 @@ import {
   toStatusbarView,
   validateStatusbarValue,
 } from './ostatusbar_helpers';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
 const meta = [
   { value: 'draft', label: 'Draft' },
@@ -313,7 +299,7 @@ describe('gateBeforeChange / applyStatusbarSelect', () => {
     ).toBe(false);
   });
   test('awaits async hooks', async () => {
-    const hook = fnRecorder(async () => true);
+    const hook = asyncFnRecorder(async () => true);
     expect(await gateBeforeChange(hook, 'done', 'draft')).toBe(true);
     expect(hook.calls).toEqual([['done', 'draft']]);
   });

@@ -9,31 +9,18 @@ import {
 import { setTokenProvider, setCSRFProvider } from '@/core/web/rpc';
 import { setGlobalRequestContextProvider, clearGlobalRequestContextProvider } from '@/core/rpc/context';
 
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder, type AsyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 type AttachmentServiceStub = {
-  PrepareUpload: CallRecorder & ((...args: any[]) => Promise<any>);
-  FinalizeUpload: CallRecorder & ((...args: any[]) => Promise<any>);
+  PrepareUpload: AsyncFnRecorder;
+  FinalizeUpload: AsyncFnRecorder;
   setContext?: (ctx: Record<string, string>) => void;
   withContext?: <T>(ctx: Record<string, string>, fn: () => Promise<T>) => Promise<T>;
 };
 
 function newAttachmentService(attachmentObjectId = 'ao-test', uploadUrl = 'https://example.com/upload'): AttachmentServiceStub {
   return {
-    PrepareUpload: fnRecorder(async () => ({
+    PrepareUpload: asyncFnRecorder(async () => ({
       uploadId: 'upload-1',
       uploadTarget: {
         method: 'PUT',
@@ -43,7 +30,7 @@ function newAttachmentService(attachmentObjectId = 'ao-test', uploadUrl = 'https
         },
       },
     })),
-    FinalizeUpload: fnRecorder(async () => ({
+    FinalizeUpload: asyncFnRecorder(async () => ({
       attachmentObjectId,
     })),
   };
@@ -74,7 +61,7 @@ function createStoreForNormalize(service: AttachmentServiceStub) {
 describe('formController attachment protocol', () => {
   const originalFetch = globalThis.fetch;
   const originalFile = (globalThis as any).File;
-  let fetchMock: CallRecorder & ((...args: any[]) => Promise<any>);
+  let fetchMock: AsyncFnRecorder;
 
   const resetTokenProvider = () => {
     setTokenProvider({
@@ -91,7 +78,7 @@ describe('formController attachment protocol', () => {
   };
 
   beforeEach(() => {
-    fetchMock = fnRecorder(async () => ({ ok: true, status: 200 }));
+    fetchMock = asyncFnRecorder(async () => ({ ok: true, status: 200 }));
     globalThis.fetch = fetchMock as any;
     resetTokenProvider();
     resetCSRFProvider();
@@ -176,7 +163,7 @@ describe('formController attachment protocol', () => {
     const ctx = newCtx(service);
     const blob = new Blob([new Uint8Array([10, 11, 12])], { type: 'application/octet-stream' });
 
-    const refreshToken = fnRecorder(async () => true);
+    const refreshToken = asyncFnRecorder(async () => true);
     setTokenProvider({
       getToken: async () => 'token-upload',
       refreshToken,
@@ -210,7 +197,7 @@ describe('formController attachment protocol', () => {
       getContext: () => ({}),
       fieldsMetadata: { Avatar: { type: 'image' } },
     } as any;
-    const deps = { createStoreByModel: createStoreForNormalize(service) };
+    const deps = { createStoreByModel: createStoreForNormalize(service) as any };
 
     const withDisposition = await __normalizeAttachmentFieldsInPayloadForTest(
       store,
@@ -270,7 +257,7 @@ describe('formController attachment protocol', () => {
     const ctx = newCtx(service);
     const blob = new Blob([new Uint8Array([1])], { type: 'application/octet-stream' });
 
-    globalThis.fetch = fnRecorder(async () => ({
+    globalThis.fetch = asyncFnRecorder(async () => ({
       ok: false,
       status: 502,
       text: async () =>
@@ -339,7 +326,7 @@ describe('formController attachment protocol', () => {
       getContext: () => ({}),
       fieldsMetadata: { Avatar: { type: 'image' } },
     } as any;
-    const deps = { createStoreByModel: createStoreForNormalize(service) };
+    const deps = { createStoreByModel: createStoreForNormalize(service) as any };
 
     for (const [key, value] of [
       ['fileName', 'from-file-name'],
@@ -389,7 +376,7 @@ describe('formController attachment protocol', () => {
     expect(prepareProposed?.proposedContentType).toBe('application/x-proposed');
 
     const serviceDefault = newAttachmentService('ao-default-ct');
-    serviceDefault.PrepareUpload = fnRecorder(async () => ({
+    serviceDefault.PrepareUpload = asyncFnRecorder(async () => ({
       uploadId: 'upload-1',
       uploadTarget: {
         method: undefined,

@@ -2,25 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { downloadTerminologyPo } from './po_download';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 describe('downloadTerminologyPo', () => {
   test('requires lang, application, and module before fetching', async () => {
-    const fetchImpl = fnRecorder();
+    const fetchImpl = asyncFnRecorder();
     await expectRejects(
       () => downloadTerminologyPo({ lang: '', application: 'web', module: 'web', fetchImpl: fetchImpl as any }),
       'lang is required'
@@ -38,7 +24,7 @@ describe('downloadTerminologyPo', () => {
 
   test('GETs /web/i18n/po with Bearer token and returns blob', async () => {
     const blob = new Blob(['msgid ""'], { type: 'text/x-po' });
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: true,
       blob: async () => blob,
     }));
@@ -59,7 +45,7 @@ describe('downloadTerminologyPo', () => {
 
   test('omits Authorization when accessToken is empty', async () => {
     const blob = new Blob(['x']);
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: true,
       blob: async () => blob,
     }));
@@ -78,7 +64,7 @@ describe('downloadTerminologyPo', () => {
 
   test('uses global fetch when fetchImpl is omitted', async () => {
     const blob = new Blob(['x']);
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: true,
       blob: async () => blob,
     }));
@@ -98,7 +84,7 @@ describe('downloadTerminologyPo', () => {
   });
 
   test('surfaces gateway error body', async () => {
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: false,
       status: 400,
       statusText: 'Bad Request',
@@ -112,7 +98,7 @@ describe('downloadTerminologyPo', () => {
   });
 
   test('falls back to statusText when error JSON is invalid', async () => {
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: false,
       status: 502,
       statusText: 'Bad Gateway',
@@ -128,7 +114,7 @@ describe('downloadTerminologyPo', () => {
   });
 
   test('falls back to status code when body and statusText are empty', async () => {
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: false,
       status: 503,
       statusText: '',

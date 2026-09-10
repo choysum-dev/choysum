@@ -339,12 +339,12 @@ test('resolveAppend uses dial override, missing Append, and dial errors', async 
   const appended: any[] = [];
   try {
     __setFieldTrackingAppendForTest(undefined);
-    __setFieldTrackingDialForTest(() => ({
+    __setFieldTrackingDialForTest((() => ({
       Append: async (req: any) => {
         appended.push(req);
         return req;
       },
-    }));
+    })) as any);
     await recordFieldTrackingEvents({
       childCtor: TrackingDialProbe as any,
       operation: 'create',
@@ -352,7 +352,7 @@ test('resolveAppend uses dial override, missing Append, and dial errors', async 
     });
     expect(appended.length).toBe(1);
 
-    __setFieldTrackingDialForTest(() => ({} as any));
+    __setFieldTrackingDialForTest((() => ({})) as any);
     let missingErr: unknown;
     try {
       await recordFieldTrackingEvents({

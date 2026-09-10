@@ -181,7 +181,7 @@ test('auth bootstrap seeds platform FieldDefault/AppSetting/PropertyDefinition l
       } as any,
       { fields: ['Id', 'Application', 'ModelName'], limit: 1 } as any
     );
-    expect(Array.isArray(rows) && rows.length === 1, `missing auth.${name}`).toBe(true);
+    expect(Array.isArray(rows) && rows.length === 1).toBe(true);
     expect(String((rows as any)[0].Application)).toBe('auth');
     expect(String((rows as any)[0].ModelName)).toBe(model);
   }

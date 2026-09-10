@@ -2,21 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createFormController, type FormControllerDeps } from './formController';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder, syncFnRecorder, type AsyncFnRecorder, type SyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 function newStore(
   updateResult: Record<string, unknown>,
@@ -31,17 +17,17 @@ function newStore(
     fieldsMetadata,
     state: {},
     getContext: () => ({}),
-    UpdateById: fnRecorder(async () => updateResult),
+    UpdateById: asyncFnRecorder(async () => updateResult),
   } as any;
 }
 
 function newAttachmentService() {
   return {
-    PrepareUpload: fnRecorder(async () => ({
+    PrepareUpload: asyncFnRecorder(async () => ({
       uploadId: 'up_1',
       uploadTarget: { method: 'PUT', url: '/_document/uploads/up_1' },
     })),
-    FinalizeUpload: fnRecorder(async () => ({ attachmentObjectId: 'ao_1' })),
+    FinalizeUpload: asyncFnRecorder(async () => ({ attachmentObjectId: 'ao_1' })),
   };
 }
 
@@ -62,12 +48,12 @@ function refreshSnapshot(payload: Record<string, unknown>) {
 }
 
 describe('formController submit attachment refresh', () => {
-  let executeMock: CallRecorder & ((...args: any[]) => Promise<any>);
-  let handoffSetMock: CallRecorder & ((...args: any[]) => void);
+  let executeMock: AsyncFnRecorder;
+  let handoffSetMock: SyncFnRecorder;
   let deps: FormControllerDeps;
 
   beforeEach(() => {
-    executeMock = fnRecorder(async () =>
+    executeMock = asyncFnRecorder(async () =>
       refreshSnapshot({
         Id: 'u1',
         Avatar: {
@@ -78,12 +64,12 @@ describe('formController submit attachment refresh', () => {
         Username: 'admin',
       })
     );
-    handoffSetMock = fnRecorder();
+    handoffSetMock = syncFnRecorder();
     deps = {
-      createStoreByModel: (modelName: string) => {
+      createStoreByModel: ((modelName: string) => {
         if (modelName === 'document.AttachmentContent') return newAttachmentService();
         throw new Error(`unexpected model: ${modelName}`);
-      },
+      }) as unknown as FormControllerDeps['createStoreByModel'],
       execute: executeMock as any,
       handoffSet: handoffSetMock as any,
     };
@@ -109,7 +95,7 @@ describe('formController submit attachment refresh', () => {
   });
 
   test('refreshes record after update when binary attachment field changed', async () => {
-    executeMock = fnRecorder(async () =>
+    executeMock = asyncFnRecorder(async () =>
       refreshSnapshot({
         Id: 'u2',
         IdentityDoc: {
@@ -147,7 +133,7 @@ describe('formController submit attachment refresh', () => {
   });
 
   test('passes displayFileName in normalized update payload for attachment set envelope', async () => {
-    executeMock = fnRecorder(async () =>
+    executeMock = asyncFnRecorder(async () =>
       refreshSnapshot({
         Id: 'u3',
         Avatar: {
@@ -202,7 +188,7 @@ describe('formController submit attachment refresh', () => {
   });
 
   test('handoff falls back to updated record when post-submit refresh returns no payload', async () => {
-    executeMock = fnRecorder(async () => ({
+    executeMock = asyncFnRecorder(async () => ({
       kind: 'search',
       rows: [],
       total: 0,

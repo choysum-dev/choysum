@@ -4,6 +4,8 @@
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import { Compute } from './compute';
+
+const ComputeAny = Compute as any;
 import { Field } from './field';
 
 function resetModelMetadata(ctor: any) {
@@ -45,7 +47,7 @@ test('@Compute registers handler metadata with defaults', () => {
 test('@Compute validates non-empty deps and parameterless method', () => {
   expect(() => {
     class ComputeDepsEmptyModel extends BaseModel {
-      @Compute<any>('Name', { deps: [] as any })
+      @(ComputeAny('Name', { deps: [] as any }))
       computeName() {
         return undefined;
       }
@@ -55,7 +57,7 @@ test('@Compute validates non-empty deps and parameterless method', () => {
 
   expect(() => {
     class ComputeMethodArgsModel extends BaseModel {
-      @Compute<any>('Name', { deps: ['Name'] as any })
+      @(ComputeAny('Name', { deps: ['Name'] as any }))
       computeName(_v: unknown) {
         return undefined;
       }
@@ -113,7 +115,7 @@ test('@Compute deduplicates deps', () => {
 test('@Compute rejects empty field name', () => {
   expect(() => {
     class ComputeEmptyFieldModel extends BaseModel {
-      @Compute<any>('' as any, { deps: ['Id'] })
+      @(ComputeAny('' as any, { deps: ['Id'] }))
       computeName() {
         return undefined;
       }
@@ -124,7 +126,7 @@ test('@Compute rejects empty field name', () => {
 
 test('@Compute rejects empty method name', () => {
   expect(() => {
-    const decorator = Compute<any>('Name', { deps: ['Id'] });
+    const decorator = ComputeAny('Name', { deps: ['Id'] });
     decorator({}, '', {
       value: function computeName() {
         return undefined;
@@ -135,7 +137,7 @@ test('@Compute rejects empty method name', () => {
 
 test('@Compute rejects non-function descriptor value', () => {
   expect(() => {
-    const decorator = Compute<any>('Name', { deps: ['Id'] });
+    const decorator = ComputeAny('Name', { deps: ['Id'] });
     decorator({}, 'computeName', { value: 'not-a-function' } as any);
   }).toThrow('must decorate an instance method');
 });
@@ -143,7 +145,7 @@ test('@Compute rejects non-function descriptor value', () => {
 test('@Compute rejects author-facing runAs option', () => {
   expect(() => {
     class ComputeBadRunAsModel extends BaseModel {
-      @Compute<any>('Name', { deps: ['Id'], runAs: 'sudo' } as any)
+      @(ComputeAny('Name', { deps: ['Id'], runAs: 'sudo' }))
       computeName() {
         return undefined;
       }
@@ -154,7 +156,7 @@ test('@Compute rejects author-facing runAs option', () => {
 
 test('@Compute with store=false handles missing field entry gracefully', () => {
   class ComputeStoreFalseNoFieldModel extends BaseModel {
-    @Compute<any>('VirtualField', { deps: ['Id'], store: false })
+    @(ComputeAny('VirtualField', { deps: ['Id'], store: false }))
     computeVirtual() {
       return undefined;
     }
@@ -178,7 +180,7 @@ test('@Compute rejects store:true (default) on OneToMany / ManyToMany targets', 
       } as any)
       Lines!: Child[];
 
-      @Compute<HostO2M>('Lines', { deps: ['Id'] })
+      @(ComputeAny('Lines', { deps: ['Id'] }))
       computeLines() {
         return [];
       }
@@ -201,7 +203,7 @@ test('@Compute rejects store:true (default) on OneToMany / ManyToMany targets', 
       } as any)
       Tags!: Tag[];
 
-      @Compute<HostM2M>('Tags', { deps: ['Id'], store: true })
+      @(ComputeAny('Tags', { deps: ['Id'], store: true }))
       computeTags() {
         return [];
       }

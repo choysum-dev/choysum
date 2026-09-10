@@ -148,12 +148,12 @@ test('model onchange execute swallows diagnostics errors and still finalizes tra
 });
 
 test('model onchange execute produces consistent transport shape regardless of handler signature', async () => {
-  const previewResult: OnchangeResult<any> = {
+  const previewResult = {
     value: { Code: 'CHANGED' },
     messages: [{ level: 'warn', message: 'test-warn' }],
     condition: [{ field: 'Code', condition: ['Code', '=', 'CHANGED'] }],
     selection: [{ field: 'Code', selection: ['A', 'CHANGED'] }],
-  };
+  } as unknown as OnchangeResult<any>;
   const finalTransport: OnchangeResult<any> = { ...previewResult };
 
   const prepared: ModelOnchangePreparation = {

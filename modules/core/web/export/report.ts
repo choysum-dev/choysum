@@ -1,9 +1,15 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ExportMessageType, type ExportReport } from './pb/export_pb';
+import { ExportMessageType, type ExportMessage, type ExportReport, type ExportStats } from './pb/export_pb';
 
-export function exportReportHasErrors(report: ExportReport | null | undefined): boolean {
+/** Wire-shaped report fragments accepted by UI helpers (partial protobuf messages). */
+export type ExportReportLike = {
+  stats?: Partial<ExportStats> | null;
+  messages?: Array<Partial<ExportMessage> | null> | null;
+} | null | undefined;
+
+export function exportReportHasErrors(report: ExportReportLike | ExportReport): boolean {
   if (!report) {
     return true;
   }
@@ -11,15 +17,19 @@ export function exportReportHasErrors(report: ExportReport | null | undefined): 
     return true;
   }
   return (report.messages ?? []).some(message => {
+    if (!message) return false;
     const type = message.type_ ?? ExportMessageType.UNSPECIFIED;
-    return type === ExportMessageType.ERROR || type === ExportMessageType.UNSPECIFIED;
+    return type === ExportMessageType.ERROR || (type === ExportMessageType.UNSPECIFIED && Boolean(String(message.text ?? '').trim()));
   });
 }
 
-export function exportReportErrorText(report: ExportReport | null | undefined): string {
+export function exportReportErrorText(report: ExportReportLike | ExportReport): string {
   const first = report?.messages?.find(message => {
+    if (!message) return false;
+    const text = String(message.text ?? '').trim();
+    if (!text) return false;
     const type = message.type_ ?? ExportMessageType.UNSPECIFIED;
-    return type === ExportMessageType.ERROR || (type === ExportMessageType.UNSPECIFIED && String(message.text ?? '').trim());
+    return type === ExportMessageType.ERROR || type === ExportMessageType.UNSPECIFIED;
   });
   if (first?.text) {
     return first.text;
@@ -31,7 +41,7 @@ export function exportReportErrorText(report: ExportReport | null | undefined): 
   return 'Export failed.';
 }
 
-export function exportPreviewSummary(report: ExportReport | null | undefined): string {
+export function exportPreviewSummary(report: ExportReportLike | ExportReport): string {
   const stats = report?.stats;
   if (!stats) {
     return '';

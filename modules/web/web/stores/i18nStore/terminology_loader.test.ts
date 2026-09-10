@@ -3,21 +3,7 @@
 
 import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations } from './terminology_loader';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 describe('uiKeyToLang / langToUiKey', () => {
   test('maps zh-CN ↔ zh_CN and en ↔ en_US', () => {
@@ -34,7 +20,7 @@ describe('uiKeyToLang / langToUiKey', () => {
 
 describe('fetchWebTranslations', () => {
   test('requests lang+hash and returns payload', async () => {
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: true,
       json: async () => ({
         lang: 'zh_CN',
@@ -57,7 +43,7 @@ describe('fetchWebTranslations', () => {
   });
 
   test('nulls messages when unchanged', async () => {
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: true,
       json: async () => ({
         lang: 'zh_CN',
@@ -74,7 +60,7 @@ describe('fetchWebTranslations', () => {
   });
 
   test('throws when gateway fails', async () => {
-    const fetchImpl = fnRecorder(async () => ({
+    const fetchImpl = asyncFnRecorder(async () => ({
       ok: false,
       status: 502,
       json: async () => ({}),

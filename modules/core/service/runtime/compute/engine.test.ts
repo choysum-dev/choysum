@@ -1511,7 +1511,7 @@ test('compute engine injectVirtualForRead does not execute @SqlCompute handler i
     Name?: string;
     override DisplayName!: string;
 
-    sqlDisplayName() {
+    sqlDisplayName(): any {
       throw new Error('sql compute should not run in runtime read stage');
     }
   }

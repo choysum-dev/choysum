@@ -183,8 +183,21 @@ func TestCollectVueOverlayPaths(t *testing.T) {
 		"/REPO/MODULES/demo/web/Case.vue":        "x",
 	}
 	got := collectVueOverlayPaths(modules, app, overlays, true)
-	if len(got) != 1 || !strings.HasSuffix(got[0], "web/App.vue") {
+	wantSuffixes := []string{"web/App.vue", "web/skip.spec.vue", "web/__tests__/T.vue"}
+	if len(got) != len(wantSuffixes) {
 		t.Fatalf("%v", got)
+	}
+	for _, want := range wantSuffixes {
+		found := false
+		for _, p := range got {
+			if strings.HasSuffix(p, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("missing %s in %v", want, got)
+		}
 	}
 	gotCI := collectVueOverlayPaths(modules, app, overlays, false)
 	foundCase := false
@@ -196,7 +209,7 @@ func TestCollectVueOverlayPaths(t *testing.T) {
 	if !foundCase {
 		t.Fatalf("case-insensitive overlay miss: %v", gotCI)
 	}
-	merged := mergeVuePaths([]string{"/disk/A.vue", "", "/disk/A.vue"}, append(got, "", got[0]))
+	merged := mergeVuePaths([]string{"/disk/A.vue", "", "/disk/A.vue"}, append(append([]string{}, got[0]), "", got[0]))
 	if len(merged) != 2 {
 		t.Fatalf("%v", merged)
 	}
@@ -212,9 +225,9 @@ func TestRewriteVueRootsAndAmbient(t *testing.T) {
 	}
 	dir := t.TempDir()
 	overlays := BuiltInVueAmbientOverlays(dir, dir)
-	// No resolvable vue types → vite + subpath + vue shim + directives + vue module stub.
-	if len(overlays) != 5 {
-		t.Fatalf("want vite+subpath+vue shim+directives+vue stub, got %d", len(overlays))
+	// No resolvable vue types → vite + subpath + playwright + vue shim + directives + vue module stub.
+	if len(overlays) != 6 {
+		t.Fatalf("want vite+subpath+playwright+vue shim+directives+vue stub, got %d", len(overlays))
 	}
 }
 
@@ -465,8 +478,16 @@ func TestCollectModulesWebVuePaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || !strings.HasSuffix(got[0], "web/ui/App.vue") {
-		t.Fatalf("got %v", got)
+	joined := strings.Join(got, "\n")
+	for _, want := range []string{"web/ui/App.vue", "web/ui/skip.spec.vue", "web/__tests__/Hidden.vue", "web/tests/T.vue"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %s in %v", want, got)
+		}
+	}
+	for _, ban := range []string{"node_modules", "/dist/", "/web/tmp/", ".cache"} {
+		if strings.Contains(joined, ban) {
+			t.Fatalf("unexpected %s in %v", ban, got)
+		}
 	}
 }
 

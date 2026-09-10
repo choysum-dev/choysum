@@ -37,6 +37,12 @@ export type FieldsGetRpc = (
   attributes?: string[]
 ) => Promise<Record<string, WebFieldMetadata>>;
 
+/** Stub shape for tests: sync or async return. */
+export type FieldsGetRpcLike = (
+  fields?: string[],
+  attributes?: string[]
+) => Promise<Record<string, WebFieldMetadata>> | Record<string, WebFieldMetadata>;
+
 export type FieldsGetHost = {
   fieldsMetadata: Record<string, WebFieldMetadata>;
   FieldsGet: FieldsGetRpc;

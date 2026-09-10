@@ -45,8 +45,8 @@ export function resolveEffectiveModel(identifier: string): ResolvedEffectiveMode
  * Normalize a priority range filter from loose user input.
  */
 export type NormalizedPriorityRange = {
-  min: number | undefined;
-  max: number | undefined;
+  min?: number | undefined;
+  max?: number | undefined;
 };
 
 export function normalizePriorityRange(options?: { minPriority?: number; maxPriority?: number }): NormalizedPriorityRange {

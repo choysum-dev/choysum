@@ -64,7 +64,7 @@ test('GetTranslations Search runs under authz rule bypass (gateway internal iden
     expect(sawBypass).toBe(true);
     expect(getRecordRuleBypassDepth()).toBe(0);
     expect(getFieldRuleBypassDepth()).toBe(0);
-    expect(out.terms_by_module).toEqual({ auth: { ui: { Hi: '你好' } } });
+    expect(out.terms_by_module!).toEqual({ auth: { ui: { Hi: '你好' } } });
   } finally {
     if (hadOwn) (globalThis as Record<string, unknown>)[key] = previous;
     else delete (globalThis as Record<string, unknown>)[key];
@@ -145,7 +145,7 @@ test('GetTranslations tolerates non-array Search and empty catalog', async () =>
   try {
     const out = await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['auth'] });
     expect(out.hash).toBe('e3b0c44298fc1c14');
-    expect(out.terms_by_module).toEqual({});
+    expect(out.terms_by_module!).toEqual({});
   } finally {
     (globalThis as any).$choysum = originalChoysum;
     restore();
@@ -282,8 +282,8 @@ test('GetTranslations covers nullish/falsy branches and default req', async () =
       lang: 'zh_CN',
       module_names: ['auth', null, undefined, '', 'auth', 'sort'] as any,
     });
-    expect(out.terms_by_module.auth.ui.NullVal).toBe('');
-    expect(out.terms_by_module.auth[''].EmptyScope).toBe('');
+    expect(out.terms_by_module!.auth.ui.NullVal).toBe('');
+    expect(out.terms_by_module!.auth[''].EmptyScope).toBe('');
     expect(out.hash).toHaveLength(16);
   } finally {
     (globalThis as any).$choysum = originalChoysum;
@@ -300,7 +300,7 @@ test('GetTranslations empty application metadata branch', async () => {
   try {
     const out = await TtCovTerm.GetTranslations({ lang: 'en_US' });
     expect(out.hash).toBe('e3b0c44298fc1c14');
-    expect(out.terms_by_module).toEqual({});
+    expect(out.terms_by_module!).toEqual({});
     const unchanged = await TtCovTerm.GetTranslations({ lang: 'en_US', hash: 'e3b0c44298fc1c14' });
     expect(unchanged.unchanged).toBe(true);
   } finally {
@@ -401,7 +401,7 @@ test('computeTermHash sort comparator covers all key dimensions', async () => {
   try {
     const out = await TtCovTerm.GetTranslations({ lang: 'en_US', module_names: ['a', 'b', 'z'] });
     expect(out.hash).toHaveLength(16);
-    expect(out.terms_by_module.a.s.s).toBeDefined();
+    expect(out.terms_by_module!.a.s.s).toBeDefined();
   } finally {
     (globalThis as any).$choysum = originalChoysum;
     restore();
@@ -418,7 +418,7 @@ test('parseModuleNames ignores non-array module_names', async () => {
   (globalThis as any).$choysum = { db: { dialectName: 'sqlite', execute: async () => undefined } };
   try {
     const out = await TtCovTerm.GetTranslations({ lang: 'zh_CN', module_names: 'auth' as any });
-    expect(out.terms_by_module).toEqual({});
+    expect(out.terms_by_module!).toEqual({});
   } finally {
     (globalThis as any).$choysum = originalChoysum;
     restore();

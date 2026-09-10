@@ -3,7 +3,7 @@
 
 import { defineComponent, effectScope, h, ref } from 'vue';
 
-import { fnRecorder, flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { asyncFnRecorder, fnRecorder, flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { useChatterThreadTips } from './useChatterThreadTips';
 
 const POLL_MS = 25;
@@ -33,7 +33,7 @@ describe('useChatterThreadTips', () => {
 
   test('starts poll fallback when the tip stream ends without abort', async () => {
     onTips.mockImplementation(async () => undefined);
-    const refresh = fnRecorder(async () => undefined);
+    const refresh = asyncFnRecorder(async () => undefined);
     const model = ref('partner.Partner');
     const resId = ref<string | undefined>('r1');
     const scope = effectScope();
@@ -49,7 +49,7 @@ describe('useChatterThreadTips', () => {
     onTips.mockImplementation(async () => {
       throw new Error('stream down');
     });
-    const refresh = fnRecorder(async () => undefined);
+    const refresh = asyncFnRecorder(async () => undefined);
     const model = ref('partner.Partner');
     const resId = ref<string | undefined>('r1');
     const scope = effectScope();
@@ -62,7 +62,7 @@ describe('useChatterThreadTips', () => {
   });
 
   test('skips tips when the thread identity is empty', async () => {
-    const refresh = fnRecorder(async () => undefined);
+    const refresh = asyncFnRecorder(async () => undefined);
     const model = ref('  ');
     const resId = ref<string | undefined>('  ');
     const scope = effectScope();
@@ -73,10 +73,10 @@ describe('useChatterThreadTips', () => {
   });
 
   test('refreshes when thread tips fire', async () => {
-    onTips.mockImplementation(async (_stream, callback: () => Promise<void>) => {
+    onTips.mockImplementation(async (_stream: unknown, callback: () => Promise<void>) => {
       await callback();
     });
-    const refresh = fnRecorder(async () => undefined);
+    const refresh = asyncFnRecorder(async () => undefined);
     const model = ref('partner.Partner');
     const resId = ref<string | undefined>('r1');
     const scope = effectScope();
@@ -88,7 +88,7 @@ describe('useChatterThreadTips', () => {
 
   test('stops polling when the thread identity becomes empty', async () => {
     onTips.mockImplementation(async () => undefined);
-    const refresh = fnRecorder(async () => undefined);
+    const refresh = asyncFnRecorder(async () => undefined);
     const model = ref('partner.Partner');
     const resId = ref<string | undefined>('r1');
     const scope = effectScope();
@@ -105,7 +105,7 @@ describe('useChatterThreadTips', () => {
 
   test('stops tips when the host component unmounts', async () => {
     onTips.mockImplementation(async () => undefined);
-    const refresh = fnRecorder(async () => undefined);
+    const refresh = asyncFnRecorder(async () => undefined);
     const model = ref('partner.Partner');
     const resId = ref<string | undefined>('r1');
     const Host = defineComponent({
@@ -137,7 +137,7 @@ describe('useChatterThreadTips', () => {
         resolveSecond = resolve;
       });
     });
-    const refresh = fnRecorder(async () => undefined);
+    const refresh = asyncFnRecorder(async () => undefined);
     const model = ref('partner.Partner');
     const resId = ref<string | undefined>('r1');
     const scope = effectScope();

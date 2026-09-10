@@ -2,27 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createModuleKanbanOpProgressHooks } from './moduleKanbanOpProgress';
-
-function fnRecorder() {
-  const rec: any = Object.assign(
-    (...args: unknown[]) => {
-      rec.calls.push(args);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
-
-function asyncFnRecorder(result: unknown) {
-  const rec: any = Object.assign(
-    async (...args: unknown[]) => {
-      rec.calls.push(args);
-      return result;
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
 function valueFnRecorder(result: unknown) {
   const rec: any = Object.assign(
@@ -40,7 +20,7 @@ test('createModuleKanbanOpProgressHooks: wires status, terminal, timeout, and er
   const setDialogStep = fnRecorder();
   const warn = fnRecorder();
   const error = fnRecorder();
-  const fetchStatus = asyncFnRecorder({ status: 'queued' });
+  const fetchStatus = asyncFnRecorder(() => ({ status: 'queued' }));
   const jobStillRunning = valueFnRecorder('Job is still running in the background; refresh later');
   const serviceRestarting = valueFnRecorder('Service is restarting; status will retry automatically');
   const failedToGetStatus = valueFnRecorder('Failed to get status');

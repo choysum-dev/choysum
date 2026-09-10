@@ -6,7 +6,7 @@ import { getBackendEnv, getBackendEnvPositiveInt, getBackendEnvText, isTruthyFla
 test('getBackendEnv returns a non-null object', () => {
   const env = getBackendEnv();
   expect(typeof env).toBe('object');
-  expect(env).not.toBe(null);
+  expect(env).not.toBe(null as any);
 });
 
 test('getBackendEnvText returns empty string for nonexistent keys', () => {

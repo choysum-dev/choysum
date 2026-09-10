@@ -3,21 +3,11 @@
 
 import { applyPermissionToMenus } from '@/auth/web/menu/applyPermissionToMenus';
 import { canRoute, hasAction, type PermissionState } from '@/auth/web/permission';
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 import { permissionGuard, type AuthGuardDeps } from './guard';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
-}
-
-function fnRecorder(): { calls: unknown[][] } & ((...args: unknown[]) => Promise<undefined>) {
-  const rec = Object.assign(
-    async (...args: unknown[]) => {
-      rec.calls.push(args);
-      return undefined;
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
 }
 
 function depsFor(store: any): AuthGuardDeps {
@@ -27,7 +17,7 @@ function depsFor(store: any): AuthGuardDeps {
 function makeStore(permissionState: PermissionState | null, identityMeta?: Record<string, unknown>) {
   return {
     isAuthenticated: true,
-    loadPermissionState: fnRecorder(),
+    loadPermissionState: asyncFnRecorder(),
     permissionState,
     identity: {
       metadata: {

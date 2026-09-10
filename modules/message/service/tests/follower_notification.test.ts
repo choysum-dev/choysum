@@ -519,7 +519,7 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
     (Follower as any).Search = async function (this: any, ...args: any[]) {
       searchCalls += 1;
       if (searchCalls === 1) return [];
-      return origSearch.apply(this, args);
+      return origSearch.apply(this, args as any);
     };
     (Follower as any).Create = async () => {
       throw new Error('UNIQUE constraint failed: uidx_message_follower_record_user');
@@ -537,7 +537,7 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
     (Follower as any).Search = async function (this: any, ...args: any[]) {
       searchCalls += 1;
       if (searchCalls === 1) return [];
-      return origSearch.apply(this, args);
+      return origSearch.apply(this, args as any);
     };
     (Follower as any).Create = async () => {
       throw { message: 'duplicate key value violates unique constraint' };
@@ -584,7 +584,7 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
     (Follower as any).Search = async function (this: any, ...args: any[]) {
       searchCalls += 1;
       if (searchCalls === 1) return [];
-      return origSearch.apply(this, args);
+      return origSearch.apply(this, args as any);
     };
     (Follower as any).Create = async () => {
       throw new Error("Duplicate entry 'x' for key 'uidx_message_follower_record_user'");

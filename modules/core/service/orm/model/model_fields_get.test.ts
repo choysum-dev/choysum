@@ -846,7 +846,7 @@ class FieldsGetMonetaryWidget extends BaseModel {
   @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20, string: 'Currency' })
   CurrencyId!: string;
 
-  @Field({ type: 'monetary', currencyField: 'CurrencyId', string: 'Amount' })
+  @((Field as any)({ type: 'monetary', currencyField: 'CurrencyId', string: 'Amount' }))
   Amount!: any;
 }
 

@@ -19,44 +19,20 @@ import {
   type Plugin,
 } from 'vue';
 
-export type CallRecorder = { calls: unknown[][] };
-
-export type FnRecorder<T = undefined, A extends unknown[] = unknown[]> = CallRecorder &
-  ((...args: A) => T | Promise<T>) & {
-    mockReset: () => void;
-    mockClear: () => void;
-    mockImplementation: (fn: (...args: A) => T | Promise<T>) => void;
-    mockReturnValue: (value: T) => void;
-  };
-
-export function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): FnRecorder<T, A> {
-  let current = impl;
-  const rec = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return current ? current(...args) : (undefined as T);
-    },
-    {
-      calls: [] as unknown[][],
-      mockReset() {
-        rec.calls = [];
-        current = impl;
-      },
-      mockClear() {
-        rec.calls = [];
-      },
-      mockImplementation(fn: (...args: A) => T | Promise<T>) {
-        current = fn;
-      },
-      mockReturnValue(value: T) {
-        current = (() => value) as (...args: A) => T;
-      },
-    }
-  ) as FnRecorder<T, A>;
-  return rec;
-}
+export type {
+  AnyFnRecorder,
+  AsyncFnRecorder,
+  CallRecorder,
+  FnRecorder,
+  MaybeAsync,
+  SyncFnRecorder,
+} from './testDoubles';
+export {
+  asyncFnRecorder,
+  emptyAsyncIterable,
+  fnRecorder,
+  syncFnRecorder,
+} from './testDoubles';
 
 export async function flushPromises(): Promise<void> {
   await Promise.resolve();
@@ -128,7 +104,7 @@ export type MountAppOptions = {
   /** Vue listeners as onXxx (e.g. onQueryUpdate). */
   on?: Record<string, (...args: any[]) => void>;
   stubs?: Record<string, Component | true>;
-  plugins?: Plugin[];
+  plugins?: Array<Plugin | [Plugin, ...unknown[]]>;
   provide?: Record<string | symbol, unknown>;
   slots?: Record<string, (...args: any[]) => any>;
   /** When true, props are reactive and returned for setProps-style updates. */
@@ -185,7 +161,11 @@ export function mountApp(Comp: Component, opts: MountAppOptions = {}): MountAppR
     }
   }
   for (const plugin of opts.plugins || []) {
-    app.use(plugin);
+    if (Array.isArray(plugin)) {
+      app.use(plugin[0], ...(plugin.slice(1) as [unknown?]));
+    } else {
+      app.use(plugin);
+    }
   }
 
   const el = document.createElement('div');

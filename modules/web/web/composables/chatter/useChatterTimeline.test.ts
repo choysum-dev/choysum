@@ -3,21 +3,7 @@
 
 import { effectScope, ref } from 'vue';
 import { useChatterTimeline } from './useChatterTimeline';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 function flush(): Promise<void> {
   return new Promise(resolve => {
@@ -27,9 +13,9 @@ function flush(): Promise<void> {
 
 function makeSearchQueue() {
   const queue: Array<() => Promise<unknown[]>> = [];
-  const search = fnRecorder((_model: string, _resId: string, _fields: readonly string[]) => {
+  const search = asyncFnRecorder((_model: string, _resId: string, _fields: readonly string[]) => {
     const next = queue.shift();
-    if (!next) return Promise.resolve([]);
+    if (!next) return [];
     return next();
   });
   return {

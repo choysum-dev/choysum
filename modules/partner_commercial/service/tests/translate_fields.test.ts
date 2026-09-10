@@ -38,7 +38,7 @@ async function ensureCompanyId(): Promise<string> {
 }
 
 function withCompanyScope<T>(companyId: string, fn: () => Promise<T> | T): Promise<T> {
-  return withContext({ activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any, fn);
+  return Promise.resolve(withContext({ activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any, fn));
 }
 
 test('partner_commercial: PartnerIdentifier.Notes/IssuedBy expose translate metadata', () => {

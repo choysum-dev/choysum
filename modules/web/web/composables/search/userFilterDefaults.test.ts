@@ -131,7 +131,7 @@ test('pickLatestIsDefault: returns null when no matching IsDefault or rows are n
 const code = [
   { name: 'CodeA', query: { And: [['A', '=', 1]] }, selected: true },
   { name: 'CodeB', query: { And: [['B', '=', 2]] }, selected: false },
-];
+] as any;
 
 test('mergeUserFilterDefaults: prefers private IsDefault over shared and code selected', () => {
   const merged = mergeUserFilterDefaults({
@@ -166,7 +166,7 @@ test('mergeUserFilterDefaults: ignores private/shared rows that are not IsDefaul
   const merged = mergeUserFilterDefaults({
     privateDefault: { Name: 'NotDefault', IsDefault: false, UserId: 'u1' },
     sharedDefault: { Name: 'AlsoNot', IsDefault: false, UserId: null },
-    codeDefaults: { name: 'Solo', query: ['A', '=', 1], selected: true },
+    codeDefaults: { name: 'Solo', query: ['A', '=', 1], selected: true } as any,
   });
   expect(merged).toEqual([{ name: 'Solo', query: ['A', '=', 1], selected: true }]);
 });
