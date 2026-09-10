@@ -44,19 +44,25 @@ export type Locator = {
   first(): Locator;
 };
 
+/**
+ * Dual-run page surface shared by the QJS host and Playwright.
+ * Kept structural and loose so Playwright's Page remains assignable for
+ * shared auth e2e utils (login/grpcweb) while smoke specs use the QJS host.
+ */
 export type Page = {
-  __choysum_e2e_page__?: true;
-  goto(url: string, opts?: GotoOptions): Promise<void>;
-  locator(selector: string): Locator;
-  getByPlaceholder(reOrString: RegExp | string): Locator;
-  getByText(text: string): Locator;
-  click(selector: string): Promise<void>;
-  fill(selector: string, value: string): Promise<void>;
-  evaluate(fnOrSource: Function | string, arg?: unknown): Promise<unknown>;
-  waitForFunction(fnOrSource: Function | string, arg?: unknown, opts?: TimeoutOptions): Promise<void>;
-  waitForResponse(match: ResponseMatch | string | ((r: any) => boolean), opts?: TimeoutOptions): Promise<E2EResponse>;
-  url(): Promise<string> | string;
-  screenshot(opts?: { path?: string } | string): Promise<void>;
+  /** Set by the QJS host page proxy; absent on Playwright pages. */
+  __choysum_e2e_page__?: boolean;
+  goto(...args: any[]): Promise<any>;
+  locator(...args: any[]): any;
+  getByPlaceholder(...args: any[]): any;
+  getByText(...args: any[]): any;
+  click(...args: any[]): Promise<any>;
+  fill(...args: any[]): Promise<any>;
+  evaluate(...args: any[]): Promise<any>;
+  waitForFunction(...args: any[]): Promise<any>;
+  waitForResponse(...args: any[]): Promise<any>;
+  url(...args: any[]): any;
+  screenshot(...args: any[]): Promise<any>;
 };
 
 export type E2EExpect = {
