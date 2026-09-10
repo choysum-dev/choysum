@@ -85,9 +85,26 @@ function decodeJwtPayload(token: string): any {
   const b64url = parts[1];
   const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
   const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-  const bin = atob(b64 + pad);
+  // Pure JS base64: QuickJS does not reliably provide atob for binary payloads.
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const clean = (b64 + pad).replace(/[^A-Za-z0-9+/=]/g, '');
+  const bytes: number[] = [];
+  for (let i = 0; i < clean.length; i += 4) {
+    const a = chars.indexOf(clean[i]);
+    const b = chars.indexOf(clean[i + 1]);
+    const c = chars.indexOf(clean[i + 2]);
+    const d = chars.indexOf(clean[i + 3]);
+    bytes.push((a << 2) | (b >> 4));
+    if (clean[i + 2] !== '=' && c >= 0) bytes.push(((b & 15) << 4) | (c >> 2));
+    if (clean[i + 3] !== '=' && d >= 0) bytes.push(((c & 3) << 6) | d);
+  }
+  const u8 = new Uint8Array(bytes);
   let json = '';
-  for (let i = 0; i < bin.length; i++) json += String.fromCharCode(bin.charCodeAt(i));
+  if (typeof TextDecoder !== 'undefined') {
+    json = new TextDecoder('utf-8').decode(u8);
+  } else {
+    for (let i = 0; i < u8.length; i++) json += String.fromCharCode(u8[i]);
+  }
   try {
     return JSON.parse(json);
   } catch {

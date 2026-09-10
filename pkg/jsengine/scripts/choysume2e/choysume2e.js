@@ -333,8 +333,8 @@ async function resolveToCSS(loc) {
         dialog: '[role="dialog"], dialog',
         menuitem: '[role="menuitem"]',
       };
-      const sel = roleSelectors[role];
-      if (!sel) throw new Error('getByRole: unsupported role ' + role);
+      const sel = roleSelectors[role] || ('[role="' + String(role).replace(/"/g, '') + '"]');
+      if (!sel || sel === '[role=""]') throw new Error('getByRole: unsupported role ' + role);
 
       const accessibleName = (el) => {
         const labelled = el.getAttribute('aria-label');
@@ -512,8 +512,8 @@ async function collectMatchedElements(loc) {
         dialog: '[role="dialog"], dialog',
         menuitem: '[role="menuitem"]',
       };
-      const sel = roleSelectors[role];
-      if (!sel) return [];
+      const sel = roleSelectors[role] || ('[role="' + String(role).replace(/"/g, '') + '"]');
+      if (!sel || sel === '[role=""]') return [];
       const accessibleName = (el) => {
         const labelled = el.getAttribute('aria-label');
         if (labelled) return String(labelled).trim();
@@ -777,6 +777,7 @@ function e2eExpect(target, message) {
             const el = document.querySelector(${JSON.stringify(sel)});
             if (!el) return false;
             if (typeof el.checked === 'boolean') return el.checked;
+            if (el.classList && el.classList.contains('is-checked')) return true;
             const aria = el.getAttribute('aria-checked');
             return aria === 'true';
           })()`);
