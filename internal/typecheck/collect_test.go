@@ -29,12 +29,12 @@ func TestCollectRootFiles_Service(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(files, "\n")
-	for _, want := range []string{"index.ts", "a.ts", "c.ts"} {
+	for _, want := range []string{"index.ts", "a.ts", "c.ts", "a.test.ts", "tests/b.ts"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("missing %s in %v", want, files)
 		}
 	}
-	for _, ban := range []string{"a.test.ts", "ui.ts", "tests/b.ts"} {
+	for _, ban := range []string{"ui.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
 		}
@@ -48,6 +48,7 @@ func TestCollectRootFiles_NoVue(t *testing.T) {
 	mustMkdir(t, filepath.Join(app, "service"))
 	mustMkdir(t, filepath.Join(app, "web", "nested"))
 	mustMkdir(t, filepath.Join(app, "web", "__tests__"))
+	mustMkdir(t, filepath.Join(app, "e2e"))
 	mustWrite(t, filepath.Join(app, "index.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "service", "a.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "web", "ui.ts"), "export {};\n")
@@ -58,18 +59,22 @@ func TestCollectRootFiles_NoVue(t *testing.T) {
 	mustWrite(t, filepath.Join(app, "web", "nested", "util.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "web", "types.d.ts"), "export {};\n")
 	mustWrite(t, filepath.Join(app, "web", "__tests__", "t.ts"), "export {};\n")
+	mustWrite(t, filepath.Join(app, "e2e", "smoke.spec.ts"), "export {};\n")
 
 	files, err := CollectRootFiles(t.Context(), modules, "demo", ScopeNoVue)
 	if err != nil {
 		t.Fatal(err)
 	}
 	joined := strings.Join(files, "\n")
-	for _, want := range []string{"index.ts", "a.ts", "ui.ts", "Widget.tsx", "util.ts", "types.d.ts"} {
+	for _, want := range []string{
+		"index.ts", "a.ts", "ui.ts", "Widget.tsx", "util.ts", "types.d.ts",
+		"ui.test.ts", "ui.spec.tsx", "__tests__/t.ts", "smoke.spec.ts",
+	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("missing %s in %v", want, files)
 		}
 	}
-	for _, ban := range []string{"ui.test.ts", "ui.spec.tsx", "Skip.vue", "__tests__/t.ts"} {
+	for _, ban := range []string{"Skip.vue"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
 		}
@@ -80,8 +85,8 @@ func TestCollectRootFiles_NoVue(t *testing.T) {
 		t.Fatal(err)
 	}
 	svcJoined := strings.Join(svcOnly, "\n")
-	if strings.Contains(svcJoined, "ui.ts") || strings.Contains(svcJoined, "Widget.tsx") {
-		t.Fatalf("ScopeService must exclude web: %v", svcOnly)
+	if strings.Contains(svcJoined, "ui.ts") || strings.Contains(svcJoined, "Widget.tsx") || strings.Contains(svcJoined, "smoke.spec.ts") {
+		t.Fatalf("ScopeService must exclude web/e2e: %v", svcOnly)
 	}
 }
 

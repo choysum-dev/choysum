@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect, type Page, type Locator } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@choysum/e2e';
 import fs from 'node:fs';
 import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 

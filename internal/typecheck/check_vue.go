@@ -118,7 +118,7 @@ func collectModulesWebVuePaths(modulesPath string) ([]string, error) {
 			if d.IsDir() {
 				base := d.Name()
 				if strings.HasPrefix(base, ".") || base == "node_modules" || base == "dist" ||
-					base == "tmp" || base == "tests" || base == "__tests__" {
+					base == "tmp" || base == "coverage" {
 					return fs.SkipDir
 				}
 				return nil

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@choysum/e2e';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { waitForGrpcWebUnaryOk } from './utils/grpcweb.ts';

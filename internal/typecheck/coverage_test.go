@@ -82,9 +82,14 @@ func TestCollectRootFiles_ServiceExtras(t *testing.T) {
 	if !strings.Contains(joined, "test/helper.ts") {
 		t.Fatalf("singular test/ dir should be included: %v", files)
 	}
-	for _, ban := range []string{"skip.gen.ts", "ok.spec.ts", "ok.test.d.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", "__tests__/t.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
+	for _, ban := range []string{"skip.gen.ts", "skip.gen.d.ts", "node_modules/pkg/x.ts", ".git/objects/hidden.ts", ".hidden.ts", ".swap.ts"} {
 		if strings.Contains(joined, ban) {
 			t.Fatalf("unexpected %s in %v", ban, files)
+		}
+	}
+	for _, want := range []string{"ok.spec.ts", "ok.test.d.ts", "__tests__/t.ts"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing test root %s in %v", want, files)
 		}
 	}
 }
@@ -283,14 +288,17 @@ func TestAppendOverlayRoots(t *testing.T) {
 	if len(got) != 0 {
 		t.Fatalf("ScopeService must skip tsx overlays: %v", got)
 	}
-	// ScopeAll: web .vue overlays included; __tests__ trees skipped.
+	// ScopeAll: web .vue overlays include tests / __tests__ trees.
 	got = appendOverlayRoots(nil, modules, app, ScopeAll, map[string]string{
 		"/repo/modules/demo/web/Ok.vue":          "x",
 		"/repo/modules/demo/web/__tests__/T.vue": "x",
 		"/repo/modules/demo/web/tests/H.vue":     "x",
 	}, true)
-	if len(got) != 1 || !strings.HasSuffix(got[0], "web/Ok.vue.ts") {
-		t.Fatalf("ScopeAll vue overlay roots = %v", got)
+	joined = strings.Join(got, "\n")
+	for _, want := range []string{"web/Ok.vue.ts", "web/__tests__/T.vue.ts", "web/tests/H.vue.ts"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("ScopeAll vue overlay roots missing %s: %v", want, got)
+		}
 	}
 }
 
@@ -903,8 +911,12 @@ func TestShouldSkipTSFileName_Dts(t *testing.T) {
 	if shouldSkipTSFileName("types.d.ts") {
 		t.Fatal("ambient d.ts must not be skipped")
 	}
-	if !shouldSkipTSFileName("ok.test.d.ts") || !shouldSkipTSFileName("ok.spec.d.ts") {
-		t.Fatal("test declaration files must be skipped")
+	if shouldSkipTSFileName("ok.test.ts") || shouldSkipTSFileName("ok.spec.ts") ||
+		shouldSkipTSFileName("ok.test.d.ts") || shouldSkipTSFileName("ok.spec.d.ts") {
+		t.Fatal("unit/e2e test sources must not be skipped")
+	}
+	if !shouldSkipTSFileName("skip.gen.ts") || !shouldSkipTSFileName("x.gen.d.ts") {
+		t.Fatal("generated sources must be skipped")
 	}
 	if !shouldSkipTSFileName(".hidden.ts") {
 		t.Fatal("dotfiles must be skipped")
