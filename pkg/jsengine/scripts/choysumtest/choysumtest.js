@@ -398,6 +398,10 @@
     return new Expectation(received, false);
   }
 
+  expect.unreachable = function unreachable(message) {
+    throw new Error(message || 'expected unreachable code path');
+  };
+
   async function expectRejects(received, expected) {
     let promise;
     if (typeof received === 'function') {

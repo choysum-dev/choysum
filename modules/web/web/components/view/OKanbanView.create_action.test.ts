@@ -130,9 +130,9 @@ describe('OKanbanView create action', () => {
     expect(newBtn).toBeTruthy();
     (newBtn as HTMLElement).click();
     await flushPromises();
-    expect(onActionError.calls[0]?.[0]?.action).toBe('create');
-    expect(onActionError.calls[0]?.[0]?.error).toBeInstanceOf(Error);
-    expect(onActionError.calls[0]?.[0]?.error?.message).toBe('boom');
+    expect((onActionError.calls[0]?.[0] as any)?.action).toBe('create');
+    expect((onActionError.calls[0]?.[0] as any)?.error).toBeInstanceOf(Error);
+    expect((onActionError.calls[0]?.[0] as any)?.error?.message).toBe('boom');
     unmount();
   });
 

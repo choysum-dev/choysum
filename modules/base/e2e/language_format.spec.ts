@@ -51,8 +51,10 @@ async function loadBasePbModule(): Promise<BasePbModule> {
   if (!fs.existsSync(staged)) {
     throw new Error(`Cannot find staged base_pb.ts at ${staged} (e2e runner should link it)`);
   }
-  const mod = await import('./.generated/base_pb.ts');
-  return mod as BasePbModule;
+  const mod = (await import(
+    /* @vite-ignore */ './.generated/base_pb.ts' as string
+  )) as BasePbModule;
+  return mod;
 }
 
 async function getBasePbModule(): Promise<BasePbModule> {

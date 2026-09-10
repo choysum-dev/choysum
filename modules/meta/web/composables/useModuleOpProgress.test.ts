@@ -6,21 +6,7 @@ import {
   type ModuleOpProgressDeps,
   type ModuleOpStatusSnapshot,
 } from './useModuleOpProgress';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { emptyAsyncIterable, fnRecorder } from '@/web/web/__tests__/mountApp';
 
 function snapshot(partial: Partial<ModuleOpStatusSnapshot> & { status: string }): ModuleOpStatusSnapshot {
   return { ...partial };
@@ -68,7 +54,7 @@ function createFakeClock(): {
 
 test('createModuleOpProgressSession: skips tip when boot status is terminal', async () => {
   const onTips = fnRecorder(async () => undefined);
-  const subscribeModuleOp = fnRecorder(() => ({}));
+  const subscribeModuleOp = fnRecorder(() => emptyAsyncIterable());
   const fetchStatus = fnRecorder(async () => snapshot({ status: 'succeeded', reload_web: false }));
   const onTerminal = fnRecorder();
   const session = createModuleOpProgressSession(
@@ -102,7 +88,7 @@ test('createModuleOpProgressSession: reloads when terminal boot requests reload_
     },
     {
       onTips: async () => undefined,
-      subscribeModuleOp: () => ({}),
+      subscribeModuleOp: () => emptyAsyncIterable(),
       reloadWeb: reloadWeb as any,
     }
   );
@@ -122,7 +108,7 @@ test('createModuleOpProgressSession: no-ops for empty job ids', async () => {
       onTerminal: () => undefined,
       onTimeout: () => undefined,
     },
-    { onTips: onTips as any, subscribeModuleOp: () => ({}) }
+    { onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
   await session.watch('   ');
   expect(fetchStatus.calls.length).toBe(0);
@@ -143,7 +129,7 @@ test('createModuleOpProgressSession: returns early when dialog becomes inactive 
       onTerminal: () => undefined,
       onTimeout: () => undefined,
     },
-    { onTips: onTips as any, subscribeModuleOp: () => ({}) }
+    { onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
   await session.watch('job-inactive-boot');
   expect(onTips.calls.length).toBe(0);
@@ -158,7 +144,7 @@ test('createModuleOpProgressSession: refreshes on tip and reaches terminal witho
   ];
   const fetchStatus = fnRecorder(async () => statuses.shift()!);
   const onTerminal = fnRecorder();
-  const subscribeModuleOp = fnRecorder(() => ({ stream: true }));
+  const subscribeModuleOp = fnRecorder(() => emptyAsyncIterable());
   const onTips = fnRecorder(async (_stream: unknown, callback: () => Promise<void>) => {
     await callback();
     await advance(80);
@@ -210,7 +196,7 @@ test('createModuleOpProgressSession: reports tip refresh hard errors', async () 
       onTimeout: () => undefined,
       onHardError: onHardError as any,
     },
-    { ...deps, onTips: onTips as any, subscribeModuleOp: () => ({}) }
+    { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
   await session.watch('job-tip-err');
   expect(onHardError.calls[0]?.[0]).toBe('status exploded');
@@ -241,7 +227,7 @@ test('createModuleOpProgressSession: notifies transient tip refresh errors once'
       onTimeout: () => undefined,
       onTransientNetworkError: onTransientNetworkError as any,
     },
-    { ...deps, onTips: onTips as any, subscribeModuleOp: () => ({}) }
+    { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
   await session.watch('job-tip-transient');
   expect(onTransientNetworkError.calls.length).toBe(1);
@@ -266,7 +252,7 @@ test('createModuleOpProgressSession: starts poll fallback when tip ends without 
       onTerminal: onTerminal as any,
       onTimeout: () => undefined,
     },
-    { ...deps, onTips: onTips as any, subscribeModuleOp: () => ({}) }
+    { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
 
   // watch resolves when the tip stream ends; poll fallback continues in the background.
@@ -293,7 +279,7 @@ test('createModuleOpProgressSession: fires timeout via deadline schedule', async
       onTerminal: () => undefined,
       onTimeout: onTimeout as any,
     },
-    { ...deps, onTips: onTips as any, subscribeModuleOp: () => ({}) }
+    { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
 
   await session.watch('job-timeout');
@@ -326,7 +312,7 @@ test('createModuleOpProgressSession: stop aborts an in-flight tip session', asyn
       onTerminal: () => undefined,
       onTimeout: () => undefined,
     },
-    { ...deps, onTips: onTips as any, subscribeModuleOp: () => ({}) }
+    { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() }
   );
 
   const watchPromise = session.watch('job-stop');

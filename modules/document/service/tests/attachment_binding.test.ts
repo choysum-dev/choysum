@@ -1319,7 +1319,7 @@ test('document.attachment_binding: Unbind is idempotent for already unbound rows
     const secondUnbind = await AttachmentBinding.Unbind({
       attachmentBindingId: bound.attachmentBindingId,
       mutationId: uid('mutation_unbind_idempotent_2'),
-      reason: 'again',
+      reason: 'other',
     });
     expect(secondUnbind.status).toBe('unbound');
 
@@ -1409,7 +1409,7 @@ test('document.attachment_binding: replay reports empty ledger status when statu
       await AttachmentBinding.Unbind({
         attachmentBindingId: bound.attachmentBindingId,
         mutationId: unbindMutationId,
-        reason: 'test',
+        reason: 'other',
       });
       throw new Error('expected blank unbind ledger status rejection');
     } catch (err) {
@@ -1574,7 +1574,7 @@ test('document.attachment_binding: Unbind and BuildDescriptor reject missing bin
       await AttachmentBinding.Unbind({
         attachmentBindingId: uid('missing_binding_unbind'),
         mutationId: uid('mutation_unbind_missing'),
-        reason: 'test',
+        reason: 'other',
       });
       throw new Error('expected missing binding on unbind');
     } catch (err) {
@@ -1819,7 +1819,7 @@ test('document.attachment_binding: Unbind rejects failed and invalid succeeded m
       await AttachmentBinding.Unbind({
         attachmentBindingId: bound.attachmentBindingId,
         mutationId: failedMutationId,
-        reason: 'test',
+        reason: 'other',
       });
       throw new Error('expected unbind ledger failed rejection');
     } catch (err) {
@@ -1843,7 +1843,7 @@ test('document.attachment_binding: Unbind rejects failed and invalid succeeded m
       await AttachmentBinding.Unbind({
         attachmentBindingId: bound.attachmentBindingId,
         mutationId: badSnapshotId,
-        reason: 'test',
+        reason: 'other',
       });
       throw new Error('expected invalid unbind ledger snapshot rejection');
     } catch (err) {

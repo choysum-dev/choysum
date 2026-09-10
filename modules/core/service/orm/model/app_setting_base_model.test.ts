@@ -273,10 +273,10 @@ test('pool does not use global short-name scan for Ambiguous short names', () =>
 
 test('dial wraps createServiceByModel; rejects empty and short names', () => {
   const modelName = `as1.DialProbe_${Date.now()}`;
-  const svc = { Ref: (id: string) => `ok:${id}` };
+  const svc = { Ref: (id: string) => `ok:${id}` } as any;
   registerServiceFactory(modelName, () => svc);
 
-  expect(BaseModel.dial(modelName)).toBe(svc);
+  expect(BaseModel.dial(modelName) as any).toBe(svc);
   expect(dial(modelName)).toBe(createServiceByModel(modelName));
   expect((BaseModel.dial(modelName) as typeof svc).Ref('x')).toBe('ok:x');
 

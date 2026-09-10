@@ -289,7 +289,7 @@ describe('applyRowPatchToArray', () => {
   });
 
   test('does nothing for out-of-range index', () => {
-    const arr = [{ Id: 1 }];
+    const arr: any[] = [{ Id: 1 }];
     applyRowPatchToArray(arr, 99, { Qty: 5 });
     expect(arr[0].Qty).toBeUndefined();
   });

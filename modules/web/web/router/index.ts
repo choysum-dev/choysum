@@ -50,7 +50,7 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   });
   const titleRoute = shallowRef<RouteLocationNormalized | null>(router.currentRoute.value);
   const appName = defaultAppName();
-  useTitle(computed(() => resolveDocumentTitle(titleRoute.value, composer, appName)));
+  useTitle(computed(() => resolveDocumentTitle(titleRoute.value as any, composer, appName)));
 
   router.beforeEach(async to => {
     NProgress.start();

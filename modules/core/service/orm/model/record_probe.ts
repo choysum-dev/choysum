@@ -72,7 +72,7 @@ export async function assertRecordReadable(
   }
 
   try {
-    const dialFn = opts?.dial || defaultDial;
+    const dialFn = (opts?.dial || defaultDial) as RecordProbeDialFn;
     const svc = dialFn<SearchableService | null | undefined>(model);
     if (!svc || typeof svc.Search !== 'function') {
       deny(message);

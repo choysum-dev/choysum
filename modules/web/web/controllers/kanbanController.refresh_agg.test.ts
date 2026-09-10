@@ -2,21 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createKanbanController, combineLaneAggregateConditions } from './kanbanController';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 test('combineLaneAggregateConditions: uses the single-lane present condition', () => {
   expect(combineLaneAggregateConditions([{ Stage: 'todo' }])).toEqual({ Stage: 'todo' });
@@ -35,8 +21,8 @@ test('combineLaneAggregateConditions: Or-combines present conditions when every 
 });
 
 test('refreshLaneAggregates combines lane conditions for the batch query', async () => {
-  const Search = fnRecorder(async () => []);
-  const ReadGroup = fnRecorder(async () => ({
+  const Search = asyncFnRecorder(async () => []);
+  const ReadGroup = asyncFnRecorder(async () => ({
     groups: [
       {
         key: 'todo',
@@ -78,7 +64,7 @@ test('refreshLaneAggregates combines lane conditions for the batch query', async
     getContext: () => ({}),
     Search,
     ReadGroup,
-    Count: fnRecorder(async () => 0),
+    Count: asyncFnRecorder(async () => 0),
   } as any;
 
   const controller = createKanbanController(store);

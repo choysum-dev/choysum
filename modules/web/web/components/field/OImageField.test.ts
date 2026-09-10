@@ -40,7 +40,7 @@ function makeBinding(opts?: {
     registerFields: () => {},
     store: opts?.store,
     asView: () => ({ fieldValue: () => value }) as any,
-  } as UseField;
+  } as any;
 }
 
 const uploadOnChange: { fn: null | ((file: any) => Promise<void> | void) } = { fn: null };

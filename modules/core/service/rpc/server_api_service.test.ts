@@ -359,7 +359,7 @@ test('server transport keeps FieldRuleSpec message semantics aligned for local a
     const localService = CreateServerApiService<any>(
       'auth.User',
       'GetFieldRuleSpec',
-      (model: string) => [{ name: 'model', type: 'string', value: model }],
+      (...args: unknown[]) => [{ name: 'model', type: 'string', value: String(args[0] ?? '') }],
       { name: 'result', type: 'FieldRuleSpec' }
     );
 
@@ -375,7 +375,7 @@ test('server transport keeps FieldRuleSpec message semantics aligned for local a
     const remoteService = CreateServerApiService<any>(
       'auth.User',
       'GetFieldRuleSpec',
-      (model: string) => [{ name: 'model', type: 'string', value: model }],
+      (...args: unknown[]) => [{ name: 'model', type: 'string', value: String(args[0] ?? '') }],
       { name: 'result', type: 'FieldRuleSpec' }
     );
 

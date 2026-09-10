@@ -201,7 +201,7 @@ test('updateModelFieldCompanyValues accepts UpdatedAt string/number and rejects 
     })) as any;
     written = undefined;
     expect(await updateModelFieldCompanyValues(FieldCompanyValuesWidget as any, 'w1', 'Cost', { C1: 5 })).toBe(true);
-    expect(written?.condition).toEqual(['Id', '=', 'w1']);
+    expect((written as any)?.condition).toEqual(['Id', '=', 'w1']);
 
     let emptyUpdateIdErr: unknown;
     try {

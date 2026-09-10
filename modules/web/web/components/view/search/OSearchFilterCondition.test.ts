@@ -109,7 +109,7 @@ const epStubs = {
   ElButton: {
     name: 'ElButton',
     emits: ['click'],
-    setup(_, { slots, emit }: any) {
+    setup(_: any, { slots, emit }: any) {
       return () =>
         h('button', { class: 'rm', type: 'button', onClick: () => emit('click') }, slots.default?.());
     },
@@ -165,7 +165,7 @@ describe('OSearchFilterCondition', () => {
   }
 
   test('patches field change with first operator and clears value', async () => {
-    const condition = reactive({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
+    const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
     const { unmount, setupState, onUpdateCondition } = mountRow(condition);
     await setupState().onFieldChange('Status');
     expect(onUpdateCondition.calls.length).toBeGreaterThan(0);
@@ -177,7 +177,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('maps null / multi-value / default operators', async () => {
-    const condition = reactive({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
+    const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
     const { unmount, setupState, onUpdateCondition } = mountRow(condition);
 
     await setupState().onOperatorChange('is');
@@ -196,7 +196,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('renders multi-value select for in operator on scalars', async () => {
-    const condition = reactive({ id: 'c1', field: 'Name', operator: 'in', value: ['a', 'b'] });
+    const condition = reactive<any>({ id: 'c1', field: 'Name', operator: 'in', value: ['a', 'b'] });
     const { unmount, setupState, onUpdateCondition, qa } = mountRow(condition);
     await nextTick();
     const multi = qa('.el-select').find(s => s.getAttribute('data-multi') === 'true');
@@ -207,7 +207,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('keeps value editor writable for form-readonly fields', async () => {
-    const condition = reactive({ id: 'c1', field: 'DisplayName', operator: '=', value: '' });
+    const condition = reactive<any>({ id: 'c1', field: 'DisplayName', operator: '=', value: '' });
     const { unmount, setupState, q } = mountRow(condition);
     await flushPromises();
     expect(q('.f-varchar')).toBeTruthy();
@@ -217,7 +217,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('uses manytoone component for relation fields', async () => {
-    const condition = reactive({ id: 'c1', field: 'PartnerId', operator: '=', value: null });
+    const condition = reactive<any>({ id: 'c1', field: 'PartnerId', operator: '=', value: null });
     const { unmount, q } = mountRow(condition);
     await nextTick();
     expect(q('.f-m2o')).toBeTruthy();
@@ -225,7 +225,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('removes the condition row', async () => {
-    const condition = reactive({ id: 'c1', field: 'Name', operator: '=', value: '' });
+    const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: '' });
     const { unmount, click, onRemoveCondition } = mountRow(condition);
     click('.rm');
     expect(onRemoveCondition.calls[0]).toEqual(['c1']);
@@ -233,24 +233,24 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('renders NULL flag and selection / datetime field components', async () => {
-    const nullCond = reactive({ id: 'c1', field: 'Name', operator: 'is', value: null });
+    const nullCond = reactive<any>({ id: 'c1', field: 'Name', operator: 'is', value: null });
     const nullRow = mountRow(nullCond);
     expect(nullRow.q('.o-null-flag')?.textContent).toBe('NULL');
     nullRow.unmount();
 
-    const sel = reactive({ id: 'c2', field: 'Status', operator: '=', value: 'a' });
+    const sel = reactive<any>({ id: 'c2', field: 'Status', operator: '=', value: 'a' });
     const selRow = mountRow(sel);
     expect(selRow.q('.f-selection')).toBeTruthy();
     selRow.unmount();
 
-    const dt = reactive({ id: 'c3', field: 'CreatedAt', operator: '=', value: null });
+    const dt = reactive<any>({ id: 'c3', field: 'CreatedAt', operator: '=', value: null });
     const dtRow = mountRow(dt);
     expect(dtRow.q('.f-dt')).toBeTruthy();
     dtRow.unmount();
   });
 
   test('exposes toView/fromView helpers for manytoone value binding', async () => {
-    const condition = reactive({ id: 'c1', field: 'PartnerId', operator: '=', value: 'p1' });
+    const condition = reactive<any>({ id: 'c1', field: 'PartnerId', operator: '=', value: 'p1' });
     const { unmount, setupState } = mountRow(condition);
     await nextTick();
     const extras = unref(setupState().extraProps);
@@ -264,7 +264,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('normalizes multiValues from scalar and empty values', async () => {
-    const condition = reactive({ id: 'c1', field: 'Name', operator: 'in', value: 'solo' });
+    const condition = reactive<any>({ id: 'c1', field: 'Name', operator: 'in', value: 'solo' });
     const { unmount, setupState } = mountRow(condition);
     expect(unref(setupState().multiValues)).toEqual(['solo']);
     condition.value = '';
@@ -299,7 +299,7 @@ describe('OSearchFilterCondition', () => {
       types.map(([prop, type]) => [prop, { type, string: prop, relationModel: type.includes('many') ? 'base.X' : undefined }])
     );
     for (const [prop, , cls] of types) {
-      const condition = reactive({ id: 'c1', field: prop, operator: '=', value: null });
+      const condition = reactive<any>({ id: 'c1', field: prop, operator: '=', value: null });
       const { unmount, q, setupState } = mountRow(condition, {
         store: {
           fieldsMetadata,
@@ -316,7 +316,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('applies boolean default value and keeps multi-value arrays intact', async () => {
-    const condition = reactive({ id: 'c1', field: 'Bool', operator: 'is', value: null });
+    const condition = reactive<any>({ id: 'c1', field: 'Bool', operator: 'is', value: null });
     const { unmount, setupState, onUpdateCondition } = mountRow(condition, {
       store: {
         fieldsMetadata: {
@@ -339,7 +339,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('falls back getFieldMeta via fieldsMetadata and clears relationStore on scalar fields', async () => {
-    const condition = reactive({ id: 'c1', field: 'PartnerId', operator: '=', value: null });
+    const condition = reactive<any>({ id: 'c1', field: 'PartnerId', operator: '=', value: null });
     const { unmount, setupState } = mountRow(condition, {
       store: {
         getFieldMeta: undefined,
@@ -359,7 +359,7 @@ describe('OSearchFilterCondition', () => {
   });
 
   test('uses tempId as condition identity when present', async () => {
-    const condition = reactive({ id: 'c1', tempId: 'tmp-9', field: 'Name', operator: '=', value: 'x' });
+    const condition = reactive<any>({ id: 'c1', tempId: 'tmp-9', field: 'Name', operator: '=', value: 'x' });
     const { unmount, setupState, click, onUpdateCondition, onRemoveCondition } = mountRow(condition);
     await setupState().onFieldChange('Status');
     expect(onUpdateCondition.calls[0]![0]).toBe('tmp-9');

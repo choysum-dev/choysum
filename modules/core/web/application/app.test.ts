@@ -21,8 +21,8 @@ function makeHost() {
   return el;
 }
 
-function removeHost(host: { parentNode?: { removeChild: (n: unknown) => void } | null }) {
-  host.parentNode?.removeChild(host);
+function removeHost(host: HTMLElement) {
+  host.remove();
 }
 
 test('createApp: runs setup immediately and returns the same app instance', () => {

@@ -122,7 +122,7 @@ Object.defineProperty(OnchangeDiagParent.prototype, 'onNameChange', {
   configurable: true,
   writable: true,
 });
-Onchange<OnchangeDiagParent>(['Name'], { priority: 30 })(OnchangeDiagParent.prototype, 'onNameChange', undefined as any);
+Onchange<OnchangeDiagParent>(['Name'] as any, { priority: 30 })(OnchangeDiagParent.prototype, 'onNameChange', undefined as any);
 
 class OnchangeDiagChild extends OnchangeDiagParent {
   Code?: string;
@@ -139,8 +139,8 @@ Object.defineProperty(OnchangeDiagChild.prototype, 'onCodeChange', {
   configurable: true,
   writable: true,
 });
-Onchange<OnchangeDiagChild>(['Name'], { priority: 5 })(OnchangeDiagChild.prototype, 'onNameChange', undefined as any);
-Onchange<OnchangeDiagChild>(['Code'], { priority: 20, reads: ['Currency'] })(OnchangeDiagChild.prototype, 'onCodeChange', undefined as any);
+Onchange<OnchangeDiagChild>(['Name'] as any, { priority: 5 })(OnchangeDiagChild.prototype, 'onNameChange', undefined as any);
+Onchange<OnchangeDiagChild>(['Code'] as any, { priority: 20, reads: ['Currency'] })(OnchangeDiagChild.prototype, 'onCodeChange', undefined as any);
 
 test('meta.MetaModel GetEffectiveOnchange returns deduplicated effective onchange handlers', async () => {
   const meta = MetadataStorage.instance.getModelMetadata(OnchangeDiagChild as any);

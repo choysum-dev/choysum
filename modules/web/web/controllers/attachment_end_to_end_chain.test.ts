@@ -3,25 +3,11 @@
 
 import { __normalizeAttachmentFieldsInPayloadForTest } from './formController';
 import { execute } from '@/web/web/query/executor';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder, type AsyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 type AttachmentContentServiceStub = {
-  PrepareUpload: CallRecorder & ((...args: any[]) => Promise<any>);
-  FinalizeUpload: CallRecorder & ((...args: any[]) => Promise<any>);
+  PrepareUpload: AsyncFnRecorder;
+  FinalizeUpload: AsyncFnRecorder;
 };
 
 class TestFile extends Blob {
@@ -36,10 +22,10 @@ class TestFile extends Blob {
 describe('attachment end-to-end chain regression', () => {
   const originalFetch = globalThis.fetch;
   const originalFile = (globalThis as any).File;
-  let fetchMock: CallRecorder & ((...args: any[]) => Promise<any>);
+  let fetchMock: AsyncFnRecorder;
 
   beforeEach(() => {
-    fetchMock = fnRecorder(async () => ({ ok: true, status: 200 }));
+    fetchMock = asyncFnRecorder(async () => ({ ok: true, status: 200 }));
     globalThis.fetch = fetchMock as any;
     (globalThis as any).File = TestFile;
   });
@@ -56,7 +42,7 @@ describe('attachment end-to-end chain regression', () => {
   test('covers Create(Blob/File) -> Read(descriptor enrich) -> Update(clear/noop/set)', async () => {
     const finalizedQueue = ['ao-create-blob', 'ao-create-file', 'ao-update-file'];
     const attachmentContentService: AttachmentContentServiceStub = {
-      PrepareUpload: fnRecorder(async () => ({
+      PrepareUpload: asyncFnRecorder(async () => ({
         uploadId: `upload-${Math.random().toString(16).slice(2)}`,
         uploadTarget: {
           method: 'PUT',
@@ -66,7 +52,7 @@ describe('attachment end-to-end chain regression', () => {
           },
         },
       })),
-      FinalizeUpload: fnRecorder(async () => ({
+      FinalizeUpload: asyncFnRecorder(async () => ({
         attachmentObjectId: finalizedQueue.shift(),
       })),
     };

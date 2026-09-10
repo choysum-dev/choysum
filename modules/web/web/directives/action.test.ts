@@ -2,22 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { DirectiveBinding } from 'vue';
+import { syncFnRecorder } from '@/web/web/__tests__/mountApp';
 import { setGlobalActionChecker, vAction, type ActionBindingValue } from './action';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
 
 function bindDirective(value: ActionBindingValue, modifiers: Record<string, boolean> = {}): HTMLButtonElement {
   const el = document.createElement('button');
@@ -37,7 +23,7 @@ describe('v-action directive', () => {
   });
 
   test('hides element by default when permission is denied', () => {
-    const checker = fnRecorder(() => false);
+    const checker = syncFnRecorder(() => false);
     const el = bindDirective({ ids: 'auth.action.user_export', hasAction: checker });
 
     expect(checker.calls).toEqual([['auth.action.user_export']]);
@@ -45,7 +31,7 @@ describe('v-action directive', () => {
   });
 
   test('disables element when using disable modifier', () => {
-    const checker = fnRecorder(() => false);
+    const checker = syncFnRecorder(() => false);
     const el = bindDirective({ ids: 'auth.action.user_export', hasAction: checker }, { disable: true });
 
     expect(el.disabled).toBe(true);
@@ -53,14 +39,14 @@ describe('v-action directive', () => {
   });
 
   test('supports OR mode for arrays by default', () => {
-    const checker = fnRecorder((id?: string) => id === 'auth.action.user_edit');
+    const checker = syncFnRecorder((id?: string) => id === 'auth.action.user_edit');
     const el = bindDirective({ ids: ['auth.action.user_delete', 'auth.action.user_edit'], hasAction: checker });
 
     expect(el.style.display).not.toBe('none');
   });
 
   test('supports AND mode for arrays', () => {
-    const checker = fnRecorder((id?: string) => id === 'auth.action.user_edit');
+    const checker = syncFnRecorder((id?: string) => id === 'auth.action.user_edit');
     const el = bindDirective({ ids: ['auth.action.user_delete', 'auth.action.user_edit'], hasAction: checker }, { and: true });
 
     expect(el.style.display).toBe('none');
@@ -68,7 +54,7 @@ describe('v-action directive', () => {
 
   test('reacts to permission changes on update', () => {
     let allowed = false;
-    const checker = fnRecorder(() => allowed);
+    const checker = syncFnRecorder(() => allowed);
     const el = bindDirective({ ids: 'auth.action.user_edit', hasAction: checker });
 
     expect(el.style.display).toBe('none');
@@ -80,7 +66,7 @@ describe('v-action directive', () => {
   });
 
   test('uses global checker when binding checker is omitted', () => {
-    const checker = fnRecorder(() => false);
+    const checker = syncFnRecorder(() => false);
     setGlobalActionChecker(checker);
 
     const el = bindDirective('auth.action.user_export');
@@ -90,8 +76,8 @@ describe('v-action directive', () => {
   });
 
   test('prefers binding checker over global checker', () => {
-    const globalChecker = fnRecorder(() => false);
-    const localChecker = fnRecorder(() => true);
+    const globalChecker = syncFnRecorder(() => false);
+    const localChecker = syncFnRecorder(() => true);
     setGlobalActionChecker(globalChecker);
 
     const el = bindDirective({ ids: 'auth.action.user_export', hasAction: localChecker });

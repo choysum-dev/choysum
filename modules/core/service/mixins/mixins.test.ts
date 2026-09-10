@@ -167,7 +167,9 @@ test('PolymorphicRecordModel: default hooks used when subclass does not override
 });
 
 test('PolymorphicRecordModel: SearchByRecord hits default hooks on bare subclass', async () => {
-  class BarePolymorphic extends PolymorphicRecordModel {
+  const PolyBase = PolymorphicRecordModel as any;
+
+  class BarePolymorphic extends PolyBase {
     static Search = async () => [{ Id: '1' }];
   }
 
@@ -180,9 +182,9 @@ test('PolymorphicRecordModel: SearchByRecord hits default hooks on bare subclass
   expect(err instanceof Error).toBe(true);
   expect((err as Error).message).toBe('raisePolymorphicInvalidArgument must be overridden');
 
-  class ProbeOnly extends PolymorphicRecordModel {
+  class ProbeOnly extends PolyBase {
     static Search = async () => [{ Id: '1' }];
-    protected static override raisePolymorphicInvalidArgument(message: string): never {
+    protected static raisePolymorphicInvalidArgument(message: string): never {
       throw new Error(`invalid:${message}`);
     }
   }
@@ -195,15 +197,15 @@ test('PolymorphicRecordModel: SearchByRecord hits default hooks on bare subclass
   expect(bareProbeErr instanceof Error).toBe(true);
   expect((bareProbeErr as Error).message).toBe('assertPolymorphicTargetReadable must be overridden');
 
-  class FullBare extends PolymorphicRecordModel {
+  class FullBare extends PolyBase {
     static Search = async (_c: unknown, options?: any) => {
       expect(options?.orderBy?.field).toBe('CreatedAt');
       return [{ Id: 'ok' }];
     };
-    protected static override raisePolymorphicInvalidArgument(message: string): never {
+    protected static raisePolymorphicInvalidArgument(message: string): never {
       throw new Error(message);
     }
-    protected static override async assertPolymorphicTargetReadable(): Promise<void> {
+    protected static async assertPolymorphicTargetReadable(): Promise<void> {
       // allow
     }
   }

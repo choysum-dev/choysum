@@ -44,7 +44,7 @@ test('message target_record: allows when the test override succeeds', async () =
 
 test('message target_record: denies when dial Search is missing', async () => {
   await withSeams(async () => {
-    __setMessageTargetRecordDialForTest(() => ({}));
+    __setMessageTargetRecordDialForTest((() => ({})) as any);
     let err: unknown;
     try {
       await assertTargetRecordReadable('partner.Partner', 'r1', 'denied');

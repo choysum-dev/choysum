@@ -34,12 +34,12 @@ test('hydrateAccessUiResourceIds maps allow MetaUiResourceId grants into AccessU
       },
     ];
 
-    const rows = [{ Id: 'role_1' }, { Id: 'role_2' }, { Id: 'role_3' }];
+    const rows: any[] = [{ Id: 'role_1' }, { Id: 'role_2' }, { Id: 'role_3' }];
     await hydrateAccessUiResourceIds(rows);
 
-    expect(rows[0].AccessUiResourceIds).toEqual(['res_allow']);
-    expect(rows[1].AccessUiResourceIds).toEqual(['res_other']);
-    expect(rows[2].AccessUiResourceIds).toEqual([]);
+    expect((rows[0] as any).AccessUiResourceIds).toEqual(['res_allow']);
+    expect((rows[1] as any).AccessUiResourceIds).toEqual(['res_other']);
+    expect((rows[2] as any).AccessUiResourceIds).toEqual([]);
   } finally {
     (RoleUiResource as any).Search = orig;
   }

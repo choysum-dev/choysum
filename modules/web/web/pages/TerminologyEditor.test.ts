@@ -3,7 +3,8 @@
 
 import { defineComponent, h, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { createFeStubRouter } from 'vue-router';
+import * as VueRouter from 'vue-router';
+const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 import { ElButton, ElEmpty, ElInput, ElOption, ElSelect } from 'element-plus';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';

@@ -168,8 +168,8 @@ describe('OListView create action', () => {
     if (newBtn) {
       (newBtn as HTMLElement).click();
       await flushPromises();
-      expect(onActionError.calls[0]?.[0]?.action).toBe('create');
-      expect(onActionError.calls[0]?.[0]?.error?.message).toBe('nav failed');
+      expect((onActionError.calls[0]?.[0] as any)?.action).toBe('create');
+      expect((onActionError.calls[0]?.[0] as any)?.error?.message).toBe('nav failed');
     } else {
       expect(root).toBeTruthy();
       expect(onActionError.calls.length).toBe(0);

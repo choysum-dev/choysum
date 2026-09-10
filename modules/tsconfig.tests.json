@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Modules unit + e2e tests",
+  "compilerOptions": {
+    "allowArbitraryExtensions": true,
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "experimentalDecorators": true,
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@bufbuild/protobuf": [
+        "../../.choysum/pkg/types/esm.sh_@bufbuild_protobuf@2.12.0_dist_esm_index.d.ts.d.ts"
+      ],
+      "@bufbuild/protobuf/codegenv2": [
+        "../../.choysum/pkg/types/esm.sh_@bufbuild_protobuf@2.12.0_dist_esm_codegenv2_index.d.ts.d.ts"
+      ],
+      "@bufbuild/protobuf/wkt": [
+        "../../.choysum/pkg/types/esm.sh_@bufbuild_protobuf@2.12.0_dist_esm_wkt_index.d.ts.d.ts"
+      ],
+      "@choysum/e2e": [
+        "../pkg/jsengine/scripts/choysume2e/choysume2e.d.ts"
+      ],
+      "@choysum/page-mount": [
+        "../internal/testing/frontend/testdata/stubs/page_mount.d.ts"
+      ],
+      "@choysum/test-utils": [
+        "../pkg/jsengine/scripts/choysummount/choysummount.d.ts"
+      ],
+      "@connectrpc/connect": [
+        "../../.choysum/pkg/types/esm.sh_@connectrpc_connect@2.1.1_dist_esm_index.d.ts.d.ts"
+      ],
+      "@connectrpc/connect-web": [
+        "../../.choysum/pkg/types/esm.sh_@connectrpc_connect-web@2.1.1_dist_esm_index.d.ts.d.ts"
+      ],
+      "@element-plus/icons-vue": [
+        "../../.choysum/pkg/types/esm.sh_@element-plus_icons-vue@2.3.2_dist_types_index.d.ts.d.ts"
+      ],
+      "@opentelemetry/sdk-trace-base": [
+        "../../.choysum/pkg/types/esm.sh_@opentelemetry_sdk-trace-base@2.7.1_build_src_index.d.ts.d.ts"
+      ],
+      "@tiptap/core": [
+        "../../.choysum/pkg/types/esm.sh_@tiptap_core@2.11.5_dist_index.d.ts.d.ts"
+      ],
+      "@tiptap/extension-link": [
+        "../../.choysum/pkg/types/esm.sh_@tiptap_extension-link@2.11.5_dist_index.d.ts.d.ts"
+      ],
+      "@tiptap/starter-kit": [
+        "../../.choysum/pkg/types/esm.sh_@tiptap_starter-kit@2.11.5_dist_index.d.ts.d.ts"
+      ],
+      "@tiptap/vue-3": [
+        "../../.choysum/pkg/types/esm.sh_@tiptap_vue-3@2.11.5_dist_index.d.ts.d.ts"
+      ],
+      "@types/node": [
+        "../../.choysum/pkg/types/esm.sh_@types_node@22.20.1_index.d.ts.d.ts"
+      ],
+      "@vicons/material": [
+        "../../.choysum/pkg/types/esm.sh_@vicons_material@0.13.0_es_index.d.ts.d.ts"
+      ],
+      "@vue/test-utils": [
+        "../../.choysum/pkg/types/esm.sh_@vue_test-utils@2.4.11_dist_src_index.d.ts.d.ts"
+      ],
+      "@vueuse/core": [
+        "../../.choysum/pkg/types/esm.sh_@vueuse_core@14.3.0_dist_index.d.ts.d.ts"
+      ],
+      "async-validator": [
+        "../../.choysum/pkg/types/esm.sh_async-validator@4.2.5_dist-types_index.d.ts.d.ts"
+      ],
+      "dayjs": [
+        "../../.choysum/pkg/types/esm.sh_dayjs@1.11.21_index.d.ts.d.ts"
+      ],
+      "dayjs/plugin/relativeTime": [
+        "../../.choysum/pkg/types/esm.sh_dayjs@1.11.21_plugin_relativeTime.d.ts.d.ts"
+      ],
+      "decimal.js": [
+        "../../.choysum/pkg/types/esm.sh_decimal.js@10.6.0_decimal.d.ts.d.ts"
+      ],
+      "dompurify": [
+        "../../.choysum/pkg/types/esm.sh_dompurify@3.2.4_dist_purify.es.d.mts.d.ts"
+      ],
+      "echarts": [
+        "../../.choysum/pkg/types/esm.sh_echarts@6.1.0_types_dist_all.d.ts.d.ts"
+      ],
+      "echarts/charts": [
+        "../../.choysum/pkg/types/esm.sh_echarts@6.1.0_charts.d.ts.d.ts"
+      ],
+      "echarts/components": [
+        "../../.choysum/pkg/types/esm.sh_echarts@6.1.0_components.d.ts.d.ts"
+      ],
+      "echarts/core": [
+        "../../.choysum/pkg/types/esm.sh_echarts@6.1.0_core.d.ts.d.ts"
+      ],
+      "echarts/renderers": [
+        "../../.choysum/pkg/types/esm.sh_echarts@6.1.0_renderers.d.ts.d.ts"
+      ],
+      "element-plus": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_index.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/ar": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_ar.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/cs": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_cs.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/da": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_da.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/de": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_de.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/el": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_el.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/en": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_en.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/es": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_es.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/fa": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_fa.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/fi": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_fi.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/fr": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_fr.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/he": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_he.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/hu": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_hu.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/id": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_id.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/it": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_it.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/ja": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_ja.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/ko": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_ko.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/ms": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_ms.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/nb-no": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_nb-no.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/nl": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_nl.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/pl": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_pl.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/pt": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_pt.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/ro": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_ro.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/ru": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_ru.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/sk": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_sk.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/sv": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_sv.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/th": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_th.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/tr": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_tr.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/uk": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_uk.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/vi": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_vi.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/zh-cn": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_zh-cn.d.ts.d.ts"
+      ],
+      "element-plus/es/locale/lang/zh-tw": [
+        "../../.choysum/pkg/types/esm.sh_element-plus@2.14.1_es_locale_lang_zh-tw.d.ts.d.ts"
+      ],
+      "fast-deep-equal": [
+        "../../.choysum/pkg/types/esm.sh_fast-deep-equal@3.1.3_index.d.ts.d.ts"
+      ],
+      "kysely": [
+        "../../.choysum/pkg/types/esm.sh_kysely@0.29.2_dist_index.d.ts.d.ts"
+      ],
+      "kysely/helpers/mssql": [
+        "../../.choysum/pkg/types/esm.sh_kysely@0.29.2_dist_helpers_mssql.d.ts.d.ts"
+      ],
+      "kysely/helpers/mysql": [
+        "../../.choysum/pkg/types/esm.sh_kysely@0.29.2_dist_helpers_mysql.d.ts.d.ts"
+      ],
+      "kysely/helpers/postgres": [
+        "../../.choysum/pkg/types/esm.sh_kysely@0.29.2_dist_helpers_postgres.d.ts.d.ts"
+      ],
+      "kysely/helpers/sqlite": [
+        "../../.choysum/pkg/types/esm.sh_kysely@0.29.2_dist_helpers_sqlite.d.ts.d.ts"
+      ],
+      "lru-cache": [
+        "../../.choysum/pkg/types/esm.sh_lru-cache@11.5.1_dist_esm_browser_index.d.ts.d.ts"
+      ],
+      "microdiff": [
+        "../../.choysum/pkg/types/esm.sh_microdiff@1.5.0_dist_index.d.ts.d.ts"
+      ],
+      "moment": [
+        "../../.choysum/pkg/types/esm.sh_moment@2.30.1_ts3.1-typings_moment.d.ts.d.ts"
+      ],
+      "moment-timezone": [
+        "../../.choysum/pkg/types/esm.sh_moment-timezone@0.5.48_index.d.ts.d.ts"
+      ],
+      "nprogress": [
+        "../../.choysum/pkg/types/esm.sh_@types_nprogress@~0.2.3_index.d.ts.d.ts"
+      ],
+      "pinia": [
+        "../../.choysum/pkg/types/esm.sh_pinia@3.0.4_dist_pinia.d.ts.d.ts"
+      ],
+      "pinia-plugin-persistedstate": [
+        "../../.choysum/pkg/types/esm.sh_pinia-plugin-persistedstate@4.7.1_dist_index.d.ts.d.ts"
+      ],
+      "vitest": [
+        "../../.choysum/pkg/types/esm.sh_vitest@4.1.10_dist_index.d.ts.d.ts"
+      ],
+      "vue": [
+        "../../.choysum/pkg/types/esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts"
+      ],
+      "vue-echarts": [
+        "../../.choysum/pkg/types/esm.sh_vue-echarts@8.0.1_dist_index.d.ts.d.ts"
+      ],
+      "vue-i18n": [
+        "../../.choysum/pkg/types/esm.sh_vue-i18n@11.4.5_dist_vue-i18n.d.ts.d.ts"
+      ],
+      "vue-json-pretty": [
+        "../../.choysum/pkg/types/esm.sh_vue-json-pretty@2.6.0_types_index.d.ts.d.ts"
+      ],
+      "vue-router": [
+        "../../.choysum/pkg/types/esm.sh_vue-router@5.1.0_dist_vue-router.d.ts.d.ts"
+      ],
+      "vuedraggable": [
+        "../../.choysum/pkg/types/esm.sh_vuedraggable@4.1.0_src_vuedraggable.d.ts.d.ts"
+      ],
+      "@playwright/test": [
+        "../node_modules/@playwright/test/index.d.ts"
+      ]
+    },
+    "skipLibCheck": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "target": "ES2020",
+    "typeRoots": [
+      "../../.choysum/pkg/types/typeRoots"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/e2e/**/*.ts",
+    "**/*.d.ts"
+  ],
+  "exclude": [
+    "**/node_modules/**"
+  ]
+}

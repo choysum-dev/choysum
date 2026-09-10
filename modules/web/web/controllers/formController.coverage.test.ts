@@ -3,26 +3,12 @@
 
 import { createFormController } from './formController';
 import { handoffCache } from '@/web/web/query/utils/handoff';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
 test('formController > beginDisplay awaits field selection when export is empty', async () => {
-  const awaitFieldSelection = fnRecorder(async () => undefined);
+  const awaitFieldSelection = asyncFnRecorder(async () => undefined);
   const exportFieldSelection = fnRecorder(() => [] as string[]);
-  const execute = fnRecorder(async () => ({
+  const execute = asyncFnRecorder(async () => ({
     kind: 'search',
     rows: [{ kind: 'record', key: '1', payload: { Id: '1', Name: 'n' }, raw: {} }],
     total: 1,
@@ -56,7 +42,7 @@ test('formController > beginDisplay awaits field selection when export is empty'
 
 test('formController > create submit uses default handoff cache', async () => {
   handoffCache.clear();
-  const Create = fnRecorder(async () => ({ Id: 'new-1', Name: 'created' }));
+  const Create = asyncFnRecorder(async () => ({ Id: 'new-1', Name: 'created' }));
   const store = {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget',

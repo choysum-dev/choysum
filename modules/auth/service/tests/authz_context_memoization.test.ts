@@ -245,11 +245,11 @@ test('P3-1: authz context is request-scoped memoized', async () => {
 
       (UserRole as any).Search = async (...args: any[]) => {
         userRoleSearchCalls++;
-        return await origUserRoleSearch.apply(UserRole, args);
+        return await origUserRoleSearch.apply(UserRole, args as any);
       };
       (RoleInheritance as any).Search = async (...args: any[]) => {
         roleInheritanceSearchCalls++;
-        return await origRoleInhSearch.apply(RoleInheritance, args);
+        return await origRoleInhSearch.apply(RoleInheritance, args as any);
       };
 
       try {
@@ -304,17 +304,17 @@ test('P3-2: meta lookups are request-scoped memoized for record/field/method eva
 
   (MetaApplication as any).Search = async (...args: any[]) => {
     appSearchCalls++;
-    return await origMetaApplicationSearch.apply(MetaApplication, args);
+    return await origMetaApplicationSearch.apply(MetaApplication, args as any);
   };
 
   (MetaModel as any).Search = async (...args: any[]) => {
     modelSearchCalls++;
-    return await origMetaModelSearch.apply(MetaModel, args);
+    return await origMetaModelSearch.apply(MetaModel, args as any);
   };
 
   (MetaService as any).Search = async (...args: any[]) => {
     serviceSearchCalls++;
-    return await origMetaServiceSearch.apply(MetaService, args);
+    return await origMetaServiceSearch.apply(MetaService, args as any);
   };
 
   try {
@@ -511,7 +511,7 @@ test('P3-1: same request Role.UpdateById invalidates authz context memo', async 
   const origUserRoleSearch = UserRole.Search;
   (UserRole as any).Search = async (...args: any[]) => {
     userRoleSearchCalls++;
-    return await origUserRoleSearch.apply(UserRole, args);
+    return await origUserRoleSearch.apply(UserRole, args as any);
   };
 
   try {

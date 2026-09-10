@@ -3,21 +3,7 @@
 
 import { createApp, defineComponent, h, reactive, ref } from 'vue';
 import { useUserFilters } from './useUserFilters';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { fnRecorder } from '@/web/web/__tests__/mountApp';
 
 function mutableFn<T = any>(initial?: (...a: any[]) => T) {
   let impl = initial ?? (async () => undefined as T);
@@ -157,7 +143,7 @@ describe('useUserFilters', () => {
         store: { application: 'demo', modelName: 'Widget' },
         filtersRef: ref([]),
         applyNamedFilter,
-        codeDefaults: () => [{ name: 'Code', query: ['X', '=', 1], selected: true }],
+        codeDefaults: (() => [{ name: 'Code', query: ['X', '=', 1], selected: true }]) as any,
         ...deps(),
       })
     );

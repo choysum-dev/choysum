@@ -44,7 +44,7 @@ test('audit target_record: allows when the test override succeeds', async () => 
 
 test('audit target_record: denies when dial Search is missing', async () => {
   await withSeams(async () => {
-    __setFieldChangeTargetDialForTest(() => ({}));
+    __setFieldChangeTargetDialForTest(((_name: string) => ({})) as any);
     let err: unknown;
     try {
       await assertTargetRecordReadable('base.UoM', 'r1', 'denied');

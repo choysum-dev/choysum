@@ -2,20 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { PermissionState } from '@/auth/web/permission';
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 import { authGuard, permissionGuard, type AuthGuardDeps } from './guard';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder(): CallRecorder & ((...args: unknown[]) => Promise<undefined>) {
-  const rec: CallRecorder & ((...args: unknown[]) => Promise<undefined>) = Object.assign(
-    async (...args: unknown[]) => {
-      rec.calls.push(args);
-      return undefined;
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
 
 function depsFor(store: any): AuthGuardDeps {
   return { getAuthStore: () => store };
@@ -31,7 +19,7 @@ function routesState(routes: string[]): PermissionState {
 }
 
 test('authGuard redirects unauthenticated users to login', async () => {
-  const ensureAuthReady = fnRecorder();
+  const ensureAuthReady = asyncFnRecorder();
   const mockAuthStore = {
     ensureAuthReady,
     isAuthenticated: false,
@@ -56,7 +44,7 @@ test('authGuard redirects unauthenticated users to login', async () => {
 });
 
 test('permissionGuard redirects to 403 when resource is not allowed', async () => {
-  const loadPermissionState = fnRecorder();
+  const loadPermissionState = asyncFnRecorder();
   const mockAuthStore = {
     isAuthenticated: true,
     loadPermissionState,
@@ -87,7 +75,7 @@ test('permissionGuard redirects to 403 when resource is not allowed', async () =
 });
 
 test('permissionGuard allows route when no resource id is declared', async () => {
-  const loadPermissionState = fnRecorder();
+  const loadPermissionState = asyncFnRecorder();
   const mockAuthStore = {
     isAuthenticated: true,
     loadPermissionState,
@@ -110,7 +98,7 @@ test('permissionGuard allows route when no resource id is declared', async () =>
 });
 
 test('permissionGuard bypasses /error/** routes to avoid redirect loop', async () => {
-  const loadPermissionState = fnRecorder();
+  const loadPermissionState = asyncFnRecorder();
   const mockAuthStore = {
     isAuthenticated: false,
     loadPermissionState,
@@ -133,7 +121,7 @@ test('permissionGuard bypasses /error/** routes to avoid redirect loop', async (
 });
 
 test('permissionGuard bypasses public route when requiresAuth=false', async () => {
-  const loadPermissionState = fnRecorder();
+  const loadPermissionState = asyncFnRecorder();
   const mockAuthStore = {
     isAuthenticated: true,
     loadPermissionState,
@@ -156,7 +144,7 @@ test('permissionGuard bypasses public route when requiresAuth=false', async () =
 });
 
 test('permissionGuard delegates unauthenticated case to authGuard path', async () => {
-  const loadPermissionState = fnRecorder();
+  const loadPermissionState = asyncFnRecorder();
   const mockAuthStore = {
     isAuthenticated: false,
     loadPermissionState,
@@ -181,7 +169,7 @@ test('permissionGuard delegates unauthenticated case to authGuard path', async (
 test('permissionGuard soft-lands denied /home to first allowed app route', async () => {
   const mockAuthStore = {
     isAuthenticated: true,
-    loadPermissionState: fnRecorder(),
+    loadPermissionState: asyncFnRecorder(),
     permissionState: routesState(['auth.route.user_list']),
     identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
   };
@@ -202,7 +190,7 @@ test('permissionGuard soft-lands denied /home to first allowed app route', async
 test('permissionGuard soft-landing keeps deterministic order under same permission set', async () => {
   const mockAuthStore = {
     isAuthenticated: true,
-    loadPermissionState: fnRecorder(),
+    loadPermissionState: asyncFnRecorder(),
     permissionState: routesState(['auth.route.user_create', 'auth.route.role_list', 'auth.route.token_list']),
     identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
   };
@@ -225,7 +213,7 @@ test('permissionGuard soft-landing keeps deterministic order under same permissi
 test('permissionGuard soft-lands to access-rule create when that is the only grant', async () => {
   const mockAuthStore = {
     isAuthenticated: true,
-    loadPermissionState: fnRecorder(),
+    loadPermissionState: asyncFnRecorder(),
     permissionState: routesState(['auth.route.field_rule_create']),
     identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
   };
@@ -246,7 +234,7 @@ test('permissionGuard soft-lands to access-rule create when that is the only gra
 test('permissionGuard soft-landing prefers record-rules before field-rules by leaf menu order', async () => {
   const mockAuthStore = {
     isAuthenticated: true,
-    loadPermissionState: fnRecorder(),
+    loadPermissionState: asyncFnRecorder(),
     permissionState: routesState(['auth.route.field_rule_list', 'auth.route.record_rule_list']),
     identity: { metadata: { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] } },
   };

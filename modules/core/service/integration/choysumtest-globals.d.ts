@@ -31,6 +31,11 @@ declare global {
 
   function test(name: string, fn: () => void | Promise<void>): void;
 
+  /** Vitest-style suite nesting (see choysumtest.js). */
+  function describe(name: string, fn: () => void): void;
+  function beforeEach(fn: () => void | Promise<void>): void;
+  function afterEach(fn: () => void | Promise<void>): void;
+
   type ChoysumPropertyPath = string | number | Array<string | number>;
 
   interface ChoysumExpectation<T> {
@@ -52,9 +57,16 @@ declare global {
     toBeLessThan(expected: number): void;
     toBeLessThanOrEqual(expected: number): void;
     toThrow(expected?: string | RegExp): void;
+    toBeInstanceOf(expected: abstract new (...args: any[]) => any): void;
   }
 
-  function expect<T = unknown>(received: T): ChoysumExpectation<T>;
+  interface ExpectStatic {
+    <T = unknown>(received: T): ChoysumExpectation<T>;
+    /** Assert control-flow never reaches this point. */
+    unreachable(message?: string): never;
+  }
+
+  const expect: ExpectStatic;
   function expectRejects(received: Promise<unknown> | (() => Promise<unknown>), expected?: string | RegExp): Promise<void>;
 
   // Runner is injected by the init script and used by the generated tests entry.

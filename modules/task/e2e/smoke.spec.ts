@@ -56,8 +56,10 @@ async function loadTaskPbModule(): Promise<TaskPbModule> {
   if (!fs.existsSync(staged)) {
     throw new Error(`Cannot find staged task_pb.ts at ${staged} (e2e runner should link it)`);
   }
-  const mod = await import('./.generated/task_pb.ts');
-  return mod as TaskPbModule;
+  const mod = (await import(
+    /* @vite-ignore */ './.generated/task_pb.ts' as string
+  )) as TaskPbModule;
+  return mod;
 }
 
 /**

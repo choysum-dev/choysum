@@ -46,16 +46,16 @@ export type Locator = {
 
 /**
  * Dual-run page surface shared by the QJS host and Playwright.
- * Kept structural and loose so Playwright's Page remains assignable for
- * shared auth e2e utils (login/grpcweb) while smoke specs use the QJS host.
+ * Locator-returning methods stay typed; async CDP/PW seams stay loose so
+ * Playwright's Page remains assignable for shared utils (login/grpcweb).
  */
 export type Page = {
   /** Set by the QJS host page proxy; absent on Playwright pages. */
   __choysum_e2e_page__?: boolean;
   goto(...args: any[]): Promise<any>;
-  locator(...args: any[]): any;
-  getByPlaceholder(...args: any[]): any;
-  getByText(...args: any[]): any;
+  locator(selector: string): Locator;
+  getByPlaceholder(reOrString: RegExp | string): Locator;
+  getByText(text: string): Locator;
   click(...args: any[]): Promise<any>;
   fill(...args: any[]): Promise<any>;
   evaluate(...args: any[]): Promise<any>;
@@ -72,10 +72,24 @@ export type E2EExpect = {
   toHaveURL(reOrString: RegExp | string, opts?: TimeoutOptions): Promise<void>;
 };
 
+/** Value assertions used by shared utils (and PW shim → @playwright/test). */
+export type ValueExpect = {
+  toBe(expected: unknown): void;
+  toEqual(expected: unknown): void;
+  toBeTruthy(): void;
+  toBeFalsy(): void;
+  toBeNull(): void;
+  toBeUndefined(): void;
+  toBeDefined(): void;
+  toContain(expected: unknown): void;
+  toMatch(expected: string | RegExp): void;
+  toHaveLength(expected: number): void;
+};
+
 export declare const test: typeof globalThis extends { test: infer T } ? T : (name: string, fn: () => unknown) => void;
 export declare function expect(target: Locator, message?: string): E2EExpect;
 export declare function expect(target: Page, message?: string): E2EExpect;
-export declare function expect(target: unknown, message?: string): unknown;
+export declare function expect(target: unknown, message?: string): ValueExpect;
 export declare const page: Page;
 export declare const runtime: E2ERuntime;
 export declare function randomUUID(): string;

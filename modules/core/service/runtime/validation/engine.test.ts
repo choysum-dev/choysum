@@ -161,7 +161,7 @@ class PlatformCompanyRefSourceModel extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: () => PlatformCompanyTargetModel },
-  })
+  } as any)
   TargetRefId?: string;
 }
 
@@ -2475,8 +2475,8 @@ test('constraint reuse: grandchild without re-decoration inherits child handler'
 
 const draftGuardLog: Array<Record<string, unknown>> = [];
 
-@Model('ConstraintDraftPeerSearch', { application: 'test' })
-class ConstraintDraftPeerSearch extends BaseModel {
+@((Model as any)('ConstraintDraftPeerSearch', { application: 'test' }))
+class ConstraintDraftPeerSearch extends (BaseModel as any) {
   static async Search(_condition?: unknown) {
     return [{ Id: 'peer-1' }];
   }

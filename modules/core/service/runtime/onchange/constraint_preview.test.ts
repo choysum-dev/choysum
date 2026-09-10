@@ -97,8 +97,8 @@ test('onchange constraint preview runs alongside instanceNoArgs handler returnin
     }
   }
 
-  Onchange('Name')(ConstraintPreviewNoArgsModel.prototype, 'onNameChange');
-  Constraint<ConstraintPreviewNoArgsModel>('Name', { preview: true, priority: 1 })(ConstraintPreviewNoArgsModel, 'validateNoArgsPreview', undefined as any);
+  (Onchange as any)('Name')(ConstraintPreviewNoArgsModel.prototype, 'onNameChange', undefined as any);
+  Constraint<ConstraintPreviewNoArgsModel>('Name' as any, { preview: true, priority: 1 })(ConstraintPreviewNoArgsModel, 'validateNoArgsPreview', undefined as any);
 
   // The engine should process both the constraint preview error and the
   // onchange handler's returned condition side-effects.

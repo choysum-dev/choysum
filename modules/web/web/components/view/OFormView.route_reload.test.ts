@@ -7,7 +7,8 @@
  */
 
 import { createPinia, setActivePinia } from 'pinia';
-import { createFeStubRouter } from 'vue-router';
+import * as VueRouter from 'vue-router';
+const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 import type { App } from 'vue';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';

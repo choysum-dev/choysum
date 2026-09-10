@@ -34,10 +34,10 @@ class Pp1Task extends BaseModel {
   @Field({ type: 'varchar', size: 64 })
   Name!: string;
 
-  @Field<Pp1Task>({
+  @Field({
     type: 'properties',
     definition: 'ProjectId',
-  })
+  } as any)
   TaskProperties!: Record<string, unknown>;
 }
 

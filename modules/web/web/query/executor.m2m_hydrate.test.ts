@@ -2,24 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { execute } from './executor';
-
-type CallRecorder = { calls: unknown[][] };
-
-function fnRecorder<T = undefined, A extends unknown[] = unknown[]>(
-  impl?: (...args: A) => T | Promise<T>
-): CallRecorder & ((...args: A) => T | Promise<T>) {
-  const rec: CallRecorder & ((...args: A) => T | Promise<T>) = Object.assign(
-    (...args: A) => {
-      rec.calls.push(args);
-      return impl ? impl(...args) : (undefined as T);
-    },
-    { calls: [] as unknown[][] }
-  );
-  return rec;
-}
+import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 test('execute hydrates ManyToManyRef id lists via createStoreByModel', async () => {
-  const tagSearch = fnRecorder(async () => [
+  const tagSearch = asyncFnRecorder(async () => [
     { Id: 't1', DisplayName: 'Red' },
     { Id: 't2', DisplayName: 'Blue' },
   ]);
@@ -36,7 +22,7 @@ test('execute hydrates ManyToManyRef id lists via createStoreByModel', async () 
     fieldsMetadata: {
       Tags: { type: 'ManyToManyRef', relationModel: 'demo.Tag' },
     },
-    Search: fnRecorder(async () => [{ Id: 'i1', Tags: ['t1', 't2'] }]),
+    Search: asyncFnRecorder(async () => [{ Id: 'i1', Tags: ['t1', 't2'] }]),
   } as any;
 
   const snapshot = await execute(

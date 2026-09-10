@@ -63,7 +63,7 @@ test('useRecordImportScope: reactive model and config getters', () => {
   expect(scope.model.value).toBe('a.Model');
   expect(scope.uploadHint.value).toBe('h1');
   model.value = 'b.Model';
-  config.value = { import: { enabled: true, uploadHint: 'h2', columnMapping: { B: 'b' } } };
+  config.value = { import: { enabled: true, uploadHint: 'h2', columnMapping: { B: 'b' } } } as any;
   expect(scope.model.value).toBe('b.Model');
   expect(scope.uploadHint.value).toBe('h2');
   expect(scope.columnMapping.value).toEqual({ B: 'b' });

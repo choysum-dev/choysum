@@ -348,7 +348,7 @@ describe('useListInlineEdit', () => {
     let capturedOpts: any;
     const { api, enabled, store, unmount } = mountInline({
       deps: {
-        provideOnchange: ((s, session, opts) => {
+        provideOnchange: ((s: any, session: any, opts: any) => {
           capturedOpts = opts;
           return provideOnchange(s, session, opts);
         }) as any,

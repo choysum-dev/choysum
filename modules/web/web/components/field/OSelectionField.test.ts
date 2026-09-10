@@ -34,7 +34,7 @@ function makeBinding(opts: {
     registerFields: () => {},
     store: opts.store,
     asView: () => ({ fieldValue: () => value }) as any,
-  } as UseField;
+  } as any;
 }
 
 const epSfcs = [ElSelect, ElOption];

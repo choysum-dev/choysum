@@ -55,16 +55,16 @@ class PpCovTask extends BaseModel {
   @Field({ type: 'varchar', size: 64 })
   Name!: string;
 
-  @Field<PpCovTask>({
+  @Field({
     type: 'properties',
     definition: 'ProjectId',
-  })
+  } as any)
   TaskProperties!: Record<string, unknown>;
 
-  @Field<PpCovTask>({
+  @Field({
     type: 'properties',
     definition: 'ProjectRef',
-  })
+  } as any)
   RefProperties!: Record<string, unknown>;
 }
 

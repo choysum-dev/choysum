@@ -11,10 +11,10 @@ import {
 } from './record_probe';
 
 function dialWithSearch(search: (() => Promise<unknown>) | undefined): RecordProbeDialFn {
-  return () =>
+  return ((_fullModelName: string) =>
     ({
       Search: search,
-    }) as Record<string, (...args: unknown[]) => unknown>;
+    })) as RecordProbeDialFn;
 }
 
 async function expectNotReadable(promise: Promise<unknown>, message?: string) {
@@ -64,7 +64,7 @@ test('assertRecordReadable: denies when dial Search returns a non-array payload'
 test('assertRecordReadable: denies when Search is missing', async () => {
   await expectNotReadable(
     assertRecordReadable('partner.Partner', 'r1', {
-      dial: () => ({}) as Record<string, (...args: unknown[]) => unknown>,
+      dial: (() => ({})) as RecordProbeDialFn,
     })
   );
 });
