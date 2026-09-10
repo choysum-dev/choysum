@@ -63,6 +63,7 @@ export type Locator = {
   last(): Locator;
   nth(index: number): Locator;
   locator(selector: string, options?: LocatorOptions): Locator;
+  getByRole(...args: any[]): Locator;
   count(): Promise<number>;
   textContent(): Promise<string | null>;
   getAttribute(name: string): Promise<string | null>;

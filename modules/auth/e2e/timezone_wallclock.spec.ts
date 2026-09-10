@@ -38,7 +38,7 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
   await expect
     .poll(
       async () =>
-        p.evaluate(want => {
+        p.evaluate((want: string) => {
           const opts = Array.from(document.querySelectorAll('.el-select-dropdown li, [role="option"]'));
           const el = opts.find(o => String(o.textContent || '').trim() === want);
           if (!el) return false;
