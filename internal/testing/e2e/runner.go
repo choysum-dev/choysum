@@ -574,6 +574,11 @@ compile:
 		if mod == "" || seen[mod] {
 			continue
 		}
+		// Meta default fixtures seed uninstalled placeholder modules (e.g. Name=partner).
+		// Those collide when the same modules are really installed for a non-meta target.
+		if mod == "meta" && opts.Module != "meta" {
+			continue
+		}
 		seen[mod] = true
 		uniqueFixtures = append(uniqueFixtures, mod)
 	}

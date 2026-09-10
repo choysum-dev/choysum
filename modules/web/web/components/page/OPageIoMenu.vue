@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
       text
       class="o-page-io-menu__trigger"
       :aria-label="menuAriaLabel"
-      data-test="page-io-menu-trigger"
+      data-testid="page-io-menu-trigger"
     >
       <el-icon :size="18"><Setting /></el-icon>
     </el-button>
@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
           :key="item.key"
           :command="item.key"
           :disabled="item.disabled"
-          :data-test="`page-io-menu-${item.key}`"
+          :data-testid="`page-io-menu-${item.key}`"
         >
           {{ item.label }}
         </el-dropdown-item>

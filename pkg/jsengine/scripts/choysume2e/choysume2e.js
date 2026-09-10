@@ -330,11 +330,18 @@ async function resolveToCSS(loc) {
       const roleSelectors = {
         button: 'button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]',
         option: '[role="option"], option',
-        dialog: '[role="dialog"], dialog',
+        dialog: '[role="dialog"], dialog, .el-dialog',
         menuitem: '[role="menuitem"]',
       };
       const sel = roleSelectors[role] || ('[role="' + String(role).replace(/"/g, '') + '"]');
       if (!sel || sel === '[role=""]') throw new Error('getByRole: unsupported role ' + role);
+
+      const isVisibleEl = (el) => {
+        const style = window.getComputedStyle(el);
+        if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      };
 
       const accessibleName = (el) => {
         const labelled = el.getAttribute('aria-label');
@@ -366,7 +373,14 @@ async function resolveToCSS(loc) {
         return name.includes(want);
       };
 
-      const nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
+      let nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
+      // Element Plus puts role=dialog on the overlay wrapper; prefer the content panel.
+      if (role === 'dialog') {
+        const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
+        if (content.length) nodes = content;
+      }
+      const visible = nodes.filter(isVisibleEl);
+      if (visible.length) nodes = visible;
       const resolved = index < 0 ? nodes.length + index : index;
       if (resolved < 0 || resolved >= nodes.length) {
         throw new Error('getByRole: no match for role=' + role + ' index=' + index + ' count=' + nodes.length);
@@ -509,11 +523,17 @@ async function collectMatchedElements(loc) {
       const roleSelectors = {
         button: 'button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]',
         option: '[role="option"], option',
-        dialog: '[role="dialog"], dialog',
+        dialog: '[role="dialog"], dialog, .el-dialog',
         menuitem: '[role="menuitem"]',
       };
       const sel = roleSelectors[role] || ('[role="' + String(role).replace(/"/g, '') + '"]');
       if (!sel || sel === '[role=""]') return [];
+      const isVisibleEl = (el) => {
+        const style = window.getComputedStyle(el);
+        if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      };
       const accessibleName = (el) => {
         const labelled = el.getAttribute('aria-label');
         if (labelled) return String(labelled).trim();
@@ -542,7 +562,14 @@ async function collectMatchedElements(loc) {
         if (nameMatch.exact) return name === want;
         return name.includes(want);
       };
-      return Array.from(root.querySelectorAll(sel)).filter(nameOk).map(el => el.textContent);
+      let nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
+      if (role === 'dialog') {
+        const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
+        if (content.length) nodes = content;
+      }
+      const visible = nodes.filter(isVisibleEl);
+      if (visible.length) nodes = visible;
+      return nodes.map(el => el.textContent);
     })()`);
     return JSON.parse(raw);
   }
@@ -743,7 +770,10 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const sel = await ensureCSS(target);
-          return await getHost().isVisible(sel);
+          const ok = await getHost().isVisible(sel);
+          // Role/text locators stamp DOM nodes; Vue re-renders drop the stamp.
+          if (!ok) target._css = '';
+          return ok;
         } catch (e) {
           target._css = '';
           throw e;
@@ -758,7 +788,9 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const sel = await ensureCSS(target);
-          return await getHost().isEnabled(sel);
+          const ok = await getHost().isEnabled(sel);
+          if (!ok) target._css = '';
+          return ok;
         } catch (e) {
           target._css = '';
           throw e;
@@ -781,7 +813,9 @@ function e2eExpect(target, message) {
             const aria = el.getAttribute('aria-checked');
             return aria === 'true';
           })()`);
-          return !!JSON.parse(raw);
+          const ok = !!JSON.parse(raw);
+          if (!ok) target._css = '';
+          return ok;
         } catch (e) {
           target._css = '';
           throw e;

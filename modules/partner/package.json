@@ -31,6 +31,14 @@
     "entryPoints": {
       "service": "./service/index.ts",
       "web": "./web/index.ts"
+    },
+    "e2e": {
+      "specs": "e2e",
+      "scenarios": {
+        "default": {
+          "fixtures": []
+        }
+      }
     }
   },
   "publishConfig": {

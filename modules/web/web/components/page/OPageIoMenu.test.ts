@@ -34,12 +34,12 @@ describe('OPageIoMenu', () => {
       setup(_: any, { slots, emit }: any) {
         provide(DropdownCommandKey, (cmd: string) => emit('command', cmd));
         return () =>
-          h('div', { 'data-test': 'dropdown' }, [
+          h('div', { 'data-testid': 'dropdown' }, [
             slots.default?.(),
             slots.dropdown?.(),
             h('button', {
               type: 'button',
-              'data-test': 'dropdown-emit-command',
+              'data-testid': 'dropdown-emit-command',
               onClick: (event: Event) => {
                 const target = event.currentTarget as HTMLElement | null;
                 const cmd = target?.getAttribute('data-command');
@@ -68,7 +68,7 @@ describe('OPageIoMenu', () => {
             {
               type: 'button',
               disabled: props.disabled || undefined,
-              'data-test': attrs['data-test'] || `page-io-menu-${props.command}`,
+              'data-testid': attrs['data-testid'] || `page-io-menu-${props.command}`,
               onClick: () => {
                 // Always forward command so product onCommand can guard disabled/hidden.
                 fire?.(String(props.command ?? ''));
@@ -108,7 +108,7 @@ describe('OPageIoMenu', () => {
           h(
             'div',
             {
-              'data-test': 'import-shell-stub',
+              'data-testid': 'import-shell-stub',
               'data-model': props.model || '',
               'data-company-id': props.companyId || '',
               'data-open': String(props.open ?? props.modelValue ?? false),
@@ -119,7 +119,7 @@ describe('OPageIoMenu', () => {
                 'button',
                 {
                   type: 'button',
-                  'data-test': 'emit-imported',
+                  'data-testid': 'emit-imported',
                   onClick: () => emit('imported'),
                 },
                 'import'
@@ -142,7 +142,7 @@ describe('OPageIoMenu', () => {
       setup(props: any) {
         return () =>
           h('div', {
-            'data-test': 'export-shell-stub',
+            'data-testid': 'export-shell-stub',
             'data-model': props.model || '',
             'data-open': String(props.open ?? props.modelValue ?? false),
             'data-list-id': props.listRef?.selectedItems?.value?.[0]?.Id || '',
@@ -171,10 +171,10 @@ describe('OPageIoMenu', () => {
 
   /** Fire `@command` for keys with no visible item button (unknown / hidden). */
   function emitCommand(mounted: MountAppResult, cmd: string) {
-    const btn = mounted.q('[data-test=dropdown-emit-command]') as HTMLElement | null;
+    const btn = mounted.q('[data-testid=dropdown-emit-command]') as HTMLElement | null;
     expect(btn).toBeTruthy();
     btn!.setAttribute('data-command', cmd);
-    mounted.click('[data-test=dropdown-emit-command]');
+    mounted.click('[data-testid=dropdown-emit-command]');
   }
 
   test('renders visible items and ignores hidden ones', async () => {
@@ -187,10 +187,10 @@ describe('OPageIoMenu', () => {
       ] satisfies PageIoMenuItem[],
     });
     await flushPromises();
-    expect(mounted.q('[data-test=page-io-menu-trigger]')).toBeTruthy();
-    expect(mounted.q('[data-test=page-io-menu-import]')).toBeTruthy();
-    expect(mounted.q('[data-test=page-io-menu-export]')).toBeFalsy();
-    expect(mounted.q('[data-test=import-shell-stub]')).toBeFalsy();
+    expect(mounted.q('[data-testid=page-io-menu-trigger]')).toBeTruthy();
+    expect(mounted.q('[data-testid=page-io-menu-import]')).toBeTruthy();
+    expect(mounted.q('[data-testid=page-io-menu-export]')).toBeFalsy();
+    expect(mounted.q('[data-testid=import-shell-stub]')).toBeFalsy();
     mounted.unmount();
   });
 
@@ -199,14 +199,14 @@ describe('OPageIoMenu', () => {
       items: [{ key: 'import', label: 'Import', hidden: true, onClick: () => undefined }],
     });
     await flushPromises();
-    expect(mounted.q('[data-test=dropdown]')).toBeFalsy();
+    expect(mounted.q('[data-testid=dropdown]')).toBeFalsy();
     mounted.unmount();
   });
 
   test('treats a missing items prop as an empty list', async () => {
     const mounted = mountMenu({});
     await flushPromises();
-    expect(mounted.q('[data-test=dropdown]')).toBeFalsy();
+    expect(mounted.q('[data-testid=dropdown]')).toBeFalsy();
     mounted.unmount();
   });
 
@@ -216,7 +216,7 @@ describe('OPageIoMenu', () => {
       items: [{ key: 'import', label: 'Import', onClick: onImport }],
     });
     await flushPromises();
-    mounted.click('[data-test=page-io-menu-import]');
+    mounted.click('[data-testid=page-io-menu-import]');
     expect(onImport.calls.length).toBe(1);
     emitCommand(mounted, 'missing');
     expect(onImport.calls.length).toBe(1);
@@ -266,21 +266,21 @@ describe('OPageIoMenu', () => {
       { on: { onImported } }
     );
     await flushPromises();
-    expect(mounted.q('[data-test=page-io-menu-import]')).toBeTruthy();
-    expect(mounted.q('[data-test=page-io-menu-export]')).toBeTruthy();
-    expect(mounted.q('[data-test=import-shell-stub]')?.getAttribute('data-model')).toBe(
+    expect(mounted.q('[data-testid=page-io-menu-import]')).toBeTruthy();
+    expect(mounted.q('[data-testid=page-io-menu-export]')).toBeTruthy();
+    expect(mounted.q('[data-testid=import-shell-stub]')?.getAttribute('data-model')).toBe(
       'partner.Partner'
     );
-    expect(mounted.q('[data-test=export-shell-stub]')?.getAttribute('data-model')).toBe(
+    expect(mounted.q('[data-testid=export-shell-stub]')?.getAttribute('data-model')).toBe(
       'partner.Partner'
     );
-    expect(mounted.q('[data-test=import-shell-stub]')?.getAttribute('data-hint')).toBe('hint');
+    expect(mounted.q('[data-testid=import-shell-stub]')?.getAttribute('data-hint')).toBe('hint');
 
-    mounted.click('[data-test=page-io-menu-import]');
+    mounted.click('[data-testid=page-io-menu-import]');
     await flushPromises();
-    expect(mounted.q('[data-test=import-shell-stub]')?.getAttribute('data-open')).toBe('true');
+    expect(mounted.q('[data-testid=import-shell-stub]')?.getAttribute('data-open')).toBe('true');
 
-    mounted.click('[data-test=emit-imported]');
+    mounted.click('[data-testid=emit-imported]');
     await flushPromises();
     expect(refresh.calls.length).toBe(1);
     expect(onImported.calls.length).toBe(1);
@@ -293,10 +293,10 @@ describe('OPageIoMenu', () => {
       actionExport: true,
     });
     await flushPromises();
-    expect(mounted.q('[data-test=import-shell-stub]')).toBeFalsy();
-    expect(mounted.q('[data-test=export-shell-stub]')).toBeFalsy();
-    expect(mounted.q('[data-test=page-io-menu-import]')).toBeFalsy();
-    expect(mounted.q('[data-test=page-io-menu-export]')).toBeFalsy();
+    expect(mounted.q('[data-testid=import-shell-stub]')).toBeFalsy();
+    expect(mounted.q('[data-testid=export-shell-stub]')).toBeFalsy();
+    expect(mounted.q('[data-testid=page-io-menu-import]')).toBeFalsy();
+    expect(mounted.q('[data-testid=page-io-menu-export]')).toBeFalsy();
     mounted.unmount();
   });
 
@@ -307,8 +307,8 @@ describe('OPageIoMenu', () => {
       store: { storeId: 's1', state: { result: { total: 1 } } },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=import-shell-stub]')).toBeFalsy();
-    expect(mounted.q('[data-test=export-shell-stub]')).toBeFalsy();
+    expect(mounted.q('[data-testid=import-shell-stub]')).toBeFalsy();
+    expect(mounted.q('[data-testid=export-shell-stub]')).toBeFalsy();
     mounted.unmount();
   });
 
@@ -340,8 +340,8 @@ describe('OPageIoMenu', () => {
       stubs: { Setting: true },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=export-shell-stub]')?.getAttribute('data-list-id')).toBe('a');
-    mounted.click('[data-test=emit-imported]');
+    expect(mounted.q('[data-testid=export-shell-stub]')?.getAttribute('data-list-id')).toBe('a');
+    mounted.click('[data-testid=emit-imported]');
     await flushPromises();
     expect(refresh.calls.length).toBe(1);
     mounted.unmount();
@@ -354,11 +354,11 @@ describe('OPageIoMenu', () => {
       store,
     });
     await flushPromises();
-    expect(mounted.q('[data-test=page-io-menu-export]')).toBeTruthy();
-    expect(mounted.q('[data-test=page-io-menu-import]')).toBeFalsy();
-    mounted.click('[data-test=page-io-menu-export]');
+    expect(mounted.q('[data-testid=page-io-menu-export]')).toBeTruthy();
+    expect(mounted.q('[data-testid=page-io-menu-import]')).toBeFalsy();
+    mounted.click('[data-testid=page-io-menu-export]');
     await flushPromises();
-    expect(mounted.q('[data-test=export-shell-stub]')?.getAttribute('data-open')).toBe('true');
+    expect(mounted.q('[data-testid=export-shell-stub]')?.getAttribute('data-open')).toBe('true');
     mounted.unmount();
   });
 
@@ -369,9 +369,9 @@ describe('OPageIoMenu', () => {
       store,
     });
     await flushPromises();
-    expect(mounted.q('[data-test=page-io-menu-import]')).toBeTruthy();
-    expect(mounted.q('[data-test=page-io-menu-export]')).toBeFalsy();
-    expect(mounted.q('[data-test=export-shell-stub]')).toBeFalsy();
+    expect(mounted.q('[data-testid=page-io-menu-import]')).toBeTruthy();
+    expect(mounted.q('[data-testid=page-io-menu-export]')).toBeFalsy();
+    expect(mounted.q('[data-testid=export-shell-stub]')).toBeFalsy();
     mounted.unmount();
   });
 
@@ -386,7 +386,7 @@ describe('OPageIoMenu', () => {
       { on: { onImported } }
     );
     await flushPromises();
-    mounted.click('[data-test=emit-imported]');
+    mounted.click('[data-testid=emit-imported]');
     await flushPromises();
     expect(onImported.calls.length).toBe(1);
     mounted.unmount();
