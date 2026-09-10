@@ -400,6 +400,7 @@ func (h *Host) bindWaitForResponse() func(ctx *quickjs.Context, this *quickjs.Va
 					}
 					payload := map[string]any{
 						"status":     res.Status,
+						"statusText": http.StatusText(int(res.Status)),
 						"headers":    res.Headers,
 						"bodyBase64": base64.StdEncoding.EncodeToString(res.Body),
 						"url":        res.URL,
@@ -625,6 +626,7 @@ func (h *Host) bindFetch() func(ctx *quickjs.Context, this *quickjs.Value, args 
 			}
 			payload := map[string]any{
 				"status":     resp.StatusCode,
+				"statusText": http.StatusText(resp.StatusCode),
 				"headers":    headers,
 				"bodyBase64": base64.StdEncoding.EncodeToString(body),
 				"url":        requestURL,

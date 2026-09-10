@@ -107,11 +107,17 @@ func isWebsocketURLTimeout(err error) bool {
 // startBrowserOnce launches one Chromium attempt; tests may override to simulate flakes.
 var startBrowserOnce = startOnce
 
-func startOnce(ctx context.Context, execPath string, headless bool) (*Session, error) {
+func startOnce(ctx context.Context, execPath string, headless bool) (s *Session, err error) {
 	udir, err := mkdirTemp("", "choysum-e2e-chrome-*")
 	if err != nil {
 		return nil, fmt.Errorf("cdp: user-data-dir: %w", err)
 	}
+	// On failure Session.Close is never called; remove the orphaned profile dir.
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(udir)
+		}
+	}()
 	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.ExecPath(execPath),
 		chromedp.UserDataDir(udir),
@@ -131,10 +137,9 @@ func startOnce(ctx context.Context, execPath string, headless bool) (*Session, e
 	// on first browser boot. A watcher still closes the session when parent ctx ends.
 	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), allocOpts...)
 	browserCtx, cancel := chromedp.NewContext(allocCtx)
-	if err := chromedp.Run(browserCtx, chromedp.Navigate("about:blank")); err != nil {
+	if err = chromedp.Run(browserCtx, chromedp.Navigate("about:blank")); err != nil {
 		cancel()
 		allocCancel()
-		_ = os.RemoveAll(udir)
 		return nil, fmt.Errorf("cdp: start browser (%s): %w", execPath, err)
 	}
 	// Arm parent-ctx watcher only after the first navigation succeeds so an
