@@ -223,6 +223,72 @@ func TestBuildE2EBundleErrorPaths(t *testing.T) {
 	}
 }
 
+func TestBuildE2EBundleConnectProtobuf(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
+
+	runDir := t.TempDir()
+	genWeb := filepath.Join(runDir, ".choysum", "generated", "web", "auth", "pb")
+	if err := os.MkdirAll(genWeb, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(genWeb, "auth_pb.ts"), []byte(`
+export const User = { typeName: 'auth.User' };
+export const UserSwitchCompanyScopeReqSchema = { typeName: 'auth.UserSwitchCompanyScopeReq' };
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := t.TempDir()
+	spec := filepath.Join(dir, "connect.spec.ts")
+	if err := os.WriteFile(spec, []byte(`
+import { test } from '@choysum/e2e';
+import { createClient } from '@connectrpc/connect';
+import { createGrpcWebTransport } from '@connectrpc/connect-web';
+import { create } from '@bufbuild/protobuf';
+import { User, UserSwitchCompanyScopeReqSchema } from './.generated/auth_pb.ts';
+test('connect', async () => {
+  (globalThis as any).__e2e_connect_keep = {
+    createClient,
+    createGrpcWebTransport,
+    create,
+    User,
+    UserSwitchCompanyScopeReqSchema,
+  };
+});
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(dir, "entry.js")
+	if err := WriteE2EEntry(entry, []string{spec}); err != nil {
+		t.Fatal(err)
+	}
+	cacheDir := t.TempDir()
+	res, err := BuildE2EBundle(E2EBundleOptions{
+		RepoRoot:   repoRoot,
+		EntryPath:  entry,
+		Outfile:    filepath.Join(dir, "bundle.js"),
+		WorkingDir: dir,
+		RunDir:     runDir,
+		CacheDir:   cacheDir,
+	})
+	if err != nil {
+		t.Fatalf("BuildE2EBundle connect: %v", err)
+	}
+	if res == nil || res.JS == "" {
+		t.Fatal("empty connect bundle")
+	}
+	if !strings.Contains(res.JS, "createClient") {
+		t.Fatalf("bundle missing createClient from @connectrpc/connect")
+	}
+	if !strings.Contains(res.JS, "createGrpcWebTransport") {
+		t.Fatalf("bundle missing createGrpcWebTransport from @connectrpc/connect-web")
+	}
+}
+
 func TestBuildE2EBundleExtensionlessPbImport(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {

@@ -138,12 +138,72 @@ func TestWantHeadless(t *testing.T) {
 	}
 }
 
+func TestIsWebsocketURLTimeout(t *testing.T) {
+	if isWebsocketURLTimeout(nil) {
+		t.Fatal("nil")
+	}
+	if !isWebsocketURLTimeout(errors.New("cdp: start browser (/usr/bin/google-chrome): websocket url timeout reached")) {
+		t.Fatal("expected match")
+	}
+	if isWebsocketURLTimeout(errors.New("cdp: start browser: context canceled")) {
+		t.Fatal("non-timeout should not match")
+	}
+}
+
+func TestStartRetryCancelDuringBackoff(t *testing.T) {
+	old := startBrowserOnce
+	n := 0
+	startBrowserOnce = func(ctx context.Context, execPath string, headless bool) (*Session, error) {
+		n++
+		return nil, errors.New("cdp: start browser (/x): websocket url timeout reached")
+	}
+	t.Cleanup(func() { startBrowserOnce = old })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := Start(ctx, StartOptions{ExecPath: "/bin/true"})
+	if err == nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v (n=%d)", err, n)
+	}
+	if n != 1 {
+		t.Fatalf("expected one start attempt before cancel, got %d", n)
+	}
+}
+
+func TestStartRetryExhaustWebsocketTimeouts(t *testing.T) {
+	old := startBrowserOnce
+	n := 0
+	startBrowserOnce = func(ctx context.Context, execPath string, headless bool) (*Session, error) {
+		n++
+		return nil, errors.New("cdp: start browser (/x): websocket url timeout reached")
+	}
+	t.Cleanup(func() { startBrowserOnce = old })
+
+	_, err := Start(context.Background(), StartOptions{ExecPath: "/bin/true"})
+	if err == nil || !strings.Contains(err.Error(), "websocket url timeout") {
+		t.Fatalf("expected websocket timeout after retries, got %v", err)
+	}
+	if n != 3 {
+		t.Fatalf("expected 3 attempts, got %d", n)
+	}
+}
+
 func TestStartNilContextHeadless(t *testing.T) {
-	execPath := requireChromium(t)
 	t.Setenv("CHOYSUM_E2E_HEADED", "0")
-	session, err := Start(nil, StartOptions{ExecPath: execPath})
-	if err != nil {
-		t.Fatalf("Start: %v", err)
+	cands := chromiumCandidates()
+	if len(cands) == 0 {
+		t.Skip("chromium unavailable")
+	}
+	var session *Session
+	var lastErr error
+	for _, execPath := range cands {
+		session, lastErr = Start(nil, StartOptions{ExecPath: execPath})
+		if lastErr == nil {
+			break
+		}
+	}
+	if lastErr != nil {
+		t.Skipf("chromium start failed: %v", lastErr)
 	}
 	defer session.Close()
 	if !session.Headless() {

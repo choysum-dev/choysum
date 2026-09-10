@@ -14,14 +14,18 @@ declare module '@playwright/test' {
     click(...args: any[]): Promise<any>;
     fill(value: string, ...args: any[]): Promise<any>;
     first(): Locator;
+    last(): Locator;
+    nth(...args: any[]): Locator;
     locator(...args: any[]): Locator;
     getByRole(...args: any[]): Locator;
     getByText(...args: any[]): Locator;
     getByPlaceholder(...args: any[]): Locator;
     getByTestId(...args: any[]): Locator;
     filter(...args: any[]): Locator;
-    nth(...args: any[]): Locator;
     count(...args: any[]): Promise<number>;
+    textContent(): Promise<string | null>;
+    getAttribute(name: string): Promise<string | null>;
+    isEnabled(): Promise<boolean>;
     allTextContents(): Promise<string[]>;
     [key: string]: any;
   };
@@ -30,6 +34,7 @@ declare module '@playwright/test' {
   export type Page = {
     __choysum_e2e_page__?: boolean;
     goto(...args: any[]): Promise<any>;
+    reload(...args: any[]): Promise<any>;
     locator(...args: any[]): Locator;
     getByPlaceholder(...args: any[]): Locator;
     getByText(...args: any[]): Locator;

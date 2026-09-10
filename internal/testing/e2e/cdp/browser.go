@@ -65,6 +65,7 @@ func WantHeadless(opts StartOptions) bool {
 }
 
 // Start launches Chromium via chromedp ExecAllocator.
+// Retries a few times on DevTools websocket readiness flakes common in CI.
 func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -79,10 +80,44 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 	}
 	headless := WantHeadless(opts)
 
+	const attempts = 3
+	var lastErr error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		session, err := startBrowserOnce(ctx, execPath, headless)
+		if err == nil {
+			return session, nil
+		}
+		lastErr = err
+		if !isWebsocketURLTimeout(err) || attempt == attempts {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(attempt) * 250 * time.Millisecond):
+		}
+	}
+	return nil, lastErr
+}
+
+func isWebsocketURLTimeout(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "websocket url timeout")
+}
+
+// startBrowserOnce launches one Chromium attempt; tests may override to simulate flakes.
+var startBrowserOnce = startOnce
+
+func startOnce(ctx context.Context, execPath string, headless bool) (s *Session, err error) {
 	udir, err := mkdirTemp("", "choysum-e2e-chrome-*")
 	if err != nil {
 		return nil, fmt.Errorf("cdp: user-data-dir: %w", err)
 	}
+	// On failure Session.Close is never called; remove the orphaned profile dir.
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(udir)
+		}
+	}()
 	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.ExecPath(execPath),
 		chromedp.UserDataDir(udir),
@@ -92,16 +127,19 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 		chromedp.Flag("disable-dev-shm-usage", true),
 		chromedp.Flag("disable-extensions", true),
 		chromedp.Flag("remote-allow-origins", "*"),
+		chromedp.Flag("disable-crash-reporter", true),
+		chromedp.Flag("disable-breakpad", true),
+		// Default is 20s; CI runners can take longer before DevTools prints the WS URL.
+		chromedp.WSURLReadTimeout(60*time.Second),
 	)
 	// Allocator uses Background so a parent deadline that already fired during
 	// long install/readyz does not surface as a misleading "context canceled"
 	// on first browser boot. A watcher still closes the session when parent ctx ends.
 	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), allocOpts...)
 	browserCtx, cancel := chromedp.NewContext(allocCtx)
-	if err := chromedp.Run(browserCtx, chromedp.Navigate("about:blank")); err != nil {
+	if err = chromedp.Run(browserCtx, chromedp.Navigate("about:blank")); err != nil {
 		cancel()
 		allocCancel()
-		_ = os.RemoveAll(udir)
 		return nil, fmt.Errorf("cdp: start browser (%s): %w", execPath, err)
 	}
 	// Arm parent-ctx watcher only after the first navigation succeeds so an

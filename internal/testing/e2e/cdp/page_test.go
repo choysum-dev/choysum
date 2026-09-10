@@ -35,6 +35,15 @@ func TestNilPageMethods(t *testing.T) {
 	if err := p.Goto("about:blank", "load"); err == nil {
 		t.Fatal("expected nil page error")
 	}
+	if err := p.Reload("load"); err == nil {
+		t.Fatal("expected nil page error")
+	}
+	if err := p.ClearOriginStorage("http://127.0.0.1:9"); err == nil {
+		t.Fatal("expected nil page error")
+	}
+	if err := p.ClearOriginStorage(""); err == nil {
+		t.Fatal("expected nil page error for empty url too")
+	}
 	if err := p.Click("#x"); err == nil {
 		t.Fatal("expected nil page error")
 	}
@@ -277,6 +286,18 @@ func TestPageOpsWithChrome(t *testing.T) {
 	if err := page.Goto(srv.URL, "bogus"); err == nil || !strings.Contains(err.Error(), "unsupported waitUntil") {
 		t.Fatalf("expected unsupported waitUntil, got %v", err)
 	}
+	if err := page.Reload("load"); err != nil {
+		t.Fatalf("Reload load: %v", err)
+	}
+	if err := page.Reload("domcontentloaded"); err != nil {
+		t.Fatalf("Reload domcontentloaded: %v", err)
+	}
+	if err := page.Reload(""); err != nil {
+		t.Fatalf("Reload default wait: %v", err)
+	}
+	if err := page.Reload("bogus"); err == nil || !strings.Contains(err.Error(), "unsupported waitUntil") {
+		t.Fatalf("expected unsupported Reload waitUntil, got %v", err)
+	}
 
 	href, err := page.URL()
 	if err != nil || !strings.HasPrefix(href, srv.URL) {
@@ -357,6 +378,134 @@ func TestPageOpsWithChrome(t *testing.T) {
 		if got != `"a\"b"` {
 			t.Fatalf("jsonQuote: %q", got)
 		}
+	}
+}
+
+func TestClearOriginStorageValidation(t *testing.T) {
+	// URL validation runs before chromedp; no browser required.
+	page := &Page{ctx: context.Background()}
+	if err := page.ClearOriginStorage(""); err == nil || !strings.Contains(err.Error(), "empty origin URL") {
+		t.Fatalf("empty: %v", err)
+	}
+	if err := page.ClearOriginStorage("   "); err == nil || !strings.Contains(err.Error(), "empty origin URL") {
+		t.Fatalf("whitespace: %v", err)
+	}
+	if err := page.ClearOriginStorage("http://"); err == nil || !strings.Contains(err.Error(), "scheme/host") {
+		t.Fatalf("missing host: %v", err)
+	}
+	if err := page.ClearOriginStorage("/relative"); err == nil || !strings.Contains(err.Error(), "scheme/host") {
+		t.Fatalf("relative: %v", err)
+	}
+	if err := page.ClearOriginStorage("http://[::1"); err == nil || !strings.Contains(err.Error(), "parse origin URL") {
+		t.Fatalf("parse: %v", err)
+	}
+}
+
+func TestClearOriginStorage(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>ok</body></html>`))
+	}))
+	defer srv.Close()
+
+	if err := page.Goto(srv.URL, "load"); err != nil {
+		t.Fatalf("Goto: %v", err)
+	}
+	if _, err := page.Evaluate(`(() => { localStorage.setItem('a','1'); sessionStorage.setItem('b','2'); return true; })()`); err != nil {
+		t.Fatalf("set storage: %v", err)
+	}
+	if err := page.ClearOriginStorage(srv.URL + "/any"); err != nil {
+		t.Fatalf("ClearOriginStorage: %v", err)
+	}
+	out, err := page.Evaluate(`({a: localStorage.getItem('a'), b: sessionStorage.getItem('b')})`)
+	if err != nil {
+		t.Fatalf("read storage: %v", err)
+	}
+	if !strings.Contains(out, `"a":null`) || !strings.Contains(out, `"b":null`) {
+		t.Fatalf("expected cleared storage, got %s", out)
+	}
+}
+
+func TestClearOriginStorageLocationError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	page := &Page{ctx: ctx}
+	err := page.ClearOriginStorage("http://127.0.0.1:9")
+	if err == nil || !strings.Contains(err.Error(), "current location") {
+		t.Fatalf("expected current location error, got %v", err)
+	}
+}
+
+func TestClearOriginStorageNavigateError(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+	// Stay on about:blank so ClearOriginStorage attempts to navigate to a dead port.
+	err = page.ClearOriginStorage("http://127.0.0.1:9")
+	if err == nil || !strings.Contains(err.Error(), "navigate for clearOriginStorage") {
+		t.Fatalf("expected navigate error, got %v", err)
+	}
+}
+
+func TestClearOriginStorageCrossOriginReject(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	srvA := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>a</body></html>`))
+	}))
+	defer srvA.Close()
+	srvB := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>b</body></html>`))
+	}))
+	defer srvB.Close()
+
+	if err := page.Goto(srvA.URL, "load"); err != nil {
+		t.Fatalf("Goto A: %v", err)
+	}
+	err = page.ClearOriginStorage(srvB.URL)
+	if err == nil || !strings.Contains(err.Error(), "active origin") {
+		t.Fatalf("expected active origin mismatch, got %v", err)
+	}
+}
+
+func TestClearOriginStorageFromAboutBlank(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body>blank-target</body></html>`))
+	}))
+	defer srv.Close()
+
+	// NewPage leaves about:blank; ClearOriginStorage should navigate then clear.
+	if err := page.ClearOriginStorage(srv.URL); err != nil {
+		t.Fatalf("ClearOriginStorage from about:blank: %v", err)
+	}
+	href, err := page.URL()
+	if err != nil || !strings.HasPrefix(href, srv.URL) {
+		t.Fatalf("expected navigation to target origin, href=%q err=%v", href, err)
 	}
 }
 

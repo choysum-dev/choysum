@@ -28,10 +28,12 @@ func chromiumCandidates() []string {
 		seen[p] = true
 		out = append(out, p)
 	}
-	if p, err := chromiumResolvePath(); err == nil {
+	// Prefer system Chrome for local unit tests: pinned CfT caches can crash on
+	// some macOS hosts and surface "unexpected quit" dialogs during go test.
+	for _, p := range chromiumSystemPaths() {
 		add(p)
 	}
-	for _, p := range chromiumSystemPaths() {
+	if p, err := chromiumResolvePath(); err == nil {
 		add(p)
 	}
 	return out
@@ -47,7 +49,7 @@ func requireChromium(t *testing.T) string {
 	return cands[0]
 }
 
-// startTestSession launches headless Chrome, trying ResolveChromiumPath then system candidates.
+// startTestSession launches headless Chrome, trying system Chrome then ResolveChromiumPath.
 // Skips when no binary can start (broken CfT caches, sandboxes, etc.).
 func startTestSession(t *testing.T) *Session {
 	t.Helper()

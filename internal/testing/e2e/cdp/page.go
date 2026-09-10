@@ -7,13 +7,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/runtime"
+	"github.com/chromedp/cdproto/storage"
 	"github.com/chromedp/chromedp"
 )
 
@@ -49,9 +52,69 @@ func (s *Session) NewPage() (*Page, error) {
 	if err := enableNetworkForPage(p); err != nil {
 		return nil, err
 	}
+	// Drop cookies so a prior login cannot skip the login form on the next test.
+	_ = chromedp.Run(p.ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+		return network.ClearBrowserCookies().Do(ctx)
+	}))
 	// Reset document between tests.
 	_ = chromedp.Run(p.ctx, chromedp.Navigate("about:blank"))
 	return p, nil
+}
+
+// ClearOriginStorage clears cookies/local/session storage for originURL's origin.
+// Call between tests when the same browser context is reused (workers=1).
+func (p *Page) ClearOriginStorage(originURL string) error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	originURL = strings.TrimSpace(originURL)
+	if originURL == "" {
+		return fmt.Errorf("cdp: empty origin URL")
+	}
+	u, err := url.Parse(originURL)
+	if err != nil {
+		return fmt.Errorf("cdp: parse origin URL: %w", err)
+	}
+	if u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("cdp: origin URL missing scheme/host")
+	}
+	origin := u.Scheme + "://" + u.Host
+
+	var href string
+	if err := chromedp.Run(p.ctx, chromedp.Location(&href)); err != nil {
+		return fmt.Errorf("cdp: current location: %w", err)
+	}
+	curOrigin := ""
+	if cu, err := url.Parse(href); err == nil && cu.Scheme != "" && cu.Host != "" {
+		curOrigin = cu.Scheme + "://" + cu.Host
+	}
+	if curOrigin != "" && curOrigin != origin {
+		return fmt.Errorf("cdp: clearOriginStorage active origin %q != requested %q", curOrigin, origin)
+	}
+	if curOrigin == "" {
+		// about:blank / data: — open the target origin so sessionStorage clear applies there.
+		if err := chromedp.Run(p.ctx,
+			chromedp.Navigate(origin+"/"),
+			chromedp.WaitReady("body", chromedp.ByQuery),
+		); err != nil {
+			return fmt.Errorf("cdp: navigate for clearOriginStorage: %w", err)
+		}
+	}
+
+	return chromedp.Run(p.ctx,
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			return network.ClearBrowserCookies().Do(ctx)
+		}),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// CDP ClearDataForOrigin has no session_storage type; clear that via JS below.
+			return storage.ClearDataForOrigin(origin, "cookies,local_storage,indexeddb,cache_storage").Do(ctx)
+		}),
+		chromedp.Evaluate(`(() => {
+  try { sessionStorage.clear(); } catch (e) {}
+  try { localStorage.clear(); } catch (e) {}
+  return true;
+})()`, nil),
+	)
 }
 
 // ScreenshotCurrent writes a PNG of the session's current tab without navigating away.
@@ -99,21 +162,41 @@ func (p *Page) Goto(url string, waitUntil string) error {
 	if p == nil {
 		return fmt.Errorf("cdp: nil page")
 	}
+	actions, err := waitUntilActions(waitUntil, chromedp.Navigate(url))
+	if err != nil {
+		return err
+	}
+	return chromedp.Run(p.ctx, actions...)
+}
+
+// Reload reloads the current document. waitUntil matches Goto.
+func (p *Page) Reload(waitUntil string) error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	actions, err := waitUntilActions(waitUntil, chromedp.Reload())
+	if err != nil {
+		return err
+	}
+	return chromedp.Run(p.ctx, actions...)
+}
+
+func waitUntilActions(waitUntil string, nav chromedp.Action) ([]chromedp.Action, error) {
 	waitUntil = strings.ToLower(strings.TrimSpace(waitUntil))
 	if waitUntil == "" {
 		waitUntil = "load"
 	}
-	actions := []chromedp.Action{chromedp.Navigate(url)}
+	actions := []chromedp.Action{nav}
 	switch waitUntil {
 	case "domcontentloaded":
 		actions = append(actions, chromedp.WaitReady("body", chromedp.ByQuery))
 	case "load", "networkidle":
 		actions = append(actions, chromedp.WaitReady("body", chromedp.ByQuery))
-		// chromedp.Navigate already waits for load event by default.
+		// Navigate/Reload already wait for the load event by default.
 	default:
-		return fmt.Errorf("cdp: unsupported waitUntil %q", waitUntil)
+		return nil, fmt.Errorf("cdp: unsupported waitUntil %q", waitUntil)
 	}
-	return chromedp.Run(p.ctx, actions...)
+	return actions, nil
 }
 
 // Click clicks the first element matching css (DOM click for Vue handlers).
@@ -122,6 +205,8 @@ func (p *Page) Click(css string) error {
 		return fmt.Errorf("cdp: nil page")
 	}
 	// Pass selector via JSON literal (not single-quoted) to avoid quote-break issues.
+	// Do not WaitVisible here: Element Plus popper/dropdown nodes are often
+	// "invisible" to chromedp while still clickable; callers use expect.toBeVisible.
 	script := fmt.Sprintf(`(() => {
   const css = %s;
   const el = document.querySelector(css);
@@ -129,10 +214,7 @@ func (p *Page) Click(css string) error {
   el.click();
   return true;
 })()`, jsonQuote(css))
-	return chromedp.Run(p.ctx,
-		chromedp.WaitVisible(css, chromedp.ByQuery),
-		chromedp.Evaluate(script, nil),
-	)
+	return chromedp.Run(p.ctx, chromedp.Evaluate(script, nil))
 }
 
 // Fill focuses and sets text so Vue v-model / Element Plus pick up the value.
@@ -157,10 +239,7 @@ func (p *Page) Fill(css string, text string) error {
   el.dispatchEvent(new Event('change', { bubbles: true }));
   return true;
 })()`, jsonQuote(css), jsonQuote(text))
-	return chromedp.Run(p.ctx,
-		chromedp.WaitVisible(css, chromedp.ByQuery),
-		chromedp.Evaluate(script, nil),
-	)
+	return chromedp.Run(p.ctx, chromedp.Evaluate(script, nil))
 }
 
 // Evaluate runs js in the page and returns a JSON string of the result.

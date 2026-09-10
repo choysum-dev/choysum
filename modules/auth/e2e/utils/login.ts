@@ -13,6 +13,21 @@ import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
  */
 export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void> {
   const runOnce = async () => {
+    // Drop prior test auth from the shared browser profile (workers=1).
+    await page.goto(`${baseURL}/web/login`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      try {
+        localStorage.clear();
+      } catch {
+        // ignore
+      }
+      try {
+        sessionStorage.clear();
+      } catch {
+        // ignore
+      }
+    });
+
     await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
 
     const username = page.getByPlaceholder(/username/i);
