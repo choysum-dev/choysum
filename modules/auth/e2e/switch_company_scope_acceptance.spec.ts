@@ -7,7 +7,7 @@ import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
 import { loginAsE2EAdmin } from './utils/login.ts';
-import { waitForGrpcWebUnaryOk } from './utils/grpcweb.ts';
+import { switchCompanyViaUI } from './utils/switchCompany.ts';
 
 type AuthPbModule = {
   User: any;
@@ -243,46 +243,6 @@ async function waitForServerLogContains(needle: string, timeoutMs = 10_000): Pro
       .catch(() => '');
   })();
   throw new Error(`timeout waiting for server.log to contain: ${needle}\n--- server.log tail ---\n${await tail}`);
-}
-
-async function switchCompanyViaUI(): Promise<void> {
-  const trigger = page.getByTestId('company-switch-trigger');
-  await expect(trigger).toBeVisible();
-
-  await trigger.click();
-  await page.getByTestId('company-active-select').click();
-
-  await expect
-    .poll(
-      async () =>
-        page.evaluate(() => {
-          const opts = Array.from(
-            document.querySelectorAll('.el-select-dropdown li, [role="option"]')
-          ) as HTMLElement[];
-          if (opts.length < 2) return false;
-          const target =
-            opts.find(o => o.getAttribute('aria-selected') !== 'true') || opts[opts.length - 1];
-          target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-          return true;
-        }),
-      { timeout: 10_000 }
-    )
-    .toBe(true);
-
-  const applyButton = page.getByTestId('company-switch-apply');
-  await expect.poll(async () => await applyButton.isEnabled(), { timeout: 15_000 }).toBe(true);
-  await expect(page.getByTestId('company-switch-hint')).toHaveCount(0);
-
-  const switchOk = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', { timeoutMs: 30_000 });
-  await applyButton.click();
-  try {
-    await switchOk;
-  } catch {
-    // One retry: Element Plus sometimes swallows the first apply click.
-    const retryOk = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', { timeoutMs: 30_000 });
-    await applyButton.click();
-    await retryOk;
-  }
 }
 
 async function discoverTwoCompanyIdsByUISwitch(): Promise<{ a: string; b: string }> {
