@@ -581,10 +581,8 @@ return 'armed';
 
 func startPagehostChrome(t *testing.T) *cdp.Session {
 	t.Helper()
+	// Prefer system Chrome first: pinned CfT caches can crash on some macOS hosts.
 	cands := []string{}
-	if p, err := cdp.ResolveChromiumPath(); err == nil {
-		cands = append(cands, p)
-	}
 	for _, p := range []string{
 		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 		"/Applications/Chromium.app/Contents/MacOS/Chromium",
@@ -593,6 +591,18 @@ func startPagehostChrome(t *testing.T) *cdp.Session {
 		"/usr/bin/chromium-browser",
 	} {
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			cands = append(cands, p)
+		}
+	}
+	if p, err := cdp.ResolveChromiumPath(); err == nil {
+		dup := false
+		for _, existing := range cands {
+			if existing == p {
+				dup = true
+				break
+			}
+		}
+		if !dup {
 			cands = append(cands, p)
 		}
 	}
@@ -614,36 +624,7 @@ func startPagehostChrome(t *testing.T) *cdp.Session {
 }
 
 func TestInstallDriveHostWithChrome(t *testing.T) {
-	cands := []string{}
-	if p, err := cdp.ResolveChromiumPath(); err == nil {
-		cands = append(cands, p)
-	}
-	for _, p := range []string{
-		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"/Applications/Chromium.app/Contents/MacOS/Chromium",
-		"/usr/bin/google-chrome",
-		"/usr/bin/chromium",
-		"/usr/bin/chromium-browser",
-	} {
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			cands = append(cands, p)
-		}
-	}
-	if len(cands) == 0 {
-		t.Skip("chromium unavailable")
-	}
-	headless := true
-	var session *cdp.Session
-	var lastErr error
-	for _, path := range cands {
-		session, lastErr = cdp.Start(nil, cdp.StartOptions{ExecPath: path, Headless: &headless})
-		if lastErr == nil {
-			break
-		}
-	}
-	if session == nil {
-		t.Skipf("chromium start failed: %v", lastErr)
-	}
+	session := startPagehostChrome(t)
 	defer session.Close()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1178,5 +1159,56 @@ return JSON.parse(respRaw);
 	}
 	if nilReq.Status != 200 || nilReq.URL != srv.URL {
 		t.Fatalf("nil request fallback: %+v", nilReq)
+	}
+
+	// Multi-value response headers are joined with ", ".
+	hostHTTPClient = &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			h := make(http.Header)
+			h["X-Multi"] = []string{"a", "b"}
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader("ok")),
+				Header:     h,
+				Request:    r,
+			}, nil
+		}),
+	}
+	raw = awaitHost(t, qjs, `
+const respRaw = await globalThis.__choysum_e2e_host__.fetch(`+jsonQuote(srv.URL)+`, '{}');
+return JSON.parse(respRaw);
+`)
+	hostHTTPClient = oldClient
+	var multi struct {
+		Headers map[string]string `json:"headers"`
+	}
+	if err := json.Unmarshal([]byte(raw), &multi); err != nil {
+		t.Fatalf("parse multi %s: %v", raw, err)
+	}
+	gotMulti := multi.Headers["X-Multi"]
+	if gotMulti == "" {
+		for k, v := range multi.Headers {
+			if strings.EqualFold(k, "X-Multi") {
+				gotMulti = v
+				break
+			}
+		}
+	}
+	if gotMulti != "a, b" {
+		t.Fatalf("expected joined headers, got %#v", multi.Headers)
+	}
+
+	// null/undefined/missing origin args become empty via argString.
+	nullOrigin := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.clearOriginStorage(null)`)
+	if !strings.Contains(nullOrigin, "no active page") && !strings.Contains(nullOrigin, "empty origin") {
+		t.Fatalf("null origin: %s", nullOrigin)
+	}
+	undefOrigin := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.clearOriginStorage(undefined)`)
+	if !strings.Contains(undefOrigin, "no active page") && !strings.Contains(undefOrigin, "empty origin") {
+		t.Fatalf("undefined origin: %s", undefOrigin)
+	}
+	missingOrigin := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.clearOriginStorage()`)
+	if !strings.Contains(missingOrigin, "no active page") && !strings.Contains(missingOrigin, "empty origin") {
+		t.Fatalf("missing origin: %s", missingOrigin)
 	}
 }

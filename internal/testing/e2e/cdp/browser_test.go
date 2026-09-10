@@ -150,6 +150,44 @@ func TestIsWebsocketURLTimeout(t *testing.T) {
 	}
 }
 
+func TestStartRetryCancelDuringBackoff(t *testing.T) {
+	old := startBrowserOnce
+	n := 0
+	startBrowserOnce = func(ctx context.Context, execPath string, headless bool) (*Session, error) {
+		n++
+		return nil, errors.New("cdp: start browser (/x): websocket url timeout reached")
+	}
+	t.Cleanup(func() { startBrowserOnce = old })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := Start(ctx, StartOptions{ExecPath: "/bin/true"})
+	if err == nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v (n=%d)", err, n)
+	}
+	if n != 1 {
+		t.Fatalf("expected one start attempt before cancel, got %d", n)
+	}
+}
+
+func TestStartRetryExhaustWebsocketTimeouts(t *testing.T) {
+	old := startBrowserOnce
+	n := 0
+	startBrowserOnce = func(ctx context.Context, execPath string, headless bool) (*Session, error) {
+		n++
+		return nil, errors.New("cdp: start browser (/x): websocket url timeout reached")
+	}
+	t.Cleanup(func() { startBrowserOnce = old })
+
+	_, err := Start(context.Background(), StartOptions{ExecPath: "/bin/true"})
+	if err == nil || !strings.Contains(err.Error(), "websocket url timeout") {
+		t.Fatalf("expected websocket timeout after retries, got %v", err)
+	}
+	if n != 3 {
+		t.Fatalf("expected 3 attempts, got %d", n)
+	}
+}
+
 func TestStartNilContextHeadless(t *testing.T) {
 	t.Setenv("CHOYSUM_E2E_HEADED", "0")
 	cands := chromiumCandidates()

@@ -433,6 +433,30 @@ func TestClearOriginStorage(t *testing.T) {
 	}
 }
 
+func TestClearOriginStorageLocationError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	page := &Page{ctx: ctx}
+	err := page.ClearOriginStorage("http://127.0.0.1:9")
+	if err == nil || !strings.Contains(err.Error(), "current location") {
+		t.Fatalf("expected current location error, got %v", err)
+	}
+}
+
+func TestClearOriginStorageNavigateError(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+	// Stay on about:blank so ClearOriginStorage attempts to navigate to a dead port.
+	err = page.ClearOriginStorage("http://127.0.0.1:9")
+	if err == nil || !strings.Contains(err.Error(), "navigate for clearOriginStorage") {
+		t.Fatalf("expected navigate error, got %v", err)
+	}
+}
+
 func TestClearOriginStorageCrossOriginReject(t *testing.T) {
 	session := startTestSession(t)
 	page, err := session.NewPage()

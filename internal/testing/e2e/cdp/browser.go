@@ -83,13 +83,13 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 	const attempts = 3
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
-		session, err := startOnce(ctx, execPath, headless)
+		session, err := startBrowserOnce(ctx, execPath, headless)
 		if err == nil {
 			return session, nil
 		}
 		lastErr = err
 		if !isWebsocketURLTimeout(err) || attempt == attempts {
-			return nil, err
+			break
 		}
 		select {
 		case <-ctx.Done():
@@ -103,6 +103,9 @@ func Start(ctx context.Context, opts StartOptions) (*Session, error) {
 func isWebsocketURLTimeout(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "websocket url timeout")
 }
+
+// startBrowserOnce launches one Chromium attempt; tests may override to simulate flakes.
+var startBrowserOnce = startOnce
 
 func startOnce(ctx context.Context, execPath string, headless bool) (*Session, error) {
 	udir, err := mkdirTemp("", "choysum-e2e-chrome-*")
@@ -118,6 +121,8 @@ func startOnce(ctx context.Context, execPath string, headless bool) (*Session, e
 		chromedp.Flag("disable-dev-shm-usage", true),
 		chromedp.Flag("disable-extensions", true),
 		chromedp.Flag("remote-allow-origins", "*"),
+		chromedp.Flag("disable-crash-reporter", true),
+		chromedp.Flag("disable-breakpad", true),
 		// Default is 20s; CI runners can take longer before DevTools prints the WS URL.
 		chromedp.WSURLReadTimeout(60*time.Second),
 	)
