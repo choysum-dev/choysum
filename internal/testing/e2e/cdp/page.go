@@ -84,8 +84,14 @@ func (p *Page) ClearOriginStorage(originURL string) error {
 			return network.ClearBrowserCookies().Do(ctx)
 		}),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			return storage.ClearDataForOrigin(origin, "cookies,local_storage,session_storage,indexeddb,cache_storage").Do(ctx)
+			// CDP ClearDataForOrigin has no session_storage type; clear that via JS below.
+			return storage.ClearDataForOrigin(origin, "cookies,local_storage,indexeddb,cache_storage").Do(ctx)
 		}),
+		chromedp.Evaluate(`(() => {
+  try { sessionStorage.clear(); } catch (e) {}
+  try { localStorage.clear(); } catch (e) {}
+  return true;
+})()`, nil),
 	)
 }
 

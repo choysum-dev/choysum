@@ -954,3 +954,229 @@ return {before: Number(before), after: Number(after)};
 		t.Fatalf("expected at least 2 hits, got %d", hits)
 	}
 }
+
+func TestInstallReloadErrorAndClearOriginStorage(t *testing.T) {
+	session := startPagehostChrome(t)
+	defer session.Close()
+
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	if !engine.(*quickjsengine.QuickjsEngine).Ctx.BootstrapTimers() {
+		t.Fatal("BootstrapTimers failed")
+	}
+	host, err = Install(engine, session, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body><div id="x">ok</div></body></html>`))
+	}))
+	defer srv.Close()
+
+	raw := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.clearOriginStorage('http://127.0.0.1:9')`)
+	if !strings.Contains(raw, "no active page") {
+		t.Fatalf("clearOriginStorage no page: %s", raw)
+	}
+
+	raw = awaitHost(t, qjs, `
+const h = globalThis.__choysum_e2e_host__;
+await h.newPage();
+await h.goto(`+jsonQuote(srv.URL)+`, 'load');
+await h.clearOriginStorage(`+jsonQuote(srv.URL)+`);
+await h.evaluate("(() => { localStorage.setItem('k','v'); sessionStorage.setItem('s','1'); return 'set'; })()");
+await h.clearOriginStorage(`+jsonQuote(srv.URL+"/path")+`);
+const cleared = JSON.parse(await h.evaluate("({ls: localStorage.getItem('k'), ss: sessionStorage.getItem('s')})"));
+return cleared;
+`)
+	var cleared struct {
+		LS *string `json:"ls"`
+		SS *string `json:"ss"`
+	}
+	if err := json.Unmarshal([]byte(raw), &cleared); err != nil {
+		t.Fatalf("parse %s: %v", raw, err)
+	}
+	if cleared.LS != nil || cleared.SS != nil {
+		t.Fatalf("expected storage cleared, got %+v", cleared)
+	}
+
+	badReload := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.reload('bogus')`)
+	if !strings.Contains(badReload, "unsupported waitUntil") && !strings.Contains(badReload, `"ok":false`) {
+		t.Fatalf("reload bad waitUntil: %s", badReload)
+	}
+
+	badOrigin := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.clearOriginStorage('')`)
+	if !strings.Contains(badOrigin, "empty origin") && !strings.Contains(badOrigin, `"ok":false`) {
+		t.Fatalf("clearOriginStorage empty: %s", badOrigin)
+	}
+}
+
+type errReadCloser struct{}
+
+func (errReadCloser) Read([]byte) (int, error) { return 0, errors.New("read boom") }
+func (errReadCloser) Close() error             { return nil }
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestInstallFetchBranches(t *testing.T) {
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	host, err = Install(engine, nil, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("X-Method", r.Method)
+		_, _ = w.Write([]byte("echo:" + string(body)))
+	}))
+	defer srv.Close()
+
+	// Empty init JSON + default GET method.
+	raw := awaitHost(t, qjs, `
+const h = globalThis.__choysum_e2e_host__;
+const respRaw = await h.fetch(`+jsonQuote(srv.URL)+`, '');
+return JSON.parse(respRaw);
+`)
+	var got struct {
+		Status     int    `json:"status"`
+		BodyBase64 string `json:"bodyBase64"`
+	}
+	if err := json.Unmarshal([]byte(raw), &got); err != nil {
+		t.Fatalf("parse %s: %v", raw, err)
+	}
+	if got.Status != 200 {
+		t.Fatalf("empty init GET status=%d", got.Status)
+	}
+
+	// Default method when omitted + bodyBase64 payload.
+	b64 := base64.StdEncoding.EncodeToString([]byte("via-b64"))
+	raw = awaitHost(t, qjs, `
+const h = globalThis.__choysum_e2e_host__;
+const init = JSON.stringify({headers: {'X-T': '1'}, bodyBase64: `+jsonQuote(b64)+`});
+const respRaw = await h.fetch(`+jsonQuote(srv.URL)+`, init);
+return JSON.parse(respRaw);
+`)
+	if err := json.Unmarshal([]byte(raw), &got); err != nil {
+		t.Fatalf("parse b64 %s: %v", raw, err)
+	}
+	body, err := base64.StdEncoding.DecodeString(got.BodyBase64)
+	if err != nil || !strings.Contains(string(body), "via-b64") {
+		t.Fatalf("bodyBase64 echo=%q err=%v", body, err)
+	}
+
+	badB64 := awaitHostErr(t, qjs, `
+await globalThis.__choysum_e2e_host__.fetch(`+jsonQuote(srv.URL)+`, JSON.stringify({bodyBase64: '!!!'}))
+`)
+	if !strings.Contains(badB64, "bodyBase64") {
+		t.Fatalf("bad bodyBase64: %s", badB64)
+	}
+
+	badURL := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.fetch('', '{}')`)
+	if !strings.Contains(badURL, `"ok":false`) {
+		t.Fatalf("empty url: %s", badURL)
+	}
+
+	badMethod := awaitHostErr(t, qjs, `
+await globalThis.__choysum_e2e_host__.fetch(`+jsonQuote(srv.URL)+`, JSON.stringify({method: 'BAD METHOD'}))
+`)
+	if !strings.Contains(badMethod, `"ok":false`) {
+		t.Fatalf("bad method: %s", badMethod)
+	}
+
+	oldClient := hostHTTPClient
+	hostHTTPClient = &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return nil, errors.New("do boom")
+		}),
+	}
+	doErr := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.fetch(`+jsonQuote(srv.URL)+`, '{}')`)
+	hostHTTPClient = oldClient
+	if !strings.Contains(doErr, "do boom") {
+		t.Fatalf("Do error: %s", doErr)
+	}
+
+	hostHTTPClient = &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       errReadCloser{},
+				Header:     make(http.Header),
+				Request:    r,
+			}, nil
+		}),
+	}
+	readErr := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.fetch(`+jsonQuote(srv.URL)+`, '{}')`)
+	hostHTTPClient = oldClient
+	if !strings.Contains(readErr, "read boom") {
+		t.Fatalf("ReadAll error: %s", readErr)
+	}
+
+	hostHTTPClient = &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 204,
+				Body:       io.NopCloser(strings.NewReader("")),
+				Header:     make(http.Header),
+				// nil Request exercises fallback URL path
+			}, nil
+		}),
+	}
+	oldMarshal := jsonMarshal
+	jsonMarshal = func(v any) ([]byte, error) { return nil, errors.New("fetch marshal boom") }
+	marshalErr := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.fetch(`+jsonQuote(srv.URL)+`, '{}')`)
+	jsonMarshal = oldMarshal
+	hostHTTPClient = oldClient
+	if !strings.Contains(marshalErr, "fetch marshal boom") {
+		t.Fatalf("marshal error: %s", marshalErr)
+	}
+
+	// Successful response with nil Request still returns the requested URL.
+	hostHTTPClient = &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader("nil-req")),
+				Header:     http.Header{"X-Ok": []string{"1"}},
+			}, nil
+		}),
+	}
+	raw = awaitHost(t, qjs, `
+const respRaw = await globalThis.__choysum_e2e_host__.fetch(`+jsonQuote(srv.URL)+`, '{}');
+return JSON.parse(respRaw);
+`)
+	hostHTTPClient = oldClient
+	var nilReq struct {
+		Status int    `json:"status"`
+		URL    string `json:"url"`
+	}
+	if err := json.Unmarshal([]byte(raw), &nilReq); err != nil {
+		t.Fatalf("parse nil req %s: %v", raw, err)
+	}
+	if nilReq.Status != 200 || nilReq.URL != srv.URL {
+		t.Fatalf("nil request fallback: %+v", nilReq)
+	}
+}

@@ -59,7 +59,9 @@ test('auth: switch company → new TokenPair → refresh PermissionState → hea
 
   const switchOk = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', { timeoutMs: 30_000 });
   // Permission refresh is best-effort: some boots coalesce GetPermissionState.
-  const permObserved = waitForGrpcWebUnary(page, '/auth.User/GetPermissionState', { timeoutMs: 30_000 }).catch(() => null);
+  const permObserved = waitForGrpcWebUnary(page, '/auth.User/GetPermissionState', {
+    timeoutMs: 2_000,
+  }).catch(() => null);
 
   await applyButton.click();
 

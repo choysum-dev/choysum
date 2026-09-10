@@ -24,7 +24,8 @@ import (
 )
 
 // hostHTTPClient is used by host.fetch; tests may override.
-var hostHTTPClient = http.DefaultClient
+// Bounded so a hung endpoint cannot leave an e2e promise pending forever.
+var hostHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
 // ctxSchedule is Context.Schedule; tests may override to simulate a blocked job queue.
 var ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
@@ -621,11 +622,15 @@ func (h *Host) bindFetch() func(ctx *quickjs.Context, this *quickjs.Value, args 
 					headers[k] = vals[0]
 				}
 			}
+			requestURL := url
+			if resp.Request != nil && resp.Request.URL != nil {
+				requestURL = resp.Request.URL.String()
+			}
 			payload := map[string]any{
 				"status":     resp.StatusCode,
 				"headers":    headers,
 				"bodyBase64": base64.StdEncoding.EncodeToString(body),
-				"url":        resp.Request.URL.String(),
+				"url":        requestURL,
 			}
 			raw, err := jsonMarshal(payload)
 			if err != nil {

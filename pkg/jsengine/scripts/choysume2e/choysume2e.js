@@ -236,7 +236,7 @@ async function resolveToCSS(loc) {
       kind: 'css',
       value: css,
       index: loc.index,
-      hasText: null,
+      hasText: loc.hasText != null ? loc.hasText : null,
       parent: loc.parent,
     });
   }
@@ -304,10 +304,11 @@ async function resolveToCSS(loc) {
         }
         n = walker.nextNode();
       }
-      if (index < 0 || index >= matches.length) {
+      const resolved = index < 0 ? matches.length + index : index;
+      if (resolved < 0 || resolved >= matches.length) {
         throw new Error('getByText: no match for ' + needle + ' index=' + index);
       }
-      matches[index].setAttribute('data-choysum-e2e-id', stamp);
+      matches[resolved].setAttribute('data-choysum-e2e-id', stamp);
       return stamp;
     })()`);
     return '[data-choysum-e2e-id="' + JSON.parse(raw) + '"]';
@@ -380,10 +381,14 @@ async function resolveToCSS(loc) {
 }
 
 async function countLocator(loc) {
-  if (loc.kind === 'css' && loc.hasText == null && !loc.parent) {
+  if (loc.kind === 'css' && loc.hasText == null && !loc.parent && loc.index == null) {
     return await getHost().count(String(loc.value));
   }
   const texts = await collectMatchedElements(loc);
+  if (loc.index != null) {
+    const resolved = loc.index < 0 ? texts.length + loc.index : loc.index;
+    return resolved >= 0 && resolved < texts.length ? 1 : 0;
+  }
   return texts.length;
 }
 
@@ -512,6 +517,18 @@ async function collectMatchedElements(loc) {
       const accessibleName = (el) => {
         const labelled = el.getAttribute('aria-label');
         if (labelled) return String(labelled).trim();
+        const labelledBy = el.getAttribute('aria-labelledby');
+        if (labelledBy) {
+          const parts = String(labelledBy).split(/\\s+/).map(id => {
+            const n = document.getElementById(id);
+            return n ? (n.textContent || '').trim() : '';
+          }).filter(Boolean);
+          if (parts.length) return parts.join(' ');
+        }
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+          const v = el.getAttribute('value') || el.value || '';
+          if (v) return String(v).trim();
+        }
         return String(el.textContent || '').replace(/\\s+/g, ' ').trim();
       };
       const nameOk = (el) => {
@@ -1069,6 +1086,12 @@ function installFetchPolyfill() {
     const url = typeof input === 'string' ? input : String(input && input.url != null ? input.url : input);
     const method = (init && init.method) || (input && input.method) || 'GET';
     const headers = normalizeFetchHeaders((init && init.headers) || (input && input.headers));
+    const signal = init && init.signal ? init.signal : null;
+    if (signal && signal.aborted) {
+      const err = new Error('The operation was aborted');
+      err.name = 'AbortError';
+      throw err;
+    }
     const payload = { method: String(method), headers };
     const body = init && init.body != null ? init.body : null;
     if (body != null) {
@@ -1084,7 +1107,30 @@ function installFetchPolyfill() {
         payload.body = String(body);
       }
     }
-    const rawJSON = await getHost().fetch(url, JSON.stringify(payload));
+    const hostFetch = getHost().fetch(url, JSON.stringify(payload));
+    let rawJSON;
+    if (!signal) {
+      rawJSON = await hostFetch;
+    } else {
+      rawJSON = await new Promise((resolve, reject) => {
+        const onAbort = () => {
+          const err = new Error('The operation was aborted');
+          err.name = 'AbortError';
+          reject(err);
+        };
+        signal.addEventListener('abort', onAbort);
+        hostFetch.then(
+          (v) => {
+            signal.removeEventListener('abort', onAbort);
+            resolve(v);
+          },
+          (e) => {
+            signal.removeEventListener('abort', onAbort);
+            reject(e);
+          }
+        );
+      });
+    }
     const raw = typeof rawJSON === 'string' ? JSON.parse(rawJSON) : rawJSON;
     const bodyBytes = decodeBase64ToUint8Array(raw.bodyBase64 || '');
     const headersObj = raw.headers || {};

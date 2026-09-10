@@ -276,14 +276,18 @@ async function switchCompanyViaUI(): Promise<void> {
   }
 }
 
-async function discoverTwoCompanyIdsByUISwitch(): Promise<{ a: string; b: string } | null> {
+async function discoverTwoCompanyIdsByUISwitch(): Promise<{ a: string; b: string }> {
   const trigger = page.getByTestId('company-switch-trigger');
   await expect(trigger).toBeVisible();
 
   const before = await readAuthTokens();
-  if (!before.accessToken) return null;
+  if (!before.accessToken) {
+    throw new Error('discoverTwoCompanyIdsByUISwitch: missing access token before switch');
+  }
   const scopeA = extractCompanyScopeFromToken(before.accessToken);
-  if (!scopeA.activeCompanyId) return null;
+  if (!scopeA.activeCompanyId) {
+    throw new Error('discoverTwoCompanyIdsByUISwitch: missing activeCompanyId before switch');
+  }
 
   await switchCompanyViaUI();
 
@@ -299,10 +303,16 @@ async function discoverTwoCompanyIdsByUISwitch(): Promise<{ a: string; b: string
     .not.toBe(scopeA.activeCompanyId);
 
   const after = await readAuthTokens();
-  if (!after.accessToken) return null;
+  if (!after.accessToken) {
+    throw new Error('discoverTwoCompanyIdsByUISwitch: missing access token after switch');
+  }
   const scopeB = extractCompanyScopeFromToken(after.accessToken);
-  if (!scopeB.activeCompanyId) return null;
-  if (scopeB.activeCompanyId === scopeA.activeCompanyId) return null;
+  if (!scopeB.activeCompanyId) {
+    throw new Error('discoverTwoCompanyIdsByUISwitch: missing activeCompanyId after switch');
+  }
+  if (scopeB.activeCompanyId === scopeA.activeCompanyId) {
+    throw new Error('discoverTwoCompanyIdsByUISwitch: company id did not change after UI switch');
+  }
 
   return { a: scopeA.activeCompanyId, b: scopeB.activeCompanyId };
 }
@@ -325,7 +335,6 @@ test('auth: SwitchCompanyScope default enabled uses Preferences (enabledCompanyI
   expect(accessToken).not.toBe('');
 
   const pair = await discoverTwoCompanyIdsByUISwitch();
-  if (!pair) return;
 
   const client0: any = makeUserClient(baseURL, accessToken, authPb.User);
 
@@ -372,7 +381,6 @@ test('auth: SwitchCompanyScope persists view; RefreshTokens reproduces the same 
   expect(accessToken).not.toBe('');
 
   const pair = await discoverTwoCompanyIdsByUISwitch();
-  if (!pair) return;
 
   const client0: any = makeUserClient(baseURL, accessToken, authPb.User);
 
@@ -414,7 +422,6 @@ test('auth: SwitchCompanyScope illegal enabledCompanyIds fails closed and emits 
 
   const userId = String(identity?.userId ?? '');
   const pair = await discoverTwoCompanyIdsByUISwitch();
-  if (!pair) return;
 
   const client: any = makeUserClient(baseURL, accessToken, authPb.User);
 

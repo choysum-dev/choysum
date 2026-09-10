@@ -20,6 +20,19 @@ async function readAuthAccessToken(): Promise<string> {
 
 async function runRegisterOnce(baseURL: string): Promise<void> {
   await page.goto(`${baseURL}/web/register`, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    try {
+      localStorage.clear();
+    } catch {
+      // ignore
+    }
+    try {
+      sessionStorage.clear();
+    } catch {
+      // ignore
+    }
+  });
+  await page.goto(`${baseURL}/web/register`, { waitUntil: 'domcontentloaded' });
   await installPageErrorBuffer(page);
 
   const suffix = `${Date.now()}-${randomUUID()}`;
