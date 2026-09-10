@@ -252,6 +252,8 @@ func TestPageOpsWithChrome(t *testing.T) {
 		_, _ = w.Write([]byte(`<!doctype html><html><body>
 <button id="btn">Go</button>
 <input id="name" value="" />
+<textarea id="bio"></textarea>
+<div id="ce" contenteditable="true"></div>
 <button id="disabled" disabled>No</button>
 <div id="hidden" style="display:none">h</div>
 <div class="item">1</div><div class="item">2</div>
@@ -323,6 +325,12 @@ func TestPageOpsWithChrome(t *testing.T) {
 	out, err := page.Evaluate(`document.querySelector('#name').value`)
 	if err != nil || !strings.Contains(out, "alice") {
 		t.Fatalf("Evaluate after fill: %q err=%v", out, err)
+	}
+	if err := page.Fill("#bio", "hello"); err != nil {
+		t.Fatalf("Fill textarea: %v", err)
+	}
+	if err := page.Fill("#ce", "editable"); err != nil {
+		t.Fatalf("Fill contenteditable: %v", err)
 	}
 	nullOut, err := page.Evaluate(`undefined`)
 	if err != nil || nullOut != "null" {

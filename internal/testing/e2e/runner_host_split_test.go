@@ -433,11 +433,15 @@ func TestRunOneScenarioPartitionError(t *testing.T) {
 	if err := os.WriteFile(spec, []byte("import { test } from '@choysum/e2e';\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Discover finds the file by name; partition fails when reading it.
-	waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error {
-		return os.Chmod(spec, 0o000)
+	// Inject at partition (after discover) so the failure is platform-stable.
+	oldPartition := partitionE2ESpecFilesHook
+	t.Cleanup(func() { partitionE2ESpecFilesHook = oldPartition })
+	partitionE2ESpecFilesHook = func(specFiles []string) ([]string, []string, error) {
+		if len(specFiles) == 0 {
+			t.Fatal("expected discovered specs before partition")
+		}
+		return nil, nil, errors.New("read " + spec + ": permission denied")
 	}
-	t.Cleanup(func() { _ = os.Chmod(spec, 0o644) })
 
 	err := runOneScenario(context.Background(), RunOptions{
 		Module:      "auth",

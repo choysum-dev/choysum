@@ -115,6 +115,7 @@ var (
 	runPlaywrightHook         = runPlaywright
 	runE2EHostHook            = runE2EHost
 	runOneScenarioHook        = runOneScenario
+	partitionE2ESpecFilesHook = partitionE2ESpecFiles
 	// requiredPlaywrightModulesFromSpecFilesHook scans PW specs for npm imports.
 	requiredPlaywrightModulesFromSpecFilesHook = requiredPlaywrightModulesFromSpecFiles
 )
@@ -607,7 +608,7 @@ compile:
 	opts2.NpmPath = globalNodeModulesRoot
 	opts2.PlaywrightArgs = playwrightPassthrough
 
-	pwSpecFiles, qjsSpecFiles, err := partitionE2ESpecFiles(allSpecFiles)
+	pwSpecFiles, qjsSpecFiles, err := partitionE2ESpecFilesHook(allSpecFiles)
 	if err != nil {
 		return err
 	}

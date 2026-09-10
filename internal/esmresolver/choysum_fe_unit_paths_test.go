@@ -20,7 +20,8 @@ func TestApplyChoysumFEUnitTsconfigPaths(t *testing.T) {
 
 	testUtils := filepath.Join(root, "pkg", "jsengine", "scripts", "choysummount", "choysummount.d.ts")
 	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "stubs", "page_mount.d.ts")
-	for _, p := range []string{testUtils, pageMount} {
+	e2eTypes := filepath.Join(root, "pkg", "jsengine", "scripts", "choysume2e", "choysume2e.d.ts")
+	for _, p := range []string{testUtils, pageMount, e2eTypes} {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -34,14 +35,17 @@ func TestApplyChoysumFEUnitTsconfigPaths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if applied != 2 {
-		t.Fatalf("applied = %d, want 2", applied)
+	if applied != 3 {
+		t.Fatalf("applied = %d, want 3", applied)
 	}
 	if !tsconfigPathMappingEquals(paths["@choysum/test-utils"], []string{"../pkg/jsengine/scripts/choysummount/choysummount.d.ts"}) {
 		t.Fatalf("test-utils path = %#v", paths["@choysum/test-utils"])
 	}
 	if !tsconfigPathMappingEquals(paths["@choysum/page-mount"], []string{"../internal/testing/frontend/testdata/stubs/page_mount.d.ts"}) {
 		t.Fatalf("page-mount path = %#v", paths["@choysum/page-mount"])
+	}
+	if !tsconfigPathMappingEquals(paths["@choysum/e2e"], []string{"../pkg/jsengine/scripts/choysume2e/choysume2e.d.ts"}) {
+		t.Fatalf("e2e path = %#v", paths["@choysum/e2e"])
 	}
 
 	applied, err = applyChoysumFEUnitTsconfigPaths(modulesDir, paths)
@@ -66,7 +70,8 @@ func TestUpdateTsconfigPaths_WritesChoysumFEUnitPaths(t *testing.T) {
 
 	testUtils := filepath.Join(root, "pkg", "jsengine", "scripts", "choysummount", "choysummount.d.ts")
 	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "stubs", "page_mount.d.ts")
-	for _, p := range []string{testUtils, pageMount} {
+	e2eTypes := filepath.Join(root, "pkg", "jsengine", "scripts", "choysume2e", "choysume2e.d.ts")
+	for _, p := range []string{testUtils, pageMount, e2eTypes} {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +89,7 @@ func TestUpdateTsconfigPaths_WritesChoysumFEUnitPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := string(data)
-	for _, needle := range []string{`"@choysum/test-utils"`, `"@choysum/page-mount"`, "choysummount.d.ts", "page_mount.d.ts"} {
+	for _, needle := range []string{`"@choysum/test-utils"`, `"@choysum/page-mount"`, `"@choysum/e2e"`, "choysummount.d.ts", "page_mount.d.ts", "choysume2e.d.ts"} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("tsconfig missing %q: %s", needle, content)
 		}
@@ -157,7 +162,8 @@ func TestUpdateTsconfigPaths_ChoysumFEUnitPathsAbsFallback(t *testing.T) {
 	}
 	testUtils := filepath.Join(root, "pkg", "jsengine", "scripts", "choysummount", "choysummount.d.ts")
 	pageMount := filepath.Join(root, "internal", "testing", "frontend", "testdata", "stubs", "page_mount.d.ts")
-	for _, p := range []string{testUtils, pageMount} {
+	e2eTypes := filepath.Join(root, "pkg", "jsengine", "scripts", "choysume2e", "choysume2e.d.ts")
+	for _, p := range []string{testUtils, pageMount, e2eTypes} {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +183,8 @@ func TestUpdateTsconfigPaths_ChoysumFEUnitPathsAbsFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), `"@choysum/test-utils"`) {
+	content := string(data)
+	if !strings.Contains(content, `"@choysum/test-utils"`) || !strings.Contains(content, `"@choysum/e2e"`) {
 		t.Fatalf("expected FE unit paths after abs fallback: %s", data)
 	}
 }

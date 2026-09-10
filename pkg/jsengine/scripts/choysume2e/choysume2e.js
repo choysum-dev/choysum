@@ -175,9 +175,17 @@ async function countLocator(kind, value) {
     const raw = await getHost().evaluate(`(() => {
       const needle = ${JSON.stringify(needle)}.toLowerCase();
       let c = 0;
-      for (const el of document.querySelectorAll('input[placeholder],textarea[placeholder]')) {
-        const p = String(el.getAttribute('placeholder') || '').toLowerCase();
-        if (p.includes(needle)) c++;
+      for (const el of document.querySelectorAll('input, textarea')) {
+        const attrs = [
+          el.getAttribute('placeholder'),
+          el.getAttribute('aria-label'),
+          el.getAttribute('name'),
+          el.getAttribute('autocomplete'),
+          el.id,
+        ];
+        if (attrs.some(a => a && String(a).toLowerCase().includes(needle))) {
+          c++;
+        }
       }
       return c;
     })()`);
