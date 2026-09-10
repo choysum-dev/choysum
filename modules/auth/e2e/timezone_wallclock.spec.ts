@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect, type Page } from '@playwright/test';
-import fs from 'node:fs';
+import { test, expect, page, runtime, type Page } from '@choysum/e2e';
 import { loginAsE2EAdmin } from './utils/login.ts';
 
 /**
@@ -10,73 +9,57 @@ import { loginAsE2EAdmin } from './utils/login.ts';
  * (ODatetimeField via formatDateTime), without rewriting stored UTC.
  */
 
-type RuntimeInfo = {
-  baseURL: string;
-  specsDir: string;
-  module: string;
-  scenario: string;
-  fixtures: string[];
-};
-
 const DATETIME_CELL = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/;
 
-function readRuntimeInfo(): RuntimeInfo {
-  const runtimePath = process.env.CHOYSUM_E2E_RUNTIME_JSON;
-  if (!runtimePath) {
-    throw new Error('CHOYSUM_E2E_RUNTIME_JSON env var not set');
-  }
-  const raw = fs.readFileSync(runtimePath, 'utf-8');
-  return JSON.parse(raw) as RuntimeInfo;
-}
-
-async function firstDatetimeDisplayText(page: Page): Promise<string> {
-  const texts = await page.locator('.o-field-display-text').allTextContents();
+async function firstDatetimeDisplayText(p: Page): Promise<string> {
+  const texts = await p.locator('.o-field-display-text').allTextContents();
   return texts.map(t => String(t || '').trim()).find(t => DATETIME_CELL.test(t)) || '';
 }
 
-async function waitForDatetimeCell(page: Page): Promise<string> {
-  await expect
-    .poll(async () => firstDatetimeDisplayText(page), { timeout: 45_000 })
-    .toMatch(DATETIME_CELL);
-  return firstDatetimeDisplayText(page);
+async function waitForDatetimeCell(p: Page): Promise<string> {
+  await expect.poll(async () => firstDatetimeDisplayText(p), { timeout: 45_000 }).toMatch(DATETIME_CELL);
+  return firstDatetimeDisplayText(p);
 }
 
-async function setUserTimezoneViaPreferences(page: Page, iana: string) {
-  // Labels are translated (fixture Language=zh_CN → 用户菜单 / 设置 / …).
-  const userMenu = page.getByRole('button', { name: /User menu|用户菜单/i });
+async function setUserTimezoneViaPreferences(p: Page, iana: string) {
+  const userMenu = p.getByRole('button', { name: /User menu|用户菜单/i });
   await expect(userMenu).toBeVisible({ timeout: 20_000 });
   await userMenu.click();
-  await page.getByRole('menuitem', { name: /Settings|Profile|设置|个人资料/i }).first().click();
+  await p.getByRole('menuitem', { name: /Settings|Profile|设置|个人资料/i }).first().click();
 
-  const dialog = page.locator('.o-preferences-dialog');
+  const dialog = p.locator('.o-preferences-dialog');
   await expect(dialog).toBeVisible({ timeout: 15_000 });
 
-  // Language is the first select; Timezone is the second (labels may be translated).
   const tzSelect = dialog.locator('.el-form-item').nth(1).locator('.el-select');
   await tzSelect.click();
   const filterInput = tzSelect.locator('input');
   await filterInput.fill(iana);
-  await page.locator('.el-select-dropdown:visible').getByRole('option', { name: iana, exact: true }).click();
+  // Click the matching option in any open Element Plus dropdown (avoid :visible).
+  await expect
+    .poll(
+      async () =>
+        p.evaluate(want => {
+          const opts = Array.from(document.querySelectorAll('.el-select-dropdown li, [role="option"]'));
+          const el = opts.find(o => String(o.textContent || '').trim() === want);
+          if (!el) return false;
+          el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          return true;
+        }, iana),
+      { timeout: 15_000 }
+    )
+    .toBe(true);
 
   const save = dialog.getByRole('button', { name: /Update preferences|更新偏好设置/i });
-  await Promise.all([page.waitForEvent('load', { timeout: 45_000 }), save.click()]);
-  await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 30_000 });
-  await expect(page.locator('.o-preferences-dialog')).toHaveCount(0, { timeout: 15_000 });
+  // Prefer reload after save rather than waitForEvent('load').
+  await save.click();
+  await p.waitForFunction(() => !document.querySelector('.o-preferences-dialog'), undefined, { timeout: 45_000 }).catch(() => undefined);
+  await expect(p).toHaveURL(/\/web\/auth\/users/, { timeout: 30_000 });
+  await expect(p.locator('.o-preferences-dialog')).toHaveCount(0, { timeout: 15_000 });
 }
 
-test('auth e2e: User.Timezone change updates users list datetime wall-clock', async ({ page }) => {
+test('auth e2e: User.Timezone change updates users list datetime wall-clock', async () => {
   test.setTimeout(180_000);
 
-  page.on('pageerror', err => {
-    console.log(`[pageerror] ${err?.message || String(err)}`);
-  });
-  page.on('console', msg => {
-    if (msg.type() === 'error') {
-      console.log(`[console.error] ${msg.text()}`);
-    }
-  });
-
-  const runtime = readRuntimeInfo();
   const baseURL = runtime.baseURL;
 
   await loginAsE2EAdmin(page, baseURL);

@@ -1,29 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { test, expect, page, runtime, randomUUID } from '@choysum/e2e';
 import { waitForGrpcWebUnaryOk } from './utils/grpcweb.ts';
+import { drainPageErrorBuffer, filterDeniedSignals, installPageErrorBuffer } from './utils/errorBuffer.ts';
 
-type RuntimeInfo = {
-  baseURL: string;
-  specsDir: string;
-  module: string;
-  scenario: string;
-  fixtures: string[];
-};
-
-function readRuntimeInfo(): RuntimeInfo {
-  const runtimePath = process.env.CHOYSUM_E2E_RUNTIME_JSON;
-  if (!runtimePath) {
-    throw new Error('CHOYSUM_E2E_RUNTIME_JSON env var not set');
-  }
-  const raw = fs.readFileSync(runtimePath, 'utf-8');
-  return JSON.parse(raw) as RuntimeInfo;
-}
-
-async function readAuthAccessToken(page: any): Promise<string> {
+async function readAuthAccessToken(): Promise<string> {
   return page.evaluate(() => {
     const raw = localStorage.getItem('choysum.auth') || sessionStorage.getItem('choysum.auth');
     if (!raw) return '';
@@ -36,73 +18,66 @@ async function readAuthAccessToken(page: any): Promise<string> {
   });
 }
 
-test('auth: register new user → auto login → no permission_denied on boot RPCs', async ({ page }) => {
-  test.setTimeout(120_000);
-
-  const deniedSignals: string[] = [];
-
-  page.on('pageerror', err => {
-    const msg = err?.message || String(err);
-    if (/permission_denied|access denied/i.test(msg)) {
-      deniedSignals.push(`[pageerror] ${msg}`);
-    }
-  });
-
-  page.on('console', msg => {
-    if (msg.type() !== 'error') return;
-    const text = msg.text();
-    if (/permission_denied|access denied|\/auth\.User\/(Browse|GetPermissionState)/i.test(text)) {
-      deniedSignals.push(`[console.error] ${text}`);
-    }
-  });
-
-  page.on('requestfailed', req => {
-    const failure = req.failure();
-    const text = `${req.method()} ${req.url()} ${failure?.errorText || ''}`;
-    if (/permission_denied|access denied|\/auth\.User\/(Browse|GetPermissionState)/i.test(text)) {
-      deniedSignals.push(`[requestfailed] ${text}`);
-    }
-  });
-
-  const runtime = readRuntimeInfo();
-  const baseURL = runtime.baseURL;
+async function runRegisterOnce(baseURL: string): Promise<void> {
+  await page.goto(`${baseURL}/web/register`, { waitUntil: 'domcontentloaded' });
+  await installPageErrorBuffer(page);
 
   const suffix = `${Date.now()}-${randomUUID()}`;
   const username = `e2e-reg-${suffix}`;
   const email = `${username}@example.com`;
   const password = `e2e-pass-${suffix}`;
 
-  await page.goto(`${baseURL}/web/register`, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByPlaceholder(/Enter username|请输入用户名|username/i)).toBeVisible({
+    timeout: 15_000,
+  });
 
-  await page.waitForSelector('input[placeholder*="username"]', { timeout: 15_000 });
+  await page.getByPlaceholder(/Enter username|请输入用户名|username/i).fill(username);
+  await page.getByPlaceholder(/Enter email address|请输入邮箱|email/i).fill(email);
+  await page.getByPlaceholder(/^Enter password$|^请输入密码$/).fill(password);
+  await page.getByPlaceholder(/Re-enter password|请再次输入密码/i).fill(password);
 
-  await page.getByPlaceholder(/username/i).fill(username);
-  await page.getByPlaceholder(/email address/i).fill(email);
-  await page.getByPlaceholder(/^Enter password$/).fill(password);
-  await page.getByPlaceholder(/Re-enter password/i).fill(password);
+  await page.evaluate(() => {
+    const input = document.querySelector(
+      'label.el-checkbox input.el-checkbox__original, .el-checkbox input[type="checkbox"]'
+    ) as HTMLInputElement | null;
+    if (!input) throw new Error('register: terms checkbox not found');
+    if (!input.checked) input.click();
+    if (!input.checked) {
+      input.checked = true;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+  await expect(
+    page.locator('label.el-checkbox input.el-checkbox__original, .el-checkbox input[type="checkbox"]')
+  ).toBeChecked({ timeout: 10_000 });
 
-  // Agree terms
-  const agreeLabel = page.locator('label.el-checkbox', { hasText: 'I have read and agree to' });
-  await expect(agreeLabel).toBeVisible();
-  await agreeLabel.locator('.el-checkbox__inner').click();
-  await expect(agreeLabel.locator('input.el-checkbox__original')).toBeChecked();
+  const submit = page.getByRole('button', { name: /Create Account|创建账户/ });
+  await expect(submit).toBeEnabled({ timeout: 10_000 });
 
-  // Submit
-  const submit = page.getByRole('button', { name: /Create Account/ });
-  await expect(submit).toBeEnabled();
-  await submit.click();
-
-  // Hard assertions: ensure boot chain actually called these RPCs successfully.
+  // Arm boot RPC waiters before submit (same order as the Playwright corpus).
   const browseOk = waitForGrpcWebUnaryOk(page, '/auth.User/Browse', { timeoutMs: 30_000 });
   const permOk = waitForGrpcWebUnaryOk(page, '/auth.User/GetPermissionState', { timeoutMs: 30_000 });
 
-  // Auto-login + redirect should leave us with a token.
-  await expect.poll(async () => await readAuthAccessToken(page), { timeout: 30_000 }).not.toBe('');
+  await submit.click();
 
+  await expect.poll(async () => await readAuthAccessToken(), { timeout: 30_000 }).not.toBe('');
   await Promise.all([browseOk, permOk]);
-
-  // Give boot sequence time to call Browse/GetPermissionState.
   await page.waitForTimeout(3_000);
 
+  const deniedSignals = filterDeniedSignals(await drainPageErrorBuffer(page));
   expect(deniedSignals).toEqual([]);
+}
+
+test('auth: register new user → auto login → no permission_denied on boot RPCs', async () => {
+  test.setTimeout(120_000);
+
+  const baseURL = runtime.baseURL;
+  try {
+    await runRegisterOnce(baseURL);
+  } catch {
+    // One retry absorbs intermittent sqlite "database is locked" under WAL
+    // (Playwright config used retries: 1 for the same reason).
+    await runRegisterOnce(baseURL);
+  }
 });

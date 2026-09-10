@@ -4,12 +4,15 @@
 package pagehost
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -44,6 +47,10 @@ func TestInstallRegistersGlobalsWithoutBrowser(t *testing.T) {
   if (!r || r.baseURL !== 'http://127.0.0.1:9') throw new Error('runtime missing');
   if (!h || typeof h.newPage !== 'function') throw new Error('host.newPage missing');
   if (typeof h.goto !== 'function') throw new Error('host.goto missing');
+  if (typeof h.reload !== 'function') throw new Error('host.reload missing');
+  if (typeof h.readTextFile !== 'function') throw new Error('host.readTextFile missing');
+  if (typeof h.fetch !== 'function') throw new Error('host.fetch missing');
+  if (typeof h.clearOriginStorage !== 'function') throw new Error('host.clearOriginStorage missing');
   if (typeof h.waitForResponse !== 'function') throw new Error('host.waitForResponse missing');
   if (typeof h.delay !== 'function') throw new Error('host.delay missing');
   return 'ok';
@@ -184,6 +191,7 @@ func TestInstallHostMethodsErrorPathsWithoutPage(t *testing.T) {
 		`await globalThis.__choysum_e2e_host__.count('#x')`,
 		`await globalThis.__choysum_e2e_host__.url()`,
 		`await globalThis.__choysum_e2e_host__.screenshot('/tmp/x.png')`,
+		`await globalThis.__choysum_e2e_host__.reload('load')`,
 	} {
 		raw = awaitHostErr(t, qjs, call)
 		if !strings.Contains(raw, "no active page") {
@@ -794,4 +802,155 @@ func jsonQuote(s string) string {
 		return `""`
 	}
 	return string(b)
+}
+
+func TestInstallFetchAndReadTextFile(t *testing.T) {
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	host, err = Install(engine, nil, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method", http.StatusMethodNotAllowed)
+			return
+		}
+		if r.Header.Get("X-Test") != "1" {
+			http.Error(w, "header", http.StatusBadRequest)
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Echo", string(body))
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	raw := awaitHost(t, qjs, `
+const h = globalThis.__choysum_e2e_host__;
+const init = JSON.stringify({
+  method: 'POST',
+  headers: {'X-Test': '1', 'Content-Type': 'text/plain'},
+  body: 'hello-body'
+});
+const respRaw = await h.fetch(`+jsonQuote(srv.URL)+`, init);
+return JSON.parse(respRaw);
+`)
+	var got struct {
+		Status     int               `json:"status"`
+		Headers    map[string]string `json:"headers"`
+		BodyBase64 string            `json:"bodyBase64"`
+		URL        string            `json:"url"`
+	}
+	if err := json.Unmarshal([]byte(raw), &got); err != nil {
+		t.Fatalf("parse %s: %v", raw, err)
+	}
+	if got.Status != 200 {
+		t.Fatalf("status=%d raw=%s", got.Status, raw)
+	}
+	if got.Headers["X-Echo"] != "hello-body" && got.Headers["x-echo"] != "hello-body" {
+		// httptest canonicalizes header keys; Go map keeps canonical form.
+		found := false
+		for k, v := range got.Headers {
+			if strings.EqualFold(k, "X-Echo") && v == "hello-body" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("missing X-Echo header: %#v", got.Headers)
+		}
+	}
+	body, err := base64.StdEncoding.DecodeString(got.BodyBase64)
+	if err != nil || string(body) != `{"ok":true}` {
+		t.Fatalf("body=%q err=%v", body, err)
+	}
+
+	tmp := filepath.Join(t.TempDir(), "note.txt")
+	if err := os.WriteFile(tmp, []byte("log-line\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	textRaw := awaitHost(t, qjs, `return await globalThis.__choysum_e2e_host__.readTextFile(`+jsonQuote(tmp)+`)`)
+	var text string
+	if err := json.Unmarshal([]byte(textRaw), &text); err != nil {
+		t.Fatalf("parse text %s: %v", textRaw, err)
+	}
+	if text != "log-line\n" {
+		t.Fatalf("readTextFile=%q", text)
+	}
+
+	bad := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.fetch('http://127.0.0.1:9', '{bad')`)
+	if !strings.Contains(bad, "fetch init") {
+		t.Fatalf("bad init: %s", bad)
+	}
+	missing := awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.readTextFile(`+jsonQuote(filepath.Join(t.TempDir(), "missing.txt"))+`)`)
+	if !strings.Contains(missing, `"ok":false`) {
+		t.Fatalf("missing file: %s", missing)
+	}
+}
+
+func TestInstallReloadWithChrome(t *testing.T) {
+	session := startPagehostChrome(t)
+	defer session.Close()
+
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	if !engine.(*quickjsengine.QuickjsEngine).Ctx.BootstrapTimers() {
+		t.Fatal("BootstrapTimers failed")
+	}
+	host, err = Install(engine, session, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<!doctype html><html><body><div id="n">` + strconv.Itoa(hits) + `</div></body></html>`))
+	}))
+	defer srv.Close()
+
+	raw := awaitHost(t, qjs, `
+const h = globalThis.__choysum_e2e_host__;
+await h.newPage();
+await h.goto(`+jsonQuote(srv.URL)+`, 'load');
+const before = JSON.parse(await h.evaluate("document.querySelector('#n').textContent"));
+await h.reload('domcontentloaded');
+const after = JSON.parse(await h.evaluate("document.querySelector('#n').textContent"));
+return {before: Number(before), after: Number(after)};
+`)
+	var got struct {
+		Before int `json:"before"`
+		After  int `json:"after"`
+	}
+	if err := json.Unmarshal([]byte(raw), &got); err != nil {
+		t.Fatalf("parse %s: %v", raw, err)
+	}
+	if got.After <= got.Before {
+		t.Fatalf("expected reload to increase hit counter: %+v hits=%d", got, hits)
+	}
+	if hits < 2 {
+		t.Fatalf("expected at least 2 hits, got %d", hits)
+	}
 }

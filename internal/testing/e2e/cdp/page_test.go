@@ -35,6 +35,12 @@ func TestNilPageMethods(t *testing.T) {
 	if err := p.Goto("about:blank", "load"); err == nil {
 		t.Fatal("expected nil page error")
 	}
+	if err := p.Reload("load"); err == nil {
+		t.Fatal("expected nil page error")
+	}
+	if err := p.ClearOriginStorage("http://127.0.0.1:9"); err == nil {
+		t.Fatal("expected nil page error")
+	}
 	if err := p.Click("#x"); err == nil {
 		t.Fatal("expected nil page error")
 	}
@@ -276,6 +282,18 @@ func TestPageOpsWithChrome(t *testing.T) {
 	}
 	if err := page.Goto(srv.URL, "bogus"); err == nil || !strings.Contains(err.Error(), "unsupported waitUntil") {
 		t.Fatalf("expected unsupported waitUntil, got %v", err)
+	}
+	if err := page.Reload("load"); err != nil {
+		t.Fatalf("Reload load: %v", err)
+	}
+	if err := page.Reload("domcontentloaded"); err != nil {
+		t.Fatalf("Reload domcontentloaded: %v", err)
+	}
+	if err := page.Reload(""); err != nil {
+		t.Fatalf("Reload default wait: %v", err)
+	}
+	if err := page.Reload("bogus"); err == nil || !strings.Contains(err.Error(), "unsupported waitUntil") {
+		t.Fatalf("expected unsupported Reload waitUntil, got %v", err)
 	}
 
 	href, err := page.URL()

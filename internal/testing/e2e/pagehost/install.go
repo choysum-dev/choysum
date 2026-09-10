@@ -5,9 +5,14 @@
 package pagehost
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,6 +22,9 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 )
+
+// hostHTTPClient is used by host.fetch; tests may override.
+var hostHTTPClient = http.DefaultClient
 
 // ctxSchedule is Context.Schedule; tests may override to simulate a blocked job queue.
 var ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
@@ -68,6 +76,7 @@ func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string)
 	hostObj.Set("newPage", ctx.NewFunction(host.bindNewPage()))
 	hostObj.Set("closePage", ctx.NewFunction(host.bindClosePage()))
 	hostObj.Set("goto", ctx.NewFunction(host.bindGoto()))
+	hostObj.Set("reload", ctx.NewFunction(host.bindReload()))
 	hostObj.Set("click", ctx.NewFunction(host.bindClick()))
 	hostObj.Set("fill", ctx.NewFunction(host.bindFill()))
 	hostObj.Set("evaluate", ctx.NewFunction(host.bindEvaluate()))
@@ -79,6 +88,9 @@ func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string)
 	hostObj.Set("count", ctx.NewFunction(host.bindCount()))
 	hostObj.Set("url", ctx.NewFunction(host.bindURL()))
 	hostObj.Set("screenshot", ctx.NewFunction(host.bindScreenshot()))
+	hostObj.Set("readTextFile", ctx.NewFunction(host.bindReadTextFile()))
+	hostObj.Set("fetch", ctx.NewFunction(host.bindFetch()))
+	hostObj.Set("clearOriginStorage", ctx.NewFunction(host.bindClearOriginStorage()))
 	globals.Set("__choysum_e2e_host__", hostObj)
 	return host, nil
 }
@@ -198,6 +210,48 @@ func (h *Host) bindGoto() func(ctx *quickjs.Context, this *quickjs.Value, args [
 				return
 			}
 			if err := p.Goto(url, waitUntil); err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			resolve(ctx.Undefined())
+		})
+	}
+}
+
+func (h *Host) bindReload() func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
+			waitUntil := "load"
+			if len(args) > 0 && args[0] != nil && !args[0].IsUndefined() && !args[0].IsNull() {
+				waitUntil = args[0].String()
+			}
+			p, err := h.activePage()
+			if err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			if err := p.Reload(waitUntil); err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			resolve(ctx.Undefined())
+		})
+	}
+}
+
+func (h *Host) bindClearOriginStorage() func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
+			originURL := ""
+			if len(args) > 0 && args[0] != nil {
+				originURL = args[0].String()
+			}
+			p, err := h.activePage()
+			if err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			if err := p.ClearOriginStorage(originURL); err != nil {
 				reject(ctx.Error(err))
 				return
 			}
@@ -488,6 +542,97 @@ func (h *Host) bindScreenshot() func(ctx *quickjs.Context, this *quickjs.Value, 
 				return
 			}
 			resolve(ctx.Undefined())
+		})
+	}
+}
+
+func (h *Host) bindReadTextFile() func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
+			path := argString(args, 0)
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			resolve(ctx.String(string(raw)))
+		})
+	}
+}
+
+func (h *Host) bindFetch() func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
+			url := argString(args, 0)
+			initJSON := "{}"
+			if len(args) > 1 && args[1] != nil && !args[1].IsUndefined() && !args[1].IsNull() {
+				initJSON = args[1].String()
+			}
+			var init struct {
+				Method     string            `json:"method"`
+				Headers    map[string]string `json:"headers"`
+				Body       string            `json:"body"`
+				BodyBase64 string            `json:"bodyBase64"`
+			}
+			if strings.TrimSpace(initJSON) == "" {
+				initJSON = "{}"
+			}
+			if err := json.Unmarshal([]byte(initJSON), &init); err != nil {
+				reject(ctx.Error(fmt.Errorf("pagehost: fetch init: %w", err)))
+				return
+			}
+			method := strings.TrimSpace(init.Method)
+			if method == "" {
+				method = http.MethodGet
+			}
+			var bodyReader io.Reader
+			if init.BodyBase64 != "" {
+				decoded, err := base64.StdEncoding.DecodeString(init.BodyBase64)
+				if err != nil {
+					reject(ctx.Error(fmt.Errorf("pagehost: fetch bodyBase64: %w", err)))
+					return
+				}
+				bodyReader = bytes.NewReader(decoded)
+			} else if init.Body != "" {
+				bodyReader = strings.NewReader(init.Body)
+			}
+			req, err := http.NewRequest(method, url, bodyReader)
+			if err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			for k, v := range init.Headers {
+				req.Header.Set(k, v)
+			}
+			resp, err := hostHTTPClient.Do(req)
+			if err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			headers := map[string]string{}
+			for k, vals := range resp.Header {
+				if len(vals) > 0 {
+					headers[k] = vals[0]
+				}
+			}
+			payload := map[string]any{
+				"status":     resp.StatusCode,
+				"headers":    headers,
+				"bodyBase64": base64.StdEncoding.EncodeToString(body),
+				"url":        resp.Request.URL.String(),
+			}
+			raw, err := jsonMarshal(payload)
+			if err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			resolve(ctx.String(string(raw)))
 		})
 	}
 }
