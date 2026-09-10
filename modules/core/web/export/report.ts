@@ -19,7 +19,7 @@ export function exportReportHasErrors(report: ExportReportLike | ExportReport): 
   return (report.messages ?? []).some(message => {
     if (!message) return false;
     const type = message.type_ ?? ExportMessageType.UNSPECIFIED;
-    return type === ExportMessageType.ERROR || type === ExportMessageType.UNSPECIFIED;
+    return type === ExportMessageType.ERROR || (type === ExportMessageType.UNSPECIFIED && Boolean(String(message.text ?? '').trim()));
   });
 }
 

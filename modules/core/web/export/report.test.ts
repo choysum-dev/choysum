@@ -12,7 +12,8 @@ test('exportReportHasErrors: treats missing report as error', () => {
 test('exportReportHasErrors: detects stats and message errors', () => {
   expect(exportReportHasErrors({ stats: { error: 1 } })).toBe(true);
   expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.ERROR, text: 'bad row' }] })).toBe(true);
-  expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.UNSPECIFIED, text: '' }] })).toBe(true);
+  expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.UNSPECIFIED, text: '' }] })).toBe(false);
+  expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.UNSPECIFIED, text: '   ' }] })).toBe(false);
   expect(exportReportHasErrors({ messages: [{ type_: ExportMessageType.UNSPECIFIED, text: 'message only' }] })).toBe(true);
   expect(exportReportHasErrors({ stats: { ok: 1 }, messages: [{ type_: ExportMessageType.WARNING, text: 'ok' }] })).toBe(false);
   expect(exportReportHasErrors({ stats: { ok: 1 }, messages: [{ text: 'ok' }] })).toBe(true);
