@@ -91,11 +91,18 @@ const h = globalThis.__choysum_e2e_host__;
 await h.newPage();
 await h.enableFetch();
 await h.enableFetch(); // idempotent
-const nav = h.goto(`+jsonQuote(srv.URL+"/mock")+`, 'domcontentloaded');
+let navDone = false;
+const nav = h.goto(`+jsonQuote(srv.URL+"/mock")+`, 'domcontentloaded').then(
+  (v) => { navDone = true; return v; },
+  (e) => { navDone = true; throw e; },
+);
 let mocked = false;
 for (let i = 0; i < 40; i++) {
   const pausedRaw = await h.waitPausedRequest(500);
-  if (pausedRaw == null) continue;
+  if (pausedRaw == null) {
+    if (navDone && mocked) break;
+    continue;
+  }
   const paused = JSON.parse(pausedRaw);
   if (String(paused.url).includes('/mock')) {
     await h.fulfillRequest(paused.id, JSON.stringify({
@@ -137,10 +144,18 @@ return {mocked, body, timedOut, afterDisable};
 const h = globalThis.__choysum_e2e_host__;
 await h.newPage();
 await h.enableFetch();
-const nav = h.goto(`+jsonQuote(srv.URL+"/live")+`, 'domcontentloaded');
+let navDone = false;
+let fulfilled = false;
+const nav = h.goto(`+jsonQuote(srv.URL+"/live")+`, 'domcontentloaded').then(
+  (v) => { navDone = true; return v; },
+  (e) => { navDone = true; throw e; },
+);
 for (let i = 0; i < 40; i++) {
   const pausedRaw = await h.waitPausedRequest(500);
-  if (pausedRaw == null) continue;
+  if (pausedRaw == null) {
+    if (navDone && fulfilled) break;
+    continue;
+  }
   const paused = JSON.parse(pausedRaw);
   if (String(paused.url).includes('/live')) {
     const b64 = 'bGl2ZS1va2F5'; // live-okay
@@ -149,6 +164,7 @@ for (let i = 0; i < 40; i++) {
       contentType: 'text/plain',
       bodyBase64: b64,
     }));
+    fulfilled = true;
   } else {
     await h.continueRequest(paused.id);
   }
@@ -179,10 +195,17 @@ return {body, disabled};
 const h = globalThis.__choysum_e2e_host__;
 await h.newPage();
 await h.enableFetch();
-const nav = h.goto(`+jsonQuote(srv.URL+"/passthrough")+`, 'domcontentloaded');
+let navDone = false;
+const nav = h.goto(`+jsonQuote(srv.URL+"/passthrough")+`, 'domcontentloaded').then(
+  (v) => { navDone = true; return v; },
+  (e) => { navDone = true; throw e; },
+);
 for (let i = 0; i < 40; i++) {
   const pausedRaw = await h.waitPausedRequest(500);
-  if (pausedRaw == null) continue;
+  if (pausedRaw == null) {
+    if (navDone) break;
+    continue;
+  }
   const paused = JSON.parse(pausedRaw);
   await h.continueRequest(paused.id);
 }

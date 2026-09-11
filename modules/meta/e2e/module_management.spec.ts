@@ -666,7 +666,8 @@ async function runAction(page: Page, moduleName: string | undefined, action: Mod
 async function runActionExpectFailure(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
   const actionLabel = action === 'install' ? 'Install' : action === 'upgrade' ? 'Upgrade' : 'Uninstall';
   const card = await openModuleCard(page, moduleName);
-  const initialStatus = ((await card.locator('.module-card__title .el-tag').innerText()) || '').trim();
+  // Use moduleStatusText so an em-dash tag is normalized the same way waitForModuleStatus reads it.
+  const initialStatus = await moduleStatusText(page, moduleName);
   await card.getByRole('button', { name: actionLabel }).click();
 
   const dialog = page.locator('.el-dialog');
