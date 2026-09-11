@@ -1,13 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect, type Page } from '@playwright/test';
-import fs from 'node:fs';
-import path from 'node:path';
+import { test, expect, page, runtime } from '@choysum/e2e';
 import { createClient, type Interceptor } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
+import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 
 /**
  * T2.6: Changing Language thousand separator / Grouping updates business list number
@@ -17,14 +16,6 @@ import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } fro
  * to avoid OFormView Edit races where beginEdit() no-ops while original is still null.
  */
 
-type RuntimeInfo = {
-  baseURL: string;
-  specsDir: string;
-  module: string;
-  scenario: string;
-  fixtures: string[];
-};
-
 type BasePbModule = {
   Language: any;
   LanguageSearchReqSchema: any;
@@ -33,24 +24,8 @@ type BasePbModule = {
 
 let basePbModulePromise: Promise<BasePbModule> | null = null;
 
-function readRuntimeInfo(): RuntimeInfo {
-  const runtimePath = process.env.CHOYSUM_E2E_RUNTIME_JSON;
-  if (!runtimePath) {
-    throw new Error('CHOYSUM_E2E_RUNTIME_JSON env var not set');
-  }
-  const raw = fs.readFileSync(runtimePath, 'utf-8');
-  return JSON.parse(raw) as RuntimeInfo;
-}
-
 async function loadBasePbModule(): Promise<BasePbModule> {
-  const runtime = readRuntimeInfo();
-  // E2E runner stages generated pb under specsDir/.generated so Playwright
-  // transforms it under testDir (absolute file:// imports bypass that and break
-  // @bufbuild/protobuf/codegenv2 under PW_DISABLE_TS_ESM=1).
-  const staged = path.join(runtime.specsDir, '.generated', 'base_pb.ts');
-  if (!fs.existsSync(staged)) {
-    throw new Error(`Cannot find staged base_pb.ts at ${staged} (e2e runner should link it)`);
-  }
+  // Bundle plugin remaps *_pb.ts to <runDir>/.choysum/generated/...
   const mod = (await import(
     /* @vite-ignore */ './.generated/base_pb.ts' as string
   )) as BasePbModule;
@@ -64,7 +39,7 @@ async function getBasePbModule(): Promise<BasePbModule> {
   return await basePbModulePromise;
 }
 
-async function readAccessToken(page: Page): Promise<string> {
+async function readAccessToken(): Promise<string> {
   return page.evaluate(() => {
     const raw = localStorage.getItem('choysum.auth') || sessionStorage.getItem('choysum.auth');
     if (!raw) return '';
@@ -151,8 +126,8 @@ function makeAuthInterceptor(accessToken: string): Interceptor {
   };
 }
 
-async function makeLanguageClient(page: Page, baseURL: string) {
-  const accessToken = await readAccessToken(page);
+async function makeLanguageClient(baseURL: string) {
+  const accessToken = await readAccessToken();
   expect(accessToken, 'access token after login').not.toBe('');
   const basePb = await getBasePbModule();
   const client = createClient(
@@ -165,8 +140,8 @@ async function makeLanguageClient(page: Page, baseURL: string) {
   return { client, basePb };
 }
 
-async function resolveLanguageIdByCode(page: Page, baseURL: string, code: string): Promise<string> {
-  const { client, basePb } = await makeLanguageClient(page, baseURL);
+async function resolveLanguageIdByCode(baseURL: string, code: string): Promise<string> {
+  const { client, basePb } = await makeLanguageClient(baseURL);
   const resp: any = await client.search(
     create(basePb.LanguageSearchReqSchema, {
       condition: toValue(['Code', '=', code]),
@@ -180,8 +155,8 @@ async function resolveLanguageIdByCode(page: Page, baseURL: string, code: string
   return id;
 }
 
-async function updateLanguageSeparators(page: Page, baseURL: string, languageId: string) {
-  const { client, basePb } = await makeLanguageClient(page, baseURL);
+async function updateLanguageSeparators(baseURL: string, languageId: string) {
+  const { client, basePb } = await makeLanguageClient(baseURL);
   const resp: any = await client.updateById(
     create(basePb.LanguageUpdateByIdReqSchema, {
       id: languageId,
@@ -200,28 +175,9 @@ async function updateLanguageSeparators(page: Page, baseURL: string, languageId:
   expect(String(row?.DecimalSeparator ?? ''), 'DecimalSeparator after UpdateById').toBe(',');
 }
 
-async function loginAsE2EAdmin(page: Page, baseURL: string) {
-  await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('input[placeholder*="username"]', { timeout: 15_000 });
-  await page.getByPlaceholder(/username/i).fill('e2e-admin');
-  await page.getByPlaceholder(/password/i).fill('e2e-admin');
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 20_000 });
-}
-
-test('base T2.6: Language thousand separator change updates exchange rate list display', async ({ page }) => {
+test('base T2.6: Language thousand separator change updates exchange rate list display', async () => {
   test.setTimeout(180_000);
 
-  page.on('pageerror', err => {
-    console.log(`[pageerror] ${err?.message || String(err)}`);
-  });
-  page.on('console', msg => {
-    if (msg.type() === 'error') {
-      console.log(`[console.error] ${msg.text()}`);
-    }
-  });
-
-  const runtime = readRuntimeInfo();
   const baseURL = runtime.baseURL;
 
   await loginAsE2EAdmin(page, baseURL);
@@ -234,12 +190,12 @@ test('base T2.6: Language thousand separator change updates exchange rate list d
   const beforeText = ((await rateCell.textContent()) || '').trim();
   expect(beforeText).toMatch(/1,234,567/);
 
-  const languageId = await resolveLanguageIdByCode(page, baseURL, 'zh_CN');
-  await updateLanguageSeparators(page, baseURL, languageId);
+  const languageId = await resolveLanguageIdByCode(baseURL, 'zh_CN');
+  await updateLanguageSeparators(baseURL, languageId);
 
   // Full reload so i18n init re-fetches GetActiveLanguages overlays (authoritative for list formatting).
   const activeLangs = page.waitForResponse(
-    r => r.url().includes('/base.Language/GetActiveLanguages') && r.request().method() === 'POST' && r.status() === 200,
+    { urlIncludes: '/base.Language/GetActiveLanguages', method: 'POST' },
     { timeout: 45_000 }
   );
   await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });
