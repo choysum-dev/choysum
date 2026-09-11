@@ -75,19 +75,9 @@ at `/web/register`, which auto-logs in — the simplest way to exercise the stac
 | Module unit (BE+FE) | `./choysum test unit <module>` (`--be` / `--fe` to scope; `--fe` = QuickJS) |
 | Module E2E | `./choysum test e2e <module>` (auth/base/meta/task/partner; needs Chromium) |
 
-Module unit tests (BE + FE) and module `test e2e` do **not** need root
-`node_modules`. Some CI jobs (e.g. typecheck tooling) still use root
-`node_modules`; populate it when those jobs need it:
-
-```bash
-mkdir -p .choysum/tmp
-python3 scripts/ci/compute_root_node_modules_deps.py --modules-path modules \
-  --target-modules-json '[]' --output .choysum/tmp/root-node-modules-deps.txt
-python3 scripts/ci/install_root_node_modules_deps.py \
-  --deps-file .choysum/tmp/root-node-modules-deps.txt \
-  --workspace "$PWD"
-export PATH="$PWD/node_modules/.bin:$PATH"
-```
+Module unit tests (BE + FE), module typecheck, and module `test e2e` do
+**not** need root `node_modules` (typecheck is Go-native; FE/E2E use
+QuickJS + Chromium).
 
 For E2E install Chrome for Testing first:
 

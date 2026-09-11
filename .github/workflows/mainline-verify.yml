@@ -22,17 +22,6 @@ jobs:
       archive_path: .choysum/tmp/main-embedded-assets.tar.gz
       retention_days: 1
 
-  prepare-root-node-modules:
-    name: main / prepare-root-node-modules
-    needs:
-      - discover-modules
-    uses: ./.github/workflows/prepare-root-node-modules.yml
-    with:
-      artifact_name: main-root-node-modules
-      archive_path: .choysum/tmp/main-root-node-modules.tar.gz
-      retention_days: 1
-      target_modules_json: ${{ needs.discover-modules.outputs.modules_json }}
-
   discover-modules:
     name: main / discover-modules
     runs-on: ubuntu-latest
@@ -68,7 +57,6 @@ jobs:
     name: main / go-test
     needs:
       - prepare-embedded-assets
-      - prepare-root-node-modules
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -86,25 +74,11 @@ jobs:
           artifact-name: main-embedded-assets
           archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
-      - name: Download root node_modules
-        uses: actions/download-artifact@v8
-        with:
-          name: main-root-node-modules
-          path: .choysum/tmp
-
-      - name: Extract root node_modules
-        run: tar -xzf .choysum/tmp/main-root-node-modules.tar.gz -C .
-
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
 
       # Coverage compile already typechecks; a separate `go build ./...` only doubles wall clock.
       - name: Run go test
@@ -202,7 +176,6 @@ jobs:
     if: ${{ needs.discover-modules.outputs.modules_json != '[]' }}
     needs:
       - prepare-embedded-assets
-      - prepare-root-node-modules
       - discover-modules
       - build-choysum-cli
       - prepare-typecheck-types
@@ -224,18 +197,6 @@ jobs:
           artifact-name: main-embedded-assets
           archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
-      - name: Download root node_modules
-        uses: actions/download-artifact@v8
-        with:
-          name: main-root-node-modules
-          path: .choysum/tmp
-
-      - name: Extract root node_modules
-        run: tar -xzf .choysum/tmp/main-root-node-modules.tar.gz -C .
-
-      - name: Add local node_modules bin to PATH
-        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
         with:
@@ -247,11 +208,6 @@ jobs:
 
       - name: Setup CLI testing pkg cache
         uses: ./.github/actions/setup-cli-testing-cache
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
 
       - name: Run module typecheck
         run: |
