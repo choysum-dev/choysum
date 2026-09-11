@@ -59,28 +59,6 @@ jobs:
       retention_days: 1
       docs_only: ${{ needs.discover-impact.outputs.docs_only }}
 
-  prepare-root-node-modules:
-    name: pr / prepare-root-node-modules
-    needs:
-      - discover-impact
-    uses: ./.github/workflows/prepare-root-node-modules.yml
-    with:
-      artifact_name: pr-root-node-modules
-      archive_path: .choysum/tmp/pr-root-node-modules.tar.gz
-      retention_days: 1
-      docs_only: ${{ needs.discover-impact.outputs.docs_only }}
-      target_modules_json: ${{ needs.discover-impact.outputs.impacted_modules_json }}
-
-  prepare-playwright-cache:
-    name: pr / prepare-playwright-cache
-    if: ${{ needs.discover-impact.outputs.docs_only != 'true' && (needs.discover-impact.outputs.run_pr_smoke_e2e == 'true' || needs.discover-impact.outputs.impacted_direct_e2e_modules_json != '[]') }}
-    needs:
-      - discover-impact
-      - prepare-root-node-modules
-    uses: ./.github/workflows/prepare-playwright-cache.yml
-    with:
-      artifact_name: pr-root-node-modules
-
   build-choysum-cli:
     name: pr / build-choysum-cli
     if: >-
@@ -104,7 +82,6 @@ jobs:
     needs:
       - discover-impact
       - prepare-embedded-assets
-      - prepare-root-node-modules
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -131,29 +108,12 @@ jobs:
           artifact-name: pr-embedded-assets
           archive-path: .choysum/tmp/pr-embedded-assets.tar.gz
 
-      - name: Download root node_modules
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
-        uses: actions/download-artifact@v8
-        with:
-          name: pr-root-node-modules
-          path: .choysum/tmp
-
-      - name: Extract root node_modules
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
-        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
-
       - name: Setup Go
         if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
-
-      - name: Setup Node
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
 
       - name: Install Chromium for e2e unit coverage
         if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
@@ -257,6 +217,24 @@ jobs:
             exit 1
           fi
           echo "Vue type-fetch graph OK (vue@$pinned, runtime-core ${core_bytes} bytes)"
+          node_bridge="${types_dir}/typeRoots/node/index.d.ts"
+          if [[ ! -s "$node_bridge" ]]; then
+            echo "error: @types/node typeRoots bridge missing at $node_bridge" >&2
+            ls -la "$types_dir"/typeRoots 2>/dev/null || true
+            ls -la "$types_dir"/esm.sh_@types_node@* 2>/dev/null || true
+            exit 1
+          fi
+          echo "Node typeRoots bridge OK ($node_bridge)"
+
+      # modules/tsconfig.json is gitignored; type-fetch writes path maps here.
+      # Shards restore the pkg cache but need these maps (no root node_modules).
+      - name: Upload modules tsconfig path maps
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-modules-tsconfig
+          path: modules/tsconfig.json
+          retention-days: 1
+          if-no-files-found: error
 
   typecheck-shard:
     name: pr / typecheck-shard (${{ matrix.module }})
@@ -264,7 +242,6 @@ jobs:
     needs:
       - prepare-embedded-assets
       - discover-impact
-      - prepare-root-node-modules
       - build-choysum-cli
       - prepare-typecheck-types
     strategy:
@@ -285,18 +262,6 @@ jobs:
           artifact-name: pr-embedded-assets
           archive-path: .choysum/tmp/pr-embedded-assets.tar.gz
 
-      - name: Download root node_modules
-        uses: actions/download-artifact@v8
-        with:
-          name: pr-root-node-modules
-          path: .choysum/tmp
-
-      - name: Extract root node_modules
-        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
-
-      - name: Add local node_modules bin to PATH
-        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
         with:
@@ -309,10 +274,11 @@ jobs:
       - name: Setup CLI testing pkg cache
         uses: ./.github/actions/setup-cli-testing-cache
 
-      - name: Setup Node
-        uses: actions/setup-node@v7
+      - name: Download modules tsconfig path maps
+        uses: actions/download-artifact@v8
         with:
-          node-version: 22
+          name: pr-modules-tsconfig
+          path: modules
 
       - name: Run module typecheck
         run: |
@@ -490,8 +456,6 @@ jobs:
     needs:
       - prepare-embedded-assets
       - discover-impact
-      - prepare-root-node-modules
-      - prepare-playwright-cache
       - build-choysum-cli
     strategy:
       fail-fast: false
@@ -511,18 +475,6 @@ jobs:
           artifact-name: pr-embedded-assets
           archive-path: .choysum/tmp/pr-embedded-assets.tar.gz
 
-      - name: Download root node_modules
-        uses: actions/download-artifact@v8
-        with:
-          name: pr-root-node-modules
-          path: .choysum/tmp
-
-      - name: Extract root node_modules
-        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
-
-      - name: Add local node_modules bin to PATH
-        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
         with:
@@ -535,8 +487,8 @@ jobs:
       - name: Setup CLI testing pkg cache
         uses: ./.github/actions/setup-cli-testing-cache
 
-      - name: Setup Playwright
-        uses: ./.github/actions/setup-playwright
+      - name: Setup Chromium
+        uses: ./.github/actions/setup-chromium
 
       - name: Run smoke E2E suite
         run: |
@@ -549,8 +501,6 @@ jobs:
     needs:
       - prepare-embedded-assets
       - discover-impact
-      - prepare-root-node-modules
-      - prepare-playwright-cache
       - build-choysum-cli
     strategy:
       fail-fast: false
@@ -570,18 +520,6 @@ jobs:
           artifact-name: pr-embedded-assets
           archive-path: .choysum/tmp/pr-embedded-assets.tar.gz
 
-      - name: Download root node_modules
-        uses: actions/download-artifact@v8
-        with:
-          name: pr-root-node-modules
-          path: .choysum/tmp
-
-      - name: Extract root node_modules
-        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
-
-      - name: Add local node_modules bin to PATH
-        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
         with:
@@ -594,8 +532,8 @@ jobs:
       - name: Setup CLI testing pkg cache
         uses: ./.github/actions/setup-cli-testing-cache
 
-      - name: Setup Playwright
-        uses: ./.github/actions/setup-playwright
+      - name: Setup Chromium
+        uses: ./.github/actions/setup-chromium
 
       - name: Run targeted E2E suite
         run: |

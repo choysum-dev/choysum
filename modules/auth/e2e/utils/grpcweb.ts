@@ -30,26 +30,10 @@ type AnyPage = Page & {
 };
 
 async function waitForGrpcWebUnaryResponse(page: AnyPage, fullMethod: string, timeoutMs: number): Promise<E2EResponse> {
-  let res: any;
-  if (page.__choysum_e2e_page__) {
-    res = await page.waitForResponse(
-      { urlIncludes: fullMethod, method: 'POST', contentTypePrefix: 'application/grpc-web' },
-      { timeout: timeoutMs }
-    );
-  } else {
-    // Playwright dual-run path (remaining auth specs still import this util).
-    res = await page.waitForResponse(
-      (r: any) => {
-        const url = r.url();
-        if (!url.includes(fullMethod)) return false;
-        const req = r.request();
-        if (req.method() !== 'POST') return false;
-        const ct = String(req.headers()['content-type'] || '').toLowerCase();
-        return ct.startsWith('application/grpc-web');
-      },
-      { timeout: timeoutMs }
-    );
-  }
+  const res: any = await page.waitForResponse(
+    { urlIncludes: fullMethod, method: 'POST', contentTypePrefix: 'application/grpc-web' },
+    { timeout: timeoutMs }
+  );
 
   const status = typeof res.status === 'function' ? res.status() : Number(res.status);
   expect(status, `HTTP status for ${fullMethod}`).toBe(200);

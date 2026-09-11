@@ -77,9 +77,8 @@ export type Locator = {
 };
 
 /**
- * Dual-run page surface shared by the QJS host and Playwright.
- * Locator-returning methods stay typed; async CDP/PW seams stay loose so
- * Playwright's Page remains assignable for shared utils (login/grpcweb).
+ * Page surface used by the QuickJS e2e host (`@choysum/e2e`).
+ * Locator-returning methods stay typed; async CDP seams stay loose for shared utils.
  */
 export type RouteFulfillOptions = {
   status?: number;
@@ -96,11 +95,10 @@ export type Route = {
 };
 
 export type Page = {
-  /** Set by the QJS host page proxy; absent on Playwright pages. */
+  /** Set by the QJS host page proxy. */
   __choysum_e2e_page__?: boolean;
   goto(...args: any[]): Promise<any>;
   reload(...args: any[]): Promise<any>;
-  // Rest args stay loose so Playwright Page (options object, roles, etc.) stays assignable.
   locator(...args: any[]): Locator;
   getByPlaceholder(...args: any[]): Locator;
   getByText(...args: any[]): Locator;
@@ -146,7 +144,7 @@ export type PollOptions = {
   timeout?: number;
 };
 
-/** Value assertions used by shared utils (and PW shim → @playwright/test). */
+/** Value assertions used by shared utils. */
 export type ValueExpect = {
   readonly not: ValueExpect;
   toBe(expected: unknown): void;

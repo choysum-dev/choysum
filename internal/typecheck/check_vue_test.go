@@ -225,9 +225,9 @@ func TestRewriteVueRootsAndAmbient(t *testing.T) {
 	}
 	dir := t.TempDir()
 	overlays := BuiltInVueAmbientOverlays(dir, dir)
-	// No resolvable vue types → vite + subpath + playwright + vue shim + directives + vue module stub.
-	if len(overlays) != 6 {
-		t.Fatalf("want vite+subpath+playwright+vue shim+directives+vue stub, got %d", len(overlays))
+	// No resolvable vue types → vite + subpath + vue shim + directives + vue module stub.
+	if len(overlays) != 5 {
+		t.Fatalf("want vite+subpath+vue shim+directives+vue stub, got %d", len(overlays))
 	}
 }
 

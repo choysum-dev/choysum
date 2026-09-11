@@ -14,9 +14,6 @@ import (
 //go:embed choysume2e.js
 var ChoysumE2EScript string
 
-//go:embed choysume2e_pw_shim.mjs
-var PlaywrightShimScript string
-
 var (
 	materializeMu   sync.Mutex
 	materializedDir string
@@ -31,14 +28,6 @@ func SourcePath() (string, error) {
 		return p, nil
 	}
 	return materializeFile("choysume2e.js", ChoysumE2EScript)
-}
-
-// PlaywrightShimPath returns a filesystem path to the Node ESM Playwright shim.
-func PlaywrightShimPath() (string, error) {
-	if p, err := packageFile("choysume2e_pw_shim.mjs"); err == nil {
-		return p, nil
-	}
-	return materializeFile("choysume2e_pw_shim.mjs", PlaywrightShimScript)
 }
 
 func packageFile(name string) (string, error) {

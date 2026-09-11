@@ -306,6 +306,11 @@ func TestEnsureTypeAssets_TsconfigWriteAndStillMissing(t *testing.T) {
 
 	t.Run("tsconfig write error", func(t *testing.T) {
 		fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, typesDir, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+			if pkg == "@types/node" {
+				p := filepath.Join(typesDir, "esm.sh_@types_node@"+ver+"_index.d.ts.d.ts")
+				_ = os.WriteFile(p, []byte("export {}\n"), 0o644)
+				return &esmresolver.TypeFetchResult{CachedPath: p}, nil, nil
+			}
 			p := filepath.Join(typesDir, "esm.sh_vue@3.5.0_dist_vue.d.mts.d.ts")
 			writeCompleteVueGraph(t, typesDir, "3.5.0")
 			return &esmresolver.TypeFetchResult{CachedPath: p}, nil, nil
@@ -321,6 +326,11 @@ func TestEnsureTypeAssets_TsconfigWriteAndStillMissing(t *testing.T) {
 
 	t.Run("still missing after successful write", func(t *testing.T) {
 		fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, typesDir, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+			if pkg == "@types/node" {
+				p := filepath.Join(typesDir, "esm.sh_@types_node@"+ver+"_index.d.ts.d.ts")
+				_ = os.WriteFile(p, []byte("export {}\n"), 0o644)
+				return &esmresolver.TypeFetchResult{CachedPath: p}, nil, nil
+			}
 			writeCompleteVueGraph(t, typesDir, "3.5.0")
 			p := filepath.Join(typesDir, "esm.sh_vue@3.5.0_dist_vue.d.mts.d.ts")
 			return &esmresolver.TypeFetchResult{CachedPath: p}, nil, nil
@@ -348,12 +358,24 @@ func TestEnsureTypeAssets_DiscoversVueFromPackageJSON(t *testing.T) {
 	writeFile(t, filepath.Join(modules, "web", "package.json"), `{"peerDependencies":{"vue":"^3.5.35"}}`)
 
 	fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, typesDir, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
-		if pkg != "vue" || ver != "3.5.35" {
+		switch pkg {
+		case "vue":
+			if ver != "3.5.35" {
+				t.Fatalf("unexpected vue %s@%s", pkg, ver)
+			}
+			writeCompleteVueGraph(t, typesDir, ver)
+			p := filepath.Join(typesDir, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+			return &esmresolver.TypeFetchResult{CachedPath: p}, nil, nil
+		case "@types/node":
+			p := filepath.Join(typesDir, "esm.sh_@types_node@"+ver+"_index.d.ts.d.ts")
+			if err := os.WriteFile(p, []byte("export {}\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return &esmresolver.TypeFetchResult{CachedPath: p}, nil, nil
+		default:
 			t.Fatalf("unexpected %s@%s", pkg, ver)
+			return nil, nil, nil
 		}
-		writeCompleteVueGraph(t, typesDir, ver)
-		p := filepath.Join(typesDir, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
-		return &esmresolver.TypeFetchResult{CachedPath: p}, nil, nil
 	}
 	if err := ensureTypeAssets(context.Background(), io.Discard, modules, "web"); err != nil {
 		t.Fatal(err)

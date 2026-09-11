@@ -16,30 +16,14 @@ import (
 	"time"
 )
 
-// setE2ETestGlobalPlaywrightRoot points CHOYSUM_NPM_GLOBAL_ROOT at a temp install that
-// satisfies e2e preflight without requiring a real global npm tree (CI-safe).
-// The playwright CLI must live under that root's .bin so resolvePlaywrightCommand
-// does not fall back to PATH (which can point at a mismatched install).
-func setE2ETestGlobalPlaywrightRoot(t *testing.T) {
-	t.Helper()
-	globalNodeModules := filepath.Join(t.TempDir(), "global-node_modules")
-	if err := os.MkdirAll(filepath.Join(globalNodeModules, "@playwright", "test"), 0o755); err != nil {
-		t.Fatalf("mkdir global playwright package: %v", err)
-	}
-	writeExecFile(t, filepath.Join(globalNodeModules, ".bin", "playwright"), "#!/bin/sh\nexit 0\n")
-	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalNodeModules)
-}
-
 func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
-	setE2ETestGlobalPlaywrightRoot(t)
-
 	oldInstall := installForE2EHook
 	oldApply := applyScenarioFixturesHook
 	oldSeed := seedModuleIndexHook
 	oldStart := startServerHook
 	oldStop := stopServerHook
 	oldWait := waitForHTTP200Hook
-	oldRunPlaywright := runPlaywrightHook
+	oldRunE2EHost := runE2EHostHook
 	defer func() {
 		installForE2EHook = oldInstall
 		applyScenarioFixturesHook = oldApply
@@ -47,7 +31,7 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 		startServerHook = oldStart
 		stopServerHook = oldStop
 		waitForHTTP200Hook = oldWait
-		runPlaywrightHook = oldRunPlaywright
+		runE2EHostHook = oldRunE2EHost
 	}()
 
 	installCalls := 0
@@ -72,9 +56,9 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 	waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error {
 		return nil
 	}
-	runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+	runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 		if _, err := os.Stat(runtimePath); err != nil {
-			t.Fatalf("expected runtime file created before playwright, err=%v", err)
+			t.Fatalf("expected runtime file created before host, err=%v", err)
 		}
 		return nil
 	}
@@ -84,7 +68,7 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 	if err := os.MkdirAll(specsDir, 0o755); err != nil {
 		t.Fatalf("mkdir specs dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 		t.Fatalf("write spec file: %v", err)
 	}
 
@@ -115,15 +99,13 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 }
 
 func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
-	setE2ETestGlobalPlaywrightRoot(t)
-
 	oldInstall := installForE2EHook
 	oldApply := applyScenarioFixturesHook
 	oldSeed := seedModuleIndexHook
 	oldStart := startServerHook
 	oldStop := stopServerHook
 	oldWait := waitForHTTP200Hook
-	oldRunPlaywright := runPlaywrightHook
+	oldRunE2EHost := runE2EHostHook
 	defer func() {
 		installForE2EHook = oldInstall
 		applyScenarioFixturesHook = oldApply
@@ -131,7 +113,7 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 		startServerHook = oldStart
 		stopServerHook = oldStop
 		waitForHTTP200Hook = oldWait
-		runPlaywrightHook = oldRunPlaywright
+		runE2EHostHook = oldRunE2EHost
 	}()
 
 	installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error { return nil }
@@ -148,7 +130,7 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 	if err := os.MkdirAll(specsDir, 0o755); err != nil {
 		t.Fatalf("mkdir specs dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 		t.Fatalf("write spec file: %v", err)
 	}
 
@@ -179,24 +161,24 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 	}
 
 	waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-	playErr := errors.New("playwright failed")
-	runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
-		return playErr
+	hostErr := errors.New("host failed")
+	runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+		return hostErr
 	}
 	err = runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
-	if !errors.Is(err, playErr) {
-		t.Fatalf("expected playwright error, got %v", err)
+	if !errors.Is(err, hostErr) {
+		t.Fatalf("expected host error, got %v", err)
 	}
 }
 
 func TestRunModuleUsesScenarioHook(t *testing.T) {
+	setE2ETestChromiumPath(t)
 	oldRunOne := runOneScenarioHook
 	defer func() { runOneScenarioHook = oldRunOne }()
 
-	setE2ETestGlobalPlaywrightRoot(t)
-
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writeQJSSpec(t, filepath.Join(modulesPath, "auth", "e2e", "ok.spec.ts"))
 
 	calls := 0
 	sawDeadline := false
@@ -232,13 +214,13 @@ func TestRunModuleUsesScenarioHook(t *testing.T) {
 }
 
 func TestRunModulePropagatesScenarioHookError(t *testing.T) {
+	setE2ETestChromiumPath(t)
 	oldRunOne := runOneScenarioHook
 	defer func() { runOneScenarioHook = oldRunOne }()
 
-	setE2ETestGlobalPlaywrightRoot(t)
-
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writeQJSSpec(t, filepath.Join(modulesPath, "auth", "e2e", "ok.spec.ts"))
 
 	wantErr := errors.New("scenario failed")
 	runOneScenarioHook = func(ctx context.Context, opts RunOptions, manifests map[string]*sourceModulePackage, scenario string) error {
@@ -252,8 +234,6 @@ func TestRunModulePropagatesScenarioHookError(t *testing.T) {
 }
 
 func TestRunOneScenarioAdditionalBranches(t *testing.T) {
-	setE2ETestGlobalPlaywrightRoot(t)
-
 	t.Run("meta module installs task and auth", func(t *testing.T) {
 		oldInstall := installForE2EHook
 		oldApply := applyScenarioFixturesHook
@@ -261,7 +241,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		oldStart := startServerHook
 		oldStop := stopServerHook
 		oldWait := waitForHTTP200Hook
-		oldRunPlaywright := runPlaywrightHook
+		oldRunE2EHost := runE2EHostHook
 		defer func() {
 			installForE2EHook = oldInstall
 			applyScenarioFixturesHook = oldApply
@@ -269,7 +249,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			startServerHook = oldStart
 			stopServerHook = oldStop
 			waitForHTTP200Hook = oldWait
-			runPlaywrightHook = oldRunPlaywright
+			runE2EHostHook = oldRunE2EHost
 		}()
 
 		installed := []string{}
@@ -288,7 +268,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+		runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -297,7 +277,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 
@@ -333,7 +313,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		oldStart := startServerHook
 		oldStop := stopServerHook
 		oldWait := waitForHTTP200Hook
-		oldRunPlaywright := runPlaywrightHook
+		oldRunE2EHost := runE2EHostHook
 		defer func() {
 			installForE2EHook = oldInstall
 			applyScenarioFixturesHook = oldApply
@@ -341,7 +321,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			startServerHook = oldStart
 			stopServerHook = oldStop
 			waitForHTTP200Hook = oldWait
-			runPlaywrightHook = oldRunPlaywright
+			runE2EHostHook = oldRunE2EHost
 		}()
 
 		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error { return nil }
@@ -350,7 +330,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+		runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -359,7 +339,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 		manifests := map[string]*sourceModulePackage{
@@ -398,7 +378,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		oldStart := startServerHook
 		oldStop := stopServerHook
 		oldWait := waitForHTTP200Hook
-		oldRunPlaywright := runPlaywrightHook
+		oldRunE2EHost := runE2EHostHook
 		defer func() {
 			installForE2EHook = oldInstall
 			applyScenarioFixturesHook = oldApply
@@ -406,7 +386,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			startServerHook = oldStart
 			stopServerHook = oldStop
 			waitForHTTP200Hook = oldWait
-			runPlaywrightHook = oldRunPlaywright
+			runE2EHostHook = oldRunE2EHost
 		}()
 
 		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error { return nil }
@@ -421,7 +401,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+		runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -430,7 +410,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 		manifests := map[string]*sourceModulePackage{
@@ -461,7 +441,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		oldStart := startServerHook
 		oldStop := stopServerHook
 		oldWait := waitForHTTP200Hook
-		oldRunPlaywright := runPlaywrightHook
+		oldRunE2EHost := runE2EHostHook
 		defer func() {
 			installForE2EHook = oldInstall
 			applyScenarioFixturesHook = oldApply
@@ -469,7 +449,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			startServerHook = oldStart
 			stopServerHook = oldStop
 			waitForHTTP200Hook = oldWait
-			runPlaywrightHook = oldRunPlaywright
+			runE2EHostHook = oldRunE2EHost
 		}()
 
 		var seenConfig string
@@ -494,7 +474,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+		runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -503,7 +483,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 		manifests := map[string]*sourceModulePackage{
@@ -526,7 +506,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		oldStart := startServerHook
 		oldStop := stopServerHook
 		oldWait := waitForHTTP200Hook
-		oldRunPlaywright := runPlaywrightHook
+		oldRunE2EHost := runE2EHostHook
 		defer func() {
 			installForE2EHook = oldInstall
 			applyScenarioFixturesHook = oldApply
@@ -534,7 +514,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			startServerHook = oldStart
 			stopServerHook = oldStop
 			waitForHTTP200Hook = oldWait
-			runPlaywrightHook = oldRunPlaywright
+			runE2EHostHook = oldRunE2EHost
 		}()
 
 		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error {
@@ -551,7 +531,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		stopServerHook = func(cmd *exec.Cmd) {}
 		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
-		runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+		runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
 			return nil
 		}
 
@@ -560,7 +540,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
-		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@playwright/test';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
 		manifests := map[string]*sourceModulePackage{
@@ -578,6 +558,12 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 		if !strings.Contains(out, "# prepare runtime auth ok (") {
 			t.Fatalf("expected prepare completion line, got %q", out)
+		}
+		if !strings.Contains(out, "# e2e-qjs auth (") {
+			t.Fatalf("expected e2e-qjs progress line, got %q", out)
+		}
+		if strings.Contains(out, "# e2e-playwright") {
+			t.Fatalf("unexpected playwright progress line, got %q", out)
 		}
 	})
 }

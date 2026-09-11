@@ -440,12 +440,13 @@ func resolveTypeFetchCompilerTypeTargets(tsconfigPath string, modulesPath string
 	data, err := os.ReadFile(tsconfigPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			// Still fetch @types/node so Go-native typecheck has require / Array.at.
+			return defaultTypeFetchCompilerTypeTargets(modulesPath), nil
 		}
 		return nil, xfmt.Errorf("type-fetch: read modules tsconfig: %w", err)
 	}
 	if strings.TrimSpace(string(data)) == "" {
-		return nil, nil
+		return defaultTypeFetchCompilerTypeTargets(modulesPath), nil
 	}
 
 	var cfg typeFetchCompilerTypeTargetsConfig
@@ -454,7 +455,8 @@ func resolveTypeFetchCompilerTypeTargets(tsconfigPath string, modulesPath string
 	}
 
 	seen := make(map[string]struct{})
-	targets := make([]typeFetchCompilerTypeTarget, 0, len(cfg.CompilerOptions.Types))
+	targets := make([]typeFetchCompilerTypeTarget, 0, len(cfg.CompilerOptions.Types)+1)
+	hasNode := false
 	for _, rawType := range cfg.CompilerOptions.Types {
 		packageName, explicitVersion, ok := resolveTypeFetchCompilerTypePackage(rawType)
 		if !ok {
@@ -466,14 +468,30 @@ func resolveTypeFetchCompilerTypeTargets(tsconfigPath string, modulesPath string
 			continue
 		}
 		seen[key] = struct{}{}
+		typeName := strings.TrimSpace(rawType)
+		if packageName == "@types/node" || typeName == "node" || strings.TrimPrefix(typeName, "@types/") == "node" {
+			hasNode = true
+		}
 		targets = append(targets, typeFetchCompilerTypeTarget{
-			TypeName:    strings.TrimSpace(rawType),
+			TypeName:    typeName,
 			PackageName: packageName,
 			Version:     version,
 		})
 	}
+	if !hasNode {
+		targets = append(targets, defaultTypeFetchCompilerTypeTargets(modulesPath)...)
+	}
 
 	return targets, nil
+}
+
+func defaultTypeFetchCompilerTypeTargets(modulesPath string) []typeFetchCompilerTypeTarget {
+	version := resolveTypeFetchCompilerTypeVersion(modulesPath, "@types/node", "")
+	return []typeFetchCompilerTypeTarget{{
+		TypeName:    "node",
+		PackageName: "@types/node",
+		Version:     version,
+	}}
 }
 
 func resolveTypeFetchCompilerTypePackage(rawType string) (string, string, bool) {

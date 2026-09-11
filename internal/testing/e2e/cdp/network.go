@@ -203,7 +203,8 @@ func ingestResponseReceived(
 }
 
 // finishMatchedResponse fetches a matched response body and publishes once.
-// bodyGone deletes matched state and returns without publishing.
+// When the body is already gone (navigated away), it still publishes status/headers
+// with a nil body so WaitForResponse does not hang until timeout.
 func finishMatchedResponse(
 	listenerCtx context.Context,
 	mu *sync.Mutex,
@@ -230,13 +231,17 @@ func finishMatchedResponse(
 		var fetchErr error
 		body, fetchErr = fetch(listenerCtx, reqID)
 		if bodyGone(fetchErr) {
-			// Resource already dropped (e.g. navigated away). Do not publish
-			// a nil-body match; leave the waiter to time out or retry via a
-			// later LoadingFinished if another finish arm still holds state.
+			// Resource already dropped (e.g. navigated away). Still publish status
+			// + headers with an empty body so waiters are not stuck until timeout;
+			// callers that need the body can fail fast on empty content.
 			mu.Lock()
 			delete(matchedResp, reqID)
 			delete(pending, reqID)
 			mu.Unlock()
+			select {
+			case resultCh <- &MatchedResponse{Status: resp.status, Headers: resp.headers, Body: nil, URL: resp.url}:
+			default:
+			}
 			return
 		}
 		if fetchErr == nil {

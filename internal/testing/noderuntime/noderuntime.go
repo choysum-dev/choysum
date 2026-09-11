@@ -93,14 +93,8 @@ func FormatMissingModulesSummary(modules []string, sampleSize int) string {
 }
 
 func recommendedCommandsBeforeRetry(tool string, missingModules []string) []string {
-	if strings.TrimSpace(tool) != "e2e" {
-		return nil
-	}
-	for _, moduleName := range NormalizeStringList(missingModules) {
-		if moduleName == "@playwright/test" {
-			return []string{"npx playwright install --with-deps chromium"}
-		}
-	}
+	_ = tool
+	_ = missingModules
 	return nil
 }
 

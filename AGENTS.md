@@ -73,23 +73,18 @@ at `/web/register`, which auto-logs in — the simplest way to exercise the stac
 | Go tests | `go test ./... -count=1` |
 | Module typecheck | `./choysum test typecheck <module>` or `--all` (Go-native; no Node) |
 | Module unit (BE+FE) | `./choysum test unit <module>` (`--be` / `--fe` to scope; `--fe` = QuickJS) |
-| Module E2E | `./choysum test e2e <module>` (auth/base/meta/task; needs Playwright browsers) |
+| Module E2E | `./choysum test e2e <module>` (auth/base/meta/task/partner; needs Chromium) |
 
-Module unit tests (BE + FE) do **not** need root `node_modules`. Module `test e2e`
-(and some CI jobs like typecheck) still need the root `node_modules` on PATH.
-Populate it (matches CI) and prepend its bin dir:
+Module unit tests (BE + FE), module typecheck, and module `test e2e` do
+**not** need root `node_modules` (typecheck is Go-native; FE/E2E use
+QuickJS + Chromium).
+
+For E2E install Chrome for Testing first:
 
 ```bash
-mkdir -p .choysum/tmp
-python3 scripts/ci/compute_root_node_modules_deps.py --modules-path modules \
-  --target-modules-json '[]' --output .choysum/tmp/root-node-modules-deps.txt
-python3 scripts/ci/install_root_node_modules_deps.py \
-  --deps-file .choysum/tmp/root-node-modules-deps.txt \
-  --workspace "$PWD"
-export PATH="$PWD/node_modules/.bin:$PATH"
+./choysum test e2e --install-browser
+# or: python3 scripts/ci/install_chromium.py
 ```
-
-For E2E also run `npx playwright install --with-deps chromium` first.
 
 ### Publishing npm modules (`@choysum-dev/*`)
 

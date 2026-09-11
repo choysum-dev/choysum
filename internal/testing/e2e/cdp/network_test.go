@@ -168,7 +168,7 @@ func TestFinishMatchedResponseBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("bodyGoneNoPublish", func(t *testing.T) {
+	t.Run("bodyGonePublishesEmptyBody", func(t *testing.T) {
 		ctx := context.Background()
 		var mu sync.Mutex
 		matched := map[network.RequestID]pendingResp{id: resp}
@@ -183,9 +183,30 @@ func TestFinishMatchedResponseBranches(t *testing.T) {
 			t.Fatal("bodyGone should delete matchedResp")
 		}
 		select {
-		case <-resultCh:
-			t.Fatal("bodyGone must not publish")
+		case got := <-resultCh:
+			if got.Status != 200 || got.Body != nil {
+				t.Fatalf("expected empty-body publish, got %+v", got)
+			}
 		default:
+			t.Fatal("bodyGone must publish status/headers with empty body")
+		}
+	})
+
+	t.Run("bodyGoneResultChDefault", func(t *testing.T) {
+		ctx := context.Background()
+		var mu sync.Mutex
+		matched := map[network.RequestID]pendingResp{id: resp}
+		pending := map[network.RequestID]pendingReq{id: {}}
+		finishing := map[network.RequestID]bool{id: true}
+		resultCh := make(chan *MatchedResponse, 1)
+		resultCh <- &MatchedResponse{Status: 201} // already full
+		fetch := func(context.Context, network.RequestID) ([]byte, error) {
+			return nil, errors.New("No resource with given identifier found")
+		}
+		finishMatchedResponse(ctx, &mu, matched, pending, finishing, resultCh, id, resp, bodyGone, fetch)
+		got := <-resultCh
+		if got.Status != 201 {
+			t.Fatalf("bodyGone default branch should leave prior value, got %+v", got)
 		}
 	})
 

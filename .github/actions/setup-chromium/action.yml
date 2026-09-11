@@ -1,0 +1,37 @@
+name: Setup Chromium
+description: Cache and install Chrome for Testing via scripts/ci/install_chromium.py
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve CfT pin
+      id: cft-pin
+      shell: bash
+      run: |
+        set -euo pipefail
+        pin_file=scripts/ci/install_chromium.py
+        rev="$(sed -n 's/^PINNED_REVISION *= *"\([^"]*\)".*/\1/p' "$pin_file" | head -n1)"
+        ver="$(sed -n 's/^PINNED_VERSION *= *"\([^"]*\)".*/\1/p' "$pin_file" | head -n1)"
+        if [ -z "$rev" ] || [ -z "$ver" ]; then
+          echo "error: failed to parse PINNED_REVISION/PINNED_VERSION from $pin_file" >&2
+          exit 1
+        fi
+        echo "revision=${rev}" >> "$GITHUB_OUTPUT"
+        echo "version=${ver}" >> "$GITHUB_OUTPUT"
+        echo "CHOYSUM_HOME=${CHOYSUM_HOME:-$HOME/.choysum}" >> "$GITHUB_ENV"
+
+    - name: Cache Chrome for Testing
+      id: chromium-cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ env.CHOYSUM_HOME }}/browsers
+        key: ${{ runner.os }}-cft-${{ steps.cft-pin.outputs.revision }}-${{ steps.cft-pin.outputs.version }}
+        restore-keys: |
+          ${{ runner.os }}-cft-${{ steps.cft-pin.outputs.revision }}-
+
+    - name: Install Chrome for Testing
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 scripts/ci/install_chromium.py
+        echo "CHOYSUM_HOME=${CHOYSUM_HOME:-$HOME/.choysum}" >> "$GITHUB_ENV"

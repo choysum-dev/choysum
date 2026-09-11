@@ -29,23 +29,6 @@ func TestSourcePathReturnsExistingFile(t *testing.T) {
 	}
 }
 
-func TestPlaywrightShimPathReturnsExistingFile(t *testing.T) {
-	p, err := PlaywrightShimPath()
-	if err != nil {
-		t.Fatalf("PlaywrightShimPath: %v", err)
-	}
-	if !strings.HasSuffix(p, "choysume2e_pw_shim.mjs") {
-		t.Fatalf("unexpected path: %q", p)
-	}
-	st, err := os.Stat(p)
-	if err != nil || st.IsDir() {
-		t.Fatalf("expected file at %q: %v", p, err)
-	}
-	if PlaywrightShimScript == "" {
-		t.Fatal("embedded PlaywrightShimScript empty")
-	}
-}
-
 func TestPackageFileAndMaterialize(t *testing.T) {
 	p, err := packageFile("choysume2e.js")
 	if err != nil {
@@ -117,35 +100,21 @@ func TestMaterializeFileWriteError(t *testing.T) {
 	}
 }
 
-func TestSourcePathAndShimMaterializeFallback(t *testing.T) {
+func TestSourcePathMaterializeFallback(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("caller")
 	}
 	pkgDir := filepath.Dir(thisFile)
 
-	// Rename package sources so packageFile fails and SourcePath/PlaywrightShimPath materialize.
-	type pair struct{ name, bak string }
-	pairs := []pair{
-		{"choysume2e.js", ""},
-		{"choysume2e_pw_shim.mjs", ""},
+	src := filepath.Join(pkgDir, "choysume2e.js")
+	bak := src + ".bak_covtest"
+	if err := os.Rename(src, bak); err != nil {
+		t.Fatalf("rename choysume2e.js: %v", err)
 	}
 	t.Cleanup(func() {
-		for _, p := range pairs {
-			if p.bak == "" {
-				continue
-			}
-			_ = os.Rename(p.bak, filepath.Join(pkgDir, p.name))
-		}
+		_ = os.Rename(bak, src)
 	})
-	for i := range pairs {
-		src := filepath.Join(pkgDir, pairs[i].name)
-		bak := src + ".bak_covtest"
-		if err := os.Rename(src, bak); err != nil {
-			t.Fatalf("rename %s: %v", pairs[i].name, err)
-		}
-		pairs[i].bak = bak
-	}
 
 	materializeMu.Lock()
 	materializedDir = ""
@@ -157,12 +126,5 @@ func TestSourcePathAndShimMaterializeFallback(t *testing.T) {
 	}
 	if !strings.Contains(jsPath, "choysume2e.js") {
 		t.Fatalf("path=%q", jsPath)
-	}
-	shimPath, err := PlaywrightShimPath()
-	if err != nil {
-		t.Fatalf("PlaywrightShimPath materialize: %v", err)
-	}
-	if !strings.Contains(shimPath, "choysume2e_pw_shim.mjs") {
-		t.Fatalf("shim=%q", shimPath)
 	}
 }

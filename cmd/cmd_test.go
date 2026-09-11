@@ -567,14 +567,29 @@ func TestNewTypeFetchCmd_Run_InvalidMissingDepPolicy(t *testing.T) {
 func TestResolveTypeFetchCompilerTypeTargets_MissingTsconfig(t *testing.T) {
 	modulesPath := t.TempDir()
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
-	// tsconfig does not exist — resolveTypeFetchCompilerTypeTargets must
-	// return nil,nil instead of an error so the command can initialise.
+	// tsconfig does not exist — still request default @types/node so Go-native
+	// typecheck can bridge require / Array.at without root node_modules.
 	targets, err := resolveTypeFetchCompilerTypeTargets(tsconfigPath, modulesPath)
 	if err != nil {
-		t.Fatalf("resolveTypeFetchCompilerTypeTargets should return nil on missing tsconfig: %v", err)
+		t.Fatalf("resolveTypeFetchCompilerTypeTargets should not error on missing tsconfig: %v", err)
 	}
-	if targets != nil {
-		t.Fatalf("expected nil targets for missing tsconfig, got %+v", targets)
+	if len(targets) != 1 || targets[0].PackageName != "@types/node" || targets[0].TypeName != "node" {
+		t.Fatalf("expected default @types/node target, got %+v", targets)
+	}
+}
+
+func TestResolveTypeFetchCompilerTypeTargets_EmptyTsconfig(t *testing.T) {
+	modulesPath := t.TempDir()
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := os.WriteFile(tsconfigPath, []byte("   \n\t  "), 0o644); err != nil {
+		t.Fatalf("write empty tsconfig: %v", err)
+	}
+	targets, err := resolveTypeFetchCompilerTypeTargets(tsconfigPath, modulesPath)
+	if err != nil {
+		t.Fatalf("resolveTypeFetchCompilerTypeTargets empty file: %v", err)
+	}
+	if len(targets) != 1 || targets[0].PackageName != "@types/node" || targets[0].TypeName != "node" {
+		t.Fatalf("expected default @types/node target for empty tsconfig, got %+v", targets)
 	}
 }
 
@@ -634,8 +649,9 @@ func TestResolveTypeFetchCompilerTypeTargets_RejectsPathTraversal(t *testing.T) 
 	if err != nil {
 		t.Fatalf("resolveTypeFetchCompilerTypeTargets failed: %v", err)
 	}
-	if len(targets) != 0 {
-		t.Fatalf("expected 0 targets for traversal-tainted types, got %d: %+v", len(targets), targets)
+	// Traversal-tainted entries are dropped; default @types/node is still added.
+	if len(targets) != 1 || targets[0].PackageName != "@types/node" {
+		t.Fatalf("expected only default @types/node after rejecting traversal, got %+v", targets)
 	}
 }
 
@@ -1244,7 +1260,7 @@ func TestNewTestUnitCmd_AdditionalRunEPaths(t *testing.T) {
 func TestNewE2ECmd_ArgsAndEarlyRunE(t *testing.T) {
 	scopeGetter := func() scope.Scope { return nil }
 	cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
-	if cmd.Use != "e2e <module> [-- <playwrightArgs...>]" {
+	if cmd.Use != "e2e <module> [-- <specFilters...>]" {
 		t.Fatalf("unexpected command use: %q", cmd.Use)
 	}
 	if got := cmd.Flags().Lookup("startup-timeout"); got == nil {
@@ -1375,6 +1391,30 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 		cmd.SetContext(context.WithValue(context.Background(), key, wantValue))
 		if err := cmd.RunE(cmd, []string{"auth"}); err != nil {
 			t.Fatalf("RunE error: %v", err)
+		}
+	})
+
+	t.Run("passes spec filter args after module", func(t *testing.T) {
+		oldRun := runE2EModule
+		defer func() { runE2EModule = oldRun }()
+
+		cfg := newCommandTestConfig(t.TempDir())
+		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
+
+		var got pkge2e.RunOptions
+		runE2EModule = func(ctx context.Context, opts pkge2e.RunOptions) error {
+			got = opts
+			return nil
+		}
+		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
+		if err := cmd.RunE(cmd, []string{"auth", "smoke.spec.ts", "--headed"}); err != nil {
+			t.Fatalf("RunE error: %v", err)
+		}
+		if got.Module != "auth" {
+			t.Fatalf("module=%q", got.Module)
+		}
+		if len(got.SpecFilterArgs) != 2 || got.SpecFilterArgs[0] != "smoke.spec.ts" || got.SpecFilterArgs[1] != "--headed" {
+			t.Fatalf("SpecFilterArgs=%v", got.SpecFilterArgs)
 		}
 	})
 

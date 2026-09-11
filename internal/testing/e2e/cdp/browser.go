@@ -211,11 +211,41 @@ func (s *Session) Headless() bool {
 // ResolveChromiumPath finds a Chromium/Chrome binary.
 // Order: CHOYSUM_CHROMIUM_PATH → $CHOYSUM_HOME/browsers/chromium-<rev>/… → system Chrome.
 func ResolveChromiumPath() (string, error) {
+	return resolveChromiumPath(true)
+}
+
+// ResolveChromiumPathForE2E is ResolveChromiumPath for the e2e runner preflight.
+// When CI or GITHUB_ACTIONS is truthy, system Chrome/Chromium candidates are skipped
+// so CI cannot silently pick up an unrelated browser.
+func ResolveChromiumPathForE2E() (string, error) {
+	allowSystem := !envFlagEnabled("CI") && !envFlagEnabled("GITHUB_ACTIONS")
+	return resolveChromiumPath(allowSystem)
+}
+
+func envFlagEnabled(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+// EnvFlagEnabled reports whether an environment variable is a conventional truthy flag.
+func EnvFlagEnabled(name string) bool {
+	return envFlagEnabled(name)
+}
+
+func resolveChromiumPath(allowSystemChrome bool) (string, error) {
 	if p := strings.TrimSpace(os.Getenv("CHOYSUM_CHROMIUM_PATH")); p != "" {
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			return p, nil
+		st, err := os.Stat(p)
+		if err != nil {
+			return "", missingBinaryError(fmt.Sprintf("CHOYSUM_CHROMIUM_PATH is set but invalid: %v", err))
 		}
-		return "", missingBinaryError(fmt.Sprintf("CHOYSUM_CHROMIUM_PATH=%q is not a usable file", p))
+		if st.IsDir() {
+			return "", missingBinaryError(fmt.Sprintf("CHOYSUM_CHROMIUM_PATH points to a directory, expected a file: %s", p))
+		}
+		return p, nil
 	}
 
 	home := strings.TrimSpace(os.Getenv("CHOYSUM_HOME"))
@@ -234,9 +264,11 @@ func ResolveChromiumPath() (string, error) {
 		}
 	}
 
-	for _, cand := range systemChromeCandidates() {
-		if st, err := os.Stat(cand); err == nil && !st.IsDir() {
-			return cand, nil
+	if allowSystemChrome {
+		for _, cand := range systemChromeCandidates() {
+			if st, err := os.Stat(cand); err == nil && !st.IsDir() {
+				return cand, nil
+			}
 		}
 	}
 	return "", missingBinaryError("chromium binary not found")
