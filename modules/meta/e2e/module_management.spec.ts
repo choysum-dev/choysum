@@ -284,7 +284,7 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
     if (Date.now() >= nextReloadAt) {
       const navTimeout = Math.min(remaining, 30000);
       await Promise.race([
-        page.reload({ waitUntil: 'domcontentloaded' }),
+        page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null),
         page.waitForTimeout(navTimeout).then(() => {
           throw new Error('reload timeout');
         }),

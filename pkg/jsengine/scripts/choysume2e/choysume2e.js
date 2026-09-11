@@ -214,7 +214,8 @@ function makeLocator(kind, value, opts) {
         if (!el) throw new Error('press: element not found');
         if (typeof el.focus === 'function') el.focus();
         const key = ${JSON.stringify(keyName)};
-        const keyCode = key === 'Enter' ? 13 : key === 'Escape' ? 27 : 0;
+        const keyCodes = { Enter: 13, Escape: 27, Tab: 9, Backspace: 8, ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39 };
+        const keyCode = keyCodes[key] || 0;
         const opts = { key, code: key, keyCode, which: keyCode, bubbles: true, cancelable: true };
         el.dispatchEvent(new KeyboardEvent('keydown', opts));
         el.dispatchEvent(new KeyboardEvent('keypress', opts));
