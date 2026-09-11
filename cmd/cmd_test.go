@@ -578,6 +578,21 @@ func TestResolveTypeFetchCompilerTypeTargets_MissingTsconfig(t *testing.T) {
 	}
 }
 
+func TestResolveTypeFetchCompilerTypeTargets_EmptyTsconfig(t *testing.T) {
+	modulesPath := t.TempDir()
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := os.WriteFile(tsconfigPath, []byte("   \n\t  "), 0o644); err != nil {
+		t.Fatalf("write empty tsconfig: %v", err)
+	}
+	targets, err := resolveTypeFetchCompilerTypeTargets(tsconfigPath, modulesPath)
+	if err != nil {
+		t.Fatalf("resolveTypeFetchCompilerTypeTargets empty file: %v", err)
+	}
+	if len(targets) != 1 || targets[0].PackageName != "@types/node" || targets[0].TypeName != "node" {
+		t.Fatalf("expected default @types/node target for empty tsconfig, got %+v", targets)
+	}
+}
+
 func TestResolveTypeFetchCompilerTypeTargets_FromTsconfigTypes(t *testing.T) {
 	modulesPath := t.TempDir()
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
