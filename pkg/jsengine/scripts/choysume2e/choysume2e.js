@@ -717,10 +717,19 @@ function matchRouteEntry(url) {
 
 function makeRouteHandle(paused) {
   let settled = false;
-  const settle = async fn => {
-    if (settled) return;
-    settled = true;
-    await fn();
+  // Serialize settle attempts; only mark settled after CDP fulfill/continue succeeds
+  // so a failed attempt can still fail-open instead of leaving the request paused.
+  let settleChain = Promise.resolve();
+  const settle = fn => {
+    if (settled) return Promise.resolve();
+    const run = settleChain.then(async () => {
+      if (settled) return;
+      await fn();
+      settled = true;
+    });
+    // Keep the chain alive after a failure so the next settle (fail-open) can retry.
+    settleChain = run.catch(() => {});
+    return run;
   };
   return {
     request() {

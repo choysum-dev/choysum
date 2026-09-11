@@ -1004,9 +1004,13 @@ test('meta module management: kanban usable when registry sync fails', async () 
     await route.continue();
   };
 
+  // Authenticate before arming Fetch interception so login assets are not paused.
+  await loginAsE2EAdmin(page, baseURL);
   await page.route('**/*', routeHandler);
   try {
-    await ensureLoggedIn(page, baseURL);
+    await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
+    await waitForModuleList(page);
 
     // Lazy sync for registry runs on onMounted; this test forces registry
     // RequestSync to fail and verifies the page still stays usable.
