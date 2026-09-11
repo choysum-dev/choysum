@@ -218,6 +218,16 @@ jobs:
           fi
           echo "Vue type-fetch graph OK (vue@$pinned, runtime-core ${core_bytes} bytes)"
 
+      # modules/tsconfig.json is gitignored; type-fetch writes path maps here.
+      # Shards restore the pkg cache but need these maps (no root node_modules).
+      - name: Upload modules tsconfig path maps
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-modules-tsconfig
+          path: modules/tsconfig.json
+          retention-days: 1
+          if-no-files-found: error
+
   typecheck-shard:
     name: pr / typecheck-shard (${{ matrix.module }})
     if: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' }}
@@ -255,6 +265,12 @@ jobs:
 
       - name: Setup CLI testing pkg cache
         uses: ./.github/actions/setup-cli-testing-cache
+
+      - name: Download modules tsconfig path maps
+        uses: actions/download-artifact@v8
+        with:
+          name: pr-modules-tsconfig
+          path: modules
 
       - name: Run module typecheck
         run: |
