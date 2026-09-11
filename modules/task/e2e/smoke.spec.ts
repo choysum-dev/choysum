@@ -1,25 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
-import path from 'node:path';
+import { test, expect, page, runtime } from '@choysum/e2e';
 import { createClient, type Interceptor } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
 import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
-
-/**
- * Runtime metadata injected by the task e2e harness.
- */
-type RuntimeInfo = {
-  baseURL: string;
-  specsDir: string;
-  module: string;
-  scenario: string;
-  fixtures: string[];
-};
 
 /**
  * Minimal task protobuf module surface needed by the e2e smoke test.
@@ -36,26 +23,9 @@ type TaskPbModule = {
 let taskPbModulePromise: Promise<TaskPbModule> | null = null;
 
 /**
- * Reads the task e2e runtime metadata from the harness JSON file.
- */
-function readRuntimeInfo(): RuntimeInfo {
-  const runtimePath = process.env.CHOYSUM_E2E_RUNTIME_JSON;
-  if (!runtimePath) {
-    throw new Error('CHOYSUM_E2E_RUNTIME_JSON env var not set');
-  }
-  const raw = fs.readFileSync(runtimePath, 'utf-8');
-  return JSON.parse(raw) as RuntimeInfo;
-}
-
-/**
- * Loads the generated task protobuf module staged under specsDir/.generated.
+ * Loads the generated task protobuf module (bundle remaps *.generated).
  */
 async function loadTaskPbModule(): Promise<TaskPbModule> {
-  const runtime = readRuntimeInfo();
-  const staged = path.join(runtime.specsDir, '.generated', 'task_pb.ts');
-  if (!fs.existsSync(staged)) {
-    throw new Error(`Cannot find staged task_pb.ts at ${staged} (e2e runner should link it)`);
-  }
   const mod = (await import(
     /* @vite-ignore */ './.generated/task_pb.ts' as string
   )) as TaskPbModule;
@@ -75,7 +45,7 @@ async function getTaskPbModule(): Promise<TaskPbModule> {
 /**
  * Reads the persisted auth state from browser storage.
  */
-async function readAuthState(page: any): Promise<{ accessToken: string; identity: any }> {
+async function readAuthState(): Promise<{ accessToken: string; identity: any }> {
   return page.evaluate(() => {
     const raw = localStorage.getItem('choysum.auth') || sessionStorage.getItem('choysum.auth');
     if (!raw) return { accessToken: '', identity: null };
@@ -100,7 +70,26 @@ function decodeJwtPayload(token: string): any {
   const b64url = parts[1];
   const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
   const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-  const json = Buffer.from(b64 + pad, 'base64').toString('utf-8');
+  // Pure JS base64: QuickJS does not reliably provide atob for binary payloads.
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const clean = (b64 + pad).replace(/[^A-Za-z0-9+/=]/g, '');
+  const bytes: number[] = [];
+  for (let i = 0; i < clean.length; i += 4) {
+    const a = chars.indexOf(clean[i]);
+    const b = chars.indexOf(clean[i + 1]);
+    const c = chars.indexOf(clean[i + 2]);
+    const d = chars.indexOf(clean[i + 3]);
+    bytes.push((a << 2) | (b >> 4));
+    if (clean[i + 2] !== '=' && c >= 0) bytes.push(((b & 15) << 4) | (c >> 2));
+    if (clean[i + 3] !== '=' && d >= 0) bytes.push(((c & 3) << 6) | d);
+  }
+  const u8 = new Uint8Array(bytes);
+  let json = '';
+  if (typeof TextDecoder !== 'undefined') {
+    json = new TextDecoder('utf-8').decode(u8);
+  } else {
+    for (let i = 0; i < u8.length; i++) json += String.fromCharCode(u8[i]);
+  }
   try {
     return JSON.parse(json);
   } catch {
@@ -212,7 +201,11 @@ function makeAuthInterceptor(accessToken: string): Interceptor {
 /**
  * Creates task schedule and job gRPC-web clients.
  */
-function makeTaskClients(baseURL: string, accessToken: string, services: { Schedule: any; Job: any }): { scheduleClient: any; jobClient: any } {
+function makeTaskClients(
+  baseURL: string,
+  accessToken: string,
+  services: { Schedule: any; Job: any }
+): { scheduleClient: any; jobClient: any } {
   const transport = createGrpcWebTransport({
     baseUrl: baseURL,
     interceptors: [makeAuthInterceptor(accessToken)],
@@ -223,16 +216,15 @@ function makeTaskClients(baseURL: string, accessToken: string, services: { Sched
   };
 }
 
-test('task: create schedule and trigger job via gRPC-web', async ({ page }) => {
+test('task: create schedule and trigger job via gRPC-web', async () => {
   test.setTimeout(120_000);
 
-  const runtime = readRuntimeInfo();
   const baseURL = runtime.baseURL;
   const taskPb = await getTaskPbModule();
 
   await loginAsE2EAdmin(page, baseURL);
 
-  const { accessToken, identity } = await readAuthState(page);
+  const { accessToken, identity } = await readAuthState();
   expect(accessToken).not.toBe('');
 
   const userId = getUserId(identity, accessToken);
