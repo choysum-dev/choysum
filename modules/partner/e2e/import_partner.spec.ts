@@ -1,34 +1,23 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect } from '@playwright/test';
-import fs from 'node:fs';
+import { test, expect, page, runtime } from '@choysum/e2e';
 import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 
-type RuntimeInfo = {
-  baseURL: string;
-  specsDir: string;
-  module: string;
-  scenario: string;
-  fixtures: string[];
-};
+/**
+ * Partner list Import entry: title-row IO menu opens the import dialog.
+ */
+test('partner import: list page exposes import entry', async () => {
+  const baseURL = runtime.baseURL;
 
-function readRuntimeInfo(): RuntimeInfo {
-  const runtimePath = process.env.CHOYSUM_E2E_RUNTIME_JSON;
-  if (!runtimePath) {
-    throw new Error('CHOYSUM_E2E_RUNTIME_JSON env var not set');
-  }
-  const raw = fs.readFileSync(runtimePath, 'utf-8');
-  return JSON.parse(raw) as RuntimeInfo;
-}
+  await loginAsE2EAdmin(page, baseURL);
 
-test('partner import: list page exposes import entry', async ({ page }) => {
-  const runtime = readRuntimeInfo();
-  await loginAsE2EAdmin(page, runtime.baseURL);
-
-  await page.goto(`${runtime.baseURL}/web/partner/partners`);
-  await page.getByTestId('page-io-menu-trigger').click();
-  await expect(page.getByTestId('page-io-menu-import')).toBeVisible();
-  await page.getByTestId('page-io-menu-import').click();
+  await page.goto(`${baseURL}/web/partner/partners`);
+  const trigger = page.getByTestId('page-io-menu-trigger');
+  await expect(trigger).toBeVisible({ timeout: 30_000 });
+  await trigger.click();
+  const importItem = page.getByTestId('page-io-menu-import');
+  await expect(importItem).toBeVisible();
+  await importItem.click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });

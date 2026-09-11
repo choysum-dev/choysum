@@ -338,11 +338,18 @@ async function resolveToCSS(loc) {
       const roleSelectors = {
         button: 'button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]',
         option: '[role="option"], option',
-        dialog: '[role="dialog"], dialog',
+        dialog: '[role="dialog"], dialog, .el-dialog',
         menuitem: '[role="menuitem"]',
       };
       const sel = roleSelectors[role] || ('[role="' + String(role).replace(/"/g, '') + '"]');
       if (!sel || sel === '[role=""]') throw new Error('getByRole: unsupported role ' + role);
+
+      const isVisibleEl = (el) => {
+        const style = window.getComputedStyle(el);
+        if (!style || style.visibility === 'hidden' || style.display === 'none' || parseFloat(style.opacity) === 0) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      };
 
       const accessibleName = (el) => {
         const labelled = el.getAttribute('aria-label');
@@ -374,7 +381,24 @@ async function resolveToCSS(loc) {
         return name.includes(want);
       };
 
-      const nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
+      let nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
+      // Element Plus: role=dialog may sit on the overlay wrapper; map to .el-dialog.
+      if (role === 'dialog') {
+        nodes = nodes.map((el) => {
+          if (el.classList && el.classList.contains('el-dialog')) return el;
+          const inner = el.querySelector ? el.querySelector('.el-dialog') : null;
+          return inner || el;
+        });
+        // Wrapper + .el-dialog both match the selector; mapping collapses them to one node.
+        nodes = nodes.filter((el, i) => nodes.indexOf(el) === i);
+      }
+      // Prefer visible candidates before preferring .el-dialog content panels.
+      const visible = nodes.filter(isVisibleEl);
+      if (visible.length) nodes = visible;
+      if (role === 'dialog') {
+        const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
+        if (content.length) nodes = content;
+      }
       const resolved = index < 0 ? nodes.length + index : index;
       if (resolved < 0 || resolved >= nodes.length) {
         throw new Error('getByRole: no match for role=' + role + ' index=' + index + ' count=' + nodes.length);
@@ -517,11 +541,17 @@ async function collectMatchedElements(loc) {
       const roleSelectors = {
         button: 'button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]',
         option: '[role="option"], option',
-        dialog: '[role="dialog"], dialog',
+        dialog: '[role="dialog"], dialog, .el-dialog',
         menuitem: '[role="menuitem"]',
       };
       const sel = roleSelectors[role] || ('[role="' + String(role).replace(/"/g, '') + '"]');
       if (!sel || sel === '[role=""]') return [];
+      const isVisibleEl = (el) => {
+        const style = window.getComputedStyle(el);
+        if (!style || style.visibility === 'hidden' || style.display === 'none' || parseFloat(style.opacity) === 0) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      };
       const accessibleName = (el) => {
         const labelled = el.getAttribute('aria-label');
         if (labelled) return String(labelled).trim();
@@ -550,7 +580,22 @@ async function collectMatchedElements(loc) {
         if (nameMatch.exact) return name === want;
         return name.includes(want);
       };
-      return Array.from(root.querySelectorAll(sel)).filter(nameOk).map(el => el.textContent);
+      let nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
+      if (role === 'dialog') {
+        nodes = nodes.map((el) => {
+          if (el.classList && el.classList.contains('el-dialog')) return el;
+          const inner = el.querySelector ? el.querySelector('.el-dialog') : null;
+          return inner || el;
+        });
+        nodes = nodes.filter((el, i) => nodes.indexOf(el) === i);
+      }
+      const visible = nodes.filter(isVisibleEl);
+      if (visible.length) nodes = visible;
+      if (role === 'dialog') {
+        const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
+        if (content.length) nodes = content;
+      }
+      return nodes.map(el => el.textContent);
     })()`);
     return JSON.parse(raw);
   }
@@ -751,7 +796,10 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const sel = await ensureCSS(target);
-          return await getHost().isVisible(sel);
+          const ok = await getHost().isVisible(sel);
+          // Role/text locators stamp DOM nodes; Vue re-renders drop the stamp.
+          if (!ok) target._css = '';
+          return ok;
         } catch (e) {
           target._css = '';
           throw e;
@@ -766,6 +814,14 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const sel = await ensureCSS(target);
+          const exists = !!JSON.parse(
+            await getHost().evaluate(`!!document.querySelector(${JSON.stringify(sel)})`)
+          );
+          // Only clear when the stamped node is gone; disabled-but-present must keep polling.
+          if (!exists) {
+            target._css = '';
+            return false;
+          }
           return await getHost().isEnabled(sel);
         } catch (e) {
           target._css = '';
@@ -783,13 +839,20 @@ function e2eExpect(target, message) {
           const sel = await ensureCSS(target);
           const raw = await getHost().evaluate(`(() => {
             const el = document.querySelector(${JSON.stringify(sel)});
-            if (!el) return false;
-            if (typeof el.checked === 'boolean') return el.checked;
-            if (el.classList && el.classList.contains('is-checked')) return true;
-            const aria = el.getAttribute('aria-checked');
-            return aria === 'true';
+            if (!el) return { exists: false, checked: false };
+            let checked = false;
+            if (typeof el.checked === 'boolean') checked = el.checked;
+            else if (el.classList && el.classList.contains('is-checked')) checked = true;
+            else checked = el.getAttribute('aria-checked') === 'true';
+            return { exists: true, checked };
           })()`);
-          return !!JSON.parse(raw);
+          const res = JSON.parse(raw);
+          // Only clear the stamped CSS when the node is gone; unchecked must keep polling the same el.
+          if (!res || !res.exists) {
+            target._css = '';
+            return false;
+          }
+          return !!res.checked;
         } catch (e) {
           target._css = '';
           throw e;

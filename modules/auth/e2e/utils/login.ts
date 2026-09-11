@@ -46,17 +46,26 @@ export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void
     await username.fill('e2e-admin');
     await page.getByPlaceholder(/password/i).fill('e2e-admin');
 
-    const loginOk = waitForGrpcWebUnaryOk(page, '/auth.User/Login', { timeoutMs: 20_000 });
+    // Heavier module closures (partner+) can still be settling SQLite writers at first Login.
+    const loginOk = waitForGrpcWebUnaryOk(page, '/auth.User/Login', { timeoutMs: 45_000 });
     await submit.click();
     await loginOk;
 
-    await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 30_000 });
   };
 
-  try {
-    await runOnce();
-  } catch {
-    // One retry absorbs residual init races without masking persistent failures.
-    await runOnce();
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await runOnce();
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 3) {
+        // Give SQLite writers / auth init a beat before the next attempt.
+        await page.waitForTimeout(250 * attempt);
+      }
+    }
   }
+  throw lastErr;
 }

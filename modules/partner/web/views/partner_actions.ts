@@ -4,8 +4,8 @@
 import { defineAction, defineModelActions } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const listLt = createTranslate('partner', { scope: 'web/views/PartnerListView' })._lt;
-const formLt = createTranslate('partner', { scope: 'web/views/PartnerFormView' })._lt;
+const { _lt: listLt } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
+const { _lt: formLt } = createTranslate('partner', { scope: 'web/views/PartnerFormView' });
 
 /** Action used to open partner detail from the list. */
 export const partnerOpenDetailAction = defineAction('partner.action.partner_open_detail', {
