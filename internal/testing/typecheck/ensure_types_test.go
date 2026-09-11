@@ -39,12 +39,28 @@ func TestEnsureTypeAssets_EarlyReturns(t *testing.T) {
   }
 }
 `)
+	origFetch := fetchTypeDefinition
+	t.Cleanup(func() { fetchTypeDefinition = origFetch })
+	fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, typesDir, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		if pkg != "@types/node" {
+			t.Fatalf("expected @types/node fetch when vue already resolves, got %s@%s", pkg, ver)
+		}
+		p := filepath.Join(typesDir, "esm.sh_@types_node@"+ver+"_index.d.ts.d.ts")
+		if err := os.WriteFile(p, []byte("export {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return &esmresolver.TypeFetchResult{Package: pkg, Version: ver, CachedPath: p}, nil, nil
+	}
 	var stderr strings.Builder
 	if err := ensureTypeAssets(context.Background(), &stderr, modules, "demo"); err != nil {
 		t.Fatal(err)
 	}
 	if stderr.Len() != 0 {
-		t.Fatalf("expected skip before fetch, stderr=%q", stderr.String())
+		t.Fatalf("expected quiet node bridge when vue already resolves, stderr=%q", stderr.String())
+	}
+	bridge := filepath.Join(home, "pkg", "types", "typeRoots", "node", "index.d.ts")
+	if _, err := os.Stat(bridge); err != nil {
+		t.Fatalf("expected typeRoots node bridge at %s: %v", bridge, err)
 	}
 }
 
@@ -59,6 +75,19 @@ func TestEnsureTypeAssets_SkipWithoutEnv(t *testing.T) {
 }
 
 func TestEnsureTypeAssets_NoVuePathMapping(t *testing.T) {
+	origFetch := fetchTypeDefinition
+	t.Cleanup(func() { fetchTypeDefinition = origFetch })
+	fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, typesDir, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		if pkg != "@types/node" {
+			t.Fatalf("unexpected fetch %s@%s", pkg, ver)
+		}
+		p := filepath.Join(typesDir, "esm.sh_@types_node@"+ver+"_index.d.ts.d.ts")
+		if err := os.WriteFile(p, []byte("export {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return &esmresolver.TypeFetchResult{Package: pkg, Version: ver, CachedPath: p}, nil, nil
+	}
+
 	home := t.TempDir()
 	t.Setenv("CHOYSUM_HOME", home)
 	t.Setenv("CHOYSUM_TEST_TMP", "")
@@ -102,11 +131,23 @@ func TestEnsureTypeAssets_DiscoversVueFromTypesCache(t *testing.T) {
 	modules := t.TempDir()
 	// No tsconfig — mirrors CI shards after checkout (modules/tsconfig is gitignored).
 	fetchTypeDefinition = func(_ context.Context, _ *http.Client, _, td, pkg, ver string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
-		if pkg != "vue" || ver != "3.5.35" {
+		switch pkg {
+		case "vue":
+			if ver != "3.5.35" {
+				t.Fatalf("unexpected vue version %s", ver)
+			}
+			p := filepath.Join(td, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
+			return &esmresolver.TypeFetchResult{Package: "vue", Version: ver, CachedPath: p, FromCache: true}, nil, nil
+		case "@types/node":
+			p := filepath.Join(td, "esm.sh_@types_node@"+ver+"_index.d.ts.d.ts")
+			if err := os.WriteFile(p, []byte("export {}\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return &esmresolver.TypeFetchResult{Package: pkg, Version: ver, CachedPath: p}, nil, nil
+		default:
 			t.Fatalf("unexpected fetch %s@%s", pkg, ver)
+			return nil, nil, nil
 		}
-		p := filepath.Join(td, "esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts")
-		return &esmresolver.TypeFetchResult{Package: "vue", Version: ver, CachedPath: p, FromCache: true}, nil, nil
 	}
 
 	var stderr strings.Builder

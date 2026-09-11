@@ -2210,6 +2210,9 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 			"strict":                       true,
 			"strictPropertyInitialization": false,
 			"target":                       "ES2020",
+			// Pull @types/node via type-fetch typeRoots (no root node_modules).
+			// Provides require/process and the Array.at compatibility polyfill.
+			"types": []string{"node"},
 		},
 		// Test and e2e files are intentionally included (not excluded) so
 		// that IDEs can resolve @/* path aliases, ambient test globals

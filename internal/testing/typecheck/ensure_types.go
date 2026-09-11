@@ -54,10 +54,10 @@ func defaultFetchTypeDefinition(ctx context.Context, client *http.Client, upstre
 // transitive declaration files and would make typecheck cold-start untenable.
 //
 // modules/tsconfig.json is gitignored: CI shards restore the durable pkg cache
-// but start without path mappings. When the harness env is set, this function
-// discovers a vue version (tsconfig pin → types cache → package.json), ensures
-// the type-fetch graph exists, then writes a `vue` paths entry so the checker
-// resolves real Vue types instead of the ambient stub.
+// and may receive path maps from prepare-typecheck-types. Even when `vue` already
+// resolves, this still ensures the @types/node typeRoots bridge (require / Array.at)
+// when the CLI harness env is set — prepare can leave a incomplete types-only
+// cache if compiler types were never fetched.
 func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app string) error {
 	if ctx == nil {
 		ctx = context.Background()
@@ -65,9 +65,6 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 	modulesRoot = filepath.Clean(modulesRoot)
 	app = strings.TrimSpace(app)
 	if modulesRoot == "" || app == "" {
-		return nil
-	}
-	if gonative.HasResolvableVueTypes(modulesRoot, "") {
 		return nil
 	}
 	// Fixtures call TypecheckApp without CLI harness env; keep stub/vue-less
@@ -90,10 +87,6 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 		return xfmt.Errorf("typecheck: create types dir: %w", err)
 	}
 
-	if stderr != nil {
-		_, _ = fmt.Fprintf(stderr, "# typecheck %s: fetching critical type assets into %s\n", app, typesDir)
-	}
-
 	upstream := typeFetchUpstream
 	client := newTypeFetchHTTPClient()
 	defer client.CloseIdleConnections()
@@ -101,6 +94,15 @@ func ensureTypeAssets(ctx context.Context, stderr io.Writer, modulesRoot, app st
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+
+	if gonative.HasResolvableVueTypes(modulesRoot, "") {
+		return ensureNodeCompilerTypes(ctx, client, upstream, typesDir, modulesRoot)
+	}
+
+	if stderr != nil {
+		_, _ = fmt.Fprintf(stderr, "# typecheck %s: fetching critical type assets into %s\n", app, typesDir)
+	}
+
 	vueVersion := resolveVueVersion(modulesRoot, typesDir)
 	if vueVersion == "" {
 		// Fixtures / non-Vue modules often set CHOYSUM_HOME without a vue pin,
@@ -202,7 +204,9 @@ func ensureNodeCompilerTypes(ctx context.Context, client *http.Client, upstream,
 		version = resolveVueAdjacentNodeVersion(typesDir)
 	}
 	if version == "" {
-		return nil
+		// Match the historical CI toolchain pin so shards can bridge node types
+		// even when prepare did not write @types/node into modules/tsconfig.
+		version = defaultTypesNodeVersion
 	}
 	result, _, err := fetchTypeDefinition(ctx, client, upstream, typesDir, "@types/node", version)
 	if err != nil {
@@ -213,6 +217,10 @@ func ensureNodeCompilerTypes(ctx context.Context, client *http.Client, upstream,
 	}
 	return writeTypeRootBridge(typesDir, "node", result.CachedPath)
 }
+
+// defaultTypesNodeVersion is used when modules/tsconfig has no @types/node pin
+// and the types cache has no adjacent esm.sh_@types_node@* entry.
+const defaultTypesNodeVersion = "22.20.1"
 
 func resolvePinnedTypesNodeVersion(modulesRoot string) string {
 	return resolvePinnedPackageVersion(modulesRoot, "@types/node")

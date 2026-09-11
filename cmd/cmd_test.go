@@ -567,14 +567,14 @@ func TestNewTypeFetchCmd_Run_InvalidMissingDepPolicy(t *testing.T) {
 func TestResolveTypeFetchCompilerTypeTargets_MissingTsconfig(t *testing.T) {
 	modulesPath := t.TempDir()
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
-	// tsconfig does not exist — resolveTypeFetchCompilerTypeTargets must
-	// return nil,nil instead of an error so the command can initialise.
+	// tsconfig does not exist — still request default @types/node so Go-native
+	// typecheck can bridge require / Array.at without root node_modules.
 	targets, err := resolveTypeFetchCompilerTypeTargets(tsconfigPath, modulesPath)
 	if err != nil {
-		t.Fatalf("resolveTypeFetchCompilerTypeTargets should return nil on missing tsconfig: %v", err)
+		t.Fatalf("resolveTypeFetchCompilerTypeTargets should not error on missing tsconfig: %v", err)
 	}
-	if targets != nil {
-		t.Fatalf("expected nil targets for missing tsconfig, got %+v", targets)
+	if len(targets) != 1 || targets[0].PackageName != "@types/node" || targets[0].TypeName != "node" {
+		t.Fatalf("expected default @types/node target, got %+v", targets)
 	}
 }
 
@@ -634,8 +634,9 @@ func TestResolveTypeFetchCompilerTypeTargets_RejectsPathTraversal(t *testing.T) 
 	if err != nil {
 		t.Fatalf("resolveTypeFetchCompilerTypeTargets failed: %v", err)
 	}
-	if len(targets) != 0 {
-		t.Fatalf("expected 0 targets for traversal-tainted types, got %d: %+v", len(targets), targets)
+	// Traversal-tainted entries are dropped; default @types/node is still added.
+	if len(targets) != 1 || targets[0].PackageName != "@types/node" {
+		t.Fatalf("expected only default @types/node after rejecting traversal, got %+v", targets)
 	}
 }
 

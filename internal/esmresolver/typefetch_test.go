@@ -914,6 +914,9 @@ func TestUpdateTsconfigPaths_CreatesTsconfigWhenMissing(t *testing.T) {
 	if !strings.Contains(content, `"compilerOptions"`) {
 		t.Fatalf("created tsconfig should include compilerOptions: %s", content)
 	}
+	if !strings.Contains(content, `"types"`) || !strings.Contains(content, `"node"`) {
+		t.Fatalf("created tsconfig should include types:[node]: %s", content)
+	}
 }
 
 func TestEnsureTsconfigCompilerTypeRoots(t *testing.T) {

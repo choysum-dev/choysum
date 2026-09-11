@@ -217,6 +217,14 @@ jobs:
             exit 1
           fi
           echo "Vue type-fetch graph OK (vue@$pinned, runtime-core ${core_bytes} bytes)"
+          node_bridge="${types_dir}/typeRoots/node/index.d.ts"
+          if [[ ! -s "$node_bridge" ]]; then
+            echo "error: @types/node typeRoots bridge missing at $node_bridge" >&2
+            ls -la "$types_dir"/typeRoots 2>/dev/null || true
+            ls -la "$types_dir"/esm.sh_@types_node@* 2>/dev/null || true
+            exit 1
+          fi
+          echo "Node typeRoots bridge OK ($node_bridge)"
 
       # modules/tsconfig.json is gitignored; type-fetch writes path maps here.
       # Shards restore the pkg cache but need these maps (no root node_modules).
