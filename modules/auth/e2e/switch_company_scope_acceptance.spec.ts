@@ -7,7 +7,6 @@ import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
 import { loginAsE2EAdmin } from './utils/login.ts';
-import { switchCompanyViaUI } from './utils/switchCompany.ts';
 
 type AuthPbModule = {
   User: any;
@@ -245,45 +244,33 @@ async function waitForServerLogContains(needle: string, timeoutMs = 10_000): Pro
   throw new Error(`timeout waiting for server.log to contain: ${needle}\n--- server.log tail ---\n${await tail}`);
 }
 
-async function discoverTwoCompanyIdsByUISwitch(): Promise<{ a: string; b: string }> {
-  const trigger = page.getByTestId('company-switch-trigger');
-  await expect(trigger).toBeVisible();
-
-  const before = await readAuthTokens();
-  if (!before.accessToken) {
-    throw new Error('discoverTwoCompanyIdsByUISwitch: missing access token before switch');
-  }
-  const scopeA = extractCompanyScopeFromToken(before.accessToken);
-  if (!scopeA.activeCompanyId) {
-    throw new Error('discoverTwoCompanyIdsByUISwitch: missing activeCompanyId before switch');
-  }
-
-  await switchCompanyViaUI();
-
-  await expect
-    .poll(
-      async () => {
-        const after = await readAuthTokens();
-        const next = extractCompanyScopeFromToken(after.accessToken).activeCompanyId;
-        return next && next !== scopeA.activeCompanyId ? next : scopeA.activeCompanyId;
-      },
-      { timeout: 30_000 }
+/**
+ * Resolve two distinct allowed company ids from the JWT (e2e-admin has main + child).
+ * Avoids UI switch discovery — that path is covered by switch_company_scope.spec.ts.
+ */
+function discoverTwoCompanyIdsFromToken(accessToken: string): { a: string; b: string } {
+  const scope = extractCompanyScopeFromToken(accessToken);
+  const payload = decodeJwtPayload(accessToken);
+  const meta = payload?.meta && typeof payload.meta === 'object' ? payload.meta : {};
+  const allowedRaw = Array.isArray(meta.allowedCompanyIds) ? meta.allowedCompanyIds : [];
+  const allowed = Array.from(
+    new Set(
+      [...allowedRaw, scope.activeCompanyId, ...scope.enabledCompanyIds]
+        .map(x => String(x ?? '').trim())
+        .filter(Boolean)
     )
-    .not.toBe(scopeA.activeCompanyId);
-
-  const after = await readAuthTokens();
-  if (!after.accessToken) {
-    throw new Error('discoverTwoCompanyIdsByUISwitch: missing access token after switch');
+  );
+  if (allowed.length < 2) {
+    throw new Error(
+      `discoverTwoCompanyIdsFromToken: need >=2 allowed companies, got ${JSON.stringify(allowed)}`
+    );
   }
-  const scopeB = extractCompanyScopeFromToken(after.accessToken);
-  if (!scopeB.activeCompanyId) {
-    throw new Error('discoverTwoCompanyIdsByUISwitch: missing activeCompanyId after switch');
+  const a = scope.activeCompanyId && allowed.includes(scope.activeCompanyId) ? scope.activeCompanyId : allowed[0];
+  const b = allowed.find(id => id !== a);
+  if (!b) {
+    throw new Error('discoverTwoCompanyIdsFromToken: could not pick a second company id');
   }
-  if (scopeB.activeCompanyId === scopeA.activeCompanyId) {
-    throw new Error('discoverTwoCompanyIdsByUISwitch: company id did not change after UI switch');
-  }
-
-  return { a: scopeA.activeCompanyId, b: scopeB.activeCompanyId };
+  return { a, b };
 }
 
 function expectIncludesAll(actual: string[], want: string[]) {
@@ -303,7 +290,7 @@ test('auth: SwitchCompanyScope default enabled uses Preferences (enabledCompanyI
   const { accessToken } = await readAuthState();
   expect(accessToken).not.toBe('');
 
-  const pair = await discoverTwoCompanyIdsByUISwitch();
+  const pair = discoverTwoCompanyIdsFromToken(accessToken);
 
   const client0: any = makeUserClient(baseURL, accessToken, authPb.User);
 
@@ -349,7 +336,7 @@ test('auth: SwitchCompanyScope persists view; RefreshTokens reproduces the same 
   const { accessToken } = await readAuthState();
   expect(accessToken).not.toBe('');
 
-  const pair = await discoverTwoCompanyIdsByUISwitch();
+  const pair = discoverTwoCompanyIdsFromToken(accessToken);
 
   const client0: any = makeUserClient(baseURL, accessToken, authPb.User);
 
@@ -390,7 +377,7 @@ test('auth: SwitchCompanyScope illegal enabledCompanyIds fails closed and emits 
   expect(accessToken).not.toBe('');
 
   const userId = String(identity?.userId ?? '');
-  const pair = await discoverTwoCompanyIdsByUISwitch();
+  const pair = discoverTwoCompanyIdsFromToken(accessToken);
 
   const client: any = makeUserClient(baseURL, accessToken, authPb.User);
 
