@@ -4,13 +4,32 @@
 import { expect, page } from '@choysum/e2e';
 import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 
+/**
+ * Decode activeCompanyId from the persisted access token JWT.
+ * Auth persist paths omit identity, so localStorage.identity is unreliable.
+ * Runs in the browser page (atob is available there).
+ */
 async function readActiveCompanyIdFromAuth(): Promise<string> {
   return page.evaluate(() => {
     const raw = localStorage.getItem('choysum.auth') || sessionStorage.getItem('choysum.auth');
     if (!raw) return '';
     try {
       const data = JSON.parse(raw);
-      return String(data?.identity?.metadata?.activeCompanyId || '').trim();
+      const token = String(data?.tokens?.accessToken || '').trim();
+      if (!token) return '';
+      const parts = token.split('.');
+      if (parts.length < 2) return '';
+      const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+      const json = decodeURIComponent(
+        atob(b64 + pad)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(json);
+      const meta = payload?.meta && typeof payload.meta === 'object' ? payload.meta : {};
+      return String(meta.activeCompanyId || '').trim();
     } catch {
       return '';
     }
@@ -22,7 +41,8 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
  * Uses HTMLElement.click() so Element Plus Vue handlers run (MouseEvent dispatch is flaky).
  */
 async function pickOtherActiveCompanyOption(): Promise<void> {
-  // Scope to the company panel: other page dropdowns must not skip opening this select.
+  // Scope to the company panel: select uses teleported=false, so options live under the panel.
+  // Other page dropdowns must not skip opening this select.
   const dropdownOpen = await page.evaluate(() => {
     const panel = document.querySelector('[data-testid="company-switch-panel"]');
     if (!panel) return false;
@@ -63,7 +83,7 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     .toBeGreaterThanOrEqual(2);
 
   // Never fall back to the last option: it may be the already-selected company and
-  // then Apply is a no-op while waitForGrpcWebUnaryOk burns a full timeout.
+  // then Apply is a no-op while waits burn a full timeout.
   const clicked = await page.evaluate(() => {
     const panel = document.querySelector('[data-testid="company-switch-panel"]');
     if (!panel) return false;
@@ -96,10 +116,12 @@ async function clickApplyButton(): Promise<void> {
 }
 
 /**
- * Open the company switcher, select another company, and wait for SwitchCompanyScope.
+ * Open the company switcher, select another company, and wait until activeCompanyId changes.
  *
  * Retries the full open→select→apply path: Element Plus often swallows the first
  * apply click under CDP, and panel-open refreshToken can race with a thin click path.
+ *
+ * Success is JWT activeCompanyId change (tokens are persisted; identity is not).
  */
 export async function switchCompanyViaUI(): Promise<void> {
   let lastErr: unknown;
@@ -109,14 +131,27 @@ export async function switchCompanyViaUI(): Promise<void> {
       const trigger = page.getByTestId('company-switch-trigger');
       await expect(trigger).toBeVisible();
 
-      // Ensure panel is open (re-open after a previous apply that closed it).
       // Presence alone is not enough: Element Plus may keep the panel mounted while hidden.
       const panel = page.getByTestId('company-switch-panel');
       const panelVisible = await panel.isVisible().catch(() => false);
-      if (!panelVisible) {
+      // If already open, an in-flight panel-open RefreshTokens may still complete later and
+      // overwrite SwitchCompanyScope. Close + reopen so we can wait on a fresh refresh.
+      if (panelVisible) {
         await trigger.click();
+        await expect
+          .poll(async () => !(await panel.isVisible().catch(() => false)), { timeout: 10_000 })
+          .toBe(true);
       }
+
+      // Arm before open: panel watcher always force-refreshes tokens.
+      const refreshWait = waitForGrpcWebUnaryOk(page, '/auth.User/RefreshTokens', {
+        timeoutMs: 20_000,
+      }).catch(() => undefined);
+      await trigger.click();
       await expect(panel).toBeVisible({ timeout: 10_000 });
+      // Settle refresh before select/apply so an in-flight RefreshTokens cannot
+      // overwrite a later SwitchCompanyScope TokenPair.
+      await refreshWait;
 
       await pickOtherActiveCompanyOption();
 
@@ -124,27 +159,25 @@ export async function switchCompanyViaUI(): Promise<void> {
       await expect.poll(async () => await applyButton.isEnabled(), { timeout: 15_000 }).toBe(true);
       await expect(page.getByTestId('company-switch-hint')).toHaveCount(0);
 
-      const switchOk = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', {
-        timeoutMs: 20_000,
-      });
-      // Consume rejection if clickApplyButton throws and this wait is abandoned on retry.
-      void switchOk.catch(() => undefined);
       await clickApplyButton();
-      try {
-        await switchOk;
-      } catch (waitErr) {
-        // Apply is non-idempotent: if CDP missed the response but scope already changed,
-        // treat as success so a retry cannot switch back to the original company.
-        const afterCompanyId = await readActiveCompanyIdFromAuth();
-        // beforeCompanyId may be empty if auth storage was briefly unreadable.
-        if (afterCompanyId && afterCompanyId !== beforeCompanyId) {
-          return;
-        }
-        throw waitErr;
-      }
+
+      await expect
+        .poll(
+          async () => {
+            const after = await readActiveCompanyIdFromAuth();
+            return Boolean(after && after !== beforeCompanyId);
+          },
+          { timeout: 20_000 }
+        )
+        .toBe(true);
       return;
     } catch (err) {
       lastErr = err;
+      // If scope already changed (e.g. apply raced on a prior attempt), stop.
+      const afterCompanyId = await readActiveCompanyIdFromAuth();
+      if (afterCompanyId && afterCompanyId !== beforeCompanyId) {
+        return;
+      }
       // Close only when the panel is actually visible; presence alone would re-open it.
       await page
         .evaluate(() => {

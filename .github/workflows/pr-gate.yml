@@ -24,7 +24,7 @@ jobs:
     outputs:
       docs_only: ${{ steps.discover.outputs.docs_only }}
       direct_modules_json: ${{ steps.discover.outputs.direct_modules_json }}
-      impacted_direct_e2e_no_smoke_modules_json: ${{ steps.discover.outputs.impacted_direct_e2e_no_smoke_modules_json }}
+      impacted_direct_e2e_modules_json: ${{ steps.discover.outputs.impacted_direct_e2e_modules_json }}
       impacted_modules_json: ${{ steps.discover.outputs.impacted_modules_json }}
       impacted_smoke_e2e_modules_json: ${{ steps.discover.outputs.impacted_smoke_e2e_modules_json }}
       run_full_matrix: ${{ steps.discover.outputs.run_full_matrix }}
@@ -73,7 +73,7 @@ jobs:
 
   prepare-playwright-cache:
     name: pr / prepare-playwright-cache
-    if: ${{ needs.discover-impact.outputs.docs_only != 'true' && (needs.discover-impact.outputs.run_pr_smoke_e2e == 'true' || needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]') }}
+    if: ${{ needs.discover-impact.outputs.docs_only != 'true' && (needs.discover-impact.outputs.run_pr_smoke_e2e == 'true' || needs.discover-impact.outputs.impacted_direct_e2e_modules_json != '[]') }}
     needs:
       - discover-impact
       - prepare-root-node-modules
@@ -87,7 +87,7 @@ jobs:
       ${{ needs.discover-impact.outputs.docs_only != 'true' &&
       (needs.discover-impact.outputs.impacted_modules_json != '[]' ||
       needs.discover-impact.outputs.impacted_smoke_e2e_modules_json != '[]' ||
-      needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]') }}
+      needs.discover-impact.outputs.impacted_direct_e2e_modules_json != '[]') }}
     needs:
       - discover-impact
       - prepare-embedded-assets
@@ -545,7 +545,7 @@ jobs:
 
   e2e-shard-targeted:
     name: pr / e2e-shard-targeted (${{ matrix.module }})
-    if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]' }}
+    if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_modules_json != '[]' }}
     needs:
       - prepare-embedded-assets
       - discover-impact
@@ -555,7 +555,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: ${{ fromJson(needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json) }}
+        module: ${{ fromJson(needs.discover-impact.outputs.impacted_direct_e2e_modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -623,12 +623,12 @@ jobs:
             exit 1
           fi
 
-      - name: Skip targeted E2E aggregate when routing produces no direct E2E modules without smoke specs
-        if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json == '[]' }}
+      - name: Skip targeted E2E aggregate when routing produces no direct E2E module edits
+        if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_modules_json == '[]' }}
         run: echo "targeted E2E skipped by routing"
 
       - name: Verify targeted E2E matrix result
-        if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]' }}
+        if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_modules_json != '[]' }}
         run: |
           echo "e2e-shard-targeted result=${{ needs.e2e-shard-targeted.result }}"
           if [ "${{ needs.e2e-shard-targeted.result }}" != "success" ]; then
