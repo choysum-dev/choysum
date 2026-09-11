@@ -255,7 +255,7 @@ function discoverTwoCompanyIdsFromToken(accessToken: string): { a: string; b: st
   const allowedRaw = Array.isArray(meta.allowedCompanyIds) ? meta.allowedCompanyIds : [];
   const allowed = Array.from(
     new Set(
-      [...allowedRaw, scope.activeCompanyId, ...scope.enabledCompanyIds]
+      [...allowedRaw, scope.activeCompanyId, ...(scope.enabledCompanyIds || [])]
         .map(x => String(x ?? '').trim())
         .filter(Boolean)
     )

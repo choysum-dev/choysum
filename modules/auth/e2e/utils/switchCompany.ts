@@ -7,6 +7,7 @@ import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 /**
  * Decode activeCompanyId from the persisted access token JWT.
  * Auth persist paths omit identity, so localStorage.identity is unreliable.
+ * Runs in the browser page (atob is available there).
  */
 async function readActiveCompanyIdFromAuth(): Promise<string> {
   return page.evaluate(() => {
@@ -20,25 +21,12 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
       if (parts.length < 2) return '';
       const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-      const clean = (b64 + pad).replace(/[^A-Za-z0-9+/=]/g, '');
-      const bytes: number[] = [];
-      for (let i = 0; i < clean.length; i += 4) {
-        const a = chars.indexOf(clean[i]);
-        const b = chars.indexOf(clean[i + 1]);
-        const c = chars.indexOf(clean[i + 2]);
-        const d = chars.indexOf(clean[i + 3]);
-        bytes.push((a << 2) | (b >> 4));
-        if (clean[i + 2] !== '=' && c >= 0) bytes.push(((b & 15) << 4) | (c >> 2));
-        if (clean[i + 3] !== '=' && d >= 0) bytes.push(((c & 3) << 6) | d);
-      }
-      const u8 = new Uint8Array(bytes);
-      let json = '';
-      if (typeof TextDecoder !== 'undefined') {
-        json = new TextDecoder('utf-8').decode(u8);
-      } else {
-        for (let i = 0; i < u8.length; i++) json += String.fromCharCode(u8[i]);
-      }
+      const json = decodeURIComponent(
+        atob(b64 + pad)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
       const payload = JSON.parse(json);
       const meta = payload?.meta && typeof payload.meta === 'object' ? payload.meta : {};
       return String(meta.activeCompanyId || '').trim();
@@ -133,8 +121,7 @@ async function clickApplyButton(): Promise<void> {
  * Retries the full open→select→apply path: Element Plus often swallows the first
  * apply click under CDP, and panel-open refreshToken can race with a thin click path.
  *
- * Success is JWT activeCompanyId change (tokens are persisted). CDP observation of
- * SwitchCompanyScope is best-effort only — identity is not in persist paths.
+ * Success is JWT activeCompanyId change (tokens are persisted; identity is not).
  */
 export async function switchCompanyViaUI(): Promise<void> {
   let lastErr: unknown;
@@ -144,18 +131,23 @@ export async function switchCompanyViaUI(): Promise<void> {
       const trigger = page.getByTestId('company-switch-trigger');
       await expect(trigger).toBeVisible();
 
-      // Ensure panel is open (re-open after a previous apply that closed it).
       // Presence alone is not enough: Element Plus may keep the panel mounted while hidden.
       const panel = page.getByTestId('company-switch-panel');
       const panelVisible = await panel.isVisible().catch(() => false);
-      // Arm before open: panel watcher always force-refreshes tokens.
-      let refreshWait: Promise<unknown> = Promise.resolve();
-      if (!panelVisible) {
-        refreshWait = waitForGrpcWebUnaryOk(page, '/auth.User/RefreshTokens', {
-          timeoutMs: 20_000,
-        }).catch(() => undefined);
+      // If already open, an in-flight panel-open RefreshTokens may still complete later and
+      // overwrite SwitchCompanyScope. Close + reopen so we can wait on a fresh refresh.
+      if (panelVisible) {
         await trigger.click();
+        await expect
+          .poll(async () => !(await panel.isVisible().catch(() => false)), { timeout: 10_000 })
+          .toBe(true);
       }
+
+      // Arm before open: panel watcher always force-refreshes tokens.
+      const refreshWait = waitForGrpcWebUnaryOk(page, '/auth.User/RefreshTokens', {
+        timeoutMs: 20_000,
+      }).catch(() => undefined);
+      await trigger.click();
       await expect(panel).toBeVisible({ timeout: 10_000 });
       // Settle refresh before select/apply so an in-flight RefreshTokens cannot
       // overwrite a later SwitchCompanyScope TokenPair.
@@ -167,11 +159,6 @@ export async function switchCompanyViaUI(): Promise<void> {
       await expect.poll(async () => await applyButton.isEnabled(), { timeout: 15_000 }).toBe(true);
       await expect(page.getByTestId('company-switch-hint')).toHaveCount(0);
 
-      // Best-effort network observe; do not require it (CDP can miss under load).
-      const switchOk = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', {
-        timeoutMs: 20_000,
-      });
-      void switchOk.catch(() => undefined);
       await clickApplyButton();
 
       await expect
@@ -186,7 +173,7 @@ export async function switchCompanyViaUI(): Promise<void> {
       return;
     } catch (err) {
       lastErr = err;
-      // If scope already changed (e.g. CDP/apply race on a prior attempt), stop.
+      // If scope already changed (e.g. apply raced on a prior attempt), stop.
       const afterCompanyId = await readActiveCompanyIdFromAuth();
       if (afterCompanyId && afterCompanyId !== beforeCompanyId) {
         return;

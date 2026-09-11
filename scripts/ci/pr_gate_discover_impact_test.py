@@ -10,7 +10,7 @@ import importlib.util
 import pathlib
 import tempfile
 import unittest
-from unittest import mock
+from unittest.mock import Mock, patch
 
 
 SCRIPT = pathlib.Path(__file__).resolve().parent / "pr_gate_discover_impact.py"
@@ -41,14 +41,14 @@ class DiscoverImpactE2ERoutingTest(unittest.TestCase):
                 "modules/auth/e2e/utils/switchCompany.ts",
             ]
 
-            with mock.patch.object(mod, "MODULES_ROOT", modules), mock.patch.object(
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
                 mod.subprocess, "run"
             ) as run_mock:
-                run_mock.return_value = mock.Mock(
+                run_mock.return_value = Mock(
                     stdout="\n".join(changed) + "\n",
                     returncode=0,
                 )
-                with mock.patch.dict(
+                with patch.dict(
                     mod.os.environ,
                     {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
                     clear=False,
@@ -71,14 +71,14 @@ class DiscoverImpactE2ERoutingTest(unittest.TestCase):
 
             changed = ["modules/auth/web/x.ts"]
 
-            with mock.patch.object(mod, "MODULES_ROOT", modules), mock.patch.object(
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
                 mod.subprocess, "run"
             ) as run_mock:
-                run_mock.return_value = mock.Mock(
+                run_mock.return_value = Mock(
                     stdout="\n".join(changed) + "\n",
                     returncode=0,
                 )
-                with mock.patch.dict(
+                with patch.dict(
                     mod.os.environ,
                     {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
                     clear=False,
