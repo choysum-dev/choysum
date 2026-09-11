@@ -830,16 +830,16 @@ function e2eExpect(target, message) {
           const sel = await ensureCSS(target);
           const raw = await getHost().evaluate(`(() => {
             const el = document.querySelector(${JSON.stringify(sel)});
-            if (!el) return JSON.stringify({ exists: false, checked: false });
+            if (!el) return { exists: false, checked: false };
             let checked = false;
             if (typeof el.checked === 'boolean') checked = el.checked;
             else if (el.classList && el.classList.contains('is-checked')) checked = true;
             else checked = el.getAttribute('aria-checked') === 'true';
-            return JSON.stringify({ exists: true, checked });
+            return { exists: true, checked };
           })()`);
           const res = JSON.parse(raw);
           // Only clear the stamped CSS when the node is gone; unchecked must keep polling the same el.
-          if (!res.exists) {
+          if (!res || !res.exists) {
             target._css = '';
             return false;
           }
