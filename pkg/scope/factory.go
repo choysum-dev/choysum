@@ -30,10 +30,6 @@ type PathsConfigInput interface {
 	ConfigPath() string
 }
 
-type NpmPathInput interface {
-	NpmPath() string
-}
-
 type NpmRegistryURLInput interface {
 	NpmRegistryURL() string
 }
@@ -126,7 +122,6 @@ type PathsRuntimeOptions struct {
 	TmpPath               string
 	DefaultChoysumPath    string
 	ConfigPath            string
-	NpmPath               string
 	NpmRegistryURL        string
 	ModuleCatalogIndexURL string
 	ESMUpstreamURL        string
@@ -220,9 +215,6 @@ func PathsRuntimeOptionsFromInput(input FactoryInput) (PathsRuntimeOptions, bool
 	}
 	if configInput, ok := input.(PathsConfigInput); ok {
 		options.ConfigPath = configInput.ConfigPath()
-	}
-	if npmPathInput, ok := input.(NpmPathInput); ok {
-		options.NpmPath = npmPathInput.NpmPath()
 	}
 	if npmRegistryURLInput, ok := input.(NpmRegistryURLInput); ok {
 		options.NpmRegistryURL = npmRegistryURLInput.NpmRegistryURL()

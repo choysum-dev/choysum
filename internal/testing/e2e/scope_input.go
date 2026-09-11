@@ -14,7 +14,6 @@ type runtimeScopeInputOptions struct {
 	TmpPath               string
 	DefaultChoysumPath    string
 	ConfigPath            string
-	NpmPath               string
 	NPMRegistryURL        string
 	ModuleCatalogIndexURL string
 	Log                   *config.LogConfig
@@ -260,13 +259,6 @@ func (i runtimeScopeInput) ConfigPath() string {
 		return ""
 	}
 	return i.options.ConfigPath
-}
-
-func (i runtimeScopeInput) NpmPath() string {
-	if i.options == nil {
-		return ""
-	}
-	return i.options.NpmPath
 }
 
 func (i runtimeScopeInput) NpmRegistryURL() string {

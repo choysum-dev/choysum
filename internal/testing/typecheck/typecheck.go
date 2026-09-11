@@ -24,12 +24,10 @@ import (
 // RunOptions configures choysum test typecheck.
 type RunOptions struct {
 	ModulesPath string
-	// NpmPath is retained for call-site compatibility; Go-native typecheck does not use Node.
-	NpmPath  string
-	RepoRoot string
-	TmpPath  string
-	Target   string // app name or "all"
-	Keep     bool
+	RepoRoot    string
+	TmpPath     string
+	Target      string // app name or "all"
+	Keep        bool
 
 	Stdout io.Writer
 	Stderr io.Writer

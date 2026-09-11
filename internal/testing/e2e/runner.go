@@ -46,7 +46,6 @@ import (
 
 type RunOptions struct {
 	ModulesPath string
-	NpmPath     string
 	TmpPath     string
 	// ChoysumBinaryPath, when set, is used to start `choysum run`.
 	// When empty, the runner will default to os.Args[0] (works when invoked from the choysum CLI binary).
@@ -398,14 +397,6 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	}
 
 	sqliteDSN := fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", dbPath)
-	npmPath := opts.NpmPath
-	if strings.TrimSpace(npmPath) == "" {
-		// Best effort: prefer repo-local node_modules for generated config.
-		candidate := filepath.Join(opts.WorkDir, "node_modules")
-		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
-			npmPath = candidate
-		}
-	}
 
 	authEnabled := false
 	authInClosure := false
@@ -450,7 +441,6 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 default_choysum_path: %q
 modules_path: %q
 dist_path: %q
-npm_path: %q
 
 log:
   level: %q
@@ -479,7 +469,7 @@ compile:
   minify: false
   treeShaking: true
   sourcemap: false
-	`, defaultChoysumPath, opts.ModulesPath, distDir, npmPath, resolvedRuntimeLogLevel, sqliteDSN, authBlock, skipIndexStaleSyncEnv, extraBackendEnv, port)
+	`, defaultChoysumPath, opts.ModulesPath, distDir, resolvedRuntimeLogLevel, sqliteDSN, authBlock, skipIndexStaleSyncEnv, extraBackendEnv, port)
 	configYAML = strings.ReplaceAll(configYAML, "\t", "  ")
 
 	if err := os.WriteFile(configPath, []byte(configYAML), 0o644); err != nil {
