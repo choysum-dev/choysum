@@ -657,6 +657,19 @@ async function collectMatchedElements(loc) {
 let routeEntries = [];
 let routePumpRunning = false;
 let routePumpStop = false;
+let routeHandlerError = null;
+
+function noteRouteHandlerError(err) {
+  if (routeHandlerError) return;
+  routeHandlerError = err;
+}
+
+function throwRouteHandlerErrorIfAny() {
+  if (!routeHandlerError) return;
+  const err = routeHandlerError;
+  routeHandlerError = null;
+  throw err;
+}
 
 function globToRegExp(glob) {
   const s = String(glob || '');
@@ -688,7 +701,12 @@ function globToRegExp(glob) {
 
 function urlMatchesPattern(href, pattern) {
   if (pattern && typeof pattern === 'object' && typeof pattern.test === 'function') {
-    return pattern.test(href);
+    // Clone so global/sticky RegExp lastIndex does not skip later requests.
+    try {
+      return new RegExp(pattern.source, pattern.flags || '').test(href);
+    } catch {
+      return false;
+    }
   }
   const s = String(pattern || '');
   if (!s) return true;
@@ -756,13 +774,7 @@ function makeRouteHandle(paused) {
       await settle(() => getHost().continueRequest(paused.id));
     },
     async abort() {
-      // Minimal surface: abort by fulfilling a connection-reset-like 500 empty body.
-      await settle(() =>
-        getHost().fulfillRequest(
-          paused.id,
-          JSON.stringify({ status: 500, contentType: 'text/plain', body: '' })
-        )
-      );
+      await settle(() => getHost().failRequest(paused.id));
     },
   };
 }
@@ -813,8 +825,8 @@ function startRoutePump() {
           await handle.continue().catch(() => {});
         } catch (err) {
           await handle.continue().catch(() => {});
-          // Keep pumping; surface via the originating test if it awaits the same work.
-          // QuickJS host may not define global console.
+          noteRouteHandlerError(err);
+          // Keep pumping; surface via unroute/afterEach (QuickJS may lack console).
           if (typeof console !== 'undefined' && console.warn) {
             console.warn('[choysum/e2e] route handler error:', err && err.message ? err.message : err);
           }
@@ -959,6 +971,7 @@ const page = {
         // ignore
       }
     }
+    throwRouteHandlerErrorIfAny();
   },
   async url() {
     return await getHost().url();
@@ -1649,6 +1662,7 @@ if (!globalThis.__choysum_e2e_hooks_installed__ && typeof globalThis.beforeEach 
   globalThis.beforeEach(async () => {
     routeEntries = [];
     routePumpStop = true;
+    routeHandlerError = null;
     // NewPage clears cookies and resets to about:blank (workers=1 reuses the tab).
     await getHost().newPage();
   });
@@ -1666,6 +1680,7 @@ if (!globalThis.__choysum_e2e_hooks_installed__ && typeof globalThis.beforeEach 
       } catch {
         // ignore
       }
+      throwRouteHandlerErrorIfAny();
     });
   }
 }

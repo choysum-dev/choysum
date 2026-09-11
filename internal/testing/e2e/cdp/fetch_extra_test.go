@@ -511,9 +511,11 @@ func TestFetchFulfillContinueRunErrors(t *testing.T) {
 	t.Parallel()
 	oldF := runFulfillRequest
 	oldC := runContinueRequest
+	oldFail := runFailRequest
 	defer func() {
 		runFulfillRequest = oldF
 		runContinueRequest = oldC
+		runFailRequest = oldFail
 	}()
 	runFulfillRequest = func(ctx context.Context, params *fetch.FulfillRequestParams) error {
 		return fmt.Errorf("fulfill boom")
@@ -521,8 +523,11 @@ func TestFetchFulfillContinueRunErrors(t *testing.T) {
 	runContinueRequest = func(ctx context.Context, reqID fetch.RequestID) error {
 		return fmt.Errorf("continue boom")
 	}
+	runFailRequest = func(ctx context.Context, reqID fetch.RequestID) error {
+		return fmt.Errorf("fail boom")
+	}
 	st := &fetchState{
-		byID:    map[string]fetch.RequestID{"a": "r1", "b": "r2"},
+		byID:    map[string]fetch.RequestID{"a": "r1", "b": "r2", "c": "r3"},
 		decided: map[string]struct{}{},
 		paused:  make(chan *PausedRequest, 1),
 	}
@@ -530,7 +535,52 @@ func TestFetchFulfillContinueRunErrors(t *testing.T) {
 	if err := p.Fulfill("a", FulfillOptions{Body: nil}); err == nil || !strings.Contains(err.Error(), "fulfill boom") {
 		t.Fatalf("Fulfill: %v", err)
 	}
+	if _, ok := st.byID["a"]; !ok {
+		t.Fatal("Fulfill failure should restore byID for retry")
+	}
 	if err := p.Continue("b"); err == nil || !strings.Contains(err.Error(), "continue boom") {
 		t.Fatalf("Continue: %v", err)
+	}
+	if _, ok := st.byID["b"]; !ok {
+		t.Fatal("Continue failure should restore byID for retry")
+	}
+	if err := p.Fail("c"); err == nil || !strings.Contains(err.Error(), "fail boom") {
+		t.Fatalf("Fail: %v", err)
+	}
+	if _, ok := st.byID["c"]; !ok {
+		t.Fatal("Fail failure should restore byID for retry")
+	}
+	if err := (*Page)(nil).Fail("x"); err == nil || !strings.Contains(err.Error(), "nil page") {
+		t.Fatalf("nil Fail: %v", err)
+	}
+	if err := p.Fail(""); err == nil || !strings.Contains(err.Error(), "empty") {
+		t.Fatalf("empty Fail: %v", err)
+	}
+	if err := p.Fail("missing"); err == nil || !strings.Contains(err.Error(), "unknown") {
+		t.Fatalf("unknown Fail: %v", err)
+	}
+
+	// Successful Fail after restoring claim.
+	runFailRequest = func(ctx context.Context, reqID fetch.RequestID) error { return nil }
+	if err := p.Fail("c"); err != nil {
+		t.Fatalf("Fail success: %v", err)
+	}
+	if _, done := st.decided["c"]; !done {
+		t.Fatal("expected decided after successful Fail")
+	}
+	if err := p.Fail("c"); err == nil || !strings.Contains(err.Error(), "already decided") {
+		t.Fatalf("second Fail: %v", err)
+	}
+
+	// restoreFetchClaim no-op when already decided
+	st.restoreFetchClaim("c", "r3")
+	if _, ok := st.byID["c"]; ok {
+		t.Fatal("should not restore decided id")
+	}
+	// restoreFetchClaim no-op when byID already has the id
+	st.byID["d"] = "keep"
+	st.restoreFetchClaim("d", "other")
+	if st.byID["d"] != "keep" {
+		t.Fatalf("should keep existing byID entry, got %q", st.byID["d"])
 	}
 }

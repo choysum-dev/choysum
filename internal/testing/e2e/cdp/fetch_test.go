@@ -146,6 +146,22 @@ func TestFetchFulfillAndContinue(t *testing.T) {
 	if !strings.Contains(body, "live-ok") {
 		t.Fatalf("body=%q, want live-ok", body)
 	}
+
+	// FailRequest must use the real CDP path (network error, not an HTTP response).
+	var sawAbort atomic.Bool
+	_, err = runInterceptedNav(srv.URL+"/mock-me", func(paused *PausedRequest) error {
+		if strings.Contains(paused.URL, "/mock-me") {
+			sawAbort.Store(true)
+			return page.Fail(paused.ID)
+		}
+		return page.Continue(paused.ID)
+	})
+	if !sawAbort.Load() {
+		t.Fatal("expected /mock-me to be paused for Fail")
+	}
+	if err == nil {
+		t.Fatal("expected navigation error after FailRequest")
+	}
 }
 
 func errTimeout(op string) error {

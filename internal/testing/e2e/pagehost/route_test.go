@@ -41,6 +41,7 @@ func TestInstallFetchRouteBindingsErrorPaths(t *testing.T) {
 		`await globalThis.__choysum_e2e_host__.waitPausedRequest(10)`,
 		`await globalThis.__choysum_e2e_host__.fulfillRequest('x', '{}')`,
 		`await globalThis.__choysum_e2e_host__.continueRequest('x')`,
+		`await globalThis.__choysum_e2e_host__.failRequest('x')`,
 	} {
 		raw := awaitHostErr(t, qjs, call)
 		if !strings.Contains(raw, "no active page") {
@@ -243,6 +244,43 @@ await h.continueRequest('missing-id');
 	if !strings.Contains(raw, "unknown fetch request id") {
 		t.Fatalf("continue missing: %s", raw)
 	}
+	raw = awaitHostErr(t, qjs, `
+const h = globalThis.__choysum_e2e_host__;
+await h.failRequest('missing-id');
+`)
+	if !strings.Contains(raw, "unknown fetch request id") {
+		t.Fatalf("fail missing: %s", raw)
+	}
+
+	// Abort/fail a paused request (network failure, not HTTP 500).
+	raw = awaitHost(t, qjs, `
+const h = globalThis.__choysum_e2e_host__;
+await h.newPage();
+await h.enableFetch();
+const nav = h.goto(`+jsonQuote(srv.URL+"/abort-me")+`, 'domcontentloaded');
+let aborted = false;
+for (let i = 0; i < 40; i++) {
+  const pausedRaw = await h.waitPausedRequest(500);
+  if (pausedRaw == null) {
+    if (aborted) break;
+    continue;
+  }
+  const paused = JSON.parse(pausedRaw);
+  if (String(paused.url).includes('/abort-me')) {
+    await h.failRequest(paused.id);
+    aborted = true;
+  } else {
+    await h.continueRequest(paused.id);
+  }
+}
+let navErr = '';
+try { await nav; } catch (e) { navErr = String(e && e.message ? e.message : e); }
+await h.disableFetch();
+return {aborted, navErr};
+`)
+	if !strings.Contains(raw, `"aborted":true`) {
+		t.Fatalf("failRequest abort: %s", raw)
+	}
 
 	oldMarshal := jsonMarshal
 	jsonMarshal = func(v any) ([]byte, error) { return nil, errors.New("paused marshal boom") }
@@ -346,6 +384,10 @@ func TestInstallWaitPausedNullMappingBranches(t *testing.T) {
 	if !strings.Contains(raw, "unknown fetch request id") && !strings.Contains(raw, "empty fetch") && !strings.Contains(raw, "cdp:") {
 		t.Fatalf("single-arg fulfill: %s", raw)
 	}
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.failRequest('missing-only-id')`)
+	if !strings.Contains(raw, "unknown fetch request id") && !strings.Contains(raw, "cdp:") {
+		t.Fatalf("failRequest missing: %s", raw)
+	}
 }
 
 func TestInstallFetchRouteBindingHookErrorsAndClosed(t *testing.T) {
@@ -424,11 +466,12 @@ return 'armed';
 	pageWaitPaused = func(p *cdp.Page, timeout time.Duration) (*cdp.PausedRequest, error) {
 		return nil, errors.New("timeout")
 	}
+	// Run the schedule job synchronously with closed=true so waitPausedRequest's
+	// closed-at-callback early return is covered (async Schedule may not pump in time).
 	ctxSchedule = func(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
-		return oldSched(ctx, func(inner *quickjs.Context) {
-			host.closed.Store(true)
-			job(inner)
-		})
+		host.closed.Store(true)
+		job(ctx)
+		return true
 	}
 	// Do not await waitPausedRequest: closed job skips resolve/reject.
 	// Avoid other host async APIs here — ctxSchedule is wrapped for this case only.

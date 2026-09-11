@@ -170,6 +170,24 @@ func (h *Host) bindContinueRequest() func(ctx *quickjs.Context, this *quickjs.Va
 	}
 }
 
+func (h *Host) bindFailRequest() func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
+			id := argString(args, 0)
+			p, err := h.activePage()
+			if err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			if err := p.Fail(id); err != nil {
+				reject(ctx.Error(err))
+				return
+			}
+			resolve(ctx.Undefined())
+		})
+	}
+}
+
 func waitPausedMapsToNull(msg string) bool {
 	return strings.Contains(msg, "timeout") ||
 		strings.Contains(msg, "fetch disabled") ||

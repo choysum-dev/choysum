@@ -97,6 +97,7 @@ func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string)
 	hostObj.Set("waitPausedRequest", ctx.NewFunction(host.bindWaitPausedRequest()))
 	hostObj.Set("fulfillRequest", ctx.NewFunction(host.bindFulfillRequest()))
 	hostObj.Set("continueRequest", ctx.NewFunction(host.bindContinueRequest()))
+	hostObj.Set("failRequest", ctx.NewFunction(host.bindFailRequest()))
 	globals.Set("__choysum_e2e_host__", hostObj)
 	return host, nil
 }

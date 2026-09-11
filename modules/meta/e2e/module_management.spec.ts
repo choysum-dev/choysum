@@ -283,12 +283,15 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
 
     if (Date.now() >= nextReloadAt) {
       const navTimeout = Math.min(remaining, 30000);
-      await Promise.race([
-        page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null),
-        page.waitForTimeout(navTimeout).then(() => {
-          throw new Error('reload timeout');
-        }),
-      ]).catch(() => null);
+      const reloadP = page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null);
+      const timedOut = await Promise.race([
+        reloadP.then(() => false),
+        page.waitForTimeout(navTimeout).then(() => true),
+      ]);
+      if (timedOut) {
+        // Drain the in-flight reload so a late navigation cannot replace the DOM mid-poll.
+        await Promise.race([reloadP, page.waitForTimeout(5000)]).catch(() => null);
+      }
       await page.waitForURL('**/web/meta/modules', { timeout: Math.min(deadline - Date.now(), 30000) }).catch(() => null);
       await waitForModuleList(page).catch(() => null);
       nextReloadAt = Date.now() + reloadIntervalMs;

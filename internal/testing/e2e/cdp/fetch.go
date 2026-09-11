@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/fetch"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
@@ -82,6 +83,45 @@ var runFulfillRequest = func(ctx context.Context, params *fetch.FulfillRequestPa
 // runContinueRequest continues a paused request; tests may override to force errors.
 var runContinueRequest = func(ctx context.Context, reqID fetch.RequestID) error {
 	return chromedp.Run(ctx, fetch.ContinueRequest(reqID))
+}
+
+// runFailRequest fails a paused request; tests may override to force errors.
+var runFailRequest = func(ctx context.Context, reqID fetch.RequestID) error {
+	return chromedp.Run(ctx, fetch.FailRequest(reqID, network.ErrorReasonFailed))
+}
+
+// claimFetch takes exclusive ownership of a paused request for a decision.
+// The ID is removed from byID until commitFetchSuccess / restoreFetchClaim.
+func (st *fetchState) claimFetch(id string) (fetch.RequestID, error) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if _, done := st.decided[id]; done {
+		return "", fmt.Errorf("cdp: fetch request %q already decided", id)
+	}
+	reqID, ok := st.byID[id]
+	if !ok {
+		return "", fmt.Errorf("cdp: unknown fetch request id %q", id)
+	}
+	delete(st.byID, id)
+	return reqID, nil
+}
+
+func (st *fetchState) commitFetchSuccess(id string) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	st.decided[id] = struct{}{}
+	delete(st.byID, id)
+}
+
+func (st *fetchState) restoreFetchClaim(id string, reqID fetch.RequestID) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if _, done := st.decided[id]; done {
+		return
+	}
+	if _, exists := st.byID[id]; !exists {
+		st.byID[id] = reqID
+	}
 }
 
 // EnableFetch turns on CDP Fetch interception for all URLs at the Request stage.
@@ -250,19 +290,10 @@ func (p *Page) Fulfill(id string, opts FulfillOptions) error {
 		return fmt.Errorf("cdp: empty fetch request id")
 	}
 	st := p.fetchOrInit()
-	st.mu.Lock()
-	if _, done := st.decided[id]; done {
-		st.mu.Unlock()
-		return fmt.Errorf("cdp: fetch request %q already decided", id)
+	reqID, err := st.claimFetch(id)
+	if err != nil {
+		return err
 	}
-	reqID, ok := st.byID[id]
-	if !ok {
-		st.mu.Unlock()
-		return fmt.Errorf("cdp: unknown fetch request id %q", id)
-	}
-	st.decided[id] = struct{}{}
-	delete(st.byID, id)
-	st.mu.Unlock()
 
 	status := opts.Status
 	if status == 0 {
@@ -286,8 +317,10 @@ func (p *Page) Fulfill(id string, opts FulfillOptions) error {
 		params = params.WithBody(bodyB64)
 	}
 	if err := runFulfillRequest(p.ctx, params); err != nil {
+		st.restoreFetchClaim(id, reqID)
 		return fmt.Errorf("cdp: fulfill request: %w", err)
 	}
+	st.commitFetchSuccess(id)
 	return nil
 }
 
@@ -301,21 +334,36 @@ func (p *Page) Continue(id string) error {
 		return fmt.Errorf("cdp: empty fetch request id")
 	}
 	st := p.fetchOrInit()
-	st.mu.Lock()
-	if _, done := st.decided[id]; done {
-		st.mu.Unlock()
-		return fmt.Errorf("cdp: fetch request %q already decided", id)
+	reqID, err := st.claimFetch(id)
+	if err != nil {
+		return err
 	}
-	reqID, ok := st.byID[id]
-	if !ok {
-		st.mu.Unlock()
-		return fmt.Errorf("cdp: unknown fetch request id %q", id)
-	}
-	st.decided[id] = struct{}{}
-	delete(st.byID, id)
-	st.mu.Unlock()
 	if err := runContinueRequest(p.ctx, reqID); err != nil {
+		st.restoreFetchClaim(id, reqID)
 		return fmt.Errorf("cdp: continue request: %w", err)
 	}
+	st.commitFetchSuccess(id)
+	return nil
+}
+
+// Fail aborts a paused request with a network failure (Fetch.failRequest).
+func (p *Page) Fail(id string) error {
+	if p == nil {
+		return fmt.Errorf("cdp: nil page")
+	}
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return fmt.Errorf("cdp: empty fetch request id")
+	}
+	st := p.fetchOrInit()
+	reqID, err := st.claimFetch(id)
+	if err != nil {
+		return err
+	}
+	if err := runFailRequest(p.ctx, reqID); err != nil {
+		st.restoreFetchClaim(id, reqID)
+		return fmt.Errorf("cdp: fail request: %w", err)
+	}
+	st.commitFetchSuccess(id)
 	return nil
 }
