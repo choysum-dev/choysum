@@ -5,7 +5,6 @@ package runner
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,7 +12,6 @@ import (
 	"strings"
 
 	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
-	"github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -332,16 +330,7 @@ func formatPreflightIssues(app string, issues []preflightIssue) error {
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "unit preflight failed for %s. tests were not started.", app)
-	missingModules := make([]string, 0, 16)
-	nonModuleDetails := make([]string, 0, len(issues))
-
 	for _, issue := range issues {
-		var missingModulesErr *noderuntime.MissingNodeModulesPreflightError
-		if errors.As(issue.err, &missingModulesErr) {
-			missingModules = append(missingModules, missingModulesErr.MissingModules...)
-			continue
-		}
-
 		stage := strings.TrimSpace(issue.stage)
 		if stage == "" {
 			stage = "preflight"
@@ -353,21 +342,7 @@ func formatPreflightIssues(app string, issues []preflightIssue) error {
 				detail = "unknown error"
 			}
 		}
-		nonModuleDetails = append(nonModuleDetails, fmt.Sprintf("- %s:\n%s", stage, indentMultiline(detail, "  ")))
-	}
-
-	normalizedMissingModules := noderuntime.NormalizeStringList(missingModules)
-	if len(normalizedMissingModules) > 0 {
-		fmt.Fprintf(&b, "\n%s", noderuntime.FormatMissingModulesSummary(normalizedMissingModules, 3))
-		fmt.Fprintf(&b, "\ninstall command:\n  npm install -g %s", strings.Join(normalizedMissingModules, " "))
-		fmt.Fprintf(&b, "\nretry:\n  go run . test unit %s", app)
-	}
-
-	if len(nonModuleDetails) > 0 {
-		fmt.Fprintf(&b, "\nadditional preflight errors:")
-		for _, detail := range nonModuleDetails {
-			fmt.Fprintf(&b, "\n%s", detail)
-		}
+		fmt.Fprintf(&b, "\n- %s:\n%s", stage, indentMultiline(detail, "  "))
 	}
 	b.WriteString("\n")
 
