@@ -79,12 +79,9 @@ Module unit tests (BE + FE), module typecheck, and module `test e2e` do
 **not** need root `node_modules` (typecheck is Go-native; FE/E2E use
 QuickJS + Chromium).
 
-For E2E install Chrome for Testing first:
-
-```bash
-./choysum test e2e --install-browser
-# or: python3 scripts/ci/install_chromium.py
-```
+E2E needs a Chrome/Chromium binary (system install, or set
+`CHOYSUM_CHROMIUM_PATH`). CI provisions Chrome for Testing via
+`scripts/ci/install_chromium.py`; the CLI does not install browsers.
 
 ### Publishing npm modules (`@choysum-dev/*`)
 

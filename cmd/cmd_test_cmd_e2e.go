@@ -7,12 +7,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"time"
 
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
-	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
@@ -27,23 +24,6 @@ func isNoE2ESpecsError(err error) bool {
 	return testsemantics.IsModuleNoE2ESpecsError(err)
 }
 
-func installChromiumBrowser() error {
-	root := cov.FindRepoRootFromCwd()
-	script := filepath.Join(root, "scripts", "ci", "install_chromium.py")
-	if _, err := os.Stat(script); err != nil {
-		return fmt.Errorf("install-browser: %w (expected %s; run from a choysum checkout)", err, script)
-	}
-	cmd := exec.Command("python3", script)
-	cmd.Dir = root
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("install-browser: %w", err)
-	}
-	return nil
-}
-
 func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	var scenarios []string
 	var withDemo bool
@@ -54,7 +34,6 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 	var verbose bool
 	var all bool
 	var runtimeLogLevel string
-	var installBrowser bool
 
 	cmd := &cobra.Command{
 		Use:          "e2e <module> [-- <specFilters...>]",
@@ -64,23 +43,17 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 			"<module> refers to the module directory name under the modules path (e.g. modules/auth -> auth), not package.json's name.\n\n" +
 			"Optional args after -- filter spec paths/names (for example: smoke.spec.ts).\n" +
 			"Flag-looking args (leading '-') are ignored; use CHOYSUM_E2E_HEADED=1 for a visible browser.\n\n" +
-			"Use --install-browser to download Chrome for Testing via scripts/ci/install_chromium.py.",
+			"Requires a Chrome/Chromium binary (system install, or set CHOYSUM_CHROMIUM_PATH).",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if installBrowser {
-				return nil
-			}
 			if all {
 				return nil
 			}
 			if len(args) < 1 {
-				return fmt.Errorf("e2e: requires <module> (or use --all / --install-browser)")
+				return fmt.Errorf("e2e: requires <module> (or use --all)")
 			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if installBrowser {
-				return installChromiumBrowser()
-			}
 			baseScope := envGetter()
 			if baseScope == nil {
 				return fmt.Errorf("scope is not initialized")
@@ -191,6 +164,5 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 	cmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose e2e runner output")
 	cmd.Flags().StringVar(&runtimeLogLevel, "runtime-log-level", "", "override runtime log level during install/server run (debug|info|warn|error; default: warn, or debug when --verbose is set and this flag is omitted)")
 	cmd.Flags().BoolVar(&all, "all", false, "run E2E for all runnable modules")
-	cmd.Flags().BoolVar(&installBrowser, "install-browser", false, "download Chrome for Testing (scripts/ci/install_chromium.py) and exit")
 	return cmd
 }

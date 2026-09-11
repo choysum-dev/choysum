@@ -275,7 +275,7 @@ func resolveChromiumPath(allowSystemChrome bool) (string, error) {
 }
 
 func missingBinaryError(detail string) error {
-	return fmt.Errorf("%s; set CHOYSUM_CHROMIUM_PATH or run `choysum test e2e --install-browser` (scripts/ci/install_chromium.py)", detail)
+	return fmt.Errorf("%s; install Google Chrome or Chromium, or set CHOYSUM_CHROMIUM_PATH to the browser binary", detail)
 }
 
 func cachedBinaryCandidates(base string) []string {

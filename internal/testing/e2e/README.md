@@ -7,18 +7,15 @@ There is no Playwright / Node test runner path.
 
 ## Chromium
 
-Install Chrome for Testing (non-npm):
-
-```bash
-python3 scripts/ci/install_chromium.py
-# or
-./choysum test e2e --install-browser
-```
+E2E needs a Chrome/Chromium binary. Install one yourself (system package /
+browser installer), or point `CHOYSUM_CHROMIUM_PATH` at an existing binary.
+CI uses `scripts/ci/install_chromium.py` to provision Chrome for Testing; the
+CLI does not install browsers.
 
 Binary resolution order:
 
 1. `CHOYSUM_CHROMIUM_PATH` (absolute path to the chrome binary)
-2. `$CHOYSUM_HOME/browsers/chromium-<rev>/…` (default `CHOYSUM_HOME=~/.choysum`)
+2. `$CHOYSUM_HOME/browsers/chromium-<rev>/…` (default `CHOYSUM_HOME=~/.choysum`; used by CI cache)
 3. Local system Chrome/Chromium (**local only**; CI never falls back)
 
 Headless is the default (unset or `CHOYSUM_E2E_HEADED=0`). Set
