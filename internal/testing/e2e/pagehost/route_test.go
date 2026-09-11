@@ -261,6 +261,93 @@ return pausedRaw;
 	}
 }
 
+func TestWaitPausedMapsToNull(t *testing.T) {
+	t.Parallel()
+	for _, msg := range []string{
+		"cdp: wait paused request: timeout",
+		"cdp: fetch disabled",
+		"cdp: fetch not enabled",
+		"timeout",
+	} {
+		if !waitPausedMapsToNull(msg) {
+			t.Fatalf("expected null mapping for %q", msg)
+		}
+	}
+	if waitPausedMapsToNull("context canceled") {
+		t.Fatal("unexpected null mapping")
+	}
+}
+
+func TestInstallWaitPausedNullMappingBranches(t *testing.T) {
+	// Chrome-free: cover every waitPausedRequest null-mapping operand and arg defaulting.
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+		pageEnableFetch, pageDisableFetch, pageWaitPaused = pageEnableFetchDefault, pageDisableFetchDefault, pageWaitPausedDefault
+	}()
+	if !engine.(*quickjsengine.QuickjsEngine).Ctx.BootstrapTimers() {
+		t.Fatal("BootstrapTimers failed")
+	}
+	host, err = Install(engine, nil, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// activePage only checks non-nil page; hooks avoid real CDP calls.
+	host.page = &cdp.Page{}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+
+	pageEnableFetch = func(p *cdp.Page) error { return nil }
+	pageDisableFetch = func(p *cdp.Page) error { return nil }
+	if raw := awaitHost(t, qjs, `await globalThis.__choysum_e2e_host__.enableFetch(); return 'ok'`); !strings.Contains(raw, "ok") {
+		t.Fatalf("enable ok: %s", raw)
+	}
+	if raw := awaitHost(t, qjs, `await globalThis.__choysum_e2e_host__.disableFetch(); return 'ok'`); !strings.Contains(raw, "ok") {
+		t.Fatalf("disable ok: %s", raw)
+	}
+
+	for _, msg := range []string{
+		"cdp: wait paused request: timeout",
+		"cdp: fetch disabled",
+		"cdp: fetch not enabled",
+	} {
+		msg := msg
+		pageWaitPaused = func(p *cdp.Page, timeout time.Duration) (*cdp.PausedRequest, error) {
+			return nil, errors.New(msg)
+		}
+		// Default timeout branch (no args) and non-number arg branch.
+		for _, call := range []string{
+			`return await globalThis.__choysum_e2e_host__.waitPausedRequest()`,
+			`return await globalThis.__choysum_e2e_host__.waitPausedRequest('nope')`,
+			`return await globalThis.__choysum_e2e_host__.waitPausedRequest(25)`,
+		} {
+			raw := awaitHost(t, qjs, call)
+			if raw != "null" {
+				t.Fatalf("msg=%q call=%q => %s", msg, call, raw)
+			}
+		}
+	}
+
+	pageWaitPaused = func(p *cdp.Page, timeout time.Duration) (*cdp.PausedRequest, error) {
+		return &cdp.PausedRequest{ID: "fetch-1", URL: "http://example.test/", Method: "GET"}, nil
+	}
+	raw := awaitHost(t, qjs, `return await globalThis.__choysum_e2e_host__.waitPausedRequest(10)`)
+	if !strings.Contains(raw, "fetch-1") {
+		t.Fatalf("paused json: %s", raw)
+	}
+
+	// fulfillRequest with only the id arg (opts default "{}").
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.fulfillRequest('missing-only-id')`)
+	if !strings.Contains(raw, "unknown fetch request id") && !strings.Contains(raw, "empty fetch") && !strings.Contains(raw, "cdp:") {
+		t.Fatalf("single-arg fulfill: %s", raw)
+	}
+}
+
 func TestInstallFetchRouteBindingHookErrorsAndClosed(t *testing.T) {
 	session := startPagehostChrome(t)
 	defer session.Close()

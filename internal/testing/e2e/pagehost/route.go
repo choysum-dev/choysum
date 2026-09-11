@@ -86,10 +86,7 @@ func (h *Host) bindWaitPausedRequest() func(ctx *quickjs.Context, this *quickjs.
 					}
 					if waitErr != nil {
 						// Timeout / disable / not enabled → null so the JS route pump can keep polling or exit.
-						msg := waitErr.Error()
-						if strings.Contains(msg, "timeout") ||
-							strings.Contains(msg, "fetch disabled") ||
-							strings.Contains(msg, "fetch not enabled") {
+						if waitPausedMapsToNull(waitErr.Error()) {
 							resolve(inner.Null())
 							return
 						}
@@ -171,4 +168,10 @@ func (h *Host) bindContinueRequest() func(ctx *quickjs.Context, this *quickjs.Va
 			resolve(ctx.Undefined())
 		})
 	}
+}
+
+func waitPausedMapsToNull(msg string) bool {
+	return strings.Contains(msg, "timeout") ||
+		strings.Contains(msg, "fetch disabled") ||
+		strings.Contains(msg, "fetch not enabled")
 }
