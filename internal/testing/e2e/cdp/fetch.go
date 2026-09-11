@@ -251,14 +251,14 @@ func (p *Page) Fulfill(id string, opts FulfillOptions) error {
 	}
 	st := p.fetchOrInit()
 	st.mu.Lock()
+	if _, done := st.decided[id]; done {
+		st.mu.Unlock()
+		return fmt.Errorf("cdp: fetch request %q already decided", id)
+	}
 	reqID, ok := st.byID[id]
 	if !ok {
 		st.mu.Unlock()
 		return fmt.Errorf("cdp: unknown fetch request id %q", id)
-	}
-	if _, done := st.decided[id]; done {
-		st.mu.Unlock()
-		return fmt.Errorf("cdp: fetch request %q already decided", id)
 	}
 	st.decided[id] = struct{}{}
 	delete(st.byID, id)
@@ -302,14 +302,14 @@ func (p *Page) Continue(id string) error {
 	}
 	st := p.fetchOrInit()
 	st.mu.Lock()
+	if _, done := st.decided[id]; done {
+		st.mu.Unlock()
+		return fmt.Errorf("cdp: fetch request %q already decided", id)
+	}
 	reqID, ok := st.byID[id]
 	if !ok {
 		st.mu.Unlock()
 		return fmt.Errorf("cdp: unknown fetch request id %q", id)
-	}
-	if _, done := st.decided[id]; done {
-		st.mu.Unlock()
-		return fmt.Errorf("cdp: fetch request %q already decided", id)
 	}
 	st.decided[id] = struct{}{}
 	delete(st.byID, id)

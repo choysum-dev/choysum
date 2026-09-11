@@ -172,11 +172,8 @@ func TestFetchFulfillEmptyIDAndDoubleDecide(t *testing.T) {
 	if err := page.Fulfill(paused.ID, FulfillOptions{Body: []byte("a")}); err != nil {
 		t.Fatal(err)
 	}
-	if err := page.Fulfill(paused.ID, FulfillOptions{Body: []byte("b")}); err == nil || !strings.Contains(err.Error(), "unknown") {
-		// id removed from byID after first fulfill → unknown (not already decided)
-		if err == nil || (!strings.Contains(err.Error(), "unknown") && !strings.Contains(err.Error(), "already decided")) {
-			t.Fatalf("second fulfill: %v", err)
-		}
+	if err := page.Fulfill(paused.ID, FulfillOptions{Body: []byte("b")}); err == nil || !strings.Contains(err.Error(), "already decided") {
+		t.Fatalf("second fulfill: %v", err)
 	}
 	<-navDone
 }
@@ -225,7 +222,7 @@ func TestFetchContinueDoubleDecide(t *testing.T) {
 	if err := page.Continue(paused.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := page.Continue(paused.ID); err == nil || !strings.Contains(err.Error(), "unknown") {
+	if err := page.Continue(paused.ID); err == nil || !strings.Contains(err.Error(), "already decided") {
 		t.Fatalf("second continue: %v", err)
 	}
 	<-navDone

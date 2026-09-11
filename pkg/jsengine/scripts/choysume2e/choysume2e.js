@@ -697,6 +697,14 @@ function urlMatchesPattern(href, pattern) {
   return href === s || href.includes(s);
 }
 
+function routePatternsEqual(a, b) {
+  if (a && typeof a === 'object' && typeof a.test === 'function') {
+    if (!(b && typeof b === 'object' && typeof b.test === 'function')) return false;
+    return a === b || (a.source === b.source && a.flags === b.flags);
+  }
+  return String(a) === String(b);
+}
+
 function matchRouteEntry(url) {
   for (let i = 0; i < routeEntries.length; i++) {
     if (urlMatchesPattern(url, routeEntries[i].pattern)) {
@@ -919,14 +927,17 @@ const page = {
     if (typeof handler !== 'function') {
       throw new Error('@choysum/e2e: page.route requires a handler function');
     }
-    routeEntries.unshift({ pattern: String(url), handler });
+    // Keep RegExp objects so urlMatchesPattern can call .test(); String(re) breaks matching.
+    const pattern =
+      url && typeof url === 'object' && typeof url.test === 'function' ? url : String(url);
+    routeEntries.unshift({ pattern, handler });
     await getHost().enableFetch();
     startRoutePump();
   },
   async unroute(url, handler) {
-    const pattern = url != null ? String(url) : '';
+    const want = url != null ? (url && typeof url === 'object' && typeof url.test === 'function' ? url : String(url)) : null;
     routeEntries = routeEntries.filter(entry => {
-      if (pattern && entry.pattern !== pattern) return true;
+      if (want != null && !routePatternsEqual(entry.pattern, want)) return true;
       if (handler && entry.handler !== handler) return true;
       return false;
     });
