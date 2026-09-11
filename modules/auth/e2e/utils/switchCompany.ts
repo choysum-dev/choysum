@@ -136,7 +136,8 @@ export async function switchCompanyViaUI(): Promise<void> {
         // Apply is non-idempotent: if CDP missed the response but scope already changed,
         // treat as success so a retry cannot switch back to the original company.
         const afterCompanyId = await readActiveCompanyIdFromAuth();
-        if (beforeCompanyId && afterCompanyId && afterCompanyId !== beforeCompanyId) {
+        // beforeCompanyId may be empty if auth storage was briefly unreadable.
+        if (afterCompanyId && afterCompanyId !== beforeCompanyId) {
           return;
         }
         throw waitErr;
