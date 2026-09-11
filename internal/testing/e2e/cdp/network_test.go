@@ -192,6 +192,24 @@ func TestFinishMatchedResponseBranches(t *testing.T) {
 		}
 	})
 
+	t.Run("bodyGoneResultChDefault", func(t *testing.T) {
+		ctx := context.Background()
+		var mu sync.Mutex
+		matched := map[network.RequestID]pendingResp{id: resp}
+		pending := map[network.RequestID]pendingReq{id: {}}
+		finishing := map[network.RequestID]bool{id: true}
+		resultCh := make(chan *MatchedResponse, 1)
+		resultCh <- &MatchedResponse{Status: 201} // already full
+		fetch := func(context.Context, network.RequestID) ([]byte, error) {
+			return nil, errors.New("No resource with given identifier found")
+		}
+		finishMatchedResponse(ctx, &mu, matched, pending, finishing, resultCh, id, resp, bodyGone, fetch)
+		got := <-resultCh
+		if got.Status != 201 {
+			t.Fatalf("bodyGone default branch should leave prior value, got %+v", got)
+		}
+	})
+
 	t.Run("retryThenOK", func(t *testing.T) {
 		ctx := context.Background()
 		var mu sync.Mutex
