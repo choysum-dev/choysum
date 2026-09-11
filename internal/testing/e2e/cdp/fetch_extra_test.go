@@ -396,6 +396,29 @@ func TestFetchEnableDisableErrorBranches(t *testing.T) {
 	}
 }
 
+func TestFetchWaitPausedPrefersDisabledOverBuffered(t *testing.T) {
+	t.Parallel()
+	// Both listenCtx.Done and a buffered pause are ready — returning the pause
+	// after DisableFetch would yield an unknown-id fulfill/continue failure.
+	for i := 0; i < 20; i++ {
+		listenCtx, cancel := context.WithCancel(context.Background())
+		ch := make(chan *PausedRequest, 1)
+		ch <- &PausedRequest{ID: "stale", URL: "http://example.test/"}
+		cancel()
+		p := &Page{ctx: context.Background(), fetch: &fetchState{
+			cancel:    cancel,
+			listenCtx: listenCtx,
+			paused:    ch,
+			byID:      map[string]fetch.RequestID{},
+			decided:   map[string]struct{}{},
+		}}
+		_, err := p.WaitPaused(time.Second)
+		if err == nil || !strings.Contains(err.Error(), "fetch disabled") {
+			t.Fatalf("iter %d: want fetch disabled, got %v", i, err)
+		}
+	}
+}
+
 func TestFetchWaitPausedChannelClosed(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())

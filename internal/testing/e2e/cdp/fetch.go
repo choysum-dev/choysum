@@ -231,6 +231,11 @@ func (p *Page) WaitPaused(timeout time.Duration) (*PausedRequest, error) {
 		if !ok || paused == nil {
 			return nil, fmt.Errorf("cdp: fetch paused channel closed")
 		}
+		// DisableFetch may cancel listenCtx and clear byID while a pause is
+		// already buffered; prefer disabled over a stale handle.
+		if listenCtx.Err() != nil {
+			return nil, fmt.Errorf("cdp: fetch disabled")
+		}
 		return paused, nil
 	}
 }

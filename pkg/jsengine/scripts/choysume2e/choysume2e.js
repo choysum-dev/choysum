@@ -206,6 +206,7 @@ function makeLocator(kind, value, opts) {
       });
     },
     async press(key) {
+      await loc.waitFor({ state: 'visible' });
       const sel = await ensureCSS(loc);
       const keyName = String(key || '');
       await getHost().evaluate(`(() => {
@@ -785,18 +786,22 @@ function startRoutePump() {
         url: String(paused.url || ''),
         method: String(paused.method || ''),
       });
-      try {
-        await entry.handler(handle);
-        // If the handler returned without fulfill/continue, fail open.
-        await handle.continue().catch(() => {});
-      } catch (err) {
-        await handle.continue().catch(() => {});
-        // Keep pumping; surface via the originating test if it awaits the same work.
-        // QuickJS host may not define global console.
-        if (typeof console !== 'undefined' && console.warn) {
-          console.warn('[choysum/e2e] route handler error:', err && err.message ? err.message : err);
+      // Do not await the handler: parallel paused requests must keep draining
+      // (Playwright also invokes route handlers without serializing them).
+      (async () => {
+        try {
+          await entry.handler(handle);
+          // If the handler returned without fulfill/continue, fail open.
+          await handle.continue().catch(() => {});
+        } catch (err) {
+          await handle.continue().catch(() => {});
+          // Keep pumping; surface via the originating test if it awaits the same work.
+          // QuickJS host may not define global console.
+          if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[choysum/e2e] route handler error:', err && err.message ? err.message : err);
+          }
         }
-      }
+      })();
     }
     routePumpRunning = false;
   })().catch(() => {
