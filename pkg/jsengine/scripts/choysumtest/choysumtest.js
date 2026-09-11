@@ -568,6 +568,7 @@
       applyDefaultUnitIdentity(defaultIdentity);
       const start = nowMs();
       let ok = true;
+      let skipped = false;
       let errInfo = null;
       try {
         const r = t.fn();
@@ -575,8 +576,12 @@
           await r;
         }
       } catch (err) {
-        ok = false;
-        errInfo = makeErrorInfo(err);
+        if (err && err.name === 'ChoysumTestSkip') {
+          skipped = true;
+        } else {
+          ok = false;
+          errInfo = makeErrorInfo(err);
+        }
       }
       const durationMs = Math.max(0, nowMs() - start);
 
@@ -586,7 +591,7 @@
         failed++;
       }
 
-      cases.push({ name: t.name, ok, durationMs, error: errInfo });
+      cases.push({ name: t.name, ok, skipped, durationMs, error: errInfo });
 
       if (!ok && failFast) {
         break;

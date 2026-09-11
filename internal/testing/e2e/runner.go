@@ -90,6 +90,7 @@ type runtimeInfo struct {
 	Scenario   string   `json:"scenario"`
 	SpecsDir   string   `json:"specsDir"`
 	Fixtures   []string `json:"fixtures,omitempty"`
+	CI         bool     `json:"ci,omitempty"`
 }
 
 var scenarioNameRE = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
@@ -585,7 +586,11 @@ compile:
 	defer stopServerHook(serverCmd)
 
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)
-	writeRuntime(runtimePath, runtimeInfo{PID: serverCmd.Process.Pid, Port: port, BaseURL: baseURL, ConfigPath: configPath, DBPath: dbPath, RunDir: runDir, Module: opts.Module, Scenario: scenario, SpecsDir: specsDir, Fixtures: loadedFixtures})
+	writeRuntime(runtimePath, runtimeInfo{
+		PID: serverCmd.Process.Pid, Port: port, BaseURL: baseURL, ConfigPath: configPath, DBPath: dbPath,
+		RunDir: runDir, Module: opts.Module, Scenario: scenario, SpecsDir: specsDir, Fixtures: loadedFixtures,
+		CI: os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true",
+	})
 
 	if err := waitForHTTP200Hook(ctx, baseURL+"/readyz", opts.StartupTimeout); err != nil {
 		return includeLogTail(err, logPath)

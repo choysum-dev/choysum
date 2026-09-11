@@ -1,17 +1,16 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect, type Page, type Locator } from '@playwright/test';
-import fs from 'node:fs';
+import { test, expect, page, runtime } from '@choysum/e2e';
 import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
 
 test.setTimeout(10 * 60 * 1000);
 
-// Set a default action/navigation timeout so that any Playwright operation
-// without an explicit timeout cannot hang indefinitely on slow CI runners.
-test.beforeEach(async ({ page }) => {
-  page.setDefaultTimeout(30000);
-});
+/** Minimal page surface used by meta module-management helpers. */
+type Page = typeof page;
+
+/** Locator returned by page.locator / getByRole chains. */
+type Locator = ReturnType<Page['locator']>;
 
 /**
  * Runtime metadata injected into the meta module management e2e harness.
@@ -22,6 +21,7 @@ type RuntimeInfo = {
   module: string;
   scenario: string;
   fixtures: string[];
+  ci?: boolean;
 };
 
 type OperationTerminalStatus = 'succeeded' | 'failed' | 'cancelled' | 'reloaded';
@@ -52,7 +52,8 @@ function summarizeCardSnapshots(cards: ModuleCardSnapshot[], limit = 8): string 
 }
 
 function logSkipReason(reason: string) {
-  console.warn(`[meta-e2e] SKIP: ${reason}`);
+  // QuickJS e2e host has no console global; keep skip reasons in the thrown skip message.
+  void reason;
 }
 
 async function skipWithVisibleCards(page: Page, baseReason: string) {
@@ -81,12 +82,14 @@ function escapeRegExp(value: string): string {
  * Loads the current e2e runtime descriptor from the test harness.
  */
 function readRuntimeInfo(): RuntimeInfo {
-  const runtimePath = process.env.CHOYSUM_E2E_RUNTIME_JSON;
-  if (!runtimePath) {
-    throw new Error('CHOYSUM_E2E_RUNTIME_JSON env var not set');
-  }
-  const raw = fs.readFileSync(runtimePath, 'utf-8');
-  return JSON.parse(raw) as RuntimeInfo;
+  return {
+    baseURL: String(runtime.baseURL || ''),
+    specsDir: String(runtime.specsDir || ''),
+    module: String(runtime.module || ''),
+    scenario: String(runtime.scenario || 'default'),
+    fixtures: Array.isArray(runtime.fixtures) ? (runtime.fixtures as string[]) : [],
+    ci: !!runtime.ci,
+  };
 }
 
 /**
@@ -109,7 +112,9 @@ async function waitForModuleList(page: Page) {
   await page.locator('.okanban').waitFor({ state: 'visible', timeout: 30000 });
   // The board can already be stable from cache without a fresh RPC on each poll.
   // Keep a short best-effort response wait to avoid 30s stalls in hot loops.
-  await page.waitForResponse(resp => resp.url().includes('meta.MetaModule') && resp.status() === 200, { timeout: 2000 }).catch(() => null);
+  await page
+    .waitForResponse({ urlIncludes: 'meta.MetaModule' }, { timeout: 2000 })
+    .catch(() => null);
 }
 
 /**
@@ -263,9 +268,8 @@ async function moduleStatusText(page: Page, moduleName: string) {
 /**
  * Polls the module board until a module reaches the expected status label.
  *
- * Uses a hard deadline via setTimeout so that even if Playwright operations
- * inside the polling loop hang beyond their individual timeouts the function
- * cannot exceed the requested deadline.
+ * Uses host.delay-based races so the deadline still fires under the QuickJS e2e
+ * host (EvalAwait does not pump os.setTimeout).
  */
 async function waitForModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 120000) {
   const deadline = Date.now() + timeout;
@@ -279,35 +283,72 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
 
     if (Date.now() >= nextReloadAt) {
       const navTimeout = Math.min(remaining, 30000);
-      await page.reload({ waitUntil: 'domcontentloaded', timeout: navTimeout }).catch(() => null);
+      const reloadP = page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null);
+      const timedOut = await Promise.race([
+        reloadP.then(() => false),
+        page.waitForTimeout(navTimeout).then(() => true),
+      ]);
+      if (timedOut) {
+        // Drain the in-flight reload so a late navigation cannot replace the DOM mid-poll.
+        await Promise.race([reloadP, page.waitForTimeout(5000)]).catch(() => null);
+      }
       await page.waitForURL('**/web/meta/modules', { timeout: Math.min(deadline - Date.now(), 30000) }).catch(() => null);
       await waitForModuleList(page).catch(() => null);
       nextReloadAt = Date.now() + reloadIntervalMs;
     }
 
-    // Guard each polling iteration with a hard deadline so that a single
-    // stuck moduleStatusText call cannot consume the remaining budget.
     const iterRemaining = deadline - Date.now();
     if (iterRemaining <= 0) break;
 
-    const statusPromise = moduleStatusText(page, moduleName);
-    const deadlinePromise = new Promise<string>(resolve => setTimeout(() => resolve('__deadline__'), Math.min(iterRemaining, 5000)));
-    const result = (await Promise.race([statusPromise, deadlinePromise])) as string;
-    if (result !== '__deadline__') {
-      lastStatus = result;
+    let timedOut = false;
+    let statusRead = lastStatus;
+    await Promise.race([
+      moduleStatusText(page, moduleName)
+        .then(status => {
+          if (!timedOut) statusRead = status;
+        })
+        .catch(() => {
+          // Keep prior lastStatus when a single read fails.
+        }),
+      page.waitForTimeout(Math.min(iterRemaining, 5000)).then(() => {
+        timedOut = true;
+      }),
+    ]);
+    if (!timedOut) {
+      lastStatus = statusRead;
     }
-    // If the deadline fired first, keep the previous lastStatus and let
-    // the outer loop's while-condition (or the next reload cycle) decide.
 
     if (lastStatus === expectedStatus) {
       return;
     }
 
     const waitMs = lastStatus ? 1000 : 1500;
-    await Promise.race([page.waitForTimeout(waitMs), new Promise(resolve => setTimeout(resolve, waitMs + 1000))]);
+    await page.waitForTimeout(waitMs);
   }
 
   throw new Error(`module ${moduleName} status remained ${lastStatus || '<empty>'}, want ${expectedStatus}`);
+}
+
+/**
+ * Returns a document navigation epoch that changes across full page reloads.
+ * Used to detect same-URL hard reloads without treating a closed dialog as reload.
+ */
+async function pageNavEpoch(page: Page): Promise<string> {
+  try {
+    const value = await page.evaluate(() => {
+      try {
+        if (typeof performance !== 'undefined' && performance.timeOrigin != null) {
+          return String(performance.timeOrigin);
+        }
+      } catch {
+        // ignore
+      }
+      return '';
+    });
+    return value == null ? '' : String(value);
+  } catch {
+    return '';
+  }
 }
 
 /**
@@ -316,39 +357,34 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
 async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000): Promise<OperationTerminalStatus> {
   const dialog = page.locator('.el-dialog');
   const statusTag = dialog.locator('.status-row .el-tag').first();
+  const startURL = String(await page.url());
+  const startEpoch = await pageNavEpoch(page);
 
-  const reloadPromise = page
-    .waitForNavigation({ waitUntil: 'domcontentloaded', timeout })
-    .then(async () => {
-      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => null);
-      return 'reloaded' as const;
-    })
-    .catch(() => 'no' as const);
-
-  const statusPromise = (async () => {
-    const deadline = Date.now() + timeout;
-    while (Date.now() < deadline) {
-      const statusText = ((await statusTag.textContent().catch(() => '')) || '').trim();
-      const terminal = parseTerminalStatus(statusText);
-      if (terminal) {
-        return terminal;
-      }
-      await page.waitForTimeout(500);
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const statusText = ((await statusTag.textContent().catch(() => '')) || '').trim();
+    const terminal = parseTerminalStatus(statusText);
+    if (terminal) {
+      return terminal;
     }
-    return 'no' as const;
-  })();
 
-  const winner = await Promise.race([reloadPromise, statusPromise]);
-  if (winner !== 'no') {
-    return winner;
-  }
+    const href = String(await page.url());
+    if (href !== startURL && href.includes('/web/meta/modules')) {
+      // Hard navigation/reload replaced the operation dialog.
+      return 'reloaded';
+    }
 
-  const [reloadResult, statusResult] = await Promise.all([reloadPromise, statusPromise]);
-  if (statusResult !== 'no') {
-    return statusResult;
-  }
-  if (reloadResult !== 'no') {
-    return reloadResult;
+    const dialogVisible = await dialog.isVisible().catch(() => false);
+    if (!dialogVisible && href.includes('/web/meta/modules')) {
+      // Hidden dialog alone is not evidence of a hard navigation/reload.
+      // Same-URL hard reload still changes performance.timeOrigin.
+      const epoch = await pageNavEpoch(page);
+      if (href !== startURL || (startEpoch !== '' && epoch !== '' && epoch !== startEpoch)) {
+        return 'reloaded';
+      }
+    }
+
+    await page.waitForTimeout(500);
   }
 
   const dialogVisible = await dialog.isVisible().catch(() => false);
@@ -658,7 +694,8 @@ async function runAction(page: Page, moduleName: string | undefined, action: Mod
 async function runActionExpectFailure(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
   const actionLabel = action === 'install' ? 'Install' : action === 'upgrade' ? 'Upgrade' : 'Uninstall';
   const card = await openModuleCard(page, moduleName);
-  const initialStatus = (await card.locator('.module-card__title .el-tag').innerText()).trim();
+  // Use moduleStatusText so an em-dash tag is normalized the same way waitForModuleStatus reads it.
+  const initialStatus = await moduleStatusText(page, moduleName);
   await card.getByRole('button', { name: actionLabel }).click();
 
   const dialog = page.locator('.el-dialog');
@@ -768,7 +805,7 @@ async function pickTargetModule(page: Page, opts?: { preferUpgrade?: boolean }) 
   return pickPreferred(candidates);
 }
 
-test('meta module management: install/upgrade/uninstall flow', async ({ page }) => {
+test('meta module management: install/upgrade/uninstall flow', async () => {
   // This flow executes up to three heavy module operations (install/upgrade/uninstall)
   // and can exceed 10 minutes on cold CI runners with slower network/disk.
   test.setTimeout(20 * 60 * 1000);
@@ -809,7 +846,7 @@ test('meta module management: install/upgrade/uninstall flow', async ({ page }) 
     initialCards.find(card => preferredModuleOrder.includes(card.name))?.name ||
     initialCards[0]?.name;
 
-  const ciMode = String(process.env.CI || '') === 'true' || String(process.env.GITHUB_ACTIONS || '') === 'true';
+  const ciMode = !!runtime.ci;
 
   // Keep PR CI fast and stable: execute one representative stateful action.
   // The full three-step chain remains available in non-CI environments.
@@ -844,7 +881,7 @@ test('meta module management: install/upgrade/uninstall flow', async ({ page }) 
   }
 });
 
-test('meta module management: failed result status flow', async ({ page }) => {
+test('meta module management: failed result status flow', async () => {
   const runtime = readRuntimeInfo();
   test.skip(runtime.scenario !== 'result-failed', 'only runs under result-failed scenario');
 
@@ -862,7 +899,7 @@ test('meta module management: failed result status flow', async ({ page }) => {
   await runActionExpectFailure(page, target!.name, action!);
 });
 
-test('meta module management: reload failed flow', async ({ page }) => {
+test('meta module management: reload failed flow', async () => {
   const runtime = readRuntimeInfo();
   test.skip(runtime.scenario !== 'reload-failed', 'only runs under reload-failed scenario');
 
@@ -880,7 +917,7 @@ test('meta module management: reload failed flow', async ({ page }) => {
   await runActionExpectReloadFailed(page, target!.name, action!);
 });
 
-test('meta module management: lock conflict flow', async ({ page }) => {
+test('meta module management: lock conflict flow', async () => {
   const runtime = readRuntimeInfo();
   test.skip(runtime.scenario !== 'lock-conflict', 'only runs under lock-conflict scenario');
 
@@ -903,7 +940,7 @@ test('meta module management: lock conflict flow', async ({ page }) => {
  * onMounted lazy sync fires in the background. The board must not block on
  * async index refresh.
  */
-test('meta module management: kanban lazy sync does not block page', async ({ page }) => {
+test('meta module management: kanban lazy sync does not block page', async () => {
   const runtime = readRuntimeInfo();
   test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
 
@@ -941,7 +978,7 @@ test('meta module management: kanban lazy sync does not block page', async ({ pa
  * or CI environment). The board must still show local modules and allow
  * install/upgrade/uninstall operations.
  */
-test('meta module management: kanban usable when registry sync fails', async ({ page }) => {
+test('meta module management: kanban usable when registry sync fails', async () => {
   const runtime = readRuntimeInfo();
   test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
 
@@ -970,9 +1007,13 @@ test('meta module management: kanban usable when registry sync fails', async ({ 
     await route.continue();
   };
 
+  // Authenticate before arming Fetch interception so login assets are not paused.
+  await loginAsE2EAdmin(page, baseURL);
   await page.route('**/*', routeHandler);
   try {
-    await ensureLoggedIn(page, baseURL);
+    await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
+    await waitForModuleList(page);
 
     // Lazy sync for registry runs on onMounted; this test forces registry
     // RequestSync to fail and verifies the page still stays usable.

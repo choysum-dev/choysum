@@ -151,6 +151,15 @@ function makeLocator(kind, value, opts) {
       })()`);
       return JSON.parse(raw);
     },
+    async innerText() {
+      const sel = await ensureCSS(loc);
+      const raw = await getHost().evaluate(`(() => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        if (!el) return null;
+        return typeof el.innerText === 'string' ? el.innerText : el.textContent;
+      })()`);
+      return JSON.parse(raw);
+    },
     async getAttribute(name) {
       const sel = await ensureCSS(loc);
       const raw = await getHost().evaluate(`(() => {
@@ -171,6 +180,48 @@ function makeLocator(kind, value, opts) {
       } catch {
         return false;
       }
+    },
+    async waitFor(opts) {
+      const timeout = opts && typeof opts.timeout === 'number' ? opts.timeout : 30000;
+      const state = opts && opts.state ? String(opts.state) : 'visible';
+      await poll(timeout, async () => {
+        if (state === 'attached') {
+          try {
+            await ensureCSS(loc);
+            return (await countLocator(loc)) > 0;
+          } catch {
+            return false;
+          }
+        }
+        if (state === 'detached' || state === 'hidden') {
+          try {
+            if ((await countLocator(loc)) === 0) return true;
+            if (state === 'detached') return false;
+            return !(await loc.isVisible());
+          } catch {
+            return true;
+          }
+        }
+        return await loc.isVisible();
+      });
+    },
+    async press(key) {
+      await loc.waitFor({ state: 'visible' });
+      const sel = await ensureCSS(loc);
+      const keyName = String(key || '');
+      await getHost().evaluate(`(() => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        if (!el) throw new Error('press: element not found');
+        if (typeof el.focus === 'function') el.focus();
+        const key = ${JSON.stringify(keyName)};
+        const keyCodes = { Enter: 13, Escape: 27, Tab: 9, Backspace: 8, ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39 };
+        const keyCode = keyCodes[key] || 0;
+        const opts = { key, code: key, keyCode, which: keyCode, bubbles: true, cancelable: true };
+        el.dispatchEvent(new KeyboardEvent('keydown', opts));
+        el.dispatchEvent(new KeyboardEvent('keypress', opts));
+        el.dispatchEvent(new KeyboardEvent('keyup', opts));
+        return true;
+      })()`);
     },
     async allTextContents() {
       const matches = await collectMatchedElements(loc);
@@ -603,6 +654,191 @@ async function collectMatchedElements(loc) {
   return [];
 }
 
+let routeEntries = [];
+let routePumpRunning = false;
+let routePumpStop = false;
+let routeHandlerError = null;
+
+function noteRouteHandlerError(err) {
+  if (routeHandlerError) return;
+  routeHandlerError = err;
+}
+
+function throwRouteHandlerErrorIfAny() {
+  if (!routeHandlerError) return;
+  const err = routeHandlerError;
+  routeHandlerError = null;
+  throw err;
+}
+
+function globToRegExp(glob) {
+  const s = String(glob || '');
+  let out = '^';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '*' && s[i + 1] === '*') {
+      out += '.*';
+      i++;
+      continue;
+    }
+    if (ch === '*') {
+      out += '[^/]*';
+      continue;
+    }
+    if (ch === '?') {
+      out += '.';
+      continue;
+    }
+    if ('\\.[]{}()+-^$|'.includes(ch)) {
+      out += '\\' + ch;
+      continue;
+    }
+    out += ch;
+  }
+  out += '(?:\\?.*)?$';
+  return new RegExp(out);
+}
+
+function urlMatchesPattern(href, pattern) {
+  if (pattern && typeof pattern === 'object' && typeof pattern.test === 'function') {
+    // Clone so global/sticky RegExp lastIndex does not skip later requests.
+    try {
+      return new RegExp(pattern.source, pattern.flags || '').test(href);
+    } catch {
+      return false;
+    }
+  }
+  const s = String(pattern || '');
+  if (!s) return true;
+  if (s.includes('*') || s.includes('?')) {
+    return globToRegExp(s).test(href);
+  }
+  return href === s || href.includes(s);
+}
+
+function routePatternsEqual(a, b) {
+  if (a && typeof a === 'object' && typeof a.test === 'function') {
+    if (!(b && typeof b === 'object' && typeof b.test === 'function')) return false;
+    return a === b || (a.source === b.source && a.flags === b.flags);
+  }
+  return String(a) === String(b);
+}
+
+function matchRouteEntry(url) {
+  for (let i = 0; i < routeEntries.length; i++) {
+    if (urlMatchesPattern(url, routeEntries[i].pattern)) {
+      return routeEntries[i];
+    }
+  }
+  return null;
+}
+
+function makeRouteHandle(paused) {
+  let settled = false;
+  // Serialize settle attempts; only mark settled after CDP fulfill/continue succeeds
+  // so a failed attempt can still fail-open instead of leaving the request paused.
+  let settleChain = Promise.resolve();
+  const settle = fn => {
+    if (settled) return Promise.resolve();
+    const run = settleChain.then(async () => {
+      if (settled) return;
+      await fn();
+      settled = true;
+    });
+    // Keep the chain alive after a failure so the next settle (fail-open) can retry.
+    settleChain = run.catch(() => {});
+    return run;
+  };
+  return {
+    request() {
+      return {
+        url: () => paused.url,
+        method: () => paused.method,
+      };
+    },
+    async fulfill(opts) {
+      const o = opts || {};
+      await settle(() =>
+        getHost().fulfillRequest(
+          paused.id,
+          JSON.stringify({
+            status: o.status != null ? o.status : 200,
+            contentType: o.contentType || '',
+            body: o.body != null ? String(o.body) : '',
+            headers: o.headers || {},
+          })
+        )
+      );
+    },
+    async continue() {
+      await settle(() => getHost().continueRequest(paused.id));
+    },
+    async abort() {
+      await settle(() => getHost().failRequest(paused.id));
+    },
+  };
+}
+
+function startRoutePump() {
+  // Clear stop before the running check so unroute→route in the same test
+  // (or while a prior wait is in flight) keeps draining paused requests.
+  routePumpStop = false;
+  if (routePumpRunning) return;
+  routePumpRunning = true;
+  (async () => {
+    while (!routePumpStop && routeEntries.length > 0) {
+      let raw;
+      try {
+        raw = await getHost().waitPausedRequest(1000);
+      } catch {
+        if (routePumpStop || routeEntries.length === 0) break;
+        continue;
+      }
+      if (raw == null || raw === '') continue;
+      let paused;
+      try {
+        paused = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch {
+        continue;
+      }
+      if (!paused || !paused.id) continue;
+      const entry = matchRouteEntry(String(paused.url || ''));
+      if (!entry) {
+        try {
+          await getHost().continueRequest(paused.id);
+        } catch {
+          // ignore
+        }
+        continue;
+      }
+      const handle = makeRouteHandle({
+        id: String(paused.id),
+        url: String(paused.url || ''),
+        method: String(paused.method || ''),
+      });
+      // Do not await the handler: parallel paused requests must keep draining
+      // (Playwright also invokes route handlers without serializing them).
+      (async () => {
+        try {
+          await entry.handler(handle);
+          // If the handler returned without fulfill/continue, fail open.
+          await handle.continue().catch(() => {});
+        } catch (err) {
+          await handle.continue().catch(() => {});
+          noteRouteHandlerError(err);
+          // Keep pumping; surface via unroute/afterEach (QuickJS may lack console).
+          if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[choysum/e2e] route handler error:', err && err.message ? err.message : err);
+          }
+        }
+      })();
+    }
+    routePumpRunning = false;
+  })().catch(() => {
+    routePumpRunning = false;
+  });
+}
+
 const page = {
   __choysum_e2e_page__: true,
   async goto(url, opts) {
@@ -685,6 +921,13 @@ const page = {
   async waitForTimeout(ms) {
     await sleep(ms);
   },
+  async waitForURL(pattern, opts) {
+    const timeout = opts && typeof opts.timeout === 'number' ? opts.timeout : 30000;
+    await poll(timeout, async () => {
+      const href = String(await getHost().url());
+      return urlMatchesPattern(href, pattern);
+    });
+  },
   async waitForSelector(sel, opts) {
     const timeout = opts && typeof opts.timeout === 'number' ? opts.timeout : 30000;
     const state = opts && opts.state ? String(opts.state) : 'visible';
@@ -701,6 +944,34 @@ const page = {
       // visible (default)
       return await getHost().isVisible(css);
     });
+  },
+  async route(url, handler) {
+    if (typeof handler !== 'function') {
+      throw new Error('@choysum/e2e: page.route requires a handler function');
+    }
+    // Keep RegExp objects so urlMatchesPattern can call .test(); String(re) breaks matching.
+    const pattern =
+      url && typeof url === 'object' && typeof url.test === 'function' ? url : String(url);
+    routeEntries.unshift({ pattern, handler });
+    await getHost().enableFetch();
+    startRoutePump();
+  },
+  async unroute(url, handler) {
+    const want = url != null ? (url && typeof url === 'object' && typeof url.test === 'function' ? url : String(url)) : null;
+    routeEntries = routeEntries.filter(entry => {
+      if (want != null && !routePatternsEqual(entry.pattern, want)) return true;
+      if (handler && entry.handler !== handler) return true;
+      return false;
+    });
+    if (routeEntries.length === 0) {
+      routePumpStop = true;
+      try {
+        await getHost().disableFetch();
+      } catch {
+        // ignore
+      }
+    }
+    throwRouteHandlerErrorIfAny();
   },
   async url() {
     return await getHost().url();
@@ -746,6 +1017,14 @@ function matchValue(actual, expected) {
     return expected.test(String(actual == null ? '' : actual));
   }
   return String(actual == null ? '' : actual).includes(String(expected));
+}
+
+function matchTextExact(actual, expected) {
+  if (expected && typeof expected === 'object' && typeof expected.test === 'function') {
+    return expected.test(String(actual == null ? '' : actual));
+  }
+  const normalize = value => String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  return normalize(actual) === normalize(expected);
 }
 
 function makePollMatchers(fn, timeoutMs, negate) {
@@ -890,6 +1169,91 @@ function e2eExpect(target, message) {
         if (re) return re.test(href);
         // String form: match the full URL (Playwright string semantics), not a RegExp.
         return href === exact;
+      });
+    },
+    async toHaveText(expected, opts) {
+      const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
+      if (!target || !target.__choysum_e2e_locator__) {
+        fail('toHaveText: expected locator');
+      }
+      await pollOrFail(timeout, diag, async () => {
+        try {
+          const text = await target.textContent();
+          // Missing element → null; do not treat as empty text (Playwright waits for attach).
+          if (text === null) return false;
+          return matchTextExact(text, expected);
+        } catch (e) {
+          target._css = '';
+          throw e;
+        }
+      });
+    },
+    async toHaveClass(expected, opts) {
+      const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
+      if (!target || !target.__choysum_e2e_locator__) {
+        fail('toHaveClass: expected locator');
+      }
+      await pollOrFail(timeout, diag, async () => {
+        try {
+          const sel = await ensureCSS(target);
+          const raw = await getHost().evaluate(`(() => {
+            const el = document.querySelector(${JSON.stringify(sel)});
+            // getAttribute works for HTML and SVG (className is SVGAnimatedString on SVG).
+            return el ? (el.getAttribute('class') || '') : null;
+          })()`);
+          const className = JSON.parse(raw);
+          if (className == null) {
+            target._css = '';
+            return false;
+          }
+          return matchValue(className, expected);
+        } catch (e) {
+          target._css = '';
+          throw e;
+        }
+      });
+    },
+  };
+
+  api.not = {
+    async toHaveText(expected, opts) {
+      const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
+      if (!target || !target.__choysum_e2e_locator__) {
+        fail('not.toHaveText: expected locator');
+      }
+      await pollOrFail(timeout, diag, async () => {
+        try {
+          const text = await target.textContent();
+          if (text === null) return false;
+          return !matchTextExact(text, expected);
+        } catch (e) {
+          target._css = '';
+          throw e;
+        }
+      });
+    },
+    async toHaveClass(expected, opts) {
+      const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
+      if (!target || !target.__choysum_e2e_locator__) {
+        fail('not.toHaveClass: expected locator');
+      }
+      await pollOrFail(timeout, diag, async () => {
+        try {
+          const sel = await ensureCSS(target);
+          const raw = await getHost().evaluate(`(() => {
+            const el = document.querySelector(${JSON.stringify(sel)});
+            return el ? (el.getAttribute('class') || '') : null;
+          })()`);
+          const className = JSON.parse(raw);
+          if (className == null) {
+            target._css = '';
+            return false;
+          }
+          return !matchValue(className, expected);
+        } catch (e) {
+          target._css = '';
+          throw e;
+        }
       });
     },
   };
@@ -1270,9 +1634,14 @@ function wrapTest(rawTest) {
   }
   // choysumtest has no per-test timeout; keep call sites compiling.
   wrapped.setTimeout = function setTimeout() {};
-  // Prefer early return in specs; this throws so accidental mid-test skips fail loudly.
+  // Prefer early return in specs; ChoysumTestSkip is counted as pass (skipped) by choysumtest.
   wrapped.skip = function skip(cond, msg) {
-    if (cond) throw new Error('test.skip: ' + (msg != null ? String(msg) : ''));
+    const shouldSkip = arguments.length === 0 ? true : !!cond;
+    if (shouldSkip) {
+      const e = new Error(msg != null ? String(msg) : 'skipped');
+      e.name = 'ChoysumTestSkip';
+      throw e;
+    }
   };
   return wrapped;
 }
@@ -1291,16 +1660,27 @@ const runtime = new Proxy(
 if (!globalThis.__choysum_e2e_hooks_installed__ && typeof globalThis.beforeEach === 'function') {
   globalThis.__choysum_e2e_hooks_installed__ = true;
   globalThis.beforeEach(async () => {
+    routeEntries = [];
+    routePumpStop = true;
+    routeHandlerError = null;
     // NewPage clears cookies and resets to about:blank (workers=1 reuses the tab).
     await getHost().newPage();
   });
   if (typeof globalThis.afterEach === 'function') {
     globalThis.afterEach(async () => {
+      routeEntries = [];
+      routePumpStop = true;
+      try {
+        await getHost().disableFetch();
+      } catch {
+        // ignore
+      }
       try {
         await getHost().closePage();
       } catch {
         // ignore
       }
+      throwRouteHandlerErrorIfAny();
     });
   }
 }

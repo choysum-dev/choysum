@@ -92,6 +92,12 @@ func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string)
 	hostObj.Set("readTextFile", ctx.NewFunction(host.bindReadTextFile()))
 	hostObj.Set("fetch", ctx.NewFunction(host.bindFetch()))
 	hostObj.Set("clearOriginStorage", ctx.NewFunction(host.bindClearOriginStorage()))
+	hostObj.Set("enableFetch", ctx.NewFunction(host.bindEnableFetch()))
+	hostObj.Set("disableFetch", ctx.NewFunction(host.bindDisableFetch()))
+	hostObj.Set("waitPausedRequest", ctx.NewFunction(host.bindWaitPausedRequest()))
+	hostObj.Set("fulfillRequest", ctx.NewFunction(host.bindFulfillRequest()))
+	hostObj.Set("continueRequest", ctx.NewFunction(host.bindContinueRequest()))
+	hostObj.Set("failRequest", ctx.NewFunction(host.bindFailRequest()))
 	globals.Set("__choysum_e2e_host__", hostObj)
 	return host, nil
 }
@@ -210,11 +216,26 @@ func (h *Host) bindGoto() func(ctx *quickjs.Context, this *quickjs.Value, args [
 				reject(ctx.Error(err))
 				return
 			}
-			if err := p.Goto(url, waitUntil); err != nil {
-				reject(ctx.Error(err))
-				return
-			}
-			resolve(ctx.Undefined())
+			// Must not block the QuickJS thread: Fetch route handlers run via Schedule
+			// while navigation waits for continued/fulfilled requests.
+			h.pending.Add(1)
+			go func() {
+				defer h.pending.Done()
+				navErr := p.Goto(url, waitUntil)
+				if h.closed.Load() {
+					return
+				}
+				_ = h.schedule(ctx, func(inner *quickjs.Context) {
+					if h.closed.Load() {
+						return
+					}
+					if navErr != nil {
+						reject(inner.Error(navErr))
+						return
+					}
+					resolve(inner.Undefined())
+				})
+			}()
 		})
 	}
 }
@@ -231,11 +252,24 @@ func (h *Host) bindReload() func(ctx *quickjs.Context, this *quickjs.Value, args
 				reject(ctx.Error(err))
 				return
 			}
-			if err := p.Reload(waitUntil); err != nil {
-				reject(ctx.Error(err))
-				return
-			}
-			resolve(ctx.Undefined())
+			h.pending.Add(1)
+			go func() {
+				defer h.pending.Done()
+				reloadErr := p.Reload(waitUntil)
+				if h.closed.Load() {
+					return
+				}
+				_ = h.schedule(ctx, func(inner *quickjs.Context) {
+					if h.closed.Load() {
+						return
+					}
+					if reloadErr != nil {
+						reject(inner.Error(reloadErr))
+						return
+					}
+					resolve(inner.Undefined())
+				})
+			}()
 		})
 	}
 }

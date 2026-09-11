@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/dom"
@@ -36,6 +37,9 @@ type Page struct {
 	session *Session
 	ctx     context.Context
 	cancel  context.CancelFunc
+
+	fetchMu sync.Mutex
+	fetch   *fetchState
 }
 
 // NewPage returns the session's primary tab.
@@ -144,6 +148,7 @@ func (p *Page) Close() {
 	if p == nil {
 		return
 	}
+	_ = p.DisableFetch()
 	if p.cancel != nil {
 		p.cancel()
 	}
