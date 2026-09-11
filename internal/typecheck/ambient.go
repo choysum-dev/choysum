@@ -31,9 +31,6 @@ func BuiltInAmbientOverlays(modulesPath string) map[string]string {
 	if rel, content := SubpathStubOverlay(); rel != "" {
 		out[normalizePathKey(filepath.Join(root, rel))] = content
 	}
-	if rel, content := PlaywrightTestOverlay(); rel != "" {
-		out[normalizePathKey(filepath.Join(root, rel))] = content
-	}
 	return out
 }
 

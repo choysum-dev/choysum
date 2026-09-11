@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+name: Setup Chromium
+description: Cache and install Chrome for Testing via scripts/ci/install_chromium.py
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve CfT pin
+      id: cft-pin
+      shell: bash
+      run: |
+        set -euo pipefail
+        rev="$(python3 - <<'PY'
+from pathlib import Path
+text = Path("scripts/ci/install_chromium.py").read_text()
+for line in text.splitlines():
+    if line.startswith("PINNED_REVISION"):
+        print(line.split("=", 1)[1].strip().strip('"').strip("'"))
+        break
+else:
+    raise SystemExit("PINNED_REVISION not found in install_chromium.py")
+PY
+)"
+        ver="$(python3 - <<'PY'
+from pathlib import Path
+text = Path("scripts/ci/install_chromium.py").read_text()
+for line in text.splitlines():
+    if line.startswith("PINNED_VERSION"):
+        print(line.split("=", 1)[1].strip().strip('"').strip("'"))
+        break
+else:
+    raise SystemExit("PINNED_VERSION not found in install_chromium.py")
+PY
+)"
+        echo "revision=${rev}" >> "$GITHUB_OUTPUT"
+        echo "version=${ver}" >> "$GITHUB_OUTPUT"
+        echo "CHOYSUM_HOME=${CHOYSUM_HOME:-$HOME/.choysum}" >> "$GITHUB_ENV"
+
+    - name: Cache Chrome for Testing
+      id: chromium-cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ env.CHOYSUM_HOME }}/browsers
+        key: ${{ runner.os }}-cft-${{ steps.cft-pin.outputs.revision }}-${{ steps.cft-pin.outputs.version }}
+        restore-keys: |
+          ${{ runner.os }}-cft-${{ steps.cft-pin.outputs.revision }}-
+
+    - name: Install Chrome for Testing
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 scripts/ci/install_chromium.py
+        echo "CHOYSUM_HOME=${CHOYSUM_HOME:-$HOME/.choysum}" >> "$GITHUB_ENV"

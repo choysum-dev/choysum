@@ -1244,7 +1244,7 @@ func TestNewTestUnitCmd_AdditionalRunEPaths(t *testing.T) {
 func TestNewE2ECmd_ArgsAndEarlyRunE(t *testing.T) {
 	scopeGetter := func() scope.Scope { return nil }
 	cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
-	if cmd.Use != "e2e <module> [-- <playwrightArgs...>]" {
+	if cmd.Use != "e2e <module> [-- <specFilters...>]" {
 		t.Fatalf("unexpected command use: %q", cmd.Use)
 	}
 	if got := cmd.Flags().Lookup("startup-timeout"); got == nil {

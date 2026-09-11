@@ -181,17 +181,17 @@ func TestFindExecutableHandlesNpmBinaryPathHint(t *testing.T) {
 
 func TestMissingRequiredNodeModules(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "@playwright", "test"), 0o755); err != nil {
-		t.Fatalf("mkdir playwright package: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, "@scoped", "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir scoped package: %v", err)
 	}
 
-	required := []string{"@playwright/test", "@connectrpc/connect"}
+	required := []string{"@scoped/pkg", "@connectrpc/connect"}
 	missing := MissingRequiredNodeModules(required, root)
 	if !reflect.DeepEqual(missing, []string{"@connectrpc/connect"}) {
 		t.Fatalf("MissingRequiredNodeModules returned %#v", missing)
 	}
-	if !ModuleInstalledInRoots("@playwright/test", root) {
-		t.Fatal("expected @playwright/test to be detected")
+	if !ModuleInstalledInRoots("@scoped/pkg", root) {
+		t.Fatal("expected @scoped/pkg to be detected")
 	}
 	if ModuleInstalledInRoots("@connectrpc/connect", root) {
 		t.Fatal("expected @connectrpc/connect to be missing")
@@ -225,25 +225,25 @@ func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
 
 func TestPreflightRequiredNodeModules(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "@playwright", "test"), 0o755); err != nil {
-		t.Fatalf("mkdir playwright package: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, "@scoped", "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir scoped package: %v", err)
 	}
 
-	if err := PreflightRequiredNodeModules("e2e", "auth", []string{"@playwright/test"}, root); err != nil {
+	if err := PreflightRequiredNodeModules("typecheck", "auth", []string{"@scoped/pkg"}, root); err != nil {
 		t.Fatalf("expected preflight success, got %v", err)
 	}
 
-	err := PreflightRequiredNodeModules("e2e", "auth", []string{"@playwright/test", "@connectrpc/connect"}, root)
+	err := PreflightRequiredNodeModules("typecheck", "auth", []string{"@scoped/pkg", "@connectrpc/connect"}, root)
 	if err == nil {
 		t.Fatal("expected missing module error")
 	}
 	errText := err.Error()
 	for _, want := range []string{
-		"e2e preflight failed for auth. tests were not started.",
+		"typecheck preflight failed for auth. tests were not started.",
 		"missing 1 required module(s): @connectrpc/connect",
 		"install command:",
 		"npm install -g",
-		"retry:\n  go run . test e2e auth",
+		"retry:\n  go run . test typecheck auth",
 	} {
 		if !strings.Contains(errText, want) {
 			t.Fatalf("expected %q in error, got %q", want, errText)

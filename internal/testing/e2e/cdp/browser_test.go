@@ -30,6 +30,24 @@ func TestResolveChromiumPathMissingBinaryMessage(t *testing.T) {
 	}
 }
 
+func TestResolveChromiumPathForE2ESkipsSystemChromeInCI(t *testing.T) {
+	t.Setenv("CHOYSUM_CHROMIUM_PATH", "")
+	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	t.Setenv("CI", "true")
+	t.Setenv("GITHUB_ACTIONS", "")
+
+	_, err := ResolveChromiumPathForE2E()
+	if err == nil {
+		t.Fatal("expected missing binary when CI skips system Chrome")
+	}
+	msg := err.Error()
+	for _, want := range []string{"chromium binary not found", "CHOYSUM_CHROMIUM_PATH", "install_chromium.py"} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("error %q missing %q", msg, want)
+		}
+	}
+}
+
 func TestMissingBinaryErrorMentionsInstall(t *testing.T) {
 	err := missingBinaryError("chromium binary not found")
 	msg := err.Error()

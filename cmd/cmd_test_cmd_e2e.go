@@ -57,11 +57,12 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 	var installBrowser bool
 
 	cmd := &cobra.Command{
-		Use:          "e2e <module> [-- <playwrightArgs...>]",
-		Short:        "Run module-scoped system E2E (choysum run + QuickJS/chromedp and/or Playwright)",
+		Use:          "e2e <module> [-- <specFilters...>]",
+		Short:        "Run module-scoped system E2E (choysum run + QuickJS/chromedp)",
 		SilenceUsage: true,
-		Long: "Run module-scoped system E2E (choysum run + QuickJS/chromedp and/or Playwright).\n\n" +
+		Long: "Run module-scoped system E2E (choysum run + QuickJS + chromedp).\n\n" +
 			"<module> refers to the module directory name under the modules path (e.g. modules/auth -> auth), not package.json's name.\n\n" +
+			"Optional args after -- filter spec paths/names (for example: smoke.spec.ts).\n\n" +
 			"Use --install-browser to download Chrome for Testing via scripts/ci/install_chromium.py.",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if installBrowser {
@@ -88,15 +89,15 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 				return err
 			}
 
-			playwrightArgs := []string{}
+			specFilterArgs := []string{}
 			moduleName := ""
 			if !all {
 				moduleName = args[0]
 				if len(args) > 1 {
-					playwrightArgs = args[1:]
+					specFilterArgs = args[1:]
 				}
 			} else {
-				playwrightArgs = args
+				specFilterArgs = args
 			}
 
 			resolvedRuntimeLogLevel := runtimeLogLevel
@@ -142,7 +143,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 						Port:            port,
 						Verbose:         verbose,
 						RuntimeLogLevel: normalizedRuntimeLogLevel,
-						PlaywrightArgs:  playwrightArgs,
+						SpecFilterArgs:  specFilterArgs,
 						WorkDir:         "",
 						Stdout:          os.Stdout,
 						Stderr:          os.Stderr,
@@ -166,7 +167,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 				Port:            port,
 				Verbose:         verbose,
 				RuntimeLogLevel: normalizedRuntimeLogLevel,
-				PlaywrightArgs:  playwrightArgs,
+				SpecFilterArgs:  specFilterArgs,
 				WorkDir:         "",
 				Stdout:          os.Stdout,
 				Stderr:          os.Stderr,

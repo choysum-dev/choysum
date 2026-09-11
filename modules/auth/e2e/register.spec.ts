@@ -68,7 +68,7 @@ async function runRegisterOnce(baseURL: string): Promise<void> {
   const submit = page.getByRole('button', { name: /Create Account|创建账户/ });
   await expect(submit).toBeEnabled({ timeout: 10_000 });
 
-  // Arm boot RPC waiters before submit (same order as the Playwright corpus).
+  // Arm boot RPC waiters before submit.
   const browseOk = waitForGrpcWebUnaryOk(page, '/auth.User/Browse', { timeoutMs: 30_000 });
   const permOk = waitForGrpcWebUnaryOk(page, '/auth.User/GetPermissionState', { timeoutMs: 30_000 });
 
@@ -89,8 +89,7 @@ test('auth: register new user → auto login → no permission_denied on boot RP
   try {
     await runRegisterOnce(baseURL);
   } catch {
-    // One retry absorbs intermittent sqlite "database is locked" under WAL
-    // (Playwright config used retries: 1 for the same reason).
+    // One retry absorbs intermittent sqlite "database is locked" under WAL.
     await runRegisterOnce(baseURL);
   }
 });

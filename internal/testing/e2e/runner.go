@@ -24,10 +24,6 @@ import (
 	"strings"
 	"time"
 
-	tsast "github.com/buke/typescript-go-internal/v7/pkg/ast"
-	tscore "github.com/buke/typescript-go-internal/v7/pkg/core"
-	tsparser "github.com/buke/typescript-go-internal/v7/pkg/parser"
-
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
@@ -36,13 +32,11 @@ import (
 	"github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
-	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
-	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
+	"github.com/choysum-dev/choysum/internal/testing/e2e/cdp"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/config"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
-	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysume2e"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -69,14 +63,13 @@ type RunOptions struct {
 	Verbose         bool
 	RuntimeLogLevel string
 
-	PlaywrightArgs []string
+	// SpecFilterArgs filters discovered *.spec.ts/js by path/name (non-flag args).
+	// Flag-looking args (leading '-') are ignored by the host runner.
+	SpecFilterArgs []string
 	WorkDir        string
 
 	Stdout io.Writer
 	Stderr io.Writer
-
-	staticRequiredModules     []string
-	staticSpecRequiredModules []string
 }
 
 type runtimeInfo struct {
@@ -96,17 +89,6 @@ type runtimeInfo struct {
 var scenarioNameRE = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
 var (
-	nodeBuiltinModules = map[string]struct{}{
-		"assert": {}, "async_hooks": {}, "buffer": {}, "child_process": {}, "cluster": {}, "console": {},
-		"constants": {}, "crypto": {}, "dgram": {}, "dns": {}, "domain": {}, "events": {}, "fs": {},
-		"http": {}, "http2": {}, "https": {}, "inspector": {}, "module": {}, "net": {}, "os": {},
-		"path": {}, "perf_hooks": {}, "process": {}, "punycode": {}, "querystring": {}, "readline": {},
-		"repl": {}, "stream": {}, "string_decoder": {}, "timers": {}, "tls": {}, "tty": {}, "url": {},
-		"util": {}, "v8": {}, "vm": {}, "worker_threads": {}, "zlib": {},
-	}
-)
-
-var (
 	installForE2EHook         = installForE2E
 	applyScenarioFixturesHook = applyScenarioFixtures
 	seedModuleIndexHook       = seedModuleIndexForE2E
@@ -114,12 +96,8 @@ var (
 	startServerHook           = startServer
 	stopServerHook            = stopServer
 	waitForHTTP200Hook        = waitForHTTP200
-	runPlaywrightHook         = runPlaywright
 	runE2EHostHook            = runE2EHost
 	runOneScenarioHook        = runOneScenario
-	partitionE2ESpecFilesHook = partitionE2ESpecFiles
-	// requiredPlaywrightModulesFromSpecFilesHook scans PW specs for npm imports.
-	requiredPlaywrightModulesFromSpecFilesHook = requiredPlaywrightModulesFromSpecFiles
 )
 
 type e2eRuntimeOptions struct {
@@ -260,36 +238,15 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if targetPackage.E2E == nil || strings.TrimSpace(targetPackage.E2E.Specs) == "" {
 		return xfmt.Errorf("%s", testsemantics.ModuleNoE2ESpecsMessage(opts.Module))
 	}
-	closure, err := topoClosure(opts.Module, packages)
-	if err != nil {
-		return err
-	}
 	specsDir, err := resolveE2ESpecsDir(opts.ModulesPath, opts.Module, targetPackage)
 	if err != nil {
 		return err
 	}
-	allSpecFiles, err := discoverPlaywrightSpecFiles(specsDir)
+	allSpecFiles, err := discoverE2ESpecFiles(specsDir)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	allSpecFiles, _ = filterE2ESpecsByArgs(allSpecFiles, opts.PlaywrightArgs)
-	pwSpecFiles, _, err := partitionE2ESpecFiles(allSpecFiles)
-	if err != nil {
-		return err
-	}
-	var specRequiredModules []string
-	if len(pwSpecFiles) > 0 {
-		specRequiredModules, err = requiredPlaywrightModulesFromSpecFilesHook(pwSpecFiles)
-		if err != nil {
-			return err
-		}
-	}
-	requiredModules, err := mergeRequiredE2ERuntimeModules(opts.ModulesPath, closure, packages, specRequiredModules)
-	if err != nil {
-		return err
-	}
-	opts.staticSpecRequiredModules = cloneStringSlice(specRequiredModules)
-	opts.staticRequiredModules = cloneStringSlice(requiredModules)
+	allSpecFiles, _ = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
 
 	scenarioList := opts.Scenarios
 	if len(scenarioList) == 0 {
@@ -304,13 +261,11 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 		}
 	}
 
-	if len(pwSpecFiles) > 0 {
-		if err := preflightPlaywrightRuntimeDependency(opts, opts.Module, requiredModules); err != nil {
-			return err
-		}
-		if _, _, err := resolvePlaywrightCommand(opts); err != nil {
-			return err
-		}
+	if err := CheckIllegalE2EMarks(allSpecFiles); err != nil {
+		return err
+	}
+	if _, err := cdp.ResolveChromiumPathForE2E(); err != nil {
+		return err
 	}
 
 	for _, scenario := range scenarioList {
@@ -369,19 +324,6 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	specsDir, err := resolveE2ESpecsDir(opts.ModulesPath, opts.Module, targetPackage)
 	if err != nil {
 		return err
-	}
-	requiredRuntimeModules := cloneStringSlice(opts.staticRequiredModules)
-	if len(requiredRuntimeModules) == 0 {
-		requiredRuntimeModules, err = collectRequiredE2ERuntimeModules(opts.ModulesPath, closure, packages, specsDir)
-		if err != nil {
-			return err
-		}
-	}
-	globalNodeModulesRoot := resolvePlaywrightGlobalNodeModulesRoot(opts)
-	if len(requiredRuntimeModules) > 0 {
-		if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredRuntimeModules, globalNodeModulesRoot); err != nil {
-			return err
-		}
 	}
 
 	workspaceTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, opts.WorkDir, opts.TmpPath, "e2e")
@@ -444,12 +386,10 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	sqliteDSN := fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", dbPath)
 	npmPath := opts.NpmPath
 	if strings.TrimSpace(npmPath) == "" {
-		// Best effort: prefer repo-local node_modules.
+		// Best effort: prefer repo-local node_modules for generated config.
 		candidate := filepath.Join(opts.WorkDir, "node_modules")
 		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
 			npmPath = candidate
-		} else {
-			npmPath = globalNodeModulesRoot
 		}
 	}
 
@@ -597,34 +537,17 @@ compile:
 	}
 	writeE2EProgress(opts.Stderr, "# prepare runtime %s ok (%s)\n", opts.Module, time.Since(prepareStarted).Round(100*time.Millisecond))
 
-	allSpecFiles, err := discoverPlaywrightSpecFiles(specsDir)
+	allSpecFiles, err := discoverE2ESpecFiles(specsDir)
 	if err != nil {
 		return xfmt.Errorf("discover e2e specs: %w", err)
 	}
-	allSpecFiles, playwrightPassthrough := filterE2ESpecsByArgs(allSpecFiles, opts.PlaywrightArgs)
-	opts2 := opts
-	opts2.NpmPath = globalNodeModulesRoot
-	opts2.PlaywrightArgs = playwrightPassthrough
-
-	pwSpecFiles, qjsSpecFiles, err := partitionE2ESpecFilesHook(allSpecFiles)
-	if err != nil {
-		return err
-	}
-
-	if len(qjsSpecFiles) > 0 {
-		writeE2EProgress(opts.Stderr, "# e2e-qjs %s (%d specs)\n", opts.Module, len(qjsSpecFiles))
-		if err := runE2EHostHook(ctx, opts2, specsDir, baseURL, runtimePath, qjsSpecFiles); err != nil {
-			return err
-		}
-	}
-	if len(pwSpecFiles) > 0 {
-		writeE2EProgress(opts.Stderr, "# e2e-playwright %s (%d specs)\n", opts.Module, len(pwSpecFiles))
-		if err := runPlaywrightHook(ctx, opts2, specsDir, baseURL, runtimePath, pwSpecFiles); err != nil {
-			return err
-		}
-	}
-	if len(qjsSpecFiles) == 0 && len(pwSpecFiles) == 0 {
+	allSpecFiles, _ = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
+	if len(allSpecFiles) == 0 {
 		return xfmt.Errorf("no e2e specs found under %s", specsDir)
+	}
+	writeE2EProgress(opts.Stderr, "# e2e-qjs %s (%d specs)\n", opts.Module, len(allSpecFiles))
+	if err := runE2EHostHook(ctx, opts, specsDir, baseURL, runtimePath, allSpecFiles); err != nil {
+		return err
 	}
 
 	if opts.Keep {
@@ -862,445 +785,6 @@ func stopServer(cmd *exec.Cmd) {
 	_, _ = cmd.Process.Wait()
 }
 
-func runPlaywright(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
-	// Playwright defaults testDir to "tests" when not configured, which would not discover
-	// colocated module specs under modules/. Generate a minimal per-run config that sets
-	// testDir to the specs dir, and pass explicit spec file paths to avoid ambiguous directory matching.
-	runDir := filepath.Dir(runtimePath)
-	configPath := filepath.Join(runDir, "playwright.e2e.config.cjs")
-	configJS := fmt.Sprintf(`/** Auto-generated by choysum test e2e (do not edit). */
-module.exports = {
-  testDir: %q,
-  outputDir: %q,
-	// E2E uses a single sqlite DB for the whole scenario run. Parallel workers can
-	// cause concurrent writes (e.g. login token creation) and intermittently hit
-	// "database is locked". Keep it serial by default; callers may override via
-	// Playwright args (e.g. -- --workers=2).
-	workers: 1,
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
-	// One retry absorbs intermittent sqlite "database is locked" under WAL.
-	retries: 1,
-  use: { trace: 'retain-on-failure' },
-};
-`, specsDir, filepath.Join(runDir, ".playwright", "test-results"))
-	if err := os.WriteFile(configPath, []byte(configJS), 0o644); err != nil {
-		return xfmt.Errorf("write playwright config: %w", err)
-	}
-
-	specFiles := cloneStringSlice(onlyFiles)
-	if len(specFiles) == 0 {
-		var err error
-		specFiles, err = discoverPlaywrightSpecFiles(specsDir)
-		if err != nil {
-			return xfmt.Errorf("discover playwright specs: %w", err)
-		}
-	}
-	if len(specFiles) == 0 {
-		return xfmt.Errorf("no playwright specs found under %s", specsDir)
-	}
-	requiredModules := cloneStringSlice(opts.staticSpecRequiredModules)
-	if len(requiredModules) == 0 {
-		var scanErr error
-		requiredModules, scanErr = requiredPlaywrightModulesFromSpecFilesHook(specFiles)
-		if scanErr != nil {
-			return xfmt.Errorf("scan playwright imports: %w", scanErr)
-		}
-	}
-	runtimeGeneratedModules, err := collectRuntimeGeneratedModules(runtimePath)
-	if err != nil {
-		return err
-	}
-	if len(runtimeGeneratedModules) > 0 {
-		requiredSet := make(map[string]struct{}, len(requiredModules)+len(runtimeGeneratedModules))
-		for _, moduleName := range requiredModules {
-			requiredSet[moduleName] = struct{}{}
-		}
-		for _, moduleName := range runtimeGeneratedModules {
-			requiredSet[moduleName] = struct{}{}
-		}
-		requiredModules = requiredModules[:0]
-		for moduleName := range requiredSet {
-			requiredModules = append(requiredModules, moduleName)
-		}
-		sort.Strings(requiredModules)
-	}
-
-	args := []string{"playwright", "test", "--config", configPath}
-	args = append(args, specFiles...)
-	args = append(args, opts.PlaywrightArgs...)
-	playwrightBin, binDir, err := resolvePlaywrightCommand(opts)
-	if err != nil {
-		return err
-	}
-	globalNodeModulesRoot := resolvePlaywrightGlobalNodeModulesRoot(opts)
-
-	cleanupStagedPb, err := stageGeneratedPbIntoSpecsDir(specsDir, runtimePath)
-	if err != nil {
-		return err
-	}
-	defer cleanupStagedPb()
-
-	if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredModules, globalNodeModulesRoot); err != nil {
-		return err
-	}
-
-	hookPath, err := writeE2EGlobalResolveHook(runDir)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.CommandContext(ctx, playwrightBin, args[1:]...)
-	cmd.Dir = opts.WorkDir
-	cmd.Stdout = opts.Stdout
-	cmd.Stderr = opts.Stderr
-	cmd.Env = append(os.Environ(),
-		"CHOYSUM_E2E_BASE_URL="+baseURL,
-		"CHOYSUM_E2E_RUNTIME_JSON="+runtimePath,
-		"CHOYSUM_E2E_GLOBAL_NODE_MODULES="+globalNodeModulesRoot,
-	)
-	if shimPath, shimErr := choysume2e.PlaywrightShimPath(); shimErr == nil {
-		cmd.Env = append(cmd.Env, "CHOYSUM_E2E_CHOYSUM_E2E_SHIM="+shimPath)
-	}
-	// Disable Playwright's legacy TS ESM loader path to avoid DEP0205
-	// module.register() warnings on newer Node releases.
-	cmd.Env = append(cmd.Env, "PW_DISABLE_TS_ESM=1")
-	// Resolve bare imports from the global npm root (no temporary local node_modules mounts).
-	cmd.Env = append(cmd.Env, mergeNodeOptionsImport(os.Getenv("NODE_OPTIONS"), hookPath))
-	// CJS fallback for tools that still consult NODE_PATH.
-	if globalNodeModulesRoot != "" {
-		nodePath := buildNodePathValues([]string{globalNodeModulesRoot}, strings.TrimSpace(os.Getenv("NODE_PATH")))
-		if nodePath != "" {
-			cmd.Env = append(cmd.Env, "NODE_PATH="+nodePath)
-		}
-	}
-	if binDir != "" {
-		// Ensure any helper binaries under node_modules/.bin are discoverable.
-		cmd.Env = append(cmd.Env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	}
-	if err := cmd.Run(); err != nil {
-		return xfmt.Errorf("playwright failed: %w", err)
-	}
-	return nil
-}
-
-func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
-	searchRoots := append([]string{}, localE2EModuleRoots(opts.WorkDir)...)
-	if npmPath := strings.TrimSpace(opts.NpmPath); npmPath != "" {
-		searchRoots = append(searchRoots, npmPath)
-	}
-	searchRoots = append(searchRoots, resolvePlaywrightGlobalNodeModulesRoot(opts))
-
-	// Prefer workspace/global npm roots over PATH. A PATH hit (e.g. Homebrew
-	// @playwright/test) can disagree with CHOYSUM_E2E_GLOBAL_NODE_MODULES and
-	// then Playwright reports "did not expect test() to be called here" because
-	// the CLI and the spec import load two different test registries.
-	playwrightBin, binDir, found := noderuntime.FindExecutableInRoots(
-		"playwright",
-		searchRoots...,
-	)
-	if !found {
-		moduleName := strings.TrimSpace(opts.Module)
-		if moduleName == "" {
-			moduleName = "e2e"
-		}
-		moduleRoots := []string{resolvePlaywrightGlobalNodeModulesRoot(opts)}
-		if err := noderuntime.PreflightRequiredNodeModules("e2e", moduleName, []string{"@playwright/test"}, moduleRoots...); err != nil {
-			return "", "", err
-		}
-		return "", "", xfmt.Errorf("e2e: playwright executable could not be resolved from local node_modules/.bin (PATH is ignored to avoid version skew)")
-	}
-
-	return playwrightBin, binDir, nil
-}
-
-func preflightPlaywrightRuntimeDependency(opts RunOptions, moduleName string, requiredModules []string) error {
-	return noderuntime.PreflightRequiredNodeModules("e2e", moduleName, requiredModules, resolvePlaywrightGlobalNodeModulesRoot(opts))
-}
-
-func resolvePlaywrightGlobalNodeModulesRoot(opts RunOptions) string {
-	if root := strings.TrimSpace(opts.NpmPath); root != "" {
-		if st, err := os.Stat(root); err == nil && st.IsDir() {
-			return root
-		}
-	}
-	// Prefer an existing workspace install (CI packs root node_modules) before
-	// falling back to the process-global npm root.
-	for _, root := range localE2EModuleRoots(opts.WorkDir) {
-		if st, err := os.Stat(root); err == nil && st.IsDir() {
-			return root
-		}
-	}
-	return resolveGlobalNpmRoot()
-}
-
-func writeE2EGlobalResolveHook(runDir string) (string, error) {
-	runDir = strings.TrimSpace(runDir)
-	if runDir == "" {
-		return "", xfmt.Errorf("write e2e global resolve hook: empty runDir")
-	}
-	hookPath := filepath.Join(runDir, "choysum-e2e-global-resolve.mjs")
-	if err := os.WriteFile(hookPath, []byte(e2eGlobalResolveHookSource), 0o644); err != nil {
-		return "", xfmt.Errorf("write e2e global resolve hook: %w", err)
-	}
-	return hookPath, nil
-}
-
-// mergeNodeOptionsImport appends --import <hookPath> to NODE_OPTIONS without dropping
-// any existing flags the caller already set.
-func mergeNodeOptionsImport(existingNODE_OPTIONS, hookPath string) string {
-	hookPath = strings.TrimSpace(hookPath)
-	importFlag := "--import"
-	importValue := hookPath
-	if hookPath != "" {
-		// Prefer file URL so spaces / special chars in paths are safe.
-		importValue = pathToFileURLString(hookPath)
-	}
-	parts := splitNodeOptions(strings.TrimSpace(existingNODE_OPTIONS))
-	out := make([]string, 0, len(parts)+2)
-	skipNext := false
-	for i, part := range parts {
-		if skipNext {
-			skipNext = false
-			continue
-		}
-		if part == importFlag {
-			// Drop any previous --import for our hook slot; we append ours at the end.
-			if i+1 < len(parts) {
-				skipNext = true
-			}
-			continue
-		}
-		if strings.HasPrefix(part, importFlag+"=") {
-			continue
-		}
-		out = append(out, part)
-	}
-	if hookPath != "" {
-		out = append(out, importFlag, importValue)
-	}
-	return "NODE_OPTIONS=" + joinNodeOptions(out)
-}
-
-// splitNodeOptions mirrors Node's NODE_OPTIONS tokenization: whitespace splits
-// arguments unless inside double quotes; backslash escapes the next character
-// inside quotes. Quotes themselves are not part of the token.
-func splitNodeOptions(raw string) []string {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return nil
-	}
-	var (
-		parts    []string
-		cur      strings.Builder
-		inString bool
-		hasToken bool
-	)
-	flush := func() {
-		if !hasToken {
-			return
-		}
-		parts = append(parts, cur.String())
-		cur.Reset()
-		hasToken = false
-	}
-	for i := 0; i < len(raw); i++ {
-		c := raw[i]
-		if inString {
-			if c == '\\' {
-				if i+1 >= len(raw) {
-					cur.WriteByte(c)
-					hasToken = true
-					continue
-				}
-				i++
-				cur.WriteByte(raw[i])
-				hasToken = true
-				continue
-			}
-			if c == '"' {
-				inString = false
-				continue
-			}
-			cur.WriteByte(c)
-			hasToken = true
-			continue
-		}
-		if c == '"' {
-			inString = true
-			hasToken = true
-			continue
-		}
-		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
-			flush()
-			continue
-		}
-		cur.WriteByte(c)
-		hasToken = true
-	}
-	flush()
-	return parts
-}
-
-func joinNodeOptions(parts []string) string {
-	if len(parts) == 0 {
-		return ""
-	}
-	out := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if needsNodeOptionsQuotes(part) {
-			out = append(out, `"`+escapeNodeOptionsQuoted(part)+`"`)
-			continue
-		}
-		out = append(out, part)
-	}
-	return strings.Join(out, " ")
-}
-
-func needsNodeOptionsQuotes(s string) bool {
-	return strings.ContainsAny(s, " \t\n\r\"\\")
-}
-
-func escapeNodeOptionsQuoted(s string) string {
-	var b strings.Builder
-	b.Grow(len(s) + 8)
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == '\\' || c == '"' {
-			b.WriteByte('\\')
-		}
-		b.WriteByte(c)
-	}
-	return b.String()
-}
-
-func pathToFileURLString(p string) string {
-	abs, err := filepath.Abs(p)
-	if err != nil {
-		abs = p
-	}
-	// Minimal file URL encoding for absolute paths (Unix + Windows).
-	u := filepath.ToSlash(abs)
-	if !strings.HasPrefix(u, "/") {
-		u = "/" + u
-	}
-	return "file://" + u
-}
-
-func localE2EModuleRoots(workDir string) []string {
-	workDir = strings.TrimSpace(workDir)
-	if workDir == "" {
-		return nil
-	}
-	// Still consulted when locating the playwright binary under an existing
-	// local install; e2e no longer creates temporary mounts here.
-	return []string{
-		filepath.Join(workDir, "modules", "node_modules"),
-		filepath.Join(workDir, "node_modules"),
-	}
-}
-
-// stageGeneratedPbIntoSpecsDir copies runDir/.choysum/generated/web/<app>/pb/*_pb.ts into
-// specsDir/.generated/<app>_pb.ts so Playwright transforms them under testDir.
-// Absolute file:// / symlink realpath imports of generated pb bypass that transform and
-// fail under PW_DISABLE_TS_ESM=1 when resolving @bufbuild/protobuf/codegenv2.
-func stageGeneratedPbIntoSpecsDir(specsDir, runtimePath string) (func(), error) {
-	noop := func() {}
-	specsDir = strings.TrimSpace(specsDir)
-	runtimePath = strings.TrimSpace(runtimePath)
-	if specsDir == "" || runtimePath == "" {
-		return noop, nil
-	}
-	generatedWeb := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "web")
-	st, err := os.Stat(generatedWeb)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return noop, nil
-		}
-		return nil, xfmt.Errorf("stat generated web dir: %w", err)
-	}
-	if !st.IsDir() {
-		return noop, nil
-	}
-
-	stageDir := filepath.Join(specsDir, ".generated")
-	if err := os.MkdirAll(stageDir, 0o755); err != nil {
-		return nil, xfmt.Errorf("create specs .generated dir: %w", err)
-	}
-
-	created := make([]string, 0)
-	cleanup := func() {
-		for _, link := range created {
-			_ = os.Remove(link)
-		}
-		_ = os.Remove(stageDir) // best-effort; keep if non-empty
-	}
-
-	entries, err := os.ReadDir(generatedWeb)
-	if err != nil {
-		cleanup()
-		return nil, xfmt.Errorf("read generated web dir: %w", err)
-	}
-	for _, appEntry := range entries {
-		if !appEntry.IsDir() {
-			continue
-		}
-		appName := strings.TrimSpace(appEntry.Name())
-		if appName == "" {
-			continue
-		}
-		pbFile := filepath.Join(generatedWeb, appName, "pb", appName+"_pb.ts")
-		if _, err := os.Stat(pbFile); err != nil {
-			continue
-		}
-		linkPath := filepath.Join(stageDir, appName+"_pb.ts")
-		_ = os.Remove(linkPath)
-		raw, err := os.ReadFile(pbFile)
-		if err != nil {
-			cleanup()
-			return nil, xfmt.Errorf("read %s: %w", pbFile, err)
-		}
-		// Copy (do not symlink): Node resolves package imports from the realpath,
-		// so a symlink back into generated/ would again miss specsDir node resolution.
-		if err := os.WriteFile(linkPath, raw, 0o644); err != nil {
-			cleanup()
-			return nil, xfmt.Errorf("stage %s: %w", linkPath, err)
-		}
-		created = append(created, linkPath)
-	}
-	return cleanup, nil
-}
-
-func buildNodePathValues(moduleRoots []string, existingNodePath string) string {
-	seen := map[string]struct{}{}
-	parts := make([]string, 0, len(moduleRoots)+1)
-	appendIfDir := func(path string) {
-		path = strings.TrimSpace(path)
-		if path == "" {
-			return
-		}
-		if _, ok := seen[path]; ok {
-			return
-		}
-		if st, err := os.Stat(path); err != nil || !st.IsDir() {
-			return
-		}
-		seen[path] = struct{}{}
-		parts = append(parts, path)
-	}
-	for _, root := range moduleRoots {
-		appendIfDir(root)
-	}
-	if existingNodePath = strings.TrimSpace(existingNodePath); existingNodePath != "" {
-		parts = append(parts, existingNodePath)
-	}
-	return strings.Join(parts, string(os.PathListSeparator))
-}
-
-func resolveGlobalNpmRoot() string {
-	return noderuntime.ResolveGlobalNpmRootBestEffort()
-}
-
 func resolveE2ESpecsDir(modulesPath string, moduleName string, pkg *sourceModulePackage) (string, error) {
 	if pkg == nil || pkg.E2E == nil || strings.TrimSpace(pkg.E2E.Specs) == "" {
 		return "", xfmt.Errorf("%s", testsemantics.ModuleNoE2ESpecsMessage(moduleName))
@@ -1311,115 +795,7 @@ func resolveE2ESpecsDir(modulesPath string, moduleName string, pkg *sourceModule
 	}
 	return filepath.Join(modulesPath, pkg.DirName, specsRel), nil
 }
-
-func collectRequiredE2ERuntimeModules(modulesPath string, closure []string, packages map[string]*sourceModulePackage, specsDir string) ([]string, error) {
-	fromSpecs, err := collectRequiredPlaywrightModules(specsDir)
-	if err != nil {
-		return nil, err
-	}
-	return mergeRequiredE2ERuntimeModules(modulesPath, closure, packages, fromSpecs)
-}
-
-func mergeRequiredE2ERuntimeModules(modulesPath string, closure []string, packages map[string]*sourceModulePackage, specRequiredModules []string) ([]string, error) {
-	moduleDirClosure := make([]string, 0, len(closure))
-	for _, moduleName := range closure {
-		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" {
-			continue
-		}
-		dirName := moduleName
-		if pkg := packages[moduleName]; pkg != nil && strings.TrimSpace(pkg.DirName) != "" {
-			dirName = strings.TrimSpace(pkg.DirName)
-		}
-		moduleDirClosure = append(moduleDirClosure, dirName)
-	}
-
-	moduleDeps, err := moddeps.CollectExternalModuleDependencies(modulesPath, moduleDirClosure, false)
-	if err != nil {
-		return nil, xfmt.Errorf("collect module dependencies: %w", err)
-	}
-
-	merged := moddeps.MergeRequiredModules(specRequiredModules, moduleDeps)
-	return filterE2ENodePreflightModules(merged), nil
-}
-
-// filterE2ENodePreflightModules drops host-only packages that must not be
-// resolved from npm (QuickJS aliases / Playwright shims).
-func filterE2ENodePreflightModules(modules []string) []string {
-	out := make([]string, 0, len(modules))
-	for _, moduleName := range modules {
-		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" || moduleName == "@choysum/e2e" {
-			continue
-		}
-		out = append(out, moduleName)
-	}
-	return out
-}
-
-func collectPackageModuleDependencies(pkg *sourceModulePackage) []string {
-	if pkg == nil {
-		return nil
-	}
-	names := map[string]struct{}{}
-	for moduleName := range pkg.Dependencies {
-		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" || strings.HasPrefix(moduleName, "@choysum-dev/") {
-			continue
-		}
-		names[moduleName] = struct{}{}
-	}
-	for moduleName := range pkg.PeerDependencies {
-		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" || strings.HasPrefix(moduleName, "@choysum-dev/") {
-			continue
-		}
-		names[moduleName] = struct{}{}
-	}
-	out := make([]string, 0, len(names))
-	for moduleName := range names {
-		out = append(out, moduleName)
-	}
-	sort.Strings(out)
-	return out
-}
-
-func collectRequiredPlaywrightModules(specsDir string) ([]string, error) {
-	specFiles, err := discoverPlaywrightSpecFiles(specsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	if len(specFiles) == 0 {
-		return nil, nil
-	}
-	pwFiles, _, err := partitionE2ESpecFiles(specFiles)
-	if err != nil {
-		return nil, err
-	}
-	if len(pwFiles) == 0 {
-		return nil, nil
-	}
-
-	fromSpecs, err := requiredPlaywrightModulesFromSpecFilesHook(pwFiles)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]string, 0, len(fromSpecs))
-	for _, moduleName := range fromSpecs {
-		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" || moduleName == "@choysum/e2e" {
-			continue
-		}
-		out = append(out, moduleName)
-	}
-	sort.Strings(out)
-	return out, nil
-}
-
-func discoverPlaywrightSpecFiles(specsDir string) ([]string, error) {
+func discoverE2ESpecFiles(specsDir string) ([]string, error) {
 	specFiles := make([]string, 0)
 	if err := filepath.WalkDir(specsDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -1460,13 +836,11 @@ func uniqueScenarioFixtureModules(fixtureClosure []string, targetModule string) 
 	return unique
 }
 
-// filterE2ESpecsByArgs applies non-flag PlaywrightArgs as path/name filters before
-// QJS/PW partition. Remaining flag args (e.g. --workers=2) are returned for the
-// Playwright CLI. Without this, `choysum test e2e auth -- smoke.spec.ts` would
-// still launch every PW-partitioned file and append smoke.spec.ts as an extra path.
-func filterE2ESpecsByArgs(specFiles []string, playwrightArgs []string) (filtered []string, passthrough []string) {
+// filterE2ESpecsByArgs applies non-flag SpecFilterArgs as path/name filters.
+// Flag-looking args (leading '-') are returned as passthrough and ignored by the host.
+func filterE2ESpecsByArgs(specFiles []string, filterArgs []string) (filtered []string, passthrough []string) {
 	var patterns []string
-	for _, arg := range playwrightArgs {
+	for _, arg := range filterArgs {
 		arg = strings.TrimSpace(arg)
 		if arg == "" {
 			continue
@@ -1488,7 +862,7 @@ func filterE2ESpecsByArgs(specFiles []string, playwrightArgs []string) (filtered
 				filtered = append(filtered, file)
 				break
 			}
-			// Playwright positional args are regexes against the full path.
+			// Positional filter args may be regexes against the full path.
 			if re, err := regexp.Compile(pat); err == nil && re.MatchString(file) {
 				filtered = append(filtered, file)
 				break
@@ -1496,244 +870,6 @@ func filterE2ESpecsByArgs(specFiles []string, playwrightArgs []string) (filtered
 		}
 	}
 	return filtered, passthrough
-}
-
-// partitionE2ESpecFiles splits specs by whether they import `@playwright/test`.
-// QJS files are those without the Playwright import; PW files keep the legacy path.
-func partitionE2ESpecFiles(specFiles []string) (pwFiles, qjsFiles []string, err error) {
-	for _, path := range specFiles {
-		usesPW, perr := specImportsPlaywright(path)
-		if perr != nil {
-			return nil, nil, perr
-		}
-		if usesPW {
-			pwFiles = append(pwFiles, path)
-		} else {
-			qjsFiles = append(qjsFiles, path)
-		}
-	}
-	return pwFiles, qjsFiles, nil
-}
-
-// specImportsPlaywright reports whether a spec file imports `@playwright/test`.
-func specImportsPlaywright(path string) (bool, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return false, xfmt.Errorf("read %s: %w", path, err)
-	}
-	for _, specifier := range parseJSImportSpecifiers(string(raw)) {
-		if normalizeJSImportModuleName(specifier) == "@playwright/test" {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func requiredPlaywrightModulesFromSpecFiles(specFiles []string) ([]string, error) {
-	required := map[string]struct{}{"@playwright/test": {}}
-	for _, specFile := range specFiles {
-		raw, err := os.ReadFile(specFile)
-		if err != nil {
-			return nil, xfmt.Errorf("read %s: %w", specFile, err)
-		}
-		for _, specifier := range parseJSImportSpecifiers(string(raw)) {
-			moduleName := normalizeJSImportModuleName(specifier)
-			if moduleName == "" || moduleName == "@choysum/e2e" {
-				continue
-			}
-			required[moduleName] = struct{}{}
-		}
-	}
-	out := make([]string, 0, len(required))
-	for moduleName := range required {
-		out = append(out, moduleName)
-	}
-	sort.Strings(out)
-	return out, nil
-}
-
-func collectRuntimeGeneratedModules(runtimePath string) ([]string, error) {
-	runtimePath = strings.TrimSpace(runtimePath)
-	if runtimePath == "" {
-		return nil, nil
-	}
-
-	generatedRoot := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated")
-	st, err := os.Stat(generatedRoot)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, xfmt.Errorf("stat runtime generated dir: %w", err)
-	}
-	if !st.IsDir() {
-		return nil, nil
-	}
-
-	required := make(map[string]struct{})
-	if err := filepath.WalkDir(generatedRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			switch strings.TrimSpace(d.Name()) {
-			case "node_modules", "dist":
-				return filepath.SkipDir
-			default:
-				return nil
-			}
-		}
-
-		name := strings.ToLower(strings.TrimSpace(d.Name()))
-		isScript := strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".tsx") ||
-			strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".jsx") ||
-			strings.HasSuffix(name, ".mjs") || strings.HasSuffix(name, ".cjs") ||
-			strings.HasSuffix(name, ".mts") || strings.HasSuffix(name, ".cts")
-		if !isScript {
-			return nil
-		}
-		if strings.HasSuffix(name, ".d.ts") || strings.HasSuffix(name, ".d.mts") || strings.HasSuffix(name, ".d.cts") {
-			return nil
-		}
-
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			return xfmt.Errorf("read %s: %w", path, err)
-		}
-		for _, specifier := range parseJSImportSpecifiers(string(raw)) {
-			moduleName := normalizeJSImportModuleName(specifier)
-			if moduleName == "" {
-				continue
-			}
-			required[moduleName] = struct{}{}
-		}
-		return nil
-	}); err != nil {
-		return nil, xfmt.Errorf("scan runtime generated imports: %w", err)
-	}
-
-	out := make([]string, 0, len(required))
-	for moduleName := range required {
-		out = append(out, moduleName)
-	}
-	sort.Strings(out)
-	return out, nil
-}
-
-func parseJSImportSpecifiers(source string) []string {
-	paths := make([]string, 0)
-	seen := make(map[string]bool)
-
-	fileName := "/virtual/e2e-spec.ts"
-	scriptKind := tscore.GetScriptKindFromFileName(fileName)
-	sf := tsparser.ParseSourceFile(tsast.SourceFileParseOptions{FileName: fileName}, source, scriptKind)
-	if sf == nil || sf.Statements == nil {
-		return nil
-	}
-
-	collectSpecifier := func(spec *tsast.Expression) {
-		if spec == nil {
-			return
-		}
-		if spec.Kind != tsast.KindStringLiteral && spec.Kind != tsast.KindNoSubstitutionTemplateLiteral {
-			return
-		}
-		path := strings.Trim(spec.Text(), "\"'")
-		path = strings.TrimSpace(path)
-		if path == "" || seen[path] {
-			return
-		}
-		seen[path] = true
-		paths = append(paths, path)
-	}
-
-	var visit func(node *tsast.Node)
-	visit = func(node *tsast.Node) {
-		if node == nil {
-			return
-		}
-
-		if node.Kind == tsast.KindCallExpression {
-			call := node.AsCallExpression()
-			if call != nil && call.Expression != nil && call.Expression.Kind == tsast.KindImportKeyword && call.Arguments != nil && len(call.Arguments.Nodes) > 0 {
-				collectSpecifier(call.Arguments.Nodes[0])
-			}
-		}
-
-		node.ForEachChild(func(child *tsast.Node) bool {
-			visit(child)
-			return false
-		})
-	}
-
-	for _, stmt := range sf.Statements.Nodes {
-		if stmt == nil {
-			continue
-		}
-		if stmt.Kind == tsast.KindImportDeclaration || stmt.Kind == tsast.KindJSImportDeclaration {
-			if decl := stmt.AsImportDeclaration(); decl != nil {
-				collectSpecifier(decl.ModuleSpecifier)
-			}
-		}
-		if stmt.Kind == tsast.KindExportDeclaration {
-			if decl := stmt.AsExportDeclaration(); decl != nil {
-				collectSpecifier(decl.ModuleSpecifier)
-			}
-		}
-		if stmt.Kind == tsast.KindImportEqualsDeclaration {
-			decl := stmt.AsImportEqualsDeclaration()
-			if decl != nil && decl.ModuleReference != nil && decl.ModuleReference.Kind == tsast.KindExternalModuleReference {
-				collectSpecifier(decl.ModuleReference.AsExternalModuleReference().Expression)
-			}
-		}
-		visit(stmt)
-	}
-
-	return paths
-}
-
-func normalizeJSImportModuleName(specifier string) string {
-	specifier = strings.TrimSpace(specifier)
-	if specifier == "" {
-		return ""
-	}
-	if strings.HasPrefix(specifier, "@/") || strings.HasPrefix(specifier, "~/") {
-		return ""
-	}
-	if strings.HasPrefix(specifier, ".") || strings.HasPrefix(specifier, "/") {
-		return ""
-	}
-	if strings.HasPrefix(specifier, "node:") {
-		return ""
-	}
-	if strings.HasPrefix(specifier, "http://") || strings.HasPrefix(specifier, "https://") {
-		return ""
-	}
-	if strings.HasPrefix(specifier, "@") {
-		parts := strings.Split(specifier, "/")
-		if len(parts) < 2 {
-			return ""
-		}
-		if parts[0] == "@choysum-dev" {
-			return ""
-		}
-		moduleName := parts[0] + "/" + parts[1]
-		if _, isBuiltin := nodeBuiltinModules[moduleName]; isBuiltin {
-			return ""
-		}
-		return moduleName
-	}
-	if idx := strings.Index(specifier, "/"); idx > 0 {
-		moduleName := specifier[:idx]
-		if _, isBuiltin := nodeBuiltinModules[moduleName]; isBuiltin {
-			return ""
-		}
-		return moduleName
-	}
-	if _, isBuiltin := nodeBuiltinModules[specifier]; isBuiltin {
-		return ""
-	}
-	return specifier
 }
 
 func waitForHTTP200(ctx context.Context, url string, timeout time.Duration) error {

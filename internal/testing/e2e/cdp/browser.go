@@ -211,6 +211,18 @@ func (s *Session) Headless() bool {
 // ResolveChromiumPath finds a Chromium/Chrome binary.
 // Order: CHOYSUM_CHROMIUM_PATH → $CHOYSUM_HOME/browsers/chromium-<rev>/… → system Chrome.
 func ResolveChromiumPath() (string, error) {
+	return resolveChromiumPath(true)
+}
+
+// ResolveChromiumPathForE2E is ResolveChromiumPath for the e2e runner preflight.
+// When CI or GITHUB_ACTIONS is set, system Chrome/Chromium candidates are skipped
+// so CI cannot silently pick up an unrelated browser.
+func ResolveChromiumPathForE2E() (string, error) {
+	allowSystem := strings.TrimSpace(os.Getenv("CI")) == "" && strings.TrimSpace(os.Getenv("GITHUB_ACTIONS")) == ""
+	return resolveChromiumPath(allowSystem)
+}
+
+func resolveChromiumPath(allowSystemChrome bool) (string, error) {
 	if p := strings.TrimSpace(os.Getenv("CHOYSUM_CHROMIUM_PATH")); p != "" {
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
 			return p, nil
@@ -234,9 +246,11 @@ func ResolveChromiumPath() (string, error) {
 		}
 	}
 
-	for _, cand := range systemChromeCandidates() {
-		if st, err := os.Stat(cand); err == nil && !st.IsDir() {
-			return cand, nil
+	if allowSystemChrome {
+		for _, cand := range systemChromeCandidates() {
+			if st, err := os.Stat(cand); err == nil && !st.IsDir() {
+				return cand, nil
+			}
 		}
 	}
 	return "", missingBinaryError("chromium binary not found")

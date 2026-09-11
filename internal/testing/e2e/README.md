@@ -1,15 +1,11 @@
 This package implements Go-side orchestration for system E2E.
 
-## Engines (migration)
+## Engine
 
-Specs are routed **per file**:
+All module E2E specs run on **QuickJS + `@choysum/e2e` + chromedp** (`runE2EHost`).
+There is no Playwright / Node test runner path.
 
-- Import `@playwright/test` → Playwright (legacy Node path)
-- Otherwise → QuickJS + `@choysum/e2e` + chromedp (`runE2EHost`)
-
-Within a scenario, QJS specs run first, then Playwright specs (shared `runtime.json` / server).
-
-## Chromium (QJS / chromedp)
+## Chromium
 
 Install Chrome for Testing (non-npm):
 
@@ -23,14 +19,18 @@ Binary resolution order:
 
 1. `CHOYSUM_CHROMIUM_PATH` (absolute path to the chrome binary)
 2. `$CHOYSUM_HOME/browsers/chromium-<rev>/…` (default `CHOYSUM_HOME=~/.choysum`)
-3. Local system Chrome/Chromium (local only)
+3. Local system Chrome/Chromium (**local only**; CI never falls back)
 
 Headless is the default (unset or `CHOYSUM_E2E_HEADED=0`). Set
 `CHOYSUM_E2E_HEADED=1` only for local debugging with a visible browser; do not
 set it in CI.
 
-## Playwright note
+## Spec filters
 
-E2E scenarios use a single sqlite file DB per run. To avoid flaky `database is locked` errors from concurrent writes (e.g. login token creation), the generated Playwright config defaults to `workers=1`. You can override it via `-- --workers=N`.
+Pass path/name filters after `--` (for example `choysum test e2e auth -- smoke.spec.ts`).
+Workers are fixed at 1 (shared sqlite DB per scenario).
 
-Design source of truth: docs/e2e_by_module.md
+## Illegal imports
+
+Specs must not import `@playwright/test` or Node builtins `node:fs` /
+`node:path` / `node:crypto`. The runner fails fast when those appear.

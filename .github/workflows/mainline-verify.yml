@@ -33,16 +33,6 @@ jobs:
       retention_days: 1
       target_modules_json: ${{ needs.discover-modules.outputs.modules_json }}
 
-  prepare-playwright-cache:
-    name: main / prepare-playwright-cache
-    if: ${{ needs.discover-modules.outputs.e2e_modules_json != '[]' }}
-    needs:
-      - discover-modules
-      - prepare-root-node-modules
-    uses: ./.github/workflows/prepare-playwright-cache.yml
-    with:
-      artifact_name: main-root-node-modules
-
   discover-modules:
     name: main / discover-modules
     runs-on: ubuntu-latest
@@ -438,8 +428,6 @@ jobs:
     if: ${{ needs.discover-modules.outputs.e2e_modules_json != '[]' }}
     needs:
       - prepare-embedded-assets
-      - prepare-root-node-modules
-      - prepare-playwright-cache
       - discover-modules
       - build-choysum-cli
     strategy:
@@ -460,18 +448,6 @@ jobs:
           artifact-name: main-embedded-assets
           archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
-      - name: Download root node_modules
-        uses: actions/download-artifact@v8
-        with:
-          name: main-root-node-modules
-          path: .choysum/tmp
-
-      - name: Extract root node_modules
-        run: tar -xzf .choysum/tmp/main-root-node-modules.tar.gz -C .
-
-      - name: Add local node_modules bin to PATH
-        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
         with:
@@ -484,8 +460,8 @@ jobs:
       - name: Setup CLI testing pkg cache
         uses: ./.github/actions/setup-cli-testing-cache
 
-      - name: Setup Playwright
-        uses: ./.github/actions/setup-playwright
+      - name: Setup Chromium
+        uses: ./.github/actions/setup-chromium
 
       - name: Run E2E suite
         run: |
