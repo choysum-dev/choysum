@@ -214,6 +214,7 @@ func TestScanIllegalE2EMarksTemplateInterpAndBackticks(t *testing.T) {
 	backtickPW := filepath.Join(dir, "bt-pw.spec.ts")
 	backtickNode := filepath.Join(dir, "bt-node.spec.ts")
 	nested := filepath.Join(dir, "nested.spec.ts")
+	reClass := filepath.Join(dir, "re-class.spec.ts")
 
 	write := func(path, body string) {
 		t.Helper()
@@ -225,8 +226,10 @@ func TestScanIllegalE2EMarksTemplateInterpAndBackticks(t *testing.T) {
 	write(backtickPW, "import { test } from `@playwright/test`;\n")
 	write(backtickNode, "const m = await import(`node:path`);\n")
 	write(nested, "const x = `a ${/* c */ await import('node:crypto') /* d */} b`;\n")
+	// Regexp character-class `}` must not close `${...}` before the real import.
+	write(reClass, "const x = `${/[}]/.test(s) ? import(\"node:fs\") : null}`;\n")
 
-	marks, err := ScanIllegalE2EMarks([]string{interp, backtickPW, backtickNode, nested})
+	marks, err := ScanIllegalE2EMarks([]string{interp, backtickPW, backtickNode, nested, reClass})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +237,7 @@ func TestScanIllegalE2EMarksTemplateInterpAndBackticks(t *testing.T) {
 	for _, m := range marks {
 		kinds[m.Kind]++
 	}
-	if kinds["playwright"] != 1 || kinds["node-builtin"] != 3 {
+	if kinds["playwright"] != 1 || kinds["node-builtin"] != 4 {
 		t.Fatalf("kinds=%v marks=%#v", kinds, marks)
 	}
 
@@ -248,4 +251,20 @@ func TestScanIllegalE2EMarksTemplateInterpAndBackticks(t *testing.T) {
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ /* unterminated") // block comment hits EOF
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ 'unclosed")       // quoted string hits EOF
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ `unclosed")       // nested template hits EOF
+	// Regexp helper edges: flags, escapes, division vs regexp, keywords, EOF.
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ /a\\/b/gi } y`")
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ return /foo/ } y`")
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ a / b } y`") // division, not regexp
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ /unterminated")
+	_ = canStartJSRegexp(")/", 1)
+	_ = canStartJSRegexp("]/", 1)
+	_ = canStartJSRegexp("}/", 1)
+	_ = canStartJSRegexp("\"/", 1)
+	_ = canStartJSRegexp("++/", 2)
+	_ = canStartJSRegexp("1/", 1)
+	_ = canStartJSRegexp("/", 0)
+	_ = canStartJSRegexp("+/", 1)
+	_ = skipJSRegexpLiteral("x", 0)
+	_ = isJSRegexpFlag('g')
+	_ = isJSRegexpFlag('z')
 }

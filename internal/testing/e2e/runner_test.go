@@ -214,6 +214,37 @@ func TestRunModuleFastFailsWhenFilterMatchesNone(t *testing.T) {
 	}
 }
 
+func TestRunModuleFastFailsWhenSpecsDirEmpty(t *testing.T) {
+	setE2ETestChromiumPath(t)
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth", "e2e"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	oldRunOneScenarioHook := runOneScenarioHook
+	runOneScenarioCalled := false
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, packages map[string]*sourceModulePackage, scenario string) error {
+		runOneScenarioCalled = true
+		return nil
+	}
+	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
+
+	err := RunModule(context.Background(), RunOptions{
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		WorkDir:     t.TempDir(),
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
+	})
+	if err == nil || !strings.Contains(err.Error(), "no e2e specs found") {
+		t.Fatalf("expected empty-specs error, got %v", err)
+	}
+	if runOneScenarioCalled {
+		t.Fatal("expected fail-fast before scenario setup")
+	}
+}
+
 func TestRunModuleCanceledContextCleansResources(t *testing.T) {
 	setE2ETestChromiumPath(t)
 	modulesPath := t.TempDir()

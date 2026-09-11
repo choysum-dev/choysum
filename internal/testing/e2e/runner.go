@@ -246,14 +246,10 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	discoveredSpecFiles := allSpecFiles
 	var ignoredFlags []string
 	allSpecFiles, ignoredFlags = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
 	if len(ignoredFlags) > 0 {
 		writeE2EProgress(opts.Stderr, "# e2e: ignoring flag-looking args %v (use CHOYSUM_E2E_HEADED=1 for headed Chromium)\n", ignoredFlags)
-	}
-	if len(discoveredSpecFiles) > 0 && len(allSpecFiles) == 0 {
-		return xfmt.Errorf("no e2e specs found under %s", specsDir)
 	}
 
 	scenarioList := opts.Scenarios
@@ -267,6 +263,10 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 		if !scenarioNameRE.MatchString(s) {
 			return xfmt.Errorf("invalid scenario %q (must match %s)", s, scenarioNameRE.String())
 		}
+	}
+
+	if len(allSpecFiles) == 0 {
+		return xfmt.Errorf("no e2e specs found under %s", specsDir)
 	}
 
 	if err := CheckIllegalE2EMarks(allSpecFiles); err != nil {

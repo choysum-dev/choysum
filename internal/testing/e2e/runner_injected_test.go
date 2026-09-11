@@ -172,11 +172,13 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 }
 
 func TestRunModuleUsesScenarioHook(t *testing.T) {
+	setE2ETestChromiumPath(t)
 	oldRunOne := runOneScenarioHook
 	defer func() { runOneScenarioHook = oldRunOne }()
 
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writeQJSSpec(t, filepath.Join(modulesPath, "auth", "e2e", "ok.spec.ts"))
 
 	calls := 0
 	sawDeadline := false
@@ -212,11 +214,13 @@ func TestRunModuleUsesScenarioHook(t *testing.T) {
 }
 
 func TestRunModulePropagatesScenarioHookError(t *testing.T) {
+	setE2ETestChromiumPath(t)
 	oldRunOne := runOneScenarioHook
 	defer func() { runOneScenarioHook = oldRunOne }()
 
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writeQJSSpec(t, filepath.Join(modulesPath, "auth", "e2e", "ok.spec.ts"))
 
 	wantErr := errors.New("scenario failed")
 	runOneScenarioHook = func(ctx context.Context, opts RunOptions, manifests map[string]*sourceModulePackage, scenario string) error {

@@ -212,6 +212,9 @@ func blankJSCommentsAndNonModuleStrings(s string) string {
 	return b.String()
 }
 
+// findTemplateInterpClose returns the index after the matching '}' for a
+// `${` started at start (start points at the first body byte). Braces inside
+// comments, strings, nested templates, and regexp literals are ignored.
 func findTemplateInterpClose(s string, start int) int {
 	depth := 1
 	i := start
@@ -237,6 +240,12 @@ func findTemplateInterpClose(s string, start int) int {
 				}
 				continue
 			}
+			if canStartJSRegexp(s, i) {
+				if end := skipJSRegexpLiteral(s, i); end > i {
+					i = end
+					continue
+				}
+			}
 		}
 		if c == '\'' || c == '"' {
 			i = skipJSQuoted(s, i)
@@ -254,6 +263,97 @@ func findTemplateInterpClose(s string, start int) int {
 		i++
 	}
 	return i
+}
+
+func canStartJSRegexp(s string, slashIdx int) bool {
+	j := slashIdx - 1
+	for j >= 0 && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
+		j--
+	}
+	if j < 0 {
+		return true
+	}
+	c := s[j]
+	if c >= '0' && c <= '9' {
+		return false
+	}
+	if isJSIdentByte(c) {
+		start := j
+		for start > 0 && isJSIdentByte(s[start-1]) {
+			start--
+		}
+		switch s[start : j+1] {
+		case "return", "case", "throw", "typeof", "void", "delete", "await", "new", "of", "in", "instanceof", "else", "do", "yield":
+			return true
+		default:
+			return false
+		}
+	}
+	switch c {
+	case ')', ']', '}':
+		return false
+	case '"', '\'', '`':
+		return false
+	case '+', '-':
+		if j > 0 && s[j-1] == c {
+			return false // ++ / --
+		}
+		return true
+	default:
+		return true
+	}
+}
+
+func isJSIdentByte(c byte) bool {
+	return c == '_' || c == '$' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+}
+
+// skipJSRegexpLiteral advances past /pattern/flags starting at s[i] == '/'.
+// Character-class braces (e.g. /[}]/) are not treated as interpolation closers.
+func skipJSRegexpLiteral(s string, i int) int {
+	if i >= len(s) || s[i] != '/' {
+		return i
+	}
+	i++
+	inClass := false
+	for i < len(s) {
+		c := s[i]
+		if c == '\\' && i+1 < len(s) {
+			i += 2
+			continue
+		}
+		if c == '\n' {
+			return i // invalid regexp; stop without consuming further
+		}
+		if c == '[' && !inClass {
+			inClass = true
+			i++
+			continue
+		}
+		if c == ']' && inClass {
+			inClass = false
+			i++
+			continue
+		}
+		if c == '/' && !inClass {
+			i++
+			for i < len(s) && isJSRegexpFlag(s[i]) {
+				i++
+			}
+			return i
+		}
+		i++
+	}
+	return i
+}
+
+func isJSRegexpFlag(c byte) bool {
+	switch c {
+	case 'd', 'g', 'i', 'm', 's', 'u', 'v', 'y':
+		return true
+	default:
+		return false
+	}
 }
 
 func skipJSQuoted(s string, i int) int {
