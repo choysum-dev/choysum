@@ -177,7 +177,9 @@ def merge_group_or_dispatch_outputs(modules, reason):
     return {
         "docs_only": "false",
         "direct_modules_json": "[]",
-        "impacted_direct_e2e_no_smoke_modules_json": "[]",
+        # Full-matrix events still use smoke for modules that have it; non-smoke
+        # modules are covered by mainline-verify / nightly full e2e shards.
+        "impacted_direct_e2e_modules_json": "[]",
         "impacted_modules_json": sorted_json(impacted_modules),
         "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
         "run_full_matrix": "true",
@@ -294,14 +296,22 @@ def pull_request_outputs(modules):
         if run_full:
             final_impacted = set(modules)
 
-    smoke_modules = {module for module in final_impacted if has_smoke_spec(module)}
-    direct_e2e_no_smoke_modules = {
-        module for module in direct_e2e_modules if module in final_impacted and not has_smoke_spec(module)
+    # Direct modules/<m>/e2e/** edits always get the full module e2e suite, even
+    # when the module also has smoke.spec.ts (otherwise switch_company etc. never
+    # run on PR gate — only smoke.spec.ts would).
+    direct_e2e_full_modules = {
+        module for module in direct_e2e_modules if module in final_impacted
+    }
+    # Smoke is the cheap fan-out path; skip modules already scheduled for full e2e.
+    smoke_modules = {
+        module
+        for module in final_impacted
+        if has_smoke_spec(module) and module not in direct_e2e_full_modules
     }
     outputs = {
         "docs_only": "true" if docs_only else "false",
         "direct_modules_json": sorted_json(direct_modules),
-        "impacted_direct_e2e_no_smoke_modules_json": sorted_json(direct_e2e_no_smoke_modules),
+        "impacted_direct_e2e_modules_json": sorted_json(direct_e2e_full_modules),
         "impacted_modules_json": sorted_json(final_impacted),
         "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
         "run_full_matrix": "true" if run_full else "false",
