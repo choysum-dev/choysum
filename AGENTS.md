@@ -16,8 +16,11 @@ On-demand procedures and repository policies live under [`.agents/skills/`](.age
 Choysum is a single product: a Go binary (`choysum`) that embeds a QuickJS
 TypeScript runtime and serves the ERP platform (gRPC + gRPC-Web + Vue web UI)
 from one process. TypeScript/Vue modules under `modules/` are compiled and run
-inside that Go process; Node.js is only used for the dev/test toolchain, not at
-runtime. Tooling versions (Go 1.26.x, Node 22, Python 3) are already installed.
+inside that Go process — no Node.js binary, `npm`, or `node_modules` for
+install, run, or `choysum test typecheck|unit|e2e`. Tooling versions already
+installed: Go 1.26.x and Python 3 (Chromium install for E2E). Node.js is only
+needed to publish `@choysum-dev/*` packages (and optional maintainer scripts
+under `scripts/typecheck_vue_codegen/`).
 
 ### Build the CLI (required before install/run; artifacts are git-ignored)
 
@@ -76,8 +79,8 @@ at `/web/register`, which auto-logs in — the simplest way to exercise the stac
 | Module E2E | `./choysum test e2e <module>` (auth/base/meta/task/partner; needs Chromium) |
 
 Module unit tests (BE + FE), module typecheck, and module `test e2e` do
-**not** need root `node_modules` (typecheck is Go-native; FE/E2E use
-QuickJS + Chromium).
+**not** need a Node binary or `node_modules` (typecheck is Go-native; FE/E2E
+use QuickJS + Chromium).
 
 E2E needs a Chrome/Chromium binary (system install, or set
 `CHOYSUM_CHROMIUM_PATH`). CI provisions Chrome for Testing via
@@ -85,6 +88,7 @@ E2E needs a Chrome/Chromium binary (system install, or set
 
 ### Publishing npm modules (`@choysum-dev/*`)
 
+Requires a local Node.js 22+ / npm toolchain (CI uses `actions/setup-node`).
 CI workflow: `.github/workflows/modules-publish.yml` (OIDC + Environment
 `npm-publish`). `push` to `main` only validates; real publish is
 `workflow_dispatch` (requires environment approval).

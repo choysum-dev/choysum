@@ -9,10 +9,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
-	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	gonative "github.com/choysum-dev/choysum/internal/typecheck"
 	"github.com/tailscale/hujson"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -90,7 +90,7 @@ func missingTypeAssetModules(modulesRoot string, expectedModules []string) []str
 	}
 
 	missing := make([]string, 0)
-	for _, moduleName := range noderuntime.NormalizeStringList(expectedModules) {
+	for _, moduleName := range uniqueSortedNonEmpty(expectedModules) {
 		pathEntries, hasPathMapping := resolveTypePathEntries(pathsByModule, moduleName)
 		if !hasPathMapping {
 			continue
@@ -101,6 +101,27 @@ func missingTypeAssetModules(modulesRoot string, expectedModules []string) []str
 		missing = append(missing, moduleName)
 	}
 	return missing
+}
+
+func uniqueSortedNonEmpty(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func resolveTypePathEntries(pathsByModule map[string][]string, moduleName string) ([]string, bool) {

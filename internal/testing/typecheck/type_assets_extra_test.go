@@ -280,3 +280,17 @@ func TestMissingTypeAssetModules_PatternAndExisting(t *testing.T) {
 		t.Fatalf("missing = %v", missing)
 	}
 }
+
+func TestUniqueSortedNonEmpty(t *testing.T) {
+	if got := uniqueSortedNonEmpty(nil); got != nil {
+		t.Fatalf("nil input: got %#v", got)
+	}
+	if got := uniqueSortedNonEmpty([]string{}); got != nil {
+		t.Fatalf("empty input: got %#v", got)
+	}
+	got := uniqueSortedNonEmpty([]string{"", " vite ", "vue", "vite", "vue ", "  "})
+	want := []string{"vite", "vue"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("uniqueSortedNonEmpty() = %#v, want %#v", got, want)
+	}
+}
