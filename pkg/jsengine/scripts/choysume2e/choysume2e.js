@@ -389,6 +389,8 @@ async function resolveToCSS(loc) {
           const inner = el.querySelector ? el.querySelector('.el-dialog') : null;
           return inner || el;
         });
+        // Wrapper + .el-dialog both match the selector; mapping collapses them to one node.
+        nodes = nodes.filter((el, i) => nodes.indexOf(el) === i);
       }
       // Prefer visible candidates before preferring .el-dialog content panels.
       const visible = nodes.filter(isVisibleEl);
@@ -585,6 +587,7 @@ async function collectMatchedElements(loc) {
           const inner = el.querySelector ? el.querySelector('.el-dialog') : null;
           return inner || el;
         });
+        nodes = nodes.filter((el, i) => nodes.indexOf(el) === i);
       }
       const visible = nodes.filter(isVisibleEl);
       if (visible.length) nodes = visible;
@@ -811,9 +814,15 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const sel = await ensureCSS(target);
-          const ok = await getHost().isEnabled(sel);
-          if (!ok) target._css = '';
-          return ok;
+          const exists = !!JSON.parse(
+            await getHost().evaluate(`!!document.querySelector(${JSON.stringify(sel)})`)
+          );
+          // Only clear when the stamped node is gone; disabled-but-present must keep polling.
+          if (!exists) {
+            target._css = '';
+            return false;
+          }
+          return await getHost().isEnabled(sel);
         } catch (e) {
           target._css = '';
           throw e;
