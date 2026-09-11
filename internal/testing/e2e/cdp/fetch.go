@@ -32,12 +32,13 @@ type FulfillOptions struct {
 }
 
 type fetchState struct {
-	mu      sync.Mutex
-	cancel  context.CancelFunc
-	paused  chan *PausedRequest
-	byID    map[string]fetch.RequestID
-	decided map[string]struct{}
-	seq     atomic.Uint64
+	mu        sync.Mutex
+	cancel    context.CancelFunc
+	listenCtx context.Context
+	paused    chan *PausedRequest
+	byID      map[string]fetch.RequestID
+	decided   map[string]struct{}
+	seq       atomic.Uint64
 }
 
 func (p *Page) fetchOrInit() *fetchState {
@@ -51,6 +52,36 @@ func (p *Page) fetchOrInit() *fetchState {
 		}
 	}
 	return p.fetch
+}
+
+// continueFetchAsync continues a paused request off the ListenTarget callback.
+func continueFetchAsync(ctx context.Context, reqID fetch.RequestID) {
+	go func() {
+		_ = chromedp.Run(ctx, fetch.ContinueRequest(reqID))
+	}()
+}
+
+// runFetchEnable enables CDP Fetch; tests may override to force errors.
+var runFetchEnable = func(ctx context.Context) error {
+	return chromedp.Run(ctx, fetch.Enable().WithPatterns([]*fetch.RequestPattern{{
+		URLPattern:   "*",
+		RequestStage: fetch.RequestStageRequest,
+	}}))
+}
+
+// runFetchDisable disables CDP Fetch; tests may override to force errors.
+var runFetchDisable = func(ctx context.Context) error {
+	return chromedp.Run(ctx, fetch.Disable())
+}
+
+// runFulfillRequest fulfills a paused request; tests may override to force errors.
+var runFulfillRequest = func(ctx context.Context, params *fetch.FulfillRequestParams) error {
+	return chromedp.Run(ctx, params)
+}
+
+// runContinueRequest continues a paused request; tests may override to force errors.
+var runContinueRequest = func(ctx context.Context, reqID fetch.RequestID) error {
+	return chromedp.Run(ctx, fetch.ContinueRequest(reqID))
 }
 
 // EnableFetch turns on CDP Fetch interception for all URLs at the Request stage.
@@ -67,65 +98,68 @@ func (p *Page) EnableFetch() error {
 	}
 	listenerCtx, cancel := context.WithCancel(p.ctx)
 	st.cancel = cancel
+	st.listenCtx = listenerCtx
 	st.paused = make(chan *PausedRequest, 64)
 	st.byID = map[string]fetch.RequestID{}
 	st.decided = map[string]struct{}{}
 	st.mu.Unlock()
 
 	chromedp.ListenTarget(listenerCtx, func(ev any) {
-		e, ok := ev.(*fetch.EventRequestPaused)
-		if !ok || e == nil || e.Request == nil {
-			return
-		}
-		// Response-stage pauses must be continued; we only mock at Request stage.
-		if e.ResponseStatusCode != 0 || e.ResponseErrorReason != "" {
-			_ = chromedp.Run(p.ctx, fetch.ContinueRequest(e.RequestID))
-			return
-		}
-		id := fmt.Sprintf("fetch-%d", st.seq.Add(1))
-		st.mu.Lock()
-		if st.cancel == nil {
-			st.mu.Unlock()
-			_ = chromedp.Run(p.ctx, fetch.ContinueRequest(e.RequestID))
-			return
-		}
-		st.byID[id] = e.RequestID
-		st.mu.Unlock()
-		paused := &PausedRequest{
-			ID:     id,
-			URL:    e.Request.URL,
-			Method: strings.ToUpper(strings.TrimSpace(e.Request.Method)),
-		}
-		select {
-		case st.paused <- paused:
-		case <-listenerCtx.Done():
-			st.mu.Lock()
-			delete(st.byID, id)
-			st.mu.Unlock()
-			_ = chromedp.Run(p.ctx, fetch.ContinueRequest(e.RequestID))
-		default:
-			// Queue full: fail open so the page cannot hang forever.
-			st.mu.Lock()
-			delete(st.byID, id)
-			st.mu.Unlock()
-			_ = chromedp.Run(p.ctx, fetch.ContinueRequest(e.RequestID))
-		}
+		p.onRequestPaused(st, listenerCtx, ev)
 	})
 
-	err := chromedp.Run(p.ctx, fetch.Enable().WithPatterns([]*fetch.RequestPattern{{
-		URLPattern:   "*",
-		RequestStage: fetch.RequestStageRequest,
-	}}))
+	err := runFetchEnable(p.ctx)
 	if err != nil {
 		st.mu.Lock()
 		if st.cancel != nil {
 			st.cancel()
 			st.cancel = nil
+			st.listenCtx = nil
 		}
 		st.mu.Unlock()
 		return fmt.Errorf("cdp: fetch enable: %w", err)
 	}
 	return nil
+}
+
+func (p *Page) onRequestPaused(st *fetchState, listenerCtx context.Context, ev any) {
+	e, ok := ev.(*fetch.EventRequestPaused)
+	if !ok || e == nil || e.Request == nil {
+		return
+	}
+	// Response-stage pauses must be continued; we only mock at Request stage.
+	if e.ResponseStatusCode != 0 || e.ResponseErrorReason != "" {
+		continueFetchAsync(p.ctx, e.RequestID)
+		return
+	}
+	id := fmt.Sprintf("fetch-%d", st.seq.Add(1))
+	st.mu.Lock()
+	if st.cancel == nil {
+		st.mu.Unlock()
+		continueFetchAsync(p.ctx, e.RequestID)
+		return
+	}
+	st.byID[id] = e.RequestID
+	st.mu.Unlock()
+	paused := &PausedRequest{
+		ID:     id,
+		URL:    e.Request.URL,
+		Method: strings.ToUpper(strings.TrimSpace(e.Request.Method)),
+	}
+	select {
+	case st.paused <- paused:
+	case <-listenerCtx.Done():
+		st.mu.Lock()
+		delete(st.byID, id)
+		st.mu.Unlock()
+		continueFetchAsync(p.ctx, e.RequestID)
+	default:
+		// Queue full: fail open so the page cannot hang forever.
+		st.mu.Lock()
+		delete(st.byID, id)
+		st.mu.Unlock()
+		continueFetchAsync(p.ctx, e.RequestID)
+	}
 }
 
 // DisableFetch stops Fetch interception and continues any still-paused requests.
@@ -137,6 +171,7 @@ func (p *Page) DisableFetch() error {
 	st.mu.Lock()
 	cancel := st.cancel
 	st.cancel = nil
+	st.listenCtx = nil
 	ids := make([]fetch.RequestID, 0, len(st.byID))
 	for id, reqID := range st.byID {
 		if _, done := st.decided[id]; !done {
@@ -156,7 +191,7 @@ func (p *Page) DisableFetch() error {
 	if !wasEnabled {
 		return nil
 	}
-	if err := chromedp.Run(p.ctx, fetch.Disable()); err != nil {
+	if err := runFetchDisable(p.ctx); err != nil {
 		// Domain may already be off after target reset.
 		if p.ctx.Err() != nil {
 			return nil
@@ -166,7 +201,7 @@ func (p *Page) DisableFetch() error {
 	return nil
 }
 
-// WaitPaused waits for the next paused request (or timeout / context cancel).
+// WaitPaused waits for the next paused request (or timeout / fetch disable / context cancel).
 func (p *Page) WaitPaused(timeout time.Duration) (*PausedRequest, error) {
 	if p == nil {
 		return nil, fmt.Errorf("cdp: nil page")
@@ -177,9 +212,10 @@ func (p *Page) WaitPaused(timeout time.Duration) (*PausedRequest, error) {
 	st := p.fetchOrInit()
 	st.mu.Lock()
 	ch := st.paused
+	listenCtx := st.listenCtx
 	cancel := st.cancel
 	st.mu.Unlock()
-	if cancel == nil {
+	if cancel == nil || listenCtx == nil {
 		return nil, fmt.Errorf("cdp: fetch not enabled")
 	}
 	timer := time.NewTimer(timeout)
@@ -187,6 +223,8 @@ func (p *Page) WaitPaused(timeout time.Duration) (*PausedRequest, error) {
 	select {
 	case <-p.ctx.Done():
 		return nil, p.ctx.Err()
+	case <-listenCtx.Done():
+		return nil, fmt.Errorf("cdp: fetch disabled")
 	case <-timer.C:
 		return nil, fmt.Errorf("cdp: wait paused request: timeout")
 	case paused, ok := <-ch:
@@ -232,7 +270,7 @@ func (p *Page) Fulfill(id string, opts FulfillOptions) error {
 	}
 	for k, v := range opts.Headers {
 		k = strings.TrimSpace(k)
-		if k == "" || strings.EqualFold(k, "Content-Type") && ct != "" {
+		if k == "" || (strings.EqualFold(k, "Content-Type") && ct != "") {
 			continue
 		}
 		headers = append(headers, &fetch.HeaderEntry{Name: k, Value: v})
@@ -242,7 +280,7 @@ func (p *Page) Fulfill(id string, opts FulfillOptions) error {
 	if bodyB64 != "" {
 		params = params.WithBody(bodyB64)
 	}
-	if err := chromedp.Run(p.ctx, params); err != nil {
+	if err := runFulfillRequest(p.ctx, params); err != nil {
 		return fmt.Errorf("cdp: fulfill request: %w", err)
 	}
 	return nil
@@ -271,7 +309,7 @@ func (p *Page) Continue(id string) error {
 	st.decided[id] = struct{}{}
 	delete(st.byID, id)
 	st.mu.Unlock()
-	if err := chromedp.Run(p.ctx, fetch.ContinueRequest(reqID)); err != nil {
+	if err := runContinueRequest(p.ctx, reqID); err != nil {
 		return fmt.Errorf("cdp: continue request: %w", err)
 	}
 	return nil

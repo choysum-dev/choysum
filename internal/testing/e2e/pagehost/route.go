@@ -14,6 +14,18 @@ import (
 	"github.com/choysum-dev/choysum/internal/testing/e2e/cdp"
 )
 
+// Test hooks for pagehost route bindings (overridden in *_test.go).
+var (
+	pageEnableFetchDefault  = func(p *cdp.Page) error { return p.EnableFetch() }
+	pageDisableFetchDefault = func(p *cdp.Page) error { return p.DisableFetch() }
+	pageWaitPausedDefault   = func(p *cdp.Page, timeout time.Duration) (*cdp.PausedRequest, error) {
+		return p.WaitPaused(timeout)
+	}
+	pageEnableFetch  = pageEnableFetchDefault
+	pageDisableFetch = pageDisableFetchDefault
+	pageWaitPaused   = pageWaitPausedDefault
+)
+
 func (h *Host) bindEnableFetch() func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
@@ -22,7 +34,7 @@ func (h *Host) bindEnableFetch() func(ctx *quickjs.Context, this *quickjs.Value,
 				reject(ctx.Error(err))
 				return
 			}
-			if err := p.EnableFetch(); err != nil {
+			if err := pageEnableFetch(p); err != nil {
 				reject(ctx.Error(err))
 				return
 			}
@@ -39,7 +51,7 @@ func (h *Host) bindDisableFetch() func(ctx *quickjs.Context, this *quickjs.Value
 				reject(ctx.Error(err))
 				return
 			}
-			if err := p.DisableFetch(); err != nil {
+			if err := pageDisableFetch(p); err != nil {
 				reject(ctx.Error(err))
 				return
 			}
@@ -64,7 +76,7 @@ func (h *Host) bindWaitPausedRequest() func(ctx *quickjs.Context, this *quickjs.
 			h.pending.Add(1)
 			go func() {
 				defer h.pending.Done()
-				paused, waitErr := p.WaitPaused(timeout)
+				paused, waitErr := pageWaitPaused(p, timeout)
 				if h.closed.Load() {
 					return
 				}
@@ -73,8 +85,11 @@ func (h *Host) bindWaitPausedRequest() func(ctx *quickjs.Context, this *quickjs.
 						return
 					}
 					if waitErr != nil {
-						// Timeout → null so the JS route pump can keep polling.
-						if strings.Contains(waitErr.Error(), "timeout") {
+						// Timeout / disable / not enabled → null so the JS route pump can keep polling or exit.
+						msg := waitErr.Error()
+						if strings.Contains(msg, "timeout") ||
+							strings.Contains(msg, "fetch disabled") ||
+							strings.Contains(msg, "fetch not enabled") {
 							resolve(inner.Null())
 							return
 						}

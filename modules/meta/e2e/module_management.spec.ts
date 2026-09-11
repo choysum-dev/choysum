@@ -350,7 +350,10 @@ async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000
 
     const dialogVisible = await dialog.isVisible().catch(() => false);
     if (!dialogVisible && href.includes('/web/meta/modules')) {
-      return 'reloaded';
+      // Hidden dialog alone is not evidence of a hard navigation/reload.
+      if (href !== startURL) {
+        return 'reloaded';
+      }
     }
 
     await page.waitForTimeout(500);
@@ -663,7 +666,7 @@ async function runAction(page: Page, moduleName: string | undefined, action: Mod
 async function runActionExpectFailure(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
   const actionLabel = action === 'install' ? 'Install' : action === 'upgrade' ? 'Upgrade' : 'Uninstall';
   const card = await openModuleCard(page, moduleName);
-  const initialStatus = (await card.locator('.module-card__title .el-tag').innerText()).trim();
+  const initialStatus = ((await card.locator('.module-card__title .el-tag').innerText()) || '').trim();
   await card.getByRole('button', { name: actionLabel }).click();
 
   const dialog = page.locator('.el-dialog');

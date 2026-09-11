@@ -749,9 +749,11 @@ function makeRouteHandle(paused) {
 }
 
 function startRoutePump() {
+  // Clear stop before the running check so unroute→route in the same test
+  // (or while a prior wait is in flight) keeps draining paused requests.
+  routePumpStop = false;
   if (routePumpRunning) return;
   routePumpRunning = true;
-  routePumpStop = false;
   (async () => {
     while (!routePumpStop && routeEntries.length > 0) {
       let raw;
@@ -975,6 +977,14 @@ function matchValue(actual, expected) {
   return String(actual == null ? '' : actual).includes(String(expected));
 }
 
+function matchTextExact(actual, expected) {
+  if (expected && typeof expected === 'object' && typeof expected.test === 'function') {
+    return expected.test(String(actual == null ? '' : actual));
+  }
+  const normalize = value => String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  return normalize(actual) === normalize(expected);
+}
+
 function makePollMatchers(fn, timeoutMs, negate) {
   const api = {
     async toBe(expected) {
@@ -1127,7 +1137,7 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const text = await target.textContent();
-          return matchValue(text, expected);
+          return matchTextExact(text, expected);
         } catch (e) {
           target._css = '';
           throw e;
@@ -1169,7 +1179,7 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const text = await target.textContent();
-          return !matchValue(text, expected);
+          return !matchTextExact(text, expected);
         } catch (e) {
           target._css = '';
           throw e;
