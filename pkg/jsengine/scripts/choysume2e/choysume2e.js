@@ -164,6 +164,14 @@ function makeLocator(kind, value, opts) {
       const sel = await ensureCSS(loc);
       return await getHost().isEnabled(sel);
     },
+    async isVisible() {
+      try {
+        const sel = await ensureCSS(loc);
+        return await getHost().isVisible(sel);
+      } catch {
+        return false;
+      }
+    },
     async allTextContents() {
       const matches = await collectMatchedElements(loc);
       return matches.map(t => (t == null ? '' : String(t)));
