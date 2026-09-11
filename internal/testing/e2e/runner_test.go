@@ -180,6 +180,40 @@ func TestRunModuleFastFailsWhenIllegalMarks(t *testing.T) {
 	}
 }
 
+func TestRunModuleFastFailsWhenFilterMatchesNone(t *testing.T) {
+	setE2ETestChromiumPath(t)
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writeQJSSpec(t, filepath.Join(modulesPath, "auth", "e2e", "ok.spec.ts"))
+
+	oldRunOneScenarioHook := runOneScenarioHook
+	runOneScenarioCalled := false
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, packages map[string]*sourceModulePackage, scenario string) error {
+		runOneScenarioCalled = true
+		return nil
+	}
+	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
+
+	var stderr strings.Builder
+	err := RunModule(context.Background(), RunOptions{
+		Module:         "auth",
+		ModulesPath:    modulesPath,
+		WorkDir:        t.TempDir(),
+		Stdout:         io.Discard,
+		Stderr:         &stderr,
+		SpecFilterArgs: []string{"no-match-at-all", "--headed"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "no e2e specs found") {
+		t.Fatalf("expected filter miss error, got %v", err)
+	}
+	if runOneScenarioCalled {
+		t.Fatal("expected fail-fast before scenario setup")
+	}
+	if !strings.Contains(stderr.String(), "ignoring flag-looking args") {
+		t.Fatalf("expected ignored-flag warning, stderr=%q", stderr.String())
+	}
+}
+
 func TestRunModuleCanceledContextCleansResources(t *testing.T) {
 	setE2ETestChromiumPath(t)
 	modulesPath := t.TempDir()

@@ -246,7 +246,15 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	allSpecFiles, _ = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
+	discoveredSpecFiles := allSpecFiles
+	var ignoredFlags []string
+	allSpecFiles, ignoredFlags = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
+	if len(ignoredFlags) > 0 {
+		writeE2EProgress(opts.Stderr, "# e2e: ignoring flag-looking args %v (use CHOYSUM_E2E_HEADED=1 for headed Chromium)\n", ignoredFlags)
+	}
+	if len(discoveredSpecFiles) > 0 && len(allSpecFiles) == 0 {
+		return xfmt.Errorf("no e2e specs found under %s", specsDir)
+	}
 
 	scenarioList := opts.Scenarios
 	if len(scenarioList) == 0 {
@@ -529,7 +537,7 @@ compile:
 	writeRuntime(runtimePath, runtimeInfo{
 		PID: serverCmd.Process.Pid, Port: port, BaseURL: baseURL, ConfigPath: configPath, DBPath: dbPath,
 		RunDir: runDir, Module: opts.Module, Scenario: scenario, SpecsDir: specsDir, Fixtures: loadedFixtures,
-		CI: os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true",
+		CI: cdp.EnvFlagEnabled("CI") || cdp.EnvFlagEnabled("GITHUB_ACTIONS"),
 	})
 
 	if err := waitForHTTP200Hook(ctx, baseURL+"/readyz", opts.StartupTimeout); err != nil {
@@ -541,9 +549,13 @@ compile:
 	if err != nil {
 		return xfmt.Errorf("discover e2e specs: %w", err)
 	}
-	allSpecFiles, _ = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
+	var ignoredFlags []string
+	allSpecFiles, ignoredFlags = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
 	if len(allSpecFiles) == 0 {
 		return xfmt.Errorf("no e2e specs found under %s", specsDir)
+	}
+	if len(ignoredFlags) > 0 {
+		writeE2EProgress(opts.Stderr, "# e2e: ignoring flag-looking args %v (use CHOYSUM_E2E_HEADED=1 for headed Chromium)\n", ignoredFlags)
 	}
 	writeE2EProgress(opts.Stderr, "# e2e-qjs %s (%d specs)\n", opts.Module, len(allSpecFiles))
 	if err := runE2EHostHook(ctx, opts, specsDir, baseURL, runtimePath, allSpecFiles); err != nil {

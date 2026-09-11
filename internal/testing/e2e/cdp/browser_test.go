@@ -48,6 +48,38 @@ func TestResolveChromiumPathForE2ESkipsSystemChromeInCI(t *testing.T) {
 	}
 }
 
+func TestEnvFlagEnabled(t *testing.T) {
+	t.Setenv("CHOYSUM_TEST_FLAG", "true")
+	if !EnvFlagEnabled("CHOYSUM_TEST_FLAG") {
+		t.Fatal("true should enable")
+	}
+	t.Setenv("CHOYSUM_TEST_FLAG", "0")
+	if EnvFlagEnabled("CHOYSUM_TEST_FLAG") {
+		t.Fatal("0 should disable")
+	}
+	t.Setenv("CHOYSUM_TEST_FLAG", "false")
+	if EnvFlagEnabled("CHOYSUM_TEST_FLAG") {
+		t.Fatal("false should disable")
+	}
+	t.Setenv("CHOYSUM_TEST_FLAG", "yes")
+	if !EnvFlagEnabled("CHOYSUM_TEST_FLAG") {
+		t.Fatal("yes should enable")
+	}
+}
+
+func TestResolveChromiumPathForE2ETreatsCIFalseAsLocal(t *testing.T) {
+	t.Setenv("CHOYSUM_CHROMIUM_PATH", "")
+	t.Setenv("CHOYSUM_HOME", t.TempDir())
+	t.Setenv("CI", "false")
+	t.Setenv("GITHUB_ACTIONS", "")
+	// Same as ResolveChromiumPath for local: may succeed via system Chrome.
+	_, errE2E := ResolveChromiumPathForE2E()
+	_, errAny := ResolveChromiumPath()
+	if (errE2E == nil) != (errAny == nil) {
+		t.Fatalf("CI=false should match ResolveChromiumPath: e2e=%v any=%v", errE2E, errAny)
+	}
+}
+
 func TestMissingBinaryErrorMentionsInstall(t *testing.T) {
 	err := missingBinaryError("chromium binary not found")
 	msg := err.Error()

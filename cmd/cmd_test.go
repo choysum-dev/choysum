@@ -1378,6 +1378,30 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("passes spec filter args after module", func(t *testing.T) {
+		oldRun := runE2EModule
+		defer func() { runE2EModule = oldRun }()
+
+		cfg := newCommandTestConfig(t.TempDir())
+		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
+
+		var got pkge2e.RunOptions
+		runE2EModule = func(ctx context.Context, opts pkge2e.RunOptions) error {
+			got = opts
+			return nil
+		}
+		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
+		if err := cmd.RunE(cmd, []string{"auth", "smoke.spec.ts", "--headed"}); err != nil {
+			t.Fatalf("RunE error: %v", err)
+		}
+		if got.Module != "auth" {
+			t.Fatalf("module=%q", got.Module)
+		}
+		if len(got.SpecFilterArgs) != 2 || got.SpecFilterArgs[0] != "smoke.spec.ts" || got.SpecFilterArgs[1] != "--headed" {
+			t.Fatalf("SpecFilterArgs=%v", got.SpecFilterArgs)
+		}
+	})
+
 	t.Run("all uses a shared command-level run-id", func(t *testing.T) {
 		oldResolve := resolveE2EModules
 		oldRun := runE2EModule

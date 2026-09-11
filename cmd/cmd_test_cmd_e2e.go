@@ -62,7 +62,8 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 		SilenceUsage: true,
 		Long: "Run module-scoped system E2E (choysum run + QuickJS + chromedp).\n\n" +
 			"<module> refers to the module directory name under the modules path (e.g. modules/auth -> auth), not package.json's name.\n\n" +
-			"Optional args after -- filter spec paths/names (for example: smoke.spec.ts).\n\n" +
+			"Optional args after -- filter spec paths/names (for example: smoke.spec.ts).\n" +
+			"Flag-looking args (leading '-') are ignored; use CHOYSUM_E2E_HEADED=1 for a visible browser.\n\n" +
 			"Use --install-browser to download Chrome for Testing via scripts/ci/install_chromium.py.",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if installBrowser {

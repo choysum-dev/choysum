@@ -28,6 +28,7 @@ set it in CI.
 ## Spec filters
 
 Pass path/name filters after `--` (for example `choysum test e2e auth -- smoke.spec.ts`).
+Flag-looking args (leading `-`) are ignored; use `CHOYSUM_E2E_HEADED=1` for a visible browser.
 Workers are fixed at 1 (shared sqlite DB per scenario).
 
 ## Illegal imports

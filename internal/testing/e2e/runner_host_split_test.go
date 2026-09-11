@@ -200,6 +200,9 @@ func TestRunOneScenarioDiscoverSpecsError(t *testing.T) {
 }
 
 func TestRunModuleDiscoverSpecsPermissionError(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("chmod 0000 does not block root")
+	}
 	setE2ETestChromiumPath(t)
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)

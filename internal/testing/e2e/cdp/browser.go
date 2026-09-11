@@ -215,11 +215,25 @@ func ResolveChromiumPath() (string, error) {
 }
 
 // ResolveChromiumPathForE2E is ResolveChromiumPath for the e2e runner preflight.
-// When CI or GITHUB_ACTIONS is set, system Chrome/Chromium candidates are skipped
+// When CI or GITHUB_ACTIONS is truthy, system Chrome/Chromium candidates are skipped
 // so CI cannot silently pick up an unrelated browser.
 func ResolveChromiumPathForE2E() (string, error) {
-	allowSystem := strings.TrimSpace(os.Getenv("CI")) == "" && strings.TrimSpace(os.Getenv("GITHUB_ACTIONS")) == ""
+	allowSystem := !envFlagEnabled("CI") && !envFlagEnabled("GITHUB_ACTIONS")
 	return resolveChromiumPath(allowSystem)
+}
+
+func envFlagEnabled(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+// EnvFlagEnabled reports whether an environment variable is a conventional truthy flag.
+func EnvFlagEnabled(name string) bool {
+	return envFlagEnabled(name)
 }
 
 func resolveChromiumPath(allowSystemChrome bool) (string, error) {
