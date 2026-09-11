@@ -151,6 +151,15 @@ function makeLocator(kind, value, opts) {
       })()`);
       return JSON.parse(raw);
     },
+    async innerText() {
+      const sel = await ensureCSS(loc);
+      const raw = await getHost().evaluate(`(() => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        if (!el) return null;
+        return typeof el.innerText === 'string' ? el.innerText : el.textContent;
+      })()`);
+      return JSON.parse(raw);
+    },
     async getAttribute(name) {
       const sel = await ensureCSS(loc);
       const raw = await getHost().evaluate(`(() => {
@@ -171,6 +180,46 @@ function makeLocator(kind, value, opts) {
       } catch {
         return false;
       }
+    },
+    async waitFor(opts) {
+      const timeout = opts && typeof opts.timeout === 'number' ? opts.timeout : 30000;
+      const state = opts && opts.state ? String(opts.state) : 'visible';
+      await poll(timeout, async () => {
+        if (state === 'attached') {
+          try {
+            await ensureCSS(loc);
+            return (await countLocator(loc)) > 0;
+          } catch {
+            return false;
+          }
+        }
+        if (state === 'detached' || state === 'hidden') {
+          try {
+            if ((await countLocator(loc)) === 0) return true;
+            if (state === 'detached') return false;
+            return !(await loc.isVisible());
+          } catch {
+            return true;
+          }
+        }
+        return await loc.isVisible();
+      });
+    },
+    async press(key) {
+      const sel = await ensureCSS(loc);
+      const keyName = String(key || '');
+      await getHost().evaluate(`(() => {
+        const el = document.querySelector(${JSON.stringify(sel)});
+        if (!el) throw new Error('press: element not found');
+        if (typeof el.focus === 'function') el.focus();
+        const key = ${JSON.stringify(keyName)};
+        const keyCode = key === 'Enter' ? 13 : key === 'Escape' ? 27 : 0;
+        const opts = { key, code: key, keyCode, which: keyCode, bubbles: true, cancelable: true };
+        el.dispatchEvent(new KeyboardEvent('keydown', opts));
+        el.dispatchEvent(new KeyboardEvent('keypress', opts));
+        el.dispatchEvent(new KeyboardEvent('keyup', opts));
+        return true;
+      })()`);
     },
     async allTextContents() {
       const matches = await collectMatchedElements(loc);
@@ -603,6 +652,153 @@ async function collectMatchedElements(loc) {
   return [];
 }
 
+let routeEntries = [];
+let routePumpRunning = false;
+let routePumpStop = false;
+
+function globToRegExp(glob) {
+  const s = String(glob || '');
+  let out = '^';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '*' && s[i + 1] === '*') {
+      out += '.*';
+      i++;
+      continue;
+    }
+    if (ch === '*') {
+      out += '[^/]*';
+      continue;
+    }
+    if (ch === '?') {
+      out += '.';
+      continue;
+    }
+    if ('\\.[]{}()+-^$|'.includes(ch)) {
+      out += '\\' + ch;
+      continue;
+    }
+    out += ch;
+  }
+  out += '(?:\\?.*)?$';
+  return new RegExp(out);
+}
+
+function urlMatchesPattern(href, pattern) {
+  if (pattern && typeof pattern === 'object' && typeof pattern.test === 'function') {
+    return pattern.test(href);
+  }
+  const s = String(pattern || '');
+  if (!s) return true;
+  if (s.includes('*') || s.includes('?')) {
+    return globToRegExp(s).test(href);
+  }
+  return href === s || href.includes(s);
+}
+
+function matchRouteEntry(url) {
+  for (let i = 0; i < routeEntries.length; i++) {
+    if (urlMatchesPattern(url, routeEntries[i].pattern)) {
+      return routeEntries[i];
+    }
+  }
+  return null;
+}
+
+function makeRouteHandle(paused) {
+  let settled = false;
+  const settle = async fn => {
+    if (settled) return;
+    settled = true;
+    await fn();
+  };
+  return {
+    request() {
+      return {
+        url: () => paused.url,
+        method: () => paused.method,
+      };
+    },
+    async fulfill(opts) {
+      const o = opts || {};
+      await settle(() =>
+        getHost().fulfillRequest(
+          paused.id,
+          JSON.stringify({
+            status: o.status != null ? o.status : 200,
+            contentType: o.contentType || '',
+            body: o.body != null ? String(o.body) : '',
+            headers: o.headers || {},
+          })
+        )
+      );
+    },
+    async continue() {
+      await settle(() => getHost().continueRequest(paused.id));
+    },
+    async abort() {
+      // Minimal surface: abort by fulfilling a connection-reset-like 500 empty body.
+      await settle(() =>
+        getHost().fulfillRequest(
+          paused.id,
+          JSON.stringify({ status: 500, contentType: 'text/plain', body: '' })
+        )
+      );
+    },
+  };
+}
+
+function startRoutePump() {
+  if (routePumpRunning) return;
+  routePumpRunning = true;
+  routePumpStop = false;
+  (async () => {
+    while (!routePumpStop && routeEntries.length > 0) {
+      let raw;
+      try {
+        raw = await getHost().waitPausedRequest(1000);
+      } catch {
+        if (routePumpStop || routeEntries.length === 0) break;
+        continue;
+      }
+      if (raw == null || raw === '') continue;
+      let paused;
+      try {
+        paused = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch {
+        continue;
+      }
+      if (!paused || !paused.id) continue;
+      const entry = matchRouteEntry(String(paused.url || ''));
+      if (!entry) {
+        try {
+          await getHost().continueRequest(paused.id);
+        } catch {
+          // ignore
+        }
+        continue;
+      }
+      const handle = makeRouteHandle({
+        id: String(paused.id),
+        url: String(paused.url || ''),
+        method: String(paused.method || ''),
+      });
+      try {
+        await entry.handler(handle);
+        // If the handler returned without fulfill/continue, fail open.
+        await handle.continue().catch(() => {});
+      } catch (err) {
+        await handle.continue().catch(() => {});
+        // Keep pumping; surface via the originating test if it awaits the same work.
+        console.warn('[choysum/e2e] route handler error:', err && err.message ? err.message : err);
+      }
+    }
+    routePumpRunning = false;
+  })().catch(() => {
+    routePumpRunning = false;
+  });
+}
+
 const page = {
   __choysum_e2e_page__: true,
   async goto(url, opts) {
@@ -685,6 +881,13 @@ const page = {
   async waitForTimeout(ms) {
     await sleep(ms);
   },
+  async waitForURL(pattern, opts) {
+    const timeout = opts && typeof opts.timeout === 'number' ? opts.timeout : 30000;
+    await poll(timeout, async () => {
+      const href = String(await getHost().url());
+      return urlMatchesPattern(href, pattern);
+    });
+  },
   async waitForSelector(sel, opts) {
     const timeout = opts && typeof opts.timeout === 'number' ? opts.timeout : 30000;
     const state = opts && opts.state ? String(opts.state) : 'visible';
@@ -701,6 +904,30 @@ const page = {
       // visible (default)
       return await getHost().isVisible(css);
     });
+  },
+  async route(url, handler) {
+    if (typeof handler !== 'function') {
+      throw new Error('@choysum/e2e: page.route requires a handler function');
+    }
+    routeEntries.unshift({ pattern: String(url), handler });
+    await getHost().enableFetch();
+    startRoutePump();
+  },
+  async unroute(url, handler) {
+    const pattern = url != null ? String(url) : '';
+    routeEntries = routeEntries.filter(entry => {
+      if (pattern && entry.pattern !== pattern) return true;
+      if (handler && entry.handler !== handler) return true;
+      return false;
+    });
+    if (routeEntries.length === 0) {
+      routePumpStop = true;
+      try {
+        await getHost().disableFetch();
+      } catch {
+        // ignore
+      }
+    }
   },
   async url() {
     return await getHost().url();
@@ -890,6 +1117,87 @@ function e2eExpect(target, message) {
         if (re) return re.test(href);
         // String form: match the full URL (Playwright string semantics), not a RegExp.
         return href === exact;
+      });
+    },
+    async toHaveText(expected, opts) {
+      const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
+      if (!target || !target.__choysum_e2e_locator__) {
+        fail('toHaveText: expected locator');
+      }
+      await pollOrFail(timeout, diag, async () => {
+        try {
+          const text = await target.textContent();
+          return matchValue(text, expected);
+        } catch (e) {
+          target._css = '';
+          throw e;
+        }
+      });
+    },
+    async toHaveClass(expected, opts) {
+      const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
+      if (!target || !target.__choysum_e2e_locator__) {
+        fail('toHaveClass: expected locator');
+      }
+      await pollOrFail(timeout, diag, async () => {
+        try {
+          const sel = await ensureCSS(target);
+          const raw = await getHost().evaluate(`(() => {
+            const el = document.querySelector(${JSON.stringify(sel)});
+            return el ? String(el.className || '') : null;
+          })()`);
+          const className = JSON.parse(raw);
+          if (className == null) {
+            target._css = '';
+            return false;
+          }
+          return matchValue(className, expected);
+        } catch (e) {
+          target._css = '';
+          throw e;
+        }
+      });
+    },
+  };
+
+  api.not = {
+    async toHaveText(expected, opts) {
+      const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
+      if (!target || !target.__choysum_e2e_locator__) {
+        fail('not.toHaveText: expected locator');
+      }
+      await pollOrFail(timeout, diag, async () => {
+        try {
+          const text = await target.textContent();
+          return !matchValue(text, expected);
+        } catch (e) {
+          target._css = '';
+          throw e;
+        }
+      });
+    },
+    async toHaveClass(expected, opts) {
+      const timeout = opts && opts.timeout != null ? opts.timeout : 30000;
+      if (!target || !target.__choysum_e2e_locator__) {
+        fail('not.toHaveClass: expected locator');
+      }
+      await pollOrFail(timeout, diag, async () => {
+        try {
+          const sel = await ensureCSS(target);
+          const raw = await getHost().evaluate(`(() => {
+            const el = document.querySelector(${JSON.stringify(sel)});
+            return el ? String(el.className || '') : null;
+          })()`);
+          const className = JSON.parse(raw);
+          if (className == null) {
+            target._css = '';
+            return false;
+          }
+          return !matchValue(className, expected);
+        } catch (e) {
+          target._css = '';
+          throw e;
+        }
       });
     },
   };
@@ -1270,9 +1578,14 @@ function wrapTest(rawTest) {
   }
   // choysumtest has no per-test timeout; keep call sites compiling.
   wrapped.setTimeout = function setTimeout() {};
-  // Prefer early return in specs; this throws so accidental mid-test skips fail loudly.
+  // Prefer early return in specs; ChoysumTestSkip is counted as pass (skipped) by choysumtest.
   wrapped.skip = function skip(cond, msg) {
-    if (cond) throw new Error('test.skip: ' + (msg != null ? String(msg) : ''));
+    const shouldSkip = arguments.length === 0 ? true : !!cond;
+    if (shouldSkip) {
+      const e = new Error(msg != null ? String(msg) : 'skipped');
+      e.name = 'ChoysumTestSkip';
+      throw e;
+    }
   };
   return wrapped;
 }
@@ -1291,11 +1604,20 @@ const runtime = new Proxy(
 if (!globalThis.__choysum_e2e_hooks_installed__ && typeof globalThis.beforeEach === 'function') {
   globalThis.__choysum_e2e_hooks_installed__ = true;
   globalThis.beforeEach(async () => {
+    routeEntries = [];
+    routePumpStop = true;
     // NewPage clears cookies and resets to about:blank (workers=1 reuses the tab).
     await getHost().newPage();
   });
   if (typeof globalThis.afterEach === 'function') {
     globalThis.afterEach(async () => {
+      routeEntries = [];
+      routePumpStop = true;
+      try {
+        await getHost().disableFetch();
+      } catch {
+        // ignore
+      }
       try {
         await getHost().closePage();
       } catch {

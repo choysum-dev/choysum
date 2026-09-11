@@ -13,6 +13,7 @@ export type E2ERuntime = {
   scenario?: string;
   specsDir?: string;
   fixtures?: string[];
+  ci?: boolean;
 };
 
 export type WaitUntilState = 'load' | 'domcontentloaded';
@@ -59,6 +60,8 @@ export type Locator = {
   __choysum_e2e_locator__?: true;
   click(): Promise<void>;
   fill(value: string): Promise<void>;
+  press(key: string): Promise<void>;
+  waitFor(opts?: WaitForSelectorOptions): Promise<void>;
   first(): Locator;
   last(): Locator;
   nth(index: number): Locator;
@@ -66,6 +69,7 @@ export type Locator = {
   getByRole(...args: any[]): Locator;
   count(): Promise<number>;
   textContent(): Promise<string | null>;
+  innerText(): Promise<string | null>;
   getAttribute(name: string): Promise<string | null>;
   isEnabled(): Promise<boolean>;
   isVisible(): Promise<boolean>;
@@ -77,6 +81,20 @@ export type Locator = {
  * Locator-returning methods stay typed; async CDP/PW seams stay loose so
  * Playwright's Page remains assignable for shared utils (login/grpcweb).
  */
+export type RouteFulfillOptions = {
+  status?: number;
+  contentType?: string;
+  body?: string;
+  headers?: Record<string, string>;
+};
+
+export type Route = {
+  request(): { url(): string; method(): string };
+  fulfill(options?: RouteFulfillOptions): Promise<void>;
+  continue(): Promise<void>;
+  abort(): Promise<void>;
+};
+
 export type Page = {
   /** Set by the QJS host page proxy; absent on Playwright pages. */
   __choysum_e2e_page__?: boolean;
@@ -94,7 +112,10 @@ export type Page = {
   waitForFunction(...args: any[]): Promise<any>;
   waitForResponse(...args: any[]): Promise<any>;
   waitForTimeout(...args: any[]): Promise<any>;
+  waitForURL(...args: any[]): Promise<any>;
   waitForSelector(...args: any[]): Promise<any>;
+  route(url: string, handler: (route: Route) => unknown | Promise<unknown>): Promise<void>;
+  unroute(url?: string, handler?: (route: Route) => unknown | Promise<unknown>): Promise<void>;
   url(...args: any[]): any;
   screenshot(...args: any[]): Promise<any>;
 };
@@ -105,6 +126,12 @@ export type E2EExpect = {
   toBeChecked(opts?: TimeoutOptions): Promise<void>;
   toHaveCount(n: number, opts?: TimeoutOptions): Promise<void>;
   toHaveURL(reOrString: RegExp | string, opts?: TimeoutOptions): Promise<void>;
+  toHaveText(expected: string | RegExp, opts?: TimeoutOptions): Promise<void>;
+  toHaveClass(expected: string | RegExp, opts?: TimeoutOptions): Promise<void>;
+  not: {
+    toHaveText(expected: string | RegExp, opts?: TimeoutOptions): Promise<void>;
+    toHaveClass(expected: string | RegExp, opts?: TimeoutOptions): Promise<void>;
+  };
 };
 
 export type PollMatchers = {
