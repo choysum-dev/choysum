@@ -103,8 +103,8 @@ func TestScanIllegalE2EMarksMultilineAndComments(t *testing.T) {
 			pw++
 		}
 	}
-	if pw < 2 {
-		t.Fatalf("expected multiline+dup playwright marks, got %#v", marks)
+	if pw != 3 {
+		t.Fatalf("expected 3 playwright marks (1 multiline + 2 dup), got %#v", marks)
 	}
 	for _, m := range marks {
 		if m.Path == noise || m.Path == escaped || m.Path == ident {
@@ -206,4 +206,46 @@ func TestScanIllegalE2EMarksIgnoresCommentsWithoutImport(t *testing.T) {
 	if len(marks) != 0 {
 		t.Fatalf("unexpected marks: %#v", marks)
 	}
+}
+
+func TestScanIllegalE2EMarksTemplateInterpAndBackticks(t *testing.T) {
+	dir := t.TempDir()
+	interp := filepath.Join(dir, "interp.spec.ts")
+	backtickPW := filepath.Join(dir, "bt-pw.spec.ts")
+	backtickNode := filepath.Join(dir, "bt-node.spec.ts")
+	nested := filepath.Join(dir, "nested.spec.ts")
+
+	write := func(path, body string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(interp, "const x = `prefix ${await import(\"node:fs\")} suffix`;\n")
+	write(backtickPW, "import { test } from `@playwright/test`;\n")
+	write(backtickNode, "const m = await import(`node:path`);\n")
+	write(nested, "const x = `a ${/* c */ await import('node:crypto') /* d */} b`;\n")
+
+	marks, err := ScanIllegalE2EMarks([]string{interp, backtickPW, backtickNode, nested})
+	if err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[string]int{}
+	for _, m := range marks {
+		kinds[m.Kind]++
+	}
+	if kinds["playwright"] != 1 || kinds["node-builtin"] != 3 {
+		t.Fatalf("kinds=%v marks=%#v", kinds, marks)
+	}
+
+	// Nested template / quoted braces inside ${} exercise findTemplateInterpClose helpers.
+	_ = blankJSCommentsAndNonModuleStrings("`outer ${'a{b}' + `inner ${1}`} end`")
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ // c\ny } z`")
+	_ = blankJSCommentsAndNonModuleStrings("const s = 'a\\\nb';")   // line-continuation escape while blanking
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ {a: 1} } y`")     // nested braces bump depth
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ 'a\\'b' } y`")    // escaped quote inside interp
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ `a\\`b` } y`")    // escaped backtick in nested template
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ /* unterminated") // block comment hits EOF
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ 'unclosed")       // quoted string hits EOF
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ `unclosed")       // nested template hits EOF
 }

@@ -137,6 +137,50 @@ func TestRunOneScenarioNoSpecsAfterFilter(t *testing.T) {
 	}
 }
 
+func TestRunOneScenarioWarnsIgnoredFlags(t *testing.T) {
+	withInjectedScenarioHooks(t)
+	oldRunHost := runE2EHostHook
+	t.Cleanup(func() { runE2EHostHook = oldRunHost })
+	hostCalled := false
+	runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, qjsSpecFiles []string) error {
+		hostCalled = true
+		if len(qjsSpecFiles) != 1 {
+			t.Fatalf("qjsSpecFiles=%v", qjsSpecFiles)
+		}
+		return nil
+	}
+
+	modulesPath := t.TempDir()
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specsDir, "a.spec.ts"), []byte("import { test } from '@choysum/e2e';\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stderr strings.Builder
+	err := runOneScenario(context.Background(), RunOptions{
+		Module:         "auth",
+		ModulesPath:    modulesPath,
+		WorkDir:        t.TempDir(),
+		TmpPath:        t.TempDir(),
+		Stdout:         io.Discard,
+		Stderr:         &stderr,
+		SpecFilterArgs: []string{"a.spec.ts", "--headed"},
+	}, map[string]*sourceModulePackage{
+		"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
+	}, "default")
+	if err != nil {
+		t.Fatalf("runOneScenario: %v", err)
+	}
+	if !hostCalled {
+		t.Fatal("expected host to run")
+	}
+	if !strings.Contains(stderr.String(), "ignoring flag-looking args") {
+		t.Fatalf("expected ignored-flag warning, stderr=%q", stderr.String())
+	}
+}
+
 func TestRunOneScenarioQJSHostError(t *testing.T) {
 	withInjectedScenarioHooks(t)
 	oldRunHost := runE2EHostHook

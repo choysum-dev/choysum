@@ -13,13 +13,13 @@ import (
 
 // Illegal marks that must not appear in QJS-only e2e specs.
 // Patterns allow whitespace/newlines between import(/require( and the module string
-// so multiline dynamic imports are rejected.
+// so multiline dynamic imports are rejected. Specifiers may use ', ", or `.
 var (
 	illegalPlaywrightImportRE = regexp.MustCompile(
-		`(?s)(?:\bfrom\s+|import\s*\(|require\s*\()\s*['"]@playwright/test['"]|(?:^|[^\w$])import\s+['"]@playwright/test['"]`,
+		`(?s)(?:\bfrom\s+|import\s*\(|require\s*\()\s*['"` + "`" + `]@playwright/test['"` + "`" + `]|(?:^|[^\w$])import\s+['"` + "`" + `]@playwright/test['"` + "`" + `]`,
 	)
 	illegalNodeBuiltinRE = regexp.MustCompile(
-		`(?s)(?:\bfrom\s+|import\s*\(|require\s*\()\s*['"]node:(?:fs|path|crypto)['"]|(?:^|[^\w$])import\s+['"]node:(?:fs|path|crypto)['"]`,
+		`(?s)(?:\bfrom\s+|import\s*\(|require\s*\()\s*['"` + "`" + `]node:(?:fs|path|crypto)['"` + "`" + `]|(?:^|[^\w$])import\s+['"` + "`" + `]node:(?:fs|path|crypto)['"` + "`" + `]`,
 	)
 )
 
@@ -163,13 +163,35 @@ func blankJSCommentsAndNonModuleStrings(s string) string {
 			b.WriteByte(' ')
 			i++
 			for i < len(s) {
-				ch := s[i]
-				if ch == '\\' && i+1 < len(s) {
-					b.WriteByte(' ')
-					b.WriteByte(' ')
+				if s[i] == '\\' && i+1 < len(s) {
+					if s[i+1] == '\n' {
+						b.WriteByte(' ')
+						b.WriteByte('\n')
+					} else {
+						b.WriteByte(' ')
+						b.WriteByte(' ')
+					}
 					i += 2
 					continue
 				}
+				if quote == '`' && s[i] == '$' && i+1 < len(s) && s[i+1] == '{' {
+					// Keep ${...} executable so import()/require() inside interpolations stay visible.
+					b.WriteByte('$')
+					b.WriteByte('{')
+					i += 2
+					end := findTemplateInterpClose(s, i)
+					bodyEnd := end
+					if bodyEnd > i && s[bodyEnd-1] == '}' {
+						bodyEnd--
+					}
+					b.WriteString(blankJSCommentsAndNonModuleStrings(s[i:bodyEnd]))
+					if bodyEnd < end {
+						b.WriteByte('}')
+					}
+					i = end
+					continue
+				}
+				ch := s[i]
 				if ch == quote {
 					b.WriteByte(' ')
 					i++
@@ -188,6 +210,85 @@ func blankJSCommentsAndNonModuleStrings(s string) string {
 		i++
 	}
 	return b.String()
+}
+
+func findTemplateInterpClose(s string, start int) int {
+	depth := 1
+	i := start
+	for i < len(s) && depth > 0 {
+		c := s[i]
+		if c == '/' && i+1 < len(s) {
+			if s[i+1] == '/' {
+				i += 2
+				for i < len(s) && s[i] != '\n' {
+					i++
+				}
+				continue
+			}
+			if s[i+1] == '*' {
+				i += 2
+				for i+1 < len(s) && !(s[i] == '*' && s[i+1] == '/') {
+					i++
+				}
+				if i+1 < len(s) {
+					i += 2
+				} else {
+					i = len(s)
+				}
+				continue
+			}
+		}
+		if c == '\'' || c == '"' {
+			i = skipJSQuoted(s, i)
+			continue
+		}
+		if c == '`' {
+			i = skipJSTemplateLiteral(s, i)
+			continue
+		}
+		if c == '{' {
+			depth++
+		} else if c == '}' {
+			depth--
+		}
+		i++
+	}
+	return i
+}
+
+func skipJSQuoted(s string, i int) int {
+	q := s[i]
+	i++
+	for i < len(s) {
+		if s[i] == '\\' && i+1 < len(s) {
+			i += 2
+			continue
+		}
+		if s[i] == q {
+			return i + 1
+		}
+		i++
+	}
+	return i
+}
+
+func skipJSTemplateLiteral(s string, i int) int {
+	i++ // opening `
+	for i < len(s) {
+		if s[i] == '\\' && i+1 < len(s) {
+			i += 2
+			continue
+		}
+		if s[i] == '`' {
+			return i + 1
+		}
+		if s[i] == '$' && i+1 < len(s) && s[i+1] == '{' {
+			i = findTemplateInterpClose(s, i+2)
+			continue
+		}
+		i++
+	}
+	return i
 }
 
 // isModuleSpecifierContext reports whether a quote at idx is the module string of
