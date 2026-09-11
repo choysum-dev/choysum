@@ -286,7 +286,8 @@ func TestScanIllegalE2EMarksTemplateInterpAndBackticks(t *testing.T) {
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ return /foo/ } y`")
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ a / b } y`") // division, not regexp
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ /unterminated")
-	_ = blankJSCommentsAndNonModuleStrings("`x ${ /foo\n } y`") // newline aborts regexp literal
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ /foo\n } y`")     // newline aborts regexp literal
+	_ = blankJSCommentsAndNonModuleStrings("const re = /foo\nbar/") // top-level unterminated regexp + newline
 	_ = skipJSRegexpLiteral("/foo\nbar", 0)
 	_ = canStartJSRegexp(")/", 1)
 	_ = canStartJSRegexp("]/", 1)

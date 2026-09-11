@@ -137,6 +137,35 @@ func TestRunOneScenarioNoSpecsAfterFilter(t *testing.T) {
 	}
 }
 
+func TestRunOneScenarioNoSpecsWhenDirEmpty(t *testing.T) {
+	withInjectedScenarioHooks(t)
+	oldRunHost := runE2EHostHook
+	t.Cleanup(func() { runE2EHostHook = oldRunHost })
+	runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, qjsSpecFiles []string) error {
+		t.Fatal("host should not run")
+		return nil
+	}
+
+	modulesPath := t.TempDir()
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	err := runOneScenario(context.Background(), RunOptions{
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		WorkDir:     t.TempDir(),
+		TmpPath:     t.TempDir(),
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
+	}, map[string]*sourceModulePackage{
+		"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
+	}, "default")
+	if err == nil || !strings.Contains(err.Error(), "no e2e specs found under") || strings.Contains(err.Error(), "matching filter") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestRunOneScenarioWarnsIgnoredFlags(t *testing.T) {
 	withInjectedScenarioHooks(t)
 	oldRunHost := runE2EHostHook

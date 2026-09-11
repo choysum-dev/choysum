@@ -61,13 +61,15 @@ func findIllegalMarks(path, source, code string, re *regexp.Regexp, kind string)
 	lines := strings.Split(source, "\n")
 	out := make([]IllegalE2EMark, 0, len(idxs))
 	seen := map[int]bool{}
+	lastIdx := 0
+	lineNo := 1
 	for _, loc := range idxs {
-		lineNo := 1
-		for i := 0; i < loc[0] && i < len(code); i++ {
+		for i := lastIdx; i < loc[0] && i < len(code); i++ {
 			if code[i] == '\n' {
 				lineNo++
 			}
 		}
+		lastIdx = loc[0]
 		if seen[lineNo] {
 			continue
 		}
@@ -335,7 +337,7 @@ func skipJSRegexpLiteral(s string, i int) int {
 			continue
 		}
 		if c == '\n' {
-			return i // invalid regexp; stop without consuming further
+			return i + 1 // include newline so blankers can preserve it
 		}
 		if c == '[' && !inClass {
 			inClass = true
