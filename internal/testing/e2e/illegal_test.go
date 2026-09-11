@@ -221,6 +221,23 @@ func TestScanIllegalE2EMarksIgnoresCommentsWithoutImport(t *testing.T) {
 	}
 }
 
+func TestScanIllegalE2EMarksIgnoresTopLevelRegexp(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "re.spec.ts")
+	// Top-level regexp text must not false-positive as an illegal import.
+	body := "const re = /from 'node:fs'/;\nimport { test } from '@choysum/e2e';\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	marks, err := ScanIllegalE2EMarks([]string{path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(marks) != 0 {
+		t.Fatalf("unexpected marks from regexp literal: %#v", marks)
+	}
+}
+
 func TestScanIllegalE2EMarksTemplateInterpAndBackticks(t *testing.T) {
 	dir := t.TempDir()
 	interp := filepath.Join(dir, "interp.spec.ts")

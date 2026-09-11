@@ -558,6 +558,9 @@ compile:
 	var ignoredFlags []string
 	allSpecFiles, ignoredFlags = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
 	if len(allSpecFiles) == 0 {
+		if len(opts.SpecFilterArgs) > 0 {
+			return xfmt.Errorf("no e2e specs found matching filter under %s", specsDir)
+		}
 		return xfmt.Errorf("no e2e specs found under %s", specsDir)
 	}
 	if len(ignoredFlags) > 0 {

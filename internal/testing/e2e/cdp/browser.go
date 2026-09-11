@@ -238,10 +238,14 @@ func EnvFlagEnabled(name string) bool {
 
 func resolveChromiumPath(allowSystemChrome bool) (string, error) {
 	if p := strings.TrimSpace(os.Getenv("CHOYSUM_CHROMIUM_PATH")); p != "" {
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			return p, nil
+		st, err := os.Stat(p)
+		if err != nil {
+			return "", missingBinaryError(fmt.Sprintf("CHOYSUM_CHROMIUM_PATH is set but invalid: %v", err))
 		}
-		return "", missingBinaryError(fmt.Sprintf("CHOYSUM_CHROMIUM_PATH=%q is not a usable file", p))
+		if st.IsDir() {
+			return "", missingBinaryError(fmt.Sprintf("CHOYSUM_CHROMIUM_PATH points to a directory, expected a file: %s", p))
+		}
+		return p, nil
 	}
 
 	home := strings.TrimSpace(os.Getenv("CHOYSUM_HOME"))

@@ -132,7 +132,7 @@ func TestRunOneScenarioNoSpecsAfterFilter(t *testing.T) {
 	}, map[string]*sourceModulePackage{
 		"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 	}, "default")
-	if err == nil || !strings.Contains(err.Error(), "no e2e specs found") {
+	if err == nil || !strings.Contains(err.Error(), "no e2e specs found matching filter") {
 		t.Fatalf("got %v", err)
 	}
 }

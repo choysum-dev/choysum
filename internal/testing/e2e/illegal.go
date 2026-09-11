@@ -140,6 +140,19 @@ func blankJSCommentsAndNonModuleStrings(s string) string {
 			}
 			continue
 		}
+		if s[i] == '/' && canStartJSRegexp(s, i) {
+			// Blank top-level regexp literals so pattern text cannot false-positive illegal imports.
+			end := skipJSRegexpLiteral(s, i)
+			for i < end {
+				if s[i] == '\n' {
+					b.WriteByte('\n')
+				} else {
+					b.WriteByte(' ')
+				}
+				i++
+			}
+			continue
+		}
 		if s[i] == '\'' || s[i] == '"' || s[i] == '`' {
 			quote := s[i]
 			if isModuleSpecifierContext(s, i) {
