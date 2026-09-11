@@ -346,7 +346,7 @@ async function resolveToCSS(loc) {
 
       const isVisibleEl = (el) => {
         const style = window.getComputedStyle(el);
-        if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+        if (!style || style.visibility === 'hidden' || style.display === 'none' || parseFloat(style.opacity) === 0) return false;
         const r = el.getBoundingClientRect();
         return r.width > 0 && r.height > 0;
       };
@@ -382,13 +382,21 @@ async function resolveToCSS(loc) {
       };
 
       let nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
-      // Element Plus puts role=dialog on the overlay wrapper; prefer the content panel.
+      // Element Plus: role=dialog may sit on the overlay wrapper; map to .el-dialog.
+      if (role === 'dialog') {
+        nodes = nodes.map((el) => {
+          if (el.classList && el.classList.contains('el-dialog')) return el;
+          const inner = el.querySelector ? el.querySelector('.el-dialog') : null;
+          return inner || el;
+        });
+      }
+      // Prefer visible candidates before preferring .el-dialog content panels.
+      const visible = nodes.filter(isVisibleEl);
+      if (visible.length) nodes = visible;
       if (role === 'dialog') {
         const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
         if (content.length) nodes = content;
       }
-      const visible = nodes.filter(isVisibleEl);
-      if (visible.length) nodes = visible;
       const resolved = index < 0 ? nodes.length + index : index;
       if (resolved < 0 || resolved >= nodes.length) {
         throw new Error('getByRole: no match for role=' + role + ' index=' + index + ' count=' + nodes.length);
@@ -538,7 +546,7 @@ async function collectMatchedElements(loc) {
       if (!sel || sel === '[role=""]') return [];
       const isVisibleEl = (el) => {
         const style = window.getComputedStyle(el);
-        if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+        if (!style || style.visibility === 'hidden' || style.display === 'none' || parseFloat(style.opacity) === 0) return false;
         const r = el.getBoundingClientRect();
         return r.width > 0 && r.height > 0;
       };
@@ -572,11 +580,18 @@ async function collectMatchedElements(loc) {
       };
       let nodes = Array.from(root.querySelectorAll(sel)).filter(nameOk);
       if (role === 'dialog') {
-        const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
-        if (content.length) nodes = content;
+        nodes = nodes.map((el) => {
+          if (el.classList && el.classList.contains('el-dialog')) return el;
+          const inner = el.querySelector ? el.querySelector('.el-dialog') : null;
+          return inner || el;
+        });
       }
       const visible = nodes.filter(isVisibleEl);
       if (visible.length) nodes = visible;
+      if (role === 'dialog') {
+        const content = nodes.filter((el) => el.classList && el.classList.contains('el-dialog'));
+        if (content.length) nodes = content;
+      }
       return nodes.map(el => el.textContent);
     })()`);
     return JSON.parse(raw);
@@ -815,15 +830,20 @@ function e2eExpect(target, message) {
           const sel = await ensureCSS(target);
           const raw = await getHost().evaluate(`(() => {
             const el = document.querySelector(${JSON.stringify(sel)});
-            if (!el) return false;
-            if (typeof el.checked === 'boolean') return el.checked;
-            if (el.classList && el.classList.contains('is-checked')) return true;
-            const aria = el.getAttribute('aria-checked');
-            return aria === 'true';
+            if (!el) return JSON.stringify({ exists: false, checked: false });
+            let checked = false;
+            if (typeof el.checked === 'boolean') checked = el.checked;
+            else if (el.classList && el.classList.contains('is-checked')) checked = true;
+            else checked = el.getAttribute('aria-checked') === 'true';
+            return JSON.stringify({ exists: true, checked });
           })()`);
-          const ok = !!JSON.parse(raw);
-          if (!ok) target._css = '';
-          return ok;
+          const res = JSON.parse(raw);
+          // Only clear the stamped CSS when the node is gone; unchecked must keep polling the same el.
+          if (!res.exists) {
+            target._css = '';
+            return false;
+          }
+          return !!res.checked;
         } catch (e) {
           target._css = '';
           throw e;

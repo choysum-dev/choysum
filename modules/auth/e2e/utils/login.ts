@@ -61,6 +61,10 @@ export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void
       return;
     } catch (err) {
       lastErr = err;
+      if (attempt < 3) {
+        // Give SQLite writers / auth init a beat before the next attempt.
+        await page.waitForTimeout(250 * attempt);
+      }
     }
   }
   throw lastErr;

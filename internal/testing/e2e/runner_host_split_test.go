@@ -52,6 +52,31 @@ func TestFilterE2ESpecsByArgs(t *testing.T) {
 	_, _ = filterE2ESpecsByArgs(files, []string{"[invalid"})
 }
 
+func TestUniqueScenarioFixtureModules(t *testing.T) {
+	got := uniqueScenarioFixtureModules([]string{"base", "meta", "auth", "meta", "", "base"}, "partner")
+	want := []string{"base", "auth"}
+	if len(got) != len(want) {
+		t.Fatalf("got=%v want=%v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got=%v want=%v", got, want)
+		}
+	}
+
+	// Target meta keeps meta fixtures (deduped).
+	gotMeta := uniqueScenarioFixtureModules([]string{"meta", "task", "meta"}, "meta")
+	wantMeta := []string{"meta", "task"}
+	if len(gotMeta) != len(wantMeta) {
+		t.Fatalf("meta got=%v want=%v", gotMeta, wantMeta)
+	}
+	for i := range wantMeta {
+		if gotMeta[i] != wantMeta[i] {
+			t.Fatalf("meta got=%v want=%v", gotMeta, wantMeta)
+		}
+	}
+}
+
 func TestPartitionE2ESpecFiles(t *testing.T) {
 	dir := t.TempDir()
 	pw := filepath.Join(dir, "pw.spec.ts")
