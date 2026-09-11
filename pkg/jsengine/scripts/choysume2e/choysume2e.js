@@ -792,7 +792,10 @@ function startRoutePump() {
       } catch (err) {
         await handle.continue().catch(() => {});
         // Keep pumping; surface via the originating test if it awaits the same work.
-        console.warn('[choysum/e2e] route handler error:', err && err.message ? err.message : err);
+        // QuickJS host may not define global console.
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[choysum/e2e] route handler error:', err && err.message ? err.message : err);
+        }
       }
     }
     routePumpRunning = false;
@@ -1137,6 +1140,8 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const text = await target.textContent();
+          // Missing element → null; do not treat as empty text (Playwright waits for attach).
+          if (text === null) return false;
           return matchTextExact(text, expected);
         } catch (e) {
           target._css = '';
@@ -1154,7 +1159,8 @@ function e2eExpect(target, message) {
           const sel = await ensureCSS(target);
           const raw = await getHost().evaluate(`(() => {
             const el = document.querySelector(${JSON.stringify(sel)});
-            return el ? String(el.className || '') : null;
+            // getAttribute works for HTML and SVG (className is SVGAnimatedString on SVG).
+            return el ? (el.getAttribute('class') || '') : null;
           })()`);
           const className = JSON.parse(raw);
           if (className == null) {
@@ -1179,6 +1185,7 @@ function e2eExpect(target, message) {
       await pollOrFail(timeout, diag, async () => {
         try {
           const text = await target.textContent();
+          if (text === null) return false;
           return !matchTextExact(text, expected);
         } catch (e) {
           target._css = '';
@@ -1196,7 +1203,7 @@ function e2eExpect(target, message) {
           const sel = await ensureCSS(target);
           const raw = await getHost().evaluate(`(() => {
             const el = document.querySelector(${JSON.stringify(sel)});
-            return el ? String(el.className || '') : null;
+            return el ? (el.getAttribute('class') || '') : null;
           })()`);
           const className = JSON.parse(raw);
           if (className == null) {

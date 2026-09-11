@@ -56,6 +56,15 @@ func TestInstallFetchRouteBindingsErrorPaths(t *testing.T) {
 	if !strings.Contains(raw, "bodyBase64") {
 		t.Fatalf("bad bodyBase64: %s", raw)
 	}
+	// undefined/null opts must fall back to "{}" (not the strings "undefined"/"null").
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.fulfillRequest('x', undefined)`)
+	if !strings.Contains(raw, "no active page") {
+		t.Fatalf("undefined opts should not unmarshal-fail: %s", raw)
+	}
+	raw = awaitHostErr(t, qjs, `await globalThis.__choysum_e2e_host__.fulfillRequest('x', null)`)
+	if !strings.Contains(raw, "no active page") {
+		t.Fatalf("null opts should not unmarshal-fail: %s", raw)
+	}
 }
 
 func TestInstallFetchRouteBindingsWithChrome(t *testing.T) {

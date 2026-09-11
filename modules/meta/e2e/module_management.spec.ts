@@ -327,12 +327,35 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
 }
 
 /**
+ * Returns a document navigation epoch that changes across full page reloads.
+ * Used to detect same-URL hard reloads without treating a closed dialog as reload.
+ */
+async function pageNavEpoch(page: Page): Promise<string> {
+  try {
+    const value = await page.evaluate(() => {
+      try {
+        if (typeof performance !== 'undefined' && performance.timeOrigin != null) {
+          return String(performance.timeOrigin);
+        }
+      } catch {
+        // ignore
+      }
+      return '';
+    });
+    return value == null ? '' : String(value);
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Waits until an operation reaches terminal status in the dialog or performs a hard reload.
  */
 async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000): Promise<OperationTerminalStatus> {
   const dialog = page.locator('.el-dialog');
   const statusTag = dialog.locator('.status-row .el-tag').first();
   const startURL = String(await page.url());
+  const startEpoch = await pageNavEpoch(page);
 
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -351,7 +374,9 @@ async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000
     const dialogVisible = await dialog.isVisible().catch(() => false);
     if (!dialogVisible && href.includes('/web/meta/modules')) {
       // Hidden dialog alone is not evidence of a hard navigation/reload.
-      if (href !== startURL) {
+      // Same-URL hard reload still changes performance.timeOrigin.
+      const epoch = await pageNavEpoch(page);
+      if (href !== startURL || (startEpoch !== '' && epoch !== '' && epoch !== startEpoch)) {
         return 'reloaded';
       }
     }

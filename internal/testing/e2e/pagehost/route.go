@@ -113,7 +113,7 @@ func (h *Host) bindFulfillRequest() func(ctx *quickjs.Context, this *quickjs.Val
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
 			id := argString(args, 0)
 			optsJSON := "{}"
-			if len(args) > 1 && args[1] != nil {
+			if len(args) > 1 && args[1] != nil && !args[1].IsUndefined() && !args[1].IsNull() {
 				optsJSON = args[1].String()
 			}
 			var opts struct {
