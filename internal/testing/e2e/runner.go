@@ -246,11 +246,6 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	var ignoredFlags []string
-	allSpecFiles, ignoredFlags = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
-	if len(ignoredFlags) > 0 {
-		writeE2EProgress(opts.Stderr, "# e2e: ignoring flag-looking args %v (use CHOYSUM_E2E_HEADED=1 for headed Chromium)\n", ignoredFlags)
-	}
 
 	scenarioList := opts.Scenarios
 	if len(scenarioList) == 0 {
@@ -268,10 +263,21 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if len(allSpecFiles) == 0 {
 		return xfmt.Errorf("no e2e specs found under %s", specsDir)
 	}
-
+	// Gate the whole specs dir before SpecFilterArgs, so filtering one file
+	// cannot hide illegal imports in sibling specs.
 	if err := CheckIllegalE2EMarks(allSpecFiles); err != nil {
 		return err
 	}
+
+	var ignoredFlags []string
+	allSpecFiles, ignoredFlags = filterE2ESpecsByArgs(allSpecFiles, opts.SpecFilterArgs)
+	if len(ignoredFlags) > 0 {
+		writeE2EProgress(opts.Stderr, "# e2e: ignoring flag-looking args %v (use CHOYSUM_E2E_HEADED=1 for headed Chromium)\n", ignoredFlags)
+	}
+	if len(allSpecFiles) == 0 {
+		return xfmt.Errorf("no e2e specs found matching filter under %s", specsDir)
+	}
+
 	if _, err := cdp.ResolveChromiumPathForE2E(); err != nil {
 		return err
 	}

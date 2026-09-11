@@ -203,7 +203,7 @@ func TestRunModuleFastFailsWhenFilterMatchesNone(t *testing.T) {
 		Stderr:         &stderr,
 		SpecFilterArgs: []string{"no-match-at-all", "--headed"},
 	})
-	if err == nil || !strings.Contains(err.Error(), "no e2e specs found") {
+	if err == nil || !strings.Contains(err.Error(), "no e2e specs found matching filter") {
 		t.Fatalf("expected filter miss error, got %v", err)
 	}
 	if runOneScenarioCalled {
@@ -239,6 +239,40 @@ func TestRunModuleFastFailsWhenSpecsDirEmpty(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "no e2e specs found") {
 		t.Fatalf("expected empty-specs error, got %v", err)
+	}
+	if runOneScenarioCalled {
+		t.Fatal("expected fail-fast before scenario setup")
+	}
+}
+
+func TestRunModuleIllegalScanIgnoresSpecFilter(t *testing.T) {
+	setE2ETestChromiumPath(t)
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writeQJSSpec(t, filepath.Join(modulesPath, "auth", "e2e", "ok.spec.ts"))
+	bad := filepath.Join(modulesPath, "auth", "e2e", "bad.spec.ts")
+	if err := os.WriteFile(bad, []byte("import { test } from '@playwright/test';\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldRunOneScenarioHook := runOneScenarioHook
+	runOneScenarioCalled := false
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, packages map[string]*sourceModulePackage, scenario string) error {
+		runOneScenarioCalled = true
+		return nil
+	}
+	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
+
+	err := RunModule(context.Background(), RunOptions{
+		Module:         "auth",
+		ModulesPath:    modulesPath,
+		WorkDir:        t.TempDir(),
+		Stdout:         io.Discard,
+		Stderr:         io.Discard,
+		SpecFilterArgs: []string{"ok.spec.ts"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "illegal marks") || !strings.Contains(err.Error(), bad) {
+		t.Fatalf("expected illegal scan on unfiltered sibling, got %v", err)
 	}
 	if runOneScenarioCalled {
 		t.Fatal("expected fail-fast before scenario setup")

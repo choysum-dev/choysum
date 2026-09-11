@@ -61,6 +61,19 @@ func TestScanIllegalE2EMarksPlaywrightAndNodeBuiltins(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "@playwright/test") || !strings.Contains(err.Error(), pw) {
 		t.Fatalf("Check: %v", err)
 	}
+
+	// Subpaths (node:fs/promises, @playwright/test/reporter) must also fail the gate.
+	pwSub := filepath.Join(dir, "pw-sub.spec.ts")
+	fsSub := filepath.Join(dir, "fs-sub.spec.ts")
+	write(pwSub, "import { reporter } from '@playwright/test/reporter';\n")
+	write(fsSub, "import fs from 'node:fs/promises';\n")
+	marks, err = ScanIllegalE2EMarks([]string{pwSub, fsSub})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(marks) != 2 {
+		t.Fatalf("expected 2 subpath marks, got %#v", marks)
+	}
 }
 
 func TestScanIllegalE2EMarksMultilineAndComments(t *testing.T) {
@@ -256,6 +269,8 @@ func TestScanIllegalE2EMarksTemplateInterpAndBackticks(t *testing.T) {
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ return /foo/ } y`")
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ a / b } y`") // division, not regexp
 	_ = blankJSCommentsAndNonModuleStrings("`x ${ /unterminated")
+	_ = blankJSCommentsAndNonModuleStrings("`x ${ /foo\n } y`") // newline aborts regexp literal
+	_ = skipJSRegexpLiteral("/foo\nbar", 0)
 	_ = canStartJSRegexp(")/", 1)
 	_ = canStartJSRegexp("]/", 1)
 	_ = canStartJSRegexp("}/", 1)

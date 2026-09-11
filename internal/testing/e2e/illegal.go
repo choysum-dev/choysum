@@ -14,12 +14,13 @@ import (
 // Illegal marks that must not appear in QJS-only e2e specs.
 // Patterns allow whitespace/newlines between import(/require( and the module string
 // so multiline dynamic imports are rejected. Specifiers may use ', ", or `.
+// Optional subpaths (node:fs/promises, @playwright/test/reporter) are also rejected.
 var (
 	illegalPlaywrightImportRE = regexp.MustCompile(
-		`(?s)(?:\bfrom\s+|import\s*\(|require\s*\()\s*['"` + "`" + `]@playwright/test['"` + "`" + `]|(?:^|[^\w$])import\s+['"` + "`" + `]@playwright/test['"` + "`" + `]`,
+		`(?s)(?:\bfrom\s+|import\s*\(|require\s*\()\s*['"` + "`" + `]@playwright/test(?:/[^'"` + "`" + `\s]+)?['"` + "`" + `]|(?:^|[^\w$])import\s+['"` + "`" + `]@playwright/test(?:/[^'"` + "`" + `\s]+)?['"` + "`" + `]`,
 	)
 	illegalNodeBuiltinRE = regexp.MustCompile(
-		`(?s)(?:\bfrom\s+|import\s*\(|require\s*\()\s*['"` + "`" + `]node:(?:fs|path|crypto)['"` + "`" + `]|(?:^|[^\w$])import\s+['"` + "`" + `]node:(?:fs|path|crypto)['"` + "`" + `]`,
+		`(?s)(?:\bfrom\s+|import\s*\(|require\s*\()\s*['"` + "`" + `]node:(?:fs|path|crypto)(?:/[^'"` + "`" + `\s]+)?['"` + "`" + `]|(?:^|[^\w$])import\s+['"` + "`" + `]node:(?:fs|path|crypto)(?:/[^'"` + "`" + `\s]+)?['"` + "`" + `]`,
 	)
 )
 
@@ -241,10 +242,8 @@ func findTemplateInterpClose(s string, start int) int {
 				continue
 			}
 			if canStartJSRegexp(s, i) {
-				if end := skipJSRegexpLiteral(s, i); end > i {
-					i = end
-					continue
-				}
+				i = skipJSRegexpLiteral(s, i)
+				continue
 			}
 		}
 		if c == '\'' || c == '"' {
