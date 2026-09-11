@@ -6,7 +6,6 @@ package runner
 import (
 	"context"
 	"os"
-	"path/filepath"
 
 	pkgbackend "github.com/choysum-dev/choysum/internal/testing/backend"
 	pkgdiscovery "github.com/choysum-dev/choysum/internal/testing/discovery"
@@ -49,7 +48,6 @@ func RunWithDefaults(ctx context.Context, opts RunOptions) error {
 			tmpRoot := testingpathing.EffectiveCLITestTmpRoot(ctx, runtimeOpts.tmpPath)
 			typecheckOpts := pkgtypecheck.RunOptions{
 				ModulesPath: runtimeOpts.modulesPath,
-				NpmPath:     filepath.Join(runtimeOpts.modulesPath, "node_modules"),
 				RepoRoot:    repoRoot,
 				TmpPath:     tmpRoot,
 				Target:      app,

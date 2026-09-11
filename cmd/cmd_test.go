@@ -1300,7 +1300,6 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 		defer func() { runE2EModule = oldRun }()
 
 		cfg := newCommandTestConfig(t.TempDir())
-		// cfg.NpmPath removed
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 
 		t.Run("default warn", func(t *testing.T) {
@@ -1439,7 +1438,6 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 		}
 
 		cfg := newCommandTestConfig(t.TempDir())
-		// cfg.NpmPath removed
 		scopeGetter := func() scope.Scope {
 			return &commandTestScope{cfg: cfg}
 		}
@@ -1464,7 +1462,6 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 
 	t.Run("all with no runnable modules returns helpful error", func(t *testing.T) {
 		cfg := newCommandTestConfig(t.TempDir())
-		// cfg.NpmPath removed
 		scopeGetter := func() scope.Scope {
 			return &commandTestScope{cfg: cfg}
 		}

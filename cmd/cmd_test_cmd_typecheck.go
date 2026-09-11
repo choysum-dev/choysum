@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
@@ -93,7 +92,6 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 
 			opts := pkgtypecheck.RunOptions{
 				ModulesPath: runtimeOptions.ModulesPath,
-				NpmPath:     filepath.Join(runtimeOptions.ModulesPath, "node_modules"),
 				RepoRoot:    repoRoot,
 				TmpPath:     testTmp,
 				Target:      target,

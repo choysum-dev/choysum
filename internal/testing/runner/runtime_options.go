@@ -10,7 +10,6 @@ import (
 type runtimeOptions struct {
 	hasConfig   bool
 	modulesPath string
-	npmPath     string
 	tmpPath     string
 }
 
@@ -21,7 +20,6 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) run
 	}
 	opts.hasConfig = true
 	opts.modulesPath = pathOpts.ModulesPath
-	opts.npmPath = pathOpts.NpmPath
 	opts.tmpPath = pathOpts.TmpPath
 	return opts
 }
