@@ -23,7 +23,7 @@ func TestResolveChromiumPathMissingBinaryMessage(t *testing.T) {
 		t.Fatal("expected error")
 	}
 	msg := err.Error()
-	for _, want := range []string{"CHOYSUM_CHROMIUM_PATH", "invalid", "choysum test e2e --install-browser", "scripts/ci/install_chromium.py"} {
+	for _, want := range []string{"CHOYSUM_CHROMIUM_PATH", "invalid", "install Google Chrome or Chromium"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("error %q missing %q", msg, want)
 		}
@@ -58,7 +58,7 @@ func TestResolveChromiumPathForE2ESkipsSystemChromeInCI(t *testing.T) {
 		t.Fatal("expected missing binary when CI skips system Chrome")
 	}
 	msg := err.Error()
-	for _, want := range []string{"chromium binary not found", "CHOYSUM_CHROMIUM_PATH", "install_chromium.py"} {
+	for _, want := range []string{"chromium binary not found", "CHOYSUM_CHROMIUM_PATH", "install Google Chrome or Chromium"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("error %q missing %q", msg, want)
 		}
@@ -100,7 +100,7 @@ func TestResolveChromiumPathForE2ETreatsCIFalseAsLocal(t *testing.T) {
 func TestMissingBinaryErrorMentionsInstall(t *testing.T) {
 	err := missingBinaryError("chromium binary not found")
 	msg := err.Error()
-	if !strings.Contains(msg, "CHOYSUM_CHROMIUM_PATH") || !strings.Contains(msg, "install_chromium.py") {
+	if !strings.Contains(msg, "CHOYSUM_CHROMIUM_PATH") || !strings.Contains(msg, "install Google Chrome or Chromium") {
 		t.Fatalf("unexpected: %q", msg)
 	}
 }

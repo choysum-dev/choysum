@@ -19,11 +19,8 @@ orchestrated by `choysum test e2e auth` (QuickJS + chromedp).
 ./choysum test e2e auth -- smoke.spec.ts
 ```
 
-Install Chrome for Testing first when needed:
-
-```bash
-./choysum test e2e --install-browser
-```
+Requires a Chrome/Chromium binary on the machine (or set
+`CHOYSUM_CHROMIUM_PATH`).
 
 ## Fixtures
 

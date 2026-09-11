@@ -134,7 +134,7 @@ func TestRunModuleFastFailsWhenChromiumMissing(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "chromium binary not found") {
 		t.Fatalf("expected chromium missing error, got %v", err)
 	}
-	for _, want := range []string{"CHOYSUM_CHROMIUM_PATH", "choysum test e2e --install-browser", "install_chromium.py"} {
+	for _, want := range []string{"CHOYSUM_CHROMIUM_PATH", "install Google Chrome or Chromium"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error %q missing %q", err.Error(), want)
 		}
