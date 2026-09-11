@@ -168,7 +168,7 @@ func TestFinishMatchedResponseBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("bodyGoneNoPublish", func(t *testing.T) {
+	t.Run("bodyGonePublishesEmptyBody", func(t *testing.T) {
 		ctx := context.Background()
 		var mu sync.Mutex
 		matched := map[network.RequestID]pendingResp{id: resp}
@@ -183,9 +183,12 @@ func TestFinishMatchedResponseBranches(t *testing.T) {
 			t.Fatal("bodyGone should delete matchedResp")
 		}
 		select {
-		case <-resultCh:
-			t.Fatal("bodyGone must not publish")
+		case got := <-resultCh:
+			if got.Status != 200 || got.Body != nil {
+				t.Fatalf("expected empty-body publish, got %+v", got)
+			}
 		default:
+			t.Fatal("bodyGone must publish status/headers with empty body")
 		}
 	})
 

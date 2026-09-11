@@ -7,9 +7,13 @@ import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 /**
  * Log in as the auth e2e fixture admin (`e2e-admin` / `e2e-admin`).
  *
- * Hardens against a known race: Login.vue `ensureAuthReady` / nprogress can still
- * be settling when the runner fills and clicks, so the submit is ignored and the
- * suite stays on `/web/login?redirect=...`.
+ * Hardens against known races:
+ * - Login.vue `ensureAuthReady` / nprogress can still be settling when the runner
+ *   fills and clicks, so the submit is ignored and the suite stays on
+ *   `/web/login?redirect=...`.
+ * - A successful Login can navigate away before CDP fetches the response body
+ *   (`bodyGone`), leaving `waitForResponse` hanging until timeout even though
+ *   auth already landed on `/web/auth/users`.
  */
 export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void> {
   const runOnce = async () => {
@@ -49,7 +53,18 @@ export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void
     // Heavier module closures (partner+) can still be settling SQLite writers at first Login.
     const loginOk = waitForGrpcWebUnaryOk(page, '/auth.User/Login', { timeoutMs: 45_000 });
     await submit.click();
-    await loginOk;
+    // Prefer Login OK, but accept post-login URL when CDP body is dropped by navigation.
+    try {
+      await Promise.race([loginOk, page.waitForURL(/\/web\/auth\/users/, { timeout: 45_000 })]);
+    } catch (err) {
+      try {
+        await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 15_000 });
+      } catch {
+        throw err;
+      }
+    } finally {
+      void loginOk.catch(() => undefined);
+    }
 
     await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 30_000 });
   };
