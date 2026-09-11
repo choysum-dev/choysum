@@ -9,7 +9,24 @@ import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
  * Uses HTMLElement.click() so Element Plus Vue handlers run (MouseEvent dispatch is flaky).
  */
 async function pickOtherActiveCompanyOption(): Promise<void> {
-  await page.getByTestId('company-active-select').click();
+  // Do not toggle-close an already-open dropdown (retry paths can leave it expanded).
+  const dropdownOpen = await page.evaluate(() => {
+    const nodes = Array.from(
+      document.querySelectorAll('.el-select-dropdown')
+    ) as HTMLElement[];
+    return nodes.some(el => {
+      const style = window.getComputedStyle(el);
+      if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
+        return false;
+      }
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+  });
+  if (!dropdownOpen) {
+    await page.getByTestId('company-active-select').click();
+  }
+
   await expect
     .poll(
       async () =>
@@ -86,19 +103,32 @@ export async function switchCompanyViaUI(): Promise<void> {
       const switchOk = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', {
         timeoutMs: 20_000,
       });
+      // Consume rejection if clickApplyButton throws and this wait is abandoned on retry.
+      void switchOk.catch(() => undefined);
       await clickApplyButton();
       await switchOk;
       return;
     } catch (err) {
       lastErr = err;
-      // Close any stuck popover before the next attempt.
-      await page.evaluate(() => {
-        const trigger = document.querySelector(
-          '[data-testid="company-switch-trigger"]'
-        ) as HTMLElement | null;
-        const panel = document.querySelector('[data-testid="company-switch-panel"]');
-        if (panel && trigger) trigger.click();
-      }).catch(() => undefined);
+      // Close only when the panel is actually visible; presence alone would re-open it.
+      await page
+        .evaluate(() => {
+          const trigger = document.querySelector(
+            '[data-testid="company-switch-trigger"]'
+          ) as HTMLElement | null;
+          const panel = document.querySelector(
+            '[data-testid="company-switch-panel"]'
+          ) as HTMLElement | null;
+          if (!trigger || !panel) return;
+          const style = window.getComputedStyle(panel);
+          if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
+            return;
+          }
+          const r = panel.getBoundingClientRect();
+          if (r.width <= 0 || r.height <= 0) return;
+          trigger.click();
+        })
+        .catch(() => undefined);
       await page.waitForTimeout(250 * attempt);
     }
   }

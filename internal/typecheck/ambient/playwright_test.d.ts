@@ -26,6 +26,7 @@ declare module '@playwright/test' {
     textContent(): Promise<string | null>;
     getAttribute(name: string): Promise<string | null>;
     isEnabled(): Promise<boolean>;
+    isVisible(): Promise<boolean>;
     allTextContents(): Promise<string[]>;
     [key: string]: any;
   };
