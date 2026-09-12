@@ -81,7 +81,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 							Column: &diffCopy,
 						})
 					}
-					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys, false)...)
 					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 					continue
 				}
@@ -114,7 +114,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 							Column: &diffCopy,
 						})
 					}
-					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys, true)...)
 					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 					continue
 				}
@@ -140,7 +140,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 					Detail: detail,
 					Column: &colCopy,
 				})
-				plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+				plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys, false)...)
 				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 				continue
 			}
@@ -157,7 +157,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				})
 			}
 
-			plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+			plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys, false)...)
 			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 		}
 
@@ -248,15 +248,17 @@ func renamePhysicalCompatible(desired ColumnSpec, live LiveColumn, dialect strin
 	return false
 }
 
-func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount int64, desiredIndexKeys map[string]struct{}) []PlanOp {
+func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount int64, desiredIndexKeys map[string]struct{}, renamePending bool) []PlanOp {
 	var ops []PlanOp
 	candidates := indexLookupCandidates(col)
 	// Only register the physical column name when this column declares an index.
 	// Otherwise leftover indexes on declared-but-unindexed columns are swallowed.
 	if col.Name != "" && len(candidates) > 0 {
 		desiredIndexKeys[strings.ToLower(col.Name)] = struct{}{}
-		if rf := strings.ToLower(strings.TrimSpace(col.RenameFrom)); rf != "" {
-			desiredIndexKeys[rf] = struct{}{}
+		if renamePending {
+			if rf := strings.ToLower(strings.TrimSpace(col.RenameFrom)); rf != "" {
+				desiredIndexKeys[rf] = struct{}{}
+			}
 		}
 	}
 	for _, cand := range candidates {
@@ -264,9 +266,11 @@ func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount i
 		if liveHasIndex(live, table, cand.Name, cand.Unique) {
 			continue
 		}
-		// During rename planning, live indexes still reference the old column name.
-		if rf := strings.TrimSpace(col.RenameFrom); rf != "" && liveHasIndex(live, table, rf, cand.Unique) {
-			continue
+		// During pending rename, live indexes still reference the old column name.
+		if renamePending {
+			if rf := strings.TrimSpace(col.RenameFrom); rf != "" && liveHasIndex(live, table, rf, cand.Unique) {
+				continue
+			}
 		}
 		// Default GORM lookup uses exportIdent(FieldName) (e.g. CreatedBy); also try the
 		// physical column name (created_by). Custom IndexName/UniqueIndexNames match by name only.

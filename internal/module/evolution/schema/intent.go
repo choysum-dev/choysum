@@ -53,7 +53,7 @@ func (b *memoryIntentBag) Add(intents ...Intent) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for _, in := range intents {
-		in.Kind = IntentKind(strings.TrimSpace(string(in.Kind)))
+		in.Kind = IntentKind(strings.ToLower(strings.TrimSpace(string(in.Kind))))
 		in.Table = strings.TrimSpace(in.Table)
 		in.Name = strings.TrimSpace(in.Name)
 		in.FromName = strings.TrimSpace(in.FromName)

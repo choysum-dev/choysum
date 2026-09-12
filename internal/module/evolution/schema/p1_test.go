@@ -344,7 +344,7 @@ func TestIndexOps_ClassifiesUniqueIndependently(t *testing.T) {
 		Name: "code", FieldName: "Code", PhysicalType: "varchar",
 		Indexed: true, IndexName: "idx_code", UniqueIndex: true, UniqueIndexNames: []string{"uniq_code"},
 	}
-	ops := indexOpsForColumn("t", col, live, 5, desiredKeys)
+	ops := indexOpsForColumn("t", col, live, 5, desiredKeys, false)
 	if len(ops) != 1 || ops[0].IndexName != "idx_code" || ops[0].Safety != SafetyAuto {
 		t.Fatalf("ordinary missing index must stay auto when unique exists: %#v", ops)
 	}
@@ -358,7 +358,7 @@ func TestIndexOps_ClassifiesUniqueIndependently(t *testing.T) {
 		"t": {{Name: "idx_created_by", Columns: []string{"created_by"}, Unique: false}},
 	}}
 	fieldCol := ColumnSpec{Name: "created_by", FieldName: "CreatedBy", PhysicalType: "varchar", Indexed: true}
-	if ops := indexOpsForColumn("t", fieldCol, fieldLive, 0, fieldKeys); len(ops) != 0 {
+	if ops := indexOpsForColumn("t", fieldCol, fieldLive, 0, fieldKeys, false); len(ops) != 0 {
 		t.Fatalf("CreatedBy should match created_by live index: %#v", ops)
 	}
 
@@ -366,7 +366,7 @@ func TestIndexOps_ClassifiesUniqueIndependently(t *testing.T) {
 	uniqKeys := map[string]struct{}{}
 	uniqOps := indexOpsForColumn("t", ColumnSpec{
 		Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true,
-	}, LiveSchema{Indexes: map[string][]LiveIndex{"t": {}}}, 3, uniqKeys)
+	}, LiveSchema{Indexes: map[string][]LiveIndex{"t": {}}}, 3, uniqKeys, false)
 	if len(uniqOps) != 1 || uniqOps[0].Safety != SafetyGuarded {
 		t.Fatalf("expected guarded unique add: %#v", uniqOps)
 	}

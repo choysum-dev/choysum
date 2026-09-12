@@ -230,7 +230,7 @@ func (m *modelMigrator) warnDropAfterLeftovers(plan SchemaPlan) {
 			continue
 		}
 		for _, col := range cols {
-			if !strings.EqualFold(col.Name, left.Name) {
+			if !columnMatchesLeftoverName(col, left.Name) {
 				continue
 			}
 			if !versionHintEqual(col.DropAfter, toVersion) {
@@ -265,6 +265,15 @@ func normalizeVersionHint(v string) string {
 		return v[1:]
 	}
 	return v
+}
+
+// columnMatchesLeftoverName reports whether a desired column describes leftover physical name
+// (current name, or renameFrom when the leftover is the pre-rename column).
+func columnMatchesLeftoverName(col ColumnSpec, leftoverName string) bool {
+	if strings.EqualFold(col.Name, leftoverName) {
+		return true
+	}
+	return strings.EqualFold(strings.TrimSpace(col.RenameFrom), leftoverName)
 }
 
 func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta.Model) error {

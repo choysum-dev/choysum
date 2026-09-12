@@ -294,13 +294,16 @@ func TestIntentSatisfies_AllBranches(t *testing.T) {
 
 	bag := NewMemoryIntentBag()
 	bag.Add(Intent{Kind: IntentRenameColumn, Table: "t", FromName: "old", Name: "new"})
-	bag.Add(Intent{Kind: IntentDropColumn, Table: "t", Name: "c"})
+	bag.Add(Intent{Kind: "DROP_COLUMN", Table: "t", Name: "c"})
 	bag.Add(Intent{Kind: IntentDropIndex, Table: "t", Name: "idx_t"})
 	bag.Add(Intent{Kind: IntentDropCheck, Table: "t", Name: "chk_t"})
 	bag.Add(Intent{Kind: IntentDropForeignKey, Table: "t", Name: "fk_t"})
 
 	if !IntentSatisfies(PlanOp{Kind: OpRenameColumn, Table: "t", FromName: "old", Column: &ColumnSpec{Name: "new"}}, bag) {
 		t.Fatal("rename")
+	}
+	if !IntentSatisfies(PlanOp{Kind: OpKind(IntentDropColumn), Table: "t", Column: &ColumnSpec{Name: "c"}}, bag) {
+		t.Fatal("drop col mixed-case kind normalize")
 	}
 	if IntentSatisfies(PlanOp{Kind: OpRenameColumn, Table: "t", FromName: "old", Column: &ColumnSpec{Name: "other"}}, bag) {
 		t.Fatal("rename dest mismatch")
@@ -312,9 +315,6 @@ func TestIntentSatisfies_AllBranches(t *testing.T) {
 	emptyNameBag.Add(Intent{Kind: IntentRenameColumn, Table: "t", FromName: "old", Name: ""})
 	if IntentSatisfies(PlanOp{Kind: OpRenameColumn, Table: "t", FromName: "old", Column: &ColumnSpec{Name: "new"}}, emptyNameBag) {
 		t.Fatal("empty rename Name must not wildcard")
-	}
-	if !IntentSatisfies(PlanOp{Kind: OpKind(IntentDropColumn), Table: "t", Column: &ColumnSpec{Name: "c"}}, bag) {
-		t.Fatal("drop col")
 	}
 	if !IntentSatisfies(PlanOp{Kind: OpKind(IntentDropIndex), Table: "t", IndexName: "idx_t"}, bag) {
 		t.Fatal("drop idx")
@@ -479,6 +479,33 @@ func TestPlan_RenameAwareIndex(t *testing.T) {
 	}
 }
 
+func TestPlan_RenameConflictKeepsOldIndexLeftover(t *testing.T) {
+	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", Indexed: true}},
+	}}
+	live := LiveSchema{
+		Tables: map[string]bool{"t": true},
+		Columns: map[string]map[string]LiveColumn{"t": {
+			"code":     {Name: "code", DatabaseTypeName: "varchar"},
+			"old_code": {Name: "old_code", DatabaseTypeName: "varchar"},
+		}},
+		Indexes: map[string][]LiveIndex{"t": {{Name: "idx_t_old_code", Columns: []string{"old_code"}}}},
+	}
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, left := range plan.Leftover {
+		if left.Kind == LeftoverIndex && strings.EqualFold(left.Name, "idx_t_old_code") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("conflict rename must keep old-column index as leftover, got %#v", plan.Leftover)
+	}
+}
+
 func TestApply_RenameColumnErrorPaths(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	if err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
@@ -575,6 +602,16 @@ func TestWarnDropAfterLeftovers_Coverage(t *testing.T) {
 		{Kind: LeftoverColumn, Table: "warn_tbl", Name: "old_code"},
 		{Kind: LeftoverIndex, Table: "warn_tbl", Name: "idx_x"},
 		{Kind: LeftoverColumn, Table: "missing", Name: "x"},
+	}})
+
+	// Snapshot desired uses renameFrom for the pre-rename leftover name.
+	payloadRename, _ := json.Marshal([]ColumnSpec{{
+		Name: "code", RenameFrom: "old_code", DropAfter: "2.0.0",
+	}})
+	_ = runtimeScope.Session().Model(&modmeta.SchemaSnapshot{}).Where("model_table = ?", "warn_tbl").
+		Update("desired_json", datatypes.JSON(payloadRename))
+	m.warnDropAfterLeftovers(SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverColumn, Table: "warn_tbl", Name: "old_code"},
 	}})
 
 	bag := NewMemoryIntentBag()
