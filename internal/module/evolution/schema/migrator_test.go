@@ -62,7 +62,30 @@ func TestMigratorMigrateWrapsErrors(t *testing.T) {
 	}
 }
 
-func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
+func TestLoadModelsForSchema_EmptyModuleID(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	models, err := loadModelsForSchema(runtimeScope, &meta.Module{Name: "sales"})
+	if err != nil {
+		t.Fatalf("loadModelsForSchema() error = %v", err)
+	}
+	if len(models) != 0 {
+		t.Fatalf("expected empty slice for missing module id, got %#v", models)
+	}
+}
+
+func TestNewMigrator_EmptyModuleID(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	migrateSchemaMetaTables(t, runtimeScope.Session())
+	migrated, err := NewMigrator(runtimeScope, &meta.Module{Name: "sales"})
+	if err != nil {
+		t.Fatalf("NewMigrator() error = %v", err)
+	}
+	if migrated == nil {
+		t.Fatal("expected NewMigrator to return migrator instance")
+	}
+}
+
+func TestLoadModelsForSchemaFiltersAndWrapsDBErrors(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 
@@ -74,20 +97,24 @@ func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
 	disabledAutoMigrate := false
 	decls := []*meta.Model{
 		{
-			Name: "Order", Path: "sales/order.ts", ModelTable: "sales_order", ModuleId: module.Id,
+			Name: "Order", Path: "sales/order.ts", Application: "sales", ModelTable: "sales_order", ModuleId: module.Id,
 			Fields: []*meta.Field{newFieldWithOptions(t, "Status", `{"type":"selection"}`)},
 		},
-		{Name: "Readonly", Path: "sales/readonly.ts", ModelTable: "sales_readonly", ModuleId: module.Id, Readonly: true},
-		{Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", ModuleId: module.Id, AutoMigrate: &disabledAutoMigrate},
-		{Name: "Abstract", Path: "sales/abstract.ts", ModelTable: "sales_abstract", ModuleId: module.Id, Abstract: true},
+		{Name: "Readonly", Path: "sales/readonly.ts", Application: "sales", ModelTable: "sales_readonly", ModuleId: module.Id, Readonly: true},
+		{Name: "Disabled", Path: "sales/disabled.ts", Application: "sales", ModelTable: "sales_disabled", ModuleId: module.Id, AutoMigrate: &disabledAutoMigrate},
+		{Name: "Abstract", Path: "sales/abstract.ts", Application: "sales", ModelTable: "sales_abstract", ModuleId: module.Id, Abstract: true},
 	}
-	if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, module.Id.String, decls); err != nil {
+	keys, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, module.Id.String, decls)
+	if err != nil {
 		t.Fatalf("persist declarations: %v", err)
 	}
+	if err := modmeta.FlushEffective(runtimeScope.Session().DB, keys); err != nil {
+		t.Fatalf("flush effective: %v", err)
+	}
 
-	loaded, err := getModuleModels(runtimeScope, module)
+	loaded, err := loadModelsForSchema(runtimeScope, module)
 	if err != nil {
-		t.Fatalf("getModuleModels() error = %v", err)
+		t.Fatalf("loadModelsForSchema() error = %v", err)
 	}
 	if len(loaded) != 1 {
 		t.Fatalf("expected 1 active model, got %#v", loaded)
@@ -106,12 +133,12 @@ func TestGetModuleModelsFiltersAndWrapsDBErrors(t *testing.T) {
 	if err := sqlDB.Close(); err != nil {
 		t.Fatalf("sqlDB.Close() error = %v", err)
 	}
-	if _, err := getModuleModels(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "error getting models by module id") {
+	if _, err := loadModelsForSchema(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "error getting models by module id") {
 		t.Fatalf("expected wrapped db error, got %v", err)
 	}
 }
 
-func TestGetModuleModels_CircularExtends(t *testing.T) {
+func TestLoadModelsForSchema_CircularExtends(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 
@@ -121,14 +148,14 @@ func TestGetModuleModels_CircularExtends(t *testing.T) {
 	}
 
 	decls := []*meta.Model{
-		{Name: "A", Path: "/a.ts", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
-		{Name: "B", Path: "/b.ts", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
+		{Name: "A", Path: "/a.ts", Application: "sales", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
+		{Name: "B", Path: "/b.ts", Application: "sales", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
 	}
 	if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, module.Id.String, decls); err != nil {
 		t.Fatalf("persist declarations: %v", err)
 	}
 
-	if _, err := getModuleModels(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "expanding model extends") {
+	if _, err := loadModelsForSchema(runtimeScope, module); err == nil || !strings.Contains(err.Error(), "expanding model extends") {
 		t.Fatalf("expected circular extends error, got %v", err)
 	}
 }
@@ -136,7 +163,11 @@ func TestGetModuleModels_CircularExtends(t *testing.T) {
 func TestNewMigrator(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
-	migrated, err := NewMigrator(runtimeScope, &meta.Module{})
+	module := &meta.Module{Name: "sales"}
+	if err := runtimeScope.Session().Create(module).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	migrated, err := NewMigrator(runtimeScope, module)
 	if err != nil {
 		t.Fatalf("NewMigrator() error = %v", err)
 	}
@@ -153,8 +184,8 @@ func TestNewMigratorPropagatesLoadError(t *testing.T) {
 		t.Fatalf("create module: %v", err)
 	}
 	decls := []*meta.Model{
-		{Name: "A", Path: "/a.ts", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
-		{Name: "B", Path: "/b.ts", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
+		{Name: "A", Path: "/a.ts", Application: "sales", ModelTable: "sales_a", ModuleId: module.Id, Extends: "/b.ts"},
+		{Name: "B", Path: "/b.ts", Application: "sales", ModelTable: "sales_b", ModuleId: module.Id, Extends: "/a.ts"},
 	}
 	if _, err := modmeta.ReplaceModuleDeclarations(runtimeScope.Session().DB, module.Id.String, decls); err != nil {
 		t.Fatalf("persist declarations: %v", err)

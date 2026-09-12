@@ -5,11 +5,9 @@ package schema
 
 import (
 	"fmt"
-	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 type Migrator interface {
@@ -21,7 +19,7 @@ func NewMigrator(runtimeScope scope.Scope, module *meta.Module) (Migrator, error
 }
 
 func newMigrator(runtimeScope scope.Scope, module *meta.Module) (*migrator, error) {
-	models, err := getModuleModels(runtimeScope, module)
+	models, err := loadModelsForSchema(runtimeScope, module)
 	if err != nil {
 		return nil, err
 	}
@@ -31,51 +29,17 @@ func newMigrator(runtimeScope scope.Scope, module *meta.Module) (*migrator, erro
 	}, nil
 }
 
-func getModuleModels(runtimeScope scope.Scope, module *meta.Module) ([]*meta.Model, error) {
-	absFalse := false
-	moduleModels, err := modmeta.ListDeclarations(runtimeScope.Session().DB, modmeta.DeclarationQuery{
-		ModuleID:    module.Id.String,
-		Abstract:    &absFalse,
-		PreloadTree: true,
-	})
-	if err != nil {
-		return nil, xfmt.Errorf("error getting models by module id: %w", err)
-	}
-
-	// Declaration-only raw rows omit inherited columns; expand Extends in memory for DDL.
-	if err := modmeta.ExpandModelsAlongExtends(runtimeScope.Session().DB, moduleModels); err != nil {
-		return nil, xfmt.Errorf("error expanding model extends for schema: %w", err)
-	}
-
-	filteredModels := make([]*meta.Model, 0, len(moduleModels))
-	for _, model := range moduleModels {
-		if model.Readonly {
-			continue
-		}
-		if model.AutoMigrate != nil && !*model.AutoMigrate {
-			continue
-		}
-		filteredModels = append(filteredModels, model)
-	}
-
-	return filteredModels, nil
-}
-
 type migrator struct {
 	modelMigrator      ModelMigrator
 	foreignKeyMigrator ForeignKeyMigrator
 }
 
 func (m *migrator) Migrate() error {
-	// 1. Migrate model schemas.
 	if err := m.modelMigrator.MigrateSchema(); err != nil {
 		return fmt.Errorf("migrate schema: %w", err)
 	}
-
-	// 2. Apply foreign key constraints.
 	if err := m.foreignKeyMigrator.MigrateForeignKeys(); err != nil {
 		return fmt.Errorf("migrate foreign keys: %w", err)
 	}
-
 	return nil
 }

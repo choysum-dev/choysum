@@ -364,7 +364,7 @@ func TestApplyTableTranslatedTrigramIndexesSkipsWithoutPgTrgm(t *testing.T) {
 	}
 }
 
-func TestMigrateTableSchemaWrapsTranslatedTrigramIndexError(t *testing.T) {
+func TestMigrateSchemaWrapsTranslatedTrigramIndexError(t *testing.T) {
 	db := openPostgresNamedSQLite(t, "file:trigram_migrate_wrap?mode=memory&cache=shared")
 	if err := db.Exec(`CREATE TABLE pg_extension (extname text)`).Error; err != nil {
 		t.Fatalf("create pg_extension: %v", err)
@@ -409,8 +409,8 @@ func TestMigrateTableSchemaWrapsTranslatedTrigramIndexError(t *testing.T) {
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
 	}
-	m := &modelMigrator{runtimeScope: runtime}
-	err := m.migrateTableSchema([]*meta.Model{model})
+	m := newModelMigrator(runtime, nil, []*meta.Model{model})
+	err := m.MigrateSchema()
 	if err == nil || !strings.Contains(err.Error(), "translated trigram indexes") {
 		t.Fatalf("expected wrapped trigram migrate error, got %v", err)
 	}
