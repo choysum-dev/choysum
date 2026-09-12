@@ -207,90 +207,9 @@ func normalizeDefaultStringLiteral(value string) string {
 	return "'" + escaped + "'"
 }
 
-// addStandardTags appends standard gorm tags.
-func addStandardTags(tags *[]string, meta map[string]interface{}) {
-	// Primary key
-	if v, ok := meta["primaryKey"].(bool); ok && v {
-		*tags = append(*tags, "primaryKey")
-	}
-
-	// Not-null constraint
-	if v, ok := meta["notNull"].(bool); ok && v {
-		*tags = append(*tags, "not null")
-	}
-
-	// Unique constraint
-	if v, ok := meta["unique"].(bool); ok && v {
-		*tags = append(*tags, "unique")
-	}
-
-	// Index handling: supports string and boolean values.
-	if v, ok := meta["index"]; ok {
-		switch val := v.(type) {
-		case bool:
-			if val {
-				*tags = append(*tags, "index")
-			}
-		case string:
-			if val != "" {
-				*tags = append(*tags, fmt.Sprintf("index:%s", val))
-			}
-		}
-	}
-
-	// Unique index handling: supports string and boolean values.
-	if v, ok := meta["uniqueIndex"]; ok {
-		switch val := v.(type) {
-		case bool:
-			if val {
-				*tags = append(*tags, "uniqueIndex")
-			}
-		case string:
-			if val != "" {
-				// Support multiple unique index names in one string, separated by whitespace.
-				// This matches TS decorator usage like: uniqueIndex: "idx_a idx_b" on a shared column.
-				for _, part := range strings.Fields(val) {
-					if part == "" {
-						continue
-					}
-					*tags = append(*tags, fmt.Sprintf("uniqueIndex:%s", part))
-				}
-			}
-		}
-	}
-
-	// Default value handling.
-	if v, ok := meta["default"]; ok {
-		switch val := v.(type) {
-		case string:
-			trimmed := strings.TrimSpace(val)
-			if trimmed != "" && !isJSFunctionDefaultLiteral(trimmed) {
-				trimmed = normalizeDefaultStringLiteral(trimmed)
-				*tags = append(*tags, fmt.Sprintf("default:%s", trimmed))
-			}
-		case bool, int, int32, int64, uint, uint32, uint64, float32, float64:
-			*tags = append(*tags, fmt.Sprintf("default:%v", val))
-		}
-	}
-
-	// CHECK constraint via gorm tag (helps MySQL/SQLite/SQLServer create it during migration).
-	// - Use `check:,<expr>` to force default naming: chk_<table>_<column>.
-	// - Normalize expressions to avoid SQL syntax errors caused by template quoting/whitespace.
-	if v, ok := meta["checkConstraint"].(string); ok {
-		expr := normalizeCheckExpr(v)
-		if expr != "" {
-			*tags = append(*tags, "check:,"+expr)
-		}
-	}
-}
-
 type ModelMigrator interface {
 	MigrateSchema() error
 	PlanSchema() (SchemaPlan, error)
-}
-
-type JoinTableMigrator interface {
-	MigrateJoinTables() error
 }
 
 type ForeignKeyMigrator interface {

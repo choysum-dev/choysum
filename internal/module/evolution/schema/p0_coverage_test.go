@@ -690,9 +690,9 @@ type fakeColumnType struct {
 	primaryKeySet        bool
 }
 
-func (f fakeColumnType) Name() string                      { return f.name }
-func (f fakeColumnType) DatabaseTypeName() string          { return f.dbType }
-func (f fakeColumnType) ColumnType() (string, bool)        { return f.dbType, true }
+func (f fakeColumnType) Name() string               { return f.name }
+func (f fakeColumnType) DatabaseTypeName() string   { return f.dbType }
+func (f fakeColumnType) ColumnType() (string, bool) { return f.dbType, true }
 func (f fakeColumnType) PrimaryKey() (bool, bool) {
 	if f.primaryKeySet {
 		return f.primaryKey, f.primaryKeyOK

@@ -205,8 +205,29 @@ func probeTableNonEmpty(db *gorm.DB, table string) (int64, error) {
 }
 
 func desiredTableNames(desired DesiredSchema) []string {
-	names := make([]string, 0, len(desired.Tables))
+	names := make([]string, 0, len(desired.Tables)+len(desired.JoinTables))
+	seen := map[string]struct{}{}
 	for table := range desired.Tables {
+		key := strings.ToLower(strings.TrimSpace(table))
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		names = append(names, table)
+	}
+	for _, jt := range desired.JoinTables {
+		table := strings.TrimSpace(jt.Table)
+		key := strings.ToLower(table)
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
 		names = append(names, table)
 	}
 	return names

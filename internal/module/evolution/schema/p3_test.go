@@ -1,0 +1,253 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package schema
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/pkg/meta"
+	"gorm.io/datatypes"
+)
+
+func TestDesired_JoinTableSpec(t *testing.T) {
+	user := &meta.Model{
+		Application: "auth",
+		Name:        "User",
+		ModelTable:  "auth_user",
+		Fields: []*meta.Field{
+			newFieldWithOptions(t, "Id", `{"type":"char","size":20}`),
+			newFieldWithOptions(t, "Roles", `{
+				"type":"ManyToMany",
+				"relation":{
+					"targetModel":"auth.Role",
+					"joinModel":"auth.UserRole",
+					"joinField":"UserId",
+					"inverseJoinField":"RoleId"
+				}
+			}`),
+		},
+	}
+	role := &meta.Model{
+		Application: "auth",
+		Name:        "Role",
+		ModelTable:  "auth_role",
+		Fields: []*meta.Field{
+			newFieldWithOptions(t, "Id", `{"type":"char","size":20}`),
+		},
+	}
+	userRole := &meta.Model{
+		Application: "auth",
+		Name:        "UserRole",
+		ModelTable:  "auth_user_role",
+		Fields: []*meta.Field{
+			newFieldWithOptions(t, "UserId", `{"type":"char","size":20,"indexed":true}`),
+			newFieldWithOptions(t, "RoleId", `{"type":"char","size":20,"indexed":true}`),
+		},
+	}
+
+	desired, err := buildDesired([]*meta.Model{user, role, userRole})
+	if err != nil {
+		t.Fatalf("buildDesired: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("JoinTables = %#v, want 1", desired.JoinTables)
+	}
+	jt := desired.JoinTables[0]
+	if jt.Table != "auth_user_role" {
+		t.Fatalf("join table = %q", jt.Table)
+	}
+	if jt.Left.Column != "user_id" || jt.Left.ReferTable != "auth_user" {
+		t.Fatalf("left = %#v", jt.Left)
+	}
+	if jt.Right.Column != "role_id" || jt.Right.ReferTable != "auth_role" {
+		t.Fatalf("right = %#v", jt.Right)
+	}
+	if len(desired.Tables["auth_user_role"]) != 2 {
+		t.Fatalf("join model columns = %#v", desired.Tables["auth_user_role"])
+	}
+
+	// Missing join model fails closed.
+	_, err = buildDesired([]*meta.Model{user, role})
+	if err == nil || !strings.Contains(err.Error(), "joinModel") {
+		t.Fatalf("expected missing joinModel error, got %v", err)
+	}
+}
+
+func TestPlan_CreateJoinTableNoOp(t *testing.T) {
+	cols := []ColumnSpec{
+		{Name: "user_id", FieldName: "UserId", PhysicalType: "varchar"},
+		{Name: "role_id", FieldName: "RoleId", PhysicalType: "varchar"},
+	}
+	desired := DesiredSchema{
+		Tables: map[string][]ColumnSpec{"auth_user_role": cols},
+		JoinTables: []JoinTableSpec{{
+			Table: "auth_user_role",
+			Left:  JoinEnd{Column: "user_id", ReferTable: "auth_user", ReferColumn: "id"},
+			Right: JoinEnd{Column: "role_id", ReferTable: "auth_role", ReferColumn: "id"},
+		}},
+	}
+
+	// Missing live table → create_table covers it; no create_join_table.
+	plan, err := buildPlan("auth", desired, LiveSchema{Tables: map[string]bool{}}, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
+	var createTable, createJoin bool
+	for _, op := range plan.Ops {
+		if op.Kind == OpCreateTable && op.Table == "auth_user_role" {
+			createTable = true
+		}
+		if op.Kind == OpCreateJoinTable {
+			createJoin = true
+		}
+	}
+	if !createTable || createJoin {
+		t.Fatalf("ops = %#v (want create_table only)", plan.Ops)
+	}
+
+	// Live table exists → neither create.
+	plan, err = buildPlan("auth", desired, LiveSchema{
+		Tables: map[string]bool{"auth_user_role": true},
+		Columns: map[string]map[string]LiveColumn{"auth_user_role": {
+			"user_id": {Name: "user_id", DatabaseTypeName: "TEXT"},
+			"role_id": {Name: "role_id", DatabaseTypeName: "TEXT"},
+		}},
+		Indexes: map[string][]LiveIndex{"auth_user_role": {}},
+	}, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan live: %v", err)
+	}
+	for _, op := range plan.Ops {
+		if op.Kind == OpCreateTable || op.Kind == OpCreateJoinTable {
+			t.Fatalf("unexpected create op %#v", op)
+		}
+	}
+
+	// JoinTables without columns fails.
+	_, err = buildPlan("auth", DesiredSchema{
+		Tables:     map[string][]ColumnSpec{},
+		JoinTables: []JoinTableSpec{{Table: "orphan_join"}},
+	}, LiveSchema{Tables: map[string]bool{}}, "sqlite")
+	if err == nil || !strings.Contains(err.Error(), "no desired columns") {
+		t.Fatalf("expected no-columns error, got %v", err)
+	}
+}
+
+func TestApply_CreateJoinTable(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	size := 20
+	cols := []ColumnSpec{
+		{Name: "user_id", FieldName: "UserId", PhysicalType: "varchar", Size: &size, Indexed: true},
+		{Name: "role_id", FieldName: "RoleId", PhysicalType: "varchar", Size: &size, Indexed: true},
+	}
+	plan := SchemaPlan{Ops: []PlanOp{{
+		Kind: OpCreateJoinTable, Safety: SafetyAuto, Table: "auth_user_role_apply",
+		Columns: cols,
+	}}}
+	if err := applyPlan(runtimeScope, "sqlite", plan); err != nil {
+		t.Fatalf("applyPlan: %v", err)
+	}
+	if !runtimeScope.Session().Migrator().HasTable("auth_user_role_apply") {
+		t.Fatal("expected join table created")
+	}
+	if !runtimeScope.Session().Migrator().HasColumn("auth_user_role_apply", "user_id") {
+		t.Fatal("expected user_id column")
+	}
+}
+
+func TestLeftover_ChoysumOwnedAndIntentFilter(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+
+	// Seed snapshot marking old_code as previously desired.
+	payload, _ := json.Marshal([]ColumnSpec{{Name: "code"}, {Name: "old_code"}})
+	if err := db.Create(&modmeta.SchemaSnapshot{
+		ModelTable:  "sales_owned",
+		DesiredJSON: datatypes.JSON(payload),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+
+	plan := SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverIndex, Table: "sales_owned", Name: "idx_sales_owned_code"},
+		{Kind: LeftoverIndex, Table: "sales_owned", Name: "custom_ix"},
+		{Kind: LeftoverColumn, Table: "sales_owned", Name: "old_code"},
+		{Kind: LeftoverColumn, Table: "sales_owned", Name: "stranger"},
+	}}
+	if err := markLeftoverOwnership(&plan, runtimeScope); err != nil {
+		t.Fatalf("markLeftoverOwnership: %v", err)
+	}
+	ownedIdx, unownedIdx, ownedCol, unownedCol := false, false, false, false
+	for _, left := range plan.Leftover {
+		switch {
+		case left.Kind == LeftoverIndex && left.Name == "idx_sales_owned_code":
+			ownedIdx = left.ChoysumOwned
+		case left.Kind == LeftoverIndex && left.Name == "custom_ix":
+			unownedIdx = !left.ChoysumOwned
+		case left.Kind == LeftoverColumn && left.Name == "old_code":
+			ownedCol = left.ChoysumOwned
+		case left.Kind == LeftoverColumn && left.Name == "stranger":
+			unownedCol = !left.ChoysumOwned
+		}
+	}
+	if !ownedIdx || !unownedIdx || !ownedCol || !unownedCol {
+		t.Fatalf("ownership flags wrong: %#v", plan.Leftover)
+	}
+
+	bag := NewMemoryIntentBag()
+	bag.Add(Intent{Kind: IntentDropColumn, Table: "sales_owned", Name: "old_code"})
+	filtered := filterIntentCoveredLeftovers(plan, bag)
+	for _, left := range filtered.Leftover {
+		if left.Kind == LeftoverColumn && left.Name == "old_code" {
+			t.Fatal("expected Intent-covered leftover column filtered out")
+		}
+	}
+	if len(filtered.Leftover) != 3 {
+		t.Fatalf("filtered leftovers = %#v", filtered.Leftover)
+	}
+}
+
+func TestEnsureTaskJobExecution_Path1(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if !runtimeScope.Session().Migrator().HasTable("task_job_execution") {
+		t.Fatal("expected table")
+	}
+	if !runtimeScope.Session().Migrator().HasColumn("task_job_execution", "job_id") {
+		t.Fatal("expected job_id")
+	}
+	// Idempotent when table exists.
+	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
+		t.Fatalf("re-ensure: %v", err)
+	}
+	// Add missing column path: drop one column then re-ensure.
+	if err := runtimeScope.Session().Exec(`ALTER TABLE task_job_execution DROP COLUMN result_hash`).Error; err != nil {
+		t.Fatalf("drop column: %v", err)
+	}
+	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
+		t.Fatalf("add missing: %v", err)
+	}
+	if !runtimeScope.Session().Migrator().HasColumn("task_job_execution", "result_hash") {
+		t.Fatal("expected result_hash restored")
+	}
+}
+
+func TestSaveSnapshots_MissingTable(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Migrator().DropTable(&modmeta.SchemaSnapshot{}); err != nil {
+		t.Fatalf("drop snapshot table: %v", err)
+	}
+	err := SaveSnapshots(db, DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {{Name: "c", PhysicalType: "varchar"}},
+	}}, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "meta_schema_snapshot missing") {
+		t.Fatalf("expected missing table error, got %v", err)
+	}
+}

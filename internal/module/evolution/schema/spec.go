@@ -16,12 +16,13 @@ const (
 type OpKind string
 
 const (
-	OpCreateTable  OpKind = "create_table"
-	OpAddColumn    OpKind = "add_column"
-	OpAlterColumn  OpKind = "alter_column"
-	OpAddIndex     OpKind = "add_index"
-	OpEnsureCheck  OpKind = "ensure_check"
-	OpRenameColumn OpKind = "rename_column"
+	OpCreateTable     OpKind = "create_table"
+	OpAddColumn       OpKind = "add_column"
+	OpAlterColumn     OpKind = "alter_column"
+	OpAddIndex        OpKind = "add_index"
+	OpEnsureCheck     OpKind = "ensure_check"
+	OpRenameColumn    OpKind = "rename_column"
+	OpCreateJoinTable OpKind = "create_join_table"
 )
 
 // StorageKind values mirror ResolvedSpec.Migration.StorageKind plus schema-side kinds.
@@ -59,7 +60,22 @@ type ColumnSpec struct {
 
 // DesiredSchema is the full desired DDL shape for models in one Migrate.
 type DesiredSchema struct {
-	Tables map[string][]ColumnSpec // model_table → columns
+	Tables     map[string][]ColumnSpec // model_table → columns
+	JoinTables []JoinTableSpec
+}
+
+// JoinEnd describes one side of a ManyToMany join table (FK ensure stays post-schema).
+type JoinEnd struct {
+	Column      string
+	ReferTable  string
+	ReferColumn string
+}
+
+// JoinTableSpec is a ManyToMany intermediate table to ensure (never auto-dropped).
+type JoinTableSpec struct {
+	Table string
+	Left  JoinEnd
+	Right JoinEnd
 }
 
 // LiveColumn is one inspected database column.
@@ -109,11 +125,12 @@ const (
 	LeftoverIndex  LeftoverKind = "index"
 )
 
-// Leftover is a live object not present in desired (never auto-dropped in P0/P1).
+// Leftover is a live object not present in desired (never auto-dropped).
 type Leftover struct {
-	Kind  LeftoverKind
-	Table string
-	Name  string
+	Kind         LeftoverKind
+	Table        string
+	Name         string
+	ChoysumOwned bool // idx_/chk_/ck_/fk_ prefix, or column seen in schema snapshot
 }
 
 // SchemaPlan is the diff between desired and live.
