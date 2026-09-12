@@ -26,6 +26,7 @@ func TestSchemaPlanModuleName(t *testing.T) {
 		{"auth", "auth"},
 		{"auth@1.2.3", "auth"},
 		{"  sales@latest  ", "sales"},
+		{"@scoped", "@scoped"},
 		{"", ""},
 	}
 	for _, tt := range tests {
@@ -38,8 +39,13 @@ func TestSchemaPlanModuleName(t *testing.T) {
 func TestPrintSchemaPlan(t *testing.T) {
 	printSchemaPlan(nil, "m", schema.SchemaPlan{}, nil)
 	env := &schemaPlanTestScope{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	col := &schema.ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar"}
 	printSchemaPlan(env, "m", schema.SchemaPlan{
-		Ops:      []schema.PlanOp{{Kind: schema.OpCreateTable, Safety: schema.SafetyAuto, Table: "t", Detail: "create"}},
+		Ops: []schema.PlanOp{
+			{Kind: schema.OpCreateTable, Safety: schema.SafetyAuto, Table: "t", Detail: "create"},
+			{Kind: schema.OpAlterColumn, Safety: schema.SafetyGuarded, Table: "t", Detail: "change column default", Column: col},
+			{Kind: schema.OpAddIndex, Safety: schema.SafetyGuarded, Table: "t", Detail: "add unique index", IndexName: "idx_code", Column: col},
+		},
 		Leftover: []schema.Leftover{{Kind: schema.LeftoverColumn, Table: "t", Name: "old"}},
 	}, errors.New("guarded"))
 	printSchemaPlan(&schemaPlanTestScope{}, "m", schema.SchemaPlan{}, nil)
@@ -107,6 +113,9 @@ func TestSchemaPlanItemsFromArgs(t *testing.T) {
 }
 
 func TestRunUpgradeSchemaPlan(t *testing.T) {
+	if code := runUpgradeSchemaPlan(context.Background(), nil, []string{"auth"}); code != 1 {
+		t.Fatalf("nil env exit = %d", code)
+	}
 	env := &schemaPlanTestScope{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	if code := runUpgradeSchemaPlan(context.Background(), env, []string{"  "}); code != 1 {
 		t.Fatalf("empty args exit = %d", code)
@@ -118,6 +127,23 @@ func TestRunUpgradeSchemaPlan(t *testing.T) {
 	// Valid name reaches SchemaPlan (fails without DB session) and returns non-zero.
 	if code := runUpgradeSchemaPlan(context.Background(), env, []string{"auth@latest"}); code != 1 {
 		t.Fatalf("schema plan without DB exit = %d", code)
+	}
+}
+
+func TestUpgradeCommandCompatVersionError(t *testing.T) {
+	var gotCode int
+	origExit := upgradeExit
+	upgradeExit = func(code int) { gotCode = code }
+	t.Cleanup(func() { upgradeExit = origExit })
+
+	env := &schemaPlanTestScope{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	cmd := newUpgradeCmd(func() scope.Scope { return env })
+	cmd.SetArgs([]string{"--cli-compat-version", "not-a-semver", "auth"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if gotCode != 1 {
+		t.Fatalf("exit code = %d, want 1", gotCode)
 	}
 }
 

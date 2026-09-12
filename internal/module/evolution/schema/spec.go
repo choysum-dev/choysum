@@ -72,9 +72,10 @@ type LiveColumn struct {
 
 // LiveIndex is one inspected database index.
 type LiveIndex struct {
-	Name    string
-	Columns []string
-	Unique  bool
+	Name       string
+	Columns    []string
+	Unique     bool
+	PrimaryKey bool
 }
 
 // LiveSchema is inspected live state for relevant tables.

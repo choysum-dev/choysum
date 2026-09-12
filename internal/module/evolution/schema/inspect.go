@@ -70,10 +70,15 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 			if u, ok := idx.Unique(); ok {
 				unique = u
 			}
+			primaryKey := false
+			if pk, ok := idx.PrimaryKey(); ok {
+				primaryKey = pk
+			}
 			live.Indexes[table] = append(live.Indexes[table], LiveIndex{
-				Name:    name,
-				Columns: cols,
-				Unique:  unique,
+				Name:       name,
+				Columns:    cols,
+				Unique:     unique,
+				PrimaryKey: primaryKey,
 			})
 		}
 

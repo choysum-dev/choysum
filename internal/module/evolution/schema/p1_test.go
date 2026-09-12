@@ -333,16 +333,15 @@ func TestIndexCandidateUsesFieldLookup(t *testing.T) {
 }
 
 func TestIndexCoveredByDesiredKey_AllColumns(t *testing.T) {
-	keys := map[string]struct{}{"code": {}}
+	keys := map[string]struct{}{"code": {}, "tenant_id": {}}
 	if indexCoveredByDesiredKey(LiveIndex{Columns: nil}, keys) {
 		t.Fatal("empty columns")
 	}
 	if indexCoveredByDesiredKey(LiveIndex{Columns: []string{"tenant_id", "code"}}, keys) {
-		t.Fatal("partial composite must not be covered")
+		t.Fatal("composite must not be covered by independent single-column keys")
 	}
-	keys["tenant_id"] = struct{}{}
-	if !indexCoveredByDesiredKey(LiveIndex{Columns: []string{"tenant_id", "code"}}, keys) {
-		t.Fatal("all columns covered")
+	if !indexCoveredByDesiredKey(LiveIndex{Columns: []string{"code"}}, keys) {
+		t.Fatal("single-column covered")
 	}
 }
 
@@ -351,9 +350,17 @@ func TestDefaultChanged_SentinelLiveDefaults(t *testing.T) {
 	if defaultChanged(ColumnSpec{}, LiveColumn{Default: &nullLive}) {
 		t.Fatal("NULL sentinel")
 	}
-	ts := "CURRENT_TIMESTAMP"
+	ts := "CURRENT_TIMESTAMP(6)"
 	if defaultChanged(ColumnSpec{}, LiveColumn{Default: &ts}) {
 		t.Fatal("timestamp sentinel")
+	}
+	seq := "nextval('sales_id_seq'::regclass)"
+	if defaultChanged(ColumnSpec{}, LiveColumn{Default: &seq}) {
+		t.Fatal("nextval sentinel")
+	}
+	now := "now()"
+	if defaultChanged(ColumnSpec{}, LiveColumn{Default: &now}) {
+		t.Fatal("now() sentinel")
 	}
 	real := "hello"
 	if !defaultChanged(ColumnSpec{}, LiveColumn{Default: &real}) {
@@ -703,6 +710,67 @@ func TestPlan_LeftoverIndexAndCovered(t *testing.T) {
 	}
 	if !foundExtra || !foundStale {
 		t.Fatalf("expected leftover idx_extra and idx_note_stale, got %#v", plan.Leftover)
+	}
+}
+
+func TestPlan_LeftoverSkipsPrimaryKey(t *testing.T) {
+	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar"}},
+	}}
+	live := LiveSchema{
+		Tables:  map[string]bool{"t": true},
+		Columns: map[string]map[string]LiveColumn{"t": {"code": {Name: "code", DatabaseTypeName: "varchar"}}},
+		Indexes: map[string][]LiveIndex{"t": {
+			{Name: "t_pkey", Columns: []string{"id"}, Unique: true, PrimaryKey: true},
+			{Name: "sqlite_autoindex_t_2", Columns: []string{"id"}, Unique: true},
+		}},
+	}
+	plan := buildPlan("sales", desired, live, "postgres")
+	if len(plan.Leftover) != 0 {
+		t.Fatalf("pk/autoindex must not be leftover: %#v", plan.Leftover)
+	}
+}
+
+func TestApplyPlan_RejectsNonWidenAlter(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
+		Kind: OpAlterColumn, Safety: SafetyAuto, Table: "t", Detail: "change column default",
+		Column: &ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar"},
+	}}})
+	if err == nil || !strings.Contains(err.Error(), "not an auto widen") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestEnsureIndexes_ReplacesNonUniqueWithUnique(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE uniq_replace (code text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE INDEX idx_code ON uniq_replace (code)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	col := ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true, UniqueIndexNames: []string{"idx_code"}}
+	if err := ensureIndexesForColumn(db, "uniq_replace", col, "sqlite"); err != nil {
+		t.Fatal(err)
+	}
+	indexes, err := sqliteGetIndexes(db, "uniq_replace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundUnique := false
+	for _, idx := range indexes {
+		if !strings.EqualFold(idx.Name(), "idx_code") {
+			continue
+		}
+		u, ok := idx.Unique()
+		if ok && u {
+			foundUnique = true
+		}
+	}
+	if !foundUnique {
+		t.Fatalf("expected unique idx_code, got %#v", indexes)
 	}
 }
 

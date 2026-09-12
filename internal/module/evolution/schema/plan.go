@@ -102,8 +102,8 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 			if indexCoveredByDesiredKey(idx, desiredIndexKeys) {
 				continue
 			}
-			// Skip automatic primary-key / sqlite internal names from leftover noise when possible.
-			if strings.EqualFold(idxName, "sqlite_autoindex_"+table+"_1") {
+			// Skip primary-key / sqlite autoindex leftovers (informational noise).
+			if idx.PrimaryKey || strings.HasPrefix(strings.ToLower(idxName), "sqlite_autoindex_") {
 				continue
 			}
 			plan.Leftover = append(plan.Leftover, Leftover{
@@ -243,15 +243,14 @@ func liveHasIndex(live LiveSchema, table, name string, wantUnique bool) bool {
 }
 
 func indexCoveredByDesiredKey(idx LiveIndex, desiredIndexKeys map[string]struct{}) bool {
-	if len(idx.Columns) == 0 {
+	// Composites only match by index name (handled by the caller). Column-key
+	// coverage applies only to exact single-column indexes so a desired pair of
+	// single-column indexes does not swallow a stale (a,b) composite.
+	if len(idx.Columns) != 1 {
 		return false
 	}
-	for _, col := range idx.Columns {
-		if _, ok := desiredIndexKeys[strings.ToLower(strings.TrimSpace(col))]; !ok {
-			return false
-		}
-	}
-	return true
+	_, ok := desiredIndexKeys[strings.ToLower(strings.TrimSpace(idx.Columns[0]))]
+	return ok
 }
 
 type columnDiff struct {
@@ -308,19 +307,17 @@ func columnDiffs(desired ColumnSpec, live LiveColumn, dialect string) []columnDi
 func defaultChanged(desired ColumnSpec, live LiveColumn) bool {
 	if desired.Default == nil {
 		// Desired removed an explicit default while live still has one.
-		if live.Default == nil {
-			return false
-		}
-		switch strings.ToLower(strings.TrimSpace(*live.Default)) {
-		case "", "null", "current_timestamp", "getdate()":
-			// Dialect sentinel / blank: treat as absent rather than a real default.
+		if live.Default == nil || isAbsentLiveDefault(*live.Default) {
 			return false
 		}
 		return true
 	}
 	want := strings.TrimSpace(*desired.Default)
 	if want == "" {
-		return live.Default != nil
+		if live.Default == nil || isAbsentLiveDefault(*live.Default) {
+			return false
+		}
+		return true
 	}
 	if live.Default == nil {
 		// Unknown live default: do not fail closed (dialects often omit default metadata).
@@ -328,6 +325,25 @@ func defaultChanged(desired ColumnSpec, live LiveColumn) bool {
 	}
 	have := strings.TrimSpace(*live.Default)
 	return !strings.EqualFold(normalizeDefaultLiteral(want), normalizeDefaultLiteral(have))
+}
+
+// isAbsentLiveDefault reports dialect/engine sentinel defaults that are not an
+// application-authored ColumnSpec.Default (so MigrateSchema is not permanently blocked).
+func isAbsentLiveDefault(v string) bool {
+	s := strings.ToLower(strings.TrimSpace(v))
+	if s == "" || s == "null" {
+		return true
+	}
+	if strings.HasPrefix(s, "nextval(") {
+		return true
+	}
+	if strings.HasPrefix(s, "current_timestamp") || s == "current_date" || s == "current_time" {
+		return true
+	}
+	if strings.HasPrefix(s, "getdate(") || strings.HasPrefix(s, "now(") || strings.HasPrefix(s, "localtimestamp") {
+		return true
+	}
+	return false
 }
 
 func normalizeDefaultLiteral(v string) string {

@@ -77,7 +77,8 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			resolvedCompat, err := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
 			if err != nil {
 				env.Logger().Error("module compatibility version resolution failed", "error", err)
-				os.Exit(1)
+				upgradeExit(1)
+				return
 			}
 			runtimeOptions := cliruntime.OptionsFromScope(env)
 
@@ -222,9 +223,12 @@ func schemaPlanItemsFromArgs(args []string) ([]upgradePlanItem, error) {
 }
 
 func runUpgradeSchemaPlan(ctx context.Context, env scope.Scope, args []string) int {
+	if env == nil {
+		return 1
+	}
 	plans, err := schemaPlanItemsFromArgs(args)
 	if err != nil {
-		if env != nil && env.Logger() != nil {
+		if env.Logger() != nil {
 			attrs := []any{"error", err}
 			attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
 			env.Logger().Error("module upgrade failed", attrs...)
@@ -250,7 +254,9 @@ func executeSchemaPlanOnly(ctx context.Context, env scope.Scope, moduleLifecycle
 
 func schemaPlanModuleName(input string) string {
 	input = strings.TrimSpace(input)
-	if i := strings.Index(input, "@"); i >= 0 {
+	// Only strip a version suffix (name@version). Leading @ scoped names are left intact
+	// for a clear empty-name error rather than silently truncating to "".
+	if i := strings.LastIndex(input, "@"); i > 0 {
 		return strings.TrimSpace(input[:i])
 	}
 	return input
@@ -270,13 +276,20 @@ func printSchemaPlan(env scope.Scope, moduleName string, plan schema.SchemaPlan,
 		"leftover", len(plan.Leftover),
 	)
 	for _, op := range plan.Ops {
-		logger.Info("schema-plan op",
+		attrs := []any{
 			"module", moduleName,
 			"kind", string(op.Kind),
 			"safety", string(op.Safety),
 			"table", op.Table,
 			"detail", op.Detail,
-		)
+		}
+		if op.Column != nil && strings.TrimSpace(op.Column.Name) != "" {
+			attrs = append(attrs, "column", op.Column.Name)
+		}
+		if strings.TrimSpace(op.IndexName) != "" {
+			attrs = append(attrs, "index", op.IndexName)
+		}
+		logger.Info("schema-plan op", attrs...)
 	}
 	for _, left := range plan.Leftover {
 		logger.Info("schema-plan leftover",

@@ -53,6 +53,9 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			if op.Column == nil {
 				return fmt.Errorf("alter_column missing column for table %s", op.Table)
 			}
+			if !strings.Contains(strings.ToLower(op.Detail), "widen size") {
+				return fmt.Errorf("alter_column %s.%s is not an auto widen (%s)", op.Table, op.Column.Name, op.Detail)
+			}
 			if err := applyAlterColumnWiden(db.DB, op.Table, *op.Column, dialect); err != nil {
 				return fmt.Errorf("alter column %s.%s: %w", op.Table, op.Column.Name, err)
 			}
@@ -152,13 +155,43 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 	mig := db.Table(table).Migrator()
 	for _, cand := range indexLookupCandidates(col) {
 		if mig.HasIndex(inst, cand.Name) {
-			continue
+			if !cand.Unique {
+				continue
+			}
+			unique, err := liveIndexUnique(db, table, cand.Name)
+			if err != nil {
+				return err
+			}
+			if unique {
+				continue
+			}
+			// Same name exists but is non-unique; replace so the unique requirement is enforced.
+			if err := mig.DropIndex(inst, cand.Name); err != nil {
+				return fmt.Errorf("drop non-unique index %s on %s.%s: %w", cand.Name, table, col.Name, err)
+			}
 		}
 		if err := mig.CreateIndex(inst, cand.Name); err != nil {
 			return fmt.Errorf("create index %s on %s.%s: %w", cand.Name, table, col.Name, err)
 		}
 	}
 	return nil
+}
+
+func liveIndexUnique(db *gorm.DB, table, indexName string) (bool, error) {
+	indexes, err := getIndexes(db, table)
+	if err != nil {
+		return false, fmt.Errorf("inspect indexes for %s: %w", table, err)
+	}
+	for _, idx := range indexes {
+		if idx == nil || !strings.EqualFold(strings.TrimSpace(idx.Name()), indexName) {
+			continue
+		}
+		if u, ok := idx.Unique(); ok {
+			return u, nil
+		}
+		return false, nil
+	}
+	return false, nil
 }
 
 type indexNameCandidate struct {

@@ -107,7 +107,7 @@ func TestApplyPlan_AlterWidenAndIndexCheckErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
-		Kind: OpAlterColumn, Safety: SafetyAuto, Table: "widen_tbl",
+		Kind: OpAlterColumn, Safety: SafetyAuto, Table: "widen_tbl", Detail: "widen size 8 → 32",
 		Column: &ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", Size: intPtrValue(32), NotNull: true},
 	}}}); err != nil {
 		t.Logf("sqlite alter widen: %v", err)
@@ -128,7 +128,7 @@ func TestApplyPlan_AlterWidenAndIndexCheckErrors(t *testing.T) {
 		t.Fatalf("missing check: %v", err)
 	}
 	if err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
-		Kind: OpAlterColumn, Safety: SafetyAuto, Table: "widen_tbl",
+		Kind: OpAlterColumn, Safety: SafetyAuto, Table: "widen_tbl", Detail: "widen size 8 → 32",
 		Column: &ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "nope"},
 	}}}); err == nil || !strings.Contains(err.Error(), "alter column") {
 		t.Fatalf("alter wrap: %v", err)
