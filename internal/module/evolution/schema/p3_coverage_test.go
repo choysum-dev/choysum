@@ -91,6 +91,27 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		t.Fatal("same model pointer twice should keep unqualified key")
 	}
 
+	if modelEligibleForSchemaMigrate(nil) {
+		t.Fatal("nil model must be ineligible")
+	}
+	if modelMatchesRef(nil, "UserRole") {
+		t.Fatal("nil model must not match")
+	}
+	if modelMatchesRef(&meta.Model{Name: "UserRole"}, "=>") {
+		t.Fatal("empty normalized ref must not match")
+	}
+	if !modelMatchesRef(&meta.Model{Application: "auth", Name: "UserRole"}, "auth.UserRole") {
+		t.Fatal("qualified ref must match")
+	}
+	ambiguousKey := map[string]*meta.Model{"userrole": nil}
+	if resolveJoinOrTargetModelRef(ambiguousKey, nil, "=>") != nil {
+		t.Fatal("empty ref after normalize must be nil")
+	}
+	onlyRO := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role", Readonly: true}
+	if got := resolveJoinOrTargetModelRef(ambiguousKey, []*meta.Model{onlyRO}, "UserRole"); got != onlyRO {
+		t.Fatalf("unique ineligible under ambiguous key: got %#v", got)
+	}
+
 	// Explicit ManyToMany without joinModel fails closed.
 	noJoin := &meta.Model{
 		Application: "auth", Name: "User", ModelTable: "auth_user",
@@ -155,6 +176,36 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	}
 	if len(desired.JoinTables) != 0 {
 		t.Fatalf("disabled join should skip, got %#v", desired.JoinTables)
+	}
+
+	// Active join + readonly same unqualified name: resolve among eligible only.
+	unqualActiveRO := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "UserRole", "UserId", "RoleId", "auth.Role")},
+	}
+	authJoinActive := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	salesJoinRO := &meta.Model{Application: "sales", Name: "UserRole", ModelTable: "sales_user_role", Readonly: true}
+	roleForElig := &meta.Model{Application: "auth", Name: "Role", ModelTable: "auth_role"}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"}},
+	}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{unqualActiveRO, authJoinActive, salesJoinRO, roleForElig}); err != nil {
+		t.Fatalf("active+readonly join resolve: %v", err)
+	}
+	if len(desired.JoinTables) != 1 || desired.JoinTables[0].Table != "auth_user_role" {
+		t.Fatalf("expected auth join only, got %#v", desired.JoinTables)
+	}
+
+	// Active join + AutoMigrate=false same unqualified name: resolve among eligible only.
+	salesJoinOff := &meta.Model{Application: "sales", Name: "UserRole", ModelTable: "sales_user_role", AutoMigrate: &falseAM}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"}},
+	}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{unqualActiveRO, authJoinActive, salesJoinOff, roleForElig}); err != nil {
+		t.Fatalf("active+disabled join resolve: %v", err)
+	}
+	if len(desired.JoinTables) != 1 || desired.JoinTables[0].Table != "auth_user_role" {
+		t.Fatalf("expected auth join only with disabled peer, got %#v", desired.JoinTables)
 	}
 
 	joinOK := &meta.Model{

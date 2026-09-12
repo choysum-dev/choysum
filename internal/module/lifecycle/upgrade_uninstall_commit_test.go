@@ -166,11 +166,43 @@ func TestRunUpgradeCommitTX_WithAndWithoutManager(t *testing.T) {
 	closedInst := &moduleInstaller{module: closedTarget, runtimeScope: closedScope, moduleManager: mgr, ctx: newOpContext()}
 	sentinel := &module.BuildResult{}
 	buildResult = sentinel
-	if err := closedUp.runUpgradeCommitTX(closedScope, nil, closedInst, "1.0.0", &buildResult, false); err == nil {
-		t.Fatal("expected closed-db commit error")
+	origDeps := replaceModuleDependenciesFn
+	t.Cleanup(func() { replaceModuleDependenciesFn = origDeps })
+	replaceModuleDependenciesFn = func(*scope.Session, *meta.Module) error {
+		return errors.New("dep replace boom")
+	}
+	closedTarget.Dependencies = []*meta.Module{{
+		Name: "dep_for_fail", Version: "1.0.0", Status: meta.Installed, Path: t.TempDir(),
+	}}
+	closedTarget.Dependencies[0].Id = sql.NullString{String: xid.New().String(), Valid: true}
+	// Use a live scope so Required enters the callback; fail inside commitUpgrade.
+	liveScope := newLifecycleCommitTestScope(t)
+	liveMod := &meta.Module{
+		Name: "upgrade_tx_noclobber", Version: "1.0.0", Status: meta.Installed,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	liveMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := liveScope.Session().Create(liveMod).Error; err != nil {
+		t.Fatal(err)
+	}
+	liveTarget := &meta.Module{
+		Name: liveMod.Name, Version: "2.0.0", Status: meta.Installed,
+		Path: liveMod.Path, ApplicationStr: "auth",
+		Dependencies: closedTarget.Dependencies,
+	}
+	liveTarget.Id = liveMod.Id
+	liveUp := &moduleUpgrader{runtimeScope: liveScope, module: liveMod, moduleManager: mgr, ctx: newOpContext()}
+	liveInst := &moduleInstaller{module: liveTarget, runtimeScope: liveScope, moduleManager: mgr, ctx: newOpContext()}
+	if err := liveUp.runUpgradeCommitTX(liveScope, nil, liveInst, "1.0.0", &buildResult, false); err == nil {
+		t.Fatal("expected upgrade commit error")
 	}
 	if buildResult != sentinel {
-		t.Fatal("failed upgrade commit must not clobber prepared build result")
+		t.Fatal("failed upgrade commit must not publish build result")
+	}
+
+	buildResult = nil
+	if err := closedUp.runUpgradeCommitTX(closedScope, nil, closedInst, "1.0.0", &buildResult, false); err == nil {
+		t.Fatal("expected closed-db commit error")
 	}
 
 	if err := (*moduleUpgrader)(nil).upgradeAfterPrepare(installer, "1.0.0", nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {

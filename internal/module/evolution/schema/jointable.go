@@ -46,12 +46,12 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 				}
 				continue
 			}
-			joinModel := resolveModelRef(byKey, joinRef)
+			joinModel := resolveJoinOrTargetModelRef(byKey, models, joinRef)
 			if joinModel == nil {
 				return fmt.Errorf("ManyToMany %s.%s joinModel %q not found (or ambiguous) among migrate models; qualify as application.ModelName",
 					model.Name, field.Name, joinRef)
 			}
-			if joinModel.Readonly || (joinModel.AutoMigrate != nil && !*joinModel.AutoMigrate) {
+			if !modelEligibleForSchemaMigrate(joinModel) {
 				continue
 			}
 			joinTable := strings.TrimSpace(joinModel.ModelTable)
@@ -86,7 +86,7 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 			}
 			referRight := ""
 			if targetRef != "" {
-				target := resolveModelRef(byKey, targetRef)
+				target := resolveJoinOrTargetModelRef(byKey, models, targetRef)
 				if target == nil {
 					return fmt.Errorf("ManyToMany %s.%s targetModel %q not found among migrate models",
 						model.Name, field.Name, targetRef)
@@ -259,6 +259,73 @@ func indexModelsByKey(models []*meta.Model) map[string]*meta.Model {
 		}
 	}
 	return out
+}
+
+func modelEligibleForSchemaMigrate(model *meta.Model) bool {
+	if model == nil || model.Readonly {
+		return false
+	}
+	if model.AutoMigrate != nil && !*model.AutoMigrate {
+		return false
+	}
+	return true
+}
+
+func modelMatchesRef(model *meta.Model, ref string) bool {
+	if model == nil {
+		return false
+	}
+	ref = normalizeModelRefLiteral(ref)
+	if ref == "" {
+		return false
+	}
+	name := strings.TrimSpace(model.Name)
+	app := strings.TrimSpace(model.Application)
+	lower := strings.ToLower(ref)
+	if name != "" && strings.ToLower(name) == lower {
+		return true
+	}
+	if app != "" && name != "" && strings.ToLower(app+"."+name) == lower {
+		return true
+	}
+	return false
+}
+
+// resolveJoinOrTargetModelRef resolves a join/target model ref.
+// When the unqualified/qualified key is ambiguous across all models, prefer the
+// unique eligible (non-readonly, AutoMigrate≠false) match. A uniquely matched
+// ineligible model is still returned so callers can skip it without erroring.
+func resolveJoinOrTargetModelRef(byKey map[string]*meta.Model, models []*meta.Model, ref string) *meta.Model {
+	if m := resolveModelRef(byKey, ref); m != nil {
+		return m
+	}
+	norm := normalizeModelRefLiteral(ref)
+	if norm == "" {
+		return nil
+	}
+	key := strings.ToLower(norm)
+	if _, marked := byKey[key]; !marked {
+		return nil
+	}
+	// Key present with nil value: ambiguous among the full set — narrow to eligible.
+	var eligible []*meta.Model
+	var anyMatch []*meta.Model
+	for _, model := range models {
+		if !modelMatchesRef(model, norm) {
+			continue
+		}
+		anyMatch = append(anyMatch, model)
+		if modelEligibleForSchemaMigrate(model) {
+			eligible = append(eligible, model)
+		}
+	}
+	if len(eligible) == 1 {
+		return eligible[0]
+	}
+	if len(eligible) == 0 && len(anyMatch) == 1 {
+		return anyMatch[0]
+	}
+	return nil
 }
 
 func resolveModelRef(byKey map[string]*meta.Model, ref string) *meta.Model {

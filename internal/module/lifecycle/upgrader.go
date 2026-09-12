@@ -206,19 +206,25 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 	if installer == nil || installer.module == nil {
 		return xfmt.Errorf("upgrade commit installer is nil")
 	}
-	return runWithLeaseRenewPaused(m.moduleManager, func() error {
+	var committedResult *module.BuildResult
+	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
 		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 			committed := installer.forCommitScope(txScope)
 			upgrader := *m
 			upgrader.runtimeScope = txScope
-			result, err := upgrader.commitUpgrade(committed, fromVersion, *buildResult, persistLater)
-			if err != nil {
-				return err
+			result, commitErr := upgrader.commitUpgrade(committed, fromVersion, *buildResult, persistLater)
+			if commitErr != nil {
+				return commitErr
 			}
-			*buildResult = result
+			committedResult = result
 			return nil
 		})
 	})
+	if err != nil {
+		return err
+	}
+	*buildResult = committedResult
+	return nil
 }
 
 func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion string, buildResult *module.BuildResult, persistLater bool) (*module.BuildResult, error) {

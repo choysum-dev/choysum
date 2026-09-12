@@ -35,6 +35,17 @@ func TestMigrateSchema_JoinTableEndToEnd(t *testing.T) {
 	if !runtimeScope.Session().Migrator().HasTable("auth_user_role") {
 		t.Fatal("expected join table created via Validate+apply")
 	}
+	var joinIdxCount int
+	if err := runtimeScope.Session().Raw(
+		`SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name='auth_user_role' AND sql LIKE '%user_id%'`,
+	).Scan(&joinIdxCount).Error; err != nil || joinIdxCount < 1 {
+		t.Fatalf("expected join-table index on user_id, count=%d err=%v", joinIdxCount, err)
+	}
+	if err := runtimeScope.Session().Raw(
+		`SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name='auth_user_role' AND sql LIKE '%role_id%'`,
+	).Scan(&joinIdxCount).Error; err != nil || joinIdxCount < 1 {
+		t.Fatalf("expected join-table index on role_id, count=%d err=%v", joinIdxCount, err)
+	}
 	if !runtimeScope.Session().Migrator().HasTable("auth_user") || !runtimeScope.Session().Migrator().HasTable("auth_role") {
 		t.Fatal("expected parent tables")
 	}

@@ -165,16 +165,22 @@ func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Con
 	if buildResult == nil {
 		return xfmt.Errorf("build result slot is nil")
 	}
-	return runWithLeaseRenewPaused(m.moduleManager, func() error {
+	var committedResult *module.BuildResult
+	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
 		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-			result, err := m.forCommitScope(txScope).commitInstall(*buildResult, persistLater)
-			if err != nil {
-				return err
+			result, commitErr := m.forCommitScope(txScope).commitInstall(*buildResult, persistLater)
+			if commitErr != nil {
+				return commitErr
 			}
-			*buildResult = result
+			committedResult = result
 			return nil
 		})
 	})
+	if err != nil {
+		return err
+	}
+	*buildResult = committedResult
+	return nil
 }
 
 func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
@@ -251,7 +257,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
 
-	migrator, err := schema.NewMigrator(m.runtimeScope, m.module)
+	migrator, err := newInstallSchemaMigrator(m.runtimeScope, m.module)
 	if err != nil {
 		return nil, xfmt.Errorf("error preparing schema migrator: %w", err)
 	}
@@ -274,7 +280,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	saveStarted := time.Now()
 	m.module.Status = meta.Installed
 	if len(m.module.Dependencies) > 0 {
-		if err := m.runtimeScope.Session().Model(m.module).Association("Dependencies").Replace(m.module.Dependencies); err != nil {
+		if err := replaceModuleDependenciesFn(m.runtimeScope.Session(), m.module); err != nil {
 			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}
@@ -372,6 +378,8 @@ func runInstallHookPhase(
 var (
 	hooksNewRunner             = hooks.NewRunner
 	hooksScriptFromBuildResult = hooks.ScriptFromBuildResult
+	newInstallSchemaMigrator   = schema.NewMigrator
+	installerScheduleDBFn      = installerScheduleDB
 )
 
 func installerScheduleDB(runtimeScope scope.Scope) (*gorm.DB, error) {
@@ -389,7 +397,7 @@ func installerScheduleDB(runtimeScope scope.Scope) (*gorm.DB, error) {
 }
 
 func disableLegacyModuleIndexDailySchedule(runtimeScope scope.Scope) error {
-	db, err := installerScheduleDB(runtimeScope)
+	db, err := installerScheduleDBFn(runtimeScope)
 	if err != nil {
 		return err
 	}
@@ -400,7 +408,7 @@ func disableLegacyModuleIndexDailySchedule(runtimeScope scope.Scope) error {
 }
 
 func ensureDocumentAttachmentGCSchedule(runtimeScope scope.Scope) error {
-	db, err := installerScheduleDB(runtimeScope)
+	db, err := installerScheduleDBFn(runtimeScope)
 	if err != nil {
 		return err
 	}
