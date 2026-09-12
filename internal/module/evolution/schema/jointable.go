@@ -178,11 +178,14 @@ func fieldIsExplicitManyToMany(field *meta.Field) bool {
 	if field == nil {
 		return false
 	}
-	if strings.EqualFold(strings.TrimSpace(field.Relation), "ManyToMany") {
-		return true
-	}
 	spec, err := field.GetResolvedSpec()
-	if err != nil || spec == nil {
+	if err != nil {
+		// Unparseable resolved spec: Relation is the only signal left for fail-closed checks.
+		return strings.EqualFold(strings.TrimSpace(field.Relation), "ManyToMany")
+	}
+	if spec == nil {
+		// No resolved spec yet — do not treat Relation alone as explicit M2M.
+		// ManyToManyRef fields may also carry Relation=ManyToMany.
 		return false
 	}
 	return strings.EqualFold(strings.TrimSpace(spec.Structural.FieldType), "ManyToMany")

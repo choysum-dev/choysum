@@ -112,16 +112,30 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if fieldIsExplicitManyToMany(nil) || fieldIsExplicitManyToMany(&meta.Field{}) {
 		t.Fatal("fieldIsExplicitManyToMany nil/empty")
 	}
-	if !fieldIsExplicitManyToMany(&meta.Field{Relation: "ManyToMany"}) {
-		t.Fatal("Relation ManyToMany should be explicit even without resolved spec")
+	if fieldIsExplicitManyToMany(&meta.Field{Relation: "ManyToMany"}) {
+		t.Fatal("Relation alone without resolved spec must not be treated as explicit M2M")
+	}
+	badSpec := &meta.Field{Name: "Roles", Relation: "ManyToMany", ResolvedSpec: "{not-json"}
+	if !fieldIsExplicitManyToMany(badSpec) {
+		t.Fatal("unparseable resolved spec with Relation=ManyToMany should fail closed")
 	}
 	relOnly := &meta.Model{
 		Application: "auth", Name: "User", ModelTable: "auth_user",
-		Fields: []*meta.Field{{Name: "Roles", Relation: "ManyToMany"}},
+		Fields: []*meta.Field{badSpec},
 	}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
 	if err := appendJoinTablesFromModels(&desired, []*meta.Model{relOnly}); err == nil || !strings.Contains(err.Error(), "missing joinModel") {
-		t.Fatalf("Relation ManyToMany without joinModel: %v", err)
+		t.Fatalf("unparseable ManyToMany without joinModel: %v", err)
+	}
+	// ManyToManyRef must not fail closed even if Relation looks like ManyToMany.
+	refWithRel := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{newFieldWithOptions(t, "CompanyIds", `{"type":"ManyToManyRef","relation":{"targetModel":"base.Company"}}`)},
+	}
+	refWithRel.Fields[0].Relation = "ManyToMany"
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{refWithRel}); err != nil {
+		t.Fatalf("ManyToManyRef with Relation=ManyToMany: %v", err)
 	}
 
 	joinNoCols := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
