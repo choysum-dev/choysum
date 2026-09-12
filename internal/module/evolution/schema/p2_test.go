@@ -15,13 +15,17 @@ func TestIntentBag_AddListClear(t *testing.T) {
 	bag.Add(
 		Intent{Kind: IntentDropColumn, Table: "t", Name: "old_code"},
 		Intent{Kind: "", Table: "t", Name: "skip"},
+		Intent{Kind: IntentDropColumn, Table: "", Name: "no_table"},
+		Intent{Kind: IntentDropColumn, Table: "t", Name: ""},
+		Intent{Kind: IntentRenameColumn, Table: "t", FromName: "old", Name: "new"},
+		Intent{Kind: IntentRenameColumn, Table: "t", FromName: "", Name: "new"},
 		Intent{Kind: IntentDropIndex, Table: " t ", Name: " idx_t_code "},
 	)
 	got := bag.List()
-	if len(got) != 2 {
+	if len(got) != 3 {
 		t.Fatalf("list = %#v", got)
 	}
-	if got[0].Name != "old_code" || got[1].Name != "idx_t_code" {
+	if got[0].Name != "old_code" || got[1].Name != "new" || got[2].Name != "idx_t_code" {
 		t.Fatalf("trimmed names: %#v", got)
 	}
 	bag.Clear()

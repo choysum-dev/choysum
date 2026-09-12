@@ -57,10 +57,10 @@ func (b *memoryIntentBag) Add(intents ...Intent) {
 		in.Table = strings.TrimSpace(in.Table)
 		in.Name = strings.TrimSpace(in.Name)
 		in.FromName = strings.TrimSpace(in.FromName)
-		if in.Kind == "" || in.Table == "" {
+		if in.Kind == "" || in.Table == "" || in.Name == "" {
 			continue
 		}
-		if in.Kind == IntentRenameColumn && (in.Name == "" || in.FromName == "") {
+		if in.Kind == IntentRenameColumn && in.FromName == "" {
 			continue
 		}
 		b.intents = append(b.intents, in)
