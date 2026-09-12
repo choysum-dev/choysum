@@ -46,6 +46,42 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		t.Fatalf("empty ModelTable: %v", err)
 	}
 
+	// Target model with empty ModelTable fails closed (same as join model).
+	joinForEmptyTarget := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	roleEmptyTable := &meta.Model{Application: "auth", Name: "Role", ModelTable: ""}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinForEmptyTarget, roleEmptyTable}); err == nil ||
+		!strings.Contains(err.Error(), "targetModel") || !strings.Contains(err.Error(), "empty ModelTable") {
+		t.Fatalf("empty target ModelTable: %v", err)
+	}
+
+	// Unqualified name shared by two apps is ambiguous → joinModel resolve fails closed.
+	unqualUser := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "UserRole", "UserId", "RoleId", "auth.Role")},
+	}
+	authJoin := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	salesJoin := &meta.Model{Application: "sales", Name: "UserRole", ModelTable: "sales_user_role"}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"}},
+	}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{unqualUser, authJoin, salesJoin}); err == nil ||
+		!strings.Contains(err.Error(), "not found") {
+		t.Fatalf("ambiguous unqualified joinModel: %v", err)
+	}
+	byKey := indexModelsByKey([]*meta.Model{authJoin, salesJoin})
+	if byKey["userrole"] != nil {
+		t.Fatal("expected ambiguous unqualified UserRole to be nil")
+	}
+	if byKey["auth.userrole"] != authJoin || byKey["sales.userrole"] != salesJoin {
+		t.Fatalf("qualified keys: %#v", byKey)
+	}
+	if byKey = indexModelsByKey([]*meta.Model{authJoin, authJoin}); byKey["userrole"] != authJoin {
+		t.Fatal("same model pointer twice should keep unqualified key")
+	}
+
 	// Explicit ManyToMany without joinModel fails closed.
 	noJoin := &meta.Model{
 		Application: "auth", Name: "User", ModelTable: "auth_user",

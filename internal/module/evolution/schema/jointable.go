@@ -87,6 +87,10 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 			referRight := ""
 			if target := resolveModelRef(byKey, targetRef); target != nil {
 				referRight = strings.TrimSpace(target.ModelTable)
+				if referRight == "" {
+					return fmt.Errorf("ManyToMany %s.%s targetModel %q has empty ModelTable",
+						model.Name, field.Name, targetRef)
+				}
 			}
 			candidate := JoinTableSpec{
 				Table: joinTable,
@@ -216,7 +220,13 @@ func indexModelsByKey(models []*meta.Model) map[string]*meta.Model {
 		name := strings.TrimSpace(model.Name)
 		app := strings.TrimSpace(model.Application)
 		if name != "" {
-			out[strings.ToLower(name)] = model
+			key := strings.ToLower(name)
+			// Same unqualified name in two apps is ambiguous; resolveModelRef must not guess.
+			if existing, ok := out[key]; ok && existing != model {
+				out[key] = nil
+			} else {
+				out[key] = model
+			}
 		}
 		if app != "" && name != "" {
 			out[strings.ToLower(app+"."+name)] = model
