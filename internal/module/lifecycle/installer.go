@@ -204,6 +204,11 @@ func installerServiceEntryPoint(m *moduleInstaller) string {
 	return m.module.ServiceEntryPoint
 }
 
+// installerReuseExecutorScripts reports whether hook RunPhase may reuse the JS executor.
+func installerReuseExecutorScripts(exec jsexecutor.ScriptExecutor) bool {
+	return exec != nil
+}
+
 func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) error {
 	if err := m.restoreModuleIfSoftDeleted(); err != nil {
 		return err
@@ -242,7 +247,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 				hookScripts = append(hookScripts, script)
 			}
 		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: jsExec != nil}); err != nil {
+		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: installerReuseExecutorScripts(jsExec)}); err != nil {
 			return xfmt.Errorf("error running pre_init hook for module %s: %w", m.module.Name, err)
 		}
 	}
@@ -319,7 +324,7 @@ func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error
 				hookScripts = append(hookScripts, script)
 			}
 		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: jsExec != nil}); err != nil {
+		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: installerReuseExecutorScripts(jsExec)}); err != nil {
 			return xfmt.Errorf("error running post_init hook for module %s: %w", m.module.Name, err)
 		}
 	}

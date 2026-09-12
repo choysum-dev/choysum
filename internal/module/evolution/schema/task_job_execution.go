@@ -42,12 +42,13 @@ func taskJobExecutionColumns() []ColumnSpec {
 }
 
 var (
-	structForCreateTableFn    = structForCreateTable
-	structForAddColumnFn      = structForAddColumn
-	ensureTaskJobIndexesFn    = ensureIndexesForColumn
-	taskJobExecutionColumnsFn = taskJobExecutionColumns
-	taskJobUniqueJobIDReadyFn = taskJobExecutionUniqueJobIDReady
-	taskJobAddColumnFn        = func(mig gorm.Migrator, value any, name string) error {
+	structForCreateTableFn         = structForCreateTable
+	structForAddColumnFn           = structForAddColumn
+	ensureTaskJobIndexesFn         = ensureIndexesForColumn
+	taskJobExecutionColumnsFn      = taskJobExecutionColumns
+	taskJobUniqueJobIDReadyFn      = taskJobExecutionUniqueJobIDReady
+	taskJobExecutionIndexesReadyFn = taskJobExecutionIndexesReady
+	taskJobAddColumnFn             = func(mig gorm.Migrator, value any, name string) error {
 		return mig.AddColumn(value, name)
 	}
 )
@@ -101,7 +102,7 @@ func ensureTaskJobExecutionTable(runtimeScope scope.Scope) error {
 		}
 		addedColumn = true
 	}
-	// Warm path: table already complete (all columns + UNIQUE job_id). Skip repeated
+	// Warm path: table already complete (all columns + required indexes). Skip repeated
 	// index reconcile on every module migrate — that held the install TX long enough
 	// to collide with module-manager lease renew on SQLite (database is locked).
 	if !addedColumn {
@@ -110,7 +111,13 @@ func ensureTaskJobExecutionTable(runtimeScope scope.Scope) error {
 			return err
 		}
 		if ready {
-			return nil
+			indexesReady, err := taskJobExecutionIndexesReadyFn(db.DB, table, cols)
+			if err != nil {
+				return err
+			}
+			if indexesReady {
+				return nil
+			}
 		}
 	}
 	return ensureTaskJobExecutionIndexes(db.DB, table, cols, dialect)
@@ -138,4 +145,43 @@ func taskJobExecutionUniqueJobIDReady(db *gorm.DB, table string) (bool, error) {
 		return false, fmt.Errorf("inspect task_job_execution job_id index: %w", err)
 	}
 	return unique, nil
+}
+
+// taskJobExecutionIndexesReady reports whether every columnNeedsIndex requirement has a live index.
+func taskJobExecutionIndexesReady(db *gorm.DB, table string, cols []ColumnSpec) (bool, error) {
+	if db == nil {
+		return false, nil
+	}
+	indexes, err := getIndexes(db, table)
+	if err != nil {
+		return false, fmt.Errorf("inspect task_job_execution indexes: %w", err)
+	}
+	for _, col := range cols {
+		if !columnNeedsIndex(col) {
+			continue
+		}
+		for _, cand := range indexLookupCandidates(col) {
+			if !liveIndexSatisfiesCandidate(indexes, cand, col.Name) {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
+}
+
+// liveIndexSatisfiesCandidate reports whether indexes contain a match for cand on colName.
+func liveIndexSatisfiesCandidate(indexes []gorm.Index, cand indexNameCandidate, colName string) bool {
+	for _, idx := range indexes {
+		if idx == nil || !liveIndexMatches(idx, cand.Name, colName) {
+			continue
+		}
+		if !cand.Unique {
+			return true
+		}
+		unique, ok := idx.Unique()
+		if ok && unique {
+			return true
+		}
+	}
+	return false
 }

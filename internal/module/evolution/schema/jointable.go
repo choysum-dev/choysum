@@ -153,7 +153,16 @@ func resolveJoinColumnName(cols []ColumnSpec, fieldRef string) (string, bool) {
 		if name == "" {
 			continue
 		}
-		if strings.EqualFold(name, snake) || strings.EqualFold(name, fieldRef) {
+		if strings.EqualFold(name, snake) {
+			return name, true
+		}
+	}
+	for _, col := range cols {
+		name := strings.TrimSpace(col.Name)
+		if name == "" {
+			continue
+		}
+		if strings.EqualFold(name, fieldRef) {
 			return name, true
 		}
 		if fn := strings.TrimSpace(col.FieldName); fn != "" && strings.EqualFold(fn, fieldRef) {
@@ -234,7 +243,13 @@ func indexModelsByKey(models []*meta.Model) map[string]*meta.Model {
 			}
 		}
 		if app != "" && name != "" {
-			out[strings.ToLower(app+"."+name)] = model
+			key := strings.ToLower(app + "." + name)
+			// Duplicate application+name is ambiguous; resolveModelRef must not guess.
+			if existing, ok := out[key]; ok && existing != model {
+				out[key] = nil
+			} else {
+				out[key] = model
+			}
 		}
 	}
 	return out

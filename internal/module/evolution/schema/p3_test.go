@@ -5,6 +5,7 @@ package schema
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -398,6 +399,60 @@ func TestEnsureTaskJobExecution_Path1(t *testing.T) {
 	if err != nil || !ready {
 		t.Fatalf("unique restored: ready=%v err=%v", ready, err)
 	}
+
+	// UNIQUE job_id present but a secondary indexed column missing → must reconcile.
+	indexes, err = getIndexes(db, "task_job_execution")
+	if err != nil {
+		t.Fatalf("getIndexes before status drop: %v", err)
+	}
+	statusDropped := false
+	for _, idx := range indexes {
+		if idx == nil {
+			continue
+		}
+		unique, ok := idx.Unique()
+		if ok && unique {
+			continue
+		}
+		cols := idx.Columns()
+		if len(cols) != 1 || !strings.EqualFold(cols[0], "status") {
+			continue
+		}
+		if err := db.Exec(`DROP INDEX IF EXISTS "` + idx.Name() + `"`).Error; err != nil {
+			t.Fatalf("drop status index %s: %v", idx.Name(), err)
+		}
+		statusDropped = true
+		break
+	}
+	if !statusDropped {
+		t.Fatal("expected a non-unique status index to drop")
+	}
+	indexesReady, err := taskJobExecutionIndexesReady(db, "task_job_execution", taskJobExecutionColumns())
+	if err != nil {
+		t.Fatalf("indexesReady after status drop: %v", err)
+	}
+	if indexesReady {
+		t.Fatal("expected indexesReady=false after dropping status index")
+	}
+	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
+		t.Fatalf("reconcile secondary index: %v", err)
+	}
+	indexesReady, err = taskJobExecutionIndexesReady(db, "task_job_execution", taskJobExecutionColumns())
+	if err != nil || !indexesReady {
+		t.Fatalf("status index restored: ready=%v err=%v", indexesReady, err)
+	}
+	if ready, err := taskJobExecutionIndexesReady(nil, "task_job_execution", nil); err != nil || ready {
+		t.Fatalf("nil db indexesReady=%v err=%v", ready, err)
+	}
+	origGet := getIndexes
+	t.Cleanup(func() { getIndexes = origGet })
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return nil, errors.New("indexes inspect boom")
+	}
+	if _, err := taskJobExecutionIndexesReady(db, "task_job_execution", taskJobExecutionColumns()); err == nil || !strings.Contains(err.Error(), "indexes inspect boom") {
+		t.Fatalf("indexesReady inspect err: %v", err)
+	}
+	getIndexes = origGet
 }
 
 func TestSaveSnapshots_MissingTable(t *testing.T) {

@@ -426,6 +426,46 @@ func TestWithLeaseRenewPaused(t *testing.T) {
 	if err := m.withLeaseRenewPaused(func() error { return want }); !errors.Is(err, want) {
 		t.Fatalf("got %v want %v", err, want)
 	}
+
+	origDialect := moduleManagerDialectNameFn
+	t.Cleanup(func() { moduleManagerDialectNameFn = origDialect })
+	moduleManagerDialectNameFn = func(*ModuleManager) string { return "postgres" }
+	if err := m.withLeaseRenewPaused(func() error {
+		if m.pauseLeaseRenew.Load() {
+			t.Fatal("postgres must keep lease renew active")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("postgres pause: %v", err)
+	}
+
+	if !shouldPauseLeaseRenew("") || !shouldPauseLeaseRenew("sqlite") || !shouldPauseLeaseRenew("sqlite3") {
+		t.Fatal("sqlite/unknown should pause")
+	}
+	if shouldPauseLeaseRenew("postgres") || shouldPauseLeaseRenew("mysql") || shouldPauseLeaseRenew("sqlserver") {
+		t.Fatal("non-sqlite must not pause")
+	}
+	if moduleManagerDialectName(nil) != "" || moduleManagerDialectName(&ModuleManager{}) != "" {
+		t.Fatal("nil dialect helpers")
+	}
+	if moduleManagerDialectName(&ModuleManager{runtimeScope: &testLogScope{}}) != "" {
+		t.Fatal("nil session dialect")
+	}
+	if moduleManagerDialectName(&ModuleManager{runtimeScope: &dialectNilDBScope{}}) != "" {
+		t.Fatal("nil db dialect")
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	if got := moduleManagerDialectName(&ModuleManager{runtimeScope: runtimeScope}); got != "sqlite" && got != "sqlite3" {
+		t.Fatalf("sqlite dialect=%q", got)
+	}
+}
+
+type dialectNilDBScope struct {
+	testLogScope
+}
+
+func (s *dialectNilDBScope) Session() *scope.Session {
+	return &scope.Session{}
 }
 
 func TestRunWithLeaseRenewPaused(t *testing.T) {

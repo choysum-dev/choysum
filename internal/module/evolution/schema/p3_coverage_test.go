@@ -261,6 +261,24 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if name, ok := resolveJoinColumnName([]ColumnSpec{{Name: "UserId"}}, "UserId"); !ok || name != "UserId" {
 		t.Fatalf("literal name match: %q %v", name, ok)
 	}
+	// Snake_case preferred when both snake and raw fieldRef names exist.
+	if name, ok := resolveJoinColumnName([]ColumnSpec{
+		{Name: "UserId"},
+		{Name: "user_id"},
+	}, "UserId"); !ok || name != "user_id" {
+		t.Fatalf("snake preferred: %q %v", name, ok)
+	}
+	if name, ok := resolveJoinColumnName([]ColumnSpec{
+		{Name: "uid", FieldName: "UserId"},
+	}, "UserId"); !ok || name != "uid" {
+		t.Fatalf("fieldName fallback: %q %v", name, ok)
+	}
+
+	dupA := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role_a"}
+	dupB := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role_b"}
+	if byKey = indexModelsByKey([]*meta.Model{dupA, dupB}); byKey["auth.userrole"] != nil {
+		t.Fatal("expected ambiguous qualified auth.UserRole to be nil")
+	}
 
 	if joinTableSpecsEqual(JoinTableSpec{Table: "a"}, JoinTableSpec{Table: "b"}) {
 		t.Fatal("different tables must not be equal")
@@ -562,6 +580,48 @@ func TestEnsureTaskJobExecution_ErrorHooks(t *testing.T) {
 	}
 	if err := ensureTaskJobExecutionTable(warm); err == nil || !strings.Contains(err.Error(), "ready boom") {
 		t.Fatalf("ready check: %v", err)
+	}
+	taskJobUniqueJobIDReadyFn = origReady
+	origIndexesReady := taskJobExecutionIndexesReadyFn
+	t.Cleanup(func() { taskJobExecutionIndexesReadyFn = origIndexesReady })
+	taskJobUniqueJobIDReadyFn = func(*gorm.DB, string) (bool, error) { return true, nil }
+	taskJobExecutionIndexesReadyFn = func(*gorm.DB, string, []ColumnSpec) (bool, error) {
+		return false, errString("indexes ready boom")
+	}
+	if err := ensureTaskJobExecutionTable(warm); err == nil || !strings.Contains(err.Error(), "indexes ready boom") {
+		t.Fatalf("indexes ready check: %v", err)
+	}
+	taskJobExecutionIndexesReadyFn = func(*gorm.DB, string, []ColumnSpec) (bool, error) {
+		return false, nil
+	}
+	calledEnsure := false
+	ensureTaskJobIndexesFn = func(*gorm.DB, string, ColumnSpec, string) error {
+		calledEnsure = true
+		return nil
+	}
+	if err := ensureTaskJobExecutionTable(warm); err != nil {
+		t.Fatalf("indexes not ready fallthrough: %v", err)
+	}
+	if !calledEnsure {
+		t.Fatal("expected ensure indexes when indexesReady=false")
+	}
+	ensureTaskJobIndexesFn = origIdx
+	taskJobExecutionIndexesReadyFn = origIndexesReady
+	taskJobUniqueJobIDReadyFn = origReady
+
+	if liveIndexSatisfiesCandidate(nil, indexNameCandidate{Name: "Status", Unique: false}, "status") {
+		t.Fatal("nil indexes should not satisfy")
+	}
+	fake := []gorm.Index{fakeIndex{name: "Status", cols: []string{"status"}, unique: false}}
+	if !liveIndexSatisfiesCandidate(fake, indexNameCandidate{Name: "Status", Unique: false}, "status") {
+		t.Fatal("non-unique candidate")
+	}
+	if liveIndexSatisfiesCandidate(fake, indexNameCandidate{Name: "Status", Unique: true}, "status") {
+		t.Fatal("unique required but index non-unique")
+	}
+	fakeUniq := []gorm.Index{fakeIndex{name: "JobId", cols: []string{"job_id"}, unique: true}}
+	if !liveIndexSatisfiesCandidate(fakeUniq, indexNameCandidate{Name: "JobId", Unique: true}, "job_id") {
+		t.Fatal("unique candidate")
 	}
 }
 

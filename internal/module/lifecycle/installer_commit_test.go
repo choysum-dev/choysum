@@ -218,6 +218,12 @@ func TestInstallerJSExecutorAndServiceEntryPoint(t *testing.T) {
 	if installerServiceEntryPoint(&moduleInstaller{module: mod}) != "service/main.ts" {
 		t.Fatalf("entry=%q", installerServiceEntryPoint(&moduleInstaller{module: mod}))
 	}
+	if installerReuseExecutorScripts(nil) {
+		t.Fatal("nil exec reuse")
+	}
+	if !installerReuseExecutorScripts(exec) {
+		t.Fatal("exec reuse")
+	}
 }
 
 func TestForCommitScopeNilManager(t *testing.T) {

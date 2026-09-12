@@ -427,6 +427,7 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 // withLeaseRenewPaused skips module-manager lease Renew while fn runs.
 // Use around module commit transactions so SQLite is not contested by a second
 // connection (MaxOpenConns=2) while the commit TX holds a write lock.
+// Non-SQLite dialects keep renewing so long commits cannot lose the lease.
 func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
 	if m == nil {
 		if fn == nil {
@@ -437,9 +438,44 @@ func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
 	if fn == nil {
 		return nil
 	}
+	if !shouldPauseLeaseRenew(moduleManagerDialectNameFn(m)) {
+		return fn()
+	}
 	m.pauseLeaseRenew.Store(true)
 	defer m.pauseLeaseRenew.Store(false)
 	return fn()
+}
+
+// moduleManagerDialectName returns the runtime DB dialector name (lowercased).
+func moduleManagerDialectName(m *ModuleManager) string {
+	if m == nil {
+		return ""
+	}
+	if m.runtimeScope == nil {
+		return ""
+	}
+	session := m.runtimeScope.Session()
+	if session == nil {
+		return ""
+	}
+	if session.DB == nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(session.DB.Dialector.Name()))
+}
+
+// moduleManagerDialectNameFn is overridable in tests.
+var moduleManagerDialectNameFn = moduleManagerDialectName
+
+// shouldPauseLeaseRenew is true for SQLite (and unknown dialect, which defaults to
+// SQLite-safe pause). Postgres/MySQL keep lease renew active during commit.
+func shouldPauseLeaseRenew(dialect string) bool {
+	switch strings.ToLower(strings.TrimSpace(dialect)) {
+	case "postgres", "postgresql", "mysql", "mariadb", "sqlserver":
+		return false
+	default:
+		return true
+	}
 }
 
 // runWithLeaseRenewPaused pauses lease renew when manager is non-nil, otherwise runs fn directly.
