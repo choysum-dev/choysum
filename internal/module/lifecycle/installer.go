@@ -146,7 +146,7 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 		return xfmt.Errorf("scope is nil")
 	}
 	txHoldStarted := time.Now()
-	err := m.runInstallCommitTX(m.runtimeScope, m.runtimeScope.Context(), buildResult, persistLater)
+	err := m.runInstallCommitTX(m.runtimeScope, m.runtimeScope.Context(), &buildResult, persistLater)
 	LogInstallOuterTxHold(m.runtimeScope.Logger(), "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err
@@ -155,16 +155,24 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 }
 
 // runInstallCommitTX runs the install commit Required TX, pausing lease renew when a manager is set.
-func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Context, buildResult *module.BuildResult, persistLater bool) error {
+func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Context, buildResult **module.BuildResult, persistLater bool) error {
 	if txRoot == nil {
 		return xfmt.Errorf("scope is nil")
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if buildResult == nil {
+		return xfmt.Errorf("build result slot is nil")
+	}
 	return runWithLeaseRenewPaused(m.moduleManager, func() error {
 		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-			return m.forCommitScope(txScope).commitInstall(buildResult, persistLater)
+			result, err := m.forCommitScope(txScope).commitInstall(*buildResult, persistLater)
+			if err != nil {
+				return err
+			}
+			*buildResult = result
+			return nil
 		})
 	})
 }
@@ -212,25 +220,25 @@ func installerReuseExecutorScripts(exec jsexecutor.ScriptExecutor) bool {
 	return true
 }
 
-func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) error {
+func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) (*module.BuildResult, error) {
 	if err := m.restoreModuleIfSoftDeleted(); err != nil {
-		return err
+		return nil, err
 	}
 
 	if m.builder != nil {
 		if persistLater {
 			if split, ok := m.builder.(module.SplitBuilder); ok {
 				if err := split.Persist(buildResult); err != nil {
-					return xfmt.Errorf("error persisting module: %w", err)
+					return nil, xfmt.Errorf("error persisting module: %w", err)
 				}
 			} else {
-				return xfmt.Errorf("builder does not support Persist for module %s", m.module.Name)
+				return nil, xfmt.Errorf("builder does not support Persist for module %s", m.module.Name)
 			}
 		} else {
 			buildStarted := time.Now()
 			result, err := m.builder.Build()
 			if err != nil {
-				return xfmt.Errorf("error building module: %w", err)
+				return nil, xfmt.Errorf("error building module: %w", err)
 			}
 			buildResult = result
 			logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepBuild, buildStarted)
@@ -239,17 +247,17 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 
 	initializeStarted := time.Now()
 	if err := runInstallHookPhase(m.runtimeScope, installerJSExecutor(m), m.module, hooks.PhasePreInit, buildResult, "pre_init"); err != nil {
-		return err
+		return nil, err
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
 
 	migrator, err := schema.NewMigrator(m.runtimeScope, m.module)
 	if err != nil {
-		return xfmt.Errorf("error preparing schema migrator: %w", err)
+		return nil, xfmt.Errorf("error preparing schema migrator: %w", err)
 	}
 	schemaStarted := time.Now()
 	if err := migrator.Migrate(); err != nil {
-		return xfmt.Errorf("error migrating module: %w", err)
+		return nil, xfmt.Errorf("error migrating module: %w", err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSchema, schemaStarted)
 
@@ -259,7 +267,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 	dataStarted := time.Now()
 	if err := applyInitdata(applyCtx, m.runtimeScope, m.module, importpkg.CallerLifecycle, m.ctx != nil && m.ctx.withDemo); err != nil {
-		return xfmt.Errorf("error applying data for module %s: %w", m.module.Name, err)
+		return nil, xfmt.Errorf("error applying data for module %s: %w", m.module.Name, err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepData, dataStarted)
 
@@ -267,7 +275,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	m.module.Status = meta.Installed
 	if len(m.module.Dependencies) > 0 {
 		if err := m.runtimeScope.Session().Model(m.module).Association("Dependencies").Replace(m.module.Dependencies); err != nil {
-			return xfmt.Errorf("error saving module dependencies: %w", err)
+			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}
 	// Omit association trees: Persist already wrote meta_raw_* + recomputed effective
@@ -278,26 +286,26 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 			Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
 			Save(m.module).Error
 	}); err != nil {
-		return xfmt.Errorf("error saving module: %w", err)
+		return nil, xfmt.Errorf("error saving module: %w", err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSave, saveStarted)
 
 	if err := importModuleTerminology(m.runtimeScope, m.module, runtimeOptionsFromScope(m.runtimeScope).modulesPath); err != nil {
-		return err
+		return nil, err
 	}
 
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "meta") {
 		if err := disableLegacyModuleIndexDailySchedule(m.runtimeScope); err != nil {
-			return xfmt.Errorf("error disabling legacy module index schedule: %w", err)
+			return nil, xfmt.Errorf("error disabling legacy module index schedule: %w", err)
 		}
 	}
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "document") {
 		if err := ensureDocumentAttachmentGCSchedule(m.runtimeScope); err != nil {
-			return xfmt.Errorf("error ensuring document attachment gc schedule: %w", err)
+			return nil, xfmt.Errorf("error ensuring document attachment gc schedule: %w", err)
 		}
 	}
 
-	return nil
+	return buildResult, nil
 }
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {

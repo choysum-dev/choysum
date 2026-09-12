@@ -423,6 +423,28 @@ func TestWithLeaseRenewPaused(t *testing.T) {
 	if m.pauseLeaseRenewDepth.Load() != 0 {
 		t.Fatal("expected pause cleared after fn")
 	}
+
+	origTTL := moduleManagerLeaseTTL
+	t.Cleanup(func() { moduleManagerLeaseTTL = origTTL })
+	moduleManagerLeaseTTL = time.Millisecond
+	// Nil runtimeScope: over-TTL pause must not panic (warn skipped).
+	if err := m.withLeaseRenewPaused(func() error {
+		time.Sleep(2 * time.Millisecond)
+		return nil
+	}); err != nil {
+		t.Fatalf("over-TTL nil scope: %v", err)
+	}
+	var warnBuf bytes.Buffer
+	m.runtimeScope = newDebugTestLogScope(&warnBuf)
+	if err := m.withLeaseRenewPaused(func() error {
+		time.Sleep(2 * time.Millisecond)
+		return nil
+	}); err != nil {
+		t.Fatalf("over-TTL warn: %v", err)
+	}
+	if !strings.Contains(warnBuf.String(), "module manager lease renew paused longer than TTL") {
+		t.Fatalf("expected over-TTL warn, got %q", warnBuf.String())
+	}
 	want := errors.New("boom")
 	if err := m.withLeaseRenewPaused(func() error { return want }); !errors.Is(err, want) {
 		t.Fatalf("got %v want %v", err, want)

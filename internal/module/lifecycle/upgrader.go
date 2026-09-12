@@ -212,8 +212,11 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 			upgrader := *m
 			upgrader.runtimeScope = txScope
 			result, err := upgrader.commitUpgrade(committed, fromVersion, *buildResult, persistLater)
+			if err != nil {
+				return err
+			}
 			*buildResult = result
-			return err
+			return nil
 		})
 	})
 }

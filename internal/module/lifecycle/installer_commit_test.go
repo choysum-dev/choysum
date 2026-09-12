@@ -73,7 +73,7 @@ msgstr "你好"
 		ctx:           newOpContext(),
 		builder:       nil,
 	}
-	if err := installer.commitInstall(nil, false); err != nil {
+	if _, err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("commitInstall: %v", err)
 	}
 
@@ -111,7 +111,8 @@ func TestRunInstallCommitTX_WithAndWithoutManager(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	if err := withMgr.runInstallCommitTX(runtimeScope, runtimeScope.Context(), nil, false); err != nil {
+	var buildResult *moduleresult.BuildResult
+	if err := withMgr.runInstallCommitTX(runtimeScope, runtimeScope.Context(), &buildResult, false); err != nil {
 		t.Fatalf("with manager: %v", err)
 	}
 	if withMgr.moduleManager.pauseLeaseRenewDepth.Load() != 0 {
@@ -126,11 +127,15 @@ func TestRunInstallCommitTX_WithAndWithoutManager(t *testing.T) {
 		t.Fatal(err)
 	}
 	withMgr.module = mod2
-	if err := withMgr.runInstallCommitTX(runtimeScope, nil, nil, false); err != nil {
+	buildResult = nil
+	if err := withMgr.runInstallCommitTX(runtimeScope, nil, &buildResult, false); err != nil {
 		t.Fatalf("nil ctx: %v", err)
 	}
-	if err := withMgr.runInstallCommitTX(nil, context.Background(), nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
+	if err := withMgr.runInstallCommitTX(nil, context.Background(), &buildResult, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
 		t.Fatalf("nil txRoot: %v", err)
+	}
+	if err := withMgr.runInstallCommitTX(runtimeScope, context.Background(), nil, false); err == nil || !strings.Contains(err.Error(), "build result slot is nil") {
+		t.Fatalf("nil build result slot: %v", err)
 	}
 }
 
@@ -196,7 +201,7 @@ func TestCommitInstallPreInitHookError(t *testing.T) {
 		runtimeScope: runtimeScope,
 		ctx:          newOpContext(),
 	}
-	if err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+	if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
 		t.Fatalf("expected pre_init hook error, got %v", err)
 	}
 }
@@ -336,7 +341,7 @@ func TestCommitInstallPersistLaterBranches(t *testing.T) {
 		ctx:           newOpContext(),
 		builder:       split,
 	}
-	if err := installer.commitInstall(&moduleresult.BuildResult{}, true); err != nil {
+	if _, err := installer.commitInstall(&moduleresult.BuildResult{}, true); err != nil {
 		t.Fatalf("persistLater success: %v", err)
 	}
 	if split.persistCalls != 1 {
@@ -344,8 +349,37 @@ func TestCommitInstallPersistLaterBranches(t *testing.T) {
 	}
 
 	installer.builder = commitStubBuilder{}
-	if err := installer.commitInstall(&moduleresult.BuildResult{}, true); err == nil || !strings.Contains(err.Error(), "does not support Persist") {
+	if _, err := installer.commitInstall(&moduleresult.BuildResult{}, true); err == nil || !strings.Contains(err.Error(), "does not support Persist") {
 		t.Fatalf("expected Persist unsupported error, got %v", err)
+	}
+}
+
+func TestCommitInstall_ReturnsBuiltResult(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name:           "commit_build_result",
+		Version:        "1.0.0",
+		Status:         meta.ToInstall,
+		Path:           t.TempDir(),
+		ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+		builder:       commitStubBuilder{},
+	}
+	got, err := installer.commitInstall(nil, false)
+	if err != nil {
+		t.Fatalf("commitInstall: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected BuildResult from builder.Build")
 	}
 }
 
@@ -374,7 +408,7 @@ func TestCommitInstallNewMigratorError(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	if err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error preparing schema migrator") {
+	if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error preparing schema migrator") {
 		t.Fatalf("expected NewMigrator error, got %v", err)
 	}
 }
@@ -449,7 +483,7 @@ END`).Error; err != nil {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	if err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error saving module") {
+	if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error saving module") {
 		t.Fatalf("expected save module error, got %v", err)
 	}
 }
@@ -527,7 +561,7 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	if err := installer.commitInstall(nil, false); err != nil {
+	if _, err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("meta commitInstall: %v", err)
 	}
 	if err := internaltask.WhereScheduleNameEq(db, "meta.module_index.daily_sync").Take(&internaltask.Schedule{}).Error; err == nil {
@@ -537,7 +571,7 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 	docMod := &meta.Module{Name: "document", Path: filepath.Join(modulesPath, "document"), Status: meta.ToInstall}
 	docMod.Id = sql.NullString{String: xid.New().String(), Valid: true}
 	installer.module = docMod
-	if err := installer.commitInstall(nil, false); err != nil {
+	if _, err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("document commitInstall: %v", err)
 	}
 	var gc internaltask.Schedule
@@ -552,7 +586,7 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 	}
 
 	// Update existing GC schedule path.
-	if err := installer.commitInstall(nil, false); err != nil {
+	if _, err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("document commitInstall update: %v", err)
 	}
 }

@@ -462,7 +462,13 @@ func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
 		m.leaseRenewMu.Lock()
 		defer m.leaseRenewMu.Unlock()
 	}
-	return fn()
+	started := time.Now()
+	err := fn()
+	if depth == 1 && time.Since(started) >= moduleManagerLeaseTTL && m.runtimeScope != nil {
+		m.runtimeScope.Logger().Warn("module manager lease renew paused longer than TTL",
+			"elapsed", time.Since(started), "ttl", moduleManagerLeaseTTL)
+	}
+	return err
 }
 
 // moduleManagerDialectName returns the runtime DB dialector name (lowercased).

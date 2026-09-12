@@ -53,7 +53,7 @@ func TestCommitInstall_applyInitdataWithDemo(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           opCtx,
 	}
-	if err := installer.commitInstall(nil, false); err != nil {
+	if _, err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("commitInstall with withDemo: %v", err)
 	}
 }
@@ -67,7 +67,7 @@ func TestCommitInstall_applyInitdataNilCtx(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           nil,
 	}
-	if err := installer.commitInstall(nil, false); err != nil {
+	if _, err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("commitInstall with nil ctx: %v", err)
 	}
 }
@@ -211,7 +211,7 @@ func TestCommitInstall_applyInitdataError(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	err := installer.commitInstall(nil, false)
+	_, err := installer.commitInstall(nil, false)
 	if err == nil || !strings.Contains(err.Error(), "error applying data for module") {
 		t.Fatalf("commitInstall error = %v, want apply-data failure", err)
 	}

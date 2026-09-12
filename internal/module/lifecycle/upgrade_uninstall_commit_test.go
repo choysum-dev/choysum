@@ -164,9 +164,13 @@ func TestRunUpgradeCommitTX_WithAndWithoutManager(t *testing.T) {
 	}
 	closedUp := &moduleUpgrader{runtimeScope: closedScope, module: closedMod, moduleManager: mgr, ctx: newOpContext()}
 	closedInst := &moduleInstaller{module: closedTarget, runtimeScope: closedScope, moduleManager: mgr, ctx: newOpContext()}
-	buildResult = nil
+	sentinel := &module.BuildResult{}
+	buildResult = sentinel
 	if err := closedUp.runUpgradeCommitTX(closedScope, nil, closedInst, "1.0.0", &buildResult, false); err == nil {
 		t.Fatal("expected closed-db commit error")
+	}
+	if buildResult != sentinel {
+		t.Fatal("failed upgrade commit must not clobber prepared build result")
 	}
 
 	if err := (*moduleUpgrader)(nil).upgradeAfterPrepare(installer, "1.0.0", nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
