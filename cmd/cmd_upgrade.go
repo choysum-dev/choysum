@@ -66,24 +66,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			// --schema-plan only needs the installed module name; skip CLI compat and
 			// registry/latest resolution (and the JS compiler) for auth@latest etc.
 			if schemaPlanOnly {
-				plans := make([]upgradePlanItem, 0, len(args))
-				for _, input := range args {
-					moduleInput := strings.TrimSpace(input)
-					if moduleInput == "" {
-						exitUpgradeError(moduleInput, xfmt.Errorf("module name is empty"))
-					}
-					parsed, parseErr := internalorigin.ParseInput(moduleInput)
-					if parseErr != nil {
-						exitUpgradeError(moduleInput, xfmt.Errorf("error parsing module input %s: %w", moduleInput, parseErr))
-					}
-					name := strings.TrimSpace(parsed.ModuleName)
-					if name == "" {
-						name = strings.TrimSpace(parsed.LocalName)
-					}
-					plans = append(plans, upgradePlanItem{requestedInput: moduleInput, resolvedInput: name})
-				}
-				moduleLifecycle := lifecycle.NewService(env.WithContext(ctx), nil)
-				os.Exit(executeSchemaPlanOnly(ctx, env, moduleLifecycle, plans))
+				upgradeExit(runUpgradeSchemaPlan(ctx, env, args))
 			}
 
 			runtimeVersion := ""
@@ -204,6 +187,51 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 type upgradePlanItem struct {
 	requestedInput string
 	resolvedInput  string
+}
+
+// Overridable for tests (schema-plan path calls this instead of os.Exit directly).
+var upgradeExit = os.Exit
+
+// Overridable ParseInput for schema-plan name resolution tests.
+var parseModuleInput = internalorigin.ParseInput
+
+// schemaPlanItemsFromArgs parses upgrade inputs into installed-module names without
+// registry/latest resolution (used by --schema-plan).
+func schemaPlanItemsFromArgs(args []string) ([]upgradePlanItem, error) {
+	plans := make([]upgradePlanItem, 0, len(args))
+	for _, input := range args {
+		moduleInput := strings.TrimSpace(input)
+		if moduleInput == "" {
+			return nil, xfmt.Errorf("module name is empty")
+		}
+		parsed, parseErr := parseModuleInput(moduleInput)
+		if parseErr != nil {
+			return nil, xfmt.Errorf("error parsing module input %s: %w", moduleInput, parseErr)
+		}
+		name := strings.TrimSpace(parsed.ModuleName)
+		if name == "" {
+			name = strings.TrimSpace(parsed.LocalName)
+		}
+		if name == "" {
+			return nil, xfmt.Errorf("module name is empty")
+		}
+		plans = append(plans, upgradePlanItem{requestedInput: moduleInput, resolvedInput: name})
+	}
+	return plans, nil
+}
+
+func runUpgradeSchemaPlan(ctx context.Context, env scope.Scope, args []string) int {
+	plans, err := schemaPlanItemsFromArgs(args)
+	if err != nil {
+		if env != nil && env.Logger() != nil {
+			attrs := []any{"error", err}
+			attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
+			env.Logger().Error("module upgrade failed", attrs...)
+		}
+		return 1
+	}
+	moduleLifecycle := lifecycle.NewService(env.WithContext(ctx), nil)
+	return executeSchemaPlanOnly(ctx, env, moduleLifecycle, plans)
 }
 
 func executeSchemaPlanOnly(ctx context.Context, env scope.Scope, moduleLifecycle lifecycle.Service, plans []upgradePlanItem) int {

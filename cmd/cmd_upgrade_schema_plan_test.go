@@ -13,6 +13,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -58,6 +59,92 @@ func TestExecuteSchemaPlanOnly(t *testing.T) {
 	}); code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
+	mixed := &fakeLifecycleService{err: errors.New("guarded ops")}
+	if code := executeSchemaPlanOnly(context.Background(), env, mixed, []upgradePlanItem{
+		{requestedInput: "auth", resolvedInput: "auth"},
+		{requestedInput: "base", resolvedInput: "base"},
+	}); code != 1 {
+		t.Fatalf("mixed exit code = %d, want 1", code)
+	}
+	if mixed.installs != 0 || mixed.upgrades != 0 || mixed.uninstalls != 0 {
+		t.Fatal("schema-plan must not mutate modules")
+	}
+	if mixed.schemaPlans != 2 {
+		t.Fatalf("schemaPlans = %d, want 2", mixed.schemaPlans)
+	}
+}
+
+func TestSchemaPlanItemsFromArgs(t *testing.T) {
+	plans, err := schemaPlanItemsFromArgs([]string{"auth@latest", " base "})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plans) != 2 || plans[0].resolvedInput != "auth" || plans[1].resolvedInput != "base" {
+		t.Fatalf("%#v", plans)
+	}
+	if _, err := schemaPlanItemsFromArgs([]string{"  "}); err == nil || !strings.Contains(err.Error(), "empty") {
+		t.Fatalf("empty: %v", err)
+	}
+	if _, err := schemaPlanItemsFromArgs([]string{"bad/name"}); err == nil {
+		t.Fatal("expected parse error")
+	}
+
+	origParse := parseModuleInput
+	t.Cleanup(func() { parseModuleInput = origParse })
+	parseModuleInput = func(string) (internalorigin.ParsedInput, error) {
+		return internalorigin.ParsedInput{LocalName: "from-local"}, nil
+	}
+	plans, err = schemaPlanItemsFromArgs([]string{"x"})
+	if err != nil || len(plans) != 1 || plans[0].resolvedInput != "from-local" {
+		t.Fatalf("local name fallback: %#v %v", plans, err)
+	}
+	parseModuleInput = func(string) (internalorigin.ParsedInput, error) {
+		return internalorigin.ParsedInput{}, nil
+	}
+	if _, err := schemaPlanItemsFromArgs([]string{"x"}); err == nil || !strings.Contains(err.Error(), "empty") {
+		t.Fatalf("both names empty: %v", err)
+	}
+}
+
+func TestRunUpgradeSchemaPlan(t *testing.T) {
+	env := &schemaPlanTestScope{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	if code := runUpgradeSchemaPlan(context.Background(), env, []string{"  "}); code != 1 {
+		t.Fatalf("empty args exit = %d", code)
+	}
+	// Nil logger error path.
+	if code := runUpgradeSchemaPlan(context.Background(), &schemaPlanTestScope{}, []string{"bad/name"}); code != 1 {
+		t.Fatalf("parse error exit = %d", code)
+	}
+	// Valid name reaches SchemaPlan (fails without DB session) and returns non-zero.
+	if code := runUpgradeSchemaPlan(context.Background(), env, []string{"auth@latest"}); code != 1 {
+		t.Fatalf("schema plan without DB exit = %d", code)
+	}
+}
+
+func TestUpgradeCommandSchemaPlanDispatchesEarly(t *testing.T) {
+	var gotCode int
+	origExit := upgradeExit
+	upgradeExit = func(code int) {
+		gotCode = code
+		panic("upgrade-exit")
+	}
+	t.Cleanup(func() { upgradeExit = origExit })
+
+	env := &schemaPlanTestScope{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	cmd := newUpgradeCmd(func() scope.Scope { return env })
+	cmd.SetArgs([]string{"--schema-plan", "auth"})
+	func() {
+		defer func() {
+			if r := recover(); r != "upgrade-exit" {
+				t.Fatalf("recover = %#v", r)
+			}
+		}()
+		_ = cmd.Execute()
+		t.Fatal("expected upgradeExit")
+	}()
+	if gotCode != 1 {
+		t.Fatalf("exit code = %d, want 1", gotCode)
+	}
 }
 
 func TestUpgradeCommandRegistersSchemaPlanFlag(t *testing.T) {
@@ -72,20 +159,28 @@ func TestUpgradeCommandRegistersSchemaPlanFlag(t *testing.T) {
 }
 
 type fakeLifecycleService struct {
-	plan schema.SchemaPlan
-	err  error
+	plan        schema.SchemaPlan
+	err         error
+	installs    int
+	upgrades    int
+	uninstalls  int
+	schemaPlans int
 }
 
 func (f *fakeLifecycleService) Install(context.Context, lifecycle.InstallRequest) error {
+	f.installs++
 	return nil
 }
 func (f *fakeLifecycleService) Upgrade(context.Context, lifecycle.UpgradeRequest) error {
+	f.upgrades++
 	return nil
 }
 func (f *fakeLifecycleService) Uninstall(context.Context, lifecycle.UninstallRequest) error {
+	f.uninstalls++
 	return nil
 }
 func (f *fakeLifecycleService) SchemaPlan(context.Context, string) (schema.SchemaPlan, error) {
+	f.schemaPlans++
 	return f.plan, f.err
 }
 

@@ -19,6 +19,10 @@ func TestDefaultChangedBranches(t *testing.T) {
 	if !defaultChanged(ColumnSpec{}, LiveColumn{Default: &liveDef}) {
 		t.Fatal("desired nil live set")
 	}
+	nullSentinel := "null"
+	if defaultChanged(ColumnSpec{}, LiveColumn{Default: &nullSentinel}) {
+		t.Fatal("null sentinel should be absent")
+	}
 	empty := "  "
 	if !defaultChanged(ColumnSpec{Default: &empty}, LiveColumn{Default: &liveDef}) {
 		t.Fatal("empty desired with live set")

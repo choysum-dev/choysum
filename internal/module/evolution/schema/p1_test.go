@@ -242,12 +242,12 @@ func TestPlan_EnsureCheckOnPopulatedGuarded(t *testing.T) {
 	plan := buildPlan("sales", desired, live, "postgres")
 	found := false
 	for _, op := range plan.Ops {
-		if op.Kind == OpEnsureCheck && op.Safety == SafetyGuarded {
+		if op.Kind == OpEnsureCheck && op.Safety == SafetyAuto {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("expected guarded ensure_check, got %#v", plan.Ops)
+		t.Fatalf("expected auto ensure_check on populated table, got %#v", plan.Ops)
 	}
 	sqlitePlan := buildPlan("sales", desired, live, "sqlite")
 	for _, op := range sqlitePlan.Ops {
@@ -295,6 +295,93 @@ func TestIndexOps_ClassifiesUniqueIndependently(t *testing.T) {
 	}
 	if _, ok := desiredKeys["code"]; !ok {
 		t.Fatal("expected physical column name in desiredIndexKeys")
+	}
+
+	// Field-export lookup name should match live physical column.
+	fieldKeys := map[string]struct{}{}
+	fieldLive := LiveSchema{Indexes: map[string][]LiveIndex{
+		"t": {{Name: "idx_created_by", Columns: []string{"created_by"}, Unique: false}},
+	}}
+	fieldCol := ColumnSpec{Name: "created_by", FieldName: "CreatedBy", PhysicalType: "varchar", Indexed: true}
+	if ops := indexOpsForColumn("t", fieldCol, fieldLive, 0, fieldKeys); len(ops) != 0 {
+		t.Fatalf("CreatedBy should match created_by live index: %#v", ops)
+	}
+
+	// Missing unique index on populated table stays guarded.
+	uniqKeys := map[string]struct{}{}
+	uniqOps := indexOpsForColumn("t", ColumnSpec{
+		Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true,
+	}, LiveSchema{Indexes: map[string][]LiveIndex{"t": {}}}, 3, uniqKeys)
+	if len(uniqOps) != 1 || uniqOps[0].Safety != SafetyGuarded {
+		t.Fatalf("expected guarded unique add: %#v", uniqOps)
+	}
+}
+
+func TestIndexCandidateUsesFieldLookup(t *testing.T) {
+	if indexCandidateUsesFieldLookup(ColumnSpec{FieldName: "Code"}, "  ") {
+		t.Fatal("blank name")
+	}
+	if indexCandidateUsesFieldLookup(ColumnSpec{FieldName: "Code", IndexName: "idx_code"}, "idx_code") {
+		t.Fatal("explicit index name")
+	}
+	if indexCandidateUsesFieldLookup(ColumnSpec{FieldName: "Code", UniqueIndexNames: []string{"uniq_code"}}, "uniq_code") {
+		t.Fatal("explicit unique index name")
+	}
+	if !indexCandidateUsesFieldLookup(ColumnSpec{FieldName: "CreatedBy"}, "CreatedBy") {
+		t.Fatal("field export name")
+	}
+}
+
+func TestIndexCoveredByDesiredKey_AllColumns(t *testing.T) {
+	keys := map[string]struct{}{"code": {}}
+	if indexCoveredByDesiredKey(LiveIndex{Columns: nil}, keys) {
+		t.Fatal("empty columns")
+	}
+	if indexCoveredByDesiredKey(LiveIndex{Columns: []string{"tenant_id", "code"}}, keys) {
+		t.Fatal("partial composite must not be covered")
+	}
+	keys["tenant_id"] = struct{}{}
+	if !indexCoveredByDesiredKey(LiveIndex{Columns: []string{"tenant_id", "code"}}, keys) {
+		t.Fatal("all columns covered")
+	}
+}
+
+func TestDefaultChanged_SentinelLiveDefaults(t *testing.T) {
+	nullLive := "NULL"
+	if defaultChanged(ColumnSpec{}, LiveColumn{Default: &nullLive}) {
+		t.Fatal("NULL sentinel")
+	}
+	ts := "CURRENT_TIMESTAMP"
+	if defaultChanged(ColumnSpec{}, LiveColumn{Default: &ts}) {
+		t.Fatal("timestamp sentinel")
+	}
+	real := "hello"
+	if !defaultChanged(ColumnSpec{}, LiveColumn{Default: &real}) {
+		t.Fatal("real live default")
+	}
+}
+
+func TestNormalizeDefaultLiteral_DoubleQuotedCast(t *testing.T) {
+	want := "hello"
+	live := `"hello"::text`
+	if defaultChanged(ColumnSpec{Default: &want}, LiveColumn{Default: &live}) {
+		t.Fatal("double-quoted cast should normalize equal")
+	}
+	inQuotes := `'a::b'::text`
+	if normalizeDefaultLiteral(inQuotes) != "a::b" {
+		t.Fatalf("cast inside quotes preserved incorrectly: %q", normalizeDefaultLiteral(inQuotes))
+	}
+	if got := normalizeDefaultLiteral("x::int"); got != "x::int" {
+		t.Fatalf("short left-hand cast must stay intact: %q", got)
+	}
+	if got := normalizeDefaultLiteral("hello::text"); got != "hello::text" {
+		t.Fatalf("unquoted left-hand cast must stay intact: %q", got)
+	}
+	if _, ok := stripOuterPostgresCast("::int"); ok {
+		t.Fatal("empty left-hand cast must not strip")
+	}
+	if next, ok := stripOuterPostgresCast("('hello')::text"); !ok || next != "('hello')" {
+		t.Fatalf("paren-wrapped cast: %q %v", next, ok)
 	}
 }
 

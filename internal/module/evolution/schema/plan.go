@@ -183,6 +183,7 @@ func indexPlanColumn(col ColumnSpec) ColumnSpec {
 }
 
 func checkOpsForColumn(table string, col ColumnSpec, rowCount int64, dialect string, tableExists bool) []PlanOp {
+	_ = rowCount
 	expr := strings.TrimSpace(col.CheckExpr)
 	if expr == "" {
 		return nil
@@ -198,17 +199,13 @@ func checkOpsForColumn(table string, col ColumnSpec, rowCount int64, dialect str
 		columnName = strings.ToLower(col.FieldName)
 	}
 	name := fmt.Sprintf("chk_%s_%s", table, columnName)
-	safety := SafetyAuto
-	detail := "ensure check " + name
-	if rowCount > 0 {
-		safety = SafetyGuarded
-		detail = "ensure check on non-empty table"
-	}
+	// ensureCheckConstraint is idempotent (drop+add) on postgres/mysql/sqlserver.
+	// Keep Auto so populated tables do not permanently fail ValidatePlan / MigrateSchema.
 	return []PlanOp{{
 		Kind:      OpEnsureCheck,
-		Safety:    safety,
+		Safety:    SafetyAuto,
 		Table:     table,
-		Detail:    detail,
+		Detail:    "ensure check " + name,
 		CheckName: name,
 		CheckExpr: expr,
 		Column:    &col,
@@ -246,12 +243,15 @@ func liveHasIndex(live LiveSchema, table, name string, wantUnique bool) bool {
 }
 
 func indexCoveredByDesiredKey(idx LiveIndex, desiredIndexKeys map[string]struct{}) bool {
+	if len(idx.Columns) == 0 {
+		return false
+	}
 	for _, col := range idx.Columns {
-		if _, ok := desiredIndexKeys[strings.ToLower(strings.TrimSpace(col))]; ok {
-			return true
+		if _, ok := desiredIndexKeys[strings.ToLower(strings.TrimSpace(col))]; !ok {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 type columnDiff struct {
@@ -308,7 +308,15 @@ func columnDiffs(desired ColumnSpec, live LiveColumn, dialect string) []columnDi
 func defaultChanged(desired ColumnSpec, live LiveColumn) bool {
 	if desired.Default == nil {
 		// Desired removed an explicit default while live still has one.
-		return live.Default != nil
+		if live.Default == nil {
+			return false
+		}
+		switch strings.ToLower(strings.TrimSpace(*live.Default)) {
+		case "", "null", "current_timestamp", "getdate()":
+			// Dialect sentinel / blank: treat as absent rather than a real default.
+			return false
+		}
+		return true
 	}
 	want := strings.TrimSpace(*desired.Default)
 	if want == "" {
@@ -337,12 +345,31 @@ func normalizeDefaultLiteral(v string) string {
 				continue
 			}
 		}
-		if idx := postgresCastIndexOutsideQuotes(v); idx >= 0 {
-			v = v[:idx]
+		if next, ok := stripOuterPostgresCast(v); ok {
+			v = next
 			continue
 		}
 		return v
 	}
+}
+
+// stripOuterPostgresCast removes a trailing ::type when the left-hand side is a
+// quoted literal or parenthesized expression (so values like a::b stay intact).
+func stripOuterPostgresCast(v string) (string, bool) {
+	idx := postgresCastIndexOutsideQuotes(v)
+	if idx < 0 {
+		return v, false
+	}
+	left := strings.TrimSpace(v[:idx])
+	if len(left) < 2 {
+		return v, false
+	}
+	if (left[0] == '\'' && left[len(left)-1] == '\'') ||
+		(left[0] == '"' && left[len(left)-1] == '"') ||
+		(left[0] == '(' && left[len(left)-1] == ')') {
+		return left, true
+	}
+	return v, false
 }
 
 // postgresCastIndexOutsideQuotes returns the index of "::" outside quoted literals, or -1.

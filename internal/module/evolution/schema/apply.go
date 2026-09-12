@@ -95,6 +95,12 @@ func applyAlterColumnWiden(db *gorm.DB, table string, col ColumnSpec, dialect st
 		PhysicalType: col.PhysicalType,
 		Size:         col.Size,
 	}
+	if dialect == "mysql" || dialect == "sqlserver" {
+		// MODIFY COLUMN rewrites the whole definition; keep nullability/default so a
+		// widen cannot silently drop NOT NULL or an existing default.
+		sizeOnly.NotNull = col.NotNull
+		sizeOnly.Default = col.Default
+	}
 	inst, err := structForAddColumn(table, sizeOnly, dialect)
 	if err != nil {
 		return err

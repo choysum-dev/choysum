@@ -536,7 +536,6 @@ func (m *ModuleManager) Load(name string) (*meta.Module, error) {
 // SchemaPlan computes the schema plan for an installed module without applying DDL.
 // It uses a read-only module lookup so dry-run never AutoMigrates meta/base tables.
 func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.SchemaPlan, error) {
-	_ = ctx
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return schema.SchemaPlan{}, xfmt.Errorf("module name is empty")
@@ -548,7 +547,11 @@ func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.Sch
 	if mod == nil {
 		return schema.SchemaPlan{}, xfmt.Errorf("module %s is not installed", name)
 	}
-	migrator, err := schema.NewMigrator(m.runtimeScope, mod)
+	scopeForPlan := m.runtimeScope
+	if ctx != nil {
+		scopeForPlan = m.runtimeScope.WithContext(ctx)
+	}
+	migrator, err := schema.NewMigrator(scopeForPlan, mod)
 	if err != nil {
 		return schema.SchemaPlan{}, xfmt.Errorf("error preparing schema migrator for module %s: %w", name, err)
 	}
