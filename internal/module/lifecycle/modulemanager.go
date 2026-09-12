@@ -281,8 +281,8 @@ type ModuleManager struct {
 	lockerFactory            statepkg.LockerFactory
 	moduleIndexSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error)
 	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
-	// pauseLeaseRenew skips heartbeat Renew while a module commit TX holds SQLite.
-	pauseLeaseRenew atomic.Bool
+	// pauseLeaseRenewDepth skips heartbeat Renew while >0 (nested commit TX safe).
+	pauseLeaseRenewDepth atomic.Int32
 }
 
 // Overridable in tests to exercise lease renew ticks without waiting a full minute.
@@ -290,6 +290,15 @@ var (
 	moduleManagerLeaseTTL        = 60 * time.Second
 	moduleManagerLeaseRenewEvery = func(ttl time.Duration) time.Duration { return ttl / 2 }
 )
+
+// moduleManagerLeaseRenewInterval clamps the renew tick to a positive duration.
+func moduleManagerLeaseRenewInterval(ttl time.Duration) time.Duration {
+	interval := moduleManagerLeaseRenewEvery(ttl)
+	if interval <= 0 {
+		return time.Second
+	}
+	return interval
+}
 
 func (m *ModuleManager) ensureMetaTables() error {
 	var migrateErr error
@@ -403,7 +412,7 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		ticker := time.NewTicker(moduleManagerLeaseRenewEvery(ttl))
+		ticker := time.NewTicker(moduleManagerLeaseRenewInterval(ttl))
 		defer ticker.Stop()
 		for {
 			select {
@@ -441,8 +450,8 @@ func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
 	if !shouldPauseLeaseRenew(moduleManagerDialectNameFn(m)) {
 		return fn()
 	}
-	m.pauseLeaseRenew.Store(true)
-	defer m.pauseLeaseRenew.Store(false)
+	m.pauseLeaseRenewDepth.Add(1)
+	defer m.pauseLeaseRenewDepth.Add(-1)
 	return fn()
 }
 
@@ -494,7 +503,7 @@ func (m *ModuleManager) renewLeaseOnTick(locker statepkg.Locker, ctx context.Con
 	if m == nil || locker == nil {
 		return
 	}
-	if m.pauseLeaseRenew.Load() {
+	if m.pauseLeaseRenewDepth.Load() > 0 {
 		return
 	}
 	if err := locker.Renew(ctx, resource, ownerId, ttl); err != nil && m.runtimeScope != nil {

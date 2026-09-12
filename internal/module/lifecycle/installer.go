@@ -235,21 +235,8 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 
 	initializeStarted := time.Now()
-	jsExec := installerJSExecutor(m)
-	if hookRunner, err := hooks.NewRunner(m.runtimeScope, jsExec, m.module); err != nil {
-		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
-	} else if hookRunner != nil {
-		var hookScripts []*jsengine.JsScript
-		if buildResult != nil {
-			if script, err := hooks.ScriptFromBuildResult(buildResult); err != nil {
-				return xfmt.Errorf("error preparing pre_init hook script: %w", err)
-			} else if script != nil {
-				hookScripts = append(hookScripts, script)
-			}
-		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: installerReuseExecutorScripts(jsExec)}); err != nil {
-			return xfmt.Errorf("error running pre_init hook for module %s: %w", m.module.Name, err)
-		}
+	if err := runInstallHookPhase(m.runtimeScope, installerJSExecutor(m), m.module, hooks.PhasePreInit, buildResult, "pre_init"); err != nil {
+		return err
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
 
@@ -312,24 +299,51 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {
 	finalizeStarted := time.Now()
-	jsExec := installerJSExecutor(m)
-	if hookRunner, err := hooks.NewRunner(m.runtimeScope, jsExec, m.module); err != nil {
-		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
-	} else if hookRunner != nil {
-		var hookScripts []*jsengine.JsScript
-		if buildResult != nil {
-			if script, err := hooks.ScriptFromBuildResult(buildResult); err != nil {
-				return xfmt.Errorf("error preparing post_init hook script: %w", err)
-			} else if script != nil {
-				hookScripts = append(hookScripts, script)
-			}
-		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: installerReuseExecutorScripts(jsExec)}); err != nil {
-			return xfmt.Errorf("error running post_init hook for module %s: %w", m.module.Name, err)
+	if m == nil {
+		return nil
+	}
+	if err := runInstallHookPhase(m.runtimeScope, installerJSExecutor(m), m.module, hooks.PhasePostInit, buildResult, "post_init"); err != nil {
+		return err
+	}
+	name := ""
+	if m.module != nil {
+		name = m.module.Name
+	}
+	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, name, moduleStepFinalize, finalizeStarted)
+
+	return nil
+}
+
+// runInstallHookPhase runs one install hook phase. NewRunner returns (nil, nil) when
+// scope or module is missing; ScriptFromBuildResult currently never returns an error.
+func runInstallHookPhase(
+	runtimeScope scope.Scope,
+	jsExec jsexecutor.ScriptExecutor,
+	module *meta.Module,
+	phase hooks.Phase,
+	buildResult *module.BuildResult,
+	phaseLabel string,
+) error {
+	hookRunner, _ := hooks.NewRunner(runtimeScope, jsExec, module)
+	if hookRunner == nil {
+		return nil
+	}
+	var hookScripts []*jsengine.JsScript
+	if buildResult != nil {
+		if script, _ := hooks.ScriptFromBuildResult(buildResult); script != nil {
+			hookScripts = append(hookScripts, script)
 		}
 	}
-	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepFinalize, finalizeStarted)
-
+	name := ""
+	if module != nil {
+		name = module.Name
+	}
+	if err := hookRunner.RunPhase(runtimeScope.Context(), phase, hooks.RunOptions{
+		Scripts:              hookScripts,
+		ReuseExecutorScripts: installerReuseExecutorScripts(jsExec),
+	}); err != nil {
+		return xfmt.Errorf("error running %s hook for module %s: %w", phaseLabel, name, err)
+	}
 	return nil
 }
 

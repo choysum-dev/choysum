@@ -15,6 +15,31 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestMigrateSchema_JoinTableEndToEnd(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	user := &meta.Model{Application: "auth", Name: "User", ModelTable: "auth_user", Fields: []*meta.Field{
+		newFieldWithOptions(t, "Id", `{"type":"char","size":20}`),
+		m2mField(t, "Roles", "auth.UserRole", "UserId", "RoleId", "auth.Role"),
+	}}
+	role := &meta.Model{Application: "auth", Name: "Role", ModelTable: "auth_role", Fields: []*meta.Field{
+		newFieldWithOptions(t, "Id", `{"type":"char","size":20}`),
+	}}
+	userRole := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role", Fields: []*meta.Field{
+		newFieldWithOptions(t, "UserId", `{"type":"char","size":20,"indexed":true}`),
+		newFieldWithOptions(t, "RoleId", `{"type":"char","size":20,"indexed":true}`),
+	}}
+	mig := newModelMigrator(runtimeScope, nil, []*meta.Model{user, role, userRole})
+	if err := mig.MigrateSchema(); err != nil {
+		t.Fatalf("MigrateSchema: %v", err)
+	}
+	if !runtimeScope.Session().Migrator().HasTable("auth_user_role") {
+		t.Fatal("expected join table created via Validate+apply")
+	}
+	if !runtimeScope.Session().Migrator().HasTable("auth_user") || !runtimeScope.Session().Migrator().HasTable("auth_role") {
+		t.Fatal("expected parent tables")
+	}
+}
+
 func TestDesired_JoinTableSpec(t *testing.T) {
 	user := &meta.Model{
 		Application: "auth",

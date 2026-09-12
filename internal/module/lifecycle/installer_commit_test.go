@@ -14,9 +14,11 @@ import (
 
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	moduleresult "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internaltask "github.com/choysum-dev/choysum/internal/task"
 	"github.com/choysum-dev/choysum/pkg/meta"
+	"github.com/evanw/esbuild/pkg/api"
 	"github.com/rs/xid"
 	"gorm.io/gorm"
 )
@@ -108,7 +110,7 @@ func TestRunInstallCommitTX_WithAndWithoutManager(t *testing.T) {
 	if err := withMgr.runInstallCommitTX(runtimeScope, runtimeScope.Context(), nil, false); err != nil {
 		t.Fatalf("with manager: %v", err)
 	}
-	if withMgr.moduleManager.pauseLeaseRenew.Load() {
+	if withMgr.moduleManager.pauseLeaseRenewDepth.Load() != 0 {
 		t.Fatal("pause should clear")
 	}
 	mod2 := &meta.Module{
@@ -193,6 +195,39 @@ func TestFinalizeInstallNoopHooks(t *testing.T) {
 	}
 	if err := noMgr.finalizeInstall(nil); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
 		t.Fatalf("finalizeInstall without manager: %v", err)
+	}
+	if err := (&moduleInstaller{runtimeScope: runtimeScope}).finalizeInstall(nil); err != nil {
+		t.Fatalf("finalizeInstall nil module: %v", err)
+	}
+	if err := (*moduleInstaller)(nil).finalizeInstall(nil); err != nil {
+		t.Fatalf("finalizeInstall nil installer: %v", err)
+	}
+}
+
+func TestRunInstallHookPhaseBranches(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	if err := runInstallHookPhase(runtimeScope, nil, nil, hooks.PhasePostInit, nil, "post_init"); err != nil {
+		t.Fatalf("nil module: %v", err)
+	}
+	exec := &moduleManagerNoopScriptExecutor{}
+	mod := &meta.Module{Name: "demo"}
+	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, nil, "post_init"); err != nil {
+		t.Fatalf("nil buildResult: %v", err)
+	}
+	empty := &moduleresult.BuildResult{}
+	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, empty, "post_init"); err != nil {
+		t.Fatalf("empty buildResult: %v", err)
+	}
+	withScript := &moduleresult.BuildResult{
+		EsbuildResult: &api.BuildResult{
+			OutputFiles: []api.OutputFile{{Path: "index.js", Contents: []byte("export {}")}},
+		},
+	}
+	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, withScript, "post_init"); err != nil {
+		t.Fatalf("with script: %v", err)
+	}
+	if err := runInstallHookPhase(runtimeScope, nil, mod, hooks.PhasePostInit, nil, "post_init"); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+		t.Fatalf("nil executor: %v", err)
 	}
 }
 

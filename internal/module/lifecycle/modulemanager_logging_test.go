@@ -9,6 +9,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -412,14 +413,14 @@ func TestWithLeaseRenewPaused(t *testing.T) {
 		t.Fatalf("nil fn: %v", err)
 	}
 	if err := m.withLeaseRenewPaused(func() error {
-		if !m.pauseLeaseRenew.Load() {
+		if m.pauseLeaseRenewDepth.Load() != 1 {
 			t.Fatal("expected pause while fn runs")
 		}
 		return nil
 	}); err != nil {
 		t.Fatalf("paused fn: %v", err)
 	}
-	if m.pauseLeaseRenew.Load() {
+	if m.pauseLeaseRenewDepth.Load() != 0 {
 		t.Fatal("expected pause cleared after fn")
 	}
 	want := errors.New("boom")
@@ -427,11 +428,26 @@ func TestWithLeaseRenewPaused(t *testing.T) {
 		t.Fatalf("got %v want %v", err, want)
 	}
 
+	// Nested pause must keep depth until outermost returns.
+	if err := m.withLeaseRenewPaused(func() error {
+		return m.withLeaseRenewPaused(func() error {
+			if m.pauseLeaseRenewDepth.Load() != 2 {
+				t.Fatalf("nested depth=%d", m.pauseLeaseRenewDepth.Load())
+			}
+			return nil
+		})
+	}); err != nil {
+		t.Fatalf("nested pause: %v", err)
+	}
+	if m.pauseLeaseRenewDepth.Load() != 0 {
+		t.Fatal("expected nested pause cleared")
+	}
+
 	origDialect := moduleManagerDialectNameFn
 	t.Cleanup(func() { moduleManagerDialectNameFn = origDialect })
 	moduleManagerDialectNameFn = func(*ModuleManager) string { return "postgres" }
 	if err := m.withLeaseRenewPaused(func() error {
-		if m.pauseLeaseRenew.Load() {
+		if m.pauseLeaseRenewDepth.Load() != 0 {
 			t.Fatal("postgres must keep lease renew active")
 		}
 		return nil
@@ -481,7 +497,7 @@ func TestRunWithLeaseRenewPaused(t *testing.T) {
 	}
 	m := &ModuleManager{}
 	if err := runWithLeaseRenewPaused(m, func() error {
-		if !m.pauseLeaseRenew.Load() {
+		if m.pauseLeaseRenewDepth.Load() != 1 {
 			t.Fatal("expected pause")
 		}
 		return nil
@@ -491,7 +507,7 @@ func TestRunWithLeaseRenewPaused(t *testing.T) {
 }
 
 type renewCountLocker struct {
-	renewCalls int
+	renewCalls atomic.Int32
 	renewErr   error
 }
 
@@ -499,7 +515,7 @@ func (l *renewCountLocker) Acquire(context.Context, string, string, time.Duratio
 	return nil
 }
 func (l *renewCountLocker) Renew(context.Context, string, string, time.Duration) error {
-	l.renewCalls++
+	l.renewCalls.Add(1)
 	return l.renewErr
 }
 func (l *renewCountLocker) Release(context.Context, string, string) error { return nil }
@@ -510,20 +526,20 @@ func TestRenewLeaseOnTick(t *testing.T) {
 	m.renewLeaseOnTick(nil, context.Background(), "r", "o", time.Second)
 
 	locker := &renewCountLocker{}
-	m.pauseLeaseRenew.Store(true)
+	m.pauseLeaseRenewDepth.Store(1)
 	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
-	if locker.renewCalls != 0 {
-		t.Fatalf("paused renew calls=%d", locker.renewCalls)
+	if locker.renewCalls.Load() != 0 {
+		t.Fatalf("paused renew calls=%d", locker.renewCalls.Load())
 	}
-	m.pauseLeaseRenew.Store(false)
+	m.pauseLeaseRenewDepth.Store(0)
 	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
-	if locker.renewCalls != 1 {
-		t.Fatalf("renew calls=%d", locker.renewCalls)
+	if locker.renewCalls.Load() != 1 {
+		t.Fatalf("renew calls=%d", locker.renewCalls.Load())
 	}
 	locker.renewErr = errors.New("renew boom")
 	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
-	if locker.renewCalls != 2 {
-		t.Fatalf("renew with err calls=%d", locker.renewCalls)
+	if locker.renewCalls.Load() != 2 {
+		t.Fatalf("renew with err calls=%d", locker.renewCalls.Load())
 	}
 }
 
@@ -551,13 +567,33 @@ func TestWithModuleManagerLease_RespectsRenewPause(t *testing.T) {
 		}); err != nil {
 			return err
 		}
-		time.Sleep(15 * time.Millisecond)
+		deadline := time.Now().Add(2 * time.Second)
+		for locker.renewCalls.Load() < 1 && time.Now().Before(deadline) {
+			time.Sleep(2 * time.Millisecond)
+		}
 		return nil
 	}); err != nil {
 		t.Fatalf("lease: %v", err)
 	}
-	if locker.renewCalls < 1 {
-		t.Fatalf("expected at least one renew after pause cleared, got %d", locker.renewCalls)
+	if locker.renewCalls.Load() < 1 {
+		t.Fatalf("expected at least one renew after pause cleared, got %d", locker.renewCalls.Load())
+	}
+}
+
+func TestModuleManagerLeaseRenewInterval(t *testing.T) {
+	orig := moduleManagerLeaseRenewEvery
+	t.Cleanup(func() { moduleManagerLeaseRenewEvery = orig })
+	moduleManagerLeaseRenewEvery = func(time.Duration) time.Duration { return 0 }
+	if got := moduleManagerLeaseRenewInterval(time.Minute); got != time.Second {
+		t.Fatalf("zero interval clamp=%v", got)
+	}
+	moduleManagerLeaseRenewEvery = func(time.Duration) time.Duration { return -time.Millisecond }
+	if got := moduleManagerLeaseRenewInterval(time.Minute); got != time.Second {
+		t.Fatalf("negative interval clamp=%v", got)
+	}
+	moduleManagerLeaseRenewEvery = func(ttl time.Duration) time.Duration { return ttl / 2 }
+	if got := moduleManagerLeaseRenewInterval(20 * time.Millisecond); got != 10*time.Millisecond {
+		t.Fatalf("positive interval=%v", got)
 	}
 }
 
