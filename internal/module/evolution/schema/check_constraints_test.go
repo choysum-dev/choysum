@@ -4,6 +4,8 @@
 package schema
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"gorm.io/gorm"
@@ -67,6 +69,58 @@ func TestCheckConstraintRuntimeHelpers(t *testing.T) {
 	}
 	if err := dropCheckConstraintBestEffort(db, "sqlserver", "sales_order", "chk_sales_order_status"); err == nil {
 		t.Fatal("expected sqlserver drop constraint to fail on sqlite")
+	}
+}
+
+func TestDropCheckConstraintBestEffort_MySQLBranches(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+
+	origCount := mysqlCheckConstraintCountFn
+	origExec := execSQLFn
+	t.Cleanup(func() {
+		mysqlCheckConstraintCountFn = origCount
+		execSQLFn = origExec
+	})
+
+	mysqlCheckConstraintCountFn = func(*gorm.DB, string, string) (int64, error) {
+		return 0, nil
+	}
+	if err := dropCheckConstraintBestEffort(db, "mysql", "t", "chk_t"); err != nil {
+		t.Fatalf("count=0: %v", err)
+	}
+
+	mysqlCheckConstraintCountFn = func(*gorm.DB, string, string) (int64, error) {
+		return 1, nil
+	}
+	execSQLFn = func(*gorm.DB, string) error { return nil }
+	if err := dropCheckConstraintBestEffort(db, "mariadb", "t", "chk_t"); err != nil {
+		t.Fatalf("DROP CHECK success: %v", err)
+	}
+
+	calls := 0
+	execSQLFn = func(_ *gorm.DB, sql string) error {
+		calls++
+		if calls == 1 {
+			if !strings.Contains(sql, "DROP CHECK") {
+				t.Fatalf("first exec want DROP CHECK, got %s", sql)
+			}
+			return fmt.Errorf("no drop check")
+		}
+		if !strings.Contains(sql, "DROP CONSTRAINT") {
+			t.Fatalf("fallback want DROP CONSTRAINT, got %s", sql)
+		}
+		return nil
+	}
+	if err := dropCheckConstraintBestEffort(db, "mysql", "t", "chk_t"); err != nil || calls != 2 {
+		t.Fatalf("fallback: calls=%d err=%v", calls, err)
+	}
+
+	mysqlCheckConstraintCountFn = func(*gorm.DB, string, string) (int64, error) {
+		return 0, fmt.Errorf("count boom")
+	}
+	if err := dropCheckConstraintBestEffort(db, "mysql", "t", "chk_t"); err == nil || !strings.Contains(err.Error(), "count boom") {
+		t.Fatalf("count err: %v", err)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ettle/strcase"
 	"gorm.io/gorm"
 )
 
@@ -70,7 +71,13 @@ func RenameColumn(opts HelperOptions, table, from, to string) error {
 	if err := renameColumn(opts.DB, table, from, col, opts.Dialect); err != nil {
 		return err
 	}
-	opts.Intents.Add(Intent{Kind: IntentRenameColumn, Table: table, Name: to, FromName: from})
+	// Plan ops use snake_case physical names; normalize so IntentSatisfies can match.
+	opts.Intents.Add(Intent{
+		Kind:     IntentRenameColumn,
+		Table:    table,
+		Name:     strcase.ToSnake(to),
+		FromName: strcase.ToSnake(from),
+	})
 	return nil
 }
 

@@ -237,7 +237,9 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	persistModuleStarted := time.Now()
 	target.Status = meta.Installed
 	if len(target.Dependencies) > 0 {
-		if err := m.runtimeScope.Session().Model(target).Association("Dependencies").Replace(target.Dependencies); err != nil {
+		if err := sqliteretry.WithLockRetry(func() error {
+			return m.runtimeScope.Session().Model(target).Association("Dependencies").Replace(target.Dependencies)
+		}); err != nil {
 			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}

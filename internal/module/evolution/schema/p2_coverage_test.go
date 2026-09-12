@@ -94,6 +94,20 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 	if err := RenameColumn(opts, "help_rename", "old_c", "new_c"); err != nil {
 		t.Fatal(err)
 	}
+	if got := opts.Intents.List(); len(got) != 1 || got[0].Name != "new_c" || got[0].FromName != "old_c" {
+		t.Fatalf("rename intent %#v", got)
+	}
+	// CamelCase script args must still record snake_case physical names.
+	if err := db.Exec(`CREATE TABLE help_rename2 (OldC text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	camelBag := NewMemoryIntentBag()
+	if err := RenameColumn(HelperOptions{DB: db, Dialect: "sqlite", Intents: camelBag}, "help_rename2", "OldC", "NewC"); err != nil {
+		t.Fatal(err)
+	}
+	if got := camelBag.List(); len(got) != 1 || got[0].Name != "new_c" || got[0].FromName != "old_c" {
+		t.Fatalf("camel rename intent %#v", got)
+	}
 	if err := db.Exec(`CREATE TABLE help_drop (id integer, gone text)`).Error; err != nil {
 		t.Fatal(err)
 	}

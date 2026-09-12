@@ -75,6 +75,16 @@ func TestCommitInstall_applyInitdataNilCtx(t *testing.T) {
 func TestCommitUpgrade_applyInitdataWithDemo(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	modulePath := t.TempDir()
+	dep := &meta.Module{
+		Name:    "demo_upgrade_dep",
+		Version: "1.0.0",
+		Status:  meta.Installed,
+		Path:    t.TempDir(),
+	}
+	dep.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(dep).Error; err != nil {
+		t.Fatalf("create dep: %v", err)
+	}
 	mod := &meta.Module{
 		Name:    "demo_upgrade_demo",
 		Version: "1.0.0",
@@ -85,7 +95,10 @@ func TestCommitUpgrade_applyInitdataWithDemo(t *testing.T) {
 	if err := runtimeScope.Session().Create(mod).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
-	target := &meta.Module{Name: "demo_upgrade_demo", Version: "2.0.0", Status: meta.Installed, Path: modulePath}
+	target := &meta.Module{
+		Name: "demo_upgrade_demo", Version: "2.0.0", Status: meta.Installed, Path: modulePath,
+		Dependencies: []*meta.Module{dep},
+	}
 	target.Id = mod.Id
 
 	opCtx := newOpContext()
