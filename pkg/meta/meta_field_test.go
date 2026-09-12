@@ -89,8 +89,10 @@ func TestField_SetResolvedSpec(t *testing.T) {
 		spec := &FieldResolvedSpec{
 			FieldName: "amount",
 			Structural: FieldStructuralSpec{
-				Name:      "amount",
-				FieldType: "float",
+				Name:       "amount",
+				FieldType:  "float",
+				RenameFrom: "OldAmount",
+				DropAfter:  "2.0.0",
 				StorageHints: &FieldStructuralStorageHints{
 					Required: ptr(true),
 					Indexed:  ptr(true),
@@ -129,6 +131,9 @@ func TestField_SetResolvedSpec(t *testing.T) {
 		}
 		if roundtrip.Migration.ReasonCode != "OK" {
 			t.Fatalf("ReasonCode = %q, want OK", roundtrip.Migration.ReasonCode)
+		}
+		if roundtrip.Structural.RenameFrom != "OldAmount" || roundtrip.Structural.DropAfter != "2.0.0" {
+			t.Fatalf("rename/dropAfter = %#v", roundtrip.Structural)
 		}
 	})
 

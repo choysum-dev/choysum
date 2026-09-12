@@ -16,11 +16,12 @@ const (
 type OpKind string
 
 const (
-	OpCreateTable OpKind = "create_table"
-	OpAddColumn   OpKind = "add_column"
-	OpAlterColumn OpKind = "alter_column"
-	OpAddIndex    OpKind = "add_index"
-	OpEnsureCheck OpKind = "ensure_check"
+	OpCreateTable  OpKind = "create_table"
+	OpAddColumn    OpKind = "add_column"
+	OpAlterColumn  OpKind = "alter_column"
+	OpAddIndex     OpKind = "add_index"
+	OpEnsureCheck  OpKind = "ensure_check"
+	OpRenameColumn OpKind = "rename_column"
 )
 
 // StorageKind values mirror ResolvedSpec.Migration.StorageKind plus schema-side kinds.
@@ -94,6 +95,7 @@ type PlanOp struct {
 	Detail    string
 	Column    *ColumnSpec
 	Columns   []ColumnSpec // create_table
+	FromName  string       // rename_column: live column being renamed
 	IndexName string       // add_index lookup name
 	CheckName string       // ensure_check constraint name
 	CheckExpr string       // ensure_check expression

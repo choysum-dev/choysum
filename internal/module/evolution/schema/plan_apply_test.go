@@ -108,7 +108,7 @@ func TestValidatePlan_RejectsGuarded(t *testing.T) {
 			Column: &ColumnSpec{Name: "status", PhysicalType: "text"},
 		}},
 	}
-	err := ValidatePlan(plan)
+	err := ValidatePlan(plan, nil)
 	if err == nil || !strings.Contains(err.Error(), "schema plan has guarded/manual operations") {
 		t.Fatalf("ValidatePlan() error = %v", err)
 	}
@@ -134,11 +134,14 @@ func TestBuildPlan_AddNotNullOnNonEmptyTableIsGuarded(t *testing.T) {
 		Columns:  map[string]map[string]LiveColumn{"sales_order": {}},
 		RowCount: map[string]int64{"sales_order": 1},
 	}
-	plan := buildPlan("sales", desired, live, "sqlite")
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	if len(plan.Ops) != 1 || plan.Ops[0].Safety != SafetyGuarded {
 		t.Fatalf("expected guarded add NOT NULL, got %#v", plan.Ops)
 	}
-	if err := ValidatePlan(plan); err == nil {
+	if err := ValidatePlan(plan, nil); err == nil {
 		t.Fatal("expected ValidatePlan to reject guarded add NOT NULL")
 	}
 }

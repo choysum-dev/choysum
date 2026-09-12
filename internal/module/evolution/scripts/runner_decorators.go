@@ -15,6 +15,7 @@ import (
 
 	internalbackendbuilder "github.com/choysum-dev/choysum/internal/module/artifact/build/backend"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -68,13 +69,32 @@ type Runner struct {
 	jsExecutor   jsexecutor.ScriptExecutor
 	module       *meta.Module
 	store        *HistoryStore
+	intents      schema.IntentBag
 }
 
-func NewRunner(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module) *Runner {
+// RunnerOption configures NewRunner.
+type RunnerOption func(*Runner)
+
+// WithIntentBag attaches the upgrade Intent bag for $choysum.schema helpers.
+func WithIntentBag(bag schema.IntentBag) RunnerOption {
+	return func(r *Runner) {
+		if r != nil {
+			r.intents = bag
+		}
+	}
+}
+
+func NewRunner(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, opts ...RunnerOption) *Runner {
 	if runtimeScope == nil || module == nil {
 		return nil
 	}
-	return &Runner{runtimeScope: runtimeScope, jsExecutor: jsExecutor, module: module, store: NewHistoryStore(runtimeScope)}
+	r := &Runner{runtimeScope: runtimeScope, jsExecutor: jsExecutor, module: module, store: NewHistoryStore(runtimeScope)}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(r)
+		}
+	}
+	return r
 }
 
 func (r *Runner) RunPhase(ctx context.Context, opts RunOptions) error {
@@ -344,6 +364,9 @@ func equivalentScripts(a []*jsengine.JsScript, b []*jsengine.JsScript) bool {
 func (r *Runner) executeWithScripts(execCtx context.Context, scripts []*jsengine.JsScript, req *jsengine.JsRequest, reuseExecutorScripts bool) (*jsengine.JsResponse, error) {
 	if r.jsExecutor == nil {
 		return nil, fmt.Errorf("js executor is nil")
+	}
+	if r.intents != nil {
+		execCtx = schema.ContextWithIntentBag(execCtx, r.intents)
 	}
 	prevScripts := r.jsExecutor.GetJsScripts()
 	changedScripts := len(scripts) > 0 && !equivalentScripts(prevScripts, scripts)

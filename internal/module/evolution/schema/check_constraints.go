@@ -77,45 +77,57 @@ func ensurePostgresCheckConstraint(db *gorm.DB, tableName, constraintName, expr 
 }
 
 func dropCheckConstraintBestEffort(db *gorm.DB, dialect, tableName, constraintName string) error {
+	dialect = strings.ToLower(strings.TrimSpace(dialect))
+	qTable := quoteIdent(dialect, tableName)
+	qName := quoteIdent(dialect, constraintName)
 	switch dialect {
 	case "postgres":
-		return db.Exec(
-			fmt.Sprintf(`ALTER TABLE "%s" DROP CONSTRAINT IF EXISTS "%s"`, tableName, constraintName),
-		).Error
-	case "mysql":
-		// MySQL doesn't support IF EXISTS for DROP CHECK. Check existence first.
-		var count int64
-		if err := db.Raw(
-			`SELECT COUNT(*) FROM information_schema.table_constraints
-			 WHERE table_schema = DATABASE() AND table_name = ? AND constraint_name = ? AND constraint_type = 'CHECK'`,
-			tableName,
-			constraintName,
-		).Scan(&count).Error; err != nil {
+		return execSQLFn(db, fmt.Sprintf(`ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s`, qTable, qName))
+	case "mysql", "mariadb":
+		// MySQL/MariaDB don't support IF EXISTS for DROP CHECK. Check existence first.
+		count, err := mysqlCheckConstraintCountFn(db, tableName, constraintName)
+		if err != nil {
 			return err
 		}
 		if count == 0 {
 			return nil
 		}
-		// Prefer DROP CHECK (MySQL 8.0.16+). Fall back to DROP CONSTRAINT.
-		dropSQL := fmt.Sprintf("ALTER TABLE `%s` DROP CHECK `%s`", tableName, constraintName)
-		if err := db.Exec(dropSQL).Error; err == nil {
+		// Prefer DROP CHECK (MySQL 8.0.16+ / MariaDB). Fall back to DROP CONSTRAINT.
+		dropSQL := fmt.Sprintf("ALTER TABLE %s DROP CHECK %s", qTable, qName)
+		if err := execSQLFn(db, dropSQL); err == nil {
 			return nil
 		}
-		return db.Exec(fmt.Sprintf("ALTER TABLE `%s` DROP CONSTRAINT `%s`", tableName, constraintName)).Error
+		return execSQLFn(db, fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s", qTable, qName))
 	case "sqlserver":
 		// SQL Server doesn't have DROP CONSTRAINT IF EXISTS; guard with sys.check_constraints.
 		guarded := fmt.Sprintf(
-			"IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'%s') ALTER TABLE [%s] DROP CONSTRAINT [%s];",
+			"IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'%s') ALTER TABLE %s DROP CONSTRAINT %s;",
 			escapeSQLServerStringLiteral(constraintName),
-			tableName,
-			constraintName,
+			qTable,
+			qName,
 		)
-		return db.Exec(guarded).Error
+		return execSQLFn(db, guarded)
 	case "sqlite":
 		return nil
 	default:
 		return nil
 	}
+}
+
+// Overridable seams for dialect paths that need a live MySQL/SQL Server in production.
+var execSQLFn = func(db *gorm.DB, sql string) error {
+	return db.Exec(sql).Error
+}
+
+var mysqlCheckConstraintCountFn = func(db *gorm.DB, tableName, constraintName string) (int64, error) {
+	var count int64
+	err := db.Raw(
+		`SELECT COUNT(*) FROM information_schema.table_constraints
+		 WHERE table_schema = DATABASE() AND table_name = ? AND constraint_name = ? AND constraint_type = 'CHECK'`,
+		tableName,
+		constraintName,
+	).Scan(&count).Error
+	return count, err
 }
 
 func ensureMySQLCheckConstraint(db *gorm.DB, tableName, constraintName, expr string) error {

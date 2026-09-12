@@ -10,9 +10,10 @@ import (
 
 // buildPlan diffs desired vs live.
 // Auto: create_table, add_column (nullable / empty table), varchar widen, add_index,
-// ensure_check (idempotent on postgres/mysql/sqlserver; omitted for existing sqlite).
-// Guarded: type/null/default changes, varchar narrow, unique on populated tables.
-func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialect string) SchemaPlan {
+// ensure_check (idempotent on postgres/mysql/sqlserver; omitted for existing sqlite),
+// rename_column when renameFrom is qualified.
+// Guarded: type/null/default changes, varchar narrow, unique on populated tables, rename type mismatch.
+func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialect string) (SchemaPlan, error) {
 	plan := SchemaPlan{
 		Module:   strings.TrimSpace(moduleName),
 		Ops:      nil,
@@ -40,11 +41,90 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 		rowCount := live.RowCount[table]
 		desiredNames := map[string]struct{}{}
 		desiredIndexKeys := map[string]struct{}{}
+		consumedRenameFrom := map[string]struct{}{}
+
+		if err := validateRenameFromClaims(table, cols); err != nil {
+			return SchemaPlan{}, err
+		}
 
 		for i := range cols {
 			col := cols[i]
 			desiredNames[strings.ToLower(col.Name)] = struct{}{}
 			liveCol, ok := liveCols[strings.ToLower(col.Name)]
+			renameFrom := strings.TrimSpace(col.RenameFrom)
+			if strings.EqualFold(renameFrom, col.Name) {
+				renameFrom = ""
+			}
+
+			if renameFrom != "" {
+				oldKey := strings.ToLower(renameFrom)
+				_, oldOK := liveCols[oldKey]
+				if ok && oldOK {
+					colCopy := col
+					plan.Ops = append(plan.Ops, PlanOp{
+						Kind:     OpRenameColumn,
+						Safety:   SafetyGuarded,
+						Table:    table,
+						Detail:   fmt.Sprintf("rename conflict: both %s and %s exist", renameFrom, col.Name),
+						Column:   &colCopy,
+						FromName: renameFrom,
+					})
+					// Keep old column visible as leftover so authors see the duplicate.
+					// Target still exists: emit normal attribute diffs against it.
+					for _, d := range columnDiffs(col, liveCol, dialect) {
+						diffCopy := col
+						plan.Ops = append(plan.Ops, PlanOp{
+							Kind:   OpAlterColumn,
+							Safety: d.Safety,
+							Table:  table,
+							Detail: d.Reason,
+							Column: &diffCopy,
+						})
+					}
+					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys, false)...)
+					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
+					continue
+				}
+				if !ok && oldOK {
+					oldLive := liveCols[oldKey]
+					colCopy := col
+					safety := SafetyAuto
+					detail := fmt.Sprintf("rename column %s → %s", renameFrom, col.Name)
+					if !renamePhysicalCompatible(col, oldLive, dialect) {
+						safety = SafetyGuarded
+						detail = fmt.Sprintf("rename column %s → %s with type mismatch", renameFrom, col.Name)
+					}
+					plan.Ops = append(plan.Ops, PlanOp{
+						Kind:     OpRenameColumn,
+						Safety:   safety,
+						Table:    table,
+						Detail:   detail,
+						Column:   &colCopy,
+						FromName: renameFrom,
+					})
+					consumedRenameFrom[oldKey] = struct{}{}
+					// RENAME COLUMN does not restate nullability/default/size; plan those next.
+					for _, d := range columnDiffs(col, oldLive, dialect) {
+						diffCopy := col
+						plan.Ops = append(plan.Ops, PlanOp{
+							Kind:   OpAlterColumn,
+							Safety: d.Safety,
+							Table:  table,
+							Detail: d.Reason,
+							Column: &diffCopy,
+						})
+					}
+					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys, true)...)
+					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
+					continue
+				}
+				if !ok && !oldOK {
+					return SchemaPlan{}, fmt.Errorf("renameFrom %q on %s.%s: neither old column %q nor target %q exist in live schema",
+						col.RenameFrom, table, col.FieldName, renameFrom, col.Name)
+				}
+				// ok && !oldOK: rename already applied; fall through to normal diffs.
+			}
+
 			if !ok {
 				safety := SafetyAuto
 				detail := "add column"
@@ -60,7 +140,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 					Detail: detail,
 					Column: &colCopy,
 				})
-				plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+				plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys, false)...)
 				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 				continue
 			}
@@ -77,12 +157,15 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				})
 			}
 
-			plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+			plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys, false)...)
 			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 		}
 
 		for name := range liveCols {
 			if _, ok := desiredNames[name]; ok {
+				continue
+			}
+			if _, ok := consumedRenameFrom[name]; ok {
 				continue
 			}
 			plan.Leftover = append(plan.Leftover, Leftover{
@@ -114,10 +197,58 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 		}
 	}
 
-	return plan
+	return plan, nil
 }
 
-func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount int64, desiredIndexKeys map[string]struct{}) []PlanOp {
+func validateRenameFromClaims(table string, cols []ColumnSpec) error {
+	desiredNames := map[string]struct{}{}
+	for _, col := range cols {
+		desiredNames[strings.ToLower(col.Name)] = struct{}{}
+	}
+	claims := map[string]string{}
+	for _, col := range cols {
+		rf := strings.TrimSpace(col.RenameFrom)
+		if rf == "" {
+			continue
+		}
+		oldKey := strings.ToLower(rf)
+		newKey := strings.ToLower(col.Name)
+		if oldKey == newKey {
+			continue
+		}
+		if _, exists := desiredNames[oldKey]; exists {
+			return fmt.Errorf("renameFrom %q on %s.%s conflicts with desired column %q",
+				rf, table, col.FieldName, rf)
+		}
+		label := strings.TrimSpace(col.FieldName)
+		if label == "" {
+			label = col.Name
+		}
+		if prev, ok := claims[oldKey]; ok {
+			return fmt.Errorf("duplicate renameFrom %q on %s (fields %s and %s)",
+				rf, table, prev, label)
+		}
+		claims[oldKey] = label
+	}
+	return nil
+}
+
+func renamePhysicalCompatible(desired ColumnSpec, live LiveColumn, dialect string) bool {
+	wantType := normalizeDBType(mapPhysicalToDialectType(dialect, desired.PhysicalType))
+	haveType := normalizeDBType(live.DatabaseTypeName)
+	if wantType == "" || haveType == "" {
+		return false
+	}
+	if wantType == haveType {
+		return true
+	}
+	if strings.EqualFold(strings.TrimSpace(dialect), "sqlite") && sqliteTypeCompatible(wantType, haveType) {
+		return true
+	}
+	return false
+}
+
+func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount int64, desiredIndexKeys map[string]struct{}, renamePending bool) []PlanOp {
 	var ops []PlanOp
 	candidates := indexLookupCandidates(col)
 	// Only register the physical column name when this column declares an index.
@@ -129,6 +260,17 @@ func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount i
 		desiredIndexKeys[strings.ToLower(cand.Name)] = struct{}{}
 		if liveHasIndex(live, table, cand.Name, cand.Unique) {
 			continue
+		}
+		// During pending rename, default (field-export) indexes still live under the old
+		// column name. Explicit IndexName/UniqueIndexNames must match by name only so the
+		// old source index remains leftover and the requested target name is planned.
+		if renamePending && indexCandidateUsesFieldLookup(col, cand.Name) {
+			if rf := strings.TrimSpace(col.RenameFrom); rf != "" {
+				desiredIndexKeys[strings.ToLower(rf)] = struct{}{}
+				if liveHasIndex(live, table, rf, cand.Unique) {
+					continue
+				}
+			}
 		}
 		// Default GORM lookup uses exportIdent(FieldName) (e.g. CreatedBy); also try the
 		// physical column name (created_by). Custom IndexName/UniqueIndexNames match by name only.

@@ -6,6 +6,7 @@ package backendtsparser
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"path/filepath"
 	"strings"
@@ -2755,6 +2756,97 @@ export default class ReadonlyPilot extends BaseModel {
 	name := fieldByName["Name"]
 	if name == nil || name.IsReadonly {
 		t.Fatalf("omitted readonly must leave IsReadonly false, got %#v", name)
+	}
+}
+
+func TestTsParser_RenameFromDropAfter(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/rename_field.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('RenamePilot')
+export default class RenamePilot extends BaseModel {
+  @Field({ type: 'varchar', size: 64, renameFrom: 'OldCode', dropAfter: '2.0.0' })
+  public Code: string
+}
+`
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.Field{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+	code := fieldByName["Code"]
+	if code == nil {
+		t.Fatal("missing Code")
+	}
+	spec, err := code.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("GetResolvedSpec: %v %#v", err, spec)
+	}
+	if spec.Structural.RenameFrom != "OldCode" || spec.Structural.DropAfter != "2.0.0" {
+		t.Fatalf("structural = %#v", spec.Structural)
+	}
+}
+
+func TestIsFieldIdentifier(t *testing.T) {
+	if isFieldIdentifier("") || isFieldIdentifier("1a") || isFieldIdentifier("a-b") || isFieldIdentifier("a b") {
+		t.Fatal("expected rejects")
+	}
+	if !isFieldIdentifier("_x") || !isFieldIdentifier("OldCode") || !isFieldIdentifier("a1") {
+		t.Fatal("expected accepts")
+	}
+}
+
+func TestIsVersionHintShape(t *testing.T) {
+	if isVersionHintShape("") || isVersionHintShape(">=2.0.0") || isVersionHintShape("vault") {
+		t.Fatal("expected rejects")
+	}
+	if !isVersionHintShape("2.0.0") || !isVersionHintShape("v2.0.0") || !isVersionHintShape("V1") {
+		t.Fatal("expected accepts")
+	}
+}
+
+func TestTsParser_RenameFromDropAfterRejectInvalid(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	cases := []struct {
+		name    string
+		options string
+		want    string
+	}{
+		{name: "blank renameFrom", options: "renameFrom: '  '", want: "renameFrom must be a non-empty string"},
+		{name: "self renameFrom", options: "renameFrom: 'Code'", want: "renameFrom must differ from the field name"},
+		{name: "bad renameFrom ident", options: "renameFrom: 'old-code'", want: "renameFrom must be a valid field identifier"},
+		{name: "digit renameFrom", options: "renameFrom: '1Old'", want: "renameFrom must be a valid field identifier"},
+		{name: "non-string dropAfter", options: "dropAfter: 1", want: "dropAfter must be a non-empty string"},
+		{name: "bad dropAfter shape", options: "dropAfter: '>=2.0.0'", want: "dropAfter must be a version like 2.0.0"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := "/virtual/modules/test/service/rename_bad.ts"
+			content := fmt.Sprintf(`import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('RenameBad')
+export default class RenameBad extends BaseModel {
+  @Field({ type: 'varchar', size: 64, %s })
+  public Code: string
+}
+`, tc.options)
+			_, err := p.Parse(map[string]string{}, path, content)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("got %v, want %q", err, tc.want)
+			}
+		})
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/scripts"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/internal/module/policy"
+	"github.com/choysum-dev/choysum/internal/persistence/sqliteretry"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -103,6 +104,9 @@ func (m *moduleUpgrader) upgrade() error {
 	if err := m.validate(); err != nil {
 		return xfmt.Errorf("error validating module %s: %w", m.module.Name, err)
 	}
+	// Scope intents to this module so nested dependency upgrades cannot clear
+	// (or read) another module's bag; restore the previous bag on unwind.
+	defer m.scopeSchemaIntents()()
 
 	fromVersion := m.module.Version
 	if m.ctx != nil {
@@ -131,7 +135,7 @@ func (m *moduleUpgrader) upgrade() error {
 		return xfmt.Errorf("error validating module %s: %w", target.Name, err)
 	}
 
-	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target); runner != nil {
+	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target, scripts.WithIntentBag(m.schemaIntents())); runner != nil {
 		if err := runner.Validate(m.runtimeScope.Context(), fromVersion, target.Version); err != nil {
 			return xfmt.Errorf("error validating migrations for module %s: %w", target.Name, err)
 		}
@@ -210,7 +214,7 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 		}
 	}
 
-	migrator, err := schema.NewMigrator(m.runtimeScope, target)
+	migrator, err := schema.NewMigrator(m.runtimeScope, target, schema.WithIntentBag(m.schemaIntents()), schema.WithToVersion(target.Version))
 	if err != nil {
 		return nil, xfmt.Errorf("error preparing schema migrator for module %s: %w", target.Name, err)
 	}
@@ -233,15 +237,19 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	persistModuleStarted := time.Now()
 	target.Status = meta.Installed
 	if len(target.Dependencies) > 0 {
-		if err := m.runtimeScope.Session().Model(target).Association("Dependencies").Replace(target.Dependencies); err != nil {
+		if err := sqliteretry.WithLockRetry(func() error {
+			return replaceModuleDependenciesFn(m.runtimeScope.Session(), target)
+		}); err != nil {
 			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}
 	// Omit association trees: Persist already wrote raw + effective catalogs. Cascading
 	// Models here would duplicate effective rows with module_id (see install commitSave).
-	if err := m.runtimeScope.Session().
-		Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
-		Save(target).Error; err != nil {
+	if err := sqliteretry.WithLockRetry(func() error {
+		return m.runtimeScope.Session().
+			Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+			Save(target).Error
+	}); err != nil {
 		return nil, xfmt.Errorf("error saving module: %w", err)
 	}
 	m.logUpgradeStep(target.Name, moduleStepSave, persistModuleStarted, "from_version", fromVersion, "to_version", target.Version)
@@ -257,7 +265,7 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 		return xfmt.Errorf("upgrade finalize target is nil")
 	}
 	finalizeStarted := time.Now()
-	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target); runner != nil {
+	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target, scripts.WithIntentBag(m.schemaIntents())); runner != nil {
 		if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhasePost, FromVersion: fromVersion, ToVersion: target.Version}); err != nil {
 			return xfmt.Errorf("error running post migrations for module %s: %w", target.Name, err)
 		}
@@ -280,6 +288,32 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 	}
 	m.logUpgradeStep(target.Name, moduleStepFinalize, finalizeStarted, "from_version", fromVersion, "to_version", target.Version)
 	return nil
+}
+
+func (m *moduleUpgrader) schemaIntents() schema.IntentBag {
+	if m == nil || m.ctx == nil {
+		return nil
+	}
+	return m.ctx.schemaIntents
+}
+
+// replaceModuleDependenciesFn writes module dependency associations (overridable in tests).
+var replaceModuleDependenciesFn = func(sess *scope.Session, target *meta.Module) error {
+	return sess.Model(target).Association("Dependencies").Replace(target.Dependencies)
+}
+
+// scopeSchemaIntents replaces the shared opContext bag with a fresh one for this
+// upgrade and returns a restore func that puts the previous bag back.
+func (m *moduleUpgrader) scopeSchemaIntents() (restore func()) {
+	prev := m.schemaIntents()
+	if m != nil && m.ctx != nil {
+		m.ctx.schemaIntents = schema.NewMemoryIntentBag()
+	}
+	return func() {
+		if m != nil && m.ctx != nil {
+			m.ctx.schemaIntents = prev
+		}
+	}
 }
 
 func newModuleUpgrader(runtimeScope scope.Scope, module *meta.Module, moduleManager *ModuleManager, ctx *opContext) *moduleUpgrader {

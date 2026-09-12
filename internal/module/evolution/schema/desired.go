@@ -70,7 +70,9 @@ func columnSpecsEquivalent(a, b ColumnSpec) bool {
 		a.UniqueIndex != b.UniqueIndex ||
 		a.Trigram != b.Trigram ||
 		a.StorageKind != b.StorageKind ||
-		a.CheckExpr != b.CheckExpr {
+		a.CheckExpr != b.CheckExpr ||
+		a.RenameFrom != b.RenameFrom ||
+		a.DropAfter != b.DropAfter {
 		return false
 	}
 	if !intPtrEqual(a.Size, b.Size) || !stringPtrEqual(a.Default, b.Default) {
@@ -142,6 +144,13 @@ func columnSpecFromField(field *meta.Field, model *meta.Model) (*ColumnSpec, err
 		LogicalType:  typeStr,
 		PhysicalType: physical,
 		StorageKind:  storageKind,
+	}
+	if rf := strings.TrimSpace(resolved.Structural.RenameFrom); rf != "" {
+		// Authors pass the prior TS field name; physical column is snake_case.
+		col.RenameFrom = strcase.ToSnake(rf)
+	}
+	if da := strings.TrimSpace(resolved.Structural.DropAfter); da != "" {
+		col.DropAfter = da
 	}
 
 	if hints := resolved.Structural.StorageHints; hints != nil {

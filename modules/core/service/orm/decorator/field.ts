@@ -91,6 +91,10 @@ type FieldDecoratorOptionBag = {
    * Odoo-style check_company for ManyToOne / ManyToOneRef (parent↔related CompanyId).
    */
   checkCompany?: unknown;
+  /** Prior TS field name for physical column rename. */
+  renameFrom?: unknown;
+  /** Module version hint for scripted leftover column drop. */
+  dropAfter?: unknown;
   /** Relational default condition (static tree or callable); relation field types only. */
   condition?: unknown;
   maxUploadBytes?: unknown;
@@ -276,6 +280,31 @@ export function Field(
       throw new Error(`@Field(${name}) checkCompany is only supported on ManyToOne / ManyToOneRef fields`);
     }
     const checkCompany = optionBag.checkCompany === true;
+    let renameFrom: string | undefined;
+    if (optionBag.renameFrom !== undefined) {
+      if (typeof optionBag.renameFrom !== 'string' || !optionBag.renameFrom.trim()) {
+        throw new Error(`@Field(${name}) renameFrom must be a non-empty string`);
+      }
+      renameFrom = optionBag.renameFrom.trim();
+      if (renameFrom.toLowerCase() === name.toLowerCase()) {
+        throw new Error(`@Field(${name}) renameFrom must differ from the field name`);
+      }
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(renameFrom)) {
+        throw new Error(`@Field(${name}) renameFrom must be a valid field identifier`);
+      }
+    }
+    let dropAfter: string | undefined;
+    if (optionBag.dropAfter !== undefined) {
+      if (typeof optionBag.dropAfter !== 'string' || !optionBag.dropAfter.trim()) {
+        throw new Error(`@Field(${name}) dropAfter must be a non-empty string`);
+      }
+      dropAfter = optionBag.dropAfter.trim();
+      const dropBody =
+        /^[vV][0-9]/.test(dropAfter) ? dropAfter.slice(1) : dropAfter;
+      if (!/^[0-9]/.test(dropBody)) {
+        throw new Error(`@Field(${name}) dropAfter must be a version like 2.0.0`);
+      }
+    }
     const uploadLimits = validateUploadLimitOptions(name, type, optionBag);
     if (translate) {
       if (type !== 'char' && type !== 'varchar' && type !== 'text') {
@@ -706,6 +735,8 @@ export function Field(
     if (readonlyFlag) meta.readonly = true;
     if (trackingFlag) meta.tracking = true;
     if (checkCompany) meta.checkCompany = true;
+    if (renameFrom) meta.renameFrom = renameFrom;
+    if (dropAfter) meta.dropAfter = dropAfter;
     if (type === 'properties' && typeof optionBag.definition === 'string' && optionBag.definition.trim()) {
       meta.definition = optionBag.definition.trim();
     }

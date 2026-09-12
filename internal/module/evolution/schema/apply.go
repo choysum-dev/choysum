@@ -85,6 +85,17 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			if err := ensureCheckConstraint(db.DB, dialect, op.Table, name, expr); err != nil {
 				return fmt.Errorf("ensure check %s on %s: %w", name, op.Table, err)
 			}
+		case OpRenameColumn:
+			if op.Column == nil {
+				return fmt.Errorf("rename_column missing column for table %s", op.Table)
+			}
+			fromName := strings.TrimSpace(op.FromName)
+			if fromName == "" {
+				return fmt.Errorf("rename_column missing from name for table %s", op.Table)
+			}
+			if err := renameColumn(db.DB, op.Table, fromName, *op.Column, dialect); err != nil {
+				return fmt.Errorf("rename column %s.%s → %s: %w", op.Table, fromName, op.Column.Name, err)
+			}
 		default:
 			// Never apply drop/manual here.
 		}
@@ -106,6 +117,28 @@ func applyAlterColumnWiden(db *gorm.DB, table string, col ColumnSpec, dialect st
 	}
 	fieldName := exportIdent(col.FieldName)
 	if err := db.Table(table).Migrator().AlterColumn(inst, fieldName); err != nil {
+		return err
+	}
+	return nil
+}
+
+func renameColumn(db *gorm.DB, table, fromCol string, to ColumnSpec, dialect string) error {
+	if db == nil {
+		return fmt.Errorf("db is nil")
+	}
+	fromCol = strings.TrimSpace(fromCol)
+	if fromCol == "" || strings.TrimSpace(to.Name) == "" {
+		return fmt.Errorf("rename requires from and to column names")
+	}
+	if strings.TrimSpace(to.FieldName) == "" {
+		to.FieldName = to.Name
+	}
+	inst, err := structForAddColumn(table, to, dialect)
+	if err != nil {
+		return fmt.Errorf("build rename struct %s.%s: %w", table, to.Name, err)
+	}
+	toField := exportIdent(to.FieldName)
+	if err := db.Table(table).Migrator().RenameColumn(inst, fromCol, toField); err != nil {
 		return err
 	}
 	return nil

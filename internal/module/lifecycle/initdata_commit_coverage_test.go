@@ -75,6 +75,16 @@ func TestCommitInstall_applyInitdataNilCtx(t *testing.T) {
 func TestCommitUpgrade_applyInitdataWithDemo(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	modulePath := t.TempDir()
+	dep := &meta.Module{
+		Name:    "demo_upgrade_dep",
+		Version: "1.0.0",
+		Status:  meta.Installed,
+		Path:    t.TempDir(),
+	}
+	dep.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(dep).Error; err != nil {
+		t.Fatalf("create dep: %v", err)
+	}
 	mod := &meta.Module{
 		Name:    "demo_upgrade_demo",
 		Version: "1.0.0",
@@ -85,7 +95,10 @@ func TestCommitUpgrade_applyInitdataWithDemo(t *testing.T) {
 	if err := runtimeScope.Session().Create(mod).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
-	target := &meta.Module{Name: "demo_upgrade_demo", Version: "2.0.0", Status: meta.Installed, Path: modulePath}
+	target := &meta.Module{
+		Name: "demo_upgrade_demo", Version: "2.0.0", Status: meta.Installed, Path: modulePath,
+		Dependencies: []*meta.Module{dep},
+	}
 	target.Id = mod.Id
 
 	opCtx := newOpContext()
@@ -104,6 +117,50 @@ func TestCommitUpgrade_applyInitdataWithDemo(t *testing.T) {
 	}
 	if _, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false); err != nil {
 		t.Fatalf("commitUpgrade with withDemo: %v", err)
+	}
+}
+
+func TestCommitUpgrade_DependenciesReplaceError(t *testing.T) {
+	orig := replaceModuleDependenciesFn
+	t.Cleanup(func() { replaceModuleDependenciesFn = orig })
+	replaceModuleDependenciesFn = func(*scope.Session, *meta.Module) error {
+		return errors.New("dep replace boom")
+	}
+
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name:    "demo_upgrade_dep_err",
+		Version: "1.0.0",
+		Status:  meta.Installed,
+		Path:    t.TempDir(),
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+	dep := &meta.Module{Name: "dep_only", Version: "1.0.0", Status: meta.Installed, Path: t.TempDir()}
+	dep.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	target := &meta.Module{
+		Name: "demo_upgrade_dep_err", Version: "2.0.0", Status: meta.Installed, Path: mod.Path,
+		Dependencies: []*meta.Module{dep},
+	}
+	target.Id = mod.Id
+
+	upgrader := &moduleUpgrader{
+		runtimeScope:  runtimeScope,
+		module:        mod,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	installer := &moduleInstaller{
+		module:        target,
+		runtimeScope:  runtimeScope,
+		moduleManager: upgrader.moduleManager,
+		ctx:           upgrader.ctx,
+	}
+	_, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false)
+	if err == nil || !strings.Contains(err.Error(), "error saving module dependencies") {
+		t.Fatalf("expected dependencies error, got %v", err)
 	}
 }
 

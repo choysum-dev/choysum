@@ -25,6 +25,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/parser"
 	"github.com/choysum-dev/choysum/internal/parser/backendtsparser"
+	"github.com/choysum-dev/choysum/internal/persistence/sqliteretry"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -860,8 +861,8 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	// EDS-2: persist declaration-only raw rows (no parent-chain materialize into DB).
 	// save module
 	// Avoid writing many2many join rows here; dependency graph is managed by ModuleManager.
-	if result := b.runtimeScope.Session().Omit("Dependencies", "Dependents", "Models").Save(mod); result.Error != nil {
-		return xfmt.Errorf("error saving module: %w", result.Error)
+	if err := persistModuleRow(b.runtimeScope.Session().DB, mod); err != nil {
+		return xfmt.Errorf("error saving module: %w", err)
 	}
 
 	if mod.Id.Valid {
@@ -873,6 +874,13 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	mod.Models = nil
 
 	return nil
+}
+
+// persistModuleRow writes the module row with SQLite lock retry (overridable in tests).
+var persistModuleRow = func(db *gorm.DB, mod *meta.Module) error {
+	return sqliteretry.WithLockRetry(func() error {
+		return db.Omit("Dependencies", "Dependents", "Models").Save(mod).Error
+	})
 }
 
 func (b *ModuleBuilder) persistModuleModels(moduleID string, models []*meta.Model) error {
