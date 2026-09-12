@@ -255,21 +255,21 @@ func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount i
 	// Otherwise leftover indexes on declared-but-unindexed columns are swallowed.
 	if col.Name != "" && len(candidates) > 0 {
 		desiredIndexKeys[strings.ToLower(col.Name)] = struct{}{}
-		if renamePending {
-			if rf := strings.ToLower(strings.TrimSpace(col.RenameFrom)); rf != "" {
-				desiredIndexKeys[rf] = struct{}{}
-			}
-		}
 	}
 	for _, cand := range candidates {
 		desiredIndexKeys[strings.ToLower(cand.Name)] = struct{}{}
 		if liveHasIndex(live, table, cand.Name, cand.Unique) {
 			continue
 		}
-		// During pending rename, live indexes still reference the old column name.
-		if renamePending {
-			if rf := strings.TrimSpace(col.RenameFrom); rf != "" && liveHasIndex(live, table, rf, cand.Unique) {
-				continue
+		// During pending rename, default (field-export) indexes still live under the old
+		// column name. Explicit IndexName/UniqueIndexNames must match by name only so the
+		// old source index remains leftover and the requested target name is planned.
+		if renamePending && indexCandidateUsesFieldLookup(col, cand.Name) {
+			if rf := strings.TrimSpace(col.RenameFrom); rf != "" {
+				desiredIndexKeys[strings.ToLower(rf)] = struct{}{}
+				if liveHasIndex(live, table, rf, cand.Unique) {
+					continue
+				}
 			}
 		}
 		// Default GORM lookup uses exportIdent(FieldName) (e.g. CreatedBy); also try the

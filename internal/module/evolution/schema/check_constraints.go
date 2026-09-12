@@ -77,10 +77,13 @@ func ensurePostgresCheckConstraint(db *gorm.DB, tableName, constraintName, expr 
 }
 
 func dropCheckConstraintBestEffort(db *gorm.DB, dialect, tableName, constraintName string) error {
-	switch strings.ToLower(strings.TrimSpace(dialect)) {
+	dialect = strings.ToLower(strings.TrimSpace(dialect))
+	qTable := quoteIdent(dialect, tableName)
+	qName := quoteIdent(dialect, constraintName)
+	switch dialect {
 	case "postgres":
 		return db.Exec(
-			fmt.Sprintf(`ALTER TABLE "%s" DROP CONSTRAINT IF EXISTS "%s"`, tableName, constraintName),
+			fmt.Sprintf(`ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s`, qTable, qName),
 		).Error
 	case "mysql", "mariadb":
 		// MySQL/MariaDB don't support IF EXISTS for DROP CHECK. Check existence first.
@@ -97,18 +100,18 @@ func dropCheckConstraintBestEffort(db *gorm.DB, dialect, tableName, constraintNa
 			return nil
 		}
 		// Prefer DROP CHECK (MySQL 8.0.16+ / MariaDB). Fall back to DROP CONSTRAINT.
-		dropSQL := fmt.Sprintf("ALTER TABLE `%s` DROP CHECK `%s`", tableName, constraintName)
+		dropSQL := fmt.Sprintf("ALTER TABLE %s DROP CHECK %s", qTable, qName)
 		if err := db.Exec(dropSQL).Error; err == nil {
 			return nil
 		}
-		return db.Exec(fmt.Sprintf("ALTER TABLE `%s` DROP CONSTRAINT `%s`", tableName, constraintName)).Error
+		return db.Exec(fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s", qTable, qName)).Error
 	case "sqlserver":
 		// SQL Server doesn't have DROP CONSTRAINT IF EXISTS; guard with sys.check_constraints.
 		guarded := fmt.Sprintf(
-			"IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'%s') ALTER TABLE [%s] DROP CONSTRAINT [%s];",
+			"IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'%s') ALTER TABLE %s DROP CONSTRAINT %s;",
 			escapeSQLServerStringLiteral(constraintName),
-			tableName,
-			constraintName,
+			qTable,
+			qName,
 		)
 		return db.Exec(guarded).Error
 	case "sqlite":

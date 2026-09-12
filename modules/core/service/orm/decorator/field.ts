@@ -289,6 +289,9 @@ export function Field(
       if (renameFrom.toLowerCase() === name.toLowerCase()) {
         throw new Error(`@Field(${name}) renameFrom must differ from the field name`);
       }
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(renameFrom)) {
+        throw new Error(`@Field(${name}) renameFrom must be a valid field identifier`);
+      }
     }
     let dropAfter: string | undefined;
     if (optionBag.dropAfter !== undefined) {

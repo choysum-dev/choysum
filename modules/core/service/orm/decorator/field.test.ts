@@ -984,6 +984,14 @@ test('Field decorator accepts renameFrom/dropAfter and rejects empty values', ()
   }).toThrow('renameFrom must differ from the field name');
 
   expect(() => {
+    class BadRenameIdent extends BaseModel {
+      @Field({ type: 'varchar', renameFrom: 'old-code' as any } as any)
+      Code!: string;
+    }
+    return BadRenameIdent;
+  }).toThrow('renameFrom must be a valid field identifier');
+
+  expect(() => {
     class BadDropAfter extends BaseModel {
       @Field({ type: 'varchar', dropAfter: 1 as any } as any)
       Name!: string;

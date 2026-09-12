@@ -485,6 +485,42 @@ func TestPlan_RenameAwareIndex(t *testing.T) {
 	}
 }
 
+func TestPlan_RenameExplicitIndexName(t *testing.T) {
+	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {{
+			Name: "code", FieldName: "Code", PhysicalType: "varchar",
+			RenameFrom: "old_code", Indexed: true, IndexName: "idx_new",
+		}},
+	}}
+	live := LiveSchema{
+		Tables:  map[string]bool{"t": true},
+		Columns: map[string]map[string]LiveColumn{"t": {"old_code": {Name: "old_code", DatabaseTypeName: "varchar"}}},
+		Indexes: map[string][]LiveIndex{"t": {{Name: "idx_old", Columns: []string{"old_code"}}}},
+	}
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundAdd := false
+	for _, op := range plan.Ops {
+		if op.Kind == OpAddIndex && strings.EqualFold(op.IndexName, "idx_new") {
+			foundAdd = true
+		}
+	}
+	if !foundAdd {
+		t.Fatalf("explicit IndexName must plan add idx_new, got %#v", plan.Ops)
+	}
+	foundLeft := false
+	for _, left := range plan.Leftover {
+		if left.Kind == LeftoverIndex && strings.EqualFold(left.Name, "idx_old") {
+			foundLeft = true
+		}
+	}
+	if !foundLeft {
+		t.Fatalf("explicit IndexName must keep idx_old as leftover, got %#v", plan.Leftover)
+	}
+}
+
 func TestPlan_RenameConflictKeepsOldIndexLeftover(t *testing.T) {
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", Indexed: true}},
