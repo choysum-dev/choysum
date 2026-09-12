@@ -37,6 +37,13 @@ func TestSchemaPlan_ReadOnlyModuleLookup(t *testing.T) {
 	if err := db.Create(mod).Error; err != nil {
 		t.Fatalf("seed module: %v", err)
 	}
+	uninstalled := &meta.Module{Name: "gone", Status: meta.Uninstalled, Version: "1.0.0"}
+	if err := db.Create(uninstalled).Error; err != nil {
+		t.Fatalf("seed uninstalled: %v", err)
+	}
+	if _, err := manager.SchemaPlan(context.Background(), "gone"); err == nil || !strings.Contains(err.Error(), "not installed") {
+		t.Fatalf("uninstalled module: %v", err)
+	}
 	dep := &meta.Module{Name: "dep", Status: meta.Installed, Version: "1.0.0"}
 	if err := db.Create(dep).Error; err != nil {
 		t.Fatalf("seed dep: %v", err)

@@ -4,10 +4,12 @@
 package schema
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
 	"gorm.io/gorm"
+	gormmigrator "gorm.io/gorm/migrator"
 )
 
 // inspectTables inspects live tables using GORM migrator APIs.
@@ -89,11 +91,63 @@ var (
 	getColumnTypes = func(db *gorm.DB, table string) ([]gorm.ColumnType, error) {
 		return db.Migrator().ColumnTypes(table)
 	}
-	getIndexes = func(db *gorm.DB, table string) ([]gorm.Index, error) {
-		return db.Migrator().GetIndexes(table)
-	}
+	getIndexes           = defaultGetIndexes
 	probeTableNonEmptyFn = probeTableNonEmpty
 )
+
+func defaultGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
+	if db != nil && db.Dialector != nil && db.Dialector.Name() == "sqlite" {
+		// GORM's sqlite GetIndexes scans index_info.name into string and fails when
+		// SQLite returns NULL (expression / rowid index columns). Use a NULL-safe path.
+		return sqliteGetIndexes(db, table)
+	}
+	return db.Migrator().GetIndexes(table)
+}
+
+func sqliteGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
+	type indexListRow struct {
+		Name   sql.NullString `gorm:"column:name"`
+		Unique bool           `gorm:"column:unique"`
+		Origin string         `gorm:"column:origin"`
+	}
+	var list []indexListRow
+	if err := db.Raw(`SELECT name, "unique" AS "unique", origin FROM pragma_index_list(?)`, table).Scan(&list).Error; err != nil {
+		return nil, err
+	}
+	out := make([]gorm.Index, 0, len(list))
+	for _, row := range list {
+		name := strings.TrimSpace(row.Name.String)
+		if !row.Name.Valid || name == "" {
+			continue
+		}
+		if row.Origin == "u" {
+			// Skip indexes created by UNIQUE constraints (matches GORM sqlite Migrator).
+			continue
+		}
+		var colRows []sql.NullString
+		if err := db.Raw(`SELECT name FROM pragma_index_info(?)`, name).Scan(&colRows).Error; err != nil {
+			return nil, err
+		}
+		cols := make([]string, 0, len(colRows))
+		for _, col := range colRows {
+			if !col.Valid {
+				continue
+			}
+			c := strings.TrimSpace(col.String)
+			if c != "" {
+				cols = append(cols, c)
+			}
+		}
+		out = append(out, &gormmigrator.Index{
+			TableName:       table,
+			NameValue:       name,
+			ColumnList:      cols,
+			PrimaryKeyValue: sql.NullBool{Bool: row.Origin == "pk", Valid: true},
+			UniqueValue:     sql.NullBool{Bool: row.Unique, Valid: true},
+		})
+	}
+	return out, nil
+}
 
 func liveColumnFromColumnType(ct gorm.ColumnType) (LiveColumn, bool) {
 	if ct == nil {

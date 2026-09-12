@@ -461,6 +461,33 @@ func TestApply_WidenUsesSizeOnlyDefinition(t *testing.T) {
 	}
 }
 
+func TestSQLiteGetIndexes_NullColumnNames(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	// Expression index: PRAGMA_index_info.name is NULL for the expression column.
+	if err := runtimeScope.Session().Exec(`CREATE TABLE expr_idx_tbl (id integer primary key, payload text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimeScope.Session().Exec(`CREATE INDEX idx_expr_payload ON expr_idx_tbl ((payload || ''))`).Error; err != nil {
+		t.Fatal(err)
+	}
+	live, err := inspectTables(runtimeScope.Session().DB, []string{"expr_idx_tbl"})
+	if err != nil {
+		t.Fatalf("inspect with expression index: %v", err)
+	}
+	if !live.Tables["expr_idx_tbl"] {
+		t.Fatal("expected table")
+	}
+	found := false
+	for _, idx := range live.Indexes["expr_idx_tbl"] {
+		if strings.EqualFold(idx.Name, "idx_expr_payload") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected idx_expr_payload in %#v", live.Indexes["expr_idx_tbl"])
+	}
+}
+
 func TestInspect_PropagatesIndexErrors(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	if err := runtimeScope.Session().Exec(`CREATE TABLE idx_err_tbl (id integer)`).Error; err != nil {

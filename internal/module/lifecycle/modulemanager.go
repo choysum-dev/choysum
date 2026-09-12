@@ -552,14 +552,10 @@ func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.Sch
 	if err != nil {
 		return schema.SchemaPlan{}, xfmt.Errorf("error preparing schema migrator for module %s: %w", name, err)
 	}
-	plan, err := migrator.PlanOnly()
-	if err != nil {
-		return plan, err
-	}
-	return plan, nil
+	return migrator.PlanOnly()
 }
 
-// loadInstalledModuleRecord loads a module row without ensureMetaTables / migrateBaseModule.
+// loadInstalledModuleRecord loads an installed module row without ensureMetaTables / migrateBaseModule.
 func (m *ModuleManager) loadInstalledModuleRecord(name string) (*meta.Module, error) {
 	if m == nil || m.runtimeScope == nil || m.runtimeScope.Session() == nil {
 		return nil, xfmt.Errorf("runtime scope is nil")
@@ -568,7 +564,7 @@ func (m *ModuleManager) loadInstalledModuleRecord(name string) (*meta.Module, er
 	if result := m.runtimeScope.Session().
 		Preload("Dependencies", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
 		Preload("Dependents", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
-		Where("name = ?", name).Take(&module); result.Error != nil {
+		Where("name = ? AND status = ?", name, meta.Installed).Take(&module); result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, xfmt.Errorf("error loading module %s: %w", name, result.Error)
 		}

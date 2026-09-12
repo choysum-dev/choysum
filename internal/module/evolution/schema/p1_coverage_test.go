@@ -36,6 +36,14 @@ func TestDefaultChangedBranches(t *testing.T) {
 	if !defaultChanged(ColumnSpec{Default: &want}, LiveColumn{Default: &other}) {
 		t.Fatal("different default")
 	}
+	pgLive := "'hello'::character varying"
+	if defaultChanged(ColumnSpec{Default: &want}, LiveColumn{Default: &pgLive}) {
+		t.Fatal("postgres cast should normalize equal")
+	}
+	parenLive := "('hello')"
+	if defaultChanged(ColumnSpec{Default: &want}, LiveColumn{Default: &parenLive}) {
+		t.Fatal("paren-wrapped default should normalize equal")
+	}
 }
 
 func TestLiveHasIndexBranches(t *testing.T) {

@@ -282,7 +282,15 @@ func defaultChanged(desired ColumnSpec, live LiveColumn) bool {
 		return false
 	}
 	have := strings.TrimSpace(*live.Default)
-	return !strings.EqualFold(strings.Trim(want, `"'`), strings.Trim(have, `"'`))
+	return !strings.EqualFold(normalizeDefaultLiteral(want), normalizeDefaultLiteral(have))
+}
+
+func normalizeDefaultLiteral(v string) string {
+	v = strings.TrimSpace(v)
+	if idx := strings.Index(v, "::"); idx >= 0 {
+		v = v[:idx]
+	}
+	return strings.Trim(v, `"'() `)
 }
 
 // columnMismatch is retained for tests; returns true when any guarded/auto alter is needed.
