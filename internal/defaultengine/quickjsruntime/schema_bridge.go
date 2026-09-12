@@ -16,7 +16,10 @@ import (
 // WithSchemaDDL installs $choysum.schema.* helpers for upgrade migration scripts.
 func WithSchemaDDL(dialect string) jsengine.JsEngineOption {
 	return func(jsEngine jsengine.JsEngine) error {
-		engine := jsEngine.(*quickjsengine.QuickjsEngine)
+		engine, ok := jsEngine.(*quickjsengine.QuickjsEngine)
+		if !ok {
+			return fmt.Errorf("WithSchemaDDL requires *quickjsengine.QuickjsEngine, got %T", jsEngine)
+		}
 		globalsObj := engine.Ctx.Globals()
 
 		choysumObj := globalsObj.Get("$choysum")
@@ -39,17 +42,10 @@ func WithSchemaDDL(dialect string) jsengine.JsEngineOption {
 
 func schemaSyncFactory(engine *quickjsengine.QuickjsEngine, dialect, method string) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
-		execCtx := engine.ExecContext()
-		session, ok := scope.SessionFromContext(execCtx)
-		if !ok || session == nil || session.DB == nil {
-			return ctx.ThrowError(fmt.Errorf("$choysum.schema.%s: no db session on exec context", method))
+		opts, err := schemaHelperOpts(engine, dialect)
+		if err != nil {
+			return ctx.ThrowError(err)
 		}
-		opts := schema.HelperOptions{
-			DB:      session.DB,
-			Dialect: dialect,
-			Intents: schema.IntentBagFromContext(execCtx),
-		}
-		var err error
 		switch method {
 		case "renameColumn":
 			if len(args) < 3 {
@@ -84,4 +80,17 @@ func schemaSyncFactory(engine *quickjsengine.QuickjsEngine, dialect, method stri
 		}
 		return ctx.Undefined()
 	}
+}
+
+func schemaHelperOpts(engine *quickjsengine.QuickjsEngine, dialect string) (schema.HelperOptions, error) {
+	execCtx := engine.ExecContext()
+	session, ok := scope.SessionFromContext(execCtx)
+	if !ok || session == nil || session.DB == nil {
+		return schema.HelperOptions{}, fmt.Errorf("$choysum.schema: no db session on exec context")
+	}
+	bag := schema.IntentBagFromContext(execCtx)
+	if bag == nil {
+		return schema.HelperOptions{}, fmt.Errorf("$choysum.schema helpers require an upgrade IntentBag")
+	}
+	return schema.HelperOptions{DB: session.DB, Dialect: dialect, Intents: bag}, nil
 }

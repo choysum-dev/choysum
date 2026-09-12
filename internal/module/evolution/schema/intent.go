@@ -112,66 +112,60 @@ func IntentSatisfies(op PlanOp, bag IntentBag) bool {
 		return false
 	}
 	table := strings.TrimSpace(op.Table)
+	wantKind := intentKindForOp(op)
+	if wantKind == "" {
+		return false
+	}
+	from := strings.TrimSpace(op.FromName)
+	name := intentOpName(op)
 	for _, in := range bag.List() {
-		if !strings.EqualFold(in.Table, table) {
+		if !strings.EqualFold(in.Table, table) || in.Kind != wantKind {
 			continue
 		}
-		switch op.Kind {
-		case OpRenameColumn:
-			if in.Kind != IntentRenameColumn {
-				continue
-			}
-			from := strings.TrimSpace(op.FromName)
-			to := ""
-			if op.Column != nil {
-				to = strings.TrimSpace(op.Column.Name)
-			}
+		if wantKind == IntentRenameColumn {
+			to := name
 			if strings.EqualFold(in.FromName, from) && (in.Name == "" || strings.EqualFold(in.Name, to)) {
 				return true
 			}
-		default:
-			// Manual drop_* ops (and leftover-related Manual kinds) match by name.
-			wantKind := intentKindForOp(op)
-			if wantKind == "" || in.Kind != wantKind {
-				continue
-			}
-			name := strings.TrimSpace(op.Detail)
-			if op.Column != nil && strings.TrimSpace(op.Column.Name) != "" {
-				name = strings.TrimSpace(op.Column.Name)
-			}
-			if op.IndexName != "" {
-				name = strings.TrimSpace(op.IndexName)
-			}
-			if op.CheckName != "" {
-				name = strings.TrimSpace(op.CheckName)
-			}
-			if name != "" && strings.EqualFold(in.Name, name) {
-				return true
-			}
+			continue
+		}
+		if name != "" && strings.EqualFold(in.Name, name) {
+			return true
 		}
 	}
 	return false
 }
 
+func intentOpName(op PlanOp) string {
+	if op.CheckName != "" {
+		return strings.TrimSpace(op.CheckName)
+	}
+	if op.IndexName != "" {
+		return strings.TrimSpace(op.IndexName)
+	}
+	if op.Column != nil && strings.TrimSpace(op.Column.Name) != "" {
+		return strings.TrimSpace(op.Column.Name)
+	}
+	return strings.TrimSpace(op.Detail)
+}
+
 func intentKindForOp(op PlanOp) IntentKind {
+	kind := IntentKind(strings.ToLower(strings.TrimSpace(string(op.Kind))))
+	switch kind {
+	case IntentRenameColumn, IntentDropColumn, IntentDropIndex, IntentDropCheck, IntentDropForeignKey:
+		return kind
+	}
+	detail := strings.ToLower(op.Detail)
 	switch {
-	case strings.Contains(strings.ToLower(string(op.Kind)), "drop_column") ||
-		(op.Safety == SafetyManual && strings.Contains(strings.ToLower(op.Detail), "drop column")):
+	case strings.Contains(detail, "drop column"):
 		return IntentDropColumn
-	case strings.Contains(strings.ToLower(string(op.Kind)), "drop_index") ||
-		(op.Safety == SafetyManual && strings.Contains(strings.ToLower(op.Detail), "drop index")):
+	case strings.Contains(detail, "drop index"):
 		return IntentDropIndex
-	case strings.Contains(strings.ToLower(string(op.Kind)), "drop_check") ||
-		(op.Safety == SafetyManual && strings.Contains(strings.ToLower(op.Detail), "drop check")):
+	case strings.Contains(detail, "drop check"):
 		return IntentDropCheck
-	case strings.Contains(strings.ToLower(string(op.Kind)), "drop_foreign") ||
-		(op.Safety == SafetyManual && strings.Contains(strings.ToLower(op.Detail), "drop foreign")):
+	case strings.Contains(detail, "drop foreign"):
 		return IntentDropForeignKey
 	default:
-		switch IntentKind(op.Kind) {
-		case IntentDropColumn, IntentDropIndex, IntentDropCheck, IntentDropForeignKey:
-			return IntentKind(op.Kind)
-		}
 		return ""
 	}
 }

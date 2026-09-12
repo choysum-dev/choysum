@@ -11,18 +11,23 @@ import (
 )
 
 // HelperOptions configure script DDL helpers.
+// Intents is required so helpers only run during upgrade script execution
+// (Runner attaches the bag to the exec context).
 type HelperOptions struct {
 	DB      *gorm.DB
 	Dialect string
 	Intents IntentBag
-	// AllowedNames optionally lists snapshot / known object names that may be dropped
-	// even without a Choysum stable prefix (table → lower(name)).
+	// AllowedNames lists extra object names (table → lower(name)) that may be
+	// dropped without a Choysum stable prefix.
 	AllowedNames map[string]map[string]struct{}
 }
 
 func (o HelperOptions) validate() error {
 	if o.DB == nil {
 		return fmt.Errorf("db is nil")
+	}
+	if o.Intents == nil {
+		return fmt.Errorf("schema helpers require an upgrade IntentBag")
 	}
 	return nil
 }
@@ -39,15 +44,12 @@ func (o HelperOptions) allowName(table, name string) bool {
 		strings.HasPrefix(lower, "fk_") {
 		return true
 	}
-	if o.AllowedNames == nil {
-		return false
-	}
 	set := o.AllowedNames[strings.ToLower(strings.TrimSpace(table))]
 	_, ok := set[lower]
 	return ok
 }
 
-// RenameColumn renames a physical column and registers an Intent.
+// RenameColumn renames a physical column via GORM and registers an Intent.
 func RenameColumn(opts HelperOptions, table, from, to string) error {
 	if err := opts.validate(); err != nil {
 		return err
@@ -58,14 +60,11 @@ func RenameColumn(opts HelperOptions, table, from, to string) error {
 	if table == "" || from == "" || to == "" {
 		return fmt.Errorf("renameColumn requires table, from, and to")
 	}
-	sql := fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s",
-		quoteIdent(opts.Dialect, table), quoteIdent(opts.Dialect, from), quoteIdent(opts.Dialect, to))
-	if err := opts.DB.Exec(sql).Error; err != nil {
-		return fmt.Errorf("rename column %s.%s → %s: %w", table, from, to, err)
+	col := ColumnSpec{Name: to, FieldName: exportIdent(to), PhysicalType: "text"}
+	if err := renameColumn(opts.DB, table, from, col, opts.Dialect); err != nil {
+		return err
 	}
-	if opts.Intents != nil {
-		opts.Intents.Add(Intent{Kind: IntentRenameColumn, Table: table, Name: to, FromName: from})
-	}
+	opts.Intents.Add(Intent{Kind: IntentRenameColumn, Table: table, Name: to, FromName: from})
 	return nil
 }
 
@@ -80,16 +79,14 @@ func DropColumn(opts HelperOptions, table, column string) error {
 		return fmt.Errorf("dropColumn requires table and column")
 	}
 	sql := fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", quoteIdent(opts.Dialect, table), quoteIdent(opts.Dialect, column))
-	if err := opts.DB.Exec(sql).Error; err != nil {
+	if err := helperExec(opts.DB, sql); err != nil {
 		return fmt.Errorf("drop column %s.%s: %w", table, column, err)
 	}
-	if opts.Intents != nil {
-		opts.Intents.Add(Intent{Kind: IntentDropColumn, Table: table, Name: column})
-	}
+	opts.Intents.Add(Intent{Kind: IntentDropColumn, Table: table, Name: column})
 	return nil
 }
 
-// DropIndex drops an index after prefix/snapshot name validation.
+// DropIndex drops an index after prefix/allow-list validation.
 func DropIndex(opts HelperOptions, table, name string) error {
 	if err := opts.validate(); err != nil {
 		return err
@@ -100,21 +97,13 @@ func DropIndex(opts HelperOptions, table, name string) error {
 		return fmt.Errorf("dropIndex requires table and name")
 	}
 	if !opts.allowName(table, name) {
-		return fmt.Errorf("dropIndex rejects non-Choysum name %q (want idx_/snapshot-known)", name)
+		return fmt.Errorf("dropIndex rejects non-Choysum name %q (want idx_/allowed)", name)
 	}
-	type stub struct{}
-	if err := opts.DB.Table(table).Migrator().DropIndex(&stub{}, name); err != nil {
-		sql := fmt.Sprintf("DROP INDEX %s", quoteIdent(opts.Dialect, name))
-		if strings.EqualFold(strings.TrimSpace(opts.Dialect), "sqlite") {
-			sql = fmt.Sprintf("DROP INDEX IF EXISTS %s", quoteIdent(opts.Dialect, name))
-		}
-		if execErr := opts.DB.Exec(sql).Error; execErr != nil {
-			return fmt.Errorf("drop index %s on %s: %v (raw: %w)", name, table, err, execErr)
-		}
+	sql := dropIndexSQL(opts.Dialect, table, name)
+	if err := helperExec(opts.DB, sql); err != nil {
+		return fmt.Errorf("drop index %s on %s: %w", name, table, err)
 	}
-	if opts.Intents != nil {
-		opts.Intents.Add(Intent{Kind: IntentDropIndex, Table: table, Name: name})
-	}
+	opts.Intents.Add(Intent{Kind: IntentDropIndex, Table: table, Name: name})
 	return nil
 }
 
@@ -129,14 +118,12 @@ func DropCheck(opts HelperOptions, table, name string) error {
 		return fmt.Errorf("dropCheck requires table and name")
 	}
 	if !opts.allowName(table, name) {
-		return fmt.Errorf("dropCheck rejects non-Choysum name %q (want chk_/ck_/snapshot-known)", name)
+		return fmt.Errorf("dropCheck rejects non-Choysum name %q (want chk_/ck_/allowed)", name)
 	}
 	if err := dropCheckConstraintBestEffort(opts.DB, opts.Dialect, table, name); err != nil {
 		return fmt.Errorf("drop check %s on %s: %w", name, table, err)
 	}
-	if opts.Intents != nil {
-		opts.Intents.Add(Intent{Kind: IntentDropCheck, Table: table, Name: name})
-	}
+	opts.Intents.Add(Intent{Kind: IntentDropCheck, Table: table, Name: name})
 	return nil
 }
 
@@ -151,33 +138,55 @@ func DropForeignKey(opts HelperOptions, table, name string) error {
 		return fmt.Errorf("dropForeignKey requires table and name")
 	}
 	if !opts.allowName(table, name) {
-		return fmt.Errorf("dropForeignKey rejects non-Choysum name %q (want fk_/snapshot-known)", name)
+		return fmt.Errorf("dropForeignKey rejects non-Choysum name %q (want fk_/allowed)", name)
 	}
-	sql := fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s", quoteIdent(opts.Dialect, table), quoteIdent(opts.Dialect, name))
-	switch strings.ToLower(strings.TrimSpace(opts.Dialect)) {
-	case "mysql":
-		sql = fmt.Sprintf("ALTER TABLE %s DROP FOREIGN KEY %s", quoteIdent(opts.Dialect, table), quoteIdent(opts.Dialect, name))
-	case "sqlite":
-		return fmt.Errorf("dropForeignKey is not supported on sqlite")
+	sql, err := dropForeignKeySQL(opts.Dialect, table, name)
+	if err != nil {
+		return err
 	}
-	if err := opts.DB.Exec(sql).Error; err != nil {
+	if err := helperExec(opts.DB, sql); err != nil {
 		return fmt.Errorf("drop foreign key %s on %s: %w", name, table, err)
 	}
-	if opts.Intents != nil {
-		opts.Intents.Add(Intent{Kind: IntentDropForeignKey, Table: table, Name: name})
-	}
+	opts.Intents.Add(Intent{Kind: IntentDropForeignKey, Table: table, Name: name})
 	return nil
 }
 
-func quoteIdent(dialect, name string) string {
-	name = strings.ReplaceAll(name, `"`, `""`)
-	name = strings.ReplaceAll(name, "`", "``")
+// helperExec is overridable in tests for dialect paths that need a live server.
+var helperExec = func(db *gorm.DB, sql string) error {
+	return db.Exec(sql).Error
+}
+
+func dropIndexSQL(dialect, table, name string) string {
+	qTable, qName := quoteIdent(dialect, table), quoteIdent(dialect, name)
 	switch strings.ToLower(strings.TrimSpace(dialect)) {
-	case "mysql":
-		return "`" + name + "`"
+	case "mysql", "mariadb", "sqlserver":
+		return fmt.Sprintf("DROP INDEX %s ON %s", qName, qTable)
+	case "sqlite":
+		return fmt.Sprintf("DROP INDEX IF EXISTS %s", qName)
+	default:
+		return fmt.Sprintf("DROP INDEX IF EXISTS %s", qName)
+	}
+}
+
+func dropForeignKeySQL(dialect, table, name string) (string, error) {
+	qTable, qName := quoteIdent(dialect, table), quoteIdent(dialect, name)
+	switch strings.ToLower(strings.TrimSpace(dialect)) {
+	case "mysql", "mariadb":
+		return fmt.Sprintf("ALTER TABLE %s DROP FOREIGN KEY %s", qTable, qName), nil
+	case "sqlite":
+		return "", fmt.Errorf("dropForeignKey is not supported on sqlite")
+	default:
+		return fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s", qTable, qName), nil
+	}
+}
+
+func quoteIdent(dialect, name string) string {
+	switch strings.ToLower(strings.TrimSpace(dialect)) {
+	case "mysql", "mariadb":
+		return "`" + strings.ReplaceAll(name, "`", "``") + "`"
 	case "sqlserver":
 		return "[" + strings.ReplaceAll(name, "]", "]]") + "]"
 	default:
-		return `"` + name + `"`
+		return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 	}
 }

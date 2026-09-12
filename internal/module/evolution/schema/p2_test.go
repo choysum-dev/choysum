@@ -177,7 +177,7 @@ func TestHelper_RejectsNonChoysumName(t *testing.T) {
 	if err := db.Exec(`CREATE INDEX custom_name ON idx_tbl (code)`).Error; err != nil {
 		t.Fatal(err)
 	}
-	err := DropIndex(HelperOptions{DB: db, Dialect: "sqlite"}, "idx_tbl", "custom_name")
+	err := DropIndex(HelperOptions{DB: db, Dialect: "sqlite", Intents: NewMemoryIntentBag()}, "idx_tbl", "custom_name")
 	if err == nil || !strings.Contains(err.Error(), "rejects non-Choysum name") {
 		t.Fatalf("got %v", err)
 	}

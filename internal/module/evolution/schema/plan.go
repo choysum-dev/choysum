@@ -62,7 +62,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 						Column:   &colCopy,
 						FromName: renameFrom,
 					})
-					consumedRenameFrom[oldKey] = struct{}{}
+					// Keep old column visible as leftover so authors see the duplicate.
 					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
 					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 					continue

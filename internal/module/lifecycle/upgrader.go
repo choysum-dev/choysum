@@ -103,6 +103,12 @@ func (m *moduleUpgrader) upgrade() error {
 	if err := m.validate(); err != nil {
 		return xfmt.Errorf("error validating module %s: %w", m.module.Name, err)
 	}
+	// Clear intents on every exit so a failed upgrade does not leak into the next module.
+	defer func() {
+		if bag := m.schemaIntents(); bag != nil {
+			bag.Clear()
+		}
+	}()
 
 	fromVersion := m.module.Version
 	if m.ctx != nil {
@@ -279,9 +285,6 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 		}
 	}
 	m.logUpgradeStep(target.Name, moduleStepFinalize, finalizeStarted, "from_version", fromVersion, "to_version", target.Version)
-	if bag := m.schemaIntents(); bag != nil {
-		bag.Clear()
-	}
 	return nil
 }
 
