@@ -27,9 +27,9 @@ jobs:
           # DeepSeek last-resort fallback when Gemini models are unavailable
           # Create at https://platform.deepseek.com/api_keys ; store as repo secret DEEPSEEK_API_KEY
           DEEPSEEK.KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          # Free Gemini first; DeepSeek flash if Gemini is unavailable (litellm: deepseek/<api_model>)
+          # Free Gemini first; DeepSeek V4 Flash if Gemini is unavailable (litellm: deepseek/<api_model>)
           config.model: "gemini/gemini-3.8-flash"
-          config.fallback_models: '["gemini/gemini-3.7-flash", "deepseek/deepseek-flash"]'
+          config.fallback_models: '["gemini/gemini-3.7-flash", "deepseek/deepseek-v4-flash"]'
           # Required for models not yet listed in PR-Agent's built-in MAX_TOKENS table
           config.custom_model_max_tokens: "1000000"
           # Increase token limit to properly process large diffs

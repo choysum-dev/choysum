@@ -902,7 +902,8 @@ func TestMigrateSchemaTrigramWrap(t *testing.T) {
 	if err := newModelMigrator(runtimeScope, nil, []*meta.Model{model3}).MigrateSchema(); err != nil {
 		t.Fatal(err)
 	}
-	// Second run should be idempotent (ensure_check Auto no-op on sqlite).
+	// Second run should be idempotent (sqlite omits ensure_check on existing tables;
+	// CHECK is embedded in CREATE TABLE via gorm tags on first migrate).
 	if err := newModelMigrator(runtimeScope, nil, []*meta.Model{model3}).MigrateSchema(); err != nil {
 		t.Fatalf("idempotent migrate: %v", err)
 	}

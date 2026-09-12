@@ -239,7 +239,7 @@ func TestPlan_EnsureCheckOnPopulatedGuarded(t *testing.T) {
 		Indexes:  map[string][]LiveIndex{"t": {}},
 		RowCount: map[string]int64{"t": 1},
 	}
-	plan := buildPlan("sales", desired, live, "sqlite")
+	plan := buildPlan("sales", desired, live, "postgres")
 	found := false
 	for _, op := range plan.Ops {
 		if op.Kind == OpEnsureCheck && op.Safety == SafetyGuarded {
@@ -248,6 +248,12 @@ func TestPlan_EnsureCheckOnPopulatedGuarded(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected guarded ensure_check, got %#v", plan.Ops)
+	}
+	sqlitePlan := buildPlan("sales", desired, live, "sqlite")
+	for _, op := range sqlitePlan.Ops {
+		if op.Kind == OpEnsureCheck {
+			t.Fatalf("sqlite existing table must omit ensure_check, got %#v", op)
+		}
 	}
 }
 
@@ -270,6 +276,25 @@ func TestPlan_DefaultRemovalGuarded(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected guarded default removal, got %#v", plan.Ops)
+	}
+}
+
+func TestIndexOps_ClassifiesUniqueIndependently(t *testing.T) {
+	desiredKeys := map[string]struct{}{}
+	live := LiveSchema{
+		Tables:  map[string]bool{"t": true},
+		Indexes: map[string][]LiveIndex{"t": {{Name: "uniq_code", Columns: []string{"code"}, Unique: true}}},
+	}
+	col := ColumnSpec{
+		Name: "code", FieldName: "Code", PhysicalType: "varchar",
+		Indexed: true, IndexName: "idx_code", UniqueIndex: true, UniqueIndexNames: []string{"uniq_code"},
+	}
+	ops := indexOpsForColumn("t", col, live, 5, desiredKeys)
+	if len(ops) != 1 || ops[0].IndexName != "idx_code" || ops[0].Safety != SafetyAuto {
+		t.Fatalf("ordinary missing index must stay auto when unique exists: %#v", ops)
+	}
+	if _, ok := desiredKeys["code"]; !ok {
+		t.Fatal("expected physical column name in desiredIndexKeys")
 	}
 }
 
@@ -453,8 +478,14 @@ func TestApply_WidenUsesSizeOnlyDefinition(t *testing.T) {
 		NotNull: true, Default: stringPtr("should-not-apply"),
 	}
 	if err := applyAlterColumnWiden(runtimeScope.Session().DB, "sales_widen", col, "sqlite"); err != nil {
-		// sqlite may no-op alter; still covers size-only path construction
-		t.Logf("widen on sqlite: %v", err)
+		t.Fatalf("widen on sqlite: %v", err)
+	}
+	var ddl string
+	if err := runtimeScope.Session().Raw(`SELECT sql FROM sqlite_master WHERE type='table' AND name='sales_widen'`).Scan(&ddl).Error; err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.ToLower(ddl), "should-not-apply") {
+		t.Fatalf("widen must not apply default from ColumnSpec: %s", ddl)
 	}
 	if err := applyAlterColumnWiden(nil, "sales_widen", col, "sqlite"); err == nil {
 		t.Fatal("expected nil db error")
@@ -561,9 +592,13 @@ func TestPlan_LeftoverIndexAndCovered(t *testing.T) {
 }
 
 func TestCheckOpsEmptyColumnName(t *testing.T) {
-	ops := checkOpsForColumn("t", ColumnSpec{FieldName: "Status", CheckExpr: "status <> ''"}, 0)
-	if len(ops) != 1 || ops[0].CheckName != "chk_t_status" {
+	ops := checkOpsForColumn("t", ColumnSpec{FieldName: "Status", CheckExpr: "status <> ''"}, 0, "postgres", false)
+	if len(ops) != 1 || ops[0].CheckName != "chk_t_status" || ops[0].Safety != SafetyAuto {
 		t.Fatalf("%#v", ops)
+	}
+	sqliteExisting := checkOpsForColumn("t", ColumnSpec{Name: "status", FieldName: "Status", CheckExpr: "status <> ''"}, 0, "sqlite", true)
+	if len(sqliteExisting) != 0 {
+		t.Fatalf("sqlite existing table must omit ensure_check: %#v", sqliteExisting)
 	}
 }
 

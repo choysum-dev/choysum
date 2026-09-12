@@ -138,47 +138,74 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 		return fmt.Errorf("build index struct %s.%s: %w", table, col.Name, err)
 	}
 	mig := db.Table(table).Migrator()
-	for _, name := range indexLookupNames(col) {
-		if mig.HasIndex(inst, name) {
+	for _, cand := range indexLookupCandidates(col) {
+		if mig.HasIndex(inst, cand.Name) {
 			continue
 		}
-		if err := mig.CreateIndex(inst, name); err != nil {
-			return fmt.Errorf("create index %s on %s.%s: %w", name, table, col.Name, err)
+		if err := mig.CreateIndex(inst, cand.Name); err != nil {
+			return fmt.Errorf("create index %s on %s.%s: %w", cand.Name, table, col.Name, err)
 		}
 	}
 	return nil
 }
 
-// indexLookupNames returns names suitable for Migrator.HasIndex/CreateIndex LookIndex.
-func indexLookupNames(col ColumnSpec) []string {
-	seen := map[string]struct{}{}
-	var names []string
-	add := func(name string) {
+type indexNameCandidate struct {
+	Name   string
+	Unique bool
+}
+
+// indexLookupCandidates returns Migrator.HasIndex/CreateIndex names with per-name uniqueness.
+func indexLookupCandidates(col ColumnSpec) []indexNameCandidate {
+	type entry struct {
+		name   string
+		unique bool
+	}
+	order := make([]string, 0, 4)
+	byName := map[string]*entry{}
+	add := func(name string, unique bool) {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			return
 		}
-		if _, ok := seen[name]; ok {
+		if prev, ok := byName[name]; ok {
+			if unique {
+				prev.unique = true
+			}
 			return
 		}
-		seen[name] = struct{}{}
-		names = append(names, name)
+		byName[name] = &entry{name: name, unique: unique}
+		order = append(order, name)
 	}
 	if col.Indexed {
 		if col.IndexName != "" && !strings.EqualFold(col.IndexName, translatedTrigramIndexKind) {
-			add(col.IndexName)
+			add(col.IndexName, false)
 		} else {
-			add(exportIdent(col.FieldName))
+			add(exportIdent(col.FieldName), false)
 		}
 	}
 	if col.UniqueIndex || col.Unique {
 		if len(col.UniqueIndexNames) > 0 {
 			for _, name := range col.UniqueIndexNames {
-				add(name)
+				add(name, true)
 			}
 		} else {
-			add(exportIdent(col.FieldName))
+			add(exportIdent(col.FieldName), true)
 		}
+	}
+	out := make([]indexNameCandidate, 0, len(order))
+	for _, name := range order {
+		e := byName[name]
+		out = append(out, indexNameCandidate{Name: e.name, Unique: e.unique})
+	}
+	return out
+}
+
+// indexLookupNames returns names suitable for Migrator.HasIndex/CreateIndex LookIndex.
+func indexLookupNames(col ColumnSpec) []string {
+	cands := indexLookupCandidates(col)
+	names := make([]string, 0, len(cands))
+	for _, cand := range cands {
+		names = append(names, cand.Name)
 	}
 	return names
 }
@@ -279,8 +306,15 @@ func addStandardTagsFromSpec(tags *[]string, col ColumnSpec) {
 			*tags = append(*tags, fmt.Sprintf("default:%s", normalizeDefaultStringLiteral(trimmed)))
 		}
 	}
-	// CHECK is applied via OpEnsureCheck (postgres/mysql/sqlserver). SQLite cannot
-	// ALTER TABLE ADD CONSTRAINT; ensure_check is a no-op there by design.
+	if expr := strings.TrimSpace(col.CheckExpr); expr != "" {
+		normalized := normalizeCheckExpr(expr)
+		if normalized != "" {
+			// Force default naming chk_<table>_<column> (same as OpEnsureCheck).
+			*tags = append(*tags, "check:,"+normalized)
+		}
+	}
+	// OpEnsureCheck applies CHECK via ALTER on postgres/mysql/sqlserver. SQLite cannot
+	// ALTER TABLE ADD CONSTRAINT; new tables get CHECK from the gorm tag above.
 }
 
 // exportIdent returns a valid exported Go identifier for reflect.StructOf.

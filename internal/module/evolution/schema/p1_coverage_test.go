@@ -45,6 +45,11 @@ func TestDefaultChangedBranches(t *testing.T) {
 	if defaultChanged(ColumnSpec{Default: &want}, LiveColumn{Default: &parenLive}) {
 		t.Fatal("paren-wrapped default should normalize equal")
 	}
+	literalWithParens := "'foo()'"
+	plainFoo := "foo"
+	if !defaultChanged(ColumnSpec{Default: &plainFoo}, LiveColumn{Default: &literalWithParens}) {
+		t.Fatal("'foo()' must not normalize equal to foo")
+	}
 }
 
 func TestLiveHasIndexBranches(t *testing.T) {
@@ -74,6 +79,12 @@ func TestLiveHasIndexBranches(t *testing.T) {
 	}
 	if liveHasIndex(live, "t", "a", true) {
 		t.Fatal("non-unique column must not satisfy unique")
+	}
+	composite := LiveSchema{Indexes: map[string][]LiveIndex{
+		"t": {{Name: "idx_composite", Columns: []string{"tenant_id", "code"}, Unique: true}},
+	}}
+	if liveHasIndex(composite, "t", "code", true) {
+		t.Fatal("composite unique index must not satisfy single-column unique lookup")
 	}
 	if !indexCoveredByDesiredKey(LiveIndex{Columns: []string{"Code"}}, map[string]struct{}{"code": {}}) {
 		t.Fatal("covered")
@@ -276,8 +287,9 @@ func TestDefaultGetIndexes_NonSQLiteAndSQLiteBranches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out) != 2 {
-		t.Fatalf("expected idx_ok + idx_pk after skips, got %#v", out)
+	// Invalid/empty names skipped; origin "u" retained for uniqueness visibility.
+	if len(out) != 3 {
+		t.Fatalf("expected uniq_from_constraint + idx_ok + idx_pk, got %#v", out)
 	}
 }
 

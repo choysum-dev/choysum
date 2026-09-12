@@ -117,9 +117,8 @@ func TestSchemaPlan_ReadOnlyModuleLookup(t *testing.T) {
 		// Effective model may need dual-store APIs; ignore if Create is blocked.
 		t.Logf("effective model seed: %v", err)
 	}
-	if _, err := manager.SchemaPlan(context.Background(), "demo"); err == nil {
-		// If dual-store resolution skips the unique index, still OK for read-only assertion above.
-		t.Log("SchemaPlan did not return guarded error (effective model may be empty)")
+	if _, err := manager.SchemaPlan(context.Background(), "demo"); err == nil || !strings.Contains(err.Error(), "guarded") {
+		t.Fatalf("expected guarded SchemaPlan error, got %v", err)
 	}
 
 	sqlDB, dbErr := db.DB()

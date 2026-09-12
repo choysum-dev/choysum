@@ -31,7 +31,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				Columns: copied,
 			})
 			for _, col := range cols {
-				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, 0)...)
+				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, 0, dialect, false)...)
 			}
 			continue
 		}
@@ -61,7 +61,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 					Column: &colCopy,
 				})
 				plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
-				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, rowCount)...)
+				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, rowCount, dialect, true)...)
 				continue
 			}
 
@@ -78,7 +78,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 			}
 
 			plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
-			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, rowCount)...)
+			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, rowCount, dialect, true)...)
 		}
 
 		for name := range liveCols {
@@ -119,15 +119,26 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 
 func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount int64, desiredIndexKeys map[string]struct{}) []PlanOp {
 	var ops []PlanOp
-	wantUnique := col.UniqueIndex || col.Unique
-	for _, name := range indexLookupNames(col) {
-		desiredIndexKeys[strings.ToLower(name)] = struct{}{}
-		if liveHasIndex(live, table, name, wantUnique) {
+	// Track physical column name so leftover detection matches live index columns
+	// (indexLookupNames may use exported field names like CreatedBy).
+	if col.Name != "" {
+		desiredIndexKeys[strings.ToLower(col.Name)] = struct{}{}
+	}
+	for _, cand := range indexLookupCandidates(col) {
+		desiredIndexKeys[strings.ToLower(cand.Name)] = struct{}{}
+		if liveHasIndex(live, table, cand.Name, cand.Unique) {
+			continue
+		}
+		// Default GORM lookup uses exportIdent(FieldName) (e.g. CreatedBy); also try the
+		// physical column name (created_by). Custom IndexName/UniqueIndexNames match by name only.
+		if indexCandidateUsesFieldLookup(col, cand.Name) &&
+			col.Name != "" &&
+			liveHasIndex(live, table, col.Name, cand.Unique) {
 			continue
 		}
 		safety := SafetyAuto
-		detail := "add index " + name
-		if wantUnique && rowCount > 0 {
+		detail := "add index " + cand.Name
+		if cand.Unique && rowCount > 0 {
 			safety = SafetyGuarded
 			detail = "add unique index on non-empty table"
 		}
@@ -138,10 +149,28 @@ func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount i
 			Table:     table,
 			Detail:    detail,
 			Column:    &colCopy,
-			IndexName: name,
+			IndexName: cand.Name,
 		})
 	}
 	return ops
+}
+
+// indexCandidateUsesFieldLookup reports whether name came from the field export default
+// (not an explicit IndexName / UniqueIndexNames entry).
+func indexCandidateUsesFieldLookup(col ColumnSpec, name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return false
+	}
+	if col.IndexName != "" && strings.EqualFold(name, col.IndexName) {
+		return false
+	}
+	for _, n := range col.UniqueIndexNames {
+		if strings.EqualFold(name, n) {
+			return false
+		}
+	}
+	return strings.EqualFold(name, exportIdent(col.FieldName))
 }
 
 // indexPlanColumn normalizes Unique into UniqueIndex so CreateIndex applies reliably.
@@ -153,9 +182,15 @@ func indexPlanColumn(col ColumnSpec) ColumnSpec {
 	return out
 }
 
-func checkOpsForColumn(table string, col ColumnSpec, rowCount int64) []PlanOp {
+func checkOpsForColumn(table string, col ColumnSpec, rowCount int64, dialect string, tableExists bool) []PlanOp {
 	expr := strings.TrimSpace(col.CheckExpr)
 	if expr == "" {
+		return nil
+	}
+	// SQLite cannot ALTER TABLE ADD CHECK. New tables get CHECK from gorm tags on
+	// CREATE TABLE; do not emit ensure_check for existing sqlite tables (would be a
+	// no-op Auto or a permanent Guarded block on every subsequent migrate).
+	if strings.EqualFold(strings.TrimSpace(dialect), "sqlite") && tableExists {
 		return nil
 	}
 	columnName := col.Name
@@ -195,15 +230,17 @@ func liveHasIndex(live LiveSchema, table, name string, wantUnique bool) bool {
 			}
 			return true
 		}
-		for _, col := range idx.Columns {
-			if !strings.EqualFold(strings.TrimSpace(col), name) {
-				continue
-			}
-			if wantUnique && !idx.Unique {
-				continue
-			}
-			return true
+		// Column fallback: only exact single-column indexes (composites are not equivalent).
+		if len(idx.Columns) != 1 {
+			continue
 		}
+		if !strings.EqualFold(strings.TrimSpace(idx.Columns[0]), name) {
+			continue
+		}
+		if wantUnique && !idx.Unique {
+			continue
+		}
+		return true
 	}
 	return false
 }
@@ -287,10 +324,42 @@ func defaultChanged(desired ColumnSpec, live LiveColumn) bool {
 
 func normalizeDefaultLiteral(v string) string {
 	v = strings.TrimSpace(v)
-	if idx := strings.Index(v, "::"); idx >= 0 {
-		v = v[:idx]
+	for {
+		v = strings.TrimSpace(v)
+		if len(v) >= 2 {
+			if (v[0] == '\'' && v[len(v)-1] == '\'') || (v[0] == '"' && v[len(v)-1] == '"') {
+				v = v[1 : len(v)-1]
+				continue
+			}
+			// Only unwrap when the whole value is paren-wrapped (not values like foo()).
+			if v[0] == '(' && v[len(v)-1] == ')' {
+				v = v[1 : len(v)-1]
+				continue
+			}
+		}
+		if idx := postgresCastIndexOutsideQuotes(v); idx >= 0 {
+			v = v[:idx]
+			continue
+		}
+		return v
 	}
-	return strings.Trim(v, `"'() `)
+}
+
+// postgresCastIndexOutsideQuotes returns the index of "::" outside quoted literals, or -1.
+func postgresCastIndexOutsideQuotes(v string) int {
+	inSingle, inDouble := false, false
+	for i := 0; i+1 < len(v); i++ {
+		c := v[i]
+		switch {
+		case c == '\'' && !inDouble:
+			inSingle = !inSingle
+		case c == '"' && !inSingle:
+			inDouble = !inDouble
+		case !inSingle && !inDouble && c == ':' && v[i+1] == ':':
+			return i
+		}
+	}
+	return -1
 }
 
 // columnMismatch is retained for tests; returns true when any guarded/auto alter is needed.

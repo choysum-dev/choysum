@@ -47,6 +47,45 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				clioutput.PrintError("scope is not initialized")
 				os.Exit(1)
 			}
+			baseCtx := context.Background()
+			if cmd != nil && cmd.Context() != nil {
+				baseCtx = cmd.Context()
+			}
+			ctx, stop := signal.NotifyContext(baseCtx, os.Interrupt)
+			defer stop()
+			ctx = logutil.WithStderrProgressLine(ctx)
+
+			exitUpgradeError := func(currentInput string, runErr error) {
+				attrs := []any{"error", runErr}
+				attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
+				attrs = append(attrs, clioutput.CurrentOrRequestedAttr("input", "inputs", currentInput, args)...)
+				env.Logger().Error("module upgrade failed", attrs...)
+				os.Exit(1)
+			}
+
+			// --schema-plan only needs the installed module name; skip CLI compat and
+			// registry/latest resolution (and the JS compiler) for auth@latest etc.
+			if schemaPlanOnly {
+				plans := make([]upgradePlanItem, 0, len(args))
+				for _, input := range args {
+					moduleInput := strings.TrimSpace(input)
+					if moduleInput == "" {
+						exitUpgradeError(moduleInput, xfmt.Errorf("module name is empty"))
+					}
+					parsed, parseErr := internalorigin.ParseInput(moduleInput)
+					if parseErr != nil {
+						exitUpgradeError(moduleInput, xfmt.Errorf("error parsing module input %s: %w", moduleInput, parseErr))
+					}
+					name := strings.TrimSpace(parsed.ModuleName)
+					if name == "" {
+						name = strings.TrimSpace(parsed.LocalName)
+					}
+					plans = append(plans, upgradePlanItem{requestedInput: moduleInput, resolvedInput: name})
+				}
+				moduleLifecycle := lifecycle.NewService(env.WithContext(ctx), nil)
+				os.Exit(executeSchemaPlanOnly(ctx, env, moduleLifecycle, plans))
+			}
+
 			runtimeVersion := ""
 			if cmd != nil && cmd.Root() != nil {
 				runtimeVersion = strings.TrimSpace(cmd.Root().Version)
@@ -57,26 +96,10 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				os.Exit(1)
 			}
 			runtimeOptions := cliruntime.OptionsFromScope(env)
-			baseCtx := context.Background()
-			if cmd != nil && cmd.Context() != nil {
-				baseCtx = cmd.Context()
-			}
-			ctx, stop := signal.NotifyContext(baseCtx, os.Interrupt)
-			defer stop()
-
-			ctx = logutil.WithStderrProgressLine(ctx)
 
 			runtimeOptionsValidated := false
 
 			type upgradePlan = upgradePlanItem
-			exitUpgradeError := func(currentInput string, runErr error) {
-				attrs := []any{"error", runErr}
-				attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
-				attrs = append(attrs, clioutput.CurrentOrRequestedAttr("input", "inputs", currentInput, args)...)
-				env.Logger().Error("module upgrade failed", attrs...)
-				os.Exit(1)
-			}
-
 			currentInput := ""
 			resolvedIndexURL := ""
 			resolveIndexURL := func() (string, error) {
@@ -160,11 +183,6 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			defer compilerExecutor.Stop()
 
 			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
-			if schemaPlanOnly {
-				exitCode := executeSchemaPlanOnly(ctx, env, moduleLifecycle, plans)
-				_ = compilerExecutor.Stop()
-				os.Exit(exitCode)
-			}
 			for _, plan := range plans {
 				currentInput = plan.requestedInput
 				upgradeScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)

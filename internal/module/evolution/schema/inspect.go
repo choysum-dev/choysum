@@ -131,10 +131,6 @@ func sqliteGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
 		if !row.Name.Valid || name == "" {
 			continue
 		}
-		if row.Origin == "u" {
-			// Skip indexes created by UNIQUE constraints (matches GORM sqlite Migrator).
-			continue
-		}
 		var colRows []sql.NullString
 		if err := sqliteIndexInfoScan(db, name, &colRows); err != nil {
 			return nil, err
