@@ -130,6 +130,9 @@ func renameColumn(db *gorm.DB, table, fromCol string, to ColumnSpec, dialect str
 	if fromCol == "" || strings.TrimSpace(to.Name) == "" {
 		return fmt.Errorf("rename requires from and to column names")
 	}
+	if strings.TrimSpace(to.FieldName) == "" {
+		to.FieldName = to.Name
+	}
 	inst, err := structForAddColumn(table, to, dialect)
 	if err != nil {
 		return fmt.Errorf("build rename struct %s.%s: %w", table, to.Name, err)

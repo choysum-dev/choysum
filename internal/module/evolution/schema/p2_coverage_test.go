@@ -29,27 +29,50 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 
 	// validate failures through each exported helper
 	bad := HelperOptions{DB: db}
-	_ = RenameColumn(bad, "t", "a", "b")
-	_ = DropColumn(bad, "t", "c")
-	_ = DropIndex(bad, "t", "idx_x")
-	_ = DropCheck(bad, "t", "chk_x")
-	_ = DropForeignKey(bad, "t", "fk_x")
-	_ = DropCheck(opts, "t", "not_allowed")
-	_ = DropForeignKey(opts, "t", "not_allowed")
+	if err := RenameColumn(bad, "t", "a", "b"); err == nil || !strings.Contains(err.Error(), "IntentBag") {
+		t.Fatalf("rename IntentBag: %v", err)
+	}
+	if err := DropColumn(bad, "t", "c"); err == nil || !strings.Contains(err.Error(), "IntentBag") {
+		t.Fatalf("drop col IntentBag: %v", err)
+	}
+	if err := DropIndex(bad, "t", "idx_x"); err == nil || !strings.Contains(err.Error(), "IntentBag") {
+		t.Fatalf("drop idx IntentBag: %v", err)
+	}
+	if err := DropCheck(bad, "t", "chk_x"); err == nil || !strings.Contains(err.Error(), "IntentBag") {
+		t.Fatalf("drop chk IntentBag: %v", err)
+	}
+	if err := DropForeignKey(bad, "t", "fk_x"); err == nil || !strings.Contains(err.Error(), "IntentBag") {
+		t.Fatalf("drop fk IntentBag: %v", err)
+	}
+	if err := DropCheck(opts, "t", "not_allowed"); err == nil || !strings.Contains(err.Error(), "not supported") {
+		t.Fatalf("sqlite dropCheck: %v", err)
+	}
+	if err := DropForeignKey(opts, "t", "not_allowed"); err == nil || !strings.Contains(err.Error(), "rejects") {
+		t.Fatalf("fk reject: %v", err)
+	}
 
-	if opts.allowName("t", "") || opts.allowName("t", "custom") {
+	if opts.allowName("t", "", "idx_") || opts.allowName("t", "custom", "idx_") {
 		t.Fatal("deny empty/custom")
 	}
-	if !opts.allowName("t", "idx_x") || !opts.allowName("t", "chk_x") || !opts.allowName("t", "ck_x") || !opts.allowName("t", "fk_x") {
-		t.Fatal("prefix allow")
+	if !opts.allowName("t", "idx_x", "idx_") || opts.allowName("t", "chk_x", "idx_") {
+		t.Fatal("prefix scoped to helper")
+	}
+	if !opts.allowName("t", "chk_x", "chk_", "ck_") || !opts.allowName("t", "ck_x", "chk_", "ck_") {
+		t.Fatal("check prefixes")
+	}
+	if !opts.allowName("t", "fk_x", "fk_") || opts.allowName("t", "idx_x", "fk_") {
+		t.Fatal("fk prefix")
 	}
 	opts.AllowedNames = map[string]map[string]struct{}{"t": {"custom_idx": {}}}
-	if !opts.allowName("t", "custom_idx") {
+	if !opts.allowName("t", "custom_idx", "idx_") {
 		t.Fatal("allowed names")
 	}
 
 	if err := RenameColumn(opts, "", "a", "b"); err == nil {
 		t.Fatal("rename empty")
+	}
+	if err := RenameColumn(opts, "t", "same", "same"); err == nil || !strings.Contains(err.Error(), "must differ") {
+		t.Fatalf("rename same: %v", err)
 	}
 	if err := DropColumn(opts, "", "c"); err == nil {
 		t.Fatal("drop empty")
@@ -82,11 +105,18 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 	if err := db.Exec(`CREATE INDEX idx_help_idx_code ON help_idx (code)`).Error; err != nil {
 		t.Fatal(err)
 	}
+	if err := DropIndex(opts, "help_idx", "idx_missing"); err == nil || !strings.Contains(err.Error(), "does not belong") {
+		t.Fatalf("index ownership: %v", err)
+	}
 	if err := DropIndex(opts, "help_idx", "idx_help_idx_code"); err != nil {
 		t.Fatal(err)
 	}
-	if err := DropCheck(opts, "help_idx", "chk_help_idx_code"); err != nil {
-		t.Fatal(err) // sqlite drop check is best-effort no-op
+	if err := DropCheck(opts, "help_idx", "chk_help_idx_code"); err == nil || !strings.Contains(err.Error(), "not supported") {
+		t.Fatalf("sqlite dropCheck: %v", err)
+	}
+	pgOpts := HelperOptions{DB: db, Dialect: "postgres", Intents: NewMemoryIntentBag()}
+	if err := DropCheck(pgOpts, "help_idx", "not_allowed"); err == nil || !strings.Contains(err.Error(), "rejects") {
+		t.Fatalf("pg check reject: %v", err)
 	}
 	if err := DropForeignKey(opts, "help_idx", "fk_help"); err == nil || !strings.Contains(err.Error(), "not supported") {
 		t.Fatalf("sqlite fk: %v", err)
@@ -125,11 +155,21 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 	}
 	_ = sqlDB.Close()
 	closed := HelperOptions{DB: db, Dialect: "sqlite", Intents: NewMemoryIntentBag()}
-	_ = RenameColumn(closed, "help_rename", "new_c", "x")
-	_ = DropColumn(closed, "help_drop", "id")
-	_ = DropIndex(closed, "help_idx", "idx_help_idx_code")
-	_ = DropCheck(HelperOptions{DB: db, Dialect: "postgres", Intents: NewMemoryIntentBag()}, "t", "chk_t")
-	_ = DropForeignKey(HelperOptions{DB: db, Dialect: "postgres", Intents: NewMemoryIntentBag()}, "t", "fk_t")
+	if err := RenameColumn(closed, "help_rename", "new_c", "x"); err == nil {
+		t.Fatal("closed rename")
+	}
+	if err := DropColumn(closed, "help_drop", "id"); err == nil {
+		t.Fatal("closed drop col")
+	}
+	if err := DropIndex(closed, "help_idx", "idx_help_idx_code"); err == nil {
+		t.Fatal("closed drop idx")
+	}
+	if err := DropCheck(HelperOptions{DB: db, Dialect: "postgres", Intents: NewMemoryIntentBag()}, "t", "chk_t"); err == nil {
+		t.Fatal("closed drop chk")
+	}
+	if err := DropForeignKey(HelperOptions{DB: db, Dialect: "postgres", Intents: NewMemoryIntentBag()}, "t", "fk_t"); err == nil {
+		t.Fatal("closed drop fk")
+	}
 
 	origExec := helperExec
 	t.Cleanup(func() { helperExec = origExec })
@@ -171,8 +211,16 @@ func TestIntentSatisfies_AllBranches(t *testing.T) {
 	if !IntentSatisfies(PlanOp{Kind: OpRenameColumn, Table: "t", FromName: "old", Column: &ColumnSpec{Name: "new"}}, bag) {
 		t.Fatal("rename")
 	}
+	if IntentSatisfies(PlanOp{Kind: OpRenameColumn, Table: "t", FromName: "old", Column: &ColumnSpec{Name: "other"}}, bag) {
+		t.Fatal("rename dest mismatch")
+	}
 	if IntentSatisfies(PlanOp{Kind: OpRenameColumn, Table: "t", FromName: "nope", Column: &ColumnSpec{Name: "new"}}, bag) {
 		t.Fatal("rename miss")
+	}
+	emptyNameBag := NewMemoryIntentBag()
+	emptyNameBag.Add(Intent{Kind: IntentRenameColumn, Table: "t", FromName: "old", Name: ""})
+	if IntentSatisfies(PlanOp{Kind: OpRenameColumn, Table: "t", FromName: "old", Column: &ColumnSpec{Name: "new"}}, emptyNameBag) {
+		t.Fatal("empty rename Name must not wildcard")
 	}
 	if !IntentSatisfies(PlanOp{Kind: OpKind(IntentDropColumn), Table: "t", Column: &ColumnSpec{Name: "c"}}, bag) {
 		t.Fatal("drop col")
@@ -185,6 +233,12 @@ func TestIntentSatisfies_AllBranches(t *testing.T) {
 	}
 	if !IntentSatisfies(PlanOp{Kind: OpKind(IntentDropForeignKey), Table: "t", Detail: "fk_t"}, bag) {
 		t.Fatal("drop fk detail name")
+	}
+	if !IntentSatisfies(PlanOp{Kind: OpKind(IntentDropForeignKey), Table: "t", Detail: "drop foreign key fk_t"}, bag) {
+		t.Fatal("drop fk detail prefix")
+	}
+	if intentOpName(PlanOp{Detail: "drop column old_code"}) != "old_code" {
+		t.Fatal("strip drop column prefix")
 	}
 	if intentKindForOp(PlanOp{Detail: "please drop column x", Safety: SafetyManual}) != IntentDropColumn {
 		t.Fatal("detail drop column")
@@ -238,17 +292,58 @@ func TestPlan_RenameConflictKeepsLeftover(t *testing.T) {
 }
 
 func TestRenamePhysicalCompatibleEdges(t *testing.T) {
-	if !renamePhysicalCompatible(ColumnSpec{PhysicalType: ""}, LiveColumn{DatabaseTypeName: "text"}, "sqlite") {
-		t.Fatal("empty want")
+	if renamePhysicalCompatible(ColumnSpec{PhysicalType: ""}, LiveColumn{DatabaseTypeName: "text"}, "sqlite") {
+		t.Fatal("empty want must be incompatible")
 	}
-	if !renamePhysicalCompatible(ColumnSpec{PhysicalType: "varchar"}, LiveColumn{DatabaseTypeName: ""}, "postgres") {
-		t.Fatal("empty have")
+	if renamePhysicalCompatible(ColumnSpec{PhysicalType: "varchar"}, LiveColumn{DatabaseTypeName: ""}, "postgres") {
+		t.Fatal("empty have must be incompatible")
 	}
 	if !renamePhysicalCompatible(ColumnSpec{PhysicalType: "varchar"}, LiveColumn{DatabaseTypeName: "TEXT"}, "sqlite") {
 		t.Fatal("sqlite compat")
 	}
 	if renamePhysicalCompatible(ColumnSpec{PhysicalType: "integer"}, LiveColumn{DatabaseTypeName: "varchar"}, "postgres") {
 		t.Fatal("mismatch")
+	}
+}
+
+func TestPlan_RenameFromClaimConflicts(t *testing.T) {
+	live := LiveSchema{
+		Tables:  map[string]bool{"t": true},
+		Columns: map[string]map[string]LiveColumn{"t": {"old_code": {Name: "old_code", DatabaseTypeName: "varchar"}}},
+	}
+	_, err := buildPlan("sales", DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {
+			{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code"},
+			{Name: "note", FieldName: "Note", PhysicalType: "varchar", RenameFrom: "old_code"},
+		},
+	}}, live, "sqlite")
+	if err == nil || !strings.Contains(err.Error(), "duplicate renameFrom") {
+		t.Fatalf("duplicate: %v", err)
+	}
+
+	_, err = buildPlan("sales", DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {
+			{Name: "old_code", FieldName: "OldCode", PhysicalType: "varchar"},
+			{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code"},
+		},
+	}}, live, "sqlite")
+	if err == nil || !strings.Contains(err.Error(), "conflicts with desired column") {
+		t.Fatalf("desired collision: %v", err)
+	}
+
+	plan, err := buildPlan("sales", DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "code"}},
+	}}, LiveSchema{
+		Tables:  map[string]bool{"t": true},
+		Columns: map[string]map[string]LiveColumn{"t": {"code": {Name: "code", DatabaseTypeName: "varchar"}}},
+	}, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, op := range plan.Ops {
+		if op.Kind == OpRenameColumn {
+			t.Fatalf("self renameFrom must be a no-op, got %#v", op)
+		}
 	}
 }
 

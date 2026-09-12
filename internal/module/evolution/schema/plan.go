@@ -43,11 +43,18 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 		desiredIndexKeys := map[string]struct{}{}
 		consumedRenameFrom := map[string]struct{}{}
 
+		if err := validateRenameFromClaims(table, cols); err != nil {
+			return SchemaPlan{}, err
+		}
+
 		for i := range cols {
 			col := cols[i]
 			desiredNames[strings.ToLower(col.Name)] = struct{}{}
 			liveCol, ok := liveCols[strings.ToLower(col.Name)]
 			renameFrom := strings.TrimSpace(col.RenameFrom)
+			if strings.EqualFold(renameFrom, col.Name) {
+				renameFrom = ""
+			}
 
 			if renameFrom != "" {
 				oldKey := strings.ToLower(renameFrom)
@@ -171,11 +178,44 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 	return plan, nil
 }
 
+func validateRenameFromClaims(table string, cols []ColumnSpec) error {
+	desiredNames := map[string]struct{}{}
+	for _, col := range cols {
+		desiredNames[strings.ToLower(col.Name)] = struct{}{}
+	}
+	claims := map[string]string{}
+	for _, col := range cols {
+		rf := strings.TrimSpace(col.RenameFrom)
+		if rf == "" {
+			continue
+		}
+		oldKey := strings.ToLower(rf)
+		newKey := strings.ToLower(col.Name)
+		if oldKey == newKey {
+			continue
+		}
+		if _, exists := desiredNames[oldKey]; exists {
+			return fmt.Errorf("renameFrom %q on %s.%s conflicts with desired column %q",
+				rf, table, col.FieldName, rf)
+		}
+		label := strings.TrimSpace(col.FieldName)
+		if label == "" {
+			label = col.Name
+		}
+		if prev, ok := claims[oldKey]; ok {
+			return fmt.Errorf("duplicate renameFrom %q on %s (fields %s and %s)",
+				rf, table, prev, label)
+		}
+		claims[oldKey] = label
+	}
+	return nil
+}
+
 func renamePhysicalCompatible(desired ColumnSpec, live LiveColumn, dialect string) bool {
 	wantType := normalizeDBType(mapPhysicalToDialectType(dialect, desired.PhysicalType))
 	haveType := normalizeDBType(live.DatabaseTypeName)
 	if wantType == "" || haveType == "" {
-		return true
+		return false
 	}
 	if wantType == haveType {
 		return true

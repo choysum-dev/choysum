@@ -48,28 +48,28 @@ func schemaSyncFactory(engine *quickjsengine.QuickjsEngine, dialect, method stri
 		}
 		switch method {
 		case "renameColumn":
-			if len(args) < 3 {
-				return ctx.ThrowError(fmt.Errorf("renameColumn(table, from, to) requires 3 args"))
+			if err = requireStringArgs(args, 3, "renameColumn(table, from, to)"); err != nil {
+				return ctx.ThrowError(err)
 			}
 			err = schema.RenameColumn(opts, args[0].String(), args[1].String(), args[2].String())
 		case "dropColumn":
-			if len(args) < 2 {
-				return ctx.ThrowError(fmt.Errorf("dropColumn(table, column) requires 2 args"))
+			if err = requireStringArgs(args, 2, "dropColumn(table, column)"); err != nil {
+				return ctx.ThrowError(err)
 			}
 			err = schema.DropColumn(opts, args[0].String(), args[1].String())
 		case "dropIndex":
-			if len(args) < 2 {
-				return ctx.ThrowError(fmt.Errorf("dropIndex(table, name) requires 2 args"))
+			if err = requireStringArgs(args, 2, "dropIndex(table, name)"); err != nil {
+				return ctx.ThrowError(err)
 			}
 			err = schema.DropIndex(opts, args[0].String(), args[1].String())
 		case "dropCheck":
-			if len(args) < 2 {
-				return ctx.ThrowError(fmt.Errorf("dropCheck(table, name) requires 2 args"))
+			if err = requireStringArgs(args, 2, "dropCheck(table, name)"); err != nil {
+				return ctx.ThrowError(err)
 			}
 			err = schema.DropCheck(opts, args[0].String(), args[1].String())
 		case "dropForeignKey":
-			if len(args) < 2 {
-				return ctx.ThrowError(fmt.Errorf("dropForeignKey(table, name) requires 2 args"))
+			if err = requireStringArgs(args, 2, "dropForeignKey(table, name)"); err != nil {
+				return ctx.ThrowError(err)
 			}
 			err = schema.DropForeignKey(opts, args[0].String(), args[1].String())
 		default:
@@ -82,8 +82,26 @@ func schemaSyncFactory(engine *quickjsengine.QuickjsEngine, dialect, method stri
 	}
 }
 
+func requireStringArgs(args []*quickjs.Value, n int, label string) error {
+	if len(args) < n {
+		return fmt.Errorf("%s requires %d args", label, n)
+	}
+	for i := 0; i < n; i++ {
+		if args[i] == nil || !args[i].IsString() {
+			return fmt.Errorf("%s: argument %d must be a string", label, i+1)
+		}
+	}
+	return nil
+}
+
 func schemaHelperOpts(engine *quickjsengine.QuickjsEngine, dialect string) (schema.HelperOptions, error) {
+	if engine == nil {
+		return schema.HelperOptions{}, fmt.Errorf("$choysum.schema: engine is nil")
+	}
 	execCtx := engine.ExecContext()
+	if execCtx == nil {
+		return schema.HelperOptions{}, fmt.Errorf("$choysum.schema: exec context is nil")
+	}
 	session, ok := scope.SessionFromContext(execCtx)
 	if !ok || session == nil || session.DB == nil {
 		return schema.HelperOptions{}, fmt.Errorf("$choysum.schema: no db session on exec context")

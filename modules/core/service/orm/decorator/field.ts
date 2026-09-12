@@ -286,6 +286,9 @@ export function Field(
         throw new Error(`@Field(${name}) renameFrom must be a non-empty string`);
       }
       renameFrom = optionBag.renameFrom.trim();
+      if (renameFrom.toLowerCase() === name.toLowerCase()) {
+        throw new Error(`@Field(${name}) renameFrom must differ from the field name`);
+      }
     }
     let dropAfter: string | undefined;
     if (optionBag.dropAfter !== undefined) {

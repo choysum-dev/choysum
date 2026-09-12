@@ -32,17 +32,17 @@ func (o HelperOptions) validate() error {
 	return nil
 }
 
-func (o HelperOptions) allowName(table, name string) bool {
+func (o HelperOptions) allowName(table, name string, prefixes ...string) bool {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return false
 	}
 	lower := strings.ToLower(name)
-	if strings.HasPrefix(lower, "idx_") ||
-		strings.HasPrefix(lower, "chk_") ||
-		strings.HasPrefix(lower, "ck_") ||
-		strings.HasPrefix(lower, "fk_") {
-		return true
+	for _, prefix := range prefixes {
+		prefix = strings.ToLower(strings.TrimSpace(prefix))
+		if prefix != "" && strings.HasPrefix(lower, prefix) {
+			return true
+		}
 	}
 	set := o.AllowedNames[strings.ToLower(strings.TrimSpace(table))]
 	_, ok := set[lower]
@@ -60,7 +60,10 @@ func RenameColumn(opts HelperOptions, table, from, to string) error {
 	if table == "" || from == "" || to == "" {
 		return fmt.Errorf("renameColumn requires table, from, and to")
 	}
-	col := ColumnSpec{Name: to, FieldName: exportIdent(to), PhysicalType: "text"}
+	if strings.EqualFold(from, to) {
+		return fmt.Errorf("renameColumn from and to must differ")
+	}
+	col := columnSpecForLiveRename(opts.DB, table, from, to)
 	if err := renameColumn(opts.DB, table, from, col, opts.Dialect); err != nil {
 		return err
 	}
@@ -96,8 +99,15 @@ func DropIndex(opts HelperOptions, table, name string) error {
 	if table == "" || name == "" {
 		return fmt.Errorf("dropIndex requires table and name")
 	}
-	if !opts.allowName(table, name) {
+	if !opts.allowName(table, name, "idx_") {
 		return fmt.Errorf("dropIndex rejects non-Choysum name %q (want idx_/allowed)", name)
+	}
+	belongs, err := indexBelongsToTable(opts.DB, table, name)
+	if err != nil {
+		return fmt.Errorf("drop index %s on %s: %w", name, table, err)
+	}
+	if !belongs {
+		return fmt.Errorf("drop index %s on %s: index does not belong to table", name, table)
 	}
 	sql := dropIndexSQL(opts.Dialect, table, name)
 	if err := helperExec(opts.DB, sql); err != nil {
@@ -117,7 +127,10 @@ func DropCheck(opts HelperOptions, table, name string) error {
 	if table == "" || name == "" {
 		return fmt.Errorf("dropCheck requires table and name")
 	}
-	if !opts.allowName(table, name) {
+	if strings.EqualFold(strings.TrimSpace(opts.Dialect), "sqlite") {
+		return fmt.Errorf("dropCheck is not supported on sqlite")
+	}
+	if !opts.allowName(table, name, "chk_", "ck_") {
 		return fmt.Errorf("dropCheck rejects non-Choysum name %q (want chk_/ck_/allowed)", name)
 	}
 	if err := dropCheckConstraintBestEffort(opts.DB, opts.Dialect, table, name); err != nil {
@@ -137,7 +150,7 @@ func DropForeignKey(opts HelperOptions, table, name string) error {
 	if table == "" || name == "" {
 		return fmt.Errorf("dropForeignKey requires table and name")
 	}
-	if !opts.allowName(table, name) {
+	if !opts.allowName(table, name, "fk_") {
 		return fmt.Errorf("dropForeignKey rejects non-Choysum name %q (want fk_/allowed)", name)
 	}
 	sql, err := dropForeignKeySQL(opts.Dialect, table, name)
@@ -189,4 +202,57 @@ func quoteIdent(dialect, name string) string {
 	default:
 		return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 	}
+}
+
+// columnSpecForLiveRename builds a RenameColumn target that preserves the live
+// column's physical type (needed when the dialect rewrites the column definition).
+func columnSpecForLiveRename(db *gorm.DB, table, from, to string) ColumnSpec {
+	col := ColumnSpec{Name: to, FieldName: exportIdent(to), PhysicalType: "text"}
+	if db == nil {
+		return col
+	}
+	types, err := getColumnTypes(db, table)
+	if err != nil {
+		return col
+	}
+	for _, ct := range types {
+		lc, ok := liveColumnFromColumnType(ct)
+		if !ok || !strings.EqualFold(lc.Name, from) {
+			continue
+		}
+		if phys := normalizeDBType(lc.DatabaseTypeName); phys != "" && getDefaultValue(phys) != nil {
+			col.PhysicalType = phys
+		}
+		if lc.Length != nil && *lc.Length > 0 {
+			size := int(*lc.Length)
+			col.Size = &size
+		}
+		if lc.Nullable != nil {
+			col.NotNull = !*lc.Nullable
+		}
+		if lc.Default != nil {
+			col.Default = lc.Default
+		}
+		return col
+	}
+	return col
+}
+
+func indexBelongsToTable(db *gorm.DB, table, name string) (bool, error) {
+	if db == nil {
+		return false, fmt.Errorf("db is nil")
+	}
+	indexes, err := getIndexes(db, table)
+	if err != nil {
+		return false, err
+	}
+	for _, idx := range indexes {
+		if idx == nil {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(idx.Name()), name) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

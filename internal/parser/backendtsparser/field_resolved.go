@@ -593,15 +593,19 @@ func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBin
 	if v, ok := options["readonly"].(bool); ok && v {
 		spec.Structural.Readonly = toBoolPtr(true)
 	}
-	if v, ok := options["renameFrom"].(string); ok {
-		if trimmed := strings.TrimSpace(v); trimmed != "" {
-			spec.Structural.RenameFrom = trimmed
+	if raw, exists := options["renameFrom"]; exists {
+		v, ok := raw.(string)
+		if !ok || strings.TrimSpace(v) == "" {
+			return nil, fmt.Errorf("@Field(%s) renameFrom must be a non-empty string", field.Name)
 		}
+		spec.Structural.RenameFrom = strings.TrimSpace(v)
 	}
-	if v, ok := options["dropAfter"].(string); ok {
-		if trimmed := strings.TrimSpace(v); trimmed != "" {
-			spec.Structural.DropAfter = trimmed
+	if raw, exists := options["dropAfter"]; exists {
+		v, ok := raw.(string)
+		if !ok || strings.TrimSpace(v) == "" {
+			return nil, fmt.Errorf("@Field(%s) dropAfter must be a non-empty string", field.Name)
 		}
+		spec.Structural.DropAfter = strings.TrimSpace(v)
 	}
 	if v, ok := asInt(options["maxUploadBytes"]); ok && v > 0 {
 		spec.Structural.MaxUploadBytes = toIntPtr(v)

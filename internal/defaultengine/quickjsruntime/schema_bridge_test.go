@@ -88,6 +88,8 @@ func TestWithSchemaDDL_Helpers(t *testing.T) {
 		fail(`$choysum.schema.dropIndex('bridge_tbl')`)
 		fail(`$choysum.schema.dropCheck('bridge_tbl')`)
 		fail(`$choysum.schema.dropForeignKey('bridge_tbl')`)
+		fail(`$choysum.schema.dropColumn('bridge_tbl', null)`)
+		fail(`$choysum.schema.renameColumn('bridge_tbl', 1, 'new_code')`)
 
 		call(`$choysum.schema.renameColumn('bridge_tbl','old_code','new_code')`)
 		call(`$choysum.schema.dropIndex('bridge_tbl','idx_bridge_tbl_keep')`)
@@ -99,7 +101,7 @@ func TestWithSchemaDDL_Helpers(t *testing.T) {
 			return err
 		}
 		call(`$choysum.schema.dropIndex('bridge_idx','idx_bridge_idx_code')`)
-		call(`$choysum.schema.dropCheck('bridge_idx','chk_bridge_idx_code')`)
+		fail(`$choysum.schema.dropCheck('bridge_idx','chk_bridge_idx_code')`)
 		fail(`$choysum.schema.dropForeignKey('bridge_idx','fk_bridge')`)
 
 		// Session present but IntentBag missing

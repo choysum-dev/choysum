@@ -60,6 +60,9 @@ func (b *memoryIntentBag) Add(intents ...Intent) {
 		if in.Kind == "" || in.Table == "" {
 			continue
 		}
+		if in.Kind == IntentRenameColumn && (in.Name == "" || in.FromName == "") {
+			continue
+		}
 		b.intents = append(b.intents, in)
 	}
 }
@@ -124,7 +127,10 @@ func IntentSatisfies(op PlanOp, bag IntentBag) bool {
 		}
 		if wantKind == IntentRenameColumn {
 			to := name
-			if strings.EqualFold(in.FromName, from) && (in.Name == "" || strings.EqualFold(in.Name, to)) {
+			if to == "" || from == "" {
+				continue
+			}
+			if strings.EqualFold(in.FromName, from) && strings.EqualFold(in.Name, to) {
 				return true
 			}
 			continue
@@ -146,7 +152,19 @@ func intentOpName(op PlanOp) string {
 	if op.Column != nil && strings.TrimSpace(op.Column.Name) != "" {
 		return strings.TrimSpace(op.Column.Name)
 	}
-	return strings.TrimSpace(op.Detail)
+	detail := strings.TrimSpace(op.Detail)
+	lower := strings.ToLower(detail)
+	for _, prefix := range []string{
+		"drop foreign key ",
+		"drop column ",
+		"drop index ",
+		"drop check ",
+	} {
+		if strings.HasPrefix(lower, prefix) {
+			return strings.TrimSpace(detail[len(prefix):])
+		}
+	}
+	return detail
 }
 
 func intentKindForOp(op PlanOp) IntentKind {
