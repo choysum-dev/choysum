@@ -313,7 +313,26 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		t.Fatalf("bidirectional JoinTables = %#v", desired.JoinTables)
 	}
 
-	// Custom physical column names matched via FieldName.
+	// One side omitting targetModel must not conflict with the declared refer end.
+	roleNoTarget := &meta.Model{
+		Application: "auth", Name: "Role", ModelTable: "auth_role",
+		Fields: []*meta.Field{m2mField(t, "Users", "auth.UserRole", "RoleId", "UserId", "")},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, roleNoTarget, joinOK}); err != nil {
+		t.Fatalf("bidirectional blank targetModel: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("blank targetModel JoinTables = %#v", desired.JoinTables)
+	}
+	if !referTargetEqual("", "auth_role") || !referTargetEqual("Auth_Role", "auth_role") {
+		t.Fatal("referTargetEqual blank/case")
+	}
+	if referTargetEqual("auth_user", "auth_role") {
+		t.Fatal("referTargetEqual distinct tables")
+	}
 	customJoin := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
 		{Name: "uid", FieldName: "UserId", PhysicalType: "char"},

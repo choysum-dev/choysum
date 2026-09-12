@@ -136,8 +136,18 @@ func joinTableSpecsEqual(a, b JoinTableSpec) bool {
 
 func joinEndsEqual(a, b JoinEnd) bool {
 	return strings.EqualFold(a.Column, b.Column) &&
-		strings.EqualFold(a.ReferTable, b.ReferTable) &&
-		strings.EqualFold(a.ReferColumn, b.ReferColumn)
+		referTargetEqual(a.ReferTable, b.ReferTable) &&
+		referTargetEqual(a.ReferColumn, b.ReferColumn)
+}
+
+// referTargetEqual treats a blank refer target as unspecified (e.g. ManyToMany
+// without targetModel) so it does not conflict with a declared one.
+func referTargetEqual(a, b string) bool {
+	at, bt := strings.TrimSpace(a), strings.TrimSpace(b)
+	if at == "" || bt == "" {
+		return true
+	}
+	return strings.EqualFold(at, bt)
 }
 
 // resolveJoinColumnName maps a joinField / inverseJoinField ref onto a desired physical column.

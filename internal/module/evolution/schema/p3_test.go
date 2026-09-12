@@ -302,8 +302,8 @@ func TestApply_CreateJoinTable(t *testing.T) {
 	if err := runtimeScope.Session().Raw(
 		`SELECT count(*) FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql LIKE '%user_id%'`,
 		"auth_user_role_apply",
-	).Scan(&idxCount).Error; err != nil || idxCount < 1 {
-		t.Fatalf("expected index on user_id, count=%d err=%v", idxCount, err)
+	).Scan(&idxCount).Error; err != nil || idxCount != 1 {
+		t.Fatalf("expected exactly one index on user_id, count=%d err=%v", idxCount, err)
 	}
 	var uniqueRoleId int
 	if err := runtimeScope.Session().Raw(
