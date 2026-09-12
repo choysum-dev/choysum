@@ -155,6 +155,28 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		t.Fatalf("empty parent: %v", err)
 	}
 
+	// Bidirectional ManyToMany (swapped Left/Right) is the same join table.
+	roleUsers := &meta.Model{
+		Application: "auth", Name: "Role", ModelTable: "auth_role",
+		Fields: []*meta.Field{m2mField(t, "Users", "auth.UserRole", "RoleId", "UserId", "auth.User")},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, roleUsers, joinOK}); err != nil {
+		t.Fatalf("bidirectional: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("bidirectional JoinTables = %#v", desired.JoinTables)
+	}
+
+	if joinTableSpecsEqual(JoinTableSpec{Table: "a"}, JoinTableSpec{Table: "b"}) {
+		t.Fatal("different tables must not be equal")
+	}
+	if !joinEndsEqual(JoinEnd{Column: "x", ReferTable: "t", ReferColumn: "id"}, JoinEnd{Column: "X", ReferTable: "T", ReferColumn: "ID"}) {
+		t.Fatal("joinEndsEqual case fold")
+	}
+
 	if resolveModelRef(nil, "") != nil {
 		t.Fatal("empty ref")
 	}

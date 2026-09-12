@@ -117,13 +117,18 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 }
 
 func joinTableSpecsEqual(a, b JoinTableSpec) bool {
-	return strings.EqualFold(a.Table, b.Table) &&
-		strings.EqualFold(a.Left.Column, b.Left.Column) &&
-		strings.EqualFold(a.Left.ReferTable, b.Left.ReferTable) &&
-		strings.EqualFold(a.Left.ReferColumn, b.Left.ReferColumn) &&
-		strings.EqualFold(a.Right.Column, b.Right.Column) &&
-		strings.EqualFold(a.Right.ReferTable, b.Right.ReferTable) &&
-		strings.EqualFold(a.Right.ReferColumn, b.Right.ReferColumn)
+	if !strings.EqualFold(a.Table, b.Table) {
+		return false
+	}
+	// Bidirectional ManyToMany (User.Roles ↔ Role.Users) swaps Left/Right.
+	return (joinEndsEqual(a.Left, b.Left) && joinEndsEqual(a.Right, b.Right)) ||
+		(joinEndsEqual(a.Left, b.Right) && joinEndsEqual(a.Right, b.Left))
+}
+
+func joinEndsEqual(a, b JoinEnd) bool {
+	return strings.EqualFold(a.Column, b.Column) &&
+		strings.EqualFold(a.ReferTable, b.ReferTable) &&
+		strings.EqualFold(a.ReferColumn, b.ReferColumn)
 }
 
 // manyToManyJoinMeta returns join identity for a ManyToMany field, or ok=false when not M2M / no joinModel.

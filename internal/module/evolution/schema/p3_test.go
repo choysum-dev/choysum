@@ -76,6 +76,24 @@ func TestDesired_JoinTableSpec(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "joinModel") {
 		t.Fatalf("expected missing joinModel error, got %v", err)
 	}
+
+	// Bidirectional Role.Users must not conflict with User.Roles.
+	role.Fields = append(role.Fields, newFieldWithOptions(t, "Users", `{
+		"type":"ManyToMany",
+		"relation":{
+			"targetModel":"auth.User",
+			"joinModel":"auth.UserRole",
+			"joinField":"RoleId",
+			"inverseJoinField":"UserId"
+		}
+	}`))
+	desired, err = buildDesired([]*meta.Model{user, role, userRole})
+	if err != nil {
+		t.Fatalf("bidirectional buildDesired: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("bidirectional JoinTables = %#v", desired.JoinTables)
+	}
 }
 
 func TestPlan_CreateJoinTableNoOp(t *testing.T) {
