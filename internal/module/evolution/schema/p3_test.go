@@ -168,6 +168,49 @@ func TestPlan_CreateJoinTableNoOp(t *testing.T) {
 		t.Fatalf("ops = %#v (want create_join_table only for join)", plan.Ops)
 	}
 
+	// Live join table exists with columns but no indexes → plan OpAddIndex (not create).
+	indexedCols := []ColumnSpec{
+		{Name: "user_id", FieldName: "UserId", PhysicalType: "varchar", Indexed: true},
+		{Name: "role_id", FieldName: "RoleId", PhysicalType: "varchar", Indexed: true},
+	}
+	desiredIndexed := DesiredSchema{
+		Tables: map[string][]ColumnSpec{
+			"auth_user":      {{Name: "id", PhysicalType: "varchar"}},
+			"auth_user_role": indexedCols,
+		},
+		JoinTables: []JoinTableSpec{{
+			Table: "auth_user_role",
+			Left:  JoinEnd{Column: "user_id", ReferTable: "auth_user", ReferColumn: "id"},
+			Right: JoinEnd{Column: "role_id", ReferTable: "auth_role", ReferColumn: "id"},
+		}},
+	}
+	plan, err = buildPlan("auth", desiredIndexed, LiveSchema{
+		Tables: map[string]bool{"auth_user": true, "auth_user_role": true},
+		Columns: map[string]map[string]LiveColumn{
+			"auth_user": {"id": {Name: "id", DatabaseTypeName: "TEXT"}},
+			"auth_user_role": {
+				"user_id": {Name: "user_id", DatabaseTypeName: "TEXT"},
+				"role_id": {Name: "role_id", DatabaseTypeName: "TEXT"},
+			},
+		},
+		Indexes: map[string][]LiveIndex{"auth_user": {}, "auth_user_role": {}},
+	}, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan missing join index: %v", err)
+	}
+	var joinAddIndex bool
+	for _, op := range plan.Ops {
+		if op.Kind == OpCreateTable || op.Kind == OpCreateJoinTable {
+			t.Fatalf("unexpected create op %#v", op)
+		}
+		if op.Kind == OpAddIndex && op.Table == "auth_user_role" {
+			joinAddIndex = true
+		}
+	}
+	if !joinAddIndex {
+		t.Fatalf("expected add_index for existing join table, ops=%#v", plan.Ops)
+	}
+
 	// Live table exists → neither create for join.
 	plan, err = buildPlan("auth", desired, LiveSchema{
 		Tables: map[string]bool{"auth_user": true, "auth_user_role": true},
