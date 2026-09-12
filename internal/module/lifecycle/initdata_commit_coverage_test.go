@@ -13,10 +13,13 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/import/runner"
+	moduleresult "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/rs/xid"
+	"gorm.io/gorm"
 )
 
 func lifecycleCommitModule(t *testing.T, name string) (*meta.Module, string) {
@@ -53,7 +56,7 @@ func TestCommitInstall_applyInitdataWithDemo(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           opCtx,
 	}
-	if err := installer.commitInstall(nil, false); err != nil {
+	if _, err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("commitInstall with withDemo: %v", err)
 	}
 }
@@ -67,7 +70,7 @@ func TestCommitInstall_applyInitdataNilCtx(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           nil,
 	}
-	if err := installer.commitInstall(nil, false); err != nil {
+	if _, err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("commitInstall with nil ctx: %v", err)
 	}
 }
@@ -211,7 +214,7 @@ func TestCommitInstall_applyInitdataError(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	err := installer.commitInstall(nil, false)
+	_, err := installer.commitInstall(nil, false)
 	if err == nil || !strings.Contains(err.Error(), "error applying data for module") {
 		t.Fatalf("commitInstall error = %v, want apply-data failure", err)
 	}
@@ -253,5 +256,156 @@ func TestCommitUpgrade_applyInitdataError(t *testing.T) {
 	_, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false)
 	if err == nil || !strings.Contains(err.Error(), "error applying data for module") {
 		t.Fatalf("commitUpgrade error = %v, want apply-data failure", err)
+	}
+}
+
+type failSchemaMigrator struct{ err error }
+
+func (f failSchemaMigrator) Migrate() error { return f.err }
+func (f failSchemaMigrator) PlanOnly() (schema.SchemaPlan, error) {
+	return schema.SchemaPlan{}, f.err
+}
+
+func TestCommitInstall_ErrorBranchesForPatchCoverage(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mgr := &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}}
+
+	t.Run("restoreSoftDeleted", func(t *testing.T) {
+		mod, _ := lifecycleCommitModule(t, "cov_restore_err")
+		installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
+		sqlDB, err := runtimeScope.Session().DB.DB()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := sqlDB.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error checking existing module") {
+			t.Fatalf("restore/check error: %v", err)
+		}
+	})
+
+	runtimeScope = newLifecycleCommitTestScope(t)
+	mgr = &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}}
+
+	t.Run("persist", func(t *testing.T) {
+		mod, _ := lifecycleCommitModule(t, "cov_persist_err")
+		installer := &moduleInstaller{
+			module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext(),
+			builder: &commitStubSplitBuilder{persistErr: errors.New("persist boom")},
+		}
+		if _, err := installer.commitInstall(&moduleresult.BuildResult{}, true); err == nil || !strings.Contains(err.Error(), "error persisting module") {
+			t.Fatalf("persist error: %v", err)
+		}
+	})
+
+	t.Run("build", func(t *testing.T) {
+		mod, _ := lifecycleCommitModule(t, "cov_build_err")
+		installer := &moduleInstaller{
+			module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext(),
+			builder: &commitStubSplitBuilder{buildErr: errors.New("build boom")},
+		}
+		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error building module") {
+			t.Fatalf("build error: %v", err)
+		}
+	})
+
+	t.Run("migrate", func(t *testing.T) {
+		orig := newInstallSchemaMigrator
+		t.Cleanup(func() { newInstallSchemaMigrator = orig })
+		newInstallSchemaMigrator = func(scope.Scope, *meta.Module, ...schema.MigratorOption) (schema.Migrator, error) {
+			return failSchemaMigrator{err: errors.New("migrate boom")}, nil
+		}
+		mod, _ := lifecycleCommitModule(t, "cov_migrate_err")
+		installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
+		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error migrating module") {
+			t.Fatalf("migrate error: %v", err)
+		}
+	})
+
+	t.Run("dependencies", func(t *testing.T) {
+		orig := replaceModuleDependenciesFn
+		t.Cleanup(func() { replaceModuleDependenciesFn = orig })
+		replaceModuleDependenciesFn = func(*scope.Session, *meta.Module) error {
+			return errors.New("dep replace boom")
+		}
+		mod, _ := lifecycleCommitModule(t, "cov_deps_err")
+		dep := &meta.Module{Name: "cov_dep", Version: "1.0.0", Status: meta.Installed, Path: t.TempDir()}
+		dep.Id = sql.NullString{String: xid.New().String(), Valid: true}
+		mod.Dependencies = []*meta.Module{dep}
+		installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
+		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error saving module dependencies") {
+			t.Fatalf("deps error: %v", err)
+		}
+	})
+
+	t.Run("terminology", func(t *testing.T) {
+		t.Cleanup(func() { importpkg.SetRun(runner.Run) })
+		importpkg.SetRun(func(_ context.Context, _ scope.Scope, spec importpkg.Spec) (importpkg.Report, error) {
+			if spec.Profile == importpkg.ProfileTerminology {
+				return importpkg.Report{}, errors.New("forced terminology failure")
+			}
+			return importpkg.Report{Profile: spec.Profile}, nil
+		})
+		mod, _ := lifecycleCommitModule(t, "cov_term_err")
+		installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
+		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "import terminology") {
+			t.Fatalf("terminology error: %v", err)
+		}
+	})
+
+	t.Run("metaSchedule", func(t *testing.T) {
+		orig := installerScheduleDBFn
+		t.Cleanup(func() { installerScheduleDBFn = orig })
+		installerScheduleDBFn = func(scope.Scope) (*gorm.DB, error) {
+			return nil, errors.New("sched boom")
+		}
+		mod, _ := lifecycleCommitModule(t, "meta")
+		mod.Name = "meta"
+		installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
+		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error disabling legacy module index schedule") {
+			t.Fatalf("meta schedule error: %v", err)
+		}
+	})
+
+	t.Run("documentSchedule", func(t *testing.T) {
+		orig := installerScheduleDBFn
+		t.Cleanup(func() { installerScheduleDBFn = orig })
+		installerScheduleDBFn = func(scope.Scope) (*gorm.DB, error) {
+			return nil, errors.New("sched boom")
+		}
+		mod, _ := lifecycleCommitModule(t, "document")
+		mod.Name = "document"
+		installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
+		if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error ensuring document attachment gc schedule") {
+			t.Fatalf("document schedule error: %v", err)
+		}
+	})
+}
+
+func TestRunInstallCommitTX_DoesNotPublishOnCommitError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod, _ := lifecycleCommitModule(t, "cov_tx_publish")
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	orig := newInstallSchemaMigrator
+	t.Cleanup(func() { newInstallSchemaMigrator = orig })
+	newInstallSchemaMigrator = func(scope.Scope, *meta.Module, ...schema.MigratorOption) (schema.Migrator, error) {
+		return failSchemaMigrator{err: errors.New("migrate boom")}, nil
+	}
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	sentinel := &moduleresult.BuildResult{}
+	buildResult := sentinel
+	if err := installer.runInstallCommitTX(runtimeScope, runtimeScope.Context(), &buildResult, false); err == nil {
+		t.Fatal("expected commit error")
+	}
+	if buildResult != sentinel {
+		t.Fatal("failed install commit must not publish build result")
 	}
 }

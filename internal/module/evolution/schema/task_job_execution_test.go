@@ -6,10 +6,6 @@ package schema
 import "testing"
 
 func TestTaskJobExecutionHelpers(t *testing.T) {
-	if name := (taskJobExecution{}).TableName(); name != "task_job_execution" {
-		t.Fatalf("unexpected table name: %s", name)
-	}
-
 	runtimeScope := newSchemaTestScope(t)
 	if err := ensureTaskJobExecutionTable(&schemaTestScope{}); err != nil {
 		t.Fatalf("ensureTaskJobExecutionTable(nil session) error = %v", err)
@@ -20,7 +16,7 @@ func TestTaskJobExecutionHelpers(t *testing.T) {
 	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
 		t.Fatalf("ensureTaskJobExecutionTable(env) error = %v", err)
 	}
-	if !runtimeScope.Session().DB.Migrator().HasTable(&taskJobExecution{}) {
+	if !runtimeScope.Session().DB.Migrator().HasTable("task_job_execution") {
 		t.Fatal("expected task_job_execution table to be migrated")
 	}
 
@@ -34,5 +30,8 @@ func TestTaskJobExecutionHelpers(t *testing.T) {
 	}
 	if err := ensureTaskJobExecutionTable(closedRuntimeScope); err == nil {
 		t.Fatal("expected ensureTaskJobExecutionTable() to fail on closed database")
+	}
+	if _, err := taskJobExecutionUniqueJobIDReady(closedRuntimeScope.Session().DB, "task_job_execution"); err == nil {
+		t.Fatal("expected unique ready inspect to fail on closed database")
 	}
 }

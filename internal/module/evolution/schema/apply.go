@@ -22,6 +22,11 @@ var dropIndexFn = func(mig gorm.Migrator, value any, name string) error {
 	return mig.DropIndex(value, name)
 }
 
+// columnNeedsIndex reports whether ensureIndexesForColumn should run for col.
+func columnNeedsIndex(col ColumnSpec) bool {
+	return col.Indexed || col.Unique || col.UniqueIndex || len(col.UniqueIndexNames) > 0
+}
+
 // applyPlan executes Auto ops only (caller must Validate first).
 func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error {
 	if runtimeScope == nil || runtimeScope.Session() == nil {
@@ -33,13 +38,23 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			continue
 		}
 		switch op.Kind {
-		case OpCreateTable:
+		case OpCreateTable, OpCreateJoinTable:
 			inst, err := structForCreateTable(op.Table, op.Columns, dialect)
 			if err != nil {
-				return fmt.Errorf("build create_table struct %s: %w", op.Table, err)
+				return fmt.Errorf("build %s struct %s: %w", op.Kind, op.Table, err)
 			}
 			if err := db.Table(op.Table).Migrator().CreateTable(inst); err != nil {
-				return fmt.Errorf("create table %s: %w", op.Table, err)
+				return fmt.Errorf("%s %s: %w", op.Kind, op.Table, err)
+			}
+			if op.Kind == OpCreateJoinTable {
+				for _, col := range op.Columns {
+					if !columnNeedsIndex(col) {
+						continue
+					}
+					if err := ensureIndexesForColumnFn(db.DB, op.Table, col, dialect); err != nil {
+						return fmt.Errorf("ensure join table index %s.%s: %w", op.Table, col.Name, err)
+					}
+				}
 			}
 		case OpAddColumn:
 			if op.Column == nil {

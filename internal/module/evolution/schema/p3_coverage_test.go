@@ -1,0 +1,815 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package schema
+
+import (
+	"strings"
+	"testing"
+
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/pkg/meta"
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+)
+
+func m2mField(t *testing.T, name, joinModel, joinField, inverse, target string) *meta.Field {
+	t.Helper()
+	return newFieldWithOptions(t, name, `{
+		"type":"ManyToMany",
+		"relation":{
+			"joinModel":"`+joinModel+`",
+			"joinField":"`+joinField+`",
+			"inverseJoinField":"`+inverse+`",
+			"targetModel":"`+target+`"
+		}
+	}`)
+}
+
+func TestAppendJoinTables_EdgeCases(t *testing.T) {
+	if err := appendJoinTablesFromModels(nil, nil); err == nil || !strings.Contains(err.Error(), "nil") {
+		t.Fatalf("nil desired: %v", err)
+	}
+
+	falseAM := false
+	user := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{
+			nil,
+			m2mField(t, "Roles", "auth.UserRole", "UserId", "RoleId", "auth.Role"),
+		},
+	}
+
+	joinEmptyTable := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: ""}
+	desired := DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinEmptyTable}); err == nil || !strings.Contains(err.Error(), "empty ModelTable") {
+		t.Fatalf("empty ModelTable: %v", err)
+	}
+
+	// Target model with empty ModelTable fails closed (same as join model).
+	joinForEmptyTarget := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	roleEmptyTable := &meta.Model{Application: "auth", Name: "Role", ModelTable: ""}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinForEmptyTarget, roleEmptyTable}); err == nil ||
+		!strings.Contains(err.Error(), "targetModel") || !strings.Contains(err.Error(), "empty ModelTable") {
+		t.Fatalf("empty target ModelTable: %v", err)
+	}
+
+	// Unresolved targetModel fails closed.
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinForEmptyTarget}); err == nil ||
+		!strings.Contains(err.Error(), "targetModel") || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("missing targetModel: %v", err)
+	}
+
+	// Unqualified name shared by two apps is ambiguous → joinModel resolve fails closed.
+	unqualUser := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "UserRole", "UserId", "RoleId", "auth.Role")},
+	}
+	authJoin := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	salesJoin := &meta.Model{Application: "sales", Name: "UserRole", ModelTable: "sales_user_role"}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"}},
+	}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{unqualUser, authJoin, salesJoin}); err == nil ||
+		!strings.Contains(err.Error(), "not found") {
+		t.Fatalf("ambiguous unqualified joinModel: %v", err)
+	}
+	byKey := indexModelsByKey([]*meta.Model{authJoin, salesJoin})
+	if byKey["userrole"] != nil {
+		t.Fatal("expected ambiguous unqualified UserRole to be nil")
+	}
+	if byKey["auth.userrole"] != authJoin || byKey["sales.userrole"] != salesJoin {
+		t.Fatalf("qualified keys: %#v", byKey)
+	}
+	if byKey = indexModelsByKey([]*meta.Model{authJoin, authJoin}); byKey["userrole"] != authJoin {
+		t.Fatal("same model pointer twice should keep unqualified key")
+	}
+
+	if modelEligibleForSchemaMigrate(nil) {
+		t.Fatal("nil model must be ineligible")
+	}
+	if modelMatchesRef(nil, "UserRole") {
+		t.Fatal("nil model must not match")
+	}
+	if modelMatchesRef(&meta.Model{Name: "UserRole"}, "=>") {
+		t.Fatal("empty normalized ref must not match")
+	}
+	if !modelMatchesRef(&meta.Model{Application: "auth", Name: "UserRole"}, "auth.UserRole") {
+		t.Fatal("qualified ref must match")
+	}
+	ambiguousKey := map[string]*meta.Model{"userrole": nil}
+	if resolveJoinOrTargetModelRef(ambiguousKey, nil, "=>") != nil {
+		t.Fatal("empty ref after normalize must be nil")
+	}
+	onlyRO := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role", Readonly: true}
+	if got := resolveJoinOrTargetModelRef(ambiguousKey, []*meta.Model{onlyRO}, "UserRole"); got != onlyRO {
+		t.Fatalf("unique ineligible under ambiguous key: got %#v", got)
+	}
+
+	// Explicit ManyToMany without joinModel fails closed.
+	noJoin := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{newFieldWithOptions(t, "Roles", `{"type":"ManyToMany","relation":{"targetModel":"auth.Role"}}`)},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{noJoin}); err == nil || !strings.Contains(err.Error(), "missing joinModel") {
+		t.Fatalf("missing joinModel: %v", err)
+	}
+	// ManyToManyRef without joinModel is skipped (not an error).
+	refOnly := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{newFieldWithOptions(t, "Tags", `{"type":"ManyToManyRef","relation":{"targetModel":"auth.Role"}}`)},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{refOnly}); err != nil {
+		t.Fatalf("ManyToManyRef: %v", err)
+	}
+	if fieldIsExplicitManyToMany(nil) || fieldIsExplicitManyToMany(&meta.Field{}) {
+		t.Fatal("fieldIsExplicitManyToMany nil/empty")
+	}
+	if fieldIsExplicitManyToMany(&meta.Field{Relation: "ManyToMany"}) {
+		t.Fatal("Relation alone without resolved spec must not be treated as explicit M2M")
+	}
+	badSpec := &meta.Field{Name: "Roles", Relation: "ManyToMany", ResolvedSpec: "{not-json"}
+	if !fieldIsExplicitManyToMany(badSpec) {
+		t.Fatal("unparseable resolved spec with Relation=ManyToMany should fail closed")
+	}
+	relOnly := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{badSpec},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{relOnly}); err == nil || !strings.Contains(err.Error(), "missing joinModel") {
+		t.Fatalf("unparseable ManyToMany without joinModel: %v", err)
+	}
+	// ManyToManyRef must not fail closed even if Relation looks like ManyToMany.
+	refWithRel := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{newFieldWithOptions(t, "CompanyIds", `{"type":"ManyToManyRef","relation":{"targetModel":"base.Company"}}`)},
+	}
+	refWithRel.Fields[0].Relation = "ManyToMany"
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{refWithRel}); err != nil {
+		t.Fatalf("ManyToManyRef with Relation=ManyToMany: %v", err)
+	}
+
+	joinNoCols := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinNoCols}); err == nil || !strings.Contains(err.Error(), "no desired columns") {
+		t.Fatalf("no columns: %v", err)
+	}
+
+	// AutoMigrate=false join model is skipped (not an error).
+	joinDisabled := &meta.Model{
+		Application: "auth", Name: "UserRole", ModelTable: "auth_user_role", AutoMigrate: &falseAM,
+		Fields: []*meta.Field{newFieldWithOptions(t, "UserId", `{"type":"char","size":20}`)},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinDisabled}); err != nil {
+		t.Fatalf("disabled join: %v", err)
+	}
+	if len(desired.JoinTables) != 0 {
+		t.Fatalf("disabled join should skip, got %#v", desired.JoinTables)
+	}
+
+	// Active join + readonly same unqualified name: resolve among eligible only.
+	unqualActiveRO := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "UserRole", "UserId", "RoleId", "auth.Role")},
+	}
+	authJoinActive := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	salesJoinRO := &meta.Model{Application: "sales", Name: "UserRole", ModelTable: "sales_user_role", Readonly: true}
+	roleForElig := &meta.Model{Application: "auth", Name: "Role", ModelTable: "auth_role"}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"}},
+	}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{unqualActiveRO, authJoinActive, salesJoinRO, roleForElig}); err != nil {
+		t.Fatalf("active+readonly join resolve: %v", err)
+	}
+	if len(desired.JoinTables) != 1 || desired.JoinTables[0].Table != "auth_user_role" {
+		t.Fatalf("expected auth join only, got %#v", desired.JoinTables)
+	}
+
+	// Active join + AutoMigrate=false same unqualified name: resolve among eligible only.
+	salesJoinOff := &meta.Model{Application: "sales", Name: "UserRole", ModelTable: "sales_user_role", AutoMigrate: &falseAM}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"}},
+	}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{unqualActiveRO, authJoinActive, salesJoinOff, roleForElig}); err != nil {
+		t.Fatalf("active+disabled join resolve: %v", err)
+	}
+	if len(desired.JoinTables) != 1 || desired.JoinTables[0].Table != "auth_user_role" {
+		t.Fatalf("expected auth join only with disabled peer, got %#v", desired.JoinTables)
+	}
+
+	joinOK := &meta.Model{
+		Application: "auth", Name: "UserRole", ModelTable: "auth_user_role",
+		Fields: []*meta.Field{
+			newFieldWithOptions(t, "UserId", `{"type":"char","size":20}`),
+			newFieldWithOptions(t, "RoleId", `{"type":"char","size":20}`),
+		},
+	}
+	role := &meta.Model{Application: "auth", Name: "Role", ModelTable: "auth_role"}
+	match := JoinTableSpec{
+		Table: "auth_user_role",
+		Left:  JoinEnd{Column: "user_id", ReferTable: "auth_user", ReferColumn: "id"},
+		Right: JoinEnd{Column: "role_id", ReferTable: "auth_role", ReferColumn: "id"},
+	}
+	desired = DesiredSchema{
+		Tables: map[string][]ColumnSpec{"auth_user_role": {
+			{Name: "user_id", PhysicalType: "char"},
+			{Name: "role_id", PhysicalType: "char"},
+		}},
+		JoinTables: []JoinTableSpec{match},
+	}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{
+		nil,
+		{Name: "RO", ModelTable: "ro", Readonly: true},
+		{Name: "Off", ModelTable: "off", AutoMigrate: &falseAM},
+		user, joinOK, role,
+	}); err != nil {
+		t.Fatalf("identical dedupe: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("JoinTables = %#v", desired.JoinTables)
+	}
+
+	// Conflicting duplicate join table definition fails.
+	conflictUser := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "auth.UserRole", "UserId", "RoleId", "auth.Role")},
+	}
+	desired = DesiredSchema{
+		Tables: map[string][]ColumnSpec{"auth_user_role": {
+			{Name: "user_id", PhysicalType: "char"},
+			{Name: "role_id", PhysicalType: "char"},
+		}},
+		JoinTables: []JoinTableSpec{{
+			Table: "auth_user_role",
+			Left:  JoinEnd{Column: "other_id", ReferTable: "auth_user", ReferColumn: "id"},
+			Right: JoinEnd{Column: "role_id", ReferTable: "auth_role", ReferColumn: "id"},
+		}},
+	}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{conflictUser, joinOK, role}); err == nil || !strings.Contains(err.Error(), "conflicts") {
+		t.Fatalf("conflict: %v", err)
+	}
+
+	// Missing join fields fail closed.
+	noFields := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "auth.UserRole", "", "", "auth.Role")},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{noFields, joinOK}); err == nil || !strings.Contains(err.Error(), "joinField") {
+		t.Fatalf("empty join fields: %v", err)
+	}
+
+	// Join column missing from desired table fails (left and right).
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinOK, role}); err == nil || !strings.Contains(err.Error(), "UserId") {
+		t.Fatalf("missing left join col: %v", err)
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinOK, role}); err == nil || !strings.Contains(err.Error(), "RoleId") {
+		t.Fatalf("missing right join col: %v", err)
+	}
+
+	// Empty parent ModelTable fails.
+	emptyParent := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "",
+		Fields: []*meta.Field{m2mField(t, "Roles", "auth.UserRole", "UserId", "RoleId", "auth.Role")},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{emptyParent, joinOK}); err == nil || !strings.Contains(err.Error(), "parent model") {
+		t.Fatalf("empty parent: %v", err)
+	}
+
+	// Bidirectional ManyToMany (swapped Left/Right) is the same join table.
+	roleUsers := &meta.Model{
+		Application: "auth", Name: "Role", ModelTable: "auth_role",
+		Fields: []*meta.Field{m2mField(t, "Users", "auth.UserRole", "RoleId", "UserId", "auth.User")},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, roleUsers, joinOK}); err != nil {
+		t.Fatalf("bidirectional: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("bidirectional JoinTables = %#v", desired.JoinTables)
+	}
+
+	// One side omitting targetModel must not conflict with the declared refer end.
+	roleNoTarget := &meta.Model{
+		Application: "auth", Name: "Role", ModelTable: "auth_role",
+		Fields: []*meta.Field{m2mField(t, "Users", "auth.UserRole", "RoleId", "UserId", "")},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, roleNoTarget, joinOK}); err != nil {
+		t.Fatalf("bidirectional blank targetModel: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("blank targetModel JoinTables = %#v", desired.JoinTables)
+	}
+	if strings.TrimSpace(desired.JoinTables[0].Left.ReferTable) == "" || strings.TrimSpace(desired.JoinTables[0].Right.ReferTable) == "" {
+		t.Fatalf("declared-first must keep both refer tables, got %#v", desired.JoinTables[0])
+	}
+
+	// Blank-first then declared must adopt the declared refer target (not keep blank).
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{roleNoTarget, user, joinOK}); err != nil {
+		t.Fatalf("blank-first then declared: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("blank-first JoinTables = %#v", desired.JoinTables)
+	}
+	blankFirst := desired.JoinTables[0]
+	if strings.TrimSpace(blankFirst.Left.ReferTable) == "" || strings.TrimSpace(blankFirst.Right.ReferTable) == "" {
+		t.Fatalf("blank-first must adopt declared refer tables, got %#v", blankFirst)
+	}
+	if !referTargetEqual("", "auth_role") || !referTargetEqual("Auth_Role", "auth_role") {
+		t.Fatal("referTargetEqual blank/case")
+	}
+	if referTargetEqual("auth_user", "auth_role") {
+		t.Fatal("referTargetEqual distinct tables")
+	}
+	merged := preferJoinTableSpec(
+		JoinTableSpec{Table: "t", Left: JoinEnd{Column: "a", ReferTable: "", ReferColumn: ""}, Right: JoinEnd{Column: "b", ReferTable: "tb", ReferColumn: "id"}},
+		JoinTableSpec{Table: "t", Left: JoinEnd{Column: "b", ReferTable: "tb", ReferColumn: "id"}, Right: JoinEnd{Column: "a", ReferTable: "ta", ReferColumn: "id"}},
+	)
+	if merged.Left.ReferTable != "ta" || merged.Right.ReferTable != "tb" || merged.Left.ReferColumn != "id" {
+		t.Fatalf("preferJoinTableSpec swapped merge = %#v", merged)
+	}
+	sameOrient := preferJoinTableSpec(
+		JoinTableSpec{Table: "t", Left: JoinEnd{Column: "a", ReferTable: "ta", ReferColumn: "id"}, Right: JoinEnd{Column: "b", ReferTable: "", ReferColumn: ""}},
+		JoinTableSpec{Table: "t", Left: JoinEnd{Column: "a", ReferTable: "ta", ReferColumn: "id"}, Right: JoinEnd{Column: "b", ReferTable: "tb", ReferColumn: "id"}},
+	)
+	if sameOrient.Right.ReferTable != "tb" || sameOrient.Right.ReferColumn != "id" {
+		t.Fatalf("preferJoinTableSpec same-orient merge = %#v", sameOrient)
+	}
+	customJoin := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "uid", FieldName: "UserId", PhysicalType: "char"},
+		{Name: "rid", FieldName: "RoleId", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, customJoin, role}); err != nil {
+		t.Fatalf("fieldName columns: %v", err)
+	}
+	if desired.JoinTables[0].Left.Column != "uid" || desired.JoinTables[0].Right.Column != "rid" {
+		t.Fatalf("custom cols = %#v", desired.JoinTables[0])
+	}
+	if got, ok := resolveJoinColumnName(nil, "UserId"); ok || got != "" {
+		t.Fatal("empty cols")
+	}
+	if _, ok := resolveJoinColumnName([]ColumnSpec{{Name: "x"}}, ""); ok {
+		t.Fatal("empty field ref")
+	}
+	if _, ok := resolveJoinColumnName([]ColumnSpec{{Name: "", FieldName: "UserId"}}, "UserId"); ok {
+		t.Fatal("blank physical name")
+	}
+	if name, ok := resolveJoinColumnName([]ColumnSpec{{Name: "UserId"}}, "UserId"); !ok || name != "UserId" {
+		t.Fatalf("literal name match: %q %v", name, ok)
+	}
+	// Snake_case preferred when both snake and raw fieldRef names exist.
+	if name, ok := resolveJoinColumnName([]ColumnSpec{
+		{Name: "UserId"},
+		{Name: "user_id"},
+	}, "UserId"); !ok || name != "user_id" {
+		t.Fatalf("snake preferred: %q %v", name, ok)
+	}
+	if name, ok := resolveJoinColumnName([]ColumnSpec{
+		{Name: "uid", FieldName: "UserId"},
+	}, "UserId"); !ok || name != "uid" {
+		t.Fatalf("fieldName fallback: %q %v", name, ok)
+	}
+
+	dupA := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role_a"}
+	dupB := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role_b"}
+	if byKey = indexModelsByKey([]*meta.Model{dupA, dupB}); byKey["auth.userrole"] != nil {
+		t.Fatal("expected ambiguous qualified auth.UserRole to be nil")
+	}
+
+	if joinTableSpecsEqual(JoinTableSpec{Table: "a"}, JoinTableSpec{Table: "b"}) {
+		t.Fatal("different tables must not be equal")
+	}
+	if !joinEndsEqual(JoinEnd{Column: "x", ReferTable: "t", ReferColumn: "id"}, JoinEnd{Column: "X", ReferTable: "T", ReferColumn: "ID"}) {
+		t.Fatal("joinEndsEqual case fold")
+	}
+
+	if resolveModelRef(nil, "") != nil {
+		t.Fatal("empty ref")
+	}
+	if got := normalizeModelRefLiteral("() => UserRole"); got != "UserRole" {
+		t.Fatalf("arrow joinModel = %q", got)
+	}
+	if got := normalizeModelRefLiteral("()=>auth.UserRole"); got != "auth.UserRole" {
+		t.Fatalf("dotted arrow = %q", got)
+	}
+	if got := normalizeModelRefLiteral(`() => "UserRole"`); got != "UserRole" {
+		t.Fatalf("quoted arrow = %q", got)
+	}
+	if got := normalizeModelRefLiteral("() => UserRole()"); got != "UserRole" {
+		t.Fatalf("call suffix = %q", got)
+	}
+	if got := normalizeModelRefLiteral("() => (UserRole)"); got != "UserRole" {
+		t.Fatalf("paren wrap = %q", got)
+	}
+	if got := normalizeModelRefLiteral("() => (auth.UserRole)"); got != "auth.UserRole" {
+		t.Fatalf("paren dotted = %q", got)
+	}
+	if got := normalizeModelRefLiteral("() => UserRole[0]"); got != "UserRole" {
+		t.Fatalf("bracket suffix = %q", got)
+	}
+
+	arrowUser := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{
+			newFieldWithOptions(t, "Roles", `{
+				"type":"ManyToMany",
+				"relation":{"joinModel":"() => UserRole","joinField":"UserId","inverseJoinField":"RoleId","targetModel":"() => Role"}
+			}`),
+		},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"}},
+	}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{arrowUser, joinOK, role}); err != nil {
+		t.Fatalf("arrow joinModel: %v", err)
+	}
+	if len(desired.JoinTables) != 1 || desired.JoinTables[0].Table != "auth_user_role" {
+		t.Fatalf("arrow JoinTables = %#v", desired.JoinTables)
+	}
+	if desired.JoinTables[0].Right.ReferTable != "auth_role" {
+		t.Fatalf("target arrow resolve = %#v", desired.JoinTables[0].Right)
+	}
+}
+
+func TestDesiredTableNames_JoinOnly(t *testing.T) {
+	names := desiredTableNames(DesiredSchema{
+		Tables: map[string][]ColumnSpec{
+			"":      {{Name: "x"}},
+			"Auth":  {{Name: "id"}},
+			"auth":  {{Name: "id2"}}, // case-variant hits seen dedupe
+			" zeta": {{Name: "z"}},
+		},
+		JoinTables: []JoinTableSpec{
+			{Table: ""},
+			{Table: "auth"},
+			{Table: "auth_user_role"},
+			{Table: " beta_join"},
+		},
+	})
+	if len(names) != 4 {
+		t.Fatalf("names = %#v", names)
+	}
+	// Sorted, trimmed, case-folded dedupe keeps first sorted spelling ("Auth" before "auth").
+	if names[0] != "Auth" || names[1] != "zeta" || names[2] != "auth_user_role" || names[3] != "beta_join" {
+		t.Fatalf("deterministic names = %#v", names)
+	}
+}
+
+func TestMarkLeftoverOwnership_EdgeCases(t *testing.T) {
+	if err := markLeftoverOwnership(nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := markLeftoverOwnership(&SchemaPlan{}, nil); err != nil {
+		t.Fatal(err)
+	}
+	plan := SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverIndex, Name: "idx_x"},
+		{Kind: LeftoverColumn, Table: "", Name: "c"},
+		{Kind: LeftoverColumn, Table: "t", Name: "a"},
+		{Kind: LeftoverColumn, Table: "t", Name: "b"},
+	}}
+	if err := markLeftoverOwnership(&plan, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := markLeftoverOwnership(&plan, &schemaTestScope{}); err != nil {
+		t.Fatal(err)
+	}
+
+	runtimeScope := newSchemaTestScope(t)
+	// Truly empty DesiredJSON skips ownership map for that snap.
+	if err := runtimeScope.Session().DB.Create(&modmeta.SchemaSnapshot{
+		ModelTable:  "own_empty",
+		DesiredJSON: datatypes.JSON(nil),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	emptyPlan := SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverColumn, Table: "own_empty", Name: "c"},
+		{Kind: LeftoverColumn, Table: "no_snap", Name: "x"}, // names==nil branch
+	}}
+	if err := markLeftoverOwnership(&emptyPlan, runtimeScope); err != nil {
+		t.Fatal(err)
+	}
+	if emptyPlan.Leftover[0].ChoysumOwned || emptyPlan.Leftover[1].ChoysumOwned {
+		t.Fatalf("expected unowned: %#v", emptyPlan.Leftover)
+	}
+
+	if err := runtimeScope.Session().DB.Create(&modmeta.SchemaSnapshot{
+		ModelTable:  "own_bad",
+		DesiredJSON: datatypes.JSON([]byte(`{`)),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := markLeftoverOwnership(&SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverColumn, Table: "own_bad", Name: "c"},
+	}}, runtimeScope); err == nil || !strings.Contains(err.Error(), "decode") {
+		t.Fatalf("bad json: %v", err)
+	}
+
+	if err := runtimeScope.Session().DB.Create(&modmeta.SchemaSnapshot{
+		ModelTable:  "own_rf",
+		DesiredJSON: datatypes.JSON([]byte(`[{"name":"code","renameFrom":"old_code"}]`)),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	rfPlan := SchemaPlan{Leftover: []Leftover{{Kind: LeftoverColumn, Table: "own_rf", Name: "old_code"}}}
+	if err := markLeftoverOwnership(&rfPlan, runtimeScope); err != nil {
+		t.Fatal(err)
+	}
+	if !rfPlan.Leftover[0].ChoysumOwned {
+		t.Fatal("renameFrom should mark owned")
+	}
+
+	// Whitespace-padded leftover table names still match trimmed snapshot keys.
+	if err := runtimeScope.Session().DB.Create(&modmeta.SchemaSnapshot{
+		ModelTable:  "own_trim",
+		DesiredJSON: datatypes.JSON([]byte(`[{"name":"pad_col"}]`)),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	trimPlan := SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverColumn, Table: "  own_trim  ", Name: "  pad_col  "},
+	}}
+	if err := markLeftoverOwnership(&trimPlan, runtimeScope); err != nil {
+		t.Fatal(err)
+	}
+	if !trimPlan.Leftover[0].ChoysumOwned {
+		t.Fatalf("padded table/name should be owned: %#v", trimPlan.Leftover[0])
+	}
+
+	orig := loadSnapshotsFn
+	t.Cleanup(func() { loadSnapshotsFn = orig })
+	loadSnapshotsFn = func(*gorm.DB, []string) (map[string]modmeta.SchemaSnapshot, error) {
+		return nil, errString("snap boom")
+	}
+	if err := markLeftoverOwnership(&SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverColumn, Table: "t", Name: "c"},
+	}}, runtimeScope); err == nil || !strings.Contains(err.Error(), "snap boom") {
+		t.Fatalf("load err: %v", err)
+	}
+}
+
+type errString string
+
+func (e errString) Error() string { return string(e) }
+
+func TestEnsureTaskJobExecution_DialectBranches(t *testing.T) {
+	if got := schemaDialectName(nil); got != "sqlite" {
+		t.Fatalf("nil dialector = %q", got)
+	}
+	for _, tc := range []struct {
+		name string
+		want string
+	}{
+		{"postgres", "postgres"},
+		{"postgresql", "postgres"},
+		{"mysql", "mysql"},
+		{"mariadb", "mysql"},
+		{"sqlserver", "sqlserver"},
+		{"sqlite", "sqlite"},
+		{"oracle", "sqlite"},
+	} {
+		if got := schemaDialectName(fakeDialector{name: tc.name}); got != tc.want {
+			t.Fatalf("%s: got %q want %q", tc.name, got, tc.want)
+		}
+	}
+
+	runtimeScope := newSchemaTestScope(t)
+	if err := runtimeScope.Session().Exec(`CREATE TABLE task_job_execution (job_id varchar(64) NOT NULL)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
+		t.Fatalf("ensure bare table: %v", err)
+	}
+	if !runtimeScope.Session().Migrator().HasColumn("task_job_execution", "status") {
+		t.Fatal("status missing")
+	}
+	var n int
+	if err := runtimeScope.Session().Raw(
+		`SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name='task_job_execution' AND (sql LIKE '%job_id%' OR name LIKE '%job_id%')`,
+	).Scan(&n).Error; err != nil || n < 1 {
+		t.Fatalf("expected job_id index after reconcile, n=%d err=%v", n, err)
+	}
+}
+
+func TestEnsureTaskJobExecution_ErrorHooks(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	origCreate := structForCreateTableFn
+	origAdd := structForAddColumnFn
+	origIdx := ensureTaskJobIndexesFn
+	t.Cleanup(func() {
+		structForCreateTableFn = origCreate
+		structForAddColumnFn = origAdd
+		ensureTaskJobIndexesFn = origIdx
+	})
+
+	structForCreateTableFn = func(string, []ColumnSpec, string) (any, error) {
+		return nil, errString("create struct boom")
+	}
+	if err := ensureTaskJobExecutionTable(runtimeScope); err == nil || !strings.Contains(err.Error(), "create struct boom") {
+		t.Fatalf("create struct: %v", err)
+	}
+	structForCreateTableFn = origCreate
+
+	ensureTaskJobIndexesFn = func(*gorm.DB, string, ColumnSpec, string) error {
+		return errString("idx boom")
+	}
+	if err := ensureTaskJobExecutionTable(runtimeScope); err == nil || !strings.Contains(err.Error(), "idx boom") {
+		t.Fatalf("create idx: %v", err)
+	}
+	ensureTaskJobIndexesFn = origIdx
+	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := runtimeScope.Session().Exec(`ALTER TABLE task_job_execution DROP COLUMN result_hash`).Error; err != nil {
+		t.Fatal(err)
+	}
+	structForAddColumnFn = func(string, ColumnSpec, string) (any, error) {
+		return nil, errString("add struct boom")
+	}
+	if err := ensureTaskJobExecutionTable(runtimeScope); err == nil || !strings.Contains(err.Error(), "add struct boom") {
+		t.Fatalf("add struct: %v", err)
+	}
+	structForAddColumnFn = origAdd
+
+	// AddColumn failure via injectable migrator hook.
+	hookScope := newSchemaTestScope(t)
+	if err := hookScope.Session().Exec(`CREATE TABLE task_job_execution (job_id varchar(64) NOT NULL)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	origAddCol := taskJobAddColumnFn
+	t.Cleanup(func() { taskJobAddColumnFn = origAddCol })
+	taskJobAddColumnFn = func(gorm.Migrator, any, string) error {
+		return errString("add column boom")
+	}
+	if err := ensureTaskJobExecutionTable(hookScope); err == nil || !strings.Contains(err.Error(), "add column boom") {
+		t.Fatalf("add column: %v", err)
+	}
+	taskJobAddColumnFn = origAddCol
+
+	// Index ensure on existing columns: fail only for newly added indexed column.
+	bare := newSchemaTestScope(t)
+	if err := bare.Session().Exec(`CREATE TABLE task_job_execution (job_id varchar(64) NOT NULL)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	ensureTaskJobIndexesFn = func(_ *gorm.DB, _ string, col ColumnSpec, _ string) error {
+		if col.Name == "status" {
+			return errString("add idx boom")
+		}
+		return nil
+	}
+	if err := ensureTaskJobExecutionTable(bare); err == nil || !strings.Contains(err.Error(), "add idx boom") {
+		t.Fatalf("add idx: %v", err)
+	}
+	ensureTaskJobIndexesFn = origIdx
+
+	// Warm-path ready-check failure.
+	warm := newSchemaTestScope(t)
+	if err := ensureTaskJobExecutionTable(warm); err != nil {
+		t.Fatal(err)
+	}
+	origReady := taskJobUniqueJobIDReadyFn
+	t.Cleanup(func() { taskJobUniqueJobIDReadyFn = origReady })
+	taskJobUniqueJobIDReadyFn = func(*gorm.DB, string) (bool, error) {
+		return false, errString("ready boom")
+	}
+	if err := ensureTaskJobExecutionTable(warm); err == nil || !strings.Contains(err.Error(), "ready boom") {
+		t.Fatalf("ready check: %v", err)
+	}
+	taskJobUniqueJobIDReadyFn = origReady
+	origIndexesReady := taskJobExecutionIndexesReadyFn
+	t.Cleanup(func() { taskJobExecutionIndexesReadyFn = origIndexesReady })
+	taskJobUniqueJobIDReadyFn = func(*gorm.DB, string) (bool, error) { return true, nil }
+	taskJobExecutionIndexesReadyFn = func(*gorm.DB, string, []ColumnSpec) (bool, error) {
+		return false, errString("indexes ready boom")
+	}
+	if err := ensureTaskJobExecutionTable(warm); err == nil || !strings.Contains(err.Error(), "indexes ready boom") {
+		t.Fatalf("indexes ready check: %v", err)
+	}
+	taskJobExecutionIndexesReadyFn = func(*gorm.DB, string, []ColumnSpec) (bool, error) {
+		return false, nil
+	}
+	calledEnsure := false
+	ensureTaskJobIndexesFn = func(*gorm.DB, string, ColumnSpec, string) error {
+		calledEnsure = true
+		return nil
+	}
+	if err := ensureTaskJobExecutionTable(warm); err != nil {
+		t.Fatalf("indexes not ready fallthrough: %v", err)
+	}
+	if !calledEnsure {
+		t.Fatal("expected ensure indexes when indexesReady=false")
+	}
+	ensureTaskJobIndexesFn = origIdx
+	taskJobExecutionIndexesReadyFn = origIndexesReady
+	taskJobUniqueJobIDReadyFn = origReady
+
+	if liveIndexSatisfiesCandidate(nil, indexNameCandidate{Name: "Status", Unique: false}, "status") {
+		t.Fatal("nil indexes should not satisfy")
+	}
+	fake := []gorm.Index{fakeIndex{name: "Status", cols: []string{"status"}, unique: false}}
+	if !liveIndexSatisfiesCandidate(fake, indexNameCandidate{Name: "Status", Unique: false}, "status") {
+		t.Fatal("non-unique candidate")
+	}
+	if liveIndexSatisfiesCandidate(fake, indexNameCandidate{Name: "Status", Unique: true}, "status") {
+		t.Fatal("unique required but index non-unique")
+	}
+	fakeUniq := []gorm.Index{fakeIndex{name: "JobId", cols: []string{"job_id"}, unique: true}}
+	if !liveIndexSatisfiesCandidate(fakeUniq, indexNameCandidate{Name: "JobId", Unique: true}, "job_id") {
+		t.Fatal("unique candidate")
+	}
+}
+
+func TestFilterIntentCoveredLeftovers_NilBag(t *testing.T) {
+	plan := SchemaPlan{Leftover: []Leftover{{Kind: LeftoverColumn, Name: "c"}}}
+	got := filterIntentCoveredLeftovers(plan, nil)
+	if len(got.Leftover) != 1 {
+		t.Fatalf("%#v", got.Leftover)
+	}
+}
+
+func TestBuildSchemaPlan_OwnershipError(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	model := &meta.Model{
+		Name: "Order", ModelTable: "sales_own_err",
+		Fields: []*meta.Field{newFieldWithOptions(t, "Code", `{"type":"varchar","size":20}`)},
+	}
+	if err := newModelMigrator(runtimeScope, nil, []*meta.Model{model}).MigrateSchema(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimeScope.Session().Exec(`ALTER TABLE sales_own_err ADD COLUMN leftover_x TEXT`).Error; err != nil {
+		t.Fatal(err)
+	}
+	orig := loadSnapshotsFn
+	t.Cleanup(func() { loadSnapshotsFn = orig })
+	loadSnapshotsFn = func(*gorm.DB, []string) (map[string]modmeta.SchemaSnapshot, error) {
+		return nil, errString("own boom")
+	}
+	_, err := newModelMigrator(runtimeScope, nil, []*meta.Model{model}).PlanSchema()
+	if err == nil || !strings.Contains(err.Error(), "own boom") {
+		t.Fatalf("expected ownership error, got %v", err)
+	}
+}
+
+func TestMigrateSchema_LeftoverWithoutIntentSucceeds(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	model := &meta.Model{
+		Name: "Order", ModelTable: "sales_left_ok",
+		Fields: []*meta.Field{newFieldWithOptions(t, "Code", `{"type":"varchar","size":20}`)},
+	}
+	mig := newModelMigrator(runtimeScope, nil, []*meta.Model{model})
+	if err := mig.MigrateSchema(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimeScope.Session().Exec(`ALTER TABLE sales_left_ok ADD COLUMN ghost TEXT`).Error; err != nil {
+		t.Fatal(err)
+	}
+	plan, err := mig.PlanSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, left := range plan.Leftover {
+		if left.Kind == LeftoverColumn && left.Name == "ghost" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected ghost leftover, got %#v", plan.Leftover)
+	}
+	if err := mig.MigrateSchema(); err != nil {
+		t.Fatalf("migrate with leftover: %v", err)
+	}
+}

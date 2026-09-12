@@ -9,11 +9,13 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	moduleplan "github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
@@ -397,6 +399,233 @@ func newDebugTestLogScope(buf *bytes.Buffer) *testLogScope {
 
 func TestReleaseLeaseWithContextFallback_NilLockerNoop(t *testing.T) {
 	releaseLeaseWithContextFallback(newDebugTestLogScope(&bytes.Buffer{}), nil, context.Background(), "lease-resource", "owner-1", "module manager")
+}
+
+func TestWithLeaseRenewPaused(t *testing.T) {
+	if err := (*ModuleManager)(nil).withLeaseRenewPaused(nil); err != nil {
+		t.Fatalf("nil manager nil fn: %v", err)
+	}
+	if err := (*ModuleManager)(nil).withLeaseRenewPaused(func() error { return nil }); err != nil {
+		t.Fatalf("nil manager: %v", err)
+	}
+	m := &ModuleManager{}
+	if err := m.withLeaseRenewPaused(nil); err != nil {
+		t.Fatalf("nil fn: %v", err)
+	}
+	if err := m.withLeaseRenewPaused(func() error {
+		if m.pauseLeaseRenewDepth.Load() != 1 {
+			t.Fatal("expected pause while fn runs")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("paused fn: %v", err)
+	}
+	if m.pauseLeaseRenewDepth.Load() != 0 {
+		t.Fatal("expected pause cleared after fn")
+	}
+
+	origTTL := moduleManagerLeaseTTL
+	t.Cleanup(func() { moduleManagerLeaseTTL = origTTL })
+	moduleManagerLeaseTTL = time.Millisecond
+	// Nil runtimeScope: over-TTL pause must not panic (warn skipped).
+	if err := m.withLeaseRenewPaused(func() error {
+		time.Sleep(2 * time.Millisecond)
+		return nil
+	}); err != nil {
+		t.Fatalf("over-TTL nil scope: %v", err)
+	}
+	var warnBuf bytes.Buffer
+	m.runtimeScope = newDebugTestLogScope(&warnBuf)
+	if err := m.withLeaseRenewPaused(func() error {
+		time.Sleep(2 * time.Millisecond)
+		return nil
+	}); err != nil {
+		t.Fatalf("over-TTL warn: %v", err)
+	}
+	if !strings.Contains(warnBuf.String(), "module manager lease renew paused longer than TTL") {
+		t.Fatalf("expected over-TTL warn, got %q", warnBuf.String())
+	}
+	want := errors.New("boom")
+	if err := m.withLeaseRenewPaused(func() error { return want }); !errors.Is(err, want) {
+		t.Fatalf("got %v want %v", err, want)
+	}
+
+	// Nested pause must keep depth until outermost returns.
+	if err := m.withLeaseRenewPaused(func() error {
+		return m.withLeaseRenewPaused(func() error {
+			if m.pauseLeaseRenewDepth.Load() != 2 {
+				t.Fatalf("nested depth=%d", m.pauseLeaseRenewDepth.Load())
+			}
+			return nil
+		})
+	}); err != nil {
+		t.Fatalf("nested pause: %v", err)
+	}
+	if m.pauseLeaseRenewDepth.Load() != 0 {
+		t.Fatal("expected nested pause cleared")
+	}
+
+	origDialect := moduleManagerDialectNameFn
+	t.Cleanup(func() { moduleManagerDialectNameFn = origDialect })
+	moduleManagerDialectNameFn = func(*ModuleManager) string { return "postgres" }
+	if err := m.withLeaseRenewPaused(func() error {
+		if m.pauseLeaseRenewDepth.Load() != 0 {
+			t.Fatal("postgres must keep lease renew active")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("postgres pause: %v", err)
+	}
+
+	if !shouldPauseLeaseRenew("") || !shouldPauseLeaseRenew("sqlite") || !shouldPauseLeaseRenew("sqlite3") {
+		t.Fatal("sqlite/unknown should pause")
+	}
+	if shouldPauseLeaseRenew("postgres") || shouldPauseLeaseRenew("mysql") || shouldPauseLeaseRenew("sqlserver") {
+		t.Fatal("non-sqlite must not pause")
+	}
+	if moduleManagerDialectName(nil) != "" || moduleManagerDialectName(&ModuleManager{}) != "" {
+		t.Fatal("nil dialect helpers")
+	}
+	if moduleManagerDialectName(&ModuleManager{runtimeScope: &testLogScope{}}) != "" {
+		t.Fatal("nil session dialect")
+	}
+	if moduleManagerDialectName(&ModuleManager{runtimeScope: &dialectNilDBScope{}}) != "" {
+		t.Fatal("nil db dialect")
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	if got := moduleManagerDialectName(&ModuleManager{runtimeScope: runtimeScope}); got != "sqlite" && got != "sqlite3" {
+		t.Fatalf("sqlite dialect=%q", got)
+	}
+}
+
+type dialectNilDBScope struct {
+	testLogScope
+}
+
+func (s *dialectNilDBScope) Session() *scope.Session {
+	return &scope.Session{}
+}
+
+func TestRunWithLeaseRenewPaused(t *testing.T) {
+	if err := runWithLeaseRenewPaused(nil, nil); err != nil {
+		t.Fatalf("nil manager nil fn: %v", err)
+	}
+	called := false
+	if err := runWithLeaseRenewPaused(nil, func() error {
+		called = true
+		return nil
+	}); err != nil || !called {
+		t.Fatalf("nil manager fn: called=%v err=%v", called, err)
+	}
+	m := &ModuleManager{}
+	if err := runWithLeaseRenewPaused(m, func() error {
+		if m.pauseLeaseRenewDepth.Load() != 1 {
+			t.Fatal("expected pause")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type renewCountLocker struct {
+	renewCalls atomic.Int32
+	renewErr   error
+}
+
+func (l *renewCountLocker) Acquire(context.Context, string, string, time.Duration) error {
+	return nil
+}
+func (l *renewCountLocker) Renew(context.Context, string, string, time.Duration) error {
+	l.renewCalls.Add(1)
+	return l.renewErr
+}
+func (l *renewCountLocker) Release(context.Context, string, string) error { return nil }
+
+func TestRenewLeaseOnTick(t *testing.T) {
+	(*ModuleManager)(nil).renewLeaseOnTick(nil, context.Background(), "r", "o", time.Second)
+	m := &ModuleManager{runtimeScope: newDebugTestLogScope(&bytes.Buffer{})}
+	m.renewLeaseOnTick(nil, context.Background(), "r", "o", time.Second)
+
+	locker := &renewCountLocker{}
+	m.pauseLeaseRenewDepth.Store(1)
+	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
+	if locker.renewCalls.Load() != 0 {
+		t.Fatalf("paused renew calls=%d", locker.renewCalls.Load())
+	}
+	m.pauseLeaseRenewDepth.Store(0)
+	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
+	if locker.renewCalls.Load() != 1 {
+		t.Fatalf("renew calls=%d", locker.renewCalls.Load())
+	}
+	locker.renewErr = errors.New("renew boom")
+	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
+	if locker.renewCalls.Load() != 2 {
+		t.Fatalf("renew with err calls=%d", locker.renewCalls.Load())
+	}
+
+	// Commit holds leaseRenewMu: renew ticks must TryLock-fail without calling Renew.
+	m.leaseRenewMu.Lock()
+	before := locker.renewCalls.Load()
+	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
+	m.leaseRenewMu.Unlock()
+	if locker.renewCalls.Load() != before {
+		t.Fatalf("renew during pause lock calls=%d want %d", locker.renewCalls.Load(), before)
+	}
+}
+
+func TestWithModuleManagerLease_RespectsRenewPause(t *testing.T) {
+	origTTL, origEvery := moduleManagerLeaseTTL, moduleManagerLeaseRenewEvery
+	moduleManagerLeaseTTL = 2 * time.Second
+	moduleManagerLeaseRenewEvery = func(time.Duration) time.Duration { return 10 * time.Millisecond }
+	t.Cleanup(func() {
+		moduleManagerLeaseTTL = origTTL
+		moduleManagerLeaseRenewEvery = origEvery
+	})
+
+	runtimeScope := newLifecycleCommitTestScope(t)
+	locker := &renewCountLocker{}
+	m := &ModuleManager{
+		runtimeScope:  runtimeScope,
+		lockerFactory: func(scope.Scope) statepkg.Locker { return locker },
+		entities:      modmeta.CatalogEntities(),
+	}
+
+	if err := m.withModuleManagerLease(context.Background(), func() error {
+		if err := m.withLeaseRenewPaused(func() error {
+			time.Sleep(25 * time.Millisecond)
+			return nil
+		}); err != nil {
+			return err
+		}
+		deadline := time.Now().Add(2 * time.Second)
+		for locker.renewCalls.Load() < 1 && time.Now().Before(deadline) {
+			time.Sleep(2 * time.Millisecond)
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("lease: %v", err)
+	}
+	if locker.renewCalls.Load() < 1 {
+		t.Fatalf("expected at least one renew after pause cleared, got %d", locker.renewCalls.Load())
+	}
+}
+
+func TestModuleManagerLeaseRenewInterval(t *testing.T) {
+	orig := moduleManagerLeaseRenewEvery
+	t.Cleanup(func() { moduleManagerLeaseRenewEvery = orig })
+	moduleManagerLeaseRenewEvery = func(time.Duration) time.Duration { return 0 }
+	if got := moduleManagerLeaseRenewInterval(time.Minute); got != time.Second {
+		t.Fatalf("zero interval clamp=%v", got)
+	}
+	moduleManagerLeaseRenewEvery = func(time.Duration) time.Duration { return -time.Millisecond }
+	if got := moduleManagerLeaseRenewInterval(time.Minute); got != time.Second {
+		t.Fatalf("negative interval clamp=%v", got)
+	}
+	moduleManagerLeaseRenewEvery = func(ttl time.Duration) time.Duration { return ttl / 2 }
+	if got := moduleManagerLeaseRenewInterval(20 * time.Millisecond); got != 10*time.Millisecond {
+		t.Fatalf("positive interval=%v", got)
+	}
 }
 
 func TestReleaseLeaseWithContextFallback_PrimarySuccessNoFallback(t *testing.T) {

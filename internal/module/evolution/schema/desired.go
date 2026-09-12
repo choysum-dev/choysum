@@ -56,6 +56,9 @@ func buildDesired(models []*meta.Model) (DesiredSchema, error) {
 			out.Tables[table] = append(out.Tables[table], *col)
 		}
 	}
+	if err := appendJoinTablesFromModels(&out, models); err != nil {
+		return DesiredSchema{}, err
+	}
 	return out, nil
 }
 

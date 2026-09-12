@@ -109,7 +109,103 @@ func (m *modelMigrator) buildSchemaPlan() (DesiredSchema, SchemaPlan, error) {
 	if err != nil {
 		return DesiredSchema{}, SchemaPlan{}, err
 	}
+	plan = filterIntentCoveredLeftovers(plan, m.intents)
+	if err := markLeftoverOwnership(&plan, m.runtimeScope); err != nil {
+		return DesiredSchema{}, SchemaPlan{}, err
+	}
 	return desired, plan, nil
+}
+
+// filterIntentCoveredLeftovers drops leftover columns already covered by a drop Intent
+// so Validate/logging do not imply a second drop after script helpers ran.
+func filterIntentCoveredLeftovers(plan SchemaPlan, intents IntentBag) SchemaPlan {
+	if len(plan.Leftover) == 0 || intents == nil {
+		return plan
+	}
+	filtered := make([]Leftover, 0, len(plan.Leftover))
+	for _, left := range plan.Leftover {
+		if left.Kind == LeftoverColumn && IntentSatisfies(PlanOp{
+			Kind:   OpKind(IntentDropColumn),
+			Safety: SafetyManual,
+			Table:  left.Table,
+			Detail: "drop column " + left.Name,
+			Column: &ColumnSpec{Name: left.Name},
+		}, intents) {
+			continue
+		}
+		filtered = append(filtered, left)
+	}
+	plan.Leftover = filtered
+	return plan
+}
+
+// markLeftoverOwnership sets ChoysumOwned on leftovers (idx_ indexes; columns in schema snapshots).
+func markLeftoverOwnership(plan *SchemaPlan, runtimeScope scope.Scope) error {
+	if plan == nil || len(plan.Leftover) == 0 {
+		return nil
+	}
+	for i := range plan.Leftover {
+		left := &plan.Leftover[i]
+		switch left.Kind {
+		case LeftoverIndex:
+			left.ChoysumOwned = strings.HasPrefix(strings.ToLower(strings.TrimSpace(left.Name)), "idx_")
+		}
+	}
+	tables := make([]string, 0, len(plan.Leftover))
+	seen := map[string]struct{}{}
+	for _, left := range plan.Leftover {
+		if left.Kind != LeftoverColumn {
+			continue
+		}
+		key := strings.ToLower(strings.TrimSpace(left.Table))
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		tables = append(tables, strings.TrimSpace(left.Table))
+	}
+	if len(tables) == 0 || runtimeScope == nil || runtimeScope.Session() == nil {
+		return nil
+	}
+	snaps, err := loadSnapshotsFn(runtimeScope.Session().DB, tables)
+	if err != nil {
+		return fmt.Errorf("mark leftover ownership: %w", err)
+	}
+	ownedCols := map[string]map[string]struct{}{} // table → column names from snapshot
+	for table, snap := range snaps {
+		if len(snap.DesiredJSON) == 0 {
+			continue
+		}
+		var cols []ColumnSpec
+		if err := json.Unmarshal(snap.DesiredJSON, &cols); err != nil {
+			return fmt.Errorf("mark leftover ownership decode %s: %w", table, err)
+		}
+		names := map[string]struct{}{}
+		for _, col := range cols {
+			if n := strings.TrimSpace(col.Name); n != "" {
+				names[strings.ToLower(n)] = struct{}{}
+			}
+			if rf := strings.TrimSpace(col.RenameFrom); rf != "" {
+				names[strings.ToLower(rf)] = struct{}{}
+			}
+		}
+		ownedCols[strings.ToLower(strings.TrimSpace(table))] = names
+	}
+	for i := range plan.Leftover {
+		left := &plan.Leftover[i]
+		if left.Kind != LeftoverColumn {
+			continue
+		}
+		names := ownedCols[strings.ToLower(strings.TrimSpace(left.Table))]
+		if names == nil {
+			continue
+		}
+		_, left.ChoysumOwned = names[strings.ToLower(strings.TrimSpace(left.Name))]
+	}
+	return nil
 }
 
 func (m *modelMigrator) PlanSchema() (SchemaPlan, error) {

@@ -53,8 +53,8 @@ func SaveSnapshots(db *gorm.DB, desired DesiredSchema, models []*meta.Model, mod
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
-	if err := db.AutoMigrate(&modmeta.SchemaSnapshot{}); err != nil {
-		return fmt.Errorf("ensure meta_schema_snapshot: %w", err)
+	if !db.Migrator().HasTable(&modmeta.SchemaSnapshot{}) {
+		return fmt.Errorf("meta_schema_snapshot missing; catalog migrate must create it before schema snapshots")
 	}
 	metaByTable := map[string]*meta.Model{}
 	for _, m := range models {

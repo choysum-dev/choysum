@@ -66,21 +66,31 @@ func newSchemaTestScope(t *testing.T) *schemaTestScope {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	return &schemaTestScope{
+	session := &scope.Session{DB: db}
+	out := &schemaTestScope{
 		ctx:     context.Background(),
 		cfg:     &config.Config{Db: &config.DbConfig{Dialect: "sqlite"}, Server: config.NewDefaultServerConfig(), Log: config.NewDefaultLogConfig()},
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		session: &scope.Session{DB: db},
+		session: session,
 	}
+	migrateSchemaMetaTables(t, session)
+	return out
 }
 
 func migrateSchemaMetaTables(t *testing.T, session *scope.Session) {
 	t.Helper()
-	if err := session.DB.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
-		t.Fatalf("ensure dual store: %v", err)
+	for _, ent := range modmeta.CatalogEntities() {
+		if session.DB.Migrator().HasTable(ent) {
+			continue
+		}
+		if err := session.DB.Migrator().CreateTable(ent); err != nil {
+			t.Fatalf("ensure catalog entity: %v", err)
+		}
 	}
-	if err := session.AutoMigrate(&meta.Module{}); err != nil {
-		t.Fatalf("migrate schema meta tables: %v", err)
+	if !session.Migrator().HasTable(&meta.Module{}) {
+		if err := session.Migrator().CreateTable(&meta.Module{}); err != nil {
+			t.Fatalf("migrate schema meta tables: %v", err)
+		}
 	}
 }
 

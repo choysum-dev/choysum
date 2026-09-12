@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -280,6 +281,27 @@ type ModuleManager struct {
 	lockerFactory            statepkg.LockerFactory
 	moduleIndexSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error)
 	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
+	// pauseLeaseRenewDepth skips heartbeat Renew while >0 (nested commit TX safe).
+	pauseLeaseRenewDepth atomic.Int32
+	// leaseRenewMu serializes renew against paused commits: pause Lock()s it for the
+	// whole commit so an in-flight Renew cannot race past the depth check and grab a
+	// second SQLite connection under MaxOpenConns=2.
+	leaseRenewMu sync.Mutex
+}
+
+// Overridable in tests to exercise lease renew ticks without waiting a full minute.
+var (
+	moduleManagerLeaseTTL        = 60 * time.Second
+	moduleManagerLeaseRenewEvery = func(ttl time.Duration) time.Duration { return ttl / 2 }
+)
+
+// moduleManagerLeaseRenewInterval clamps the renew tick to a positive duration.
+func moduleManagerLeaseRenewInterval(ttl time.Duration) time.Duration {
+	interval := moduleManagerLeaseRenewEvery(ttl)
+	if interval <= 0 {
+		return time.Second
+	}
+	return interval
 }
 
 func (m *ModuleManager) ensureMetaTables() error {
@@ -378,7 +400,7 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 	locker := m.lockerFactory(m.runtimeScope)
 	resource := "module_management"
 	ownerId := xid.New().String()
-	ttl := 60 * time.Second
+	ttl := moduleManagerLeaseTTL
 
 	if err := locker.Acquire(ctx, resource, ownerId, ttl); err != nil {
 		if errors.Is(err, lease.ErrLeaseBusy) {
@@ -394,16 +416,14 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		ticker := time.NewTicker(ttl / 2)
+		ticker := time.NewTicker(moduleManagerLeaseRenewInterval(ttl))
 		defer ticker.Stop()
 		for {
 			select {
 			case <-heartbeatCtx.Done():
 				return
 			case <-ticker.C:
-				if err := locker.Renew(heartbeatCtx, resource, ownerId, ttl); err != nil {
-					m.runtimeScope.Logger().Warn("module manager lease renew failed", "resource", resource, "error", err)
-				}
+				m.renewLeaseOnTick(locker, heartbeatCtx, resource, ownerId, ttl)
 			}
 		}
 	}()
@@ -415,6 +435,101 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 	}()
 
 	return fn()
+}
+
+// withLeaseRenewPaused skips module-manager lease Renew while fn runs.
+// Use around module commit transactions so SQLite is not contested by a second
+// connection (MaxOpenConns=2) while the commit TX holds a write lock.
+// Non-SQLite dialects keep renewing so long commits cannot lose the lease.
+func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
+	if m == nil {
+		if fn == nil {
+			return nil
+		}
+		return fn()
+	}
+	if fn == nil {
+		return nil
+	}
+	if !shouldPauseLeaseRenew(moduleManagerDialectNameFn(m)) {
+		return fn()
+	}
+	depth := m.pauseLeaseRenewDepth.Add(1)
+	defer m.pauseLeaseRenewDepth.Add(-1)
+	if depth == 1 {
+		// Wait for any in-flight Renew to finish, then hold the mutex so ticks
+		// that TryLock fail fast for the duration of the commit TX.
+		m.leaseRenewMu.Lock()
+		defer m.leaseRenewMu.Unlock()
+	}
+	started := time.Now()
+	err := fn()
+	if depth == 1 && time.Since(started) >= moduleManagerLeaseTTL && m.runtimeScope != nil {
+		m.runtimeScope.Logger().Warn("module manager lease renew paused longer than TTL",
+			"elapsed", time.Since(started), "ttl", moduleManagerLeaseTTL)
+	}
+	return err
+}
+
+// moduleManagerDialectName returns the runtime DB dialector name (lowercased).
+func moduleManagerDialectName(m *ModuleManager) string {
+	if m == nil {
+		return ""
+	}
+	if m.runtimeScope == nil {
+		return ""
+	}
+	session := m.runtimeScope.Session()
+	if session == nil {
+		return ""
+	}
+	if session.DB == nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(session.DB.Dialector.Name()))
+}
+
+// moduleManagerDialectNameFn is overridable in tests.
+var moduleManagerDialectNameFn = moduleManagerDialectName
+
+// shouldPauseLeaseRenew is true for SQLite (and unknown dialect, which defaults to
+// SQLite-safe pause). Postgres/MySQL keep lease renew active during commit.
+func shouldPauseLeaseRenew(dialect string) bool {
+	switch strings.ToLower(strings.TrimSpace(dialect)) {
+	case "postgres", "postgresql", "mysql", "mariadb", "sqlserver":
+		return false
+	default:
+		return true
+	}
+}
+
+// runWithLeaseRenewPaused pauses lease renew when manager is non-nil, otherwise runs fn directly.
+func runWithLeaseRenewPaused(manager *ModuleManager, fn func() error) error {
+	if manager != nil {
+		return manager.withLeaseRenewPaused(fn)
+	}
+	if fn == nil {
+		return nil
+	}
+	return fn()
+}
+
+// renewLeaseOnTick renews the module-manager lease unless commit TX paused renewals.
+func (m *ModuleManager) renewLeaseOnTick(locker statepkg.Locker, ctx context.Context, resource, ownerId string, ttl time.Duration) {
+	if m == nil || locker == nil {
+		return
+	}
+	// TryLock: if a commit holds leaseRenewMu, skip this tick entirely.
+	if !m.leaseRenewMu.TryLock() {
+		return
+	}
+	defer m.leaseRenewMu.Unlock()
+	if m.pauseLeaseRenewDepth.Load() > 0 {
+		return
+	}
+	if err := locker.Renew(ctx, resource, ownerId, ttl); err != nil && m.runtimeScope != nil {
+		m.runtimeScope.Logger().Warn("module manager lease renew failed", "resource", resource, "error", err)
+	}
 }
 
 // releaseLeaseWithContextFallback tries to release a lease using the current

@@ -17,6 +17,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/internal/module/policy"
+	"github.com/choysum-dev/choysum/internal/persistence/sqliteretry"
 	"github.com/choysum-dev/choysum/internal/task"
 
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
@@ -133,19 +134,19 @@ func (m *moduleInstaller) install() error {
 		}
 	}
 
-	txRoot := m.runtimeScope
-	if txRoot == nil {
+	return m.installAfterPrepare(buildResult, persistLater)
+}
+
+// installAfterPrepare runs the install commit TX and finalize steps.
+func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, persistLater bool) error {
+	if m == nil {
 		return xfmt.Errorf("scope is nil")
 	}
-	ctx := txRoot.Context()
-	if ctx == nil {
-		ctx = context.Background()
+	if m.runtimeScope == nil {
+		return xfmt.Errorf("scope is nil")
 	}
 	txHoldStarted := time.Now()
-	err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-		committed := m.forCommitScope(txScope)
-		return committed.commitInstall(buildResult, persistLater)
-	})
+	err := m.runInstallCommitTX(m.runtimeScope, m.runtimeScope.Context(), &buildResult, persistLater)
 	LogInstallOuterTxHold(m.runtimeScope.Logger(), "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err
@@ -153,42 +154,97 @@ func (m *moduleInstaller) install() error {
 	return m.finalizeInstall(buildResult)
 }
 
+// runInstallCommitTX runs the install commit Required TX, pausing lease renew when a manager is set.
+func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Context, buildResult **module.BuildResult, persistLater bool) error {
+	if txRoot == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if buildResult == nil {
+		return xfmt.Errorf("build result slot is nil")
+	}
+	var committedResult *module.BuildResult
+	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
+		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+			result, commitErr := m.forCommitScope(txScope).commitInstall(*buildResult, persistLater)
+			if commitErr != nil {
+				return commitErr
+			}
+			committedResult = result
+			return nil
+		})
+	})
+	if err != nil {
+		return err
+	}
+	*buildResult = committedResult
+	return nil
+}
+
 func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
 	committed := *m
 	committed.runtimeScope = txScope
-	entryPoint := ""
-	if m.module != nil {
-		entryPoint = m.module.ServiceEntryPoint
-	}
 	committed.builder = internalbackendbuilder.NewModuleBuilder(
 		txScope,
-		m.moduleManager.jsExecutor,
+		installerJSExecutor(m),
 		m.module,
-		entryPoint,
+		installerServiceEntryPoint(m),
 		internalbackendbuilder.WithPublishDist(false),
 	)
 	return &committed
 }
 
-func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) error {
+// installerJSExecutor returns the manager JS executor when present.
+func installerJSExecutor(m *moduleInstaller) jsexecutor.ScriptExecutor {
+	if m == nil {
+		return nil
+	}
+	if m.moduleManager == nil {
+		return nil
+	}
+	return m.moduleManager.jsExecutor
+}
+
+// installerServiceEntryPoint returns the module service entry point when present.
+func installerServiceEntryPoint(m *moduleInstaller) string {
+	if m == nil {
+		return ""
+	}
+	if m.module == nil {
+		return ""
+	}
+	return m.module.ServiceEntryPoint
+}
+
+// installerReuseExecutorScripts reports whether hook RunPhase may reuse the JS executor.
+func installerReuseExecutorScripts(exec jsexecutor.ScriptExecutor) bool {
+	if exec == nil {
+		return false
+	}
+	return true
+}
+
+func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) (*module.BuildResult, error) {
 	if err := m.restoreModuleIfSoftDeleted(); err != nil {
-		return err
+		return nil, err
 	}
 
 	if m.builder != nil {
 		if persistLater {
 			if split, ok := m.builder.(module.SplitBuilder); ok {
 				if err := split.Persist(buildResult); err != nil {
-					return xfmt.Errorf("error persisting module: %w", err)
+					return nil, xfmt.Errorf("error persisting module: %w", err)
 				}
 			} else {
-				return xfmt.Errorf("builder does not support Persist for module %s", m.module.Name)
+				return nil, xfmt.Errorf("builder does not support Persist for module %s", m.module.Name)
 			}
 		} else {
 			buildStarted := time.Now()
 			result, err := m.builder.Build()
 			if err != nil {
-				return xfmt.Errorf("error building module: %w", err)
+				return nil, xfmt.Errorf("error building module: %w", err)
 			}
 			buildResult = result
 			logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepBuild, buildStarted)
@@ -196,30 +252,18 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 
 	initializeStarted := time.Now()
-	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
-		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
-	} else if hookRunner != nil {
-		var hookScripts []*jsengine.JsScript
-		if buildResult != nil {
-			if script, err := hooks.ScriptFromBuildResult(buildResult); err != nil {
-				return xfmt.Errorf("error preparing pre_init hook script: %w", err)
-			} else if script != nil {
-				hookScripts = append(hookScripts, script)
-			}
-		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil}); err != nil {
-			return xfmt.Errorf("error running pre_init hook for module %s: %w", m.module.Name, err)
-		}
+	if err := runInstallHookPhase(m.runtimeScope, installerJSExecutor(m), m.module, hooks.PhasePreInit, buildResult, "pre_init"); err != nil {
+		return nil, err
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
 
-	migrator, err := schema.NewMigrator(m.runtimeScope, m.module)
+	migrator, err := newInstallSchemaMigrator(m.runtimeScope, m.module)
 	if err != nil {
-		return xfmt.Errorf("error preparing schema migrator: %w", err)
+		return nil, xfmt.Errorf("error preparing schema migrator: %w", err)
 	}
 	schemaStarted := time.Now()
 	if err := migrator.Migrate(); err != nil {
-		return xfmt.Errorf("error migrating module: %w", err)
+		return nil, xfmt.Errorf("error migrating module: %w", err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSchema, schemaStarted)
 
@@ -229,66 +273,114 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 	dataStarted := time.Now()
 	if err := applyInitdata(applyCtx, m.runtimeScope, m.module, importpkg.CallerLifecycle, m.ctx != nil && m.ctx.withDemo); err != nil {
-		return xfmt.Errorf("error applying data for module %s: %w", m.module.Name, err)
+		return nil, xfmt.Errorf("error applying data for module %s: %w", m.module.Name, err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepData, dataStarted)
 
 	saveStarted := time.Now()
 	m.module.Status = meta.Installed
 	if len(m.module.Dependencies) > 0 {
-		if err := m.runtimeScope.Session().Model(m.module).Association("Dependencies").Replace(m.module.Dependencies); err != nil {
-			return xfmt.Errorf("error saving module dependencies: %w", err)
+		if err := replaceModuleDependenciesFn(m.runtimeScope.Session(), m.module); err != nil {
+			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}
 	// Omit association trees: Persist already wrote meta_raw_* + recomputed effective
 	// meta_model*. Cascading Models here re-creates declaration shells with module_id and
 	// duplicates logical names (breaks UI rpc dependency checks / UNIQUE(application,name)).
-	if err := m.runtimeScope.Session().
-		Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
-		Save(m.module).Error; err != nil {
-		return xfmt.Errorf("error saving module: %w", err)
+	if err := sqliteretry.WithLockRetry(func() error {
+		return m.runtimeScope.Session().
+			Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+			Save(m.module).Error
+	}); err != nil {
+		return nil, xfmt.Errorf("error saving module: %w", err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSave, saveStarted)
 
 	if err := importModuleTerminology(m.runtimeScope, m.module, runtimeOptionsFromScope(m.runtimeScope).modulesPath); err != nil {
-		return err
+		return nil, err
 	}
 
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "meta") {
 		if err := disableLegacyModuleIndexDailySchedule(m.runtimeScope); err != nil {
-			return xfmt.Errorf("error disabling legacy module index schedule: %w", err)
+			return nil, xfmt.Errorf("error disabling legacy module index schedule: %w", err)
 		}
 	}
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "document") {
 		if err := ensureDocumentAttachmentGCSchedule(m.runtimeScope); err != nil {
-			return xfmt.Errorf("error ensuring document attachment gc schedule: %w", err)
+			return nil, xfmt.Errorf("error ensuring document attachment gc schedule: %w", err)
 		}
 	}
 
-	return nil
+	return buildResult, nil
 }
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {
 	finalizeStarted := time.Now()
-	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
-		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
-	} else if hookRunner != nil {
-		var hookScripts []*jsengine.JsScript
-		if buildResult != nil {
-			if script, err := hooks.ScriptFromBuildResult(buildResult); err != nil {
-				return xfmt.Errorf("error preparing post_init hook script: %w", err)
-			} else if script != nil {
-				hookScripts = append(hookScripts, script)
-			}
-		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil}); err != nil {
-			return xfmt.Errorf("error running post_init hook for module %s: %w", m.module.Name, err)
-		}
+	if m == nil {
+		return nil
 	}
-	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepFinalize, finalizeStarted)
+	if err := runInstallHookPhase(m.runtimeScope, installerJSExecutor(m), m.module, hooks.PhasePostInit, buildResult, "post_init"); err != nil {
+		return err
+	}
+	name := ""
+	if m.module != nil {
+		name = m.module.Name
+	}
+	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, name, moduleStepFinalize, finalizeStarted)
 
 	return nil
 }
+
+// runInstallHookPhase runs one install hook phase.
+func runInstallHookPhase(
+	runtimeScope scope.Scope,
+	jsExec jsexecutor.ScriptExecutor,
+	module *meta.Module,
+	phase hooks.Phase,
+	buildResult *module.BuildResult,
+	phaseLabel string,
+) error {
+	hookRunner, err := hooksNewRunner(runtimeScope, jsExec, module)
+	if err != nil {
+		name := ""
+		if module != nil {
+			name = module.Name
+		}
+		return xfmt.Errorf("error preparing %s hooks for module %s: %w", phaseLabel, name, err)
+	}
+	if hookRunner == nil {
+		return nil
+	}
+	var hookScripts []*jsengine.JsScript
+	if buildResult != nil {
+		script, scriptErr := hooksScriptFromBuildResult(buildResult)
+		if scriptErr != nil {
+			return xfmt.Errorf("error preparing %s hook script: %w", phaseLabel, scriptErr)
+		}
+		if script != nil {
+			hookScripts = append(hookScripts, script)
+		}
+	}
+	name := ""
+	if module != nil {
+		name = module.Name
+	}
+	if err := hookRunner.RunPhase(runtimeScope.Context(), phase, hooks.RunOptions{
+		Scripts:              hookScripts,
+		ReuseExecutorScripts: installerReuseExecutorScripts(jsExec),
+	}); err != nil {
+		return xfmt.Errorf("error running %s hook for module %s: %w", phaseLabel, name, err)
+	}
+	return nil
+}
+
+// Overridable in tests to exercise hook preparation failure paths.
+var (
+	hooksNewRunner             = hooks.NewRunner
+	hooksScriptFromBuildResult = hooks.ScriptFromBuildResult
+	newInstallSchemaMigrator   = schema.NewMigrator
+	installerScheduleDBFn      = installerScheduleDB
+)
 
 func installerScheduleDB(runtimeScope scope.Scope) (*gorm.DB, error) {
 	if runtimeScope == nil {
@@ -305,7 +397,7 @@ func installerScheduleDB(runtimeScope scope.Scope) (*gorm.DB, error) {
 }
 
 func disableLegacyModuleIndexDailySchedule(runtimeScope scope.Scope) error {
-	db, err := installerScheduleDB(runtimeScope)
+	db, err := installerScheduleDBFn(runtimeScope)
 	if err != nil {
 		return err
 	}
@@ -316,7 +408,7 @@ func disableLegacyModuleIndexDailySchedule(runtimeScope scope.Scope) error {
 }
 
 func ensureDocumentAttachmentGCSchedule(runtimeScope scope.Scope) error {
-	db, err := installerScheduleDB(runtimeScope)
+	db, err := installerScheduleDBFn(runtimeScope)
 	if err != nil {
 		return err
 	}

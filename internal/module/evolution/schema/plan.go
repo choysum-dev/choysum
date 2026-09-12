@@ -20,9 +20,21 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 		Leftover: nil,
 	}
 
+	joinTables := map[string]struct{}{}
+	for _, jt := range desired.JoinTables {
+		key := strings.ToLower(strings.TrimSpace(jt.Table))
+		if key != "" {
+			joinTables[key] = struct{}{}
+		}
+	}
+
 	for table, cols := range desired.Tables {
 		exists := live.Tables[table]
 		if !exists {
+			// Join tables are ensured via OpCreateJoinTable below (indexes on apply).
+			if _, isJoin := joinTables[strings.ToLower(strings.TrimSpace(table))]; isJoin {
+				continue
+			}
 			copied := append([]ColumnSpec(nil), cols...)
 			plan.Ops = append(plan.Ops, PlanOp{
 				Kind:    OpCreateTable,
@@ -195,6 +207,39 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				Name:  idxName,
 			})
 		}
+	}
+
+	plannedCreate := map[string]struct{}{}
+	for _, op := range plan.Ops {
+		if op.Kind == OpCreateTable || op.Kind == OpCreateJoinTable {
+			plannedCreate[strings.ToLower(strings.TrimSpace(op.Table))] = struct{}{}
+		}
+	}
+	for _, jt := range desired.JoinTables {
+		table := strings.TrimSpace(jt.Table)
+		if table == "" {
+			continue
+		}
+		key := strings.ToLower(table)
+		if live.Tables[table] {
+			continue
+		}
+		if _, ok := plannedCreate[key]; ok {
+			continue
+		}
+		cols := desired.Tables[table]
+		if len(cols) == 0 {
+			return SchemaPlan{}, fmt.Errorf("create_join_table %s has no desired columns", table)
+		}
+		copied := append([]ColumnSpec(nil), cols...)
+		plan.Ops = append(plan.Ops, PlanOp{
+			Kind:    OpCreateJoinTable,
+			Safety:  SafetyAuto,
+			Table:   table,
+			Detail:  "create join table",
+			Columns: copied,
+		})
+		plannedCreate[key] = struct{}{}
 	}
 
 	return plan, nil

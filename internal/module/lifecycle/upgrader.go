@@ -160,32 +160,71 @@ func (m *moduleUpgrader) upgrade() error {
 		}
 	}
 
-	txRoot := m.runtimeScope
-	if txRoot == nil {
+	return m.upgradeAfterPrepare(installer, fromVersion, buildResult, persistLater)
+}
+
+// upgradeAfterPrepare runs the upgrade commit TX and finalize steps.
+func (m *moduleUpgrader) upgradeAfterPrepare(
+	installer *moduleInstaller,
+	fromVersion string,
+	buildResult *module.BuildResult,
+	persistLater bool,
+) error {
+	if m == nil {
 		return xfmt.Errorf("scope is nil")
 	}
-	ctx := txRoot.Context()
-	if ctx == nil {
-		ctx = context.Background()
+	if m.runtimeScope == nil {
+		return xfmt.Errorf("scope is nil")
 	}
 	txHoldStarted := time.Now()
-	err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-		committed := installer.forCommitScope(txScope)
-		upgrader := *m
-		upgrader.runtimeScope = txScope
-		result, commitErr := upgrader.commitUpgrade(committed, fromVersion, buildResult, persistLater)
-		if commitErr != nil {
-			return commitErr
-		}
-		buildResult = result
-		return nil
-	})
+	err := m.runUpgradeCommitTX(m.runtimeScope, m.runtimeScope.Context(), installer, fromVersion, &buildResult, persistLater)
 	LogModuleCommitTxHold(m.runtimeScope.Logger(), "upgrade", "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err
 	}
-
 	return m.finalizeUpgrade(installer.module, fromVersion, buildResult)
+}
+
+// runUpgradeCommitTX runs the upgrade commit Required TX, pausing lease renew when a manager is set.
+func (m *moduleUpgrader) runUpgradeCommitTX(
+	txRoot scope.Scope,
+	ctx context.Context,
+	installer *moduleInstaller,
+	fromVersion string,
+	buildResult **module.BuildResult,
+	persistLater bool,
+) error {
+	if txRoot == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if buildResult == nil {
+		return xfmt.Errorf("build result slot is nil")
+	}
+	if installer == nil || installer.module == nil {
+		return xfmt.Errorf("upgrade commit installer is nil")
+	}
+	var committedResult *module.BuildResult
+	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
+		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+			committed := installer.forCommitScope(txScope)
+			upgrader := *m
+			upgrader.runtimeScope = txScope
+			result, commitErr := upgrader.commitUpgrade(committed, fromVersion, *buildResult, persistLater)
+			if commitErr != nil {
+				return commitErr
+			}
+			committedResult = result
+			return nil
+		})
+	})
+	if err != nil {
+		return err
+	}
+	*buildResult = committedResult
+	return nil
 }
 
 func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion string, buildResult *module.BuildResult, persistLater bool) (*module.BuildResult, error) {
