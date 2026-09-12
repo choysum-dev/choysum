@@ -10,6 +10,50 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
+func TestColumnSpecFromField_PrimaryKeyImpliesNotNull(t *testing.T) {
+	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
+	field := &meta.Field{Name: "Id"}
+	pk := true
+	spec := &meta.FieldResolvedSpec{
+		FieldName: "Id",
+		Structural: meta.FieldStructuralSpec{
+			Name:      "Id",
+			FieldType: "varchar",
+			StorageHints: &meta.FieldStructuralStorageHints{
+				PrimaryKey: &pk,
+				Size:       intPtrValue(20),
+			},
+		},
+		Migration: meta.FieldMigrationDecision{
+			StorageKind:        "physical",
+			ShouldCreateColumn: true,
+			ResolvedColumnType: "varchar",
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	col, err := columnSpecFromField(field, model)
+	if err != nil || col == nil {
+		t.Fatalf("columnSpecFromField: %#v %v", col, err)
+	}
+	if !col.PrimaryKey || !col.NotNull {
+		t.Fatalf("primary key must imply NotNull, got %#v", col)
+	}
+
+	// Live PK columns report Nullable=false; Desired must not flag loosen-nullability.
+	liveNullable := false
+	if mismatch, reason := columnMismatch(*col, LiveColumn{
+		DatabaseTypeName: "varchar",
+		Nullable:         &liveNullable,
+		Length:           int64Ptr(20),
+	}, "postgres"); mismatch {
+		t.Fatalf("unexpected mismatch for PK column: %q", reason)
+	}
+}
+
+func int64Ptr(v int64) *int64 { return &v }
+
 func TestColumnSpecFromField_SelectionVarchar255(t *testing.T) {
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 	field := newFieldWithOptions(t, "Status", `{"type":"selection"}`)

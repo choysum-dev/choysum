@@ -160,6 +160,10 @@ func columnSpecFromField(field *meta.Field, model *meta.Model) (*ColumnSpec, err
 		}
 		if hints.PrimaryKey != nil {
 			col.PrimaryKey = *hints.PrimaryKey
+			if col.PrimaryKey {
+				// PK columns are NOT NULL in SQL; keep Desired aligned with live inspect.
+				col.NotNull = true
+			}
 		}
 		if hints.Unique != nil {
 			col.Unique = *hints.Unique

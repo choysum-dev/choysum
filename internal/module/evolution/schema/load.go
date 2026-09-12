@@ -133,10 +133,10 @@ func loadEffectiveModelsByKeys(db *gorm.DB, keys []modmeta.LogicalKey) (map[stri
 		return out, nil
 	}
 
-	placeholders := make([]string, 0, len(want))
+	conditions := make([]string, 0, len(want))
 	args := make([]any, 0, len(want)*2)
 	for _, p := range want {
-		placeholders = append(placeholders, "(?, ?)")
+		conditions = append(conditions, "(application = ? AND name = ?)")
 		args = append(args, p.app, p.name)
 	}
 
@@ -144,7 +144,7 @@ func loadEffectiveModelsByKeys(db *gorm.DB, keys []modmeta.LogicalKey) (map[stri
 	var rows []meta.Model
 	err := db.Model(&meta.Model{}).
 		Where("(module_id IS NULL OR module_id = '')").
-		Where("(application, name) IN ("+strings.Join(placeholders, ", ")+")", args...).
+		Where(strings.Join(conditions, " OR "), args...).
 		Preload("Fields", orderID).
 		Preload("Fields.Decorators", orderID).
 		Preload("Fields.Decorators.Arguments", orderID).
