@@ -4,6 +4,7 @@
 package schema
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 
@@ -180,6 +181,103 @@ func TestInspect_SkipsNilAndEmptyIndexNames(t *testing.T) {
 	}
 	if len(live.Indexes["skip_idx"]) != 1 || live.Indexes["skip_idx"][0].Name != "idx_id" {
 		t.Fatalf("indexes = %#v", live.Indexes["skip_idx"])
+	}
+}
+
+func TestDefaultGetIndexes_NonSQLiteAndSQLiteBranches(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE idx_cov (code text UNIQUE, name text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE INDEX idx_cov_name ON idx_cov (name)`).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Non-sqlite dialector name uses Migrator().GetIndexes while keeping a real sqlite migrator.
+	origDialector := db.Dialector
+	db.Dialector = dialectorWithName{Dialector: origDialector, name: "postgres"}
+	indexes, err := defaultGetIndexes(db, "idx_cov")
+	db.Dialector = origDialector
+	if err != nil {
+		t.Fatalf("non-sqlite GetIndexes: %v", err)
+	}
+	if len(indexes) == 0 {
+		t.Fatal("expected indexes from migrator path")
+	}
+
+	// Expression indexes yield NULL index_info names; NULL-safe sqlite path must skip them.
+	if err := db.Exec(`CREATE INDEX idx_cov_expr ON idx_cov ((code || ''))`).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Real sqlite path: UNIQUE constraint origin "u" is skipped; expression NULL cols are skipped.
+	sqliteIndexes, err := sqliteGetIndexes(db, "idx_cov")
+	if err != nil {
+		t.Fatalf("sqliteGetIndexes: %v", err)
+	}
+	for _, idx := range sqliteIndexes {
+		if strings.TrimSpace(idx.Name()) == "" {
+			t.Fatal("unexpected empty index name")
+		}
+	}
+
+	origList := sqliteIndexListScan
+	origInfo := sqliteIndexInfoScan
+	t.Cleanup(func() {
+		sqliteIndexListScan = origList
+		sqliteIndexInfoScan = origInfo
+	})
+
+	sqliteIndexListScan = func(*gorm.DB, string, any) error {
+		return gorm.ErrInvalidDB
+	}
+	if _, err := sqliteGetIndexes(db, "idx_cov"); err == nil {
+		t.Fatal("expected index_list scan error")
+	}
+
+	sqliteIndexListScan = func(_ *gorm.DB, _ string, dest any) error {
+		rows := dest.(*[]sqliteIndexListRow)
+		*rows = []sqliteIndexListRow{
+			{Name: sql.NullString{Valid: false}, Origin: "c"},
+			{Name: sql.NullString{String: "  ", Valid: true}, Origin: "c"},
+			{Name: sql.NullString{String: "uniq_from_constraint", Valid: true}, Origin: "u", Unique: true},
+			{Name: sql.NullString{String: "idx_ok", Valid: true}, Origin: "c"},
+			{Name: sql.NullString{String: "idx_pk", Valid: true}, Origin: "pk"},
+		}
+		return nil
+	}
+	sqliteIndexInfoScan = func(_ *gorm.DB, name string, dest any) error {
+		if name == "idx_ok" {
+			return gorm.ErrInvalidDB
+		}
+		cols := dest.(*[]sql.NullString)
+		*cols = []sql.NullString{
+			{Valid: false},
+			{String: "  ", Valid: true},
+			{String: "code", Valid: true},
+		}
+		return nil
+	}
+	if _, err := sqliteGetIndexes(db, "idx_cov"); err == nil {
+		t.Fatal("expected index_info scan error for idx_ok")
+	}
+
+	sqliteIndexInfoScan = func(_ *gorm.DB, name string, dest any) error {
+		cols := dest.(*[]sql.NullString)
+		*cols = []sql.NullString{
+			{Valid: false},
+			{String: "  ", Valid: true},
+			{String: "code", Valid: true},
+		}
+		return nil
+	}
+	out, err := sqliteGetIndexes(db, "idx_cov")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("expected idx_ok + idx_pk after skips, got %#v", out)
 	}
 }
 

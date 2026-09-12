@@ -104,14 +104,25 @@ func defaultGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
 	return db.Migrator().GetIndexes(table)
 }
 
-func sqliteGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
-	type indexListRow struct {
-		Name   sql.NullString `gorm:"column:name"`
-		Unique bool           `gorm:"column:unique"`
-		Origin string         `gorm:"column:origin"`
+// Overridable SQLite pragma scanners (tests inject failures and synthetic rows).
+var (
+	sqliteIndexListScan = func(db *gorm.DB, table string, dest any) error {
+		return db.Raw(`SELECT name, "unique" AS "unique", origin FROM pragma_index_list(?)`, table).Scan(dest).Error
 	}
-	var list []indexListRow
-	if err := db.Raw(`SELECT name, "unique" AS "unique", origin FROM pragma_index_list(?)`, table).Scan(&list).Error; err != nil {
+	sqliteIndexInfoScan = func(db *gorm.DB, indexName string, dest any) error {
+		return db.Raw(`SELECT name FROM pragma_index_info(?)`, indexName).Scan(dest).Error
+	}
+)
+
+type sqliteIndexListRow struct {
+	Name   sql.NullString `gorm:"column:name"`
+	Unique bool           `gorm:"column:unique"`
+	Origin string         `gorm:"column:origin"`
+}
+
+func sqliteGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
+	var list []sqliteIndexListRow
+	if err := sqliteIndexListScan(db, table, &list); err != nil {
 		return nil, err
 	}
 	out := make([]gorm.Index, 0, len(list))
@@ -125,7 +136,7 @@ func sqliteGetIndexes(db *gorm.DB, table string) ([]gorm.Index, error) {
 			continue
 		}
 		var colRows []sql.NullString
-		if err := db.Raw(`SELECT name FROM pragma_index_info(?)`, name).Scan(&colRows).Error; err != nil {
+		if err := sqliteIndexInfoScan(db, name, &colRows); err != nil {
 			return nil, err
 		}
 		cols := make([]string, 0, len(colRows))

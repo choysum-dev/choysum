@@ -51,6 +51,14 @@ func TestSchemaPlan_ReadOnlyModuleLookup(t *testing.T) {
 	if err := db.Model(mod).Association("Dependencies").Append(dep); err != nil {
 		t.Fatalf("link dep: %v", err)
 	}
+	// Child depending on demo exercises Dependents Preload on SchemaPlan(demo).
+	child := &meta.Module{Name: "child", Status: meta.Installed, Version: "1.0.0"}
+	if err := db.Create(child).Error; err != nil {
+		t.Fatalf("seed child: %v", err)
+	}
+	if err := db.Model(child).Association("Dependencies").Append(mod); err != nil {
+		t.Fatalf("link child->demo: %v", err)
+	}
 	_, err := manager.SchemaPlan(context.Background(), "demo")
 	// Dual-store tables are intentionally not created by SchemaPlan; migrator prep may fail.
 	if err == nil {
