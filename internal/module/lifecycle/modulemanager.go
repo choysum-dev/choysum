@@ -28,6 +28,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/evolution/scripts"
 	moduleorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/module/plan"
@@ -530,6 +531,31 @@ func (m *ModuleManager) Load(name string) (*meta.Module, error) {
 		}
 	}
 	return &module, nil
+}
+
+// SchemaPlan computes the schema plan for an installed module without applying DDL.
+func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.SchemaPlan, error) {
+	_ = ctx
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return schema.SchemaPlan{}, xfmt.Errorf("module name is empty")
+	}
+	mod, err := m.Load(name)
+	if err != nil {
+		return schema.SchemaPlan{}, err
+	}
+	if mod == nil {
+		return schema.SchemaPlan{}, xfmt.Errorf("module %s is not installed", name)
+	}
+	migrator, err := schema.NewMigrator(m.runtimeScope, mod)
+	if err != nil {
+		return schema.SchemaPlan{}, xfmt.Errorf("error preparing schema migrator for module %s: %w", name, err)
+	}
+	plan, err := migrator.PlanOnly()
+	if err != nil {
+		return plan, err
+	}
+	return plan, nil
 }
 
 func ensureOpIDInContext(ctx context.Context) (context.Context, string) {

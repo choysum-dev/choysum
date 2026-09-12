@@ -286,6 +286,7 @@ func addStandardTags(tags *[]string, meta map[string]interface{}) {
 
 type ModelMigrator interface {
 	MigrateSchema() error
+	PlanSchema() (SchemaPlan, error)
 }
 
 type JoinTableMigrator interface {

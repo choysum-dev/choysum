@@ -60,8 +60,8 @@ func TestDualStoreRawAndCatalogEntities(t *testing.T) {
 
 func TestOpsEntitiesAndTableNames(t *testing.T) {
 	entities := OpsEntities()
-	if len(entities) != 6 {
-		t.Fatalf("OpsEntities() len = %d, want 6", len(entities))
+	if len(entities) != 7 {
+		t.Fatalf("OpsEntities() len = %d, want 7", len(entities))
 	}
 
 	wantTables := map[string]string{
@@ -71,6 +71,7 @@ func TestOpsEntitiesAndTableNames(t *testing.T) {
 		"ModuleMigrationHistory": "meta_module_migration_history",
 		"ModuleManagementLog":    "meta_module_management_log",
 		"LockLease":              "meta_lock_lease",
+		"SchemaSnapshot":         "meta_schema_snapshot",
 	}
 	gotTables := map[string]string{
 		"ModuleIndex":            (&ModuleIndex{}).TableName(),
@@ -79,6 +80,7 @@ func TestOpsEntitiesAndTableNames(t *testing.T) {
 		"ModuleMigrationHistory": (ModuleMigrationHistory{}).TableName(),
 		"ModuleManagementLog":    (ModuleManagementLog{}).TableName(),
 		"LockLease":              (&LockLease{}).TableName(),
+		"SchemaSnapshot":         (SchemaSnapshot{}).TableName(),
 	}
 	for name, want := range wantTables {
 		got := gotTables[name]

@@ -30,6 +30,7 @@ func OpsEntities() []any {
 		&ModuleManagementLog{},
 		&ModuleMigrationHistory{},
 		&LockLease{},
+		&SchemaSnapshot{},
 	}
 }
 

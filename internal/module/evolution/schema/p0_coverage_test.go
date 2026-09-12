@@ -357,16 +357,16 @@ func TestColumnMismatchAndNormalize(t *testing.T) {
 	}
 	desired.NotNull = false
 	live.Nullable = &nullable
-	if mismatch, reason := columnMismatch(desired, live, "postgres"); !mismatch || !strings.Contains(reason, "size change") {
+	if mismatch, reason := columnMismatch(desired, live, "postgres"); !mismatch || !(strings.Contains(reason, "size change") || strings.Contains(reason, "widen") || strings.Contains(reason, "narrow")) {
 		t.Fatalf("size: %v %q", mismatch, reason)
 	}
-	// sqlite affinity compatible then size
+	// sqlite affinity: length is not enforced; size diffs are ignored.
 	live.DatabaseTypeName = "TEXT"
 	desired.PhysicalType = "varchar"
 	desired.Size = intPtrValue(10)
 	live.Length = &length
-	if mismatch, _ := columnMismatch(desired, live, "sqlite"); !mismatch {
-		t.Fatal("expected size mismatch on sqlite affinity")
+	if mismatch, _ := columnMismatch(desired, live, "sqlite"); mismatch {
+		t.Fatal("sqlite should ignore varchar size diffs")
 	}
 	if mismatch, _ := columnMismatch(ColumnSpec{PhysicalType: "int"}, LiveColumn{DatabaseTypeName: "text"}, "postgres"); !mismatch {
 		t.Fatal("type mismatch")
@@ -891,16 +891,14 @@ func TestMigrateSchemaTrigramWrap(t *testing.T) {
 
 	runtimeScope = newSchemaTestScope(t)
 	model3 := &meta.Model{Name: "C", ModelTable: "sales_chk_wrap", Fields: []*meta.Field{
-		newFieldWithOptions(t, "Status", `{"type":"selection"}`),
+		newFieldWithOptions(t, "Status", `{"type":"selection","column":{"checkConstraint":"status <> ''"}}`),
 	}}
-	origChk := applyTableCheckConstraintsFn
-	applyTableCheckConstraintsFn = func(*modelMigrator, string, *meta.Model) error {
-		return fmt.Errorf("check boom")
+	if err := newModelMigrator(runtimeScope, nil, []*meta.Model{model3}).MigrateSchema(); err != nil {
+		t.Fatal(err)
 	}
-	err = newModelMigrator(runtimeScope, nil, []*meta.Model{model3}).MigrateSchema()
-	applyTableCheckConstraintsFn = origChk
-	if err == nil || !strings.Contains(err.Error(), "check constraints") {
-		t.Fatalf("check wrap: %v", err)
+	// Second run should be idempotent (ensure_check Auto no-op on sqlite).
+	if err := newModelMigrator(runtimeScope, nil, []*meta.Model{model3}).MigrateSchema(); err != nil {
+		t.Fatalf("idempotent migrate: %v", err)
 	}
 }
 
@@ -931,15 +929,14 @@ func TestMigrateSchemaErrorBranches(t *testing.T) {
 	if err := newModelMigrator(runtimeScope, nil, []*meta.Model{modelOK}).MigrateSchema(); err != nil {
 		t.Fatal(err)
 	}
-	origEnsure := ensureIndexesForDesiredFn
-	t.Cleanup(func() { ensureIndexesForDesiredFn = origEnsure })
-	ensureIndexesForDesiredFn = func(*gorm.DB, DesiredSchema, string) error { return fmt.Errorf("ensure boom") }
-	if err := newModelMigrator(runtimeScope, nil, []*meta.Model{modelOK}).MigrateSchema(); err == nil || !strings.Contains(err.Error(), "ensure boom") {
-		t.Fatalf("ensureIndexes wrap: %v", err)
+	plan, err := newModelMigrator(runtimeScope, nil, []*meta.Model{modelOK}).PlanSchema()
+	if err != nil {
+		t.Fatalf("PlanSchema: %v", err)
 	}
-	ensureIndexesForDesiredFn = origEnsure
+	if len(plan.Ops) != 0 {
+		t.Fatalf("expected empty plan on second run, got %#v", plan.Ops)
+	}
 
-	// reopen — previous tests may have closed; use fresh scope
 	runtimeScope = newSchemaTestScope(t)
 	model3 := &meta.Model{Name: "C", ModelTable: "sales_chk_fail", Fields: []*meta.Field{
 		newFieldWithOptions(t, "Status", `{"type":"selection","column":{"checkConstraint":"status <> ''"}}`),

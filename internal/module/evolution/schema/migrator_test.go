@@ -15,6 +15,9 @@ import (
 type fakeModelMigrator struct{ err error }
 
 func (f fakeModelMigrator) MigrateSchema() error { return f.err }
+func (f fakeModelMigrator) PlanSchema() (SchemaPlan, error) {
+	return SchemaPlan{}, f.err
+}
 
 type fakeForeignKeyMigrator struct{ err error }
 
@@ -198,6 +201,9 @@ func TestNewMigratorPropagatesLoadError(t *testing.T) {
 type modelMigratorFunc func() error
 
 func (f modelMigratorFunc) MigrateSchema() error { return f() }
+func (f modelMigratorFunc) PlanSchema() (SchemaPlan, error) {
+	return SchemaPlan{}, f()
+}
 
 type foreignKeyMigratorFunc func() error
 

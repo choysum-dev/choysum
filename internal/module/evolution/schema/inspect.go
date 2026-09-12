@@ -15,6 +15,7 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 	live := LiveSchema{
 		Tables:   make(map[string]bool),
 		Columns:  make(map[string]map[string]LiveColumn),
+		Indexes:  make(map[string]map[string]bool),
 		RowCount: make(map[string]int64),
 	}
 	if db == nil {
@@ -32,6 +33,7 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 		}
 		live.Tables[table] = true
 		live.Columns[table] = make(map[string]LiveColumn)
+		live.Indexes[table] = make(map[string]bool)
 
 		columnTypes, err := getColumnTypes(db, table)
 		if err != nil {
@@ -40,6 +42,25 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 		for _, ct := range columnTypes {
 			if lc, ok := liveColumnFromColumnType(ct); ok {
 				live.Columns[table][strings.ToLower(lc.Name)] = lc
+			}
+		}
+
+		if indexes, err := getIndexes(db, table); err == nil {
+			for _, idx := range indexes {
+				if idx == nil {
+					continue
+				}
+				name := strings.TrimSpace(idx.Name())
+				if name == "" {
+					continue
+				}
+				live.Indexes[table][strings.ToLower(name)] = true
+				for _, col := range idx.Columns() {
+					col = strings.TrimSpace(col)
+					if col != "" {
+						live.Indexes[table][strings.ToLower(col)] = true
+					}
+				}
 			}
 		}
 
@@ -56,6 +77,9 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 var (
 	getColumnTypes = func(db *gorm.DB, table string) ([]gorm.ColumnType, error) {
 		return db.Migrator().ColumnTypes(table)
+	}
+	getIndexes = func(db *gorm.DB, table string) ([]gorm.Index, error) {
+		return db.Migrator().GetIndexes(table)
 	}
 	probeTableNonEmptyFn = probeTableNonEmpty
 )
@@ -79,6 +103,13 @@ func liveColumnFromColumnType(ct gorm.ColumnType) (LiveColumn, bool) {
 	if nullable, ok := ct.Nullable(); ok {
 		nullableCopy := nullable
 		lc.Nullable = &nullableCopy
+	}
+	if def, ok := ct.DefaultValue(); ok {
+		def = strings.TrimSpace(def)
+		if def != "" {
+			defCopy := def
+			lc.Default = &defCopy
+		}
 	}
 	return lc, true
 }

@@ -52,9 +52,52 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			if err := ensureIndexesForColumnFn(db.DB, op.Table, *op.Column, dialect); err != nil {
 				return fmt.Errorf("ensure indexes for column %s.%s: %w", op.Table, op.Column.Name, err)
 			}
+		case OpAlterColumn:
+			if op.Column == nil {
+				return fmt.Errorf("alter_column missing column for table %s", op.Table)
+			}
+			if err := applyAlterColumnWiden(db.DB, op.Table, *op.Column, dialect); err != nil {
+				return fmt.Errorf("alter column %s.%s: %w", op.Table, op.Column.Name, err)
+			}
+		case OpAddIndex:
+			if op.Column == nil {
+				return fmt.Errorf("add_index missing column for table %s", op.Table)
+			}
+			if err := ensureIndexesForColumnFn(db.DB, op.Table, *op.Column, dialect); err != nil {
+				return fmt.Errorf("add index on %s.%s: %w", op.Table, op.Column.Name, err)
+			}
+		case OpEnsureCheck:
+			expr := strings.TrimSpace(op.CheckExpr)
+			name := strings.TrimSpace(op.CheckName)
+			if expr == "" || name == "" {
+				return fmt.Errorf("ensure_check missing name/expr for table %s", op.Table)
+			}
+			legacy := strings.Replace(name, "chk_", "ck_", 1)
+			if legacy != name {
+				_ = dropCheckConstraintBestEffort(db.DB, dialect, op.Table, legacy)
+			}
+			if err := ensureCheckConstraint(db.DB, dialect, op.Table, name, expr); err != nil {
+				return fmt.Errorf("ensure check %s on %s: %w", name, op.Table, err)
+			}
 		default:
-			// P0: never apply alter/drop here.
+			// Never apply drop/manual here.
 		}
+	}
+	return nil
+}
+
+// applyAlterColumnWiden applies Auto varchar/char size increases via GORM AlterColumn.
+func applyAlterColumnWiden(db *gorm.DB, table string, col ColumnSpec, dialect string) error {
+	if db == nil {
+		return fmt.Errorf("db is nil")
+	}
+	inst, err := structForAddColumn(table, col, dialect)
+	if err != nil {
+		return err
+	}
+	fieldName := exportIdent(col.FieldName)
+	if err := db.Table(table).Migrator().AlterColumn(inst, fieldName); err != nil {
+		return err
 	}
 	return nil
 }

@@ -19,6 +19,8 @@ const (
 	OpCreateTable OpKind = "create_table"
 	OpAddColumn   OpKind = "add_column"
 	OpAlterColumn OpKind = "alter_column"
+	OpAddIndex    OpKind = "add_index"
+	OpEnsureCheck OpKind = "ensure_check"
 )
 
 // StorageKind values mirror ResolvedSpec.Migration.StorageKind plus schema-side kinds.
@@ -65,23 +67,28 @@ type LiveColumn struct {
 	DatabaseTypeName string
 	Length           *int64
 	Nullable         *bool
+	Default          *string
 }
 
 // LiveSchema is inspected live state for relevant tables.
 type LiveSchema struct {
 	Tables   map[string]bool                  // table exists
 	Columns  map[string]map[string]LiveColumn // table → column name → meta
+	Indexes  map[string]map[string]bool       // table → index lookup key → present
 	RowCount map[string]int64                 // table → 0/1 presence indicator (any row?)
 }
 
 // PlanOp is one schema change candidate.
 type PlanOp struct {
-	Kind    OpKind
-	Safety  SafetyClass
-	Table   string
-	Detail  string
-	Column  *ColumnSpec
-	Columns []ColumnSpec // create_table
+	Kind      OpKind
+	Safety    SafetyClass
+	Table     string
+	Detail    string
+	Column    *ColumnSpec
+	Columns   []ColumnSpec // create_table
+	IndexName string       // add_index lookup name
+	CheckName string       // ensure_check constraint name
+	CheckExpr string       // ensure_check expression
 }
 
 // LeftoverKind classifies leftover live objects.
@@ -89,9 +96,10 @@ type LeftoverKind string
 
 const (
 	LeftoverColumn LeftoverKind = "column"
+	LeftoverIndex  LeftoverKind = "index"
 )
 
-// Leftover is a live object not present in desired (never auto-dropped in P0).
+// Leftover is a live object not present in desired (never auto-dropped in P0/P1).
 type Leftover struct {
 	Kind  LeftoverKind
 	Table string

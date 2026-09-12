@@ -13,6 +13,7 @@ import (
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	logutil "github.com/choysum-dev/choysum/internal/logger"
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -25,6 +26,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
 	var noWeb bool
 	var cliCompatVersion string
+	var schemaPlanOnly bool
 	cmd := &cobra.Command{
 		Use:   "upgrade <module|module@version> [<module|module@version>...]",
 		Short: "Upgrade Choysum Module",
@@ -161,6 +163,20 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			defer compilerExecutor.Stop()
 
 			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
+			if schemaPlanOnly {
+				exitCode := 0
+				for _, plan := range plans {
+					currentInput = plan.requestedInput
+					moduleName := schemaPlanModuleName(plan.resolvedInput)
+					schemaPlan, planErr := moduleLifecycle.SchemaPlan(ctx, moduleName)
+					printSchemaPlan(upgradeScope, moduleName, schemaPlan, planErr)
+					if planErr != nil {
+						exitCode = 1
+					}
+				}
+				_ = compilerExecutor.Stop()
+				os.Exit(exitCode)
+			}
 			for _, plan := range plans {
 				currentInput = plan.requestedInput
 				upgradeScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)
@@ -175,5 +191,46 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing a missing web SPA shell when upgrading a module with entryPoints.web")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
+	cmd.Flags().BoolVar(&schemaPlanOnly, "schema-plan", false, "print schema plan for installed module tip vs live DB without applying DDL or initdata")
 	return cmd
+}
+
+func schemaPlanModuleName(input string) string {
+	input = strings.TrimSpace(input)
+	if i := strings.Index(input, "@"); i >= 0 {
+		return strings.TrimSpace(input[:i])
+	}
+	return input
+}
+
+func printSchemaPlan(env scope.Scope, moduleName string, plan schema.SchemaPlan, planErr error) {
+	logger := env.Logger()
+	if logger == nil {
+		return
+	}
+	logger.Info("schema-plan",
+		"module", moduleName,
+		"ops", len(plan.Ops),
+		"leftover", len(plan.Leftover),
+	)
+	for _, op := range plan.Ops {
+		logger.Info("schema-plan op",
+			"module", moduleName,
+			"kind", string(op.Kind),
+			"safety", string(op.Safety),
+			"table", op.Table,
+			"detail", op.Detail,
+		)
+	}
+	for _, left := range plan.Leftover {
+		logger.Info("schema-plan leftover",
+			"module", moduleName,
+			"kind", string(left.Kind),
+			"table", left.Table,
+			"name", left.Name,
+		)
+	}
+	if planErr != nil {
+		logger.Error("schema-plan validation failed", "module", moduleName, "error", planErr)
+	}
 }

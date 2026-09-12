@@ -8,8 +8,9 @@ import (
 	"strings"
 )
 
-// buildPlan diffs desired vs live. P0 emits create_table / add_column (Auto) and
-// alter_column (Guarded) for type/null mismatches; leftovers are reported only.
+// buildPlan diffs desired vs live.
+// Auto: create_table, add_column (nullable / empty table), varchar widen, add_index,
+// ensure_check. Guarded: type/null/default changes, varchar narrow, unique on populated.
 func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialect string) SchemaPlan {
 	plan := SchemaPlan{
 		Module:   strings.TrimSpace(moduleName),
@@ -28,12 +29,17 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				Detail:  "create table",
 				Columns: copied,
 			})
+			for _, col := range cols {
+				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col)...)
+			}
 			continue
 		}
 
 		liveCols := live.Columns[table]
 		rowCount := live.RowCount[table]
 		desiredNames := map[string]struct{}{}
+		desiredIndexKeys := map[string]struct{}{}
+
 		for i := range cols {
 			col := cols[i]
 			desiredNames[strings.ToLower(col.Name)] = struct{}{}
@@ -53,18 +59,46 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 					Detail: detail,
 					Column: &colCopy,
 				})
+				// Indexes for new columns are created in apply after AddColumn.
+				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col)...)
 				continue
 			}
-			if mismatch, reason := columnMismatch(col, liveCol, dialect); mismatch {
+
+			diffs := columnDiffs(col, liveCol, dialect)
+			for _, d := range diffs {
 				colCopy := col
 				plan.Ops = append(plan.Ops, PlanOp{
 					Kind:   OpAlterColumn,
-					Safety: SafetyGuarded,
+					Safety: d.Safety,
 					Table:  table,
-					Detail: reason,
+					Detail: d.Reason,
 					Column: &colCopy,
 				})
 			}
+
+			for _, name := range indexLookupNames(col) {
+				desiredIndexKeys[strings.ToLower(name)] = struct{}{}
+				if liveHasIndex(live, table, name) {
+					continue
+				}
+				safety := SafetyAuto
+				detail := "add index " + name
+				if (col.UniqueIndex || col.Unique) && rowCount > 0 {
+					safety = SafetyGuarded
+					detail = "add unique index on non-empty table"
+				}
+				colCopy := col
+				plan.Ops = append(plan.Ops, PlanOp{
+					Kind:      OpAddIndex,
+					Safety:    safety,
+					Table:     table,
+					Detail:    detail,
+					Column:    &colCopy,
+					IndexName: name,
+				})
+			}
+
+			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col)...)
 		}
 
 		for name := range liveCols {
@@ -77,37 +111,131 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				Name:  liveCols[name].Name,
 			})
 		}
+		for idxName := range live.Indexes[table] {
+			if _, ok := desiredIndexKeys[strings.ToLower(idxName)]; ok {
+				continue
+			}
+			// Skip automatic primary-key / sqlite internal names from leftover noise when possible.
+			if strings.EqualFold(idxName, "sqlite_autoindex_"+table+"_1") {
+				continue
+			}
+			plan.Leftover = append(plan.Leftover, Leftover{
+				Kind:  LeftoverIndex,
+				Table: table,
+				Name:  idxName,
+			})
+		}
 	}
 
 	return plan
 }
 
-func columnMismatch(desired ColumnSpec, live LiveColumn, dialect string) (bool, string) {
+func checkOpsForColumn(table string, col ColumnSpec) []PlanOp {
+	expr := strings.TrimSpace(col.CheckExpr)
+	if expr == "" {
+		return nil
+	}
+	columnName := col.Name
+	if columnName == "" {
+		columnName = strings.ToLower(col.FieldName)
+	}
+	name := fmt.Sprintf("chk_%s_%s", table, columnName)
+	return []PlanOp{{
+		Kind:      OpEnsureCheck,
+		Safety:    SafetyAuto,
+		Table:     table,
+		Detail:    "ensure check " + name,
+		CheckName: name,
+		CheckExpr: expr,
+		Column:    &col,
+	}}
+}
+
+func liveHasIndex(live LiveSchema, table, name string) bool {
+	if live.Indexes == nil {
+		return false
+	}
+	m := live.Indexes[table]
+	if m == nil {
+		return false
+	}
+	return m[strings.ToLower(name)]
+}
+
+type columnDiff struct {
+	Reason string
+	Safety SafetyClass
+}
+
+func columnDiffs(desired ColumnSpec, live LiveColumn, dialect string) []columnDiff {
+	var out []columnDiff
 	wantType := normalizeDBType(mapPhysicalToDialectType(dialect, desired.PhysicalType))
 	haveType := normalizeDBType(live.DatabaseTypeName)
 	if wantType != "" && haveType != "" && wantType != haveType {
-		// SQLite affinity: many types surface as TEXT/INTEGER/REAL/BLOB/NUMERIC.
 		if dialect == "sqlite" && sqliteTypeCompatible(wantType, haveType) {
-			// continue to nullability / size checks
+			// continue
 		} else {
-			return true, fmt.Sprintf("type change %s → %s (desired physical %s)", haveType, wantType, desired.PhysicalType)
+			out = append(out, columnDiff{
+				Reason: fmt.Sprintf("type change %s → %s (desired physical %s)", haveType, wantType, desired.PhysicalType),
+				Safety: SafetyGuarded,
+			})
 		}
 	}
 	if live.Nullable != nil {
 		liveNullable := *live.Nullable
 		if desired.NotNull && liveNullable {
-			return true, "tighten nullability to NOT NULL"
+			out = append(out, columnDiff{Reason: "tighten nullability to NOT NULL", Safety: SafetyGuarded})
 		}
 		if !desired.NotNull && !liveNullable {
-			return true, "loosen nullability to NULL"
+			out = append(out, columnDiff{Reason: "loosen nullability to NULL", Safety: SafetyGuarded})
 		}
 	}
-	if lengthMeaningful(wantType, desired.PhysicalType) &&
-		desired.Size != nil && live.Length != nil && *live.Length > 0 &&
-		int64(*desired.Size) != *live.Length {
-		return true, fmt.Sprintf("size change %d → %d", *live.Length, *desired.Size)
+	if dialect != "sqlite" &&
+		lengthMeaningful(wantType, desired.PhysicalType) &&
+		desired.Size != nil && live.Length != nil && *live.Length > 0 {
+		liveLen := int(*live.Length)
+		wantLen := *desired.Size
+		if wantLen > liveLen {
+			out = append(out, columnDiff{
+				Reason: fmt.Sprintf("widen size %d → %d", liveLen, wantLen),
+				Safety: SafetyAuto,
+			})
+		} else if wantLen < liveLen {
+			out = append(out, columnDiff{
+				Reason: fmt.Sprintf("narrow size %d → %d", liveLen, wantLen),
+				Safety: SafetyGuarded,
+			})
+		}
 	}
-	return false, ""
+	if defaultChanged(desired, live) {
+		out = append(out, columnDiff{Reason: "change column default", Safety: SafetyGuarded})
+	}
+	return out
+}
+
+func defaultChanged(desired ColumnSpec, live LiveColumn) bool {
+	if desired.Default == nil {
+		return false
+	}
+	want := strings.TrimSpace(*desired.Default)
+	if want == "" {
+		return false
+	}
+	if live.Default == nil {
+		// Unknown live default: do not fail closed (dialects often omit default metadata).
+		return false
+	}
+	have := strings.TrimSpace(*live.Default)
+	return !strings.EqualFold(strings.Trim(want, `"'`), strings.Trim(have, `"'`))
+}
+
+// columnMismatch is retained for tests; returns true when any guarded/auto alter is needed.
+func columnMismatch(desired ColumnSpec, live LiveColumn, dialect string) (bool, string) {
+	diffs := columnDiffs(desired, live, dialect)
+	if len(diffs) == 0 {
+		return false, ""
+	}
+	return true, diffs[0].Reason
 }
 
 func lengthMeaningful(normalizedType, physical string) bool {
@@ -183,7 +311,6 @@ func normalizeDBType(s string) string {
 }
 
 func sqliteTypeCompatible(want, have string) bool {
-	// SQLite ColumnTypes often report affinity buckets.
 	switch have {
 	case "text":
 		return want == "text" || want == "varchar" || want == "char" || want == "jsonobject" || want == "date" || want == "datetime" || want == "time" || want == "html"

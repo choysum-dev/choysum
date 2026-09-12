@@ -12,6 +12,7 @@ import (
 
 type Migrator interface {
 	Migrate() error
+	PlanOnly() (SchemaPlan, error)
 }
 
 func NewMigrator(runtimeScope scope.Scope, module *meta.Module) (Migrator, error) {
@@ -42,4 +43,12 @@ func (m *migrator) Migrate() error {
 		return fmt.Errorf("migrate foreign keys: %w", err)
 	}
 	return nil
+}
+
+func (m *migrator) PlanOnly() (SchemaPlan, error) {
+	plan, err := m.modelMigrator.PlanSchema()
+	if err != nil {
+		return plan, fmt.Errorf("plan schema: %w", err)
+	}
+	return plan, nil
 }
