@@ -28,6 +28,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/evolution/scripts"
 	moduleorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/module/plan"
@@ -528,6 +529,49 @@ func (m *ModuleManager) Load(name string) (*meta.Module, error) {
 		} else {
 			return nil, nil
 		}
+	}
+	return &module, nil
+}
+
+// SchemaPlan computes the schema plan for an installed module without applying DDL.
+// It uses a read-only module lookup so dry-run never AutoMigrates meta/base tables.
+func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.SchemaPlan, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return schema.SchemaPlan{}, xfmt.Errorf("module name is empty")
+	}
+	mod, err := m.loadInstalledModuleRecord(name)
+	if err != nil {
+		return schema.SchemaPlan{}, err
+	}
+	if mod == nil {
+		return schema.SchemaPlan{}, xfmt.Errorf("module %s is not installed", name)
+	}
+	scopeForPlan := m.runtimeScope
+	if ctx != nil {
+		scopeForPlan = m.runtimeScope.WithContext(ctx)
+	}
+	migrator, err := schema.NewMigrator(scopeForPlan, mod)
+	if err != nil {
+		return schema.SchemaPlan{}, xfmt.Errorf("error preparing schema migrator for module %s: %w", name, err)
+	}
+	return migrator.PlanOnly()
+}
+
+// loadInstalledModuleRecord loads an installed module row without ensureMetaTables / migrateBaseModule.
+func (m *ModuleManager) loadInstalledModuleRecord(name string) (*meta.Module, error) {
+	if m == nil || m.runtimeScope == nil || m.runtimeScope.Session() == nil {
+		return nil, xfmt.Errorf("runtime scope is nil")
+	}
+	var module meta.Module
+	if result := m.runtimeScope.Session().
+		Preload("Dependencies", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
+		Preload("Dependents", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
+		Where("name = ? AND status = ?", name, meta.Installed).Take(&module); result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, xfmt.Errorf("error loading module %s: %w", name, result.Error)
+		}
+		return nil, nil
 	}
 	return &module, nil
 }

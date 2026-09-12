@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
@@ -28,6 +29,7 @@ type Service interface {
 	Install(ctx context.Context, req InstallRequest) error
 	Upgrade(ctx context.Context, req UpgradeRequest) error
 	Uninstall(ctx context.Context, req UninstallRequest) error
+	SchemaPlan(ctx context.Context, moduleName string) (schema.SchemaPlan, error)
 }
 
 type service struct {
@@ -50,4 +52,8 @@ func (s *service) Upgrade(ctx context.Context, req UpgradeRequest) error {
 
 func (s *service) Uninstall(ctx context.Context, req UninstallRequest) error {
 	return s.manager.Uninstall(ctx, strings.TrimSpace(req.Name))
+}
+
+func (s *service) SchemaPlan(ctx context.Context, moduleName string) (schema.SchemaPlan, error) {
+	return s.manager.SchemaPlan(ctx, strings.TrimSpace(moduleName))
 }

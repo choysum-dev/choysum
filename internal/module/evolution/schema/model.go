@@ -9,16 +9,9 @@ import (
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	"github.com/ettle/strcase"
 )
 
-// Overridable for tests that need to force post-apply index failures.
-var ensureIndexesForDesiredFn = ensureIndexesForDesired
-
 var (
-	applyTableCheckConstraintsFn = func(m *modelMigrator, table string, model *meta.Model) error {
-		return m.applyTableCheckConstraints(table, model)
-	}
 	applyTableTranslatedTrigramIndexesFn = func(m *modelMigrator, table string, model *meta.Model) error {
 		return m.applyTableTranslatedTrigramIndexes(table, model)
 	}
@@ -93,15 +86,15 @@ func (m *modelMigrator) getDialect() string {
 	}
 }
 
-func (m *modelMigrator) MigrateSchema() error {
+func (m *modelMigrator) buildSchemaPlan() (DesiredSchema, SchemaPlan, error) {
 	desired, err := buildDesired(m.models)
 	if err != nil {
-		return err
+		return DesiredSchema{}, SchemaPlan{}, err
 	}
 	tables := desiredTableNames(desired)
 	live, err := inspectTables(m.runtimeScope.Session().DB, tables)
 	if err != nil {
-		return fmt.Errorf("inspect tables: %w", err)
+		return DesiredSchema{}, SchemaPlan{}, fmt.Errorf("inspect tables: %w", err)
 	}
 	dialect := m.getDialect()
 	moduleName := ""
@@ -109,17 +102,35 @@ func (m *modelMigrator) MigrateSchema() error {
 		moduleName = m.module.Name
 	}
 	plan := buildPlan(moduleName, desired, live, dialect)
+	return desired, plan, nil
+}
+
+func (m *modelMigrator) PlanSchema() (SchemaPlan, error) {
+	_, plan, err := m.buildSchemaPlan()
+	if err != nil {
+		return SchemaPlan{}, err
+	}
+	if err := ValidatePlan(plan); err != nil {
+		return plan, err
+	}
+	return plan, nil
+}
+
+func (m *modelMigrator) MigrateSchema() error {
+	desired, plan, err := m.buildSchemaPlan()
+	if err != nil {
+		return err
+	}
+	m.logPlan(plan)
 	if err := ValidatePlan(plan); err != nil {
 		return err
 	}
+	dialect := m.getDialect()
 	if err := applyPlan(m.runtimeScope, dialect, plan); err != nil {
 		return err
 	}
-	if err := ensureIndexesForDesiredFn(m.runtimeScope.Session().DB, desired, dialect); err != nil {
-		return err
-	}
 
-	// Post-apply: CHECK / trigram / L2 (existing helpers; not GORM AutoMigrate).
+	// Trigram / L2 stay outside ordinary index plan (dialect-specific ensure).
 	for _, model := range m.models {
 		if model == nil || model.Readonly {
 			continue
@@ -130,9 +141,6 @@ func (m *modelMigrator) MigrateSchema() error {
 		tableName := strings.TrimSpace(model.ModelTable)
 		if tableName == "" {
 			continue
-		}
-		if err := applyTableCheckConstraintsFn(m, tableName, model); err != nil {
-			return fmt.Errorf("migrate table %s check constraints: %w", tableName, err)
 		}
 		if err := applyTableTranslatedTrigramIndexesFn(m, tableName, model); err != nil {
 			return fmt.Errorf("migrate table %s translated trigram indexes: %w", tableName, err)
@@ -145,7 +153,35 @@ func (m *modelMigrator) MigrateSchema() error {
 	if err := ensureTaskJobExecutionTable(m.runtimeScope); err != nil {
 		return err
 	}
+	if err := SaveSnapshots(m.runtimeScope.Session().DB, desired, m.models, m.module); err != nil {
+		return fmt.Errorf("save schema snapshots: %w", err)
+	}
 	return nil
+}
+
+func (m *modelMigrator) logPlan(plan SchemaPlan) {
+	if m.runtimeScope == nil || m.runtimeScope.Logger() == nil {
+		return
+	}
+	auto, guarded, manual := 0, 0, 0
+	for _, op := range plan.Ops {
+		switch op.Safety {
+		case SafetyAuto:
+			auto++
+		case SafetyGuarded:
+			guarded++
+		case SafetyManual:
+			manual++
+		}
+	}
+	m.runtimeScope.Logger().Info("schema plan",
+		"module", plan.Module,
+		"ops", len(plan.Ops),
+		"auto", auto,
+		"guarded", guarded,
+		"manual", manual,
+		"leftover", len(plan.Leftover),
+	)
 }
 
 func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta.Model) error {
@@ -153,27 +189,22 @@ func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta
 	if dialect == "unknown" {
 		return nil
 	}
-
 	for _, field := range model.Fields {
 		col, err := columnSpecFromField(field, model)
 		if err != nil {
 			return err
 		}
-		if col == nil || strings.TrimSpace(col.CheckExpr) == "" {
+		if col == nil || strings.TrimSpace(col.CheckExpr) == "" || strings.TrimSpace(col.Name) == "" {
 			continue
 		}
-
-		columnName := strcase.ToSnake(field.Name)
-		constraintName := fmt.Sprintf("chk_%s_%s", tableName, columnName)
-		legacyConstraintName := fmt.Sprintf("ck_%s_%s", tableName, columnName)
+		constraintName := fmt.Sprintf("chk_%s_%s", tableName, col.Name)
+		legacyConstraintName := fmt.Sprintf("ck_%s_%s", tableName, col.Name)
 		if legacyConstraintName != constraintName {
 			_ = dropCheckConstraintBestEffort(m.runtimeScope.Session().DB, dialect, tableName, legacyConstraintName)
 		}
-
 		if err := ensureCheckConstraint(m.runtimeScope.Session().DB, dialect, tableName, constraintName, col.CheckExpr); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }

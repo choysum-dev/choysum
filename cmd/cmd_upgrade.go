@@ -13,6 +13,7 @@ import (
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	logutil "github.com/choysum-dev/choysum/internal/logger"
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -25,6 +26,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
 	var noWeb bool
 	var cliCompatVersion string
+	var schemaPlanOnly bool
 	cmd := &cobra.Command{
 		Use:   "upgrade <module|module@version> [<module|module@version>...]",
 		Short: "Upgrade Choysum Module",
@@ -45,31 +47,14 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				clioutput.PrintError("scope is not initialized")
 				os.Exit(1)
 			}
-			runtimeVersion := ""
-			if cmd != nil && cmd.Root() != nil {
-				runtimeVersion = strings.TrimSpace(cmd.Root().Version)
-			}
-			resolvedCompat, err := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
-			if err != nil {
-				env.Logger().Error("module compatibility version resolution failed", "error", err)
-				os.Exit(1)
-			}
-			runtimeOptions := cliruntime.OptionsFromScope(env)
 			baseCtx := context.Background()
 			if cmd != nil && cmd.Context() != nil {
 				baseCtx = cmd.Context()
 			}
 			ctx, stop := signal.NotifyContext(baseCtx, os.Interrupt)
 			defer stop()
-
 			ctx = logutil.WithStderrProgressLine(ctx)
 
-			runtimeOptionsValidated := false
-
-			type upgradePlan struct {
-				requestedInput string
-				resolvedInput  string
-			}
 			exitUpgradeError := func(currentInput string, runErr error) {
 				attrs := []any{"error", runErr}
 				attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
@@ -78,6 +63,28 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				os.Exit(1)
 			}
 
+			// --schema-plan only needs the installed module name; skip CLI compat and
+			// registry/latest resolution (and the JS compiler) for auth@latest etc.
+			if schemaPlanOnly {
+				upgradeExit(runUpgradeSchemaPlan(ctx, env, args))
+				return
+			}
+
+			runtimeVersion := ""
+			if cmd != nil && cmd.Root() != nil {
+				runtimeVersion = strings.TrimSpace(cmd.Root().Version)
+			}
+			resolvedCompat, err := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
+			if err != nil {
+				env.Logger().Error("module compatibility version resolution failed", "error", err)
+				upgradeExit(1)
+				return
+			}
+			runtimeOptions := cliruntime.OptionsFromScope(env)
+
+			runtimeOptionsValidated := false
+
+			type upgradePlan = upgradePlanItem
 			currentInput := ""
 			resolvedIndexURL := ""
 			resolveIndexURL := func() (string, error) {
@@ -175,5 +182,124 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().BoolVar(&noWeb, "no-web", false, "Skip auto-installing a missing web SPA shell when upgrading a module with entryPoints.web")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
+	cmd.Flags().BoolVar(&schemaPlanOnly, "schema-plan", false, "print schema plan for installed module tip vs live DB without applying DDL or initdata")
 	return cmd
+}
+
+type upgradePlanItem struct {
+	requestedInput string
+	resolvedInput  string
+}
+
+// Overridable for tests (schema-plan path calls this instead of os.Exit directly).
+var upgradeExit = os.Exit
+
+// Overridable ParseInput for schema-plan name resolution tests.
+var parseModuleInput = internalorigin.ParseInput
+
+// schemaPlanItemsFromArgs parses upgrade inputs into installed-module names without
+// registry/latest resolution (used by --schema-plan).
+func schemaPlanItemsFromArgs(args []string) ([]upgradePlanItem, error) {
+	plans := make([]upgradePlanItem, 0, len(args))
+	for _, input := range args {
+		moduleInput := strings.TrimSpace(input)
+		if moduleInput == "" {
+			return nil, xfmt.Errorf("module name is empty")
+		}
+		parsed, parseErr := parseModuleInput(moduleInput)
+		if parseErr != nil {
+			return nil, xfmt.Errorf("error parsing module input %s: %w", moduleInput, parseErr)
+		}
+		name := strings.TrimSpace(parsed.ModuleName)
+		if name == "" {
+			name = strings.TrimSpace(parsed.LocalName)
+		}
+		if name == "" {
+			return nil, xfmt.Errorf("module name is empty")
+		}
+		plans = append(plans, upgradePlanItem{requestedInput: moduleInput, resolvedInput: name})
+	}
+	return plans, nil
+}
+
+func runUpgradeSchemaPlan(ctx context.Context, env scope.Scope, args []string) int {
+	if env == nil {
+		return 1
+	}
+	plans, err := schemaPlanItemsFromArgs(args)
+	if err != nil {
+		if env.Logger() != nil {
+			attrs := []any{"error", err}
+			attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
+			env.Logger().Error("module upgrade failed", attrs...)
+		}
+		return 1
+	}
+	moduleLifecycle := lifecycle.NewService(env.WithContext(ctx), nil)
+	return executeSchemaPlanOnly(ctx, env, moduleLifecycle, plans)
+}
+
+func executeSchemaPlanOnly(ctx context.Context, env scope.Scope, moduleLifecycle lifecycle.Service, plans []upgradePlanItem) int {
+	exitCode := 0
+	for _, plan := range plans {
+		moduleName := schemaPlanModuleName(plan.resolvedInput)
+		schemaPlan, planErr := moduleLifecycle.SchemaPlan(ctx, moduleName)
+		printSchemaPlan(env, moduleName, schemaPlan, planErr)
+		if planErr != nil {
+			exitCode = 1
+		}
+	}
+	return exitCode
+}
+
+func schemaPlanModuleName(input string) string {
+	input = strings.TrimSpace(input)
+	// Only strip a version suffix (name@version). Leading @ scoped names are left intact
+	// for a clear empty-name error rather than silently truncating to "".
+	if i := strings.LastIndex(input, "@"); i > 0 {
+		return strings.TrimSpace(input[:i])
+	}
+	return input
+}
+
+func printSchemaPlan(env scope.Scope, moduleName string, plan schema.SchemaPlan, planErr error) {
+	if env == nil {
+		return
+	}
+	logger := env.Logger()
+	if logger == nil {
+		return
+	}
+	logger.Info("schema-plan",
+		"module", moduleName,
+		"ops", len(plan.Ops),
+		"leftover", len(plan.Leftover),
+	)
+	for _, op := range plan.Ops {
+		attrs := []any{
+			"module", moduleName,
+			"kind", string(op.Kind),
+			"safety", string(op.Safety),
+			"table", op.Table,
+			"detail", op.Detail,
+		}
+		if op.Column != nil && strings.TrimSpace(op.Column.Name) != "" {
+			attrs = append(attrs, "column", op.Column.Name)
+		}
+		if strings.TrimSpace(op.IndexName) != "" {
+			attrs = append(attrs, "index", op.IndexName)
+		}
+		logger.Info("schema-plan op", attrs...)
+	}
+	for _, left := range plan.Leftover {
+		logger.Info("schema-plan leftover",
+			"module", moduleName,
+			"kind", string(left.Kind),
+			"table", left.Table,
+			"name", left.Name,
+		)
+	}
+	if planErr != nil {
+		logger.Error("schema-plan validation failed", "module", moduleName, "error", planErr)
+	}
 }

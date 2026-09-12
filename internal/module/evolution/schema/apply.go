@@ -17,6 +17,11 @@ import (
 // Overridable for tests that need to force post-AddColumn index failures.
 var ensureIndexesForColumnFn = ensureIndexesForColumn
 
+// Overridable so tests can force DropIndex failures without a broken migrator.
+var dropIndexFn = func(mig gorm.Migrator, value any, name string) error {
+	return mig.DropIndex(value, name)
+}
+
 // applyPlan executes Auto ops only (caller must Validate first).
 func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error {
 	if runtimeScope == nil || runtimeScope.Session() == nil {
@@ -48,15 +53,78 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			if err := db.Table(op.Table).Migrator().AddColumn(inst, fieldName); err != nil {
 				return fmt.Errorf("add column %s.%s: %w", op.Table, op.Column.Name, err)
 			}
-			// AddColumn does not create indexes from gorm tags; create them explicitly.
+			// Indexes are applied via separate OpAddIndex ops (with populated-table safety).
+		case OpAlterColumn:
+			if op.Column == nil {
+				return fmt.Errorf("alter_column missing column for table %s", op.Table)
+			}
+			if !strings.Contains(strings.ToLower(op.Detail), "widen size") {
+				return fmt.Errorf("alter_column %s.%s is not an auto widen (%s)", op.Table, op.Column.Name, op.Detail)
+			}
+			if err := applyAlterColumnWiden(db.DB, op.Table, *op.Column, dialect); err != nil {
+				return fmt.Errorf("alter column %s.%s: %w", op.Table, op.Column.Name, err)
+			}
+		case OpAddIndex:
+			if op.Column == nil {
+				return fmt.Errorf("add_index missing column for table %s", op.Table)
+			}
 			if err := ensureIndexesForColumnFn(db.DB, op.Table, *op.Column, dialect); err != nil {
-				return fmt.Errorf("ensure indexes for column %s.%s: %w", op.Table, op.Column.Name, err)
+				return fmt.Errorf("add index on %s.%s: %w", op.Table, op.Column.Name, err)
+			}
+		case OpEnsureCheck:
+			expr := strings.TrimSpace(op.CheckExpr)
+			name := strings.TrimSpace(op.CheckName)
+			if expr == "" || name == "" {
+				return fmt.Errorf("ensure_check missing name/expr for table %s", op.Table)
+			}
+			// Only rewrite the chk_ constraint prefix; table/column names may contain "chk_".
+			if strings.HasPrefix(name, "chk_") {
+				legacy := "ck_" + strings.TrimPrefix(name, "chk_")
+				_ = dropCheckConstraintBestEffort(db.DB, dialect, op.Table, legacy)
+			}
+			if err := ensureCheckConstraint(db.DB, dialect, op.Table, name, expr); err != nil {
+				return fmt.Errorf("ensure check %s on %s: %w", name, op.Table, err)
 			}
 		default:
-			// P0: never apply alter/drop here.
+			// Never apply drop/manual here.
 		}
 	}
 	return nil
+}
+
+// applyAlterColumnWiden applies Auto varchar/char size increases via GORM AlterColumn.
+// Only type/size are applied so FullDataTypeOf cannot emit unvalidated NOT NULL/DEFAULT,
+// except on dialects where MODIFY COLUMN rewrites the whole definition.
+func applyAlterColumnWiden(db *gorm.DB, table string, col ColumnSpec, dialect string) error {
+	if db == nil {
+		return fmt.Errorf("db is nil")
+	}
+	sizeOnly := widenColumnSpec(col, dialect)
+	inst, err := structForAddColumn(table, sizeOnly, dialect)
+	if err != nil {
+		return err
+	}
+	fieldName := exportIdent(col.FieldName)
+	if err := db.Table(table).Migrator().AlterColumn(inst, fieldName); err != nil {
+		return err
+	}
+	return nil
+}
+
+// widenColumnSpec builds the AlterColumn payload. MySQL/SQL Server MODIFY COLUMN
+// rewrites the full definition, so nullability/default must be preserved there.
+func widenColumnSpec(col ColumnSpec, dialect string) ColumnSpec {
+	sizeOnly := ColumnSpec{
+		Name:         col.Name,
+		FieldName:    col.FieldName,
+		PhysicalType: col.PhysicalType,
+		Size:         col.Size,
+	}
+	if dialect == "mysql" || dialect == "sqlserver" {
+		sizeOnly.NotNull = col.NotNull
+		sizeOnly.Default = col.Default
+	}
+	return sizeOnly
 }
 
 // ensureIndexesForDesired creates missing ordinary/unique indexes for desired columns.
@@ -82,55 +150,135 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 	if col.Trigram || strings.EqualFold(col.IndexName, translatedTrigramIndexKind) {
 		return nil
 	}
-	if !col.Indexed && !col.UniqueIndex {
+	if !col.Indexed && !col.UniqueIndex && !col.Unique {
 		return nil
 	}
+	col = indexPlanColumn(col)
 	inst, err := structForAddColumn(table, col, dialect)
 	if err != nil {
 		return fmt.Errorf("build index struct %s.%s: %w", table, col.Name, err)
 	}
 	mig := db.Table(table).Migrator()
-	for _, name := range indexLookupNames(col) {
-		if mig.HasIndex(inst, name) {
-			continue
+	for _, cand := range indexLookupCandidates(col) {
+		if mig.HasIndex(inst, cand.Name) {
+			if !cand.Unique {
+				continue
+			}
+			// cand.Name may be a field export (Code) while the live index uses idx_table_col.
+			unique, err := liveIndexUnique(db, table, cand.Name, col.Name)
+			if err != nil {
+				return err
+			}
+			if unique {
+				continue
+			}
+			// Same lookup exists but is non-unique; replace so the unique requirement is enforced.
+			if err := dropIndexFn(mig, inst, cand.Name); err != nil {
+				return fmt.Errorf("drop non-unique index %s on %s.%s: %w", cand.Name, table, col.Name, err)
+			}
 		}
-		if err := mig.CreateIndex(inst, name); err != nil {
-			return fmt.Errorf("create index %s on %s.%s: %w", name, table, col.Name, err)
+		if err := mig.CreateIndex(inst, cand.Name); err != nil {
+			return fmt.Errorf("create index %s on %s.%s: %w", cand.Name, table, col.Name, err)
 		}
 	}
 	return nil
 }
 
-// indexLookupNames returns names suitable for Migrator.HasIndex/CreateIndex LookIndex.
-func indexLookupNames(col ColumnSpec) []string {
-	seen := map[string]struct{}{}
-	var names []string
-	add := func(name string) {
+// liveIndexUnique reports whether a live index matching indexName (or single-column colName) is unique.
+func liveIndexUnique(db *gorm.DB, table, indexName, colName string) (bool, error) {
+	indexes, err := getIndexes(db, table)
+	if err != nil {
+		return false, fmt.Errorf("inspect indexes for %s: %w", table, err)
+	}
+	for _, idx := range indexes {
+		if idx == nil || !liveIndexMatches(idx, indexName, colName) {
+			continue
+		}
+		u, ok := idx.Unique()
+		return ok && u, nil
+	}
+	return false, nil
+}
+
+// liveIndexMatches is true when idx's name equals indexName, or it is a single-column
+// index on colName / indexName (field-export lookups often differ from physical index names).
+func liveIndexMatches(idx gorm.Index, indexName, colName string) bool {
+	indexName = strings.TrimSpace(indexName)
+	colName = strings.TrimSpace(colName)
+	if indexName != "" && strings.EqualFold(strings.TrimSpace(idx.Name()), indexName) {
+		return true
+	}
+	cols := idx.Columns()
+	if len(cols) != 1 {
+		return false
+	}
+	c := strings.TrimSpace(cols[0])
+	if c == "" {
+		return false
+	}
+	if colName != "" && strings.EqualFold(c, colName) {
+		return true
+	}
+	return indexName != "" && strings.EqualFold(c, indexName)
+}
+
+type indexNameCandidate struct {
+	Name   string
+	Unique bool
+}
+
+// indexLookupCandidates returns Migrator.HasIndex/CreateIndex names with per-name uniqueness.
+func indexLookupCandidates(col ColumnSpec) []indexNameCandidate {
+	type entry struct {
+		name   string
+		unique bool
+	}
+	order := make([]string, 0, 4)
+	byName := map[string]*entry{}
+	add := func(name string, unique bool) {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			return
 		}
-		if _, ok := seen[name]; ok {
+		if prev, ok := byName[name]; ok {
+			if unique {
+				prev.unique = true
+			}
 			return
 		}
-		seen[name] = struct{}{}
-		names = append(names, name)
+		byName[name] = &entry{name: name, unique: unique}
+		order = append(order, name)
 	}
 	if col.Indexed {
 		if col.IndexName != "" && !strings.EqualFold(col.IndexName, translatedTrigramIndexKind) {
-			add(col.IndexName)
+			add(col.IndexName, false)
 		} else {
-			add(exportIdent(col.FieldName))
+			add(exportIdent(col.FieldName), false)
 		}
 	}
-	if col.UniqueIndex {
+	if col.UniqueIndex || col.Unique {
 		if len(col.UniqueIndexNames) > 0 {
 			for _, name := range col.UniqueIndexNames {
-				add(name)
+				add(name, true)
 			}
 		} else {
-			add(exportIdent(col.FieldName))
+			add(exportIdent(col.FieldName), true)
 		}
+	}
+	out := make([]indexNameCandidate, 0, len(order))
+	for _, name := range order {
+		e := byName[name]
+		out = append(out, indexNameCandidate{Name: e.name, Unique: e.unique})
+	}
+	return out
+}
+
+// indexLookupNames returns names suitable for Migrator.HasIndex/CreateIndex LookIndex.
+func indexLookupNames(col ColumnSpec) []string {
+	cands := indexLookupCandidates(col)
+	names := make([]string, 0, len(cands))
+	for _, cand := range cands {
+		names = append(names, cand.Name)
 	}
 	return names
 }
@@ -231,7 +379,15 @@ func addStandardTagsFromSpec(tags *[]string, col ColumnSpec) {
 			*tags = append(*tags, fmt.Sprintf("default:%s", normalizeDefaultStringLiteral(trimmed)))
 		}
 	}
-	// P0: do not emit check tags; CHECK is applied via ensureCheckConstraint after create/add.
+	if expr := strings.TrimSpace(col.CheckExpr); expr != "" {
+		normalized := normalizeCheckExpr(expr)
+		if normalized != "" {
+			// Force default naming chk_<table>_<column> (same as OpEnsureCheck).
+			*tags = append(*tags, "check:,"+normalized)
+		}
+	}
+	// OpEnsureCheck applies CHECK via ALTER on postgres/mysql/sqlserver. SQLite cannot
+	// ALTER TABLE ADD CONSTRAINT; new tables get CHECK from the gorm tag above.
 }
 
 // exportIdent returns a valid exported Go identifier for reflect.StructOf.
