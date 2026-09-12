@@ -64,6 +64,43 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if resolveModelRef(nil, "") != nil {
 		t.Fatal("empty ref")
 	}
+	if got := normalizeModelRefLiteral("() => UserRole"); got != "UserRole" {
+		t.Fatalf("arrow joinModel = %q", got)
+	}
+	if got := normalizeModelRefLiteral("()=>auth.UserRole"); got != "auth.UserRole" {
+		t.Fatalf("dotted arrow = %q", got)
+	}
+	if got := normalizeModelRefLiteral(`() => "UserRole"`); got != "UserRole" {
+		t.Fatalf("quoted arrow = %q", got)
+	}
+
+	// Production-shaped joinModel arrow literal must resolve.
+	arrowUser := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{
+			newFieldWithOptions(t, "Roles", `{
+				"type":"ManyToMany",
+				"relation":{"joinModel":"() => UserRole","joinField":"UserId","inverseJoinField":"RoleId","targetModel":"() => Role"}
+			}`),
+		},
+	}
+	arrowJoin := &meta.Model{
+		Application: "auth", Name: "UserRole", ModelTable: "auth_user_role",
+		Fields: []*meta.Field{newFieldWithOptions(t, "UserId", `{"type":"char","size":20}`)},
+	}
+	arrowRole := &meta.Model{Application: "auth", Name: "Role", ModelTable: "auth_role"}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}},
+	}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{arrowUser, arrowJoin, arrowRole}); err != nil {
+		t.Fatalf("arrow joinModel: %v", err)
+	}
+	if len(desired.JoinTables) != 1 || desired.JoinTables[0].Table != "auth_user_role" {
+		t.Fatalf("arrow JoinTables = %#v", desired.JoinTables)
+	}
+	if desired.JoinTables[0].Right.ReferTable != "auth_role" {
+		t.Fatalf("target arrow resolve = %#v", desired.JoinTables[0].Right)
+	}
 }
 
 func TestDesiredTableNames_JoinOnly(t *testing.T) {

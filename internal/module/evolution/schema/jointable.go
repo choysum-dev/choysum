@@ -141,9 +141,29 @@ func indexModelsByKey(models []*meta.Model) map[string]*meta.Model {
 }
 
 func resolveModelRef(byKey map[string]*meta.Model, ref string) *meta.Model {
-	ref = strings.TrimSpace(ref)
+	ref = normalizeModelRefLiteral(ref)
 	if ref == "" {
 		return nil
 	}
 	return byKey[strings.ToLower(ref)]
+}
+
+// normalizeModelRefLiteral turns decorator model refs into lookup keys.
+// Authors write joinModel/targetModel as () => UserRole; metadata stores that literal.
+func normalizeModelRefLiteral(ref string) string {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return ""
+	}
+	if i := strings.Index(ref, "=>"); i >= 0 {
+		ref = strings.TrimSpace(ref[i+2:])
+	}
+	ref = strings.TrimSpace(strings.TrimSuffix(ref, ";"))
+	ref = strings.Trim(ref, `"'`+"`")
+	ref = strings.TrimSpace(ref)
+	// Keep only a dotted identifier (UserRole / auth.UserRole); drop call suffixes.
+	if cut := strings.IndexAny(ref, "({[\n\r\t "); cut >= 0 {
+		ref = strings.TrimSpace(ref[:cut])
+	}
+	return ref
 }
