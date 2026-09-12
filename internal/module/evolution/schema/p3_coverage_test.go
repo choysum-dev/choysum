@@ -46,6 +46,28 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		t.Fatalf("empty ModelTable: %v", err)
 	}
 
+	// Explicit ManyToMany without joinModel fails closed.
+	noJoin := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{newFieldWithOptions(t, "Roles", `{"type":"ManyToMany","relation":{"targetModel":"auth.Role"}}`)},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{noJoin}); err == nil || !strings.Contains(err.Error(), "missing joinModel") {
+		t.Fatalf("missing joinModel: %v", err)
+	}
+	// ManyToManyRef without joinModel is skipped (not an error).
+	refOnly := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{newFieldWithOptions(t, "Tags", `{"type":"ManyToManyRef","relation":{"targetModel":"auth.Role"}}`)},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{refOnly}); err != nil {
+		t.Fatalf("ManyToManyRef: %v", err)
+	}
+	if fieldIsExplicitManyToMany(nil) || fieldIsExplicitManyToMany(&meta.Field{}) {
+		t.Fatal("fieldIsExplicitManyToMany nil/empty")
+	}
+
 	joinNoCols := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
 	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinNoCols}); err == nil || !strings.Contains(err.Error(), "no desired columns") {

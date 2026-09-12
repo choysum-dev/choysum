@@ -40,6 +40,10 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 			}
 			joinRef, joinField, inverseJoinField, targetRef, ok := manyToManyJoinMeta(field)
 			if !ok {
+				if fieldIsExplicitManyToMany(field) {
+					return fmt.Errorf("ManyToMany %s.%s is missing joinModel",
+						model.Name, field.Name)
+				}
 				continue
 			}
 			joinModel := resolveModelRef(byKey, joinRef)
@@ -148,6 +152,19 @@ func resolveJoinColumnName(cols []ColumnSpec, fieldRef string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// fieldIsExplicitManyToMany reports FieldType ManyToMany (not ManyToManyRef).
+// Used to fail closed when joinModel is missing on a real M2M relation field.
+func fieldIsExplicitManyToMany(field *meta.Field) bool {
+	if field == nil {
+		return false
+	}
+	spec, err := field.GetResolvedSpec()
+	if err != nil || spec == nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(spec.Structural.FieldType), "ManyToMany")
 }
 
 // manyToManyJoinMeta returns join identity for a ManyToMany field, or ok=false when not M2M / no joinModel.

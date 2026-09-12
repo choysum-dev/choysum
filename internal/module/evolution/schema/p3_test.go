@@ -302,6 +302,12 @@ func TestEnsureTaskJobExecution_Path1(t *testing.T) {
 	if !runtimeScope.Session().Migrator().HasColumn("task_job_execution", "job_id") {
 		t.Fatal("expected job_id")
 	}
+	var uniqueJobId int
+	if err := runtimeScope.Session().Raw(
+		`SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name='task_job_execution' AND sql LIKE '%UNIQUE%' AND sql LIKE '%job_id%'`,
+	).Scan(&uniqueJobId).Error; err != nil || uniqueJobId < 1 {
+		t.Fatalf("expected UNIQUE index on job_id, n=%d err=%v", uniqueJobId, err)
+	}
 	// Idempotent when table exists.
 	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
 		t.Fatalf("re-ensure: %v", err)
