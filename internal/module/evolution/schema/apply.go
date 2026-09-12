@@ -50,7 +50,7 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			}
 			// AddColumn does not create indexes from gorm tags; create them explicitly.
 			if err := ensureIndexesForColumnFn(db.DB, op.Table, *op.Column, dialect); err != nil {
-				return err
+				return fmt.Errorf("ensure indexes for column %s.%s: %w", op.Table, op.Column.Name, err)
 			}
 		default:
 			// P0: never apply alter/drop here.
