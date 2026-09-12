@@ -254,7 +254,8 @@ func normalizeModelRefLiteral(ref string) string {
 		ref = strings.TrimSpace(ref[i+2:])
 	}
 	ref = strings.TrimSpace(strings.TrimSuffix(ref, ";"))
-	ref = strings.Trim(ref, `"'`+"`")
+	// Quotes and optional wrapping parens: () => (UserRole) / () => "UserRole".
+	ref = strings.Trim(ref, `"'`+"`()")
 	ref = strings.TrimSpace(ref)
 	// Keep only a dotted identifier (UserRole / auth.UserRole); drop call suffixes.
 	if cut := strings.IndexAny(ref, "({[\n\r\t "); cut >= 0 {

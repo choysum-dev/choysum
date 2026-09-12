@@ -275,6 +275,15 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if got := normalizeModelRefLiteral("() => UserRole()"); got != "UserRole" {
 		t.Fatalf("call suffix = %q", got)
 	}
+	if got := normalizeModelRefLiteral("() => (UserRole)"); got != "UserRole" {
+		t.Fatalf("paren wrap = %q", got)
+	}
+	if got := normalizeModelRefLiteral("() => (auth.UserRole)"); got != "auth.UserRole" {
+		t.Fatalf("paren dotted = %q", got)
+	}
+	if got := normalizeModelRefLiteral("() => UserRole[0]"); got != "UserRole" {
+		t.Fatalf("bracket suffix = %q", got)
+	}
 
 	arrowUser := &meta.Model{
 		Application: "auth", Name: "User", ModelTable: "auth_user",
