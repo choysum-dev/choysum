@@ -262,7 +262,7 @@ func TestApplyTableTranslatedL2IndexesPropagatesEnsureError(t *testing.T) {
 	}
 }
 
-func TestMigrateTableSchemaWrapsTranslatedL2IndexError(t *testing.T) {
+func TestMigrateSchemaWrapsTranslatedL2IndexError(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:l2_migrate_wrap?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -305,8 +305,8 @@ func TestMigrateTableSchemaWrapsTranslatedL2IndexError(t *testing.T) {
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
 	}
-	m := &modelMigrator{runtimeScope: runtime}
-	err = m.migrateTableSchema([]*meta.Model{model})
+	m := newModelMigrator(runtime, nil, []*meta.Model{model})
+	err = m.MigrateSchema()
 	if err == nil || !strings.Contains(err.Error(), "translated L2 indexes") {
 		t.Fatalf("expected wrapped L2 migrate error, got %v", err)
 	}

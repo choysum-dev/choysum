@@ -13,7 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	dynamicstruct "github.com/Chise1/dynamic-struct"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -356,8 +355,4 @@ func boolPtrValue(value bool) *bool {
 func intPtrValue(value int) *int {
 	v := value
 	return &v
-}
-
-func dynamicStructBuilder() dynamicstruct.Builder {
-	return dynamicstruct.NewStruct()
 }

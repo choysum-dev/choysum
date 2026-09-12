@@ -3,7 +3,6 @@ module github.com/choysum-dev/choysum
 go 1.26.3
 
 require (
-	github.com/Chise1/dynamic-struct v0.1.0
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/antchfx/htmlquery v1.3.6
 	github.com/bufbuild/protocompile v0.14.1

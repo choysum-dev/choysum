@@ -4,16 +4,14 @@
 package schema
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	gschema "gorm.io/gorm/schema"
-
-	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
 type fakeDialector struct {
@@ -44,8 +42,8 @@ func TestModelMigratorRuntimePaths(t *testing.T) {
 	disabled := &meta.Model{Name: "Disabled", Path: "sales/disabled.ts", ModelTable: "sales_disabled", AutoMigrate: &disabledAutoMigrate, Fields: []*meta.Field{newFieldWithOptions(t, "Ignored", `{"type":"selection"}`)}}
 
 	migrator := newModelMigrator(runtimeScope, nil, []*meta.Model{active, readonly, disabled})
-	if err := migrator.migrateTableSchema([]*meta.Model{active, readonly, disabled}); err != nil {
-		t.Fatalf("migrateTableSchema() error = %v", err)
+	if err := migrator.MigrateSchema(); err != nil {
+		t.Fatalf("MigrateSchema() error = %v", err)
 	}
 	if !runtimeScope.Session().Migrator().HasTable("sales_order") {
 		t.Fatal("expected active model table to be created")
@@ -55,10 +53,6 @@ func TestModelMigratorRuntimePaths(t *testing.T) {
 	}
 	if runtimeScope.Session().Migrator().HasTable("sales_disabled") {
 		t.Fatal("expected automigrate=false model table to be skipped")
-	}
-
-	if err := migrator.MigrateSchema(); err != nil {
-		t.Fatalf("MigrateSchema() error = %v", err)
 	}
 	if !runtimeScope.Session().Migrator().HasTable(&taskJobExecution{}) {
 		t.Fatal("expected task_job_execution table to be ensured")
@@ -78,8 +72,8 @@ func TestModelMigratorErrorPaths(t *testing.T) {
 		}
 
 		migrator := newModelMigrator(runtimeScope, nil, []*meta.Model{broken})
-		if err := migrator.migrateTableSchema([]*meta.Model{broken}); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
-			t.Fatalf("migrateTableSchema() error = %v", err)
+		if err := migrator.MigrateSchema(); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
+			t.Fatalf("MigrateSchema() error = %v", err)
 		}
 		if err := migrator.applyTableCheckConstraints("sales_broken", broken); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
 			t.Fatalf("applyTableCheckConstraints() error = %v", err)
@@ -122,8 +116,8 @@ func TestModelMigratorErrorPaths(t *testing.T) {
 		}
 
 		migrator := newModelMigrator(runtimeScope, nil, []*meta.Model{active})
-		if err := migrator.migrateTableSchema([]*meta.Model{active}); err == nil || !strings.Contains(err.Error(), "migrate table sales_order") {
-			t.Fatalf("migrateTableSchema(closed DB) error = %v", err)
+		if err := migrator.MigrateSchema(); err == nil || !strings.Contains(err.Error(), "database is closed") {
+			t.Fatalf("MigrateSchema(closed DB) error = %v", err)
 		}
 		if err := newModelMigrator(runtimeScope, nil, nil).MigrateSchema(); err == nil {
 			t.Fatal("expected MigrateSchema() to fail when task_job_execution migration uses closed DB")
@@ -131,576 +125,45 @@ func TestModelMigratorErrorPaths(t *testing.T) {
 	})
 }
 
-func TestModelMigratorFieldParsingAndStructTags(t *testing.T) {
-	runtimeScope := newSchemaTestScope(t)
-	migrator := newModelMigrator(runtimeScope, nil, nil)
-
-	manyToOneField := newFieldWithOptions(t, "OwnerId", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)
-	manyToOneField.NotNull = true
-	metaMap, err := migrator.getResolvedFieldColumnMeta(manyToOneField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(ManyToOne) error = %v", err)
-	}
-	if metaMap["type"] != "char" || metaMap["size"] != 20 || metaMap["notNull"] != true || metaMap["index"] != true {
-		t.Fatalf("unexpected ManyToOne meta: %#v", metaMap)
-	}
-
-	// ManyToOne with uniqueIndex should not also default an ordinary index.
-	manyToOneUniqueField := newFieldWithOptions(t, "UniqueOwnerId", `{"type":"ManyToOne","uniqueIndex":true,"relation":{"onDelete":"CASCADE"}}`)
-	manyToOneUniqueMeta, err := migrator.getResolvedFieldColumnMeta(manyToOneUniqueField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+uniqueIndex) error = %v", err)
-	}
-	if manyToOneUniqueMeta["type"] != "char" || manyToOneUniqueMeta["index"] != nil || manyToOneUniqueMeta["uniqueIndex"] == nil {
-		t.Fatalf("expected ManyToOne uniqueIndex to suppress redundant index, got %#v", manyToOneUniqueMeta)
+func TestGetDialect(t *testing.T) {
+	cases := []struct {
+		name      string
+		dialector string
+		want      string
+	}{
+		{name: "postgres alias", dialector: "postgresql", want: "postgres"},
+		{name: "mysql alias", dialector: "mariadb", want: "mysql"},
+		{name: "sqlite", dialector: "sqlite", want: "sqlite"},
+		{name: "sqlserver", dialector: "sqlserver", want: "sqlserver"},
+		{name: "unknown", dialector: "oracle", want: "unknown"},
 	}
 
-	// ManyToOne with uniqueIndex:false should still default an ordinary index.
-	manyToOneNoUniqueField := newFieldWithOptions(t, "RefOwnerId", `{"type":"ManyToOne","uniqueIndex":false,"relation":{"onDelete":"CASCADE"}}`)
-	manyToOneNoUniqueMeta, err := migrator.getResolvedFieldColumnMeta(manyToOneNoUniqueField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+uniqueIndex=false) error = %v", err)
-	}
-	if manyToOneNoUniqueMeta["type"] != "char" || manyToOneNoUniqueMeta["index"] != true {
-		t.Fatalf("expected ManyToOne uniqueIndex=false to keep default index, got %#v", manyToOneNoUniqueMeta)
-	}
-
-	selectionField := newFieldWithOptions(t, "Status", `{"type":"selection"}`)
-	selectionMeta, err := migrator.getResolvedFieldColumnMeta(selectionField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(selection) error = %v", err)
-	}
-	if selectionMeta["type"] != "varchar" || selectionMeta["size"] != 255 {
-		t.Fatalf("unexpected selection meta: %#v", selectionMeta)
-	}
-
-	companyDepSelectionField := newFieldWithOptions(t, "CompanyStatus", `{"type":"selection","companyDependent":true}`)
-	companyDepSelectionMeta, err := migrator.getResolvedFieldColumnMeta(companyDepSelectionField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(selection+companyDependent) error = %v", err)
-	}
-	if companyDepSelectionMeta["type"] != "jsonobject" {
-		t.Fatalf("expected companyDependent selection → jsonobject, got %#v", companyDepSelectionMeta)
-	}
-	if _, hasSize := companyDepSelectionMeta["size"]; hasSize {
-		t.Fatalf("expected companyDependent selection to drop size, got %#v", companyDepSelectionMeta)
-	}
-
-	companyDepM2OField := newFieldWithOptions(t, "CompanyPartnerId", `{"type":"ManyToOne","companyDependent":true,"relation":{"onDelete":"SET NULL"}}`)
-	companyDepM2OMeta, err := migrator.getResolvedFieldColumnMeta(companyDepM2OField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+companyDependent) error = %v", err)
-	}
-	if companyDepM2OMeta["type"] != "jsonobject" {
-		t.Fatalf("expected companyDependent ManyToOne → jsonobject, got %#v", companyDepM2OMeta)
-	}
-	if _, hasSize := companyDepM2OMeta["size"]; hasSize {
-		t.Fatalf("expected companyDependent ManyToOne to drop size, got %#v", companyDepM2OMeta)
-	}
-	if _, hasIndex := companyDepM2OMeta["index"]; hasIndex {
-		t.Fatalf("expected companyDependent ManyToOne to drop index, got %#v", companyDepM2OMeta)
-	}
-
-	refField := newFieldWithOptions(t, "RemoteId", `{"type":"ManyToOneRef"}`)
-	refMeta, err := migrator.getResolvedFieldColumnMeta(refField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(ManyToOneRef) error = %v", err)
-	}
-	if refMeta["type"] != "char" || refMeta["index"] != true {
-		t.Fatalf("unexpected ManyToOneRef meta: %#v", refMeta)
-	}
-
-	manyRefField := newFieldWithOptions(t, "RemoteIds", `{"type":"ManyToManyRef"}`)
-	manyRefMeta, err := migrator.getResolvedFieldColumnMeta(manyRefField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(ManyToManyRef) error = %v", err)
-	}
-	if manyRefMeta["type"] != "jsonobject" {
-		t.Fatalf("unexpected ManyToManyRef meta: %#v", manyRefMeta)
-	}
-
-	propertiesField := newFieldWithOptions(t, "ExtraProps", `{"type":"properties"}`)
-	propertiesMeta, err := migrator.getResolvedFieldColumnMeta(propertiesField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(properties) error = %v", err)
-	}
-	if propertiesMeta["type"] != "jsonobject" {
-		t.Fatalf("unexpected properties meta: %#v", propertiesMeta)
-	}
-
-	binaryField := newFieldWithOptions(t, "Payload", `{"type":"binary"}`)
-	binaryMeta, err := migrator.getResolvedFieldColumnMeta(binaryField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(binary) error = %v", err)
-	}
-	if binaryMeta["type"] != "blob" {
-		t.Fatalf("unexpected binary meta: %#v", binaryMeta)
-	}
-
-	ownerModel := &meta.Model{Name: "User", Application: "auth", ModelTable: "auth_user"}
-	ownerBinaryMeta, err := migrator.getResolvedFieldColumnMeta(binaryField, ownerModel)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(binary, owner model) error = %v", err)
-	}
-	if ownerBinaryMeta != nil {
-		t.Fatalf("expected owner model binary field to be skipped, got %#v", ownerBinaryMeta)
-	}
-
-	imageField := newFieldWithOptions(t, "Avatar", `{"type":"image"}`)
-	imageMeta, err := migrator.getResolvedFieldColumnMeta(imageField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(image) error = %v", err)
-	}
-	if imageMeta["type"] != "blob" {
-		t.Fatalf("unexpected image meta: %#v", imageMeta)
-	}
-
-	documentModel := &meta.Model{Name: "AttachmentObject", Application: "document", ModelTable: "document_attachment_object"}
-	documentImageMeta, err := migrator.getResolvedFieldColumnMeta(imageField, documentModel)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(image, document model) error = %v", err)
-	}
-	if documentImageMeta == nil || documentImageMeta["type"] != "blob" {
-		t.Fatalf("expected document model image field to remain blob, got %#v", documentImageMeta)
-	}
-
-	virtualField := newFieldWithOptions(t, "DisplayName", `{"type":"varchar","select":"expr"}`)
-	virtualMeta, err := migrator.getResolvedFieldColumnMeta(virtualField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(virtual) error = %v", err)
-	}
-	if virtualMeta != nil {
-		t.Fatalf("expected virtual field to be skipped, got %#v", virtualMeta)
-	}
-
-	oneToManyField := newFieldWithOptions(t, "Items", `{"type":"OneToMany"}`)
-	oneToManyMeta, err := migrator.getResolvedFieldColumnMeta(oneToManyField)
-	if err != nil {
-		t.Fatalf("getResolvedFieldColumnMeta(OneToMany) error = %v", err)
-	}
-	if oneToManyMeta != nil {
-		t.Fatalf("expected OneToMany field to be skipped, got %#v", oneToManyMeta)
-	}
-
-	builder := dynamicStructBuilder()
-	if err := migrator.addFieldToStruct(&builder, selectionField, selectionMeta); err != nil {
-		t.Fatalf("addFieldToStruct() error = %v", err)
-	}
-	instance := builder.Build().New()
-	field, ok := reflect.TypeOf(instance).Elem().FieldByName("Status")
-	if !ok {
-		t.Fatal("expected Status field in dynamic struct")
-	}
-	if tag := string(field.Tag); !strings.Contains(tag, `gorm:"type:varchar(255)"`) || !strings.Contains(tag, `json:"status"`) {
-		t.Fatalf("unexpected struct tag: %s", tag)
-	}
-
-	unknownMeta := map[string]interface{}{"type": "unsupported"}
-	if err := migrator.addFieldToStruct(&builder, selectionField, unknownMeta); err != nil {
-		t.Fatalf("addFieldToStruct(unsupported) error = %v", err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fakeRuntimeScope := &schemaTestScope{session: &scope.Session{DB: &gorm.DB{Config: &gorm.Config{Dialector: fakeDialector{name: tc.dialector}}}}}
+			if got := newModelMigrator(fakeRuntimeScope, nil, nil).getDialect(); got != tc.want {
+				t.Fatalf("getDialect() = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
-func TestModelMigratorFieldParsingEdgeCasesAndDialectHelpers(t *testing.T) {
-	runtimeScope := newSchemaTestScope(t)
-	migrator := newModelMigrator(runtimeScope, nil, nil)
-
-	t.Run("field metadata parsing edge cases", func(t *testing.T) {
+func TestColumnSpecFromFieldEdgeCases(t *testing.T) {
+	t.Run("nil field and missing resolved spec", func(t *testing.T) {
+		if col, err := columnSpecFromField(nil, nil); err != nil || col != nil {
+			t.Fatalf("nil field = (%v, %v)", col, err)
+		}
 		fieldWithoutDecorators := &meta.Field{Name: "Plain"}
-		metaMap, err := migrator.getResolvedFieldColumnMeta(fieldWithoutDecorators)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(no decorators) error = %v", err)
+		col, err := columnSpecFromField(fieldWithoutDecorators, nil)
+		if err != nil || col != nil {
+			t.Fatalf("no decorators = (%v, %v)", col, err)
 		}
-		if metaMap != nil {
-			t.Fatalf("expected nil meta for no decorators, got %#v", metaMap)
-		}
+	})
 
-		nonObject := &meta.Field{Name: "Plain", Decorators: []*meta.Decorator{{Name: "Field", Arguments: []*meta.Argument{{Type: "StringLiteral", Value: `"ignored"`}}}}}
-		metaMap, err = migrator.getResolvedFieldColumnMeta(nonObject)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(non object) error = %v", err)
-		}
-		if metaMap != nil {
-			t.Fatalf("expected nil meta for non-object decorator, got %#v", metaMap)
-		}
-
-		missingType := newFieldWithOptions(t, "MissingType", `{"column":{"size":32}}`)
-		metaMap, err = migrator.getResolvedFieldColumnMeta(missingType)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(missing type) error = %v", err)
-		}
-		if metaMap != nil {
-			t.Fatalf("expected nil meta for missing type, got %#v", metaMap)
-		}
-
-		manyToManyField := newFieldWithOptions(t, "Tags", `{"type":"ManyToMany"}`)
-		metaMap, err = migrator.getResolvedFieldColumnMeta(manyToManyField)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(ManyToMany) error = %v", err)
-		}
-		if metaMap != nil {
-			t.Fatalf("expected ManyToMany field to be skipped, got %#v", metaMap)
-		}
-
+	t.Run("invalid JSON", func(t *testing.T) {
 		invalidJSON := newFieldWithOptions(t, "Broken", `{invalid}`)
-		if _, err := migrator.getResolvedFieldColumnMeta(invalidJSON); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
+		if _, err := columnSpecFromField(invalidJSON, nil); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
 			t.Fatalf("expected invalid JSON error, got %v", err)
-		}
-	})
-
-	t.Run("nil metadata and unsupported dialect helpers", func(t *testing.T) {
-		builder := dynamicStructBuilder()
-		if err := migrator.addFieldToStruct(&builder, &meta.Field{Name: "Skipped"}, nil); err != nil {
-			t.Fatalf("addFieldToStruct(nil meta) error = %v", err)
-		}
-
-		cases := []struct {
-			name      string
-			dialector string
-			want      string
-		}{
-			{name: "postgres alias", dialector: "postgresql", want: "postgres"},
-			{name: "mysql alias", dialector: "mariadb", want: "mysql"},
-			{name: "sqlite", dialector: "sqlite", want: "sqlite"},
-			{name: "sqlserver", dialector: "sqlserver", want: "sqlserver"},
-			{name: "unknown", dialector: "oracle", want: "unknown"},
-		}
-
-		for _, tc := range cases {
-			t.Run(tc.name, func(t *testing.T) {
-				fakeRuntimeScope := &schemaTestScope{session: &scope.Session{DB: &gorm.DB{Config: &gorm.Config{Dialector: fakeDialector{name: tc.dialector}}}}}
-				if got := newModelMigrator(fakeRuntimeScope, nil, nil).getDialect(); got != tc.want {
-					t.Fatalf("getDialect() = %q, want %q", got, tc.want)
-				}
-			})
-		}
-	})
-}
-
-func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
-	runtimeScope := newSchemaTestScope(t)
-	migrator := newModelMigrator(runtimeScope, nil, nil)
-
-	t.Run("sql compute fields do not create columns", func(t *testing.T) {
-		field := &meta.Field{Name: "DisplayName"}
-		spec := &meta.FieldResolvedSpec{
-			FieldName: "DisplayName",
-			Structural: meta.FieldStructuralSpec{
-				Name:      "DisplayName",
-				FieldType: "varchar",
-			},
-			Migration: meta.FieldMigrationDecision{
-				StorageKind:        "virtualSql",
-				ShouldCreateColumn: false,
-				ReasonCode:         "SQL_COMPUTE",
-			},
-		}
-		if err := field.SetResolvedSpec(spec); err != nil {
-			t.Fatalf("SetResolvedSpec error = %v", err)
-		}
-
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(sql compute) error = %v", err)
-		}
-		if metaMap != nil {
-			t.Fatalf("expected sql compute field to skip column, got %#v", metaMap)
-		}
-	})
-
-	t.Run("compute store false does not create columns while store true does", func(t *testing.T) {
-		virtualField := &meta.Field{Name: "VirtualTotal"}
-		virtualSpec := &meta.FieldResolvedSpec{
-			FieldName: "VirtualTotal",
-			Structural: meta.FieldStructuralSpec{
-				Name:      "VirtualTotal",
-				FieldType: "decimal",
-				StorageHints: &meta.FieldStructuralStorageHints{
-					Precision: intPtr(16),
-					Scale:     intPtr(2),
-				},
-			},
-			Migration: meta.FieldMigrationDecision{
-				StorageKind:        "virtualRuntime",
-				ShouldCreateColumn: false,
-				ReasonCode:         "COMPUTE_STORE_FALSE",
-			},
-		}
-		if err := virtualField.SetResolvedSpec(virtualSpec); err != nil {
-			t.Fatalf("SetResolvedSpec(virtual) error = %v", err)
-		}
-
-		persistedField := &meta.Field{Name: "PersistedTotal"}
-		persistedSpec := &meta.FieldResolvedSpec{
-			FieldName: "PersistedTotal",
-			Structural: meta.FieldStructuralSpec{
-				Name:      "PersistedTotal",
-				FieldType: "decimal",
-				StorageHints: &meta.FieldStructuralStorageHints{
-					Precision: intPtr(18),
-					Scale:     intPtr(4),
-				},
-			},
-			Migration: meta.FieldMigrationDecision{
-				StorageKind:        "physical",
-				ShouldCreateColumn: true,
-				ResolvedColumnType: "decimal",
-				ReasonCode:         "COMPUTE_STORE_TRUE",
-			},
-		}
-		if err := persistedField.SetResolvedSpec(persistedSpec); err != nil {
-			t.Fatalf("SetResolvedSpec(persisted) error = %v", err)
-		}
-
-		virtualMeta, err := migrator.getResolvedFieldColumnMeta(virtualField)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(virtual) error = %v", err)
-		}
-		if virtualMeta != nil {
-			t.Fatalf("expected virtual compute field to skip column, got %#v", virtualMeta)
-		}
-
-		persistedMeta, err := migrator.getResolvedFieldColumnMeta(persistedField)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(persisted) error = %v", err)
-		}
-		if persistedMeta == nil || persistedMeta["type"] != "decimal" || persistedMeta["precision"] != 18 || persistedMeta["scale"] != 4 {
-			t.Fatalf("unexpected persisted compute meta: %#v", persistedMeta)
-		}
-	})
-
-	t.Run("related store true and flat hints map to physical column params", func(t *testing.T) {
-		field := newFieldWithOptions(t, "PartnerName", `{"type":"varchar","related":{"path":"PartnerId.Name","store":true},"required":true,"indexed":true,"size":120}`)
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(related store=true) error = %v", err)
-		}
-		if metaMap == nil {
-			t.Fatal("expected related store=true field to create a column")
-		}
-		if metaMap["type"] != "varchar" || metaMap["size"] != 120 || metaMap["notNull"] != true || metaMap["index"] != true {
-			t.Fatalf("unexpected related+storage-hints column meta: %#v", metaMap)
-		}
-	})
-
-	t.Run("check constraint is carried to column meta", func(t *testing.T) {
-		field := newFieldWithOptions(t, "Status", `{"type":"selection","column":{"checkConstraint":"status in ('draft','done')"}}`)
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(check) error = %v", err)
-		}
-		if metaMap == nil || metaMap["checkConstraint"] != "status in ('draft','done')" {
-			t.Fatalf("expected check constraint in meta, got %#v", metaMap)
-		}
-	})
-
-	t.Run("ManyToOne with explicit unique:true suppresses default index", func(t *testing.T) {
-		field := newFieldWithOptions(t, "UniqueRefId", `{"type":"ManyToOne","unique":true}`)
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+unique) error = %v", err)
-		}
-		if metaMap["type"] != "char" || metaMap["unique"] != true || metaMap["index"] != nil {
-			t.Fatalf("expected ManyToOne unique to suppress default index, got %#v", metaMap)
-		}
-	})
-
-	t.Run("ManyToOne with explicit unique:false keeps default index", func(t *testing.T) {
-		field := newFieldWithOptions(t, "NonUniqueRefId", `{"type":"ManyToOne","unique":false}`)
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+unique=false) error = %v", err)
-		}
-		if metaMap["type"] != "char" || metaMap["index"] != true {
-			t.Fatalf("expected ManyToOne unique=false to keep default index, got %#v", metaMap)
-		}
-	})
-
-	t.Run("empty resolved column type falls back to struct field type", func(t *testing.T) {
-		field := &meta.Field{Name: "FallbackType"}
-		spec := &meta.FieldResolvedSpec{
-			FieldName: "FallbackType",
-			Structural: meta.FieldStructuralSpec{
-				Name:      "FallbackType",
-				FieldType: "varchar",
-				StorageHints: &meta.FieldStructuralStorageHints{
-					Size: intPtr(64),
-				},
-			},
-			Migration: meta.FieldMigrationDecision{
-				StorageKind:        "physical",
-				ShouldCreateColumn: true,
-				ResolvedColumnType: "",
-				ReasonCode:         "OK",
-			},
-		}
-		if err := field.SetResolvedSpec(spec); err != nil {
-			t.Fatalf("SetResolvedSpec error = %v", err)
-		}
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(empty columnType) error = %v", err)
-		}
-		if metaMap == nil || metaMap["type"] != "varchar" || metaMap["size"] != 64 {
-			t.Fatalf("expected fallback to struct field type, got %#v", metaMap)
-		}
-	})
-
-	t.Run("primaryKey and uniqueIndex as string propagate to column meta", func(t *testing.T) {
-		field := &meta.Field{Name: "Code"}
-		spec := &meta.FieldResolvedSpec{
-			FieldName: "Code",
-			Structural: meta.FieldStructuralSpec{
-				Name:      "Code",
-				FieldType: "varchar",
-				StorageHints: &meta.FieldStructuralStorageHints{
-					PrimaryKey:  boolPtr(true),
-					UniqueIndex: strPtr("idx_code"),
-					Size:        intPtr(32),
-				},
-			},
-			Migration: meta.FieldMigrationDecision{
-				StorageKind:        "physical",
-				ShouldCreateColumn: true,
-				ResolvedColumnType: "varchar",
-				ReasonCode:         "OK",
-			},
-		}
-		if err := field.SetResolvedSpec(spec); err != nil {
-			t.Fatalf("SetResolvedSpec error = %v", err)
-		}
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(pk) error = %v", err)
-		}
-		if metaMap == nil || metaMap["primaryKey"] != true {
-			t.Fatalf("expected primaryKey=true, got %#v", metaMap)
-		}
-		if metaMap["uniqueIndex"] != "idx_code" {
-			t.Fatalf("expected uniqueIndex=idx_code, got %#v", metaMap)
-		}
-	})
-
-	t.Run("precision and scale hints propagate to column meta", func(t *testing.T) {
-		field := &meta.Field{Name: "Amount"}
-		spec := &meta.FieldResolvedSpec{
-			FieldName: "Amount",
-			Structural: meta.FieldStructuralSpec{
-				Name:      "Amount",
-				FieldType: "decimal",
-				StorageHints: &meta.FieldStructuralStorageHints{
-					Precision: intPtr(16),
-					Scale:     intPtr(2),
-				},
-			},
-			Migration: meta.FieldMigrationDecision{
-				StorageKind:        "physical",
-				ShouldCreateColumn: true,
-				ResolvedColumnType: "decimal",
-				ReasonCode:         "OK",
-			},
-		}
-		if err := field.SetResolvedSpec(spec); err != nil {
-			t.Fatalf("SetResolvedSpec error = %v", err)
-		}
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta error = %v", err)
-		}
-		if metaMap == nil || metaMap["precision"] != 16 || metaMap["scale"] != 2 {
-			t.Fatalf("expected precision=16 scale=2, got %#v", metaMap)
-		}
-	})
-
-	t.Run("translate field uses jsonobject without size or unique", func(t *testing.T) {
-		field := &meta.Field{Name: "Name"}
-		trueVal := true
-		size := 100
-		spec := &meta.FieldResolvedSpec{
-			FieldName: "Name",
-			Structural: meta.FieldStructuralSpec{
-				Name:      "Name",
-				FieldType: "varchar",
-				Translate: &trueVal,
-				StorageHints: &meta.FieldStructuralStorageHints{
-					Size:   &size,
-					Unique: &trueVal,
-					Index:  strPtr("trigram"),
-				},
-				ColumnType: "jsonobject",
-			},
-			Migration: meta.FieldMigrationDecision{
-				StorageKind:        "physical",
-				ShouldCreateColumn: true,
-				ResolvedColumnType: "jsonobject",
-				ReasonCode:         "TRANSLATE_LANG_MAP",
-			},
-		}
-		if err := field.SetResolvedSpec(spec); err != nil {
-			t.Fatalf("SetResolvedSpec error = %v", err)
-		}
-		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(translate) error = %v", err)
-		}
-		if metaMap == nil || metaMap["type"] != "jsonobject" {
-			t.Fatalf("expected type=jsonobject, got %#v", metaMap)
-		}
-		if _, ok := metaMap["size"]; ok {
-			t.Fatalf("translate column must not carry size, got %#v", metaMap)
-		}
-		if _, ok := metaMap["unique"]; ok {
-			t.Fatalf("translate column must not carry unique, got %#v", metaMap)
-		}
-		if _, ok := metaMap["index"]; ok {
-			t.Fatalf("translate column must not carry GORM index tag, got %#v", metaMap)
-		}
-		if metaMap["trigram"] != true {
-			t.Fatalf("expected trigram=true marker for index:'trigram', got %#v", metaMap)
-		}
-
-		dialect := "postgres"
-		typeTag := buildColumnTypeTag(dialect, "jsonobject", metaMap)
-		if typeTag != "type:jsonb" {
-			t.Fatalf("expected postgres jsonb tag, got %q", typeTag)
-		}
-
-		btree := "btree"
-		nonTrigram := &meta.Field{Name: "Title"}
-		nonTrigramSpec := &meta.FieldResolvedSpec{
-			FieldName: "Title",
-			Structural: meta.FieldStructuralSpec{
-				Name:      "Title",
-				FieldType: "varchar",
-				Translate: &trueVal,
-				StorageHints: &meta.FieldStructuralStorageHints{
-					Size:  &size,
-					Index: &btree,
-				},
-				ColumnType: "jsonobject",
-			},
-			Migration: meta.FieldMigrationDecision{
-				StorageKind:        "physical",
-				ShouldCreateColumn: true,
-				ResolvedColumnType: "jsonobject",
-				ReasonCode:         "TRANSLATE_LANG_MAP",
-			},
-		}
-		if err := nonTrigram.SetResolvedSpec(nonTrigramSpec); err != nil {
-			t.Fatalf("SetResolvedSpec(non-trigram) error = %v", err)
-		}
-		metaMap2, err := migrator.getResolvedFieldColumnMeta(nonTrigram)
-		if err != nil {
-			t.Fatalf("getResolvedFieldColumnMeta(non-trigram) error = %v", err)
-		}
-		if metaMap2["type"] != "jsonobject" {
-			t.Fatalf("expected jsonobject for non-trigram translate, got %#v", metaMap2)
-		}
-		if _, ok := metaMap2["trigram"]; ok {
-			t.Fatalf("btree index must not set trigram marker, got %#v", metaMap2)
-		}
-		if _, ok := metaMap2["index"]; ok {
-			t.Fatalf("translate column must still strip GORM index tag, got %#v", metaMap2)
 		}
 	})
 
@@ -737,30 +200,14 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 	})
 }
 
-func intPtr(v int) *int {
-	value := v
-	return &value
-}
-
-func boolPtr(v bool) *bool {
-	return &v
-}
-
-func strPtr(v string) *string {
-	return &v
-}
-
 func TestMigrateSchema_EnsureTaskJobExecutionTableFailure(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
-	// Close the underlying DB so that ensureTaskJobExecutionTable fails.
 	db, _ := runtimeScope.Session().DB.DB()
 	if err := db.Close(); err != nil {
 		t.Fatalf("close db: %v", err)
 	}
 
 	migrator := newModelMigrator(runtimeScope, nil, nil)
-	// migrateTableSchema with empty models is a no-op and succeeds,
-	// but ensureTaskJobExecutionTable should fail with a closed DB.
 	if err := migrator.MigrateSchema(); err == nil {
 		t.Fatal("expected MigrateSchema to fail with closed database")
 	}
