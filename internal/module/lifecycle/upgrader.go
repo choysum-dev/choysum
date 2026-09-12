@@ -16,6 +16,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/scripts"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/internal/module/policy"
+	"github.com/choysum-dev/choysum/internal/persistence/sqliteretry"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -245,9 +246,11 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	}
 	// Omit association trees: Persist already wrote raw + effective catalogs. Cascading
 	// Models here would duplicate effective rows with module_id (see install commitSave).
-	if err := m.runtimeScope.Session().
-		Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
-		Save(target).Error; err != nil {
+	if err := sqliteretry.WithLockRetry(func() error {
+		return m.runtimeScope.Session().
+			Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+			Save(target).Error
+	}); err != nil {
 		return nil, xfmt.Errorf("error saving module: %w", err)
 	}
 	m.logUpgradeStep(target.Name, moduleStepSave, persistModuleStarted, "from_version", fromVersion, "to_version", target.Version)

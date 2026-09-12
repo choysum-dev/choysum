@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package backendbuilder
+// Package sqliteretry retries transient SQLite lock/busy errors on short writes.
+package sqliteretry
 
 import (
 	"strings"
 	"time"
 )
 
-// withSQLiteLockRetry retries op when SQLite returns a transient lock/busy error.
-// Module Persist can race with lease/index writers during dense install graphs.
-func withSQLiteLockRetry(op func() error) error {
+// WithLockRetry retries op when SQLite returns a transient lock/busy error.
+func WithLockRetry(op func() error) error {
 	const maxAttempts = 8
 	var err error
 	for attempt := 0; attempt < maxAttempts; attempt++ {
@@ -18,7 +18,7 @@ func withSQLiteLockRetry(op func() error) error {
 		if err == nil {
 			return nil
 		}
-		if !isTransientSQLiteLock(err) {
+		if !IsTransientLock(err) {
 			return err
 		}
 		if attempt == maxAttempts-1 {
@@ -29,12 +29,14 @@ func withSQLiteLockRetry(op func() error) error {
 	return err
 }
 
-func isTransientSQLiteLock(err error) bool {
+// IsTransientLock reports whether err looks like a retryable SQLite lock/busy failure.
+func IsTransientLock(err error) bool {
 	if err == nil {
 		return false
 	}
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "database is locked") ||
+		strings.Contains(msg, "database table is locked") ||
 		strings.Contains(msg, "database is busy") ||
 		strings.Contains(msg, "database schema is locked") ||
 		strings.Contains(msg, "locking protocol")

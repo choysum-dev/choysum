@@ -15,30 +15,36 @@ type Migrator interface {
 	PlanOnly() (SchemaPlan, error)
 }
 
-// MigratorOption configures NewMigrator.
-type MigratorOption func(*migrator)
+// MigratorOption configures NewMigrator. Options may reject an unsupported migrator.
+type MigratorOption func(*migrator) error
 
 // WithIntentBag attaches the upgrade Intent bag used by ValidatePlan.
 func WithIntentBag(bag IntentBag) MigratorOption {
-	return func(m *migrator) {
+	return func(m *migrator) error {
 		if m == nil {
-			return
+			return nil
 		}
-		if mm, ok := m.modelMigrator.(*modelMigrator); ok {
-			mm.intents = bag
+		mm, ok := m.modelMigrator.(*modelMigrator)
+		if !ok {
+			return fmt.Errorf("WithIntentBag requires *modelMigrator, got %T", m.modelMigrator)
 		}
+		mm.intents = bag
+		return nil
 	}
 }
 
 // WithToVersion sets the target module version for dropAfter leftover warnings.
 func WithToVersion(version string) MigratorOption {
-	return func(m *migrator) {
+	return func(m *migrator) error {
 		if m == nil {
-			return
+			return nil
 		}
-		if mm, ok := m.modelMigrator.(*modelMigrator); ok {
-			mm.toVersion = version
+		mm, ok := m.modelMigrator.(*modelMigrator)
+		if !ok {
+			return fmt.Errorf("WithToVersion requires *modelMigrator, got %T", m.modelMigrator)
 		}
+		mm.toVersion = version
+		return nil
 	}
 }
 
@@ -48,8 +54,11 @@ func NewMigrator(runtimeScope scope.Scope, module *meta.Module, opts ...Migrator
 		return nil, err
 	}
 	for _, opt := range opts {
-		if opt != nil {
-			opt(m)
+		if opt == nil {
+			continue
+		}
+		if err := opt(m); err != nil {
+			return nil, err
 		}
 	}
 	return m, nil

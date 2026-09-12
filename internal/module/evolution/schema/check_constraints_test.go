@@ -62,6 +62,9 @@ func TestCheckConstraintRuntimeHelpers(t *testing.T) {
 	if err := dropCheckConstraintBestEffort(db, "mysql", "sales_order", "chk_sales_order_status"); err == nil {
 		t.Fatal("expected mysql drop constraint to fail on sqlite")
 	}
+	if err := dropCheckConstraintBestEffort(db, "mariadb", "sales_order", "chk_sales_order_status"); err == nil {
+		t.Fatal("expected mariadb drop constraint to fail on sqlite")
+	}
 	if err := dropCheckConstraintBestEffort(db, "sqlserver", "sales_order", "chk_sales_order_status"); err == nil {
 		t.Fatal("expected sqlserver drop constraint to fail on sqlite")
 	}

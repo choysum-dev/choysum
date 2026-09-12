@@ -77,13 +77,13 @@ func ensurePostgresCheckConstraint(db *gorm.DB, tableName, constraintName, expr 
 }
 
 func dropCheckConstraintBestEffort(db *gorm.DB, dialect, tableName, constraintName string) error {
-	switch dialect {
+	switch strings.ToLower(strings.TrimSpace(dialect)) {
 	case "postgres":
 		return db.Exec(
 			fmt.Sprintf(`ALTER TABLE "%s" DROP CONSTRAINT IF EXISTS "%s"`, tableName, constraintName),
 		).Error
-	case "mysql":
-		// MySQL doesn't support IF EXISTS for DROP CHECK. Check existence first.
+	case "mysql", "mariadb":
+		// MySQL/MariaDB don't support IF EXISTS for DROP CHECK. Check existence first.
 		var count int64
 		if err := db.Raw(
 			`SELECT COUNT(*) FROM information_schema.table_constraints
@@ -96,7 +96,7 @@ func dropCheckConstraintBestEffort(db *gorm.DB, dialect, tableName, constraintNa
 		if count == 0 {
 			return nil
 		}
-		// Prefer DROP CHECK (MySQL 8.0.16+). Fall back to DROP CONSTRAINT.
+		// Prefer DROP CHECK (MySQL 8.0.16+ / MariaDB). Fall back to DROP CONSTRAINT.
 		dropSQL := fmt.Sprintf("ALTER TABLE `%s` DROP CHECK `%s`", tableName, constraintName)
 		if err := db.Exec(dropSQL).Error; err == nil {
 			return nil

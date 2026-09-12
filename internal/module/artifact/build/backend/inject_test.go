@@ -332,6 +332,22 @@ func TestPersist_SupersedeInjectError(t *testing.T) {
 	}
 }
 
+func TestPersist_ModuleRowSaveError(t *testing.T) {
+	mod := &meta.Module{
+		Name: "partner", Path: "/virtual/modules/partner",
+		ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts",
+	}
+	builder, _, _ := newInjectTestBuilder(t, mod, nil)
+	orig := persistModuleRow
+	t.Cleanup(func() { persistModuleRow = orig })
+	persistModuleRow = func(*gorm.DB, *meta.Module) error {
+		return fmt.Errorf("database is locked")
+	}
+	if err := builder.persist(&module.BuildResult{Module: mod}); err == nil || !strings.Contains(err.Error(), "error saving module") {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestPersistModuleModels_EmptyModuleID(t *testing.T) {
 	builder := &ModuleBuilder{}
 	if err := builder.persistModuleModels("  ", nil); err != nil {

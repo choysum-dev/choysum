@@ -509,18 +509,30 @@ func TestApply_RenameColumnErrorPaths(t *testing.T) {
 }
 
 func TestMigratorOptions_Coverage(t *testing.T) {
-	WithIntentBag(NewMemoryIntentBag())(nil)
-	WithToVersion("1")(nil)
+	if err := WithIntentBag(NewMemoryIntentBag())(nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := WithToVersion("1")(nil); err != nil {
+		t.Fatal(err)
+	}
 	m := &migrator{modelMigrator: modelMigratorFunc(func() error { return nil })}
-	WithIntentBag(NewMemoryIntentBag())(m)
-	WithToVersion("2.0.0")(m)
+	if err := WithIntentBag(NewMemoryIntentBag())(m); err == nil || !strings.Contains(err.Error(), "*modelMigrator") {
+		t.Fatalf("want type error, got %v", err)
+	}
+	if err := WithToVersion("2.0.0")(m); err == nil || !strings.Contains(err.Error(), "*modelMigrator") {
+		t.Fatalf("want type error, got %v", err)
+	}
 
 	runtimeScope := newSchemaTestScope(t)
 	mm := newModelMigrator(runtimeScope, &meta.Module{Name: "sales", Version: "1.0.0"}, nil)
 	m2 := &migrator{modelMigrator: mm}
 	bag := NewMemoryIntentBag()
-	WithIntentBag(bag)(m2)
-	WithToVersion("2.0.0")(m2)
+	if err := WithIntentBag(bag)(m2); err != nil {
+		t.Fatal(err)
+	}
+	if err := WithToVersion("2.0.0")(m2); err != nil {
+		t.Fatal(err)
+	}
 	if mm.intents != bag || mm.toVersion != "2.0.0" {
 		t.Fatalf("options not applied: intents=%v toVersion=%q", mm.intents, mm.toVersion)
 	}
@@ -532,6 +544,11 @@ func TestMigratorOptions_Coverage(t *testing.T) {
 		t.Log(err)
 	}
 	_ = got
+
+	_, err = NewMigrator(runtimeScope, mod, func(*migrator) error { return fmt.Errorf("opt boom") })
+	if err == nil || !strings.Contains(err.Error(), "opt boom") {
+		t.Fatalf("option error: %v", err)
+	}
 }
 
 func TestWarnDropAfterLeftovers_Coverage(t *testing.T) {
@@ -548,7 +565,7 @@ func TestWarnDropAfterLeftovers_Coverage(t *testing.T) {
 	if err := runtimeScope.Session().Exec(`CREATE TABLE warn_tbl (old_code text)`).Error; err != nil {
 		t.Fatal(err)
 	}
-	payload, _ := json.Marshal([]ColumnSpec{{Name: "old_code", DropAfter: "2.0.0"}})
+	payload, _ := json.Marshal([]ColumnSpec{{Name: "old_code", DropAfter: "v2.0.0"}})
 	row := modmeta.SchemaSnapshot{ModelTable: "warn_tbl", DesiredJSON: datatypes.JSON(payload)}
 	if err := runtimeScope.Session().Create(&row).Error; err != nil {
 		t.Fatal(err)
@@ -581,6 +598,25 @@ func TestWarnDropAfterLeftovers_Coverage(t *testing.T) {
 		{Kind: LeftoverColumn, Table: "warn_tbl", Name: "other"},
 		{Kind: LeftoverColumn, Table: "warn_tbl", Name: "old_code"},
 	}})
+
+	origLoad := loadSnapshotsFn
+	t.Cleanup(func() { loadSnapshotsFn = origLoad })
+	loadSnapshotsFn = func(*gorm.DB, []string) (map[string]modmeta.SchemaSnapshot, error) {
+		return nil, fmt.Errorf("snapshot boom")
+	}
+	m.toVersion = "2.0.0"
+	m.warnDropAfterLeftovers(SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverColumn, Table: "warn_tbl", Name: "old_code"},
+	}})
+}
+
+func TestVersionHintEqual(t *testing.T) {
+	if !versionHintEqual("v2.0.0", "2.0.0") || !versionHintEqual("2.0.0", "V2.0.0") {
+		t.Fatal("leading v")
+	}
+	if versionHintEqual("2.0.0", "2.0.1") || versionHintEqual("vault", "ault") {
+		t.Fatal("mismatch / non-version v")
+	}
 }
 
 func TestBuildSchemaPlan_RenameFromError(t *testing.T) {

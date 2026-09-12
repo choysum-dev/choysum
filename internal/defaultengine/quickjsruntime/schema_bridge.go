@@ -23,7 +23,7 @@ func WithSchemaDDL(dialect string) jsengine.JsEngineOption {
 		globalsObj := engine.Ctx.Globals()
 
 		choysumObj := globalsObj.Get("$choysum")
-		if choysumObj.IsUndefined() {
+		if !choysumObj.IsObject() {
 			choysumObj = engine.Ctx.Object()
 		}
 

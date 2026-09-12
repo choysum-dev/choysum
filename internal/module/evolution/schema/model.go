@@ -19,6 +19,7 @@ var (
 	applyTableTranslatedL2IndexesFn = func(m *modelMigrator, table string, model *meta.Model) error {
 		return m.applyTableTranslatedL2Indexes(table, model)
 	}
+	loadSnapshotsFn = LoadSnapshots
 )
 
 type modelMigrator struct {
@@ -208,8 +209,12 @@ func (m *modelMigrator) warnDropAfterLeftovers(plan SchemaPlan) {
 	if len(tables) == 0 {
 		return
 	}
-	snaps, err := LoadSnapshots(m.runtimeScope.Session().DB, tables)
-	if err != nil || len(snaps) == 0 {
+	snaps, err := loadSnapshotsFn(m.runtimeScope.Session().DB, tables)
+	if err != nil {
+		m.runtimeScope.Logger().Warn("dropAfter leftover warning skipped: snapshot load failed", "error", err)
+		return
+	}
+	if len(snaps) == 0 {
 		return
 	}
 	for _, left := range plan.Leftover {
@@ -228,7 +233,7 @@ func (m *modelMigrator) warnDropAfterLeftovers(plan SchemaPlan) {
 			if !strings.EqualFold(col.Name, left.Name) {
 				continue
 			}
-			if strings.TrimSpace(col.DropAfter) != toVersion {
+			if !versionHintEqual(col.DropAfter, toVersion) {
 				continue
 			}
 			if IntentSatisfies(PlanOp{
@@ -247,6 +252,19 @@ func (m *modelMigrator) warnDropAfterLeftovers(plan SchemaPlan) {
 			)
 		}
 	}
+}
+
+// versionHintEqual compares dropAfter / module version hints, ignoring a leading v/V.
+func versionHintEqual(a, b string) bool {
+	return normalizeVersionHint(a) == normalizeVersionHint(b)
+}
+
+func normalizeVersionHint(v string) string {
+	v = strings.TrimSpace(v)
+	if len(v) >= 2 && (v[0] == 'v' || v[0] == 'V') && v[1] >= '0' && v[1] <= '9' {
+		return v[1:]
+	}
+	return v
 }
 
 func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta.Model) error {

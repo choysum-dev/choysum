@@ -28,6 +28,20 @@ func (fakeJsEngine) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsR
 }
 func (fakeJsEngine) Close() error { return nil }
 
+func TestWithSchemaDDL_RecreatesNonObjectChoysum(t *testing.T) {
+	engine := newTestQuickjsEngine(t)
+	globals := engine.Ctx.Globals()
+	globals.Set("$choysum", engine.Ctx.String("not-an-object"))
+	if err := WithSchemaDDL("sqlite")(engine); err != nil {
+		t.Fatal(err)
+	}
+	v := engine.Ctx.Eval(`typeof $choysum.schema.renameColumn`)
+	defer v.Free()
+	if v.IsException() || v.String() != "function" {
+		t.Fatalf("schema helpers missing: %v %s", engine.Ctx.Exception(), v.String())
+	}
+}
+
 func TestWithSchemaDDL_RejectsNonQuickjsEngine(t *testing.T) {
 	err := WithSchemaDDL("sqlite")(fakeJsEngine{})
 	if err == nil || !strings.Contains(err.Error(), "QuickjsEngine") {
