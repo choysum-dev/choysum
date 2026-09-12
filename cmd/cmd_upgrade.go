@@ -67,6 +67,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			// registry/latest resolution (and the JS compiler) for auth@latest etc.
 			if schemaPlanOnly {
 				upgradeExit(runUpgradeSchemaPlan(ctx, env, args))
+				return
 			}
 
 			runtimeVersion := ""

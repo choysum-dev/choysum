@@ -84,23 +84,13 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 }
 
 // applyAlterColumnWiden applies Auto varchar/char size increases via GORM AlterColumn.
-// Only type/size are applied so FullDataTypeOf cannot emit unvalidated NOT NULL/DEFAULT.
+// Only type/size are applied so FullDataTypeOf cannot emit unvalidated NOT NULL/DEFAULT,
+// except on dialects where MODIFY COLUMN rewrites the whole definition.
 func applyAlterColumnWiden(db *gorm.DB, table string, col ColumnSpec, dialect string) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
-	sizeOnly := ColumnSpec{
-		Name:         col.Name,
-		FieldName:    col.FieldName,
-		PhysicalType: col.PhysicalType,
-		Size:         col.Size,
-	}
-	if dialect == "mysql" || dialect == "sqlserver" {
-		// MODIFY COLUMN rewrites the whole definition; keep nullability/default so a
-		// widen cannot silently drop NOT NULL or an existing default.
-		sizeOnly.NotNull = col.NotNull
-		sizeOnly.Default = col.Default
-	}
+	sizeOnly := widenColumnSpec(col, dialect)
 	inst, err := structForAddColumn(table, sizeOnly, dialect)
 	if err != nil {
 		return err
@@ -110,6 +100,22 @@ func applyAlterColumnWiden(db *gorm.DB, table string, col ColumnSpec, dialect st
 		return err
 	}
 	return nil
+}
+
+// widenColumnSpec builds the AlterColumn payload. MySQL/SQL Server MODIFY COLUMN
+// rewrites the full definition, so nullability/default must be preserved there.
+func widenColumnSpec(col ColumnSpec, dialect string) ColumnSpec {
+	sizeOnly := ColumnSpec{
+		Name:         col.Name,
+		FieldName:    col.FieldName,
+		PhysicalType: col.PhysicalType,
+		Size:         col.Size,
+	}
+	if dialect == "mysql" || dialect == "sqlserver" {
+		sizeOnly.NotNull = col.NotNull
+		sizeOnly.Default = col.Default
+	}
+	return sizeOnly
 }
 
 // ensureIndexesForDesired creates missing ordinary/unique indexes for desired columns.

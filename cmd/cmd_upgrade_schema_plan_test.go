@@ -126,22 +126,16 @@ func TestUpgradeCommandSchemaPlanDispatchesEarly(t *testing.T) {
 	origExit := upgradeExit
 	upgradeExit = func(code int) {
 		gotCode = code
-		panic("upgrade-exit")
+		// Return normally so the explicit `return` after upgradeExit is covered.
 	}
 	t.Cleanup(func() { upgradeExit = origExit })
 
 	env := &schemaPlanTestScope{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	cmd := newUpgradeCmd(func() scope.Scope { return env })
 	cmd.SetArgs([]string{"--schema-plan", "auth"})
-	func() {
-		defer func() {
-			if r := recover(); r != "upgrade-exit" {
-				t.Fatalf("recover = %#v", r)
-			}
-		}()
-		_ = cmd.Execute()
-		t.Fatal("expected upgradeExit")
-	}()
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
 	if gotCode != 1 {
 		t.Fatalf("exit code = %d, want 1", gotCode)
 	}

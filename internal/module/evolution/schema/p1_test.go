@@ -555,6 +555,24 @@ func TestApply_DefaultOnAddColumn(t *testing.T) {
 	}
 }
 
+func TestWidenColumnSpec_PreservesNullabilityOnModifyDialects(t *testing.T) {
+	def := "x"
+	col := ColumnSpec{
+		Name: "code", FieldName: "Code", PhysicalType: "varchar", Size: intPtrValue(32),
+		NotNull: true, Default: &def,
+	}
+	sqlite := widenColumnSpec(col, "sqlite")
+	if sqlite.NotNull || sqlite.Default != nil {
+		t.Fatalf("sqlite size-only must omit null/default: %#v", sqlite)
+	}
+	for _, dialect := range []string{"mysql", "sqlserver"} {
+		got := widenColumnSpec(col, dialect)
+		if !got.NotNull || got.Default == nil || *got.Default != "x" {
+			t.Fatalf("%s must keep null/default: %#v", dialect, got)
+		}
+	}
+}
+
 func TestApply_WidenUsesSizeOnlyDefinition(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	if err := runtimeScope.Session().Exec(`CREATE TABLE sales_widen (code varchar(8) not null default 'x')`).Error; err != nil {
@@ -651,39 +669,49 @@ func TestInspect_StoresStructuredIndexes(t *testing.T) {
 
 func TestPlan_LeftoverIndexAndCovered(t *testing.T) {
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
-		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", Indexed: true, IndexName: "idx_code"}},
+		"t": {
+			{Name: "code", FieldName: "Code", PhysicalType: "varchar", Indexed: true, IndexName: "idx_code"},
+			{Name: "note", FieldName: "Note", PhysicalType: "varchar"}, // declared but not indexed
+		},
 	}}
 	live := LiveSchema{
-		Tables:  map[string]bool{"t": true},
-		Columns: map[string]map[string]LiveColumn{"t": {"code": {Name: "code", DatabaseTypeName: "varchar"}}},
+		Tables: map[string]bool{"t": true},
+		Columns: map[string]map[string]LiveColumn{"t": {
+			"code": {Name: "code", DatabaseTypeName: "varchar"},
+			"note": {Name: "note", DatabaseTypeName: "varchar"},
+		}},
 		Indexes: map[string][]LiveIndex{"t": {
 			{Name: "idx_code", Columns: []string{"code"}, Unique: false},
 			{Name: "idx_extra", Columns: []string{"other"}, Unique: false},
+			{Name: "idx_note_stale", Columns: []string{"note"}, Unique: false},
 			{Name: "sqlite_autoindex_t_1", Columns: []string{"id"}, Unique: true},
 			{Name: "", Columns: []string{"x"}, Unique: false},
 		}},
 	}
 	plan := buildPlan("sales", desired, live, "sqlite")
-	foundExtra := false
+	foundExtra, foundStale := false, false
 	for _, left := range plan.Leftover {
 		if left.Kind == LeftoverIndex && left.Name == "idx_extra" {
 			foundExtra = true
+		}
+		if left.Kind == LeftoverIndex && left.Name == "idx_note_stale" {
+			foundStale = true
 		}
 		if left.Name == "sqlite_autoindex_t_1" || left.Name == "" {
 			t.Fatalf("unexpected leftover %#v", left)
 		}
 	}
-	if !foundExtra {
-		t.Fatalf("expected leftover idx_extra, got %#v", plan.Leftover)
+	if !foundExtra || !foundStale {
+		t.Fatalf("expected leftover idx_extra and idx_note_stale, got %#v", plan.Leftover)
 	}
 }
 
 func TestCheckOpsEmptyColumnName(t *testing.T) {
-	ops := checkOpsForColumn("t", ColumnSpec{FieldName: "Status", CheckExpr: "status <> ''"}, 0, "postgres", false)
+	ops := checkOpsForColumn("t", ColumnSpec{FieldName: "Status", CheckExpr: "status <> ''"}, "postgres", false)
 	if len(ops) != 1 || ops[0].CheckName != "chk_t_status" || ops[0].Safety != SafetyAuto {
 		t.Fatalf("%#v", ops)
 	}
-	sqliteExisting := checkOpsForColumn("t", ColumnSpec{Name: "status", FieldName: "Status", CheckExpr: "status <> ''"}, 0, "sqlite", true)
+	sqliteExisting := checkOpsForColumn("t", ColumnSpec{Name: "status", FieldName: "Status", CheckExpr: "status <> ''"}, "sqlite", true)
 	if len(sqliteExisting) != 0 {
 		t.Fatalf("sqlite existing table must omit ensure_check: %#v", sqliteExisting)
 	}

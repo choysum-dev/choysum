@@ -10,8 +10,8 @@ import (
 
 // buildPlan diffs desired vs live.
 // Auto: create_table, add_column (nullable / empty table), varchar widen, add_index,
-// ensure_check on empty tables. Guarded: type/null/default changes, varchar narrow,
-// unique on populated, ensure_check on populated tables.
+// ensure_check (idempotent on postgres/mysql/sqlserver; omitted for existing sqlite).
+// Guarded: type/null/default changes, varchar narrow, unique on populated tables.
 func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialect string) SchemaPlan {
 	plan := SchemaPlan{
 		Module:   strings.TrimSpace(moduleName),
@@ -31,7 +31,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				Columns: copied,
 			})
 			for _, col := range cols {
-				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, 0, dialect, false)...)
+				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, false)...)
 			}
 			continue
 		}
@@ -61,7 +61,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 					Column: &colCopy,
 				})
 				plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
-				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, rowCount, dialect, true)...)
+				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 				continue
 			}
 
@@ -78,7 +78,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 			}
 
 			plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
-			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, rowCount, dialect, true)...)
+			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 		}
 
 		for name := range liveCols {
@@ -119,12 +119,13 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 
 func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount int64, desiredIndexKeys map[string]struct{}) []PlanOp {
 	var ops []PlanOp
-	// Track physical column name so leftover detection matches live index columns
-	// (indexLookupNames may use exported field names like CreatedBy).
-	if col.Name != "" {
+	candidates := indexLookupCandidates(col)
+	// Only register the physical column name when this column declares an index.
+	// Otherwise leftover indexes on declared-but-unindexed columns are swallowed.
+	if col.Name != "" && len(candidates) > 0 {
 		desiredIndexKeys[strings.ToLower(col.Name)] = struct{}{}
 	}
-	for _, cand := range indexLookupCandidates(col) {
+	for _, cand := range candidates {
 		desiredIndexKeys[strings.ToLower(cand.Name)] = struct{}{}
 		if liveHasIndex(live, table, cand.Name, cand.Unique) {
 			continue
@@ -182,8 +183,7 @@ func indexPlanColumn(col ColumnSpec) ColumnSpec {
 	return out
 }
 
-func checkOpsForColumn(table string, col ColumnSpec, rowCount int64, dialect string, tableExists bool) []PlanOp {
-	_ = rowCount
+func checkOpsForColumn(table string, col ColumnSpec, dialect string, tableExists bool) []PlanOp {
 	expr := strings.TrimSpace(col.CheckExpr)
 	if expr == "" {
 		return nil
