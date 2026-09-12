@@ -14,6 +14,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// Overridable helpers for tests.
+var (
+	listDeclarationsFn          = modmeta.ListDeclarations
+	expandModelsAlongExtendsFn  = modmeta.ExpandModelsAlongExtends
+	loadEffectiveModelsByKeysFn = loadEffectiveModelsByKeys
+)
+
 // loadModelsForSchema loads models for DDL.
 // Trigger scope is the current module's declarations; desired shape prefers
 // effective tip rows (IMD), falling back to expanded declarations.
@@ -30,7 +37,7 @@ func loadModelsForSchema(runtimeScope scope.Scope, module *meta.Module) ([]*meta
 	db := runtimeScope.Session().DB
 
 	absFalse := false
-	decls, err := modmeta.ListDeclarations(db, modmeta.DeclarationQuery{
+	decls, err := listDeclarationsFn(db, modmeta.DeclarationQuery{
 		ModuleID:    module.Id.String,
 		Abstract:    &absFalse,
 		PreloadTree: true,
@@ -38,11 +45,10 @@ func loadModelsForSchema(runtimeScope scope.Scope, module *meta.Module) ([]*meta
 	if err != nil {
 		return nil, xfmt.Errorf("error getting models by module id: %w", err)
 	}
-	if err := modmeta.ExpandModelsAlongExtends(db, decls); err != nil {
+	if err := expandModelsAlongExtendsFn(db, decls); err != nil {
 		return nil, xfmt.Errorf("error expanding model extends for schema: %w", err)
 	}
 
-	declByKey := make(map[string]*meta.Model, len(decls))
 	keys := make([]modmeta.LogicalKey, 0, len(decls))
 	for _, d := range decls {
 		if d == nil {
@@ -53,12 +59,10 @@ func loadModelsForSchema(runtimeScope scope.Scope, module *meta.Module) ([]*meta
 			// Path-only / incomplete identity: keep declaration as-is later.
 			continue
 		}
-		key := k.Application + "\x00" + k.Name
-		declByKey[key] = d
 		keys = append(keys, k)
 	}
 
-	effectiveByKey, err := loadEffectiveModelsByKeys(db, keys)
+	effectiveByKey, err := loadEffectiveModelsByKeysFn(db, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +90,7 @@ func loadModelsForSchema(runtimeScope scope.Scope, module *meta.Module) ([]*meta
 	}
 
 	// Effective tips may omit Extends-only ancestors in Fields; expand again.
-	if err := modmeta.ExpandModelsAlongExtends(db, candidates); err != nil {
+	if err := expandModelsAlongExtendsFn(db, candidates); err != nil {
 		return nil, xfmt.Errorf("error expanding effective model extends for schema: %w", err)
 	}
 
@@ -107,7 +111,6 @@ func loadModelsForSchema(runtimeScope scope.Scope, module *meta.Module) ([]*meta
 		}
 		filtered = append(filtered, model)
 	}
-	_ = declByKey
 	return filtered, nil
 }
 
@@ -116,28 +119,50 @@ func loadEffectiveModelsByKeys(db *gorm.DB, keys []modmeta.LogicalKey) (map[stri
 	if db == nil || len(keys) == 0 {
 		return out, nil
 	}
-	orderID := func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }
+
+	type pair struct{ app, name string }
+	want := make(map[string]pair, len(keys))
 	for _, key := range keys {
 		n := key.Normalized()
 		if !n.Valid() {
 			continue
 		}
-		var rows []meta.Model
-		err := db.Model(&meta.Model{}).
-			Where("application = ? AND name = ?", n.Application, n.Name).
-			Preload("Fields", orderID).
-			Preload("Fields.Decorators", orderID).
-			Preload("Fields.Decorators.Arguments", orderID).
-			Order("id DESC").
-			Find(&rows).Error
-		if err != nil {
-			return nil, xfmt.Errorf("load effective model %s.%s: %w", n.Application, n.Name, err)
+		want[n.Application+"\x00"+n.Name] = pair{n.Application, n.Name}
+	}
+	if len(want) == 0 {
+		return out, nil
+	}
+
+	placeholders := make([]string, 0, len(want))
+	args := make([]any, 0, len(want)*2)
+	for _, p := range want {
+		placeholders = append(placeholders, "(?, ?)")
+		args = append(args, p.app, p.name)
+	}
+
+	orderID := func(tx *gorm.DB) *gorm.DB { return tx.Order("id ASC") }
+	var rows []meta.Model
+	err := db.Model(&meta.Model{}).
+		Where("(module_id IS NULL OR module_id = '')").
+		Where("(application, name) IN ("+strings.Join(placeholders, ", ")+")", args...).
+		Preload("Fields", orderID).
+		Preload("Fields.Decorators", orderID).
+		Preload("Fields.Decorators.Arguments", orderID).
+		Order("id DESC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, xfmt.Errorf("load effective models: %w", err)
+	}
+
+	for i := range rows {
+		m := rows[i]
+		n := modmeta.LogicalKey{Application: m.Application, Name: m.Name}.Normalized()
+		key := n.Application + "\x00" + n.Name
+		if _, ok := out[key]; ok {
+			continue // already have highest id for this key
 		}
-		if len(rows) == 0 {
-			continue
-		}
-		m := rows[0]
-		out[n.Application+"\x00"+n.Name] = &m
+		copied := m
+		out[key] = &copied
 	}
 	return out, nil
 }

@@ -88,7 +88,7 @@ func columnMismatch(desired ColumnSpec, live LiveColumn, dialect string) (bool, 
 	if wantType != "" && haveType != "" && wantType != haveType {
 		// SQLite affinity: many types surface as TEXT/INTEGER/REAL/BLOB/NUMERIC.
 		if dialect == "sqlite" && sqliteTypeCompatible(wantType, haveType) {
-			// continue to nullability check
+			// continue to nullability / size checks
 		} else {
 			return true, fmt.Sprintf("type change %s → %s (desired physical %s)", haveType, wantType, desired.PhysicalType)
 		}
@@ -98,8 +98,29 @@ func columnMismatch(desired ColumnSpec, live LiveColumn, dialect string) (bool, 
 		if desired.NotNull && liveNullable {
 			return true, "tighten nullability to NOT NULL"
 		}
+		if !desired.NotNull && !liveNullable {
+			return true, "loosen nullability to NULL"
+		}
+	}
+	if lengthMeaningful(wantType, desired.PhysicalType) &&
+		desired.Size != nil && live.Length != nil && *live.Length > 0 &&
+		int64(*desired.Size) != *live.Length {
+		return true, fmt.Sprintf("size change %d → %d", *live.Length, *desired.Size)
 	}
 	return false, ""
+}
+
+func lengthMeaningful(normalizedType, physical string) bool {
+	switch normalizedType {
+	case "varchar", "char":
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(physical)) {
+	case "varchar", "char":
+		return true
+	default:
+		return false
+	}
 }
 
 func mapPhysicalToDialectType(dialect, physical string) string {

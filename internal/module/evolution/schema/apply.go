@@ -11,7 +11,11 @@ import (
 
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/ettle/strcase"
+	"gorm.io/gorm"
 )
+
+// Overridable for tests that need to force post-AddColumn index failures.
+var ensureIndexesForColumnFn = ensureIndexesForColumn
 
 // applyPlan executes Auto ops only (caller must Validate first).
 func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error {
@@ -40,14 +44,95 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			if err != nil {
 				return fmt.Errorf("build add_column struct %s.%s: %w", op.Table, op.Column.Name, err)
 			}
-			if err := db.Table(op.Table).Migrator().AddColumn(inst, exportIdent(op.Column.FieldName)); err != nil {
+			fieldName := exportIdent(op.Column.FieldName)
+			if err := db.Table(op.Table).Migrator().AddColumn(inst, fieldName); err != nil {
 				return fmt.Errorf("add column %s.%s: %w", op.Table, op.Column.Name, err)
+			}
+			// AddColumn does not create indexes from gorm tags; create them explicitly.
+			if err := ensureIndexesForColumnFn(db.DB, op.Table, *op.Column, dialect); err != nil {
+				return err
 			}
 		default:
 			// P0: never apply alter/drop here.
 		}
 	}
 	return nil
+}
+
+// ensureIndexesForDesired creates missing ordinary/unique indexes for desired columns.
+// CreateTable already creates indexes from tags; this covers AddColumn and existing columns.
+func ensureIndexesForDesired(db *gorm.DB, desired DesiredSchema, dialect string) error {
+	if db == nil {
+		return nil
+	}
+	for table, cols := range desired.Tables {
+		for _, col := range cols {
+			if err := ensureIndexesForColumn(db, table, col, dialect); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect string) error {
+	if db == nil {
+		return nil
+	}
+	if col.Trigram || strings.EqualFold(col.IndexName, translatedTrigramIndexKind) {
+		return nil
+	}
+	if !col.Indexed && !col.UniqueIndex {
+		return nil
+	}
+	inst, err := structForAddColumn(table, col, dialect)
+	if err != nil {
+		return fmt.Errorf("build index struct %s.%s: %w", table, col.Name, err)
+	}
+	mig := db.Table(table).Migrator()
+	for _, name := range indexLookupNames(col) {
+		if mig.HasIndex(inst, name) {
+			continue
+		}
+		if err := mig.CreateIndex(inst, name); err != nil {
+			return fmt.Errorf("create index %s on %s.%s: %w", name, table, col.Name, err)
+		}
+	}
+	return nil
+}
+
+// indexLookupNames returns names suitable for Migrator.HasIndex/CreateIndex LookIndex.
+func indexLookupNames(col ColumnSpec) []string {
+	seen := map[string]struct{}{}
+	var names []string
+	add := func(name string) {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return
+		}
+		if _, ok := seen[name]; ok {
+			return
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	}
+	if col.Indexed {
+		if col.IndexName != "" && !strings.EqualFold(col.IndexName, translatedTrigramIndexKind) {
+			add(col.IndexName)
+		} else {
+			add(exportIdent(col.FieldName))
+		}
+	}
+	if col.UniqueIndex {
+		if len(col.UniqueIndexNames) > 0 {
+			for _, name := range col.UniqueIndexNames {
+				add(name)
+			}
+		} else {
+			add(exportIdent(col.FieldName))
+		}
+	}
+	return names
 }
 
 func structForCreateTable(table string, cols []ColumnSpec, dialect string) (any, error) {
@@ -149,24 +234,26 @@ func addStandardTagsFromSpec(tags *[]string, col ColumnSpec) {
 	// P0: do not emit check tags; CHECK is applied via ensureCheckConstraint after create/add.
 }
 
+// exportIdent returns a valid exported Go identifier for reflect.StructOf.
 func exportIdent(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "Col"
 	}
-	runes := []rune(name)
-	if !unicode.IsLetter(runes[0]) && runes[0] != '_' {
-		return "F" + name
-	}
-	runes[0] = unicode.ToUpper(runes[0])
-	out := make([]rune, 0, len(runes))
-	for _, r := range runes {
+	sanitized := make([]rune, 0, len(name))
+	for _, r := range name {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
-			out = append(out, r)
+			sanitized = append(sanitized, r)
 		}
 	}
-	if len(out) == 0 {
+	if len(sanitized) == 0 {
 		return "Col"
 	}
-	return string(out)
+	// Must start with an uppercase letter (exported); prefix when first rune is not a letter.
+	if !unicode.IsLetter(sanitized[0]) {
+		sanitized = append([]rune{'F'}, sanitized...)
+	} else {
+		sanitized[0] = unicode.ToUpper(sanitized[0])
+	}
+	return string(sanitized)
 }

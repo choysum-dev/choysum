@@ -14,6 +14,7 @@ import (
 // buildDesired builds DesiredSchema from models (fields must carry ResolvedSpec).
 func buildDesired(models []*meta.Model) (DesiredSchema, error) {
 	out := DesiredSchema{Tables: make(map[string][]ColumnSpec)}
+	seenByTable := make(map[string]map[string]ColumnSpec) // table → column → first spec
 	for _, model := range models {
 		if model == nil {
 			continue
@@ -28,6 +29,11 @@ func buildDesired(models []*meta.Model) (DesiredSchema, error) {
 		if table == "" {
 			continue
 		}
+		seen := seenByTable[table]
+		if seen == nil {
+			seen = make(map[string]ColumnSpec)
+			seenByTable[table] = seen
+		}
 		for _, field := range model.Fields {
 			col, err := columnSpecFromField(field, model)
 			if err != nil {
@@ -36,10 +42,63 @@ func buildDesired(models []*meta.Model) (DesiredSchema, error) {
 			if col == nil {
 				continue
 			}
+			key := strings.ToLower(col.Name)
+			if prev, ok := seen[key]; ok {
+				if columnSpecsEquivalent(prev, *col) {
+					continue
+				}
+				return DesiredSchema{}, fmt.Errorf(
+					"conflicting column definitions for %s.%s (fields %q and %q)",
+					table, col.Name, prev.FieldName, col.FieldName,
+				)
+			}
+			seen[key] = *col
 			out.Tables[table] = append(out.Tables[table], *col)
 		}
 	}
 	return out, nil
+}
+
+func columnSpecsEquivalent(a, b ColumnSpec) bool {
+	if a.Name != b.Name ||
+		a.PhysicalType != b.PhysicalType ||
+		a.NotNull != b.NotNull ||
+		a.PrimaryKey != b.PrimaryKey ||
+		a.Unique != b.Unique ||
+		a.Indexed != b.Indexed ||
+		a.IndexName != b.IndexName ||
+		a.UniqueIndex != b.UniqueIndex ||
+		a.Trigram != b.Trigram ||
+		a.StorageKind != b.StorageKind ||
+		a.CheckExpr != b.CheckExpr {
+		return false
+	}
+	if !intPtrEqual(a.Size, b.Size) || !stringPtrEqual(a.Default, b.Default) {
+		return false
+	}
+	if len(a.UniqueIndexNames) != len(b.UniqueIndexNames) {
+		return false
+	}
+	for i := range a.UniqueIndexNames {
+		if a.UniqueIndexNames[i] != b.UniqueIndexNames[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func intPtrEqual(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func stringPtrEqual(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 // columnSpecFromField returns nil when the field should not create a physical column.

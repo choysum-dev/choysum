@@ -33,42 +33,67 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 		live.Tables[table] = true
 		live.Columns[table] = make(map[string]LiveColumn)
 
-		columnTypes, err := mig.ColumnTypes(table)
+		columnTypes, err := getColumnTypes(db, table)
 		if err != nil {
 			return LiveSchema{}, fmt.Errorf("column types for %s: %w", table, err)
 		}
 		for _, ct := range columnTypes {
-			if ct == nil {
-				continue
+			if lc, ok := liveColumnFromColumnType(ct); ok {
+				live.Columns[table][strings.ToLower(lc.Name)] = lc
 			}
-			name := strings.TrimSpace(ct.Name())
-			if name == "" {
-				continue
-			}
-			lc := LiveColumn{
-				Name:             name,
-				DatabaseTypeName: strings.TrimSpace(ct.DatabaseTypeName()),
-			}
-			if length, ok := ct.Length(); ok {
-				lengthCopy := length
-				lc.Length = &lengthCopy
-			}
-			if nullable, ok := ct.Nullable(); ok {
-				nullableCopy := nullable
-				lc.Nullable = &nullableCopy
-			}
-			live.Columns[table][strings.ToLower(name)] = lc
 		}
 
-		var count int64
-		if err := db.Table(table).Count(&count).Error; err != nil {
-			// Best-effort: treat unknown as empty for NOT NULL policy (conservative would be non-empty).
-			// Prefer failing closed on count errors.
-			return LiveSchema{}, fmt.Errorf("count rows for %s: %w", table, err)
+		count, err := probeTableNonEmptyFn(db, table)
+		if err != nil {
+			return LiveSchema{}, fmt.Errorf("probe rows for %s: %w", table, err)
 		}
 		live.RowCount[table] = count
 	}
 	return live, nil
+}
+
+// Overridable migrator helpers (tests replace these for failure paths).
+var (
+	getColumnTypes = func(db *gorm.DB, table string) ([]gorm.ColumnType, error) {
+		return db.Migrator().ColumnTypes(table)
+	}
+	probeTableNonEmptyFn = probeTableNonEmpty
+)
+
+func liveColumnFromColumnType(ct gorm.ColumnType) (LiveColumn, bool) {
+	if ct == nil {
+		return LiveColumn{}, false
+	}
+	name := strings.TrimSpace(ct.Name())
+	if name == "" {
+		return LiveColumn{}, false
+	}
+	lc := LiveColumn{
+		Name:             name,
+		DatabaseTypeName: strings.TrimSpace(ct.DatabaseTypeName()),
+	}
+	if length, ok := ct.Length(); ok {
+		lengthCopy := length
+		lc.Length = &lengthCopy
+	}
+	if nullable, ok := ct.Nullable(); ok {
+		nullableCopy := nullable
+		lc.Nullable = &nullableCopy
+	}
+	return lc, true
+}
+
+// probeTableNonEmpty returns 1 if the table has at least one row, otherwise 0.
+func probeTableNonEmpty(db *gorm.DB, table string) (int64, error) {
+	var probe int
+	tx := db.Table(table).Select("1").Limit(1).Scan(&probe)
+	if tx.Error != nil {
+		return 0, tx.Error
+	}
+	if tx.RowsAffected > 0 {
+		return 1, nil
+	}
+	return 0, nil
 }
 
 func desiredTableNames(desired DesiredSchema) []string {

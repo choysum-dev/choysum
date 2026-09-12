@@ -71,7 +71,7 @@ type LiveColumn struct {
 type LiveSchema struct {
 	Tables   map[string]bool                  // table exists
 	Columns  map[string]map[string]LiveColumn // table → column name → meta
-	RowCount map[string]int64                 // table → approximate row count (0 if unknown/empty)
+	RowCount map[string]int64                 // table → 0/1 presence indicator (any row?)
 }
 
 // PlanOp is one schema change candidate.

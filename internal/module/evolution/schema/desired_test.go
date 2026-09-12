@@ -253,7 +253,10 @@ func TestBuildDesired_FiltersModels(t *testing.T) {
 	models := []*meta.Model{
 		{
 			Name: "Order", ModelTable: "sales_order",
-			Fields: []*meta.Field{newFieldWithOptions(t, "Status", `{"type":"selection"}`)},
+			Fields: []*meta.Field{
+				newFieldWithOptions(t, "Status", `{"type":"selection"}`),
+				newFieldWithOptions(t, "Lines", `{"type":"OneToMany"}`), // nil column, skipped
+			},
 		},
 		{Name: "Readonly", ModelTable: "sales_readonly", Readonly: true, Fields: []*meta.Field{newFieldWithOptions(t, "Ignored", `{"type":"selection"}`)}},
 		{Name: "Disabled", ModelTable: "sales_disabled", AutoMigrate: &disabledAutoMigrate, Fields: []*meta.Field{newFieldWithOptions(t, "Ignored", `{"type":"selection"}`)}},

@@ -12,6 +12,21 @@ import (
 	"github.com/ettle/strcase"
 )
 
+// Overridable for tests that need to force post-apply index failures.
+var ensureIndexesForDesiredFn = ensureIndexesForDesired
+
+var (
+	applyTableCheckConstraintsFn = func(m *modelMigrator, table string, model *meta.Model) error {
+		return m.applyTableCheckConstraints(table, model)
+	}
+	applyTableTranslatedTrigramIndexesFn = func(m *modelMigrator, table string, model *meta.Model) error {
+		return m.applyTableTranslatedTrigramIndexes(table, model)
+	}
+	applyTableTranslatedL2IndexesFn = func(m *modelMigrator, table string, model *meta.Model) error {
+		return m.applyTableTranslatedL2Indexes(table, model)
+	}
+)
+
 type modelMigrator struct {
 	runtimeScope scope.Scope
 	module       *meta.Module
@@ -100,6 +115,9 @@ func (m *modelMigrator) MigrateSchema() error {
 	if err := applyPlan(m.runtimeScope, dialect, plan); err != nil {
 		return err
 	}
+	if err := ensureIndexesForDesiredFn(m.runtimeScope.Session().DB, desired, dialect); err != nil {
+		return err
+	}
 
 	// Post-apply: CHECK / trigram / L2 (existing helpers; not GORM AutoMigrate).
 	for _, model := range m.models {
@@ -113,13 +131,13 @@ func (m *modelMigrator) MigrateSchema() error {
 		if tableName == "" {
 			continue
 		}
-		if err := m.applyTableCheckConstraints(tableName, model); err != nil {
+		if err := applyTableCheckConstraintsFn(m, tableName, model); err != nil {
 			return fmt.Errorf("migrate table %s check constraints: %w", tableName, err)
 		}
-		if err := m.applyTableTranslatedTrigramIndexes(tableName, model); err != nil {
+		if err := applyTableTranslatedTrigramIndexesFn(m, tableName, model); err != nil {
 			return fmt.Errorf("migrate table %s translated trigram indexes: %w", tableName, err)
 		}
-		if err := m.applyTableTranslatedL2Indexes(tableName, model); err != nil {
+		if err := applyTableTranslatedL2IndexesFn(m, tableName, model); err != nil {
 			return fmt.Errorf("migrate table %s translated L2 indexes: %w", tableName, err)
 		}
 	}
