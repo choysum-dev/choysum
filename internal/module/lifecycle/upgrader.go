@@ -170,11 +170,14 @@ func (m *moduleUpgrader) upgradeAfterPrepare(
 	buildResult *module.BuildResult,
 	persistLater bool,
 ) error {
-	if m == nil || m.runtimeScope == nil {
+	if m == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	if m.runtimeScope == nil {
 		return xfmt.Errorf("scope is nil")
 	}
 	txHoldStarted := time.Now()
-	err := m.runUpgradeCommitTX(m.runtimeScope, nil, installer, fromVersion, &buildResult, persistLater)
+	err := m.runUpgradeCommitTX(m.runtimeScope, m.runtimeScope.Context(), installer, fromVersion, &buildResult, persistLater)
 	LogModuleCommitTxHold(m.runtimeScope.Logger(), "upgrade", "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err

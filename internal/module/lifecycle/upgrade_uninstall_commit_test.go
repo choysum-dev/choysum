@@ -172,6 +172,9 @@ func TestRunUpgradeCommitTX_WithAndWithoutManager(t *testing.T) {
 	if err := (*moduleUpgrader)(nil).upgradeAfterPrepare(installer, "1.0.0", nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
 		t.Fatalf("nil upgrader: %v", err)
 	}
+	if err := (&moduleUpgrader{}).upgradeAfterPrepare(installer, "1.0.0", nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
+		t.Fatalf("nil runtimeScope: %v", err)
+	}
 	if err := closedUp.upgradeAfterPrepare(closedInst, "1.0.0", nil, false); err == nil {
 		t.Fatal("expected closed-db upgradeAfterPrepare error")
 	}

@@ -154,6 +154,9 @@ func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
 	if err := (*moduleInstaller)(nil).installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
 		t.Fatalf("nil installer: %v", err)
 	}
+	if err := (&moduleInstaller{}).installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
+		t.Fatalf("nil runtimeScope: %v", err)
+	}
 	closed := newLifecycleCommitTestScope(t)
 	sqlDB, err := closed.Session().DB.DB()
 	if err != nil {
@@ -182,6 +185,53 @@ func TestFinalizeInstallNoopHooks(t *testing.T) {
 	}
 	if err := installer.finalizeInstall(nil); err != nil {
 		t.Fatalf("finalizeInstall: %v", err)
+	}
+	noMgr := &moduleInstaller{
+		module:       &meta.Module{Name: "demo", Path: t.TempDir()},
+		runtimeScope: runtimeScope,
+		ctx:          newOpContext(),
+	}
+	if err := noMgr.finalizeInstall(nil); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+		t.Fatalf("finalizeInstall without manager: %v", err)
+	}
+}
+
+func TestInstallerJSExecutorAndServiceEntryPoint(t *testing.T) {
+	if installerJSExecutor(nil) != nil {
+		t.Fatal("nil installer")
+	}
+	if installerJSExecutor(&moduleInstaller{}) != nil {
+		t.Fatal("nil manager")
+	}
+	exec := &moduleManagerNoopScriptExecutor{}
+	got := installerJSExecutor(&moduleInstaller{moduleManager: &ModuleManager{jsExecutor: exec}})
+	if got != exec {
+		t.Fatalf("jsExecutor=%v", got)
+	}
+	if installerServiceEntryPoint(nil) != "" {
+		t.Fatal("nil installer entry")
+	}
+	if installerServiceEntryPoint(&moduleInstaller{}) != "" {
+		t.Fatal("nil module entry")
+	}
+	mod := &meta.Module{ServiceEntryPoint: "service/main.ts"}
+	if installerServiceEntryPoint(&moduleInstaller{module: mod}) != "service/main.ts" {
+		t.Fatalf("entry=%q", installerServiceEntryPoint(&moduleInstaller{module: mod}))
+	}
+}
+
+func TestForCommitScopeNilManager(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	inst := &moduleInstaller{
+		module:       &meta.Module{Name: "demo", Path: t.TempDir()},
+		runtimeScope: runtimeScope,
+	}
+	committed := inst.forCommitScope(runtimeScope)
+	if committed == nil || committed.builder == nil {
+		t.Fatal("expected committed installer with builder")
+	}
+	if committed.moduleManager != nil {
+		t.Fatal("expected nil manager")
 	}
 }
 

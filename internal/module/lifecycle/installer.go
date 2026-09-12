@@ -139,11 +139,14 @@ func (m *moduleInstaller) install() error {
 
 // installAfterPrepare runs the install commit TX and finalize steps.
 func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, persistLater bool) error {
-	if m == nil || m.runtimeScope == nil {
+	if m == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	if m.runtimeScope == nil {
 		return xfmt.Errorf("scope is nil")
 	}
 	txHoldStarted := time.Now()
-	err := m.runInstallCommitTX(m.runtimeScope, nil, buildResult, persistLater)
+	err := m.runInstallCommitTX(m.runtimeScope, m.runtimeScope.Context(), buildResult, persistLater)
 	LogInstallOuterTxHold(m.runtimeScope.Logger(), "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err
@@ -169,22 +172,36 @@ func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Con
 func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
 	committed := *m
 	committed.runtimeScope = txScope
-	entryPoint := ""
-	if m.module != nil {
-		entryPoint = m.module.ServiceEntryPoint
-	}
-	var jsExec jsexecutor.ScriptExecutor
-	if m.moduleManager != nil {
-		jsExec = m.moduleManager.jsExecutor
-	}
 	committed.builder = internalbackendbuilder.NewModuleBuilder(
 		txScope,
-		jsExec,
+		installerJSExecutor(m),
 		m.module,
-		entryPoint,
+		installerServiceEntryPoint(m),
 		internalbackendbuilder.WithPublishDist(false),
 	)
 	return &committed
+}
+
+// installerJSExecutor returns the manager JS executor when present.
+func installerJSExecutor(m *moduleInstaller) jsexecutor.ScriptExecutor {
+	if m == nil {
+		return nil
+	}
+	if m.moduleManager == nil {
+		return nil
+	}
+	return m.moduleManager.jsExecutor
+}
+
+// installerServiceEntryPoint returns the module service entry point when present.
+func installerServiceEntryPoint(m *moduleInstaller) string {
+	if m == nil {
+		return ""
+	}
+	if m.module == nil {
+		return ""
+	}
+	return m.module.ServiceEntryPoint
 }
 
 func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) error {
@@ -213,10 +230,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 
 	initializeStarted := time.Now()
-	var jsExec jsexecutor.ScriptExecutor
-	if m.moduleManager != nil {
-		jsExec = m.moduleManager.jsExecutor
-	}
+	jsExec := installerJSExecutor(m)
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, jsExec, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
@@ -293,10 +307,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {
 	finalizeStarted := time.Now()
-	var jsExec jsexecutor.ScriptExecutor
-	if m.moduleManager != nil {
-		jsExec = m.moduleManager.jsExecutor
-	}
+	jsExec := installerJSExecutor(m)
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, jsExec, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
