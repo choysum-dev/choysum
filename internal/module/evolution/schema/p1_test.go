@@ -159,7 +159,10 @@ func TestPlan_VarcharWidenAuto(t *testing.T) {
 		Columns: map[string]map[string]LiveColumn{"t": {"code": {Name: "code", DatabaseTypeName: "varchar", Length: &length}}},
 		Indexes: map[string][]LiveIndex{"t": {}},
 	}
-	plan := buildPlan("sales", desired, live, "postgres")
+	plan, err := buildPlan("sales", desired, live, "postgres")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	if len(plan.Ops) != 1 || plan.Ops[0].Kind != OpAlterColumn || plan.Ops[0].Safety != SafetyAuto {
 		t.Fatalf("expected auto widen, got %#v", plan.Ops)
 	}
@@ -178,7 +181,10 @@ func TestPlan_VarcharNarrowGuarded(t *testing.T) {
 		Columns: map[string]map[string]LiveColumn{"t": {"code": {Name: "code", DatabaseTypeName: "varchar", Length: &length}}},
 		Indexes: map[string][]LiveIndex{"t": {}},
 	}
-	plan := buildPlan("sales", desired, live, "postgres")
+	plan, err := buildPlan("sales", desired, live, "postgres")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	if len(plan.Ops) != 1 || plan.Ops[0].Safety != SafetyGuarded || !strings.Contains(plan.Ops[0].Detail, "narrow") {
 		t.Fatalf("expected guarded narrow, got %#v", plan.Ops)
 	}
@@ -194,7 +200,10 @@ func TestPlan_UniqueOnPopulatedGuarded(t *testing.T) {
 		Indexes:  map[string][]LiveIndex{"t": {}},
 		RowCount: map[string]int64{"t": 1},
 	}
-	plan := buildPlan("sales", desired, live, "sqlite")
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	found := false
 	for _, op := range plan.Ops {
 		if op.Kind == OpAddIndex && op.Safety == SafetyGuarded {
@@ -216,7 +225,10 @@ func TestPlan_UniqueFlagOnExistingColumnGuarded(t *testing.T) {
 		Indexes:  map[string][]LiveIndex{"t": {{Name: "idx_code", Columns: []string{"code"}, Unique: false}}},
 		RowCount: map[string]int64{"t": 1},
 	}
-	plan := buildPlan("sales", desired, live, "sqlite")
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	found := false
 	for _, op := range plan.Ops {
 		if op.Kind == OpAddIndex && op.Safety == SafetyGuarded && op.Column != nil && op.Column.UniqueIndex {
@@ -241,7 +253,10 @@ func TestPlan_NewUniqueColumnOnPopulatedIsGuardedIndex(t *testing.T) {
 		Indexes:  map[string][]LiveIndex{"t": {}},
 		RowCount: map[string]int64{"t": 1},
 	}
-	plan := buildPlan("sales", desired, live, "sqlite")
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	var addCol, addIdx *PlanOp
 	for i := range plan.Ops {
 		op := &plan.Ops[i]
@@ -270,7 +285,10 @@ func TestPlan_EnsureCheckOnPopulatedGuarded(t *testing.T) {
 		Indexes:  map[string][]LiveIndex{"t": {}},
 		RowCount: map[string]int64{"t": 1},
 	}
-	plan := buildPlan("sales", desired, live, "postgres")
+	plan, err := buildPlan("sales", desired, live, "postgres")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	found := false
 	for _, op := range plan.Ops {
 		if op.Kind == OpEnsureCheck && op.Safety == SafetyAuto {
@@ -280,7 +298,10 @@ func TestPlan_EnsureCheckOnPopulatedGuarded(t *testing.T) {
 	if !found {
 		t.Fatalf("expected auto ensure_check on populated table, got %#v", plan.Ops)
 	}
-	sqlitePlan := buildPlan("sales", desired, live, "sqlite")
+	sqlitePlan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	for _, op := range sqlitePlan.Ops {
 		if op.Kind == OpEnsureCheck {
 			t.Fatalf("sqlite existing table must omit ensure_check, got %#v", op)
@@ -298,7 +319,10 @@ func TestPlan_DefaultRemovalGuarded(t *testing.T) {
 		Columns: map[string]map[string]LiveColumn{"t": {"note": {Name: "note", DatabaseTypeName: "varchar", Default: &liveDef}}},
 		Indexes: map[string][]LiveIndex{"t": {}},
 	}
-	plan := buildPlan("sales", desired, live, "postgres")
+	plan, err := buildPlan("sales", desired, live, "postgres")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	found := false
 	for _, op := range plan.Ops {
 		if op.Kind == OpAlterColumn && op.Safety == SafetyGuarded && strings.Contains(op.Detail, "default") {
@@ -726,7 +750,10 @@ func TestPlan_LeftoverIndexAndCovered(t *testing.T) {
 			{Name: "", Columns: []string{"x"}, Unique: false},
 		}},
 	}
-	plan := buildPlan("sales", desired, live, "sqlite")
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	foundExtra, foundStale := false, false
 	for _, left := range plan.Leftover {
 		if left.Kind == LeftoverIndex && left.Name == "idx_extra" {
@@ -756,7 +783,10 @@ func TestPlan_LeftoverSkipsPrimaryKey(t *testing.T) {
 			{Name: "sqlite_autoindex_t_2", Columns: []string{"id"}, Unique: true},
 		}},
 	}
-	plan := buildPlan("sales", desired, live, "postgres")
+	plan, err := buildPlan("sales", desired, live, "postgres")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
 	if len(plan.Leftover) != 0 {
 		t.Fatalf("pk/autoindex must not be leftover: %#v", plan.Leftover)
 	}

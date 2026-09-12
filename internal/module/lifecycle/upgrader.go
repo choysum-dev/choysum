@@ -131,7 +131,7 @@ func (m *moduleUpgrader) upgrade() error {
 		return xfmt.Errorf("error validating module %s: %w", target.Name, err)
 	}
 
-	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target); runner != nil {
+	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target, scripts.WithIntentBag(m.schemaIntents())); runner != nil {
 		if err := runner.Validate(m.runtimeScope.Context(), fromVersion, target.Version); err != nil {
 			return xfmt.Errorf("error validating migrations for module %s: %w", target.Name, err)
 		}
@@ -210,7 +210,7 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 		}
 	}
 
-	migrator, err := schema.NewMigrator(m.runtimeScope, target)
+	migrator, err := schema.NewMigrator(m.runtimeScope, target, schema.WithIntentBag(m.schemaIntents()), schema.WithToVersion(target.Version))
 	if err != nil {
 		return nil, xfmt.Errorf("error preparing schema migrator for module %s: %w", target.Name, err)
 	}
@@ -257,7 +257,7 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 		return xfmt.Errorf("upgrade finalize target is nil")
 	}
 	finalizeStarted := time.Now()
-	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target); runner != nil {
+	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target, scripts.WithIntentBag(m.schemaIntents())); runner != nil {
 		if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhasePost, FromVersion: fromVersion, ToVersion: target.Version}); err != nil {
 			return xfmt.Errorf("error running post migrations for module %s: %w", target.Name, err)
 		}
@@ -279,7 +279,17 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 		}
 	}
 	m.logUpgradeStep(target.Name, moduleStepFinalize, finalizeStarted, "from_version", fromVersion, "to_version", target.Version)
+	if bag := m.schemaIntents(); bag != nil {
+		bag.Clear()
+	}
 	return nil
+}
+
+func (m *moduleUpgrader) schemaIntents() schema.IntentBag {
+	if m == nil || m.ctx == nil {
+		return nil
+	}
+	return m.ctx.schemaIntents
 }
 
 func newModuleUpgrader(runtimeScope scope.Scope, module *meta.Module, moduleManager *ModuleManager, ctx *opContext) *moduleUpgrader {

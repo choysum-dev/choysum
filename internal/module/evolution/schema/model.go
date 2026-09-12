@@ -4,6 +4,7 @@
 package schema
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -24,6 +25,8 @@ type modelMigrator struct {
 	runtimeScope scope.Scope
 	module       *meta.Module
 	models       []*meta.Model
+	intents      IntentBag
+	toVersion    string
 }
 
 func newModelMigrator(runtimeScope scope.Scope, module *meta.Module, models []*meta.Model) *modelMigrator {
@@ -101,7 +104,10 @@ func (m *modelMigrator) buildSchemaPlan() (DesiredSchema, SchemaPlan, error) {
 	if m.module != nil {
 		moduleName = m.module.Name
 	}
-	plan := buildPlan(moduleName, desired, live, dialect)
+	plan, err := buildPlan(moduleName, desired, live, dialect)
+	if err != nil {
+		return DesiredSchema{}, SchemaPlan{}, err
+	}
 	return desired, plan, nil
 }
 
@@ -110,7 +116,7 @@ func (m *modelMigrator) PlanSchema() (SchemaPlan, error) {
 	if err != nil {
 		return SchemaPlan{}, err
 	}
-	if err := ValidatePlan(plan); err != nil {
+	if err := ValidatePlan(plan, m.intents); err != nil {
 		return plan, err
 	}
 	return plan, nil
@@ -122,7 +128,8 @@ func (m *modelMigrator) MigrateSchema() error {
 		return err
 	}
 	m.logPlan(plan)
-	if err := ValidatePlan(plan); err != nil {
+	m.warnDropAfterLeftovers(plan)
+	if err := ValidatePlan(plan, m.intents); err != nil {
 		return err
 	}
 	dialect := m.getDialect()
@@ -182,6 +189,64 @@ func (m *modelMigrator) logPlan(plan SchemaPlan) {
 		"manual", manual,
 		"leftover", len(plan.Leftover),
 	)
+}
+
+// warnDropAfterLeftovers logs when leftover columns were marked dropAfter for this toVersion
+// but no matching drop Intent was registered (does not fail the upgrade).
+func (m *modelMigrator) warnDropAfterLeftovers(plan SchemaPlan) {
+	toVersion := strings.TrimSpace(m.toVersion)
+	if toVersion == "" || m.runtimeScope == nil || m.runtimeScope.Session() == nil || m.runtimeScope.Logger() == nil {
+		return
+	}
+	tables := make([]string, 0, len(plan.Leftover))
+	for _, left := range plan.Leftover {
+		if left.Kind != LeftoverColumn {
+			continue
+		}
+		tables = append(tables, left.Table)
+	}
+	if len(tables) == 0 {
+		return
+	}
+	snaps, err := LoadSnapshots(m.runtimeScope.Session().DB, tables)
+	if err != nil || len(snaps) == 0 {
+		return
+	}
+	for _, left := range plan.Leftover {
+		if left.Kind != LeftoverColumn {
+			continue
+		}
+		snap, ok := snaps[left.Table]
+		if !ok || len(snap.DesiredJSON) == 0 {
+			continue
+		}
+		var cols []ColumnSpec
+		if err := json.Unmarshal(snap.DesiredJSON, &cols); err != nil {
+			continue
+		}
+		for _, col := range cols {
+			if !strings.EqualFold(col.Name, left.Name) {
+				continue
+			}
+			if strings.TrimSpace(col.DropAfter) != toVersion {
+				continue
+			}
+			if IntentSatisfies(PlanOp{
+				Kind:   OpKind(IntentDropColumn),
+				Safety: SafetyManual,
+				Table:  left.Table,
+				Detail: "drop column " + left.Name,
+				Column: &ColumnSpec{Name: left.Name},
+			}, m.intents) {
+				continue
+			}
+			m.runtimeScope.Logger().Warn("leftover column marked dropAfter for this version has no drop Intent",
+				"table", left.Table,
+				"column", left.Name,
+				"dropAfter", col.DropAfter,
+			)
+		}
+	}
 }
 
 func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta.Model) error {

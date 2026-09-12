@@ -8,14 +8,17 @@ import (
 	"strings"
 )
 
-// ValidatePlan fails closed on any Guarded or Manual op (P0 has no Intent bag).
-func ValidatePlan(plan SchemaPlan) error {
+// ValidatePlan fails closed on any Guarded or Manual op unless an Intent already covers it.
+func ValidatePlan(plan SchemaPlan, intents IntentBag) error {
 	var guarded []string
 	for _, op := range plan.Ops {
 		switch op.Safety {
 		case SafetyAuto:
 			continue
 		case SafetyGuarded, SafetyManual:
+			if IntentSatisfies(op, intents) {
+				continue
+			}
 			detail := strings.TrimSpace(op.Detail)
 			if detail == "" {
 				detail = string(op.Kind)

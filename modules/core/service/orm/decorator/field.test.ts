@@ -958,6 +958,32 @@ test('Field decorator accepts readonly:true and rejects non-boolean readonly', (
   }).toThrow('readonly must be a boolean');
 });
 
+test('Field decorator accepts renameFrom/dropAfter and rejects empty values', () => {
+  class RenameDropModel extends BaseModel {
+    @Field({ type: 'varchar', size: 32, renameFrom: 'OldCode', dropAfter: '2.0.0' } as any)
+    Code!: string;
+  }
+  const fields = MetadataStorage.instance.getModelMetadata(RenameDropModel as any).fields;
+  expect(fields.get('Code')?.renameFrom).toBe('OldCode');
+  expect(fields.get('Code')?.dropAfter).toBe('2.0.0');
+
+  expect(() => {
+    class BadRename extends BaseModel {
+      @Field({ type: 'varchar', renameFrom: '  ' as any } as any)
+      Name!: string;
+    }
+    return BadRename;
+  }).toThrow('renameFrom must be a non-empty string');
+
+  expect(() => {
+    class BadDropAfter extends BaseModel {
+      @Field({ type: 'varchar', dropAfter: 1 as any } as any)
+      Name!: string;
+    }
+    return BadDropAfter;
+  }).toThrow('dropAfter must be a non-empty string');
+});
+
 test('Field decorator accepts tracking:true and rejects non-boolean tracking', () => {
   class TrackingFlagModel extends BaseModel {
     @Field({ type: 'varchar', size: 32, tracking: true } as any)

@@ -190,6 +190,16 @@ func attachResolvedSpecForTestField(field *meta.Field, options string) {
 			spec.Structural.StorageHints.UniqueIndex = &trimmed
 		}
 	}
+	if v, ok := opts["renameFrom"].(string); ok {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			spec.Structural.RenameFrom = trimmed
+		}
+	}
+	if v, ok := opts["dropAfter"].(string); ok {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			spec.Structural.DropAfter = trimmed
+		}
+	}
 
 	if col, ok := opts["column"].(map[string]any); ok {
 		hints := spec.Structural.StorageHints

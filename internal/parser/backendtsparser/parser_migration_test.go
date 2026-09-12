@@ -2758,6 +2758,42 @@ export default class ReadonlyPilot extends BaseModel {
 	}
 }
 
+func TestTsParser_RenameFromDropAfter(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/rename_field.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('RenamePilot')
+export default class RenamePilot extends BaseModel {
+  @Field({ type: 'varchar', size: 64, renameFrom: 'OldCode', dropAfter: '2.0.0' })
+  public Code: string
+}
+`
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.Field{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+	code := fieldByName["Code"]
+	if code == nil {
+		t.Fatal("missing Code")
+	}
+	spec, err := code.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("GetResolvedSpec: %v %#v", err, spec)
+	}
+	if spec.Structural.RenameFrom != "OldCode" || spec.Structural.DropAfter != "2.0.0" {
+		t.Fatalf("structural = %#v", spec.Structural)
+	}
+}
+
 func TestTsParser_ImageFieldUploadLimits(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}

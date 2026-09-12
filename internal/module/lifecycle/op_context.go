@@ -3,13 +3,19 @@
 
 package lifecycle
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
+)
 
 type opContext struct {
 	withDemo bool
 	opid     string
 
 	fromVersion map[string]string
+
+	schemaIntents schema.IntentBag
 
 	installStack []string
 	installing   map[string]bool
@@ -27,6 +33,7 @@ type opContext struct {
 func newOpContext() *opContext {
 	return &opContext{
 		fromVersion:   map[string]string{},
+		schemaIntents: schema.NewMemoryIntentBag(),
 		installing:    map[string]bool{},
 		installDone:   map[string]bool{},
 		uninstalling:  map[string]bool{},

@@ -26,7 +26,11 @@ func defaultQuickjsReplaceableRuntimePlugins() []jsengine.RuntimePlugin {
 			return []jsengine.JsEngineOption{quickjsengine.WithXid()}
 		}),
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginDB, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
-			return []jsengine.JsEngineOption{quickjsbridge.WithDb(runtimeOptionsFromScope(runtimeScope).dbDialect, runtimeScope.Logger())}
+			dialect := runtimeOptionsFromScope(runtimeScope).dbDialect
+			return []jsengine.JsEngineOption{
+				quickjsbridge.WithDb(dialect, runtimeScope.Logger()),
+				quickjsruntime.WithSchemaDDL(dialect),
+			}
 		}),
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginAuth, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
 			return []jsengine.JsEngineOption{quickjsbridge.WithAuth(authenticator)}

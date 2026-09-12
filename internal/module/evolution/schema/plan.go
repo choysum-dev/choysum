@@ -10,9 +10,10 @@ import (
 
 // buildPlan diffs desired vs live.
 // Auto: create_table, add_column (nullable / empty table), varchar widen, add_index,
-// ensure_check (idempotent on postgres/mysql/sqlserver; omitted for existing sqlite).
-// Guarded: type/null/default changes, varchar narrow, unique on populated tables.
-func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialect string) SchemaPlan {
+// ensure_check (idempotent on postgres/mysql/sqlserver; omitted for existing sqlite),
+// rename_column when renameFrom is qualified.
+// Guarded: type/null/default changes, varchar narrow, unique on populated tables, rename type mismatch.
+func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialect string) (SchemaPlan, error) {
 	plan := SchemaPlan{
 		Module:   strings.TrimSpace(moduleName),
 		Ops:      nil,
@@ -40,11 +41,61 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 		rowCount := live.RowCount[table]
 		desiredNames := map[string]struct{}{}
 		desiredIndexKeys := map[string]struct{}{}
+		consumedRenameFrom := map[string]struct{}{}
 
 		for i := range cols {
 			col := cols[i]
 			desiredNames[strings.ToLower(col.Name)] = struct{}{}
 			liveCol, ok := liveCols[strings.ToLower(col.Name)]
+			renameFrom := strings.TrimSpace(col.RenameFrom)
+
+			if renameFrom != "" {
+				oldKey := strings.ToLower(renameFrom)
+				_, oldOK := liveCols[oldKey]
+				if ok && oldOK {
+					colCopy := col
+					plan.Ops = append(plan.Ops, PlanOp{
+						Kind:     OpRenameColumn,
+						Safety:   SafetyGuarded,
+						Table:    table,
+						Detail:   fmt.Sprintf("rename conflict: both %s and %s exist", renameFrom, col.Name),
+						Column:   &colCopy,
+						FromName: renameFrom,
+					})
+					consumedRenameFrom[oldKey] = struct{}{}
+					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
+					continue
+				}
+				if !ok && oldOK {
+					oldLive := liveCols[oldKey]
+					colCopy := col
+					safety := SafetyAuto
+					detail := fmt.Sprintf("rename column %s → %s", renameFrom, col.Name)
+					if !renamePhysicalCompatible(col, oldLive, dialect) {
+						safety = SafetyGuarded
+						detail = fmt.Sprintf("rename column %s → %s with type mismatch", renameFrom, col.Name)
+					}
+					plan.Ops = append(plan.Ops, PlanOp{
+						Kind:     OpRenameColumn,
+						Safety:   safety,
+						Table:    table,
+						Detail:   detail,
+						Column:   &colCopy,
+						FromName: renameFrom,
+					})
+					consumedRenameFrom[oldKey] = struct{}{}
+					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
+					continue
+				}
+				if !ok && !oldOK {
+					return SchemaPlan{}, fmt.Errorf("renameFrom %q on %s.%s: neither old column %q nor target %q exist in live schema",
+						col.RenameFrom, table, col.FieldName, renameFrom, col.Name)
+				}
+				// ok && !oldOK: rename already applied; fall through to normal diffs.
+			}
+
 			if !ok {
 				safety := SafetyAuto
 				detail := "add column"
@@ -85,6 +136,9 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 			if _, ok := desiredNames[name]; ok {
 				continue
 			}
+			if _, ok := consumedRenameFrom[name]; ok {
+				continue
+			}
 			plan.Leftover = append(plan.Leftover, Leftover{
 				Kind:  LeftoverColumn,
 				Table: table,
@@ -114,7 +168,22 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 		}
 	}
 
-	return plan
+	return plan, nil
+}
+
+func renamePhysicalCompatible(desired ColumnSpec, live LiveColumn, dialect string) bool {
+	wantType := normalizeDBType(mapPhysicalToDialectType(dialect, desired.PhysicalType))
+	haveType := normalizeDBType(live.DatabaseTypeName)
+	if wantType == "" || haveType == "" {
+		return true
+	}
+	if wantType == haveType {
+		return true
+	}
+	if dialect == "sqlite" && sqliteTypeCompatible(wantType, haveType) {
+		return true
+	}
+	return false
 }
 
 func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount int64, desiredIndexKeys map[string]struct{}) []PlanOp {

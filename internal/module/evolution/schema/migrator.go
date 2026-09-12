@@ -15,8 +15,44 @@ type Migrator interface {
 	PlanOnly() (SchemaPlan, error)
 }
 
-func NewMigrator(runtimeScope scope.Scope, module *meta.Module) (Migrator, error) {
-	return newMigrator(runtimeScope, module)
+// MigratorOption configures NewMigrator.
+type MigratorOption func(*migrator)
+
+// WithIntentBag attaches the upgrade Intent bag used by ValidatePlan.
+func WithIntentBag(bag IntentBag) MigratorOption {
+	return func(m *migrator) {
+		if m == nil {
+			return
+		}
+		if mm, ok := m.modelMigrator.(*modelMigrator); ok {
+			mm.intents = bag
+		}
+	}
+}
+
+// WithToVersion sets the target module version for dropAfter leftover warnings.
+func WithToVersion(version string) MigratorOption {
+	return func(m *migrator) {
+		if m == nil {
+			return
+		}
+		if mm, ok := m.modelMigrator.(*modelMigrator); ok {
+			mm.toVersion = version
+		}
+	}
+}
+
+func NewMigrator(runtimeScope scope.Scope, module *meta.Module, opts ...MigratorOption) (Migrator, error) {
+	m, err := newMigrator(runtimeScope, module)
+	if err != nil {
+		return nil, err
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(m)
+		}
+	}
+	return m, nil
 }
 
 func newMigrator(runtimeScope scope.Scope, module *meta.Module) (*migrator, error) {

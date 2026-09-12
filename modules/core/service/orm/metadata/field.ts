@@ -137,6 +137,16 @@ type FlatCommonOptions = {
    * (falls back to `CompanyId` only for non-isolated parents). Related shared/NULL passes.
    */
   checkCompany?: boolean;
+  /**
+   * Prior TS field name when renaming the physical column (schema sync Auto rename).
+   * Value is the previous Field property name; storage uses snake_case.
+   */
+  renameFrom?: string;
+  /**
+   * Module version hint that an old leftover column may be dropped by an upgrade
+   * script at that version. Schema sync never auto-DROPs from this alone.
+   */
+  dropAfter?: string;
 };
 
 type FlatNoRelationOption = { relation?: never };
@@ -757,6 +767,10 @@ export interface FieldMetadata {
    * Related shared rows (NULL) pass.
    */
   checkCompany?: boolean;
+  /** Prior TS field name for physical column rename (schema sync). */
+  renameFrom?: string;
+  /** Version hint for scripted leftover column drop (never auto-DROP). */
+  dropAfter?: string;
   /**
    * Properties container declaration (PP6): omit = App-level; relation field name =
    * parent-record container. Not a physical companion column.

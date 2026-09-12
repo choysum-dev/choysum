@@ -105,6 +105,11 @@ type FieldStructuralSpec struct {
 	MaxWidth *int `json:"maxWidth,omitempty"`
 	// MaxHeight is the pixel height cap (image only; PR-P2-F3).
 	MaxHeight *int `json:"maxHeight,omitempty"`
+	// RenameFrom is the prior TS field name when renaming a physical column.
+	RenameFrom string `json:"renameFrom,omitempty"`
+	// DropAfter is a module version hint that leftover old columns may be script-dropped;
+	// schema sync never auto-DROPs from this field alone.
+	DropAfter string `json:"dropAfter,omitempty"`
 }
 
 type FieldBehaviorComputeSpec struct {

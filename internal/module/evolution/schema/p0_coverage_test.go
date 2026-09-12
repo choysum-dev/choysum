@@ -510,13 +510,13 @@ func TestLoadModelsAndEffective(t *testing.T) {
 }
 
 func TestValidatePlanCoverage(t *testing.T) {
-	if err := ValidatePlan(SchemaPlan{}); err != nil {
+	if err := ValidatePlan(SchemaPlan{}, nil); err != nil {
 		t.Fatalf("empty: %v", err)
 	}
 	err := ValidatePlan(SchemaPlan{Ops: []PlanOp{
 		{Kind: OpAlterColumn, Safety: SafetyManual, Table: "t", Detail: ""},
 		{Kind: OpAlterColumn, Safety: SafetyClass("weird"), Table: "u", Detail: "x"},
-	}})
+	}}, nil)
 	if err == nil || !strings.Contains(err.Error(), "unknown safety") {
 		t.Fatalf("unknown safety: %v", err)
 	}
@@ -557,8 +557,11 @@ func TestMigrateSchemaGuardedAndSkips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan := buildPlan("sales", desired, live, "sqlite")
-	if err := ValidatePlan(plan); err == nil {
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatalf("buildPlan: %v", err)
+	}
+	if err := ValidatePlan(plan, nil); err == nil {
 		// sqlite may not report nullability; accept either guarded or no-op
 		_ = err
 	}

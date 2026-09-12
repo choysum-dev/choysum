@@ -593,6 +593,16 @@ func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBin
 	if v, ok := options["readonly"].(bool); ok && v {
 		spec.Structural.Readonly = toBoolPtr(true)
 	}
+	if v, ok := options["renameFrom"].(string); ok {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			spec.Structural.RenameFrom = trimmed
+		}
+	}
+	if v, ok := options["dropAfter"].(string); ok {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			spec.Structural.DropAfter = trimmed
+		}
+	}
 	if v, ok := asInt(options["maxUploadBytes"]); ok && v > 0 {
 		spec.Structural.MaxUploadBytes = toIntPtr(v)
 	}
