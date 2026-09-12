@@ -116,6 +116,18 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 					return fmt.Errorf("ManyToMany %s.%s conflicts with existing JoinTableSpec for %s",
 						model.Name, field.Name, joinTable)
 				}
+				// Blank refer targets are wildcards: keep the more specific (non-blank) end
+				// so later FK ensure sees declared tables even when a blank-first side won seen.
+				merged := preferJoinTableSpec(prev, candidate)
+				if merged != prev {
+					seen[key] = merged
+					for i := range desired.JoinTables {
+						if strings.EqualFold(strings.TrimSpace(desired.JoinTables[i].Table), joinTable) {
+							desired.JoinTables[i] = merged
+							break
+						}
+					}
+				}
 				continue
 			}
 			seen[key] = candidate
@@ -148,6 +160,30 @@ func referTargetEqual(a, b string) bool {
 		return true
 	}
 	return strings.EqualFold(at, bt)
+}
+
+// preferJoinTableSpec keeps non-blank ReferTable/ReferColumn from either side.
+// Callers must already have verified joinTableSpecsEqual(a, b).
+func preferJoinTableSpec(a, b JoinTableSpec) JoinTableSpec {
+	leftB, rightB := b.Left, b.Right
+	if !(joinEndsEqual(a.Left, b.Left) && joinEndsEqual(a.Right, b.Right)) {
+		leftB, rightB = b.Right, b.Left
+	}
+	out := a
+	out.Left = preferJoinEnd(a.Left, leftB)
+	out.Right = preferJoinEnd(a.Right, rightB)
+	return out
+}
+
+func preferJoinEnd(a, b JoinEnd) JoinEnd {
+	out := a
+	if strings.TrimSpace(out.ReferTable) == "" {
+		out.ReferTable = b.ReferTable
+	}
+	if strings.TrimSpace(out.ReferColumn) == "" {
+		out.ReferColumn = b.ReferColumn
+	}
+	return out
 }
 
 // resolveJoinColumnName maps a joinField / inverseJoinField ref onto a desired physical column.

@@ -327,11 +327,43 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if len(desired.JoinTables) != 1 {
 		t.Fatalf("blank targetModel JoinTables = %#v", desired.JoinTables)
 	}
+	if strings.TrimSpace(desired.JoinTables[0].Left.ReferTable) == "" || strings.TrimSpace(desired.JoinTables[0].Right.ReferTable) == "" {
+		t.Fatalf("declared-first must keep both refer tables, got %#v", desired.JoinTables[0])
+	}
+
+	// Blank-first then declared must adopt the declared refer target (not keep blank).
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{roleNoTarget, user, joinOK}); err != nil {
+		t.Fatalf("blank-first then declared: %v", err)
+	}
+	if len(desired.JoinTables) != 1 {
+		t.Fatalf("blank-first JoinTables = %#v", desired.JoinTables)
+	}
+	blankFirst := desired.JoinTables[0]
+	if strings.TrimSpace(blankFirst.Left.ReferTable) == "" || strings.TrimSpace(blankFirst.Right.ReferTable) == "" {
+		t.Fatalf("blank-first must adopt declared refer tables, got %#v", blankFirst)
+	}
 	if !referTargetEqual("", "auth_role") || !referTargetEqual("Auth_Role", "auth_role") {
 		t.Fatal("referTargetEqual blank/case")
 	}
 	if referTargetEqual("auth_user", "auth_role") {
 		t.Fatal("referTargetEqual distinct tables")
+	}
+	merged := preferJoinTableSpec(
+		JoinTableSpec{Table: "t", Left: JoinEnd{Column: "a", ReferTable: "", ReferColumn: ""}, Right: JoinEnd{Column: "b", ReferTable: "tb", ReferColumn: "id"}},
+		JoinTableSpec{Table: "t", Left: JoinEnd{Column: "b", ReferTable: "tb", ReferColumn: "id"}, Right: JoinEnd{Column: "a", ReferTable: "ta", ReferColumn: "id"}},
+	)
+	if merged.Left.ReferTable != "ta" || merged.Right.ReferTable != "tb" || merged.Left.ReferColumn != "id" {
+		t.Fatalf("preferJoinTableSpec swapped merge = %#v", merged)
+	}
+	sameOrient := preferJoinTableSpec(
+		JoinTableSpec{Table: "t", Left: JoinEnd{Column: "a", ReferTable: "ta", ReferColumn: "id"}, Right: JoinEnd{Column: "b", ReferTable: "", ReferColumn: ""}},
+		JoinTableSpec{Table: "t", Left: JoinEnd{Column: "a", ReferTable: "ta", ReferColumn: "id"}, Right: JoinEnd{Column: "b", ReferTable: "tb", ReferColumn: "id"}},
+	)
+	if sameOrient.Right.ReferTable != "tb" || sameOrient.Right.ReferColumn != "id" {
+		t.Fatalf("preferJoinTableSpec same-orient merge = %#v", sameOrient)
 	}
 	customJoin := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
