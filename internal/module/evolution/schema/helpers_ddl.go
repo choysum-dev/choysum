@@ -91,11 +91,31 @@ func DropColumn(opts HelperOptions, table, column string) error {
 	if table == "" || column == "" {
 		return fmt.Errorf("dropColumn requires table and column")
 	}
+	if err := rejectPrimaryKeyColumnDrop(opts.DB, table, column); err != nil {
+		return err
+	}
 	sql := fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", quoteIdent(opts.Dialect, table), quoteIdent(opts.Dialect, column))
 	if err := helperExec(opts.DB, sql); err != nil {
 		return fmt.Errorf("drop column %s.%s: %w", table, column, err)
 	}
 	opts.Intents.Add(Intent{Kind: IntentDropColumn, Table: table, Name: column})
+	return nil
+}
+
+// rejectPrimaryKeyColumnDrop refuses to drop a column the driver reports as primary key.
+func rejectPrimaryKeyColumnDrop(db *gorm.DB, table, column string) error {
+	types, err := getColumnTypes(db, table)
+	if err != nil {
+		return fmt.Errorf("drop column %s.%s: %w", table, column, err)
+	}
+	for _, ct := range types {
+		if ct == nil || !strings.EqualFold(ct.Name(), column) {
+			continue
+		}
+		if pk, ok := ct.PrimaryKey(); ok && pk {
+			return fmt.Errorf("dropColumn refuses to drop primary key %s.%s", table, column)
+		}
+	}
 	return nil
 }
 

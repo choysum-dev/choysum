@@ -111,9 +111,42 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 	if err := db.Exec(`CREATE TABLE help_drop (id integer, gone text)`).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := DropColumn(opts, "help_drop", "gone"); err != nil {
-		t.Fatal(err)
+	// Primary-key drop guard (via injectable column types).
+	origCT := getColumnTypes
+	t.Cleanup(func() { getColumnTypes = origCT })
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return nil, fmt.Errorf("ct inspect boom")
 	}
+	if err := DropColumn(opts, "help_drop", "gone"); err == nil || !strings.Contains(err.Error(), "ct inspect boom") {
+		t.Fatalf("inspect err: %v", err)
+	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{
+			nil,
+			fakeColumnType{name: "other", primaryKeySet: true, primaryKey: true, primaryKeyOK: true},
+			fakeColumnType{name: "gone", primaryKeySet: true, primaryKey: true, primaryKeyOK: false},
+			fakeColumnType{name: "id", primaryKeySet: true, primaryKey: true, primaryKeyOK: true},
+		}, nil
+	}
+	if err := DropColumn(opts, "help_drop", "id"); err == nil || !strings.Contains(err.Error(), "refuses to drop primary key") {
+		t.Fatalf("pk guard: %v", err)
+	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{fakeColumnType{name: "gone"}}, nil
+	}
+	if err := DropColumn(opts, "help_drop", "gone"); err != nil {
+		t.Fatalf("non-pk drop: %v", err)
+	}
+	origExec := helperExec
+	helperExec = func(*gorm.DB, string) error { return fmt.Errorf("drop exec boom") }
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{fakeColumnType{name: "x"}}, nil
+	}
+	if err := DropColumn(opts, "help_drop", "x"); err == nil || !strings.Contains(err.Error(), "drop exec boom") {
+		t.Fatalf("helperExec err: %v", err)
+	}
+	helperExec = origExec
+	getColumnTypes = origCT
 	if err := db.Exec(`CREATE TABLE help_idx (code text)`).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -126,6 +159,7 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 	if err := DropIndex(opts, "help_idx", "idx_help_idx_code"); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := DropCheck(opts, "help_idx", "chk_help_idx_code"); err == nil || !strings.Contains(err.Error(), "not supported") {
 		t.Fatalf("sqlite dropCheck: %v", err)
 	}
@@ -169,7 +203,8 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 	}
 
 	// DropIndex: ownership ok, helperExec fails.
-	origIdx, origExec := getIndexes, helperExec
+	origIdx := getIndexes
+	origExec = helperExec
 	t.Cleanup(func() { getIndexes = origIdx; helperExec = origExec })
 	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
 		return []gorm.Index{fakeIndex{name: "idx_boom"}}, nil
@@ -197,7 +232,7 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 	if _, err := columnSpecForLiveRename(nil, "t", "a", "b"); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("nil db rename spec: %v", err)
 	}
-	origCT := getColumnTypes
+	origCT = getColumnTypes
 	t.Cleanup(func() { getColumnTypes = origCT })
 	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
 		return nil, fmt.Errorf("ct boom")

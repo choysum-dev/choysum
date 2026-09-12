@@ -998,6 +998,14 @@ test('Field decorator accepts renameFrom/dropAfter and rejects empty values', ()
     }
     return BadDropAfter;
   }).toThrow('dropAfter must be a non-empty string');
+
+  expect(() => {
+    class BadDropAfterShape extends BaseModel {
+      @Field({ type: 'varchar', dropAfter: '>=2.0.0' as any } as any)
+      Name!: string;
+    }
+    return BadDropAfterShape;
+  }).toThrow('dropAfter must be a version like 2.0.0');
 });
 
 test('Field decorator accepts tracking:true and rejects non-boolean tracking', () => {

@@ -299,6 +299,11 @@ export function Field(
         throw new Error(`@Field(${name}) dropAfter must be a non-empty string`);
       }
       dropAfter = optionBag.dropAfter.trim();
+      const dropBody =
+        /^[vV][0-9]/.test(dropAfter) ? dropAfter.slice(1) : dropAfter;
+      if (!/^[0-9]/.test(dropBody)) {
+        throw new Error(`@Field(${name}) dropAfter must be a version like 2.0.0`);
+      }
     }
     const uploadLimits = validateUploadLimitOptions(name, type, optionBag);
     if (translate) {

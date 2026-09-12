@@ -685,12 +685,20 @@ type fakeColumnType struct {
 	length               int64
 	lengthOK             bool
 	nullable, nullableOK bool
+	primaryKey           bool
+	primaryKeyOK         bool
+	primaryKeySet        bool
 }
 
 func (f fakeColumnType) Name() string                      { return f.name }
 func (f fakeColumnType) DatabaseTypeName() string          { return f.dbType }
 func (f fakeColumnType) ColumnType() (string, bool)        { return f.dbType, true }
-func (f fakeColumnType) PrimaryKey() (bool, bool)          { return false, true }
+func (f fakeColumnType) PrimaryKey() (bool, bool) {
+	if f.primaryKeySet {
+		return f.primaryKey, f.primaryKeyOK
+	}
+	return false, true
+}
 func (f fakeColumnType) AutoIncrement() (bool, bool)       { return false, true }
 func (f fakeColumnType) Length() (int64, bool)             { return f.length, f.lengthOK }
 func (f fakeColumnType) DecimalSize() (int64, int64, bool) { return 0, 0, false }

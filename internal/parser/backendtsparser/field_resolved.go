@@ -122,6 +122,18 @@ func isFieldIdentifier(s string) bool {
 	return true
 }
 
+// isVersionHintShape accepts values versionHintEqual can usefully compare (optional leading v + digit).
+func isVersionHintShape(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	if len(s) >= 2 && (s[0] == 'v' || s[0] == 'V') && s[1] >= '0' && s[1] <= '9' {
+		s = s[1:]
+	}
+	return s[0] >= '0' && s[0] <= '9'
+}
+
 func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*resolvedFieldBehaviorBinding, map[string][]meta.FieldDiagnostic, error) {
 	bindings := make(map[string]*resolvedFieldBehaviorBinding)
 	diagnostics := make(map[string][]meta.FieldDiagnostic)
@@ -632,7 +644,11 @@ func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBin
 		if !ok || strings.TrimSpace(v) == "" {
 			return nil, fmt.Errorf("@Field(%s) dropAfter must be a non-empty string", field.Name)
 		}
-		spec.Structural.DropAfter = strings.TrimSpace(v)
+		trimmed := strings.TrimSpace(v)
+		if !isVersionHintShape(trimmed) {
+			return nil, fmt.Errorf("@Field(%s) dropAfter must be a version like 2.0.0", field.Name)
+		}
+		spec.Structural.DropAfter = trimmed
 	}
 	if v, ok := asInt(options["maxUploadBytes"]); ok && v > 0 {
 		spec.Structural.MaxUploadBytes = toIntPtr(v)

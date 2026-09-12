@@ -2804,6 +2804,15 @@ func TestIsFieldIdentifier(t *testing.T) {
 	}
 }
 
+func TestIsVersionHintShape(t *testing.T) {
+	if isVersionHintShape("") || isVersionHintShape(">=2.0.0") || isVersionHintShape("vault") {
+		t.Fatal("expected rejects")
+	}
+	if !isVersionHintShape("2.0.0") || !isVersionHintShape("v2.0.0") || !isVersionHintShape("V1") {
+		t.Fatal("expected accepts")
+	}
+}
+
 func TestTsParser_RenameFromDropAfterRejectInvalid(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
@@ -2819,6 +2828,7 @@ func TestTsParser_RenameFromDropAfterRejectInvalid(t *testing.T) {
 		{name: "bad renameFrom ident", options: "renameFrom: 'old-code'", want: "renameFrom must be a valid field identifier"},
 		{name: "digit renameFrom", options: "renameFrom: '1Old'", want: "renameFrom must be a valid field identifier"},
 		{name: "non-string dropAfter", options: "dropAfter: 1", want: "dropAfter must be a non-empty string"},
+		{name: "bad dropAfter shape", options: "dropAfter: '>=2.0.0'", want: "dropAfter must be a version like 2.0.0"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
