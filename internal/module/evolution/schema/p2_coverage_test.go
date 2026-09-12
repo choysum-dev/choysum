@@ -574,9 +574,11 @@ func TestMigratorOptions_Coverage(t *testing.T) {
 	mod := &meta.Module{Name: "sales", Version: "1.0.0", ApplicationStr: "sales"}
 	got, err := NewMigrator(runtimeScope, mod, nil, WithIntentBag(NewMemoryIntentBag()), WithToVersion("1.0.0"))
 	if err != nil {
-		t.Log(err)
+		t.Fatalf("NewMigrator with options: %v", err)
 	}
-	_ = got
+	if got == nil {
+		t.Fatal("expected non-nil migrator")
+	}
 
 	_, err = NewMigrator(runtimeScope, mod, func(*migrator) error { return fmt.Errorf("opt boom") })
 	if err == nil || !strings.Contains(err.Error(), "opt boom") {

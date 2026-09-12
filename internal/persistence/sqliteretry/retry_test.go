@@ -25,8 +25,10 @@ func TestIsTransientLock(t *testing.T) {
 	if !IsTransientLock(errors.New("database schema is locked")) {
 		t.Fatal("schema locked")
 	}
-	if !IsTransientLock(errors.New("locking protocol")) {
-		t.Fatal("protocol")
+	// SQLITE_PROTOCOL is returned only after SQLite exhausted its own multi-second
+	// internal retries; application-level retry adds latency without helping.
+	if IsTransientLock(errors.New("locking protocol")) {
+		t.Fatal("protocol must not retry")
 	}
 	if IsTransientLock(errors.New("unique constraint")) {
 		t.Fatal("non-lock")

@@ -38,6 +38,5 @@ func IsTransientLock(err error) bool {
 	return strings.Contains(msg, "database is locked") ||
 		strings.Contains(msg, "database table is locked") ||
 		strings.Contains(msg, "database is busy") ||
-		strings.Contains(msg, "database schema is locked") ||
-		strings.Contains(msg, "locking protocol")
+		strings.Contains(msg, "database schema is locked")
 }
