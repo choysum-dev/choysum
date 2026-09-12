@@ -70,11 +70,18 @@ type LiveColumn struct {
 	Default          *string
 }
 
+// LiveIndex is one inspected database index.
+type LiveIndex struct {
+	Name    string
+	Columns []string
+	Unique  bool
+}
+
 // LiveSchema is inspected live state for relevant tables.
 type LiveSchema struct {
 	Tables   map[string]bool                  // table exists
 	Columns  map[string]map[string]LiveColumn // table → column name → meta
-	Indexes  map[string]map[string]bool       // table → index lookup key → present
+	Indexes  map[string][]LiveIndex           // table → indexes (name/columns/unique)
 	RowCount map[string]int64                 // table → 0/1 presence indicator (any row?)
 }
 

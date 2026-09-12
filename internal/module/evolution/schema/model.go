@@ -194,15 +194,11 @@ func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta
 		if err != nil {
 			return err
 		}
-		if col == nil || strings.TrimSpace(col.CheckExpr) == "" {
+		if col == nil || strings.TrimSpace(col.CheckExpr) == "" || strings.TrimSpace(col.Name) == "" {
 			continue
 		}
-		columnName := col.Name
-		if columnName == "" {
-			columnName = strings.ToLower(field.Name)
-		}
-		constraintName := fmt.Sprintf("chk_%s_%s", tableName, columnName)
-		legacyConstraintName := fmt.Sprintf("ck_%s_%s", tableName, columnName)
+		constraintName := fmt.Sprintf("chk_%s_%s", tableName, col.Name)
+		legacyConstraintName := fmt.Sprintf("ck_%s_%s", tableName, col.Name)
 		if legacyConstraintName != constraintName {
 			_ = dropCheckConstraintBestEffort(m.runtimeScope.Session().DB, dialect, tableName, legacyConstraintName)
 		}

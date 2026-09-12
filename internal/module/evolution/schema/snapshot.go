@@ -16,6 +16,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+var jsonMarshal = json.Marshal
+
 // LoadSnapshots returns snapshot rows keyed by model_table.
 func LoadSnapshots(db *gorm.DB, tables []string) (map[string]modmeta.SchemaSnapshot, error) {
 	out := make(map[string]modmeta.SchemaSnapshot)
@@ -69,7 +71,7 @@ func SaveSnapshots(db *gorm.DB, desired DesiredSchema, models []*meta.Model, mod
 	}
 	now := time.Now().UTC()
 	for table, cols := range desired.Tables {
-		payload, err := json.Marshal(cols)
+		payload, err := jsonMarshal(cols)
 		if err != nil {
 			return fmt.Errorf("marshal desired for %s: %w", table, err)
 		}

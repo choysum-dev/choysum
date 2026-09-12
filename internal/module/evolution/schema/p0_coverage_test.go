@@ -624,10 +624,16 @@ func TestApplyPlanRemainingErrors(t *testing.T) {
 	ensureIndexesForColumnFn = func(*gorm.DB, string, ColumnSpec, string) error {
 		return fmt.Errorf("index after add boom")
 	}
-	if err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
-		Kind: OpAddColumn, Safety: SafetyAuto, Table: "sales_apply_idx",
-		Column: &ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", Indexed: true},
-	}}}); err == nil || !strings.Contains(err.Error(), "index after add boom") {
+	if err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{
+		{
+			Kind: OpAddColumn, Safety: SafetyAuto, Table: "sales_apply_idx",
+			Column: &ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", Indexed: true},
+		},
+		{
+			Kind: OpAddIndex, Safety: SafetyAuto, Table: "sales_apply_idx",
+			Column: &ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", Indexed: true}, IndexName: "Code",
+		},
+	}}); err == nil || !strings.Contains(err.Error(), "index after add boom") {
 		t.Fatalf("ensure after add: %v", err)
 	}
 

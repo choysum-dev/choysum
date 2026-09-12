@@ -68,10 +68,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 
 			runtimeOptionsValidated := false
 
-			type upgradePlan struct {
-				requestedInput string
-				resolvedInput  string
-			}
+			type upgradePlan = upgradePlanItem
 			exitUpgradeError := func(currentInput string, runErr error) {
 				attrs := []any{"error", runErr}
 				attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
@@ -164,16 +161,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 
 			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
 			if schemaPlanOnly {
-				exitCode := 0
-				for _, plan := range plans {
-					currentInput = plan.requestedInput
-					moduleName := schemaPlanModuleName(plan.resolvedInput)
-					schemaPlan, planErr := moduleLifecycle.SchemaPlan(ctx, moduleName)
-					printSchemaPlan(upgradeScope, moduleName, schemaPlan, planErr)
-					if planErr != nil {
-						exitCode = 1
-					}
-				}
+				exitCode := executeSchemaPlanOnly(ctx, env, moduleLifecycle, plans)
 				_ = compilerExecutor.Stop()
 				os.Exit(exitCode)
 			}
@@ -195,6 +183,24 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	return cmd
 }
 
+type upgradePlanItem struct {
+	requestedInput string
+	resolvedInput  string
+}
+
+func executeSchemaPlanOnly(ctx context.Context, env scope.Scope, moduleLifecycle lifecycle.Service, plans []upgradePlanItem) int {
+	exitCode := 0
+	for _, plan := range plans {
+		moduleName := schemaPlanModuleName(plan.resolvedInput)
+		schemaPlan, planErr := moduleLifecycle.SchemaPlan(ctx, moduleName)
+		printSchemaPlan(env, moduleName, schemaPlan, planErr)
+		if planErr != nil {
+			exitCode = 1
+		}
+	}
+	return exitCode
+}
+
 func schemaPlanModuleName(input string) string {
 	input = strings.TrimSpace(input)
 	if i := strings.Index(input, "@"); i >= 0 {
@@ -204,6 +210,9 @@ func schemaPlanModuleName(input string) string {
 }
 
 func printSchemaPlan(env scope.Scope, moduleName string, plan schema.SchemaPlan, planErr error) {
+	if env == nil {
+		return
+	}
 	logger := env.Logger()
 	if logger == nil {
 		return

@@ -534,13 +534,14 @@ func (m *ModuleManager) Load(name string) (*meta.Module, error) {
 }
 
 // SchemaPlan computes the schema plan for an installed module without applying DDL.
+// It uses a read-only module lookup so dry-run never AutoMigrates meta/base tables.
 func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.SchemaPlan, error) {
 	_ = ctx
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return schema.SchemaPlan{}, xfmt.Errorf("module name is empty")
 	}
-	mod, err := m.Load(name)
+	mod, err := m.loadInstalledModuleRecord(name)
 	if err != nil {
 		return schema.SchemaPlan{}, err
 	}
@@ -556,6 +557,24 @@ func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.Sch
 		return plan, err
 	}
 	return plan, nil
+}
+
+// loadInstalledModuleRecord loads a module row without ensureMetaTables / migrateBaseModule.
+func (m *ModuleManager) loadInstalledModuleRecord(name string) (*meta.Module, error) {
+	if m == nil || m.runtimeScope == nil || m.runtimeScope.Session() == nil {
+		return nil, xfmt.Errorf("runtime scope is nil")
+	}
+	var module meta.Module
+	if result := m.runtimeScope.Session().
+		Preload("Dependencies", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
+		Preload("Dependents", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
+		Where("name = ?", name).Take(&module); result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, xfmt.Errorf("error loading module %s: %w", name, result.Error)
+		}
+		return nil, nil
+	}
+	return &module, nil
 }
 
 func ensureOpIDInContext(ctx context.Context) (context.Context, string) {

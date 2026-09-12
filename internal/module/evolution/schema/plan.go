@@ -10,7 +10,8 @@ import (
 
 // buildPlan diffs desired vs live.
 // Auto: create_table, add_column (nullable / empty table), varchar widen, add_index,
-// ensure_check. Guarded: type/null/default changes, varchar narrow, unique on populated.
+// ensure_check on empty tables. Guarded: type/null/default changes, varchar narrow,
+// unique on populated, ensure_check on populated tables.
 func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialect string) SchemaPlan {
 	plan := SchemaPlan{
 		Module:   strings.TrimSpace(moduleName),
@@ -30,7 +31,7 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				Columns: copied,
 			})
 			for _, col := range cols {
-				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col)...)
+				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, 0)...)
 			}
 			continue
 		}
@@ -59,8 +60,8 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 					Detail: detail,
 					Column: &colCopy,
 				})
-				// Indexes for new columns are created in apply after AddColumn.
-				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col)...)
+				plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+				plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, rowCount)...)
 				continue
 			}
 
@@ -76,29 +77,8 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				})
 			}
 
-			for _, name := range indexLookupNames(col) {
-				desiredIndexKeys[strings.ToLower(name)] = struct{}{}
-				if liveHasIndex(live, table, name) {
-					continue
-				}
-				safety := SafetyAuto
-				detail := "add index " + name
-				if (col.UniqueIndex || col.Unique) && rowCount > 0 {
-					safety = SafetyGuarded
-					detail = "add unique index on non-empty table"
-				}
-				colCopy := col
-				plan.Ops = append(plan.Ops, PlanOp{
-					Kind:      OpAddIndex,
-					Safety:    safety,
-					Table:     table,
-					Detail:    detail,
-					Column:    &colCopy,
-					IndexName: name,
-				})
-			}
-
-			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col)...)
+			plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
+			plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, rowCount)...)
 		}
 
 		for name := range liveCols {
@@ -111,8 +91,15 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 				Name:  liveCols[name].Name,
 			})
 		}
-		for idxName := range live.Indexes[table] {
+		for _, idx := range live.Indexes[table] {
+			idxName := strings.TrimSpace(idx.Name)
+			if idxName == "" {
+				continue
+			}
 			if _, ok := desiredIndexKeys[strings.ToLower(idxName)]; ok {
+				continue
+			}
+			if indexCoveredByDesiredKey(idx, desiredIndexKeys) {
 				continue
 			}
 			// Skip automatic primary-key / sqlite internal names from leftover noise when possible.
@@ -130,7 +117,43 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 	return plan
 }
 
-func checkOpsForColumn(table string, col ColumnSpec) []PlanOp {
+func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount int64, desiredIndexKeys map[string]struct{}) []PlanOp {
+	var ops []PlanOp
+	wantUnique := col.UniqueIndex || col.Unique
+	for _, name := range indexLookupNames(col) {
+		desiredIndexKeys[strings.ToLower(name)] = struct{}{}
+		if liveHasIndex(live, table, name, wantUnique) {
+			continue
+		}
+		safety := SafetyAuto
+		detail := "add index " + name
+		if wantUnique && rowCount > 0 {
+			safety = SafetyGuarded
+			detail = "add unique index on non-empty table"
+		}
+		colCopy := indexPlanColumn(col)
+		ops = append(ops, PlanOp{
+			Kind:      OpAddIndex,
+			Safety:    safety,
+			Table:     table,
+			Detail:    detail,
+			Column:    &colCopy,
+			IndexName: name,
+		})
+	}
+	return ops
+}
+
+// indexPlanColumn normalizes Unique into UniqueIndex so CreateIndex applies reliably.
+func indexPlanColumn(col ColumnSpec) ColumnSpec {
+	out := col
+	if out.Unique && !out.UniqueIndex {
+		out.UniqueIndex = true
+	}
+	return out
+}
+
+func checkOpsForColumn(table string, col ColumnSpec, rowCount int64) []PlanOp {
 	expr := strings.TrimSpace(col.CheckExpr)
 	if expr == "" {
 		return nil
@@ -140,26 +163,58 @@ func checkOpsForColumn(table string, col ColumnSpec) []PlanOp {
 		columnName = strings.ToLower(col.FieldName)
 	}
 	name := fmt.Sprintf("chk_%s_%s", table, columnName)
+	safety := SafetyAuto
+	detail := "ensure check " + name
+	if rowCount > 0 {
+		safety = SafetyGuarded
+		detail = "ensure check on non-empty table"
+	}
 	return []PlanOp{{
 		Kind:      OpEnsureCheck,
-		Safety:    SafetyAuto,
+		Safety:    safety,
 		Table:     table,
-		Detail:    "ensure check " + name,
+		Detail:    detail,
 		CheckName: name,
 		CheckExpr: expr,
 		Column:    &col,
 	}}
 }
 
-func liveHasIndex(live LiveSchema, table, name string) bool {
+func liveHasIndex(live LiveSchema, table, name string, wantUnique bool) bool {
 	if live.Indexes == nil {
 		return false
 	}
-	m := live.Indexes[table]
-	if m == nil {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "" {
 		return false
 	}
-	return m[strings.ToLower(name)]
+	for _, idx := range live.Indexes[table] {
+		if strings.EqualFold(strings.TrimSpace(idx.Name), name) {
+			if wantUnique && !idx.Unique {
+				continue
+			}
+			return true
+		}
+		for _, col := range idx.Columns {
+			if !strings.EqualFold(strings.TrimSpace(col), name) {
+				continue
+			}
+			if wantUnique && !idx.Unique {
+				continue
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func indexCoveredByDesiredKey(idx LiveIndex, desiredIndexKeys map[string]struct{}) bool {
+	for _, col := range idx.Columns {
+		if _, ok := desiredIndexKeys[strings.ToLower(strings.TrimSpace(col))]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 type columnDiff struct {
@@ -215,11 +270,12 @@ func columnDiffs(desired ColumnSpec, live LiveColumn, dialect string) []columnDi
 
 func defaultChanged(desired ColumnSpec, live LiveColumn) bool {
 	if desired.Default == nil {
-		return false
+		// Desired removed an explicit default while live still has one.
+		return live.Default != nil
 	}
 	want := strings.TrimSpace(*desired.Default)
 	if want == "" {
-		return false
+		return live.Default != nil
 	}
 	if live.Default == nil {
 		// Unknown live default: do not fail closed (dialects often omit default metadata).

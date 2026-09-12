@@ -48,10 +48,7 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			if err := db.Table(op.Table).Migrator().AddColumn(inst, fieldName); err != nil {
 				return fmt.Errorf("add column %s.%s: %w", op.Table, op.Column.Name, err)
 			}
-			// AddColumn does not create indexes from gorm tags; create them explicitly.
-			if err := ensureIndexesForColumnFn(db.DB, op.Table, *op.Column, dialect); err != nil {
-				return fmt.Errorf("ensure indexes for column %s.%s: %w", op.Table, op.Column.Name, err)
-			}
+			// Indexes are applied via separate OpAddIndex ops (with populated-table safety).
 		case OpAlterColumn:
 			if op.Column == nil {
 				return fmt.Errorf("alter_column missing column for table %s", op.Table)
@@ -87,11 +84,18 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 }
 
 // applyAlterColumnWiden applies Auto varchar/char size increases via GORM AlterColumn.
+// Only type/size are applied so FullDataTypeOf cannot emit unvalidated NOT NULL/DEFAULT.
 func applyAlterColumnWiden(db *gorm.DB, table string, col ColumnSpec, dialect string) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
 	}
-	inst, err := structForAddColumn(table, col, dialect)
+	sizeOnly := ColumnSpec{
+		Name:         col.Name,
+		FieldName:    col.FieldName,
+		PhysicalType: col.PhysicalType,
+		Size:         col.Size,
+	}
+	inst, err := structForAddColumn(table, sizeOnly, dialect)
 	if err != nil {
 		return err
 	}
@@ -125,9 +129,10 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 	if col.Trigram || strings.EqualFold(col.IndexName, translatedTrigramIndexKind) {
 		return nil
 	}
-	if !col.Indexed && !col.UniqueIndex {
+	if !col.Indexed && !col.UniqueIndex && !col.Unique {
 		return nil
 	}
+	col = indexPlanColumn(col)
 	inst, err := structForAddColumn(table, col, dialect)
 	if err != nil {
 		return fmt.Errorf("build index struct %s.%s: %w", table, col.Name, err)
@@ -166,7 +171,7 @@ func indexLookupNames(col ColumnSpec) []string {
 			add(exportIdent(col.FieldName))
 		}
 	}
-	if col.UniqueIndex {
+	if col.UniqueIndex || col.Unique {
 		if len(col.UniqueIndexNames) > 0 {
 			for _, name := range col.UniqueIndexNames {
 				add(name)
@@ -274,7 +279,8 @@ func addStandardTagsFromSpec(tags *[]string, col ColumnSpec) {
 			*tags = append(*tags, fmt.Sprintf("default:%s", normalizeDefaultStringLiteral(trimmed)))
 		}
 	}
-	// P0: do not emit check tags; CHECK is applied via ensureCheckConstraint after create/add.
+	// CHECK is applied via OpEnsureCheck (postgres/mysql/sqlserver). SQLite cannot
+	// ALTER TABLE ADD CONSTRAINT; ensure_check is a no-op there by design.
 }
 
 // exportIdent returns a valid exported Go identifier for reflect.StructOf.

@@ -15,7 +15,7 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 	live := LiveSchema{
 		Tables:   make(map[string]bool),
 		Columns:  make(map[string]map[string]LiveColumn),
-		Indexes:  make(map[string]map[string]bool),
+		Indexes:  make(map[string][]LiveIndex),
 		RowCount: make(map[string]int64),
 	}
 	if db == nil {
@@ -33,7 +33,7 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 		}
 		live.Tables[table] = true
 		live.Columns[table] = make(map[string]LiveColumn)
-		live.Indexes[table] = make(map[string]bool)
+		live.Indexes[table] = nil
 
 		columnTypes, err := getColumnTypes(db, table)
 		if err != nil {
@@ -45,23 +45,34 @@ func inspectTables(db *gorm.DB, tables []string) (LiveSchema, error) {
 			}
 		}
 
-		if indexes, err := getIndexes(db, table); err == nil {
-			for _, idx := range indexes {
-				if idx == nil {
-					continue
-				}
-				name := strings.TrimSpace(idx.Name())
-				if name == "" {
-					continue
-				}
-				live.Indexes[table][strings.ToLower(name)] = true
-				for _, col := range idx.Columns() {
-					col = strings.TrimSpace(col)
-					if col != "" {
-						live.Indexes[table][strings.ToLower(col)] = true
-					}
+		indexes, err := getIndexes(db, table)
+		if err != nil {
+			return LiveSchema{}, fmt.Errorf("indexes for %s: %w", table, err)
+		}
+		for _, idx := range indexes {
+			if idx == nil {
+				continue
+			}
+			name := strings.TrimSpace(idx.Name())
+			if name == "" {
+				continue
+			}
+			cols := make([]string, 0, len(idx.Columns()))
+			for _, col := range idx.Columns() {
+				col = strings.TrimSpace(col)
+				if col != "" {
+					cols = append(cols, col)
 				}
 			}
+			unique := false
+			if u, ok := idx.Unique(); ok {
+				unique = u
+			}
+			live.Indexes[table] = append(live.Indexes[table], LiveIndex{
+				Name:    name,
+				Columns: cols,
+				Unique:  unique,
+			})
 		}
 
 		count, err := probeTableNonEmptyFn(db, table)

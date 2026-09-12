@@ -318,6 +318,14 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 			}
 		})
 		cmd.Run(cmd, []string{"base"})
+	case "upgrade_run_schema_plan":
+		cmd := newUpgradeCmd(func() scope.Scope {
+			return &commandExitScope{commandTestScope: commandTestScope{cfg: newCommandExitConfig("cmd-helper-engine")}}
+		})
+		if err := cmd.Flags().Set("schema-plan", "true"); err != nil {
+			panic(err)
+		}
+		cmd.Run(cmd, []string{"base"})
 	case "uninstall_prerun_nil_env":
 		cmd := newUninstallCmd(func() scope.Scope { return nil })
 		cmd.PreRun(cmd, []string{"base"})
@@ -1725,6 +1733,7 @@ func TestInstallUpgradeUninstallCommandExitPaths(t *testing.T) {
 		{name: "upgrade run executor create error", scenario: "upgrade_run_executor_create_error", want: "Error creating compiler executor", wantCode: 1},
 		{name: "upgrade run executor start error", scenario: "upgrade_run_executor_start_error", want: "Error starting compiler executor", wantCode: 1},
 		{name: "upgrade run env.Run error", scenario: "upgrade_run_env_run_error", want: "module upgrade failed", wantCode: 1},
+		{name: "upgrade run schema-plan", scenario: "upgrade_run_schema_plan", want: "schema-plan", wantCode: 1},
 		{name: "uninstall prerun nil env", scenario: "uninstall_prerun_nil_env", want: "scope is not initialized", wantCode: 1},
 		{name: "uninstall prerun missing args", scenario: "uninstall_prerun_missing_args", want: "Please specify the module name", wantCode: 1},
 		{name: "uninstall run nil env", scenario: "uninstall_run_nil_env", want: "scope is not initialized", wantCode: 1},
