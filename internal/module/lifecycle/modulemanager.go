@@ -283,6 +283,10 @@ type ModuleManager struct {
 	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
 	// pauseLeaseRenewDepth skips heartbeat Renew while >0 (nested commit TX safe).
 	pauseLeaseRenewDepth atomic.Int32
+	// leaseRenewMu serializes renew against paused commits: pause Lock()s it for the
+	// whole commit so an in-flight Renew cannot race past the depth check and grab a
+	// second SQLite connection under MaxOpenConns=2.
+	leaseRenewMu sync.Mutex
 }
 
 // Overridable in tests to exercise lease renew ticks without waiting a full minute.
@@ -450,8 +454,14 @@ func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
 	if !shouldPauseLeaseRenew(moduleManagerDialectNameFn(m)) {
 		return fn()
 	}
-	m.pauseLeaseRenewDepth.Add(1)
+	depth := m.pauseLeaseRenewDepth.Add(1)
 	defer m.pauseLeaseRenewDepth.Add(-1)
+	if depth == 1 {
+		// Wait for any in-flight Renew to finish, then hold the mutex so ticks
+		// that TryLock fail fast for the duration of the commit TX.
+		m.leaseRenewMu.Lock()
+		defer m.leaseRenewMu.Unlock()
+	}
 	return fn()
 }
 
@@ -503,6 +513,11 @@ func (m *ModuleManager) renewLeaseOnTick(locker statepkg.Locker, ctx context.Con
 	if m == nil || locker == nil {
 		return
 	}
+	// TryLock: if a commit holds leaseRenewMu, skip this tick entirely.
+	if !m.leaseRenewMu.TryLock() {
+		return
+	}
+	defer m.leaseRenewMu.Unlock()
 	if m.pauseLeaseRenewDepth.Load() > 0 {
 		return
 	}

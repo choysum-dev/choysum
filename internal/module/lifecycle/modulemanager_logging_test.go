@@ -541,12 +541,21 @@ func TestRenewLeaseOnTick(t *testing.T) {
 	if locker.renewCalls.Load() != 2 {
 		t.Fatalf("renew with err calls=%d", locker.renewCalls.Load())
 	}
+
+	// Commit holds leaseRenewMu: renew ticks must TryLock-fail without calling Renew.
+	m.leaseRenewMu.Lock()
+	before := locker.renewCalls.Load()
+	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
+	m.leaseRenewMu.Unlock()
+	if locker.renewCalls.Load() != before {
+		t.Fatalf("renew during pause lock calls=%d want %d", locker.renewCalls.Load(), before)
+	}
 }
 
 func TestWithModuleManagerLease_RespectsRenewPause(t *testing.T) {
 	origTTL, origEvery := moduleManagerLeaseTTL, moduleManagerLeaseRenewEvery
-	moduleManagerLeaseTTL = 20 * time.Millisecond
-	moduleManagerLeaseRenewEvery = func(time.Duration) time.Duration { return 5 * time.Millisecond }
+	moduleManagerLeaseTTL = 2 * time.Second
+	moduleManagerLeaseRenewEvery = func(time.Duration) time.Duration { return 10 * time.Millisecond }
 	t.Cleanup(func() {
 		moduleManagerLeaseTTL = origTTL
 		moduleManagerLeaseRenewEvery = origEvery

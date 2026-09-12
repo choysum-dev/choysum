@@ -48,7 +48,7 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 			}
 			joinModel := resolveModelRef(byKey, joinRef)
 			if joinModel == nil {
-				return fmt.Errorf("ManyToMany %s.%s joinModel %q not found among migrate models",
+				return fmt.Errorf("ManyToMany %s.%s joinModel %q not found (or ambiguous) among migrate models; qualify as application.ModelName",
 					model.Name, field.Name, joinRef)
 			}
 			if joinModel.Readonly || (joinModel.AutoMigrate != nil && !*joinModel.AutoMigrate) {
@@ -177,6 +177,9 @@ func resolveJoinColumnName(cols []ColumnSpec, fieldRef string) (string, bool) {
 func fieldIsExplicitManyToMany(field *meta.Field) bool {
 	if field == nil {
 		return false
+	}
+	if strings.EqualFold(strings.TrimSpace(field.Relation), "ManyToMany") {
+		return true
 	}
 	spec, err := field.GetResolvedSpec()
 	if err != nil || spec == nil {

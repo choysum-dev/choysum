@@ -206,7 +206,10 @@ func installerServiceEntryPoint(m *moduleInstaller) string {
 
 // installerReuseExecutorScripts reports whether hook RunPhase may reuse the JS executor.
 func installerReuseExecutorScripts(exec jsexecutor.ScriptExecutor) bool {
-	return exec != nil
+	if exec == nil {
+		return false
+	}
+	return true
 }
 
 func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) error {
@@ -314,8 +317,7 @@ func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error
 	return nil
 }
 
-// runInstallHookPhase runs one install hook phase. NewRunner returns (nil, nil) when
-// scope or module is missing; ScriptFromBuildResult currently never returns an error.
+// runInstallHookPhase runs one install hook phase.
 func runInstallHookPhase(
 	runtimeScope scope.Scope,
 	jsExec jsexecutor.ScriptExecutor,
@@ -324,13 +326,24 @@ func runInstallHookPhase(
 	buildResult *module.BuildResult,
 	phaseLabel string,
 ) error {
-	hookRunner, _ := hooks.NewRunner(runtimeScope, jsExec, module)
+	hookRunner, err := hooksNewRunner(runtimeScope, jsExec, module)
+	if err != nil {
+		name := ""
+		if module != nil {
+			name = module.Name
+		}
+		return xfmt.Errorf("error preparing %s hooks for module %s: %w", phaseLabel, name, err)
+	}
 	if hookRunner == nil {
 		return nil
 	}
 	var hookScripts []*jsengine.JsScript
 	if buildResult != nil {
-		if script, _ := hooks.ScriptFromBuildResult(buildResult); script != nil {
+		script, scriptErr := hooksScriptFromBuildResult(buildResult)
+		if scriptErr != nil {
+			return xfmt.Errorf("error preparing %s hook script: %w", phaseLabel, scriptErr)
+		}
+		if script != nil {
 			hookScripts = append(hookScripts, script)
 		}
 	}
@@ -346,6 +359,12 @@ func runInstallHookPhase(
 	}
 	return nil
 }
+
+// Overridable in tests to exercise hook preparation failure paths.
+var (
+	hooksNewRunner             = hooks.NewRunner
+	hooksScriptFromBuildResult = hooks.ScriptFromBuildResult
+)
 
 func installerScheduleDB(runtimeScope scope.Scope) (*gorm.DB, error) {
 	if runtimeScope == nil {

@@ -6,6 +6,7 @@ package lifecycle
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,10 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	internaltask "github.com/choysum-dev/choysum/internal/task"
+	"github.com/choysum-dev/choysum/pkg/jsengine"
+	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
+	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/rs/xid"
 	"gorm.io/gorm"
@@ -177,6 +181,26 @@ func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
 	}
 }
 
+func TestCommitInstallPreInitHookError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name: "demo_pre_init_err", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	installer := &moduleInstaller{
+		module:       mod,
+		runtimeScope: runtimeScope,
+		ctx:          newOpContext(),
+	}
+	if err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+		t.Fatalf("expected pre_init hook error, got %v", err)
+	}
+}
+
 func TestFinalizeInstallNoopHooks(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	installer := &moduleInstaller{
@@ -228,6 +252,25 @@ func TestRunInstallHookPhaseBranches(t *testing.T) {
 	}
 	if err := runInstallHookPhase(runtimeScope, nil, mod, hooks.PhasePostInit, nil, "post_init"); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
 		t.Fatalf("nil executor: %v", err)
+	}
+
+	origRunner, origScript := hooksNewRunner, hooksScriptFromBuildResult
+	t.Cleanup(func() {
+		hooksNewRunner = origRunner
+		hooksScriptFromBuildResult = origScript
+	})
+	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
+		return nil, errors.New("runner boom")
+	}
+	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, nil, "post_init"); err == nil || !strings.Contains(err.Error(), "runner boom") {
+		t.Fatalf("NewRunner err: %v", err)
+	}
+	hooksNewRunner = origRunner
+	hooksScriptFromBuildResult = func(*moduleresult.BuildResult) (*jsengine.JsScript, error) {
+		return nil, errors.New("script boom")
+	}
+	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, empty, "post_init"); err == nil || !strings.Contains(err.Error(), "script boom") {
+		t.Fatalf("ScriptFromBuildResult err: %v", err)
 	}
 }
 

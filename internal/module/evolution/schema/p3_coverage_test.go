@@ -112,6 +112,17 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if fieldIsExplicitManyToMany(nil) || fieldIsExplicitManyToMany(&meta.Field{}) {
 		t.Fatal("fieldIsExplicitManyToMany nil/empty")
 	}
+	if !fieldIsExplicitManyToMany(&meta.Field{Relation: "ManyToMany"}) {
+		t.Fatal("Relation ManyToMany should be explicit even without resolved spec")
+	}
+	relOnly := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{{Name: "Roles", Relation: "ManyToMany"}},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{relOnly}); err == nil || !strings.Contains(err.Error(), "missing joinModel") {
+		t.Fatalf("Relation ManyToMany without joinModel: %v", err)
+	}
 
 	joinNoCols := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
