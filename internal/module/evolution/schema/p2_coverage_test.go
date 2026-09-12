@@ -136,8 +136,13 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 	if _, err := dropForeignKeySQL("mysql", "t", "fk_t"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := dropForeignKeySQL("postgres", "t", "fk_t"); err != nil {
-		t.Fatal(err)
+	pgSQL, err := dropForeignKeySQL("postgres", "t", "fk_t")
+	if err != nil || !strings.Contains(pgSQL, "IF EXISTS") {
+		t.Fatalf("postgres drop fk: %s %v", pgSQL, err)
+	}
+	ssSQL, err := dropForeignKeySQL("sqlserver", "t", "fk_t")
+	if err != nil || strings.Contains(ssSQL, "IF EXISTS") {
+		t.Fatalf("sqlserver drop fk: %s %v", ssSQL, err)
 	}
 	if quoteIdent("mysql", "a`b") != "`a``b`" {
 		t.Fatal("mysql quote")
@@ -357,12 +362,13 @@ func TestIntentSatisfies_AllBranches(t *testing.T) {
 
 func TestPlan_RenameConflictKeepsLeftover(t *testing.T) {
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
-		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code"}},
+		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", NotNull: true}},
 	}}
+	nullable := true
 	live := LiveSchema{
 		Tables: map[string]bool{"t": true},
 		Columns: map[string]map[string]LiveColumn{"t": {
-			"code":     {Name: "code", DatabaseTypeName: "varchar"},
+			"code":     {Name: "code", DatabaseTypeName: "varchar", Nullable: &nullable},
 			"old_code": {Name: "old_code", DatabaseTypeName: "varchar"},
 		}},
 	}
@@ -370,10 +376,13 @@ func TestPlan_RenameConflictKeepsLeftover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	foundConflict, foundLeftover := false, false
+	foundConflict, foundLeftover, foundAlter := false, false, false
 	for _, op := range plan.Ops {
 		if op.Kind == OpRenameColumn && op.Safety == SafetyGuarded {
 			foundConflict = true
+		}
+		if op.Kind == OpAlterColumn {
+			foundAlter = true
 		}
 	}
 	for _, left := range plan.Leftover {
@@ -381,8 +390,8 @@ func TestPlan_RenameConflictKeepsLeftover(t *testing.T) {
 			foundLeftover = true
 		}
 	}
-	if !foundConflict || !foundLeftover {
-		t.Fatalf("conflict=%v leftover=%v plan=%#v", foundConflict, foundLeftover, plan)
+	if !foundConflict || !foundLeftover || !foundAlter {
+		t.Fatalf("conflict=%v leftover=%v alter=%v plan=%#v", foundConflict, foundLeftover, foundAlter, plan)
 	}
 }
 
@@ -507,11 +516,19 @@ func TestMigratorOptions_Coverage(t *testing.T) {
 	WithToVersion("2.0.0")(m)
 
 	runtimeScope := newSchemaTestScope(t)
+	mm := newModelMigrator(runtimeScope, &meta.Module{Name: "sales", Version: "1.0.0"}, nil)
+	m2 := &migrator{modelMigrator: mm}
+	bag := NewMemoryIntentBag()
+	WithIntentBag(bag)(m2)
+	WithToVersion("2.0.0")(m2)
+	if mm.intents != bag || mm.toVersion != "2.0.0" {
+		t.Fatalf("options not applied: intents=%v toVersion=%q", mm.intents, mm.toVersion)
+	}
+
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 	mod := &meta.Module{Name: "sales", Version: "1.0.0", ApplicationStr: "sales"}
 	got, err := NewMigrator(runtimeScope, mod, nil, WithIntentBag(NewMemoryIntentBag()), WithToVersion("1.0.0"))
 	if err != nil {
-		// module may lack models in empty DB — option application still ran
 		t.Log(err)
 	}
 	_ = got

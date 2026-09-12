@@ -70,6 +70,17 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 						FromName: renameFrom,
 					})
 					// Keep old column visible as leftover so authors see the duplicate.
+					// Target still exists: emit normal attribute diffs against it.
+					for _, d := range columnDiffs(col, liveCol, dialect) {
+						diffCopy := col
+						plan.Ops = append(plan.Ops, PlanOp{
+							Kind:   OpAlterColumn,
+							Safety: d.Safety,
+							Table:  table,
+							Detail: d.Reason,
+							Column: &diffCopy,
+						})
+					}
 					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
 					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 					continue
@@ -92,6 +103,17 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 						FromName: renameFrom,
 					})
 					consumedRenameFrom[oldKey] = struct{}{}
+					// RENAME COLUMN does not restate nullability/default/size; plan those next.
+					for _, d := range columnDiffs(col, oldLive, dialect) {
+						diffCopy := col
+						plan.Ops = append(plan.Ops, PlanOp{
+							Kind:   OpAlterColumn,
+							Safety: d.Safety,
+							Table:  table,
+							Detail: d.Reason,
+							Column: &diffCopy,
+						})
+					}
 					plan.Ops = append(plan.Ops, indexOpsForColumn(table, col, live, rowCount, desiredIndexKeys)...)
 					plan.Ops = append(plan.Ops, checkOpsForColumn(table, col, dialect, true)...)
 					continue

@@ -194,8 +194,10 @@ func dropForeignKeySQL(dialect, table, name string) (string, error) {
 		return fmt.Sprintf("ALTER TABLE %s DROP FOREIGN KEY %s", qTable, qName), nil
 	case "sqlite":
 		return "", fmt.Errorf("dropForeignKey is not supported on sqlite")
-	default:
+	case "sqlserver":
 		return fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s", qTable, qName), nil
+	default:
+		return fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s", qTable, qName), nil
 	}
 }
 

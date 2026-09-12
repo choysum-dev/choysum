@@ -860,8 +860,10 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 	// EDS-2: persist declaration-only raw rows (no parent-chain materialize into DB).
 	// save module
 	// Avoid writing many2many join rows here; dependency graph is managed by ModuleManager.
-	if result := b.runtimeScope.Session().Omit("Dependencies", "Dependents", "Models").Save(mod); result.Error != nil {
-		return xfmt.Errorf("error saving module: %w", result.Error)
+	if err := withSQLiteLockRetry(func() error {
+		return b.runtimeScope.Session().Omit("Dependencies", "Dependents", "Models").Save(mod).Error
+	}); err != nil {
+		return xfmt.Errorf("error saving module: %w", err)
 	}
 
 	if mod.Id.Valid {

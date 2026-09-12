@@ -73,6 +73,35 @@ func TestPlan_RenameFromAuto(t *testing.T) {
 	}
 }
 
+func TestPlan_RenameFollowedByAttributeDiff(t *testing.T) {
+	nullable := true
+	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", NotNull: true, Size: intPtrValue(64)}},
+	}}
+	live := LiveSchema{
+		Tables: map[string]bool{"t": true},
+		Columns: map[string]map[string]LiveColumn{"t": {
+			"old_code": {Name: "old_code", DatabaseTypeName: "varchar", Nullable: &nullable, Length: int64Ptr(32)},
+		}},
+	}
+	plan, err := buildPlan("sales", desired, live, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hasRename, hasAlter := false, false
+	for _, op := range plan.Ops {
+		if op.Kind == OpRenameColumn && op.Safety == SafetyAuto {
+			hasRename = true
+		}
+		if op.Kind == OpAlterColumn {
+			hasAlter = true
+		}
+	}
+	if !hasRename || !hasAlter {
+		t.Fatalf("expected rename + attribute alter, got %#v", plan.Ops)
+	}
+}
+
 func TestPlan_RenameTypeMismatchGuarded(t *testing.T) {
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "integer", RenameFrom: "old_code"}},
