@@ -15,6 +15,7 @@ import (
 	"time"
 
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
+	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
@@ -114,6 +115,10 @@ func (moduleManagementTestManager) Upgrade(context.Context, lifecycle.UpgradeReq
 
 func (moduleManagementTestManager) Uninstall(context.Context, lifecycle.UninstallRequest) error {
 	return nil
+}
+
+func (moduleManagementTestManager) SchemaPlan(context.Context, string) (schema.SchemaPlan, error) {
+	return schema.SchemaPlan{}, nil
 }
 
 func registerModuleManagementTestJsEngine(name string) {
