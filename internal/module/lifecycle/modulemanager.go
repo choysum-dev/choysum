@@ -285,6 +285,12 @@ type ModuleManager struct {
 	pauseLeaseRenew atomic.Bool
 }
 
+// Overridable in tests to exercise lease renew ticks without waiting a full minute.
+var (
+	moduleManagerLeaseTTL        = 60 * time.Second
+	moduleManagerLeaseRenewEvery = func(ttl time.Duration) time.Duration { return ttl / 2 }
+)
+
 func (m *ModuleManager) ensureMetaTables() error {
 	var migrateErr error
 	m.bootstrapOnce.Do(func() {
@@ -381,7 +387,7 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 	locker := m.lockerFactory(m.runtimeScope)
 	resource := "module_management"
 	ownerId := xid.New().String()
-	ttl := 60 * time.Second
+	ttl := moduleManagerLeaseTTL
 
 	if err := locker.Acquire(ctx, resource, ownerId, ttl); err != nil {
 		if errors.Is(err, lease.ErrLeaseBusy) {
@@ -397,19 +403,14 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		ticker := time.NewTicker(ttl / 2)
+		ticker := time.NewTicker(moduleManagerLeaseRenewEvery(ttl))
 		defer ticker.Stop()
 		for {
 			select {
 			case <-heartbeatCtx.Done():
 				return
 			case <-ticker.C:
-				if m.pauseLeaseRenew.Load() {
-					continue
-				}
-				if err := locker.Renew(heartbeatCtx, resource, ownerId, ttl); err != nil {
-					m.runtimeScope.Logger().Warn("module manager lease renew failed", "resource", resource, "error", err)
-				}
+				m.renewLeaseOnTick(locker, heartbeatCtx, resource, ownerId, ttl)
 			}
 		}
 	}()
@@ -439,6 +440,30 @@ func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
 	m.pauseLeaseRenew.Store(true)
 	defer m.pauseLeaseRenew.Store(false)
 	return fn()
+}
+
+// runWithLeaseRenewPaused pauses lease renew when manager is non-nil, otherwise runs fn directly.
+func runWithLeaseRenewPaused(manager *ModuleManager, fn func() error) error {
+	if manager != nil {
+		return manager.withLeaseRenewPaused(fn)
+	}
+	if fn == nil {
+		return nil
+	}
+	return fn()
+}
+
+// renewLeaseOnTick renews the module-manager lease unless commit TX paused renewals.
+func (m *ModuleManager) renewLeaseOnTick(locker statepkg.Locker, ctx context.Context, resource, ownerId string, ttl time.Duration) {
+	if m == nil || locker == nil {
+		return
+	}
+	if m.pauseLeaseRenew.Load() {
+		return
+	}
+	if err := locker.Renew(ctx, resource, ownerId, ttl); err != nil && m.runtimeScope != nil {
+		m.runtimeScope.Logger().Warn("module manager lease renew failed", "resource", resource, "error", err)
+	}
 }
 
 // releaseLeaseWithContextFallback tries to release a lease using the current

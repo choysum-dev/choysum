@@ -57,6 +57,15 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		t.Fatalf("empty target ModelTable: %v", err)
 	}
 
+	// Unresolved targetModel fails closed.
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinForEmptyTarget}); err == nil ||
+		!strings.Contains(err.Error(), "targetModel") || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("missing targetModel: %v", err)
+	}
+
 	// Unqualified name shared by two apps is ambiguous → joinModel resolve fails closed.
 	unqualUser := &meta.Model{
 		Application: "auth", Name: "User", ModelTable: "auth_user",
@@ -395,6 +404,23 @@ func TestMarkLeftoverOwnership_EdgeCases(t *testing.T) {
 	}
 	if !rfPlan.Leftover[0].ChoysumOwned {
 		t.Fatal("renameFrom should mark owned")
+	}
+
+	// Whitespace-padded leftover table names still match trimmed snapshot keys.
+	if err := runtimeScope.Session().DB.Create(&modmeta.SchemaSnapshot{
+		ModelTable:  "own_trim",
+		DesiredJSON: datatypes.JSON([]byte(`[{"name":"pad_col"}]`)),
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	trimPlan := SchemaPlan{Leftover: []Leftover{
+		{Kind: LeftoverColumn, Table: "  own_trim  ", Name: "  pad_col  "},
+	}}
+	if err := markLeftoverOwnership(&trimPlan, runtimeScope); err != nil {
+		t.Fatal(err)
+	}
+	if !trimPlan.Leftover[0].ChoysumOwned {
+		t.Fatalf("padded table/name should be owned: %#v", trimPlan.Leftover[0])
 	}
 
 	orig := loadSnapshotsFn

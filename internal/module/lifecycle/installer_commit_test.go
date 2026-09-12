@@ -4,6 +4,7 @@
 package lifecycle
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -84,6 +85,90 @@ msgstr "你好"
 	var term i18nmodels.TranslationTerm
 	if err := runtimeScope.Session().Table("auth_translation_term").Where("src = ?", "Hello").Take(&term).Error; err != nil {
 		t.Fatalf("expected imported term: %v", err)
+	}
+}
+
+func TestRunInstallCommitTX_WithAndWithoutManager(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name: "commit_tx_demo", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	withMgr := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	if err := withMgr.runInstallCommitTX(runtimeScope, runtimeScope.Context(), nil, false); err != nil {
+		t.Fatalf("with manager: %v", err)
+	}
+	if withMgr.moduleManager.pauseLeaseRenew.Load() {
+		t.Fatal("pause should clear")
+	}
+	mod2 := &meta.Module{
+		Name: "commit_tx_demo_ctx", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod2.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod2).Error; err != nil {
+		t.Fatal(err)
+	}
+	withMgr.module = mod2
+	if err := withMgr.runInstallCommitTX(runtimeScope, nil, nil, false); err != nil {
+		t.Fatalf("nil ctx: %v", err)
+	}
+	if err := withMgr.runInstallCommitTX(nil, context.Background(), nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
+		t.Fatalf("nil txRoot: %v", err)
+	}
+}
+
+func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name: "install_path_demo", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	if err := installer.install(); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	var got meta.Module
+	if err := runtimeScope.Session().Where("name = ?", "install_path_demo").Take(&got).Error; err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got.Status != meta.Installed {
+		t.Fatalf("status=%v", got.Status)
+	}
+
+	if err := (*moduleInstaller)(nil).installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
+		t.Fatalf("nil installer: %v", err)
+	}
+	closed := newLifecycleCommitTestScope(t)
+	sqlDB, err := closed.Session().DB.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	failInst := &moduleInstaller{
+		module:       &meta.Module{Name: "x", Version: "1", Path: t.TempDir(), ApplicationStr: "auth"},
+		runtimeScope: closed, moduleManager: &ModuleManager{runtimeScope: closed, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx: newOpContext(),
+	}
+	if err := failInst.installAfterPrepare(nil, false); err == nil {
+		t.Fatal("expected closed-db error")
 	}
 }
 

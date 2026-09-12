@@ -134,32 +134,36 @@ func (m *moduleInstaller) install() error {
 		}
 	}
 
-	txRoot := m.runtimeScope
-	if txRoot == nil {
+	return m.installAfterPrepare(buildResult, persistLater)
+}
+
+// installAfterPrepare runs the install commit TX and finalize steps.
+func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, persistLater bool) error {
+	if m == nil || m.runtimeScope == nil {
 		return xfmt.Errorf("scope is nil")
 	}
-	ctx := txRoot.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	txHoldStarted := time.Now()
-	runCommit := func() error {
-		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-			committed := m.forCommitScope(txScope)
-			return committed.commitInstall(buildResult, persistLater)
-		})
-	}
-	var err error
-	if m.moduleManager != nil {
-		err = m.moduleManager.withLeaseRenewPaused(runCommit)
-	} else {
-		err = runCommit()
-	}
+	err := m.runInstallCommitTX(m.runtimeScope, nil, buildResult, persistLater)
 	LogInstallOuterTxHold(m.runtimeScope.Logger(), "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err
 	}
 	return m.finalizeInstall(buildResult)
+}
+
+// runInstallCommitTX runs the install commit Required TX, pausing lease renew when a manager is set.
+func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Context, buildResult *module.BuildResult, persistLater bool) error {
+	if txRoot == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return runWithLeaseRenewPaused(m.moduleManager, func() error {
+		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+			return m.forCommitScope(txScope).commitInstall(buildResult, persistLater)
+		})
+	})
 }
 
 func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
@@ -169,9 +173,13 @@ func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
 	if m.module != nil {
 		entryPoint = m.module.ServiceEntryPoint
 	}
+	var jsExec jsexecutor.ScriptExecutor
+	if m.moduleManager != nil {
+		jsExec = m.moduleManager.jsExecutor
+	}
 	committed.builder = internalbackendbuilder.NewModuleBuilder(
 		txScope,
-		m.moduleManager.jsExecutor,
+		jsExec,
 		m.module,
 		entryPoint,
 		internalbackendbuilder.WithPublishDist(false),
@@ -205,7 +213,11 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 
 	initializeStarted := time.Now()
-	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
+	var jsExec jsexecutor.ScriptExecutor
+	if m.moduleManager != nil {
+		jsExec = m.moduleManager.jsExecutor
+	}
+	if hookRunner, err := hooks.NewRunner(m.runtimeScope, jsExec, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
 		var hookScripts []*jsengine.JsScript
@@ -216,7 +228,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 				hookScripts = append(hookScripts, script)
 			}
 		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil}); err != nil {
+		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: jsExec != nil}); err != nil {
 			return xfmt.Errorf("error running pre_init hook for module %s: %w", m.module.Name, err)
 		}
 	}
@@ -281,7 +293,11 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {
 	finalizeStarted := time.Now()
-	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
+	var jsExec jsexecutor.ScriptExecutor
+	if m.moduleManager != nil {
+		jsExec = m.moduleManager.jsExecutor
+	}
+	if hookRunner, err := hooks.NewRunner(m.runtimeScope, jsExec, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
 		var hookScripts []*jsengine.JsScript
@@ -292,7 +308,7 @@ func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error
 				hookScripts = append(hookScripts, script)
 			}
 		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil}); err != nil {
+		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: jsExec != nil}); err != nil {
 			return xfmt.Errorf("error running post_init hook for module %s: %w", m.module.Name, err)
 		}
 	}

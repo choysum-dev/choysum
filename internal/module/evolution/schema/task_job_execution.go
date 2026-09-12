@@ -118,7 +118,7 @@ func ensureTaskJobExecutionTable(runtimeScope scope.Scope) error {
 
 func ensureTaskJobExecutionIndexes(db *gorm.DB, table string, cols []ColumnSpec, dialect string) error {
 	for _, col := range cols {
-		if !col.Indexed && !col.Unique && !col.UniqueIndex && len(col.UniqueIndexNames) == 0 {
+		if !columnNeedsIndex(col) {
 			continue
 		}
 		if err := ensureTaskJobIndexesFn(db, table, col, dialect); err != nil {

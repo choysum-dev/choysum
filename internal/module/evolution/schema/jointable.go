@@ -85,7 +85,12 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 					model.Name, field.Name, inverseJoinField, joinTable)
 			}
 			referRight := ""
-			if target := resolveModelRef(byKey, targetRef); target != nil {
+			if targetRef != "" {
+				target := resolveModelRef(byKey, targetRef)
+				if target == nil {
+					return fmt.Errorf("ManyToMany %s.%s targetModel %q not found among migrate models",
+						model.Name, field.Name, targetRef)
+				}
 				referRight = strings.TrimSpace(target.ModelTable)
 				if referRight == "" {
 					return fmt.Errorf("ManyToMany %s.%s targetModel %q has empty ModelTable",

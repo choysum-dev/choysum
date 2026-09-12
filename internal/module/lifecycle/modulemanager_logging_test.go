@@ -14,6 +14,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	moduleplan "github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
@@ -424,6 +425,99 @@ func TestWithLeaseRenewPaused(t *testing.T) {
 	want := errors.New("boom")
 	if err := m.withLeaseRenewPaused(func() error { return want }); !errors.Is(err, want) {
 		t.Fatalf("got %v want %v", err, want)
+	}
+}
+
+func TestRunWithLeaseRenewPaused(t *testing.T) {
+	if err := runWithLeaseRenewPaused(nil, nil); err != nil {
+		t.Fatalf("nil manager nil fn: %v", err)
+	}
+	called := false
+	if err := runWithLeaseRenewPaused(nil, func() error {
+		called = true
+		return nil
+	}); err != nil || !called {
+		t.Fatalf("nil manager fn: called=%v err=%v", called, err)
+	}
+	m := &ModuleManager{}
+	if err := runWithLeaseRenewPaused(m, func() error {
+		if !m.pauseLeaseRenew.Load() {
+			t.Fatal("expected pause")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type renewCountLocker struct {
+	renewCalls int
+	renewErr   error
+}
+
+func (l *renewCountLocker) Acquire(context.Context, string, string, time.Duration) error {
+	return nil
+}
+func (l *renewCountLocker) Renew(context.Context, string, string, time.Duration) error {
+	l.renewCalls++
+	return l.renewErr
+}
+func (l *renewCountLocker) Release(context.Context, string, string) error { return nil }
+
+func TestRenewLeaseOnTick(t *testing.T) {
+	(*ModuleManager)(nil).renewLeaseOnTick(nil, context.Background(), "r", "o", time.Second)
+	m := &ModuleManager{runtimeScope: newDebugTestLogScope(&bytes.Buffer{})}
+	m.renewLeaseOnTick(nil, context.Background(), "r", "o", time.Second)
+
+	locker := &renewCountLocker{}
+	m.pauseLeaseRenew.Store(true)
+	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
+	if locker.renewCalls != 0 {
+		t.Fatalf("paused renew calls=%d", locker.renewCalls)
+	}
+	m.pauseLeaseRenew.Store(false)
+	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
+	if locker.renewCalls != 1 {
+		t.Fatalf("renew calls=%d", locker.renewCalls)
+	}
+	locker.renewErr = errors.New("renew boom")
+	m.renewLeaseOnTick(locker, context.Background(), "r", "o", time.Second)
+	if locker.renewCalls != 2 {
+		t.Fatalf("renew with err calls=%d", locker.renewCalls)
+	}
+}
+
+func TestWithModuleManagerLease_RespectsRenewPause(t *testing.T) {
+	origTTL, origEvery := moduleManagerLeaseTTL, moduleManagerLeaseRenewEvery
+	moduleManagerLeaseTTL = 20 * time.Millisecond
+	moduleManagerLeaseRenewEvery = func(time.Duration) time.Duration { return 5 * time.Millisecond }
+	t.Cleanup(func() {
+		moduleManagerLeaseTTL = origTTL
+		moduleManagerLeaseRenewEvery = origEvery
+	})
+
+	runtimeScope := newLifecycleCommitTestScope(t)
+	locker := &renewCountLocker{}
+	m := &ModuleManager{
+		runtimeScope:  runtimeScope,
+		lockerFactory: func(scope.Scope) statepkg.Locker { return locker },
+		entities:      modmeta.CatalogEntities(),
+	}
+
+	if err := m.withModuleManagerLease(context.Background(), func() error {
+		if err := m.withLeaseRenewPaused(func() error {
+			time.Sleep(25 * time.Millisecond)
+			return nil
+		}); err != nil {
+			return err
+		}
+		time.Sleep(15 * time.Millisecond)
+		return nil
+	}); err != nil {
+		t.Fatalf("lease: %v", err)
+	}
+	if locker.renewCalls < 1 {
+		t.Fatalf("expected at least one renew after pause cleared, got %d", locker.renewCalls)
 	}
 }
 

@@ -22,6 +22,11 @@ var dropIndexFn = func(mig gorm.Migrator, value any, name string) error {
 	return mig.DropIndex(value, name)
 }
 
+// columnNeedsIndex reports whether ensureIndexesForColumn should run for col.
+func columnNeedsIndex(col ColumnSpec) bool {
+	return col.Indexed || col.Unique || col.UniqueIndex || len(col.UniqueIndexNames) > 0
+}
+
 // applyPlan executes Auto ops only (caller must Validate first).
 func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error {
 	if runtimeScope == nil || runtimeScope.Session() == nil {
@@ -43,7 +48,7 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			}
 			if op.Kind == OpCreateJoinTable {
 				for _, col := range op.Columns {
-					if !col.Indexed && !col.Unique && !col.UniqueIndex && len(col.UniqueIndexNames) == 0 {
+					if !columnNeedsIndex(col) {
 						continue
 					}
 					if err := ensureIndexesForColumnFn(db.DB, op.Table, col, dialect); err != nil {

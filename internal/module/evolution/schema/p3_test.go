@@ -201,6 +201,8 @@ func TestApply_CreateJoinTable(t *testing.T) {
 	cols := []ColumnSpec{
 		{Name: "user_id", FieldName: "UserId", PhysicalType: "varchar", Size: &size, Indexed: true},
 		{Name: "role_id", FieldName: "RoleId", PhysicalType: "varchar", Size: &size, UniqueIndex: true},
+		{Name: "scope", FieldName: "Scope", PhysicalType: "varchar", Size: &size, Unique: true},
+		{Name: "tenant", FieldName: "Tenant", PhysicalType: "varchar", Size: &size, UniqueIndex: true, UniqueIndexNames: []string{"uniq_auth_user_role_tenant"}},
 		{Name: "note", FieldName: "Note", PhysicalType: "varchar", Size: &size}, // non-indexed → skip branch
 	}
 	plan := SchemaPlan{Ops: []PlanOp{{
@@ -229,6 +231,23 @@ func TestApply_CreateJoinTable(t *testing.T) {
 		"auth_user_role_apply",
 	).Scan(&uniqueRoleId).Error; err != nil || uniqueRoleId < 1 {
 		t.Fatalf("expected UNIQUE index on role_id, n=%d err=%v", uniqueRoleId, err)
+	}
+	var uniqueScope int
+	if err := runtimeScope.Session().Raw(
+		`SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=? AND sql LIKE '%UNIQUE%' AND sql LIKE '%scope%'`,
+		"auth_user_role_apply",
+	).Scan(&uniqueScope).Error; err != nil || uniqueScope < 1 {
+		t.Fatalf("expected UNIQUE index on scope, n=%d err=%v", uniqueScope, err)
+	}
+	var namedTenant int
+	if err := runtimeScope.Session().Raw(
+		`SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=? AND name=?`,
+		"auth_user_role_apply", "uniq_auth_user_role_tenant",
+	).Scan(&namedTenant).Error; err != nil || namedTenant < 1 {
+		t.Fatalf("expected named unique index on tenant, n=%d err=%v", namedTenant, err)
+	}
+	if columnNeedsIndex(ColumnSpec{}) || !columnNeedsIndex(ColumnSpec{Unique: true}) {
+		t.Fatal("columnNeedsIndex")
 	}
 
 	// Index ensure failure on create_join_table.

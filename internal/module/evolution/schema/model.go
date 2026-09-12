@@ -165,7 +165,7 @@ func markLeftoverOwnership(plan *SchemaPlan, runtimeScope scope.Scope) error {
 			continue
 		}
 		seen[key] = struct{}{}
-		tables = append(tables, left.Table)
+		tables = append(tables, strings.TrimSpace(left.Table))
 	}
 	if len(tables) == 0 || runtimeScope == nil || runtimeScope.Session() == nil {
 		return nil
@@ -192,18 +192,18 @@ func markLeftoverOwnership(plan *SchemaPlan, runtimeScope scope.Scope) error {
 				names[strings.ToLower(rf)] = struct{}{}
 			}
 		}
-		ownedCols[strings.ToLower(table)] = names
+		ownedCols[strings.ToLower(strings.TrimSpace(table))] = names
 	}
 	for i := range plan.Leftover {
 		left := &plan.Leftover[i]
 		if left.Kind != LeftoverColumn {
 			continue
 		}
-		names := ownedCols[strings.ToLower(left.Table)]
+		names := ownedCols[strings.ToLower(strings.TrimSpace(left.Table))]
 		if names == nil {
 			continue
 		}
-		_, left.ChoysumOwned = names[strings.ToLower(left.Name)]
+		_, left.ChoysumOwned = names[strings.ToLower(strings.TrimSpace(left.Name))]
 	}
 	return nil
 }
