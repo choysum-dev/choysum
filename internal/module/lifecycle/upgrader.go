@@ -238,7 +238,7 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	target.Status = meta.Installed
 	if len(target.Dependencies) > 0 {
 		if err := sqliteretry.WithLockRetry(func() error {
-			return m.runtimeScope.Session().Model(target).Association("Dependencies").Replace(target.Dependencies)
+			return replaceModuleDependenciesFn(m.runtimeScope.Session(), target)
 		}); err != nil {
 			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
@@ -295,6 +295,11 @@ func (m *moduleUpgrader) schemaIntents() schema.IntentBag {
 		return nil
 	}
 	return m.ctx.schemaIntents
+}
+
+// replaceModuleDependenciesFn writes module dependency associations (overridable in tests).
+var replaceModuleDependenciesFn = func(sess *scope.Session, target *meta.Module) error {
+	return sess.Model(target).Association("Dependencies").Replace(target.Dependencies)
 }
 
 // scopeSchemaIntents replaces the shared opContext bag with a fresh one for this
