@@ -399,6 +399,34 @@ func TestReleaseLeaseWithContextFallback_NilLockerNoop(t *testing.T) {
 	releaseLeaseWithContextFallback(newDebugTestLogScope(&bytes.Buffer{}), nil, context.Background(), "lease-resource", "owner-1", "module manager")
 }
 
+func TestWithLeaseRenewPaused(t *testing.T) {
+	if err := (*ModuleManager)(nil).withLeaseRenewPaused(nil); err != nil {
+		t.Fatalf("nil manager nil fn: %v", err)
+	}
+	if err := (*ModuleManager)(nil).withLeaseRenewPaused(func() error { return nil }); err != nil {
+		t.Fatalf("nil manager: %v", err)
+	}
+	m := &ModuleManager{}
+	if err := m.withLeaseRenewPaused(nil); err != nil {
+		t.Fatalf("nil fn: %v", err)
+	}
+	if err := m.withLeaseRenewPaused(func() error {
+		if !m.pauseLeaseRenew.Load() {
+			t.Fatal("expected pause while fn runs")
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("paused fn: %v", err)
+	}
+	if m.pauseLeaseRenew.Load() {
+		t.Fatal("expected pause cleared after fn")
+	}
+	want := errors.New("boom")
+	if err := m.withLeaseRenewPaused(func() error { return want }); !errors.Is(err, want) {
+		t.Fatalf("got %v want %v", err, want)
+	}
+}
+
 func TestReleaseLeaseWithContextFallback_PrimarySuccessNoFallback(t *testing.T) {
 	locker := &releaseSequenceLocker{releaseErrs: []error{nil}}
 	releaseLeaseWithContextFallback(newDebugTestLogScope(&bytes.Buffer{}), locker, context.Background(), "lease-resource", "owner-1", "module manager")

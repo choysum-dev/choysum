@@ -522,6 +522,21 @@ func TestEnsureTaskJobExecution_ErrorHooks(t *testing.T) {
 	if err := ensureTaskJobExecutionTable(bare); err == nil || !strings.Contains(err.Error(), "add idx boom") {
 		t.Fatalf("add idx: %v", err)
 	}
+	ensureTaskJobIndexesFn = origIdx
+
+	// Warm-path ready-check failure.
+	warm := newSchemaTestScope(t)
+	if err := ensureTaskJobExecutionTable(warm); err != nil {
+		t.Fatal(err)
+	}
+	origReady := taskJobUniqueJobIDReadyFn
+	t.Cleanup(func() { taskJobUniqueJobIDReadyFn = origReady })
+	taskJobUniqueJobIDReadyFn = func(*gorm.DB, string) (bool, error) {
+		return false, errString("ready boom")
+	}
+	if err := ensureTaskJobExecutionTable(warm); err == nil || !strings.Contains(err.Error(), "ready boom") {
+		t.Fatalf("ready check: %v", err)
+	}
 }
 
 func TestFilterIntentCoveredLeftovers_NilBag(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/internal/module/policy"
+	"github.com/choysum-dev/choysum/internal/persistence/sqliteretry"
 	"github.com/choysum-dev/choysum/internal/task"
 
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
@@ -142,10 +143,18 @@ func (m *moduleInstaller) install() error {
 		ctx = context.Background()
 	}
 	txHoldStarted := time.Now()
-	err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-		committed := m.forCommitScope(txScope)
-		return committed.commitInstall(buildResult, persistLater)
-	})
+	runCommit := func() error {
+		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+			committed := m.forCommitScope(txScope)
+			return committed.commitInstall(buildResult, persistLater)
+		})
+	}
+	var err error
+	if m.moduleManager != nil {
+		err = m.moduleManager.withLeaseRenewPaused(runCommit)
+	} else {
+		err = runCommit()
+	}
 	LogInstallOuterTxHold(m.runtimeScope.Logger(), "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err
@@ -243,9 +252,11 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	// Omit association trees: Persist already wrote meta_raw_* + recomputed effective
 	// meta_model*. Cascading Models here re-creates declaration shells with module_id and
 	// duplicates logical names (breaks UI rpc dependency checks / UNIQUE(application,name)).
-	if err := m.runtimeScope.Session().
-		Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
-		Save(m.module).Error; err != nil {
+	if err := sqliteretry.WithLockRetry(func() error {
+		return m.runtimeScope.Session().
+			Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+			Save(m.module).Error
+	}); err != nil {
 		return xfmt.Errorf("error saving module: %w", err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSave, saveStarted)

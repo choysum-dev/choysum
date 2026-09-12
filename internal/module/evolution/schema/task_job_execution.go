@@ -46,6 +46,7 @@ var (
 	structForAddColumnFn      = structForAddColumn
 	ensureTaskJobIndexesFn    = ensureIndexesForColumn
 	taskJobExecutionColumnsFn = taskJobExecutionColumns
+	taskJobUniqueJobIDReadyFn = taskJobExecutionUniqueJobIDReady
 	taskJobAddColumnFn        = func(mig gorm.Migrator, value any, name string) error {
 		return mig.AddColumn(value, name)
 	}
@@ -83,33 +84,58 @@ func ensureTaskJobExecutionTable(runtimeScope scope.Scope) error {
 		if err := db.Table(table).Migrator().CreateTable(inst); err != nil {
 			return fmt.Errorf("create task_job_execution: %w", err)
 		}
-		for _, col := range cols {
-			if !col.Indexed && !col.Unique && !col.UniqueIndex && len(col.UniqueIndexNames) == 0 {
-				continue
-			}
-			if err := ensureTaskJobIndexesFn(db.DB, table, col, dialect); err != nil {
-				return fmt.Errorf("ensure task_job_execution index %s: %w", col.Name, err)
-			}
-		}
-		return nil
+		return ensureTaskJobExecutionIndexes(db.DB, table, cols, dialect)
 	}
+	addedColumn := false
 	for _, col := range cols {
-		if !db.Migrator().HasColumn(table, col.Name) {
-			inst, err := structForAddColumnFn(table, col, dialect)
-			if err != nil {
-				return fmt.Errorf("build task_job_execution add column %s: %w", col.Name, err)
-			}
-			fieldName := exportIdent(col.FieldName)
-			if err := taskJobAddColumnFn(db.Table(table).Migrator(), inst, fieldName); err != nil {
-				return fmt.Errorf("add task_job_execution column %s: %w", col.Name, err)
-			}
+		if db.Migrator().HasColumn(table, col.Name) {
+			continue
 		}
+		inst, err := structForAddColumnFn(table, col, dialect)
+		if err != nil {
+			return fmt.Errorf("build task_job_execution add column %s: %w", col.Name, err)
+		}
+		fieldName := exportIdent(col.FieldName)
+		if err := taskJobAddColumnFn(db.Table(table).Migrator(), inst, fieldName); err != nil {
+			return fmt.Errorf("add task_job_execution column %s: %w", col.Name, err)
+		}
+		addedColumn = true
+	}
+	// Warm path: table already complete (all columns + UNIQUE job_id). Skip repeated
+	// index reconcile on every module migrate — that held the install TX long enough
+	// to collide with module-manager lease renew on SQLite (database is locked).
+	if !addedColumn {
+		ready, err := taskJobUniqueJobIDReadyFn(db.DB, table)
+		if err != nil {
+			return err
+		}
+		if ready {
+			return nil
+		}
+	}
+	return ensureTaskJobExecutionIndexes(db.DB, table, cols, dialect)
+}
+
+func ensureTaskJobExecutionIndexes(db *gorm.DB, table string, cols []ColumnSpec, dialect string) error {
+	for _, col := range cols {
 		if !col.Indexed && !col.Unique && !col.UniqueIndex && len(col.UniqueIndexNames) == 0 {
 			continue
 		}
-		if err := ensureTaskJobIndexesFn(db.DB, table, col, dialect); err != nil {
+		if err := ensureTaskJobIndexesFn(db, table, col, dialect); err != nil {
 			return fmt.Errorf("ensure task_job_execution index %s: %w", col.Name, err)
 		}
 	}
 	return nil
+}
+
+// taskJobExecutionUniqueJobIDReady reports whether path-1 UNIQUE on job_id is present.
+func taskJobExecutionUniqueJobIDReady(db *gorm.DB, table string) (bool, error) {
+	if db == nil {
+		return false, nil
+	}
+	unique, err := liveIndexUnique(db, table, "job_id", "job_id")
+	if err != nil {
+		return false, fmt.Errorf("inspect task_job_execution job_id index: %w", err)
+	}
+	return unique, nil
 }

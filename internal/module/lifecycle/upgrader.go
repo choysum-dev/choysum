@@ -169,17 +169,24 @@ func (m *moduleUpgrader) upgrade() error {
 		ctx = context.Background()
 	}
 	txHoldStarted := time.Now()
-	err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-		committed := installer.forCommitScope(txScope)
-		upgrader := *m
-		upgrader.runtimeScope = txScope
-		result, commitErr := upgrader.commitUpgrade(committed, fromVersion, buildResult, persistLater)
-		if commitErr != nil {
-			return commitErr
-		}
-		buildResult = result
-		return nil
-	})
+	runCommit := func() error {
+		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+			committed := installer.forCommitScope(txScope)
+			upgrader := *m
+			upgrader.runtimeScope = txScope
+			result, commitErr := upgrader.commitUpgrade(committed, fromVersion, buildResult, persistLater)
+			if commitErr != nil {
+				return commitErr
+			}
+			buildResult = result
+			return nil
+		})
+	}
+	if m.moduleManager != nil {
+		err = m.moduleManager.withLeaseRenewPaused(runCommit)
+	} else {
+		err = runCommit()
+	}
 	LogModuleCommitTxHold(m.runtimeScope.Logger(), "upgrade", "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err

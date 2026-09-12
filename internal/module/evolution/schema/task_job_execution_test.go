@@ -31,4 +31,7 @@ func TestTaskJobExecutionHelpers(t *testing.T) {
 	if err := ensureTaskJobExecutionTable(closedRuntimeScope); err == nil {
 		t.Fatal("expected ensureTaskJobExecutionTable() to fail on closed database")
 	}
+	if _, err := taskJobExecutionUniqueJobIDReady(closedRuntimeScope.Session().DB, "task_job_execution"); err == nil {
+		t.Fatal("expected unique ready inspect to fail on closed database")
+	}
 }

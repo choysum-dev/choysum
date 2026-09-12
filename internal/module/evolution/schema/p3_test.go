@@ -315,9 +315,16 @@ func TestEnsureTaskJobExecution_Path1(t *testing.T) {
 	).Scan(&uniqueJobId).Error; err != nil || uniqueJobId < 1 {
 		t.Fatalf("expected UNIQUE index on job_id, n=%d err=%v", uniqueJobId, err)
 	}
-	// Idempotent when table exists.
+	// Idempotent when table exists (warm path: skip index re-reconcile).
 	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
 		t.Fatalf("re-ensure: %v", err)
+	}
+	ready, err := taskJobExecutionUniqueJobIDReady(runtimeScope.Session().DB, "task_job_execution")
+	if err != nil || !ready {
+		t.Fatalf("unique ready after warm path: ready=%v err=%v", ready, err)
+	}
+	if ready, err := taskJobExecutionUniqueJobIDReady(nil, "task_job_execution"); err != nil || ready {
+		t.Fatalf("nil db ready=%v err=%v", ready, err)
 	}
 	// Add missing column path: drop one column then re-ensure.
 	if err := runtimeScope.Session().Exec(`ALTER TABLE task_job_execution DROP COLUMN result_hash`).Error; err != nil {
@@ -328,6 +335,49 @@ func TestEnsureTaskJobExecution_Path1(t *testing.T) {
 	}
 	if !runtimeScope.Session().Migrator().HasColumn("task_job_execution", "result_hash") {
 		t.Fatal("expected result_hash restored")
+	}
+
+	// All columns present but UNIQUE missing → must reconcile (not warm-skip).
+	db := runtimeScope.Session().DB
+	indexes, err := getIndexes(db, "task_job_execution")
+	if err != nil {
+		t.Fatalf("getIndexes: %v", err)
+	}
+	mig := db.Table("task_job_execution").Migrator()
+	for _, idx := range indexes {
+		if idx == nil {
+			continue
+		}
+		unique, ok := idx.Unique()
+		if !ok || !unique {
+			continue
+		}
+		cols := idx.Columns()
+		if len(cols) != 1 || !strings.EqualFold(cols[0], "job_id") {
+			continue
+		}
+		if err := mig.DropIndex(&struct {
+			JobId string `gorm:"column:job_id;size:64;uniqueIndex"`
+		}{}, idx.Name()); err != nil {
+			// Fall back to DROP INDEX by name for sqlite.
+			if dropErr := db.Exec(`DROP INDEX IF EXISTS "` + idx.Name() + `"`).Error; dropErr != nil {
+				t.Fatalf("drop unique %s: mig=%v drop=%v", idx.Name(), err, dropErr)
+			}
+		}
+	}
+	ready, err = taskJobExecutionUniqueJobIDReady(db, "task_job_execution")
+	if err != nil {
+		t.Fatalf("ready after drop: %v", err)
+	}
+	if ready {
+		t.Fatal("expected UNIQUE missing after drop")
+	}
+	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
+		t.Fatalf("reconcile unique: %v", err)
+	}
+	ready, err = taskJobExecutionUniqueJobIDReady(db, "task_job_execution")
+	if err != nil || !ready {
+		t.Fatalf("unique restored: ready=%v err=%v", ready, err)
 	}
 }
 

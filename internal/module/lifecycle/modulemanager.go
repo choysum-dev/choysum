@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -280,6 +281,8 @@ type ModuleManager struct {
 	lockerFactory            statepkg.LockerFactory
 	moduleIndexSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error)
 	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
+	// pauseLeaseRenew skips heartbeat Renew while a module commit TX holds SQLite.
+	pauseLeaseRenew atomic.Bool
 }
 
 func (m *ModuleManager) ensureMetaTables() error {
@@ -401,6 +404,9 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 			case <-heartbeatCtx.Done():
 				return
 			case <-ticker.C:
+				if m.pauseLeaseRenew.Load() {
+					continue
+				}
 				if err := locker.Renew(heartbeatCtx, resource, ownerId, ttl); err != nil {
 					m.runtimeScope.Logger().Warn("module manager lease renew failed", "resource", resource, "error", err)
 				}
@@ -414,6 +420,24 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 		releaseLeaseWithContextFallback(m.runtimeScope, locker, ctx, resource, ownerId, "module manager")
 	}()
 
+	return fn()
+}
+
+// withLeaseRenewPaused skips module-manager lease Renew while fn runs.
+// Use around module commit transactions so SQLite is not contested by a second
+// connection (MaxOpenConns=2) while the commit TX holds a write lock.
+func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
+	if m == nil {
+		if fn == nil {
+			return nil
+		}
+		return fn()
+	}
+	if fn == nil {
+		return nil
+	}
+	m.pauseLeaseRenew.Store(true)
+	defer m.pauseLeaseRenew.Store(false)
 	return fn()
 }
 
