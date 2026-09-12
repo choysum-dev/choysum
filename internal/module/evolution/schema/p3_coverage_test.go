@@ -133,13 +133,13 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
 		{Name: "role_id", PhysicalType: "char"},
 	}}}
-	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinOK, role}); err == nil || !strings.Contains(err.Error(), "user_id") {
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinOK, role}); err == nil || !strings.Contains(err.Error(), "UserId") {
 		t.Fatalf("missing left join col: %v", err)
 	}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
 		{Name: "user_id", PhysicalType: "char"},
 	}}}
-	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinOK, role}); err == nil || !strings.Contains(err.Error(), "role_id") {
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinOK, role}); err == nil || !strings.Contains(err.Error(), "RoleId") {
 		t.Fatalf("missing right join col: %v", err)
 	}
 
@@ -168,6 +168,31 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	}
 	if len(desired.JoinTables) != 1 {
 		t.Fatalf("bidirectional JoinTables = %#v", desired.JoinTables)
+	}
+
+	// Custom physical column names matched via FieldName.
+	customJoin := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "uid", FieldName: "UserId", PhysicalType: "char"},
+		{Name: "rid", FieldName: "RoleId", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, customJoin, role}); err != nil {
+		t.Fatalf("fieldName columns: %v", err)
+	}
+	if desired.JoinTables[0].Left.Column != "uid" || desired.JoinTables[0].Right.Column != "rid" {
+		t.Fatalf("custom cols = %#v", desired.JoinTables[0])
+	}
+	if got, ok := resolveJoinColumnName(nil, "UserId"); ok || got != "" {
+		t.Fatal("empty cols")
+	}
+	if _, ok := resolveJoinColumnName([]ColumnSpec{{Name: "x"}}, ""); ok {
+		t.Fatal("empty field ref")
+	}
+	if _, ok := resolveJoinColumnName([]ColumnSpec{{Name: "", FieldName: "UserId"}}, "UserId"); ok {
+		t.Fatal("blank physical name")
+	}
+	if name, ok := resolveJoinColumnName([]ColumnSpec{{Name: "UserId"}}, "UserId"); !ok || name != "UserId" {
+		t.Fatalf("literal name match: %q %v", name, ok)
 	}
 
 	if joinTableSpecsEqual(JoinTableSpec{Table: "a"}, JoinTableSpec{Table: "b"}) {
@@ -219,18 +244,24 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 func TestDesiredTableNames_JoinOnly(t *testing.T) {
 	names := desiredTableNames(DesiredSchema{
 		Tables: map[string][]ColumnSpec{
-			"":     {{Name: "x"}},
-			"Auth": {{Name: "id"}},
-			"auth": {{Name: "id2"}}, // case-variant hits seen dedupe
+			"":      {{Name: "x"}},
+			"Auth":  {{Name: "id"}},
+			"auth":  {{Name: "id2"}}, // case-variant hits seen dedupe
+			" zeta": {{Name: "z"}},
 		},
 		JoinTables: []JoinTableSpec{
 			{Table: ""},
 			{Table: "auth"},
 			{Table: "auth_user_role"},
+			{Table: " beta_join"},
 		},
 	})
-	if len(names) != 2 {
+	if len(names) != 4 {
 		t.Fatalf("names = %#v", names)
+	}
+	// Sorted, trimmed, case-folded dedupe keeps first sorted spelling ("Auth" before "auth").
+	if names[0] != "Auth" || names[1] != "zeta" || names[2] != "auth_user_role" || names[3] != "beta_join" {
+		t.Fatalf("deterministic names = %#v", names)
 	}
 }
 

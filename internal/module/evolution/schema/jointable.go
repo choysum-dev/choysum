@@ -70,19 +70,15 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 				return fmt.Errorf("ManyToMany %s.%s join table %q has no desired columns",
 					model.Name, field.Name, joinTable)
 			}
-			leftCol := strcase.ToSnake(joinField)
-			rightCol := strcase.ToSnake(inverseJoinField)
-			colNames := map[string]struct{}{}
-			for _, col := range cols {
-				colNames[strings.ToLower(strings.TrimSpace(col.Name))] = struct{}{}
-			}
-			if _, ok := colNames[strings.ToLower(leftCol)]; !ok {
+			leftCol, okLeft := resolveJoinColumnName(cols, joinField)
+			rightCol, okRight := resolveJoinColumnName(cols, inverseJoinField)
+			if !okLeft {
 				return fmt.Errorf("ManyToMany %s.%s join column %q missing from desired table %s",
-					model.Name, field.Name, leftCol, joinTable)
+					model.Name, field.Name, joinField, joinTable)
 			}
-			if _, ok := colNames[strings.ToLower(rightCol)]; !ok {
+			if !okRight {
 				return fmt.Errorf("ManyToMany %s.%s join column %q missing from desired table %s",
-					model.Name, field.Name, rightCol, joinTable)
+					model.Name, field.Name, inverseJoinField, joinTable)
 			}
 			referRight := ""
 			if target := resolveModelRef(byKey, targetRef); target != nil {
@@ -129,6 +125,29 @@ func joinEndsEqual(a, b JoinEnd) bool {
 	return strings.EqualFold(a.Column, b.Column) &&
 		strings.EqualFold(a.ReferTable, b.ReferTable) &&
 		strings.EqualFold(a.ReferColumn, b.ReferColumn)
+}
+
+// resolveJoinColumnName maps a joinField / inverseJoinField ref onto a desired physical column.
+// Prefers snake_case of the field name, then exact/case-insensitive Name or FieldName match.
+func resolveJoinColumnName(cols []ColumnSpec, fieldRef string) (string, bool) {
+	fieldRef = strings.TrimSpace(fieldRef)
+	if fieldRef == "" {
+		return "", false
+	}
+	snake := strcase.ToSnake(fieldRef)
+	for _, col := range cols {
+		name := strings.TrimSpace(col.Name)
+		if name == "" {
+			continue
+		}
+		if strings.EqualFold(name, snake) || strings.EqualFold(name, fieldRef) {
+			return name, true
+		}
+		if fn := strings.TrimSpace(col.FieldName); fn != "" && strings.EqualFold(fn, fieldRef) {
+			return name, true
+		}
+	}
+	return "", false
 }
 
 // manyToManyJoinMeta returns join identity for a ManyToMany field, or ok=false when not M2M / no joinModel.
