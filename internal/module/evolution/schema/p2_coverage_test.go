@@ -207,6 +207,12 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 		t.Fatalf("live rename spec %#v err=%v", col, err)
 	}
 	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{fakeColumnType{name: "old", dbType: "VARCHAR", length: 32, lengthOK: true}}, nil
+	}
+	if _, err := columnSpecForLiveRename(db, "t", "old", "new"); err == nil || !strings.Contains(err.Error(), "nullability") {
+		t.Fatalf("unknown nullability: %v", err)
+	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
 		return []gorm.ColumnType{fakeColumnType{name: "old", dbType: "weird_xyz"}}, nil
 	}
 	if _, err := columnSpecForLiveRename(db, "t", "old", "new"); err == nil || !strings.Contains(err.Error(), "unsupported live type") {

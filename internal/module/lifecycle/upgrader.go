@@ -104,12 +104,9 @@ func (m *moduleUpgrader) upgrade() error {
 	if err := m.validate(); err != nil {
 		return xfmt.Errorf("error validating module %s: %w", m.module.Name, err)
 	}
-	// Clear intents on every exit so a failed upgrade does not leak into the next module.
-	defer func() {
-		if bag := m.schemaIntents(); bag != nil {
-			bag.Clear()
-		}
-	}()
+	// Scope intents to this module so nested dependency upgrades cannot clear
+	// (or read) another module's bag; restore the previous bag on unwind.
+	defer m.scopeSchemaIntents()()
 
 	fromVersion := m.module.Version
 	if m.ctx != nil {
@@ -296,6 +293,20 @@ func (m *moduleUpgrader) schemaIntents() schema.IntentBag {
 		return nil
 	}
 	return m.ctx.schemaIntents
+}
+
+// scopeSchemaIntents replaces the shared opContext bag with a fresh one for this
+// upgrade and returns a restore func that puts the previous bag back.
+func (m *moduleUpgrader) scopeSchemaIntents() (restore func()) {
+	prev := m.schemaIntents()
+	if m != nil && m.ctx != nil {
+		m.ctx.schemaIntents = schema.NewMemoryIntentBag()
+	}
+	return func() {
+		if m != nil && m.ctx != nil {
+			m.ctx.schemaIntents = prev
+		}
+	}
 }
 
 func newModuleUpgrader(runtimeScope scope.Scope, module *meta.Module, moduleManager *ModuleManager, ctx *opContext) *moduleUpgrader {

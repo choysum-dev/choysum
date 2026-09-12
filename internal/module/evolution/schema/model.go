@@ -227,6 +227,8 @@ func (m *modelMigrator) warnDropAfterLeftovers(plan SchemaPlan) {
 		}
 		var cols []ColumnSpec
 		if err := json.Unmarshal(snap.DesiredJSON, &cols); err != nil {
+			m.runtimeScope.Logger().Warn("dropAfter leftover warning skipped: snapshot decode failed",
+				"table", left.Table, "error", err)
 			continue
 		}
 		for _, col := range cols {

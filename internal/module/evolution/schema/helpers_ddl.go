@@ -239,6 +239,8 @@ func columnSpecForLiveRename(db *gorm.DB, table, from, to string) (ColumnSpec, e
 		}
 		if lc.Nullable != nil {
 			col.NotNull = !*lc.Nullable
+		} else {
+			return ColumnSpec{}, fmt.Errorf("cannot determine nullability of %s.%s for rename", table, from)
 		}
 		if lc.Default != nil {
 			col.Default = lc.Default
