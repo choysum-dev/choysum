@@ -121,16 +121,15 @@ func IntentSatisfies(op PlanOp, bag IntentBag) bool {
 	}
 	from := strings.TrimSpace(op.FromName)
 	name := intentOpName(op)
+	if wantKind == IntentRenameColumn && (name == "" || from == "") {
+		return false
+	}
 	for _, in := range bag.List() {
 		if !strings.EqualFold(in.Table, table) || in.Kind != wantKind {
 			continue
 		}
 		if wantKind == IntentRenameColumn {
-			to := name
-			if to == "" || from == "" {
-				continue
-			}
-			if strings.EqualFold(in.FromName, from) && strings.EqualFold(in.Name, to) {
+			if strings.EqualFold(in.FromName, from) && strings.EqualFold(in.Name, name) {
 				return true
 			}
 			continue
@@ -172,6 +171,11 @@ func intentKindForOp(op PlanOp) IntentKind {
 	switch kind {
 	case IntentRenameColumn, IntentDropColumn, IntentDropIndex, IntentDropCheck, IntentDropForeignKey:
 		return kind
+	case "":
+		// Fall through to Detail when Kind is unset (Manual leftovers).
+	default:
+		// Known non-intent kinds (e.g. alter_column) must not match drop intents via Detail.
+		return ""
 	}
 	detail := strings.ToLower(op.Detail)
 	switch {

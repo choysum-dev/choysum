@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/internal/defaultscope"
 	"github.com/choysum-dev/choysum/internal/module/evolution/schema"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -116,6 +117,20 @@ func TestWithSchemaDDL_Helpers(t *testing.T) {
 	}
 	if len(bag.List()) < 3 {
 		t.Fatalf("intents = %#v", bag.List())
+	}
+}
+
+func TestSchemaHelperOpts_NilEngine(t *testing.T) {
+	_, err := schemaHelperOpts(nil, "sqlite")
+	if err == nil || !strings.Contains(err.Error(), "engine is nil") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestRequireStringArgs_NilElem(t *testing.T) {
+	err := requireStringArgs([]*quickjs.Value{nil}, 1, "dropColumn(table, column)")
+	if err == nil || !strings.Contains(err.Error(), "must be a string") {
+		t.Fatalf("got %v", err)
 	}
 }
 

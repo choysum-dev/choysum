@@ -220,7 +220,7 @@ func renamePhysicalCompatible(desired ColumnSpec, live LiveColumn, dialect strin
 	if wantType == haveType {
 		return true
 	}
-	if dialect == "sqlite" && sqliteTypeCompatible(wantType, haveType) {
+	if strings.EqualFold(strings.TrimSpace(dialect), "sqlite") && sqliteTypeCompatible(wantType, haveType) {
 		return true
 	}
 	return false
@@ -233,10 +233,17 @@ func indexOpsForColumn(table string, col ColumnSpec, live LiveSchema, rowCount i
 	// Otherwise leftover indexes on declared-but-unindexed columns are swallowed.
 	if col.Name != "" && len(candidates) > 0 {
 		desiredIndexKeys[strings.ToLower(col.Name)] = struct{}{}
+		if rf := strings.ToLower(strings.TrimSpace(col.RenameFrom)); rf != "" {
+			desiredIndexKeys[rf] = struct{}{}
+		}
 	}
 	for _, cand := range candidates {
 		desiredIndexKeys[strings.ToLower(cand.Name)] = struct{}{}
 		if liveHasIndex(live, table, cand.Name, cand.Unique) {
+			continue
+		}
+		// During rename planning, live indexes still reference the old column name.
+		if rf := strings.TrimSpace(col.RenameFrom); rf != "" && liveHasIndex(live, table, rf, cand.Unique) {
 			continue
 		}
 		// Default GORM lookup uses exportIdent(FieldName) (e.g. CreatedBy); also try the

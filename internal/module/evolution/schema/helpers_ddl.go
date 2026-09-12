@@ -63,7 +63,10 @@ func RenameColumn(opts HelperOptions, table, from, to string) error {
 	if strings.EqualFold(from, to) {
 		return fmt.Errorf("renameColumn from and to must differ")
 	}
-	col := columnSpecForLiveRename(opts.DB, table, from, to)
+	col, err := columnSpecForLiveRename(opts.DB, table, from, to)
+	if err != nil {
+		return err
+	}
 	if err := renameColumn(opts.DB, table, from, col, opts.Dialect); err != nil {
 		return err
 	}
@@ -133,7 +136,7 @@ func DropCheck(opts HelperOptions, table, name string) error {
 	if !opts.allowName(table, name, "chk_", "ck_") {
 		return fmt.Errorf("dropCheck rejects non-Choysum name %q (want chk_/ck_/allowed)", name)
 	}
-	if err := dropCheckConstraintBestEffort(opts.DB, opts.Dialect, table, name); err != nil {
+	if err := dropCheckHelper(opts.DB, opts.Dialect, table, name); err != nil {
 		return fmt.Errorf("drop check %s on %s: %w", name, table, err)
 	}
 	opts.Intents.Add(Intent{Kind: IntentDropCheck, Table: table, Name: name})
@@ -168,6 +171,9 @@ func DropForeignKey(opts HelperOptions, table, name string) error {
 var helperExec = func(db *gorm.DB, sql string) error {
 	return db.Exec(sql).Error
 }
+
+// dropCheckHelper is overridable in tests (non-sqlite success path).
+var dropCheckHelper = dropCheckConstraintBestEffort
 
 func dropIndexSQL(dialect, table, name string) string {
 	qTable, qName := quoteIdent(dialect, table), quoteIdent(dialect, name)
@@ -206,23 +212,25 @@ func quoteIdent(dialect, name string) string {
 
 // columnSpecForLiveRename builds a RenameColumn target that preserves the live
 // column's physical type (needed when the dialect rewrites the column definition).
-func columnSpecForLiveRename(db *gorm.DB, table, from, to string) ColumnSpec {
-	col := ColumnSpec{Name: to, FieldName: exportIdent(to), PhysicalType: "text"}
+func columnSpecForLiveRename(db *gorm.DB, table, from, to string) (ColumnSpec, error) {
+	col := ColumnSpec{Name: to, FieldName: exportIdent(to)}
 	if db == nil {
-		return col
+		return ColumnSpec{}, fmt.Errorf("db is nil")
 	}
 	types, err := getColumnTypes(db, table)
 	if err != nil {
-		return col
+		return ColumnSpec{}, fmt.Errorf("inspect columns %s: %w", table, err)
 	}
 	for _, ct := range types {
 		lc, ok := liveColumnFromColumnType(ct)
 		if !ok || !strings.EqualFold(lc.Name, from) {
 			continue
 		}
-		if phys := normalizeDBType(lc.DatabaseTypeName); phys != "" && getDefaultValue(phys) != nil {
-			col.PhysicalType = phys
+		phys := normalizeDBType(lc.DatabaseTypeName)
+		if phys == "" || getDefaultValue(phys) == nil {
+			return ColumnSpec{}, fmt.Errorf("unsupported live type %q for %s.%s", lc.DatabaseTypeName, table, from)
 		}
+		col.PhysicalType = phys
 		if lc.Length != nil && *lc.Length > 0 {
 			size := int(*lc.Length)
 			col.Size = &size
@@ -233,9 +241,9 @@ func columnSpecForLiveRename(db *gorm.DB, table, from, to string) ColumnSpec {
 		if lc.Default != nil {
 			col.Default = lc.Default
 		}
-		return col
+		return col, nil
 	}
-	return col
+	return ColumnSpec{}, fmt.Errorf("renameColumn cannot resolve live column %s.%s", table, from)
 }
 
 func indexBelongsToTable(db *gorm.DB, table, name string) (bool, error) {

@@ -99,9 +99,6 @@ func schemaHelperOpts(engine *quickjsengine.QuickjsEngine, dialect string) (sche
 		return schema.HelperOptions{}, fmt.Errorf("$choysum.schema: engine is nil")
 	}
 	execCtx := engine.ExecContext()
-	if execCtx == nil {
-		return schema.HelperOptions{}, fmt.Errorf("$choysum.schema: exec context is nil")
-	}
 	session, ok := scope.SessionFromContext(execCtx)
 	if !ok || session == nil || session.DB == nil {
 		return schema.HelperOptions{}, fmt.Errorf("$choysum.schema: no db session on exec context")

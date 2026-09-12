@@ -2806,6 +2806,7 @@ func TestTsParser_RenameFromDropAfterRejectInvalid(t *testing.T) {
 		want    string
 	}{
 		{name: "blank renameFrom", options: "renameFrom: '  '", want: "renameFrom must be a non-empty string"},
+		{name: "self renameFrom", options: "renameFrom: 'Code'", want: "renameFrom must differ from the field name"},
 		{name: "non-string dropAfter", options: "dropAfter: 1", want: "dropAfter must be a non-empty string"},
 	}
 	for _, tc := range cases {

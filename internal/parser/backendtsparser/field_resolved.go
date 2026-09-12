@@ -598,7 +598,11 @@ func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBin
 		if !ok || strings.TrimSpace(v) == "" {
 			return nil, fmt.Errorf("@Field(%s) renameFrom must be a non-empty string", field.Name)
 		}
-		spec.Structural.RenameFrom = strings.TrimSpace(v)
+		trimmed := strings.TrimSpace(v)
+		if strings.EqualFold(trimmed, field.Name) {
+			return nil, fmt.Errorf("@Field(%s) renameFrom must differ from the field name", field.Name)
+		}
+		spec.Structural.RenameFrom = trimmed
 	}
 	if raw, exists := options["dropAfter"]; exists {
 		v, ok := raw.(string)

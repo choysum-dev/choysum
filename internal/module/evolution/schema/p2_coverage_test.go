@@ -6,6 +6,7 @@ package schema
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -148,6 +149,92 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 		t.Fatal("postgres quote")
 	}
 
+	// DropIndex: ownership ok, helperExec fails.
+	origIdx, origExec := getIndexes, helperExec
+	t.Cleanup(func() { getIndexes = origIdx; helperExec = origExec })
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return []gorm.Index{fakeIndex{name: "idx_boom"}}, nil
+	}
+	helperExec = func(*gorm.DB, string) error { return fmt.Errorf("exec boom") }
+	if err := DropIndex(HelperOptions{DB: db, Dialect: "sqlite", Intents: NewMemoryIntentBag()}, "t", "idx_boom"); err == nil || !strings.Contains(err.Error(), "exec boom") {
+		t.Fatalf("drop index exec: %v", err)
+	}
+	getIndexes, helperExec = origIdx, origExec
+
+	// DropCheck success on non-sqlite via injectable helper.
+	origDrop := dropCheckHelper
+	t.Cleanup(func() { dropCheckHelper = origDrop })
+	dropCheckHelper = func(*gorm.DB, string, string, string) error { return nil }
+	chkBag := NewMemoryIntentBag()
+	if err := DropCheck(HelperOptions{DB: db, Dialect: "postgres", Intents: chkBag}, "t", "chk_t"); err != nil {
+		t.Fatal(err)
+	}
+	if len(chkBag.List()) != 1 {
+		t.Fatalf("chk intents %#v", chkBag.List())
+	}
+	dropCheckHelper = origDrop
+
+	// columnSpecForLiveRename branches.
+	if _, err := columnSpecForLiveRename(nil, "t", "a", "b"); err == nil || !strings.Contains(err.Error(), "db is nil") {
+		t.Fatalf("nil db rename spec: %v", err)
+	}
+	origCT := getColumnTypes
+	t.Cleanup(func() { getColumnTypes = origCT })
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return nil, fmt.Errorf("ct boom")
+	}
+	if _, err := columnSpecForLiveRename(db, "t", "a", "b"); err == nil || !strings.Contains(err.Error(), "ct boom") {
+		t.Fatalf("ct err: %v", err)
+	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{
+			nil,
+			fakeColumnType{name: "other", dbType: "TEXT"},
+			fakeColumnTypeWithDefault{
+				fakeColumnType: fakeColumnType{name: "old", dbType: "VARCHAR", length: 32, lengthOK: true, nullable: false, nullableOK: true},
+				def:            "x",
+				defOK:          true,
+			},
+		}, nil
+	}
+	col, err := columnSpecForLiveRename(db, "t", "old", "new")
+	if err != nil || col.PhysicalType != "varchar" || col.Size == nil || *col.Size != 32 || !col.NotNull || col.Default == nil || *col.Default != "x" {
+		t.Fatalf("live rename spec %#v err=%v", col, err)
+	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{fakeColumnType{name: "old", dbType: "weird_xyz"}}, nil
+	}
+	if _, err := columnSpecForLiveRename(db, "t", "old", "new"); err == nil || !strings.Contains(err.Error(), "unsupported live type") {
+		t.Fatalf("unsupported: %v", err)
+	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{fakeColumnType{name: "other", dbType: "TEXT"}}, nil
+	}
+	if _, err := columnSpecForLiveRename(db, "t", "old", "new"); err == nil || !strings.Contains(err.Error(), "cannot resolve") {
+		t.Fatalf("unresolved: %v", err)
+	}
+	// Resolve succeeds but GORM rename fails (covers RenameColumn error return).
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{fakeColumnType{name: "ghost", dbType: "TEXT", nullable: true, nullableOK: true}}, nil
+	}
+	if err := RenameColumn(opts, "missing_tbl", "ghost", "new_ghost"); err == nil {
+		t.Fatal("expected rename apply failure after live resolve")
+	}
+	getColumnTypes = origCT
+
+	// indexBelongsToTable nil db / nil index entries.
+	if _, err := indexBelongsToTable(nil, "t", "idx_x"); err == nil {
+		t.Fatal("nil db belongs")
+	}
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return []gorm.Index{nil, fakeIndex{name: "idx_x"}}, nil
+	}
+	belongs, err := indexBelongsToTable(db, "t", "idx_x")
+	if err != nil || !belongs {
+		t.Fatalf("belongs with nil entry: %v %v", belongs, err)
+	}
+	getIndexes = origIdx
+
 	// Exec error paths with closed DB.
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -171,9 +258,8 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 		t.Fatal("closed drop fk")
 	}
 
-	origExec := helperExec
-	t.Cleanup(func() { helperExec = origExec })
 	helperExec = func(*gorm.DB, string) error { return nil }
+	t.Cleanup(func() { helperExec = origExec })
 	fkBag := NewMemoryIntentBag()
 	if err := DropForeignKey(HelperOptions{DB: db, Dialect: "postgres", Intents: fkBag}, "t", "fk_t"); err != nil {
 		t.Fatal(err)
@@ -240,6 +326,15 @@ func TestIntentSatisfies_AllBranches(t *testing.T) {
 	if intentOpName(PlanOp{Detail: "drop column old_code"}) != "old_code" {
 		t.Fatal("strip drop column prefix")
 	}
+	if IntentSatisfies(PlanOp{Kind: OpRenameColumn, Table: "t", FromName: "", Column: &ColumnSpec{Name: "new"}}, bag) {
+		t.Fatal("empty rename from")
+	}
+	if IntentSatisfies(PlanOp{Kind: OpAlterColumn, Table: "t", Detail: "drop column c"}, bag) {
+		t.Fatal("alter_column must not match drop intent via Detail")
+	}
+	if intentKindForOp(PlanOp{Kind: OpAlterColumn, Detail: "drop column x"}) != "" {
+		t.Fatal("known non-intent kind")
+	}
 	if intentKindForOp(PlanOp{Detail: "please drop column x", Safety: SafetyManual}) != IntentDropColumn {
 		t.Fatal("detail drop column")
 	}
@@ -301,6 +396,9 @@ func TestRenamePhysicalCompatibleEdges(t *testing.T) {
 	if !renamePhysicalCompatible(ColumnSpec{PhysicalType: "varchar"}, LiveColumn{DatabaseTypeName: "TEXT"}, "sqlite") {
 		t.Fatal("sqlite compat")
 	}
+	if !renamePhysicalCompatible(ColumnSpec{PhysicalType: "varchar"}, LiveColumn{DatabaseTypeName: "TEXT"}, "SQLite") {
+		t.Fatal("dialect normalize")
+	}
 	if renamePhysicalCompatible(ColumnSpec{PhysicalType: "integer"}, LiveColumn{DatabaseTypeName: "varchar"}, "postgres") {
 		t.Fatal("mismatch")
 	}
@@ -313,7 +411,7 @@ func TestPlan_RenameFromClaimConflicts(t *testing.T) {
 	}
 	_, err := buildPlan("sales", DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {
-			{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code"},
+			{Name: "code", FieldName: "", PhysicalType: "varchar", RenameFrom: "old_code"},
 			{Name: "note", FieldName: "Note", PhysicalType: "varchar", RenameFrom: "old_code"},
 		},
 	}}, live, "sqlite")
@@ -343,6 +441,31 @@ func TestPlan_RenameFromClaimConflicts(t *testing.T) {
 	for _, op := range plan.Ops {
 		if op.Kind == OpRenameColumn {
 			t.Fatalf("self renameFrom must be a no-op, got %#v", op)
+		}
+	}
+}
+
+func TestPlan_RenameAwareIndex(t *testing.T) {
+	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
+		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", Indexed: true}},
+	}}
+	live := LiveSchema{
+		Tables:  map[string]bool{"t": true},
+		Columns: map[string]map[string]LiveColumn{"t": {"old_code": {Name: "old_code", DatabaseTypeName: "varchar"}}},
+		Indexes: map[string][]LiveIndex{"t": {{Name: "idx_t_old_code", Columns: []string{"old_code"}}}},
+	}
+	plan, err := buildPlan("sales", desired, live, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, op := range plan.Ops {
+		if op.Kind == OpAddIndex {
+			t.Fatalf("rename should not re-add index on old column, got %#v", op)
+		}
+	}
+	for _, left := range plan.Leftover {
+		if left.Kind == LeftoverIndex && strings.EqualFold(left.Name, "idx_t_old_code") {
+			t.Fatalf("rename should suppress old-column index leftover, got %#v", plan.Leftover)
 		}
 	}
 }
