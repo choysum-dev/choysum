@@ -17,6 +17,11 @@ import (
 // Overridable for tests that need to force post-AddColumn index failures.
 var ensureIndexesForColumnFn = ensureIndexesForColumn
 
+// Overridable so tests can force DropIndex failures without a broken migrator.
+var dropIndexFn = func(mig gorm.Migrator, value any, name string) error {
+	return mig.DropIndex(value, name)
+}
+
 // applyPlan executes Auto ops only (caller must Validate first).
 func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error {
 	if runtimeScope == nil || runtimeScope.Session() == nil {
@@ -72,8 +77,9 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 			if expr == "" || name == "" {
 				return fmt.Errorf("ensure_check missing name/expr for table %s", op.Table)
 			}
-			legacy := strings.Replace(name, "chk_", "ck_", 1)
-			if legacy != name {
+			// Only rewrite the chk_ constraint prefix; table/column names may contain "chk_".
+			if strings.HasPrefix(name, "chk_") {
+				legacy := "ck_" + strings.TrimPrefix(name, "chk_")
 				_ = dropCheckConstraintBestEffort(db.DB, dialect, op.Table, legacy)
 			}
 			if err := ensureCheckConstraint(db.DB, dialect, op.Table, name, expr); err != nil {
@@ -158,15 +164,16 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 			if !cand.Unique {
 				continue
 			}
-			unique, err := liveIndexUnique(db, table, cand.Name)
+			// cand.Name may be a field export (Code) while the live index uses idx_table_col.
+			unique, err := liveIndexUnique(db, table, cand.Name, col.Name)
 			if err != nil {
 				return err
 			}
 			if unique {
 				continue
 			}
-			// Same name exists but is non-unique; replace so the unique requirement is enforced.
-			if err := mig.DropIndex(inst, cand.Name); err != nil {
+			// Same lookup exists but is non-unique; replace so the unique requirement is enforced.
+			if err := dropIndexFn(mig, inst, cand.Name); err != nil {
 				return fmt.Errorf("drop non-unique index %s on %s.%s: %w", cand.Name, table, col.Name, err)
 			}
 		}
@@ -177,21 +184,42 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 	return nil
 }
 
-func liveIndexUnique(db *gorm.DB, table, indexName string) (bool, error) {
+// liveIndexUnique reports whether a live index matching indexName (or single-column colName) is unique.
+func liveIndexUnique(db *gorm.DB, table, indexName, colName string) (bool, error) {
 	indexes, err := getIndexes(db, table)
 	if err != nil {
 		return false, fmt.Errorf("inspect indexes for %s: %w", table, err)
 	}
 	for _, idx := range indexes {
-		if idx == nil || !strings.EqualFold(strings.TrimSpace(idx.Name()), indexName) {
+		if idx == nil || !liveIndexMatches(idx, indexName, colName) {
 			continue
 		}
-		if u, ok := idx.Unique(); ok {
-			return u, nil
-		}
-		return false, nil
+		u, ok := idx.Unique()
+		return ok && u, nil
 	}
 	return false, nil
+}
+
+// liveIndexMatches is true when idx's name equals indexName, or it is a single-column
+// index on colName / indexName (field-export lookups often differ from physical index names).
+func liveIndexMatches(idx gorm.Index, indexName, colName string) bool {
+	indexName = strings.TrimSpace(indexName)
+	colName = strings.TrimSpace(colName)
+	if indexName != "" && strings.EqualFold(strings.TrimSpace(idx.Name()), indexName) {
+		return true
+	}
+	cols := idx.Columns()
+	if len(cols) != 1 {
+		return false
+	}
+	c := strings.TrimSpace(cols[0])
+	if c == "" {
+		return false
+	}
+	if colName != "" && strings.EqualFold(c, colName) {
+		return true
+	}
+	return indexName != "" && strings.EqualFold(c, indexName)
 }
 
 type indexNameCandidate struct {

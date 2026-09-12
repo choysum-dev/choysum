@@ -34,6 +34,10 @@ func LoadSnapshots(db *gorm.DB, tables []string) (map[string]modmeta.SchemaSnaps
 	if len(names) == 0 {
 		return out, nil
 	}
+	// Fresh DBs may call this before meta_schema_snapshot exists.
+	if !db.Migrator().HasTable(&modmeta.SchemaSnapshot{}) {
+		return out, nil
+	}
 	var rows []modmeta.SchemaSnapshot
 	if err := db.Where("model_table IN ?", names).Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("load schema snapshots: %w", err)

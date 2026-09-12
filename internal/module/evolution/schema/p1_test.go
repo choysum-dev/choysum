@@ -89,13 +89,44 @@ func TestSchemaSnapshot_LoadSaveEdgeCases(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = sqlDB.Close()
-	if _, err := LoadSnapshots(runtimeScope.Session().DB, []string{"snap_empty_meta"}); err == nil {
-		t.Fatal("expected load error on closed db")
+	// Closed DB: HasTable typically reports missing; LoadSnapshots returns empty rather than querying.
+	closed, err := LoadSnapshots(runtimeScope.Session().DB, []string{"snap_empty_meta"})
+	if err != nil || len(closed) != 0 {
+		t.Fatalf("closed db load: %#v %v", closed, err)
 	}
 	if err := SaveSnapshots(runtimeScope.Session().DB, DesiredSchema{
 		Tables: map[string][]ColumnSpec{"snap_fail": {{Name: "id", FieldName: "Id", PhysicalType: "int"}}},
 	}, nil, &meta.Module{Name: "sales"}); err == nil {
 		t.Fatal("expected save error on closed db")
+	}
+}
+
+func TestSchemaSnapshot_LoadMissingTable(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	migrateSchemaMetaTables(t, runtimeScope.Session())
+	db := runtimeScope.Session().DB
+	if err := db.Migrator().DropTable(&modmeta.SchemaSnapshot{}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadSnapshots(db, []string{"any_table"})
+	if err != nil || len(got) != 0 {
+		t.Fatalf("missing snapshot table: %#v %v", got, err)
+	}
+}
+
+func TestSchemaSnapshot_LoadQueryError(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	migrateSchemaMetaTables(t, runtimeScope.Session())
+	db := runtimeScope.Session().DB
+	cbName := "p1_fail_snap_query"
+	if err := db.Callback().Query().Before("gorm:query").Register(cbName, func(tx *gorm.DB) {
+		_ = tx.AddError(errors.New("query boom"))
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(cbName) })
+	if _, err := LoadSnapshots(db, []string{"snap_query_fail"}); err == nil || !strings.Contains(err.Error(), "load schema snapshots") {
+		t.Fatalf("expected query failure, got %v", err)
 	}
 }
 
@@ -771,6 +802,156 @@ func TestEnsureIndexes_ReplacesNonUniqueWithUnique(t *testing.T) {
 	}
 	if !foundUnique {
 		t.Fatalf("expected unique idx_code, got %#v", indexes)
+	}
+}
+
+func TestEnsureIndexes_SkipsExistingUniqueAndNonUniqueLookup(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE uniq_keep (code text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE UNIQUE INDEX idx_code ON uniq_keep (code)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	// Already unique: must not drop/recreate.
+	col := ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true, UniqueIndexNames: []string{"idx_code"}}
+	if err := ensureIndexesForColumn(db, "uniq_keep", col, "sqlite"); err != nil {
+		t.Fatal(err)
+	}
+	// Non-unique candidate with HasIndex true: continue without CreateIndex.
+	if err := db.Exec(`CREATE TABLE idx_keep (name text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE INDEX idx_name ON idx_keep (name)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	nonUniq := ColumnSpec{Name: "name", FieldName: "Name", PhysicalType: "varchar", Indexed: true, IndexName: "idx_name"}
+	if err := ensureIndexesForColumn(db, "idx_keep", nonUniq, "sqlite"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEnsureIndexes_FieldLookupMatchesColumnUnique(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE uniq_field (code text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	// Physical name differs from GORM field export "Code".
+	if err := db.Exec(`CREATE UNIQUE INDEX idx_uniq_field_code ON uniq_field (code)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	col := ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true}
+	if err := ensureIndexesForColumn(db, "uniq_field", col, "sqlite"); err != nil {
+		t.Fatal(err)
+	}
+	indexes, err := sqliteGetIndexes(db, "uniq_field")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(indexes) != 1 {
+		t.Fatalf("must keep existing unique index without recreate churn, got %#v", indexes)
+	}
+}
+
+func TestEnsureIndexes_LiveIndexUniqueErrorsAndDropFailure(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE uniq_err (code text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE INDEX idx_code ON uniq_err (code)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	col := ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true, UniqueIndexNames: []string{"idx_code"}}
+
+	origGet := getIndexes
+	t.Cleanup(func() { getIndexes = origGet })
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return nil, errors.New("getIndexes boom")
+	}
+	if err := ensureIndexesForColumn(db, "uniq_err", col, "sqlite"); err == nil || !strings.Contains(err.Error(), "inspect indexes") {
+		t.Fatalf("expected getIndexes error, got %v", err)
+	}
+
+	getIndexes = origGet
+	origDrop := dropIndexFn
+	t.Cleanup(func() { dropIndexFn = origDrop })
+	dropIndexFn = func(gorm.Migrator, any, string) error {
+		return errors.New("drop boom")
+	}
+	if err := ensureIndexesForColumn(db, "uniq_err", col, "sqlite"); err == nil || !strings.Contains(err.Error(), "drop non-unique index") {
+		t.Fatalf("expected drop error, got %v", err)
+	}
+}
+
+func TestLiveIndexUniqueAndMatches(t *testing.T) {
+	t.Run("matches", func(t *testing.T) {
+		cases := []struct {
+			name      string
+			idx       fakeIndex
+			indexName string
+			colName   string
+			want      bool
+		}{
+			{name: "by_name", idx: fakeIndex{name: "idx_code", cols: []string{"code"}}, indexName: "IDX_CODE", want: true},
+			{name: "by_col", idx: fakeIndex{name: "idx_other", cols: []string{"code"}}, indexName: "Code", colName: "code", want: true},
+			{name: "by_index_as_col", idx: fakeIndex{name: "idx_x", cols: []string{"Code"}}, indexName: "code", want: true},
+			{name: "multi_col", idx: fakeIndex{name: "idx_x", cols: []string{"a", "b"}}, indexName: "nope", colName: "a", want: false},
+			{name: "empty_col", idx: fakeIndex{name: "idx_x", cols: []string{"  "}}, indexName: "nope", colName: "code", want: false},
+			{name: "no_match", idx: fakeIndex{name: "idx_x", cols: []string{"other"}}, indexName: "Code", colName: "code", want: false},
+		}
+		for _, tc := range cases {
+			if got := liveIndexMatches(tc.idx, tc.indexName, tc.colName); got != tc.want {
+				t.Fatalf("%s: got %v want %v", tc.name, got, tc.want)
+			}
+		}
+	})
+
+	orig := getIndexes
+	t.Cleanup(func() { getIndexes = orig })
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return []gorm.Index{
+			nil,
+			fakeIndex{name: "skip", cols: []string{"other"}},
+			fakeIndex{name: "idx_code", cols: []string{"code"}, unique: true},
+		}, nil
+	}
+	ok, err := liveIndexUnique(nil, "t", "idx_code", "code")
+	if err != nil || !ok {
+		t.Fatalf("name match unique: %v %v", ok, err)
+	}
+
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return []gorm.Index{fakeIndex{name: "phys", cols: []string{"code"}, unique: true}}, nil
+	}
+	ok, err = liveIndexUnique(nil, "t", "Code", "code")
+	if err != nil || !ok {
+		t.Fatalf("column fallback unique: %v %v", ok, err)
+	}
+
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return []gorm.Index{fakeIndex{name: "phys", cols: []string{"code"}, uniqueUnknown: true}}, nil
+	}
+	ok, err = liveIndexUnique(nil, "t", "idx_missing", "code")
+	if err != nil || ok {
+		t.Fatalf("Unique() unknown must be non-unique: %v %v", ok, err)
+	}
+
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return []gorm.Index{fakeIndex{name: "other", cols: []string{"x"}}}, nil
+	}
+	ok, err = liveIndexUnique(nil, "t", "missing", "code")
+	if err != nil || ok {
+		t.Fatalf("no match: %v %v", ok, err)
+	}
+
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return nil, errors.New("boom")
+	}
+	if _, err := liveIndexUnique(nil, "t", "x", "y"); err == nil || !strings.Contains(err.Error(), "inspect indexes") {
+		t.Fatalf("expected inspect error, got %v", err)
 	}
 }
 

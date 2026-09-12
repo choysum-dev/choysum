@@ -309,17 +309,23 @@ func TestLiveColumnFromColumnType_Default(t *testing.T) {
 }
 
 type fakeIndex struct {
-	name   string
-	cols   []string
-	unique bool
+	name          string
+	cols          []string
+	unique        bool
+	uniqueUnknown bool
 }
 
 func (f fakeIndex) Table() string            { return "" }
 func (f fakeIndex) Name() string             { return f.name }
 func (f fakeIndex) Columns() []string        { return f.cols }
 func (f fakeIndex) PrimaryKey() (bool, bool) { return false, true }
-func (f fakeIndex) Unique() (bool, bool)     { return f.unique, true }
-func (f fakeIndex) Option() string           { return "" }
+func (f fakeIndex) Unique() (bool, bool) {
+	if f.uniqueUnknown {
+		return false, false
+	}
+	return f.unique, true
+}
+func (f fakeIndex) Option() string { return "" }
 
 type fakeColumnTypeWithDefault struct {
 	fakeColumnType
