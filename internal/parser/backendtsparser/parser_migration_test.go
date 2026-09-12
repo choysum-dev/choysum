@@ -2795,6 +2795,15 @@ export default class RenamePilot extends BaseModel {
 	}
 }
 
+func TestIsFieldIdentifier(t *testing.T) {
+	if isFieldIdentifier("") || isFieldIdentifier("1a") || isFieldIdentifier("a-b") || isFieldIdentifier("a b") {
+		t.Fatal("expected rejects")
+	}
+	if !isFieldIdentifier("_x") || !isFieldIdentifier("OldCode") || !isFieldIdentifier("a1") {
+		t.Fatal("expected accepts")
+	}
+}
+
 func TestTsParser_RenameFromDropAfterRejectInvalid(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
@@ -2807,6 +2816,8 @@ func TestTsParser_RenameFromDropAfterRejectInvalid(t *testing.T) {
 	}{
 		{name: "blank renameFrom", options: "renameFrom: '  '", want: "renameFrom must be a non-empty string"},
 		{name: "self renameFrom", options: "renameFrom: 'Code'", want: "renameFrom must differ from the field name"},
+		{name: "bad renameFrom ident", options: "renameFrom: 'old-code'", want: "renameFrom must be a valid field identifier"},
+		{name: "digit renameFrom", options: "renameFrom: '1Old'", want: "renameFrom must be a valid field identifier"},
 		{name: "non-string dropAfter", options: "dropAfter: 1", want: "dropAfter must be a non-empty string"},
 	}
 	for _, tc := range cases {

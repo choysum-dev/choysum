@@ -102,6 +102,26 @@ func asInt(value any) (int, bool) {
 	}
 }
 
+// isFieldIdentifier matches TypeScript @Field renameFrom: /^[A-Za-z_][A-Za-z0-9_]*$/.
+func isFieldIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if i == 0 {
+			if c != '_' && (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') {
+				return false
+			}
+			continue
+		}
+		if c != '_' && (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
+}
+
 func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*resolvedFieldBehaviorBinding, map[string][]meta.FieldDiagnostic, error) {
 	bindings := make(map[string]*resolvedFieldBehaviorBinding)
 	diagnostics := make(map[string][]meta.FieldDiagnostic)
@@ -601,6 +621,9 @@ func buildFieldResolvedSpec(field *meta.Field, binding *resolvedFieldBehaviorBin
 		trimmed := strings.TrimSpace(v)
 		if strings.EqualFold(trimmed, field.Name) {
 			return nil, fmt.Errorf("@Field(%s) renameFrom must differ from the field name", field.Name)
+		}
+		if !isFieldIdentifier(trimmed) {
+			return nil, fmt.Errorf("@Field(%s) renameFrom must be a valid field identifier", field.Name)
 		}
 		spec.Structural.RenameFrom = trimmed
 	}
