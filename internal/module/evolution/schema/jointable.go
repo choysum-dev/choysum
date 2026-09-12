@@ -13,14 +13,18 @@ import (
 
 // appendJoinTablesFromModels derives JoinTableSpec entries from ManyToMany fields.
 // Join models must already contribute columns to desired.Tables (fail closed otherwise).
+// Join models with AutoMigrate=false or Readonly are skipped (not an error).
 func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) error {
 	if desired == nil {
 		return fmt.Errorf("desired schema is nil")
 	}
 	byKey := indexModelsByKey(models)
-	seen := map[string]struct{}{}
+	seen := map[string]JoinTableSpec{}
 	for _, jt := range desired.JoinTables {
-		seen[strings.ToLower(strings.TrimSpace(jt.Table))] = struct{}{}
+		key := strings.ToLower(strings.TrimSpace(jt.Table))
+		if key != "" {
+			seen[key] = jt
+		}
 	}
 	for _, model := range models {
 		if model == nil || model.Readonly {
@@ -43,28 +47,48 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 				return fmt.Errorf("ManyToMany %s.%s joinModel %q not found among migrate models",
 					model.Name, field.Name, joinRef)
 			}
+			if joinModel.Readonly || (joinModel.AutoMigrate != nil && !*joinModel.AutoMigrate) {
+				continue
+			}
 			joinTable := strings.TrimSpace(joinModel.ModelTable)
 			if joinTable == "" {
 				return fmt.Errorf("ManyToMany %s.%s joinModel %q has empty ModelTable",
 					model.Name, field.Name, joinRef)
+			}
+			if parentTable == "" {
+				return fmt.Errorf("ManyToMany %s.%s parent model has empty ModelTable",
+					model.Name, field.Name)
+			}
+			joinField = strings.TrimSpace(joinField)
+			inverseJoinField = strings.TrimSpace(inverseJoinField)
+			if joinField == "" || inverseJoinField == "" {
+				return fmt.Errorf("ManyToMany %s.%s requires joinField and inverseJoinField",
+					model.Name, field.Name)
 			}
 			cols := desired.Tables[joinTable]
 			if len(cols) == 0 {
 				return fmt.Errorf("ManyToMany %s.%s join table %q has no desired columns",
 					model.Name, field.Name, joinTable)
 			}
-			key := strings.ToLower(joinTable)
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
 			leftCol := strcase.ToSnake(joinField)
 			rightCol := strcase.ToSnake(inverseJoinField)
+			colNames := map[string]struct{}{}
+			for _, col := range cols {
+				colNames[strings.ToLower(strings.TrimSpace(col.Name))] = struct{}{}
+			}
+			if _, ok := colNames[strings.ToLower(leftCol)]; !ok {
+				return fmt.Errorf("ManyToMany %s.%s join column %q missing from desired table %s",
+					model.Name, field.Name, leftCol, joinTable)
+			}
+			if _, ok := colNames[strings.ToLower(rightCol)]; !ok {
+				return fmt.Errorf("ManyToMany %s.%s join column %q missing from desired table %s",
+					model.Name, field.Name, rightCol, joinTable)
+			}
 			referRight := ""
 			if target := resolveModelRef(byKey, targetRef); target != nil {
 				referRight = strings.TrimSpace(target.ModelTable)
 			}
-			desired.JoinTables = append(desired.JoinTables, JoinTableSpec{
+			candidate := JoinTableSpec{
 				Table: joinTable,
 				Left: JoinEnd{
 					Column:      leftCol,
@@ -76,10 +100,30 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 					ReferTable:  referRight,
 					ReferColumn: "id",
 				},
-			})
+			}
+			key := strings.ToLower(joinTable)
+			if prev, ok := seen[key]; ok {
+				if !joinTableSpecsEqual(prev, candidate) {
+					return fmt.Errorf("ManyToMany %s.%s conflicts with existing JoinTableSpec for %s",
+						model.Name, field.Name, joinTable)
+				}
+				continue
+			}
+			seen[key] = candidate
+			desired.JoinTables = append(desired.JoinTables, candidate)
 		}
 	}
 	return nil
+}
+
+func joinTableSpecsEqual(a, b JoinTableSpec) bool {
+	return strings.EqualFold(a.Table, b.Table) &&
+		strings.EqualFold(a.Left.Column, b.Left.Column) &&
+		strings.EqualFold(a.Left.ReferTable, b.Left.ReferTable) &&
+		strings.EqualFold(a.Left.ReferColumn, b.Left.ReferColumn) &&
+		strings.EqualFold(a.Right.Column, b.Right.Column) &&
+		strings.EqualFold(a.Right.ReferTable, b.Right.ReferTable) &&
+		strings.EqualFold(a.Right.ReferColumn, b.Right.ReferColumn)
 }
 
 // manyToManyJoinMeta returns join identity for a ManyToMany field, or ok=false when not M2M / no joinModel.

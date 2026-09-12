@@ -13,6 +13,19 @@ import (
 	"gorm.io/gorm"
 )
 
+func m2mField(t *testing.T, name, joinModel, joinField, inverse, target string) *meta.Field {
+	t.Helper()
+	return newFieldWithOptions(t, name, `{
+		"type":"ManyToMany",
+		"relation":{
+			"joinModel":"`+joinModel+`",
+			"joinField":"`+joinField+`",
+			"inverseJoinField":"`+inverse+`",
+			"targetModel":"`+target+`"
+		}
+	}`)
+}
+
 func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if err := appendJoinTablesFromModels(nil, nil); err == nil || !strings.Contains(err.Error(), "nil") {
 		t.Fatalf("nil desired: %v", err)
@@ -23,12 +36,10 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		Application: "auth", Name: "User", ModelTable: "auth_user",
 		Fields: []*meta.Field{
 			nil,
-			newFieldWithOptions(t, "Roles", `{
-				"type":"ManyToMany",
-				"relation":{"joinModel":"auth.UserRole","joinField":"UserId","inverseJoinField":"RoleId","targetModel":"auth.Role"}
-			}`),
+			m2mField(t, "Roles", "auth.UserRole", "UserId", "RoleId", "auth.Role"),
 		},
 	}
+
 	joinEmptyTable := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: ""}
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{}}
 	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinEmptyTable}); err == nil || !strings.Contains(err.Error(), "empty ModelTable") {
@@ -41,24 +52,107 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		t.Fatalf("no columns: %v", err)
 	}
 
-	joinOK := &meta.Model{
-		Application: "auth", Name: "UserRole", ModelTable: "auth_user_role",
+	// AutoMigrate=false join model is skipped (not an error).
+	joinDisabled := &meta.Model{
+		Application: "auth", Name: "UserRole", ModelTable: "auth_user_role", AutoMigrate: &falseAM,
 		Fields: []*meta.Field{newFieldWithOptions(t, "UserId", `{"type":"char","size":20}`)},
 	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinDisabled}); err != nil {
+		t.Fatalf("disabled join: %v", err)
+	}
+	if len(desired.JoinTables) != 0 {
+		t.Fatalf("disabled join should skip, got %#v", desired.JoinTables)
+	}
+
+	joinOK := &meta.Model{
+		Application: "auth", Name: "UserRole", ModelTable: "auth_user_role",
+		Fields: []*meta.Field{
+			newFieldWithOptions(t, "UserId", `{"type":"char","size":20}`),
+			newFieldWithOptions(t, "RoleId", `{"type":"char","size":20}`),
+		},
+	}
+	role := &meta.Model{Application: "auth", Name: "Role", ModelTable: "auth_role"}
+	match := JoinTableSpec{
+		Table: "auth_user_role",
+		Left:  JoinEnd{Column: "user_id", ReferTable: "auth_user", ReferColumn: "id"},
+		Right: JoinEnd{Column: "role_id", ReferTable: "auth_role", ReferColumn: "id"},
+	}
 	desired = DesiredSchema{
-		Tables:     map[string][]ColumnSpec{"auth_user_role": {{Name: "user_id", PhysicalType: "char"}}},
-		JoinTables: []JoinTableSpec{{Table: "auth_user_role"}}, // pre-seeded → dedupe
+		Tables: map[string][]ColumnSpec{"auth_user_role": {
+			{Name: "user_id", PhysicalType: "char"},
+			{Name: "role_id", PhysicalType: "char"},
+		}},
+		JoinTables: []JoinTableSpec{match},
 	}
 	if err := appendJoinTablesFromModels(&desired, []*meta.Model{
 		nil,
 		{Name: "RO", ModelTable: "ro", Readonly: true},
 		{Name: "Off", ModelTable: "off", AutoMigrate: &falseAM},
-		user, joinOK,
+		user, joinOK, role,
 	}); err != nil {
-		t.Fatalf("dedupe: %v", err)
+		t.Fatalf("identical dedupe: %v", err)
 	}
 	if len(desired.JoinTables) != 1 {
 		t.Fatalf("JoinTables = %#v", desired.JoinTables)
+	}
+
+	// Conflicting duplicate join table definition fails.
+	conflictUser := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "auth.UserRole", "UserId", "RoleId", "auth.Role")},
+	}
+	desired = DesiredSchema{
+		Tables: map[string][]ColumnSpec{"auth_user_role": {
+			{Name: "user_id", PhysicalType: "char"},
+			{Name: "role_id", PhysicalType: "char"},
+		}},
+		JoinTables: []JoinTableSpec{{
+			Table: "auth_user_role",
+			Left:  JoinEnd{Column: "other_id", ReferTable: "auth_user", ReferColumn: "id"},
+			Right: JoinEnd{Column: "role_id", ReferTable: "auth_role", ReferColumn: "id"},
+		}},
+	}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{conflictUser, joinOK, role}); err == nil || !strings.Contains(err.Error(), "conflicts") {
+		t.Fatalf("conflict: %v", err)
+	}
+
+	// Missing join fields fail closed.
+	noFields := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "auth.UserRole", "", "", "auth.Role")},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{noFields, joinOK}); err == nil || !strings.Contains(err.Error(), "joinField") {
+		t.Fatalf("empty join fields: %v", err)
+	}
+
+	// Join column missing from desired table fails (left and right).
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinOK, role}); err == nil || !strings.Contains(err.Error(), "user_id") {
+		t.Fatalf("missing left join col: %v", err)
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{user, joinOK, role}); err == nil || !strings.Contains(err.Error(), "role_id") {
+		t.Fatalf("missing right join col: %v", err)
+	}
+
+	// Empty parent ModelTable fails.
+	emptyParent := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "",
+		Fields: []*meta.Field{m2mField(t, "Roles", "auth.UserRole", "UserId", "RoleId", "auth.Role")},
+	}
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{emptyParent, joinOK}); err == nil || !strings.Contains(err.Error(), "parent model") {
+		t.Fatalf("empty parent: %v", err)
 	}
 
 	if resolveModelRef(nil, "") != nil {
@@ -73,8 +167,10 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if got := normalizeModelRefLiteral(`() => "UserRole"`); got != "UserRole" {
 		t.Fatalf("quoted arrow = %q", got)
 	}
+	if got := normalizeModelRefLiteral("() => UserRole()"); got != "UserRole" {
+		t.Fatalf("call suffix = %q", got)
+	}
 
-	// Production-shaped joinModel arrow literal must resolve.
 	arrowUser := &meta.Model{
 		Application: "auth", Name: "User", ModelTable: "auth_user",
 		Fields: []*meta.Field{
@@ -84,15 +180,10 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 			}`),
 		},
 	}
-	arrowJoin := &meta.Model{
-		Application: "auth", Name: "UserRole", ModelTable: "auth_user_role",
-		Fields: []*meta.Field{newFieldWithOptions(t, "UserId", `{"type":"char","size":20}`)},
-	}
-	arrowRole := &meta.Model{Application: "auth", Name: "Role", ModelTable: "auth_role"}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{
-		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}},
+		"auth_user_role": {{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"}},
 	}}
-	if err := appendJoinTablesFromModels(&desired, []*meta.Model{arrowUser, arrowJoin, arrowRole}); err != nil {
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{arrowUser, joinOK, role}); err != nil {
 		t.Fatalf("arrow joinModel: %v", err)
 	}
 	if len(desired.JoinTables) != 1 || desired.JoinTables[0].Table != "auth_user_role" {
@@ -107,7 +198,8 @@ func TestDesiredTableNames_JoinOnly(t *testing.T) {
 	names := desiredTableNames(DesiredSchema{
 		Tables: map[string][]ColumnSpec{
 			"":     {{Name: "x"}},
-			"auth": {{Name: "id"}},
+			"Auth": {{Name: "id"}},
+			"auth": {{Name: "id2"}}, // case-variant hits seen dedupe
 		},
 		JoinTables: []JoinTableSpec{
 			{Table: ""},
@@ -141,16 +233,22 @@ func TestMarkLeftoverOwnership_EdgeCases(t *testing.T) {
 	}
 
 	runtimeScope := newSchemaTestScope(t)
+	// Truly empty DesiredJSON skips ownership map for that snap.
 	if err := runtimeScope.Session().DB.Create(&modmeta.SchemaSnapshot{
 		ModelTable:  "own_empty",
-		DesiredJSON: datatypes.JSON([]byte(`[]`)),
+		DesiredJSON: datatypes.JSON(nil),
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := markLeftoverOwnership(&SchemaPlan{Leftover: []Leftover{
+	emptyPlan := SchemaPlan{Leftover: []Leftover{
 		{Kind: LeftoverColumn, Table: "own_empty", Name: "c"},
-	}}, runtimeScope); err != nil {
+		{Kind: LeftoverColumn, Table: "no_snap", Name: "x"}, // names==nil branch
+	}}
+	if err := markLeftoverOwnership(&emptyPlan, runtimeScope); err != nil {
 		t.Fatal(err)
+	}
+	if emptyPlan.Leftover[0].ChoysumOwned || emptyPlan.Leftover[1].ChoysumOwned {
+		t.Fatalf("expected unowned: %#v", emptyPlan.Leftover)
 	}
 
 	if err := runtimeScope.Session().DB.Create(&modmeta.SchemaSnapshot{
@@ -216,7 +314,6 @@ func TestEnsureTaskJobExecution_DialectBranches(t *testing.T) {
 		}
 	}
 
-	// Missing indexed column path: start from a bare table, then ensure adds columns+indexes.
 	runtimeScope := newSchemaTestScope(t)
 	if err := runtimeScope.Session().Exec(`CREATE TABLE task_job_execution (job_id varchar(64) NOT NULL)`).Error; err != nil {
 		t.Fatal(err)
@@ -226,6 +323,12 @@ func TestEnsureTaskJobExecution_DialectBranches(t *testing.T) {
 	}
 	if !runtimeScope.Session().Migrator().HasColumn("task_job_execution", "status") {
 		t.Fatal("status missing")
+	}
+	var n int
+	if err := runtimeScope.Session().Raw(
+		`SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name='task_job_execution' AND (sql LIKE '%job_id%' OR name LIKE '%job_id%')`,
+	).Scan(&n).Error; err != nil || n < 1 {
+		t.Fatalf("expected job_id index after reconcile, n=%d err=%v", n, err)
 	}
 }
 
@@ -270,12 +373,31 @@ func TestEnsureTaskJobExecution_ErrorHooks(t *testing.T) {
 	}
 	structForAddColumnFn = origAdd
 
+	// AddColumn failure via injectable migrator hook.
+	hookScope := newSchemaTestScope(t)
+	if err := hookScope.Session().Exec(`CREATE TABLE task_job_execution (job_id varchar(64) NOT NULL)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	origAddCol := taskJobAddColumnFn
+	t.Cleanup(func() { taskJobAddColumnFn = origAddCol })
+	taskJobAddColumnFn = func(gorm.Migrator, any, string) error {
+		return errString("add column boom")
+	}
+	if err := ensureTaskJobExecutionTable(hookScope); err == nil || !strings.Contains(err.Error(), "add column boom") {
+		t.Fatalf("add column: %v", err)
+	}
+	taskJobAddColumnFn = origAddCol
+
+	// Index ensure on existing columns: fail only for newly added indexed column.
 	bare := newSchemaTestScope(t)
 	if err := bare.Session().Exec(`CREATE TABLE task_job_execution (job_id varchar(64) NOT NULL)`).Error; err != nil {
 		t.Fatal(err)
 	}
-	ensureTaskJobIndexesFn = func(*gorm.DB, string, ColumnSpec, string) error {
-		return errString("add idx boom")
+	ensureTaskJobIndexesFn = func(_ *gorm.DB, _ string, col ColumnSpec, _ string) error {
+		if col.Name == "status" {
+			return errString("add idx boom")
+		}
+		return nil
 	}
 	if err := ensureTaskJobExecutionTable(bare); err == nil || !strings.Contains(err.Error(), "add idx boom") {
 		t.Fatalf("add idx: %v", err)
@@ -299,7 +421,6 @@ func TestBuildSchemaPlan_OwnershipError(t *testing.T) {
 	if err := newModelMigrator(runtimeScope, nil, []*meta.Model{model}).MigrateSchema(); err != nil {
 		t.Fatal(err)
 	}
-	// Extra live column → leftover; force snapshot load failure during ownership mark.
 	if err := runtimeScope.Session().Exec(`ALTER TABLE sales_own_err ADD COLUMN leftover_x TEXT`).Error; err != nil {
 		t.Fatal(err)
 	}

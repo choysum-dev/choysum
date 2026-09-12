@@ -11,6 +11,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 func TestDesired_JoinTableSpec(t *testing.T) {
@@ -83,7 +84,10 @@ func TestPlan_CreateJoinTableNoOp(t *testing.T) {
 		{Name: "role_id", FieldName: "RoleId", PhysicalType: "varchar"},
 	}
 	desired := DesiredSchema{
-		Tables: map[string][]ColumnSpec{"auth_user_role": cols},
+		Tables: map[string][]ColumnSpec{
+			"auth_user":      {{Name: "id", PhysicalType: "varchar"}},
+			"auth_user_role": cols,
+		},
 		JoinTables: []JoinTableSpec{{
 			Table: "auth_user_role",
 			Left:  JoinEnd{Column: "user_id", ReferTable: "auth_user", ReferColumn: "id"},
@@ -91,7 +95,7 @@ func TestPlan_CreateJoinTableNoOp(t *testing.T) {
 		}},
 	}
 
-	// Missing live table → create_table covers it; no create_join_table.
+	// Missing live join table → OpCreateJoinTable (not OpCreateTable).
 	plan, err := buildPlan("auth", desired, LiveSchema{Tables: map[string]bool{}}, "sqlite")
 	if err != nil {
 		t.Fatalf("buildPlan: %v", err)
@@ -101,22 +105,25 @@ func TestPlan_CreateJoinTableNoOp(t *testing.T) {
 		if op.Kind == OpCreateTable && op.Table == "auth_user_role" {
 			createTable = true
 		}
-		if op.Kind == OpCreateJoinTable {
+		if op.Kind == OpCreateJoinTable && op.Table == "auth_user_role" {
 			createJoin = true
 		}
 	}
-	if !createTable || createJoin {
-		t.Fatalf("ops = %#v (want create_table only)", plan.Ops)
+	if createTable || !createJoin {
+		t.Fatalf("ops = %#v (want create_join_table only for join)", plan.Ops)
 	}
 
-	// Live table exists → neither create.
+	// Live table exists → neither create for join.
 	plan, err = buildPlan("auth", desired, LiveSchema{
-		Tables: map[string]bool{"auth_user_role": true},
-		Columns: map[string]map[string]LiveColumn{"auth_user_role": {
-			"user_id": {Name: "user_id", DatabaseTypeName: "TEXT"},
-			"role_id": {Name: "role_id", DatabaseTypeName: "TEXT"},
-		}},
-		Indexes: map[string][]LiveIndex{"auth_user_role": {}},
+		Tables: map[string]bool{"auth_user": true, "auth_user_role": true},
+		Columns: map[string]map[string]LiveColumn{
+			"auth_user": {"id": {Name: "id", DatabaseTypeName: "TEXT"}},
+			"auth_user_role": {
+				"user_id": {Name: "user_id", DatabaseTypeName: "TEXT"},
+				"role_id": {Name: "role_id", DatabaseTypeName: "TEXT"},
+			},
+		},
+		Indexes: map[string][]LiveIndex{"auth_user": {}, "auth_user_role": {}},
 	}, "sqlite")
 	if err != nil {
 		t.Fatalf("buildPlan live: %v", err)
@@ -127,6 +134,15 @@ func TestPlan_CreateJoinTableNoOp(t *testing.T) {
 		}
 	}
 
+	// Empty join table name is ignored.
+	plan, err = buildPlan("auth", DesiredSchema{
+		Tables:     map[string][]ColumnSpec{"t": {{Name: "c", PhysicalType: "varchar"}}},
+		JoinTables: []JoinTableSpec{{Table: ""}},
+	}, LiveSchema{Tables: map[string]bool{}}, "sqlite")
+	if err != nil {
+		t.Fatalf("empty join name: %v", err)
+	}
+
 	// JoinTables without columns fails.
 	_, err = buildPlan("auth", DesiredSchema{
 		Tables:     map[string][]ColumnSpec{},
@@ -134,6 +150,30 @@ func TestPlan_CreateJoinTableNoOp(t *testing.T) {
 	}, LiveSchema{Tables: map[string]bool{}}, "sqlite")
 	if err == nil || !strings.Contains(err.Error(), "no desired columns") {
 		t.Fatalf("expected no-columns error, got %v", err)
+	}
+
+	// Duplicate JoinTableSpec entries: first emits create_join_table, second hits plannedCreate skip.
+	plan, err = buildPlan("auth", DesiredSchema{
+		Tables: map[string][]ColumnSpec{"dup_join": {
+			{Name: "a_id", PhysicalType: "varchar"},
+			{Name: "b_id", PhysicalType: "varchar"},
+		}},
+		JoinTables: []JoinTableSpec{
+			{Table: "dup_join"},
+			{Table: "dup_join"},
+		},
+	}, LiveSchema{Tables: map[string]bool{}}, "sqlite")
+	if err != nil {
+		t.Fatalf("dup join: %v", err)
+	}
+	nJoin := 0
+	for _, op := range plan.Ops {
+		if op.Kind == OpCreateJoinTable && op.Table == "dup_join" {
+			nJoin++
+		}
+	}
+	if nJoin != 1 {
+		t.Fatalf("expected one create_join_table, got %d in %#v", nJoin, plan.Ops)
 	}
 }
 
@@ -143,6 +183,7 @@ func TestApply_CreateJoinTable(t *testing.T) {
 	cols := []ColumnSpec{
 		{Name: "user_id", FieldName: "UserId", PhysicalType: "varchar", Size: &size, Indexed: true},
 		{Name: "role_id", FieldName: "RoleId", PhysicalType: "varchar", Size: &size, Indexed: true},
+		{Name: "note", FieldName: "Note", PhysicalType: "varchar", Size: &size}, // non-indexed → skip branch
 	}
 	plan := SchemaPlan{Ops: []PlanOp{{
 		Kind: OpCreateJoinTable, Safety: SafetyAuto, Table: "auth_user_role_apply",
@@ -156,6 +197,27 @@ func TestApply_CreateJoinTable(t *testing.T) {
 	}
 	if !runtimeScope.Session().Migrator().HasColumn("auth_user_role_apply", "user_id") {
 		t.Fatal("expected user_id column")
+	}
+	var idxCount int
+	if err := runtimeScope.Session().Raw(
+		`SELECT count(*) FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql LIKE '%user_id%'`,
+		"auth_user_role_apply",
+	).Scan(&idxCount).Error; err != nil || idxCount < 1 {
+		t.Fatalf("expected index on user_id, count=%d err=%v", idxCount, err)
+	}
+
+	// Index ensure failure on create_join_table.
+	failScope := newSchemaTestScope(t)
+	orig := ensureIndexesForColumnFn
+	t.Cleanup(func() { ensureIndexesForColumnFn = orig })
+	ensureIndexesForColumnFn = func(*gorm.DB, string, ColumnSpec, string) error {
+		return errString("join idx boom")
+	}
+	if err := applyPlan(failScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
+		Kind: OpCreateJoinTable, Safety: SafetyAuto, Table: "auth_user_role_fail",
+		Columns: []ColumnSpec{{Name: "user_id", FieldName: "UserId", PhysicalType: "varchar", Size: &size, Indexed: true}},
+	}}}); err == nil || !strings.Contains(err.Error(), "join idx boom") {
+		t.Fatalf("expected join index error, got %v", err)
 	}
 }
 

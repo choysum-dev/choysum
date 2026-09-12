@@ -46,6 +46,9 @@ var (
 	structForAddColumnFn      = structForAddColumn
 	ensureTaskJobIndexesFn    = ensureIndexesForColumn
 	taskJobExecutionColumnsFn = taskJobExecutionColumns
+	taskJobAddColumnFn        = func(mig gorm.Migrator, value any, name string) error {
+		return mig.AddColumn(value, name)
+	}
 )
 
 func schemaDialectName(dialector gorm.Dialector) string {
@@ -91,16 +94,15 @@ func ensureTaskJobExecutionTable(runtimeScope scope.Scope) error {
 		return nil
 	}
 	for _, col := range cols {
-		if db.Migrator().HasColumn(table, col.Name) {
-			continue
-		}
-		inst, err := structForAddColumnFn(table, col, dialect)
-		if err != nil {
-			return fmt.Errorf("build task_job_execution add column %s: %w", col.Name, err)
-		}
-		fieldName := exportIdent(col.FieldName)
-		if err := db.Table(table).Migrator().AddColumn(inst, fieldName); err != nil {
-			return fmt.Errorf("add task_job_execution column %s: %w", col.Name, err)
+		if !db.Migrator().HasColumn(table, col.Name) {
+			inst, err := structForAddColumnFn(table, col, dialect)
+			if err != nil {
+				return fmt.Errorf("build task_job_execution add column %s: %w", col.Name, err)
+			}
+			fieldName := exportIdent(col.FieldName)
+			if err := taskJobAddColumnFn(db.Table(table).Migrator(), inst, fieldName); err != nil {
+				return fmt.Errorf("add task_job_execution column %s: %w", col.Name, err)
+			}
 		}
 		if !col.Indexed && !col.Unique && !col.UniqueIndex && len(col.UniqueIndexNames) == 0 {
 			continue

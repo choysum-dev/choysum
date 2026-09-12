@@ -130,7 +130,7 @@ type Leftover struct {
 	Kind         LeftoverKind
 	Table        string
 	Name         string
-	ChoysumOwned bool // idx_/chk_/ck_/fk_ prefix, or column seen in schema snapshot
+	ChoysumOwned bool // index name has idx_ prefix, or column name seen in schema snapshot
 }
 
 // SchemaPlan is the diff between desired and live.

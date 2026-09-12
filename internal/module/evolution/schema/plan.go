@@ -20,9 +20,21 @@ func buildPlan(moduleName string, desired DesiredSchema, live LiveSchema, dialec
 		Leftover: nil,
 	}
 
+	joinTables := map[string]struct{}{}
+	for _, jt := range desired.JoinTables {
+		key := strings.ToLower(strings.TrimSpace(jt.Table))
+		if key != "" {
+			joinTables[key] = struct{}{}
+		}
+	}
+
 	for table, cols := range desired.Tables {
 		exists := live.Tables[table]
 		if !exists {
+			// Join tables are ensured via OpCreateJoinTable below (indexes on apply).
+			if _, isJoin := joinTables[strings.ToLower(strings.TrimSpace(table))]; isJoin {
+				continue
+			}
 			copied := append([]ColumnSpec(nil), cols...)
 			plan.Ops = append(plan.Ops, PlanOp{
 				Kind:    OpCreateTable,
