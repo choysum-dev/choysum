@@ -236,8 +236,12 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 				}
 			}
 			if !found {
-				// HasIndex via schema tags but GetIndexes has no listable match (e.g. SQLite
-				// unique constraint origin "u" is skipped) — treat as already satisfied.
+				// HasIndex via schema tags but GetIndexes has no listable match.
+				// SQLite hides unique-constraint indexes (origin "u"); only that case
+				// is safe to treat as satisfied. Other dialects must not skip.
+				if dialect != "sqlite" {
+					return fmt.Errorf("unique index %s required on %s.%s but no listable live index matched", cand.Name, table, col.Name)
+				}
 				continue
 			}
 		}

@@ -926,6 +926,27 @@ func TestEnsureIndexes_HasIndexWithoutListableMatchSkipsCreate(t *testing.T) {
 	}
 }
 
+func TestEnsureIndexes_HasIndexWithoutListableMatchErrorsNonSQLite(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE has_idx_err (code text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE INDEX idx_has_idx_err_code ON has_idx_err (code)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	origGet := getIndexes
+	t.Cleanup(func() { getIndexes = origGet })
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return nil, nil
+	}
+	col := ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true}
+	err := ensureIndexesForColumn(db, "has_idx_err", col, "postgres")
+	if err == nil || !strings.Contains(err.Error(), "no listable live index matched") {
+		t.Fatalf("expected listable-match error on non-sqlite, got %v", err)
+	}
+}
+
 func TestLiveIndexUniqueInfo_PrefersUniqueMatch(t *testing.T) {
 	origGet := getIndexes
 	t.Cleanup(func() { getIndexes = origGet })

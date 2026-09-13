@@ -259,6 +259,9 @@ func TestNewDatabaseStoreUsesExistingTableAndSurfacesInitFailures(t *testing.T) 
 		if !strings.Contains(err.Error(), "not empty") {
 			t.Fatalf("expected not-empty incompatibility error, got %v", err)
 		}
+		if !strings.Contains(err.Error(), "sqlite") || !strings.Contains(err.Error(), "manual migration required") {
+			t.Fatalf("expected dialect and manual-migration hint, got %v", err)
+		}
 	})
 
 	t.Run("keeps populated compatible auth_token schema", func(t *testing.T) {

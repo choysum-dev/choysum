@@ -250,8 +250,8 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 		}
 	}
 
-	if authTokenDialectName(db) != "postgres" {
-		return fmt.Errorf("auth_token schema is incompatible with Desired and the table is not empty (rows=%d)", rowCount)
+	if dialect := authTokenDialectName(db); dialect != "postgres" {
+		return fmt.Errorf("auth_token schema is incompatible with Desired on %s and the table is not empty (rows=%d): manual migration required", dialect, rowCount)
 	}
 
 	quotedTable := fmt.Sprintf("\"%s\"", tableName)
