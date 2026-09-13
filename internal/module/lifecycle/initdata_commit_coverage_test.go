@@ -438,3 +438,23 @@ func TestCommitInstall_ReplacesEmptyDependencies(t *testing.T) {
 		t.Fatalf("expected empty-deps Replace, saw=%#v", saw)
 	}
 }
+
+func TestReplaceModuleDependencies_EmptyWithoutIDNoops(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{Name: "no_id_yet", Version: "1.0.0", Status: meta.ToInstall, Path: t.TempDir()}
+	mod.Dependencies = nil
+	if err := replaceModuleDependenciesFn(runtimeScope.Session(), mod); err != nil {
+		t.Fatalf("empty deps without Id must no-op: %v", err)
+	}
+	if mod.Id.Valid {
+		t.Fatal("empty deps must not mint Id")
+	}
+	// Existing Id + empty deps clears without error.
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := replaceModuleDependenciesFn(runtimeScope.Session(), mod); err != nil {
+		t.Fatalf("empty deps with Id: %v", err)
+	}
+}

@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/rs/xid"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
@@ -340,7 +342,21 @@ func (m *moduleUpgrader) schemaIntents() schema.IntentBag {
 }
 
 // replaceModuleDependenciesFn writes module dependency associations (overridable in tests).
+// Empty Dependencies clears stale join rows when the module already has a primary key.
+// Brand-new modules without an Id skip the empty Replace — GORM Association requires a PK,
+// and Save will create the row with no dependency links.
 var replaceModuleDependenciesFn = func(sess *scope.Session, target *meta.Module) error {
+	if sess == nil || target == nil {
+		return nil
+	}
+	if !target.Id.Valid || strings.TrimSpace(target.Id.String) == "" {
+		if len(target.Dependencies) == 0 {
+			return nil
+		}
+		// Non-empty Replace also needs a PK; assign one so join rows can be written
+		// before Save (BeforeCreate would otherwise mint it only at insert time).
+		target.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	}
 	return sess.Model(target).Association("Dependencies").Replace(target.Dependencies)
 }
 
