@@ -418,6 +418,13 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 		t.Fatalf("by-name memory status=%q", byNameMod.Status)
 	}
 
+	if _, err := updatePostCommitIncompleteStatus(runtimeScope.Session(), nil); err == nil || !strings.Contains(err.Error(), "module is nil") {
+		t.Fatalf("expected nil module error, got %v", err)
+	}
+	if _, err := updatePostCommitIncompleteStatus(runtimeScope.Session(), &meta.Module{}); err == nil || !strings.Contains(err.Error(), "both empty") {
+		t.Fatalf("expected unqualified-update refusal, got %v", err)
+	}
+
 	// Already ToInstall → affected=0.
 	if err := installer.markPostCommitHooksIncomplete(); err == nil || !strings.Contains(err.Error(), "was not") {
 		t.Fatalf("expected unchanged-status error, got %v", err)

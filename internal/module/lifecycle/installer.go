@@ -389,13 +389,17 @@ func (m *moduleInstaller) runInstallPreInit(buildResult *module.BuildResult) err
 
 // updatePostCommitIncompleteStatus flips Installed → ToInstall for retry. Overridable in tests.
 var updatePostCommitIncompleteStatus = func(sess *scope.Session, mod *meta.Module) (int64, error) {
-	query := sess.Model(&meta.Module{}).Where("status = ?", meta.Installed)
-	if mod != nil && mod.Id.Valid && strings.TrimSpace(mod.Id.String) != "" {
-		query = query.Where("id = ?", mod.Id.String)
-	} else if mod != nil {
-		query = query.Where("name = ?", strings.TrimSpace(mod.Name))
-	} else {
+	if mod == nil {
 		return 0, xfmt.Errorf("module is nil")
+	}
+	name := strings.TrimSpace(mod.Name)
+	query := sess.Model(&meta.Module{}).Where("status = ?", meta.Installed)
+	if mod.Id.Valid && strings.TrimSpace(mod.Id.String) != "" {
+		query = query.Where("id = ?", mod.Id.String)
+	} else if name != "" {
+		query = query.Where("name = ?", name)
+	} else {
+		return 0, xfmt.Errorf("module id and name are both empty; refusing unqualified status update")
 	}
 	res := query.Update("status", meta.ToInstall)
 	return res.RowsAffected, res.Error

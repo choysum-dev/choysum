@@ -59,10 +59,8 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 				continue
 			}
 			fnName := fn.Name.Name
-			switch fnName {
-			case "commitInstall", "commitUpgrade", "commitUninstall",
-				"runInstallCommitTX", "runUpgradeCommitTX":
-			default:
+			// Match commit* bodies and *CommitTX wrappers so TX envelopes stay hook-free.
+			if !strings.HasPrefix(fnName, "commit") && !strings.HasSuffix(fnName, "CommitTX") {
 				continue
 			}
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
