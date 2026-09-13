@@ -463,11 +463,7 @@ func (m *moduleUninstaller) resolveUninstallHookRunner() (*hooks.Runner, error) 
 	}
 	hookRunner, err := uninstallHooksNewRunner(m.runtimeScope, jsExec, m.module)
 	if err != nil {
-		name := ""
-		if m.module != nil {
-			name = m.module.Name
-		}
-		return nil, xfmt.Errorf("error preparing hooks for module %s: %w", name, err)
+		return nil, xfmt.Errorf("error preparing hooks for module %s: %w", nameOrEmpty(m.module), err)
 	}
 	return hookRunner, nil
 }
