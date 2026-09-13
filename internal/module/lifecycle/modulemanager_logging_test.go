@@ -15,6 +15,8 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
+	"github.com/choysum-dev/choysum/internal/module/evolution/scripts"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	moduleplan "github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -295,6 +297,47 @@ func TestLogModuleOperationStepUsesInstallAndUninstallMessages(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestLogModuleOperationStep_HookSubstepAttrs(t *testing.T) {
+	var logBuf bytes.Buffer
+	testScope := &testLogScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+	}
+
+	step := moduleStepHook(hooks.PhasePreUpgrade)
+	logModuleOperationStep(testScope, &opContext{opid: "op-hook-1"}, moduleplan.OpUpgrade, "partner", step, time.Now().Add(-40*time.Millisecond))
+
+	logs := logBuf.String()
+	for _, want := range []string{
+		`"msg":"module upgrade step completed"`,
+		`"opid":"op-hook-1"`,
+		`"step":"hook.pre_upgrade"`,
+		`"duration_ms":`,
+	} {
+		if !strings.Contains(logs, want) {
+			t.Fatalf("expected logs to contain %q, got %q", want, logs)
+		}
+	}
+	if moduleOperationStepLogLevel("hook.pre_init") != slog.LevelInfo {
+		t.Fatal("hook.* should log at Info")
+	}
+	if moduleOperationStepLogLevel("scripts.pre") != slog.LevelInfo {
+		t.Fatal("scripts.* should log at Info")
+	}
+	if moduleOperationStepLogLevel(moduleStepData) != slog.LevelDebug {
+		t.Fatal("data step stays Debug")
+	}
+}
+
+func TestModuleStepHookAndScriptsNames(t *testing.T) {
+	if got := moduleStepHook(hooks.PhasePreInit); got != "hook.pre_init" {
+		t.Fatalf("hook=%q", got)
+	}
+	if got := moduleStepScripts(scripts.PhaseEnd); got != "scripts.end" {
+		t.Fatalf("scripts=%q", got)
 	}
 }
 

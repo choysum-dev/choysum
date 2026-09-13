@@ -171,6 +171,7 @@ func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileSt
 	if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
 		r.touchCacheLocked(path)
 		r.mu.Unlock()
+		recordSemanticCacheHit()
 		r.logDebug("semantic program cache hit", "path", path)
 		return cached, nil
 	}
@@ -182,6 +183,7 @@ func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileSt
 		if cached, ok := r.cache[path]; ok && cached != nil && cached.content == content {
 			r.touchCacheLocked(path)
 			r.mu.Unlock()
+			recordSemanticCacheHit()
 			return cached, nil
 		}
 		r.mu.Unlock()
@@ -193,6 +195,7 @@ func (r *semanticTypeResolver) ensureFile(path, content string) (*semanticFileSt
 			r.logDebug("semantic program build failed", "path", path, "elapsed_ms", elapsed.Milliseconds(), "err", buildErr)
 			return nil, buildErr
 		}
+		recordSemanticBuild(elapsed)
 		r.logDebug("semantic program build ok", "path", path, "elapsed_ms", elapsed.Milliseconds())
 		state := &semanticFileState{
 			content: content,
