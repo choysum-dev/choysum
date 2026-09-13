@@ -231,6 +231,11 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 	if committedModule != nil && installer.module != nil {
 		*installer.module = *committedModule
 	}
+	if *buildResult != nil && installer.module != nil {
+		// Repoint the published result at the caller's module; the TX-local copy
+		// must not escape the commit.
+		(*buildResult).Module = installer.module
+	}
 	return nil
 }
 

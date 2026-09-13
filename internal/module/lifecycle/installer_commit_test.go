@@ -344,6 +344,9 @@ func TestRunInstallCommitTX_PersistLaterNoDuplicateModule(t *testing.T) {
 	if outer.Status != meta.Installed {
 		t.Fatalf("status=%v", outer.Status)
 	}
+	if buildResult == nil || buildResult.Module != outer {
+		t.Fatal("published BuildResult.Module must repoint at caller's module")
+	}
 }
 
 func TestBindCommitBuildModule(t *testing.T) {
@@ -502,6 +505,9 @@ func TestCommitInstallSaveModuleError(t *testing.T) {
 	if err := runtimeScope.Session().Create(mod).Error; err != nil {
 		t.Fatalf("create module: %v", err)
 	}
+	origDeps := replaceModuleDependenciesFn
+	t.Cleanup(func() { replaceModuleDependenciesFn = origDeps })
+	replaceModuleDependenciesFn = func(*scope.Session, *meta.Module) error { return nil }
 	if err := runtimeScope.Session().Exec(`
 CREATE TRIGGER block_module_save
 BEFORE UPDATE ON meta_module
@@ -516,7 +522,8 @@ END`).Error; err != nil {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "error saving module") {
+	_, err := installer.commitInstall(nil, false)
+	if err == nil || !strings.Contains(err.Error(), "error saving module:") || strings.Contains(err.Error(), "dependencies") {
 		t.Fatalf("expected save module error, got %v", err)
 	}
 }
@@ -540,6 +547,9 @@ func TestCommitUpgradeSaveModuleError(t *testing.T) {
 		Path:    mod.Path,
 	}
 	target.Id = mod.Id
+	origDeps := replaceModuleDependenciesFn
+	t.Cleanup(func() { replaceModuleDependenciesFn = origDeps })
+	replaceModuleDependenciesFn = func(*scope.Session, *meta.Module) error { return nil }
 	if err := runtimeScope.Session().Exec(`
 CREATE TRIGGER block_module_upgrade_save
 BEFORE UPDATE ON meta_module
@@ -560,7 +570,8 @@ END`).Error; err != nil {
 		moduleManager: upgrader.moduleManager,
 		ctx:           upgrader.ctx,
 	}
-	if _, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false); err == nil || !strings.Contains(err.Error(), "error saving module") {
+	_, err := upgrader.commitUpgrade(installer, "1.0.0", nil, false)
+	if err == nil || !strings.Contains(err.Error(), "error saving module:") || strings.Contains(err.Error(), "dependencies") {
 		t.Fatalf("expected upgrade save module error, got %v", err)
 	}
 }

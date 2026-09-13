@@ -120,13 +120,19 @@ func TestRunUpgradeCommitTX_WithAndWithoutManager(t *testing.T) {
 
 	mgr := &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}}
 	upgrader := &moduleUpgrader{runtimeScope: runtimeScope, module: mod, moduleManager: mgr, ctx: newOpContext()}
-	installer := &moduleInstaller{module: target, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}
-	var buildResult *module.BuildResult
-	if err := upgrader.runUpgradeCommitTX(runtimeScope, runtimeScope.Context(), installer, "1.0.0", &buildResult, false); err != nil {
+	installer := &moduleInstaller{
+		module: target, runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext(),
+		builder: &commitStubSplitBuilder{},
+	}
+	buildResult := &module.BuildResult{Module: target}
+	if err := upgrader.runUpgradeCommitTX(runtimeScope, runtimeScope.Context(), installer, "1.0.0", &buildResult, true); err != nil {
 		t.Fatalf("with manager: %v", err)
 	}
-	buildResult = nil
-	if err := upgrader.runUpgradeCommitTX(runtimeScope, nil, installer, "1.0.0", &buildResult, false); err != nil {
+	if buildResult == nil || buildResult.Module != target {
+		t.Fatal("published BuildResult.Module must repoint at caller's module")
+	}
+	buildResult = &module.BuildResult{Module: target}
+	if err := upgrader.runUpgradeCommitTX(runtimeScope, nil, installer, "1.0.0", &buildResult, true); err != nil {
 		t.Fatalf("nil ctx re-upgrade: %v", err)
 	}
 	badInstaller := &moduleInstaller{runtimeScope: runtimeScope, moduleManager: mgr, ctx: newOpContext()}

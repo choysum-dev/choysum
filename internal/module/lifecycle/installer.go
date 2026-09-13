@@ -186,6 +186,11 @@ func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Con
 	if committedModule != nil && m.module != nil {
 		*m.module = *committedModule
 	}
+	if *buildResult != nil && m.module != nil {
+		// Repoint the published result at the caller's module; the TX-local copy
+		// must not escape the commit.
+		(*buildResult).Module = m.module
+	}
 	return nil
 }
 

@@ -136,9 +136,32 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if fieldIsExplicitManyToMany(&meta.Field{Relation: "ManyToMany"}) {
 		t.Fatal("Relation alone without resolved spec must not be treated as explicit M2M")
 	}
+	// Empty ResolvedSpec + Relation=ManyToMany + joinModel must not own a join table
+	// (aligned with fieldIsExplicitManyToMany: nil spec without error is not M2M).
+	relNoSpec := &meta.Field{
+		Name:                     "Roles",
+		Relation:                 "ManyToMany",
+		RelationJoinModel:        "auth.UserRole",
+		RelationJoinField:        "UserId",
+		RelationInverseJoinField: "RoleId",
+		RelationModel:            "auth.Role",
+	}
+	if _, _, _, _, ok := manyToManyJoinMeta(relNoSpec); ok {
+		t.Fatal("nil resolved spec must not treat Relation+joinModel as join-table owner")
+	}
 	badSpec := &meta.Field{Name: "Roles", Relation: "ManyToMany", ResolvedSpec: "{not-json"}
 	if !fieldIsExplicitManyToMany(badSpec) {
 		t.Fatal("unparseable resolved spec with Relation=ManyToMany should fail closed")
+	}
+	if joinRef, _, _, _, ok := manyToManyJoinMeta(badSpec); ok || joinRef != "" {
+		t.Fatal("unparseable ManyToMany without joinModel columns must not report ok")
+	}
+	badWithJoin := &meta.Field{
+		Name: "Roles", Relation: "ManyToMany", ResolvedSpec: "{not-json",
+		RelationJoinModel: "auth.UserRole",
+	}
+	if joinRef, _, _, _, ok := manyToManyJoinMeta(badWithJoin); !ok || joinRef != "auth.UserRole" {
+		t.Fatalf("unparseable ManyToMany with joinModel: ok=%v joinRef=%q", ok, joinRef)
 	}
 	relOnly := &meta.Model{
 		Application: "auth", Name: "User", ModelTable: "auth_user",
@@ -534,12 +557,20 @@ func TestMarkLeftoverOwnership_EdgeCases(t *testing.T) {
 	}
 	plan := SchemaPlan{Leftover: []Leftover{
 		{Kind: LeftoverIndex, Name: "idx_x"},
+		{Kind: LeftoverIndex, Table: "sales", Name: "idx_other_code"},
+		{Kind: LeftoverIndex, Table: "sales", Name: "idx_sales_code"},
 		{Kind: LeftoverColumn, Table: "", Name: "c"},
 		{Kind: LeftoverColumn, Table: "t", Name: "a"},
 		{Kind: LeftoverColumn, Table: "t", Name: "b"},
 	}}
 	if err := markLeftoverOwnership(&plan, nil); err != nil {
 		t.Fatal(err)
+	}
+	if plan.Leftover[0].ChoysumOwned || plan.Leftover[1].ChoysumOwned {
+		t.Fatalf("bare/foreign idx_ prefixes must not be owned: %#v", plan.Leftover[:2])
+	}
+	if !plan.Leftover[2].ChoysumOwned {
+		t.Fatalf("idx_<table>_ must be owned: %#v", plan.Leftover[2])
 	}
 	if err := markLeftoverOwnership(&plan, &schemaTestScope{}); err != nil {
 		t.Fatal(err)

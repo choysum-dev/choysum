@@ -441,6 +441,12 @@ func TestCommitInstall_ReplacesEmptyDependencies(t *testing.T) {
 
 func TestReplaceModuleDependencies_EmptyWithoutIDNoops(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
+	if err := replaceModuleDependenciesFn(nil, &meta.Module{}); err != nil {
+		t.Fatalf("nil session: %v", err)
+	}
+	if err := replaceModuleDependenciesFn(runtimeScope.Session(), nil); err != nil {
+		t.Fatalf("nil target: %v", err)
+	}
 	mod := &meta.Module{Name: "no_id_yet", Version: "1.0.0", Status: meta.ToInstall, Path: t.TempDir()}
 	mod.Dependencies = nil
 	if err := replaceModuleDependenciesFn(runtimeScope.Session(), mod); err != nil {
@@ -456,5 +462,29 @@ func TestReplaceModuleDependencies_EmptyWithoutIDNoops(t *testing.T) {
 	}
 	if err := replaceModuleDependenciesFn(runtimeScope.Session(), mod); err != nil {
 		t.Fatalf("empty deps with Id: %v", err)
+	}
+}
+
+func TestReplaceModuleDependencies_MintsIDForNonEmptyDeps(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	dep := &meta.Module{Name: "dep_for_mint", Version: "1.0.0", Status: meta.Installed, Path: t.TempDir()}
+	dep.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(dep).Error; err != nil {
+		t.Fatal(err)
+	}
+	mod := &meta.Module{
+		Name: "needs_mint", Version: "1.0.0", Status: meta.ToInstall, Path: t.TempDir(),
+		Dependencies: []*meta.Module{dep},
+	}
+	if err := replaceModuleDependenciesFn(runtimeScope.Session(), mod); err != nil {
+		t.Fatalf("non-empty deps without Id: %v", err)
+	}
+	if !mod.Id.Valid || strings.TrimSpace(mod.Id.String) == "" {
+		t.Fatal("expected minted Id for non-empty Replace")
+	}
+	if err := runtimeScope.Session().
+		Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+		Save(mod).Error; err != nil {
+		t.Fatalf("save after mint: %v", err)
 	}
 }

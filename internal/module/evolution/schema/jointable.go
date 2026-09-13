@@ -250,7 +250,7 @@ func manyToManyJoinMeta(field *meta.Field) (joinRef, joinField, inverseJoinField
 	joinField = strings.TrimSpace(field.RelationJoinField)
 	inverseJoinField = strings.TrimSpace(field.RelationInverseJoinField)
 	targetRef = strings.TrimSpace(field.RelationModel)
-	isM2M := strings.EqualFold(strings.TrimSpace(field.Relation), "ManyToMany")
+	isM2M := false
 	if spec, err := field.GetResolvedSpec(); err == nil && spec != nil {
 		// Resolved FieldType is authoritative: ManyToManyRef may also carry
 		// Relation=ManyToMany and must not be treated as a join-table owner.
@@ -277,6 +277,9 @@ func manyToManyJoinMeta(field *meta.Field) (joinRef, joinField, inverseJoinField
 				}
 			}
 		}
+	} else if err != nil {
+		// Unparseable spec: Relation is the only signal left (fail closed).
+		isM2M = strings.EqualFold(strings.TrimSpace(field.Relation), "ManyToMany")
 	}
 	if !isM2M || joinRef == "" {
 		return "", "", "", "", false
