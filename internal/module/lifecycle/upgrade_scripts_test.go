@@ -408,9 +408,31 @@ func TestModuleManagerJSExecutorAndNameOrEmpty(t *testing.T) {
 }
 
 func TestNewMigrationScriptRunner_ReturnsUntypedNil(t *testing.T) {
-	got := newMigrationScriptRunner(nil, nil, nil)
+	// NewRunner returns nil when module is nil; factory must not box that as typed-nil.
+	rtScope := &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))}
+	got := newMigrationScriptRunner(rtScope, &nopScriptExecutor{}, nil)
 	if got != nil {
 		t.Fatalf("expected untyped nil interface, got %#v", got)
+	}
+}
+
+func TestUpgradeMigrations_SkipsNilRunner(t *testing.T) {
+	prev := newMigrationScriptRunner
+	t.Cleanup(func() { newMigrationScriptRunner = prev })
+	newMigrationScriptRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, ...scripts.RunnerOption) migrationScriptRunner {
+		return nil
+	}
+	upgrader := &moduleUpgrader{
+		runtimeScope:  &testLogScope{ctx: context.Background()},
+		module:        &meta.Module{Name: "partner"},
+		moduleManager: &ModuleManager{jsExecutor: &nopScriptExecutor{}},
+	}
+	target := &meta.Module{Name: "partner", Version: "1.1.0"}
+	if err := upgrader.runUpgradePrepareMigrations(context.Background(), target, "1.0.0", false); err != nil {
+		t.Fatalf("prepare nil runner should skip, got %v", err)
+	}
+	if err := upgrader.runUpgradeFinalizeMigrations(context.Background(), target, "1.0.0", false); err != nil {
+		t.Fatalf("finalize nil runner should skip, got %v", err)
 	}
 }
 
@@ -442,6 +464,9 @@ func TestRunUpgradeHookPhase_PreOmitsToVersion(t *testing.T) {
 	preLogs := logBuf.String()
 	if !strings.Contains(preLogs, `"step":"hook.pre_upgrade"`) {
 		t.Fatalf("missing pre log: %s", preLogs)
+	}
+	if !strings.Contains(preLogs, `"from_version":"1.0.0"`) {
+		t.Fatalf("pre_upgrade should log from_version, got %s", preLogs)
 	}
 	if strings.Contains(preLogs, `"to_version"`) {
 		t.Fatalf("pre_upgrade must omit to_version, got %s", preLogs)

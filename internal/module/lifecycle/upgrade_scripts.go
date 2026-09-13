@@ -158,8 +158,8 @@ func (m *moduleUpgrader) runUpgradeHookPhase(
 		return xfmt.Errorf("error running %s hook for module %s: %w", phaseLabel, mod.Name, err)
 	}
 	attrs := []any{"from_version", fromVersion}
-	// Pre-upgrade still has the installed module; target version is unknown until origin resolve.
-	if phase != hooks.PhasePreUpgrade {
+	// Only post_upgrade has the origin-resolved target module version.
+	if phase == hooks.PhasePostUpgrade {
 		attrs = append(attrs, "to_version", mod.Version)
 	}
 	m.logUpgradeStep(mod.Name, moduleStepHook(phase), hookStarted, attrs...)
