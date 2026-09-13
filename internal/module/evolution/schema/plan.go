@@ -644,7 +644,7 @@ func normalizeDBType(s string) string {
 	switch s {
 	case "character varying", "nvarchar", "varchar":
 		return "varchar"
-	case "character", "nchar", "char":
+	case "character", "nchar", "char", "bpchar":
 		return "char"
 	case "integer", "int", "int4", "mediumint", "smallint", "tinyint":
 		return "int"
@@ -677,13 +677,17 @@ func sqliteTypeCompatible(want, have string) bool {
 	switch have {
 	case "text":
 		return want == "text" || want == "varchar" || want == "char" || want == "jsonobject" || want == "date" || want == "datetime" || want == "time" || want == "html"
+	case "varchar", "char":
+		// SQLite stores both as TEXT affinity; GORM may still report the declared type.
+		return want == "varchar" || want == "char" || want == "text"
 	case "integer":
 		return want == "int" || want == "bigint" || want == "bool"
 	case "real":
 		return want == "float" || want == "decimal"
 	case "blob":
 		return want == "blob"
-	case "numeric":
+	case "numeric", "decimal":
+		// GORM sqlite often declares bool as numeric; normalizeDBType maps that to decimal.
 		return want == "decimal" || want == "float" || want == "bool" || want == "date" || want == "datetime"
 	default:
 		return want == have

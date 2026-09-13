@@ -180,6 +180,12 @@ func liveColumnFromColumnType(ct gorm.ColumnType) (LiveColumn, bool) {
 	}
 	if nullable, ok := ct.Nullable(); ok {
 		nullableCopy := nullable
+		// SQLite reports PRIMARY KEY columns as nullable even when they are not
+		// optional in practice; treat PK as NOT NULL so Desired Id (etc.) does not
+		// emit a spurious guarded tighten.
+		if pk, pkOK := ct.PrimaryKey(); pkOK && pk {
+			nullableCopy = false
+		}
 		lc.Nullable = &nullableCopy
 	}
 	if def, ok := ct.DefaultValue(); ok {

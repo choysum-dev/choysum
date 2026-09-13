@@ -85,7 +85,7 @@ func TestMigrateSchema_TypeChangeFailsValidate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetResolvedSpec() error = %v", err)
 	}
-	spec.Migration.ResolvedColumnType = "text"
+	spec.Migration.ResolvedColumnType = "int"
 	if err := field.SetResolvedSpec(spec); err != nil {
 		t.Fatalf("SetResolvedSpec() error = %v", err)
 	}

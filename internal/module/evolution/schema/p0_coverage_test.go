@@ -404,7 +404,7 @@ func TestColumnMismatchAndNormalize(t *testing.T) {
 	_ = mapPhysicalToDialectType("nope", "custom")
 
 	for _, in := range []string{
-		"", "VARCHAR(255)", "character varying", "nvarchar", "character", "nchar",
+		"", "VARCHAR(255)", "character varying", "nvarchar", "character", "nchar", "bpchar", "CHAR(20)",
 		"integer", "int4", "bigint", "int8", "boolean", "bit",
 		"double precision", "float8", "bytea", "longblob", "jsonb", "json",
 		"longtext", "clob", "timestamp with time zone", "timestamptz", "datetime2",
@@ -412,11 +412,23 @@ func TestColumnMismatchAndNormalize(t *testing.T) {
 	} {
 		_ = normalizeDBType(in)
 	}
+	if got := normalizeDBType("bpchar"); got != "char" {
+		t.Fatalf("normalizeDBType(bpchar)=%q want char", got)
+	}
+	if got := normalizeDBType("BPCHAR(20)"); got != "char" {
+		t.Fatalf("normalizeDBType(BPCHAR(20))=%q want char", got)
+	}
 
-	for _, have := range []string{"text", "integer", "real", "blob", "numeric", "other"} {
+	for _, have := range []string{"text", "integer", "real", "blob", "numeric", "decimal", "varchar", "char", "other"} {
 		for _, want := range []string{"text", "varchar", "char", "jsonobject", "date", "datetime", "time", "html", "int", "bigint", "bool", "float", "decimal", "blob", "other"} {
 			_ = sqliteTypeCompatible(want, have)
 		}
+	}
+	if !sqliteTypeCompatible("char", "varchar") || !sqliteTypeCompatible("varchar", "char") {
+		t.Fatal("sqlite varchar/char should be compatible")
+	}
+	if !sqliteTypeCompatible("bool", "decimal") {
+		t.Fatal("bool should be compatible with sqlite decimal")
 	}
 }
 
@@ -686,6 +698,13 @@ func TestInspectHooksAndLiveColumn(t *testing.T) {
 	lc, ok := liveColumnFromColumnType(fakeColumnType{name: "c", dbType: "VARCHAR", length: 10, lengthOK: true, nullable: false, nullableOK: true})
 	if !ok || lc.Length == nil || *lc.Length != 10 || lc.Nullable == nil || *lc.Nullable {
 		t.Fatalf("live column: %#v", lc)
+	}
+	pkLive, ok := liveColumnFromColumnType(fakeColumnType{
+		name: "id", dbType: "char", nullable: true, nullableOK: true,
+		primaryKey: true, primaryKeyOK: true, primaryKeySet: true,
+	})
+	if !ok || pkLive.Nullable == nil || *pkLive.Nullable {
+		t.Fatalf("sqlite-style PK should inspect as NOT NULL: %#v", pkLive)
 	}
 }
 

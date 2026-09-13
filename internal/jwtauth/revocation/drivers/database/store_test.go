@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -202,6 +203,75 @@ func TestNewDatabaseStoreUsesExistingTableAndSurfacesInitFailures(t *testing.T) 
 			t.Fatalf("precreate auth_token table: %v", err)
 		}
 
+		store, err := NewDatabaseStore(newDatabaseTestScope(session))
+		if err != nil {
+			t.Fatalf("NewDatabaseStore() error = %v", err)
+		}
+		defer store.Close()
+	})
+
+	t.Run("recreates empty legacy varchar auth_token schema", func(t *testing.T) {
+		session := newDatabaseTestSession(t, "legacy-varchar.db")
+		if err := session.Exec(`CREATE TABLE auth_token (
+			id varchar(20) PRIMARY KEY,
+			user_id varchar(20),
+			token_id varchar(36),
+			token_type varchar(10),
+			expires_at datetime
+		)`).Error; err != nil {
+			t.Fatalf("precreate legacy auth_token: %v", err)
+		}
+
+		store, err := NewDatabaseStore(newDatabaseTestScope(session))
+		if err != nil {
+			t.Fatalf("NewDatabaseStore() error = %v", err)
+		}
+		defer store.Close()
+
+		cols, err := session.Migrator().ColumnTypes("auth_token")
+		if err != nil {
+			t.Fatalf("ColumnTypes: %v", err)
+		}
+		if authTokenSchemaMismatch(cols) {
+			t.Fatalf("expected repaired auth_token schema to match Desired; summary=%v", columnTypeSummary(cols))
+		}
+	})
+
+	t.Run("errors when legacy auth_token is non-empty on sqlite", func(t *testing.T) {
+		session := newDatabaseTestSession(t, "legacy-populated.db")
+		if err := session.Exec(`CREATE TABLE auth_token (
+			id varchar(20) PRIMARY KEY,
+			user_id varchar(20),
+			token_id varchar(36),
+			token_type varchar(10),
+			expires_at datetime
+		)`).Error; err != nil {
+			t.Fatalf("precreate legacy auth_token: %v", err)
+		}
+		if err := session.Exec(`INSERT INTO auth_token(id, user_id, token_id, token_type, expires_at) VALUES ('1','u','t','access', datetime('now'))`).Error; err != nil {
+			t.Fatalf("insert legacy row: %v", err)
+		}
+
+		_, err := NewDatabaseStore(newDatabaseTestScope(session))
+		if err == nil || !autherrors.IsAuthError(err, autherrors.ErrRevocationStoreFailed) {
+			t.Fatalf("expected revocation store init error for populated legacy table, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "not empty") {
+			t.Fatalf("expected not-empty incompatibility error, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "sqlite") || !strings.Contains(err.Error(), "manual migration required") {
+			t.Fatalf("expected dialect and manual-migration hint, got %v", err)
+		}
+	})
+
+	t.Run("keeps populated compatible auth_token schema", func(t *testing.T) {
+		session := newDatabaseTestSession(t, "compatible-populated.db")
+		if err := session.AutoMigrate(&revokedTokenRecord{}); err != nil {
+			t.Fatalf("precreate compatible auth_token: %v", err)
+		}
+		if err := session.Exec(`INSERT INTO auth_token(id, user_id, token_id, token_type, expires_at, revoked) VALUES ('1','u','t','access', datetime('now'), 0)`).Error; err != nil {
+			t.Fatalf("insert compatible row: %v", err)
+		}
 		store, err := NewDatabaseStore(newDatabaseTestScope(session))
 		if err != nil {
 			t.Fatalf("NewDatabaseStore() error = %v", err)
@@ -480,4 +550,66 @@ func TestDatabaseStoreBackgroundCleanupStopsWhenCanceled(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("backgroundCleanup did not stop after cancellation")
 	}
+}
+
+func TestIsVarcharDBType(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		raw  string
+		want bool
+	}{
+		{"varchar", true},
+		{"VARCHAR(20)", true},
+		{"varchar (20)", true},
+		{"character varying", true},
+		{"character varying(20)", true},
+		{"char", false},
+		{"char(20)", false},
+		{"bpchar", false},
+		{"text", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := isVarcharDBType(tc.raw); got != tc.want {
+			t.Fatalf("isVarcharDBType(%q)=%v want %v", tc.raw, got, tc.want)
+		}
+	}
+}
+
+func TestIsIntegerLikeDBType(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		raw  string
+		want bool
+	}{
+		{"integer", true},
+		{"INT4", true},
+		{"serial", true},
+		{"numeric", true},
+		{"numeric (10, 2)", true},
+		{"varchar", false},
+		{"char", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := isIntegerLikeDBType(tc.raw); got != tc.want {
+			t.Fatalf("isIntegerLikeDBType(%q)=%v want %v", tc.raw, got, tc.want)
+		}
+	}
+}
+
+func columnTypeSummary(cols []gorm.ColumnType) []string {
+	out := make([]string, 0, len(cols))
+	for _, col := range cols {
+		null := "?"
+		if n, ok := col.Nullable(); ok {
+			if n {
+				null = "null"
+			} else {
+				null = "notnull"
+			}
+		}
+		out = append(out, col.Name()+":"+col.DatabaseTypeName()+":"+null)
+	}
+	return out
 }
