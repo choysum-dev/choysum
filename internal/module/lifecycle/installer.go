@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -167,7 +168,7 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 func (m *moduleInstaller) wrapPostCommitHookError(msg string, err error) error {
 	markErr := m.markPostCommitHooksIncomplete()
 	if markErr != nil {
-		return xfmt.Errorf("%s: %w (also failed reverting status: %v)", msg, err, markErr)
+		return fmt.Errorf("%s: %w (also failed reverting status: %w)", msg, err, markErr)
 	}
 	return xfmt.Errorf("%s: %w", msg, err)
 }

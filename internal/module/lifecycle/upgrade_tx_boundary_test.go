@@ -27,6 +27,7 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 		t.Fatal(err)
 	}
 	banned := map[string]bool{
+		"finalizeInstall":         true,
 		"runInstallHookPhase":     true,
 		"runUpgradeHookPhase":     true,
 		"runUninstallHookPhase":   true,

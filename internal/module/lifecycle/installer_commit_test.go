@@ -345,6 +345,14 @@ func TestInstallAfterPrepare_FinalizeFailureRevertsStatus(t *testing.T) {
 	if mod.Status != meta.Installed {
 		t.Fatalf("retry status=%q want installed", mod.Status)
 	}
+	var rows int64
+	if err := runtimeScope.Session().Model(&meta.Module{}).
+		Where("name = ?", "demo_finalize_fail").Count(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+	if rows != 1 {
+		t.Fatalf("retry must not duplicate the module row, got %d", rows)
+	}
 }
 
 func TestMarkPostCommitHooksIncomplete(t *testing.T) {
@@ -385,6 +393,31 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 	if got.Status != meta.ToInstall {
 		t.Fatalf("db status=%q", got.Status)
 	}
+
+	// Name fallback: clear Id on the in-memory module so revert matches by name.
+	byNameRow := &meta.Module{
+		Name: "demo_mark_incomplete_by_name", Version: "1.0.0", Status: meta.Installed,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	if err := runtimeScope.Session().Create(byNameRow).Error; err != nil {
+		t.Fatal(err)
+	}
+	byNameMod := *byNameRow
+	byNameMod.Id = sql.NullString{}
+	if err := (&moduleInstaller{module: &byNameMod, runtimeScope: runtimeScope}).markPostCommitHooksIncomplete(); err != nil {
+		t.Fatal(err)
+	}
+	var byNameGot meta.Module
+	if err := runtimeScope.Session().Where("name = ?", "demo_mark_incomplete_by_name").Take(&byNameGot).Error; err != nil {
+		t.Fatal(err)
+	}
+	if byNameGot.Status != meta.ToInstall {
+		t.Fatalf("by-name revert status=%q", byNameGot.Status)
+	}
+	if byNameMod.Status != meta.ToInstall {
+		t.Fatalf("by-name memory status=%q", byNameMod.Status)
+	}
+
 	// Already ToInstall → affected=0.
 	if err := installer.markPostCommitHooksIncomplete(); err == nil || !strings.Contains(err.Error(), "was not") {
 		t.Fatalf("expected unchanged-status error, got %v", err)
@@ -392,8 +425,9 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 
 	prev := updatePostCommitIncompleteStatus
 	t.Cleanup(func() { updatePostCommitIncompleteStatus = prev })
+	markBoom := errors.New("db boom")
 	updatePostCommitIncompleteStatus = func(*scope.Session, *meta.Module) (int64, error) {
-		return 0, errors.New("db boom")
+		return 0, markBoom
 	}
 	mod.Status = meta.Installed
 	_ = runtimeScope.Session().Model(mod).Update("status", meta.Installed)
@@ -410,9 +444,13 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 		runtimeScope: runtimeScope,
 		ctx:          newOpContext(),
 	}
-	err := failing.wrapPostCommitHookError("error running pre_init after commit (module persisted, not finalized)", errors.New("hook boom"))
+	hookBoom := errors.New("hook boom")
+	err := failing.wrapPostCommitHookError("error running pre_init after commit (module persisted, not finalized)", hookBoom)
 	if err == nil || !strings.Contains(err.Error(), "also failed reverting status") || !strings.Contains(err.Error(), "hook boom") {
 		t.Fatalf("got %v", err)
+	}
+	if !errors.Is(err, hookBoom) || !errors.Is(err, markBoom) {
+		t.Fatalf("expected both hook and mark errors in chain, got %v", err)
 	}
 }
 
