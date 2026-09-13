@@ -74,6 +74,10 @@ func ensureTaskJobExecutionTable(runtimeScope scope.Scope) error {
 		return nil
 	}
 	db := runtimeScope.Session()
+	// Session embeds *gorm.DB; a non-nil Session with nil DB/Config would panic on Dialector.
+	if db.DB == nil || db.Config == nil {
+		return nil
+	}
 	dialect := schemaDialectName(db.Dialector)
 	const table = "task_job_execution"
 	cols := taskJobExecutionColumnsFn()

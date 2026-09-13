@@ -312,6 +312,19 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 		t.Fatalf("missing right join col: %v", err)
 	}
 
+	// Same physical column on both ends fails closed.
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	sameColUser := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{m2mField(t, "Roles", "auth.UserRole", "UserId", "UserId", "auth.Role")},
+	}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{sameColUser, joinOK, role}); err == nil ||
+		!strings.Contains(err.Error(), "same column") {
+		t.Fatalf("identical join ends: %v", err)
+	}
+
 	// Empty parent ModelTable fails.
 	emptyParent := &meta.Model{
 		Application: "auth", Name: "User", ModelTable: "",

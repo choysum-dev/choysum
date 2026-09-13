@@ -166,13 +166,16 @@ func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Con
 		return xfmt.Errorf("build result slot is nil")
 	}
 	var committedResult *module.BuildResult
+	var committedModule *meta.Module
 	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
 		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-			result, commitErr := m.forCommitScope(txScope).commitInstall(*buildResult, persistLater)
+			committed := m.forCommitScope(txScope)
+			result, commitErr := committed.commitInstall(*buildResult, persistLater)
 			if commitErr != nil {
 				return commitErr
 			}
 			committedResult = result
+			committedModule = committed.module
 			return nil
 		})
 	})
@@ -180,17 +183,26 @@ func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Con
 		return err
 	}
 	*buildResult = committedResult
+	if committedModule != nil && m.module != nil {
+		*m.module = *committedModule
+	}
 	return nil
 }
 
 func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
 	committed := *m
 	committed.runtimeScope = txScope
+	if m.module != nil {
+		// Transaction-local module copy: commitInstall mutates Status/Id before the
+		// outer Required TX commits; keep the caller's module unchanged on rollback.
+		modCopy := *m.module
+		committed.module = &modCopy
+	}
 	committed.builder = internalbackendbuilder.NewModuleBuilder(
 		txScope,
 		installerJSExecutor(m),
-		m.module,
-		installerServiceEntryPoint(m),
+		committed.module,
+		installerServiceEntryPoint(&committed),
 		internalbackendbuilder.WithPublishDist(false),
 	)
 	return &committed
@@ -279,12 +291,10 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 
 	saveStarted := time.Now()
 	m.module.Status = meta.Installed
-	if len(m.module.Dependencies) > 0 {
-		if err := sqliteretry.WithLockRetry(func() error {
-			return replaceModuleDependenciesFn(m.runtimeScope.Session(), m.module)
-		}); err != nil {
-			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
-		}
+	if err := sqliteretry.WithLockRetry(func() error {
+		return replaceModuleDependenciesFn(m.runtimeScope.Session(), m.module)
+	}); err != nil {
+		return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 	}
 	// Omit association trees: Persist already wrote meta_raw_* + recomputed effective
 	// meta_model*. Cascading Models here re-creates declaration shells with module_id and

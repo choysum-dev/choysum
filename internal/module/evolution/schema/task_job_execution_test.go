@@ -3,7 +3,12 @@
 
 package schema
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/choysum-dev/choysum/pkg/scope"
+	"gorm.io/gorm"
+)
 
 func TestTaskJobExecutionHelpers(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
@@ -12,6 +17,12 @@ func TestTaskJobExecutionHelpers(t *testing.T) {
 	}
 	if err := ensureTaskJobExecutionTable(nil); err != nil {
 		t.Fatalf("ensureTaskJobExecutionTable(nil) error = %v", err)
+	}
+	if err := ensureTaskJobExecutionTable(&schemaTestScope{session: &scope.Session{}}); err != nil {
+		t.Fatalf("ensureTaskJobExecutionTable(nil DB) error = %v", err)
+	}
+	if err := ensureTaskJobExecutionTable(&schemaTestScope{session: &scope.Session{DB: &gorm.DB{}}}); err != nil {
+		t.Fatalf("ensureTaskJobExecutionTable(nil Config) error = %v", err)
 	}
 	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
 		t.Fatalf("ensureTaskJobExecutionTable(env) error = %v", err)

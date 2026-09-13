@@ -84,6 +84,10 @@ func appendJoinTablesFromModels(desired *DesiredSchema, models []*meta.Model) er
 				return fmt.Errorf("ManyToMany %s.%s join column %q missing from desired table %s",
 					model.Name, field.Name, inverseJoinField, joinTable)
 			}
+			if strings.EqualFold(leftCol, rightCol) {
+				return fmt.Errorf("ManyToMany %s.%s joinField %q and inverseJoinField %q resolve to the same column %s",
+					model.Name, field.Name, joinField, inverseJoinField, leftCol)
+			}
 			referRight := ""
 			if targetRef != "" {
 				target := resolveJoinOrTargetModelRef(byKey, models, targetRef)

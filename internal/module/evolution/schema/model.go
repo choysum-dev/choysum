@@ -139,7 +139,7 @@ func filterIntentCoveredLeftovers(plan SchemaPlan, intents IntentBag) SchemaPlan
 	return plan
 }
 
-// markLeftoverOwnership sets ChoysumOwned on leftovers (idx_ indexes; columns in schema snapshots).
+// markLeftoverOwnership sets ChoysumOwned on leftovers (idx_/uniq_ indexes; columns in schema snapshots).
 func markLeftoverOwnership(plan *SchemaPlan, runtimeScope scope.Scope) error {
 	if plan == nil || len(plan.Leftover) == 0 {
 		return nil
@@ -148,7 +148,9 @@ func markLeftoverOwnership(plan *SchemaPlan, runtimeScope scope.Scope) error {
 		left := &plan.Leftover[i]
 		switch left.Kind {
 		case LeftoverIndex:
-			left.ChoysumOwned = strings.HasPrefix(strings.ToLower(strings.TrimSpace(left.Name)), "idx_")
+			name := strings.ToLower(strings.TrimSpace(left.Name))
+			// GORM defaults use idx_*; explicit UniqueIndexNames often use uniq_*.
+			left.ChoysumOwned = strings.HasPrefix(name, "idx_") || strings.HasPrefix(name, "uniq_")
 		}
 	}
 	tables := make([]string, 0, len(plan.Leftover))

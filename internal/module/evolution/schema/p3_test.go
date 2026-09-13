@@ -360,6 +360,7 @@ func TestLeftover_ChoysumOwnedAndIntentFilter(t *testing.T) {
 
 	plan := SchemaPlan{Leftover: []Leftover{
 		{Kind: LeftoverIndex, Table: "sales_owned", Name: "idx_sales_owned_code"},
+		{Kind: LeftoverIndex, Table: "sales_owned", Name: "uniq_sales_owned_code"},
 		{Kind: LeftoverIndex, Table: "sales_owned", Name: "custom_ix"},
 		{Kind: LeftoverColumn, Table: "sales_owned", Name: "old_code"},
 		{Kind: LeftoverColumn, Table: "sales_owned", Name: "stranger"},
@@ -367,11 +368,13 @@ func TestLeftover_ChoysumOwnedAndIntentFilter(t *testing.T) {
 	if err := markLeftoverOwnership(&plan, runtimeScope); err != nil {
 		t.Fatalf("markLeftoverOwnership: %v", err)
 	}
-	ownedIdx, unownedIdx, ownedCol, unownedCol := false, false, false, false
+	ownedIdx, ownedUniq, unownedIdx, ownedCol, unownedCol := false, false, false, false, false
 	for _, left := range plan.Leftover {
 		switch {
 		case left.Kind == LeftoverIndex && left.Name == "idx_sales_owned_code":
 			ownedIdx = left.ChoysumOwned
+		case left.Kind == LeftoverIndex && left.Name == "uniq_sales_owned_code":
+			ownedUniq = left.ChoysumOwned
 		case left.Kind == LeftoverIndex && left.Name == "custom_ix":
 			unownedIdx = !left.ChoysumOwned
 		case left.Kind == LeftoverColumn && left.Name == "old_code":
@@ -380,7 +383,7 @@ func TestLeftover_ChoysumOwnedAndIntentFilter(t *testing.T) {
 			unownedCol = !left.ChoysumOwned
 		}
 	}
-	if !ownedIdx || !unownedIdx || !ownedCol || !unownedCol {
+	if !ownedIdx || !ownedUniq || !unownedIdx || !ownedCol || !unownedCol {
 		t.Fatalf("ownership flags wrong: %#v", plan.Leftover)
 	}
 
@@ -392,7 +395,7 @@ func TestLeftover_ChoysumOwnedAndIntentFilter(t *testing.T) {
 			t.Fatal("expected Intent-covered leftover column filtered out")
 		}
 	}
-	if len(filtered.Leftover) != 3 {
+	if len(filtered.Leftover) != 4 {
 		t.Fatalf("filtered leftovers = %#v", filtered.Leftover)
 	}
 }

@@ -402,10 +402,39 @@ func TestRunInstallCommitTX_DoesNotPublishOnCommitError(t *testing.T) {
 	}
 	sentinel := &moduleresult.BuildResult{}
 	buildResult := sentinel
+	mod.Status = meta.ToInstall
 	if err := installer.runInstallCommitTX(runtimeScope, runtimeScope.Context(), &buildResult, false); err == nil {
 		t.Fatal("expected commit error")
 	}
 	if buildResult != sentinel {
 		t.Fatal("failed install commit must not publish build result")
+	}
+	if mod.Status != meta.ToInstall {
+		t.Fatalf("failed TX must not publish Installed status, got %q", mod.Status)
+	}
+}
+
+func TestCommitInstall_ReplacesEmptyDependencies(t *testing.T) {
+	orig := replaceModuleDependenciesFn
+	t.Cleanup(func() { replaceModuleDependenciesFn = orig })
+	var saw *meta.Module
+	replaceModuleDependenciesFn = func(_ *scope.Session, target *meta.Module) error {
+		saw = target
+		return nil
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod, _ := lifecycleCommitModule(t, "cov_empty_deps")
+	mod.Dependencies = nil
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	if _, err := installer.commitInstall(nil, false); err != nil {
+		t.Fatalf("commitInstall: %v", err)
+	}
+	if saw == nil || len(saw.Dependencies) != 0 {
+		t.Fatalf("expected empty-deps Replace, saw=%#v", saw)
 	}
 }

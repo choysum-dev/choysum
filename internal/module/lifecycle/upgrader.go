@@ -207,6 +207,7 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 		return xfmt.Errorf("upgrade commit installer is nil")
 	}
 	var committedResult *module.BuildResult
+	var committedModule *meta.Module
 	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
 		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 			committed := installer.forCommitScope(txScope)
@@ -217,6 +218,7 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 				return commitErr
 			}
 			committedResult = result
+			committedModule = committed.module
 			return nil
 		})
 	})
@@ -224,6 +226,9 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 		return err
 	}
 	*buildResult = committedResult
+	if committedModule != nil && installer.module != nil {
+		*installer.module = *committedModule
+	}
 	return nil
 }
 
@@ -275,12 +280,10 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 
 	persistModuleStarted := time.Now()
 	target.Status = meta.Installed
-	if len(target.Dependencies) > 0 {
-		if err := sqliteretry.WithLockRetry(func() error {
-			return replaceModuleDependenciesFn(m.runtimeScope.Session(), target)
-		}); err != nil {
-			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
-		}
+	if err := sqliteretry.WithLockRetry(func() error {
+		return replaceModuleDependenciesFn(m.runtimeScope.Session(), target)
+	}); err != nil {
+		return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 	}
 	// Omit association trees: Persist already wrote raw + effective catalogs. Cascading
 	// Models here would duplicate effective rows with module_id (see install commitSave).
