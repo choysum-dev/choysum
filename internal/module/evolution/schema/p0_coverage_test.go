@@ -115,7 +115,7 @@ func TestApplyPlanAndIndexes(t *testing.T) {
 	if err := applyPlan(&schemaTestScope{session: &scope.Session{}}, "sqlite", SchemaPlan{}); err == nil || !strings.Contains(err.Error(), "runtime scope is nil") {
 		t.Fatalf("nil session DB: %v", err)
 	}
-	if err := applyPlan(&schemaTestScope{session: &scope.Session{DB: &gorm.DB{}}}, "sqlite", SchemaPlan{}); err == nil || !strings.Contains(err.Error(), "runtime scope is nil") {
+	if err := applyPlan(&schemaTestScope{session: &scope.Session{DB: &gorm.DB{}}}, "sqlite", SchemaPlan{}); err == nil || !strings.Contains(err.Error(), "session config is nil") {
 		t.Fatalf("nil session Config: %v", err)
 	}
 	runtimeScope := newSchemaTestScope(t)

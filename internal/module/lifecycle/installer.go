@@ -263,6 +263,9 @@ func installerReuseExecutorScripts(exec jsexecutor.ScriptExecutor) bool {
 }
 
 func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) (*module.BuildResult, error) {
+	if m == nil || m.module == nil {
+		return nil, xfmt.Errorf("install commit installer is nil")
+	}
 	if err := m.restoreModuleIfSoftDeleted(); err != nil {
 		return nil, err
 	}

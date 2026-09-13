@@ -34,7 +34,7 @@ func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error 
 	}
 	db := runtimeScope.Session()
 	if db.Config == nil {
-		return fmt.Errorf("runtime scope is nil")
+		return fmt.Errorf("runtime scope session config is nil")
 	}
 	for _, op := range plan.Ops {
 		if op.Safety != SafetyAuto {

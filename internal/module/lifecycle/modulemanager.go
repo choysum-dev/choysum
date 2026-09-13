@@ -464,9 +464,13 @@ func (m *ModuleManager) withLeaseRenewPaused(fn func() error) error {
 	}
 	started := time.Now()
 	err := fn()
-	if depth == 1 && time.Since(started) >= moduleManagerLeaseTTL && m.runtimeScope != nil {
-		m.runtimeScope.Logger().Warn("module manager lease renew paused longer than TTL",
-			"elapsed", time.Since(started), "ttl", moduleManagerLeaseTTL)
+	safeWindow := moduleManagerLeaseTTL - moduleManagerLeaseRenewInterval(moduleManagerLeaseTTL)
+	if safeWindow < 0 {
+		safeWindow = 0
+	}
+	if depth == 1 && time.Since(started) >= safeWindow && m.runtimeScope != nil {
+		m.runtimeScope.Logger().Warn("module manager lease renew paused longer than safe window",
+			"elapsed", time.Since(started), "safe_window", safeWindow, "ttl", moduleManagerLeaseTTL)
 	}
 	return err
 }

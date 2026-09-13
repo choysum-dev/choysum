@@ -360,6 +360,15 @@ func TestBindCommitBuildModule(t *testing.T) {
 	}
 }
 
+func TestCommitInstallNilInstaller(t *testing.T) {
+	if _, err := (*moduleInstaller)(nil).commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "install commit installer is nil") {
+		t.Fatalf("nil installer: %v", err)
+	}
+	if _, err := (&moduleInstaller{}).commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "install commit installer is nil") {
+		t.Fatalf("nil module: %v", err)
+	}
+}
+
 func TestCommitInstallPersistLaterBranches(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{

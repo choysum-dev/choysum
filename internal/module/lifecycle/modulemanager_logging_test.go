@@ -443,8 +443,8 @@ func TestWithLeaseRenewPaused(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("over-TTL warn: %v", err)
 	}
-	if !strings.Contains(warnBuf.String(), "module manager lease renew paused longer than TTL") {
-		t.Fatalf("expected over-TTL warn, got %q", warnBuf.String())
+	if !strings.Contains(warnBuf.String(), "module manager lease renew paused longer than safe window") {
+		t.Fatalf("expected over-safe-window warn, got %q", warnBuf.String())
 	}
 	want := errors.New("boom")
 	if err := m.withLeaseRenewPaused(func() error { return want }); !errors.Is(err, want) {
