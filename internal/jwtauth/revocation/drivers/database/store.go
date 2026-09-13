@@ -235,67 +235,94 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 		return nil
 	}
 
-	// Empty pre-auth tables from an older varchar/nullable bootstrap can be
-	// recreated to match Desired; non-empty tables keep the postgres id repair
-	// path only.
 	var rowCount int64
 	if err := db.Table(tableName).Count(&rowCount).Error; err != nil {
 		return err
 	}
 	if rowCount == 0 {
-		if err := db.Migrator().DropTable(tableName); err != nil {
+		// Recheck immediately before drop so a concurrent insert in this
+		// transaction's view is less likely to be destroyed (still best-effort
+		// without a cross-process migration lock).
+		if err := db.Table(tableName).Count(&rowCount).Error; err != nil {
 			return err
 		}
-		return db.AutoMigrate(&revokedTokenRecord{})
+		if rowCount == 0 {
+			if err := db.Migrator().DropTable(tableName); err != nil {
+				return err
+			}
+			return db.AutoMigrate(&revokedTokenRecord{})
+		}
 	}
 
 	if db.Dialector.Name() != "postgres" {
-		return nil
-	}
-
-	needsIDTypeRepair := false
-	for _, col := range columnTypes {
-		if !strings.EqualFold(col.Name(), "id") {
-			continue
-		}
-		dbType := strings.ToLower(strings.TrimSpace(col.DatabaseTypeName()))
-		if strings.Contains(dbType, "char") || strings.Contains(dbType, "text") {
-			return nil
-		}
-		if strings.Contains(dbType, "int") || strings.Contains(dbType, "serial") || strings.Contains(dbType, "numeric") {
-			needsIDTypeRepair = true
-		}
-		break
-	}
-
-	if !needsIDTypeRepair {
-		return nil
+		return fmt.Errorf("auth_token schema is incompatible with Desired and the table is not empty (rows=%d)", rowCount)
 	}
 
 	quotedTable := fmt.Sprintf("\"%s\"", tableName)
-	if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id DROP DEFAULT", quotedTable)).Error; err != nil {
-		return err
+	byName := columnTypesByName(columnTypes)
+
+	if col, ok := byName["id"]; ok && authTokenIDNeedsTypeRepair(col.DatabaseTypeName()) {
+		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id DROP DEFAULT", quotedTable)).Error; err != nil {
+			return err
+		}
+		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id TYPE char(20) USING id::text", quotedTable)).Error; err != nil {
+			return err
+		}
 	}
-	if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id TYPE char(20) USING id::text", quotedTable)).Error; err != nil {
-		return err
+	if col, ok := byName["user_id"]; ok && authTokenIDNeedsTypeRepair(col.DatabaseTypeName()) {
+		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN user_id TYPE char(20) USING user_id::text", quotedTable)).Error; err != nil {
+			return err
+		}
+	}
+	for _, name := range []string{"token_id", "token_type", "expires_at"} {
+		col, ok := byName[name]
+		if !ok {
+			continue
+		}
+		nullable, ok := col.Nullable()
+		if !ok || !nullable {
+			continue
+		}
+		var nulls int64
+		if err := db.Table(tableName).Where(name + " IS NULL").Count(&nulls).Error; err != nil {
+			return err
+		}
+		if nulls > 0 {
+			return fmt.Errorf("auth_token.%s is nullable with %d NULL row(s); cannot tighten to NOT NULL automatically", name, nulls)
+		}
+		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL", quotedTable, name)).Error; err != nil {
+			return err
+		}
 	}
 
+	repaired, err := db.Migrator().ColumnTypes(tableName)
+	if err != nil {
+		return err
+	}
+	if authTokenSchemaMismatch(repaired) {
+		return fmt.Errorf("auth_token schema remains incompatible with Desired after postgres repair")
+	}
 	return nil
+}
+
+func columnTypesByName(columnTypes []gorm.ColumnType) map[string]gorm.ColumnType {
+	byName := make(map[string]gorm.ColumnType, len(columnTypes))
+	for _, col := range columnTypes {
+		byName[strings.ToLower(col.Name())] = col
+	}
+	return byName
 }
 
 // authTokenSchemaMismatch reports whether live auth_token columns diverge from
 // revokedTokenRecord / auth.Token Desired in ways that produce guarded alters.
 func authTokenSchemaMismatch(columnTypes []gorm.ColumnType) bool {
-	byName := make(map[string]gorm.ColumnType, len(columnTypes))
-	for _, col := range columnTypes {
-		byName[strings.ToLower(col.Name())] = col
-	}
+	byName := columnTypesByName(columnTypes)
 	for _, name := range []string{"id", "user_id"} {
 		col, ok := byName[name]
 		if !ok {
 			continue
 		}
-		if isVarcharDBType(col.DatabaseTypeName()) {
+		if authTokenIDNeedsTypeRepair(col.DatabaseTypeName()) {
 			return true
 		}
 	}
@@ -309,6 +336,31 @@ func authTokenSchemaMismatch(columnTypes []gorm.ColumnType) bool {
 		}
 	}
 	return false
+}
+
+// authTokenIDNeedsTypeRepair reports id/user_id types that are not Desired char.
+func authTokenIDNeedsTypeRepair(raw string) bool {
+	if isVarcharDBType(raw) {
+		return true
+	}
+	return isIntegerLikeDBType(raw)
+}
+
+func isIntegerLikeDBType(raw string) bool {
+	dbType := strings.ToLower(strings.TrimSpace(raw))
+	if dbType == "" {
+		return false
+	}
+	if i := strings.IndexByte(dbType, '('); i >= 0 {
+		dbType = dbType[:i]
+	}
+	switch dbType {
+	case "int", "integer", "int2", "int4", "int8", "smallint", "bigint",
+		"serial", "bigserial", "smallserial", "numeric", "decimal":
+		return true
+	default:
+		return false
+	}
 }
 
 func isVarcharDBType(raw string) bool {
