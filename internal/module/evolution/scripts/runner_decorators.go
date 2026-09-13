@@ -70,6 +70,16 @@ type Runner struct {
 	module       *meta.Module
 	store        *HistoryStore
 	intents      schema.IntentBag
+	// entryScript caches the last Bundle for this runner so validate/pre/post
+	// within one upgrade amortize ModuleBuilder cost.
+	entryScript    *jsengine.JsScript
+	entryScriptKey string
+}
+
+// newEntryModuleBuilder constructs the ModuleBuilder used to Bundle migration entry scripts.
+// Tests may override to inject non-Bundler builders.
+var newEntryModuleBuilder = func(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, entryPoint string) module.Builder {
+	return internalbackendbuilder.NewModuleBuilder(runtimeScope, jsExecutor, module, entryPoint, internalbackendbuilder.WithPublishDist(false))
 }
 
 // RunnerOption configures NewRunner.
@@ -144,7 +154,7 @@ func (r *Runner) RunPhase(ctx context.Context, opts RunOptions) error {
 	return nil
 }
 
-func (r *Runner) Validate(ctx context.Context, fromVersion string, toVersion string) error {
+func (r *Runner) Validate(ctx context.Context, fromVersion string, toVersion string, reuseExecutorScripts bool) error {
 	if r == nil || r.module == nil || r.runtimeScope == nil {
 		return nil
 	}
@@ -162,10 +172,17 @@ func (r *Runner) Validate(ctx context.Context, fromVersion string, toVersion str
 	if wrapper := r.buildMigrationWrapperScript(); wrapper != nil {
 		scripts = append(scripts, wrapper)
 	}
-	if _, err := r.loadRegistry(ctx, scripts, fromVersion, false); err != nil {
+	if _, err := r.loadRegistry(ctx, scripts, fromVersion, reuseExecutorScripts); err != nil {
 		return err
 	}
 	return nil
+}
+
+// SameNormalizedVersion reports whether from/to are equal after semver-style
+// normalization (optional leading "v"). Uses exact string equality so non-semver
+// tags like "0.1" vs "0.2" never collapse as equal.
+func SameNormalizedVersion(fromVersion string, toVersion string) bool {
+	return normalizeVersion(fromVersion) == normalizeVersion(toVersion)
 }
 
 func deriveRuntimeScope(ctx context.Context, baseScope scope.Scope) scope.Scope {
@@ -237,19 +254,33 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 	if !filepath.IsAbs(entry) {
 		entry = filepath.Join(runtimeOpts.modulesPath, r.module.Name, entry)
 	}
-	builder := internalbackendbuilder.NewModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry, internalbackendbuilder.WithPublishDist(false))
-	if bundler, ok := builder.(module.Bundler); ok {
-		result, err := bundler.Bundle()
-		if err != nil {
-			return nil, err
-		}
-		return ScriptFromBuildResult(result)
+	cacheKey := entryScriptCacheKey(entry, runtimeScope)
+	if r.entryScript != nil && r.entryScriptKey == cacheKey {
+		return r.entryScript, nil
 	}
-	result, err := builder.Build()
+	builder := newEntryModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry)
+	bundler, ok := builder.(module.Bundler)
+	if !ok {
+		return nil, fmt.Errorf("module builder does not support Bundle")
+	}
+	result, err := bundler.Bundle()
 	if err != nil {
 		return nil, err
 	}
-	return ScriptFromBuildResult(result)
+	script, _ := ScriptFromBuildResult(result)
+	r.entryScript = script
+	r.entryScriptKey = cacheKey
+	return script, nil
+}
+
+func entryScriptCacheKey(entry string, runtimeScope scope.Scope) string {
+	token := ""
+	if runtimeScope != nil {
+		if sess := runtimeScope.Session(); sess != nil {
+			token = fmt.Sprintf("%p", sess)
+		}
+	}
+	return entry + "|" + token
 }
 
 func (r *Runner) buildMigrationWrapperScript() *jsengine.JsScript {

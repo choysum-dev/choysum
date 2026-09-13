@@ -17,6 +17,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/testing/jsexecutortest"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
+	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/evanw/esbuild/pkg/api"
@@ -101,6 +102,24 @@ func TestNormalizeVersion_AddsPrefix(t *testing.T) {
 	}
 	if got := normalizeVersion("v0.1.0"); got != "v0.1.0" {
 		t.Fatalf("expected v0.1.0, got %q", got)
+	}
+}
+
+func TestSameNormalizedVersion(t *testing.T) {
+	if !SameNormalizedVersion("1.2.3", "v1.2.3") {
+		t.Fatal("expected same")
+	}
+	if SameNormalizedVersion("1.2.3", "1.2.4") {
+		t.Fatal("expected different")
+	}
+	if !SameNormalizedVersion("", "") {
+		t.Fatal("empty equals empty")
+	}
+	if SameNormalizedVersion("0.1", "0.2") {
+		t.Fatal("non-semver tags must not collapse")
+	}
+	if SameNormalizedVersion("1.0.0", "") {
+		t.Fatal("empty vs non-empty")
 	}
 }
 
@@ -253,7 +272,7 @@ func TestRunnerValidationAndParsingHelpers(t *testing.T) {
 		t.Fatalf("expected empty phase RunPhase to be no-op, got %v", err)
 	}
 	runner.jsExecutor = nil
-	if err := runner.Validate(context.Background(), "", ""); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+	if err := runner.Validate(context.Background(), "", "", false); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
 		t.Fatalf("expected Validate to require js executor, got %v", err)
 	}
 	if err := runner.RunPhase(context.Background(), RunOptions{Phase: PhasePre}); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
@@ -396,7 +415,7 @@ func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 		executor.SetJsScripts(prevScripts)
 		runner := NewRunner(testRuntimeScope, executor, moduleRef)
 
-		err := runner.Validate(context.Background(), "1.0.0", "1.2.0")
+		err := runner.Validate(context.Background(), "1.0.0", "1.2.0", false)
 		if err == nil || !strings.Contains(err.Error(), "registry boom") {
 			t.Fatalf("expected registry error, got %v", err)
 		}
@@ -555,4 +574,88 @@ func TestExecuteWithScriptsReloadFailureRollback(t *testing.T) {
 	if executor.reloaded[1][0].FileName != "prev.js" {
 		t.Fatalf("expected second reload with prev scripts, got %#v", executor.reloaded[1])
 	}
+}
+
+type scriptsNonBundlerBuilder struct{}
+
+func (scriptsNonBundlerBuilder) Build() (*module.BuildResult, error) {
+	return nil, errors.New("unexpected Build")
+}
+
+type scriptsCountingBundler struct {
+	calls int
+}
+
+func (c *scriptsCountingBundler) Bundle() (*module.BuildResult, error) {
+	c.calls++
+	return &module.BuildResult{EsbuildResult: &api.BuildResult{OutputFiles: []api.OutputFile{{
+		Path: "index.js", Contents: []byte("cached-scripts"),
+	}}}}, nil
+}
+func (c *scriptsCountingBundler) Build() (*module.BuildResult, error) { return c.Bundle() }
+
+type scriptsFailingBundler struct{ err error }
+
+func (f *scriptsFailingBundler) Bundle() (*module.BuildResult, error) { return nil, f.err }
+func (f *scriptsFailingBundler) Build() (*module.BuildResult, error)  { return nil, f.err }
+
+func TestBuildModuleEntryScript_CachesAndRequiresBundler(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	newRunner := func() *Runner {
+		return &Runner{
+			runtimeScope: testRuntimeScope,
+			module:       &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"},
+		}
+	}
+
+	t.Run("non bundler", func(t *testing.T) {
+		prev := newEntryModuleBuilder
+		t.Cleanup(func() { newEntryModuleBuilder = prev })
+		newEntryModuleBuilder = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) module.Builder {
+			return scriptsNonBundlerBuilder{}
+		}
+		if _, err := newRunner().buildModuleEntryScript(context.Background()); err == nil || !strings.Contains(err.Error(), "does not support Bundle") {
+			t.Fatalf("got %v", err)
+		}
+	})
+
+	t.Run("cache hit", func(t *testing.T) {
+		prev := newEntryModuleBuilder
+		t.Cleanup(func() { newEntryModuleBuilder = prev })
+		counter := &scriptsCountingBundler{}
+		newEntryModuleBuilder = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) module.Builder {
+			return counter
+		}
+		runner := newRunner()
+		first, err := runner.buildModuleEntryScript(context.Background())
+		if err != nil || first == nil {
+			t.Fatalf("first err=%v", err)
+		}
+		second, err := runner.buildModuleEntryScript(context.Background())
+		if err != nil || second != first {
+			t.Fatalf("cache miss second=%#v err=%v", second, err)
+		}
+		if counter.calls != 1 {
+			t.Fatalf("calls=%d", counter.calls)
+		}
+	})
+
+	t.Run("bundle error", func(t *testing.T) {
+		prev := newEntryModuleBuilder
+		t.Cleanup(func() { newEntryModuleBuilder = prev })
+		newEntryModuleBuilder = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) module.Builder {
+			return &scriptsFailingBundler{err: errors.New("bundle boom")}
+		}
+		if _, err := newRunner().buildModuleEntryScript(context.Background()); err == nil || !strings.Contains(err.Error(), "bundle boom") {
+			t.Fatalf("got %v", err)
+		}
+	})
+
+	t.Run("cache key uses session pointer", func(t *testing.T) {
+		a := entryScriptCacheKey("entry.ts", nil)
+		b := entryScriptCacheKey("entry.ts", testRuntimeScope)
+		if a == b {
+			t.Fatalf("nil scope and real scope should differ: %q vs %q", a, b)
+		}
+	})
 }

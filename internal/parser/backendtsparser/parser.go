@@ -45,6 +45,8 @@ func NewTsParser(runtimeScope scope.Scope, module *meta.Module) parser.Parser {
 	return &backendtsParser{
 		runtimeScope: runtimeScope,
 		module:       module,
-		semantic:     newSemanticTypeResolver(logger),
+		// Share the semantic program cache across parsers so lifecycle Bundle
+		// phases (hooks/scripts) reuse Programs instead of cold-starting each time.
+		semantic: sharedSemanticTypeResolver(logger),
 	}
 }
