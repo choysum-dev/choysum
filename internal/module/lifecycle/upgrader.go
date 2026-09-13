@@ -93,6 +93,12 @@ func moduleStepScripts(phase scripts.Phase) string {
 	return "scripts." + string(phase)
 }
 
+// shouldSkipSameVersionMigrationScripts reports whether validate/pre/post migration
+// Bundle work can be skipped because the version range admits no migrations.
+func shouldSkipSameVersionMigrationScripts(fromVersion string, toVersion string) bool {
+	return scripts.SameNormalizedVersion(fromVersion, toVersion)
+}
+
 func logModuleOperationStep(runtimeScope scope.Scope, opCtx *opContext, op plan.OpType, moduleName string, step string, started time.Time, extra ...any) {
 	if runtimeScope == nil || runtimeScope.Logger() == nil || started.IsZero() {
 		return
@@ -131,11 +137,15 @@ func (m *moduleUpgrader) upgrade() error {
 		m.ctx.setFromVersion(m.module.Name, fromVersion)
 	}
 	prepareStarted := time.Now()
+	reuseExec := m.moduleManager != nil && m.moduleManager.jsExecutor != nil
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
 		hookStarted := time.Now()
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreUpgrade, hooks.RunOptions{FromVersion: fromVersion}); err != nil {
+		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreUpgrade, hooks.RunOptions{
+			FromVersion:          fromVersion,
+			ReuseExecutorScripts: reuseExec,
+		}); err != nil {
 			return xfmt.Errorf("error running pre_upgrade hook for module %s: %w", m.module.Name, err)
 		}
 		m.logUpgradeStep(m.module.Name, moduleStepHook(hooks.PhasePreUpgrade), hookStarted, "from_version", fromVersion)
@@ -157,17 +167,29 @@ func (m *moduleUpgrader) upgrade() error {
 		return xfmt.Errorf("error validating module %s: %w", target.Name, err)
 	}
 
+	sameVersion := shouldSkipSameVersionMigrationScripts(fromVersion, target.Version)
 	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target, scripts.WithIntentBag(m.schemaIntents())); runner != nil {
-		validateStarted := time.Now()
-		if err := runner.Validate(m.runtimeScope.Context(), fromVersion, target.Version); err != nil {
-			return xfmt.Errorf("error validating migrations for module %s: %w", target.Name, err)
+		if sameVersion {
+			// Same version ⇒ filterRegistry yields no migrations; skip Bundle/load.
+			m.logUpgradeStep(target.Name, "scripts.validate", time.Now(), "from_version", fromVersion, "to_version", target.Version, "skipped", true, "reason", "same_version")
+			m.logUpgradeStep(target.Name, moduleStepScripts(scripts.PhasePre), time.Now(), "from_version", fromVersion, "to_version", target.Version, "skipped", true, "reason", "same_version")
+		} else {
+			validateStarted := time.Now()
+			if err := runner.Validate(m.runtimeScope.Context(), fromVersion, target.Version, reuseExec); err != nil {
+				return xfmt.Errorf("error validating migrations for module %s: %w", target.Name, err)
+			}
+			m.logUpgradeStep(target.Name, "scripts.validate", validateStarted, "from_version", fromVersion, "to_version", target.Version)
+			preStarted := time.Now()
+			if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{
+				Phase:                scripts.PhasePre,
+				FromVersion:          fromVersion,
+				ToVersion:            target.Version,
+				ReuseExecutorScripts: reuseExec,
+			}); err != nil {
+				return xfmt.Errorf("error running pre migrations for module %s: %w", target.Name, err)
+			}
+			m.logUpgradeStep(target.Name, moduleStepScripts(scripts.PhasePre), preStarted, "from_version", fromVersion, "to_version", target.Version)
 		}
-		m.logUpgradeStep(target.Name, "scripts.validate", validateStarted, "from_version", fromVersion, "to_version", target.Version)
-		preStarted := time.Now()
-		if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhasePre, FromVersion: fromVersion, ToVersion: target.Version}); err != nil {
-			return xfmt.Errorf("error running pre migrations for module %s: %w", target.Name, err)
-		}
-		m.logUpgradeStep(target.Name, moduleStepScripts(scripts.PhasePre), preStarted, "from_version", fromVersion, "to_version", target.Version)
 	}
 	m.logUpgradeStep(target.Name, moduleStepPrepare, prepareStarted, "from_version", fromVersion, "to_version", target.Version)
 
@@ -347,12 +369,23 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 		return xfmt.Errorf("upgrade finalize target is nil")
 	}
 	finalizeStarted := time.Now()
+	reuseExec := m.moduleManager != nil && m.moduleManager.jsExecutor != nil
+	sameVersion := shouldSkipSameVersionMigrationScripts(fromVersion, target.Version)
 	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target, scripts.WithIntentBag(m.schemaIntents())); runner != nil {
-		postStarted := time.Now()
-		if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhasePost, FromVersion: fromVersion, ToVersion: target.Version}); err != nil {
-			return xfmt.Errorf("error running post migrations for module %s: %w", target.Name, err)
+		if sameVersion {
+			m.logUpgradeStep(target.Name, moduleStepScripts(scripts.PhasePost), time.Now(), "from_version", fromVersion, "to_version", target.Version, "skipped", true, "reason", "same_version")
+		} else {
+			postStarted := time.Now()
+			if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{
+				Phase:                scripts.PhasePost,
+				FromVersion:          fromVersion,
+				ToVersion:            target.Version,
+				ReuseExecutorScripts: reuseExec,
+			}); err != nil {
+				return xfmt.Errorf("error running post migrations for module %s: %w", target.Name, err)
+			}
+			m.logUpgradeStep(target.Name, moduleStepScripts(scripts.PhasePost), postStarted, "from_version", fromVersion, "to_version", target.Version)
 		}
-		m.logUpgradeStep(target.Name, moduleStepScripts(scripts.PhasePost), postStarted, "from_version", fromVersion, "to_version", target.Version)
 	}
 
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target); err != nil {
@@ -367,7 +400,11 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 			}
 		}
 		hookStarted := time.Now()
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostUpgrade, hooks.RunOptions{FromVersion: fromVersion, Scripts: hookScripts}); err != nil {
+		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostUpgrade, hooks.RunOptions{
+			FromVersion:          fromVersion,
+			Scripts:              hookScripts,
+			ReuseExecutorScripts: reuseExec,
+		}); err != nil {
 			return xfmt.Errorf("error running post_upgrade hook for module %s: %w", target.Name, err)
 		}
 		m.logUpgradeStep(target.Name, moduleStepHook(hooks.PhasePostUpgrade), hookStarted, "from_version", fromVersion, "to_version", target.Version)

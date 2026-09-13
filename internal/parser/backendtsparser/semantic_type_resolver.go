@@ -58,13 +58,16 @@ var (
 // semanticTypeResolver reduces service method parameter/return types to protobuf
 // scalars via typescript-go-internal checker. Failures fall back to text mapping.
 type semanticTypeResolver struct {
-	mu         sync.Mutex
-	cache      map[string]*semanticFileState
-	cacheOrder []string // oldest → newest path keys for LRU eviction
-	builds     singleflight.Group
-	disabled   bool
-	initOnce   sync.Once
-	logger     *slog.Logger
+	mu                sync.Mutex
+	cache             map[string]*semanticFileState
+	cacheOrder        []string // oldest → newest path keys for LRU eviction
+	fallbackCache     map[string]string
+	fallbackCacheHits int64
+	fallbackMisses    int64
+	builds            singleflight.Group
+	disabled          bool
+	initOnce          sync.Once
+	logger            *slog.Logger
 }
 
 type semanticFileState struct {
@@ -78,6 +81,33 @@ func newSemanticTypeResolver(logger *slog.Logger) *semanticTypeResolver {
 		cache:  make(map[string]*semanticFileState),
 		logger: logger,
 	}
+}
+
+var (
+	sharedSemanticMu sync.Mutex
+	sharedSemantic   *semanticTypeResolver
+)
+
+// sharedSemanticTypeResolver returns the process-wide semantic Program cache used by
+// NewTsParser. Lifecycle ops create many parsers per Bundle; sharing avoids cold starts.
+func sharedSemanticTypeResolver(logger *slog.Logger) *semanticTypeResolver {
+	sharedSemanticMu.Lock()
+	defer sharedSemanticMu.Unlock()
+	if sharedSemantic == nil {
+		sharedSemantic = newSemanticTypeResolver(logger)
+		return sharedSemantic
+	}
+	if logger != nil && sharedSemantic.logger == nil {
+		sharedSemantic.logger = logger
+	}
+	return sharedSemantic
+}
+
+// ResetSharedSemanticTypeResolverForTest drops the process-wide resolver (tests only).
+func ResetSharedSemanticTypeResolverForTest() {
+	sharedSemanticMu.Lock()
+	defer sharedSemanticMu.Unlock()
+	sharedSemantic = nil
 }
 
 func (r *semanticTypeResolver) ensureEnabled() bool {
@@ -116,10 +146,41 @@ func (r *semanticTypeResolver) resolveProtoType(path, content, className, method
 			"path", path, "method", methodName, "param", paramName, "is_return", isReturn, "protobuf_type", mapped)
 		return mapped
 	}
-	fallback := getProtoTypeFromTsType(tsAnnotation)
-	r.logDebug("semantic protobuf mapping fallback",
-		"path", path, "method", methodName, "param", paramName, "is_return", isReturn,
-		"ts_annotation", tsAnnotation, "protobuf_type", fallback)
+	fallback := r.cachedTextFallback(tsAnnotation)
+	return fallback
+}
+
+func (r *semanticTypeResolver) cachedTextFallback(tsAnnotation string) string {
+	key := strings.TrimSpace(tsAnnotation)
+	if r == nil {
+		return getProtoTypeFromTsType(key)
+	}
+
+	r.mu.Lock()
+	if r.fallbackCache == nil {
+		r.fallbackCache = make(map[string]string)
+	}
+	if cached, ok := r.fallbackCache[key]; ok {
+		r.fallbackCacheHits++
+		r.mu.Unlock()
+		return cached
+	}
+	r.mu.Unlock()
+
+	fallback := getProtoTypeFromTsType(key)
+
+	r.mu.Lock()
+	if cached, ok := r.fallbackCache[key]; ok {
+		r.fallbackCacheHits++
+		r.mu.Unlock()
+		return cached
+	}
+	r.fallbackCache[key] = fallback
+	r.fallbackMisses++
+	r.mu.Unlock()
+
+	// Log once per newly computed annotation (not on every resolve call).
+	r.logDebug("semantic protobuf mapping fallback", "ts_annotation", key, "protobuf_type", fallback)
 	return fallback
 }
 

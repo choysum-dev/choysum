@@ -547,6 +547,8 @@ class Target {
 
 func TestSemanticTypeResolver_FallsBackWhenDisabled(t *testing.T) {
 	t.Setenv(envDisableSemanticProto, "1")
+	ResetSharedSemanticTypeResolverForTest()
+	t.Cleanup(ResetSharedSemanticTypeResolverForTest)
 
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.Module{Path: "/virtual/modules/demo", ApplicationStr: "demo", Name: "demo"}

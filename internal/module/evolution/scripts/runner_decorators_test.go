@@ -104,6 +104,15 @@ func TestNormalizeVersion_AddsPrefix(t *testing.T) {
 	}
 }
 
+func TestSameNormalizedVersion(t *testing.T) {
+	if !SameNormalizedVersion("1.2.3", "v1.2.3") {
+		t.Fatal("expected same")
+	}
+	if SameNormalizedVersion("1.2.3", "1.2.4") {
+		t.Fatal("expected different")
+	}
+}
+
 func TestRunnerHelpers(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	mod := &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.0.0", ServiceEntryPoint: "service/index.ts"}
@@ -253,7 +262,7 @@ func TestRunnerValidationAndParsingHelpers(t *testing.T) {
 		t.Fatalf("expected empty phase RunPhase to be no-op, got %v", err)
 	}
 	runner.jsExecutor = nil
-	if err := runner.Validate(context.Background(), "", ""); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+	if err := runner.Validate(context.Background(), "", "", false); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
 		t.Fatalf("expected Validate to require js executor, got %v", err)
 	}
 	if err := runner.RunPhase(context.Background(), RunOptions{Phase: PhasePre}); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
@@ -396,7 +405,7 @@ func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 		executor.SetJsScripts(prevScripts)
 		runner := NewRunner(testRuntimeScope, executor, moduleRef)
 
-		err := runner.Validate(context.Background(), "1.0.0", "1.2.0")
+		err := runner.Validate(context.Background(), "1.0.0", "1.2.0", false)
 		if err == nil || !strings.Contains(err.Error(), "registry boom") {
 			t.Fatalf("expected registry error, got %v", err)
 		}

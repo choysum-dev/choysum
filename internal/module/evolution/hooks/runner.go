@@ -48,6 +48,10 @@ type Runner struct {
 	runtimeScope scope.Scope
 	jsExecutor   jsexecutor.ScriptExecutor
 	module       *meta.Module
+	// entryScript caches the last Bundle for this runner so multi-phase calls
+	// (e.g. validate→pre→post) do not rebuild the same module entry.
+	entryScript    *jsengine.JsScript
+	entryScriptKey string
 }
 
 func NewRunner(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module) (*Runner, error) {
@@ -177,19 +181,47 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 	if !filepath.IsAbs(entry) {
 		entry = filepath.Join(runtimeOpts.modulesPath, r.module.Name, entry)
 	}
+	cacheKey := entryScriptCacheKey(entry, runtimeScope)
+	if r.entryScript != nil && r.entryScriptKey == cacheKey {
+		return r.entryScript, nil
+	}
 	builder := internalbackendbuilder.NewModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry, internalbackendbuilder.WithPublishDist(false))
 	if bundler, ok := builder.(module.Bundler); ok {
 		result, err := bundler.Bundle()
 		if err != nil {
 			return nil, err
 		}
-		return ScriptFromBuildResult(result)
+		script, err := ScriptFromBuildResult(result)
+		if err != nil {
+			return nil, err
+		}
+		r.entryScript = script
+		r.entryScriptKey = cacheKey
+		return script, nil
 	}
 	result, err := builder.Build()
 	if err != nil {
 		return nil, err
 	}
-	return ScriptFromBuildResult(result)
+	script, err := ScriptFromBuildResult(result)
+	if err != nil {
+		return nil, err
+	}
+	r.entryScript = script
+	r.entryScriptKey = cacheKey
+	return script, nil
+}
+
+// entryScriptCacheKey ties Bundle reuse to the entry path and DB session identity so
+// a context that injects a different Session (installed-module imports) still rebuilds.
+func entryScriptCacheKey(entry string, runtimeScope scope.Scope) string {
+	token := ""
+	if runtimeScope != nil {
+		if sess := runtimeScope.Session(); sess != nil && sess.DB != nil {
+			token = fmt.Sprintf("%p", sess.DB)
+		}
+	}
+	return entry + "|" + token
 }
 
 func (r *Runner) moduleSelector() (string, string) {
