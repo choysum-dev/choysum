@@ -53,21 +53,21 @@ type DatabaseStore struct {
 
 // revokedTokenRecord is a minimal schema for the revocation store.
 //
-// Historically this store assumed `information_schema.tables` existed, which
-// breaks on sqlite. We keep the schema minimal and aligned with the raw SQL
-// used by this store.
+// Column types/nullability must match auth.Token + BaseModel DesiredSchema so
+// early AutoMigrate (before auth module install) does not leave guarded
+// alter_column ops for the schema migrator.
 type revokedTokenRecord struct {
-	ID               string         `gorm:"column:id;type:varchar(20);primaryKey"`
+	ID               string         `gorm:"column:id;type:char(20);primaryKey"`
 	CreatedAt        time.Time      `gorm:"column:created_at;index"`
 	UpdatedAt        time.Time      `gorm:"column:updated_at;index"`
 	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at;index"`
-	UserID           string         `gorm:"column:user_id;type:varchar(20);index"`
-	TokenID          string         `gorm:"column:token_id;type:varchar(36);uniqueIndex"`
-	TokenType        string         `gorm:"column:token_type;type:varchar(10);index"`
+	UserID           string         `gorm:"column:user_id;type:char(20);index"`
+	TokenID          string         `gorm:"column:token_id;type:varchar(36);not null;uniqueIndex"`
+	TokenType        string         `gorm:"column:token_type;type:varchar(10);not null;index"`
 	Revoked          bool           `gorm:"column:revoked;index"`
 	RevokedAt        time.Time      `gorm:"column:revoked_at;index"`
 	RevocationReason string         `gorm:"column:revocation_reason;type:varchar(255)"`
-	ExpiresAt        time.Time      `gorm:"column:expires_at;index"`
+	ExpiresAt        time.Time      `gorm:"column:expires_at;not null;index"`
 	Metadata         datatypes.JSON `gorm:"column:metadata"`
 }
 
@@ -224,13 +224,33 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 	if db == nil {
 		return nil
 	}
-	if db.Dialector.Name() != "postgres" {
-		return nil
-	}
 
 	columnTypes, err := db.Migrator().ColumnTypes(tableName)
 	if err != nil {
 		return err
+	}
+
+	mismatch := authTokenSchemaMismatch(columnTypes)
+	if !mismatch {
+		return nil
+	}
+
+	// Empty pre-auth tables from an older varchar/nullable bootstrap can be
+	// recreated to match Desired; non-empty tables keep the postgres id repair
+	// path only.
+	var rowCount int64
+	if err := db.Table(tableName).Count(&rowCount).Error; err != nil {
+		return err
+	}
+	if rowCount == 0 {
+		if err := db.Migrator().DropTable(tableName); err != nil {
+			return err
+		}
+		return db.AutoMigrate(&revokedTokenRecord{})
+	}
+
+	if db.Dialector.Name() != "postgres" {
+		return nil
 	}
 
 	needsIDTypeRepair := false
@@ -256,11 +276,55 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 	if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id DROP DEFAULT", quotedTable)).Error; err != nil {
 		return err
 	}
-	if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id TYPE varchar(20) USING id::text", quotedTable)).Error; err != nil {
+	if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id TYPE char(20) USING id::text", quotedTable)).Error; err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// authTokenSchemaMismatch reports whether live auth_token columns diverge from
+// revokedTokenRecord / auth.Token Desired in ways that produce guarded alters.
+func authTokenSchemaMismatch(columnTypes []gorm.ColumnType) bool {
+	byName := make(map[string]gorm.ColumnType, len(columnTypes))
+	for _, col := range columnTypes {
+		byName[strings.ToLower(col.Name())] = col
+	}
+	for _, name := range []string{"id", "user_id"} {
+		col, ok := byName[name]
+		if !ok {
+			continue
+		}
+		if isVarcharDBType(col.DatabaseTypeName()) {
+			return true
+		}
+	}
+	for _, name := range []string{"token_id", "token_type", "expires_at"} {
+		col, ok := byName[name]
+		if !ok {
+			continue
+		}
+		if nullable, ok := col.Nullable(); ok && nullable {
+			return true
+		}
+	}
+	return false
+}
+
+func isVarcharDBType(raw string) bool {
+	dbType := strings.ToLower(strings.TrimSpace(raw))
+	if dbType == "" {
+		return false
+	}
+	if strings.HasPrefix(dbType, "character varying") || strings.Contains(dbType, "character varying") {
+		return true
+	}
+	// Strip length: varchar(20) → varchar. Avoid matching "char" inside "varchar".
+	base := dbType
+	if i := strings.IndexByte(base, '('); i >= 0 {
+		base = base[:i]
+	}
+	return base == "varchar"
 }
 
 func (s *DatabaseStore) RevokeAllUserTokens(ctx context.Context, userID string, exceptTokenID string, reason string) (int, error) {

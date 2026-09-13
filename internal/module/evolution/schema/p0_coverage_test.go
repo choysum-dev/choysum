@@ -413,10 +413,13 @@ func TestColumnMismatchAndNormalize(t *testing.T) {
 		_ = normalizeDBType(in)
 	}
 
-	for _, have := range []string{"text", "integer", "real", "blob", "numeric", "other"} {
+	for _, have := range []string{"text", "integer", "real", "blob", "numeric", "other", "varchar", "char"} {
 		for _, want := range []string{"text", "varchar", "char", "jsonobject", "date", "datetime", "time", "html", "int", "bigint", "bool", "float", "decimal", "blob", "other"} {
 			_ = sqliteTypeCompatible(want, have)
 		}
+	}
+	if !sqliteTypeCompatible("char", "varchar") || !sqliteTypeCompatible("varchar", "char") {
+		t.Fatal("sqlite varchar/char should be compatible")
 	}
 }
 
@@ -686,6 +689,13 @@ func TestInspectHooksAndLiveColumn(t *testing.T) {
 	lc, ok := liveColumnFromColumnType(fakeColumnType{name: "c", dbType: "VARCHAR", length: 10, lengthOK: true, nullable: false, nullableOK: true})
 	if !ok || lc.Length == nil || *lc.Length != 10 || lc.Nullable == nil || *lc.Nullable {
 		t.Fatalf("live column: %#v", lc)
+	}
+	pkLive, ok := liveColumnFromColumnType(fakeColumnType{
+		name: "id", dbType: "char", nullable: true, nullableOK: true,
+		primaryKey: true, primaryKeyOK: true, primaryKeySet: true,
+	})
+	if !ok || pkLive.Nullable == nil || *pkLive.Nullable {
+		t.Fatalf("sqlite-style PK should inspect as NOT NULL: %#v", pkLive)
 	}
 }
 

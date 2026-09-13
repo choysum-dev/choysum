@@ -209,6 +209,44 @@ func TestNewDatabaseStoreUsesExistingTableAndSurfacesInitFailures(t *testing.T) 
 		defer store.Close()
 	})
 
+	t.Run("recreates empty legacy varchar auth_token schema", func(t *testing.T) {
+		session := newDatabaseTestSession(t, "legacy-varchar.db")
+		type legacyAuthToken struct {
+			ID        string    `gorm:"column:id;type:varchar(20);primaryKey"`
+			UserID    string    `gorm:"column:user_id;type:varchar(20);index"`
+			TokenID   string    `gorm:"column:token_id;type:varchar(36);uniqueIndex"`
+			TokenType string    `gorm:"column:token_type;type:varchar(10);index"`
+			ExpiresAt time.Time `gorm:"column:expires_at;index"`
+		}
+		if err := session.Migrator().CreateTable(&legacyAuthToken{}); err != nil {
+			// CreateTable uses struct name; force auth_token via raw migrate.
+			_ = err
+		}
+		if err := session.Exec(`CREATE TABLE auth_token (
+			id varchar(20) PRIMARY KEY,
+			user_id varchar(20),
+			token_id varchar(36),
+			token_type varchar(10),
+			expires_at datetime
+		)`).Error; err != nil {
+			t.Fatalf("precreate legacy auth_token: %v", err)
+		}
+
+		store, err := NewDatabaseStore(newDatabaseTestScope(session))
+		if err != nil {
+			t.Fatalf("NewDatabaseStore() error = %v", err)
+		}
+		defer store.Close()
+
+		cols, err := session.Migrator().ColumnTypes("auth_token")
+		if err != nil {
+			t.Fatalf("ColumnTypes: %v", err)
+		}
+		if authTokenSchemaMismatch(cols) {
+			t.Fatalf("expected repaired auth_token schema to match Desired; summary=%v", columnTypeSummary(cols))
+		}
+	})
+
 	t.Run("returns init errors when database session is unavailable", func(t *testing.T) {
 		session := newDatabaseTestSession(t, "closed.db")
 		sqlDB, err := session.DB.DB()
@@ -480,4 +518,43 @@ func TestDatabaseStoreBackgroundCleanupStopsWhenCanceled(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("backgroundCleanup did not stop after cancellation")
 	}
+}
+
+func TestIsVarcharDBType(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		raw  string
+		want bool
+	}{
+		{"varchar", true},
+		{"VARCHAR(20)", true},
+		{"character varying", true},
+		{"character varying(20)", true},
+		{"char", false},
+		{"char(20)", false},
+		{"bpchar", false},
+		{"text", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		if got := isVarcharDBType(tc.raw); got != tc.want {
+			t.Fatalf("isVarcharDBType(%q)=%v want %v", tc.raw, got, tc.want)
+		}
+	}
+}
+
+func columnTypeSummary(cols []gorm.ColumnType) []string {
+	out := make([]string, 0, len(cols))
+	for _, col := range cols {
+		null := "?"
+		if n, ok := col.Nullable(); ok {
+			if n {
+				null = "null"
+			} else {
+				null = "notnull"
+			}
+		}
+		out = append(out, col.Name()+":"+col.DatabaseTypeName()+":"+null)
+	}
+	return out
 }
