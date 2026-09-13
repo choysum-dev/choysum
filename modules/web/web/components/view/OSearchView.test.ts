@@ -206,7 +206,8 @@ describe('OSearchView favorites defaults (single child load)', () => {
     const before = emitted['query-update']?.length ?? 0;
     click('.emit-query-update');
     expect(emitted['query-update']?.length ?? 0).toBe(before + 1);
-    expect(emitted['query-update']?.at(-1)?.[0]).toMatchObject({ keyword: 'from-child' });
+    const queryUpdates = emitted['query-update'];
+    expect(queryUpdates?.[queryUpdates.length - 1]?.[0]).toMatchObject({ keyword: 'from-child' });
 
     click('.emit-defaults-ready-nonarray');
     await flushPromises();

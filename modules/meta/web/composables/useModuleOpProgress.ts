@@ -77,8 +77,12 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   const tipOn = deps.onTips ?? onTips;
   const tipSubscribe = deps.subscribeModuleOp ?? subscribeModuleOp;
   const now = deps.now ?? (() => Date.now());
-  const schedule = deps.schedule ?? setTimeout;
-  const clearSchedule = deps.clearSchedule ?? clearTimeout;
+  // Wrap host timers so ReturnType stays a single handle under DOM+@types/node
+  // (bare setTimeout is typed as number | Timeout and fails assignment).
+  const schedule: (fn: () => void, ms: number) => ReturnType<typeof setTimeout> =
+    deps.schedule ?? ((fn, ms) => setTimeout(fn, ms) as ReturnType<typeof setTimeout>);
+  const clearSchedule: (id: ReturnType<typeof setTimeout>) => void =
+    deps.clearSchedule ?? (id => clearTimeout(id as unknown as Parameters<typeof clearTimeout>[0]));
   const reloadWeb =
     deps.reloadWeb ??
     (() => {

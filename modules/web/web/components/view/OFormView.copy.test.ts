@@ -104,7 +104,7 @@ describe('OFormView handleCopy awaits beginCreate', () => {
     expect(ss.controller.vm.draft).toMatchObject({ Name: 'orig', Code: 'server' });
     expect(ss.controller.vm.draft).not.toHaveProperty('Id');
     expect(onCopy.calls.length).toBe(1);
-    expect(onModeChange.calls.at(-1)).toEqual([{ mode: 'create' }]);
+    expect(onModeChange.calls[onModeChange.calls.length - 1]).toEqual([{ mode: 'create' }]);
     expect(wrapper.root.getFormData()).toMatchObject({ Name: 'orig', Code: 'server' });
     expect(wrapper.root.getViewMode()).toBe('create');
     expect(wrapper.root.isLoading()).toBe(false);
