@@ -181,16 +181,16 @@ describe('OSearchFilterCondition', () => {
     const { unmount, setupState, onUpdateCondition } = mountRow(condition);
 
     await setupState().onOperatorChange('is');
-    expect(onUpdateCondition.calls.at(-1)![1]).toEqual({ operator: 'is', value: null });
+    expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1]).toEqual({ operator: 'is', value: null });
 
     condition.value = 'solo';
     await setupState().onOperatorChange('in');
-    expect(onUpdateCondition.calls.at(-1)![1]).toEqual({ operator: 'in', value: ['solo'] });
+    expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1]).toEqual({ operator: 'in', value: ['solo'] });
 
     condition.value = null;
     condition.field = 'Name';
     await setupState().onOperatorChange('=');
-    const last = onUpdateCondition.calls.at(-1)![1] as any;
+    const last = onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1] as any;
     expect(last.operator).toBe('=');
     unmount();
   });
@@ -202,7 +202,7 @@ describe('OSearchFilterCondition', () => {
     const multi = qa('.el-select').find(s => s.getAttribute('data-multi') === 'true');
     expect(multi).toBeTruthy();
     await setupState().onMultiValuesChange(['x', 'y']);
-    expect(onUpdateCondition.calls.at(-1)).toEqual(['c1', { value: ['x', 'y'] }]);
+    expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]).toEqual(['c1', { value: ['x', 'y'] }]);
     unmount();
   });
 
@@ -326,15 +326,15 @@ describe('OSearchFilterCondition', () => {
       },
     });
     await setupState().onOperatorChange('=');
-    expect(onUpdateCondition.calls.at(-1)![1]).toEqual({ operator: '=', value: false });
+    expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1]).toEqual({ operator: '=', value: false });
 
     condition.field = 'Name';
     condition.value = ['a', 'b'];
     await setupState().onOperatorChange('in');
-    expect(onUpdateCondition.calls.at(-1)![1]).toEqual({ operator: 'in' });
+    expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]![1]).toEqual({ operator: 'in' });
 
     await setupState().onMultiValuesChange('not-array' as any);
-    expect(onUpdateCondition.calls.at(-1)).toEqual(['c1', { value: [] }]);
+    expect(onUpdateCondition.calls[onUpdateCondition.calls.length - 1]).toEqual(['c1', { value: [] }]);
     unmount();
   });
 

@@ -27,7 +27,7 @@ function makeStore(onchange = fnRecorder(async () => ({ value: {}, messages: [] 
 }
 
 function lastDraft(onchange: CallRecorder): Record<string, any> | undefined {
-  const args = onchange.calls.at(-1);
+  const args = onchange.calls[onchange.calls.length - 1];
   return args?.[0] as Record<string, any> | undefined;
 }
 

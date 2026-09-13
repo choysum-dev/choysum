@@ -109,6 +109,15 @@ func TestApplyPlanAndIndexes(t *testing.T) {
 	if err := applyPlan(nil, "sqlite", SchemaPlan{}); err == nil || !strings.Contains(err.Error(), "runtime scope is nil") {
 		t.Fatalf("nil scope: %v", err)
 	}
+	if err := applyPlan(&schemaTestScope{}, "sqlite", SchemaPlan{}); err == nil || !strings.Contains(err.Error(), "runtime scope is nil") {
+		t.Fatalf("nil session: %v", err)
+	}
+	if err := applyPlan(&schemaTestScope{session: &scope.Session{}}, "sqlite", SchemaPlan{}); err == nil || !strings.Contains(err.Error(), "runtime scope is nil") {
+		t.Fatalf("nil session DB: %v", err)
+	}
+	if err := applyPlan(&schemaTestScope{session: &scope.Session{DB: &gorm.DB{}}}, "sqlite", SchemaPlan{}); err == nil || !strings.Contains(err.Error(), "session config is nil") {
+		t.Fatalf("nil session Config: %v", err)
+	}
 	runtimeScope := newSchemaTestScope(t)
 	plan := SchemaPlan{Ops: []PlanOp{
 		{Kind: OpAlterColumn, Safety: SafetyGuarded, Table: "t"},
@@ -690,9 +699,9 @@ type fakeColumnType struct {
 	primaryKeySet        bool
 }
 
-func (f fakeColumnType) Name() string                      { return f.name }
-func (f fakeColumnType) DatabaseTypeName() string          { return f.dbType }
-func (f fakeColumnType) ColumnType() (string, bool)        { return f.dbType, true }
+func (f fakeColumnType) Name() string               { return f.name }
+func (f fakeColumnType) DatabaseTypeName() string   { return f.dbType }
+func (f fakeColumnType) ColumnType() (string, bool) { return f.dbType, true }
 func (f fakeColumnType) PrimaryKey() (bool, bool) {
 	if f.primaryKeySet {
 		return f.primaryKey, f.primaryKeyOK

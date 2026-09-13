@@ -6,6 +6,7 @@ package schema
 import (
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 
 	"gorm.io/gorm"
@@ -205,8 +206,36 @@ func probeTableNonEmpty(db *gorm.DB, table string) (int64, error) {
 }
 
 func desiredTableNames(desired DesiredSchema) []string {
-	names := make([]string, 0, len(desired.Tables))
+	names := make([]string, 0, len(desired.Tables)+len(desired.JoinTables))
+	seen := map[string]struct{}{}
+	tables := make([]string, 0, len(desired.Tables))
 	for table := range desired.Tables {
+		if trimmed := strings.TrimSpace(table); trimmed != "" {
+			tables = append(tables, trimmed)
+		}
+	}
+	sort.Strings(tables)
+	for _, table := range tables {
+		key := strings.ToLower(table)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		names = append(names, table)
+	}
+	joinNames := make([]string, 0, len(desired.JoinTables))
+	for _, jt := range desired.JoinTables {
+		if trimmed := strings.TrimSpace(jt.Table); trimmed != "" {
+			joinNames = append(joinNames, trimmed)
+		}
+	}
+	sort.Strings(joinNames)
+	for _, table := range joinNames {
+		key := strings.ToLower(table)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
 		names = append(names, table)
 	}
 	return names

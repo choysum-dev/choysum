@@ -363,7 +363,8 @@ describe('OSearch behavior', () => {
     expect(m.q('.o-search__grouptag')).toBeTruthy();
     (m.q('.tag-close') as HTMLElement).click();
     await flushPromises();
-    const payload = m.emitted['query-update']!.at(-1)![0] as any;
+    const queryUpdates = m.emitted['query-update']!;
+    const payload = queryUpdates[queryUpdates.length - 1]![0] as any;
     expect(payload.appliedGroups).toEqual([]);
     m.unmount();
   });
@@ -445,7 +446,8 @@ describe('OSearch behavior', () => {
     (m.q('.tree') as HTMLElement).click();
     await flushPromises();
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
-    const payload = m.emitted['query-update']!.at(-1)![0] as any;
+    const queryUpdates = m.emitted['query-update']!;
+    const payload = queryUpdates[queryUpdates.length - 1]![0] as any;
     expect(payload.appliedGroups?.some((g: any) => g.field === 'Status' || g === 'Status')).toBe(true);
     m.unmount();
   });

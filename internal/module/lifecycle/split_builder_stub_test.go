@@ -16,6 +16,9 @@ type commitStubSplitBuilder struct {
 }
 
 func (b *commitStubSplitBuilder) Build() (*moduleresult.BuildResult, error) {
+	if b.buildErr != nil {
+		return nil, b.buildErr
+	}
 	return &moduleresult.BuildResult{}, nil
 }
 

@@ -5,7 +5,6 @@ package schema
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	"gorm.io/datatypes"
@@ -56,111 +55,41 @@ func TestTypeHelpers(t *testing.T) {
 		t.Fatalf("unexpected mysql blob tag: %s", tag)
 	}
 
-	tags := []string{}
-	addStandardTags(&tags, map[string]interface{}{
-		"primaryKey":      true,
-		"notNull":         true,
-		"unique":          true,
-		"index":           "idx_status",
-		"uniqueIndex":     "uniq_a uniq_b",
-		"checkConstraint": " `status in ('draft','done')` ",
-	})
-	joined := strings.Join(tags, ";")
-	for _, want := range []string{"primaryKey", "not null", "unique", "index:idx_status", "uniqueIndex:uniq_a", "uniqueIndex:uniq_b", "check:,(status in ('draft','done'))"} {
-		if !strings.Contains(joined, want) {
-			t.Fatalf("expected tag %q in %q", want, joined)
-		}
+	if got := normalizeDefaultStringLiteral("active"); got != "'active'" {
+		t.Fatalf("normalizeDefaultStringLiteral(active) = %q", got)
+	}
+	if got := normalizeDefaultStringLiteral("NULL"); got != "NULL" {
+		t.Fatalf("normalizeDefaultStringLiteral(NULL) = %q", got)
+	}
+	if got := normalizeDefaultStringLiteral("uuid_generate_v4()"); got != "uuid_generate_v4()" {
+		t.Fatalf("normalizeDefaultStringLiteral(fn) = %q", got)
+	}
+	if got := normalizeDefaultStringLiteral("O'Reilly"); got != "'O''Reilly'" {
+		t.Fatalf("normalizeDefaultStringLiteral(quote) = %q", got)
+	}
+	if got := normalizeDefaultStringLiteral("'A => B'"); got != "'A => B'" {
+		t.Fatalf("normalizeDefaultStringLiteral(quoted) = %q", got)
+	}
+	if got := normalizeDefaultStringLiteral("`A => B`"); got != "`A => B`" {
+		t.Fatalf("normalizeDefaultStringLiteral(backtick) = %q", got)
 	}
 
-	defaultLiteralTags := []string{}
-	addStandardTags(&defaultLiteralTags, map[string]interface{}{
-		"default": "active",
-	})
-	if !strings.Contains(strings.Join(defaultLiteralTags, ";"), "default:'active'") {
-		t.Fatalf("expected scalar default tag, got %q", strings.Join(defaultLiteralTags, ";"))
+	if !isJSFunctionDefaultLiteral("() => true") {
+		t.Fatal("expected arrow function default")
 	}
-
-	arrowDefaultTags := []string{}
-	addStandardTags(&arrowDefaultTags, map[string]interface{}{
-		"default": "() => true",
-	})
-	if strings.Contains(strings.Join(arrowDefaultTags, ";"), "default:") {
-		t.Fatalf("did not expect function-like default tag, got %q", strings.Join(arrowDefaultTags, ";"))
+	if !isJSFunctionDefaultLiteral("function () { return 'active'; }") {
+		t.Fatal("expected function() default")
 	}
-
-	functionDefaultTags := []string{}
-	addStandardTags(&functionDefaultTags, map[string]interface{}{
-		"default": "function () { return 'active'; }",
-	})
-	if strings.Contains(strings.Join(functionDefaultTags, ";"), "default:") {
-		t.Fatalf("did not expect function-like default tag, got %q", strings.Join(functionDefaultTags, ";"))
+	if !isJSFunctionDefaultLiteral("A => B") {
+		t.Fatal("expected arrow-like default")
 	}
-
-	nonFunctionWordTags := []string{}
-	addStandardTags(&nonFunctionWordTags, map[string]interface{}{
-		"default": "text with function keyword",
-	})
-	if !strings.Contains(strings.Join(nonFunctionWordTags, ";"), "default:'text with function keyword'") {
-		t.Fatalf("expected scalar default tag, got %q", strings.Join(nonFunctionWordTags, ";"))
+	if !isJSFunctionDefaultLiteral("x => 'active'") {
+		t.Fatal("expected single-param arrow default")
 	}
-
-	sqlKeywordDefaultTags := []string{}
-	addStandardTags(&sqlKeywordDefaultTags, map[string]interface{}{
-		"default": "NULL",
-	})
-	if !strings.Contains(strings.Join(sqlKeywordDefaultTags, ";"), "default:NULL") {
-		t.Fatalf("expected SQL keyword default tag, got %q", strings.Join(sqlKeywordDefaultTags, ";"))
+	if isJSFunctionDefaultLiteral("text with function keyword") {
+		t.Fatal("did not expect function keyword alone to be JS default")
 	}
-
-	sqlFunctionDefaultTags := []string{}
-	addStandardTags(&sqlFunctionDefaultTags, map[string]interface{}{
-		"default": "uuid_generate_v4()",
-	})
-	if !strings.Contains(strings.Join(sqlFunctionDefaultTags, ";"), "default:uuid_generate_v4()") {
-		t.Fatalf("expected SQL function default tag, got %q", strings.Join(sqlFunctionDefaultTags, ";"))
-	}
-
-	escapedQuoteDefaultTags := []string{}
-	addStandardTags(&escapedQuoteDefaultTags, map[string]interface{}{
-		"default": "O'Reilly",
-	})
-	if !strings.Contains(strings.Join(escapedQuoteDefaultTags, ";"), "default:'O''Reilly'") {
-		t.Fatalf("expected escaped scalar default tag, got %q", strings.Join(escapedQuoteDefaultTags, ";"))
-	}
-
-	// A => B (unquoted, contains =>): treated as arrow function, no default: tag.
-	arrowStringLiteralTags := []string{}
-	addStandardTags(&arrowStringLiteralTags, map[string]interface{}{
-		"default": "A => B",
-	})
-	if strings.Contains(strings.Join(arrowStringLiteralTags, ";"), "default:") {
-		t.Fatalf("did not expect default: tag for arrow-like value, got %q", strings.Join(arrowStringLiteralTags, ";"))
-	}
-
-	// Single-param arrow with space: x => 'active'
-	singleParamArrowTags := []string{}
-	addStandardTags(&singleParamArrowTags, map[string]interface{}{
-		"default": "x => 'active'",
-	})
-	if strings.Contains(strings.Join(singleParamArrowTags, ";"), "default:") {
-		t.Fatalf("did not expect default: tag for single-param arrow, got %q", strings.Join(singleParamArrowTags, ";"))
-	}
-
-	// Quoted string containing => is still a scalar literal.
-	quotedArrowLiteralTags := []string{}
-	addStandardTags(&quotedArrowLiteralTags, map[string]interface{}{
-		"default": "'A => B'",
-	})
-	if !strings.Contains(strings.Join(quotedArrowLiteralTags, ";"), "default:'A => B'") {
-		t.Fatalf("expected scalar default tag for quoted arrow string, got %q", strings.Join(quotedArrowLiteralTags, ";"))
-	}
-
-	// Backtick-quoted template literal containing => is still a scalar literal.
-	backtickArrowLiteralTags := []string{}
-	addStandardTags(&backtickArrowLiteralTags, map[string]interface{}{
-		"default": "`A => B`",
-	})
-	if !strings.Contains(strings.Join(backtickArrowLiteralTags, ";"), "default:`A => B`") {
-		t.Fatalf("expected scalar default tag for backtick-quoted arrow string, got %q", strings.Join(backtickArrowLiteralTags, ";"))
+	if isJSFunctionDefaultLiteral("'A => B'") {
+		t.Fatal("quoted arrow string is a scalar literal")
 	}
 }

@@ -160,32 +160,89 @@ func (m *moduleUpgrader) upgrade() error {
 		}
 	}
 
-	txRoot := m.runtimeScope
-	if txRoot == nil {
+	return m.upgradeAfterPrepare(installer, fromVersion, buildResult, persistLater)
+}
+
+// upgradeAfterPrepare runs the upgrade commit TX and finalize steps.
+func (m *moduleUpgrader) upgradeAfterPrepare(
+	installer *moduleInstaller,
+	fromVersion string,
+	buildResult *module.BuildResult,
+	persistLater bool,
+) error {
+	if m == nil {
 		return xfmt.Errorf("scope is nil")
 	}
-	ctx := txRoot.Context()
-	if ctx == nil {
-		ctx = context.Background()
+	if m.runtimeScope == nil {
+		return xfmt.Errorf("scope is nil")
 	}
 	txHoldStarted := time.Now()
-	err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-		committed := installer.forCommitScope(txScope)
-		upgrader := *m
-		upgrader.runtimeScope = txScope
-		result, commitErr := upgrader.commitUpgrade(committed, fromVersion, buildResult, persistLater)
-		if commitErr != nil {
-			return commitErr
-		}
-		buildResult = result
-		return nil
-	})
+	err := m.runUpgradeCommitTX(m.runtimeScope, m.runtimeScope.Context(), installer, fromVersion, &buildResult, persistLater)
 	LogModuleCommitTxHold(m.runtimeScope.Logger(), "upgrade", "module_commit", txHoldStarted, err)
 	if err != nil {
 		return err
 	}
-
 	return m.finalizeUpgrade(installer.module, fromVersion, buildResult)
+}
+
+// runUpgradeCommitTX runs the upgrade commit Required TX, pausing lease renew when a manager is set.
+func (m *moduleUpgrader) runUpgradeCommitTX(
+	txRoot scope.Scope,
+	ctx context.Context,
+	installer *moduleInstaller,
+	fromVersion string,
+	buildResult **module.BuildResult,
+	persistLater bool,
+) error {
+	if txRoot == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if buildResult == nil {
+		return xfmt.Errorf("build result slot is nil")
+	}
+	if installer == nil || installer.module == nil {
+		return xfmt.Errorf("upgrade commit installer is nil")
+	}
+	var committedResult *module.BuildResult
+	var committedModule *meta.Module
+	var origBuildModule *meta.Module
+	if *buildResult != nil {
+		origBuildModule = (*buildResult).Module
+	}
+	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
+		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
+			committed := installer.forCommitScope(txScope)
+			upgrader := *m
+			upgrader.runtimeScope = txScope
+			result, commitErr := upgrader.commitUpgrade(committed, fromVersion, *buildResult, persistLater)
+			if commitErr != nil {
+				return commitErr
+			}
+			committedResult = result
+			committedModule = committed.module
+			return nil
+		})
+	})
+	if err != nil {
+		// Undo bindCommitBuildModule: the TX-local target copy was discarded.
+		if *buildResult != nil {
+			(*buildResult).Module = origBuildModule
+		}
+		return err
+	}
+	*buildResult = committedResult
+	if committedModule != nil && installer.module != nil {
+		*installer.module = *committedModule
+	}
+	if *buildResult != nil && installer.module != nil {
+		// Repoint the published result at the caller's module; the TX-local copy
+		// must not escape the commit.
+		(*buildResult).Module = installer.module
+	}
+	return nil
 }
 
 func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion string, buildResult *module.BuildResult, persistLater bool) (*module.BuildResult, error) {
@@ -193,6 +250,7 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 		return nil, xfmt.Errorf("upgrade commit installer is nil")
 	}
 	target := installer.module
+	bindCommitBuildModule(buildResult, target)
 
 	if installer.builder != nil {
 		if persistLater {
@@ -236,12 +294,10 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 
 	persistModuleStarted := time.Now()
 	target.Status = meta.Installed
-	if len(target.Dependencies) > 0 {
-		if err := sqliteretry.WithLockRetry(func() error {
-			return replaceModuleDependenciesFn(m.runtimeScope.Session(), target)
-		}); err != nil {
-			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
-		}
+	if err := sqliteretry.WithLockRetry(func() error {
+		return replaceModuleDependenciesFn(m.runtimeScope.Session(), target)
+	}); err != nil {
+		return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 	}
 	// Omit association trees: Persist already wrote raw + effective catalogs. Cascading
 	// Models here would duplicate effective rows with module_id (see install commitSave).
@@ -298,7 +354,25 @@ func (m *moduleUpgrader) schemaIntents() schema.IntentBag {
 }
 
 // replaceModuleDependenciesFn writes module dependency associations (overridable in tests).
+// Empty Dependencies clears stale join rows when the module already has a primary key.
+// Brand-new modules without an Id skip the empty Replace — GORM Association requires a PK,
+// and Save will create the row with no dependency links.
+// Non-empty deps without an Id Create the parent first: minting Id alone would make the
+// caller's later Save() UPDATE zero rows and leave only join-table orphans.
 var replaceModuleDependenciesFn = func(sess *scope.Session, target *meta.Module) error {
+	if sess == nil || sess.DB == nil || target == nil {
+		return nil
+	}
+	if !target.Id.Valid || strings.TrimSpace(target.Id.String) == "" {
+		if len(target.Dependencies) == 0 {
+			return nil
+		}
+		if err := sess.
+			Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+			Create(target).Error; err != nil {
+			return err
+		}
+	}
 	return sess.Model(target).Association("Dependencies").Replace(target.Dependencies)
 }
 

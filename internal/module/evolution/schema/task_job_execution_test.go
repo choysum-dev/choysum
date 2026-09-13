@@ -3,13 +3,14 @@
 
 package schema
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/choysum-dev/choysum/pkg/scope"
+	"gorm.io/gorm"
+)
 
 func TestTaskJobExecutionHelpers(t *testing.T) {
-	if name := (taskJobExecution{}).TableName(); name != "task_job_execution" {
-		t.Fatalf("unexpected table name: %s", name)
-	}
-
 	runtimeScope := newSchemaTestScope(t)
 	if err := ensureTaskJobExecutionTable(&schemaTestScope{}); err != nil {
 		t.Fatalf("ensureTaskJobExecutionTable(nil session) error = %v", err)
@@ -17,10 +18,16 @@ func TestTaskJobExecutionHelpers(t *testing.T) {
 	if err := ensureTaskJobExecutionTable(nil); err != nil {
 		t.Fatalf("ensureTaskJobExecutionTable(nil) error = %v", err)
 	}
+	if err := ensureTaskJobExecutionTable(&schemaTestScope{session: &scope.Session{}}); err != nil {
+		t.Fatalf("ensureTaskJobExecutionTable(nil DB) error = %v", err)
+	}
+	if err := ensureTaskJobExecutionTable(&schemaTestScope{session: &scope.Session{DB: &gorm.DB{}}}); err != nil {
+		t.Fatalf("ensureTaskJobExecutionTable(nil Config) error = %v", err)
+	}
 	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
 		t.Fatalf("ensureTaskJobExecutionTable(env) error = %v", err)
 	}
-	if !runtimeScope.Session().DB.Migrator().HasTable(&taskJobExecution{}) {
+	if !runtimeScope.Session().DB.Migrator().HasTable("task_job_execution") {
 		t.Fatal("expected task_job_execution table to be migrated")
 	}
 
@@ -34,5 +41,8 @@ func TestTaskJobExecutionHelpers(t *testing.T) {
 	}
 	if err := ensureTaskJobExecutionTable(closedRuntimeScope); err == nil {
 		t.Fatal("expected ensureTaskJobExecutionTable() to fail on closed database")
+	}
+	if _, err := taskJobExecutionUniqueJobIDReady(closedRuntimeScope.Session().DB, "task_job_execution"); err == nil {
+		t.Fatal("expected unique ready inspect to fail on closed database")
 	}
 }

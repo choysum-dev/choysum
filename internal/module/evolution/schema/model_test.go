@@ -54,7 +54,7 @@ func TestModelMigratorRuntimePaths(t *testing.T) {
 	if runtimeScope.Session().Migrator().HasTable("sales_disabled") {
 		t.Fatal("expected automigrate=false model table to be skipped")
 	}
-	if !runtimeScope.Session().Migrator().HasTable(&taskJobExecution{}) {
+	if !runtimeScope.Session().Migrator().HasTable("task_job_execution") {
 		t.Fatal("expected task_job_execution table to be ensured")
 	}
 }
