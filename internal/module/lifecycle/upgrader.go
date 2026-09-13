@@ -263,6 +263,8 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 }
 
 func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion string, buildResult *module.BuildResult, persistLater bool) (*module.BuildResult, error) {
+	// Commit TX is Persist/schema/data/save only — no hooks or migration scripts here
+	// (those run in prepare/finalize so TX hold stays short).
 	if installer == nil || installer.module == nil {
 		return nil, xfmt.Errorf("upgrade commit installer is nil")
 	}

@@ -137,7 +137,9 @@ func (m *moduleInstaller) install() error {
 	return m.installAfterPrepare(buildResult, persistLater)
 }
 
-// installAfterPrepare runs the install commit TX and finalize steps.
+// installAfterPrepare runs the install commit TX, then TX-external pre_init, then finalize.
+// Commit holds only Persist/schema/data/save; pre_init sees already-persisted IR and must not
+// extend the Required TX (failure after commit is not rolled back with the TX).
 func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, persistLater bool) error {
 	if m == nil {
 		return xfmt.Errorf("scope is nil")
@@ -149,6 +151,9 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 	err := m.runInstallCommitTX(m.runtimeScope, m.runtimeScope.Context(), &buildResult, persistLater)
 	LogInstallOuterTxHold(m.runtimeScope.Logger(), "module_commit", txHoldStarted, err)
 	if err != nil {
+		return err
+	}
+	if err := m.runInstallPreInit(buildResult); err != nil {
 		return err
 	}
 	return m.finalizeInstall(buildResult)
@@ -291,12 +296,6 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 		}
 	}
 
-	initializeStarted := time.Now()
-	if err := runInstallHookPhase(m.runtimeScope, m.ctx, plan.OpInstall, installerJSExecutor(m), m.module, hooks.PhasePreInit, buildResult, "pre_init"); err != nil {
-		return nil, err
-	}
-	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
-
 	migrator, err := newInstallSchemaMigrator(m.runtimeScope, m.module)
 	if err != nil {
 		return nil, xfmt.Errorf("error preparing schema migrator: %w", err)
@@ -352,6 +351,24 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 
 	return buildResult, nil
+}
+
+// runInstallPreInit runs PhasePreInit outside the Commit TX so hook JS does not extend TX hold.
+// Callers must invoke this only after a successful commit (Persisted IR + schema/data/save).
+func (m *moduleInstaller) runInstallPreInit(buildResult *module.BuildResult) error {
+	if m == nil {
+		return nil
+	}
+	initializeStarted := time.Now()
+	if err := runInstallHookPhase(m.runtimeScope, m.ctx, plan.OpInstall, installerJSExecutor(m), m.module, hooks.PhasePreInit, buildResult, "pre_init"); err != nil {
+		return err
+	}
+	name := ""
+	if m.module != nil {
+		name = m.module.Name
+	}
+	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, name, moduleStepInitialize, initializeStarted)
+	return nil
 }
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {

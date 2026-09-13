@@ -187,10 +187,11 @@ func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
 	}
 }
 
-func TestCommitInstallPreInitHookError(t *testing.T) {
+func TestCommitInstall_NoHooksInsideTX(t *testing.T) {
+	// Commit TX must not run pre_init: nil js executor used to fail inside commitInstall.
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
-		Name: "demo_pre_init_err", Version: "1.0.0", Status: meta.ToInstall,
+		Name: "demo_commit_no_hook", Version: "1.0.0", Status: meta.ToInstall,
 		Path: t.TempDir(), ApplicationStr: "auth",
 	}
 	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
@@ -202,8 +203,88 @@ func TestCommitInstallPreInitHookError(t *testing.T) {
 		runtimeScope: runtimeScope,
 		ctx:          newOpContext(),
 	}
-	if _, err := installer.commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+	if _, err := installer.commitInstall(nil, false); err != nil {
+		t.Fatalf("commitInstall without js executor must succeed (no hooks in TX): %v", err)
+	}
+	if mod.Status != meta.Installed {
+		t.Fatalf("status=%q want installed", mod.Status)
+	}
+}
+
+func TestInstall_PreInitRunsOutsideCommitTX(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name: "demo_pre_init_outside", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Commit alone leaves module installed without needing hooks / js executor.
+	installer := &moduleInstaller{
+		module:       mod,
+		runtimeScope: runtimeScope,
+		ctx:          newOpContext(),
+	}
+	if _, err := installer.commitInstall(nil, false); err != nil {
+		t.Fatalf("commitInstall: %v", err)
+	}
+
+	// pre_init without executor fails outside TX helpers.
+	noExec := &moduleInstaller{
+		module:       mod,
+		runtimeScope: runtimeScope,
+		ctx:          newOpContext(),
+	}
+	if err := noExec.runInstallPreInit(nil); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+		t.Fatalf("expected pre_init outside TX to require executor, got %v", err)
+	}
+
+	// installAfterPrepare: commit succeeds, then pre_init fails → module already Installed.
+	mod2 := &meta.Module{
+		Name: "demo_pre_init_after_commit", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod2.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod2).Error; err != nil {
+		t.Fatal(err)
+	}
+	failing := &moduleInstaller{
+		module:       mod2,
+		runtimeScope: runtimeScope,
+		ctx:          newOpContext(),
+		// no moduleManager → pre_init fails after commit
+	}
+	if err := failing.installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+		t.Fatalf("expected pre_init failure after commit, got %v", err)
+	}
+	var got meta.Module
+	if err := runtimeScope.Session().Where("name = ?", "demo_pre_init_after_commit").Take(&got).Error; err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != meta.Installed {
+		t.Fatalf("after commit+failed pre_init status=%q want installed (TX already committed)", got.Status)
+	}
+}
+
+func TestInstallPreInitHookError(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name: "demo_pre_init_err", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	installer := &moduleInstaller{
+		module:       mod,
+		runtimeScope: runtimeScope,
+		ctx:          newOpContext(),
+	}
+	if err := installer.runInstallPreInit(nil); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
 		t.Fatalf("expected pre_init hook error, got %v", err)
+	}
+	if err := (*moduleInstaller)(nil).runInstallPreInit(nil); err != nil {
+		t.Fatalf("nil installer: %v", err)
 	}
 }
 
