@@ -35,7 +35,13 @@ var (
 		module *meta.Module,
 		opts ...scripts.RunnerOption,
 	) migrationScriptRunner {
-		return scripts.NewRunner(runtimeScope, jsExecutor, module, opts...)
+		// Avoid a typed-nil *scripts.Runner boxed in the interface: runner == nil
+		// checks in prepare/finalize must still skip when NewRunner returns nil.
+		runner := scripts.NewRunner(runtimeScope, jsExecutor, module, opts...)
+		if runner == nil {
+			return nil
+		}
+		return runner
 	}
 	upgradeHooksNewRunner             = hooks.NewRunner
 	upgradeHooksScriptFromBuildResult = hooks.ScriptFromBuildResult
@@ -151,7 +157,12 @@ func (m *moduleUpgrader) runUpgradeHookPhase(
 	}); err != nil {
 		return xfmt.Errorf("error running %s hook for module %s: %w", phaseLabel, mod.Name, err)
 	}
-	m.logUpgradeStep(mod.Name, moduleStepHook(phase), hookStarted, "from_version", fromVersion, "to_version", mod.Version)
+	attrs := []any{"from_version", fromVersion}
+	// Only post_upgrade has the origin-resolved target module version.
+	if phase == hooks.PhasePostUpgrade {
+		attrs = append(attrs, "to_version", mod.Version)
+	}
+	m.logUpgradeStep(mod.Name, moduleStepHook(phase), hookStarted, attrs...)
 	return nil
 }
 
