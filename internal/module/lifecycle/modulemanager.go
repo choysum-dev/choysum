@@ -586,9 +586,7 @@ func (m *ModuleManager) migrateBaseModule() error {
 	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(m.runtimeScope.Session().DB); err != nil {
 		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
-	if logger := m.runtimeScope.Logger(); logger != nil {
-		logger.Info("base module entity migration completed", "step", "base_entity_migrate", "duration_ms", time.Since(started).Milliseconds())
-	}
+	m.runtimeScope.Logger().Info("base module entity migration completed", "step", moduleStepBaseEntityMigrate, "duration_ms", time.Since(started).Milliseconds())
 	return nil
 }
 
@@ -1017,6 +1015,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
 		resetSemanticMetricsForOp()
+		defer logSemanticMetricsSummary(m.runtimeScope.Logger(), opid)
 		name = strings.TrimSpace(name)
 		if name == "" {
 			return xfmt.Errorf("module name is empty")
@@ -1443,11 +1442,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
-		if phaseEndDuration >= time.Second {
-			logger.Info("module operation finalizing phase end completed", "step", "phase_end", "duration_ms", phaseEndDuration.Milliseconds())
-		} else {
-			logger.Debug("module operation finalizing phase end completed", "step", "phase_end", "duration_ms", phaseEndDuration.Milliseconds())
-		}
+		logFinalizingPhaseEnd(logger, phaseEndDuration)
 
 		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: finalizing index refresh", rootModuleName))
 		indexRefreshStarted := time.Now()
@@ -1475,7 +1470,6 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			"index_refresh_duration_ms", indexRefreshDuration.Milliseconds(),
 			"index_sync_duration_ms", indexSyncDuration.Milliseconds(),
 		)
-		logSemanticMetricsSummary(logger, opid)
 		logger.Info("module operation completed", completedAttrs...)
 		return nil
 	})
@@ -1497,6 +1491,7 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
 		resetSemanticMetricsForOp()
+		defer logSemanticMetricsSummary(m.runtimeScope.Logger(), opid)
 
 		runtimeOpts := m.resolvedRuntimeOptions()
 		opCtx := newOpContext()
@@ -1637,7 +1632,6 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			return err
 		}
 		clearSpinnerState()
-		logSemanticMetricsSummary(logger, opid)
 		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
 		return nil
 	})
@@ -1679,6 +1673,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
 		resetSemanticMetricsForOp()
+		defer logSemanticMetricsSummary(m.runtimeScope.Logger(), opid)
 
 		originSwitch, err := m.prepareUpgradeOriginSwitch(ctx, parsed, moduleName, opid)
 		if err != nil {
@@ -1865,11 +1860,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
-		if phaseEndDuration >= time.Second {
-			logger.Info("module operation finalizing phase end completed", "step", "phase_end", "duration_ms", phaseEndDuration.Milliseconds())
-		} else {
-			logger.Debug("module operation finalizing phase end completed", "step", "phase_end", "duration_ms", phaseEndDuration.Milliseconds())
-		}
+		logFinalizingPhaseEnd(logger, phaseEndDuration)
 		if err := m.refreshModuleIndexForLocalModules(ctx, finalizeModules); err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
@@ -1878,7 +1869,6 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				return xfmt.Errorf("upgrade succeeded but origin cleanup failed: %w", err)
 			}
 		}
-		logSemanticMetricsSummary(logger, opid)
 		logger.Info("module operation completed", append(moduleOperationCompletedInfoAttrs(plan, time.Since(started)),
 			"phase_end_duration_ms", phaseEndDuration.Milliseconds(),
 		)...)

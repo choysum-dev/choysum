@@ -327,6 +327,18 @@ func TestLogModuleOperationStep_HookSubstepAttrs(t *testing.T) {
 	if moduleOperationStepLogLevel("scripts.pre") != slog.LevelInfo {
 		t.Fatal("scripts.* should log at Info")
 	}
+	if moduleOperationStepLogLevel("scripts.validate") != slog.LevelInfo {
+		t.Fatal("scripts.validate should log at Info via scripts. prefix")
+	}
+	if moduleOperationStepLogLevel(moduleStepWebBuild) != slog.LevelInfo {
+		t.Fatal("web_build should log at Info")
+	}
+	if moduleOperationStepLogLevel(moduleStepBaseEntityMigrate) != slog.LevelInfo {
+		t.Fatal("base_entity_migrate should log at Info")
+	}
+	if moduleOperationStepLogLevel(moduleStepOriginResolve) != slog.LevelInfo {
+		t.Fatal("origin_resolve should log at Info")
+	}
 	if moduleOperationStepLogLevel(moduleStepData) != slog.LevelDebug {
 		t.Fatal("data step stays Debug")
 	}

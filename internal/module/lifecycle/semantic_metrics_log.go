@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"log/slog"
+	"time"
 
 	"github.com/choysum-dev/choysum/internal/parser/backendtsparser"
 )
@@ -16,10 +17,10 @@ func resetSemanticMetricsForOp() {
 // logSemanticMetricsSummary emits a DEBUG snapshot of semantic program activity for
 // the just-finished lifecycle op, then resets counters for the next op.
 func logSemanticMetricsSummary(logger *slog.Logger, opid string) {
+	snap := backendtsparser.SnapshotAndResetSemanticMetrics()
 	if logger == nil {
 		return
 	}
-	snap := backendtsparser.SnapshotAndResetSemanticMetrics()
 	if snap.BuildCount == 0 && snap.CacheHitCount == 0 {
 		return
 	}
@@ -32,4 +33,17 @@ func logSemanticMetricsSummary(logger *slog.Logger, opid string) {
 		attrs = append([]any{"opid", opid}, attrs...)
 	}
 	logger.Debug("lifecycle semantic program metrics", attrs...)
+}
+
+// logFinalizingPhaseEnd logs aggregate PhaseEnd duration; Info when >=1s, else Debug.
+func logFinalizingPhaseEnd(logger *slog.Logger, phaseEndDuration time.Duration) {
+	if logger == nil {
+		return
+	}
+	attrs := []any{"step", moduleStepPhaseEnd, "duration_ms", phaseEndDuration.Milliseconds()}
+	if phaseEndDuration >= time.Second {
+		logger.Info("module operation finalizing phase end completed", attrs...)
+		return
+	}
+	logger.Debug("module operation finalizing phase end completed", attrs...)
 }

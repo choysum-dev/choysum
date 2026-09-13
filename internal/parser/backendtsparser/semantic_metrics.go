@@ -34,6 +34,16 @@ func recordSemanticBuild(elapsed time.Duration) {
 	semanticBuildNanos.Add(elapsed.Nanoseconds())
 }
 
+// RecordSemanticCacheHitForTest increments the cache-hit counter for unit tests.
+func RecordSemanticCacheHitForTest() {
+	recordSemanticCacheHit()
+}
+
+// RecordSemanticBuildForTest increments build counters for unit tests.
+func RecordSemanticBuildForTest(elapsed time.Duration) {
+	recordSemanticBuild(elapsed)
+}
+
 // SnapshotSemanticMetrics returns current counters without resetting them.
 func SnapshotSemanticMetrics() SemanticMetricsSnapshot {
 	return SemanticMetricsSnapshot{
@@ -51,8 +61,12 @@ func ResetSemanticMetrics() {
 }
 
 // SnapshotAndResetSemanticMetrics returns current counters and clears them.
+// Each counter is swapped atomically so concurrent record* calls are not lost
+// between a separate snapshot and reset.
 func SnapshotAndResetSemanticMetrics() SemanticMetricsSnapshot {
-	snap := SnapshotSemanticMetrics()
-	ResetSemanticMetrics()
-	return snap
+	return SemanticMetricsSnapshot{
+		BuildCount:    semanticBuildCount.Swap(0),
+		CacheHitCount: semanticCacheHitCount.Swap(0),
+		BuildMs:       semanticBuildNanos.Swap(0) / int64(time.Millisecond),
+	}
 }

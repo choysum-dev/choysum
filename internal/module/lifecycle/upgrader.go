@@ -32,14 +32,18 @@ type moduleUpgrader struct {
 }
 
 const (
-	moduleStepPrepare    = "prepare"
-	moduleStepBuild      = "build"
-	moduleStepInitialize = "initialize"
-	moduleStepSchema     = "schema"
-	moduleStepData       = "data"
-	moduleStepSave       = "save"
-	moduleStepCleanup    = "cleanup"
-	moduleStepFinalize   = "finalize"
+	moduleStepPrepare           = "prepare"
+	moduleStepBuild             = "build"
+	moduleStepInitialize        = "initialize"
+	moduleStepSchema            = "schema"
+	moduleStepData              = "data"
+	moduleStepSave              = "save"
+	moduleStepCleanup           = "cleanup"
+	moduleStepFinalize          = "finalize"
+	moduleStepBaseEntityMigrate = "base_entity_migrate"
+	moduleStepWebBuild          = "web_build"
+	moduleStepOriginResolve     = "origin_resolve"
+	moduleStepPhaseEnd          = "phase_end"
 )
 
 func (m *moduleUpgrader) validate() error {
@@ -72,7 +76,7 @@ func moduleOperationStepMessage(op plan.OpType) string {
 func moduleOperationStepLogLevel(step string) slog.Level {
 	step = strings.TrimSpace(step)
 	switch step {
-	case moduleStepBuild, moduleStepSchema, "base_entity_migrate", "web_build", "scripts.validate", "origin_resolve":
+	case moduleStepBuild, moduleStepSchema, moduleStepBaseEntityMigrate, moduleStepWebBuild, moduleStepOriginResolve:
 		return slog.LevelInfo
 	}
 	if strings.HasPrefix(step, "hook.") || strings.HasPrefix(step, "scripts.") {
