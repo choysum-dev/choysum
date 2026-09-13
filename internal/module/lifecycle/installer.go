@@ -280,7 +280,9 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	saveStarted := time.Now()
 	m.module.Status = meta.Installed
 	if len(m.module.Dependencies) > 0 {
-		if err := replaceModuleDependenciesFn(m.runtimeScope.Session(), m.module); err != nil {
+		if err := sqliteretry.WithLockRetry(func() error {
+			return replaceModuleDependenciesFn(m.runtimeScope.Session(), m.module)
+		}); err != nil {
 			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}

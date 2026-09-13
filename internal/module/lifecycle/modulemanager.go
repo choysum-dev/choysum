@@ -486,7 +486,11 @@ func moduleManagerDialectName(m *ModuleManager) string {
 	if session.DB == nil {
 		return ""
 	}
-	return strings.ToLower(strings.TrimSpace(session.DB.Dialector.Name()))
+	// Dialector lives on *Config; a zero gorm.DB has nil Config and would panic on Name().
+	if session.Config == nil || session.Dialector == nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(session.Dialector.Name()))
 }
 
 // moduleManagerDialectNameFn is overridable in tests.

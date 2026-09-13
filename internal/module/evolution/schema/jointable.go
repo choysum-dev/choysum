@@ -239,15 +239,18 @@ func fieldIsExplicitManyToMany(field *meta.Field) bool {
 
 // manyToManyJoinMeta returns join identity for a ManyToMany field, or ok=false when not M2M / no joinModel.
 func manyToManyJoinMeta(field *meta.Field) (joinRef, joinField, inverseJoinField, targetRef string, ok bool) {
+	if field == nil {
+		return "", "", "", "", false
+	}
 	joinRef = strings.TrimSpace(field.RelationJoinModel)
 	joinField = strings.TrimSpace(field.RelationJoinField)
 	inverseJoinField = strings.TrimSpace(field.RelationInverseJoinField)
 	targetRef = strings.TrimSpace(field.RelationModel)
 	isM2M := strings.EqualFold(strings.TrimSpace(field.Relation), "ManyToMany")
 	if spec, err := field.GetResolvedSpec(); err == nil && spec != nil {
-		if strings.EqualFold(strings.TrimSpace(spec.Structural.FieldType), "ManyToMany") {
-			isM2M = true
-		}
+		// Resolved FieldType is authoritative: ManyToManyRef may also carry
+		// Relation=ManyToMany and must not be treated as a join-table owner.
+		isM2M = strings.EqualFold(strings.TrimSpace(spec.Structural.FieldType), "ManyToMany")
 		if rel := spec.Structural.Relation; rel != nil {
 			if joinRef == "" {
 				if v, found := rel["joinModel"]; found {

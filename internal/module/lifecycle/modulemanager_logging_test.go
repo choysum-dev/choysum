@@ -19,6 +19,7 @@ import (
 	moduleplan "github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
+	"gorm.io/gorm"
 )
 
 type testLogScope struct {
@@ -492,6 +493,9 @@ func TestWithLeaseRenewPaused(t *testing.T) {
 	if moduleManagerDialectName(&ModuleManager{runtimeScope: &dialectNilDBScope{}}) != "" {
 		t.Fatal("nil db dialect")
 	}
+	if moduleManagerDialectName(&ModuleManager{runtimeScope: &dialectNilDialectorScope{}}) != "" {
+		t.Fatal("nil dialector dialect")
+	}
 	runtimeScope := newLifecycleCommitTestScope(t)
 	if got := moduleManagerDialectName(&ModuleManager{runtimeScope: runtimeScope}); got != "sqlite" && got != "sqlite3" {
 		t.Fatalf("sqlite dialect=%q", got)
@@ -504,6 +508,14 @@ type dialectNilDBScope struct {
 
 func (s *dialectNilDBScope) Session() *scope.Session {
 	return &scope.Session{}
+}
+
+type dialectNilDialectorScope struct {
+	testLogScope
+}
+
+func (s *dialectNilDialectorScope) Session() *scope.Session {
+	return &scope.Session{DB: &gorm.DB{}}
 }
 
 func TestRunWithLeaseRenewPaused(t *testing.T) {

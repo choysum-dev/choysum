@@ -158,6 +158,32 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if err := appendJoinTablesFromModels(&desired, []*meta.Model{refWithRel}); err != nil {
 		t.Fatalf("ManyToManyRef with Relation=ManyToMany: %v", err)
 	}
+	// ManyToManyRef + joinModel must still not become a join-table owner.
+	refWithJoin := &meta.Model{
+		Application: "auth", Name: "User", ModelTable: "auth_user",
+		Fields: []*meta.Field{newFieldWithOptions(t, "Roles", `{
+			"type":"ManyToManyRef",
+			"relation":{
+				"joinModel":"auth.UserRole",
+				"joinField":"UserId",
+				"inverseJoinField":"RoleId",
+				"targetModel":"auth.Role"
+			}
+		}`)},
+	}
+	refWithJoin.Fields[0].Relation = "ManyToMany"
+	desired = DesiredSchema{Tables: map[string][]ColumnSpec{"auth_user_role": {
+		{Name: "user_id", PhysicalType: "char"}, {Name: "role_id", PhysicalType: "char"},
+	}}}
+	if err := appendJoinTablesFromModels(&desired, []*meta.Model{refWithJoin}); err != nil {
+		t.Fatalf("ManyToManyRef with joinModel: %v", err)
+	}
+	if len(desired.JoinTables) != 0 {
+		t.Fatalf("ManyToManyRef must not own join tables, got %#v", desired.JoinTables)
+	}
+	if _, _, _, _, ok := manyToManyJoinMeta(nil); ok {
+		t.Fatal("manyToManyJoinMeta(nil) must be false")
+	}
 
 	joinNoCols := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}
