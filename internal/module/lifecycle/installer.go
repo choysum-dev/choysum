@@ -155,21 +155,17 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 		return err
 	}
 	if err := m.runInstallPreInit(buildResult); err != nil {
-		return m.wrapPostCommitHookError("pre_init", err)
+		return m.wrapPostCommitHookError("error running pre_init after commit (module persisted, not finalized)", err)
 	}
 	if err := m.finalizeInstall(buildResult); err != nil {
-		return m.wrapPostCommitHookError("finalize", err)
+		return m.wrapPostCommitHookError("error finalizing install after commit (module persisted, not finalized)", err)
 	}
 	return nil
 }
 
 // wrapPostCommitHookError reverts status for retry and annotates that Commit already persisted.
-func (m *moduleInstaller) wrapPostCommitHookError(phase string, err error) error {
+func (m *moduleInstaller) wrapPostCommitHookError(msg string, err error) error {
 	markErr := m.markPostCommitHooksIncomplete()
-	msg := "error running " + phase + " after commit (module persisted, not finalized)"
-	if phase == "finalize" {
-		msg = "error finalizing install after commit (module persisted, not finalized)"
-	}
 	if markErr != nil {
 		return xfmt.Errorf("%s: %w (also failed reverting status: %v)", msg, err, markErr)
 	}
@@ -391,10 +387,16 @@ func (m *moduleInstaller) runInstallPreInit(buildResult *module.BuildResult) err
 }
 
 // updatePostCommitIncompleteStatus flips Installed → ToInstall for retry. Overridable in tests.
-var updatePostCommitIncompleteStatus = func(sess *scope.Session, name string) (int64, error) {
-	res := sess.Model(&meta.Module{}).
-		Where("name = ? AND status = ?", name, meta.Installed).
-		Update("status", meta.ToInstall)
+var updatePostCommitIncompleteStatus = func(sess *scope.Session, mod *meta.Module) (int64, error) {
+	query := sess.Model(&meta.Module{}).Where("status = ?", meta.Installed)
+	if mod != nil && mod.Id.Valid && strings.TrimSpace(mod.Id.String) != "" {
+		query = query.Where("id = ?", mod.Id.String)
+	} else if mod != nil {
+		query = query.Where("name = ?", strings.TrimSpace(mod.Name))
+	} else {
+		return 0, xfmt.Errorf("module is nil")
+	}
+	res := query.Update("status", meta.ToInstall)
 	return res.RowsAffected, res.Error
 }
 
@@ -406,12 +408,12 @@ func (m *moduleInstaller) markPostCommitHooksIncomplete() error {
 		return nil
 	}
 	name := strings.TrimSpace(m.module.Name)
-	if name == "" {
+	if name == "" && !(m.module.Id.Valid && strings.TrimSpace(m.module.Id.String) != "") {
 		return nil
 	}
 	var affected int64
 	if err := sqliteretry.WithLockRetry(func() error {
-		n, err := updatePostCommitIncompleteStatus(m.runtimeScope.Session(), name)
+		n, err := updatePostCommitIncompleteStatus(m.runtimeScope.Session(), m.module)
 		affected = n
 		return err
 	}); err != nil {

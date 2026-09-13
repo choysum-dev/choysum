@@ -58,7 +58,10 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 				continue
 			}
 			fnName := fn.Name.Name
-			if fnName != "commitInstall" && fnName != "commitUpgrade" && fnName != "commitUninstall" {
+			switch fnName {
+			case "commitInstall", "commitUpgrade", "commitUninstall",
+				"runInstallCommitTX", "runUpgradeCommitTX":
+			default:
 				continue
 			}
 			ast.Inspect(fn.Body, func(n ast.Node) bool {

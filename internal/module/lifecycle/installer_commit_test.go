@@ -242,7 +242,7 @@ func TestInstall_PreInitRunsOutsideCommitTX(t *testing.T) {
 		t.Fatalf("expected pre_init outside TX to require executor, got %v", err)
 	}
 
-	// installAfterPrepare: commit succeeds, then pre_init fails → module already Installed.
+	// installAfterPrepare: commit succeeds, then pre_init observes Installed and fails.
 	mod2 := &meta.Module{
 		Name: "demo_pre_init_after_commit", Version: "1.0.0", Status: meta.ToInstall,
 		Path: t.TempDir(), ApplicationStr: "auth",
@@ -251,11 +251,23 @@ func TestInstall_PreInitRunsOutsideCommitTX(t *testing.T) {
 	if err := runtimeScope.Session().Create(mod2).Error; err != nil {
 		t.Fatal(err)
 	}
+	prev := hooksNewRunner
+	t.Cleanup(func() { hooksNewRunner = prev })
+	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
+		var row meta.Module
+		if err := runtimeScope.Session().Where("name = ?", "demo_pre_init_after_commit").Take(&row).Error; err != nil {
+			t.Fatal(err)
+		}
+		if row.Status != meta.Installed {
+			t.Fatalf("pre_init must observe the committed install, got status %q", row.Status)
+		}
+		return nil, errors.New("pre_init boom")
+	}
 	failing := &moduleInstaller{
-		module:       mod2,
-		runtimeScope: runtimeScope,
-		ctx:          newOpContext(),
-		// no moduleManager → pre_init fails after commit
+		module:        mod2,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
 	}
 	if err := failing.installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "pre_init after commit") {
 		t.Fatalf("expected pre_init failure after commit, got %v", err)
@@ -268,9 +280,7 @@ func TestInstall_PreInitRunsOutsideCommitTX(t *testing.T) {
 		t.Fatalf("after commit+failed pre_init status=%q want to install (retryable)", got.Status)
 	}
 
-	// Retry with hooks skipped (nil runner) must complete and mark Installed again.
-	prev := hooksNewRunner
-	t.Cleanup(func() { hooksNewRunner = prev })
+	// Retry with hooks skipped must complete and mark Installed again.
 	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
 		return nil, nil
 	}
@@ -326,6 +336,15 @@ func TestInstallAfterPrepare_FinalizeFailureRevertsStatus(t *testing.T) {
 	if got.Status != meta.ToInstall {
 		t.Fatalf("status=%q want to install", got.Status)
 	}
+	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
+		return nil, nil
+	}
+	if err := installer.installAfterPrepare(nil, false); err != nil {
+		t.Fatalf("retry after finalize failure must succeed: %v", err)
+	}
+	if mod.Status != meta.Installed {
+		t.Fatalf("retry status=%q want installed", mod.Status)
+	}
 }
 
 func TestMarkPostCommitHooksIncomplete(t *testing.T) {
@@ -373,7 +392,7 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 
 	prev := updatePostCommitIncompleteStatus
 	t.Cleanup(func() { updatePostCommitIncompleteStatus = prev })
-	updatePostCommitIncompleteStatus = func(*scope.Session, string) (int64, error) {
+	updatePostCommitIncompleteStatus = func(*scope.Session, *meta.Module) (int64, error) {
 		return 0, errors.New("db boom")
 	}
 	mod.Status = meta.Installed
@@ -391,7 +410,7 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 		runtimeScope: runtimeScope,
 		ctx:          newOpContext(),
 	}
-	err := failing.wrapPostCommitHookError("pre_init", errors.New("hook boom"))
+	err := failing.wrapPostCommitHookError("error running pre_init after commit (module persisted, not finalized)", errors.New("hook boom"))
 	if err == nil || !strings.Contains(err.Error(), "also failed reverting status") || !strings.Contains(err.Error(), "hook boom") {
 		t.Fatalf("got %v", err)
 	}
