@@ -309,18 +309,51 @@ func TestInstallerJSExecutorAndServiceEntryPoint(t *testing.T) {
 	}
 }
 
-func TestForCommitScopeNilManager(t *testing.T) {
+func TestRunInstallCommitTX_PersistLaterNoDuplicateModule(t *testing.T) {
+	// BuildWithoutPersist leaves buildResult.Module on the outer installer module.
+	// forCommitScope copies that module for the Required TX; Persist must write the
+	// copy (via bindCommitBuildModule), otherwise the final Save inserts a second row.
 	runtimeScope := newLifecycleCommitTestScope(t)
-	inst := &moduleInstaller{
-		module:       &meta.Module{Name: "demo", Path: t.TempDir()},
-		runtimeScope: runtimeScope,
+	outer := &meta.Module{
+		Name: "persist_tx_local", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
 	}
-	committed := inst.forCommitScope(runtimeScope)
-	if committed == nil || committed.builder == nil {
-		t.Fatal("expected committed installer with builder")
+	installer := &moduleInstaller{
+		module:        outer,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+		// forCommitScope replaces this with a real SplitBuilder; any SplitBuilder is enough
+		// so prepare-time type assert would succeed if install() were used.
+		builder: &commitStubSplitBuilder{},
 	}
-	if committed.moduleManager != nil {
-		t.Fatal("expected nil manager")
+	buildResult := &moduleresult.BuildResult{Module: outer}
+	if err := installer.runInstallCommitTX(runtimeScope, runtimeScope.Context(), &buildResult, true); err != nil {
+		t.Fatalf("runInstallCommitTX: %v", err)
+	}
+	var count int64
+	if err := runtimeScope.Session().Model(&meta.Module{}).Where("name = ?", outer.Name).Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("meta_module rows for %s = %d, want 1", outer.Name, count)
+	}
+	if !outer.Id.Valid || strings.TrimSpace(outer.Id.String) == "" {
+		t.Fatal("expected outer module Id copied back after commit")
+	}
+	if outer.Status != meta.Installed {
+		t.Fatalf("status=%v", outer.Status)
+	}
+}
+
+func TestBindCommitBuildModule(t *testing.T) {
+	bindCommitBuildModule(nil, &meta.Module{})
+	bindCommitBuildModule(&moduleresult.BuildResult{}, nil)
+	mod := &meta.Module{Name: "x"}
+	br := &moduleresult.BuildResult{Module: &meta.Module{Name: "other"}}
+	bindCommitBuildModule(br, mod)
+	if br.Module != mod {
+		t.Fatal("expected Module rebound")
 	}
 }
 

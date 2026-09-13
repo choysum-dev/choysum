@@ -208,6 +208,17 @@ func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
 	return &committed
 }
 
+// bindCommitBuildModule points Persist at the transaction-local module copy.
+// BuildWithoutPersist runs on the outer installer and leaves buildResult.Module on
+// that pointer; without rebinding, Persist would insert the outer row while
+// commitInstall Saves the copy → UNIQUE(meta_module.name).
+func bindCommitBuildModule(buildResult *module.BuildResult, mod *meta.Module) {
+	if buildResult == nil || mod == nil {
+		return
+	}
+	buildResult.Module = mod
+}
+
 // installerJSExecutor returns the manager JS executor when present.
 func installerJSExecutor(m *moduleInstaller) jsexecutor.ScriptExecutor {
 	if m == nil {
@@ -242,6 +253,7 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	if err := m.restoreModuleIfSoftDeleted(); err != nil {
 		return nil, err
 	}
+	bindCommitBuildModule(buildResult, m.module)
 
 	if m.builder != nil {
 		if persistLater {

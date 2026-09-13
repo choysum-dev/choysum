@@ -239,6 +239,7 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 		return nil, xfmt.Errorf("upgrade commit installer is nil")
 	}
 	target := installer.module
+	bindCommitBuildModule(buildResult, target)
 
 	if installer.builder != nil {
 		if persistLater {
