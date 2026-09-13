@@ -419,13 +419,16 @@ func TestColumnMismatchAndNormalize(t *testing.T) {
 		t.Fatalf("normalizeDBType(BPCHAR(20))=%q want char", got)
 	}
 
-	for _, have := range []string{"text", "integer", "real", "blob", "numeric", "other", "varchar", "char"} {
+	for _, have := range []string{"text", "integer", "real", "blob", "numeric", "decimal", "varchar", "char", "other"} {
 		for _, want := range []string{"text", "varchar", "char", "jsonobject", "date", "datetime", "time", "html", "int", "bigint", "bool", "float", "decimal", "blob", "other"} {
 			_ = sqliteTypeCompatible(want, have)
 		}
 	}
 	if !sqliteTypeCompatible("char", "varchar") || !sqliteTypeCompatible("varchar", "char") {
 		t.Fatal("sqlite varchar/char should be compatible")
+	}
+	if !sqliteTypeCompatible("bool", "decimal") {
+		t.Fatal("bool should be compatible with sqlite decimal")
 	}
 }
 

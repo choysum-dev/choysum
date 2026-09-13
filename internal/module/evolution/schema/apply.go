@@ -226,12 +226,13 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 			if found && !unique {
 				// Drop by physical live name with dialect SQL. GORM postgres DropIndex
 				// emits CURRENT_SCHEMA placeholders that some servers reject (SQLSTATE 42601).
-				dropName := liveName
-				if dropName == "" {
-					dropName = cand.Name
+				// Do not fall back to cand.Name (field export): that name usually does not
+				// exist as a live index and must not be guessed for DROP INDEX.
+				if liveName == "" {
+					return fmt.Errorf("cannot drop non-unique index on %s.%s: live index name is empty", table, col.Name)
 				}
-				if err := dropIndexFn(db, table, dropName, dialect); err != nil {
-					return fmt.Errorf("drop non-unique index %s on %s.%s: %w", dropName, table, col.Name, err)
+				if err := dropIndexFn(db, table, liveName, dialect); err != nil {
+					return fmt.Errorf("drop non-unique index %s on %s.%s: %w", liveName, table, col.Name, err)
 				}
 			}
 			if !found {

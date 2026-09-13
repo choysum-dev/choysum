@@ -885,7 +885,7 @@ func TestEnsureIndexes_FieldLookupMatchesColumnUnique(t *testing.T) {
 	}
 }
 
-func TestEnsureIndexes_EmptyLiveNameFallsBackToCandidate(t *testing.T) {
+func TestEnsureIndexes_EmptyLiveNameErrors(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.Exec(`CREATE TABLE empty_name_idx (code text)`).Error; err != nil {
@@ -895,23 +895,14 @@ func TestEnsureIndexes_EmptyLiveNameFallsBackToCandidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	origGet := getIndexes
-	origDrop := dropIndexFn
-	t.Cleanup(func() { getIndexes = origGet; dropIndexFn = origDrop })
+	t.Cleanup(func() { getIndexes = origGet })
 	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
 		return []gorm.Index{fakeIndex{name: "", cols: []string{"code"}, unique: false}}, nil
 	}
-	var dropped string
-	dropIndexFn = func(_ *gorm.DB, table, indexName, dialect string) error {
-		dropped = table + "|" + indexName
-		// Drop the real physical index so CreateIndex can succeed after the fallback name is chosen.
-		return origDrop(db, table, "idx_empty_name_idx_code", dialect)
-	}
 	col := ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true}
-	if err := ensureIndexesForColumn(db, "empty_name_idx", col, "sqlite"); err != nil {
-		t.Fatal(err)
-	}
-	if dropped != "empty_name_idx|Code" {
-		t.Fatalf("expected fallback to candidate name, got %q", dropped)
+	err := ensureIndexesForColumn(db, "empty_name_idx", col, "sqlite")
+	if err == nil || !strings.Contains(err.Error(), "live index name is empty") {
+		t.Fatalf("expected empty live name error, got %v", err)
 	}
 }
 
