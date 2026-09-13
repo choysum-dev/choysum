@@ -404,13 +404,19 @@ func TestColumnMismatchAndNormalize(t *testing.T) {
 	_ = mapPhysicalToDialectType("nope", "custom")
 
 	for _, in := range []string{
-		"", "VARCHAR(255)", "character varying", "nvarchar", "character", "nchar",
+		"", "VARCHAR(255)", "character varying", "nvarchar", "character", "nchar", "bpchar", "CHAR(20)",
 		"integer", "int4", "bigint", "int8", "boolean", "bit",
 		"double precision", "float8", "bytea", "longblob", "jsonb", "json",
 		"longtext", "clob", "timestamp with time zone", "timestamptz", "datetime2",
 		"time without time zone", "date", "numeric", "number", "weirdtype",
 	} {
 		_ = normalizeDBType(in)
+	}
+	if got := normalizeDBType("bpchar"); got != "char" {
+		t.Fatalf("normalizeDBType(bpchar)=%q want char", got)
+	}
+	if got := normalizeDBType("BPCHAR(20)"); got != "char" {
+		t.Fatalf("normalizeDBType(BPCHAR(20))=%q want char", got)
 	}
 
 	for _, have := range []string{"text", "integer", "real", "blob", "numeric", "other", "varchar", "char"} {

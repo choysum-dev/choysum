@@ -644,7 +644,7 @@ func normalizeDBType(s string) string {
 	switch s {
 	case "character varying", "nvarchar", "varchar":
 		return "varchar"
-	case "character", "nchar", "char":
+	case "character", "nchar", "char", "bpchar":
 		return "char"
 	case "integer", "int", "int4", "mediumint", "smallint", "tinyint":
 		return "int"
