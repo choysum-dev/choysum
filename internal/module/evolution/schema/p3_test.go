@@ -418,9 +418,20 @@ func TestEnsureTaskJobExecution_Path1(t *testing.T) {
 		t.Fatalf("expected UNIQUE index on job_id, n=%d err=%v", uniqueJobId, err)
 	}
 	// Idempotent when table exists (warm path: skip index re-reconcile).
+	origEnsure := ensureTaskJobIndexesFn
+	t.Cleanup(func() { ensureTaskJobIndexesFn = origEnsure })
+	ensured := 0
+	ensureTaskJobIndexesFn = func(*gorm.DB, string, ColumnSpec, string) error {
+		ensured++
+		return nil
+	}
 	if err := ensureTaskJobExecutionTable(runtimeScope); err != nil {
 		t.Fatalf("re-ensure: %v", err)
 	}
+	if ensured != 0 {
+		t.Fatalf("warm path must skip index reconcile, ensured=%d", ensured)
+	}
+	ensureTaskJobIndexesFn = origEnsure
 	ready, err := taskJobExecutionUniqueJobIDReady(runtimeScope.Session().DB, "task_job_execution")
 	if err != nil || !ready {
 		t.Fatalf("unique ready after warm path: ready=%v err=%v", ready, err)

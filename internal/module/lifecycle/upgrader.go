@@ -5,7 +5,6 @@ package lifecycle
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"strings"
 	"time"
@@ -22,7 +21,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	"github.com/rs/xid"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
@@ -351,6 +349,8 @@ func (m *moduleUpgrader) schemaIntents() schema.IntentBag {
 // Empty Dependencies clears stale join rows when the module already has a primary key.
 // Brand-new modules without an Id skip the empty Replace — GORM Association requires a PK,
 // and Save will create the row with no dependency links.
+// Non-empty deps without an Id Create the parent first: minting Id alone would make the
+// caller's later Save() UPDATE zero rows and leave only join-table orphans.
 var replaceModuleDependenciesFn = func(sess *scope.Session, target *meta.Module) error {
 	if sess == nil || target == nil {
 		return nil
@@ -359,9 +359,11 @@ var replaceModuleDependenciesFn = func(sess *scope.Session, target *meta.Module)
 		if len(target.Dependencies) == 0 {
 			return nil
 		}
-		// Non-empty Replace also needs a PK; assign one so join rows can be written
-		// before Save (BeforeCreate would otherwise mint it only at insert time).
-		target.Id = sql.NullString{String: xid.New().String(), Valid: true}
+		if err := sess.
+			Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
+			Create(target).Error; err != nil {
+			return err
+		}
 	}
 	return sess.Model(target).Association("Dependencies").Replace(target.Dependencies)
 }

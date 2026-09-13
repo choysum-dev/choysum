@@ -465,7 +465,7 @@ func TestReplaceModuleDependencies_EmptyWithoutIDNoops(t *testing.T) {
 	}
 }
 
-func TestReplaceModuleDependencies_MintsIDForNonEmptyDeps(t *testing.T) {
+func TestReplaceModuleDependencies_CreatesParentForNonEmptyDeps(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
 	dep := &meta.Module{Name: "dep_for_mint", Version: "1.0.0", Status: meta.Installed, Path: t.TempDir()}
 	dep.Id = sql.NullString{String: xid.New().String(), Valid: true}
@@ -473,18 +473,36 @@ func TestReplaceModuleDependencies_MintsIDForNonEmptyDeps(t *testing.T) {
 		t.Fatal(err)
 	}
 	mod := &meta.Module{
-		Name: "needs_mint", Version: "1.0.0", Status: meta.ToInstall, Path: t.TempDir(),
+		Name: "needs_create", Version: "1.0.0", Status: meta.ToInstall, Path: t.TempDir(),
 		Dependencies: []*meta.Module{dep},
 	}
 	if err := replaceModuleDependenciesFn(runtimeScope.Session(), mod); err != nil {
 		t.Fatalf("non-empty deps without Id: %v", err)
 	}
 	if !mod.Id.Valid || strings.TrimSpace(mod.Id.String) == "" {
-		t.Fatal("expected minted Id for non-empty Replace")
+		t.Fatal("expected Create to assign Id")
 	}
-	if err := runtimeScope.Session().
-		Omit("Dependencies", "Dependents", "Models", "Components", "UiResources").
-		Save(mod).Error; err != nil {
-		t.Fatalf("save after mint: %v", err)
+	var got meta.Module
+	if err := runtimeScope.Session().Where("name = ?", mod.Name).Take(&got).Error; err != nil {
+		t.Fatalf("parent row must exist after Create+Replace: %v", err)
+	}
+	if got.Id.String != mod.Id.String {
+		t.Fatalf("Id mismatch got=%q want=%q", got.Id.String, mod.Id.String)
+	}
+	// Create failure path (closed DB) must surface.
+	closed := newLifecycleCommitTestScope(t)
+	sqlDB, err := closed.Session().DB.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	orphan := &meta.Module{
+		Name: "create_fail", Version: "1.0.0", Status: meta.ToInstall, Path: t.TempDir(),
+		Dependencies: []*meta.Module{dep},
+	}
+	if err := replaceModuleDependenciesFn(closed.Session(), orphan); err == nil {
+		t.Fatal("expected Create failure on closed DB")
 	}
 }
