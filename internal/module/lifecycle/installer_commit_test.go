@@ -17,6 +17,7 @@ import (
 	moduleresult "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/evolution/hooks"
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	internaltask "github.com/choysum-dev/choysum/internal/task"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -235,16 +236,16 @@ func TestFinalizeInstallNoopHooks(t *testing.T) {
 
 func TestRunInstallHookPhaseBranches(t *testing.T) {
 	runtimeScope := newLifecycleCommitTestScope(t)
-	if err := runInstallHookPhase(runtimeScope, nil, nil, hooks.PhasePostInit, nil, "post_init"); err != nil {
+	if err := runInstallHookPhase(runtimeScope, nil, plan.OpInstall, nil, nil, hooks.PhasePostInit, nil, "post_init"); err != nil {
 		t.Fatalf("nil module: %v", err)
 	}
 	exec := &moduleManagerNoopScriptExecutor{}
 	mod := &meta.Module{Name: "demo"}
-	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, nil, "post_init"); err != nil {
+	if err := runInstallHookPhase(runtimeScope, nil, plan.OpInstall, exec, mod, hooks.PhasePostInit, nil, "post_init"); err != nil {
 		t.Fatalf("nil buildResult: %v", err)
 	}
 	empty := &moduleresult.BuildResult{}
-	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, empty, "post_init"); err != nil {
+	if err := runInstallHookPhase(runtimeScope, nil, plan.OpInstall, exec, mod, hooks.PhasePostInit, empty, "post_init"); err != nil {
 		t.Fatalf("empty buildResult: %v", err)
 	}
 	withScript := &moduleresult.BuildResult{
@@ -252,10 +253,10 @@ func TestRunInstallHookPhaseBranches(t *testing.T) {
 			OutputFiles: []api.OutputFile{{Path: "index.js", Contents: []byte("export {}")}},
 		},
 	}
-	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, withScript, "post_init"); err != nil {
+	if err := runInstallHookPhase(runtimeScope, nil, plan.OpInstall, exec, mod, hooks.PhasePostInit, withScript, "post_init"); err != nil {
 		t.Fatalf("with script: %v", err)
 	}
-	if err := runInstallHookPhase(runtimeScope, nil, mod, hooks.PhasePostInit, nil, "post_init"); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+	if err := runInstallHookPhase(runtimeScope, nil, plan.OpInstall, nil, mod, hooks.PhasePostInit, nil, "post_init"); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
 		t.Fatalf("nil executor: %v", err)
 	}
 
@@ -267,14 +268,14 @@ func TestRunInstallHookPhaseBranches(t *testing.T) {
 	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
 		return nil, errors.New("runner boom")
 	}
-	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, nil, "post_init"); err == nil || !strings.Contains(err.Error(), "runner boom") {
+	if err := runInstallHookPhase(runtimeScope, nil, plan.OpInstall, exec, mod, hooks.PhasePostInit, nil, "post_init"); err == nil || !strings.Contains(err.Error(), "runner boom") {
 		t.Fatalf("NewRunner err: %v", err)
 	}
 	hooksNewRunner = origRunner
 	hooksScriptFromBuildResult = func(*moduleresult.BuildResult) (*jsengine.JsScript, error) {
 		return nil, errors.New("script boom")
 	}
-	if err := runInstallHookPhase(runtimeScope, exec, mod, hooks.PhasePostInit, empty, "post_init"); err == nil || !strings.Contains(err.Error(), "script boom") {
+	if err := runInstallHookPhase(runtimeScope, nil, plan.OpInstall, exec, mod, hooks.PhasePostInit, empty, "post_init"); err == nil || !strings.Contains(err.Error(), "script boom") {
 		t.Fatalf("ScriptFromBuildResult err: %v", err)
 	}
 }

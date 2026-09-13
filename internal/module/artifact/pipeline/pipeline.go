@@ -897,7 +897,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 			return err
 		}
 		emitProgress(ProgressEvent{Stage: ProgressStageWebBuildCompleted, Duration: time.Since(webBuildStarted)})
-		logStep(slog.LevelInfo, "pipeline web built", "duration", time.Since(webBuildStarted))
+		logStep(slog.LevelInfo, "pipeline web built", "step", "web_build", "duration_ms", time.Since(webBuildStarted).Milliseconds())
 
 		webCommitStarted := time.Now()
 		if err := webStage.CommitKeepBackup(); err != nil {

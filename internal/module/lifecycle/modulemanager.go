@@ -576,6 +576,7 @@ func releaseLeaseWithContextFallback(runtimeScope scope.Scope, locker statepkg.L
 }
 
 func (m *ModuleManager) migrateBaseModule() error {
+	started := time.Now()
 	m.runtimeScope.Logger().Debug("base module entity migration started")
 	if err := m.runtimeScope.Session().AutoMigrate(
 		m.entities...,
@@ -585,6 +586,7 @@ func (m *ModuleManager) migrateBaseModule() error {
 	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(m.runtimeScope.Session().DB); err != nil {
 		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
 	}
+	m.runtimeScope.Logger().Info("base module entity migration completed", "step", moduleStepBaseEntityMigrate, "duration_ms", time.Since(started).Milliseconds())
 	return nil
 }
 
@@ -1012,6 +1014,8 @@ func (m *ModuleManager) syncModuleIndexAfterInstall(ctx context.Context, logger 
 func (m *ModuleManager) Install(ctx context.Context, name string) error {
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
+		resetSemanticMetricsForOp()
+		defer logSemanticMetricsSummary(m.runtimeScope.Logger(), opid)
 		name = strings.TrimSpace(name)
 		if name == "" {
 			return xfmt.Errorf("module name is empty")
@@ -1438,7 +1442,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
-		logger.Debug("module operation finalizing phase end completed", "step", "phase_end", "duration_ms", phaseEndDuration.Milliseconds())
+		logFinalizingPhaseEnd(logger, phaseEndDuration)
 
 		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: finalizing index refresh", rootModuleName))
 		indexRefreshStarted := time.Now()
@@ -1486,6 +1490,8 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
+		resetSemanticMetricsForOp()
+		defer logSemanticMetricsSummary(m.runtimeScope.Logger(), opid)
 
 		runtimeOpts := m.resolvedRuntimeOptions()
 		opCtx := newOpContext()
@@ -1666,6 +1672,8 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
+		resetSemanticMetricsForOp()
+		defer logSemanticMetricsSummary(m.runtimeScope.Logger(), opid)
 
 		originSwitch, err := m.prepareUpgradeOriginSwitch(ctx, parsed, moduleName, opid)
 		if err != nil {
@@ -1824,6 +1832,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		// Include EnsureOrder so newly installed shell deps (e.g. web) also run
 		// phase-end hooks and receive module-index refresh after upgrade.
 		finalizeModules := mergeUniqueModuleNames(plan.EnsureOrder, plan.ModuleOrder)
+		phaseEndStarted := time.Now()
 		for _, moduleName := range finalizeModules {
 			mod, err := m.Load(moduleName)
 			if err != nil {
@@ -1850,6 +1859,8 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				)
 			}
 		}
+		phaseEndDuration := time.Since(phaseEndStarted)
+		logFinalizingPhaseEnd(logger, phaseEndDuration)
 		if err := m.refreshModuleIndexForLocalModules(ctx, finalizeModules); err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
@@ -1858,7 +1869,9 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				return xfmt.Errorf("upgrade succeeded but origin cleanup failed: %w", err)
 			}
 		}
-		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
+		logger.Info("module operation completed", append(moduleOperationCompletedInfoAttrs(plan, time.Since(started)),
+			"phase_end_duration_ms", phaseEndDuration.Milliseconds(),
+		)...)
 		return nil
 	})
 }

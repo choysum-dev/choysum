@@ -32,14 +32,18 @@ type moduleUpgrader struct {
 }
 
 const (
-	moduleStepPrepare    = "prepare"
-	moduleStepBuild      = "build"
-	moduleStepInitialize = "initialize"
-	moduleStepSchema     = "schema"
-	moduleStepData       = "data"
-	moduleStepSave       = "save"
-	moduleStepCleanup    = "cleanup"
-	moduleStepFinalize   = "finalize"
+	moduleStepPrepare           = "prepare"
+	moduleStepBuild             = "build"
+	moduleStepInitialize        = "initialize"
+	moduleStepSchema            = "schema"
+	moduleStepData              = "data"
+	moduleStepSave              = "save"
+	moduleStepCleanup           = "cleanup"
+	moduleStepFinalize          = "finalize"
+	moduleStepBaseEntityMigrate = "base_entity_migrate"
+	moduleStepWebBuild          = "web_build"
+	moduleStepOriginResolve     = "origin_resolve"
+	moduleStepPhaseEnd          = "phase_end"
 )
 
 func (m *moduleUpgrader) validate() error {
@@ -69,6 +73,26 @@ func moduleOperationStepMessage(op plan.OpType) string {
 	}
 }
 
+func moduleOperationStepLogLevel(step string) slog.Level {
+	step = strings.TrimSpace(step)
+	switch step {
+	case moduleStepBuild, moduleStepSchema, moduleStepBaseEntityMigrate, moduleStepWebBuild, moduleStepOriginResolve:
+		return slog.LevelInfo
+	}
+	if strings.HasPrefix(step, "hook.") || strings.HasPrefix(step, "scripts.") {
+		return slog.LevelInfo
+	}
+	return slog.LevelDebug
+}
+
+func moduleStepHook(phase hooks.Phase) string {
+	return "hook." + string(phase)
+}
+
+func moduleStepScripts(phase scripts.Phase) string {
+	return "scripts." + string(phase)
+}
+
 func logModuleOperationStep(runtimeScope scope.Scope, opCtx *opContext, op plan.OpType, moduleName string, step string, started time.Time, extra ...any) {
 	if runtimeScope == nil || runtimeScope.Logger() == nil || started.IsZero() {
 		return
@@ -84,13 +108,7 @@ func logModuleOperationStep(runtimeScope scope.Scope, opCtx *opContext, op plan.
 		ctx, opid = ensureOpIDInContext(ctx)
 	}
 	logger := moduleOpLogger(runtimeScope.Logger(), opid, op, strings.TrimSpace(moduleName))
-	// Build/schema are the long segments; emit at Info for TX-boundary timing.
-	level := slog.LevelDebug
-	switch strings.TrimSpace(step) {
-	case moduleStepBuild, moduleStepSchema:
-		level = slog.LevelInfo
-	}
-	logger.Log(ctx, level, moduleOperationStepMessage(op), moduleOperationStepInfoAttrs(step, time.Since(started), extra...)...)
+	logger.Log(ctx, moduleOperationStepLogLevel(step), moduleOperationStepMessage(op), moduleOperationStepInfoAttrs(step, time.Since(started), extra...)...)
 }
 
 func (m *moduleUpgrader) logUpgradeStep(moduleName string, step string, started time.Time, extra ...any) {
@@ -116,16 +134,20 @@ func (m *moduleUpgrader) upgrade() error {
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
+		hookStarted := time.Now()
 		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreUpgrade, hooks.RunOptions{FromVersion: fromVersion}); err != nil {
 			return xfmt.Errorf("error running pre_upgrade hook for module %s: %w", m.module.Name, err)
 		}
+		m.logUpgradeStep(m.module.Name, moduleStepHook(hooks.PhasePreUpgrade), hookStarted, "from_version", fromVersion)
 	}
 
 	// Resolve target module version from origin without mutating origin binding during upgrade.
+	resolveStarted := time.Now()
 	target, err := m.moduleManager.resolveUpgradeModuleFromOrigin(m.runtimeScope.Context(), m.module.Name)
 	if err != nil {
 		return xfmt.Errorf("error resolving module %s from origin: %w", m.module.Name, err)
 	}
+	m.logUpgradeStep(m.module.Name, "origin_resolve", resolveStarted, "from_version", fromVersion)
 	if m.module.Id.Valid {
 		target.Id = m.module.Id
 	}
@@ -136,12 +158,16 @@ func (m *moduleUpgrader) upgrade() error {
 	}
 
 	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target, scripts.WithIntentBag(m.schemaIntents())); runner != nil {
+		validateStarted := time.Now()
 		if err := runner.Validate(m.runtimeScope.Context(), fromVersion, target.Version); err != nil {
 			return xfmt.Errorf("error validating migrations for module %s: %w", target.Name, err)
 		}
+		m.logUpgradeStep(target.Name, "scripts.validate", validateStarted, "from_version", fromVersion, "to_version", target.Version)
+		preStarted := time.Now()
 		if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhasePre, FromVersion: fromVersion, ToVersion: target.Version}); err != nil {
 			return xfmt.Errorf("error running pre migrations for module %s: %w", target.Name, err)
 		}
+		m.logUpgradeStep(target.Name, moduleStepScripts(scripts.PhasePre), preStarted, "from_version", fromVersion, "to_version", target.Version)
 	}
 	m.logUpgradeStep(target.Name, moduleStepPrepare, prepareStarted, "from_version", fromVersion, "to_version", target.Version)
 
@@ -322,9 +348,11 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 	}
 	finalizeStarted := time.Now()
 	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target, scripts.WithIntentBag(m.schemaIntents())); runner != nil {
+		postStarted := time.Now()
 		if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhasePost, FromVersion: fromVersion, ToVersion: target.Version}); err != nil {
 			return xfmt.Errorf("error running post migrations for module %s: %w", target.Name, err)
 		}
+		m.logUpgradeStep(target.Name, moduleStepScripts(scripts.PhasePost), postStarted, "from_version", fromVersion, "to_version", target.Version)
 	}
 
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target); err != nil {
@@ -338,9 +366,11 @@ func (m *moduleUpgrader) finalizeUpgrade(target *meta.Module, fromVersion string
 				hookScripts = append(hookScripts, script)
 			}
 		}
+		hookStarted := time.Now()
 		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostUpgrade, hooks.RunOptions{FromVersion: fromVersion, Scripts: hookScripts}); err != nil {
 			return xfmt.Errorf("error running post_upgrade hook for module %s: %w", target.Name, err)
 		}
+		m.logUpgradeStep(target.Name, moduleStepHook(hooks.PhasePostUpgrade), hookStarted, "from_version", fromVersion, "to_version", target.Version)
 	}
 	m.logUpgradeStep(target.Name, moduleStepFinalize, finalizeStarted, "from_version", fromVersion, "to_version", target.Version)
 	return nil

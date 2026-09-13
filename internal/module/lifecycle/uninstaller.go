@@ -366,9 +366,11 @@ func (m *moduleUninstaller) uninstall() error {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
 		var hookScripts []*jsengine.JsScript
+		hookStarted := time.Now()
 		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreUninstall, hooks.RunOptions{Scripts: hookScripts}); err != nil {
 			return xfmt.Errorf("error running pre_uninstall hook for module %s: %w", m.module.Name, err)
 		}
+		logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepHook(hooks.PhasePreUninstall), hookStarted)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepPrepare, prepareStarted)
 
@@ -412,9 +414,11 @@ func (m *moduleUninstaller) finalizeUninstall() error {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
 		var hookScripts []*jsengine.JsScript
+		hookStarted := time.Now()
 		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostUninstall, hooks.RunOptions{Scripts: hookScripts}); err != nil {
 			return xfmt.Errorf("error running post_uninstall hook for module %s: %w", m.module.Name, err)
 		}
+		logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepHook(hooks.PhasePostUninstall), hookStarted)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepFinalize, finalizeStarted)
 	return nil
