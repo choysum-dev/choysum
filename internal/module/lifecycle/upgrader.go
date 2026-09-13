@@ -352,7 +352,7 @@ func (m *moduleUpgrader) schemaIntents() schema.IntentBag {
 // Non-empty deps without an Id Create the parent first: minting Id alone would make the
 // caller's later Save() UPDATE zero rows and leave only join-table orphans.
 var replaceModuleDependenciesFn = func(sess *scope.Session, target *meta.Module) error {
-	if sess == nil || target == nil {
+	if sess == nil || sess.DB == nil || target == nil {
 		return nil
 	}
 	if !target.Id.Valid || strings.TrimSpace(target.Id.String) == "" {

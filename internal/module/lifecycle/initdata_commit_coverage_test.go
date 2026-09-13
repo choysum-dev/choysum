@@ -444,6 +444,9 @@ func TestReplaceModuleDependencies_EmptyWithoutIDNoops(t *testing.T) {
 	if err := replaceModuleDependenciesFn(nil, &meta.Module{}); err != nil {
 		t.Fatalf("nil session: %v", err)
 	}
+	if err := replaceModuleDependenciesFn(&scope.Session{}, &meta.Module{Name: "nil_db"}); err != nil {
+		t.Fatalf("nil session DB: %v", err)
+	}
 	if err := replaceModuleDependenciesFn(runtimeScope.Session(), nil); err != nil {
 		t.Fatalf("nil target: %v", err)
 	}

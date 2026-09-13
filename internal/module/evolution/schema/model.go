@@ -172,7 +172,7 @@ func markLeftoverOwnership(plan *SchemaPlan, runtimeScope scope.Scope) error {
 		seen[key] = struct{}{}
 		tables = append(tables, strings.TrimSpace(left.Table))
 	}
-	if len(tables) == 0 || runtimeScope == nil || runtimeScope.Session() == nil {
+	if len(tables) == 0 || runtimeScope == nil || runtimeScope.Session() == nil || runtimeScope.Session().DB == nil {
 		return nil
 	}
 	snaps, err := loadSnapshotsFn(runtimeScope.Session().DB, tables)

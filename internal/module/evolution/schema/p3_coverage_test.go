@@ -9,6 +9,7 @@ import (
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/meta"
+	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -573,6 +574,9 @@ func TestMarkLeftoverOwnership_EdgeCases(t *testing.T) {
 		t.Fatalf("idx_<table>_ must be owned: %#v", plan.Leftover[2])
 	}
 	if err := markLeftoverOwnership(&plan, &schemaTestScope{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := markLeftoverOwnership(&plan, &schemaTestScope{session: &scope.Session{}}); err != nil {
 		t.Fatal(err)
 	}
 
