@@ -208,6 +208,32 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 	if _, _, _, _, ok := manyToManyJoinMeta(nil); ok {
 		t.Fatal("manyToManyJoinMeta(nil) must be false")
 	}
+	// JSON null relation values must not become the literal "<nil>" string.
+	nullRel := &meta.Field{Name: "Roles", Relation: "ManyToMany", RelationJoinModel: "auth.UserRole"}
+	if err := nullRel.SetResolvedSpec(&meta.FieldResolvedSpec{
+		FieldName: "Roles",
+		Structural: meta.FieldStructuralSpec{
+			FieldType: "ManyToMany",
+			Relation: map[string]any{
+				"joinModel":        "auth.UserRole",
+				"joinField":        nil,
+				"inverseJoinField": nil,
+				"targetModel":      nil,
+			},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	joinRef, joinField, inverse, target, ok := manyToManyJoinMeta(nullRel)
+	if !ok || joinRef != "auth.UserRole" {
+		t.Fatalf("null relation values: ok=%v joinRef=%q", ok, joinRef)
+	}
+	if joinField != "" || inverse != "" || target != "" {
+		t.Fatalf("nil JSON values must stay blank, got joinField=%q inverse=%q target=%q", joinField, inverse, target)
+	}
+	if strings.Contains(joinField+inverse+target, "nil") {
+		t.Fatal("must not format nil as <nil>")
+	}
 
 	joinNoCols := &meta.Model{Application: "auth", Name: "UserRole", ModelTable: "auth_user_role"}
 	desired = DesiredSchema{Tables: map[string][]ColumnSpec{}}

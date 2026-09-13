@@ -257,22 +257,22 @@ func manyToManyJoinMeta(field *meta.Field) (joinRef, joinField, inverseJoinField
 		isM2M = strings.EqualFold(strings.TrimSpace(spec.Structural.FieldType), "ManyToMany")
 		if rel := spec.Structural.Relation; rel != nil {
 			if joinRef == "" {
-				if v, found := rel["joinModel"]; found {
+				if v, found := rel["joinModel"]; found && v != nil {
 					joinRef = strings.TrimSpace(fmt.Sprintf("%v", v))
 				}
 			}
 			if joinField == "" {
-				if v, found := rel["joinField"]; found {
+				if v, found := rel["joinField"]; found && v != nil {
 					joinField = strings.TrimSpace(fmt.Sprintf("%v", v))
 				}
 			}
 			if inverseJoinField == "" {
-				if v, found := rel["inverseJoinField"]; found {
+				if v, found := rel["inverseJoinField"]; found && v != nil {
 					inverseJoinField = strings.TrimSpace(fmt.Sprintf("%v", v))
 				}
 			}
 			if targetRef == "" {
-				if v, found := rel["targetModel"]; found {
+				if v, found := rel["targetModel"]; found && v != nil {
 					targetRef = strings.TrimSpace(fmt.Sprintf("%v", v))
 				}
 			}

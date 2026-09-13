@@ -29,7 +29,7 @@ func columnNeedsIndex(col ColumnSpec) bool {
 
 // applyPlan executes Auto ops only (caller must Validate first).
 func applyPlan(runtimeScope scope.Scope, dialect string, plan SchemaPlan) error {
-	if runtimeScope == nil || runtimeScope.Session() == nil {
+	if runtimeScope == nil || runtimeScope.Session() == nil || runtimeScope.Session().DB == nil {
 		return fmt.Errorf("runtime scope is nil")
 	}
 	db := runtimeScope.Session()
