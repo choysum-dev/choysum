@@ -400,7 +400,7 @@ func TestRunInstallCommitTX_DoesNotPublishOnCommitError(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	sentinel := &moduleresult.BuildResult{}
+	sentinel := &moduleresult.BuildResult{Module: mod}
 	buildResult := sentinel
 	mod.Status = meta.ToInstall
 	if err := installer.runInstallCommitTX(runtimeScope, runtimeScope.Context(), &buildResult, false); err == nil {
@@ -408,6 +408,9 @@ func TestRunInstallCommitTX_DoesNotPublishOnCommitError(t *testing.T) {
 	}
 	if buildResult != sentinel {
 		t.Fatal("failed install commit must not publish build result")
+	}
+	if sentinel.Module != mod {
+		t.Fatal("failed install commit must not repoint the caller's build result")
 	}
 	if mod.Status != meta.ToInstall {
 		t.Fatalf("failed TX must not publish Installed status, got %q", mod.Status)

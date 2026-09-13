@@ -208,6 +208,10 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 	}
 	var committedResult *module.BuildResult
 	var committedModule *meta.Module
+	var origBuildModule *meta.Module
+	if *buildResult != nil {
+		origBuildModule = (*buildResult).Module
+	}
 	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
 		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 			committed := installer.forCommitScope(txScope)
@@ -223,6 +227,10 @@ func (m *moduleUpgrader) runUpgradeCommitTX(
 		})
 	})
 	if err != nil {
+		// Undo bindCommitBuildModule: the TX-local target copy was discarded.
+		if *buildResult != nil {
+			(*buildResult).Module = origBuildModule
+		}
 		return err
 	}
 	*buildResult = committedResult

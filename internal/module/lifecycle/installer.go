@@ -167,6 +167,10 @@ func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Con
 	}
 	var committedResult *module.BuildResult
 	var committedModule *meta.Module
+	var origBuildModule *meta.Module
+	if *buildResult != nil {
+		origBuildModule = (*buildResult).Module
+	}
 	err := runWithLeaseRenewPaused(m.moduleManager, func() error {
 		return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 			committed := m.forCommitScope(txScope)
@@ -180,6 +184,10 @@ func (m *moduleInstaller) runInstallCommitTX(txRoot scope.Scope, ctx context.Con
 		})
 	})
 	if err != nil {
+		// Undo bindCommitBuildModule: the TX-local module copy was discarded.
+		if *buildResult != nil {
+			(*buildResult).Module = origBuildModule
+		}
 		return err
 	}
 	*buildResult = committedResult

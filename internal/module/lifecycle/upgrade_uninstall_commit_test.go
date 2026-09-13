@@ -197,6 +197,7 @@ func TestRunUpgradeCommitTX_WithAndWithoutManager(t *testing.T) {
 		Dependencies: closedTarget.Dependencies,
 	}
 	liveTarget.Id = liveMod.Id
+	sentinel.Module = liveTarget
 	liveUp := &moduleUpgrader{runtimeScope: liveScope, module: liveMod, moduleManager: mgr, ctx: newOpContext()}
 	liveInst := &moduleInstaller{module: liveTarget, runtimeScope: liveScope, moduleManager: mgr, ctx: newOpContext()}
 	if err := liveUp.runUpgradeCommitTX(liveScope, nil, liveInst, "1.0.0", &buildResult, false); err == nil {
@@ -204,6 +205,9 @@ func TestRunUpgradeCommitTX_WithAndWithoutManager(t *testing.T) {
 	}
 	if buildResult != sentinel {
 		t.Fatal("failed upgrade commit must not publish build result")
+	}
+	if sentinel.Module != liveTarget {
+		t.Fatal("failed upgrade commit must not repoint the caller's build result")
 	}
 
 	buildResult = nil
