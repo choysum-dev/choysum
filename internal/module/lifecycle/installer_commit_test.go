@@ -257,15 +257,15 @@ func TestInstall_PreInitRunsOutsideCommitTX(t *testing.T) {
 		ctx:          newOpContext(),
 		// no moduleManager → pre_init fails after commit
 	}
-	if err := failing.installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "js executor is nil") {
+	if err := failing.installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "pre_init after commit") {
 		t.Fatalf("expected pre_init failure after commit, got %v", err)
 	}
 	var got meta.Module
 	if err := runtimeScope.Session().Where("name = ?", "demo_pre_init_after_commit").Take(&got).Error; err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != meta.Installed {
-		t.Fatalf("after commit+failed pre_init status=%q want installed (TX already committed)", got.Status)
+	if got.Status != meta.ToInstall {
+		t.Fatalf("after commit+failed pre_init status=%q want to install (retryable)", got.Status)
 	}
 }
 
@@ -285,6 +285,12 @@ func TestInstallPreInitHookError(t *testing.T) {
 	}
 	if err := (*moduleInstaller)(nil).runInstallPreInit(nil); err != nil {
 		t.Fatalf("nil installer: %v", err)
+	}
+	if err := (&moduleInstaller{module: mod}).runInstallPreInit(nil); err == nil || !strings.Contains(err.Error(), "scope is nil") {
+		t.Fatalf("nil scope: %v", err)
+	}
+	if err := (&moduleInstaller{runtimeScope: runtimeScope}).runInstallPreInit(nil); err == nil || !strings.Contains(err.Error(), "module is nil") {
+		t.Fatalf("nil module: %v", err)
 	}
 }
 

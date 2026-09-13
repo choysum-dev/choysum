@@ -139,7 +139,8 @@ func (m *moduleInstaller) install() error {
 
 // installAfterPrepare runs the install commit TX, then TX-external pre_init, then finalize.
 // Commit holds only Persist/schema/data/save; pre_init sees already-persisted IR and must not
-// extend the Required TX (failure after commit is not rolled back with the TX).
+// extend the Required TX. If post-commit hooks fail, status is reverted to ToInstall so a
+// later install retry is not skipped as already_installed.
 func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, persistLater bool) error {
 	if m == nil {
 		return xfmt.Errorf("scope is nil")
@@ -154,9 +155,14 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 		return err
 	}
 	if err := m.runInstallPreInit(buildResult); err != nil {
-		return err
+		m.markPostCommitHooksIncomplete()
+		return xfmt.Errorf("error running pre_init after commit (module persisted, not finalized): %w", err)
 	}
-	return m.finalizeInstall(buildResult)
+	if err := m.finalizeInstall(buildResult); err != nil {
+		m.markPostCommitHooksIncomplete()
+		return xfmt.Errorf("error running post_init after commit (module persisted, not finalized): %w", err)
+	}
+	return nil
 }
 
 // runInstallCommitTX runs the install commit Required TX, pausing lease renew when a manager is set.
@@ -359,16 +365,36 @@ func (m *moduleInstaller) runInstallPreInit(buildResult *module.BuildResult) err
 	if m == nil {
 		return nil
 	}
+	if m.runtimeScope == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	if m.module == nil {
+		return xfmt.Errorf("module is nil")
+	}
 	initializeStarted := time.Now()
 	if err := runInstallHookPhase(m.runtimeScope, m.ctx, plan.OpInstall, installerJSExecutor(m), m.module, hooks.PhasePreInit, buildResult, "pre_init"); err != nil {
 		return err
 	}
-	name := ""
-	if m.module != nil {
-		name = m.module.Name
-	}
-	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, name, moduleStepInitialize, initializeStarted)
+	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
 	return nil
+}
+
+// markPostCommitHooksIncomplete reverts status to ToInstall after a post-commit hook failure
+// so a subsequent install is not skipped as already_installed. Best-effort; Persist/schema/data stay.
+func (m *moduleInstaller) markPostCommitHooksIncomplete() {
+	if m == nil || m.module == nil || m.runtimeScope == nil || m.runtimeScope.Session() == nil {
+		return
+	}
+	name := strings.TrimSpace(m.module.Name)
+	if name == "" {
+		return
+	}
+	m.module.Status = meta.ToInstall
+	_ = sqliteretry.WithLockRetry(func() error {
+		return m.runtimeScope.Session().Model(&meta.Module{}).
+			Where("name = ?", name).
+			Update("status", meta.ToInstall).Error
+	})
 }
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {

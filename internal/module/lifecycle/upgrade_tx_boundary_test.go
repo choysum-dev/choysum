@@ -22,8 +22,24 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 		t.Fatal("runtime.Caller failed")
 	}
 	dir := filepath.Dir(thisFile)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bannedIdents := map[string]bool{
+		"runInstallHookPhase":     true,
+		"runUpgradeHookPhase":     true,
+		"runUninstallHookPhase":   true,
+		"uninstallHooksNewRunner": true,
+		"upgradeHooksNewRunner":   true,
+		"hooksNewRunner":          true,
+	}
 	fset := token.NewFileSet()
-	for _, name := range []string{"installer.go", "upgrader.go", "uninstaller.go"} {
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
 		path := filepath.Join(dir, name)
 		src, err := os.ReadFile(path)
 		if err != nil {
@@ -35,29 +51,36 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 		}
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Name == nil {
+			if !ok || fn.Name == nil || fn.Body == nil {
 				continue
 			}
 			fnName := fn.Name.Name
 			if fnName != "commitInstall" && fnName != "commitUpgrade" && fnName != "commitUninstall" {
 				continue
 			}
-			start := fset.Position(fn.Pos()).Offset
-			end := fset.Position(fn.End()).Offset
-			body := string(src[start:end])
-			for _, banned := range []string{
-				"runInstallHookPhase(",
-				"runUpgradeHookPhase(",
-				"runUninstallHookPhase(",
-				"hooks.NewRunner(",
-				"uninstallHooksNewRunner(",
-				"upgradeHooksNewRunner(",
-				".RunPhase(",
-			} {
-				if strings.Contains(body, banned) {
-					t.Errorf("%s contains banned hook call %q", fnName, banned)
+			ast.Inspect(fn.Body, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
 				}
-			}
+				switch fun := call.Fun.(type) {
+				case *ast.Ident:
+					if bannedIdents[fun.Name] {
+						t.Errorf("%s calls banned hook helper %q", fnName, fun.Name)
+					}
+				case *ast.SelectorExpr:
+					if fun.Sel == nil {
+						return true
+					}
+					// hooks.NewRunner / pkg.RunPhase only when the package ident is hooks.
+					if id, ok := fun.X.(*ast.Ident); ok && id.Name == "hooks" {
+						if fun.Sel.Name == "NewRunner" || fun.Sel.Name == "RunPhase" {
+							t.Errorf("%s calls banned hooks.%s", fnName, fun.Sel.Name)
+						}
+					}
+				}
+				return true
+			})
 		}
 	}
 }
