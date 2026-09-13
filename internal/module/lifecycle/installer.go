@@ -155,14 +155,25 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 		return err
 	}
 	if err := m.runInstallPreInit(buildResult); err != nil {
-		m.markPostCommitHooksIncomplete()
-		return xfmt.Errorf("error running pre_init after commit (module persisted, not finalized): %w", err)
+		return m.wrapPostCommitHookError("pre_init", err)
 	}
 	if err := m.finalizeInstall(buildResult); err != nil {
-		m.markPostCommitHooksIncomplete()
-		return xfmt.Errorf("error running post_init after commit (module persisted, not finalized): %w", err)
+		return m.wrapPostCommitHookError("finalize", err)
 	}
 	return nil
+}
+
+// wrapPostCommitHookError reverts status for retry and annotates that Commit already persisted.
+func (m *moduleInstaller) wrapPostCommitHookError(phase string, err error) error {
+	markErr := m.markPostCommitHooksIncomplete()
+	msg := "error running " + phase + " after commit (module persisted, not finalized)"
+	if phase == "finalize" {
+		msg = "error finalizing install after commit (module persisted, not finalized)"
+	}
+	if markErr != nil {
+		return xfmt.Errorf("%s: %w (also failed reverting status: %v)", msg, err, markErr)
+	}
+	return xfmt.Errorf("%s: %w", msg, err)
 }
 
 // runInstallCommitTX runs the install commit Required TX, pausing lease renew when a manager is set.
@@ -379,22 +390,38 @@ func (m *moduleInstaller) runInstallPreInit(buildResult *module.BuildResult) err
 	return nil
 }
 
+// updatePostCommitIncompleteStatus flips Installed → ToInstall for retry. Overridable in tests.
+var updatePostCommitIncompleteStatus = func(sess *scope.Session, name string) (int64, error) {
+	res := sess.Model(&meta.Module{}).
+		Where("name = ? AND status = ?", name, meta.Installed).
+		Update("status", meta.ToInstall)
+	return res.RowsAffected, res.Error
+}
+
 // markPostCommitHooksIncomplete reverts status to ToInstall after a post-commit hook failure
-// so a subsequent install is not skipped as already_installed. Best-effort; Persist/schema/data stay.
-func (m *moduleInstaller) markPostCommitHooksIncomplete() {
+// so a subsequent install is not skipped as already_installed. Persist/schema/data stay.
+// Only mutates in-memory status after the DB update succeeds.
+func (m *moduleInstaller) markPostCommitHooksIncomplete() error {
 	if m == nil || m.module == nil || m.runtimeScope == nil || m.runtimeScope.Session() == nil {
-		return
+		return nil
 	}
 	name := strings.TrimSpace(m.module.Name)
 	if name == "" {
-		return
+		return nil
+	}
+	var affected int64
+	if err := sqliteretry.WithLockRetry(func() error {
+		n, err := updatePostCommitIncompleteStatus(m.runtimeScope.Session(), name)
+		affected = n
+		return err
+	}); err != nil {
+		return err
+	}
+	if affected == 0 {
+		return xfmt.Errorf("module %q was not %q; status left unchanged", name, meta.Installed)
 	}
 	m.module.Status = meta.ToInstall
-	_ = sqliteretry.WithLockRetry(func() error {
-		return m.runtimeScope.Session().Model(&meta.Module{}).
-			Where("name = ?", name).
-			Update("status", meta.ToInstall).Error
-	})
+	return nil
 }
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {

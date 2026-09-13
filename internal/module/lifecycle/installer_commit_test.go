@@ -267,6 +267,134 @@ func TestInstall_PreInitRunsOutsideCommitTX(t *testing.T) {
 	if got.Status != meta.ToInstall {
 		t.Fatalf("after commit+failed pre_init status=%q want to install (retryable)", got.Status)
 	}
+
+	// Retry with hooks skipped (nil runner) must complete and mark Installed again.
+	prev := hooksNewRunner
+	t.Cleanup(func() { hooksNewRunner = prev })
+	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
+		return nil, nil
+	}
+	mod2.Status = meta.ToInstall
+	retry := &moduleInstaller{
+		module:        mod2,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	if err := retry.installAfterPrepare(nil, false); err != nil {
+		t.Fatalf("retry after pre_init failure must succeed: %v", err)
+	}
+	if mod2.Status != meta.Installed {
+		t.Fatalf("retry status=%q want installed", mod2.Status)
+	}
+}
+
+func TestInstallAfterPrepare_FinalizeFailureRevertsStatus(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name: "demo_finalize_fail", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	prev := hooksNewRunner
+	t.Cleanup(func() { hooksNewRunner = prev })
+	n := 0
+	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
+		n++
+		if n == 1 {
+			return nil, nil // skip pre_init
+		}
+		return nil, errors.New("finalize runner boom")
+	}
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	err := installer.installAfterPrepare(nil, false)
+	if err == nil || !strings.Contains(err.Error(), "finalizing install after commit") {
+		t.Fatalf("got %v", err)
+	}
+	var got meta.Module
+	if dbErr := runtimeScope.Session().Where("name = ?", "demo_finalize_fail").Take(&got).Error; dbErr != nil {
+		t.Fatal(dbErr)
+	}
+	if got.Status != meta.ToInstall {
+		t.Fatalf("status=%q want to install", got.Status)
+	}
+}
+
+func TestMarkPostCommitHooksIncomplete(t *testing.T) {
+	if err := (*moduleInstaller)(nil).markPostCommitHooksIncomplete(); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&moduleInstaller{}).markPostCommitHooksIncomplete(); err != nil {
+		t.Fatal(err)
+	}
+	runtimeScope := newLifecycleCommitTestScope(t)
+	emptyName := &moduleInstaller{
+		module:       &meta.Module{Name: "  "},
+		runtimeScope: runtimeScope,
+	}
+	if err := emptyName.markPostCommitHooksIncomplete(); err != nil {
+		t.Fatal(err)
+	}
+
+	mod := &meta.Module{
+		Name: "demo_mark_incomplete", Version: "1.0.0", Status: meta.Installed,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	installer := &moduleInstaller{module: mod, runtimeScope: runtimeScope}
+	if err := installer.markPostCommitHooksIncomplete(); err != nil {
+		t.Fatal(err)
+	}
+	if mod.Status != meta.ToInstall {
+		t.Fatalf("memory status=%q", mod.Status)
+	}
+	var got meta.Module
+	if err := runtimeScope.Session().Where("name = ?", "demo_mark_incomplete").Take(&got).Error; err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != meta.ToInstall {
+		t.Fatalf("db status=%q", got.Status)
+	}
+	// Already ToInstall → affected=0.
+	if err := installer.markPostCommitHooksIncomplete(); err == nil || !strings.Contains(err.Error(), "was not") {
+		t.Fatalf("expected unchanged-status error, got %v", err)
+	}
+
+	prev := updatePostCommitIncompleteStatus
+	t.Cleanup(func() { updatePostCommitIncompleteStatus = prev })
+	updatePostCommitIncompleteStatus = func(*scope.Session, string) (int64, error) {
+		return 0, errors.New("db boom")
+	}
+	mod.Status = meta.Installed
+	_ = runtimeScope.Session().Model(mod).Update("status", meta.Installed)
+	if err := installer.markPostCommitHooksIncomplete(); err == nil || !strings.Contains(err.Error(), "db boom") {
+		t.Fatalf("expected db error, got %v", err)
+	}
+	if mod.Status != meta.Installed {
+		t.Fatalf("memory status must stay installed when update fails, got %q", mod.Status)
+	}
+
+	// wrapPostCommitHookError joins mark failure.
+	failing := &moduleInstaller{
+		module:       mod,
+		runtimeScope: runtimeScope,
+		ctx:          newOpContext(),
+	}
+	err := failing.wrapPostCommitHookError("pre_init", errors.New("hook boom"))
+	if err == nil || !strings.Contains(err.Error(), "also failed reverting status") || !strings.Contains(err.Error(), "hook boom") {
+		t.Fatalf("got %v", err)
+	}
 }
 
 func TestInstallPreInitHookError(t *testing.T) {

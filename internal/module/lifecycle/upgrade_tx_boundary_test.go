@@ -26,13 +26,16 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bannedIdents := map[string]bool{
+	banned := map[string]bool{
 		"runInstallHookPhase":     true,
 		"runUpgradeHookPhase":     true,
 		"runUninstallHookPhase":   true,
+		"runInstallPreInit":       true,
 		"uninstallHooksNewRunner": true,
 		"upgradeHooksNewRunner":   true,
 		"hooksNewRunner":          true,
+		"NewRunner":               true,
+		"RunPhase":                true,
 	}
 	fset := token.NewFileSet()
 	for _, entry := range entries {
@@ -65,18 +68,12 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 				}
 				switch fun := call.Fun.(type) {
 				case *ast.Ident:
-					if bannedIdents[fun.Name] {
+					if banned[fun.Name] {
 						t.Errorf("%s calls banned hook helper %q", fnName, fun.Name)
 					}
 				case *ast.SelectorExpr:
-					if fun.Sel == nil {
-						return true
-					}
-					// hooks.NewRunner / pkg.RunPhase only when the package ident is hooks.
-					if id, ok := fun.X.(*ast.Ident); ok && id.Name == "hooks" {
-						if fun.Sel.Name == "NewRunner" || fun.Sel.Name == "RunPhase" {
-							t.Errorf("%s calls banned hooks.%s", fnName, fun.Sel.Name)
-						}
+					if fun.Sel != nil && banned[fun.Sel.Name] {
+						t.Errorf("%s calls banned hook helper %q", fnName, fun.Sel.Name)
 					}
 				}
 				return true
