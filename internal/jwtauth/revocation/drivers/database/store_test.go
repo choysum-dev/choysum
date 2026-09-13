@@ -261,6 +261,21 @@ func TestNewDatabaseStoreUsesExistingTableAndSurfacesInitFailures(t *testing.T) 
 		}
 	})
 
+	t.Run("keeps populated compatible auth_token schema", func(t *testing.T) {
+		session := newDatabaseTestSession(t, "compatible-populated.db")
+		if err := session.AutoMigrate(&revokedTokenRecord{}); err != nil {
+			t.Fatalf("precreate compatible auth_token: %v", err)
+		}
+		if err := session.Exec(`INSERT INTO auth_token(id, user_id, token_id, token_type, expires_at, revoked) VALUES ('1','u','t','access', datetime('now'), 0)`).Error; err != nil {
+			t.Fatalf("insert compatible row: %v", err)
+		}
+		store, err := NewDatabaseStore(newDatabaseTestScope(session))
+		if err != nil {
+			t.Fatalf("NewDatabaseStore() error = %v", err)
+		}
+		defer store.Close()
+	})
+
 	t.Run("returns init errors when database session is unavailable", func(t *testing.T) {
 		session := newDatabaseTestSession(t, "closed.db")
 		sqlDB, err := session.DB.DB()
@@ -542,6 +557,7 @@ func TestIsVarcharDBType(t *testing.T) {
 	}{
 		{"varchar", true},
 		{"VARCHAR(20)", true},
+		{"varchar (20)", true},
 		{"character varying", true},
 		{"character varying(20)", true},
 		{"char", false},
@@ -567,6 +583,7 @@ func TestIsIntegerLikeDBType(t *testing.T) {
 		{"INT4", true},
 		{"serial", true},
 		{"numeric", true},
+		{"numeric (10, 2)", true},
 		{"varchar", false},
 		{"char", false},
 		{"", false},

@@ -885,6 +885,71 @@ func TestEnsureIndexes_FieldLookupMatchesColumnUnique(t *testing.T) {
 	}
 }
 
+func TestEnsureIndexes_EmptyLiveNameFallsBackToCandidate(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE empty_name_idx (code text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE INDEX idx_empty_name_idx_code ON empty_name_idx (code)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	origGet := getIndexes
+	origDrop := dropIndexFn
+	t.Cleanup(func() { getIndexes = origGet; dropIndexFn = origDrop })
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return []gorm.Index{fakeIndex{name: "", cols: []string{"code"}, unique: false}}, nil
+	}
+	var dropped string
+	dropIndexFn = func(_ *gorm.DB, table, indexName, dialect string) error {
+		dropped = table + "|" + indexName
+		// Drop the real physical index so CreateIndex can succeed after the fallback name is chosen.
+		return origDrop(db, table, "idx_empty_name_idx_code", dialect)
+	}
+	col := ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true}
+	if err := ensureIndexesForColumn(db, "empty_name_idx", col, "sqlite"); err != nil {
+		t.Fatal(err)
+	}
+	if dropped != "empty_name_idx|Code" {
+		t.Fatalf("expected fallback to candidate name, got %q", dropped)
+	}
+}
+
+func TestEnsureIndexes_HasIndexWithoutListableMatchSkipsCreate(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE has_idx_skip (code text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE INDEX idx_has_idx_skip_code ON has_idx_skip (code)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	origGet := getIndexes
+	t.Cleanup(func() { getIndexes = origGet })
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return nil, nil
+	}
+	col := ColumnSpec{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true}
+	if err := ensureIndexesForColumn(db, "has_idx_skip", col, "sqlite"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLiveIndexUniqueInfo_PrefersUniqueMatch(t *testing.T) {
+	origGet := getIndexes
+	t.Cleanup(func() { getIndexes = origGet })
+	getIndexes = func(*gorm.DB, string) ([]gorm.Index, error) {
+		return []gorm.Index{
+			fakeIndex{name: "idx_code", cols: []string{"code"}, unique: false},
+			fakeIndex{name: "uidx_code", cols: []string{"code"}, unique: true},
+		}, nil
+	}
+	name, unique, found, err := liveIndexUniqueInfo(nil, "t", "Code", "code")
+	if err != nil || !found || !unique || name != "uidx_code" {
+		t.Fatalf("got name=%q unique=%v found=%v err=%v", name, unique, found, err)
+	}
+}
+
 func TestEnsureIndexes_ReplacesNonUniqueByPhysicalName(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB

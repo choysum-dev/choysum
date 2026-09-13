@@ -225,7 +225,7 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 		return nil
 	}
 
-	columnTypes, err := db.Migrator().ColumnTypes(tableName)
+	columnTypes, err := authTokenColumnTypes(db, tableName)
 	if err != nil {
 		return err
 	}
@@ -235,26 +235,22 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 		return nil
 	}
 
-	var rowCount int64
-	if err := db.Table(tableName).Count(&rowCount).Error; err != nil {
+	rowCount, err := authTokenTableCount(db, tableName)
+	if err != nil {
 		return err
 	}
 	if rowCount == 0 {
-		// Recheck immediately before drop so a concurrent insert in this
-		// transaction's view is less likely to be destroyed (still best-effort
-		// without a cross-process migration lock).
-		if err := db.Table(tableName).Count(&rowCount).Error; err != nil {
+		// Recheck before drop (best-effort; already inside RequiresNew TX).
+		rowCount, err = authTokenTableCount(db, tableName)
+		if err != nil {
 			return err
 		}
 		if rowCount == 0 {
-			if err := db.Migrator().DropTable(tableName); err != nil {
-				return err
-			}
-			return db.AutoMigrate(&revokedTokenRecord{})
+			return authTokenDropAndRecreate(db, tableName)
 		}
 	}
 
-	if db.Dialector.Name() != "postgres" {
+	if authTokenDialectName(db) != "postgres" {
 		return fmt.Errorf("auth_token schema is incompatible with Desired and the table is not empty (rows=%d)", rowCount)
 	}
 
@@ -262,15 +258,18 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 	byName := columnTypesByName(columnTypes)
 
 	if col, ok := byName["id"]; ok && authTokenIDNeedsTypeRepair(col.DatabaseTypeName()) {
-		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id DROP DEFAULT", quotedTable)).Error; err != nil {
+		if err := authTokenExecSQL(db, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id DROP DEFAULT", quotedTable)); err != nil {
 			return err
 		}
-		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id TYPE char(20) USING id::text", quotedTable)).Error; err != nil {
+		if err := authTokenExecSQL(db, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN id TYPE char(20) USING id::text", quotedTable)); err != nil {
 			return err
 		}
 	}
 	if col, ok := byName["user_id"]; ok && authTokenIDNeedsTypeRepair(col.DatabaseTypeName()) {
-		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN user_id TYPE char(20) USING user_id::text", quotedTable)).Error; err != nil {
+		if err := authTokenExecSQL(db, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN user_id DROP DEFAULT", quotedTable)); err != nil {
+			return err
+		}
+		if err := authTokenExecSQL(db, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN user_id TYPE char(20) USING user_id::text", quotedTable)); err != nil {
 			return err
 		}
 	}
@@ -283,19 +282,19 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 		if !ok || !nullable {
 			continue
 		}
-		var nulls int64
-		if err := db.Table(tableName).Where(name + " IS NULL").Count(&nulls).Error; err != nil {
+		nulls, err := authTokenNullCount(db, tableName, name)
+		if err != nil {
 			return err
 		}
 		if nulls > 0 {
 			return fmt.Errorf("auth_token.%s is nullable with %d NULL row(s); cannot tighten to NOT NULL automatically", name, nulls)
 		}
-		if err := db.Exec(fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL", quotedTable, name)).Error; err != nil {
+		if err := authTokenExecSQL(db, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL", quotedTable, name)); err != nil {
 			return err
 		}
 	}
 
-	repaired, err := db.Migrator().ColumnTypes(tableName)
+	repaired, err := authTokenColumnTypes(db, tableName)
 	if err != nil {
 		return err
 	}
@@ -304,6 +303,49 @@ func ensureAuthTokenSchemaCompatibility(db *gorm.DB, tableName string) error {
 	}
 	return nil
 }
+
+// Production defaults for auth_token compatibility helpers. Package vars below
+// point here so tests can override dialect-specific branches without a live
+// postgres server while still covering these bodies.
+func defaultAuthTokenDialectName(db *gorm.DB) string {
+	return db.Dialector.Name()
+}
+
+func defaultAuthTokenColumnTypes(db *gorm.DB, table string) ([]gorm.ColumnType, error) {
+	return db.Migrator().ColumnTypes(table)
+}
+
+func defaultAuthTokenTableCount(db *gorm.DB, table string) (int64, error) {
+	var n int64
+	err := db.Table(table).Count(&n).Error
+	return n, err
+}
+
+func defaultAuthTokenNullCount(db *gorm.DB, table, column string) (int64, error) {
+	var n int64
+	err := db.Table(table).Where(column + " IS NULL").Count(&n).Error
+	return n, err
+}
+
+func defaultAuthTokenDropAndRecreate(db *gorm.DB, tableName string) error {
+	if err := db.Migrator().DropTable(tableName); err != nil {
+		return err
+	}
+	return db.AutoMigrate(&revokedTokenRecord{})
+}
+
+func defaultAuthTokenExecSQL(db *gorm.DB, sql string) error {
+	return db.Exec(sql).Error
+}
+
+var (
+	authTokenDialectName     = defaultAuthTokenDialectName
+	authTokenColumnTypes     = defaultAuthTokenColumnTypes
+	authTokenTableCount      = defaultAuthTokenTableCount
+	authTokenNullCount       = defaultAuthTokenNullCount
+	authTokenDropAndRecreate = defaultAuthTokenDropAndRecreate
+	authTokenExecSQL         = defaultAuthTokenExecSQL
+)
 
 func columnTypesByName(columnTypes []gorm.ColumnType) map[string]gorm.ColumnType {
 	byName := make(map[string]gorm.ColumnType, len(columnTypes))
@@ -352,7 +394,7 @@ func isIntegerLikeDBType(raw string) bool {
 		return false
 	}
 	if i := strings.IndexByte(dbType, '('); i >= 0 {
-		dbType = dbType[:i]
+		dbType = strings.TrimSpace(dbType[:i])
 	}
 	switch dbType {
 	case "int", "integer", "int2", "int4", "int8", "smallint", "bigint",
@@ -374,7 +416,7 @@ func isVarcharDBType(raw string) bool {
 	// Strip length: varchar(20) → varchar. Avoid matching "char" inside "varchar".
 	base := dbType
 	if i := strings.IndexByte(base, '('); i >= 0 {
-		base = base[:i]
+		base = strings.TrimSpace(base[:i])
 	}
 	return base == "varchar"
 }

@@ -249,17 +249,29 @@ func ensureIndexesForColumn(db *gorm.DB, table string, col ColumnSpec, dialect s
 
 // liveIndexUniqueInfo reports the physical name and uniqueness of a live index matching
 // indexName (or single-column colName). found is false when no listable index matches.
+// When both unique and non-unique indexes match, the unique one is preferred.
 func liveIndexUniqueInfo(db *gorm.DB, table, indexName, colName string) (name string, unique, found bool, err error) {
 	indexes, err := getIndexes(db, table)
 	if err != nil {
 		return "", false, false, fmt.Errorf("inspect indexes for %s: %w", table, err)
 	}
+	var firstName string
+	foundAny := false
 	for _, idx := range indexes {
 		if idx == nil || !liveIndexMatches(idx, indexName, colName) {
 			continue
 		}
-		u, ok := idx.Unique()
-		return strings.TrimSpace(idx.Name()), ok && u, true, nil
+		n := strings.TrimSpace(idx.Name())
+		if !foundAny {
+			firstName = n
+			foundAny = true
+		}
+		if u, ok := idx.Unique(); ok && u {
+			return n, true, true, nil
+		}
+	}
+	if foundAny {
+		return firstName, false, true, nil
 	}
 	return "", false, false, nil
 }
