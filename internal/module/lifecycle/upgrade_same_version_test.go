@@ -20,6 +20,10 @@ func TestSameNormalizedVersion(t *testing.T) {
 		{from: "1.0.0", to: "1.0.1", want: false},
 		{from: "", to: "", want: true},
 		{from: "1.0.0", to: "", want: false},
+		// Non-semver tags must not collapse via semver.Compare(invalid,invalid)==0.
+		{from: "0.1", to: "0.2", want: false},
+		{from: "2024.1", to: "2024.2", want: false},
+		{from: "0.1", to: "0.1", want: true},
 	}
 	for _, tt := range tests {
 		if got := scripts.SameNormalizedVersion(tt.from, tt.to); got != tt.want {

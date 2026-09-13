@@ -39,6 +39,8 @@ const (
 
 	// Cap retained Programs so large module trees do not pin unbounded checker state.
 	defaultSemanticProgramCacheLimit = 16
+	// Cap text-fallback memoization on the process-wide resolver.
+	defaultFallbackCacheLimit = 512
 )
 
 // Test overrides for coverage of rare failure paths.
@@ -49,10 +51,13 @@ var (
 		return program.GetSourceFile(path)
 	}
 	semanticProgramCacheLimit = defaultSemanticProgramCacheLimit
+	fallbackCacheLimit        = defaultFallbackCacheLimit
 	// Invoked after an outer cache miss unlock, before singleflight.Do.
 	semanticAfterCacheMissUnlock = func() {}
 	// Invoked after a successful Program build, before the final cache publish.
 	semanticAfterProgramBuild = func() {}
+	// Invoked after a text-fallback cache miss unlock, before recomputing.
+	afterFallbackMissUnlock = func() {}
 )
 
 // semanticTypeResolver reduces service method parameter/return types to protobuf
@@ -95,10 +100,6 @@ func sharedSemanticTypeResolver(logger *slog.Logger) *semanticTypeResolver {
 	defer sharedSemanticMu.Unlock()
 	if sharedSemantic == nil {
 		sharedSemantic = newSemanticTypeResolver(logger)
-		return sharedSemantic
-	}
-	if logger != nil && sharedSemantic.logger == nil {
-		sharedSemantic.logger = logger
 	}
 	return sharedSemantic
 }
@@ -167,6 +168,7 @@ func (r *semanticTypeResolver) cachedTextFallback(tsAnnotation string) string {
 	}
 	r.mu.Unlock()
 
+	afterFallbackMissUnlock()
 	fallback := getProtoTypeFromTsType(key)
 
 	r.mu.Lock()
@@ -174,6 +176,10 @@ func (r *semanticTypeResolver) cachedTextFallback(tsAnnotation string) string {
 		r.fallbackCacheHits++
 		r.mu.Unlock()
 		return cached
+	}
+	if limit := fallbackCacheLimit; limit > 0 && len(r.fallbackCache) >= limit {
+		// Bound process-wide growth: drop all memoized entries and start fresh.
+		r.fallbackCache = make(map[string]string)
 	}
 	r.fallbackCache[key] = fallback
 	r.fallbackMisses++

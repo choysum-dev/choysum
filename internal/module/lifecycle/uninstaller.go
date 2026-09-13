@@ -14,6 +14,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
+	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/ettle/strcase"
@@ -365,19 +366,13 @@ func (m *moduleUninstaller) uninstall() error {
 		return xfmt.Errorf("error validating module uninstallation: %w", err)
 	}
 
-	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
+	if hookRunner, err := uninstallHooksNewRunner(m.runtimeScope, moduleManagerJSExecutor(m.moduleManager), m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
 		m.hookRunner = hookRunner
-		var hookScripts []*jsengine.JsScript
-		hookStarted := time.Now()
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreUninstall, hooks.RunOptions{
-			Scripts:              hookScripts,
-			ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil,
-		}); err != nil {
-			return xfmt.Errorf("error running pre_uninstall hook for module %s: %w", m.module.Name, err)
+		if err := m.runUninstallHookPhase(hookRunner, hooks.PhasePreUninstall, "pre_uninstall"); err != nil {
+			return err
 		}
-		logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepHook(hooks.PhasePreUninstall), hookStarted)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepPrepare, prepareStarted)
 
@@ -417,28 +412,68 @@ func (m *moduleUninstaller) commitUninstall() error {
 
 func (m *moduleUninstaller) finalizeUninstall() error {
 	finalizeStarted := time.Now()
-	hookRunner := m.hookRunner
-	if hookRunner == nil {
-		var err error
-		hookRunner, err = hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module)
-		if err != nil {
-			return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
-		}
+	hookRunner, err := m.resolveUninstallHookRunner()
+	if err != nil {
+		return err
 	}
-	if hookRunner != nil {
-		var hookScripts []*jsengine.JsScript
-		hookStarted := time.Now()
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostUninstall, hooks.RunOptions{
-			Scripts:              hookScripts,
-			ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil,
-		}); err != nil {
-			return xfmt.Errorf("error running post_uninstall hook for module %s: %w", m.module.Name, err)
-		}
-		logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepHook(hooks.PhasePostUninstall), hookStarted)
+	if err := m.runUninstallHookPhase(hookRunner, hooks.PhasePostUninstall, "post_uninstall"); err != nil {
+		return err
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepFinalize, finalizeStarted)
 	return nil
 }
+
+// runUninstallHookPhase runs one uninstall hook with executor-script reuse enabled when possible.
+func (m *moduleUninstaller) runUninstallHookPhase(hookRunner *hooks.Runner, phase hooks.Phase, phaseLabel string) error {
+	if m == nil || hookRunner == nil {
+		return nil
+	}
+	moduleName := nameOrEmpty(m.module)
+	var hookScripts []*jsengine.JsScript
+	hookStarted := time.Now()
+	if err := hookRunner.RunPhase(m.runtimeScope.Context(), phase, hooks.RunOptions{
+		Scripts:              hookScripts,
+		ReuseExecutorScripts: reuseExecutorScriptsEnabled(m.moduleManager),
+	}); err != nil {
+		return xfmt.Errorf("error running %s hook for module %s: %w", phaseLabel, moduleName, err)
+	}
+	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, moduleName, moduleStepHook(phase), hookStarted)
+	return nil
+}
+
+func nameOrEmpty(module *meta.Module) string {
+	if module == nil {
+		return ""
+	}
+	return module.Name
+}
+
+// resolveUninstallHookRunner prefers the prepare-phase runner so post_uninstall
+// reuses the cached entry Bundle; falls back to constructing a new runner.
+func (m *moduleUninstaller) resolveUninstallHookRunner() (*hooks.Runner, error) {
+	if m == nil {
+		return nil, nil
+	}
+	if m.hookRunner != nil {
+		return m.hookRunner, nil
+	}
+	var jsExec jsexecutor.ScriptExecutor
+	if m.moduleManager != nil {
+		jsExec = m.moduleManager.jsExecutor
+	}
+	hookRunner, err := uninstallHooksNewRunner(m.runtimeScope, jsExec, m.module)
+	if err != nil {
+		name := ""
+		if m.module != nil {
+			name = m.module.Name
+		}
+		return nil, xfmt.Errorf("error preparing hooks for module %s: %w", name, err)
+	}
+	return hookRunner, nil
+}
+
+// Overridable in tests to exercise NewRunner failure on finalize.
+var uninstallHooksNewRunner = hooks.NewRunner
 
 func newModuleUninstaller(runtimeScope scope.Scope, module *meta.Module, moduleManager *ModuleManager, ctx *opContext) *moduleUninstaller {
 	return &moduleUninstaller{

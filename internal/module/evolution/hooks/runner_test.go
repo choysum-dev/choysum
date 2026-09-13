@@ -753,3 +753,94 @@ func TestExecuteWithScriptsReloadFailureRollback(t *testing.T) {
 		t.Fatalf("expected second reload with prev scripts, got %#v", executor.reloaded[1])
 	}
 }
+
+type nonBundlerBuilder struct{}
+
+func (nonBundlerBuilder) Build() (*module.BuildResult, error) {
+	return nil, errors.New("unexpected Build")
+}
+
+type countingBundler struct {
+	calls         int
+	scriptContent string
+}
+
+func (c *countingBundler) Bundle() (*module.BuildResult, error) {
+	c.calls++
+	return &module.BuildResult{EsbuildResult: &api.BuildResult{OutputFiles: []api.OutputFile{{
+		Path: "index.js", Contents: []byte(c.scriptContent),
+	}}}}, nil
+}
+
+func (c *countingBundler) Build() (*module.BuildResult, error) {
+	return c.Bundle()
+}
+
+func TestBuildModuleEntryScript_CachesAndRequiresBundler(t *testing.T) {
+	testRuntimeScope := newHooksTestScope(t)
+	newRunner := func() *Runner {
+		return &Runner{
+			runtimeScope: testRuntimeScope,
+			module:       &meta.Module{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"},
+		}
+	}
+
+	t.Run("non bundler", func(t *testing.T) {
+		prev := newEntryModuleBuilder
+		t.Cleanup(func() { newEntryModuleBuilder = prev })
+		newEntryModuleBuilder = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) module.Builder {
+			return nonBundlerBuilder{}
+		}
+		if _, err := newRunner().buildModuleEntryScript(context.Background()); err == nil || !strings.Contains(err.Error(), "does not support Bundle") {
+			t.Fatalf("got %v", err)
+		}
+	})
+
+	t.Run("cache hit", func(t *testing.T) {
+		prev := newEntryModuleBuilder
+		t.Cleanup(func() { newEntryModuleBuilder = prev })
+		counter := &countingBundler{scriptContent: "cached-hook"}
+		newEntryModuleBuilder = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) module.Builder {
+			return counter
+		}
+		runner := newRunner()
+		first, err := runner.buildModuleEntryScript(context.Background())
+		if err != nil || first == nil || first.Content != "cached-hook" {
+			t.Fatalf("first=%#v err=%v", first, err)
+		}
+		second, err := runner.buildModuleEntryScript(context.Background())
+		if err != nil || second != first {
+			t.Fatalf("expected cache hit same pointer, second=%#v err=%v", second, err)
+		}
+		if counter.calls != 1 {
+			t.Fatalf("Bundle calls=%d want 1", counter.calls)
+		}
+	})
+
+	t.Run("bundle error", func(t *testing.T) {
+		prev := newEntryModuleBuilder
+		t.Cleanup(func() { newEntryModuleBuilder = prev })
+		newEntryModuleBuilder = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module, string) module.Builder {
+			return &failingBundler{err: errors.New("bundle boom")}
+		}
+		if _, err := newRunner().buildModuleEntryScript(context.Background()); err == nil || !strings.Contains(err.Error(), "bundle boom") {
+			t.Fatalf("got %v", err)
+		}
+	})
+
+	t.Run("cache key uses session pointer", func(t *testing.T) {
+		a := entryScriptCacheKey("entry.ts", nil)
+		b := entryScriptCacheKey("entry.ts", testRuntimeScope)
+		if a == b {
+			t.Fatalf("nil scope and real scope should differ: %q vs %q", a, b)
+		}
+		if !strings.HasPrefix(b, "entry.ts|") || strings.HasSuffix(b, "|") {
+			t.Fatalf("unexpected key %q", b)
+		}
+	})
+}
+
+type failingBundler struct{ err error }
+
+func (f *failingBundler) Bundle() (*module.BuildResult, error) { return nil, f.err }
+func (f *failingBundler) Build() (*module.BuildResult, error)  { return nil, f.err }

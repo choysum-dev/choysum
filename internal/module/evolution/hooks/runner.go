@@ -54,6 +54,12 @@ type Runner struct {
 	entryScriptKey string
 }
 
+// newEntryModuleBuilder constructs the ModuleBuilder used to Bundle hook entry scripts.
+// Tests may override to inject non-Bundler builders.
+var newEntryModuleBuilder = func(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, entryPoint string) module.Builder {
+	return internalbackendbuilder.NewModuleBuilder(runtimeScope, jsExecutor, module, entryPoint, internalbackendbuilder.WithPublishDist(false))
+}
+
 func NewRunner(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module) (*Runner, error) {
 	if runtimeScope == nil || module == nil {
 		return nil, nil
@@ -185,28 +191,16 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 	if r.entryScript != nil && r.entryScriptKey == cacheKey {
 		return r.entryScript, nil
 	}
-	builder := internalbackendbuilder.NewModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry, internalbackendbuilder.WithPublishDist(false))
-	if bundler, ok := builder.(module.Bundler); ok {
-		result, err := bundler.Bundle()
-		if err != nil {
-			return nil, err
-		}
-		script, err := ScriptFromBuildResult(result)
-		if err != nil {
-			return nil, err
-		}
-		r.entryScript = script
-		r.entryScriptKey = cacheKey
-		return script, nil
+	builder := newEntryModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry)
+	bundler, ok := builder.(module.Bundler)
+	if !ok {
+		return nil, fmt.Errorf("module builder does not support Bundle")
 	}
-	result, err := builder.Build()
+	result, err := bundler.Bundle()
 	if err != nil {
 		return nil, err
 	}
-	script, err := ScriptFromBuildResult(result)
-	if err != nil {
-		return nil, err
-	}
+	script, _ := ScriptFromBuildResult(result)
 	r.entryScript = script
 	r.entryScriptKey = cacheKey
 	return script, nil
@@ -217,8 +211,10 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 func entryScriptCacheKey(entry string, runtimeScope scope.Scope) string {
 	token := ""
 	if runtimeScope != nil {
-		if sess := runtimeScope.Session(); sess != nil && sess.DB != nil {
-			token = fmt.Sprintf("%p", sess.DB)
+		if sess := runtimeScope.Session(); sess != nil {
+			// Session identity (not *gorm.DB): nested wrappers around the same DB
+			// still rebuild when the Session object differs.
+			token = fmt.Sprintf("%p", sess)
 		}
 	}
 	return entry + "|" + token

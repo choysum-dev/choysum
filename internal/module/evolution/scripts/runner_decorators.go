@@ -76,6 +76,12 @@ type Runner struct {
 	entryScriptKey string
 }
 
+// newEntryModuleBuilder constructs the ModuleBuilder used to Bundle migration entry scripts.
+// Tests may override to inject non-Bundler builders.
+var newEntryModuleBuilder = func(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExecutor, module *meta.Module, entryPoint string) module.Builder {
+	return internalbackendbuilder.NewModuleBuilder(runtimeScope, jsExecutor, module, entryPoint, internalbackendbuilder.WithPublishDist(false))
+}
+
 // RunnerOption configures NewRunner.
 type RunnerOption func(*Runner)
 
@@ -172,14 +178,11 @@ func (r *Runner) Validate(ctx context.Context, fromVersion string, toVersion str
 	return nil
 }
 
-// SameNormalizedVersion reports whether from/to are equal after semver normalization.
+// SameNormalizedVersion reports whether from/to are equal after semver-style
+// normalization (optional leading "v"). Uses exact string equality so non-semver
+// tags like "0.1" vs "0.2" never collapse as equal.
 func SameNormalizedVersion(fromVersion string, toVersion string) bool {
-	from := normalizeVersion(fromVersion)
-	to := normalizeVersion(toVersion)
-	if from == "" || to == "" {
-		return from == to
-	}
-	return compareVersion(from, to) == 0
+	return normalizeVersion(fromVersion) == normalizeVersion(toVersion)
 }
 
 func deriveRuntimeScope(ctx context.Context, baseScope scope.Scope) scope.Scope {
@@ -255,28 +258,16 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 	if r.entryScript != nil && r.entryScriptKey == cacheKey {
 		return r.entryScript, nil
 	}
-	builder := internalbackendbuilder.NewModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry, internalbackendbuilder.WithPublishDist(false))
-	if bundler, ok := builder.(module.Bundler); ok {
-		result, err := bundler.Bundle()
-		if err != nil {
-			return nil, err
-		}
-		script, err := ScriptFromBuildResult(result)
-		if err != nil {
-			return nil, err
-		}
-		r.entryScript = script
-		r.entryScriptKey = cacheKey
-		return script, nil
+	builder := newEntryModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry)
+	bundler, ok := builder.(module.Bundler)
+	if !ok {
+		return nil, fmt.Errorf("module builder does not support Bundle")
 	}
-	result, err := builder.Build()
+	result, err := bundler.Bundle()
 	if err != nil {
 		return nil, err
 	}
-	script, err := ScriptFromBuildResult(result)
-	if err != nil {
-		return nil, err
-	}
+	script, _ := ScriptFromBuildResult(result)
 	r.entryScript = script
 	r.entryScriptKey = cacheKey
 	return script, nil
@@ -285,8 +276,8 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 func entryScriptCacheKey(entry string, runtimeScope scope.Scope) string {
 	token := ""
 	if runtimeScope != nil {
-		if sess := runtimeScope.Session(); sess != nil && sess.DB != nil {
-			token = fmt.Sprintf("%p", sess.DB)
+		if sess := runtimeScope.Session(); sess != nil {
+			token = fmt.Sprintf("%p", sess)
 		}
 	}
 	return entry + "|" + token

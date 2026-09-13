@@ -40,6 +40,46 @@ func TestCachedTextFallback_NilReceiver(t *testing.T) {
 	}
 }
 
+func TestCachedTextFallback_ConcurrentFillWins(t *testing.T) {
+	r := newSemanticTypeResolver(nil)
+	prev := afterFallbackMissUnlock
+	t.Cleanup(func() { afterFallbackMissUnlock = prev })
+	afterFallbackMissUnlock = func() {
+		r.mu.Lock()
+		if r.fallbackCache == nil {
+			r.fallbackCache = make(map[string]string)
+		}
+		r.fallbackCache["Alias"] = "injected"
+		r.mu.Unlock()
+	}
+	got := r.cachedTextFallback("Alias")
+	if got != "injected" {
+		t.Fatalf("got %q want injected from racing fill", got)
+	}
+	r.mu.Lock()
+	hits := r.fallbackCacheHits
+	r.mu.Unlock()
+	if hits != 1 {
+		t.Fatalf("fallbackCacheHits=%d want 1", hits)
+	}
+}
+
+func TestCachedTextFallback_EvictsWhenOverLimit(t *testing.T) {
+	prev := fallbackCacheLimit
+	fallbackCacheLimit = 1
+	t.Cleanup(func() { fallbackCacheLimit = prev })
+
+	r := newSemanticTypeResolver(nil)
+	_ = r.cachedTextFallback("string")
+	_ = r.cachedTextFallback("number")
+	r.mu.Lock()
+	n := len(r.fallbackCache)
+	r.mu.Unlock()
+	if n != 1 {
+		t.Fatalf("fallbackCache size=%d want 1 after eviction", n)
+	}
+}
+
 func TestSharedSemanticTypeResolver_Reused(t *testing.T) {
 	ResetSharedSemanticTypeResolverForTest()
 	t.Cleanup(ResetSharedSemanticTypeResolverForTest)
