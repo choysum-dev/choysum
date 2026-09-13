@@ -885,6 +885,46 @@ func TestEnsureIndexes_FieldLookupMatchesColumnUnique(t *testing.T) {
 	}
 }
 
+func TestEnsureIndexes_ReplacesNonUniqueByPhysicalName(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	// Mirror partner_app_setting.key: live non-unique physical index, Desired wants unique via field export.
+	if err := db.Exec(`CREATE TABLE partner_app_setting (key text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE INDEX idx_partner_app_setting_key ON partner_app_setting (key)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	var dropped []string
+	origDrop := dropIndexFn
+	t.Cleanup(func() { dropIndexFn = origDrop })
+	dropIndexFn = func(_ *gorm.DB, table, indexName, dialect string) error {
+		dropped = append(dropped, table+"|"+indexName+"|"+dialect)
+		return origDrop(db, table, indexName, dialect)
+	}
+	col := ColumnSpec{Name: "key", FieldName: "Key", PhysicalType: "varchar", Unique: true, UniqueIndex: true, Indexed: true}
+	if err := ensureIndexesForColumn(db, "partner_app_setting", col, "sqlite"); err != nil {
+		t.Fatalf("ensureIndexesForColumn: %v", err)
+	}
+	if len(dropped) != 1 || dropped[0] != "partner_app_setting|idx_partner_app_setting_key|sqlite" {
+		t.Fatalf("expected drop by physical name, got %#v", dropped)
+	}
+	var uniqueCount int64
+	if err := db.Raw(`SELECT COUNT(*) FROM pragma_index_list('partner_app_setting') WHERE "unique" = 1`).Scan(&uniqueCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if uniqueCount < 1 {
+		t.Fatalf("expected a unique index after replace, uniqueCount=%d", uniqueCount)
+	}
+	var nonUniqueLeft int64
+	if err := db.Raw(`SELECT COUNT(*) FROM pragma_index_list('partner_app_setting') WHERE name = 'idx_partner_app_setting_key' AND "unique" = 0`).Scan(&nonUniqueLeft).Error; err != nil {
+		t.Fatal(err)
+	}
+	if nonUniqueLeft != 0 {
+		t.Fatalf("legacy non-unique index should be gone, left=%d", nonUniqueLeft)
+	}
+}
+
 func TestEnsureIndexes_LiveIndexUniqueErrorsAndDropFailure(t *testing.T) {
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
@@ -908,7 +948,7 @@ func TestEnsureIndexes_LiveIndexUniqueErrorsAndDropFailure(t *testing.T) {
 	getIndexes = origGet
 	origDrop := dropIndexFn
 	t.Cleanup(func() { dropIndexFn = origDrop })
-	dropIndexFn = func(gorm.Migrator, any, string) error {
+	dropIndexFn = func(*gorm.DB, string, string, string) error {
 		return errors.New("drop boom")
 	}
 	if err := ensureIndexesForColumn(db, "uniq_err", col, "sqlite"); err == nil || !strings.Contains(err.Error(), "drop non-unique index") {
