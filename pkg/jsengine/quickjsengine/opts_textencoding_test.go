@@ -4,8 +4,9 @@
 package quickjsengine
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 func TestDecodeUTF8Bytes_NonFatalReplacesInvalidBytes(t *testing.T) {
@@ -38,7 +39,11 @@ func TestDecodeUTF8Bytes_PreservesValidUTF8(t *testing.T) {
 func TestInstallTextEncodingPolyfill_Exception(t *testing.T) {
 	engine := newTestQuickjsEngine(t)
 	err := installTextEncodingPolyfill(engine.Ctx, `throw new Error("polyfill boom");`, "polyfills/bad.js")
-	if err == nil || !strings.Contains(err.Error(), "failed to install text-encoding polyfill") {
-		t.Fatalf("expected polyfill install error, got %v", err)
+	if err == nil {
+		t.Fatal("expected polyfill install error")
+	}
+	info := oerrors.GetErrorInfo(err)
+	if info == nil || info.Domain != "js" || info.Code != "QUICKJS_ERROR" {
+		t.Fatalf("expected js/QUICKJS_ERROR after NormalizeError, got %#v (err=%v)", info, err)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/jsengine"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 func TestEngineOptionsApplyAndValidate(t *testing.T) {
@@ -178,5 +179,9 @@ func TestQuickjsEngineLoadAndExecutePaths(t *testing.T) {
 	}
 	if !strings.Contains(execErr.Error(), "rpc boom") {
 		t.Fatalf("expected the JS error message to be preserved, got %v", execErr)
+	}
+	info := oerrors.GetErrorInfo(execErr)
+	if info == nil || info.Domain != "js" || info.Code != "QUICKJS_ERROR" {
+		t.Fatalf("expected js/QUICKJS_ERROR after NormalizeError, got %#v (err=%v)", info, execErr)
 	}
 }
