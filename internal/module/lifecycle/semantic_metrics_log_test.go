@@ -14,7 +14,6 @@ import (
 )
 
 func TestResetSemanticMetricsForOpClearsCounters(t *testing.T) {
-	t.Parallel()
 	backendtsparser.ResetSemanticMetrics()
 	t.Cleanup(backendtsparser.ResetSemanticMetrics)
 
@@ -29,7 +28,6 @@ func TestResetSemanticMetricsForOpClearsCounters(t *testing.T) {
 }
 
 func TestLogSemanticMetricsSummary(t *testing.T) {
-	t.Parallel()
 	backendtsparser.ResetSemanticMetrics()
 	t.Cleanup(backendtsparser.ResetSemanticMetrics)
 
