@@ -17,7 +17,7 @@ import (
 // options argument (@Migration(opts)). Uses a non-greedy span so nested
 // `{ ... }` before `phase` still match. Identifier / spread / variable args
 // fail open (false positives only cost a full RunPhase).
-var endMigrationPhasePattern = regexp.MustCompile(`(?is)@Migration(?:\s*<[^>]*>)?\s*\(\s*(?:\{.*?(?:(?:\bphase\b|['"]phase['"])\s*:\s*(?:['"]end['"]|[A-Za-z_$][\w$.]*)|\.\.\.)|[A-Za-z_$])`)
+var endMigrationPhasePattern = regexp.MustCompile(`(?is)@Migration(?:\s*<[^>]*>)?\s*\(\s*(?:\{.*?(?:(?:\bphase\b|\[\s*['"]phase['"]\s*\]|['"]phase['"])\s*:\s*(?:['"]end['"]|[A-Za-z_$][\w$.]*)|\.\.\.)|[A-Za-z_$])`)
 
 // moduleSourceDeclaresEndMigration reports whether module sources declare an
 // @Migration with phase end. Used to O(1)-skip PhaseEnd without semantic build

@@ -25,7 +25,7 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 
 // webInputDigestSchema invalidates stamped digests when the digest algorithm or
 // embedded web toolchain contract changes across choysum binaries.
-const webInputDigestSchema = "web-input-digest-v4"
+const webInputDigestSchema = "web-input-digest-v5"
 
 // WebInputDigestInputs are the compile flags and module roots that affect dist/web.
 type WebInputDigestInputs struct {
@@ -79,11 +79,21 @@ func LoadWebInputDigestInputs(runtimeScope scope.Scope, modulesPath string, sour
 				entry = filepath.Join(in.ModulesPath, mod.Name, entry)
 			}
 		}
+		// Absolutize so hashing never depends on the process working directory.
+		if abs, absErr := filepath.Abs(entry); absErr == nil {
+			entry = abs
+		}
+		modulePath := strings.TrimSpace(mod.Path)
+		if modulePath != "" {
+			if abs, absErr := filepath.Abs(modulePath); absErr == nil {
+				modulePath = abs
+			}
+		}
 		in.WebEntryPoints = append(in.WebEntryPoints, webEntryRef{
 			ModuleName: mod.Name,
 			Version:    mod.Version,
 			EntryPath:  entry,
-			ModulePath: strings.TrimSpace(mod.Path),
+			ModulePath: modulePath,
 		})
 	}
 	return in, nil
@@ -194,7 +204,7 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 }
 
 func hashFile(h io.Writer, path string) error {
-	st, err := os.Stat(path)
+	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			_, _ = fmt.Fprintf(h, "missing=%s\n", filepath.ToSlash(path))
@@ -202,11 +212,13 @@ func hashFile(h io.Writer, path string) error {
 		}
 		return err
 	}
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
 	defer f.Close()
+	st, err := f.Stat()
+	if err != nil || !st.Mode().IsRegular() {
+		// Stat failure is rare after Open; FIFOs/devices/sockets would block forever.
+		_, _ = fmt.Fprintf(h, "skipped_non_regular=%s\n", filepath.ToSlash(path))
+		return nil
+	}
 	_, _ = fmt.Fprintf(h, "file=%s\nsize=%d\n", filepath.ToSlash(path), st.Size())
 	_, err = io.Copy(h, f)
 	_, _ = io.WriteString(h, "\n")

@@ -100,6 +100,20 @@ export function done() {}
 		t.Fatal("quoted phase key should declare end migration")
 	}
 
+	bracketed := t.TempDir()
+	bracketSrc := filepath.Join(bracketed, "service", "bracket.ts")
+	if err := os.MkdirAll(filepath.Dir(bracketSrc), 0o755); err != nil {
+		t.Fatalf("mkdir bracket: %v", err)
+	}
+	if err := os.WriteFile(bracketSrc, []byte(`@Migration({ ['phase']: 'end', name: 'done' })
+export function done() {}
+`), 0o644); err != nil {
+		t.Fatalf("write bracket: %v", err)
+	}
+	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: bracketed}) {
+		t.Fatal("bracket-quoted phase key should declare end migration")
+	}
+
 	variableArg := t.TempDir()
 	variableSrc := filepath.Join(variableArg, "service", "var.ts")
 	if err := os.MkdirAll(filepath.Dir(variableSrc), 0o755); err != nil {

@@ -2505,6 +2505,7 @@ func TestExecuteSkipsGlobalWebBuildWhenDigestUnchanged(t *testing.T) {
 	}
 	webCalls := 0
 	rememberCalls := 0
+	skipCalls := 0
 	appTargets := func(appName string) (string, ModulesAppTargets, error) {
 		return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
 			ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
@@ -2538,6 +2539,7 @@ func TestExecuteSkipsGlobalWebBuildWhenDigestUnchanged(t *testing.T) {
 			return writeStageFile(distWebStagingDir, "index.html", "<html>built</html>")
 		},
 		ShouldSkipGlobalWebBuild: func(ctx context.Context, distWebDir string) (bool, string, error) {
+			skipCalls++
 			return true, "digest-skip", nil
 		},
 		RememberGlobalWebDigest: func(ctx context.Context, distWebDir string, digest string) error {
@@ -2553,6 +2555,9 @@ func TestExecuteSkipsGlobalWebBuildWhenDigestUnchanged(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
+	}
+	if skipCalls != 1 {
+		t.Fatalf("ShouldSkipGlobalWebBuild calls = %d, want 1", skipCalls)
 	}
 	if webCalls != 0 {
 		t.Fatalf("GlobalWebBuild calls = %d, want 0", webCalls)

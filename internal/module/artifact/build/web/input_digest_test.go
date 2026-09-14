@@ -94,17 +94,50 @@ func TestLoadWebInputDigestInputs(t *testing.T) {
 		t.Fatalf("LoadWebInputDigestInputs pathmod: %v", err)
 	}
 	foundPath := false
+	wantPath, _ := filepath.Abs(filepath.Join(otherRoot, "web", "index.ts"))
 	for _, ref := range in2.WebEntryPoints {
 		if ref.ModuleName == "pathmod" {
 			foundPath = true
-			want := filepath.Join(otherRoot, "web", "index.ts")
-			if ref.EntryPath != want {
-				t.Fatalf("pathmod entry = %q, want %q", ref.EntryPath, want)
+			if ref.EntryPath != wantPath {
+				t.Fatalf("pathmod entry = %q, want %q", ref.EntryPath, wantPath)
 			}
 		}
 	}
 	if !foundPath {
 		t.Fatal("pathmod entry missing")
+	}
+
+	// Empty Path falls back to modulesPath/mod.Name.
+	if err := db.Create(&meta.Module{
+		Name: "nopath", Version: "1.0.0", Status: meta.Installed,
+		Path: "", WebEntryPoint: "web/index.ts",
+	}).Error; err != nil {
+		t.Fatalf("create nopath: %v", err)
+	}
+	// Ensure modulesPath/nopath/web/index.ts exists for a resolvable join.
+	noPathEntry := filepath.Join(modulesPath, "nopath", "web", "index.ts")
+	if err := os.MkdirAll(filepath.Dir(noPathEntry), 0o755); err != nil {
+		t.Fatalf("mkdir nopath: %v", err)
+	}
+	if err := os.WriteFile(noPathEntry, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("write nopath: %v", err)
+	}
+	in3, err := LoadWebInputDigestInputs(runtimeScope, modulesPath, false, true, true, false)
+	if err != nil {
+		t.Fatalf("LoadWebInputDigestInputs nopath: %v", err)
+	}
+	foundNoPath := false
+	wantNoPath, _ := filepath.Abs(noPathEntry)
+	for _, ref := range in3.WebEntryPoints {
+		if ref.ModuleName == "nopath" {
+			foundNoPath = true
+			if ref.EntryPath != wantNoPath {
+				t.Fatalf("nopath entry = %q, want %q", ref.EntryPath, wantNoPath)
+			}
+		}
+	}
+	if !foundNoPath {
+		t.Fatal("nopath entry missing")
 	}
 
 	sqlDB, err := db.DB()
@@ -531,5 +564,11 @@ func TestShouldSkipAndStampHelpers(t *testing.T) {
 	}
 	if err := hashFile(nilWriter{}, a); err == nil {
 		t.Fatal("expected symlink-loop file error")
+	}
+
+	// Non-regular paths are skipped (do not block on FIFOs/devices).
+	dirAsFile := t.TempDir()
+	if err := hashFile(nilWriter{}, dirAsFile); err != nil {
+		t.Fatalf("directory hashFile: %v", err)
 	}
 }
