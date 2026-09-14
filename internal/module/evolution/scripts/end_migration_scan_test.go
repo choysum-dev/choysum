@@ -47,11 +47,27 @@ export function x() {}
 	if moduleSourceDeclaresEndMigration(&meta.Module{Path: onlyTests}) {
 		t.Fatal("*.test.ts fixtures must not declare production end migrations")
 	}
-	if moduleSourceDeclaresEndMigration(&meta.Module{Path: filepath.Join(root, "missing")}) {
-		t.Fatal("missing path should not declare end migration")
+	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: filepath.Join(root, "missing")}) {
+		t.Fatal("missing path should fail open (maybe has end migrations)")
+	}
+	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: ""}) {
+		t.Fatal("empty path should fail open so runtime PhaseEnd scripts can load")
 	}
 	if moduleSourceDeclaresEndMigration(nil) {
 		t.Fatal("nil module should not declare end migration")
+	}
+	typed := t.TempDir()
+	typedSrc := filepath.Join(typed, "service", "end.ts")
+	if err := os.MkdirAll(filepath.Dir(typedSrc), 0o755); err != nil {
+		t.Fatalf("mkdir typed: %v", err)
+	}
+	if err := os.WriteFile(typedSrc, []byte(`@Migration({ version: '1.0.0', phase: MigrationPhase.End, name: 'done' })
+export function done() {}
+`), 0o644); err != nil {
+		t.Fatalf("write typed: %v", err)
+	}
+	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: typed}) {
+		t.Fatal("expected non-literal phase: MigrationPhase.End to fail open")
 	}
 }
 

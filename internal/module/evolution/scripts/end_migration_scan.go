@@ -12,25 +12,28 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
-// Matches @Migration / @Migration<...>({ ... phase: 'end' ... }).
+// Matches @Migration / @Migration<...>({ ... phase: 'end'|Phase.End ... }).
 // Uses a non-greedy span so nested `{ ... }` before `phase` still match.
-// False positives only cost a full RunPhase; false negatives skip real work.
-var endMigrationPhasePattern = regexp.MustCompile(`(?is)@Migration(?:\s*<[^>]*>)?\s*\(\s*\{.*?\bphase\s*:\s*['"]end['"]`)
+// Identifier phase values fail open (false positives only cost a full RunPhase).
+var endMigrationPhasePattern = regexp.MustCompile(`(?is)@Migration(?:\s*<[^>]*>)?\s*\(\s*\{.*?\bphase\s*:\s*(?:['"]end['"]|[A-Za-z_$][\w$.]*)`)
 
 // moduleSourceDeclaresEndMigration reports whether module sources declare an
 // @Migration with phase end. Used to O(1)-skip PhaseEnd without semantic build
 // or executor load when no end migrations exist.
+//
+// Returns true (fail open) when sources cannot be inspected so runtime-bundle
+// PhaseEnd migrations are still discovered via resolveScripts.
 func moduleSourceDeclaresEndMigration(module *meta.Module) bool {
 	if module == nil {
 		return false
 	}
 	root := strings.TrimSpace(module.Path)
 	if root == "" {
-		return false
+		return true
 	}
 	info, err := os.Stat(root)
 	if err != nil || !info.IsDir() {
-		return false
+		return true
 	}
 	found := false
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {

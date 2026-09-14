@@ -23,6 +23,10 @@ const webInputDigestFileName = ".choysum_web_input_digest"
 // ForceWebBuildEnv forces a global web rebuild when set to a truthy value.
 const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 
+// webInputDigestSchema invalidates stamped digests when the digest algorithm or
+// embedded web toolchain contract changes across choysum binaries.
+const webInputDigestSchema = "web-input-digest-v2"
+
 // WebInputDigestInputs are the compile flags and module roots that affect dist/web.
 type WebInputDigestInputs struct {
 	ModulesPath    string
@@ -85,7 +89,7 @@ func LoadWebInputDigestInputs(runtimeScope scope.Scope, modulesPath string, sour
 // stamping the returned digest after a forced build.
 func ComputeWebInputDigest(in WebInputDigestInputs) (string, error) {
 	h := sha256.New()
-	_, _ = fmt.Fprintf(h, "sourcemap=%v\nminify=%v\ntreeshaking=%v\n", in.SourceMap, in.Minify, in.TreeShaking)
+	_, _ = fmt.Fprintf(h, "schema=%s\nsourcemap=%v\nminify=%v\ntreeshaking=%v\n", webInputDigestSchema, in.SourceMap, in.Minify, in.TreeShaking)
 	if modulesPath := strings.TrimSpace(in.ModulesPath); modulesPath != "" {
 		if err := hashWebSourceTree(h, filepath.Join(modulesPath, "api", "web")); err != nil {
 			return "", err
@@ -100,6 +104,13 @@ func ComputeWebInputDigest(in WebInputDigestInputs) (string, error) {
 	})
 	for _, ref := range refs {
 		_, _ = fmt.Fprintf(h, "module=%s\nversion=%s\nentry=%s\n", ref.ModuleName, ref.Version, filepath.ToSlash(ref.EntryPath))
+		// Always hash the declared entry, even when it lives under a skipped dir
+		// such as dist/ or demo/ that hashWebSourceTree would otherwise ignore.
+		if entry := strings.TrimSpace(ref.EntryPath); entry != "" {
+			if err := hashFile(h, entry); err != nil {
+				return "", err
+			}
+		}
 		root := strings.TrimSpace(ref.ModulePath)
 		if root == "" {
 			root = filepath.Dir(ref.EntryPath)

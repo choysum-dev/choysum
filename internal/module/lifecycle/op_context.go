@@ -106,7 +106,8 @@ func phaseEndCandidates(op plan.OpType, moduleOrder, ensureOrder []string, ctx *
 		}
 		return out
 	case plan.OpUpgrade:
-		out := make([]string, 0, len(moduleOrder)+len(ensureOrder))
+		// Capacity is a hint only; avoid len+len so static analyzers do not flag overflow.
+		out := make([]string, 0, len(moduleOrder))
 		for _, name := range moduleOrder {
 			name = strings.TrimSpace(name)
 			if name == "" {

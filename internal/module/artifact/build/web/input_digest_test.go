@@ -69,6 +69,38 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 	if err != nil || forced == "" || forced != e {
 		t.Fatalf("ForceRebuild must still return a stampable digest, got %q (%v)", forced, err)
 	}
+
+	// Entry under dist/ must still affect the digest even though tree walks skip dist/.
+	distRoot := t.TempDir()
+	distEntry := filepath.Join(distRoot, "dist", "web", "main.ts")
+	if err := os.MkdirAll(filepath.Dir(distEntry), 0o755); err != nil {
+		t.Fatalf("mkdir dist entry: %v", err)
+	}
+	if err := os.WriteFile(distEntry, []byte("export default 1\n"), 0o644); err != nil {
+		t.Fatalf("write dist entry: %v", err)
+	}
+	distIn := WebInputDigestInputs{
+		ModulesPath: distRoot,
+		Minify:      true,
+		TreeShaking: true,
+		WebEntryPoints: []webEntryRef{{
+			ModuleName: "web",
+			Version:    "1.0.0",
+			EntryPath:  distEntry,
+			ModulePath: distRoot,
+		}},
+	}
+	before, err := ComputeWebInputDigest(distIn)
+	if err != nil || before == "" {
+		t.Fatalf("dist entry digest = %q (%v)", before, err)
+	}
+	if err := os.WriteFile(distEntry, []byte("export default 2\n"), 0o644); err != nil {
+		t.Fatalf("rewrite dist entry: %v", err)
+	}
+	after, err := ComputeWebInputDigest(distIn)
+	if err != nil || after == before {
+		t.Fatalf("dist/ entry edit should alter digest: %q vs %q (%v)", before, after, err)
+	}
 }
 
 func TestShouldSkipGlobalWebBuild(t *testing.T) {
