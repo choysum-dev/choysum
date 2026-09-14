@@ -139,7 +139,7 @@ func performQuery(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, arg
 			break
 		}
 		if !isDeadlockErr(err, dialect) || attempt == maxDeadlockRetries-1 {
-			logger.Error("db query failed", "error", err)
+			logDBOpFailure(logger, "db query failed", err)
 			return ctx.ThrowError(err)
 		}
 		sleep := deadlockRetrySleep(dialect, attempt)
@@ -204,7 +204,7 @@ func performExecute(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, a
 			break
 		}
 		if !isDeadlockErr(tx.Error, dialect) || attempt == maxDeadlockRetries-1 {
-			logger.Error("db execute failed", "error", tx.Error)
+			logDBOpFailure(logger, "db execute failed", tx.Error)
 			return ctx.ThrowError(tx.Error)
 		}
 		sleep := deadlockRetrySleep(dialect, attempt)
@@ -263,6 +263,33 @@ func isDeadlockErr(err error, dialect string) bool {
 	default:
 		return false
 	}
+}
+
+// isUniqueConstraintErr reports uniqueness violations that application code often
+// handles as idempotency / race outcomes (ledger replay, one-reference-per-category).
+func isUniqueConstraintErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "unique constraint") ||
+		strings.Contains(message, "unique index") ||
+		strings.Contains(message, "duplicate key") ||
+		strings.Contains(message, "duplicate entry") ||
+		strings.Contains(message, "sqlstate 23505")
+}
+
+// logDBOpFailure logs unique-constraint failures at Warn (expected race/idempotency
+// paths) and other DB failures at Error.
+func logDBOpFailure(logger *slog.Logger, msg string, err error) {
+	if logger == nil {
+		return
+	}
+	if isUniqueConstraintErr(err) {
+		logger.Warn(msg, "error", err)
+		return
+	}
+	logger.Error(msg, "error", err)
 }
 
 func maxDeadlockRetriesForDialect(dialect string) int {

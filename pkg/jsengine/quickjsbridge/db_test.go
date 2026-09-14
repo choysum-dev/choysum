@@ -6,6 +6,7 @@ package quickjsbridge
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"path/filepath"
@@ -198,5 +199,32 @@ func TestWithDbSavepointSmoke(t *testing.T) {
 	}
 	if keptCount != 1 {
 		t.Fatalf("kept row count = %d, want 1", keptCount)
+	}
+}
+
+func TestIsUniqueConstraintErr(t *testing.T) {
+	cases := []struct {
+		msg  string
+		want bool
+	}{
+		{"UNIQUE constraint failed: base_uo_m.category_id, base_uo_m.reference_slot_key", true},
+		{"unique constraint failed: document_attachment_mutation_ledger.action", true},
+		{"ERROR: duplicate key value violates unique constraint \"uidx\" (SQLSTATE 23505)", true},
+		{"Duplicate entry 'x' for key 'PRIMARY'", true},
+		{"no such table: main.fd2test_field_default", false},
+		{"database is locked", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		var err error
+		if tc.msg != "" {
+			err = errors.New(tc.msg)
+		}
+		if got := isUniqueConstraintErr(err); got != tc.want {
+			t.Fatalf("isUniqueConstraintErr(%q)=%v want %v", tc.msg, got, tc.want)
+		}
+	}
+	if isUniqueConstraintErr(nil) {
+		t.Fatal("nil error must not be unique constraint")
 	}
 }
