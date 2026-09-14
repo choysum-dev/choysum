@@ -5,6 +5,7 @@
 
 Package elapsed is the `Action=pass|fail` event with no Test field.
 Named sums include parent and subtests, so they can exceed package elapsed.
+Exit 1 when any named test failed or a package/build-fail event is present.
 """
 
 from __future__ import annotations
@@ -55,6 +56,9 @@ def summarize(jsonl_path: Path, *, slow_secs: float, pkg_top: int, test_top: int
                 st = by_pkg[pkg]
                 st["pkg_elapsed"] = float(elapsed)
                 st["status"] = action
+            elif action == "build-fail" and pkg:
+                # Go 1.24+ emits compile failures as build-fail with no Elapsed.
+                by_pkg[pkg]["status"] = "fail"
 
     if timing_path is not None and timing_path.exists():
         print("=== wall (POSIX time) ===")
@@ -84,17 +88,21 @@ def summarize(jsonl_path: Path, *, slow_secs: float, pkg_top: int, test_top: int
         print(f"... {len(slow_sorted) - test_top} more")
 
     failed_rows = [(pkg, name) for pkg, st in by_pkg.items() for name in st["failed"]]
+    package_failed = [pkg for pkg, st in by_pkg.items() if st["status"] == "fail"]
     print()
     print("=== failed tests ===")
-    if not failed_rows:
+    if not failed_rows and not package_failed:
         print("(none)")
     else:
         for pkg, name in failed_rows:
             print(f"  {pkg}  {name}")
+        for pkg in package_failed:
+            if not by_pkg[pkg]["failed"]:
+                print(f"  {pkg}  (package)")
 
     print()
     print(f"json_events={events}  parse_errors={parse_errors}  packages={len(by_pkg)}  slow_tests={len(slow_sorted)}")
-    return 1 if failed_rows else 0
+    return 1 if failed_rows or package_failed else 0
 
 
 def main() -> int:

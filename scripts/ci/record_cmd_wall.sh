@@ -20,8 +20,14 @@ timing="$(mktemp)"
 trap 'rm -f "$timing"' EXIT
 
 set +e
-/usr/bin/time -p -o "$timing" "$@"
-ec=$?
+if [[ -x /usr/bin/time ]]; then
+  /usr/bin/time -p -o "$timing" "$@"
+  ec=$?
+else
+  echo "warn: /usr/bin/time not found; running without POSIX wall" >&2
+  "$@"
+  ec=$?
+fi
 set -e
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
@@ -32,11 +38,15 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo
     echo "CI measurement. Do not compare to a local \`go test ./...\` without \`-count=1\` / \`-cover\`."
     echo
-    echo '```'
-    cat "$timing"
-    echo '```'
+    if [[ -s "$timing" ]]; then
+      echo '```'
+      cat "$timing"
+      echo '```'
+    else
+      echo "POSIX \`time\` was not available; go test still ran."
+    fi
   } >>"$GITHUB_STEP_SUMMARY"
-else
+elif [[ -s "$timing" ]]; then
   echo "==> POSIX time:" >&2
   cat "$timing" >&2
 fi

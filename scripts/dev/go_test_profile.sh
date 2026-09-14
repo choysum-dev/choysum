@@ -34,11 +34,11 @@ TEST_TOP="${TEST_TOP:-40}"
 summarize_file() {
   local jsonl="$1"
   local timing="${2:-}"
-  local extra=()
   if [[ -n "$timing" ]]; then
-    extra+=(--timing "$timing")
+    python3 "$SUMMARIZE" "$jsonl" --slow "$SLOW_SECS" --pkg-top "$PKG_TOP" --test-top "$TEST_TOP" --timing "$timing"
+  else
+    python3 "$SUMMARIZE" "$jsonl" --slow "$SLOW_SECS" --pkg-top "$PKG_TOP" --test-top "$TEST_TOP"
   fi
-  python3 "$SUMMARIZE" "$jsonl" --slow "$SLOW_SECS" --pkg-top "$PKG_TOP" --test-top "$TEST_TOP" "${extra[@]}"
 }
 
 if [[ "${1:-}" == "--summarize" ]]; then
@@ -63,22 +63,39 @@ TIMING="$PROFILE_DIR/time.txt"
 SUMMARY="$PROFILE_DIR/summary.txt"
 
 # GO_TEST_FLAGS is intentionally unquoted so callers can pass multiple flags.
+# Empty arrays are not expanded under set -u (bash 3.2 / stock macOS).
 # shellcheck disable=SC2206
-EXTRA_FLAGS=(${GO_TEST_FLAGS:-})
+if [[ -n "${GO_TEST_FLAGS:-}" ]]; then
+  EXTRA_FLAGS=(${GO_TEST_FLAGS})
+else
+  EXTRA_FLAGS=()
+fi
 
 echo "==> go test -json ${EXTRA_FLAGS[*]:-} ${PACKAGES[*]}"
 echo "    jsonl: $JSONL"
 
 set +e
-/usr/bin/time -p -o "$TIMING" go test -json "${EXTRA_FLAGS[@]}" "${PACKAGES[@]}" >"$JSONL"
+if ((${#EXTRA_FLAGS[@]})); then
+  /usr/bin/time -p -o "$TIMING" go test -json "${EXTRA_FLAGS[@]}" "${PACKAGES[@]}" >"$JSONL"
+else
+  /usr/bin/time -p -o "$TIMING" go test -json "${PACKAGES[@]}" >"$JSONL"
+fi
 ec=$?
 set -e
 
+# Status 1 from the summarizer is a completed failure table; still print EXIT.
+# Status >1 is a summarizer usage/parse error and must not be swallowed by tee.
+set +e
+summarize_file "$JSONL" "$TIMING" | tee "$SUMMARY"
+summary_ec=${PIPESTATUS[0]}
+set -e
 {
-  summarize_file "$JSONL" "$TIMING"
   echo
   echo "EXIT:$ec"
-} | tee "$SUMMARY"
+} | tee -a "$SUMMARY"
+if (( summary_ec > 1 )); then
+  exit "$summary_ec"
+fi
 
 echo "==> done (profile dir: $PROFILE_DIR)"
 exit "$ec"
