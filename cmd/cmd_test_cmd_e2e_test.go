@@ -313,20 +313,20 @@ func TestCLIErrorBlockIsLastOutput(t *testing.T) {
 
 const cliE2EEnv = "CHOYSUM_CLI_E2E"
 
-// cliE2EHomes memoizes one HOME TempDir per test name so multiple runCLI*
+// cliE2EHomes memoizes one HOME TempDir per *testing.T so multiple runCLI*
 // calls in the same test share cache/state (mirrors the old t.Setenv HOME).
 var cliE2EHomes sync.Map
 
 func cliE2EHomeDir(t *testing.T) string {
 	t.Helper()
-	if v, ok := cliE2EHomes.Load(t.Name()); ok {
+	if v, ok := cliE2EHomes.Load(t); ok {
 		return v.(string)
 	}
 	home := t.TempDir()
-	if actual, loaded := cliE2EHomes.LoadOrStore(t.Name(), home); loaded {
+	if actual, loaded := cliE2EHomes.LoadOrStore(t, home); loaded {
 		return actual.(string)
 	}
-	t.Cleanup(func() { cliE2EHomes.Delete(t.Name()) })
+	t.Cleanup(func() { cliE2EHomes.Delete(t) })
 	return home
 }
 
@@ -334,28 +334,24 @@ func cliE2EHomeDir(t *testing.T) string {
 // Extra KEY=VAL entries override parent values. HOME defaults to one TempDir
 // per test so callers can t.Parallel() without t.Setenv. Inherited
 // CHOYSUM_HOME is stripped so parallel children do not share browser/cache
-// state; callers may still pass CHOYSUM_HOME via extra.
+// state; callers may still pass CHOYSUM_HOME via extra. CHOYSUM_CLI_E2E is
+// always forced to 1 for the helper subprocess entrypoint.
 func cliE2EHelperEnv(t *testing.T, extra ...string) []string {
 	t.Helper()
 	overrides := map[string]string{}
-	hasHome := false
 	for _, entry := range extra {
-		key := entry
-		val := ""
-		if idx := strings.IndexByte(entry, '='); idx >= 0 {
-			key = entry[:idx]
-			val = entry[idx+1:]
+		idx := strings.IndexByte(entry, '=')
+		if idx <= 0 {
+			t.Fatalf("cliE2EHelperEnv: extra env %q must be KEY=VALUE", entry)
 		}
-		overrides[key] = val
-		if key == "HOME" {
-			hasHome = true
-		}
+		overrides[entry[:idx]] = entry[idx+1:]
 	}
-	if !hasHome || overrides["HOME"] == "" {
+	if overrides["HOME"] == "" {
 		overrides["HOME"] = cliE2EHomeDir(t)
 	}
+	overrides[cliE2EEnv] = "1"
 
-	env := make([]string, 0, len(os.Environ())+len(overrides)+1)
+	env := make([]string, 0, len(os.Environ())+len(overrides))
 	for _, entry := range os.Environ() {
 		key := entry
 		if idx := strings.IndexByte(entry, '='); idx >= 0 {
@@ -373,7 +369,6 @@ func cliE2EHelperEnv(t *testing.T, extra ...string) []string {
 	for key, val := range overrides {
 		env = append(env, key+"="+val)
 	}
-	env = append(env, cliE2EEnv+"=1")
 	return env
 }
 
