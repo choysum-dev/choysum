@@ -61,10 +61,10 @@ func requireChromium(t *testing.T) string {
 }
 
 // chromeSharedEnabled reports whether package tests should reuse one Chromium.
-// Set CHOYSUM_TEST_CHROME_SHARED=0|false|no to force a fresh browser per session.
+// Set CHOYSUM_TEST_CHROME_SHARED=0|false|no|off to force a fresh browser per session.
 func chromeSharedEnabled() bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("CHOYSUM_TEST_CHROME_SHARED"))) {
-	case "0", "false", "no":
+	case "0", "false", "no", "off":
 		return false
 	default:
 		return true
@@ -137,6 +137,13 @@ func startSharedTestSession(t *testing.T) *Session {
 	session := sharedChrome
 	err := sharedChromeErr
 	sharedChromeMu.Unlock()
+	if session != nil {
+		if ctx := session.Context(); ctx == nil || ctx.Err() != nil {
+			// Stale published browser: drop it and start a fresh shared session.
+			retireSharedTestSession(session)
+			return startSharedTestSession(t)
+		}
+	}
 	if session == nil {
 		if err == nil || errors.Is(err, errChromiumUnavailable) {
 			t.Skip("chromium unavailable")
@@ -170,8 +177,37 @@ func CloseSharedTestSession() {
 	}
 }
 
+// retireSharedTestSession drops session from the process-wide slot when it is
+// still the published shared browser, then closes it. No-op for nil or stale
+// pointers that are no longer published.
+func retireSharedTestSession(session *Session) {
+	if session == nil {
+		return
+	}
+	sharedChromeMu.Lock()
+	if sharedChrome != session {
+		sharedChromeMu.Unlock()
+		return
+	}
+	cancel := sharedChromeCancel
+	sharedChrome = nil
+	sharedChromeCancel = nil
+	sharedChromeErr = nil
+	sharedChromeOnce = sync.Once{}
+	sharedChromeMu.Unlock()
+	session.shared = false
+	session.Close()
+	if cancel != nil {
+		cancel()
+	}
+}
+
 func resetSharedTestTab(t errorReporter, session *Session) {
-	if session == nil || session.Context() == nil || session.Context().Err() != nil {
+	if session == nil {
+		return
+	}
+	if session.Context() == nil || session.Context().Err() != nil {
+		retireSharedTestSession(session)
 		return
 	}
 	// Fetch is target-scoped. A prior Page may have left interception on after
@@ -183,6 +219,7 @@ func resetSharedTestTab(t errorReporter, session *Session) {
 		if t != nil {
 			t.Errorf("shared chrome reset: NewPage failed: %v", err)
 		}
+		retireSharedTestSession(session)
 		return
 	}
 	page.Close()

@@ -18,7 +18,7 @@ func TestChromeSharedEnabledEnv(t *testing.T) {
 	if !chromeSharedEnabled() {
 		t.Fatal("empty env should enable sharing")
 	}
-	for _, v := range []string{"0", "false", "no", "FALSE", " No "} {
+	for _, v := range []string{"0", "false", "no", "off", "FALSE", " No ", "OFF"} {
 		t.Setenv("CHOYSUM_TEST_CHROME_SHARED", v)
 		if chromeSharedEnabled() {
 			t.Fatalf("CHOYSUM_TEST_CHROME_SHARED=%q should disable sharing", v)
@@ -42,6 +42,12 @@ func TestExportedStartTestSessionWrappers(t *testing.T) {
 	if shared == nil || shared.Context() == nil {
 		t.Fatal("StartTestSession returned nil session")
 	}
+	if !shared.shared {
+		t.Fatal("StartTestSession must return the shared session")
+	}
+	if again := StartTestSession(t); again != shared {
+		t.Fatal("StartTestSession must reuse the process-wide session")
+	}
 }
 
 func TestStartTestSessionRespectsSharedDisabled(t *testing.T) {
@@ -58,6 +64,8 @@ func TestResetSharedTestTabGuards(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	resetSharedTestTab(t, &Session{browserCtx: ctx})
+	retireSharedTestSession(nil)
+	retireSharedTestSession(&Session{}) // not the published shared session
 }
 
 func TestResetSharedTestTabNewPageError(t *testing.T) {
@@ -71,7 +79,20 @@ func TestResetSharedTestTabNewPageError(t *testing.T) {
 	if len(rec.msgs) != 1 || !strings.Contains(rec.msgs[0], "net enable boom") {
 		t.Fatalf("expected NewPage error report, got %#v", rec.msgs)
 	}
-	resetSharedTestTab(nil, session) // t == nil still returns on NewPage error
+	sharedChromeMu.Lock()
+	published := sharedChrome
+	sharedChromeMu.Unlock()
+	if published == session {
+		t.Fatal("NewPage reset failure must retire the published shared session")
+	}
+	resetSharedTestTab(nil, session) // stale pointer: retire is a no-op
+
+	// Suite can recover with a fresh shared browser after retirement.
+	enableNetworkForPage = old
+	fresh := startTestSession(t)
+	if fresh == nil || fresh.Context() == nil || fresh.Context().Err() != nil {
+		t.Fatal("expected a new shared session after retirement")
+	}
 }
 
 type errorRecorder struct{ msgs []string }

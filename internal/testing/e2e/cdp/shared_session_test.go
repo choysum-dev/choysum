@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestSharedSessionSequentialPagesDoNotLeakCookies(t *testing.T) {
@@ -40,16 +41,13 @@ document.title = document.cookie.includes('p2=leak') ? 'has' : 'clean';
 	if err := page1.Goto(srv.URL+"/set", "load"); err != nil {
 		t.Fatal(err)
 	}
-	// Control: cookie must be visible before clearing, otherwise this test
-	// cannot detect a leak across NewPage on the shared session.
+	// Control: cookie must be visible before NewPage isolation, otherwise this
+	// test cannot detect a leak across NewPage on the shared session.
 	if err := page1.Goto(srv.URL+"/check", "load"); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := page1.Evaluate(`document.title`); err != nil || got != `"has"` {
-		t.Fatalf("expected cookie before clearing, got %s (%v)", got, err)
-	}
-	if err := page1.ClearOriginStorage(srv.URL); err != nil {
-		t.Fatalf("ClearOriginStorage: %v", err)
+		t.Fatalf("expected cookie before NewPage isolation, got %s (%v)", got, err)
 	}
 	page1.Close()
 
@@ -67,6 +65,35 @@ document.title = document.cookie.includes('p2=leak') ? 'has' : 'clean';
 	}
 	if title != `"clean"` {
 		t.Fatalf("cookie leaked across NewPage on shared session: title=%s", title)
+	}
+}
+
+func TestSharedSessionRestartsAfterDeadContext(t *testing.T) {
+	if !chromeSharedEnabled() {
+		t.Skip("shared chrome disabled")
+	}
+	session := startTestSession(t)
+	sharedChromeMu.Lock()
+	cancel := sharedChromeCancel
+	sharedChromeMu.Unlock()
+	if cancel == nil {
+		t.Fatal("expected shared cancel func")
+	}
+	cancel() // kill published browser without going through CloseSharedTestSession
+	deadline := time.After(2 * time.Second)
+	for session.Context() != nil && session.Context().Err() == nil {
+		select {
+		case <-deadline:
+			t.Fatal("browser context did not become done after cancel")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	fresh := startTestSession(t)
+	if fresh == nil || fresh == session {
+		t.Fatal("expected a restarted shared session after dead context")
+	}
+	if fresh.Context() == nil || fresh.Context().Err() != nil {
+		t.Fatal("restarted shared session must be live")
 	}
 }
 
