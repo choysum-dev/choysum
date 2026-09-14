@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -137,7 +138,10 @@ func (m *moduleInstaller) install() error {
 	return m.installAfterPrepare(buildResult, persistLater)
 }
 
-// installAfterPrepare runs the install commit TX and finalize steps.
+// installAfterPrepare runs the install commit TX, then TX-external pre_init, then finalize.
+// Commit holds only Persist/schema/data/save; pre_init sees already-persisted IR and must not
+// extend the Required TX. If post-commit hooks fail, status is reverted to ToInstall so a
+// later install retry is not skipped as already_installed.
 func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, persistLater bool) error {
 	if m == nil {
 		return xfmt.Errorf("scope is nil")
@@ -151,7 +155,47 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 	if err != nil {
 		return err
 	}
-	return m.finalizeInstall(buildResult)
+	// Commit already marked Installed. On panic before finalize succeeds, revert so retry
+	// is not skipped as already_installed. Normal hook errors use wrapPostCommitHookError.
+	finalized := false
+	defer func() {
+		if finalized {
+			return
+		}
+		if r := recover(); r != nil {
+			if markErr := m.markPostCommitHooksIncomplete(); markErr != nil {
+				name := ""
+				if m.module != nil {
+					name = m.module.Name
+				}
+				if m.runtimeScope != nil && m.runtimeScope.Logger() != nil {
+					m.runtimeScope.Logger().Error(
+						"failed reverting module status after post-commit panic",
+						"module", name,
+						"error", markErr,
+					)
+				}
+			}
+			panic(r)
+		}
+	}()
+	if err := m.runInstallPreInit(buildResult); err != nil {
+		return m.wrapPostCommitHookError("error running pre_init after commit (module persisted, not finalized)", err)
+	}
+	if err := m.finalizeInstall(buildResult); err != nil {
+		return m.wrapPostCommitHookError("error finalizing install after commit (module persisted, not finalized)", err)
+	}
+	finalized = true
+	return nil
+}
+
+// wrapPostCommitHookError reverts status for retry and annotates that Commit already persisted.
+func (m *moduleInstaller) wrapPostCommitHookError(msg string, err error) error {
+	markErr := m.markPostCommitHooksIncomplete()
+	if markErr != nil {
+		return fmt.Errorf("%s: %w (also failed reverting status: %w)", msg, err, markErr)
+	}
+	return xfmt.Errorf("%s: %w", msg, err)
 }
 
 // runInstallCommitTX runs the install commit Required TX, pausing lease renew when a manager is set.
@@ -291,12 +335,6 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 		}
 	}
 
-	initializeStarted := time.Now()
-	if err := runInstallHookPhase(m.runtimeScope, m.ctx, plan.OpInstall, installerJSExecutor(m), m.module, hooks.PhasePreInit, buildResult, "pre_init"); err != nil {
-		return nil, err
-	}
-	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
-
 	migrator, err := newInstallSchemaMigrator(m.runtimeScope, m.module)
 	if err != nil {
 		return nil, xfmt.Errorf("error preparing schema migrator: %w", err)
@@ -352,6 +390,80 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 	}
 
 	return buildResult, nil
+}
+
+// runInstallPreInit runs PhasePreInit outside the Commit TX so hook JS does not extend TX hold.
+// Callers must invoke this only after a successful commit (Persisted IR + schema/data/save).
+func (m *moduleInstaller) runInstallPreInit(buildResult *module.BuildResult) error {
+	if m == nil {
+		return nil
+	}
+	if m.runtimeScope == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	if m.module == nil {
+		return xfmt.Errorf("module is nil")
+	}
+	initializeStarted := time.Now()
+	if err := runInstallHookPhase(m.runtimeScope, m.ctx, plan.OpInstall, installerJSExecutor(m), m.module, hooks.PhasePreInit, buildResult, "pre_init"); err != nil {
+		return err
+	}
+	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
+	return nil
+}
+
+// updatePostCommitIncompleteStatus flips Installed → ToInstall for retry. Overridable in tests.
+var updatePostCommitIncompleteStatus = func(sess *scope.Session, mod *meta.Module) (int64, error) {
+	if sess == nil {
+		return 0, xfmt.Errorf("session is nil")
+	}
+	if mod == nil {
+		return 0, xfmt.Errorf("module is nil")
+	}
+	name := strings.TrimSpace(mod.Name)
+	query := sess.Model(&meta.Module{}).Where("status = ?", meta.Installed)
+	if mod.Id.Valid && strings.TrimSpace(mod.Id.String) != "" {
+		query = query.Where("id = ?", mod.Id.String)
+	} else if name != "" {
+		query = query.Where("name = ?", name)
+	} else {
+		return 0, xfmt.Errorf("module id and name are both empty; refusing unqualified status update")
+	}
+	res := query.Update("status", meta.ToInstall)
+	return res.RowsAffected, res.Error
+}
+
+// markPostCommitHooksIncomplete reverts status to ToInstall after a post-commit hook failure
+// so a subsequent install is not skipped as already_installed. Persist/schema/data stay.
+// Only mutates in-memory status after the DB update succeeds.
+func (m *moduleInstaller) markPostCommitHooksIncomplete() error {
+	if m == nil || m.module == nil {
+		return nil
+	}
+	if m.runtimeScope == nil || m.runtimeScope.Session() == nil {
+		return xfmt.Errorf("cannot revert module %q status: runtime scope session is nil", m.module.Name)
+	}
+	name := strings.TrimSpace(m.module.Name)
+	if name == "" && !(m.module.Id.Valid && strings.TrimSpace(m.module.Id.String) != "") {
+		return xfmt.Errorf("cannot revert module status: module id and name are both empty")
+	}
+	var affected int64
+	if err := sqliteretry.WithLockRetry(func() error {
+		n, err := updatePostCommitIncompleteStatus(m.runtimeScope.Session(), m.module)
+		affected = n
+		return err
+	}); err != nil {
+		return err
+	}
+	if affected == 0 {
+		identifier := name
+		if identifier == "" && m.module.Id.Valid {
+			identifier = strings.TrimSpace(m.module.Id.String)
+		}
+		return xfmt.Errorf("module %q was not %q; status left unchanged", identifier, meta.Installed)
+	}
+	m.module.Status = meta.ToInstall
+	return nil
 }
 
 func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {
