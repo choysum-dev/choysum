@@ -355,6 +355,88 @@ func TestInstallAfterPrepare_FinalizeFailureRevertsStatus(t *testing.T) {
 	}
 }
 
+func TestInstallAfterPrepare_PanicRevertsStatus(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name: "demo_hook_panic", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	prev := hooksNewRunner
+	t.Cleanup(func() { hooksNewRunner = prev })
+	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
+		panic("pre_init panic")
+	}
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("expected panic to propagate after revert")
+			}
+		}()
+		_ = installer.installAfterPrepare(nil, false)
+	}()
+	var got meta.Module
+	if err := runtimeScope.Session().Where("name = ?", "demo_hook_panic").Take(&got).Error; err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != meta.ToInstall {
+		t.Fatalf("status=%q want to install after panic", got.Status)
+	}
+	if mod.Status != meta.ToInstall {
+		t.Fatalf("memory status=%q want to install after panic", mod.Status)
+	}
+}
+
+func TestInstallAfterPrepare_PanicLogsRevertFailure(t *testing.T) {
+	runtimeScope := newLifecycleCommitTestScope(t)
+	mod := &meta.Module{
+		Name: "demo_hook_panic_revert_fail", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := runtimeScope.Session().Create(mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	prevHooks := hooksNewRunner
+	prevUpdate := updatePostCommitIncompleteStatus
+	t.Cleanup(func() {
+		hooksNewRunner = prevHooks
+		updatePostCommitIncompleteStatus = prevUpdate
+	})
+	hooksNewRunner = func(scope.Scope, jsexecutor.ScriptExecutor, *meta.Module) (*hooks.Runner, error) {
+		panic("pre_init panic")
+	}
+	updatePostCommitIncompleteStatus = func(*scope.Session, *meta.Module) (int64, error) {
+		return 0, errors.New("revert boom")
+	}
+	installer := &moduleInstaller{
+		module:        mod,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+	}
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("expected panic to propagate after failed revert")
+			}
+		}()
+		_ = installer.installAfterPrepare(nil, false)
+	}()
+	if mod.Status != meta.Installed {
+		t.Fatalf("memory status must stay installed when panic-path revert fails, got %q", mod.Status)
+	}
+}
+
 func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 	if err := (*moduleInstaller)(nil).markPostCommitHooksIncomplete(); err != nil {
 		t.Fatal(err)
@@ -440,6 +522,18 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 	// Already ToInstall → affected=0.
 	if err := installer.markPostCommitHooksIncomplete(); err == nil || !strings.Contains(err.Error(), "was not") {
 		t.Fatalf("expected unchanged-status error, got %v", err)
+	}
+
+	// Id-only identifier in the affected=0 message (whitespace name).
+	idOnly := &meta.Module{
+		Name: "  ", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+	}
+	idOnly.Id = sql.NullString{String: xid.New().String(), Valid: true}
+	if err := (&moduleInstaller{module: idOnly, runtimeScope: runtimeScope}).markPostCommitHooksIncomplete(); err == nil ||
+		!strings.Contains(err.Error(), idOnly.Id.String) ||
+		!strings.Contains(err.Error(), "was not") {
+		t.Fatalf("expected id-qualified unchanged-status error, got %v", err)
 	}
 
 	prev := updatePostCommitIncompleteStatus

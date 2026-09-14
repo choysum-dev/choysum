@@ -456,7 +456,11 @@ func (m *moduleInstaller) markPostCommitHooksIncomplete() error {
 		return err
 	}
 	if affected == 0 {
-		return xfmt.Errorf("module %q was not %q; status left unchanged", name, meta.Installed)
+		identifier := name
+		if identifier == "" && m.module.Id.Valid {
+			identifier = strings.TrimSpace(m.module.Id.String)
+		}
+		return xfmt.Errorf("module %q was not %q; status left unchanged", identifier, meta.Installed)
 	}
 	m.module.Status = meta.ToInstall
 	return nil
