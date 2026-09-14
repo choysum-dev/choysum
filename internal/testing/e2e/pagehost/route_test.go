@@ -70,7 +70,6 @@ func TestInstallFetchRouteBindingsErrorPaths(t *testing.T) {
 
 func TestInstallFetchRouteBindingsWithChrome(t *testing.T) {
 	session := startPagehostChromePrivate(t)
-	defer session.Close()
 
 	var host *Host
 	engine, err := quickjsengine.NewFactory()()
@@ -392,7 +391,6 @@ func TestInstallWaitPausedNullMappingBranches(t *testing.T) {
 
 func TestInstallFetchRouteBindingHookErrorsAndClosed(t *testing.T) {
 	session := startPagehostChromePrivate(t)
-	defer session.Close()
 
 	var host *Host
 	engine, err := quickjsengine.NewFactory()()

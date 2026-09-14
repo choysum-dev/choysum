@@ -19,11 +19,11 @@ var (
 )
 
 var (
-	sharedChromeOnce   sync.Once
-	sharedChromeMu     sync.Mutex
-	sharedChrome       *Session
-	sharedChromeCancel context.CancelFunc
-	sharedChromeErr    error
+	sharedChromeMu      sync.Mutex
+	sharedChromeStarted bool
+	sharedChrome        *Session
+	sharedChromeCancel  context.CancelFunc
+	sharedChromeErr     error
 )
 
 func chromiumCandidates() []string {
@@ -105,38 +105,37 @@ func StartPrivateTestSession(t *testing.T) *Session {
 
 func startSharedTestSession(t *testing.T) *Session {
 	t.Helper()
-	sharedChromeOnce.Do(func() {
+	sharedChromeMu.Lock()
+	if !sharedChromeStarted {
+		sharedChromeStarted = true
 		cands := chromiumCandidates()
 		if len(cands) == 0 {
-			sharedChromeMu.Lock()
 			sharedChromeErr = errChromiumUnavailable
-			sharedChromeMu.Unlock()
-			return
-		}
-		headless := true
-		var lastErr error
-		for _, execPath := range cands {
-			ctx, cancel := context.WithCancel(context.Background())
-			session, err := Start(ctx, StartOptions{ExecPath: execPath, Headless: &headless})
-			if err == nil {
-				session.shared = true
-				sharedChromeMu.Lock()
-				sharedChrome = session
-				sharedChromeCancel = cancel
-				sharedChromeMu.Unlock()
-				return
+		} else {
+			headless := true
+			var lastErr error
+			for _, execPath := range cands {
+				ctx, cancel := context.WithCancel(context.Background())
+				session, err := Start(ctx, StartOptions{ExecPath: execPath, Headless: &headless})
+				if err == nil {
+					session.shared.Store(true)
+					sharedChrome = session
+					sharedChromeCancel = cancel
+					lastErr = nil
+					break
+				}
+				cancel()
+				lastErr = err
 			}
-			cancel()
-			lastErr = err
+			if sharedChrome == nil {
+				sharedChromeErr = lastErr
+			}
 		}
-		sharedChromeMu.Lock()
-		sharedChromeErr = lastErr
-		sharedChromeMu.Unlock()
-	})
-	sharedChromeMu.Lock()
+	}
 	session := sharedChrome
 	err := sharedChromeErr
 	sharedChromeMu.Unlock()
+
 	if session != nil {
 		if ctx := session.Context(); ctx == nil || ctx.Err() != nil {
 			// Stale published browser: drop it and start a fresh shared session.
@@ -166,10 +165,10 @@ func CloseSharedTestSession() {
 	sharedChrome = nil
 	sharedChromeCancel = nil
 	sharedChromeErr = nil
-	sharedChromeOnce = sync.Once{}
+	sharedChromeStarted = false
 	sharedChromeMu.Unlock()
 	if session != nil {
-		session.shared = false
+		session.shared.Store(false)
 		session.Close()
 	}
 	if cancel != nil {
@@ -193,9 +192,9 @@ func retireSharedTestSession(session *Session) {
 	sharedChrome = nil
 	sharedChromeCancel = nil
 	sharedChromeErr = nil
-	sharedChromeOnce = sync.Once{}
+	sharedChromeStarted = false
 	sharedChromeMu.Unlock()
-	session.shared = false
+	session.shared.Store(false)
 	session.Close()
 	if cancel != nil {
 		cancel()

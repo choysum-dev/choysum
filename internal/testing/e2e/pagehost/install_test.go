@@ -434,7 +434,6 @@ return 'ready';
 
 func TestInstallHostOpFailuresWithChrome(t *testing.T) {
 	session := startPagehostChromePrivate(t)
-	t.Cleanup(session.Close)
 
 	var host *Host
 	engine, err := quickjsengine.NewFactory()()

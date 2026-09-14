@@ -35,14 +35,20 @@ func TestExportedStartTestSessionWrappers(t *testing.T) {
 	if private == nil || private.Context() == nil {
 		t.Fatal("StartPrivateTestSession returned nil session")
 	}
-	if private.shared {
+	if private.shared.Load() {
 		t.Fatal("private session must not be marked shared")
 	}
 	shared := StartTestSession(t)
 	if shared == nil || shared.Context() == nil {
 		t.Fatal("StartTestSession returned nil session")
 	}
-	if !shared.shared {
+	if !chromeSharedEnabled() {
+		if shared.shared.Load() {
+			t.Fatal("SHARED=0 StartTestSession must return a private session")
+		}
+		return
+	}
+	if !shared.shared.Load() {
 		t.Fatal("StartTestSession must return the shared session")
 	}
 	if again := StartTestSession(t); again != shared {
@@ -53,7 +59,7 @@ func TestExportedStartTestSessionWrappers(t *testing.T) {
 func TestStartTestSessionRespectsSharedDisabled(t *testing.T) {
 	t.Setenv("CHOYSUM_TEST_CHROME_SHARED", "0")
 	session := startTestSession(t)
-	if session.shared {
+	if session.shared.Load() {
 		t.Fatal("SHARED=0 must return a private session")
 	}
 }
@@ -69,6 +75,9 @@ func TestResetSharedTestTabGuards(t *testing.T) {
 }
 
 func TestResetSharedTestTabNewPageError(t *testing.T) {
+	if !chromeSharedEnabled() {
+		t.Skip("requires shared chrome (CHOYSUM_TEST_CHROME_SHARED enabled)")
+	}
 	session := startTestSession(t)
 	old := enableNetworkForPage
 	enableNetworkForPage = func(p *Page) error { return errors.New("net enable boom") }
@@ -101,9 +110,10 @@ func (e *errorRecorder) Errorf(format string, args ...any) {
 	e.msgs = append(e.msgs, fmt.Sprintf(format, args...))
 }
 
-// TestZzSharedChromeHelpersCoverage runs last so it can tear down the process
-// shared browser and exercise skip/error paths without breaking earlier tests.
-func TestZzSharedChromeHelpersCoverage(t *testing.T) {
+// TestSharedChromeHelpersCoverage runs after other *_test.go files in this
+// package (zzz_ prefix) so it can tear down the process-wide shared browser
+// and exercise skip/error paths without breaking earlier tests.
+func TestSharedChromeHelpersCoverage(t *testing.T) {
 	// Ensure a live shared session exists, then close it to cover teardown of
 	// a real browser + cancel func (not only the nil idempotent path).
 	if chromeSharedEnabled() {
