@@ -285,7 +285,7 @@ func TestWaitForResponseContextNilPage(t *testing.T) {
 }
 
 func TestWaitForResponseContextNilCtxUsesPageContext(t *testing.T) {
-	session := startTestSession(t)
+	session := startPrivateTestSession(t)
 	page, err := session.NewPage()
 	if err != nil {
 		t.Fatal(err)
@@ -381,7 +381,7 @@ document.getElementById('go').onclick = () => fetch('/api/ping', {method:'POST',
 }
 
 func TestWaitForResponseCancelDuringBodyFetch(t *testing.T) {
-	session := startTestSession(t)
+	session := startPrivateTestSession(t)
 	page, err := session.NewPage()
 	if err != nil {
 		t.Fatal(err)
@@ -463,7 +463,7 @@ func TestWaitForResponseResponseWithoutPriorRequest(t *testing.T) {
 }
 
 func TestWaitForResponseDefaultTimeoutBranch(t *testing.T) {
-	session := startTestSession(t)
+	session := startPrivateTestSession(t)
 	page, err := session.NewPage()
 	if err != nil {
 		t.Fatal(err)

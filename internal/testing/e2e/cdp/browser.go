@@ -35,6 +35,9 @@ type Session struct {
 	userDataDir string
 	stopWatch   context.CancelFunc
 	headless    bool
+	// shared marks a process-wide test browser; Close is a no-op so package
+	// tests can defer Close without tearing down later tests.
+	shared bool
 }
 
 // StartOptions configures browser launch.
@@ -166,8 +169,9 @@ func startOnce(ctx context.Context, execPath string, headless bool) (s *Session,
 }
 
 // Close shuts down the browser session.
+// Shared package-test sessions ignore Close; call CloseSharedTestSession from TestMain.
 func (s *Session) Close() {
-	if s == nil {
+	if s == nil || s.shared {
 		return
 	}
 	if s.stopWatch != nil {

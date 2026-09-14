@@ -5,7 +5,10 @@ package cdp
 
 import (
 	"context"
+	"errors"
 	"os"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -13,6 +16,14 @@ import (
 var (
 	chromiumResolvePath = ResolveChromiumPath
 	chromiumSystemPaths = systemChromeCandidates
+)
+
+var (
+	sharedChromeOnce   sync.Once
+	sharedChromeMu     sync.Mutex
+	sharedChrome       *Session
+	sharedChromeCancel context.CancelFunc
+	sharedChromeErr    error
 )
 
 func chromiumCandidates() []string {
@@ -49,9 +60,123 @@ func requireChromium(t *testing.T) string {
 	return cands[0]
 }
 
-// startTestSession launches headless Chrome, trying system Chrome then ResolveChromiumPath.
-// Skips when no binary can start (broken CfT caches, sandboxes, etc.).
+// chromeSharedEnabled reports whether package tests should reuse one Chromium.
+// Set CHOYSUM_TEST_CHROME_SHARED=0|false|no to force a fresh browser per session.
+func chromeSharedEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("CHOYSUM_TEST_CHROME_SHARED"))) {
+	case "0", "false", "no":
+		return false
+	default:
+		return true
+	}
+}
+
+// startTestSession returns a Chromium session for package tests.
+// By default one shared headless browser is reused for the process
+// (CHOYSUM_TEST_CHROME_SHARED=0 disables sharing). Callers that Close the
+// browser mid-test must use startPrivateTestSession instead.
 func startTestSession(t *testing.T) *Session {
+	t.Helper()
+	if !chromeSharedEnabled() {
+		return startPrivateTestSession(t)
+	}
+	return startSharedTestSession(t)
+}
+
+// StartTestSession is the exported form of startTestSession for pagehost tests.
+func StartTestSession(t *testing.T) *Session {
+	t.Helper()
+	return startTestSession(t)
+}
+
+// startPrivateTestSession launches a dedicated Chromium that Close() tears down.
+func startPrivateTestSession(t *testing.T) *Session {
+	t.Helper()
+	session := launchTestSession(t)
+	t.Cleanup(session.Close)
+	return session
+}
+
+// StartPrivateTestSession is the exported form of startPrivateTestSession.
+func StartPrivateTestSession(t *testing.T) *Session {
+	t.Helper()
+	return startPrivateTestSession(t)
+}
+
+func startSharedTestSession(t *testing.T) *Session {
+	t.Helper()
+	sharedChromeOnce.Do(func() {
+		cands := chromiumCandidates()
+		if len(cands) == 0 {
+			sharedChromeErr = errChromiumUnavailable
+			return
+		}
+		headless := true
+		var lastErr error
+		for _, execPath := range cands {
+			ctx, cancel := context.WithCancel(context.Background())
+			session, err := Start(ctx, StartOptions{ExecPath: execPath, Headless: &headless})
+			if err == nil {
+				session.shared = true
+				sharedChrome = session
+				sharedChromeCancel = cancel
+				return
+			}
+			cancel()
+			lastErr = err
+		}
+		sharedChromeErr = lastErr
+	})
+	sharedChromeMu.Lock()
+	session := sharedChrome
+	err := sharedChromeErr
+	sharedChromeMu.Unlock()
+	if session == nil {
+		if err == nil || err == errChromiumUnavailable {
+			t.Skip("chromium unavailable")
+		}
+		t.Skipf("chromium start failed: %v", err)
+	}
+	t.Cleanup(func() {
+		resetSharedTestTab(session)
+	})
+	return session
+}
+
+// CloseSharedTestSession tears down the process-wide shared Chromium, if any.
+// Package TestMain should call this after m.Run().
+func CloseSharedTestSession() {
+	sharedChromeMu.Lock()
+	session := sharedChrome
+	cancel := sharedChromeCancel
+	sharedChrome = nil
+	sharedChromeCancel = nil
+	sharedChromeMu.Unlock()
+	if session != nil {
+		session.shared = false
+		session.Close()
+	}
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func resetSharedTestTab(session *Session) {
+	if session == nil || session.Context() == nil || session.Context().Err() != nil {
+		return
+	}
+	// Fetch is target-scoped. A prior Page may have left interception on after
+	// Close skipped DisableFetch (fresh Page objects only disable when they
+	// enabled Fetch). Always clear it before the next shared-session test.
+	_ = runFetchDisable(session.Context())
+	page, err := session.NewPage()
+	if err != nil {
+		return
+	}
+	page.Close()
+}
+
+func launchTestSession(t *testing.T) *Session {
 	t.Helper()
 	cands := chromiumCandidates()
 	if len(cands) == 0 {
@@ -60,15 +185,13 @@ func startTestSession(t *testing.T) *Session {
 	headless := true
 	var lastErr error
 	for _, execPath := range cands {
-		// Bind session lifetime to the test, not a short start deadline: Start
+		// Bind session lifetime to Background, not a short start deadline: Start
 		// watches the parent ctx and would tear down the browser when it ends.
+		// Private sessions register Close via t.Cleanup in the caller.
 		ctx, cancel := context.WithCancel(context.Background())
 		session, err := Start(ctx, StartOptions{ExecPath: execPath, Headless: &headless})
 		if err == nil {
-			t.Cleanup(func() {
-				session.Close()
-				cancel()
-			})
+			t.Cleanup(cancel)
 			return session
 		}
 		cancel()
@@ -84,3 +207,5 @@ func startChromiumOrSkip(t *testing.T) (execPath string, session *Session) {
 	session = startTestSession(t)
 	return session.ExecPath(), session
 }
+
+var errChromiumUnavailable = errors.New("chromium unavailable")

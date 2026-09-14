@@ -69,7 +69,7 @@ func TestInstallFetchRouteBindingsErrorPaths(t *testing.T) {
 }
 
 func TestInstallFetchRouteBindingsWithChrome(t *testing.T) {
-	session := startPagehostChrome(t)
+	session := startPagehostChromePrivate(t)
 	defer session.Close()
 
 	var host *Host
@@ -391,7 +391,7 @@ func TestInstallWaitPausedNullMappingBranches(t *testing.T) {
 }
 
 func TestInstallFetchRouteBindingHookErrorsAndClosed(t *testing.T) {
-	session := startPagehostChrome(t)
+	session := startPagehostChromePrivate(t)
 	defer session.Close()
 
 	var host *Host
