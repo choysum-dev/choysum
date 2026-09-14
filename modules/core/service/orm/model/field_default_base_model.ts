@@ -177,6 +177,31 @@ function normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
   return value;
 }
 
+async function fieldDefaultStoreTableExists(dialect: string, table: string): Promise<boolean> {
+  const query = ($choysum as any)?.db?.query;
+  if (typeof query !== 'function') {
+    // No probe available; allow the CREATE INDEX attempt.
+    return true;
+  }
+  let sql = '';
+  if (dialect === 'postgres' || dialect === 'postgresql') {
+    sql =
+      'SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ? LIMIT 1';
+  } else if (dialect === 'mysql') {
+    sql = 'SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1';
+  } else {
+    sql = "SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1";
+  }
+  try {
+    const raw = await query.call(($choysum as any).db, sql, JSON.stringify([table]));
+    const rows = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(rows) && rows.length > 0;
+  } catch {
+    // Probe failed — still try CREATE INDEX (existing best-effort path).
+    return true;
+  }
+}
+
 async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBaseModel>): Promise<void> {
   const meta = storeMeta(ctor);
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
@@ -194,12 +219,20 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
 
   try {
     const exec = ($choysum as any)?.db?.execute;
-    if (typeof exec === 'function') {
-      await exec.call(($choysum as any).db, ddl, '[]');
-      ensuredUniqueIndexTables.add(table);
+    if (typeof exec !== 'function') {
+      return;
     }
+    // Skip DDL when the store table is not migrated yet (unit-test apps, deferred schema).
+    // Do not mark ensured: once the table appears, the next Set can create the index.
+    if (!(await fieldDefaultStoreTableExists(dialect, table))) {
+      return;
+    }
+    await exec.call(($choysum as any).db, ddl, '[]');
+    ensuredUniqueIndexTables.add(table);
   } catch {
     // Best-effort: upsert path still enforces uniqueness in application logic.
+    // Remember the attempt so a hard DDL failure does not ERROR on every Set.
+    ensuredUniqueIndexTables.add(table);
   }
 }
 

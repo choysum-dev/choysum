@@ -118,6 +118,7 @@ test('FieldDefault ensureScopeUniqueIndex postgres dialect and exec success/fail
   (globalThis as any).$choysum = {
     db: {
       dialectName: 'postgres',
+      query: async () => JSON.stringify([{ ok: 1 }]),
       execute: async (ddl: string) => {
         ddls.push(ddl);
       },
@@ -150,6 +151,8 @@ test('FieldDefault ensureScopeUniqueIndex swallows exec errors and skips without
   (globalThis as any).$choysum = {
     db: {
       dialectName: 'sqlite',
+      // Probe says table exists so CREATE INDEX is attempted and can fail.
+      query: async () => JSON.stringify([{ ok: 1 }]),
       execute: async () => {
         throw new Error('ddl failed');
       },
@@ -169,6 +172,45 @@ test('FieldDefault ensureScopeUniqueIndex swallows exec errors and skips without
       CovFieldDefault.Create = originalCreate;
       restore();
     }
+  }
+});
+
+test('FieldDefault ensureScopeUniqueIndex skips CREATE when store table is missing', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-miss', ...value })) as any;
+  const originalChoysum = (globalThis as any).$choysum;
+  const ddls: string[] = [];
+  let probes = 0;
+  (globalThis as any).$choysum = {
+    db: {
+      dialectName: 'sqlite',
+      query: async () => {
+        probes++;
+        return JSON.stringify([]); // table missing
+      },
+      execute: async (ddl: string) => {
+        ddls.push(ddl);
+      },
+    },
+  };
+  try {
+    await CovFieldDefault.Set('Widget', 'Name', 'no-table-yet');
+    expect(probes).toBe(1);
+    expect(ddls.length).toBe(0);
+    // Missing table must not be cached as ensured — next Set probes again.
+    await CovFieldDefault.Set('Widget', 'Name', 'still-missing');
+    expect(probes).toBe(2);
+    expect(ddls.length).toBe(0);
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
   }
 });
 
@@ -310,6 +352,7 @@ test('FieldDefault metadata edge branches for empty app, tableName fn, and null 
     (globalThis as any).$choysum = {
       db: {
         dialectName: 'postgresql',
+        query: async () => JSON.stringify([{ ok: 1 }]),
         execute: async (ddl: string) => {
           ddls.push(ddl);
         },
