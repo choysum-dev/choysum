@@ -27,7 +27,7 @@ func TestPhaseEndCandidates_UpgradeOnlyTargetPlusNewEnsured(t *testing.T) {
 	ctx.markUpgradeTouched("partner")
 	ctx.markInstallTouched("web")
 	got := phaseEndCandidates(plan.OpUpgrade, []string{"partner", "other"}, []string{"web", "core"}, ctx)
-	want := []string{"partner", "web"}
+	want := []string{"web", "partner"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("phaseEndCandidates(upgrade) = %v, want %v", got, want)
 	}
@@ -48,7 +48,7 @@ func TestPhaseEndCandidates_SkipsBlankNames(t *testing.T) {
 	}
 	ctx.markInstallTouched("web")
 	got = phaseEndCandidates(plan.OpUpgrade, []string{"partner"}, []string{"", "web"}, ctx)
-	if !reflect.DeepEqual(got, []string{"partner", "web"}) {
+	if !reflect.DeepEqual(got, []string{"web", "partner"}) {
 		t.Fatalf("upgrade blanks+web = %v", got)
 	}
 }
@@ -63,6 +63,10 @@ func TestPhaseEndCandidates_DefaultAndNilUpgrade(t *testing.T) {
 	got = phaseEndCandidates(plan.OpInstall, []string{"a", "b"}, nil, nil)
 	if !reflect.DeepEqual(got, []string{"a", "b"}) {
 		t.Fatalf("nil ctx install = %v", got)
+	}
+	got = phaseEndCandidates(plan.OpInstall, []string{"a", "a", "b"}, nil, nil)
+	if !reflect.DeepEqual(got, []string{"a", "b"}) {
+		t.Fatalf("install duplicates = %v", got)
 	}
 	ctx := newOpContext()
 	ctx.markUpgradeTouched("partner")

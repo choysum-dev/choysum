@@ -12,10 +12,11 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
-// Matches @Migration / @Migration<...>({ ... phase: 'end'|Phase.End ... }).
-// Uses a non-greedy span so nested `{ ... }` before `phase` still match.
-// Identifier phase values fail open (false positives only cost a full RunPhase).
-var endMigrationPhasePattern = regexp.MustCompile(`(?is)@Migration(?:\s*<[^>]*>)?\s*\(\s*\{.*?\bphase\s*:\s*(?:['"]end['"]|[A-Za-z_$][\w$.]*)`)
+// Matches @Migration / @Migration<...>({ ... phase: 'end'|Phase.End ... })
+// or object spreads (...foo) which may hide phase. Uses a non-greedy span so
+// nested `{ ... }` before `phase` still match. Identifier / spread values fail
+// open (false positives only cost a full RunPhase).
+var endMigrationPhasePattern = regexp.MustCompile(`(?is)@Migration(?:\s*<[^>]*>)?\s*\(\s*\{.*?(?:\bphase\s*:\s*(?:['"]end['"]|[A-Za-z_$][\w$.]*)|\.\.\.)`)
 
 // moduleSourceDeclaresEndMigration reports whether module sources declare an
 // @Migration with phase end. Used to O(1)-skip PhaseEnd without semantic build

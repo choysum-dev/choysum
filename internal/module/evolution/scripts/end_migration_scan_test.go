@@ -70,6 +70,22 @@ export function done() {}
 		t.Fatal("expected non-literal phase: MigrationPhase.End to fail open")
 	}
 
+	// Object-based options fail open so PhaseEnd is not skipped.
+	spread := t.TempDir()
+	spreadSrc := filepath.Join(spread, "service", "spread.ts")
+	if err := os.MkdirAll(filepath.Dir(spreadSrc), 0o755); err != nil {
+		t.Fatalf("mkdir spread: %v", err)
+	}
+	if err := os.WriteFile(spreadSrc, []byte(`const endPhase = { phase: 'end' as const }
+@Migration({ ...endPhase, name: 'done' })
+export function done() {}
+`), 0o644); err != nil {
+		t.Fatalf("write spread: %v", err)
+	}
+	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: spread}) {
+		t.Fatal("spread options should fail open for PhaseEnd")
+	}
+
 	// Non-directory path fails open.
 	filePath := filepath.Join(t.TempDir(), "not-a-dir.ts")
 	if err := os.WriteFile(filePath, []byte("export {}\n"), 0o644); err != nil {

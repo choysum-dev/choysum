@@ -89,8 +89,9 @@ func (c *opContext) markUpgradeTouched(name string) {
 }
 
 // phaseEndCandidates returns modules that should run PhaseEnd for this op.
-// Install: only modules that actually installed. Upgrade: upgraded targets plus
-// EnsureOrder modules that were newly installed in this op.
+// Install: only modules that actually installed (deduped). Upgrade: newly
+// ensured deps first, then upgraded targets (same relative order as the former
+// mergeUniqueModuleNames(EnsureOrder, ModuleOrder) path).
 func phaseEndCandidates(op plan.OpType, moduleOrder, ensureOrder []string, ctx *opContext) []string {
 	switch op {
 	case plan.OpInstall:
@@ -104,10 +105,19 @@ func phaseEndCandidates(op plan.OpType, moduleOrder, ensureOrder []string, ctx *
 				out = append(out, name)
 			}
 		}
-		return out
+		return mergeUniqueModuleNames(out)
 	case plan.OpUpgrade:
-		// Capacity is a hint only; avoid len+len so static analyzers do not flag overflow.
+		// Keep EnsureOrder-first ordering (deps before upgraded targets), matching
+		// the pre-throttle mergeUniqueModuleNames(ensureOrder, moduleOrder) order.
 		out := make([]string, 0, len(moduleOrder))
+		if ctx != nil {
+			for _, name := range ensureOrder {
+				name = strings.TrimSpace(name)
+				if name != "" && ctx.isInstallTouched(name) {
+					out = append(out, name)
+				}
+			}
+		}
 		for _, name := range moduleOrder {
 			name = strings.TrimSpace(name)
 			if name == "" {
@@ -115,14 +125,6 @@ func phaseEndCandidates(op plan.OpType, moduleOrder, ensureOrder []string, ctx *
 			}
 			if ctx == nil || ctx.isUpgradeTouched(name) {
 				out = append(out, name)
-			}
-		}
-		if ctx != nil {
-			for _, name := range ensureOrder {
-				name = strings.TrimSpace(name)
-				if name != "" && ctx.isInstallTouched(name) {
-					out = append(out, name)
-				}
 			}
 		}
 		return mergeUniqueModuleNames(out)
