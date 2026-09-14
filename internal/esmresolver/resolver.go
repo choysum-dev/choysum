@@ -797,6 +797,9 @@ func (r *Resolver) codeCacheDir() string {
 }
 
 func defaultRetryBackoff(attempt int) time.Duration {
+	if attempt < 1 {
+		return 0
+	}
 	return time.Duration(math.Min(float64(time.Second<<(attempt-1)), float64(10*time.Second)))
 }
 

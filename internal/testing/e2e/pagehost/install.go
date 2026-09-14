@@ -128,6 +128,16 @@ func (h *Host) Drain() {
 	}
 }
 
+func pageWaitContext(p *cdp.Page) context.Context {
+	if p == nil {
+		return context.Background()
+	}
+	if ctx := p.Context(); ctx != nil {
+		return ctx
+	}
+	return context.Background()
+}
+
 func (h *Host) schedule(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
 	if h == nil || ctx == nil || job == nil || h.closed.Load() {
 		return false
@@ -428,10 +438,7 @@ func (h *Host) bindWaitForResponse() func(ctx *quickjs.Context, this *quickjs.Va
 			h.pending.Add(1)
 			go func() {
 				defer h.pending.Done()
-				waitParent := p.Context()
-				if waitParent == nil {
-					waitParent = context.Background()
-				}
+				waitParent := pageWaitContext(p)
 				waitCtx, cancel := context.WithCancel(waitParent)
 				defer cancel()
 				if h.stop != nil {

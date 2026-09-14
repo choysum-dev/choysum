@@ -48,7 +48,7 @@ func newTestResolver(dir string) *Resolver {
 		WithCacheDir(dir),
 		WithTarget("es2020"),
 		WithHTTPClient(&http.Client{Timeout: 5 * time.Second}),
-		WithRetryBackoff(func(int) time.Duration { return 0 }),
+		zeroRetryBackoff(),
 	)
 }
 
@@ -211,6 +211,12 @@ func TestResolver_Download_NoRetryOn404(t *testing.T) {
 }
 
 func TestDefaultRetryBackoff(t *testing.T) {
+	if got := defaultRetryBackoff(0); got != 0 {
+		t.Fatalf("attempt 0 = %s, want 0", got)
+	}
+	if got := defaultRetryBackoff(-1); got != 0 {
+		t.Fatalf("attempt -1 = %s, want 0", got)
+	}
 	if got := defaultRetryBackoff(1); got != time.Second {
 		t.Fatalf("attempt 1 = %s, want 1s", got)
 	}
@@ -219,6 +225,41 @@ func TestDefaultRetryBackoff(t *testing.T) {
 	}
 	if got := defaultRetryBackoff(3); got != 4*time.Second {
 		t.Fatalf("attempt 3 = %s, want 4s", got)
+	}
+}
+
+func TestBackoffDurationDefaultAndNilResolver(t *testing.T) {
+	r := New()
+	if got := r.backoffDuration(1); got != time.Second {
+		t.Fatalf("default backoff 1 = %s, want 1s", got)
+	}
+	if got := (*Resolver)(nil).backoffDuration(1); got != time.Second {
+		t.Fatalf("nil resolver backoff 1 = %s, want 1s", got)
+	}
+}
+
+func TestResolver_Download_RetrySleepsWhenBackoffPositive(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	r := New(
+		WithUpstream(server.URL),
+		WithCacheDir(dir),
+		WithTarget("es2020"),
+		WithRetryBackoff(func(int) time.Duration { return time.Millisecond }),
+	)
+
+	_, err := r.downloadWithRetry(server.URL + "/pkg?target=es2020")
+	if err == nil {
+		t.Fatal("expected error after all retries exhausted")
+	}
+	if attempts != 3 {
+		t.Fatalf("expected 3 attempts, got %d", attempts)
 	}
 }
 

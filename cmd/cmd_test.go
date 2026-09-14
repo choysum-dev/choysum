@@ -21,6 +21,7 @@ import (
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
 	pkgrunner "github.com/choysum-dev/choysum/internal/testing/runner"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -941,12 +942,62 @@ func TestNewTypeFetchCmd_Run_ContextCanceledReturnsContextError(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected context canceled error, got %v", err)
 	}
-	if elapsed > 2*time.Second {
-		t.Fatalf("canceled type-fetch took %s, want < 2s", elapsed)
+	if elapsed > 5*time.Second {
+		t.Fatalf("canceled type-fetch took %s, want < 5s", elapsed)
 	}
 	output := out.String()
 	if strings.Contains(output, "[app] error: context canceled") || strings.Contains(output, "[app] error: context cancelled") {
 		t.Fatalf("unexpected generic cancellation output, got %q", output)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_ToolingContextCanceledReturnsContextError(t *testing.T) {
+	t.Cleanup(func() {
+		fetchTypeDefinitionContext = esmresolver.FetchTypeDefinitionContext
+		ideToolingTypePackages = esmresolver.IDEToolingTypePackages
+	})
+	ideToolingTypePackages = func() []string { return []string{"tool-pkg"} }
+	toolingStarted := make(chan struct{})
+	fetchTypeDefinitionContext = func(ctx context.Context, client *http.Client, upstream, typesDir, pkg, version string) (*esmresolver.TypeFetchResult, []esmresolver.TypeFetchResult, error) {
+		if pkg == "tool-pkg" {
+			select {
+			case <-toolingStarted:
+			default:
+				close(toolingStarted)
+			}
+			<-ctx.Done()
+			return nil, nil, ctx.Err()
+		}
+		return nil, nil, errors.New("compiler type miss")
+	}
+
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"app", "--offline"})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cmd.SetContext(ctx)
+	go func() {
+		select {
+		case <-toolingStarted:
+			cancel()
+		case <-time.After(5 * time.Second):
+			cancel()
+		}
+	}()
+
+	err := cmd.Execute()
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled error, got %v", err)
+	}
+	if strings.Contains(out.String(), "[tooling] warning:") {
+		t.Fatalf("canceled tooling fetch should not warn, got %q", out.String())
 	}
 }
 

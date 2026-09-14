@@ -28,6 +28,12 @@ func (*offlineTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return nil, xfmt.Errorf("offline mode enabled: network request blocked")
 }
 
+// Tests may override these type-fetch entry points.
+var (
+	fetchTypeDefinitionContext = esmresolver.FetchTypeDefinitionContext
+	ideToolingTypePackages     = esmresolver.IDEToolingTypePackages
+)
+
 func newTypeFetchCmd(envGetter func() scope.Scope) *cobra.Command {
 	var all bool
 	var withDepends bool
@@ -222,7 +228,7 @@ When <app> is specified, fetches types for that module only.`,
 				}
 				totalCompilerTypeTargets++
 				setCommandProgress(fmt.Sprintf("[tsconfig] fetching compiler type (%d/%d): %s -> %s@%s", i+1, len(compilerTypeTargets), target.TypeName, target.PackageName, target.Version))
-				result, transitive, err := esmresolver.FetchTypeDefinitionContext(ctx, client, upstream, typesDir, target.PackageName, target.Version)
+				result, transitive, err := fetchTypeDefinitionContext(ctx, client, upstream, typesDir, target.PackageName, target.Version)
 				clearCommandProgress()
 				if err != nil {
 					if ctx.Err() != nil {
@@ -258,7 +264,7 @@ When <app> is specified, fetches types for that module only.`,
 				}
 				totalToolingTypeTargets++
 				setCommandProgress(fmt.Sprintf("[tooling] fetching IDE type (%d/%d): %s@%s", i+1, len(toolingTypeTargets), target.PackageName, target.Version))
-				result, transitive, err := esmresolver.FetchTypeDefinitionContext(ctx, client, upstream, typesDir, target.PackageName, target.Version)
+				result, transitive, err := fetchTypeDefinitionContext(ctx, client, upstream, typesDir, target.PackageName, target.Version)
 				clearCommandProgress()
 				if err != nil {
 					if ctx.Err() != nil {
@@ -417,7 +423,7 @@ const (
 )
 
 func resolveTypeFetchToolingTypeTargets(modulesPath string) []typeFetchToolingTypeTarget {
-	packages := esmresolver.IDEToolingTypePackages()
+	packages := ideToolingTypePackages()
 	targets := make([]typeFetchToolingTypeTarget, 0, len(packages))
 	seen := make(map[string]struct{}, len(packages))
 	for _, packageName := range packages {
