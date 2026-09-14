@@ -118,6 +118,7 @@ test('FieldDefault ensureScopeUniqueIndex postgres dialect and exec success/fail
   (globalThis as any).$choysum = {
     db: {
       dialectName: 'postgres',
+      query: async () => JSON.stringify([{ ok: 1 }]),
       execute: async (ddl: string) => {
         ddls.push(ddl);
       },
@@ -138,6 +139,73 @@ test('FieldDefault ensureScopeUniqueIndex postgres dialect and exec success/fail
   }
 });
 
+test('FieldDefault ensureScopeUniqueIndex caches permanent DDL failure but retries transient lock', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-ddlcache', ...value })) as any;
+  const originalChoysum = (globalThis as any).$choysum;
+  const ddls: string[] = [];
+  let mode: 'permanent' | 'transient' | 'serialize' | 'missing' = 'permanent';
+  (globalThis as any).$choysum = {
+    db: {
+      dialectName: 'sqlite',
+      query: async () => JSON.stringify([{ ok: 1 }]),
+      execute: async (ddl: string) => {
+        ddls.push(ddl);
+        if (mode === 'permanent') {
+          throw new Error('syntax error near UNIQUE');
+        }
+        if (mode === 'serialize') {
+          throw new Error('could not serialize access due to concurrent update');
+        }
+        if (mode === 'missing') {
+          throw new Error('no such table: fd2cov_field_default');
+        }
+        throw new Error('database is locked');
+      },
+    },
+  };
+  try {
+    await CovFieldDefault.Set('Widget', 'Name', 'perm-fail');
+    expect(ddls.length).toBe(1);
+    await CovFieldDefault.Set('Widget', 'Name', 'perm-fail-2');
+    expect(ddls.length).toBe(1);
+
+    __resetFieldDefaultUniqueIndexTablesForTest();
+    mode = 'transient';
+    ddls.length = 0;
+    await CovFieldDefault.Set('Widget', 'Name', 'lock-fail');
+    expect(ddls.length).toBe(1);
+    await CovFieldDefault.Set('Widget', 'Name', 'lock-fail-2');
+    expect(ddls.length).toBe(2);
+
+    __resetFieldDefaultUniqueIndexTablesForTest();
+    mode = 'serialize';
+    ddls.length = 0;
+    await CovFieldDefault.Set('Widget', 'Name', 'serialize-fail');
+    expect(ddls.length).toBe(1);
+    await CovFieldDefault.Set('Widget', 'Name', 'serialize-fail-2');
+    expect(ddls.length).toBe(2);
+
+    __resetFieldDefaultUniqueIndexTablesForTest();
+    mode = 'missing';
+    ddls.length = 0;
+    await CovFieldDefault.Set('Widget', 'Name', 'missing-fail');
+    expect(ddls.length).toBe(1);
+    await CovFieldDefault.Set('Widget', 'Name', 'missing-fail-2');
+    expect(ddls.length).toBe(2);
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
+  }
+});
+
 test('FieldDefault ensureScopeUniqueIndex swallows exec errors and skips without execute', async () => {
   __resetFieldDefaultUniqueIndexTablesForTest();
   const restore = withSavepointPassThrough();
@@ -150,6 +218,8 @@ test('FieldDefault ensureScopeUniqueIndex swallows exec errors and skips without
   (globalThis as any).$choysum = {
     db: {
       dialectName: 'sqlite',
+      // Probe says table exists so CREATE INDEX is attempted and can fail.
+      query: async () => JSON.stringify([{ ok: 1 }]),
       execute: async () => {
         throw new Error('ddl failed');
       },
@@ -169,6 +239,154 @@ test('FieldDefault ensureScopeUniqueIndex swallows exec errors and skips without
       CovFieldDefault.Create = originalCreate;
       restore();
     }
+  }
+});
+
+test('FieldDefault ensureScopeUniqueIndex skips CREATE when store table is missing', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-miss', ...value })) as any;
+  const originalChoysum = (globalThis as any).$choysum;
+  const ddls: string[] = [];
+  let probes = 0;
+  (globalThis as any).$choysum = {
+    db: {
+      dialectName: 'sqlite',
+      query: async () => {
+        probes++;
+        return JSON.stringify([]); // table missing
+      },
+      execute: async (ddl: string) => {
+        ddls.push(ddl);
+      },
+    },
+  };
+  try {
+    await CovFieldDefault.Set('Widget', 'Name', 'no-table-yet');
+    expect(probes).toBe(1);
+    expect(ddls.length).toBe(0);
+    // Missing table must not be cached as ensured — next Set probes again.
+    await CovFieldDefault.Set('Widget', 'Name', 'still-missing');
+    expect(probes).toBe(2);
+    expect(ddls.length).toBe(0);
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
+  }
+});
+
+test('FieldDefault ensureScopeUniqueIndex real-db probe skips missing fd2cov table', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-realprobe', ...value })) as any;
+  const db = (globalThis as any).$choysum?.db;
+  if (db == null || db.query == null || db.execute == null) {
+    throw new Error(`missing db bridge: db=${db == null} query=${db?.query == null} execute=${db?.execute == null}`);
+  }
+  const originalExecute = db.execute;
+  // Guarantee absence regardless of test order before instrumenting execute.
+  await originalExecute.call(db, 'DROP TABLE IF EXISTS fd2cov_field_default', '[]');
+  let executed = 0;
+  db.execute = async (...args: any[]) => {
+    executed++;
+    return originalExecute.call(db, ...args);
+  };
+  try {
+    const probeRaw = await db.query(
+      "SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = 'fd2cov_field_default' LIMIT 1",
+      '[]'
+    );
+    const probeRows = typeof probeRaw === 'string' ? JSON.parse(probeRaw) : probeRaw;
+    if (!Array.isArray(probeRows)) {
+      throw new Error(`probeRows type=${typeof probeRows} rawType=${typeof probeRaw} raw=${String(probeRaw).slice(0, 200)}`);
+    }
+    if (probeRows.length !== 0) {
+      throw new Error(`expected missing table, got rows=${JSON.stringify(probeRows)}`);
+    }
+    await CovFieldDefault.Set('Widget', 'Name', 'real-probe');
+    if (executed !== 0) {
+      throw new Error(`expected no execute, got executed=${executed}`);
+    }
+  } finally {
+    db.execute = originalExecute;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
+  }
+});
+
+test('FieldDefault ensureScopeUniqueIndex attempts CREATE when query probe is unavailable', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-noquery', ...value })) as any;
+  const originalChoysum = (globalThis as any).$choysum;
+  const ddls: string[] = [];
+  (globalThis as any).$choysum = {
+    db: {
+      dialectName: 'sqlite',
+      query: null,
+      execute: async (ddl: string) => {
+        ddls.push(ddl);
+      },
+    },
+  };
+  try {
+    await CovFieldDefault.Set('Widget', 'Name', 'no-query-probe');
+    expect(ddls.length).toBe(1);
+    expect(ddls[0]).toContain('CREATE UNIQUE INDEX');
+    const before = ddls.length;
+    await CovFieldDefault.Set('Widget', 'Name', 'no-query-probe-2');
+    expect(ddls.length).toBe(before);
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
+  }
+});
+
+test('FieldDefault ensureScopeUniqueIndex treats unknown probe shape as table present', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-shape', ...value })) as any;
+  const originalChoysum = (globalThis as any).$choysum;
+  const ddls: string[] = [];
+  (globalThis as any).$choysum = {
+    db: {
+      dialectName: 'mysql',
+      query: async () => JSON.stringify({ rows: [{ ok: 1 }] }),
+      execute: async (ddl: string) => {
+        ddls.push(ddl);
+      },
+    },
+  };
+  try {
+    await CovFieldDefault.Set('Widget', 'Name', 'odd-shape');
+    expect(ddls.length).toBe(1);
+    expect(ddls[0]).toContain('coalesce(user_id');
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
   }
 });
 
@@ -310,6 +528,7 @@ test('FieldDefault metadata edge branches for empty app, tableName fn, and null 
     (globalThis as any).$choysum = {
       db: {
         dialectName: 'postgresql',
+        query: async () => JSON.stringify([{ ok: 1 }]),
         execute: async (ddl: string) => {
           ddls.push(ddl);
         },
