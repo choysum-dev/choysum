@@ -38,6 +38,11 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 		"NewRunner":               true,
 		"RunPhase":                true,
 	}
+	required := []string{
+		"commitInstall", "commitUpgrade", "commitUninstall",
+		"runInstallCommitTX", "runUpgradeCommitTX",
+	}
+	seen := map[string]bool{}
 	fset := token.NewFileSet()
 	for _, entry := range entries {
 		name := entry.Name()
@@ -63,6 +68,7 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 			if !strings.HasPrefix(fnName, "commit") && !strings.HasSuffix(fnName, "CommitTX") {
 				continue
 			}
+			seen[fnName] = true
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
 				call, ok := n.(*ast.CallExpr)
 				if !ok {
@@ -80,6 +86,14 @@ func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
 				}
 				return true
 			})
+		}
+	}
+	if len(seen) == 0 {
+		t.Fatal("commit TX guard matched no functions; naming convention may have drifted")
+	}
+	for _, name := range required {
+		if !seen[name] {
+			t.Errorf("expected to inspect %s", name)
 		}
 	}
 }

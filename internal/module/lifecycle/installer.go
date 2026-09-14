@@ -389,6 +389,9 @@ func (m *moduleInstaller) runInstallPreInit(buildResult *module.BuildResult) err
 
 // updatePostCommitIncompleteStatus flips Installed → ToInstall for retry. Overridable in tests.
 var updatePostCommitIncompleteStatus = func(sess *scope.Session, mod *meta.Module) (int64, error) {
+	if sess == nil {
+		return 0, xfmt.Errorf("session is nil")
+	}
 	if mod == nil {
 		return 0, xfmt.Errorf("module is nil")
 	}

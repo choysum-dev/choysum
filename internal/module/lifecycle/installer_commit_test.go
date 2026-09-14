@@ -421,6 +421,9 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 	if _, err := updatePostCommitIncompleteStatus(runtimeScope.Session(), nil); err == nil || !strings.Contains(err.Error(), "module is nil") {
 		t.Fatalf("expected nil module error, got %v", err)
 	}
+	if _, err := updatePostCommitIncompleteStatus(nil, &meta.Module{Name: "x"}); err == nil || !strings.Contains(err.Error(), "session is nil") {
+		t.Fatalf("expected nil session error, got %v", err)
+	}
 	if _, err := updatePostCommitIncompleteStatus(runtimeScope.Session(), &meta.Module{}); err == nil || !strings.Contains(err.Error(), "both empty") {
 		t.Fatalf("expected unqualified-update refusal, got %v", err)
 	}
