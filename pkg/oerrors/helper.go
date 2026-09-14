@@ -4,12 +4,27 @@
 package oerrors
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-
-	"github.com/buke/quickjs-go"
+	"sync/atomic"
 )
+
+// ForeignErrorInfoExtractor optionally maps non-Choysum errors (for example
+// QuickJS errors) into ErrorInfo. It is registered by packages that own those
+// error types so pkg/oerrors does not import CGO-backed runtimes.
+type ForeignErrorInfoExtractor func(error) *ErrorInfo
+
+var foreignErrorInfoExtractor atomic.Pointer[ForeignErrorInfoExtractor]
+
+// SetForeignErrorInfoExtractor installs or clears the optional extractor used
+// by GetErrorInfo after ChoysumError matching fails. Pass nil to clear.
+func SetForeignErrorInfoExtractor(fn ForeignErrorInfoExtractor) {
+	if fn == nil {
+		foreignErrorInfoExtractor.Store(nil)
+		return
+	}
+	foreignErrorInfoExtractor.Store(&fn)
+}
 
 // GetErrorInfo extracts ErrorInfo from an error for logging.
 func GetErrorInfo(err error) *ErrorInfo {
@@ -23,34 +38,10 @@ func GetErrorInfo(err error) *ErrorInfo {
 		return choysumErr.ErrorInfo
 	}
 
-	var qjsErr *quickjs.Error
-	if errors.As(err, &qjsErr) {
-		var errorInfo struct {
-			ErrorId  string            `json:"errorId"`
-			Domain   string            `json:"domain"`
-			Code     string            `json:"code"`
-			Message  string            `json:"message"`
-			GrpcCode int32             `json:"grpcCode"`
-			Metadata map[string]string `json:"metadata"`
-			Cause    map[string]string `json:"cause"`
+	if ptr := foreignErrorInfoExtractor.Load(); ptr != nil && *ptr != nil {
+		if info := (*ptr)(err); info != nil {
+			return info
 		}
-
-		if err := json.Unmarshal([]byte(qjsErr.JSONString), &errorInfo); err != nil {
-			return nil
-		}
-
-		// cause qjsErr.JSONString dit not contain message
-		errorInfo.Message = qjsErr.Message
-
-		return &ErrorInfo{
-			ErrorId:  errorInfo.ErrorId,
-			Domain:   errorInfo.Domain,
-			Code:     errorInfo.Code,
-			Message:  errorInfo.Message,
-			GrpcCode: errorInfo.GrpcCode,
-			Metadata: errorInfo.Metadata,
-		}
-
 	}
 
 	// Return nil for unrecognized error types.
