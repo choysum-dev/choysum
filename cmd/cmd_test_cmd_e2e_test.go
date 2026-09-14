@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -312,9 +313,28 @@ func TestCLIErrorBlockIsLastOutput(t *testing.T) {
 
 const cliE2EEnv = "CHOYSUM_CLI_E2E"
 
+// cliE2EHomes memoizes one HOME TempDir per test name so multiple runCLI*
+// calls in the same test share cache/state (mirrors the old t.Setenv HOME).
+var cliE2EHomes sync.Map
+
+func cliE2EHomeDir(t *testing.T) string {
+	t.Helper()
+	if v, ok := cliE2EHomes.Load(t.Name()); ok {
+		return v.(string)
+	}
+	home := t.TempDir()
+	if actual, loaded := cliE2EHomes.LoadOrStore(t.Name(), home); loaded {
+		return actual.(string)
+	}
+	t.Cleanup(func() { cliE2EHomes.Delete(t.Name()) })
+	return home
+}
+
 // cliE2EHelperEnv builds the subprocess environment for CLI helper tests.
-// Extra KEY=VAL entries override parent values. HOME defaults to a per-test
-// TempDir so callers can t.Parallel() without t.Setenv.
+// Extra KEY=VAL entries override parent values. HOME defaults to one TempDir
+// per test so callers can t.Parallel() without t.Setenv. Inherited
+// CHOYSUM_HOME is stripped so parallel children do not share browser/cache
+// state; callers may still pass CHOYSUM_HOME via extra.
 func cliE2EHelperEnv(t *testing.T, extra ...string) []string {
 	t.Helper()
 	overrides := map[string]string{}
@@ -331,8 +351,8 @@ func cliE2EHelperEnv(t *testing.T, extra ...string) []string {
 			hasHome = true
 		}
 	}
-	if !hasHome {
-		overrides["HOME"] = t.TempDir()
+	if !hasHome || overrides["HOME"] == "" {
+		overrides["HOME"] = cliE2EHomeDir(t)
 	}
 
 	env := make([]string, 0, len(os.Environ())+len(overrides)+1)
@@ -345,7 +365,7 @@ func cliE2EHelperEnv(t *testing.T, extra ...string) []string {
 			continue
 		}
 		switch key {
-		case cliE2EEnv, "CHOYSUM_DEFAULT_CHOYSUM_PATH", "CHOYSUM_DB_DIALECT", "CHOYSUM_DB_DSN", "CHOYSUM_AUTH_INTERNAL_KEY", "CHOYSUM_COMPILE_MINIFY", "CHOYSUM_COMPILE_SOURCEMAP", "CHOYSUM_SERVER_HOT_RELOAD":
+		case cliE2EEnv, "CHOYSUM_HOME", "CHOYSUM_DEFAULT_CHOYSUM_PATH", "CHOYSUM_DB_DIALECT", "CHOYSUM_DB_DSN", "CHOYSUM_AUTH_INTERNAL_KEY", "CHOYSUM_COMPILE_MINIFY", "CHOYSUM_COMPILE_SOURCEMAP", "CHOYSUM_SERVER_HOT_RELOAD":
 			continue
 		}
 		env = append(env, entry)
@@ -385,18 +405,7 @@ func helperArgs(args []string) []string {
 
 func runCLI(t *testing.T, args ...string) (string, int) {
 	t.Helper()
-
-	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
-	cmd.Args = append(cmd.Args, args...)
-	cmd.Env = cliE2EHelperEnv(t)
-	output, err := cmd.CombinedOutput()
-	if err == nil {
-		return string(output), 0
-	}
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		return string(output), exitErr.ExitCode()
-	}
-	return string(output), 1
+	return runCLIEnv(t, nil, args...)
 }
 
 func runCLIEnv(t *testing.T, extraEnv []string, args ...string) (string, int) {
