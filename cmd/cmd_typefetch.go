@@ -222,9 +222,12 @@ When <app> is specified, fetches types for that module only.`,
 				}
 				totalCompilerTypeTargets++
 				setCommandProgress(fmt.Sprintf("[tsconfig] fetching compiler type (%d/%d): %s -> %s@%s", i+1, len(compilerTypeTargets), target.TypeName, target.PackageName, target.Version))
-				result, transitive, err := esmresolver.FetchTypeDefinition(client, upstream, typesDir, target.PackageName, target.Version)
+				result, transitive, err := esmresolver.FetchTypeDefinitionContext(ctx, client, upstream, typesDir, target.PackageName, target.Version)
 				clearCommandProgress()
 				if err != nil {
+					if ctx.Err() != nil {
+						return ctx.Err()
+					}
 					totalCompilerTypeFailed++
 					cmd.Printf("[tsconfig] warning: failed to fetch compiler type %q via %s@%s: %v\n", target.TypeName, target.PackageName, target.Version, err)
 					continue
@@ -255,9 +258,12 @@ When <app> is specified, fetches types for that module only.`,
 				}
 				totalToolingTypeTargets++
 				setCommandProgress(fmt.Sprintf("[tooling] fetching IDE type (%d/%d): %s@%s", i+1, len(toolingTypeTargets), target.PackageName, target.Version))
-				result, transitive, err := esmresolver.FetchTypeDefinition(client, upstream, typesDir, target.PackageName, target.Version)
+				result, transitive, err := esmresolver.FetchTypeDefinitionContext(ctx, client, upstream, typesDir, target.PackageName, target.Version)
 				clearCommandProgress()
 				if err != nil {
+					if ctx.Err() != nil {
+						return ctx.Err()
+					}
 					totalToolingTypeFailed++
 					cmd.Printf("[tooling] warning: failed to fetch IDE tooling type %s@%s: %v\n", target.PackageName, target.Version, err)
 					continue

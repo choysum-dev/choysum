@@ -935,9 +935,14 @@ func TestNewTypeFetchCmd_Run_ContextCanceledReturnsContextError(t *testing.T) {
 		}
 	}()
 
+	started := time.Now()
 	err := cmd.Execute()
+	elapsed := time.Since(started)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected context canceled error, got %v", err)
+	}
+	if elapsed > 2*time.Second {
+		t.Fatalf("canceled type-fetch took %s, want < 2s", elapsed)
 	}
 	output := out.String()
 	if strings.Contains(output, "[app] error: context canceled") || strings.Contains(output, "[app] error: context cancelled") {

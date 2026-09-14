@@ -533,7 +533,7 @@ func TestInstallDelayDrainBeforeResolve(t *testing.T) {
 	}
 	qjs := engine.(*quickjsengine.QuickjsEngine)
 	// Fire a long delay then Drain immediately so the goroutine sees closed before resolve.
-	val := qjs.Ctx.Eval(`globalThis.__choysum_e2e_host__.delay(5000)`)
+	val := qjs.Ctx.Eval(`globalThis.__choysum_e2e_host__.delay(80)`)
 	if val.IsException() {
 		t.Fatal(qjs.Ctx.Exception())
 	}
@@ -572,7 +572,7 @@ func TestInstallWaitForResponseDrainWhilePending(t *testing.T) {
 	_ = awaitHost(t, qjs, `
 await globalThis.__choysum_e2e_host__.newPage();
 await globalThis.__choysum_e2e_host__.goto(`+jsonQuote(srv.URL)+`, 'load');
-globalThis.__choysum_e2e_host__.waitForResponse(JSON.stringify({urlIncludes:'/never'}), 5000);
+globalThis.__choysum_e2e_host__.waitForResponse(JSON.stringify({urlIncludes:'/never'}), 80);
 await globalThis.__choysum_e2e_host__.delay(30);
 return 'armed';
 `)
