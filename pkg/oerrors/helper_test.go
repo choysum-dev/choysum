@@ -91,4 +91,11 @@ func TestFromInfo(t *testing.T) {
 	if FromInfo(nil, nil) != nil {
 		t.Fatal("expected nil info to return nil")
 	}
+	withID := FromInfo(&ErrorInfo{ErrorId: "keep", Domain: "web", Code: "E1"}, nil)
+	if withID.ErrorId != "keep" {
+		t.Fatalf("expected existing ErrorId preserved, got %q", withID.ErrorId)
+	}
+	if noMeta := FromInfo(&ErrorInfo{Domain: "web", Code: "E1"}, nil); noMeta.Metadata == nil {
+		t.Fatal("expected nil Metadata to become an empty map")
+	}
 }

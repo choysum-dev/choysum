@@ -46,7 +46,7 @@ func invokeRPC(qctx *quickjs.Context, req *jsengine.JsRequest) (any, error) {
 	fn := qctx.Eval("$choysum.__rpc__")
 	defer fn.Free()
 	if fn.IsException() {
-		return nil, fmt.Errorf("caller: evaluate __rpc__: %w", quickjsengine.NormalizeError(qctx.Exception()))
+		return nil, fmt.Errorf("caller: evaluate __rpc__: %w", quickjsengine.NormalizeException(qctx.Exception(), "exception without details"))
 	}
 	if !fn.IsFunction() {
 		return nil, fmt.Errorf("caller: $choysum.__rpc__ is not a function")
@@ -60,7 +60,7 @@ func invokeRPC(qctx *quickjs.Context, req *jsengine.JsRequest) (any, error) {
 	jsResp := fn.Execute(qctx.Null(), jsReq).Await()
 	defer jsResp.Free()
 	if jsResp.IsException() {
-		return nil, fmt.Errorf("caller: call %s: %w", req.Service, quickjsengine.NormalizeError(qctx.Exception()))
+		return nil, fmt.Errorf("caller: call %s: %w", req.Service, quickjsengine.NormalizeException(qctx.Exception(), "exception without details"))
 	}
 	if jsResp.IsError() {
 		if normErr := quickjsengine.NormalizeError(jsResp.ToError()); normErr != nil {

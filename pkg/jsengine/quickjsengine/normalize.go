@@ -30,7 +30,27 @@ func NormalizeError(err error) error {
 	if info := errorInfoFromQuickJS(qjsErr); info != nil {
 		return oerrors.FromInfo(info, err)
 	}
-	return oerrors.Wrap(err, "js", "QUICKJS_ERROR", qjsErr.Message)
+	msg := qjsErr.Message
+	if msg == "" {
+		msg = qjsErr.JSONString
+	}
+	if msg == "" {
+		msg = err.Error()
+	}
+	return oerrors.Wrap(err, "js", "QUICKJS_ERROR", msg)
+}
+
+// NormalizeException converts Context.Exception() (or similar) at a boundary.
+// When IsException was true but the engine returned a nil exception, it returns
+// an explicit missing-details error so callers never wrap nil with %w.
+func NormalizeException(ex error, missingDetails string) error {
+	if ex != nil {
+		return NormalizeError(ex)
+	}
+	if missingDetails == "" {
+		missingDetails = "exception without details"
+	}
+	return errors.New(missingDetails)
 }
 
 func errorInfoFromQuickJS(qjsErr *quickjs.Error) *oerrors.ErrorInfo {
@@ -56,6 +76,8 @@ func errorInfoFromQuickJS(qjsErr *quickjs.Error) *oerrors.ErrorInfo {
 	}
 	if qjsErr.Message != "" {
 		payload.Message = qjsErr.Message
+	} else if payload.Message == "" {
+		payload.Message = qjsErr.JSONString
 	}
 
 	return &oerrors.ErrorInfo{

@@ -35,6 +35,11 @@ func TestNormalizeErrorFromStructuredQuickJS(t *testing.T) {
 	if oerrors.GetErrorInfo(wrapped) == nil {
 		t.Fatal("expected GetErrorInfo on wrapped normalized error")
 	}
+
+	// errors.As must also traverse wrappers around the raw QuickJS error.
+	if info := oerrors.GetErrorInfo(NormalizeError(fmt.Errorf("engine: %w", qjsErr))); info == nil || info.Code != "EJS" {
+		t.Fatalf("expected wrapped quickjs error to normalize, got %#v", info)
+	}
 }
 
 func TestNormalizeErrorInvalidJSONFallback(t *testing.T) {
@@ -86,5 +91,23 @@ func TestNormalizeErrorKeepsJSONMessageWhenQuickJSMessageEmpty(t *testing.T) {
 	info := oerrors.GetErrorInfo(got)
 	if info == nil || info.Message != "from-json" {
 		t.Fatalf("expected JSON message preserved when QuickJS Message empty, got %#v", info)
+	}
+}
+
+func TestNormalizeErrorFallbackMessageFromJSONString(t *testing.T) {
+	got := NormalizeError(&quickjs.Error{Message: "", JSONString: "{"})
+	info := oerrors.GetErrorInfo(got)
+	if info == nil || info.Message != "{" {
+		t.Fatalf("expected JSONString fallback message, got %#v", info)
+	}
+}
+
+func TestNormalizeExceptionNil(t *testing.T) {
+	got := NormalizeException(nil, "exception without details")
+	if got == nil || got.Error() != "exception without details" {
+		t.Fatalf("unexpected nil-exception result: %v", got)
+	}
+	if NormalizeException(nil, "") == nil {
+		t.Fatal("expected default missing-details message")
 	}
 }

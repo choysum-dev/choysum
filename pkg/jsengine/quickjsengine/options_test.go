@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/jsengine"
-	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 func TestEngineOptionsApplyAndValidate(t *testing.T) {
@@ -177,7 +176,7 @@ func TestQuickjsEngineLoadAndExecutePaths(t *testing.T) {
 	if execErr == nil || !strings.Contains(execErr.Error(), "failed to call function") {
 		t.Fatalf("expected call-function error, got %v", execErr)
 	}
-	if oerrors.GetErrorInfo(execErr) == nil && !strings.Contains(execErr.Error(), "rpc boom") {
-		t.Fatalf("expected normalized or message-bearing error, got %v", execErr)
+	if !strings.Contains(execErr.Error(), "rpc boom") {
+		t.Fatalf("expected the JS error message to be preserved, got %v", execErr)
 	}
 }
