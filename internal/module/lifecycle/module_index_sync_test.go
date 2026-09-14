@@ -974,6 +974,55 @@ func TestModuleManagerInstallRunsAppStageCallbacks(t *testing.T) {
 	}
 }
 
+func TestModuleManagerInstallPhaseEndRunsForTouchedModule(t *testing.T) {
+	modulesPath := t.TempDir()
+	distPath := filepath.Join(t.TempDir(), "dist")
+	tmpPath := filepath.Join(t.TempDir(), "tmp")
+	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
+	authPath := filepath.Join(modulesPath, "auth")
+	if err := os.MkdirAll(authPath, 0o755); err != nil {
+		t.Fatalf("mkdir auth: %v", err)
+	}
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.cfg.DistPath = distPath
+	runtimeScope.cfg.TmpPath = tmpPath
+	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	locker := &moduleIndexSyncTestLocker{}
+	coordinator := &moduleManagerInstallOriginCoordinator{module: &meta.Module{
+		Name:           "auth",
+		ApplicationStr: "crm",
+		Version:        "v1.0.0",
+		Path:           authPath,
+		Status:         meta.ToInstall,
+	}}
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+
+	if err := manager.Install(context.Background(), "auth"); err != nil {
+		t.Fatalf("Install() error = %v", err)
+	}
+	var got meta.Module
+	if err := db.Where("name = ?", "auth").Take(&got).Error; err != nil {
+		t.Fatalf("load installed: %v", err)
+	}
+	if got.Status != meta.Installed {
+		t.Fatalf("status=%v, want installed", got.Status)
+	}
+}
+
 func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
 	modulesPath := t.TempDir()
 	distPath := filepath.Join(t.TempDir(), "dist")

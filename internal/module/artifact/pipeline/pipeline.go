@@ -57,6 +57,11 @@ type Callbacks struct {
 	GenerateApp         func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error
 	BuildBackendBundles func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
 	GlobalWebBuild      func(ctx context.Context, distWebStagingDir string) error
+	// ShouldSkipGlobalWebBuild optionally skips rebuilding dist/web when inputs are unchanged.
+	// When skip is true, the existing dist/web is left in place (no staging replace).
+	ShouldSkipGlobalWebBuild func(ctx context.Context, distWebDir string) (skip bool, digest string, err error)
+	// RememberGlobalWebDigest stamps the input digest after a successful web build commit.
+	RememberGlobalWebDigest func(ctx context.Context, distWebDir string, digest string) error
 }
 
 // ModuleInstallProgressStage labels a discrete phase inside a module
@@ -879,6 +884,25 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 			return err
 		}
 
+		var webDigest string
+		if cb.ShouldSkipGlobalWebBuild != nil {
+			skip, dig, skipErr := cb.ShouldSkipGlobalWebBuild(stageCtx, distWebDir)
+			if skipErr != nil {
+				rollbackCommitted()
+				return skipErr
+			}
+			webDigest = dig
+			if skip {
+				logStep(slog.LevelInfo, "pipeline web build skipped", "step", "web_build_skipped", "digest", dig)
+				if err := commitManifest(); err != nil {
+					rollbackCommitted()
+					return err
+				}
+				finalizeCommitted()
+				return nil
+			}
+		}
+
 		prepareWebStarted := time.Now()
 		webStage, err := staging.PrepareDir(stageCtx, distWebDir)
 		if err != nil {
@@ -907,6 +931,13 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.Module, cb Callb
 		}
 		committed = append(committed, webStage)
 		logStep(slog.LevelDebug, "pipeline web committed", "duration", time.Since(webCommitStarted))
+
+		if cb.RememberGlobalWebDigest != nil && strings.TrimSpace(webDigest) != "" {
+			if err := cb.RememberGlobalWebDigest(stageCtx, distWebDir, webDigest); err != nil {
+				rollbackCommitted()
+				return err
+			}
+		}
 
 		if err := commitManifest(); err != nil {
 			rollbackCommitted()

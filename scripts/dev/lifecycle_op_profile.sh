@@ -16,6 +16,11 @@
 #
 # Tip: source .envrc (or direnv) first. Default log level is debug so semantic
 # metrics and fine-grained steps appear in the profile summary.
+#
+# Sourcemap: product default is compile.sourcemap=false. Local .envrc often sets
+# CHOYSUM_COMPILE_SOURCEMAP=true for debugging and adds ~2.5–2.8s web_build.
+# This script forces SOURCEMAP=false unless PROFILE_KEEP_SOURCEMAP=1 so lifecycle
+# wall numbers stay comparable across machines.
 
 set -euo pipefail
 
@@ -29,6 +34,9 @@ OPS="${OPS:-upgrade uninstall install}"
 
 mkdir -p "$PROFILE_DIR"
 export CHOYSUM_LOG_LEVEL="${CHOYSUM_LOG_LEVEL:-debug}"
+if [[ "${PROFILE_KEEP_SOURCEMAP:-0}" != "1" ]]; then
+  export CHOYSUM_COMPILE_SOURCEMAP=false
+fi
 
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   echo "==> go build -o choysum ."

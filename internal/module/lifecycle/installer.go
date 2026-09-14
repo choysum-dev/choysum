@@ -107,16 +107,16 @@ func (m *moduleInstaller) assertDependenciesInstalled() error {
 	return nil
 }
 
-func (m *moduleInstaller) install() error {
+func (m *moduleInstaller) install() (didInstall bool, err error) {
 	prepareStarted := time.Now()
 
 	if m.checkModuleInstalled() {
 		m.runtimeScope.Logger().Debug("module operation skipped", "module", m.module.Name, "reason", "already_installed")
-		return nil
+		return false, nil
 	}
 
 	if err := m.validate(); err != nil {
-		return xfmt.Errorf("error validating module: %w", err)
+		return false, xfmt.Errorf("error validating module: %w", err)
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepPrepare, prepareStarted)
 
@@ -127,7 +127,7 @@ func (m *moduleInstaller) install() error {
 			buildStarted := time.Now()
 			result, err := split.BuildWithoutPersist()
 			if err != nil {
-				return xfmt.Errorf("error building module: %w", err)
+				return false, xfmt.Errorf("error building module: %w", err)
 			}
 			buildResult = result
 			persistLater = true
@@ -135,7 +135,10 @@ func (m *moduleInstaller) install() error {
 		}
 	}
 
-	return m.installAfterPrepare(buildResult, persistLater)
+	if err := m.installAfterPrepare(buildResult, persistLater); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // installAfterPrepare runs the install commit TX, then TX-external pre_init, then finalize.

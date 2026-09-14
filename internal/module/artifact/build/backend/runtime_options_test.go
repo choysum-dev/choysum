@@ -157,3 +157,41 @@ func TestBackendRuntimeOptionsFromScopeAndResolved(t *testing.T) {
 		t.Fatal("hasRuntimeOptions(non-blank distPath) should be true")
 	}
 }
+
+func TestBackendRuntimeOptionsCompileSourceMapMatrix(t *testing.T) {
+	t.Parallel()
+	defaults := config.NewDefaultCompileConfig()
+	if defaults.SourceMap {
+		t.Fatal("product default compile.sourcemap must be false for lifecycle web cost")
+	}
+	withoutOverride := newRuntimeOptions(
+		scope.PathsRuntimeOptions{}, false,
+		scope.AuthRuntimeOptions{}, false,
+		scope.TaskRuntimeOptions{}, false,
+		scope.CompileRuntimeOptions{}, false,
+		scope.RuntimeEnvironmentOptions{}, false,
+	)
+	if withoutOverride.compileSourceMap != defaults.SourceMap {
+		t.Fatalf("compileSourceMap = %v, want default %v", withoutOverride.compileSourceMap, defaults.SourceMap)
+	}
+	enabled := newRuntimeOptions(
+		scope.PathsRuntimeOptions{}, false,
+		scope.AuthRuntimeOptions{}, false,
+		scope.TaskRuntimeOptions{}, false,
+		scope.CompileRuntimeOptions{SourceMap: true, Minify: true, TreeShaking: true}, true,
+		scope.RuntimeEnvironmentOptions{}, false,
+	)
+	if !enabled.compileSourceMap {
+		t.Fatal("compileSourceMap override true not applied")
+	}
+	disabled := newRuntimeOptions(
+		scope.PathsRuntimeOptions{}, false,
+		scope.AuthRuntimeOptions{}, false,
+		scope.TaskRuntimeOptions{}, false,
+		scope.CompileRuntimeOptions{SourceMap: false, Minify: true, TreeShaking: true}, true,
+		scope.RuntimeEnvironmentOptions{}, false,
+	)
+	if disabled.compileSourceMap {
+		t.Fatal("compileSourceMap override false not applied")
+	}
+}
