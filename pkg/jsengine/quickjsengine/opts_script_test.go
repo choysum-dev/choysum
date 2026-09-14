@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/jsengine"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 func TestScriptCacheKeyAndWithScript(t *testing.T) {
@@ -51,6 +52,8 @@ func TestScriptCacheKeyAndWithScript(t *testing.T) {
 	}
 	if err := WithScript(&jsengine.JsScript{FileName: "throw.js", Content: `throw new Error("eval boom");`})(engineB); err == nil {
 		t.Fatal("expected eval exception error")
+	} else if info := oerrors.GetErrorInfo(err); info == nil || info.Domain != "js" || info.Code != "QUICKJS_ERROR" {
+		t.Fatalf("expected normalized js/QUICKJS_ERROR, got %#v (err=%v)", info, err)
 	}
 }
 

@@ -184,4 +184,22 @@ func TestQuickjsEngineLoadAndExecutePaths(t *testing.T) {
 	if info == nil || info.Domain != "js" || info.Code != "QUICKJS_ERROR" {
 		t.Fatalf("expected js/QUICKJS_ERROR after NormalizeError, got %#v (err=%v)", info, execErr)
 	}
+
+	structured := newTestQuickjsEngine(t)
+	if err := structured.Load([]*jsengine.JsScript{{
+		FileName: "throw_structured.js",
+		Content: `
+			globalThis.$choysum = {
+				__rpc__: function(req) {
+					throw new Error(JSON.stringify({domain:"web",code:"EJS",message:"structured"}));
+				}
+			};
+		`,
+	}}); err != nil {
+		t.Fatalf("Load(structured): %v", err)
+	}
+	_, structuredErr := structured.Execute(context.Background(), &jsengine.JsRequest{Id: "structured", Service: "demo"})
+	if sinfo := oerrors.GetErrorInfo(structuredErr); sinfo == nil || sinfo.Domain != "web" || sinfo.Code != "EJS" {
+		t.Fatalf("expected structured JS error to keep domain/code, got %#v (err=%v)", sinfo, structuredErr)
+	}
 }

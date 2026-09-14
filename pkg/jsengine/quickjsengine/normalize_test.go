@@ -12,6 +12,11 @@ import (
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
+type errWrap struct{ err error }
+
+func (e errWrap) Error() string { return "wrap" }
+func (e errWrap) Unwrap() error { return e.err }
+
 func TestNormalizeErrorFromStructuredQuickJS(t *testing.T) {
 	qjsErr := &quickjs.Error{
 		Message:    "js exploded",
@@ -30,15 +35,25 @@ func TestNormalizeErrorFromStructuredQuickJS(t *testing.T) {
 		t.Fatalf("expected metadata preserved, got %#v", info.Metadata)
 	}
 
-	// Wrapped at the boundary still exposes ChoysumError via errors.As.
 	wrapped := fmt.Errorf("failed to call function: %w", NormalizeError(qjsErr))
 	if oerrors.GetErrorInfo(wrapped) == nil {
 		t.Fatal("expected GetErrorInfo on wrapped normalized error")
 	}
 
-	// errors.As must also traverse wrappers around the raw QuickJS error.
 	if info := oerrors.GetErrorInfo(NormalizeError(fmt.Errorf("engine: %w", qjsErr))); info == nil || info.Code != "EJS" {
 		t.Fatalf("expected wrapped quickjs error to normalize, got %#v", info)
+	}
+}
+
+func TestNormalizeErrorFromMessageJSON(t *testing.T) {
+	// Mirrors throw new Error(JSON.stringify(...)) where JSONString is "{}".
+	got := NormalizeError(&quickjs.Error{
+		Message:    `{"domain":"web","code":"EJS","message":"structured"}`,
+		JSONString: `{}`,
+	})
+	info := oerrors.GetErrorInfo(got)
+	if info == nil || info.Domain != "web" || info.Code != "EJS" || info.Message != "structured" {
+		t.Fatalf("expected Message JSON payload, got %#v", info)
 	}
 }
 
@@ -77,6 +92,17 @@ func TestNormalizeErrorPassthrough(t *testing.T) {
 	}
 }
 
+func TestNormalizeErrorTypedNilQuickJS(t *testing.T) {
+	var typedNil *quickjs.Error
+	got := NormalizeError(errWrap{err: typedNil})
+	if got == nil {
+		t.Fatal("expected typed-nil quickjs error to passthrough without panic")
+	}
+	if oerrors.GetErrorInfo(got) != nil {
+		t.Fatalf("expected typed-nil not to become ChoysumError, got %v", got)
+	}
+}
+
 func TestErrorInfoFromQuickJSNil(t *testing.T) {
 	if info := errorInfoFromQuickJS(nil); info != nil {
 		t.Fatalf("expected nil for nil quickjs error, got %#v", info)
@@ -108,14 +134,25 @@ func TestNormalizeErrorPrefersJSONMessageOverEngineMessage(t *testing.T) {
 func TestNormalizeErrorPreservesErrorIdWithoutDomain(t *testing.T) {
 	got := NormalizeError(&quickjs.Error{
 		Message:    "plain",
-		JSONString: `{"errorId":"corr-1","metadata":{"k":"v"}}`,
+		JSONString: `{"errorId":"corr-1","metadata":{"k":"v","n":2}}`,
 	})
 	info := oerrors.GetErrorInfo(got)
 	if info == nil || info.ErrorId != "corr-1" || info.Domain != "js" || info.Code != "QUICKJS_ERROR" {
 		t.Fatalf("expected errorId preserved with js/QUICKJS_ERROR defaults, got %#v", info)
 	}
-	if info.Metadata["k"] != "v" {
-		t.Fatalf("expected metadata preserved, got %#v", info.Metadata)
+	if info.Metadata["k"] != "v" || info.Metadata["n"] != "2" {
+		t.Fatalf("expected metadata stringified, got %#v", info.Metadata)
+	}
+}
+
+func TestNormalizeErrorPreservesGrpcCodeOnly(t *testing.T) {
+	got := NormalizeError(&quickjs.Error{
+		Message:    "plain",
+		JSONString: `{"grpcCode":7}`,
+	})
+	info := oerrors.GetErrorInfo(got)
+	if info == nil || info.Domain != "js" || info.Code != "QUICKJS_ERROR" || info.GrpcCode != 7 {
+		t.Fatalf("expected grpcCode-only payload preserved, got %#v", info)
 	}
 }
 
@@ -124,6 +161,26 @@ func TestNormalizeErrorFallbackMessageFromJSONString(t *testing.T) {
 	info := oerrors.GetErrorInfo(got)
 	if info == nil || info.Message != "{" {
 		t.Fatalf("expected JSONString fallback message, got %#v", info)
+	}
+}
+
+func TestNormalizeErrorFallbackMessageFromErrorString(t *testing.T) {
+	qjsErr := &quickjs.Error{Name: "TypeError", Message: "", JSONString: ""}
+	got := NormalizeError(qjsErr)
+	info := oerrors.GetErrorInfo(got)
+	if info == nil || info.Message == "" {
+		t.Fatalf("expected err.Error() fallback message, got %#v", info)
+	}
+}
+
+func TestNormalizeErrorStructuredEmptyMessagesUseJSONString(t *testing.T) {
+	got := NormalizeError(&quickjs.Error{
+		Message:    "",
+		JSONString: `{"domain":"web","code":"EJS"}`,
+	})
+	info := oerrors.GetErrorInfo(got)
+	if info == nil || info.Message != `{"domain":"web","code":"EJS"}` {
+		t.Fatalf("expected JSONString as message fallback, got %#v", info)
 	}
 }
 
@@ -138,5 +195,11 @@ func TestNormalizeExceptionNil(t *testing.T) {
 	}
 	if NormalizeException(nil, "") == nil {
 		t.Fatal("expected default missing-details message")
+	}
+
+	var typedNil *quickjs.Error
+	got = NormalizeException(typedNil, "exception without details")
+	if !oerrors.Is(got, "js", "QUICKJS_ERROR") {
+		t.Fatalf("expected typed-nil exception categorized, got %v", got)
 	}
 }

@@ -88,9 +88,10 @@ func Wrapf(err error, domain, code, format string, args ...interface{}) error {
 // FromInfo builds a ChoysumError from a fully populated ErrorInfo.
 // Missing ErrorId is filled; nil Metadata becomes an empty map.
 // The caller's ErrorInfo is copied so FromInfo does not mutate the argument.
+// Info without Domain and Code is rejected (unclassifiable).
 // cause may be nil for a base error, or the original boundary error for Unwrap.
 func FromInfo(info *ErrorInfo, cause error) *ChoysumError {
-	if info == nil {
+	if info == nil || (info.Domain == "" && info.Code == "") {
 		return nil
 	}
 	normalized := *info

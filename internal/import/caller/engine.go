@@ -63,10 +63,7 @@ func invokeRPC(qctx *quickjs.Context, req *jsengine.JsRequest) (any, error) {
 		return nil, fmt.Errorf("caller: call %s: %w", req.Service, quickjsengine.NormalizeException(qctx.Exception(), "exception without details"))
 	}
 	if jsResp.IsError() {
-		if normErr := quickjsengine.NormalizeError(jsResp.ToError()); normErr != nil {
-			return nil, fmt.Errorf("caller: call %s: %w", req.Service, normErr)
-		}
-		return nil, fmt.Errorf("caller: call %s: unknown JS error", req.Service)
+		return nil, formatCallJSError(req.Service, jsResp.ToError(), jsResp.String())
 	}
 
 	var res jsengine.JsResponse
@@ -74,6 +71,17 @@ func invokeRPC(qctx *quickjs.Context, req *jsengine.JsRequest) (any, error) {
 		return nil, fmt.Errorf("caller: unmarshal response: %w", err)
 	}
 	return res.Result, nil
+}
+
+// formatCallJSError maps a JS Error value (or a nil ToError) into a Go error.
+func formatCallJSError(service string, toErr error, raw string) error {
+	if normErr := quickjsengine.NormalizeError(toErr); normErr != nil {
+		return fmt.Errorf("caller: call %s: %w", service, normErr)
+	}
+	if raw != "" {
+		return fmt.Errorf("caller: call %s: unknown JS error: %s", service, raw)
+	}
+	return fmt.Errorf("caller: call %s: unknown JS error", service)
 }
 
 // ExecutorCaller invokes Model methods through a jsengine.JsEngine (Hub / CLI).

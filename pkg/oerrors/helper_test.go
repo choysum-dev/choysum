@@ -91,6 +91,9 @@ func TestFromInfo(t *testing.T) {
 	if FromInfo(nil, nil) != nil {
 		t.Fatal("expected nil info to return nil")
 	}
+	if FromInfo(&ErrorInfo{ErrorId: "x"}, nil) != nil {
+		t.Fatal("expected info without domain/code to return nil")
+	}
 	withID := FromInfo(&ErrorInfo{ErrorId: "keep", Domain: "web", Code: "E1"}, nil)
 	if withID.ErrorId != "keep" {
 		t.Fatalf("expected existing ErrorId preserved, got %q", withID.ErrorId)
