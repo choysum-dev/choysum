@@ -148,7 +148,7 @@ test('FieldDefault ensureScopeUniqueIndex caches permanent DDL failure but retri
   CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-ddlcache', ...value })) as any;
   const originalChoysum = (globalThis as any).$choysum;
   const ddls: string[] = [];
-  let mode: 'permanent' | 'transient' | 'serialize' = 'permanent';
+  let mode: 'permanent' | 'transient' | 'serialize' | 'missing' = 'permanent';
   (globalThis as any).$choysum = {
     db: {
       dialectName: 'sqlite',
@@ -160,6 +160,9 @@ test('FieldDefault ensureScopeUniqueIndex caches permanent DDL failure but retri
         }
         if (mode === 'serialize') {
           throw new Error('could not serialize access due to concurrent update');
+        }
+        if (mode === 'missing') {
+          throw new Error('no such table: fd2cov_field_default');
         }
         throw new Error('database is locked');
       },
@@ -185,6 +188,14 @@ test('FieldDefault ensureScopeUniqueIndex caches permanent DDL failure but retri
     await CovFieldDefault.Set('Widget', 'Name', 'serialize-fail');
     expect(ddls.length).toBe(1);
     await CovFieldDefault.Set('Widget', 'Name', 'serialize-fail-2');
+    expect(ddls.length).toBe(2);
+
+    __resetFieldDefaultUniqueIndexTablesForTest();
+    mode = 'missing';
+    ddls.length = 0;
+    await CovFieldDefault.Set('Widget', 'Name', 'missing-fail');
+    expect(ddls.length).toBe(1);
+    await CovFieldDefault.Set('Widget', 'Name', 'missing-fail-2');
     expect(ddls.length).toBe(2);
   } finally {
     (globalThis as any).$choysum = originalChoysum;
@@ -281,8 +292,10 @@ test('FieldDefault ensureScopeUniqueIndex real-db probe skips missing fd2cov tab
   if (db == null || db.query == null || db.execute == null) {
     throw new Error(`missing db bridge: db=${db == null} query=${db?.query == null} execute=${db?.execute == null}`);
   }
-  let executed = 0;
   const originalExecute = db.execute;
+  // Guarantee absence regardless of test order before instrumenting execute.
+  await originalExecute.call(db, 'DROP TABLE IF EXISTS fd2cov_field_default', '[]');
+  let executed = 0;
   db.execute = async (...args: any[]) => {
     executed++;
     return originalExecute.call(db, ...args);

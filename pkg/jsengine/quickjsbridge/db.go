@@ -312,26 +312,31 @@ func isExpectedDDLNameCollisionErr(err error) bool {
 		strings.Contains(message, "duplicate key name")
 }
 
-// shouldWarnDBOpFailure keeps expected DML uniqueness races and DDL name collisions
-// at Warn. DDL failures caused by existing duplicate data stay at Error.
+// shouldWarnDBOpFailure keeps expected DML uniqueness races and index-name
+// collisions at Warn. Other DDL failures (including duplicate-data uniqueness)
+// stay at Error.
 func shouldWarnDBOpFailure(err error, sql string) bool {
 	if err == nil {
 		return false
 	}
-	if isDDLStmt(sql) {
+	if isIndexDDL(sql) {
 		return isExpectedDDLNameCollisionErr(err)
+	}
+	if isDDLStmt(sql) {
+		// Non-index DDL "already exists" / uniqueness failures are real schema issues.
+		return false
 	}
 	return isUniqueConstraintErr(err)
 }
 
-// logDBOpFailure logs expected uniqueness races / DDL name collisions at Warn and
+// logDBOpFailure logs expected uniqueness races / index-name collisions at Warn and
 // other DB failures (including unexpected DDL uniqueness) at Error.
 func logDBOpFailure(logger *slog.Logger, msg string, err error, sql string) {
 	if logger == nil {
 		return
 	}
 	if shouldWarnDBOpFailure(err, sql) {
-		logger.Warn(msg, "error", err)
+		logger.Warn(msg, "error", err, "expected", true)
 		return
 	}
 	logger.Error(msg, "error", err)

@@ -260,7 +260,13 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
       message.includes('could not serialize access') ||
       code.includes('40001') ||
       code.includes('40p01');
-    if (!transient) {
+    // Missing relation is not permanent: probe false-positives (or later migrations)
+    // must still allow CREATE INDEX once the store table appears.
+    const missingRelation =
+      message.includes('no such table') ||
+      message.includes('no such index') ||
+      message.includes('does not exist');
+    if (!transient && !missingRelation) {
       // Permanent DDL failure: avoid retrying CREATE INDEX on every later Set.
       ensuredUniqueIndexTables.add(table);
     }

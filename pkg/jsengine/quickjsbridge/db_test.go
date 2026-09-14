@@ -324,10 +324,22 @@ func TestWithDbQueryAndExecuteFailuresReachLogDBOpFailure(t *testing.T) {
 		t.Fatalf("Transactor.Required: %v", err)
 	}
 	logged := buf.String()
-	if !strings.Contains(logged, "level=ERROR") {
-		t.Fatalf("missing-table failures should log at ERROR, got %q", logged)
+	seen := map[string]bool{}
+	for _, line := range strings.Split(logged, "\n") {
+		if !strings.Contains(line, "db query failed") && !strings.Contains(line, "db execute failed") {
+			continue
+		}
+		if !strings.Contains(line, "level=ERROR") {
+			t.Fatalf("missing-table failure should log at ERROR, got %q", line)
+		}
+		if strings.Contains(line, "db query failed") {
+			seen["query"] = true
+		}
+		if strings.Contains(line, "db execute failed") {
+			seen["execute"] = true
+		}
 	}
-	if !strings.Contains(logged, "db query failed") || !strings.Contains(logged, "db execute failed") {
+	if !seen["query"] || !seen["execute"] {
 		t.Fatalf("expected both query and execute failure logs, got %q", logged)
 	}
 }
@@ -342,11 +354,20 @@ func TestLogDBOpFailureLevels(t *testing.T) {
 	if !strings.Contains(buf.String(), "level=WARN") || strings.Contains(buf.String(), "level=ERROR") {
 		t.Fatalf("DML unique violation should log exactly once at WARN, got %q", buf.String())
 	}
+	if !strings.Contains(buf.String(), "expected=true") {
+		t.Fatalf("expected uniqueness race should set expected=true, got %q", buf.String())
+	}
 
 	buf.Reset()
 	logDBOpFailure(logger, "db execute failed", errors.New("index uidx already exists"), "CREATE UNIQUE INDEX uidx ON t (c)")
 	if !strings.Contains(buf.String(), "level=WARN") || strings.Contains(buf.String(), "level=ERROR") {
 		t.Fatalf("index-name collision should log exactly once at WARN, got %q", buf.String())
+	}
+
+	buf.Reset()
+	logDBOpFailure(logger, "db execute failed", errors.New("Duplicate key name 'uidx'"), "CREATE INDEX uidx ON t (c)")
+	if !strings.Contains(buf.String(), "level=WARN") || strings.Contains(buf.String(), "level=ERROR") {
+		t.Fatalf("duplicate key name index collision should log at WARN, got %q", buf.String())
 	}
 
 	buf.Reset()
@@ -359,6 +380,12 @@ func TestLogDBOpFailureLevels(t *testing.T) {
 	logDBOpFailure(logger, "db execute failed", errors.New("duplicate key value violates unique constraint"), "ALTER TABLE t ADD CONSTRAINT uq UNIQUE (c)")
 	if !strings.Contains(buf.String(), "level=ERROR") || strings.Contains(buf.String(), "level=WARN") {
 		t.Fatalf("ALTER TABLE unique failure on duplicate data should log at ERROR, got %q", buf.String())
+	}
+
+	buf.Reset()
+	logDBOpFailure(logger, "db execute failed", errors.New("column c already exists"), "ALTER TABLE t ADD COLUMN c TEXT")
+	if !strings.Contains(buf.String(), "level=ERROR") || strings.Contains(buf.String(), "level=WARN") {
+		t.Fatalf("non-index DDL already-exists must stay at ERROR, got %q", buf.String())
 	}
 
 	buf.Reset()
@@ -378,11 +405,32 @@ func TestIsIndexDDLAndIsDDLStmt(t *testing.T) {
 	if isIndexDDL("CREATE TABLE t (a int, index int)") {
 		t.Fatal("CREATE TABLE with index column must not count as index DDL")
 	}
+	if isIndexDDL("") || isIndexDDL("SELECT 1") || isIndexDDL("ALTER TABLE t ADD COLUMN c INT") {
+		t.Fatal("non create-index statements must not count as index DDL")
+	}
 	if !isDDLStmt("ALTER TABLE t ADD CONSTRAINT uq UNIQUE (c)") {
 		t.Fatal("ALTER TABLE is DDL")
 	}
+	if !isDDLStmt("DROP TABLE t") {
+		t.Fatal("DROP TABLE is DDL")
+	}
+	if !isDDLStmt("CREATE TABLE t (c INT)") {
+		t.Fatal("CREATE TABLE is DDL")
+	}
 	if isDDLStmt("INSERT INTO t (c) VALUES (1)") {
 		t.Fatal("INSERT is not DDL")
+	}
+	if isExpectedDDLNameCollisionErr(nil) {
+		t.Fatal("nil error is not a name collision")
+	}
+	if shouldWarnDBOpFailure(nil, "INSERT INTO t VALUES (1)") {
+		t.Fatal("nil error must not warn")
+	}
+	if shouldWarnDBOpFailure(errors.New("column c already exists"), "ALTER TABLE t ADD COLUMN c TEXT") {
+		t.Fatal("non-index DDL already-exists must not warn")
+	}
+	if !shouldWarnDBOpFailure(errors.New("index uidx already exists"), "CREATE INDEX uidx ON t (c)") {
+		t.Fatal("index name collision should warn")
 	}
 }
 
