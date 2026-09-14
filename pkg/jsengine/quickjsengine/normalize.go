@@ -68,7 +68,7 @@ type quickJSErrorPayload struct {
 }
 
 func (p quickJSErrorPayload) empty() bool {
-	return p.Domain == "" && p.Code == "" && p.ErrorId == "" && len(p.Metadata) == 0 && p.GrpcCode == 0
+	return p.Domain == "" && p.Code == "" && p.ErrorId == "" && p.Message == "" && len(p.Metadata) == 0 && p.GrpcCode == 0
 }
 
 func errorInfoFromQuickJS(qjsErr *quickjs.Error) *oerrors.ErrorInfo {
@@ -101,6 +101,14 @@ func errorInfoFromQuickJS(qjsErr *quickjs.Error) *oerrors.ErrorInfo {
 
 	metadata := make(map[string]string, len(payload.Metadata))
 	for k, v := range payload.Metadata {
+		if s, ok := v.(string); ok {
+			metadata[k] = s
+			continue
+		}
+		if b, err := json.Marshal(v); err == nil {
+			metadata[k] = string(b)
+			continue
+		}
 		metadata[k] = fmt.Sprint(v)
 	}
 

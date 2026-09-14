@@ -134,14 +134,25 @@ func TestNormalizeErrorPrefersJSONMessageOverEngineMessage(t *testing.T) {
 func TestNormalizeErrorPreservesErrorIdWithoutDomain(t *testing.T) {
 	got := NormalizeError(&quickjs.Error{
 		Message:    "plain",
-		JSONString: `{"errorId":"corr-1","metadata":{"k":"v","n":2}}`,
+		JSONString: `{"errorId":"corr-1","metadata":{"k":"v","n":2,"obj":{"a":1}}}`,
 	})
 	info := oerrors.GetErrorInfo(got)
 	if info == nil || info.ErrorId != "corr-1" || info.Domain != "js" || info.Code != "QUICKJS_ERROR" {
 		t.Fatalf("expected errorId preserved with js/QUICKJS_ERROR defaults, got %#v", info)
 	}
-	if info.Metadata["k"] != "v" || info.Metadata["n"] != "2" {
-		t.Fatalf("expected metadata stringified, got %#v", info.Metadata)
+	if info.Metadata["k"] != "v" || info.Metadata["n"] != "2" || info.Metadata["obj"] != `{"a":1}` {
+		t.Fatalf("expected metadata JSON-stringified, got %#v", info.Metadata)
+	}
+}
+
+func TestNormalizeErrorMessageOnlyPayload(t *testing.T) {
+	got := NormalizeError(&quickjs.Error{
+		Message:    `{"message":"payment declined"}`,
+		JSONString: `{}`,
+	})
+	info := oerrors.GetErrorInfo(got)
+	if info == nil || info.Domain != "js" || info.Code != "QUICKJS_ERROR" || info.Message != "payment declined" {
+		t.Fatalf("expected message-only payload preserved, got %#v", info)
 	}
 }
 

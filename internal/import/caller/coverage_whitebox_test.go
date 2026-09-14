@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 func TestInvokeRPC_ErrorObject(t *testing.T) {
@@ -82,5 +84,12 @@ func TestFormatCallJSError(t *testing.T) {
 	qjsErr := formatCallJSError("svc", errors.New("plain"), "")
 	if qjsErr == nil || !strings.Contains(qjsErr.Error(), "plain") {
 		t.Fatalf("expected wrapped plain error, got %v", qjsErr)
+	}
+	structured := formatCallJSError("svc", &quickjs.Error{
+		Message:    "boom",
+		JSONString: `{"domain":"web","code":"EJS","message":"boom"}`,
+	}, "")
+	if info := oerrors.GetErrorInfo(structured); info == nil || info.Domain != "web" || info.Code != "EJS" {
+		t.Fatalf("expected structured JS error to keep domain/code, got %#v (err=%v)", info, structured)
 	}
 }
