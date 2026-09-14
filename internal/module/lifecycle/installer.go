@@ -155,12 +155,25 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 	if err != nil {
 		return err
 	}
+	// Commit already marked Installed. On panic before finalize succeeds, revert so retry
+	// is not skipped as already_installed. Normal hook errors use wrapPostCommitHookError.
+	finalized := false
+	defer func() {
+		if finalized {
+			return
+		}
+		if r := recover(); r != nil {
+			_ = m.markPostCommitHooksIncomplete()
+			panic(r)
+		}
+	}()
 	if err := m.runInstallPreInit(buildResult); err != nil {
 		return m.wrapPostCommitHookError("error running pre_init after commit (module persisted, not finalized)", err)
 	}
 	if err := m.finalizeInstall(buildResult); err != nil {
 		return m.wrapPostCommitHookError("error finalizing install after commit (module persisted, not finalized)", err)
 	}
+	finalized = true
 	return nil
 }
 
@@ -412,8 +425,11 @@ var updatePostCommitIncompleteStatus = func(sess *scope.Session, mod *meta.Modul
 // so a subsequent install is not skipped as already_installed. Persist/schema/data stay.
 // Only mutates in-memory status after the DB update succeeds.
 func (m *moduleInstaller) markPostCommitHooksIncomplete() error {
-	if m == nil || m.module == nil || m.runtimeScope == nil || m.runtimeScope.Session() == nil {
+	if m == nil || m.module == nil {
 		return nil
+	}
+	if m.runtimeScope == nil || m.runtimeScope.Session() == nil {
+		return xfmt.Errorf("cannot revert module %q status: runtime scope session is nil", m.module.Name)
 	}
 	name := strings.TrimSpace(m.module.Name)
 	if name == "" && !(m.module.Id.Valid && strings.TrimSpace(m.module.Id.String) != "") {

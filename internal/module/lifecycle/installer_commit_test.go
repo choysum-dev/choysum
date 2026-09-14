@@ -362,6 +362,15 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 	if err := (&moduleInstaller{}).markPostCommitHooksIncomplete(); err != nil {
 		t.Fatal(err)
 	}
+	if err := (&moduleInstaller{module: &meta.Module{Name: "demo_nil_scope"}}).markPostCommitHooksIncomplete(); err == nil || !strings.Contains(err.Error(), "runtime scope session is nil") {
+		t.Fatalf("expected nil-scope error, got %v", err)
+	}
+	if err := (&moduleInstaller{
+		module:       &meta.Module{Name: "demo_nil_session"},
+		runtimeScope: &schemaPlanNilSessionScope{},
+	}).markPostCommitHooksIncomplete(); err == nil || !strings.Contains(err.Error(), "runtime scope session is nil") {
+		t.Fatalf("expected nil-session error, got %v", err)
+	}
 	runtimeScope := newLifecycleCommitTestScope(t)
 	emptyName := &moduleInstaller{
 		module:       &meta.Module{Name: "  "},
