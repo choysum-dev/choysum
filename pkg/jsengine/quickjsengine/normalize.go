@@ -42,7 +42,8 @@ func NormalizeError(err error) error {
 
 // NormalizeException converts Context.Exception() (or similar) at a boundary.
 // When IsException was true but the engine returned a nil exception, it returns
-// an explicit missing-details error so callers never wrap nil with %w.
+// an explicit categorized error so callers never wrap nil with %w and
+// GetErrorInfo still works.
 func NormalizeException(ex error, missingDetails string) error {
 	if ex != nil {
 		return NormalizeError(ex)
@@ -50,7 +51,7 @@ func NormalizeException(ex error, missingDetails string) error {
 	if missingDetails == "" {
 		missingDetails = "exception without details"
 	}
-	return errors.New(missingDetails)
+	return oerrors.New("js", "QUICKJS_ERROR", missingDetails)
 }
 
 func errorInfoFromQuickJS(qjsErr *quickjs.Error) *oerrors.ErrorInfo {
@@ -69,14 +70,23 @@ func errorInfoFromQuickJS(qjsErr *quickjs.Error) *oerrors.ErrorInfo {
 	if err := json.Unmarshal([]byte(qjsErr.JSONString), &payload); err != nil {
 		return nil
 	}
-	// JSON payloads without domain/code (e.g. "null" or "{}") carry no
-	// structured info; fall back to the generic QuickJS error instead.
-	if payload.Domain == "" && payload.Code == "" {
+	// Completely empty payloads (e.g. "null" or "{}") are unstructured.
+	if payload.Domain == "" && payload.Code == "" && payload.ErrorId == "" && len(payload.Metadata) == 0 {
 		return nil
 	}
-	if qjsErr.Message != "" {
+	// Payloads with correlation ids/metadata but no domain/code still count as
+	// structured; fill the generic QuickJS classification.
+	if payload.Domain == "" {
+		payload.Domain = "js"
+	}
+	if payload.Code == "" {
+		payload.Code = "QUICKJS_ERROR"
+	}
+	// Prefer the module-authored JSON message; fall back to the engine message.
+	if payload.Message == "" {
 		payload.Message = qjsErr.Message
-	} else if payload.Message == "" {
+	}
+	if payload.Message == "" {
 		payload.Message = qjsErr.JSONString
 	}
 
