@@ -49,8 +49,14 @@ func errorInfoFromQuickJS(qjsErr *quickjs.Error) *oerrors.ErrorInfo {
 	if err := json.Unmarshal([]byte(qjsErr.JSONString), &payload); err != nil {
 		return nil
 	}
-	// qjsErr.JSONString does not contain message
-	payload.Message = qjsErr.Message
+	// JSON payloads without domain/code (e.g. "null" or "{}") carry no
+	// structured info; fall back to the generic QuickJS error instead.
+	if payload.Domain == "" && payload.Code == "" {
+		return nil
+	}
+	if qjsErr.Message != "" {
+		payload.Message = qjsErr.Message
+	}
 
 	return &oerrors.ErrorInfo{
 		ErrorId:  payload.ErrorId,

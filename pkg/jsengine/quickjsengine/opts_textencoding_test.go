@@ -4,6 +4,7 @@
 package quickjsengine
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -31,5 +32,13 @@ func TestDecodeUTF8Bytes_PreservesValidUTF8(t *testing.T) {
 	}
 	if got != "hello" {
 		t.Fatalf("decodeUTF8Bytes = %q, want %q", got, "hello")
+	}
+}
+
+func TestInstallTextEncodingPolyfill_Exception(t *testing.T) {
+	engine := newTestQuickjsEngine(t)
+	err := installTextEncodingPolyfill(engine.Ctx, `throw new Error("polyfill boom");`, "polyfills/bad.js")
+	if err == nil || !strings.Contains(err.Error(), "failed to install text-encoding polyfill") {
+		t.Fatalf("expected polyfill install error, got %v", err)
 	}
 }

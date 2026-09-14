@@ -63,7 +63,10 @@ func invokeRPC(qctx *quickjs.Context, req *jsengine.JsRequest) (any, error) {
 		return nil, fmt.Errorf("caller: call %s: %w", req.Service, quickjsengine.NormalizeError(qctx.Exception()))
 	}
 	if jsResp.IsError() {
-		return nil, fmt.Errorf("caller: call %s: %w", req.Service, quickjsengine.NormalizeError(jsResp.ToError()))
+		if normErr := quickjsengine.NormalizeError(jsResp.ToError()); normErr != nil {
+			return nil, fmt.Errorf("caller: call %s: %w", req.Service, normErr)
+		}
+		return nil, fmt.Errorf("caller: call %s: unknown JS error", req.Service)
 	}
 
 	var res jsengine.JsResponse

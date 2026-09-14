@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/jsengine"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 func TestEngineOptionsApplyAndValidate(t *testing.T) {
@@ -157,5 +158,26 @@ func TestQuickjsEngineLoadAndExecutePaths(t *testing.T) {
 	}
 	if _, err := bad.Execute(context.Background(), &jsengine.JsRequest{Id: "no-rpc", Service: "demo"}); err == nil || !strings.Contains(err.Error(), "failed to evaluate RPC script") {
 		t.Fatalf("expected missing rpc error, got %v", err)
+	}
+
+	throwing := newTestQuickjsEngine(t)
+	if err := throwing.Load([]*jsengine.JsScript{{
+		FileName: "throw_rpc.js",
+		Content: `
+			globalThis.$choysum = {
+				__rpc__: function(req) {
+					throw new Error("rpc boom");
+				}
+			};
+		`,
+	}}); err != nil {
+		t.Fatalf("Load(throwing): %v", err)
+	}
+	_, execErr := throwing.Execute(context.Background(), &jsengine.JsRequest{Id: "boom", Service: "demo"})
+	if execErr == nil || !strings.Contains(execErr.Error(), "failed to call function") {
+		t.Fatalf("expected call-function error, got %v", execErr)
+	}
+	if oerrors.GetErrorInfo(execErr) == nil && !strings.Contains(execErr.Error(), "rpc boom") {
+		t.Fatalf("expected normalized or message-bearing error, got %v", execErr)
 	}
 }

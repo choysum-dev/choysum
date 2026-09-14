@@ -61,8 +61,18 @@ func WithScript(s *jsengine.JsScript) jsengine.JsEngineOption {
 		ret := jse.Ctx.EvalBytecode(bytecode)
 		defer ret.Free()
 		if ret.IsException() {
-			return NormalizeError(jse.Ctx.Exception())
+			return normalizeScriptEvalException(s.FileName, jse.Ctx.Exception())
 		}
 		return nil
 	}
+}
+
+// normalizeScriptEvalException maps a QuickJS eval exception to a Go error.
+// When the engine reports IsException but Exception() is nil, return an
+// explicit failure so script installation is never treated as success.
+func normalizeScriptEvalException(fileName string, ex error) error {
+	if ex != nil {
+		return NormalizeError(ex)
+	}
+	return fmt.Errorf("script %s: eval raised an exception without details", fileName)
 }

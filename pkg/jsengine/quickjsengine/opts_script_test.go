@@ -5,6 +5,8 @@ package quickjsengine
 
 import (
 	"bytes"
+	"errors"
+	"strings"
 	"sync"
 	"testing"
 
@@ -46,5 +48,18 @@ func TestScriptCacheKeyAndWithScript(t *testing.T) {
 	}
 	if err := WithScript(&jsengine.JsScript{FileName: "broken.js", Content: `globalThis.bad = {`})(engineB); err == nil {
 		t.Fatal("expected broken script error")
+	}
+	if err := WithScript(&jsengine.JsScript{FileName: "throw.js", Content: `throw new Error("eval boom");`})(engineB); err == nil {
+		t.Fatal("expected eval exception error")
+	}
+}
+
+func TestNormalizeScriptEvalException(t *testing.T) {
+	if err := normalizeScriptEvalException("x.js", nil); err == nil || !strings.Contains(err.Error(), "without details") {
+		t.Fatalf("expected missing-details error, got %v", err)
+	}
+	plain := errors.New("boom")
+	if got := normalizeScriptEvalException("x.js", plain); got != plain {
+		t.Fatalf("expected plain error passthrough, got %v", got)
 	}
 }

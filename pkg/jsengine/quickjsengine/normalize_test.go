@@ -49,6 +49,15 @@ func TestNormalizeErrorInvalidJSONFallback(t *testing.T) {
 	}
 }
 
+func TestNormalizeErrorUnstructuredJSONFallsBack(t *testing.T) {
+	for _, payload := range []string{`null`, `{}`} {
+		got := NormalizeError(&quickjs.Error{Message: "plain js error", JSONString: payload})
+		if !oerrors.Is(got, "js", "QUICKJS_ERROR") {
+			t.Fatalf("expected js/QUICKJS_ERROR fallback for %q, got %v", payload, got)
+		}
+	}
+}
+
 func TestNormalizeErrorPassthrough(t *testing.T) {
 	plain := errors.New("plain")
 	if NormalizeError(plain) != plain {
@@ -60,5 +69,22 @@ func TestNormalizeErrorPassthrough(t *testing.T) {
 	}
 	if NormalizeError(nil) != nil {
 		t.Fatal("expected nil unchanged")
+	}
+}
+
+func TestErrorInfoFromQuickJSNil(t *testing.T) {
+	if info := errorInfoFromQuickJS(nil); info != nil {
+		t.Fatalf("expected nil for nil quickjs error, got %#v", info)
+	}
+}
+
+func TestNormalizeErrorKeepsJSONMessageWhenQuickJSMessageEmpty(t *testing.T) {
+	got := NormalizeError(&quickjs.Error{
+		Message:    "",
+		JSONString: `{"domain":"web","code":"EJS","message":"from-json"}`,
+	})
+	info := oerrors.GetErrorInfo(got)
+	if info == nil || info.Message != "from-json" {
+		t.Fatalf("expected JSON message preserved when QuickJS Message empty, got %#v", info)
 	}
 }

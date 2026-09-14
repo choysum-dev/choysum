@@ -62,19 +62,28 @@ func TestHelperNegatives(t *testing.T) {
 
 func TestFromInfo(t *testing.T) {
 	cause := errors.New("root")
-	ce := FromInfo(&ErrorInfo{
-		Domain:  "web",
-		Code:    "EJS",
-		Message: "boom",
-	}, cause)
+	src := &ErrorInfo{
+		Domain:   "web",
+		Code:     "EJS",
+		Message:  "boom",
+		Metadata: map[string]string{"k": "v"},
+	}
+	ce := FromInfo(src, cause)
 	if ce == nil {
 		t.Fatal("expected FromInfo to return ChoysumError")
 	}
 	if ce.ErrorId == "" {
 		t.Fatal("expected missing ErrorId to be filled")
 	}
-	if ce.Metadata == nil {
-		t.Fatal("expected nil Metadata to become empty map")
+	if src.ErrorId != "" {
+		t.Fatal("expected FromInfo not to mutate caller's ErrorId")
+	}
+	if ce.Metadata["k"] != "v" {
+		t.Fatalf("expected metadata copied, got %#v", ce.Metadata)
+	}
+	ce.Metadata["k"] = "mutated"
+	if src.Metadata["k"] != "v" {
+		t.Fatal("expected FromInfo to clone Metadata")
 	}
 	if !errors.Is(ce, cause) {
 		t.Fatal("expected cause to be unwrap-able")
