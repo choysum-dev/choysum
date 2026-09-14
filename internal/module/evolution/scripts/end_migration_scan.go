@@ -43,9 +43,6 @@ func moduleSourceDeclaresEndMigration(module *meta.Module) bool {
 			found = true
 			return filepath.SkipAll
 		}
-		if found {
-			return filepath.SkipAll
-		}
 		if d.IsDir() {
 			name := d.Name()
 			if name == "node_modules" || name == "dist" || name == ".git" || name == "coverage" || name == "demo" || name == "__tests__" {

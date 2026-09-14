@@ -25,7 +25,7 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 
 // webInputDigestSchema invalidates stamped digests when the digest algorithm or
 // embedded web toolchain contract changes across choysum binaries.
-const webInputDigestSchema = "web-input-digest-v2"
+const webInputDigestSchema = "web-input-digest-v3"
 
 // WebInputDigestInputs are the compile flags and module roots that affect dist/web.
 type WebInputDigestInputs struct {
@@ -104,16 +104,26 @@ func ComputeWebInputDigest(in WebInputDigestInputs) (string, error) {
 	})
 	for _, ref := range refs {
 		_, _ = fmt.Fprintf(h, "module=%s\nversion=%s\nentry=%s\n", ref.ModuleName, ref.Version, filepath.ToSlash(ref.EntryPath))
+		entry := strings.TrimSpace(ref.EntryPath)
 		// Always hash the declared entry, even when it lives under a skipped dir
-		// such as dist/ or demo/ that hashWebSourceTree would otherwise ignore.
-		if entry := strings.TrimSpace(ref.EntryPath); entry != "" {
+		// such as dist/ or demo/ that module-root walks would otherwise ignore.
+		if entry != "" {
 			if err := hashFile(h, entry); err != nil {
 				return "", err
 			}
+			if pathHasSkippedWebComponent(entry) {
+				// Also hash siblings next to an entry under dist/demo.
+				if err := hashWebSourceTreeOpts(h, filepath.Dir(entry), false); err != nil {
+					return "", err
+				}
+			}
 		}
 		root := strings.TrimSpace(ref.ModulePath)
-		if root == "" {
-			root = filepath.Dir(ref.EntryPath)
+		if root == "" && entry != "" {
+			root = filepath.Dir(entry)
+		}
+		if root == "." || root == string(filepath.Separator) {
+			root = ""
 		}
 		if err := hashWebSourceTree(h, root); err != nil {
 			return "", err
@@ -122,9 +132,22 @@ func ComputeWebInputDigest(in WebInputDigestInputs) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+func pathHasSkippedWebComponent(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if part == "dist" || part == "demo" {
+			return true
+		}
+	}
+	return false
+}
+
 func hashWebSourceTree(h io.Writer, root string) error {
+	return hashWebSourceTreeOpts(h, root, true)
+}
+
+func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 	root = strings.TrimSpace(root)
-	if root == "" {
+	if root == "" || root == "." || root == string(filepath.Separator) {
 		return nil
 	}
 	info, err := os.Stat(root)
@@ -144,7 +167,10 @@ func hashWebSourceTree(h io.Writer, root string) error {
 		}
 		if d.IsDir() {
 			name := d.Name()
-			if name == "node_modules" || name == "dist" || name == ".git" || name == "coverage" || name == "demo" {
+			if name == "node_modules" || name == ".git" || name == "coverage" {
+				return filepath.SkipDir
+			}
+			if skipBuildDirs && (name == "dist" || name == "demo") {
 				return filepath.SkipDir
 			}
 			return nil
@@ -162,7 +188,7 @@ func hashWebSourceTree(h io.Writer, root string) error {
 }
 
 func hashFile(h io.Writer, path string) error {
-	f, err := os.Open(path)
+	st, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			_, _ = fmt.Fprintf(h, "missing=%s\n", filepath.ToSlash(path))
@@ -170,11 +196,11 @@ func hashFile(h io.Writer, path string) error {
 		}
 		return err
 	}
-	defer f.Close()
-	st, err := f.Stat()
+	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	_, _ = fmt.Fprintf(h, "file=%s\nsize=%d\n", filepath.ToSlash(path), st.Size())
 	_, err = io.Copy(h, f)
 	_, _ = io.WriteString(h, "\n")
@@ -210,11 +236,15 @@ func ShouldSkipGlobalWebBuild(distWebDir, digest string) (bool, error) {
 		return false, nil
 	}
 	index := filepath.Join(distWebDir, "index.html")
-	if _, err := os.Stat(index); err != nil {
+	st, err := os.Stat(index)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
 		return false, err
+	}
+	if st.IsDir() || st.Size() == 0 {
+		return false, nil
 	}
 	prev, err := ReadStoredWebInputDigest(distWebDir)
 	if err != nil {

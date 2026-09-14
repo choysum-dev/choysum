@@ -25,6 +25,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/rs/xid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -152,8 +153,19 @@ func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	if _, err := installer.install(); err != nil {
+	didInstall, err := installer.install()
+	if err != nil {
 		t.Fatalf("install: %v", err)
+	}
+	if !didInstall {
+		t.Fatal("install() didInstall = false, want true for a fresh install")
+	}
+	didInstall, err = installer.install()
+	if err != nil {
+		t.Fatalf("reinstall: %v", err)
+	}
+	if didInstall {
+		t.Fatal("already-installed install() didInstall = true, want false")
 	}
 	var got meta.Module
 	if err := runtimeScope.Session().Where("name = ?", "install_path_demo").Take(&got).Error; err != nil {
@@ -163,12 +175,40 @@ func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
 		t.Fatalf("status=%v", got.Status)
 	}
 
-	if err := (*moduleInstaller)(nil).installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
-		t.Fatalf("nil installer: %v", err)
+	// validate failure returns didInstall=false
+	badDep := &meta.Module{
+		Name: "install_bad_dep", Version: "1.0.0", Status: meta.ToInstall,
+		Path: t.TempDir(), ApplicationStr: "auth",
+		DependsStr: datatypes.JSON([]byte(`["missing_dep"]`)),
 	}
-	if err := (&moduleInstaller{}).installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
-		t.Fatalf("nil runtimeScope: %v", err)
+	badDepInst := &moduleInstaller{
+		module:        badDep,
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
 	}
+	didInstall, err = badDepInst.install()
+	if err == nil || didInstall {
+		t.Fatalf("validate failure: didInstall=%v err=%v", didInstall, err)
+	}
+
+	// BuildWithoutPersist failure returns didInstall=false
+	buildFail := &moduleInstaller{
+		module: &meta.Module{
+			Name: "install_build_fail", Version: "1.0.0", Status: meta.ToInstall,
+			Path: t.TempDir(), ApplicationStr: "auth",
+		},
+		runtimeScope:  runtimeScope,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx:           newOpContext(),
+		builder:       &commitStubSplitBuilder{buildErr: errors.New("build boom")},
+	}
+	didInstall, err = buildFail.install()
+	if err == nil || didInstall || !strings.Contains(err.Error(), "build boom") {
+		t.Fatalf("build failure: didInstall=%v err=%v", didInstall, err)
+	}
+
+	// installAfterPrepare failure returns didInstall=false
 	closed := newLifecycleCommitTestScope(t)
 	sqlDB, err := closed.Session().DB.DB()
 	if err != nil {
@@ -182,7 +222,23 @@ func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
 		runtimeScope: closed, moduleManager: &ModuleManager{runtimeScope: closed, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx: newOpContext(),
 	}
-	if err := failInst.installAfterPrepare(nil, false); err == nil {
+	didInstall, err = failInst.install()
+	if err == nil || didInstall {
+		t.Fatalf("closed-db install: didInstall=%v err=%v", didInstall, err)
+	}
+
+	if err := (*moduleInstaller)(nil).installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
+		t.Fatalf("nil installer: %v", err)
+	}
+	if err := (&moduleInstaller{}).installAfterPrepare(nil, false); err == nil || !strings.Contains(err.Error(), "scope is nil") {
+		t.Fatalf("nil runtimeScope: %v", err)
+	}
+	failAfter := &moduleInstaller{
+		module:       &meta.Module{Name: "y", Version: "1", Path: t.TempDir(), ApplicationStr: "auth"},
+		runtimeScope: closed, moduleManager: &ModuleManager{runtimeScope: closed, jsExecutor: &moduleManagerNoopScriptExecutor{}},
+		ctx: newOpContext(),
+	}
+	if err := failAfter.installAfterPrepare(nil, false); err == nil {
 		t.Fatal("expected closed-db error")
 	}
 }

@@ -1482,9 +1482,6 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		phaseEndStarted := time.Now()
 		for i, name := range phaseEndModules {
 			moduleName := strings.TrimSpace(name)
-			if moduleName == "" {
-				moduleName = "unknown"
-			}
 			installSpinnerState.mu.Lock()
 			installSpinnerState.data.currentModule = moduleName
 			installSpinnerState.data.currentIndex = i + 1

@@ -69,6 +69,66 @@ export function done() {}
 	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: typed}) {
 		t.Fatal("expected non-literal phase: MigrationPhase.End to fail open")
 	}
+
+	// Non-directory path fails open.
+	filePath := filepath.Join(t.TempDir(), "not-a-dir.ts")
+	if err := os.WriteFile(filePath, []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("write file path: %v", err)
+	}
+	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: filePath}) {
+		t.Fatal("non-directory path should fail open")
+	}
+
+	// Skipped dirs / non-ts extensions / __tests__ do not count; empty tree => false.
+	emptyTree := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(emptyTree, "__tests__"), 0o755); err != nil {
+		t.Fatalf("mkdir __tests__: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(emptyTree, "__tests__", "x.ts"), []byte(`@Migration({ phase: 'end' })
+export function x() {}
+`), 0o644); err != nil {
+		t.Fatalf("write tests dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(emptyTree, "readme.md"), []byte("no"), 0o644); err != nil {
+		t.Fatalf("write md: %v", err)
+	}
+	if moduleSourceDeclaresEndMigration(&meta.Module{Path: emptyTree}) {
+		t.Fatal("empty production sources should report no end migrations")
+	}
+
+	// Unreadable file inside tree fails open.
+	blocked := t.TempDir()
+	blockedFile := filepath.Join(blocked, "service", "secret.ts")
+	if err := os.MkdirAll(filepath.Dir(blockedFile), 0o755); err != nil {
+		t.Fatalf("mkdir blocked: %v", err)
+	}
+	if err := os.WriteFile(blockedFile, []byte("export {}\n"), 0o600); err != nil {
+		t.Fatalf("write blocked: %v", err)
+	}
+	if err := os.Chmod(blockedFile, 0); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blockedFile, 0o644) })
+	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: blocked}) {
+		t.Fatal("unreadable source should fail open")
+	}
+
+	// Unreadable directory entry fails open via WalkDir walkErr.
+	blockedDir := t.TempDir()
+	secretDir := filepath.Join(blockedDir, "secret")
+	if err := os.MkdirAll(secretDir, 0o755); err != nil {
+		t.Fatalf("mkdir secret: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(secretDir, "x.ts"), []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("write secret file: %v", err)
+	}
+	if err := os.Chmod(secretDir, 0); err != nil {
+		t.Fatalf("chmod secret dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(secretDir, 0o755) })
+	if !moduleSourceDeclaresEndMigration(&meta.Module{Path: blockedDir}) {
+		t.Fatal("unreadable directory should fail open")
+	}
 }
 
 func TestRunPhase_EndNoScripts_NoExecutorLoad(t *testing.T) {

@@ -2640,3 +2640,175 @@ func TestExecuteRemembersGlobalWebDigestAfterBuild(t *testing.T) {
 		t.Fatalf("RememberGlobalWebDigest digest = %q, want digest-build", remembered)
 	}
 }
+
+func TestExecuteRollbackWhenShouldSkipGlobalWebBuildErrors(t *testing.T) {
+	rootDir := t.TempDir()
+	distRoot := filepath.Join(rootDir, "dist")
+	modulesRoot := filepath.Join(rootDir, "modules")
+	webDir := filepath.Join(distRoot, "web")
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
+	plan := planner.Plan{
+		Op:                  planner.OpInstall,
+		ModuleOrder:         []string{"base"},
+		AffectedApps:        []string{"crm"},
+		NeedsGlobalWebBuild: true,
+	}
+	appTargets := func(appName string) (string, ModulesAppTargets, error) {
+		return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+			ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+			WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+			ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
+		}, nil
+	}
+	skipErr := errors.New("digest unavailable")
+	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil },
+		Install:                        func(module *meta.Module) error { return nil },
+		AppTargets:                     appTargets,
+		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
+			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
+		},
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+				return err
+			}
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+				return err
+			}
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
+		},
+		BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
+		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
+			return writeStageFile(distBundlesStagingDir, "index.js", "console.log('bundles')")
+		},
+		WebTarget: func() (string, error) { return webDir, nil },
+		GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
+			t.Fatal("GlobalWebBuild should not run when skip callback errors")
+			return nil
+		},
+		ShouldSkipGlobalWebBuild: func(ctx context.Context, distWebDir string) (bool, string, error) {
+			return false, "", skipErr
+		},
+		DistManifestTarget: func() (string, error) {
+			return filepath.Join(distRoot, "dist.manifest.json"), nil
+		},
+		WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
+			return os.WriteFile(distManifestStagingPath, []byte(`{}`), 0o644)
+		},
+	})
+	if !errors.Is(err, skipErr) {
+		t.Fatalf("Execute() error = %v, want %v", err, skipErr)
+	}
+}
+
+func TestExecuteRollbackWhenSkipManifestOrRememberFails(t *testing.T) {
+	newPlan := func() (planner.Plan, *meta.Module, string, string, func(string) (string, ModulesAppTargets, error)) {
+		rootDir := t.TempDir()
+		distRoot := filepath.Join(rootDir, "dist")
+		modulesRoot := filepath.Join(rootDir, "modules")
+		webDir := filepath.Join(distRoot, "web")
+		root := &meta.Module{Name: "base", ApplicationStr: "crm"}
+		plan := planner.Plan{
+			Op:                  planner.OpInstall,
+			ModuleOrder:         []string{"base"},
+			AffectedApps:        []string{"crm"},
+			NeedsGlobalWebBuild: true,
+		}
+		appTargets := func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
+			}, nil
+		}
+		return plan, root, distRoot, webDir, appTargets
+	}
+
+	t.Run("skip then manifest error", func(t *testing.T) {
+		plan, root, distRoot, webDir, appTargets := newPlan()
+		manifestErr := errors.New("manifest boom")
+		err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
+			ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil },
+			Install:                        func(module *meta.Module) error { return nil },
+			AppTargets:                     appTargets,
+			BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
+				return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
+			},
+			GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+				if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+					return err
+				}
+				if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+					return err
+				}
+				return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
+			},
+			BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
+			BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
+				return writeStageFile(distBundlesStagingDir, "index.js", "console.log('bundles')")
+			},
+			WebTarget: func() (string, error) { return webDir, nil },
+			GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
+				t.Fatal("GlobalWebBuild should not run on skip")
+				return nil
+			},
+			ShouldSkipGlobalWebBuild: func(ctx context.Context, distWebDir string) (bool, string, error) {
+				return true, "digest-skip", nil
+			},
+			DistManifestTarget: func() (string, error) {
+				return filepath.Join(distRoot, "dist.manifest.json"), nil
+			},
+			WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
+				return manifestErr
+			},
+		})
+		if !errors.Is(err, manifestErr) {
+			t.Fatalf("Execute() error = %v, want %v", err, manifestErr)
+		}
+	})
+
+	t.Run("remember digest error", func(t *testing.T) {
+		plan, root, distRoot, webDir, appTargets := newPlan()
+		rememberErr := errors.New("remember boom")
+		err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
+			ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil },
+			Install:                        func(module *meta.Module) error { return nil },
+			AppTargets:                     appTargets,
+			BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
+				return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
+			},
+			GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+				if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+					return err
+				}
+				if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+					return err
+				}
+				return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
+			},
+			BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
+			BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
+				return writeStageFile(distBundlesStagingDir, "index.js", "console.log('bundles')")
+			},
+			WebTarget: func() (string, error) { return webDir, nil },
+			GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
+				return writeStageFile(distWebStagingDir, "index.html", "<html>built</html>")
+			},
+			ShouldSkipGlobalWebBuild: func(ctx context.Context, distWebDir string) (bool, string, error) {
+				return false, "digest-build", nil
+			},
+			RememberGlobalWebDigest: func(ctx context.Context, distWebDir string, digest string) error {
+				return rememberErr
+			},
+			DistManifestTarget: func() (string, error) {
+				return filepath.Join(distRoot, "dist.manifest.json"), nil
+			},
+			WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
+				return os.WriteFile(distManifestStagingPath, []byte(`{}`), 0o644)
+			},
+		})
+		if !errors.Is(err, rememberErr) {
+			t.Fatalf("Execute() error = %v, want %v", err, rememberErr)
+		}
+	})
+}
