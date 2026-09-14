@@ -72,6 +72,18 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 	if p == nil {
 		return nil, fmt.Errorf("cdp: nil page")
 	}
+	return p.WaitForResponseContext(p.ctx, m, timeout)
+}
+
+// WaitForResponseContext is WaitForResponse with an extra cancel context
+// (page context is still honored).
+func (p *Page) WaitForResponseContext(ctx context.Context, m ResponseMatch, timeout time.Duration) (*MatchedResponse, error) {
+	if p == nil {
+		return nil, fmt.Errorf("cdp: nil page")
+	}
+	if ctx == nil {
+		ctx = p.ctx
+	}
 	if timeout <= 0 {
 		timeout = 30 * time.Second
 	}
@@ -134,6 +146,8 @@ func (p *Page) WaitForResponse(m ResponseMatch, timeout time.Duration) (*Matched
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case <-p.ctx.Done():
 		return nil, p.ctx.Err()
 	case res := <-resultCh:

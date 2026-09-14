@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -91,6 +90,9 @@ type Resolver struct {
 	lockfileErr  error        // error from last lockfile load attempt
 	logger       *slog.Logger // logger for structured metrics output (optional)
 	metrics      *Metrics     // resolver metrics (nil if not initialised)
+	// retryBackoff is the sleep before retry attempt N (1 = first retry).
+	// Production default is 1s, 2s, then 4s (capped at 10s).
+	retryBackoff func(attempt int) time.Duration
 }
 
 // Option configures a Resolver.
@@ -223,6 +225,14 @@ func WithMetrics(m *Metrics) Option {
 		if m != nil {
 			r.metrics = m
 		}
+	}
+}
+
+// WithRetryBackoff sets the sleep before retry attempt N (1 = first retry).
+// Production callers omit this; the default remains 1s, 2s, then 4s (capped at 10s).
+func WithRetryBackoff(fn func(attempt int) time.Duration) Option {
+	return func(r *Resolver) {
+		r.retryBackoff = fn
 	}
 }
 
@@ -785,14 +795,32 @@ func (r *Resolver) codeCacheDir() string {
 	return filepath.Join(r.cacheDir, "pkg", "esm")
 }
 
+func defaultRetryBackoff(attempt int) time.Duration {
+	if attempt < 1 {
+		return 0
+	}
+	if attempt >= 5 {
+		return 10 * time.Second
+	}
+	return time.Second << (attempt - 1)
+}
+
+func (r *Resolver) backoffDuration(attempt int) time.Duration {
+	if r != nil && r.retryBackoff != nil {
+		return r.retryBackoff(attempt)
+	}
+	return defaultRetryBackoff(attempt)
+}
+
 // downloadWithRetry fetches a URL with exponential backoff (initial 1s, max 10s,
 // up to 3 attempts). 4xx responses are not retried; 5xx and network errors are.
 func (r *Resolver) downloadWithRetry(url string) (string, error) {
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
 		if attempt > 0 {
-			delay := time.Duration(math.Min(float64(time.Second<<(attempt-1)), float64(10*time.Second)))
-			time.Sleep(delay)
+			if delay := r.backoffDuration(attempt); delay > 0 {
+				time.Sleep(delay)
+			}
 		}
 		content, err := r.download(url)
 		if err == nil {

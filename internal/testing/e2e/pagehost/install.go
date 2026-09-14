@@ -6,6 +6,7 @@ package pagehost
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -43,11 +44,13 @@ var (
 
 // Host owns the active page for one QuickJS e2e engine.
 type Host struct {
-	mu      sync.Mutex
-	session *cdp.Session
-	page    *cdp.Page
-	pending sync.WaitGroup
-	closed  atomic.Bool
+	mu       sync.Mutex
+	session  *cdp.Session
+	page     *cdp.Page
+	pending  sync.WaitGroup
+	closed   atomic.Bool
+	stop     chan struct{}
+	stopOnce sync.Once
 }
 
 // Install registers __choysum_e2e_runtime__ and __choysum_e2e_host__ on engine.
@@ -63,7 +66,7 @@ func Install(engine jsengine.JsEngine, session *cdp.Session, runtimeJSON string)
 		runtimeJSON = "{}"
 	}
 
-	host := &Host{session: session}
+	host := &Host{session: session, stop: make(chan struct{})}
 	ctx := qjs.Ctx
 	globals := ctx.Globals()
 
@@ -109,6 +112,11 @@ func (h *Host) Drain() {
 		return
 	}
 	h.closed.Store(true)
+	h.stopOnce.Do(func() {
+		if h.stop != nil {
+			close(h.stop)
+		}
+	})
 	done := make(chan struct{})
 	go func() {
 		h.pending.Wait()
@@ -118,6 +126,16 @@ func (h *Host) Drain() {
 	case <-done:
 	case <-time.After(2 * time.Second):
 	}
+}
+
+func pageWaitContext(p *cdp.Page) context.Context {
+	if p == nil {
+		return context.Background()
+	}
+	if ctx := p.Context(); ctx != nil {
+		return ctx
+	}
+	return context.Background()
 }
 
 func (h *Host) schedule(ctx *quickjs.Context, job func(*quickjs.Context)) bool {
@@ -420,7 +438,19 @@ func (h *Host) bindWaitForResponse() func(ctx *quickjs.Context, this *quickjs.Va
 			h.pending.Add(1)
 			go func() {
 				defer h.pending.Done()
-				res, waitErr := p.WaitForResponse(rm, timeout)
+				waitParent := pageWaitContext(p)
+				waitCtx, cancel := context.WithCancel(waitParent)
+				defer cancel()
+				if h.stop != nil {
+					go func() {
+						select {
+						case <-h.stop:
+							cancel()
+						case <-waitCtx.Done():
+						}
+					}()
+				}
+				res, waitErr := p.WaitForResponseContext(waitCtx, rm, timeout)
 				if h.closed.Load() {
 					return
 				}
@@ -470,7 +500,17 @@ func (h *Host) bindDelay() func(ctx *quickjs.Context, this *quickjs.Value, args 
 			go func() {
 				defer h.pending.Done()
 				if ms > 0 {
-					time.Sleep(time.Duration(ms) * time.Millisecond)
+					timer := time.NewTimer(time.Duration(ms) * time.Millisecond)
+					defer timer.Stop()
+					var stop <-chan struct{}
+					if h.stop != nil {
+						stop = h.stop
+					}
+					select {
+					case <-timer.C:
+					case <-stop:
+						return
+					}
 				}
 				if h.closed.Load() {
 					return

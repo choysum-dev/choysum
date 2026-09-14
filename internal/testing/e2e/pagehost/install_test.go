@@ -221,6 +221,16 @@ func TestInstallHostMethodsErrorPathsWithoutPage(t *testing.T) {
 func TestHostDrainNilSafe(t *testing.T) {
 	var host *Host
 	host.Drain()
+	(&Host{}).Drain()
+}
+
+func TestPageWaitContext(t *testing.T) {
+	if pageWaitContext(nil) == nil {
+		t.Fatal("nil page should use background context")
+	}
+	if pageWaitContext(&cdp.Page{}) == nil {
+		t.Fatal("page with nil context should use background context")
+	}
 }
 
 func TestScheduleEarlyReturnAndClosed(t *testing.T) {
@@ -539,6 +549,31 @@ func TestInstallDelayDrainBeforeResolve(t *testing.T) {
 	}
 	val.Free()
 	host.Drain()
+}
+
+func TestInstallDelayClosedAfterTimerWithoutStop(t *testing.T) {
+	var host *Host
+	engine, err := quickjsengine.NewFactory()()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if host != nil {
+			host.Drain()
+		}
+	}()
+	host, err = Install(engine, nil, "{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	qjs := engine.(*quickjsengine.QuickjsEngine)
+	val := qjs.Ctx.Eval(`globalThis.__choysum_e2e_host__.delay(40)`)
+	if val.IsException() {
+		t.Fatal(qjs.Ctx.Exception())
+	}
+	val.Free()
+	host.closed.Store(true)
+	host.pending.Wait()
 }
 
 func TestInstallWaitForResponseDrainWhilePending(t *testing.T) {

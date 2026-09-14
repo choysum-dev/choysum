@@ -277,6 +277,52 @@ func TestWaitForResponseNilPage(t *testing.T) {
 	}
 }
 
+func TestWaitForResponseContextNilPage(t *testing.T) {
+	var p *Page
+	if _, err := p.WaitForResponseContext(context.Background(), ResponseMatch{}, time.Millisecond); err == nil {
+		t.Fatal("expected nil page error")
+	}
+}
+
+func TestWaitForResponseContextNilCtxUsesPageContext(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	defer func() { <-done }()
+	go func() {
+		defer close(done)
+		time.Sleep(50 * time.Millisecond)
+		page.Close()
+		session.Close()
+	}()
+	_, err = page.WaitForResponseContext(nil, ResponseMatch{URLIncludes: "/never"}, 5*time.Second)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected page context cancellation, got %v", err)
+	}
+}
+
+func TestWaitForResponseContextExtraCancel(t *testing.T) {
+	session := startTestSession(t)
+	page, err := session.NewPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer page.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		cancel()
+	}()
+	_, err = page.WaitForResponseContext(ctx, ResponseMatch{URLIncludes: "/never"}, 5*time.Second)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected extra context cancel, got %v", err)
+	}
+}
+
 func TestWaitForResponseMatchAndTimeout(t *testing.T) {
 	session := startTestSession(t)
 	page, err := session.NewPage()
