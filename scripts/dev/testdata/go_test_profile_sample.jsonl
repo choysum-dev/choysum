@@ -1,0 +1,6 @@
+{"Action":"pass","Package":"github.com/choysum-dev/choysum/pkg/oerrors","Elapsed":1.2}
+{"Action":"pass","Package":"github.com/choysum-dev/choysum/pkg/oerrors","Test":"TestError","Elapsed":0.01}
+{"Action":"pass","Package":"github.com/choysum-dev/choysum/cmd","Elapsed":39.3}
+{"Action":"pass","Package":"github.com/choysum-dev/choysum/cmd","Test":"TestNewTypeFetchCmd_Run_ContextCanceledReturnsContextError","Elapsed":15.0}
+{"Action":"fail","Package":"github.com/choysum-dev/choysum/cmd","Test":"TestCLIUpgradeFlowWithGlobalRegistryIndex","Elapsed":4.03}
+{"Action":"fail","Package":"github.com/choysum-dev/choysum/cmd","Elapsed":39.3}

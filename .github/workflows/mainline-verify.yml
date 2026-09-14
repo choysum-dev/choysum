@@ -83,8 +83,10 @@ jobs:
       # Coverage compile already typechecks; a separate `go build ./...` only doubles wall clock.
       - name: Run go test
         run: |
+          set -euo pipefail
           mkdir -p .choysum/coverage/main
-          go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/main/go.out
+          ./scripts/ci/record_cmd_wall.sh \
+            go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/main/go.out
 
       - name: Upload Go coverage to Codecov
         continue-on-error: true

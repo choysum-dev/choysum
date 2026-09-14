@@ -126,8 +126,10 @@ jobs:
       - name: Run go test
         if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         run: |
+          set -euo pipefail
           mkdir -p .choysum/coverage/pr
-          go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/pr/go.out
+          ./scripts/ci/record_cmd_wall.sh \
+            go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/pr/go.out
 
       - name: Upload Go coverage to Codecov
         if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
