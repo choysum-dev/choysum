@@ -214,6 +214,113 @@ test('FieldDefault ensureScopeUniqueIndex skips CREATE when store table is missi
   }
 });
 
+test('FieldDefault ensureScopeUniqueIndex real-db probe skips missing fd2cov table', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-realprobe', ...value })) as any;
+  const db = (globalThis as any).$choysum?.db;
+  if (db == null || db.query == null || db.execute == null) {
+    throw new Error(`missing db bridge: db=${db == null} query=${db?.query == null} execute=${db?.execute == null}`);
+  }
+  let executed = 0;
+  const originalExecute = db.execute.bind(db);
+  db.execute = async (...args: any[]) => {
+    executed++;
+    return originalExecute(...args);
+  };
+  try {
+    const probeRaw = await db.query(
+      "SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = 'fd2cov_field_default' LIMIT 1",
+      '[]'
+    );
+    const probeRows = typeof probeRaw === 'string' ? JSON.parse(probeRaw) : probeRaw;
+    if (!Array.isArray(probeRows)) {
+      throw new Error(`probeRows type=${typeof probeRows} rawType=${typeof probeRaw} raw=${String(probeRaw).slice(0, 200)}`);
+    }
+    if (probeRows.length !== 0) {
+      throw new Error(`expected missing table, got rows=${JSON.stringify(probeRows)}`);
+    }
+    await CovFieldDefault.Set('Widget', 'Name', 'real-probe');
+    if (executed !== 0) {
+      throw new Error(`expected no execute, got executed=${executed}`);
+    }
+  } finally {
+    db.execute = originalExecute;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
+  }
+});
+
+test('FieldDefault ensureScopeUniqueIndex attempts CREATE when query probe is unavailable', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-noquery', ...value })) as any;
+  const originalChoysum = (globalThis as any).$choysum;
+  const ddls: string[] = [];
+  (globalThis as any).$choysum = {
+    db: {
+      dialectName: 'sqlite',
+      query: null,
+      execute: async (ddl: string) => {
+        ddls.push(ddl);
+      },
+    },
+  };
+  try {
+    await CovFieldDefault.Set('Widget', 'Name', 'no-query-probe');
+    expect(ddls.length).toBe(1);
+    expect(ddls[0]).toContain('CREATE UNIQUE INDEX');
+    const before = ddls.length;
+    await CovFieldDefault.Set('Widget', 'Name', 'no-query-probe-2');
+    expect(ddls.length).toBe(before);
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
+  }
+});
+
+test('FieldDefault ensureScopeUniqueIndex treats unknown probe shape as table present', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-shape', ...value })) as any;
+  const originalChoysum = (globalThis as any).$choysum;
+  const ddls: string[] = [];
+  (globalThis as any).$choysum = {
+    db: {
+      dialectName: 'mysql',
+      query: async () => JSON.stringify({ rows: [{ ok: 1 }] }),
+      execute: async (ddl: string) => {
+        ddls.push(ddl);
+      },
+    },
+  };
+  try {
+    await CovFieldDefault.Set('Widget', 'Name', 'odd-shape');
+    expect(ddls.length).toBe(1);
+    expect(ddls[0]).toContain('coalesce(user_id');
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
+  }
+});
+
 test('FieldDefault Set maps unique conflicts and rethrows other errors', async () => {
   const restore = withSavepointPassThrough();
   const originalSearch = CovFieldDefault.Search;

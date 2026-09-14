@@ -149,6 +149,10 @@ func performQuery(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, arg
 			return ctx.ThrowError(waitErr)
 		}
 	}
+	if results == nil {
+		// json.Marshal(nil slice) is "null"; callers expect a JSON array.
+		results = []map[string]interface{}{}
+	}
 
 	jsonData, err := json.Marshal(results)
 	if err != nil {

@@ -178,24 +178,34 @@ function normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
 }
 
 async function fieldDefaultStoreTableExists(dialect: string, table: string): Promise<boolean> {
-  const query = ($choysum as any)?.db?.query;
-  if (typeof query !== 'function') {
+  const db = ($choysum as any)?.db;
+  // QuickJS bridge callables may not report typeof === 'function'; rely on presence + call.
+  if (db == null || db.query == null) {
     // No probe available; allow the CREATE INDEX attempt.
     return true;
   }
+  // Catalog probe uses a metadata-controlled table name (literal, not user input).
+  const lit = String(table).replace(/'/g, "''");
   let sql = '';
   if (dialect === 'postgres' || dialect === 'postgresql') {
-    sql =
-      'SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ? LIMIT 1';
+    sql = `SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = '${lit}' LIMIT 1`;
   } else if (dialect === 'mysql') {
-    sql = 'SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1';
+    sql = `SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '${lit}' LIMIT 1`;
   } else {
-    sql = "SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1";
+    sql = `SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = '${lit}' LIMIT 1`;
   }
   try {
-    const raw = await query.call(($choysum as any).db, sql, JSON.stringify([table]));
+    const raw = await db.query(sql, '[]');
     const rows = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return Array.isArray(rows) && rows.length > 0;
+    // Empty catalog hits may arrive as null (historical bridge marshal) or [].
+    if (rows == null) {
+      return false;
+    }
+    if (!Array.isArray(rows)) {
+      // Unknown result shape — allow CREATE INDEX rather than falsely skipping.
+      return true;
+    }
+    return rows.length > 0;
   } catch {
     // Probe failed — still try CREATE INDEX (existing best-effort path).
     return true;
@@ -219,7 +229,8 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
 
   try {
     const exec = ($choysum as any)?.db?.execute;
-    if (typeof exec !== 'function') {
+    // QuickJS bridge callables may not report typeof === 'function'.
+    if (exec == null) {
       return;
     }
     // Skip DDL when the store table is not migrated yet (unit-test apps, deferred schema).
@@ -231,8 +242,7 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
     ensuredUniqueIndexTables.add(table);
   } catch {
     // Best-effort: upsert path still enforces uniqueness in application logic.
-    // Remember the attempt so a hard DDL failure does not ERROR on every Set.
-    ensuredUniqueIndexTables.add(table);
+    // Do not cache failures — a transient lock/busy must not permanently skip the index.
   }
 }
 

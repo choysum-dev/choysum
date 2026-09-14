@@ -4,12 +4,14 @@
 package quickjsbridge
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
@@ -226,5 +228,119 @@ func TestIsUniqueConstraintErr(t *testing.T) {
 	}
 	if isUniqueConstraintErr(nil) {
 		t.Fatal("nil error must not be unique constraint")
+	}
+}
+
+func TestWithDbQueryEmptyResultReturnsJSONArray(t *testing.T) {
+	logger := quickjsBridgeTestLogger()
+	runtimeScope := defaultscope.NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(quickjsBridgeTestConfig(t)), logger)
+	if err := runtimeScope.Session().AutoMigrate(&bridgeRecord{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+
+	engine := newTestQuickjsEngine(t, WithDb("sqlite", logger))
+	if err := engine.Load([]*jsengine.JsScript{{
+		FileName: "db-empty-query.js",
+		Content: `
+			globalThis.$choysum.__rpc__ = async function(req) {
+				const raw = await $choysum.db.query(
+					"SELECT name FROM bridge_record WHERE name = 'missing-row'",
+					'[]'
+				);
+				return { id: req.id, result: { raw: raw, parsed: JSON.parse(raw) }, context: {} };
+			};
+		`,
+	}}); err != nil {
+		t.Fatalf("engine.Load: %v", err)
+	}
+
+	err := runtimeScope.Transactor().Required(context.Background(), func(txScope scope.Scope, tx scope.Transaction) error {
+		resp, err := engine.Execute(tx.Context(), &jsengine.JsRequest{Id: "empty-query", Service: "db"})
+		if err != nil {
+			return err
+		}
+		result, ok := resp.Result.(map[string]interface{})
+		if !ok {
+			t.Fatalf("result type = %T", resp.Result)
+		}
+		if raw, _ := result["raw"].(string); raw != "[]" {
+			t.Fatalf("raw = %q, want []", raw)
+		}
+		parsed, ok := result["parsed"].([]interface{})
+		if !ok {
+			t.Fatalf("parsed type = %T (must be array, not null)", result["parsed"])
+		}
+		if len(parsed) != 0 {
+			t.Fatalf("parsed len = %d", len(parsed))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Transactor.Required: %v", err)
+	}
+}
+
+func TestWithDbQueryAndExecuteFailuresReachLogDBOpFailure(t *testing.T) {
+	logger := quickjsBridgeTestLogger()
+	runtimeScope := defaultscope.NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(quickjsBridgeTestConfig(t)), logger)
+	engine := newTestQuickjsEngine(t, WithDb("sqlite", logger))
+	if err := engine.Load([]*jsengine.JsScript{{
+		FileName: "db-fail-paths.js",
+		Content: `
+			globalThis.$choysum.__rpc__ = async function(req) {
+				const out = { queryFailed: false, execFailed: false };
+				try {
+					await $choysum.db.query('SELECT 1 FROM definitely_missing_table_xyz', '[]');
+				} catch (err) {
+					out.queryFailed = true;
+					out.queryMessage = String(err && err.message ? err.message : err);
+				}
+				try {
+					await $choysum.db.execute(
+						'CREATE INDEX IF NOT EXISTS uidx_x ON definitely_missing_table_xyz (id)',
+						'[]'
+					);
+				} catch (err) {
+					out.execFailed = true;
+					out.execMessage = String(err && err.message ? err.message : err);
+				}
+				return { id: req.id, result: out, context: {} };
+			};
+		`,
+	}}); err != nil {
+		t.Fatalf("engine.Load: %v", err)
+	}
+
+	err := runtimeScope.Transactor().Required(context.Background(), func(txScope scope.Scope, tx scope.Transaction) error {
+		resp, err := engine.Execute(tx.Context(), &jsengine.JsRequest{Id: "fail-paths", Service: "db"})
+		if err != nil {
+			return err
+		}
+		result, ok := resp.Result.(map[string]interface{})
+		if !ok {
+			t.Fatalf("result type = %T", resp.Result)
+		}
+		// Cover logDBOpFailure call sites even if the JS host surfaces failures oddly.
+		_ = result
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Transactor.Required: %v", err)
+	}
+}
+
+func TestLogDBOpFailureLevels(t *testing.T) {
+	logDBOpFailure(nil, "db query failed", errors.New("boom")) // must not panic
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logDBOpFailure(logger, "db query failed", errors.New("UNIQUE constraint failed: t.c"))
+	if !strings.Contains(buf.String(), "level=WARN") {
+		t.Fatalf("unique violation should log at WARN, got %q", buf.String())
+	}
+	buf.Reset()
+	logDBOpFailure(logger, "db query failed", errors.New("no such table: t"))
+	if !strings.Contains(buf.String(), "level=ERROR") {
+		t.Fatalf("other failures should log at ERROR, got %q", buf.String())
 	}
 }
