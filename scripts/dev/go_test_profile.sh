@@ -61,6 +61,8 @@ mkdir -p "$PROFILE_DIR"
 JSONL="$PROFILE_DIR/go-test.jsonl"
 TIMING="$PROFILE_DIR/time.txt"
 SUMMARY="$PROFILE_DIR/summary.txt"
+# Do not reuse a previous run's wall if /usr/bin/time is missing this time.
+rm -f "$TIMING"
 
 # GO_TEST_FLAGS is intentionally unquoted so callers can pass multiple flags.
 # Empty arrays are not expanded under set -u (bash 3.2 / stock macOS).
@@ -95,7 +97,11 @@ set -e
 # Status 1 from the summarizer is a completed failure table; still print EXIT.
 # Status >1 is a summarizer parse error. Prefer the go test status when it already failed.
 set +e
-summarize_file "$JSONL" "$TIMING" | tee "$SUMMARY"
+if [[ -s "$TIMING" ]]; then
+  summarize_file "$JSONL" "$TIMING"
+else
+  summarize_file "$JSONL"
+fi | tee "$SUMMARY"
 summary_ec=${PIPESTATUS[0]}
 set -e
 {

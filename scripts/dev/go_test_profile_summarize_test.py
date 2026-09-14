@@ -56,12 +56,21 @@ class SummarizeExitCodeTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("(package)", out)
 
-    def test_build_fail_without_elapsed_exits_nonzero(self):
+    def test_package_fail_without_elapsed_exits_nonzero(self):
         code, out = _summarize_text(
-            '{"Action":"build-fail","Package":"example.com/buildfail"}\n'
+            '{"Action":"fail","Package":"example.com/compilefail"}\n'
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("(package)", out)
+
+    def test_build_fail_uses_import_path(self):
+        code, out = _summarize_text(
+            '{"Action":"build-fail","ImportPath":"example.com/buildfail [example.com/buildfail.test]"}\n'
+            '{"Action":"fail","Package":"example.com/buildfail"}\n'
         )
         self.assertEqual(code, 1)
         self.assertIn("example.com/buildfail", out)
+        self.assertNotIn("example.com/buildfail.test", out)
 
     def test_truncated_json_line_exits_two(self):
         code, out = _summarize_text(
@@ -87,6 +96,25 @@ class SummarizeExitCodeTest(unittest.TestCase):
         )
         self.assertEqual(code, 0)
         self.assertIn("(none)", out)
+
+    def test_timing_file_is_rendered(self):
+        mod = load_mod()
+        with tempfile.NamedTemporaryFile("w", suffix=".jsonl", encoding="utf-8", delete=False) as fh:
+            fh.write('{"Action":"pass","Package":"example.com/ok","Elapsed":0.4}\n')
+            jsonl = pathlib.Path(fh.name)
+        timing = jsonl.with_suffix(".timing")
+        timing.write_text("real 1.23\nuser 0.45\nsys 0.67\n", encoding="utf-8")
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                code = mod.summarize(jsonl, slow_secs=0.5, pkg_top=20, test_top=40, timing_path=timing)
+            out = buf.getvalue()
+            self.assertEqual(code, 0)
+            self.assertIn("wall (POSIX time)", out)
+            self.assertIn("real 1.23", out)
+        finally:
+            jsonl.unlink(missing_ok=True)
+            timing.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

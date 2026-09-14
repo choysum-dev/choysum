@@ -24,6 +24,15 @@ def _short_pkg(pkg: str) -> str:
     return pkg.rsplit("/", 1)[-1]
 
 
+def _event_pkg(ev: dict) -> str:
+    # Test events use Package; Go 1.24+ build-fail events use ImportPath,
+    # sometimes with a " [path.test]" suffix for the test binary.
+    pkg = ev.get("Package") or ev.get("ImportPath") or ""
+    if isinstance(pkg, str) and " [" in pkg:
+        pkg = pkg.split(" [", 1)[0]
+    return pkg if isinstance(pkg, str) else ""
+
+
 def summarize(jsonl_path: Path, *, slow_secs: float, pkg_top: int, test_top: int, timing_path: Path | None) -> int:
     by_pkg: dict[str, dict] = defaultdict(lambda: {"n": 0, "sum": 0.0, "pkg_elapsed": None, "status": "", "failed": []})
     slow: list[tuple[float, str, str, str]] = []
@@ -42,7 +51,7 @@ def summarize(jsonl_path: Path, *, slow_secs: float, pkg_top: int, test_top: int
                 continue
             events += 1
             action = ev.get("Action")
-            pkg = ev.get("Package") or ""
+            pkg = _event_pkg(ev)
             test = ev.get("Test")
             elapsed = ev.get("Elapsed")
             if action in ("pass", "fail", "skip") and test and isinstance(elapsed, (int, float)):
@@ -53,12 +62,12 @@ def summarize(jsonl_path: Path, *, slow_secs: float, pkg_top: int, test_top: int
                     st["failed"].append(test)
                 if elapsed >= slow_secs:
                     slow.append((float(elapsed), pkg, test, action))
-            if action in ("pass", "fail") and not test and isinstance(elapsed, (int, float)):
+            if action in ("pass", "fail") and not test and pkg:
                 st = by_pkg[pkg]
-                st["pkg_elapsed"] = float(elapsed)
+                if isinstance(elapsed, (int, float)):
+                    st["pkg_elapsed"] = float(elapsed)
                 st["status"] = action
             elif action == "build-fail" and pkg:
-                # Go 1.24+ emits compile failures as build-fail with no Elapsed.
                 by_pkg[pkg]["status"] = "fail"
 
     if timing_path is not None and timing_path.exists():
