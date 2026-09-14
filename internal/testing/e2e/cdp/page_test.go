@@ -108,7 +108,7 @@ func TestScreenshotCurrent(t *testing.T) {
 	}
 
 	// Race: close during FullScreenshot to exercise chromedp.Run error path.
-	session2 := startTestSession(t)
+	session2 := startPrivateTestSession(t)
 	shotPath := filepath.Join(t.TempDir(), "race.png")
 	go func() {
 		time.Sleep(5 * time.Millisecond)
@@ -128,7 +128,7 @@ func TestNewPageEnableNetworkError(t *testing.T) {
 }
 
 func TestNewPageDeadBrowserContext(t *testing.T) {
-	session := startTestSession(t)
+	session := startPrivateTestSession(t)
 	session.Close()
 	if _, err := session.NewPage(); err == nil || !strings.Contains(err.Error(), "browser context dead") {
 		t.Fatalf("expected dead context error, got %v", err)
@@ -136,7 +136,7 @@ func TestNewPageDeadBrowserContext(t *testing.T) {
 }
 
 func TestScreenshotCurrentDeadContext(t *testing.T) {
-	session := startTestSession(t)
+	session := startPrivateTestSession(t)
 	session.Close()
 	if err := session.ScreenshotCurrent(filepath.Join(t.TempDir(), "dead.png")); err == nil {
 		t.Fatal("expected dead browserCtx error")
@@ -175,7 +175,7 @@ func TestEvaluateEmptyResultAndJSONQuoteFallback(t *testing.T) {
 }
 
 func TestPageOpsErrorAndCancelPaths(t *testing.T) {
-	session := startTestSession(t)
+	session := startPrivateTestSession(t)
 	page, err := session.NewPage()
 	if err != nil {
 		t.Fatal(err)
@@ -218,7 +218,7 @@ func TestPageOpsErrorAndCancelPaths(t *testing.T) {
 }
 
 func TestPageMethodsOnDeadContext(t *testing.T) {
-	session := startTestSession(t)
+	session := startPrivateTestSession(t)
 	page, err := session.NewPage()
 	if err != nil {
 		t.Fatal(err)

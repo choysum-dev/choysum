@@ -479,7 +479,7 @@ func TestChromeHelpersSkipPaths(t *testing.T) {
 		t.Fatal("expected skip")
 	})
 	t.Run("startTestSessionEmpty", func(t *testing.T) {
-		startTestSession(t)
+		startPrivateTestSession(t)
 		t.Fatal("expected skip")
 	})
 
@@ -489,7 +489,7 @@ func TestChromeHelpersSkipPaths(t *testing.T) {
 		t.Fatal("expected fake candidate")
 	}
 	t.Run("startTestSessionFail", func(t *testing.T) {
-		startTestSession(t)
+		startPrivateTestSession(t)
 		t.Fatal("expected skip after start failures")
 	})
 }

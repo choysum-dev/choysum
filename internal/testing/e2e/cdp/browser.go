@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -35,6 +36,9 @@ type Session struct {
 	userDataDir string
 	stopWatch   context.CancelFunc
 	headless    bool
+	// shared marks a process-wide test browser; Close is a no-op so package
+	// tests can defer Close without tearing down later tests.
+	shared atomic.Bool
 }
 
 // StartOptions configures browser launch.
@@ -166,8 +170,9 @@ func startOnce(ctx context.Context, execPath string, headless bool) (s *Session,
 }
 
 // Close shuts down the browser session.
+// Shared package-test sessions ignore Close; call CloseSharedTestSession from TestMain.
 func (s *Session) Close() {
-	if s == nil {
+	if s == nil || s.shared.Load() {
 		return
 	}
 	if s.stopWatch != nil {

@@ -433,8 +433,7 @@ return 'ready';
 }
 
 func TestInstallHostOpFailuresWithChrome(t *testing.T) {
-	session := startPagehostChrome(t)
-	t.Cleanup(session.Close)
+	session := startPagehostChromePrivate(t)
 
 	var host *Host
 	engine, err := quickjsengine.NewFactory()()
@@ -616,46 +615,12 @@ return 'armed';
 
 func startPagehostChrome(t *testing.T) *cdp.Session {
 	t.Helper()
-	// Prefer system Chrome first: pinned CfT caches can crash on some macOS hosts.
-	cands := []string{}
-	for _, p := range []string{
-		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"/Applications/Chromium.app/Contents/MacOS/Chromium",
-		"/usr/bin/google-chrome",
-		"/usr/bin/chromium",
-		"/usr/bin/chromium-browser",
-	} {
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			cands = append(cands, p)
-		}
-	}
-	if p, err := cdp.ResolveChromiumPath(); err == nil {
-		dup := false
-		for _, existing := range cands {
-			if existing == p {
-				dup = true
-				break
-			}
-		}
-		if !dup {
-			cands = append(cands, p)
-		}
-	}
-	if len(cands) == 0 {
-		t.Skip("chromium unavailable")
-	}
-	headless := true
-	var session *cdp.Session
-	var lastErr error
-	for _, path := range cands {
-		session, lastErr = cdp.Start(nil, cdp.StartOptions{ExecPath: path, Headless: &headless})
-		if lastErr == nil {
-			t.Cleanup(session.Close)
-			return session
-		}
-	}
-	t.Skipf("chromium start failed: %v", lastErr)
-	return nil
+	return cdp.StartTestSession(t)
+}
+
+func startPagehostChromePrivate(t *testing.T) *cdp.Session {
+	t.Helper()
+	return cdp.StartPrivateTestSession(t)
 }
 
 func TestInstallDriveHostWithChrome(t *testing.T) {
