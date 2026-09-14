@@ -2491,7 +2491,8 @@ func TestExecuteSkipsGlobalWebBuildWhenDigestUnchanged(t *testing.T) {
 	if err := os.MkdirAll(webDir, 0o755); err != nil {
 		t.Fatalf("mkdir web: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(webDir, "index.html"), []byte("<html>ok</html>"), 0o644); err != nil {
+	const existing = "<html>keep-me</html>"
+	if err := os.WriteFile(filepath.Join(webDir, "index.html"), []byte(existing), 0o644); err != nil {
 		t.Fatalf("write index: %v", err)
 	}
 
@@ -2558,5 +2559,84 @@ func TestExecuteSkipsGlobalWebBuildWhenDigestUnchanged(t *testing.T) {
 	}
 	if rememberCalls != 0 {
 		t.Fatalf("RememberGlobalWebDigest should not run on skip, got %d", rememberCalls)
+	}
+	got, readErr := os.ReadFile(filepath.Join(webDir, "index.html"))
+	if readErr != nil {
+		t.Fatalf("read preserved index: %v", readErr)
+	}
+	if string(got) != existing {
+		t.Fatalf("dist/web content changed on skip: %q", got)
+	}
+}
+
+func TestExecuteRemembersGlobalWebDigestAfterBuild(t *testing.T) {
+	rootDir := t.TempDir()
+	distRoot := filepath.Join(rootDir, "dist")
+	modulesRoot := filepath.Join(rootDir, "modules")
+	webDir := filepath.Join(distRoot, "web")
+
+	root := &meta.Module{Name: "base", ApplicationStr: "crm"}
+	plan := planner.Plan{
+		Op:                  planner.OpInstall,
+		ModuleOrder:         []string{"base"},
+		AffectedApps:        []string{"crm"},
+		NeedsGlobalWebBuild: true,
+	}
+	webCalls := 0
+	remembered := ""
+	appTargets := func(appName string) (string, ModulesAppTargets, error) {
+		return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+			ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+			WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+			ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
+		}, nil
+	}
+	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.Module, error) { return root, nil },
+		Install:                        func(module *meta.Module) error { return nil },
+		AppTargets:                     appTargets,
+		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
+			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
+		},
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+				return err
+			}
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+				return err
+			}
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
+		},
+		BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
+		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
+			return writeStageFile(distBundlesStagingDir, "index.js", "console.log('bundles')")
+		},
+		WebTarget: func() (string, error) { return webDir, nil },
+		GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
+			webCalls++
+			return writeStageFile(distWebStagingDir, "index.html", "<html>built</html>")
+		},
+		ShouldSkipGlobalWebBuild: func(ctx context.Context, distWebDir string) (bool, string, error) {
+			return false, "digest-build", nil
+		},
+		RememberGlobalWebDigest: func(ctx context.Context, distWebDir string, digest string) error {
+			remembered = digest
+			return nil
+		},
+		DistManifestTarget: func() (string, error) {
+			return filepath.Join(distRoot, "dist.manifest.json"), nil
+		},
+		WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
+			return os.WriteFile(distManifestStagingPath, []byte(`{}`), 0o644)
+		},
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if webCalls != 1 {
+		t.Fatalf("GlobalWebBuild calls = %d, want 1", webCalls)
+	}
+	if remembered != "digest-build" {
+		t.Fatalf("RememberGlobalWebDigest digest = %q, want digest-build", remembered)
 	}
 }

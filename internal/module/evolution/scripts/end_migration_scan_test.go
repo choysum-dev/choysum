@@ -20,7 +20,7 @@ func TestModuleSourceDeclaresEndMigration(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(src), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(src, []byte(`@Migration({ version: '1.0.0', phase: 'end', name: 'done' })
+	if err := os.WriteFile(src, []byte(`@Migration({ version: '1.0.0', constraints: { x: 1 }, phase: 'end', name: 'done' })
 export function done() {}
 `), 0o644); err != nil {
 		t.Fatalf("write: %v", err)

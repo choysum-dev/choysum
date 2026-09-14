@@ -45,6 +45,30 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 	if err != nil || c == a {
 		t.Fatalf("sourcemap change should alter digest: %q vs %q (%v)", a, c, err)
 	}
+	in.SourceMap = false
+	if err := os.WriteFile(entry, []byte("export default { changed: true }\n"), 0o644); err != nil {
+		t.Fatalf("rewrite entry: %v", err)
+	}
+	d, err := ComputeWebInputDigest(in)
+	if err != nil || d == a {
+		t.Fatalf("source edit should alter digest: %q vs %q (%v)", a, d, err)
+	}
+	apiWeb := filepath.Join(root, "api", "web", "crm", "index.ts")
+	if err := os.MkdirAll(filepath.Dir(apiWeb), 0o755); err != nil {
+		t.Fatalf("mkdir api web: %v", err)
+	}
+	if err := os.WriteFile(apiWeb, []byte("export const client = 1\n"), 0o644); err != nil {
+		t.Fatalf("write api web: %v", err)
+	}
+	e, err := ComputeWebInputDigest(in)
+	if err != nil || e == d {
+		t.Fatalf("api/web change should alter digest: %q vs %q (%v)", d, e, err)
+	}
+	in.ForceRebuild = true
+	forced, err := ComputeWebInputDigest(in)
+	if err != nil || forced == "" || forced != e {
+		t.Fatalf("ForceRebuild must still return a stampable digest, got %q (%v)", forced, err)
+	}
 }
 
 func TestShouldSkipGlobalWebBuild(t *testing.T) {

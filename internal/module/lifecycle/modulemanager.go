@@ -293,24 +293,45 @@ func (m *ModuleManager) globalWebSkipCallbacks() (
 		default:
 		}
 		runtimeOpts := m.resolvedRuntimeOptions()
-		compileOpts, _ := scope.CompileRuntimeOptionsFromScope(m.runtimeScope)
+		compileOpts, hasCompileOpts := scope.CompileRuntimeOptionsFromScope(m.runtimeScope)
+		defaults := config.NewDefaultCompileConfig()
+		sourceMap, minify, treeShaking := defaults.SourceMap, defaults.Minify, defaults.TreeShaking
+		if hasCompileOpts {
+			sourceMap, minify, treeShaking = compileOpts.SourceMap, compileOpts.Minify, compileOpts.TreeShaking
+		}
+		force := forceWebBuildFromEnv()
 		inputs, err := internalwebmodulebuilder.LoadWebInputDigestInputs(
 			m.runtimeScope,
 			runtimeOpts.modulesPath,
-			compileOpts.SourceMap,
-			compileOpts.Minify,
-			compileOpts.TreeShaking,
-			forceWebBuildFromEnv(),
+			sourceMap,
+			minify,
+			treeShaking,
+			false, // always hash inputs; force only affects the skip decision
 		)
 		if err != nil {
-			return false, "", err
+			if m.runtimeScope != nil && m.runtimeScope.Logger() != nil {
+				m.runtimeScope.Logger().Warn("web input digest load failed; rebuilding web", "error", err)
+			}
+			return false, "", nil
 		}
 		digest, err := internalwebmodulebuilder.ComputeWebInputDigest(inputs)
 		if err != nil {
-			return false, "", err
+			if m.runtimeScope != nil && m.runtimeScope.Logger() != nil {
+				m.runtimeScope.Logger().Warn("web input digest failed; rebuilding web", "error", err)
+			}
+			return false, "", nil
+		}
+		if force {
+			return false, digest, nil
 		}
 		skip, err := internalwebmodulebuilder.ShouldSkipGlobalWebBuild(distWebDir, digest)
-		return skip, digest, err
+		if err != nil {
+			if m.runtimeScope != nil && m.runtimeScope.Logger() != nil {
+				m.runtimeScope.Logger().Warn("web digest compare failed; rebuilding web", "error", err)
+			}
+			return false, digest, nil
+		}
+		return skip, digest, nil
 	}
 	remember = func(ctx context.Context, distWebDir string, digest string) error {
 		select {

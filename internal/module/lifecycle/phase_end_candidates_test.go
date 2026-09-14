@@ -24,8 +24,9 @@ func TestPhaseEndCandidates_InstallSkipsAlreadyInstalledDeps(t *testing.T) {
 func TestPhaseEndCandidates_UpgradeOnlyTargetPlusNewEnsured(t *testing.T) {
 	t.Parallel()
 	ctx := newOpContext()
+	ctx.markUpgradeTouched("partner")
 	ctx.markInstallTouched("web")
-	got := phaseEndCandidates(plan.OpUpgrade, []string{"partner"}, []string{"web", "core"}, ctx)
+	got := phaseEndCandidates(plan.OpUpgrade, []string{"partner", "other"}, []string{"web", "core"}, ctx)
 	want := []string{"partner", "web"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("phaseEndCandidates(upgrade) = %v, want %v", got, want)

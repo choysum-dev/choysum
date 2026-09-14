@@ -12,10 +12,10 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
-// Matches @Migration({ ... phase: 'end' ... }) / phase: "end" in module sources.
-// Intentionally conservative: false positives only cost a full RunPhase; false
-// negatives would skip real end migrations.
-var endMigrationPhasePattern = regexp.MustCompile(`(?i)@Migration\s*\(\s*\{[^}]*\bphase\s*:\s*['"]end['"]`)
+// Matches @Migration / @Migration<...>({ ... phase: 'end' ... }).
+// Uses a non-greedy span so nested `{ ... }` before `phase` still match.
+// False positives only cost a full RunPhase; false negatives skip real work.
+var endMigrationPhasePattern = regexp.MustCompile(`(?is)@Migration(?:\s*<[^>]*>)?\s*\(\s*\{.*?\bphase\s*:\s*['"]end['"]`)
 
 // moduleSourceDeclaresEndMigration reports whether module sources declare an
 // @Migration with phase end. Used to O(1)-skip PhaseEnd without semantic build
@@ -34,8 +34,14 @@ func moduleSourceDeclaresEndMigration(module *meta.Module) bool {
 	}
 	found := false
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil || found {
-			return walkErr
+		if walkErr != nil {
+			// Unreadable trees are treated as "maybe has end migrations" so we
+			// never silently skip PhaseEnd on I/O failure.
+			found = true
+			return filepath.SkipAll
+		}
+		if found {
+			return filepath.SkipAll
 		}
 		if d.IsDir() {
 			name := d.Name()
@@ -57,7 +63,8 @@ func moduleSourceDeclaresEndMigration(module *meta.Module) bool {
 		}
 		raw, readErr := os.ReadFile(path)
 		if readErr != nil {
-			return nil
+			found = true
+			return filepath.SkipAll
 		}
 		if endMigrationPhasePattern.Match(raw) {
 			found = true

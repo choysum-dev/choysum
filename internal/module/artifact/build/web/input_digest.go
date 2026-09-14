@@ -81,12 +81,16 @@ func LoadWebInputDigestInputs(runtimeScope scope.Scope, modulesPath string, sour
 }
 
 // ComputeWebInputDigest hashes compile flags and web-capable module sources.
+// ForceRebuild is ignored here; callers should refuse to skip while still
+// stamping the returned digest after a forced build.
 func ComputeWebInputDigest(in WebInputDigestInputs) (string, error) {
-	if in.ForceRebuild {
-		return "", nil
-	}
 	h := sha256.New()
 	_, _ = fmt.Fprintf(h, "sourcemap=%v\nminify=%v\ntreeshaking=%v\n", in.SourceMap, in.Minify, in.TreeShaking)
+	if modulesPath := strings.TrimSpace(in.ModulesPath); modulesPath != "" {
+		if err := hashWebSourceTree(h, filepath.Join(modulesPath, "api", "web")); err != nil {
+			return "", err
+		}
+	}
 	refs := append([]webEntryRef(nil), in.WebEntryPoints...)
 	sort.Slice(refs, func(i, j int) bool {
 		if refs[i].ModuleName != refs[j].ModuleName {
@@ -135,7 +139,10 @@ func hashWebSourceTree(h io.Writer, root string) error {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(path)) {
-		case ".vue", ".ts", ".tsx", ".js", ".jsx", ".css", ".scss", ".sass", ".less", ".html", ".json":
+		case ".vue", ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs",
+			".css", ".scss", ".sass", ".less", ".html", ".json", ".yaml", ".yml",
+			".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+			".woff", ".woff2", ".ttf":
 		default:
 			return nil
 		}

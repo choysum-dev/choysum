@@ -68,6 +68,9 @@ func (c *opContext) markInstallTouched(name string) {
 	if c == nil || name == "" {
 		return
 	}
+	if c.installTouched == nil {
+		c.installTouched = map[string]bool{}
+	}
 	c.installTouched[name] = true
 }
 func (c *opContext) isUninstallDone(name string) bool  { return c.uninstallDone[name] }
@@ -78,6 +81,9 @@ func (c *opContext) isUpgradeTouched(name string) bool { return c != nil && c.up
 func (c *opContext) markUpgradeTouched(name string) {
 	if c == nil || name == "" {
 		return
+	}
+	if c.upgradeTouched == nil {
+		c.upgradeTouched = map[string]bool{}
 	}
 	c.upgradeTouched[name] = true
 }
@@ -100,18 +106,25 @@ func phaseEndCandidates(op plan.OpType, moduleOrder, ensureOrder []string, ctx *
 		}
 		return out
 	case plan.OpUpgrade:
-		parts := [][]string{moduleOrder}
+		out := make([]string, 0, len(moduleOrder)+len(ensureOrder))
+		for _, name := range moduleOrder {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			if ctx == nil || ctx.isUpgradeTouched(name) {
+				out = append(out, name)
+			}
+		}
 		if ctx != nil {
-			ensured := make([]string, 0, len(ensureOrder))
 			for _, name := range ensureOrder {
 				name = strings.TrimSpace(name)
 				if name != "" && ctx.isInstallTouched(name) {
-					ensured = append(ensured, name)
+					out = append(out, name)
 				}
 			}
-			parts = append(parts, ensured)
 		}
-		return mergeUniqueModuleNames(parts...)
+		return mergeUniqueModuleNames(out)
 	default:
 		return mergeUniqueModuleNames(moduleOrder)
 	}
