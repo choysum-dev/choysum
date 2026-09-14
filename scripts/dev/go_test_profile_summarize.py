@@ -6,6 +6,7 @@
 Package elapsed is the `Action=pass|fail` event with no Test field.
 Named sums include parent and subtests, so they can exceed package elapsed.
 Exit 1 when any named test failed or a package/build-fail event is present.
+Exit 2 when a line starting with `{` is not valid JSON (truncated stream).
 """
 
 from __future__ import annotations
@@ -102,6 +103,8 @@ def summarize(jsonl_path: Path, *, slow_secs: float, pkg_top: int, test_top: int
 
     print()
     print(f"json_events={events}  parse_errors={parse_errors}  packages={len(by_pkg)}  slow_tests={len(slow_sorted)}")
+    if parse_errors:
+        return 2
     return 1 if failed_rows or package_failed else 0
 
 

@@ -74,17 +74,26 @@ fi
 echo "==> go test -json ${EXTRA_FLAGS[*]:-} ${PACKAGES[*]}"
 echo "    jsonl: $JSONL"
 
+run_go_test() {
+  if [[ -x /usr/bin/time ]]; then
+    /usr/bin/time -p -o "$TIMING" "$@"
+  else
+    echo "warn: /usr/bin/time not found; running without POSIX wall" >&2
+    "$@"
+  fi
+}
+
 set +e
 if ((${#EXTRA_FLAGS[@]})); then
-  /usr/bin/time -p -o "$TIMING" go test -json "${EXTRA_FLAGS[@]}" "${PACKAGES[@]}" >"$JSONL"
+  run_go_test go test -json "${EXTRA_FLAGS[@]}" "${PACKAGES[@]}" >"$JSONL"
 else
-  /usr/bin/time -p -o "$TIMING" go test -json "${PACKAGES[@]}" >"$JSONL"
+  run_go_test go test -json "${PACKAGES[@]}" >"$JSONL"
 fi
 ec=$?
 set -e
 
 # Status 1 from the summarizer is a completed failure table; still print EXIT.
-# Status >1 is a summarizer usage/parse error and must not be swallowed by tee.
+# Status >1 is a summarizer parse error. Prefer the go test status when it already failed.
 set +e
 summarize_file "$JSONL" "$TIMING" | tee "$SUMMARY"
 summary_ec=${PIPESTATUS[0]}
@@ -93,7 +102,7 @@ set -e
   echo
   echo "EXIT:$ec"
 } | tee -a "$SUMMARY"
-if (( summary_ec > 1 )); then
+if (( summary_ec > 1 && ec == 0 )); then
   exit "$summary_ec"
 fi
 

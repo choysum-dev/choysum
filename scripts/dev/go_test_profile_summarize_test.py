@@ -63,6 +63,23 @@ class SummarizeExitCodeTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("example.com/buildfail", out)
 
+    def test_truncated_json_line_exits_two(self):
+        code, out = _summarize_text(
+            '{"Action":"pass","Package":"example.com/ok","Elapsed":0.4}\n'
+            '{"Action":"pass","Package":"example.com/ok"\n'
+        )
+        self.assertEqual(code, 2)
+        self.assertIn("parse_errors=1", out)
+
+    def test_slow_threshold_lists_matching_test(self):
+        code, out = _summarize_text(
+            '{"Action":"pass","Package":"example.com/ok","Elapsed":2.0}\n'
+            '{"Action":"pass","Package":"example.com/ok","Test":"TestSlow","Elapsed":1.5}\n'
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("1.50s", out)
+        self.assertIn("TestSlow", out)
+
     def test_all_pass_exits_zero(self):
         code, out = _summarize_text(
             '{"Action":"pass","Package":"example.com/ok","Elapsed":0.4}\n'

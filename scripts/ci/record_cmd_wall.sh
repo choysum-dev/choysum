@@ -45,7 +45,7 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     else
       echo "POSIX \`time\` was not available; go test still ran."
     fi
-  } >>"$GITHUB_STEP_SUMMARY"
+  } >>"$GITHUB_STEP_SUMMARY" || echo "warn: could not append to GITHUB_STEP_SUMMARY" >&2
 elif [[ -s "$timing" ]]; then
   echo "==> POSIX time:" >&2
   cat "$timing" >&2
