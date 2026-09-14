@@ -10,6 +10,7 @@ import (
 )
 
 func TestSameNormalizedVersion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		from string
 		to   string
@@ -33,6 +34,7 @@ func TestSameNormalizedVersion(t *testing.T) {
 }
 
 func TestShouldSkipSameVersionMigrationScripts(t *testing.T) {
+	t.Parallel()
 	if !shouldSkipSameVersionMigrationScripts("0.1.0", "0.1.0") {
 		t.Fatal("same version should skip")
 	}

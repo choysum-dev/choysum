@@ -24,12 +24,14 @@ type nilContextScope struct {
 func (nilContextScope) Context() context.Context { return nil }
 
 func TestImportModuleTerminology_nilModule(t *testing.T) {
+	t.Parallel()
 	if err := importModuleTerminology(nil, nil, ""); err != nil {
 		t.Fatalf("importModuleTerminology(nil): %v", err)
 	}
 }
 
 func TestImportModuleTerminology_emptyModuleName(t *testing.T) {
+	t.Parallel()
 	rs := newI18nTestScope(t)
 	if err := importModuleTerminology(rs, &meta.Module{ApplicationStr: "auth"}, ""); err != nil {
 		t.Fatalf("empty name: %v", err)
@@ -37,6 +39,7 @@ func TestImportModuleTerminology_emptyModuleName(t *testing.T) {
 }
 
 func TestImportModuleTerminology_nonCoreEmptyApplication(t *testing.T) {
+	t.Parallel()
 	rs := newI18nTestScope(t)
 	if err := importModuleTerminology(rs, &meta.Module{Name: "demo", ApplicationStr: ""}, ""); err != nil {
 		t.Fatalf("empty application: %v", err)
@@ -44,6 +47,7 @@ func TestImportModuleTerminology_nonCoreEmptyApplication(t *testing.T) {
 }
 
 func TestImportModuleTerminology_resolvesModuleRootFromModulesPath(t *testing.T) {
+	t.Parallel()
 	rs := newI18nTestScope(t)
 	modulesPath := t.TempDir()
 	moduleRoot := filepath.Join(modulesPath, "demo")
@@ -138,6 +142,7 @@ func TestImportFrameworkTerminology_importError(t *testing.T) {
 }
 
 func TestImportFrameworkTerminologyIntoAllApps_listError(t *testing.T) {
+	t.Parallel()
 	rs := newI18nTestScope(t)
 	if err := rs.Session().Migrator().AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatal(err)
@@ -192,12 +197,14 @@ func TestRunTerminologyImport_usesScopeContext(t *testing.T) {
 }
 
 func TestDeleteModuleTerminology_nilModule(t *testing.T) {
+	t.Parallel()
 	if err := deleteModuleTerminology(nil, nil); err != nil {
 		t.Fatalf("deleteModuleTerminology(nil): %v", err)
 	}
 }
 
 func TestResolveModuleRoot_helpers(t *testing.T) {
+	t.Parallel()
 	if got := resolveModuleRoot(&meta.Module{Path: "/custom"}, "/modules", "demo"); got != "/custom" {
 		t.Fatalf("mod path = %q", got)
 	}

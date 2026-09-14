@@ -55,6 +55,7 @@ func (f *fastFailOriginCoordinator) Purge(context.Context, string) error {
 }
 
 func TestModuleManagerUninstallFastFailWhenNameEmpty(t *testing.T) {
+	t.Parallel()
 	err := (&ModuleManager{}).Uninstall(context.Background(), "  ")
 	if err == nil || !strings.Contains(err.Error(), "module name is empty") {
 		t.Fatalf("Uninstall() error = %v, want module name is empty", err)
@@ -62,6 +63,7 @@ func TestModuleManagerUninstallFastFailWhenNameEmpty(t *testing.T) {
 }
 
 func TestModuleManagerUninstallFastFailWhenModuleMissing(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
@@ -84,6 +86,7 @@ func TestModuleManagerUninstallFastFailWhenModuleMissing(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeFastFailWhenInputEmpty(t *testing.T) {
+	t.Parallel()
 	err := (&ModuleManager{}).Upgrade(context.Background(), "\t\n")
 	if err == nil || !strings.Contains(err.Error(), "module name is empty") {
 		t.Fatalf("Upgrade() error = %v, want module name is empty", err)
@@ -91,6 +94,7 @@ func TestModuleManagerUpgradeFastFailWhenInputEmpty(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeFastFailWhenInputInvalid(t *testing.T) {
+	t.Parallel()
 	err := (&ModuleManager{}).Upgrade(context.Background(), "registry/module@")
 	if err == nil || !strings.Contains(err.Error(), "error parsing module input") {
 		t.Fatalf("Upgrade() error = %v, want parse input error", err)
@@ -98,6 +102,7 @@ func TestModuleManagerUpgradeFastFailWhenInputInvalid(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeFastFailWhenLocalModuleMissing(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
@@ -120,6 +125,7 @@ func TestModuleManagerUpgradeFastFailWhenLocalModuleMissing(t *testing.T) {
 }
 
 func TestModuleManagerMigrateBaseModuleSucceedsWithValidDB(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
@@ -135,6 +141,7 @@ func TestModuleManagerMigrateBaseModuleSucceedsWithValidDB(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
@@ -160,6 +167,7 @@ func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
 }
 
 func TestModuleManagerPeekDoesNotFallbackToResolveInstallWhenLocalMissing(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	coordinator := &fastFailOriginCoordinator{
@@ -190,6 +198,7 @@ func TestModuleManagerPeekDoesNotFallbackToResolveInstallWhenLocalMissing(t *tes
 }
 
 func TestModuleManagerUninstallFastFailWhenLoadReturnsError(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
@@ -209,6 +218,7 @@ func TestModuleManagerUninstallFastFailWhenLoadReturnsError(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeFastFailWhenLocalLoadReturnsError(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
@@ -228,6 +238,7 @@ func TestModuleManagerUpgradeFastFailWhenLocalLoadReturnsError(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeRegistryEntersLeaseBeforeOriginSwitchFailure(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}

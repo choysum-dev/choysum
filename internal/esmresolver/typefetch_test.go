@@ -51,6 +51,7 @@ func captureTypeFetchStderr(t *testing.T, fn func()) string {
 }
 
 func TestReadPackageJSON(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	pkgPath := filepath.Join(dir, "package.json")
 
@@ -74,6 +75,7 @@ func TestReadPackageJSON(t *testing.T) {
 }
 
 func TestCollectDependencies(t *testing.T) {
+	t.Parallel()
 	pkg := &PackageJSON{
 		Dependencies:     map[string]string{"a": "1.0.0"},
 		PeerDependencies: map[string]string{"b": "2.0.0", "a": "0.9.0"},
@@ -91,6 +93,7 @@ func TestCollectDependencies(t *testing.T) {
 }
 
 func TestCollectDependencies_Empty(t *testing.T) {
+	t.Parallel()
 	pkg := &PackageJSON{}
 	deps := pkg.CollectDependencies()
 	if len(deps) != 0 {
@@ -99,6 +102,7 @@ func TestCollectDependencies_Empty(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_CacheHit(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	typesDir := filepath.Join(dir, "types")
 
@@ -127,6 +131,7 @@ func TestFetchTypeDefinition_CacheHit(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_CacheHitURLDerivedFile(t *testing.T) {
+	t.Parallel()
 	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
 	getCalls := 0
 
@@ -173,6 +178,7 @@ func TestFetchTypeDefinition_CacheHitURLDerivedFile(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_RefreshesCorruptedLocalSpecifierCache(t *testing.T) {
+	t.Parallel()
 	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
 	subURLPath := "/types/pkg@1.0.0/sub.d.ts"
 	indexGetCalls := 0
@@ -233,6 +239,7 @@ func TestFetchTypeDefinition_RefreshesCorruptedLocalSpecifierCache(t *testing.T)
 }
 
 func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
+	t.Parallel()
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
@@ -336,6 +343,7 @@ func TestFetchTypeDefinition_RequestTimeoutStartsAfterSlotAcquired(t *testing.T)
 }
 
 func TestFetchTypeDefinition_TransitiveChildRetryRecoversInSameRun(t *testing.T) {
+	t.Parallel()
 	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
 	subURLPath := "/types/pkg@1.0.0/sub.d.ts"
 	subCalls := 0
@@ -445,6 +453,7 @@ func TestFetchTypeDefinition_TransitiveChildRetryExhaustedWarns(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_CircularImports_NoDeadlock(t *testing.T) {
+	t.Parallel()
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
@@ -493,6 +502,7 @@ func TestFetchTypeDefinition_CircularImports_NoDeadlock(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_CircularSiblingImports_NoDeadlock(t *testing.T) {
+	t.Parallel()
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
@@ -547,6 +557,7 @@ func TestFetchTypeDefinition_CircularSiblingImports_NoDeadlock(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/index.d.ts") {
 			w.WriteHeader(http.StatusNotFound)
@@ -566,6 +577,7 @@ func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_NoTypesHeaderFallsBackToIndexDTS(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
 			w.WriteHeader(http.StatusOK)
@@ -598,6 +610,7 @@ func TestFetchTypeDefinition_NoTypesHeaderFallsBackToIndexDTS(t *testing.T) {
 }
 
 func TestFetchTypesForModule(t *testing.T) {
+	t.Parallel()
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
@@ -716,6 +729,7 @@ func TestFetchTypesForModuleWithState_WarnOutputWithoutVerboseStartDone(t *testi
 }
 
 func TestFetchTypesForModuleWithState_CachedDependency(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	moduleDir := filepath.Join(dir, "cachedmod")
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
@@ -753,6 +767,7 @@ func TestFetchTypesForModuleWithState_CachedDependency(t *testing.T) {
 }
 
 func TestFetchTypesForModule_NoDeps(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	moduleDir := filepath.Join(dir, "nodeps")
 	os.MkdirAll(moduleDir, 0755)
@@ -772,6 +787,7 @@ func TestFetchTypesForModule_NoDeps(t *testing.T) {
 }
 
 func TestFetchTypesForModule_SkipsLocalProtocols(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	moduleDir := filepath.Join(dir, "localdeps")
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
@@ -801,6 +817,7 @@ func TestFetchTypesForModule_SkipsLocalProtocols(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 
@@ -847,6 +864,7 @@ func TestUpdateTsconfigPaths(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_EmptyResults(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 	os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"paths":{"@/*":["./*"]}}}`), 0644)
@@ -896,6 +914,7 @@ func TestUpdateTsconfigPaths_RelativeCachedPath(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_CreatesTsconfigWhenMissing(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "modules", "tsconfig.json")
 
@@ -920,6 +939,7 @@ func TestUpdateTsconfigPaths_CreatesTsconfigWhenMissing(t *testing.T) {
 }
 
 func TestEnsureTsconfigCompilerTypeRoots(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	modulesDir := filepath.Join(dir, "modules")
 	tsconfigPath := filepath.Join(modulesDir, "tsconfig.json")
@@ -971,6 +991,7 @@ func TestEnsureTsconfigCompilerTypeRoots(t *testing.T) {
 }
 
 func TestParseDTSImports(t *testing.T) {
+	t.Parallel()
 	content := `
 import { Foo } from './foo';
 import type { Bar } from "../bar";
@@ -1004,6 +1025,7 @@ func contains(slice []string, item string) bool {
 }
 
 func TestParseDTSImports_Empty(t *testing.T) {
+	t.Parallel()
 	paths := parseDTSImports("export declare const x: number;")
 	if len(paths) != 0 {
 		t.Fatalf("expected 0 imports, got %d", len(paths))
@@ -1011,6 +1033,7 @@ func TestParseDTSImports_Empty(t *testing.T) {
 }
 
 func TestResolveTypeImport_Relative(t *testing.T) {
+	t.Parallel()
 	base := "https://esm.sh/vue@3.4.29/dist/vue.d.ts"
 	tests := []struct{ imp, want string }{
 		{"./foo", "https://esm.sh/vue@3.4.29/dist/foo"},
@@ -1030,6 +1053,7 @@ func TestResolveTypeImport_Relative(t *testing.T) {
 }
 
 func TestResolveTypeImport_BareImportUnsupported(t *testing.T) {
+	t.Parallel()
 	_, err := resolveTypeImport("https://esm.sh/pkg@1.0.0/index.d.ts", "node")
 	if err == nil {
 		t.Fatal("expected error for bare type import")
@@ -1037,6 +1061,7 @@ func TestResolveTypeImport_BareImportUnsupported(t *testing.T) {
 }
 
 func TestRewriteTypeImportSpecifiers(t *testing.T) {
+	t.Parallel()
 	typesDir := t.TempDir()
 	cacheFile := filepath.Join(typesDir, "root.d.ts")
 
@@ -1062,6 +1087,7 @@ func TestRewriteTypeImportSpecifiers(t *testing.T) {
 }
 
 func TestRewriteTypeImportSpecifiers_DoesNotRewritePlainStrings(t *testing.T) {
+	t.Parallel()
 	typesDir := t.TempDir()
 	cacheFile := filepath.Join(typesDir, "root.d.ts")
 
@@ -1086,6 +1112,7 @@ export * from "./sub.d.ts";`
 }
 
 func TestRewriteTypeImportSpecifiers_BridgesVueImportToBare(t *testing.T) {
+	t.Parallel()
 	typesDir := t.TempDir()
 	cacheFile := filepath.Join(typesDir, "root.d.ts")
 
@@ -1100,6 +1127,7 @@ func TestRewriteTypeImportSpecifiers_BridgesVueImportToBare(t *testing.T) {
 }
 
 func TestRewriteTypeModuleAugmentationSpecifiers(t *testing.T) {
+	t.Parallel()
 	content := `
 declare module 'https://esm.sh/pinia@3.0.4/dist/pinia.d.ts' {
   interface DefineStoreOptionsBase<S, Store> {
@@ -1138,6 +1166,7 @@ declare module 'https://mirror.example.com/vue@3.5.35/dist/vue.d.mts' {
 }
 
 func TestRewriteLocalCachedBridgeSpecifiers(t *testing.T) {
+	t.Parallel()
 	content := `import { Ref } from "./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts";
 import { defineStore } from "./esm.sh_pinia@3.0.4_dist_pinia.d.ts.d.ts";
 import { X } from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts";
@@ -1170,6 +1199,7 @@ func TestBridgedBareSpecifierForLocalCacheSpecifier_ScopedPackage(t *testing.T) 
 }
 
 func TestBridgedBareSpecifierForLocalCacheSpecifier_BuildPrefix(t *testing.T) {
+	t.Parallel()
 	got := bridgedBareSpecifierForLocalCacheSpecifier("./esm.sh_v135_vue@3.5.35_dist_vue.d.mts.d.ts")
 	if got != "vue" {
 		t.Fatalf("bridgedBareSpecifierForLocalCacheSpecifier() = %q, want %q", got, "vue")
@@ -1177,6 +1207,7 @@ func TestBridgedBareSpecifierForLocalCacheSpecifier_BuildPrefix(t *testing.T) {
 }
 
 func TestNormalizeBridgeCachedTypeChildren_RewritesChildAugmentation(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	root := filepath.Join(dir, "root.d.ts")
 	child := filepath.Join(dir, "esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts")
@@ -1202,6 +1233,7 @@ func TestNormalizeBridgeCachedTypeChildren_RewritesChildAugmentation(t *testing.
 }
 
 func TestNormalizeBridgeCachedTypeChildren_ConcurrentSharedChild(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	rootA := filepath.Join(dir, "root-a.d.ts")
 	rootB := filepath.Join(dir, "root-b.d.ts")
@@ -1241,6 +1273,7 @@ func TestNormalizeBridgeCachedTypeChildren_ConcurrentSharedChild(t *testing.T) {
 }
 
 func TestEsmTypeURLBarePackage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		rawURL string
 		want   string
@@ -1265,6 +1298,7 @@ func TestEsmTypeURLBarePackage(t *testing.T) {
 }
 
 func TestIsLocalCachedTypeSpecifier(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path string
 		want bool
@@ -1288,6 +1322,7 @@ func TestIsLocalCachedTypeSpecifier(t *testing.T) {
 }
 
 func TestHasMissingLocalCachedImports_MissingRelativeImport(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "root.d.ts")
 	if err := os.WriteFile(cacheFile, []byte("export * from './MissingIcon.d.ts';"), 0644); err != nil {
@@ -1311,6 +1346,7 @@ func TestHasMissingLocalCachedImports_MissingRelativeImport(t *testing.T) {
 // ---- NewTypeFetchSession tests ----
 
 func TestNewTypeFetchSession_Custom(t *testing.T) {
+	t.Parallel()
 	s := NewTypeFetchSession(8)
 	if s == nil {
 		t.Fatal("expected non-nil session")
@@ -1321,6 +1357,7 @@ func TestNewTypeFetchSession_Custom(t *testing.T) {
 }
 
 func TestNewTypeFetchSession_Zero(t *testing.T) {
+	t.Parallel()
 	s := NewTypeFetchSession(0)
 	if s == nil || s.state == nil {
 		t.Fatal("expected non-nil session with default parallelism")
@@ -1330,6 +1367,7 @@ func TestNewTypeFetchSession_Zero(t *testing.T) {
 // ---- TypeFetchSession.FetchTypesForModule tests ----
 
 func TestTypeFetchSession_FetchTypesForModule(t *testing.T) {
+	t.Parallel()
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
@@ -1360,6 +1398,7 @@ func TestTypeFetchSession_FetchTypesForModule(t *testing.T) {
 }
 
 func TestTypeFetchSession_Nil(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	moduleDir := filepath.Join(dir, "mod")
 	os.MkdirAll(moduleDir, 0755)
@@ -1376,6 +1415,7 @@ func TestTypeFetchSession_Nil(t *testing.T) {
 }
 
 func TestTypeFetchSession_FetchTypesForModule_ContextCanceled(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	moduleDir := filepath.Join(dir, "mod")
 	os.MkdirAll(moduleDir, 0755)
@@ -1394,6 +1434,7 @@ func TestTypeFetchSession_FetchTypesForModule_ContextCanceled(t *testing.T) {
 // ---- ReadPackageJSON error path tests ----
 
 func TestReadPackageJSON_NotFound(t *testing.T) {
+	t.Parallel()
 	_, err := ReadPackageJSON("/nonexistent/package.json")
 	if err == nil {
 		t.Fatal("expected error for nonexistent file")
@@ -1404,6 +1445,7 @@ func TestReadPackageJSON_NotFound(t *testing.T) {
 }
 
 func TestReadPackageJSON_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "package.json")
 	os.WriteFile(path, []byte(`not json`), 0644)
@@ -1420,6 +1462,7 @@ func TestReadPackageJSON_InvalidJSON(t *testing.T) {
 // ---- NewTypeFetchHTTPClient tests ----
 
 func TestNewTypeFetchHTTPClient_DefaultTimeout(t *testing.T) {
+	t.Parallel()
 	client := NewTypeFetchHTTPClient(0)
 	if client == nil {
 		t.Fatal("expected non-nil client with default timeout")
@@ -1437,6 +1480,7 @@ func TestNewTypeFetchHTTPClient_DefaultTimeout(t *testing.T) {
 }
 
 func TestNewTypeFetchHTTPClient_CustomTimeout(t *testing.T) {
+	t.Parallel()
 	client := NewTypeFetchHTTPClient(5 * time.Second)
 	if client == nil {
 		t.Fatal("expected non-nil client")
@@ -1449,6 +1493,7 @@ func TestNewTypeFetchHTTPClient_CustomTimeout(t *testing.T) {
 // ---- typeCachePathForURL tests ----
 
 func TestTypeCachePathForURL_Various(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	tests := []struct {
@@ -1487,6 +1532,7 @@ func TestTypeCachePathForURL_Various(t *testing.T) {
 // ---- typePkgNameFromURL tests ----
 
 func TestTypePkgNameFromURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		url  string
 		want string
@@ -1507,6 +1553,7 @@ func TestTypePkgNameFromURL(t *testing.T) {
 // ---- FetchTypeDefinition HTTP error paths ----
 
 func TestFetchTypeDefinition_HeadError(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -1524,6 +1571,7 @@ func TestFetchTypeDefinition_HeadError(t *testing.T) {
 // ---- writeTypeCacheFile edge case tests ----
 
 func TestWriteTypeCacheFile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "nested", "deep", "types.d.ts")
 
@@ -1543,6 +1591,7 @@ func TestWriteTypeCacheFile(t *testing.T) {
 // ---- downloadTypeContent error path test ----
 
 func TestDownloadTypeContent_404(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -1558,6 +1607,7 @@ func TestDownloadTypeContent_404(t *testing.T) {
 }
 
 func TestDownloadTypeContent_ResponseTooLarge(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(bytes.Repeat([]byte("a"), int(maxTypeFetchDownloadBytes)+1))
@@ -1578,6 +1628,7 @@ func TestDownloadTypeContent_ResponseTooLarge(t *testing.T) {
 // ---- ensureModulesTsconfig edge cases ----
 
 func TestEnsureModulesTsconfig_DirNotExist(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "nonexistent", "tsconfig.json")
 
@@ -1591,6 +1642,7 @@ func TestEnsureModulesTsconfig_DirNotExist(t *testing.T) {
 }
 
 func TestEnsureModulesTsconfig_Existing(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	os.MkdirAll(dir, 0755)
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
@@ -1609,6 +1661,7 @@ func TestEnsureModulesTsconfig_Existing(t *testing.T) {
 // ---- acquireVisit edge cases ----
 
 func TestAcquireVisit_NilState(t *testing.T) {
+	t.Parallel()
 	var s *typeFetchState
 	shouldFetch, done := s.acquireVisit("https://example.com")
 	if !shouldFetch {
@@ -1618,6 +1671,7 @@ func TestAcquireVisit_NilState(t *testing.T) {
 }
 
 func TestAcquireVisit_SkipsInFlightFetch(t *testing.T) {
+	t.Parallel()
 	s := newTypeFetchState(defaultTypeFetchParallelism)
 	shouldFetch, done := s.acquireVisit("https://example.com")
 	if !shouldFetch {
@@ -1644,6 +1698,7 @@ func TestAcquireVisit_SkipsInFlightFetch(t *testing.T) {
 }
 
 func TestAcquireVisit_FailureAllowsRetry(t *testing.T) {
+	t.Parallel()
 	s := newTypeFetchState(defaultTypeFetchParallelism)
 	shouldFetch, done := s.acquireVisit("https://example.com")
 	if !shouldFetch {
@@ -1659,6 +1714,7 @@ func TestAcquireVisit_FailureAllowsRetry(t *testing.T) {
 }
 
 func TestAcquireVisit_FailureAllowsRetryAfterSkip(t *testing.T) {
+	t.Parallel()
 	s := newTypeFetchState(defaultTypeFetchParallelism)
 	shouldFetch, done := s.acquireVisit("https://example.com")
 	if !shouldFetch {
@@ -1686,6 +1742,7 @@ func TestAcquireVisit_FailureAllowsRetryAfterSkip(t *testing.T) {
 // ---- withRequestSlot edge cases ----
 
 func TestWithRequestSlot_NilState(t *testing.T) {
+	t.Parallel()
 	var s *typeFetchState
 	called := false
 	err := s.withRequestSlot(func() error {
@@ -1701,6 +1758,7 @@ func TestWithRequestSlot_NilState(t *testing.T) {
 }
 
 func TestWithRequestSlotContext_CanceledWhileWaiting(t *testing.T) {
+	t.Parallel()
 	state := newTypeFetchState(1)
 	state.requestSem <- struct{}{}
 	defer func() { <-state.requestSem }()
@@ -1724,6 +1782,7 @@ func TestWithRequestSlotContext_CanceledWhileWaiting(t *testing.T) {
 // ---- newTypeFetchState edge cases ----
 
 func TestNewTypeFetchState_ZeroParallelism(t *testing.T) {
+	t.Parallel()
 	state := newTypeFetchState(0)
 	if state == nil {
 		t.Fatal("expected non-nil state")
@@ -1737,6 +1796,7 @@ func TestNewTypeFetchState_ZeroParallelism(t *testing.T) {
 // ---- resolveTypeImport edge cases ----
 
 func TestResolveTypeImport_InvalidBase(t *testing.T) {
+	t.Parallel()
 	_, err := resolveTypeImport("://invalid", "./foo")
 	if err == nil {
 		t.Fatal("expected error for invalid base URL")
@@ -1744,6 +1804,7 @@ func TestResolveTypeImport_InvalidBase(t *testing.T) {
 }
 
 func TestResolveTypeImport_EmptyImportPath(t *testing.T) {
+	t.Parallel()
 	_, err := resolveTypeImport("https://esm.sh/pkg/index.d.ts", "")
 	if err == nil {
 		t.Fatal("expected error for empty import path")
@@ -1753,6 +1814,7 @@ func TestResolveTypeImport_EmptyImportPath(t *testing.T) {
 // ---- writeTypeCacheFile rename failure test ----
 
 func TestWriteTypeCacheFile_RenameFails_CleansUpTmp(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "types.d.ts")
 	// Create a directory at the target path so Rename fails.
@@ -1771,6 +1833,7 @@ func TestWriteTypeCacheFile_RenameFails_CleansUpTmp(t *testing.T) {
 // ---- hasMissingLocalCachedImports edge cases ----
 
 func TestHasMissingLocalCachedImports_EmptyImports(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "empty.d.ts")
 	os.WriteFile(cacheFile, []byte("export {};"), 0644)
@@ -1783,6 +1846,7 @@ func TestHasMissingLocalCachedImports_EmptyImports(t *testing.T) {
 }
 
 func TestHasMissingLocalCachedImports_BareImportSkipped(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "bare.d.ts")
 	os.WriteFile(cacheFile, []byte(`import "vue";`), 0644)
@@ -1793,6 +1857,7 @@ func TestHasMissingLocalCachedImports_BareImportSkipped(t *testing.T) {
 }
 
 func TestHasMissingLocalCachedImports_PathTraversalBlocked(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "sub", "root.d.ts")
 	os.MkdirAll(filepath.Dir(cacheFile), 0755)
@@ -1804,6 +1869,7 @@ func TestHasMissingLocalCachedImports_PathTraversalBlocked(t *testing.T) {
 }
 
 func TestResolveAndValidateTypeCachePath_RejectsEscape(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	typesDir := filepath.Join(dir, "types")
 	if err := os.MkdirAll(typesDir, 0o755); err != nil {
@@ -1817,6 +1883,7 @@ func TestResolveAndValidateTypeCachePath_RejectsEscape(t *testing.T) {
 }
 
 func TestWriteTypeCacheFile_RejectsPathOutsideTypesDir(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	typesDir := filepath.Join(dir, "types")
 	if err := os.MkdirAll(typesDir, 0o755); err != nil {
@@ -1832,6 +1899,7 @@ func TestWriteTypeCacheFile_RejectsPathOutsideTypesDir(t *testing.T) {
 // ---- downloadTypeContent network error test ----
 
 func TestDownloadTypeContent_NetworkError(t *testing.T) {
+	t.Parallel()
 	client := NewTypeFetchHTTPClient(2 * time.Second)
 	state := newTypeFetchState(defaultTypeFetchParallelism)
 	_, err := downloadTypeContent(context.Background(), client, "http://127.0.0.1:1/nonexistent.d.ts", state)
@@ -1841,6 +1909,7 @@ func TestDownloadTypeContent_NetworkError(t *testing.T) {
 }
 
 func TestDownloadTypeContent_InvalidURL(t *testing.T) {
+	t.Parallel()
 	client := NewTypeFetchHTTPClient(5 * time.Second)
 	state := newTypeFetchState(defaultTypeFetchParallelism)
 	_, err := downloadTypeContent(context.Background(), client, "://invalid-url", state)
@@ -1852,6 +1921,7 @@ func TestDownloadTypeContent_InvalidURL(t *testing.T) {
 // ---- UpdateTsconfigPaths edge cases ----
 
 func TestUpdateTsconfigPaths_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 	os.WriteFile(tsconfigPath, []byte(`{invalid`), 0644)
@@ -1866,6 +1936,7 @@ func TestUpdateTsconfigPaths_InvalidJSON(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_ReadOnlyDir(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("skipping write test as root")
 	}
@@ -1886,6 +1957,7 @@ func TestUpdateTsconfigPaths_ReadOnlyDir(t *testing.T) {
 // ---- typeCachePathForURL edge cases ----
 
 func TestTypeCachePathForURL_LongURL(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	longPath := strings.Repeat("x", 300)
 	url := "https://esm.sh/" + longPath
@@ -1903,12 +1975,14 @@ func TestTypeCachePathForURL_LongURL(t *testing.T) {
 // ---- isLocalCachedTypeSpecifier edge cases ----
 
 func TestIsLocalCachedTypeSpecifier_Empty(t *testing.T) {
+	t.Parallel()
 	if isLocalCachedTypeSpecifier("") {
 		t.Fatal("expected false for empty string")
 	}
 }
 
 func TestIsLocalCachedTypeSpecifier_NonMatching(t *testing.T) {
+	t.Parallel()
 	if isLocalCachedTypeSpecifier("./runtime-dom.d.ts") {
 		t.Fatal("expected false for non-esm.sh_ prefix")
 	}
@@ -1917,6 +1991,7 @@ func TestIsLocalCachedTypeSpecifier_NonMatching(t *testing.T) {
 // ---- fetchTypeRecursive read-only dir error path ----
 
 func TestFetchTypeRecursive_WriteCacheFails(t *testing.T) {
+	t.Parallel()
 	if os.Getuid() == 0 {
 		t.Skip("skipping write test as root")
 	}
@@ -1954,6 +2029,7 @@ func TestFetchTypeRecursive_WriteCacheFails(t *testing.T) {
 // ---- normalizeCompilerTypeRootName tests ----
 
 func TestNormalizeCompilerTypeRootName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -1994,6 +2070,7 @@ func TestNormalizeCompilerTypeRootName(t *testing.T) {
 // ---- EnsureTsconfigCompilerTypeRoots missing tsconfig test ----
 
 func TestEnsureTsconfigCompilerTypeRoots_MissingTsconfig(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	typesDir := filepath.Join(dir, ".choysum", "pkg", "types")
 	tsconfigPath := filepath.Join(dir, "nonexistent", "tsconfig.json")
@@ -2207,6 +2284,7 @@ func TestHasMissingLocalCachedImports_AbsAndEscapeBranches(t *testing.T) {
 }
 
 func TestEnsureTsconfigCompilerTypeRoots_SkipsOutsideCachedPath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	modulesDir := filepath.Join(dir, "modules")
 	tsconfigPath := filepath.Join(modulesDir, "tsconfig.json")
@@ -2288,6 +2366,7 @@ func TestEnsureTsconfigCompilerTypeRoots_AbsError(t *testing.T) {
 }
 
 func TestVueTypeFetchEntryNameMatches_VersionBoundary(t *testing.T) {
+	t.Parallel()
 	if !vueTypeFetchEntryNameMatches("esm.sh_vue@3.5.1_dist_vue.d.mts.d.ts", "3.5.1") {
 		t.Fatal("exact version should match")
 	}
@@ -2300,6 +2379,7 @@ func TestVueTypeFetchEntryNameMatches_VersionBoundary(t *testing.T) {
 }
 
 func TestPurgeVueTypeFetchGraph_VersionBoundary(t *testing.T) {
+	t.Parallel()
 	typesDir := filepath.Join(t.TempDir(), "types")
 	if err := os.MkdirAll(typesDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -2403,6 +2483,7 @@ func TestPurgeVueTypeFetchGraph_ErrorPaths(t *testing.T) {
 }
 
 func TestVueTypeFetchEntryIncomplete_Branches(t *testing.T) {
+	t.Parallel()
 	if vueTypeFetchEntryIncomplete("", "3.5.35") {
 		t.Fatal("empty typesDir")
 	}
@@ -2465,6 +2546,7 @@ func TestVueTypeFetchEntryIncomplete_Branches(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_PurgeErrorPropagates(t *testing.T) {
+	t.Parallel()
 	typesDir := t.TempDir()
 	pkgCache := filepath.Join(typesDir, "vue@3.5.35.d.ts")
 	if err := os.WriteFile(pkgCache, []byte("export {};\n"), 0o644); err != nil {
@@ -2489,6 +2571,7 @@ func TestFetchTypeDefinition_PurgeErrorPropagates(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_RepairsIncompleteVueGraph(t *testing.T) {
+	t.Parallel()
 	typesURLPath := "/types/vue@3.5.35/dist/vue.d.mts"
 	headCalls, getCalls := 0, 0
 

@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS web_export_template (
 }
 
 func TestModuleUninstallerPurgesExportTemplateWhenLastMetaModelGone(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -98,6 +99,7 @@ func TestModuleUninstallerPurgesExportTemplateWhenLastMetaModelGone(t *testing.T
 }
 
 func TestPurgeExportTemplatesKeepsRowsWhenMetaModelSurvives(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -145,12 +147,14 @@ func TestPurgeExportTemplatesKeepsRowsWhenMetaModelSurvives(t *testing.T) {
 }
 
 func TestApplyExportTemplatePurgeOK(t *testing.T) {
+	t.Parallel()
 	if err := applyExportTemplatePurge(nil, nil); err != nil {
 		t.Fatalf("nil args: %v", err)
 	}
 }
 
 func TestApplyExportTemplatePurgeSuccess(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureWebExportTemplateTable(t, db)
@@ -170,6 +174,7 @@ func TestApplyExportTemplatePurgeSuccess(t *testing.T) {
 }
 
 func TestWebExportTemplateTableExists(t *testing.T) {
+	t.Parallel()
 	if ok, err := webExportTemplateTableExists(nil); err != nil || ok {
 		t.Fatalf("nil db: ok=%v err=%v", ok, err)
 	}
@@ -185,6 +190,7 @@ func TestWebExportTemplateTableExists(t *testing.T) {
 }
 
 func TestWebExportTemplateTableExistsProbeError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureWebExportTemplateTable(t, db)
@@ -207,6 +213,7 @@ func TestWebExportTemplateTableExistsProbeError(t *testing.T) {
 }
 
 func TestPurgeExportTemplatesForGoneModelsGuards(t *testing.T) {
+	t.Parallel()
 	if err := purgeExportTemplatesForGoneModels(nil, []modmeta.LogicalKey{{Application: "a", Name: "B"}}); err != nil {
 		t.Fatalf("nil db: %v", err)
 	}
@@ -228,6 +235,7 @@ func TestPurgeExportTemplatesForGoneModelsGuards(t *testing.T) {
 }
 
 func TestPurgeExportTemplatesDeleteError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -247,6 +255,7 @@ func TestPurgeExportTemplatesDeleteError(t *testing.T) {
 }
 
 func TestApplyExportTemplatePurgePropagatesError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureWebExportTemplateTable(t, db)
@@ -260,6 +269,7 @@ func TestApplyExportTemplatePurgePropagatesError(t *testing.T) {
 }
 
 func TestModuleUninstallerCleanModelsPropagatesExportTemplatePurgeError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -308,6 +318,7 @@ func TestModuleUninstallerCleanModelsPropagatesExportTemplatePurgeError(t *testi
 }
 
 func TestModuleUninstallerCleanModelsNoOpWhenExportTemplateTableMissing(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -342,6 +353,7 @@ func TestModuleUninstallerCleanModelsNoOpWhenExportTemplateTableMissing(t *testi
 }
 
 func TestPurgeExportTemplatesCountError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureWebExportTemplateTable(t, db)

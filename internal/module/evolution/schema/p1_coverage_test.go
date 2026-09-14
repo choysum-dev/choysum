@@ -12,6 +12,7 @@ import (
 )
 
 func TestDefaultChangedBranches(t *testing.T) {
+	t.Parallel()
 	liveDef := "hello"
 	if defaultChanged(ColumnSpec{}, LiveColumn{}) {
 		t.Fatal("both nil")
@@ -57,6 +58,7 @@ func TestDefaultChangedBranches(t *testing.T) {
 }
 
 func TestLiveHasIndexBranches(t *testing.T) {
+	t.Parallel()
 	if liveHasIndex(LiveSchema{}, "t", "x", false) {
 		t.Fatal("nil map")
 	}
@@ -99,6 +101,7 @@ func TestLiveHasIndexBranches(t *testing.T) {
 }
 
 func TestApplyPlan_AlterWidenAndIndexCheckErrors(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	if err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
 		Kind: OpCreateTable, Safety: SafetyAuto, Table: "widen_tbl",
@@ -298,6 +301,7 @@ func TestDefaultGetIndexes_NonSQLiteAndSQLiteBranches(t *testing.T) {
 }
 
 func TestLiveColumnFromColumnType_Default(t *testing.T) {
+	t.Parallel()
 	lc, ok := liveColumnFromColumnType(fakeColumnTypeWithDefault{fakeColumnType: fakeColumnType{name: "c", dbType: "TEXT"}, def: "x", defOK: true})
 	if !ok || lc.Default == nil || *lc.Default != "x" {
 		t.Fatalf("%#v", lc)

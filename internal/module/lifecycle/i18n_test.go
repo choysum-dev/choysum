@@ -41,6 +41,7 @@ func newI18nTestScope(t *testing.T) scope.Scope {
 }
 
 func TestImportAndDeleteModuleTerminology(t *testing.T) {
+	t.Parallel()
 	rs := newI18nTestScope(t)
 	moduleRoot := t.TempDir()
 	i18nDir := filepath.Join(moduleRoot, "i18n")
@@ -113,6 +114,7 @@ msgstr "新包"
 }
 
 func TestImportModuleTerminologySkipsCoreAndMissingDir(t *testing.T) {
+	t.Parallel()
 	rs := newI18nTestScope(t)
 	if err := importModuleTerminology(rs, &meta.Module{Name: "core", ApplicationStr: "core"}, ""); err != nil {
 		t.Fatal(err)
@@ -123,6 +125,7 @@ func TestImportModuleTerminologySkipsCoreAndMissingDir(t *testing.T) {
 }
 
 func TestImportModuleTerminologyHostsFrameworkPO(t *testing.T) {
+	t.Parallel()
 	rs := newI18nTestScope(t)
 	modulesPath := t.TempDir()
 
@@ -179,6 +182,7 @@ msgstr "你好"
 }
 
 func TestImportFrameworkModuleFansOutToHostApps(t *testing.T) {
+	t.Parallel()
 	rs := newI18nTestScope(t)
 	if err := rs.Session().Migrator().AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatal(err)

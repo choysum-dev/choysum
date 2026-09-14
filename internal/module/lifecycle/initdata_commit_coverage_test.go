@@ -46,6 +46,7 @@ msgstr ""
 }
 
 func TestCommitInstall_applyInitdataWithDemo(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod, _ := lifecycleCommitModule(t, "demo_with_demo")
 	opCtx := newOpContext()
@@ -62,6 +63,7 @@ func TestCommitInstall_applyInitdataWithDemo(t *testing.T) {
 }
 
 func TestCommitInstall_applyInitdataNilCtx(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod, _ := lifecycleCommitModule(t, "demo_nil_ctx")
 	installer := &moduleInstaller{
@@ -76,6 +78,7 @@ func TestCommitInstall_applyInitdataNilCtx(t *testing.T) {
 }
 
 func TestCommitUpgrade_applyInitdataWithDemo(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	modulePath := t.TempDir()
 	dep := &meta.Module{
@@ -168,6 +171,7 @@ func TestCommitUpgrade_DependenciesReplaceError(t *testing.T) {
 }
 
 func TestCommitUpgrade_applyInitdataNilCtx(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	modulePath := t.TempDir()
 	mod := &meta.Module{
@@ -443,6 +447,7 @@ func TestCommitInstall_ReplacesEmptyDependencies(t *testing.T) {
 }
 
 func TestReplaceModuleDependencies_EmptyWithoutIDNoops(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	if err := replaceModuleDependenciesFn(nil, &meta.Module{}); err != nil {
 		t.Fatalf("nil session: %v", err)
@@ -472,6 +477,7 @@ func TestReplaceModuleDependencies_EmptyWithoutIDNoops(t *testing.T) {
 }
 
 func TestReplaceModuleDependencies_CreatesParentForNonEmptyDeps(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	dep := &meta.Module{Name: "dep_for_mint", Version: "1.0.0", Status: meta.Installed, Path: t.TempDir()}
 	dep.Id = sql.NullString{String: xid.New().String(), Valid: true}

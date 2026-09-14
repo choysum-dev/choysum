@@ -121,6 +121,7 @@ func writePackageJSON(t *testing.T, modulesPath, moduleName, content string) {
 }
 
 func TestModuleManagerResolveGeneratedAPIRootUsesDefaultChoysumPath(t *testing.T) {
+	t.Parallel()
 	defaultChoysumPath := t.TempDir()
 	manager := &ModuleManager{runtimeOptions: runtimeOptions{
 		modulesPath:        filepath.Join(t.TempDir(), "modules"),
@@ -138,6 +139,7 @@ func TestModuleManagerResolveGeneratedAPIRootUsesDefaultChoysumPath(t *testing.T
 }
 
 func TestModuleManagerBuildGlobalWebToDirResolvesRelativeEntryPath(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
@@ -169,6 +171,7 @@ func TestModuleManagerBuildGlobalWebToDirResolvesRelativeEntryPath(t *testing.T)
 }
 
 func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.3.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 
@@ -212,6 +215,7 @@ func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 }
 
 func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -249,6 +253,7 @@ func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testi
 }
 
 func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -275,6 +280,7 @@ func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
 }
 
 func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -318,6 +324,7 @@ func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *t
 }
 
 func TestModuleManagerPrepareUpgradeOriginSwitchLocalInputNoop(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
 	manager := &ModuleManager{runtimeScope: runtimeScope}
 
@@ -331,6 +338,7 @@ func TestModuleManagerPrepareUpgradeOriginSwitchLocalInputNoop(t *testing.T) {
 }
 
 func TestNewModuleInstallerResolvesRelativeServiceEntryPoint(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	runtimeScope := newModuleIndexSyncScope(modulesPath, nil)
 	module := &meta.Module{Name: "auth", ServiceEntryPoint: "service/main.ts"}
@@ -346,6 +354,7 @@ func TestNewModuleInstallerResolvesRelativeServiceEntryPoint(t *testing.T) {
 }
 
 func TestSyncLocalModuleIndex_NilLockerFactory(t *testing.T) {
+	t.Parallel()
 	stats, err := SyncLocalModuleIndex(context.Background(), nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "locker factory is nil") {
 		t.Fatalf("expected nil locker factory error, got stats=%+v err=%v", stats, err)
@@ -353,6 +362,7 @@ func TestSyncLocalModuleIndex_NilLockerFactory(t *testing.T) {
 }
 
 func TestSyncLocalModuleIndex_LeaseBusyMappedToDomainError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
 	locker := &moduleIndexSyncTestLocker{acquireErr: statepkg.ErrLeaseBusy}
 
@@ -377,6 +387,7 @@ func TestSyncLocalModuleIndex_LeaseBusyMappedToDomainError(t *testing.T) {
 }
 
 func TestSyncLocalModuleIndex_ModulesPathRequired(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newModuleIndexSyncScope("", nil)
 	locker := &moduleIndexSyncTestLocker{}
 
@@ -392,6 +403,7 @@ func TestSyncLocalModuleIndex_ModulesPathRequired(t *testing.T) {
 }
 
 func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.1.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 	writePackageJSON(t, modulesPath, "broken", `{`)
@@ -469,6 +481,7 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 }
 
 func TestSyncLocalModuleIndex_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.2.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 
@@ -498,6 +511,7 @@ func TestSyncLocalModuleIndex_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
 }
 
 func TestSyncLocalModuleIndexWarnsWhenBatchSyncTimestampUpdateFails(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.2.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 
@@ -524,6 +538,7 @@ END`).Error; err != nil {
 }
 
 func TestModuleIndexLockTTL_UsesSettingAndClampsRange(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 
@@ -543,6 +558,7 @@ func TestModuleIndexLockTTL_UsesSettingAndClampsRange(t *testing.T) {
 }
 
 func TestModuleIndexLockTTL_FallbackCases(t *testing.T) {
+	t.Parallel()
 	t.Run("nil session", func(t *testing.T) {
 		runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
 		runtimeScope.session = nil
@@ -759,6 +775,7 @@ func TestIsTableMissingInSessionBranches(t *testing.T) {
 }
 
 func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	session := runtimeScope.session
@@ -814,6 +831,7 @@ func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.
 }
 
 func TestReadPackageJSONAndHelpers(t *testing.T) {
+	t.Parallel()
 	packageJSONPath := filepath.Join(t.TempDir(), "package.json")
 	if err := os.WriteFile(packageJSONPath, []byte(`{"name":"@acme/choysum-meta","version":"0.1.0","choysum":{"moduleName":"meta","application":"meta"}}`), 0o644); err != nil {
 		t.Fatalf("write package.json: %v", err)
@@ -836,6 +854,7 @@ func TestReadPackageJSONAndHelpers(t *testing.T) {
 }
 
 func TestSanitizeModuleIndexError_PathAndDefault(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newModuleIndexSyncScope("/tmp/choysum/modules", nil)
 	pathErr := &os.PathError{Op: "open", Path: "/tmp/choysum/modules/meta/package.json", Err: os.ErrNotExist}
 	if got := SanitizeModuleIndexError(runtimeScope, pathErr); got != "open package.json" {
@@ -907,6 +926,7 @@ func (e *moduleManagerNoopScriptExecutor) Reload(scripts ...*jsengine.JsScript) 
 }
 
 func TestModuleManagerInstallRunsAppStageCallbacks(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	distPath := filepath.Join(t.TempDir(), "dist")
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
@@ -975,6 +995,7 @@ func TestModuleManagerInstallRunsAppStageCallbacks(t *testing.T) {
 }
 
 func TestModuleManagerInstallPhaseEndRunsForTouchedModule(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	distPath := filepath.Join(t.TempDir(), "dist")
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
@@ -1024,6 +1045,7 @@ func TestModuleManagerInstallPhaseEndRunsForTouchedModule(t *testing.T) {
 }
 
 func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	distPath := filepath.Join(t.TempDir(), "dist")
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
@@ -1096,6 +1118,7 @@ func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
 }
 
 func TestModuleManagerInstallPropagatesGeneratedAPIRootError(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
@@ -1145,6 +1168,7 @@ func TestModuleManagerInstallPropagatesGeneratedAPIRootError(t *testing.T) {
 }
 
 func TestModuleManagerUninstallPropagatesGeneratedAPIRootError(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
@@ -1185,6 +1209,7 @@ func TestModuleManagerUninstallPropagatesGeneratedAPIRootError(t *testing.T) {
 }
 
 func TestModuleManagerUpgradePropagatesGeneratedAPIRootError(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 
 	db := newModuleIndexSyncDB(t)
@@ -1222,6 +1247,7 @@ func TestModuleManagerUpgradePropagatesGeneratedAPIRootError(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeRunsAppStageCallbacks(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	distPath := filepath.Join(t.TempDir(), "dist")
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
@@ -1286,6 +1312,7 @@ func TestModuleManagerUpgradeRunsAppStageCallbacks(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeRefreshModuleIndexError(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	distPath := filepath.Join(t.TempDir(), "dist")
 	tmpPath := filepath.Join(t.TempDir(), "tmp")
@@ -1350,6 +1377,7 @@ func TestModuleManagerUpgradeRefreshModuleIndexError(t *testing.T) {
 }
 
 func TestModuleManagerUpgradeCoreUsesListInstalledApps(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	distPath := filepath.Join(t.TempDir(), "dist")
 	tmpPath := filepath.Join(t.TempDir(), "tmp")

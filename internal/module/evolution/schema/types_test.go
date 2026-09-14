@@ -11,6 +11,7 @@ import (
 )
 
 func TestTypeHelpers(t *testing.T) {
+	t.Parallel()
 	if value := getDefaultValue("jsonobject"); !reflect.DeepEqual(value, datatypes.JSON([]byte("{}"))) {
 		t.Fatalf("unexpected default jsonobject value: %#v", value)
 	}

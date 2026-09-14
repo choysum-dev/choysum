@@ -24,6 +24,7 @@ type fakeForeignKeyMigrator struct{ err error }
 func (f fakeForeignKeyMigrator) MigrateForeignKeys() error { return f.err }
 
 func TestMigratorMigrateOrdersSchemaBeforeForeignKeys(t *testing.T) {
+	t.Parallel()
 	order := []string{}
 	m := &migrator{
 		modelMigrator:      fakeModelMigrator{err: nil},
@@ -48,6 +49,7 @@ func TestMigratorMigrateOrdersSchemaBeforeForeignKeys(t *testing.T) {
 }
 
 func TestMigratorMigrateWrapsErrors(t *testing.T) {
+	t.Parallel()
 	m := &migrator{
 		modelMigrator:      modelMigratorFunc(func() error { return errors.New("schema broken") }),
 		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
@@ -66,6 +68,7 @@ func TestMigratorMigrateWrapsErrors(t *testing.T) {
 }
 
 func TestLoadModelsForSchema_EmptyModuleID(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	models, err := loadModelsForSchema(runtimeScope, &meta.Module{Name: "sales"})
 	if err != nil {
@@ -77,6 +80,7 @@ func TestLoadModelsForSchema_EmptyModuleID(t *testing.T) {
 }
 
 func TestNewMigrator_EmptyModuleID(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 	migrated, err := NewMigrator(runtimeScope, &meta.Module{Name: "sales"})
@@ -89,6 +93,7 @@ func TestNewMigrator_EmptyModuleID(t *testing.T) {
 }
 
 func TestLoadModelsForSchemaFiltersAndWrapsDBErrors(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 
@@ -142,6 +147,7 @@ func TestLoadModelsForSchemaFiltersAndWrapsDBErrors(t *testing.T) {
 }
 
 func TestLoadModelsForSchema_CircularExtends(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 
@@ -164,6 +170,7 @@ func TestLoadModelsForSchema_CircularExtends(t *testing.T) {
 }
 
 func TestNewMigrator(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 	module := &meta.Module{Name: "sales"}
@@ -180,6 +187,7 @@ func TestNewMigrator(t *testing.T) {
 }
 
 func TestNewMigratorPropagatesLoadError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 	module := &meta.Module{Name: "sales", ApplicationStr: "sales"}

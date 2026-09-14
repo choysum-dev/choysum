@@ -15,6 +15,7 @@ import (
 )
 
 func TestSchemaSnapshot_RoundTrip(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 
@@ -51,6 +52,7 @@ func TestSchemaSnapshot_RoundTrip(t *testing.T) {
 }
 
 func TestSchemaSnapshot_LoadSaveEdgeCases(t *testing.T) {
+	t.Parallel()
 	if _, err := LoadSnapshots(nil, []string{"t"}); err != nil {
 		t.Fatalf("nil db: %v", err)
 	}
@@ -102,6 +104,7 @@ func TestSchemaSnapshot_LoadSaveEdgeCases(t *testing.T) {
 }
 
 func TestSchemaSnapshot_LoadMissingTable(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 	db := runtimeScope.Session().DB
@@ -115,6 +118,7 @@ func TestSchemaSnapshot_LoadMissingTable(t *testing.T) {
 }
 
 func TestSchemaSnapshot_LoadQueryError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 	db := runtimeScope.Session().DB
@@ -131,6 +135,7 @@ func TestSchemaSnapshot_LoadQueryError(t *testing.T) {
 }
 
 func TestMigrate_WritesSnapshot(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", Application: "sales", ModelTable: "sales_snap",
@@ -150,6 +155,7 @@ func TestMigrate_WritesSnapshot(t *testing.T) {
 }
 
 func TestPlan_VarcharWidenAuto(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", Size: intPtrValue(64)}},
 	}}
@@ -172,6 +178,7 @@ func TestPlan_VarcharWidenAuto(t *testing.T) {
 }
 
 func TestPlan_VarcharNarrowGuarded(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", Size: intPtrValue(16)}},
 	}}
@@ -191,6 +198,7 @@ func TestPlan_VarcharNarrowGuarded(t *testing.T) {
 }
 
 func TestPlan_UniqueOnPopulatedGuarded(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", UniqueIndex: true}},
 	}}
@@ -216,6 +224,7 @@ func TestPlan_UniqueOnPopulatedGuarded(t *testing.T) {
 }
 
 func TestPlan_UniqueFlagOnExistingColumnGuarded(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", Unique: true}},
 	}}
@@ -241,6 +250,7 @@ func TestPlan_UniqueFlagOnExistingColumnGuarded(t *testing.T) {
 }
 
 func TestPlan_NewUniqueColumnOnPopulatedIsGuardedIndex(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {
 			{Name: "id", FieldName: "Id", PhysicalType: "int"},
@@ -276,6 +286,7 @@ func TestPlan_NewUniqueColumnOnPopulatedIsGuardedIndex(t *testing.T) {
 }
 
 func TestPlan_EnsureCheckOnPopulatedGuarded(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "status", FieldName: "Status", PhysicalType: "varchar", CheckExpr: "status <> ''"}},
 	}}
@@ -310,6 +321,7 @@ func TestPlan_EnsureCheckOnPopulatedGuarded(t *testing.T) {
 }
 
 func TestPlan_DefaultRemovalGuarded(t *testing.T) {
+	t.Parallel()
 	liveDef := "hello"
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "note", FieldName: "Note", PhysicalType: "varchar"}},
@@ -335,6 +347,7 @@ func TestPlan_DefaultRemovalGuarded(t *testing.T) {
 }
 
 func TestIndexOps_ClassifiesUniqueIndependently(t *testing.T) {
+	t.Parallel()
 	desiredKeys := map[string]struct{}{}
 	live := LiveSchema{
 		Tables:  map[string]bool{"t": true},
@@ -373,6 +386,7 @@ func TestIndexOps_ClassifiesUniqueIndependently(t *testing.T) {
 }
 
 func TestIndexCandidateUsesFieldLookup(t *testing.T) {
+	t.Parallel()
 	if indexCandidateUsesFieldLookup(ColumnSpec{FieldName: "Code"}, "  ") {
 		t.Fatal("blank name")
 	}
@@ -388,6 +402,7 @@ func TestIndexCandidateUsesFieldLookup(t *testing.T) {
 }
 
 func TestIndexCoveredByDesiredKey_AllColumns(t *testing.T) {
+	t.Parallel()
 	keys := map[string]struct{}{"code": {}, "tenant_id": {}}
 	if indexCoveredByDesiredKey(LiveIndex{Columns: nil}, keys) {
 		t.Fatal("empty columns")
@@ -401,6 +416,7 @@ func TestIndexCoveredByDesiredKey_AllColumns(t *testing.T) {
 }
 
 func TestDefaultChanged_SentinelLiveDefaults(t *testing.T) {
+	t.Parallel()
 	nullLive := "NULL"
 	if defaultChanged(ColumnSpec{}, LiveColumn{Default: &nullLive}) {
 		t.Fatal("NULL sentinel")
@@ -424,6 +440,7 @@ func TestDefaultChanged_SentinelLiveDefaults(t *testing.T) {
 }
 
 func TestNormalizeDefaultLiteral_DoubleQuotedCast(t *testing.T) {
+	t.Parallel()
 	want := "hello"
 	live := `"hello"::text`
 	if defaultChanged(ColumnSpec{Default: &want}, LiveColumn{Default: &live}) {
@@ -448,6 +465,7 @@ func TestNormalizeDefaultLiteral_DoubleQuotedCast(t *testing.T) {
 }
 
 func TestLiveHasIndex_DistinguishesUnique(t *testing.T) {
+	t.Parallel()
 	live := LiveSchema{Indexes: map[string][]LiveIndex{
 		"t": {{Name: "idx_code", Columns: []string{"code"}, Unique: false}},
 	}}
@@ -463,6 +481,7 @@ func TestLiveHasIndex_DistinguishesUnique(t *testing.T) {
 }
 
 func TestPlanOnly_NoDDL(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", ModelTable: "sales_plan_only",
@@ -482,6 +501,7 @@ func TestPlanOnly_NoDDL(t *testing.T) {
 }
 
 func TestMigrator_PlanOnly(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", ModelTable: "sales_plan_only_wrap",
@@ -508,6 +528,7 @@ func TestMigrator_PlanOnly(t *testing.T) {
 }
 
 func TestPlanSchema_ValidateGuarded(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", ModelTable: "sales_guard_plan",
@@ -527,6 +548,7 @@ func TestPlanSchema_ValidateGuarded(t *testing.T) {
 }
 
 func TestMigrate_IdempotentSecondRun(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", ModelTable: "sales_idem",
@@ -549,6 +571,7 @@ func TestMigrate_IdempotentSecondRun(t *testing.T) {
 }
 
 func TestApply_EnsureCheckAfterCreate(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", ModelTable: "sales_chk_plan",
@@ -579,6 +602,7 @@ func TestApply_EnsureCheckAfterCreate(t *testing.T) {
 }
 
 func TestApply_DefaultOnAddColumn(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", ModelTable: "sales_def",
@@ -618,6 +642,7 @@ func TestApply_DefaultOnAddColumn(t *testing.T) {
 }
 
 func TestWidenColumnSpec_PreservesNullabilityOnModifyDialects(t *testing.T) {
+	t.Parallel()
 	def := "x"
 	col := ColumnSpec{
 		Name: "code", FieldName: "Code", PhysicalType: "varchar", Size: intPtrValue(32),
@@ -636,6 +661,7 @@ func TestWidenColumnSpec_PreservesNullabilityOnModifyDialects(t *testing.T) {
 }
 
 func TestApply_WidenUsesSizeOnlyDefinition(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	if err := runtimeScope.Session().Exec(`CREATE TABLE sales_widen (code varchar(8) not null default 'x')`).Error; err != nil {
 		t.Fatal(err)
@@ -660,6 +686,7 @@ func TestApply_WidenUsesSizeOnlyDefinition(t *testing.T) {
 }
 
 func TestSQLiteGetIndexes_NullColumnNames(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	// Expression index: PRAGMA_index_info.name is NULL for the expression column.
 	if err := runtimeScope.Session().Exec(`CREATE TABLE expr_idx_tbl (id integer primary key, payload text)`).Error; err != nil {
@@ -703,6 +730,7 @@ func TestInspect_PropagatesIndexErrors(t *testing.T) {
 }
 
 func TestInspect_StoresStructuredIndexes(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"idx_struct": {{
@@ -730,6 +758,7 @@ func TestInspect_StoresStructuredIndexes(t *testing.T) {
 }
 
 func TestPlan_LeftoverIndexAndCovered(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {
 			{Name: "code", FieldName: "Code", PhysicalType: "varchar", Indexed: true, IndexName: "idx_code"},
@@ -772,6 +801,7 @@ func TestPlan_LeftoverIndexAndCovered(t *testing.T) {
 }
 
 func TestPlan_LeftoverSkipsPrimaryKey(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar"}},
 	}}
@@ -793,6 +823,7 @@ func TestPlan_LeftoverSkipsPrimaryKey(t *testing.T) {
 }
 
 func TestApplyPlan_RejectsNonWidenAlter(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
 		Kind: OpAlterColumn, Safety: SafetyAuto, Table: "t", Detail: "change column default",
@@ -804,6 +835,7 @@ func TestApplyPlan_RejectsNonWidenAlter(t *testing.T) {
 }
 
 func TestEnsureIndexes_ReplacesNonUniqueWithUnique(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.Exec(`CREATE TABLE uniq_replace (code text)`).Error; err != nil {
@@ -836,6 +868,7 @@ func TestEnsureIndexes_ReplacesNonUniqueWithUnique(t *testing.T) {
 }
 
 func TestEnsureIndexes_SkipsExistingUniqueAndNonUniqueLookup(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.Exec(`CREATE TABLE uniq_keep (code text)`).Error; err != nil {
@@ -863,6 +896,7 @@ func TestEnsureIndexes_SkipsExistingUniqueAndNonUniqueLookup(t *testing.T) {
 }
 
 func TestEnsureIndexes_FieldLookupMatchesColumnUnique(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.Exec(`CREATE TABLE uniq_field (code text)`).Error; err != nil {
@@ -1103,6 +1137,7 @@ func TestLiveIndexUniqueAndMatches(t *testing.T) {
 }
 
 func TestCheckOpsEmptyColumnName(t *testing.T) {
+	t.Parallel()
 	ops := checkOpsForColumn("t", ColumnSpec{FieldName: "Status", CheckExpr: "status <> ''"}, "postgres", false)
 	if len(ops) != 1 || ops[0].CheckName != "chk_t_status" || ops[0].Safety != SafetyAuto {
 		t.Fatalf("%#v", ops)
@@ -1148,11 +1183,13 @@ func TestMigrateSchema_SaveSnapshotError(t *testing.T) {
 }
 
 func TestLogPlan_NilLogger(t *testing.T) {
+	t.Parallel()
 	m := newModelMigrator(&schemaTestScope{}, nil, nil)
 	m.logPlan(SchemaPlan{Ops: []PlanOp{{Safety: SafetyAuto}}})
 }
 
 func TestLogPlan_CountsSafety(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	m := newModelMigrator(runtimeScope, &meta.Module{Name: "sales"}, nil)
 	m.logPlan(SchemaPlan{Module: "sales", Ops: []PlanOp{
@@ -1161,6 +1198,7 @@ func TestLogPlan_CountsSafety(t *testing.T) {
 }
 
 func TestApplyTableCheckConstraints_Coverage(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", ModelTable: "sales_chk_cov",

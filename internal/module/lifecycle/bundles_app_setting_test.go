@@ -16,6 +16,7 @@ import (
 )
 
 func TestPickAppSettingOwnerModule_LastEligible(t *testing.T) {
+	t.Parallel()
 	mods := []*meta.Module{
 		nil,
 		{Name: "partner", Path: "/virtual/modules/partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"},
@@ -56,6 +57,7 @@ func (s *stubBundleC2Injector) BundleInjectAppModels(mods []*meta.Module) error 
 }
 
 func TestEnsureBundleC2VirtualImports_BundleInject(t *testing.T) {
+	t.Parallel()
 	owners := []*meta.Module{{Name: "crm_partner", Path: "/m", ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts"}}
 	asOwners := []*meta.Module{
 		{Name: "crm_partner", Path: "/m", ApplicationStr: "crm", ServiceEntryPoint: "service/main.ts"},
@@ -99,6 +101,7 @@ func TestEnsureBundleC2VirtualImports_BundleInject(t *testing.T) {
 }
 
 func TestBuildBackendBundlesToDir_AppSettingOwnerAndEnsureError(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {

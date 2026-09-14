@@ -17,6 +17,7 @@ import (
 // TestCommitClosures_DoNotCallHookRunners guards against regressing hook JS into
 // install/upgrade/uninstall Commit TX bodies (pre_init must stay outside Required).
 func TestCommitClosures_DoNotCallHookRunners(t *testing.T) {
+	t.Parallel()
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")

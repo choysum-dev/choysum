@@ -11,6 +11,7 @@ import (
 )
 
 func TestMigrateSchema_CreateTableAndAddNullableColumn(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name:       "Order",
@@ -42,6 +43,7 @@ func TestMigrateSchema_CreateTableAndAddNullableColumn(t *testing.T) {
 }
 
 func TestMigrateSchema_LeftoverColumnDoesNotFail(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name:       "Order",
@@ -68,6 +70,7 @@ func TestMigrateSchema_LeftoverColumnDoesNotFail(t *testing.T) {
 }
 
 func TestMigrateSchema_TypeChangeFailsValidate(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	field := newFieldWithOptions(t, "Status", `{"type":"selection"}`)
 	model := &meta.Model{
@@ -98,6 +101,7 @@ func TestMigrateSchema_TypeChangeFailsValidate(t *testing.T) {
 }
 
 func TestValidatePlan_RejectsGuarded(t *testing.T) {
+	t.Parallel()
 	plan := SchemaPlan{
 		Module: "sales",
 		Ops: []PlanOp{{
@@ -118,6 +122,7 @@ func TestValidatePlan_RejectsGuarded(t *testing.T) {
 }
 
 func TestBuildPlan_AddNotNullOnNonEmptyTableIsGuarded(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{
 		Tables: map[string][]ColumnSpec{
 			"sales_order": {{

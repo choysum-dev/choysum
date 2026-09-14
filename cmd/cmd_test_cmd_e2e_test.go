@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -35,6 +36,7 @@ import (
 )
 
 func TestCLIErrorBlockLastOutput_InitInteractive(t *testing.T) {
+	t.Parallel()
 	output, code := runCLI(t, "init")
 	if code != 1 {
 		t.Fatalf("expected exit 1, got %d", code)
@@ -45,10 +47,12 @@ func TestCLIErrorBlockLastOutput_InitInteractive(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunUninitialized(t *testing.T) {
+	t.Parallel()
 	t.Skip("run no longer blocks on initialization state")
 }
 
 func TestCLIErrorBlockLastOutput_RunConfigMissing(t *testing.T) {
+	t.Parallel()
 	missing := filepath.Join(t.TempDir(), "missing.yaml")
 	output, code := runCLI(t, "run", "--config", missing)
 	if code != 3 {
@@ -58,6 +62,7 @@ func TestCLIErrorBlockLastOutput_RunConfigMissing(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunInvalidSqlitePath(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", "relative.db", "")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 3 {
@@ -69,10 +74,12 @@ func TestCLIErrorBlockLastOutput_RunInvalidSqlitePath(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunModulesPathMissing(t *testing.T) {
+	t.Parallel()
 	t.Skip("run no longer performs interactive bootstrap when modules_path is omitted")
 }
 
 func TestCLIErrorBlockLastOutput_RunModulesPathUnreadable(t *testing.T) {
+	t.Parallel()
 	modulesDir := filepath.Join(t.TempDir(), "modules")
 	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
 		t.Fatalf("mkdir modules: %v", err)
@@ -92,6 +99,7 @@ func TestCLIErrorBlockLastOutput_RunModulesPathUnreadable(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunModulesPathSymlink(t *testing.T) {
+	t.Parallel()
 	modulesDir := filepath.Join(t.TempDir(), "modules")
 	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
 		t.Fatalf("mkdir modules: %v", err)
@@ -109,10 +117,12 @@ func TestCLIErrorBlockLastOutput_RunModulesPathSymlink(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunModulesPathWhitespace(t *testing.T) {
+	t.Parallel()
 	t.Skip("whitespace-only modules_path is now normalized to empty by normalizePathRelativeToConfig and falls back to the default; no longer an error case")
 }
 
 func TestCLIErrorBlockLastOutput_RunModulesPathControlChar(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 	if err := os.WriteFile(configPath, []byte("modules_path: \"bad\\npath\"\n"+readConfigDbBlock(t, "sqlite", writeTempSqliteDB(t))), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
@@ -125,6 +135,7 @@ func TestCLIErrorBlockLastOutput_RunModulesPathControlChar(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunInvalidDatabaseDsnControl(t *testing.T) {
+	t.Parallel()
 	dsn := "postgres://user:pass@localhost/db\n"
 	configPath := writeTempConfigWithDSN(t, "postgres", dsn, "")
 	output, code := runCLI(t, "run", "--config", configPath)
@@ -135,6 +146,7 @@ func TestCLIErrorBlockLastOutput_RunInvalidDatabaseDsnControl(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunDbDialectConflict(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "mysql", "postgres://user:pass@localhost/db", "")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 3 {
@@ -144,6 +156,7 @@ func TestCLIErrorBlockLastOutput_RunDbDialectConflict(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunConfigSymlink(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 	linkPath := filepath.Join(t.TempDir(), "config-link.yaml")
 	if err := os.Symlink(configPath, linkPath); err != nil {
@@ -157,6 +170,7 @@ func TestCLIErrorBlockLastOutput_RunConfigSymlink(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunConfigMissingFields(t *testing.T) {
+	t.Parallel()
 	modules := filepath.Join(t.TempDir(), "modules")
 	if err := os.MkdirAll(modules, 0o755); err != nil {
 		t.Fatalf("mkdir modules: %v", err)
@@ -170,6 +184,7 @@ func TestCLIErrorBlockLastOutput_RunConfigMissingFields(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunModulesPathListSeparator(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "a:b")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 3 {
@@ -179,6 +194,7 @@ func TestCLIErrorBlockLastOutput_RunModulesPathListSeparator(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunConfigUnreadable(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 	if err := os.Chmod(configPath, 0o000); err != nil {
 		t.Fatalf("chmod config: %v", err)
@@ -195,6 +211,7 @@ func TestCLIErrorBlockLastOutput_RunConfigUnreadable(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunConfigInvalidYAML(t *testing.T) {
+	t.Parallel()
 	configPath := writeRawConfig(t, "modules_path: [\n")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 3 {
@@ -208,6 +225,7 @@ func TestCLIErrorBlockLastOutput_RunConfigInvalidYAML(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_InitCommandRemoved(t *testing.T) {
+	t.Parallel()
 	output, code := runCLI(t, "init", "--non-interactive")
 	if code != 1 {
 		t.Fatalf("expected exit 1, got %d", code)
@@ -218,6 +236,7 @@ func TestCLIErrorBlockLastOutput_InitCommandRemoved(t *testing.T) {
 }
 
 func TestCLIErrorBlockRedactsDsn_Run(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "postgres", "postgres://user:secretpass@127.0.0.1:1/db?connect_timeout=1", "")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 4 {
@@ -230,6 +249,7 @@ func TestCLIErrorBlockRedactsDsn_Run(t *testing.T) {
 }
 
 func TestCLIErrorBlockRedactsKeyValueDsn_Run(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "postgres", "host=127.0.0.1 user=choysum password=secretpass dbname=choysum connect_timeout=1", "")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 4 {
@@ -242,6 +262,7 @@ func TestCLIErrorBlockRedactsKeyValueDsn_Run(t *testing.T) {
 }
 
 func TestCLIErrorBlockRedactsKeyValueDsnAliases_Run(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "postgres", "host=127.0.0.1 user=choysum Pass=secretpass pwd=secretpass", "")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 4 {
@@ -254,6 +275,7 @@ func TestCLIErrorBlockRedactsKeyValueDsnAliases_Run(t *testing.T) {
 }
 
 func TestCLIErrorBlockRedactsKeyValueDsnAliasesRepeated_Run(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "postgres", "host=127.0.0.1 user=choysum PASSWORD=secretpass pass=secretpass pwd=secretpass", "")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 4 {
@@ -266,6 +288,7 @@ func TestCLIErrorBlockRedactsKeyValueDsnAliasesRepeated_Run(t *testing.T) {
 }
 
 func TestCLIErrorBlockRedactsUrlUserinfoSpecialChars_Run(t *testing.T) {
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "postgres", "postgres://user:sec%40ret%3Apass@127.0.0.1:1/db?connect_timeout=1", "")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 4 {
@@ -290,20 +313,62 @@ func TestCLIErrorBlockIsLastOutput(t *testing.T) {
 
 const cliE2EEnv = "CHOYSUM_CLI_E2E"
 
-func cliE2EHelperEnv() []string {
-	env := make([]string, 0, len(os.Environ())+1)
+// cliE2EHomes memoizes one HOME TempDir per *testing.T so multiple runCLI*
+// calls in the same test share cache/state (mirrors the old t.Setenv HOME).
+var cliE2EHomes sync.Map
+
+func cliE2EHomeDir(t *testing.T) string {
+	t.Helper()
+	if v, ok := cliE2EHomes.Load(t); ok {
+		return v.(string)
+	}
+	home := t.TempDir()
+	if actual, loaded := cliE2EHomes.LoadOrStore(t, home); loaded {
+		return actual.(string)
+	}
+	t.Cleanup(func() { cliE2EHomes.Delete(t) })
+	return home
+}
+
+// cliE2EHelperEnv builds the subprocess environment for CLI helper tests.
+// Extra KEY=VAL entries override parent values. HOME defaults to one TempDir
+// per test so callers can t.Parallel() without t.Setenv. Inherited
+// CHOYSUM_HOME is stripped so parallel children do not share browser/cache
+// state; callers may still pass CHOYSUM_HOME via extra. CHOYSUM_CLI_E2E is
+// always forced to 1 for the helper subprocess entrypoint.
+func cliE2EHelperEnv(t *testing.T, extra ...string) []string {
+	t.Helper()
+	overrides := map[string]string{}
+	for _, entry := range extra {
+		idx := strings.IndexByte(entry, '=')
+		if idx <= 0 {
+			t.Fatalf("cliE2EHelperEnv: extra env %q must be KEY=VALUE", entry)
+		}
+		overrides[entry[:idx]] = entry[idx+1:]
+	}
+	if _, ok := overrides["HOME"]; !ok {
+		overrides["HOME"] = cliE2EHomeDir(t)
+	}
+	overrides[cliE2EEnv] = "1"
+
+	env := make([]string, 0, len(os.Environ())+len(overrides))
 	for _, entry := range os.Environ() {
 		key := entry
 		if idx := strings.IndexByte(entry, '='); idx >= 0 {
 			key = entry[:idx]
 		}
+		if _, ok := overrides[key]; ok {
+			continue
+		}
 		switch key {
-		case cliE2EEnv, "CHOYSUM_DEFAULT_CHOYSUM_PATH", "CHOYSUM_DB_DIALECT", "CHOYSUM_DB_DSN", "CHOYSUM_AUTH_INTERNAL_KEY", "CHOYSUM_COMPILE_MINIFY", "CHOYSUM_COMPILE_SOURCEMAP", "CHOYSUM_SERVER_HOT_RELOAD":
+		case cliE2EEnv, "CHOYSUM_HOME", "CHOYSUM_DEFAULT_CHOYSUM_PATH", "CHOYSUM_DB_DIALECT", "CHOYSUM_DB_DSN", "CHOYSUM_AUTH_INTERNAL_KEY", "CHOYSUM_COMPILE_MINIFY", "CHOYSUM_COMPILE_SOURCEMAP", "CHOYSUM_SERVER_HOT_RELOAD":
 			continue
 		}
 		env = append(env, entry)
 	}
-	env = append(env, cliE2EEnv+"=1")
+	for key, val := range overrides {
+		env = append(env, key+"="+val)
+	}
 	return env
 }
 
@@ -335,10 +400,15 @@ func helperArgs(args []string) []string {
 
 func runCLI(t *testing.T, args ...string) (string, int) {
 	t.Helper()
+	return runCLIEnv(t, nil, args...)
+}
+
+func runCLIEnv(t *testing.T, extraEnv []string, args ...string) (string, int) {
+	t.Helper()
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
 	cmd.Args = append(cmd.Args, args...)
-	cmd.Env = cliE2EHelperEnv()
+	cmd.Env = cliE2EHelperEnv(t, extraEnv...)
 	output, err := cmd.CombinedOutput()
 	if err == nil {
 		return string(output), 0
@@ -354,7 +424,7 @@ func runCLISeparated(t *testing.T, args ...string) (string, string, int) {
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
 	cmd.Args = append(cmd.Args, args...)
-	cmd.Env = cliE2EHelperEnv()
+	cmd.Env = cliE2EHelperEnv(t)
 
 	var stdoutBuf bytes.Buffer
 	var stderrBuf bytes.Buffer
@@ -381,7 +451,7 @@ func runCLIUntilLineWithTimeout(t *testing.T, timeout time.Duration, waitFor fun
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
 	cmd.Args = append(cmd.Args, args...)
-	cmd.Env = cliE2EHelperEnv()
+	cmd.Env = cliE2EHelperEnv(t)
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -454,7 +524,7 @@ func runCLIUntilLineSeparated(t *testing.T, waitFor func(string) bool, args ...s
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
 	cmd.Args = append(cmd.Args, args...)
-	cmd.Env = cliE2EHelperEnv()
+	cmd.Env = cliE2EHelperEnv(t)
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -727,6 +797,7 @@ func assertReasonInSet(t *testing.T, reason string, candidates []string) {
 	t.Fatalf("unexpected reason: %s", reason)
 }
 func TestCLIInitCommandRemoved(t *testing.T) {
+	t.Parallel()
 	output, code := runCLI(t, "init")
 	if code != 1 {
 		t.Fatalf("expected exit code 1, got %d: %s", code, output)
@@ -736,6 +807,7 @@ func TestCLIInitCommandRemoved(t *testing.T) {
 	}
 }
 func TestCLIInitCommandRemovedStderrOnly(t *testing.T) {
+	t.Parallel()
 	stdout, stderr, code := runCLISeparated(t, "init", "--non-interactive")
 	if code != 1 {
 		t.Fatalf("expected exit code 1, got %d", code)
@@ -748,6 +820,7 @@ func TestCLIInitCommandRemovedStderrOnly(t *testing.T) {
 	}
 }
 func TestCLIWarnBeforeErrorBlock(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	realDir := filepath.Join(base, "real")
 	if err := os.MkdirAll(realDir, 0o755); err != nil {
@@ -1027,7 +1100,7 @@ func setLegacyRegistryURLConfigForCLI(t *testing.T, configPath string) {
 }
 
 func TestCLIModuleRemoteSearchListInfo(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{
@@ -1069,7 +1142,7 @@ func TestCLIModuleRemoteSearchListInfo(t *testing.T) {
 }
 
 func TestCLIModuleRemoteInfoNotFound(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0"}})
@@ -1086,15 +1159,14 @@ func TestCLIModuleRemoteInfoNotFound(t *testing.T) {
 }
 
 func TestCLIModuleRemoteListRequiresCompatVersionInDev(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(clicompat.CLICompatVersionEnv, "")
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
 	defer srv.Close()
 	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
 
-	output, code := runCLI(t, "module", "list", "--remote", "--config", configPath)
+	output, code := runCLIEnv(t, []string{clicompat.CLICompatVersionEnv + "="}, "module", "list", "--remote", "--config", configPath)
 	if code == 0 {
 		t.Fatalf("expected non-zero exit code when cli compat version is unresolved, output=%s", output)
 	}
@@ -1104,15 +1176,14 @@ func TestCLIModuleRemoteListRequiresCompatVersionInDev(t *testing.T) {
 }
 
 func TestCLIModuleRemoteListAllAllowsUnresolvedCompatVersion(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(clicompat.CLICompatVersionEnv, "")
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
 	defer srv.Close()
 	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
 
-	output, code := runCLI(t, "module", "list", "--remote", "--all", "--config", configPath)
+	output, code := runCLIEnv(t, []string{clicompat.CLICompatVersionEnv + "="}, "module", "list", "--remote", "--all", "--config", configPath)
 	if code != 0 {
 		t.Fatalf("expected list --remote --all to succeed without compat version, code=%d output=%s", code, output)
 	}
@@ -1125,15 +1196,14 @@ func TestCLIModuleRemoteListAllAllowsUnresolvedCompatVersion(t *testing.T) {
 }
 
 func TestCLIModuleRemoteInfoRequiresCompatVersionInDev(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(clicompat.CLICompatVersionEnv, "")
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
 	defer srv.Close()
 	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
 
-	output, code := runCLI(t, "module", "info", "auth", "--remote", "--config", configPath)
+	output, code := runCLIEnv(t, []string{clicompat.CLICompatVersionEnv + "="}, "module", "info", "auth", "--remote", "--config", configPath)
 	if code == 0 {
 		t.Fatalf("expected non-zero exit code when cli compat version is unresolved, output=%s", output)
 	}
@@ -1143,15 +1213,14 @@ func TestCLIModuleRemoteInfoRequiresCompatVersionInDev(t *testing.T) {
 }
 
 func TestCLIModuleRemoteInfoAllAllowsUnresolvedCompatVersion(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(clicompat.CLICompatVersionEnv, "")
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
 	defer srv.Close()
 	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
 
-	output, code := runCLI(t, "module", "info", "auth", "--remote", "--all", "--config", configPath)
+	output, code := runCLIEnv(t, []string{clicompat.CLICompatVersionEnv + "="}, "module", "info", "auth", "--remote", "--all", "--config", configPath)
 	if code != 0 {
 		t.Fatalf("expected module info --remote --all to succeed without compat version, code=%d output=%s", code, output)
 	}
@@ -1164,7 +1233,7 @@ func TestCLIModuleRemoteInfoAllAllowsUnresolvedCompatVersion(t *testing.T) {
 }
 
 func TestCLIModuleRemoteRejectsLegacyRegistryURLConfig(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 	setLegacyRegistryURLConfigForCLI(t, configPath)
 
@@ -1181,7 +1250,7 @@ func TestCLIModuleRemoteRejectsLegacyRegistryURLConfig(t *testing.T) {
 }
 
 func TestCLIInstallLocalMissingPreservesFallbackCauseWithGuidance(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	output, code := runCLI(t, "install", "missing", "--config", configPath)
@@ -1203,7 +1272,7 @@ func TestCLIInstallLocalMissingPreservesFallbackCauseWithGuidance(t *testing.T) 
 }
 
 func TestCLIUninstallMissingModuleReportsFailure(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	const missingModule = "__missing_copilot_module__"
@@ -1220,7 +1289,7 @@ func TestCLIUninstallMissingModuleReportsFailure(t *testing.T) {
 }
 
 func TestCLIUpgradeMissingModuleReportsFailure(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	const missingModule = "__missing_copilot_module__"
@@ -1237,7 +1306,7 @@ func TestCLIUpgradeMissingModuleReportsFailure(t *testing.T) {
 }
 
 func TestCLIUpgradeRejectsLegacyAliasSyntax(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	output, code := runCLI(t, "upgrade", "corp/demo@v1.0.0", "--config", configPath)
@@ -1250,7 +1319,7 @@ func TestCLIUpgradeRejectsLegacyAliasSyntax(t *testing.T) {
 }
 
 func TestCLIUpgradeFlowWithGlobalRegistryIndex(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1333,8 +1402,7 @@ func TestCLIUpgradeFlowWithGlobalRegistryIndex(t *testing.T) {
 }
 
 func TestCLIUpgradeLatestRequiresCompatVersionInDev(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(clicompat.CLICompatVersionEnv, "")
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1364,7 +1432,7 @@ func TestCLIUpgradeLatestRequiresCompatVersionInDev(t *testing.T) {
 	defer srv.Close()
 	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
 
-	output, code := runCLI(t, "upgrade", "demo@latest", "--config", configPath)
+	output, code := runCLIEnv(t, []string{clicompat.CLICompatVersionEnv + "="}, "upgrade", "demo@latest", "--config", configPath)
 	if code == 0 {
 		t.Fatalf("expected non-zero exit code when cli compat version is unresolved, output=%s", output)
 	}
@@ -1374,7 +1442,7 @@ func TestCLIUpgradeLatestRequiresCompatVersionInDev(t *testing.T) {
 }
 
 func TestCLIUpgradeLocalRegistryBindingUsesCompatFilter(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1439,8 +1507,7 @@ func TestCLIUpgradeLocalRegistryBindingUsesCompatFilter(t *testing.T) {
 }
 
 func TestCLIUpgradeLocalRegistryBindingRequiresCompatVersionInDev(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(clicompat.CLICompatVersionEnv, "")
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1486,7 +1553,7 @@ func TestCLIUpgradeLocalRegistryBindingRequiresCompatVersionInDev(t *testing.T) 
 		t.Fatalf("seed registry binding failed: %v", err)
 	}
 
-	output, code := runCLI(t, "upgrade", "demo", "--config", configPath)
+	output, code := runCLIEnv(t, []string{clicompat.CLICompatVersionEnv + "="}, "upgrade", "demo", "--config", configPath)
 	if code == 0 {
 		t.Fatalf("expected non-zero exit code when cli compat version is unresolved, output=%s", output)
 	}
@@ -1496,7 +1563,7 @@ func TestCLIUpgradeLocalRegistryBindingRequiresCompatVersionInDev(t *testing.T) 
 }
 
 func TestCLIUpgradeLocalRegistryBindingNoCompatibleVersion(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1552,8 +1619,7 @@ func TestCLIUpgradeLocalRegistryBindingNoCompatibleVersion(t *testing.T) {
 }
 
 func TestCLIInstallLatestRequiresCompatVersionInDev(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv(clicompat.CLICompatVersionEnv, "")
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1566,7 +1632,7 @@ func TestCLIInstallLatestRequiresCompatVersionInDev(t *testing.T) {
 	defer srv.Close()
 	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
 
-	output, code := runCLI(t, "install", "demo@latest", "--config", configPath)
+	output, code := runCLIEnv(t, []string{clicompat.CLICompatVersionEnv + "="}, "install", "demo@latest", "--config", configPath)
 	if code == 0 {
 		t.Fatalf("expected non-zero exit code when cli compat version is unresolved, output=%s", output)
 	}
@@ -1576,7 +1642,7 @@ func TestCLIInstallLatestRequiresCompatVersionInDev(t *testing.T) {
 }
 
 func TestCLIInstallLatestResolvesCompatibleVersion(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1638,7 +1704,7 @@ func TestCLIInstallLatestResolvesCompatibleVersion(t *testing.T) {
 }
 
 func TestCLIModulePurgeRequiresUninstallWhenInstalled(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1684,7 +1750,7 @@ func TestCLIModulePurgeRequiresUninstallWhenInstalled(t *testing.T) {
 }
 
 func TestCLIFetchUninstallPurgeFlowWithGlobalRegistryIndex(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	t.Parallel()
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1783,6 +1849,7 @@ func seedModuleStatusForCLI(t *testing.T, dbPath, moduleName string, status meta
 	}
 }
 func TestCLIErrorBlockUsesStderrOnly(t *testing.T) {
+	t.Parallel()
 	stdout, stderr, code := runCLISeparated(t, "run", "--config", " ")
 	if code != 2 {
 		t.Fatalf("expected exit code 2, got %d", code)
@@ -1793,6 +1860,7 @@ func TestCLIErrorBlockUsesStderrOnly(t *testing.T) {
 	assertLastErrorBlock(t, stderr)
 }
 func TestCLIE2EWritesToStderrOnlyOnUsageError(t *testing.T) {
+	t.Parallel()
 	dbPath := writeTempSqliteDB(t)
 	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, "")
 
@@ -1808,6 +1876,7 @@ func TestCLIE2EWritesToStderrOnlyOnUsageError(t *testing.T) {
 	}
 }
 func TestCLIInitErrorBlockIsLastAndStderrOnly(t *testing.T) {
+	t.Parallel()
 	stdout, stderr, code := runCLISeparated(t, "init", "--admin-password-stdin")
 	if code != 1 {
 		t.Fatalf("expected exit code 1, got %d", code)
@@ -1820,6 +1889,7 @@ func TestCLIInitErrorBlockIsLastAndStderrOnly(t *testing.T) {
 	}
 }
 func TestCLIInstallWritesToStderrOnlyOnUsageError(t *testing.T) {
+	t.Parallel()
 	dbPath := writeTempSqliteDB(t)
 	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, "")
 
@@ -1835,6 +1905,7 @@ func TestCLIInstallWritesToStderrOnlyOnUsageError(t *testing.T) {
 	}
 }
 func TestCLIRunInfoWritesToStderrOnly(t *testing.T) {
+	t.Parallel()
 	configPath, _, _ := writeTempInitializedRunConfigWithDB(t, false)
 
 	stdout, stderr, _ := runCLIUntilLineSeparated(t, func(line string) bool {
@@ -1855,6 +1926,7 @@ func TestCLIRunInfoWritesToStderrOnly(t *testing.T) {
 	}
 }
 func TestCLITestWritesToStderrOnlyOnUsageError(t *testing.T) {
+	t.Parallel()
 	dbPath := writeTempSqliteDB(t)
 	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, "")
 
@@ -1870,6 +1942,7 @@ func TestCLITestWritesToStderrOnlyOnUsageError(t *testing.T) {
 	}
 }
 func TestCLITypecheckWritesToStderrOnlyOnUsageError(t *testing.T) {
+	t.Parallel()
 	dbPath := writeTempSqliteDB(t)
 	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, "")
 
@@ -1885,6 +1958,7 @@ func TestCLITypecheckWritesToStderrOnlyOnUsageError(t *testing.T) {
 	}
 }
 func TestCLIRunRejectsLegacyBootstrapFlags(t *testing.T) {
+	t.Parallel()
 	output, code := runCLI(t, "run", "--non-interactive")
 	if code != 1 {
 		t.Fatalf("expected exit code 1, got %d: %s", code, output)
@@ -1894,6 +1968,7 @@ func TestCLIRunRejectsLegacyBootstrapFlags(t *testing.T) {
 	}
 }
 func TestCLIRunInfoShowsActualAddress(t *testing.T) {
+	t.Parallel()
 	configPath, addr, _ := writeTempInitializedRunConfig(t, false)
 	expected := fmt.Sprintf("http://%s", addr)
 
@@ -1908,6 +1983,7 @@ func TestCLIRunInfoShowsActualAddress(t *testing.T) {
 	}
 }
 func TestCLIRunDoesNotWriteInitArtifacts(t *testing.T) {
+	t.Parallel()
 	configPath, _, dbPath := writeTempInitializedRunConfigWithDB(t, false)
 
 	output, _ := runCLIUntilLine(t, func(line string) bool {
@@ -1946,6 +2022,7 @@ func TestCLIRunDoesNotWriteInitArtifacts(t *testing.T) {
 	}
 }
 func TestCLIRunRejectsLegacyAdminUsernameFlag(t *testing.T) {
+	t.Parallel()
 	output, code := runCLI(t, "run", "--admin-username", "admin")
 	if code != 1 {
 		t.Fatalf("expected exit code 1, got %d: %s", code, output)
@@ -1956,6 +2033,7 @@ func TestCLIRunRejectsLegacyAdminUsernameFlag(t *testing.T) {
 }
 
 func TestCLIRunRejectsLegacyAdminPasswordFileFlag(t *testing.T) {
+	t.Parallel()
 	output, code := runCLI(t, "run", "--admin-password-file", "pw.txt")
 	if code != 1 {
 		t.Fatalf("expected exit code 1, got %d: %s", code, output)
@@ -1966,6 +2044,7 @@ func TestCLIRunRejectsLegacyAdminPasswordFileFlag(t *testing.T) {
 }
 
 func TestCLIRunRejectsLegacyAdminPasswordStdinFlag(t *testing.T) {
+	t.Parallel()
 	output, code := runCLI(t, "run", "--admin-password-stdin")
 	if code != 1 {
 		t.Fatalf("expected exit code 1, got %d: %s", code, output)

@@ -15,6 +15,7 @@ import (
 )
 
 func TestPickFieldDefaultOwnerModule_LastEligible(t *testing.T) {
+	t.Parallel()
 	mods := []*meta.Module{
 		nil,
 		{Name: "partner", Path: "/virtual/modules/partner", ApplicationStr: "partner", ServiceEntryPoint: "service/index.ts"},
@@ -43,6 +44,7 @@ func TestPickFieldDefaultOwnerModule_LastEligible(t *testing.T) {
 }
 
 func TestBuildBackendBundlesToDir_FieldDefaultOwnerAndEnsureError(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {

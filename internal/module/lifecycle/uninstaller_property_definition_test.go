@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS demo_property_definition (
 }
 
 func TestModuleUninstallerPurgesPropertyDefinitionsWhenLastMetaModelGone(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -110,6 +111,7 @@ func TestModuleUninstallerPurgesPropertyDefinitionsWhenLastMetaModelGone(t *test
 }
 
 func TestModuleUninstallerKeepsPropertyDefinitionsWhenIMDSurvivorRemains(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -193,6 +195,7 @@ CREATE TABLE IF NOT EXISTS partner_property_definition (
 }
 
 func TestModuleUninstallerPropertyDefinitionMissingTableNoOp(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -227,6 +230,7 @@ func TestModuleUninstallerPropertyDefinitionMissingTableNoOp(t *testing.T) {
 }
 
 func TestPropertyDefinitionTableName(t *testing.T) {
+	t.Parallel()
 	if got := propertyDefinitionTableName("partner"); got != "partner_property_definition" {
 		t.Fatalf("got %q", got)
 	}
@@ -236,6 +240,7 @@ func TestPropertyDefinitionTableName(t *testing.T) {
 }
 
 func TestIsMissingSQLTableError(t *testing.T) {
+	t.Parallel()
 	if isMissingSQLTableError(nil) {
 		t.Fatal("nil must be false")
 	}
@@ -255,6 +260,7 @@ func TestIsMissingSQLTableError(t *testing.T) {
 }
 
 func TestPropertyDefinitionTableExists(t *testing.T) {
+	t.Parallel()
 	if ok, err := propertyDefinitionTableExists(nil, "demo_property_definition"); err != nil || ok {
 		t.Fatalf("nil db: ok=%v err=%v", ok, err)
 	}
@@ -273,6 +279,7 @@ func TestPropertyDefinitionTableExists(t *testing.T) {
 }
 
 func TestPropertyDefinitionTableExistsProbeError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureDemoPropertyDefinitionTable(t, db)
@@ -295,6 +302,7 @@ func TestPropertyDefinitionTableExistsProbeError(t *testing.T) {
 }
 
 func TestPurgePropertyDefinitionsForGoneModelsGuards(t *testing.T) {
+	t.Parallel()
 	if err := purgePropertyDefinitionsForGoneModels(nil, []modmeta.LogicalKey{{Application: "a", Name: "B"}}); err != nil {
 		t.Fatalf("nil db: %v", err)
 	}
@@ -316,6 +324,7 @@ func TestPurgePropertyDefinitionsForGoneModelsGuards(t *testing.T) {
 }
 
 func TestPurgePropertyDefinitionsCountError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureDemoPropertyDefinitionTable(t, db)
@@ -329,6 +338,7 @@ func TestPurgePropertyDefinitionsCountError(t *testing.T) {
 }
 
 func TestPurgePropertyDefinitionsDeleteError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -348,6 +358,7 @@ func TestPurgePropertyDefinitionsDeleteError(t *testing.T) {
 }
 
 func TestApplyPropertyDefinitionPurgePropagatesError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureDemoPropertyDefinitionTable(t, db)
@@ -361,12 +372,14 @@ func TestApplyPropertyDefinitionPurgePropagatesError(t *testing.T) {
 }
 
 func TestApplyPropertyDefinitionPurgeOK(t *testing.T) {
+	t.Parallel()
 	if err := applyPropertyDefinitionPurge(nil, nil); err != nil {
 		t.Fatalf("nil args: %v", err)
 	}
 }
 
 func TestModuleUninstallerCleanModelsPropagatesPropertyDefinitionPurgeError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {

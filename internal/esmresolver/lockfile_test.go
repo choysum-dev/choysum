@@ -11,6 +11,7 @@ import (
 )
 
 func TestReadLockfile_NotExist(t *testing.T) {
+	t.Parallel()
 	lock, err := ReadLockfile("/nonexistent/path/esm.lock")
 	if err != nil {
 		t.Fatalf("ReadLockfile returned error for nonexistent file: %v", err)
@@ -21,6 +22,7 @@ func TestReadLockfile_NotExist(t *testing.T) {
 }
 
 func TestReadLockfile_Valid(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "esm.lock")
 
@@ -51,6 +53,7 @@ func TestReadLockfile_Valid(t *testing.T) {
 }
 
 func TestReadLockfile_BadVersion(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "esm.lock")
 	if err := os.WriteFile(path, []byte(`{"version":99,"packages":{}}`), 0644); err != nil {
@@ -63,6 +66,7 @@ func TestReadLockfile_BadVersion(t *testing.T) {
 }
 
 func TestReadLockfile_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "esm.lock")
 	if err := os.WriteFile(path, []byte(`not json`), 0644); err != nil {
@@ -75,6 +79,7 @@ func TestReadLockfile_InvalidJSON(t *testing.T) {
 }
 
 func TestWriteLockfile_Atomically(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "esm.lock")
 
@@ -108,12 +113,14 @@ func TestWriteLockfile_Atomically(t *testing.T) {
 }
 
 func TestWriteLockfile_NilLock(t *testing.T) {
+	t.Parallel()
 	if err := WriteLockfile("/tmp/should-not-create.lock", nil); err != nil {
 		t.Fatalf("WriteLockfile(nil) should be a no-op, got: %v", err)
 	}
 }
 
 func TestLookupLockedSpec(t *testing.T) {
+	t.Parallel()
 	lock := &EsmLockfile{
 		Version: 1,
 		Packages: map[string]LockEntry{
@@ -148,6 +155,7 @@ func TestLookupLockedSpec(t *testing.T) {
 }
 
 func TestLockSpecifier(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		spec    string
 		version string
@@ -171,6 +179,7 @@ func TestLockSpecifier(t *testing.T) {
 }
 
 func TestResolver_LockedSpecifier_Integration(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	lockfilePath := filepath.Join(dir, "esm.lock")
 
@@ -206,6 +215,7 @@ func TestResolver_LockedSpecifier_Integration(t *testing.T) {
 // ---- WriteLockfile edge case tests ----
 
 func TestWriteLockfile_InvalidPath(t *testing.T) {
+	t.Parallel()
 	err := WriteLockfile("/dev/null/should-fail/esm.lock", &EsmLockfile{
 		Version:  1,
 		Packages: map[string]LockEntry{"a": {Version: "1.0"}},
@@ -218,6 +228,7 @@ func TestWriteLockfile_InvalidPath(t *testing.T) {
 // ---- ReadLockfile edge case tests ----
 
 func TestReadLockfile_ZeroVersion(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "esm.lock")
 	if err := os.WriteFile(path, []byte(`{"version":0,"packages":{}}`), 0644); err != nil {
@@ -230,6 +241,7 @@ func TestReadLockfile_ZeroVersion(t *testing.T) {
 }
 
 func TestReadLockfile_NilPackages(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "esm.lock")
 	if err := os.WriteFile(path, []byte(`{"version":1}`), 0644); err != nil {
@@ -250,6 +262,7 @@ func TestReadLockfile_NilPackages(t *testing.T) {
 // ---- LookupLockedSpec edge case tests ----
 
 func TestLookupLockedSpec_EmptySpec(t *testing.T) {
+	t.Parallel()
 	lock := &EsmLockfile{Version: 1, Packages: map[string]LockEntry{"pkg": {Version: "1.0"}}}
 	got := LookupLockedSpec(lock, "")
 	if got != "" {

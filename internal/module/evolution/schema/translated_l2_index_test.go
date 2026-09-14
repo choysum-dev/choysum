@@ -18,6 +18,7 @@ import (
 )
 
 func TestTranslatedL2IndexName(t *testing.T) {
+	t.Parallel()
 	got := translatedL2IndexName("base_language", "name", "en_US")
 	if got != "idx_base_language_name_en_us" {
 		t.Fatalf("unexpected index name: %s", got)
@@ -29,6 +30,7 @@ func TestTranslatedL2IndexName(t *testing.T) {
 }
 
 func TestTranslatedL2LangsWhitelist(t *testing.T) {
+	t.Parallel()
 	if len(translatedL2Langs) != 2 {
 		t.Fatalf("D17 whitelist must be exactly en_US+zh_CN, got %#v", translatedL2Langs)
 	}
@@ -38,6 +40,7 @@ func TestTranslatedL2LangsWhitelist(t *testing.T) {
 }
 
 func TestCreateTranslatedL2IndexSQL(t *testing.T) {
+	t.Parallel()
 	sqliteSQL, ok := createTranslatedL2IndexSQL("sqlite", "base_language", "name", "idx_base_language_name_en_us", "en_US")
 	if !ok {
 		t.Fatal("expected sqlite SQL")
@@ -77,6 +80,7 @@ func TestCreateTranslatedL2IndexSQL(t *testing.T) {
 }
 
 func TestEnsureTranslatedL2IndexesGuards(t *testing.T) {
+	t.Parallel()
 	if err := ensureTranslatedL2Indexes(nil, "sqlite", "base_language", "Name"); err != nil {
 		t.Fatalf("nil db: %v", err)
 	}
@@ -90,6 +94,7 @@ func TestEnsureTranslatedL2IndexesGuards(t *testing.T) {
 }
 
 func TestEnsureTranslatedL2IndexesOnSQLite(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:l2_ensure?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -113,6 +118,7 @@ func TestEnsureTranslatedL2IndexesOnSQLite(t *testing.T) {
 }
 
 func TestEnsureTranslatedL2IndexesSkipsPostgres(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:l2_skip_pg?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -129,6 +135,7 @@ func TestEnsureTranslatedL2IndexesSkipsPostgres(t *testing.T) {
 }
 
 func TestApplyTableTranslatedL2IndexesRequiresTrigramOptIn(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:l2_optin?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -189,6 +196,7 @@ func TestApplyTableTranslatedL2IndexesRequiresTrigramOptIn(t *testing.T) {
 }
 
 func TestEnsureTranslatedL2IndexesEmptyNamesAndUnsupportedDialect(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:l2_empty?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -208,6 +216,7 @@ func TestEnsureTranslatedL2IndexesEmptyNamesAndUnsupportedDialect(t *testing.T) 
 }
 
 func TestEnsureTranslatedL2IndexesWrapsExecError(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:l2_mysql_err?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -225,6 +234,7 @@ func TestEnsureTranslatedL2IndexesWrapsExecError(t *testing.T) {
 }
 
 func TestApplyTableTranslatedL2IndexesPropagatesEnsureError(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:l2_apply_err?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -263,6 +273,7 @@ func TestApplyTableTranslatedL2IndexesPropagatesEnsureError(t *testing.T) {
 }
 
 func TestMigrateSchemaWrapsTranslatedL2IndexError(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:l2_migrate_wrap?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)

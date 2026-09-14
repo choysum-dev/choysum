@@ -59,6 +59,7 @@ func zeroRetryBackoff() Option {
 // ---- M7a: Cache hit → no HTTP request ----
 
 func TestResolver_CacheHit_ReadCache(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := newTestResolver(dir)
 
@@ -80,6 +81,7 @@ func TestResolver_CacheHit_ReadCache(t *testing.T) {
 }
 
 func TestResolver_CacheHit_OnLoad(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := newTestResolver(dir)
 
@@ -110,6 +112,7 @@ func TestResolver_CacheHit_OnLoad(t *testing.T) {
 // ---- M7b: Cache miss → HTTP download → write → return ----
 
 func TestResolver_CacheMiss_Download(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "export const z = 3;")
 	}))
@@ -154,6 +157,7 @@ func TestResolver_CacheMiss_Download(t *testing.T) {
 // ---- M7c: HTTP 4xx/5xx → retry with backoff ----
 
 func TestResolver_Download_RetryOn500(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -187,6 +191,7 @@ func TestResolver_Download_RetryOn500(t *testing.T) {
 }
 
 func TestResolver_Download_NoRetryOn404(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -211,6 +216,7 @@ func TestResolver_Download_NoRetryOn404(t *testing.T) {
 }
 
 func TestDefaultRetryBackoff(t *testing.T) {
+	t.Parallel()
 	if got := defaultRetryBackoff(0); got != 0 {
 		t.Fatalf("attempt 0 = %s, want 0", got)
 	}
@@ -235,6 +241,7 @@ func TestDefaultRetryBackoff(t *testing.T) {
 }
 
 func TestBackoffDurationDefaultAndNilResolver(t *testing.T) {
+	t.Parallel()
 	r := New()
 	if got := r.backoffDuration(1); got != time.Second {
 		t.Fatalf("default backoff 1 = %s, want 1s", got)
@@ -245,6 +252,7 @@ func TestBackoffDurationDefaultAndNilResolver(t *testing.T) {
 }
 
 func TestResolver_Download_RetrySleepsWhenBackoffPositive(t *testing.T) {
+	t.Parallel()
 	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -270,6 +278,7 @@ func TestResolver_Download_RetrySleepsWhenBackoffPositive(t *testing.T) {
 }
 
 func TestResolver_Download_AllRetriesFail(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 	}))
@@ -292,6 +301,7 @@ func TestResolver_Download_AllRetriesFail(t *testing.T) {
 // ---- M7d: Integrity check fails → delete dirty cache → error ----
 
 func TestResolver_IntegrityCheck_Fails(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := newTestResolver(dir)
 
@@ -333,6 +343,7 @@ func TestResolver_IntegrityCheck_Fails(t *testing.T) {
 // ---- M7e: Concurrent same-key → singleflight ----
 
 func TestResolver_Singleflight_Concurrency(t *testing.T) {
+	t.Parallel()
 	reqCount := 0
 	var mu sync.Mutex
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -396,6 +407,7 @@ func TestResolver_Singleflight_Concurrency(t *testing.T) {
 // ---- M7f: Cache corrupted → integrity mismatch → re-download ----
 
 func TestResolver_CorruptedCache_ReDownload(t *testing.T) {
+	t.Parallel()
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
@@ -465,6 +477,7 @@ func TestResolver_CorruptedCache_ReDownload(t *testing.T) {
 // ---- M7g: Offline mode + cache miss → error with recovery guidance ----
 
 func TestResolver_Offline_CacheMiss(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := New(
 		WithCacheDir(dir),
@@ -500,6 +513,7 @@ func TestResolver_Offline_CacheMiss(t *testing.T) {
 }
 
 func TestResolver_Offline_CacheHit(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := New(
 		WithCacheDir(dir),
@@ -527,6 +541,7 @@ func TestResolver_Offline_CacheHit(t *testing.T) {
 // ---- M7h: Atomic write → no partial data ----
 
 func TestResolver_WriteCache_Atomic(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := newTestResolver(dir)
 
@@ -570,6 +585,7 @@ func TestResolver_WriteCache_Atomic(t *testing.T) {
 // ---- Plugin integration tests ----
 
 func TestResolver_Plugin_OnResolve_OnLoad_Integration(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// esm.sh returns ESM content for the requested package.
 		fmt.Fprintf(w, "export const answer = 42;")
@@ -611,6 +627,7 @@ func TestResolver_Plugin_OnResolve_OnLoad_Integration(t *testing.T) {
 }
 
 func TestResolver_Plugin_RewritesVueI18nToProdEntry(t *testing.T) {
+	t.Parallel()
 	var (
 		mu            sync.Mutex
 		requestedPath string
@@ -675,6 +692,7 @@ func TestResolver_Plugin_RewritesVueI18nToProdEntry(t *testing.T) {
 }
 
 func TestResolver_Plugin_CSS_External(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, ".css") {
 			fmt.Fprint(w, "body { color: red; }")
@@ -708,6 +726,7 @@ func TestResolver_Plugin_CSS_External(t *testing.T) {
 }
 
 func TestResolver_Plugin_TS_File_Loader(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "export const x: number = 1;")
 	}))
@@ -737,6 +756,7 @@ func TestResolver_Plugin_TS_File_Loader(t *testing.T) {
 // ---- isFragmentOnly tests ----
 
 func TestIsFragmentOnly(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path string
 		want bool
@@ -759,6 +779,7 @@ func TestIsFragmentOnly(t *testing.T) {
 // ---- isLocalFilesystemPath tests ----
 
 func TestIsLocalFilesystemPath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path string
 		want bool
@@ -796,6 +817,7 @@ func TestIsLocalFilesystemPath(t *testing.T) {
 // ---- loaderForURL tests ----
 
 func TestLoaderForURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		url  string
 		want api.Loader
@@ -822,6 +844,7 @@ func TestLoaderForURL(t *testing.T) {
 }
 
 func TestTrimCSSWrapperSuffix(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		url  string
@@ -871,6 +894,7 @@ func TestTrimCSSWrapperSuffix(t *testing.T) {
 // ---- formatError tests ----
 
 func TestFormatError(t *testing.T) {
+	t.Parallel()
 	r := New(WithTarget("es2020"))
 	err := r.formatError("download failed", "test-pkg@1.0.0", "https://esm.sh/test-pkg@1.0.0", "http 404: not found")
 	if err == nil {
@@ -887,6 +911,7 @@ func TestFormatError(t *testing.T) {
 // ---- WithModulePath tests ----
 
 func TestWithExtraQuery(t *testing.T) {
+	t.Parallel()
 	r := New(WithTarget("es2020"), WithExtraQuery("bundle", " &dev=false& "))
 	if r.extraQuery != "bundle&dev=false" {
 		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
@@ -899,6 +924,7 @@ func TestWithExtraQuery(t *testing.T) {
 }
 
 func TestWithExtraQuery_Compose(t *testing.T) {
+	t.Parallel()
 	r := New(WithTarget("es2020"), WithExtraQuery("bundle"), WithExtraQuery("&dev=false&"))
 	if r.extraQuery != "bundle&dev=false" {
 		t.Fatalf("extraQuery = %q, want bundle&dev=false", r.extraQuery)
@@ -906,6 +932,7 @@ func TestWithExtraQuery_Compose(t *testing.T) {
 }
 
 func TestWithExtraQuery_Empty(t *testing.T) {
+	t.Parallel()
 	r := New(WithTarget("es2020"), WithExtraQuery("", "  ", "&"))
 	if r.extraQuery != "" {
 		t.Fatalf("extraQuery = %q, want empty", r.extraQuery)
@@ -918,6 +945,7 @@ func TestWithExtraQuery_Empty(t *testing.T) {
 }
 
 func TestResolver_Plugin_BareCSSURL_UsesExtraQuery(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := New(
 		WithUpstream("https://esm.example"),
@@ -949,6 +977,7 @@ func TestResolver_Plugin_BareCSSURL_UsesExtraQuery(t *testing.T) {
 }
 
 func TestWithModulePath(t *testing.T) {
+	t.Parallel()
 	r := New(WithModulePath("/tmp/modules"))
 	if r.modulePath != "/tmp/modules" {
 		t.Fatalf("modulePath = %q, want /tmp/modules", r.modulePath)
@@ -956,6 +985,7 @@ func TestWithModulePath(t *testing.T) {
 }
 
 func TestWithModulePath_Empty(t *testing.T) {
+	t.Parallel()
 	r := New(WithModulePath(""))
 	if r.modulePath != "" {
 		t.Fatalf("modulePath = %q, want empty", r.modulePath)
@@ -965,6 +995,7 @@ func TestWithModulePath_Empty(t *testing.T) {
 // ---- WithMetrics tests ----
 
 func TestWithMetrics(t *testing.T) {
+	t.Parallel()
 	m := &Metrics{}
 	r := New(WithMetrics(m))
 	if r.metrics != m {
@@ -973,6 +1004,7 @@ func TestWithMetrics(t *testing.T) {
 }
 
 func TestWithMetrics_Nil(t *testing.T) {
+	t.Parallel()
 	r := New(WithMetrics(nil))
 	if r.metrics == nil {
 		t.Fatal("expected default metrics to be created")
@@ -980,6 +1012,7 @@ func TestWithMetrics_Nil(t *testing.T) {
 }
 
 func TestResolver_Plugin_InitializesZeroValueDefaults(t *testing.T) {
+	t.Parallel()
 	r := &Resolver{}
 
 	_ = r.Plugin()
@@ -1001,6 +1034,7 @@ func TestResolver_Plugin_InitializesZeroValueDefaults(t *testing.T) {
 // ---- httpError / Error tests ----
 
 func TestHttpError(t *testing.T) {
+	t.Parallel()
 	e := &httpError{code: 404, body: "not found"}
 	if e.Error() != "http 404: not found" {
 		t.Fatalf("Error() = %q", e.Error())
@@ -1010,6 +1044,7 @@ func TestHttpError(t *testing.T) {
 // ---- asHTTPErr tests ----
 
 func TestAsHTTPErr(t *testing.T) {
+	t.Parallel()
 	httpE := &httpError{code: 500, body: "boom"}
 	wrapped := fmt.Errorf("wrapped: %w", httpE)
 
@@ -1033,6 +1068,7 @@ func TestAsHTTPErr(t *testing.T) {
 // ---- resolveInNamespace tests ----
 
 func TestResolveInNamespace_FragmentOnly(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "#icon"})
 	if err != nil {
@@ -1044,6 +1080,7 @@ func TestResolveInNamespace_FragmentOnly(t *testing.T) {
 }
 
 func TestResolveInNamespace_DataURL(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "data:text/javascript,export{}"})
 	if err != nil {
@@ -1055,6 +1092,7 @@ func TestResolveInNamespace_DataURL(t *testing.T) {
 }
 
 func TestResolveInNamespace_LocalPath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: dir})
@@ -1067,6 +1105,7 @@ func TestResolveInNamespace_LocalPath(t *testing.T) {
 }
 
 func TestResolveInNamespace_HTTPURL(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "https://esm.sh/pkg@1.0.0/index.js"})
 	if err != nil {
@@ -1078,6 +1117,7 @@ func TestResolveInNamespace_HTTPURL(t *testing.T) {
 }
 
 func TestResolveInNamespace_HTTP_CSSURL(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path: "https://esm.sh/style.css",
@@ -1092,6 +1132,7 @@ func TestResolveInNamespace_HTTP_CSSURL(t *testing.T) {
 }
 
 func TestResolveInNamespace_HTTP_CSSByExtension(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "https://esm.sh/lib/style.css"})
 	if err != nil {
@@ -1106,6 +1147,7 @@ func TestResolveInNamespace_HTTP_CSSByExtension(t *testing.T) {
 }
 
 func TestResolveInNamespace_EmptyImporter(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./relative.js",
@@ -1120,6 +1162,7 @@ func TestResolveInNamespace_EmptyImporter(t *testing.T) {
 }
 
 func TestResolveInNamespace_ImporterWithoutNamespacePrefix(t *testing.T) {
+	t.Parallel()
 	r := New()
 	// stripNamespace of a plain URL returns the URL unchanged.
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
@@ -1138,6 +1181,7 @@ func TestResolveInNamespace_ImporterWithoutNamespacePrefix(t *testing.T) {
 }
 
 func TestResolveInNamespace_ResolvedIsLocalPath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	// Create the dir so isLocalFilesystemPath returns false for /node/...
 	// Use a real local path that exists.
@@ -1156,6 +1200,7 @@ func TestResolveInNamespace_ResolvedIsLocalPath(t *testing.T) {
 }
 
 func TestResolveInNamespace_RemoteAbsolutePathUnderNpmPrefix(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "/npm/lodash-es@4.17.21/lodash.js",
@@ -1173,6 +1218,7 @@ func TestResolveInNamespace_RemoteAbsolutePathUnderNpmPrefix(t *testing.T) {
 }
 
 func TestResolveInNamespace_InvalidImporterURL(t *testing.T) {
+	t.Parallel()
 	r := New()
 	_, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./foo.js",
@@ -1187,6 +1233,7 @@ func TestResolveInNamespace_InvalidImporterURL(t *testing.T) {
 }
 
 func TestResolveInNamespace_TargetParamReAdd(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./sub.mjs",
@@ -1201,6 +1248,7 @@ func TestResolveInNamespace_TargetParamReAdd(t *testing.T) {
 }
 
 func TestResolveInNamespace_TargetParamReAdd_WithExistingQuery(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./sub.mjs?v=1",
@@ -1225,6 +1273,7 @@ func TestResolveInNamespace_TargetParamReAdd_WithExistingQuery(t *testing.T) {
 }
 
 func TestResolveInNamespace_TargetParamReAdd_PreserveExistingTarget(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./sub.mjs?target=es2018&v=1",
@@ -1246,6 +1295,7 @@ func TestResolveInNamespace_TargetParamReAdd_PreserveExistingTarget(t *testing.T
 }
 
 func TestResolveInNamespace_CSSAfterResolution(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./style.css",
@@ -1267,6 +1317,7 @@ func TestResolveInNamespace_CSSAfterResolution(t *testing.T) {
 }
 
 func TestResolveInNamespace_CSSWrapperAfterResolution(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./style.css.js",
@@ -1287,6 +1338,7 @@ func TestResolveInNamespace_CSSWrapperAfterResolution(t *testing.T) {
 }
 
 func TestResolveInNamespace_CSSURLToken_External(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path: "https://esm.sh/pkg@1.0.0/style.css",
@@ -1304,6 +1356,7 @@ func TestResolveInNamespace_CSSURLToken_External(t *testing.T) {
 }
 
 func TestResolveInNamespace_CSSWrapperURLToken_External(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path: "https://esm.sh/pkg@1.0.0/style.css.mjs?target=es2020",
@@ -1321,6 +1374,7 @@ func TestResolveInNamespace_CSSWrapperURLToken_External(t *testing.T) {
 }
 
 func TestResolveInNamespace_CSSWrapperURLToken_External_PreserveEscapedPath(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2020",
@@ -1338,6 +1392,7 @@ func TestResolveInNamespace_CSSWrapperURLToken_External_PreserveEscapedPath(t *t
 }
 
 func TestResolveInNamespace_NonCSSURLToken_InNamespace(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "https://esm.sh/pkg@1.0.0/index.js"})
 	if err != nil {
@@ -1355,6 +1410,7 @@ func TestResolveInNamespace_NonCSSURLToken_InNamespace(t *testing.T) {
 }
 
 func TestResolveInNamespace_ImporterWithChoysumNamespace(t *testing.T) {
+	t.Parallel()
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
 		Path:     "./utils.js",
@@ -1371,6 +1427,7 @@ func TestResolveInNamespace_ImporterWithChoysumNamespace(t *testing.T) {
 // ---- isRetryable tests ----
 
 func TestIsRetryable(t *testing.T) {
+	t.Parallel()
 	if isRetryable(nil) {
 		t.Fatal("isRetryable(nil) should be false")
 	}
@@ -1391,6 +1448,7 @@ func TestIsRetryable(t *testing.T) {
 // ---- stripNamespace tests ----
 
 func TestStripNamespace(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		want  string
@@ -1410,6 +1468,7 @@ func TestStripNamespace(t *testing.T) {
 // ---- extractPkgFromURL tests ----
 
 func TestExtractPkgFromURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		url      string
 		upstream string
@@ -1430,6 +1489,7 @@ func TestExtractPkgFromURL(t *testing.T) {
 // ---- isBareImport tests ----
 
 func TestIsBareImport(t *testing.T) {
+	t.Parallel()
 	// Use a Resolver instance to access the closure via Plugin's internal logic.
 	// For now, test the logic directly by creating a minimal resolver and
 	// verifying through integration.
@@ -1490,6 +1550,7 @@ func TestIsBareImport(t *testing.T) {
 // ---- Metrics tests ----
 
 func TestMetrics_Snapshot(t *testing.T) {
+	t.Parallel()
 	m := &Metrics{}
 	m.CacheHit.Store(10)
 	m.CacheMiss.Store(5)
@@ -1504,6 +1565,7 @@ func TestMetrics_Snapshot(t *testing.T) {
 }
 
 func TestMetrics_Concurrency(t *testing.T) {
+	t.Parallel()
 	m := &Metrics{}
 	done := make(chan struct{})
 	go func() {
@@ -1529,6 +1591,7 @@ func TestMetrics_Concurrency(t *testing.T) {
 }
 
 func TestMetrics_SnapshotDownloadedPkgs_NilReceiver(t *testing.T) {
+	t.Parallel()
 	var m *Metrics
 	if got := m.SnapshotDownloadedPkgs(); got != nil {
 		t.Fatalf("SnapshotDownloadedPkgs() on nil receiver = %#v, want nil", got)
@@ -1536,6 +1599,7 @@ func TestMetrics_SnapshotDownloadedPkgs_NilReceiver(t *testing.T) {
 }
 
 func TestResolver_WithLogger(t *testing.T) {
+	t.Parallel()
 	var buf strings.Builder
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
@@ -1593,6 +1657,7 @@ func TestResolver_WithLogger(t *testing.T) {
 }
 
 func TestResolver_DownloadedPkgsTracksOnlySuccessfulFetches(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "export const x = 1;")
@@ -1666,6 +1731,7 @@ func TestResolver_DownloadedPkgsTracksOnlySuccessfulFetches(t *testing.T) {
 }
 
 func TestResolver_OnLoadHandlesNilMetricsAfterPluginSetup(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "export const x = 1;")
 	}))
@@ -1702,6 +1768,7 @@ func TestResolver_OnLoadHandlesNilMetricsAfterPluginSetup(t *testing.T) {
 // ---- resolveLockfile tests ----
 
 func TestResolveLockfile_WithLockfilePath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, "esm.lock")
 	lock := &EsmLockfile{
@@ -1737,6 +1804,7 @@ func TestResolveLockfile_WithLockfilePath(t *testing.T) {
 }
 
 func TestResolveLockfile_FromModulePath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, "esm.lock")
 	lock := &EsmLockfile{
@@ -1758,6 +1826,7 @@ func TestResolveLockfile_FromModulePath(t *testing.T) {
 }
 
 func TestResolveLockfile_NoPathConfigured(t *testing.T) {
+	t.Parallel()
 	r := New()
 	lf, err := r.resolveLockfile()
 	if err != nil {
@@ -1777,6 +1846,7 @@ func TestResolveLockfile_NoPathConfigured(t *testing.T) {
 }
 
 func TestResolveLockfile_FileNotFound(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, "nonexistent.lock")
 	r := New(WithLockfile(lockPath))
@@ -1799,6 +1869,7 @@ func TestResolveLockfile_FileNotFound(t *testing.T) {
 // ---- download error paths ----
 
 func TestDownload_InvalidURL(t *testing.T) {
+	t.Parallel()
 	r := New(WithTarget("es2020"))
 	_, err := r.download("://invalid-url")
 	if err == nil {
@@ -1807,6 +1878,7 @@ func TestDownload_InvalidURL(t *testing.T) {
 }
 
 func TestDownload_NetworkError(t *testing.T) {
+	t.Parallel()
 	r := New(WithTarget("es2020"))
 	// Use a non-routable address to trigger a network error.
 	_, err := r.download("http://127.0.0.1:1/nonexistent")
@@ -1818,6 +1890,7 @@ func TestDownload_NetworkError(t *testing.T) {
 // ---- codeCacheDir tests ----
 
 func TestCodeCacheDir_WithCacheDir(t *testing.T) {
+	t.Parallel()
 	r := New(WithCacheDir("/tmp/choysum"))
 	got := r.codeCacheDir()
 	if got != filepath.Join("/tmp/choysum", "pkg", "esm") {
@@ -1826,6 +1899,7 @@ func TestCodeCacheDir_WithCacheDir(t *testing.T) {
 }
 
 func TestCodeCacheDir_NoCacheDir(t *testing.T) {
+	t.Parallel()
 	r := New()
 	got := r.codeCacheDir()
 	// Falls back to a path that ends with pkg/esm.
@@ -1837,6 +1911,7 @@ func TestCodeCacheDir_NoCacheDir(t *testing.T) {
 // ---- lockedSpecifier tests ----
 
 func TestLockedSpecifier_WithLockfile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, "esm.lock")
 	lock := &EsmLockfile{
@@ -1869,6 +1944,7 @@ func TestLockedSpecifier_WithLockfile(t *testing.T) {
 }
 
 func TestLockedSpecifier_NoLockfile(t *testing.T) {
+	t.Parallel()
 	r := New()
 	got, err := r.lockedSpecifier("vue")
 	if err != nil {
@@ -1880,6 +1956,7 @@ func TestLockedSpecifier_NoLockfile(t *testing.T) {
 }
 
 func TestRewriteProductionSpecifier(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		spec string
@@ -1942,6 +2019,7 @@ func TestRewriteProductionSpecifier(t *testing.T) {
 }
 
 func TestLockedSpecifier_CorruptLockfileReturnsError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, "esm.lock")
 	if err := os.WriteFile(lockPath, []byte(`{"version":1,"packages":`), 0644); err != nil {
@@ -1959,6 +2037,7 @@ func TestLockedSpecifier_CorruptLockfileReturnsError(t *testing.T) {
 }
 
 func TestResolver_Plugin_CorruptLockfileFailsBuild(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, "esm.lock")
 	if err := os.WriteFile(lockPath, []byte(`{"version":1,"packages":`), 0644); err != nil {
@@ -1993,6 +2072,7 @@ func TestResolver_Plugin_CorruptLockfileFailsBuild(t *testing.T) {
 // ---- isESMVersionPrefix tests ----
 
 func TestIsESMVersionPrefix(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		segment string
 		want    bool
@@ -2016,6 +2096,7 @@ func TestIsESMVersionPrefix(t *testing.T) {
 // ---- writeCache rename failure test ----
 
 func TestWriteCache_RenameFails_CleansUpTmp(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := newTestResolver(dir)
 
@@ -2039,6 +2120,7 @@ func TestWriteCache_RenameFails_CleansUpTmp(t *testing.T) {
 }
 
 func TestWriteCache_IntegrityRenameFails_RollsBackCache(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := newTestResolver(dir)
 
@@ -2080,6 +2162,7 @@ func TestWriteCache_IntegrityRenameFails_RollsBackCache(t *testing.T) {
 // ---- Plugin isBareImport edge case: data: and # prefixed ----
 
 func TestPlugin_DataAndFragmentBare(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	r := New(WithCacheDir(dir), WithTarget("es2020"))
 

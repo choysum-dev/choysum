@@ -28,6 +28,7 @@ func m2mField(t *testing.T, name, joinModel, joinField, inverse, target string) 
 }
 
 func TestAppendJoinTables_EdgeCases(t *testing.T) {
+	t.Parallel()
 	if err := appendJoinTablesFromModels(nil, nil); err == nil || !strings.Contains(err.Error(), "nil") {
 		t.Fatalf("nil desired: %v", err)
 	}
@@ -552,6 +553,7 @@ func TestAppendJoinTables_EdgeCases(t *testing.T) {
 }
 
 func TestDesiredTableNames_JoinOnly(t *testing.T) {
+	t.Parallel()
 	names := desiredTableNames(DesiredSchema{
 		Tables: map[string][]ColumnSpec{
 			"":      {{Name: "x"}},
@@ -685,6 +687,7 @@ type errString string
 func (e errString) Error() string { return string(e) }
 
 func TestEnsureTaskJobExecution_DialectBranches(t *testing.T) {
+	t.Parallel()
 	if got := schemaDialectName(nil); got != "sqlite" {
 		t.Fatalf("nil dialector = %q", got)
 	}
@@ -853,6 +856,7 @@ func TestEnsureTaskJobExecution_ErrorHooks(t *testing.T) {
 }
 
 func TestFilterIntentCoveredLeftovers_NilBag(t *testing.T) {
+	t.Parallel()
 	plan := SchemaPlan{Leftover: []Leftover{{Kind: LeftoverColumn, Name: "c"}}}
 	got := filterIntentCoveredLeftovers(plan, nil)
 	if len(got.Leftover) != 1 {
@@ -884,6 +888,7 @@ func TestBuildSchemaPlan_OwnershipError(t *testing.T) {
 }
 
 func TestMigrateSchema_LeftoverWithoutIntentSucceeds(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	model := &meta.Model{
 		Name: "Order", ModelTable: "sales_left_ok",

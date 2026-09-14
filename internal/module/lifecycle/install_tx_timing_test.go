@@ -12,6 +12,7 @@ import (
 )
 
 func TestLogModuleCommitTxHoldEmitsDuration(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
@@ -31,6 +32,7 @@ func TestLogModuleCommitTxHoldEmitsDuration(t *testing.T) {
 }
 
 func TestLogModuleCommitTxHoldIncludesError(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
@@ -46,6 +48,7 @@ func TestLogModuleCommitTxHoldIncludesError(t *testing.T) {
 }
 
 func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
@@ -64,6 +67,7 @@ func TestLogInstallOuterTxHoldEmitsDuration(t *testing.T) {
 }
 
 func TestLogInstallOuterTxHoldIncludesError(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 

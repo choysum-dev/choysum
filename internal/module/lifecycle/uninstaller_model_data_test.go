@@ -14,6 +14,7 @@ import (
 )
 
 func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(&modmeta.ModelData{}); err != nil {
@@ -103,6 +104,7 @@ func TestModuleUninstallerCleanModelsClearsMetaModelDataOnly(t *testing.T) {
 }
 
 func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -186,6 +188,7 @@ func TestModuleUninstallerCleanModelsRecomputesAfterExtRawDelete(t *testing.T) {
 }
 
 func TestModuleUninstallerCleanModelsMetaModelDataError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(&modmeta.ModelData{}); err != nil {
@@ -220,6 +223,7 @@ END`
 }
 
 func TestModuleUninstallerCleanModelsListingRawModelsError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	seed := seedCleanModelsFixture(t, db)

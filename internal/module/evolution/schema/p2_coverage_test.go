@@ -330,6 +330,7 @@ func TestHelpersDDL_FullCoverage(t *testing.T) {
 }
 
 func TestIntentSatisfies_AllBranches(t *testing.T) {
+	t.Parallel()
 	var nilBag *memoryIntentBag
 	nilBag.Add(Intent{Kind: IntentDropColumn, Table: "t", Name: "c"})
 	if nilBag.List() != nil {
@@ -416,6 +417,7 @@ func TestIntentSatisfies_AllBranches(t *testing.T) {
 }
 
 func TestPlan_RenameConflictKeepsLeftover(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", NotNull: true}},
 	}}
@@ -451,6 +453,7 @@ func TestPlan_RenameConflictKeepsLeftover(t *testing.T) {
 }
 
 func TestRenamePhysicalCompatibleEdges(t *testing.T) {
+	t.Parallel()
 	if renamePhysicalCompatible(ColumnSpec{PhysicalType: ""}, LiveColumn{DatabaseTypeName: "text"}, "sqlite") {
 		t.Fatal("empty want must be incompatible")
 	}
@@ -469,6 +472,7 @@ func TestRenamePhysicalCompatibleEdges(t *testing.T) {
 }
 
 func TestPlan_RenameFromClaimConflicts(t *testing.T) {
+	t.Parallel()
 	live := LiveSchema{
 		Tables:  map[string]bool{"t": true},
 		Columns: map[string]map[string]LiveColumn{"t": {"old_code": {Name: "old_code", DatabaseTypeName: "varchar"}}},
@@ -510,6 +514,7 @@ func TestPlan_RenameFromClaimConflicts(t *testing.T) {
 }
 
 func TestPlan_RenameAwareIndex(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", Indexed: true}},
 	}}
@@ -535,6 +540,7 @@ func TestPlan_RenameAwareIndex(t *testing.T) {
 }
 
 func TestPlan_RenameExplicitIndexName(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{
 			Name: "code", FieldName: "Code", PhysicalType: "varchar",
@@ -571,6 +577,7 @@ func TestPlan_RenameExplicitIndexName(t *testing.T) {
 }
 
 func TestPlan_RenameConflictKeepsOldIndexLeftover(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", Indexed: true}},
 	}}
@@ -598,6 +605,7 @@ func TestPlan_RenameConflictKeepsOldIndexLeftover(t *testing.T) {
 }
 
 func TestApply_RenameColumnErrorPaths(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	if err := applyPlan(runtimeScope, "sqlite", SchemaPlan{Ops: []PlanOp{{
 		Kind: OpRenameColumn, Safety: SafetyAuto, Table: "t",
@@ -627,6 +635,7 @@ func TestApply_RenameColumnErrorPaths(t *testing.T) {
 }
 
 func TestMigratorOptions_Coverage(t *testing.T) {
+	t.Parallel()
 	if err := WithIntentBag(NewMemoryIntentBag())(nil); err != nil {
 		t.Fatal(err)
 	}
@@ -741,6 +750,7 @@ func TestWarnDropAfterLeftovers_Coverage(t *testing.T) {
 }
 
 func TestVersionHintEqual(t *testing.T) {
+	t.Parallel()
 	if !versionHintEqual("v2.0.0", "2.0.0") || !versionHintEqual("2.0.0", "V2.0.0") {
 		t.Fatal("leading v")
 	}
@@ -750,6 +760,7 @@ func TestVersionHintEqual(t *testing.T) {
 }
 
 func TestBuildSchemaPlan_RenameFromError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	field := newFieldWithOptions(t, "Code", `{"type":"varchar","size":32,"renameFrom":"OldCode"}`)
 	model := &meta.Model{Name: "Order", Application: "sales", ModelTable: "sales_rename_err", Fields: []*meta.Field{field}}
@@ -765,6 +776,7 @@ func TestBuildSchemaPlan_RenameFromError(t *testing.T) {
 
 // Ensure closed-db LoadSnapshots path in warn is hit when possible.
 func TestWarnDropAfter_LoadSnapshotsEmpty(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	m := newModelMigrator(runtimeScope, nil, nil)
 	m.toVersion = "1"

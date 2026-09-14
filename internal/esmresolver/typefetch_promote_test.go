@@ -15,6 +15,7 @@ import (
 )
 
 func TestFindMatchingBraceAndIsOnlyComments(t *testing.T) {
+	t.Parallel()
 	if findMatchingBrace("nope", 0) != -1 || findMatchingBrace("{", 0) != -1 {
 		t.Fatal("expected unmatched")
 	}
@@ -32,6 +33,7 @@ func TestFindMatchingBraceAndIsOnlyComments(t *testing.T) {
 }
 
 func TestPromoteAmbientModuleForPathsTarget_ExportEquals(t *testing.T) {
+	t.Parallel()
 	content := `declare module 'https://esm.sh/fast-deep-equal@3.1.3/index.d.ts' {
     const equal: (a: any, b: any) => boolean;
     export = equal;
@@ -50,6 +52,7 @@ func TestPromoteAmbientModuleForPathsTarget_ExportEquals(t *testing.T) {
 }
 
 func TestPromoteAmbientModuleForPathsTarget_StripsAsyncOnDeclare(t *testing.T) {
+	t.Parallel()
 	content := `declare module 'https://esm.sh/example@1.0.0/index.d.ts' {
   async function run(): Promise<void>;
   export { run };
@@ -65,6 +68,7 @@ func TestPromoteAmbientModuleForPathsTarget_StripsAsyncOnDeclare(t *testing.T) {
 }
 
 func TestPromoteAmbientModuleForPathsTarget_IgnoresBlockCommentTextForMinIndent(t *testing.T) {
+	t.Parallel()
 	content := `declare module 'https://esm.sh/example@1.0.0/index.d.ts' {
 /*
 Descriptive free text without a leading star.
@@ -80,6 +84,7 @@ Descriptive free text without a leading star.
 }
 
 func TestPromoteAmbientModuleForPathsTarget_SkipsNestedDecls(t *testing.T) {
+	t.Parallel()
 	content := `declare module 'https://esm.sh/example@1.0.0/index.d.ts' {
   namespace Helpers {
     function inner(): void;
@@ -107,6 +112,7 @@ func TestPromoteAmbientModuleForPathsTarget_SkipsNestedDecls(t *testing.T) {
 }
 
 func TestPromoteAmbientModuleForPathsTarget_SkipsAugmentationOnly(t *testing.T) {
+	t.Parallel()
 	content := `declare module 'https://esm.sh/pinia@3.0.4/dist/pinia.d.ts' {
   interface DefineStoreOptionsBase<S, Store> {
     persist?: boolean
@@ -120,6 +126,7 @@ func TestPromoteAmbientModuleForPathsTarget_SkipsAugmentationOnly(t *testing.T) 
 }
 
 func TestPromoteAmbientModuleForPathsTarget_SkipsMultiModule(t *testing.T) {
+	t.Parallel()
 	content := `declare module 'https://esm.sh/a@1.0.0/index.d.ts' {
   export const a: number;
 }
@@ -134,6 +141,7 @@ declare module 'https://esm.sh/b@1.0.0/index.d.ts' {
 }
 
 func TestPromoteAmbientModuleForPathsTarget_AlreadyModule(t *testing.T) {
+	t.Parallel()
 	content := `export default function equal(a: any, b: any): boolean;
 `
 	got := promoteAmbientModuleForPathsTarget(content)
@@ -143,6 +151,7 @@ func TestPromoteAmbientModuleForPathsTarget_AlreadyModule(t *testing.T) {
 }
 
 func TestSplitBarePackageSpecifier(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in      string
 		root    string
@@ -169,6 +178,7 @@ func TestSplitBarePackageSpecifier(t *testing.T) {
 }
 
 func TestIsBarePackageImportSpecifier(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in string
 		ok bool
@@ -191,6 +201,7 @@ func TestIsBarePackageImportSpecifier(t *testing.T) {
 }
 
 func TestTypeFetchDiscoverSpec(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		specifier string
 		version   string
@@ -215,6 +226,7 @@ func TestTypeFetchDiscoverSpec(t *testing.T) {
 }
 
 func TestSubpathTypeFetchTargets(t *testing.T) {
+	t.Parallel()
 	deps := map[string]string{"echarts": "^6.1.0", "vue": "^3.5.35", "dayjs": "^1.11.21"}
 	imports := []string{
 		"echarts/core",
@@ -238,6 +250,7 @@ func TestSubpathTypeFetchTargets(t *testing.T) {
 }
 
 func TestIsAssetLikeImportSpecifier(t *testing.T) {
+	t.Parallel()
 	if !isAssetLikeImportSpecifier("element-plus/dist/index.css") {
 		t.Fatal("expected css import to be treated as asset")
 	}
@@ -247,6 +260,7 @@ func TestIsAssetLikeImportSpecifier(t *testing.T) {
 }
 
 func TestShouldSkipTypeFetchSubpathSpecifier(t *testing.T) {
+	t.Parallel()
 	if !shouldSkipTypeFetchSubpathSpecifier("dayjs/locale/zh-cn") {
 		t.Fatal("expected dayjs locale subpath to be skipped")
 	}
@@ -256,6 +270,7 @@ func TestShouldSkipTypeFetchSubpathSpecifier(t *testing.T) {
 }
 
 func TestIsStaleGeneratedTsconfigPathsKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in   string
 		want bool
@@ -280,6 +295,7 @@ func TestIsStaleGeneratedTsconfigPathsKey(t *testing.T) {
 }
 
 func TestIsValidTsconfigPathsMappingKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in   string
 		want bool
@@ -301,6 +317,7 @@ func TestIsValidTsconfigPathsMappingKey(t *testing.T) {
 }
 
 func TestCollectSourceBareImportSpecifiers(t *testing.T) {
+	t.Parallel()
 	content := `
 import type { EChartsOption } from 'echarts';
 import { use } from 'echarts/core';
@@ -333,6 +350,7 @@ type X = import('vue').Ref;
 }
 
 func TestCollectModuleSourceImportSpecifiers(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	srcDir := filepath.Join(dir, "web", "components")
 	if err := os.MkdirAll(srcDir, 0o755); err != nil {
@@ -358,6 +376,7 @@ func TestCollectModuleSourceImportSpecifiers(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_SkipsVersionedTransitiveKeys(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 	typesDir := filepath.Join(dir, "types")
@@ -394,6 +413,7 @@ func TestUpdateTsconfigPaths_SkipsVersionedTransitiveKeys(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_PrunesStaleVersionedKeys(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 	initial := `{
@@ -432,6 +452,7 @@ func TestUpdateTsconfigPaths_PrunesStaleVersionedKeys(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_PreservesEmbeddedDtsPackageNames(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 	initial := `{
@@ -466,6 +487,7 @@ func TestUpdateTsconfigPaths_PreservesEmbeddedDtsPackageNames(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_SkipsUnchangedMappings(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 	typesDir := filepath.Join(dir, "types")
@@ -508,6 +530,7 @@ func TestUpdateTsconfigPaths_SkipsUnchangedMappings(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_CreatesMissingCompilerOptionsAndPaths(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 	if err := os.WriteFile(tsconfigPath, []byte(`{}`), 0o644); err != nil {
@@ -536,6 +559,7 @@ func TestUpdateTsconfigPaths_CreatesMissingCompilerOptionsAndPaths(t *testing.T)
 }
 
 func TestUpdateTsconfigPaths_EmptyFileAndInvalidPathsShape(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	emptyPath := filepath.Join(dir, "empty.json")
 	if err := os.WriteFile(emptyPath, []byte("   \n"), 0o644); err != nil {
@@ -565,6 +589,7 @@ func TestUpdateTsconfigPaths_EmptyFileAndInvalidPathsShape(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_WriteError(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")
 	if err := os.Mkdir(tsconfigPath, 0o755); err != nil {
@@ -627,6 +652,7 @@ func TestUpdateTsconfigPaths_AbsGetwdRelErrors(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_ReadNullAndWriteErrors(t *testing.T) {
+	t.Parallel()
 	t.Run("unreadable", func(t *testing.T) {
 		dir := t.TempDir()
 		tsconfigPath := filepath.Join(dir, "tsconfig.json")
@@ -692,6 +718,7 @@ func TestUpdateTsconfigPaths_ReadNullAndWriteErrors(t *testing.T) {
 }
 
 func TestTsconfigPathMappingEquals(t *testing.T) {
+	t.Parallel()
 	want := []string{"types/vue.d.ts"}
 	if !tsconfigPathMappingEquals([]string{"types/vue.d.ts"}, want) {
 		t.Fatal("[]string equal")
@@ -720,6 +747,7 @@ func TestTsconfigPathMappingEquals(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_PromotesAmbientCJSWrapper(t *testing.T) {
+	t.Parallel()
 	typesURLPath := "/fast-deep-equal@3.1.3/index.d.ts"
 	body := `declare module 'https://esm.sh/fast-deep-equal@3.1.3/index.d.ts' {
     const equal: (a: any, b: any) => boolean;
@@ -763,6 +791,7 @@ func TestFetchTypeDefinition_PromotesAmbientCJSWrapper(t *testing.T) {
 }
 
 func TestFetchTypesForModule_IncludesSubpathFromSource(t *testing.T) {
+	t.Parallel()
 	moduleDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(`{"peerDependencies":{"echarts":"^6.1.0"}}`), 0o644); err != nil {
 		t.Fatal(err)

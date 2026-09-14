@@ -13,6 +13,7 @@ import (
 )
 
 func TestCollapseLargeDefaultAsReexportBarrel(t *testing.T) {
+	t.Parallel()
 	var b strings.Builder
 	for i := 0; i < largeDefaultAsReexportThreshold+5; i++ {
 		fmt.Fprintf(&b, "export { default as Icon%d } from\"./leaf_%d.d.ts.d.ts\";\n", i, i)
@@ -33,6 +34,7 @@ func TestCollapseLargeDefaultAsReexportBarrel(t *testing.T) {
 }
 
 func TestCollapseLargeDefaultAsReexportBarrel_EmptyOrWhitespace(t *testing.T) {
+	t.Parallel()
 	if got := collapseLargeDefaultAsReexportBarrel(""); got != "" {
 		t.Fatalf("empty: got %q", got)
 	}
@@ -42,6 +44,7 @@ func TestCollapseLargeDefaultAsReexportBarrel_EmptyOrWhitespace(t *testing.T) {
 }
 
 func TestCollapseLargeDefaultAsReexportBarrel_AllowsComments(t *testing.T) {
+	t.Parallel()
 	var b strings.Builder
 	b.WriteString("// header\n")
 	b.WriteString("/* block */\n")
@@ -60,6 +63,7 @@ func TestCollapseLargeDefaultAsReexportBarrel_AllowsComments(t *testing.T) {
 }
 
 func TestCollapseLargeDefaultAsReexportBarrel_DuplicateNamesBelowThreshold(t *testing.T) {
+	t.Parallel()
 	var b strings.Builder
 	for i := 0; i < largeDefaultAsReexportThreshold+20; i++ {
 		fmt.Fprintf(&b, "export { default as Icon%d } from\"./leaf_%d.d.ts.d.ts\";\n", i%10, i)
@@ -71,6 +75,7 @@ func TestCollapseLargeDefaultAsReexportBarrel_DuplicateNamesBelowThreshold(t *te
 }
 
 func TestCollapseLargeDefaultAsReexportBarrel_BelowThreshold(t *testing.T) {
+	t.Parallel()
 	var b strings.Builder
 	for i := 0; i < largeDefaultAsReexportThreshold-1; i++ {
 		fmt.Fprintf(&b, "export { default as Icon%d } from\"./leaf_%d.d.ts.d.ts\";\n", i, i)
@@ -82,6 +87,7 @@ func TestCollapseLargeDefaultAsReexportBarrel_BelowThreshold(t *testing.T) {
 }
 
 func TestCollapseLargeDefaultAsReexportBarrel_MixedContent(t *testing.T) {
+	t.Parallel()
 	var b strings.Builder
 	b.WriteString("export const keepMe = 1;\n")
 	for i := 0; i < largeDefaultAsReexportThreshold+5; i++ {
@@ -94,6 +100,7 @@ func TestCollapseLargeDefaultAsReexportBarrel_MixedContent(t *testing.T) {
 }
 
 func TestFetchTypeDefinition_CollapsesLargeDefaultAsBarrel(t *testing.T) {
+	t.Parallel()
 	var body strings.Builder
 	for i := 0; i < largeDefaultAsReexportThreshold+3; i++ {
 		fmt.Fprintf(&body, "export { default as Icon%d } from \"./leaf_%d.d.ts\";\n", i, i)

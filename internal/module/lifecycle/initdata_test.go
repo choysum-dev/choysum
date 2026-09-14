@@ -15,6 +15,7 @@ import (
 )
 
 func TestApplyInitdata_nilModule(t *testing.T) {
+	t.Parallel()
 	if err := applyInitdata(context.Background(), nil, nil, importpkg.CallerLifecycle, false); err != nil {
 		t.Fatalf("applyInitdata(nil): %v", err)
 	}
@@ -56,6 +57,7 @@ func TestApplyInitdata_buildsSpecAndRuns(t *testing.T) {
 }
 
 func TestApplyInitdata_invalidManifestJSON(t *testing.T) {
+	t.Parallel()
 	mod := &meta.Module{Name: "auth", Path: "/tmp", DataStr: []byte("{")}
 	if err := applyInitdata(context.Background(), nil, mod, importpkg.CallerLifecycle, false); err == nil {
 		t.Fatal("expected manifest decode error")
@@ -63,6 +65,7 @@ func TestApplyInitdata_invalidManifestJSON(t *testing.T) {
 }
 
 func TestApplyInitdata_invalidDemoManifestJSON(t *testing.T) {
+	t.Parallel()
 	dataJSON, err := json.Marshal([]string{"data.json"})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)

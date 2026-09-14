@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS web_user_filter (
 }
 
 func TestModuleUninstallerPurgesUserFilterWhenLastMetaModelGone(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -99,6 +100,7 @@ func TestModuleUninstallerPurgesUserFilterWhenLastMetaModelGone(t *testing.T) {
 }
 
 func TestModuleUninstallerKeepsUserFilterWhenIMDSurvivorRemains(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -171,6 +173,7 @@ func TestModuleUninstallerKeepsUserFilterWhenIMDSurvivorRemains(t *testing.T) {
 }
 
 func TestModuleUninstallerUserFilterMissingTableNoOp(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -205,6 +208,7 @@ func TestModuleUninstallerUserFilterMissingTableNoOp(t *testing.T) {
 }
 
 func TestWebUserFilterTableExists(t *testing.T) {
+	t.Parallel()
 	if ok, err := webUserFilterTableExists(nil); err != nil || ok {
 		t.Fatalf("nil db: ok=%v err=%v", ok, err)
 	}
@@ -220,6 +224,7 @@ func TestWebUserFilterTableExists(t *testing.T) {
 }
 
 func TestWebUserFilterTableExistsProbeError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureWebUserFilterTable(t, db)
@@ -242,6 +247,7 @@ func TestWebUserFilterTableExistsProbeError(t *testing.T) {
 }
 
 func TestPurgeUserFiltersForGoneModelsGuards(t *testing.T) {
+	t.Parallel()
 	if err := purgeUserFiltersForGoneModels(nil, []modmeta.LogicalKey{{Application: "a", Name: "B"}}); err != nil {
 		t.Fatalf("nil db: %v", err)
 	}
@@ -263,6 +269,7 @@ func TestPurgeUserFiltersForGoneModelsGuards(t *testing.T) {
 }
 
 func TestPurgeUserFiltersCountError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureWebUserFilterTable(t, db)
@@ -277,6 +284,7 @@ func TestPurgeUserFiltersCountError(t *testing.T) {
 }
 
 func TestPurgeUserFiltersDeleteError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -296,6 +304,7 @@ func TestPurgeUserFiltersDeleteError(t *testing.T) {
 }
 
 func TestApplyUserFilterPurgePropagatesError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	ensureWebUserFilterTable(t, db)
@@ -309,6 +318,7 @@ func TestApplyUserFilterPurgePropagatesError(t *testing.T) {
 }
 
 func TestModuleUninstallerCleanModelsPropagatesUserFilterPurgeError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -357,6 +367,7 @@ func TestModuleUninstallerCleanModelsPropagatesUserFilterPurgeError(t *testing.T
 }
 
 func TestApplyUserFilterPurgeOK(t *testing.T) {
+	t.Parallel()
 	if err := applyUserFilterPurge(nil, nil); err != nil {
 		t.Fatalf("nil args: %v", err)
 	}

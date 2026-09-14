@@ -16,6 +16,7 @@ import (
 )
 
 func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -56,6 +57,7 @@ func TestPrepareInstallAliasesPrefetchInstallModules(t *testing.T) {
 }
 
 func TestInstallModulePropagatesSkipWebShell(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {

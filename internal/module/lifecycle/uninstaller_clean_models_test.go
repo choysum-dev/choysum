@@ -204,6 +204,7 @@ func deleteRawModelTree(t *testing.T, db *gorm.DB, seed cleanModelsSeed) {
 }
 
 func TestModuleUninstallerCleanModelsErrorPaths(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		wantMsg string

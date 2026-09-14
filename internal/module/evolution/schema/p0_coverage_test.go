@@ -17,6 +17,7 @@ import (
 )
 
 func TestExportIdent(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in, want string
 	}{
@@ -37,6 +38,7 @@ func TestExportIdent(t *testing.T) {
 }
 
 func TestIndexLookupNames(t *testing.T) {
+	t.Parallel()
 	if got := indexLookupNames(ColumnSpec{}); len(got) != 0 {
 		t.Fatalf("empty col names = %#v", got)
 	}
@@ -62,6 +64,7 @@ func TestIndexLookupNames(t *testing.T) {
 }
 
 func TestAddStandardTagsFromSpec(t *testing.T) {
+	t.Parallel()
 	def := "x"
 	col := ColumnSpec{
 		PrimaryKey:       true,
@@ -106,6 +109,7 @@ func TestAddStandardTagsFromSpec(t *testing.T) {
 }
 
 func TestApplyPlanAndIndexes(t *testing.T) {
+	t.Parallel()
 	if err := applyPlan(nil, "sqlite", SchemaPlan{}); err == nil || !strings.Contains(err.Error(), "runtime scope is nil") {
 		t.Fatalf("nil scope: %v", err)
 	}
@@ -177,6 +181,7 @@ func TestApplyPlanAndIndexes(t *testing.T) {
 }
 
 func TestStructForCreateTableDuplicateField(t *testing.T) {
+	t.Parallel()
 	_, err := structForCreateTable("t", []ColumnSpec{
 		{Name: "a", FieldName: "A", PhysicalType: "text"},
 		{Name: "b", FieldName: "A", PhysicalType: "text"},
@@ -191,6 +196,7 @@ func TestStructForCreateTableDuplicateField(t *testing.T) {
 }
 
 func TestBuildDesiredDedupAndConflict(t *testing.T) {
+	t.Parallel()
 	if _, err := buildDesired([]*meta.Model{nil}); err != nil {
 		t.Fatalf("nil model: %v", err)
 	}
@@ -264,6 +270,7 @@ func TestBuildDesiredDedupAndConflict(t *testing.T) {
 func strPtr(s string) *string { return &s }
 
 func TestColumnSpecFromFieldMoreBranches(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 
 	emptyType := &meta.Field{Name: "X"}
@@ -351,6 +358,7 @@ func TestColumnSpecFromFieldMoreBranches(t *testing.T) {
 }
 
 func TestColumnMismatchAndNormalize(t *testing.T) {
+	t.Parallel()
 	nullable := true
 	notNull := false
 	length := int64(64)
@@ -433,6 +441,7 @@ func TestColumnMismatchAndNormalize(t *testing.T) {
 }
 
 func TestInspectTablesEdgeCases(t *testing.T) {
+	t.Parallel()
 	if _, err := inspectTables(nil, []string{"t"}); err == nil || !strings.Contains(err.Error(), "db is nil") {
 		t.Fatalf("nil db: %v", err)
 	}
@@ -468,6 +477,7 @@ func TestInspectTablesEdgeCases(t *testing.T) {
 }
 
 func TestLoadModelsAndEffective(t *testing.T) {
+	t.Parallel()
 	if _, err := loadModelsForSchema(nil, &meta.Module{}); err == nil {
 		t.Fatal("nil scope")
 	}
@@ -531,6 +541,7 @@ func TestLoadModelsAndEffective(t *testing.T) {
 }
 
 func TestValidatePlanCoverage(t *testing.T) {
+	t.Parallel()
 	if err := ValidatePlan(SchemaPlan{}, nil); err != nil {
 		t.Fatalf("empty: %v", err)
 	}
@@ -544,6 +555,7 @@ func TestValidatePlanCoverage(t *testing.T) {
 }
 
 func TestGetDialectNilPaths(t *testing.T) {
+	t.Parallel()
 	if got := newModelMigrator(nil, nil, nil).getDialect(); got != "unknown" {
 		t.Fatalf("nil scope: %q", got)
 	}
@@ -561,6 +573,7 @@ func TestGetDialectNilPaths(t *testing.T) {
 }
 
 func TestMigrateSchemaGuardedAndSkips(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	field := newFieldWithOptions(t, "Status", `{"type":"selection"}`)
 	model := &meta.Model{Name: "Order", ModelTable: "sales_guard", Fields: []*meta.Field{field}}
@@ -599,6 +612,7 @@ func TestMigrateSchemaGuardedAndSkips(t *testing.T) {
 }
 
 func TestEnsureIndexesHelpers(t *testing.T) {
+	t.Parallel()
 	if err := ensureIndexesForDesired(nil, DesiredSchema{}, "sqlite"); err != nil {
 		t.Fatal(err)
 	}
@@ -737,6 +751,7 @@ func (f fakeColumnType) Comment() (string, bool)           { return "", false }
 func (f fakeColumnType) DefaultValue() (string, bool)      { return "", false }
 
 func TestDesiredFieldErrorAndPhysicalFallbacks(t *testing.T) {
+	t.Parallel()
 	broken := newFieldWithOptions(t, "Broken", `{invalid}`)
 	if _, err := buildDesired([]*meta.Model{{Name: "M", ModelTable: "t", Fields: []*meta.Field{broken}}}); err == nil {
 		t.Fatal("expected field error")
@@ -778,6 +793,7 @@ func TestDesiredFieldErrorAndPhysicalFallbacks(t *testing.T) {
 }
 
 func TestLoadModelsFallbackAndConflict(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 	module := &meta.Module{Name: "sales"}

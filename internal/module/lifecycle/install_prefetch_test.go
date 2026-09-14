@@ -49,6 +49,7 @@ func (c *countingPrefetchOriginCoordinator) lookup(input string) *meta.Module {
 }
 
 func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -124,6 +125,7 @@ func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
 }
 
 func TestPrefetchInstallContextHelpers(t *testing.T) {
+	t.Parallel()
 	if PrefetchedInstallModulesFromContext(nil) != nil {
 		t.Fatal("nil ctx")
 	}

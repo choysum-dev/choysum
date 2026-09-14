@@ -95,6 +95,7 @@ func TestLogSemanticMetricsSummary(t *testing.T) {
 }
 
 func TestLogFinalizingPhaseEnd(t *testing.T) {
+	t.Parallel()
 	t.Run("nil logger", func(t *testing.T) {
 		logFinalizingPhaseEnd(nil, time.Second)
 	})
