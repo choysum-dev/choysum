@@ -85,6 +85,25 @@ func Wrapf(err error, domain, code, format string, args ...interface{}) error {
 	return Wrap(err, domain, code, message)
 }
 
+// FromInfo builds a ChoysumError from a fully populated ErrorInfo.
+// Missing ErrorId is filled; nil Metadata becomes an empty map.
+// cause may be nil for a base error, or the original boundary error for Unwrap.
+func FromInfo(info *ErrorInfo, cause error) *ChoysumError {
+	if info == nil {
+		return nil
+	}
+	if info.Metadata == nil {
+		info.Metadata = make(map[string]string)
+	}
+	if info.ErrorId == "" {
+		info.ErrorId = xid.New().String()
+	}
+	return &ChoysumError{
+		ErrorInfo: info,
+		cause:     cause,
+	}
+}
+
 // FromGrpcStatus extracts a ChoysumError from a gRPC status.
 func FromGrpcStatus(s *status.Status) *ChoysumError {
 	if s == nil {

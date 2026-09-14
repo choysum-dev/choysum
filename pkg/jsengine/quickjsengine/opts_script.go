@@ -55,13 +55,13 @@ func WithScript(s *jsengine.JsScript) jsengine.JsEngineOption {
 
 		bytecode, err := compileScriptBytecode(jse, s)
 		if err != nil {
-			return err
+			return NormalizeError(err)
 		}
 
 		ret := jse.Ctx.EvalBytecode(bytecode)
 		defer ret.Free()
 		if ret.IsException() {
-			return jse.Ctx.Exception()
+			return NormalizeError(jse.Ctx.Exception())
 		}
 		return nil
 	}

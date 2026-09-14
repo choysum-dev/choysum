@@ -4,7 +4,6 @@
 package oerrors
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -42,99 +41,45 @@ func TestGetErrorInfoAttrsAndFormatBrief(t *testing.T) {
 	}
 }
 
-type foreignJSONError struct {
-	Message    string
-	JSONString string
-}
-
-func (e *foreignJSONError) Error() string { return e.Message }
-
-func TestGetErrorInfoFromForeignExtractorAndHelperNegatives(t *testing.T) {
-	prev := foreignErrorInfoExtractor.Load()
-	t.Cleanup(func() { foreignErrorInfoExtractor.Store(prev) })
-
-	SetForeignErrorInfoExtractor(func(err error) *ErrorInfo {
-		var fe *foreignJSONError
-		if !errors.As(err, &fe) {
-			return nil
-		}
-		var payload struct {
-			ErrorId  string            `json:"errorId"`
-			Domain   string            `json:"domain"`
-			Code     string            `json:"code"`
-			GrpcCode int32             `json:"grpcCode"`
-			Metadata map[string]string `json:"metadata"`
-		}
-		if err := json.Unmarshal([]byte(fe.JSONString), &payload); err != nil {
-			return nil
-		}
-		return &ErrorInfo{
-			ErrorId:  payload.ErrorId,
-			Domain:   payload.Domain,
-			Code:     payload.Code,
-			Message:  fe.Message,
-			GrpcCode: payload.GrpcCode,
-			Metadata: payload.Metadata,
-		}
-	})
-
-	t.Run("extracts foreign error info from JSON", func(t *testing.T) {
-		fe := &foreignJSONError{
-			Message:    "js exploded",
-			JSONString: `{"errorId":"err-1","domain":"web","code":"EJS","grpcCode":7,"metadata":{"tenant":"acme"}}`,
-		}
-
-		info := GetErrorInfo(fe)
-		if info == nil {
-			t.Fatal("expected foreign error info to be extracted")
-		}
-		if info.ErrorId != "err-1" || info.Domain != "web" || info.Code != "EJS" || info.Message != "js exploded" || info.GrpcCode != 7 {
-			t.Fatalf("unexpected foreign error info: %#v", info)
-		}
-		if info.Metadata["tenant"] != "acme" {
-			t.Fatalf("expected foreign metadata to be preserved, got %#v", info.Metadata)
-		}
-	})
-
-	t.Run("invalid foreign JSON returns nil", func(t *testing.T) {
-		fe := &foreignJSONError{Message: "bad json", JSONString: "{"}
-		if info := GetErrorInfo(fe); info != nil {
-			t.Fatalf("expected invalid foreign JSON to return nil, got %#v", info)
-		}
-	})
-
-	t.Run("Is and As reject non matching inputs", func(t *testing.T) {
-		choysumErr := New("billing", "E100", "payment failed")
-		if !Is(choysumErr, "billing", "") {
-			t.Fatal("expected empty code to match on direct ChoysumError")
-		}
-		if Is(choysumErr, "orders", "") {
-			t.Fatal("expected domain mismatch to return false")
-		}
-		if Is(choysumErr, "billing", "OTHER") {
-			t.Fatal("expected code mismatch to return false")
-		}
-		if As(errors.New("plain")) != nil {
-			t.Fatal("expected As to reject plain errors")
-		}
-		if !Has(fmt.Errorf("wrap: %w", choysumErr), choysumErr) {
-			t.Fatal("expected Has to find wrapped ChoysumError")
-		}
-	})
-}
-
-func TestSetForeignErrorInfoExtractorClear(t *testing.T) {
-	prev := foreignErrorInfoExtractor.Load()
-	t.Cleanup(func() { foreignErrorInfoExtractor.Store(prev) })
-
-	SetForeignErrorInfoExtractor(func(error) *ErrorInfo {
-		return &ErrorInfo{Domain: "x", Code: "y", Message: "z"}
-	})
-	if GetErrorInfo(errors.New("plain")) == nil {
-		t.Fatal("expected extractor to map plain error")
+func TestHelperNegatives(t *testing.T) {
+	choysumErr := New("billing", "E100", "payment failed")
+	if !Is(choysumErr, "billing", "") {
+		t.Fatal("expected empty code to match on direct ChoysumError")
 	}
-	SetForeignErrorInfoExtractor(nil)
-	if GetErrorInfo(errors.New("plain")) != nil {
-		t.Fatal("expected cleared extractor to leave plain errors unrecognized")
+	if Is(choysumErr, "orders", "") {
+		t.Fatal("expected domain mismatch to return false")
+	}
+	if Is(choysumErr, "billing", "OTHER") {
+		t.Fatal("expected code mismatch to return false")
+	}
+	if As(errors.New("plain")) != nil {
+		t.Fatal("expected As to reject plain errors")
+	}
+	if !Has(fmt.Errorf("wrap: %w", choysumErr), choysumErr) {
+		t.Fatal("expected Has to find wrapped ChoysumError")
+	}
+}
+
+func TestFromInfo(t *testing.T) {
+	cause := errors.New("root")
+	ce := FromInfo(&ErrorInfo{
+		Domain:  "web",
+		Code:    "EJS",
+		Message: "boom",
+	}, cause)
+	if ce == nil {
+		t.Fatal("expected FromInfo to return ChoysumError")
+	}
+	if ce.ErrorId == "" {
+		t.Fatal("expected missing ErrorId to be filled")
+	}
+	if ce.Metadata == nil {
+		t.Fatal("expected nil Metadata to become empty map")
+	}
+	if !errors.Is(ce, cause) {
+		t.Fatal("expected cause to be unwrap-able")
+	}
+	if FromInfo(nil, nil) != nil {
+		t.Fatal("expected nil info to return nil")
 	}
 }

@@ -6,25 +6,7 @@ package oerrors
 import (
 	"errors"
 	"fmt"
-	"sync/atomic"
 )
-
-// ForeignErrorInfoExtractor optionally maps non-Choysum errors (for example
-// QuickJS errors) into ErrorInfo. It is registered by packages that own those
-// error types so pkg/oerrors does not import CGO-backed runtimes.
-type ForeignErrorInfoExtractor func(error) *ErrorInfo
-
-var foreignErrorInfoExtractor atomic.Pointer[ForeignErrorInfoExtractor]
-
-// SetForeignErrorInfoExtractor installs or clears the optional extractor used
-// by GetErrorInfo after ChoysumError matching fails. Pass nil to clear.
-func SetForeignErrorInfoExtractor(fn ForeignErrorInfoExtractor) {
-	if fn == nil {
-		foreignErrorInfoExtractor.Store(nil)
-		return
-	}
-	foreignErrorInfoExtractor.Store(&fn)
-}
 
 // GetErrorInfo extracts ErrorInfo from an error for logging.
 func GetErrorInfo(err error) *ErrorInfo {
@@ -32,19 +14,11 @@ func GetErrorInfo(err error) *ErrorInfo {
 		return nil
 	}
 
-	// Try extracting a ChoysumError first.
 	var choysumErr *ChoysumError
 	if errors.As(err, &choysumErr) {
 		return choysumErr.ErrorInfo
 	}
 
-	if ptr := foreignErrorInfoExtractor.Load(); ptr != nil && *ptr != nil {
-		if info := (*ptr)(err); info != nil {
-			return info
-		}
-	}
-
-	// Return nil for unrecognized error types.
 	return nil
 }
 

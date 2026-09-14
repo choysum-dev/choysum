@@ -117,7 +117,7 @@ func installTextEncodingPolyfill(ctx *quickjs.Context, script string, fileName s
 	}
 	defer ret.Free()
 	if ret.IsException() {
-		return fmt.Errorf("failed to install text-encoding polyfill: %w", ctx.Exception())
+		return fmt.Errorf("failed to install text-encoding polyfill: %w", NormalizeError(ctx.Exception()))
 	}
 	return nil
 }
