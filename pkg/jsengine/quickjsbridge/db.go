@@ -284,13 +284,26 @@ func isUniqueConstraintErr(err error) bool {
 }
 
 func isIndexDDL(sql string) bool {
-	s := strings.ToLower(strings.TrimSpace(sql))
-	return strings.HasPrefix(s, "create") && strings.Contains(s, " index")
+	fields := strings.Fields(strings.ToLower(strings.TrimSpace(sql)))
+	if len(fields) < 2 || fields[0] != "create" {
+		return false
+	}
+	if fields[1] == "index" {
+		return true
+	}
+	return len(fields) > 2 && fields[1] == "unique" && fields[2] == "index"
 }
 
-// isExpectedIndexDDLErr is true for index-name collisions (IF NOT EXISTS races /
-// concurrent create), not for CREATE UNIQUE INDEX failing on existing duplicate rows.
-func isExpectedIndexDDLErr(err error) bool {
+func isDDLStmt(sql string) bool {
+	s := strings.ToLower(strings.TrimSpace(sql))
+	return strings.HasPrefix(s, "create ") ||
+		strings.HasPrefix(s, "alter ") ||
+		strings.HasPrefix(s, "drop ")
+}
+
+// isExpectedDDLNameCollisionErr is true for object-name collisions (IF NOT EXISTS
+// races / concurrent create), not for uniqueness failures caused by existing rows.
+func isExpectedDDLNameCollisionErr(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -299,19 +312,19 @@ func isExpectedIndexDDLErr(err error) bool {
 		strings.Contains(message, "duplicate key name")
 }
 
-// shouldWarnDBOpFailure keeps expected DML uniqueness races and index-name collisions
-// at Warn. CREATE UNIQUE INDEX failures caused by duplicate data stay at Error.
+// shouldWarnDBOpFailure keeps expected DML uniqueness races and DDL name collisions
+// at Warn. DDL failures caused by existing duplicate data stay at Error.
 func shouldWarnDBOpFailure(err error, sql string) bool {
 	if err == nil {
 		return false
 	}
-	if isIndexDDL(sql) {
-		return isExpectedIndexDDLErr(err)
+	if isDDLStmt(sql) {
+		return isExpectedDDLNameCollisionErr(err)
 	}
 	return isUniqueConstraintErr(err)
 }
 
-// logDBOpFailure logs expected uniqueness races / index-name collisions at Warn and
+// logDBOpFailure logs expected uniqueness races / DDL name collisions at Warn and
 // other DB failures (including unexpected DDL uniqueness) at Error.
 func logDBOpFailure(logger *slog.Logger, msg string, err error, sql string) {
 	if logger == nil {

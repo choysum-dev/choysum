@@ -247,13 +247,19 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
   } catch (err) {
     // Best-effort: upsert path still enforces uniqueness in application logic.
     const message = String((err as any)?.message ?? err).toLowerCase();
+    const code = String((err as any)?.code ?? '').toLowerCase();
     const transient =
       message.includes('database is locked') ||
+      message.includes('database table is locked') ||
       message.includes('database is busy') ||
+      message.includes('sqlite_busy') ||
       message.includes('locking protocol') ||
       message.includes('deadlock') ||
       message.includes('40p01') ||
-      message.includes('serialization failure');
+      message.includes('serialization failure') ||
+      message.includes('could not serialize access') ||
+      code.includes('40001') ||
+      code.includes('40p01');
     if (!transient) {
       // Permanent DDL failure: avoid retrying CREATE INDEX on every later Set.
       ensuredUniqueIndexTables.add(table);

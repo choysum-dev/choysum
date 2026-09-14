@@ -148,7 +148,7 @@ test('FieldDefault ensureScopeUniqueIndex caches permanent DDL failure but retri
   CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-ddlcache', ...value })) as any;
   const originalChoysum = (globalThis as any).$choysum;
   const ddls: string[] = [];
-  let mode: 'permanent' | 'transient' = 'permanent';
+  let mode: 'permanent' | 'transient' | 'serialize' = 'permanent';
   (globalThis as any).$choysum = {
     db: {
       dialectName: 'sqlite',
@@ -157,6 +157,9 @@ test('FieldDefault ensureScopeUniqueIndex caches permanent DDL failure but retri
         ddls.push(ddl);
         if (mode === 'permanent') {
           throw new Error('syntax error near UNIQUE');
+        }
+        if (mode === 'serialize') {
+          throw new Error('could not serialize access due to concurrent update');
         }
         throw new Error('database is locked');
       },
@@ -174,6 +177,14 @@ test('FieldDefault ensureScopeUniqueIndex caches permanent DDL failure but retri
     await CovFieldDefault.Set('Widget', 'Name', 'lock-fail');
     expect(ddls.length).toBe(1);
     await CovFieldDefault.Set('Widget', 'Name', 'lock-fail-2');
+    expect(ddls.length).toBe(2);
+
+    __resetFieldDefaultUniqueIndexTablesForTest();
+    mode = 'serialize';
+    ddls.length = 0;
+    await CovFieldDefault.Set('Widget', 'Name', 'serialize-fail');
+    expect(ddls.length).toBe(1);
+    await CovFieldDefault.Set('Widget', 'Name', 'serialize-fail-2');
     expect(ddls.length).toBe(2);
   } finally {
     (globalThis as any).$choysum = originalChoysum;

@@ -339,26 +339,50 @@ func TestLogDBOpFailureLevels(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	logDBOpFailure(logger, "db query failed", errors.New("UNIQUE constraint failed: t.c"), "INSERT INTO t (c) VALUES (1)")
-	if !strings.Contains(buf.String(), "level=WARN") {
-		t.Fatalf("DML unique violation should log at WARN, got %q", buf.String())
+	if !strings.Contains(buf.String(), "level=WARN") || strings.Contains(buf.String(), "level=ERROR") {
+		t.Fatalf("DML unique violation should log exactly once at WARN, got %q", buf.String())
 	}
 
 	buf.Reset()
 	logDBOpFailure(logger, "db execute failed", errors.New("index uidx already exists"), "CREATE UNIQUE INDEX uidx ON t (c)")
-	if !strings.Contains(buf.String(), "level=WARN") {
-		t.Fatalf("index-name collision should log at WARN, got %q", buf.String())
+	if !strings.Contains(buf.String(), "level=WARN") || strings.Contains(buf.String(), "level=ERROR") {
+		t.Fatalf("index-name collision should log exactly once at WARN, got %q", buf.String())
 	}
 
 	buf.Reset()
 	logDBOpFailure(logger, "db execute failed", errors.New("UNIQUE constraint failed: t.c"), "CREATE UNIQUE INDEX IF NOT EXISTS uidx ON t (c)")
-	if !strings.Contains(buf.String(), "level=ERROR") {
+	if !strings.Contains(buf.String(), "level=ERROR") || strings.Contains(buf.String(), "level=WARN") {
 		t.Fatalf("CREATE UNIQUE INDEX duplicate-row failure should log at ERROR, got %q", buf.String())
+	}
+
+	buf.Reset()
+	logDBOpFailure(logger, "db execute failed", errors.New("duplicate key value violates unique constraint"), "ALTER TABLE t ADD CONSTRAINT uq UNIQUE (c)")
+	if !strings.Contains(buf.String(), "level=ERROR") || strings.Contains(buf.String(), "level=WARN") {
+		t.Fatalf("ALTER TABLE unique failure on duplicate data should log at ERROR, got %q", buf.String())
 	}
 
 	buf.Reset()
 	logDBOpFailure(logger, "db query failed", errors.New("no such table: t"), "SELECT 1 FROM t")
 	if !strings.Contains(buf.String(), "level=ERROR") {
 		t.Fatalf("other failures should log at ERROR, got %q", buf.String())
+	}
+}
+
+func TestIsIndexDDLAndIsDDLStmt(t *testing.T) {
+	if !isIndexDDL("CREATE UNIQUE INDEX uidx ON t (c)") {
+		t.Fatal("CREATE UNIQUE INDEX")
+	}
+	if !isIndexDDL("create index idx on t (c)") {
+		t.Fatal("CREATE INDEX")
+	}
+	if isIndexDDL("CREATE TABLE t (a int, index int)") {
+		t.Fatal("CREATE TABLE with index column must not count as index DDL")
+	}
+	if !isDDLStmt("ALTER TABLE t ADD CONSTRAINT uq UNIQUE (c)") {
+		t.Fatal("ALTER TABLE is DDL")
+	}
+	if isDDLStmt("INSERT INTO t (c) VALUES (1)") {
+		t.Fatal("INSERT is not DDL")
 	}
 }
 
@@ -406,13 +430,17 @@ func TestWithDbCreateUniqueIndexDuplicateRowsLogsError(t *testing.T) {
 		t.Fatalf("Transactor.Required: %v", err)
 	}
 	logged := buf.String()
-	if !strings.Contains(logged, "db execute failed") {
+	found := false
+	for _, line := range strings.Split(logged, "\n") {
+		if !strings.Contains(line, "db execute failed") {
+			continue
+		}
+		found = true
+		if !strings.Contains(line, "level=ERROR") {
+			t.Fatalf("duplicate-row index DDL should log the failure at ERROR, got %q", line)
+		}
+	}
+	if !found {
 		t.Fatalf("expected execute failure log, got %q", logged)
-	}
-	if !strings.Contains(logged, "level=ERROR") {
-		t.Fatalf("duplicate-row index DDL should log at ERROR, got %q", logged)
-	}
-	if strings.Contains(logged, "level=WARN") {
-		t.Fatalf("duplicate-row index DDL must not log at WARN, got %q", logged)
 	}
 }
