@@ -346,7 +346,7 @@ func cliE2EHelperEnv(t *testing.T, extra ...string) []string {
 		}
 		overrides[entry[:idx]] = entry[idx+1:]
 	}
-	if overrides["HOME"] == "" {
+	if _, ok := overrides["HOME"]; !ok {
 		overrides["HOME"] = cliE2EHomeDir(t)
 	}
 	overrides[cliE2EEnv] = "1"
