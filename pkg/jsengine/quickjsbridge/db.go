@@ -139,7 +139,7 @@ func performQuery(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, arg
 			break
 		}
 		if !isDeadlockErr(err, dialect) || attempt == maxDeadlockRetries-1 {
-			logDBOpFailure(logger, "db query failed", err)
+			logDBOpFailure(logger, "db query failed", err, sql)
 			return ctx.ThrowError(err)
 		}
 		sleep := deadlockRetrySleep(dialect, attempt)
@@ -208,7 +208,7 @@ func performExecute(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, a
 			break
 		}
 		if !isDeadlockErr(tx.Error, dialect) || attempt == maxDeadlockRetries-1 {
-			logDBOpFailure(logger, "db execute failed", tx.Error)
+			logDBOpFailure(logger, "db execute failed", tx.Error, sql)
 			return ctx.ThrowError(tx.Error)
 		}
 		sleep := deadlockRetrySleep(dialect, attempt)
@@ -269,27 +269,55 @@ func isDeadlockErr(err error, dialect string) bool {
 	}
 }
 
-// isUniqueConstraintErr reports uniqueness violations that application code often
+// isUniqueConstraintErr reports row uniqueness violations that application code often
 // handles as idempotency / race outcomes (ledger replay, one-reference-per-category).
 func isUniqueConstraintErr(err error) bool {
 	if err == nil {
 		return false
 	}
 	message := strings.ToLower(err.Error())
-	return strings.Contains(message, "unique constraint") ||
-		strings.Contains(message, "unique index") ||
+	return strings.Contains(message, "unique constraint failed") ||
+		strings.Contains(message, "violates unique constraint") ||
 		strings.Contains(message, "duplicate key") ||
 		strings.Contains(message, "duplicate entry") ||
 		strings.Contains(message, "sqlstate 23505")
 }
 
-// logDBOpFailure logs unique-constraint failures at Warn (expected race/idempotency
-// paths) and other DB failures at Error.
-func logDBOpFailure(logger *slog.Logger, msg string, err error) {
+func isIndexDDL(sql string) bool {
+	s := strings.ToLower(strings.TrimSpace(sql))
+	return strings.HasPrefix(s, "create") && strings.Contains(s, " index")
+}
+
+// isExpectedIndexDDLErr is true for index-name collisions (IF NOT EXISTS races /
+// concurrent create), not for CREATE UNIQUE INDEX failing on existing duplicate rows.
+func isExpectedIndexDDLErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "already exists") ||
+		strings.Contains(message, "duplicate key name")
+}
+
+// shouldWarnDBOpFailure keeps expected DML uniqueness races and index-name collisions
+// at Warn. CREATE UNIQUE INDEX failures caused by duplicate data stay at Error.
+func shouldWarnDBOpFailure(err error, sql string) bool {
+	if err == nil {
+		return false
+	}
+	if isIndexDDL(sql) {
+		return isExpectedIndexDDLErr(err)
+	}
+	return isUniqueConstraintErr(err)
+}
+
+// logDBOpFailure logs expected uniqueness races / index-name collisions at Warn and
+// other DB failures (including unexpected DDL uniqueness) at Error.
+func logDBOpFailure(logger *slog.Logger, msg string, err error, sql string) {
 	if logger == nil {
 		return
 	}
-	if isUniqueConstraintErr(err) {
+	if shouldWarnDBOpFailure(err, sql) {
 		logger.Warn(msg, "error", err)
 		return
 	}

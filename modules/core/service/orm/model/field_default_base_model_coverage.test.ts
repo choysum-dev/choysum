@@ -139,6 +139,51 @@ test('FieldDefault ensureScopeUniqueIndex postgres dialect and exec success/fail
   }
 });
 
+test('FieldDefault ensureScopeUniqueIndex caches permanent DDL failure but retries transient lock', async () => {
+  __resetFieldDefaultUniqueIndexTablesForTest();
+  const restore = withSavepointPassThrough();
+  const originalSearch = CovFieldDefault.Search;
+  const originalCreate = CovFieldDefault.Create;
+  CovFieldDefault.Search = (async () => []) as any;
+  CovFieldDefault.Create = (async (value: any) => ({ Id: 'FD-ddlcache', ...value })) as any;
+  const originalChoysum = (globalThis as any).$choysum;
+  const ddls: string[] = [];
+  let mode: 'permanent' | 'transient' = 'permanent';
+  (globalThis as any).$choysum = {
+    db: {
+      dialectName: 'sqlite',
+      query: async () => JSON.stringify([{ ok: 1 }]),
+      execute: async (ddl: string) => {
+        ddls.push(ddl);
+        if (mode === 'permanent') {
+          throw new Error('syntax error near UNIQUE');
+        }
+        throw new Error('database is locked');
+      },
+    },
+  };
+  try {
+    await CovFieldDefault.Set('Widget', 'Name', 'perm-fail');
+    expect(ddls.length).toBe(1);
+    await CovFieldDefault.Set('Widget', 'Name', 'perm-fail-2');
+    expect(ddls.length).toBe(1);
+
+    __resetFieldDefaultUniqueIndexTablesForTest();
+    mode = 'transient';
+    ddls.length = 0;
+    await CovFieldDefault.Set('Widget', 'Name', 'lock-fail');
+    expect(ddls.length).toBe(1);
+    await CovFieldDefault.Set('Widget', 'Name', 'lock-fail-2');
+    expect(ddls.length).toBe(2);
+  } finally {
+    (globalThis as any).$choysum = originalChoysum;
+    CovFieldDefault.Search = originalSearch;
+    CovFieldDefault.Create = originalCreate;
+    restore();
+    __resetFieldDefaultUniqueIndexTablesForTest();
+  }
+});
+
 test('FieldDefault ensureScopeUniqueIndex swallows exec errors and skips without execute', async () => {
   __resetFieldDefaultUniqueIndexTablesForTest();
   const restore = withSavepointPassThrough();
@@ -226,10 +271,10 @@ test('FieldDefault ensureScopeUniqueIndex real-db probe skips missing fd2cov tab
     throw new Error(`missing db bridge: db=${db == null} query=${db?.query == null} execute=${db?.execute == null}`);
   }
   let executed = 0;
-  const originalExecute = db.execute.bind(db);
+  const originalExecute = db.execute;
   db.execute = async (...args: any[]) => {
     executed++;
-    return originalExecute(...args);
+    return originalExecute.call(db, ...args);
   };
   try {
     const probeRaw = await db.query(

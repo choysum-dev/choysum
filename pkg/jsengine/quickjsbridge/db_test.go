@@ -213,6 +213,8 @@ func TestIsUniqueConstraintErr(t *testing.T) {
 		{"unique constraint failed: document_attachment_mutation_ledger.action", true},
 		{"ERROR: duplicate key value violates unique constraint \"uidx\" (SQLSTATE 23505)", true},
 		{"Duplicate entry 'x' for key 'PRIMARY'", true},
+		{"cannot drop unique constraint uidx", false},
+		{"failed to add unique index uidx", false},
 		{"no such table: main.fd2test_field_default", false},
 		{"database is locked", false},
 		{"", false},
@@ -281,30 +283,23 @@ func TestWithDbQueryEmptyResultReturnsJSONArray(t *testing.T) {
 }
 
 func TestWithDbQueryAndExecuteFailuresReachLogDBOpFailure(t *testing.T) {
-	logger := quickjsBridgeTestLogger()
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	runtimeScope := defaultscope.NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(quickjsBridgeTestConfig(t)), logger)
 	engine := newTestQuickjsEngine(t, WithDb("sqlite", logger))
 	if err := engine.Load([]*jsengine.JsScript{{
 		FileName: "db-fail-paths.js",
 		Content: `
 			globalThis.$choysum.__rpc__ = async function(req) {
-				const out = { queryFailed: false, execFailed: false };
-				try {
-					await $choysum.db.query('SELECT 1 FROM definitely_missing_table_xyz', '[]');
-				} catch (err) {
-					out.queryFailed = true;
-					out.queryMessage = String(err && err.message ? err.message : err);
-				}
+				// Swallow rejections so the RPC can finish; coverage is asserted via Go logs.
+				try { await $choysum.db.query('SELECT 1 FROM definitely_missing_table_xyz', '[]'); } catch (err) {}
 				try {
 					await $choysum.db.execute(
 						'CREATE INDEX IF NOT EXISTS uidx_x ON definitely_missing_table_xyz (id)',
 						'[]'
 					);
-				} catch (err) {
-					out.execFailed = true;
-					out.execMessage = String(err && err.message ? err.message : err);
-				}
-				return { id: req.id, result: out, context: {} };
+				} catch (err) {}
+				return { id: req.id, result: { ok: true }, context: {} };
 			};
 		`,
 	}}); err != nil {
@@ -320,27 +315,104 @@ func TestWithDbQueryAndExecuteFailuresReachLogDBOpFailure(t *testing.T) {
 		if !ok {
 			t.Fatalf("result type = %T", resp.Result)
 		}
-		// Cover logDBOpFailure call sites even if the JS host surfaces failures oddly.
-		_ = result
+		if okFlag, _ := result["ok"].(bool); !okFlag {
+			t.Fatalf("expected ok result, got %v", result)
+		}
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("Transactor.Required: %v", err)
 	}
+	logged := buf.String()
+	if !strings.Contains(logged, "level=ERROR") {
+		t.Fatalf("missing-table failures should log at ERROR, got %q", logged)
+	}
+	if !strings.Contains(logged, "db query failed") || !strings.Contains(logged, "db execute failed") {
+		t.Fatalf("expected both query and execute failure logs, got %q", logged)
+	}
 }
 
 func TestLogDBOpFailureLevels(t *testing.T) {
-	logDBOpFailure(nil, "db query failed", errors.New("boom")) // must not panic
+	logDBOpFailure(nil, "db query failed", errors.New("boom"), "") // must not panic
 
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	logDBOpFailure(logger, "db query failed", errors.New("UNIQUE constraint failed: t.c"))
+
+	logDBOpFailure(logger, "db query failed", errors.New("UNIQUE constraint failed: t.c"), "INSERT INTO t (c) VALUES (1)")
 	if !strings.Contains(buf.String(), "level=WARN") {
-		t.Fatalf("unique violation should log at WARN, got %q", buf.String())
+		t.Fatalf("DML unique violation should log at WARN, got %q", buf.String())
 	}
+
 	buf.Reset()
-	logDBOpFailure(logger, "db query failed", errors.New("no such table: t"))
+	logDBOpFailure(logger, "db execute failed", errors.New("index uidx already exists"), "CREATE UNIQUE INDEX uidx ON t (c)")
+	if !strings.Contains(buf.String(), "level=WARN") {
+		t.Fatalf("index-name collision should log at WARN, got %q", buf.String())
+	}
+
+	buf.Reset()
+	logDBOpFailure(logger, "db execute failed", errors.New("UNIQUE constraint failed: t.c"), "CREATE UNIQUE INDEX IF NOT EXISTS uidx ON t (c)")
+	if !strings.Contains(buf.String(), "level=ERROR") {
+		t.Fatalf("CREATE UNIQUE INDEX duplicate-row failure should log at ERROR, got %q", buf.String())
+	}
+
+	buf.Reset()
+	logDBOpFailure(logger, "db query failed", errors.New("no such table: t"), "SELECT 1 FROM t")
 	if !strings.Contains(buf.String(), "level=ERROR") {
 		t.Fatalf("other failures should log at ERROR, got %q", buf.String())
+	}
+}
+
+func TestWithDbCreateUniqueIndexDuplicateRowsLogsError(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	runtimeScope := defaultscope.NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(quickjsBridgeTestConfig(t)), logger)
+	session := runtimeScope.Session()
+	if err := session.Exec(`CREATE TABLE uniq_dup_t (id INTEGER PRIMARY KEY, c TEXT)`).Error; err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	if err := session.Exec(`INSERT INTO uniq_dup_t (id, c) VALUES (1, 'same'), (2, 'same')`).Error; err != nil {
+		t.Fatalf("insert duplicates: %v", err)
+	}
+
+	engine := newTestQuickjsEngine(t, WithDb("sqlite", logger))
+	if err := engine.Load([]*jsengine.JsScript{{
+		FileName: "db-uniq-index-dup.js",
+		Content: `
+			globalThis.$choysum.__rpc__ = async function(req) {
+				try {
+					await $choysum.db.execute(
+						'CREATE UNIQUE INDEX uidx_uniq_dup_t_c ON uniq_dup_t (c)',
+						'[]'
+					);
+				} catch (err) {}
+				return { id: req.id, result: { ok: true }, context: {} };
+			};
+		`,
+	}}); err != nil {
+		t.Fatalf("engine.Load: %v", err)
+	}
+
+	err := runtimeScope.Transactor().Required(context.Background(), func(txScope scope.Scope, tx scope.Transaction) error {
+		resp, err := engine.Execute(tx.Context(), &jsengine.JsRequest{Id: "uniq-index-dup", Service: "db"})
+		if err != nil {
+			return err
+		}
+		if resp == nil || resp.Result == nil {
+			t.Fatal("expected RPC result")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Transactor.Required: %v", err)
+	}
+	logged := buf.String()
+	if !strings.Contains(logged, "db execute failed") {
+		t.Fatalf("expected execute failure log, got %q", logged)
+	}
+	if !strings.Contains(logged, "level=ERROR") {
+		t.Fatalf("duplicate-row index DDL should log at ERROR, got %q", logged)
+	}
+	if strings.Contains(logged, "level=WARN") {
+		t.Fatalf("duplicate-row index DDL must not log at WARN, got %q", logged)
 	}
 }

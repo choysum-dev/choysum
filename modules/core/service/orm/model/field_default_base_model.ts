@@ -184,8 +184,12 @@ async function fieldDefaultStoreTableExists(dialect: string, table: string): Pro
     // No probe available; allow the CREATE INDEX attempt.
     return true;
   }
-  // Catalog probe uses a metadata-controlled table name (literal, not user input).
-  const lit = String(table).replace(/'/g, "''");
+  // Catalog probe interpolates a metadata-controlled table name; require a plain
+  // identifier so dialect-specific escaping (e.g. MySQL backslash) cannot break out.
+  const lit = String(table);
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(lit)) {
+    return true;
+  }
   let sql = '';
   if (dialect === 'postgres' || dialect === 'postgresql') {
     sql = `SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = '${lit}' LIMIT 1`;
@@ -240,9 +244,20 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
     }
     await exec.call(($choysum as any).db, ddl, '[]');
     ensuredUniqueIndexTables.add(table);
-  } catch {
+  } catch (err) {
     // Best-effort: upsert path still enforces uniqueness in application logic.
-    // Do not cache failures — a transient lock/busy must not permanently skip the index.
+    const message = String((err as any)?.message ?? err).toLowerCase();
+    const transient =
+      message.includes('database is locked') ||
+      message.includes('database is busy') ||
+      message.includes('locking protocol') ||
+      message.includes('deadlock') ||
+      message.includes('40p01') ||
+      message.includes('serialization failure');
+    if (!transient) {
+      // Permanent DDL failure: avoid retrying CREATE INDEX on every later Set.
+      ensuredUniqueIndexTables.add(table);
+    }
   }
 }
 
