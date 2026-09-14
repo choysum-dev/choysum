@@ -108,7 +108,9 @@ func startSharedTestSession(t *testing.T) *Session {
 	sharedChromeOnce.Do(func() {
 		cands := chromiumCandidates()
 		if len(cands) == 0 {
+			sharedChromeMu.Lock()
 			sharedChromeErr = errChromiumUnavailable
+			sharedChromeMu.Unlock()
 			return
 		}
 		headless := true
@@ -118,39 +120,46 @@ func startSharedTestSession(t *testing.T) *Session {
 			session, err := Start(ctx, StartOptions{ExecPath: execPath, Headless: &headless})
 			if err == nil {
 				session.shared = true
+				sharedChromeMu.Lock()
 				sharedChrome = session
 				sharedChromeCancel = cancel
+				sharedChromeMu.Unlock()
 				return
 			}
 			cancel()
 			lastErr = err
 		}
+		sharedChromeMu.Lock()
 		sharedChromeErr = lastErr
+		sharedChromeMu.Unlock()
 	})
 	sharedChromeMu.Lock()
 	session := sharedChrome
 	err := sharedChromeErr
 	sharedChromeMu.Unlock()
 	if session == nil {
-		if err == nil || err == errChromiumUnavailable {
+		if err == nil || errors.Is(err, errChromiumUnavailable) {
 			t.Skip("chromium unavailable")
 		}
 		t.Skipf("chromium start failed: %v", err)
 	}
 	t.Cleanup(func() {
-		resetSharedTestTab(session)
+		resetSharedTestTab(t, session)
 	})
 	return session
 }
 
 // CloseSharedTestSession tears down the process-wide shared Chromium, if any.
-// Package TestMain should call this after m.Run().
+// Package TestMain should call this after m.Run(). Safe to call more than once;
+// a later StartTestSession may start a new shared browser.
 func CloseSharedTestSession() {
 	sharedChromeMu.Lock()
 	session := sharedChrome
 	cancel := sharedChromeCancel
 	sharedChrome = nil
 	sharedChromeCancel = nil
+	sharedChromeErr = nil
+	sharedChromeOnce = sync.Once{}
 	sharedChromeMu.Unlock()
 	if session != nil {
 		session.shared = false
@@ -161,7 +170,7 @@ func CloseSharedTestSession() {
 	}
 }
 
-func resetSharedTestTab(session *Session) {
+func resetSharedTestTab(t errorReporter, session *Session) {
 	if session == nil || session.Context() == nil || session.Context().Err() != nil {
 		return
 	}
@@ -171,9 +180,17 @@ func resetSharedTestTab(session *Session) {
 	_ = runFetchDisable(session.Context())
 	page, err := session.NewPage()
 	if err != nil {
+		if t != nil {
+			t.Errorf("shared chrome reset: NewPage failed: %v", err)
+		}
 		return
 	}
 	page.Close()
+}
+
+// errorReporter is satisfied by *testing.T; tests may pass a recorder.
+type errorReporter interface {
+	Errorf(format string, args ...any)
 }
 
 func launchTestSession(t *testing.T) *Session {

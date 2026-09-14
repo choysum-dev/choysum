@@ -40,6 +40,14 @@ document.title = document.cookie.includes('p2=leak') ? 'has' : 'clean';
 	if err := page1.Goto(srv.URL+"/set", "load"); err != nil {
 		t.Fatal(err)
 	}
+	// Control: cookie must be visible before clearing, otherwise this test
+	// cannot detect a leak across NewPage on the shared session.
+	if err := page1.Goto(srv.URL+"/check", "load"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := page1.Evaluate(`document.title`); err != nil || got != `"has"` {
+		t.Fatalf("expected cookie before clearing, got %s (%v)", got, err)
+	}
 	if err := page1.ClearOriginStorage(srv.URL); err != nil {
 		t.Fatalf("ClearOriginStorage: %v", err)
 	}
