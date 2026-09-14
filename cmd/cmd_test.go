@@ -996,6 +996,11 @@ func TestNewTypeFetchCmd_Run_ToolingContextCanceledReturnsContextError(t *testin
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected context canceled error, got %v", err)
 	}
+	select {
+	case <-toolingStarted:
+	default:
+		t.Fatal("tooling fetch was never started")
+	}
 	if strings.Contains(out.String(), "[tooling] warning:") {
 		t.Fatalf("canceled tooling fetch should not warn, got %q", out.String())
 	}
