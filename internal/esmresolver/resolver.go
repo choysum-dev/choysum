@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -800,7 +799,10 @@ func defaultRetryBackoff(attempt int) time.Duration {
 	if attempt < 1 {
 		return 0
 	}
-	return time.Duration(math.Min(float64(time.Second<<(attempt-1)), float64(10*time.Second)))
+	if attempt >= 5 {
+		return 10 * time.Second
+	}
+	return time.Second << (attempt - 1)
 }
 
 func (r *Resolver) backoffDuration(attempt int) time.Duration {

@@ -290,14 +290,17 @@ func TestWaitForResponseContextNilCtxUsesPageContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	done := make(chan struct{})
+	defer func() { <-done }()
 	go func() {
+		defer close(done)
 		time.Sleep(50 * time.Millisecond)
 		page.Close()
 		session.Close()
 	}()
 	_, err = page.WaitForResponseContext(nil, ResponseMatch{URLIncludes: "/never"}, 5*time.Second)
-	if err == nil {
-		t.Fatal("expected error from canceled wait")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected page context cancellation, got %v", err)
 	}
 }
 

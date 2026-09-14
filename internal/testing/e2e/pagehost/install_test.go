@@ -573,7 +573,7 @@ func TestInstallDelayClosedAfterTimerWithoutStop(t *testing.T) {
 	}
 	val.Free()
 	host.closed.Store(true)
-	time.Sleep(80 * time.Millisecond)
+	host.pending.Wait()
 }
 
 func TestInstallWaitForResponseDrainWhilePending(t *testing.T) {

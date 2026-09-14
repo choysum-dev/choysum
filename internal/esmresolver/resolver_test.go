@@ -229,6 +229,9 @@ func TestDefaultRetryBackoff(t *testing.T) {
 	if got := defaultRetryBackoff(5); got != 10*time.Second {
 		t.Fatalf("attempt 5 = %s, want 10s (capped)", got)
 	}
+	if got := defaultRetryBackoff(35); got != 10*time.Second {
+		t.Fatalf("attempt 35 = %s, want 10s (capped, no overflow)", got)
+	}
 }
 
 func TestBackoffDurationDefaultAndNilResolver(t *testing.T) {
