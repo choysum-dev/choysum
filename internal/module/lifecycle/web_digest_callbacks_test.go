@@ -137,23 +137,26 @@ func TestGlobalWebSkipCallbacks(t *testing.T) {
 	_ = os.RemoveAll(stampPath)
 
 	// Digest compute failure (unreadable hashed source) rebuilds without error.
-	apiWeb := filepath.Join(modulesPath, "api", "web", "blocked.ts")
-	if err := os.MkdirAll(filepath.Dir(apiWeb), 0o755); err != nil {
-		t.Fatalf("mkdir api web: %v", err)
-	}
-	if err := os.WriteFile(apiWeb, []byte("export {}\n"), 0o644); err != nil {
-		t.Fatalf("write api web: %v", err)
-	}
-	if err := os.Chmod(apiWeb, 0); err != nil {
-		t.Fatalf("chmod api web: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(apiWeb, 0o644) })
-	skip, dig, err = skipFn(context.Background(), distWeb)
-	if err != nil || skip || dig != "" {
-		t.Fatalf("digest compute fallback: skip=%v dig=%q err=%v", skip, dig, err)
-	}
-	_ = os.Chmod(apiWeb, 0o644)
-	_ = os.Remove(apiWeb)
+	t.Run("unreadable api web digest fallback", func(t *testing.T) {
+		apiWeb := filepath.Join(modulesPath, "api", "web", "blocked.ts")
+		if err := os.MkdirAll(filepath.Dir(apiWeb), 0o755); err != nil {
+			t.Fatalf("mkdir api web: %v", err)
+		}
+		if err := os.WriteFile(apiWeb, []byte("export {}\n"), 0o644); err != nil {
+			t.Fatalf("write api web: %v", err)
+		}
+		if err := os.Chmod(apiWeb, 0); err != nil {
+			t.Fatalf("chmod api web: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(apiWeb, 0o644) })
+		if _, err := os.ReadFile(apiWeb); err == nil {
+			t.Skip("filesystem permits read despite mode 0")
+		}
+		skip, dig, err := skipFn(context.Background(), distWeb)
+		if err != nil || skip || dig != "" {
+			t.Fatalf("digest compute fallback: skip=%v dig=%q err=%v", skip, dig, err)
+		}
+	})
 
 	// Load failure path: nil session manager still returns skip=false without error.
 	bad := &ModuleManager{runtimeScope: &webSkipNilSessionScope{inner: runtimeScope}}

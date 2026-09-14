@@ -25,7 +25,7 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 
 // webInputDigestSchema invalidates stamped digests when the digest algorithm or
 // embedded web toolchain contract changes across choysum binaries.
-const webInputDigestSchema = "web-input-digest-v3"
+const webInputDigestSchema = "web-input-digest-v4"
 
 // WebInputDigestInputs are the compile flags and module roots that affect dist/web.
 type WebInputDigestInputs struct {
@@ -71,8 +71,13 @@ func LoadWebInputDigestInputs(runtimeScope scope.Scope, modulesPath string, sour
 		if entry == "" {
 			continue
 		}
-		if !filepath.IsAbs(entry) && in.ModulesPath != "" {
-			entry = filepath.Join(in.ModulesPath, mod.Name, entry)
+		if !filepath.IsAbs(entry) {
+			switch root := strings.TrimSpace(mod.Path); {
+			case root != "":
+				entry = filepath.Join(root, entry)
+			case in.ModulesPath != "":
+				entry = filepath.Join(in.ModulesPath, mod.Name, entry)
+			}
 		}
 		in.WebEntryPoints = append(in.WebEntryPoints, webEntryRef{
 			ModuleName: mod.Name,
@@ -178,8 +183,9 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 		switch strings.ToLower(filepath.Ext(path)) {
 		case ".vue", ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs",
 			".css", ".scss", ".sass", ".less", ".html", ".json", ".yaml", ".yml",
-			".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
-			".woff", ".woff2", ".ttf":
+			".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".avif", ".bmp",
+			".woff", ".woff2", ".ttf", ".otf", ".eot", ".wasm",
+			".mp4", ".webm", ".mp3":
 		default:
 			return nil
 		}

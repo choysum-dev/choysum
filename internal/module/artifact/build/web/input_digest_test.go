@@ -75,6 +75,37 @@ func TestLoadWebInputDigestInputs(t *testing.T) {
 	if !joined {
 		t.Fatalf("relative entry was not joined: %#v", in.WebEntryPoints)
 	}
+	// Prefer mod.Path over modulesPath/mod.Name when they diverge.
+	otherRoot := filepath.Join(t.TempDir(), "elsewhere")
+	if err := os.MkdirAll(filepath.Join(otherRoot, "web"), 0o755); err != nil {
+		t.Fatalf("mkdir elsewhere: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(otherRoot, "web", "index.ts"), []byte("export {}\n"), 0o644); err != nil {
+		t.Fatalf("write elsewhere entry: %v", err)
+	}
+	if err := db.Create(&meta.Module{
+		Name: "pathmod", Version: "1.0.0", Status: meta.Installed,
+		Path: otherRoot, WebEntryPoint: "web/index.ts",
+	}).Error; err != nil {
+		t.Fatalf("create pathmod: %v", err)
+	}
+	in2, err := LoadWebInputDigestInputs(runtimeScope, modulesPath, false, true, true, false)
+	if err != nil {
+		t.Fatalf("LoadWebInputDigestInputs pathmod: %v", err)
+	}
+	foundPath := false
+	for _, ref := range in2.WebEntryPoints {
+		if ref.ModuleName == "pathmod" {
+			foundPath = true
+			want := filepath.Join(otherRoot, "web", "index.ts")
+			if ref.EntryPath != want {
+				t.Fatalf("pathmod entry = %q, want %q", ref.EntryPath, want)
+			}
+		}
+	}
+	if !foundPath {
+		t.Fatal("pathmod entry missing")
+	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -333,20 +364,25 @@ func TestShouldSkipAndStampHelpers(t *testing.T) {
 		t.Fatalf("directory stamp skip: skip=%v err=%v", skip, err)
 	}
 
-	// Unreadable file hash errors.
-	blocked := filepath.Join(t.TempDir(), "blocked.ts")
-	if err := os.WriteFile(blocked, []byte("export {}\n"), 0o644); err != nil {
-		t.Fatalf("write blocked: %v", err)
-	}
-	if err := os.Chmod(blocked, 0); err != nil {
-		t.Fatalf("chmod blocked: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(blocked, 0o644) })
-	if _, err := ComputeWebInputDigest(WebInputDigestInputs{
-		WebEntryPoints: []webEntryRef{{ModuleName: "b", EntryPath: blocked, ModulePath: filepath.Dir(blocked)}},
-	}); err == nil {
-		t.Fatal("expected hashFile permission error")
-	}
+	// Unreadable file hash errors (skip when mode 0 is still readable, e.g. UID 0).
+	t.Run("unreadable entry", func(t *testing.T) {
+		blocked := filepath.Join(t.TempDir(), "blocked.ts")
+		if err := os.WriteFile(blocked, []byte("export {}\n"), 0o644); err != nil {
+			t.Fatalf("write blocked: %v", err)
+		}
+		if err := os.Chmod(blocked, 0); err != nil {
+			t.Fatalf("chmod blocked: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(blocked, 0o644) })
+		if _, err := os.ReadFile(blocked); err == nil {
+			t.Skip("filesystem permits read despite mode 0")
+		}
+		if _, err := ComputeWebInputDigest(WebInputDigestInputs{
+			WebEntryPoints: []webEntryRef{{ModuleName: "b", EntryPath: blocked, ModulePath: filepath.Dir(blocked)}},
+		}); err == nil {
+			t.Fatal("expected hashFile permission error")
+		}
+	})
 
 	// demo/ sibling tree hashing + Separator root guard.
 	demoRoot := t.TempDir()
@@ -391,61 +427,94 @@ func TestShouldSkipAndStampHelpers(t *testing.T) {
 	}
 
 	// api/web and module-root / dist-sibling hash errors surface.
-	apiRoot := t.TempDir()
-	apiBlocked := filepath.Join(apiRoot, "api", "web", "x.ts")
-	if err := os.MkdirAll(filepath.Dir(apiBlocked), 0o755); err != nil {
-		t.Fatalf("mkdir api: %v", err)
-	}
-	if err := os.WriteFile(apiBlocked, []byte("export {}\n"), 0o644); err != nil {
-		t.Fatalf("write api: %v", err)
-	}
-	if err := os.Chmod(apiBlocked, 0); err != nil {
-		t.Fatalf("chmod api: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(apiBlocked, 0o644) })
-	if _, err := ComputeWebInputDigest(WebInputDigestInputs{ModulesPath: apiRoot}); err == nil {
-		t.Fatal("expected api/web hash error")
-	}
-	_ = os.Chmod(apiBlocked, 0o644)
+	t.Run("unreadable api web", func(t *testing.T) {
+		apiRoot := t.TempDir()
+		apiBlocked := filepath.Join(apiRoot, "api", "web", "x.ts")
+		if err := os.MkdirAll(filepath.Dir(apiBlocked), 0o755); err != nil {
+			t.Fatalf("mkdir api: %v", err)
+		}
+		if err := os.WriteFile(apiBlocked, []byte("export {}\n"), 0o644); err != nil {
+			t.Fatalf("write api: %v", err)
+		}
+		if err := os.Chmod(apiBlocked, 0); err != nil {
+			t.Fatalf("chmod api: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(apiBlocked, 0o644) })
+		if _, err := os.ReadFile(apiBlocked); err == nil {
+			t.Skip("filesystem permits read despite mode 0")
+		}
+		if _, err := ComputeWebInputDigest(WebInputDigestInputs{ModulesPath: apiRoot}); err == nil {
+			t.Fatal("expected api/web hash error")
+		}
+	})
 
-	modBlockedRoot := t.TempDir()
-	modFile := filepath.Join(modBlockedRoot, "app.ts")
-	if err := os.WriteFile(modFile, []byte("export {}\n"), 0o644); err != nil {
-		t.Fatalf("write mod: %v", err)
-	}
-	if err := os.Chmod(modFile, 0); err != nil {
-		t.Fatalf("chmod mod: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(modFile, 0o644) })
-	if _, err := ComputeWebInputDigest(WebInputDigestInputs{
-		WebEntryPoints: []webEntryRef{{ModuleName: "m", EntryPath: filepath.Join(modBlockedRoot, "missing.ts"), ModulePath: modBlockedRoot}},
-	}); err == nil {
-		t.Fatal("expected module-root hash error")
-	}
-	_ = os.Chmod(modFile, 0o644)
+	t.Run("unreadable module root file", func(t *testing.T) {
+		modBlockedRoot := t.TempDir()
+		modFile := filepath.Join(modBlockedRoot, "app.ts")
+		if err := os.WriteFile(modFile, []byte("export {}\n"), 0o644); err != nil {
+			t.Fatalf("write mod: %v", err)
+		}
+		if err := os.Chmod(modFile, 0); err != nil {
+			t.Fatalf("chmod mod: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(modFile, 0o644) })
+		if _, err := os.ReadFile(modFile); err == nil {
+			t.Skip("filesystem permits read despite mode 0")
+		}
+		if _, err := ComputeWebInputDigest(WebInputDigestInputs{
+			WebEntryPoints: []webEntryRef{{ModuleName: "m", EntryPath: filepath.Join(modBlockedRoot, "missing.ts"), ModulePath: modBlockedRoot}},
+		}); err == nil {
+			t.Fatal("expected module-root hash error")
+		}
+	})
 
-	distBlocked := t.TempDir()
-	distEntry := filepath.Join(distBlocked, "dist", "web", "main.ts")
-	sib := filepath.Join(distBlocked, "dist", "web", "sib.ts")
-	if err := os.MkdirAll(filepath.Dir(distEntry), 0o755); err != nil {
-		t.Fatalf("mkdir dist: %v", err)
-	}
-	if err := os.WriteFile(distEntry, []byte("export default 1\n"), 0o644); err != nil {
-		t.Fatalf("write dist entry: %v", err)
-	}
-	if err := os.WriteFile(sib, []byte("export const s = 1\n"), 0o644); err != nil {
-		t.Fatalf("write sib: %v", err)
-	}
-	if err := os.Chmod(sib, 0); err != nil {
-		t.Fatalf("chmod sib: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(sib, 0o644) })
-	if _, err := ComputeWebInputDigest(WebInputDigestInputs{
-		WebEntryPoints: []webEntryRef{{ModuleName: "d", EntryPath: distEntry, ModulePath: distBlocked}},
-	}); err == nil {
-		t.Fatal("expected dist sibling hash error")
-	}
-	_ = os.Chmod(sib, 0o644)
+	t.Run("unreadable dist sibling", func(t *testing.T) {
+		distBlocked := t.TempDir()
+		distEntry := filepath.Join(distBlocked, "dist", "web", "main.ts")
+		sib := filepath.Join(distBlocked, "dist", "web", "sib.ts")
+		if err := os.MkdirAll(filepath.Dir(distEntry), 0o755); err != nil {
+			t.Fatalf("mkdir dist: %v", err)
+		}
+		if err := os.WriteFile(distEntry, []byte("export default 1\n"), 0o644); err != nil {
+			t.Fatalf("write dist entry: %v", err)
+		}
+		if err := os.WriteFile(sib, []byte("export const s = 1\n"), 0o644); err != nil {
+			t.Fatalf("write sib: %v", err)
+		}
+		if err := os.Chmod(sib, 0); err != nil {
+			t.Fatalf("chmod sib: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(sib, 0o644) })
+		if _, err := os.ReadFile(sib); err == nil {
+			t.Skip("filesystem permits read despite mode 0")
+		}
+		if _, err := ComputeWebInputDigest(WebInputDigestInputs{
+			WebEntryPoints: []webEntryRef{{ModuleName: "d", EntryPath: distEntry, ModulePath: distBlocked}},
+		}); err == nil {
+			t.Fatal("expected dist sibling hash error")
+		}
+	})
+
+	t.Run("unreadable nested walk dir", func(t *testing.T) {
+		walkRoot := t.TempDir()
+		nested := filepath.Join(walkRoot, "nested")
+		if err := os.MkdirAll(nested, 0o755); err != nil {
+			t.Fatalf("mkdir nested: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(nested, "x.ts"), []byte("export {}\n"), 0o644); err != nil {
+			t.Fatalf("write nested: %v", err)
+		}
+		if err := os.Chmod(nested, 0); err != nil {
+			t.Fatalf("chmod nested: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(nested, 0o755) })
+		if _, err := os.ReadDir(nested); err == nil {
+			t.Skip("filesystem permits readdir despite mode 0")
+		}
+		if err := hashWebSourceTree(nilWriter{}, walkRoot); err == nil {
+			t.Fatal("expected walkErr")
+		}
+	})
 
 	// WalkDir / Stat non-IsNotExist failures (symlink loops).
 	loopRoot := t.TempDir()
@@ -462,22 +531,5 @@ func TestShouldSkipAndStampHelpers(t *testing.T) {
 	}
 	if err := hashFile(nilWriter{}, a); err == nil {
 		t.Fatal("expected symlink-loop file error")
-	}
-
-	walkRoot := t.TempDir()
-	nested := filepath.Join(walkRoot, "nested")
-	if err := os.MkdirAll(nested, 0o755); err != nil {
-		t.Fatalf("mkdir nested: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(nested, "x.ts"), []byte("export {}\n"), 0o644); err != nil {
-		t.Fatalf("write nested: %v", err)
-	}
-	if err := os.Chmod(nested, 0); err != nil {
-		t.Fatalf("chmod nested: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(nested, 0o755) })
-	if err := hashWebSourceTree(nilWriter{}, walkRoot); err == nil {
-		// Owner may still traverse mode-000 dirs on some platforms; symlink loop covers Stat errors.
-		t.Log("walkErr not observed for mode-000 nested dir; acceptable on this platform")
 	}
 }
