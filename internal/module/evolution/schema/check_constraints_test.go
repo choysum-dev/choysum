@@ -12,6 +12,7 @@ import (
 )
 
 func TestNormalizeCheckExprAndEscapeSQLServerLiteral(t *testing.T) {
+	t.Parallel()
 	if got := normalizeCheckExpr("  ` status IN ('draft', 'done') `  "); got != "(status IN ('draft', 'done'))" {
 		t.Fatalf("normalizeCheckExpr() = %q", got)
 	}
@@ -33,6 +34,7 @@ func TestNormalizeCheckExprAndEscapeSQLServerLiteral(t *testing.T) {
 }
 
 func TestCheckConstraintRuntimeHelpers(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 
@@ -125,6 +127,7 @@ func TestDropCheckConstraintBestEffort_MySQLBranches(t *testing.T) {
 }
 
 func TestCheckConstraintHelpersIgnoreBlankExpressions(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 

@@ -36,6 +36,7 @@ func (*skipWebShellPeekOrigin) Purge(context.Context, string) error {
 }
 
 func TestServiceUpgradeAppliesSkipWebShellOptions(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	origin := &skipWebShellPeekOrigin{}
 	svc := NewService(runtimeScope, nil, WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator {

@@ -11,6 +11,7 @@ import (
 )
 
 func TestColumnSpecFromField_PrimaryKeyImpliesNotNull(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 	field := &meta.Field{Name: "Id"}
 	pk := true
@@ -55,6 +56,7 @@ func TestColumnSpecFromField_PrimaryKeyImpliesNotNull(t *testing.T) {
 func int64Ptr(v int64) *int64 { return &v }
 
 func TestColumnSpecFromField_SelectionVarchar255(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 	field := newFieldWithOptions(t, "Status", `{"type":"selection"}`)
 	col, err := columnSpecFromField(field, model)
@@ -70,6 +72,7 @@ func TestColumnSpecFromField_SelectionVarchar255(t *testing.T) {
 }
 
 func TestColumnSpecFromField_SkipsVirtualAndRelationOnly(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 
 	virtualField := newFieldWithOptions(t, "DisplayName", `{"type":"varchar","select":"expr"}`)
@@ -92,6 +95,7 @@ func TestColumnSpecFromField_SkipsVirtualAndRelationOnly(t *testing.T) {
 }
 
 func TestColumnSpecFromField_TranslateJSONMap(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Language", ModelTable: "base_language"}
 	trueVal := true
 	trigram := "trigram"
@@ -143,6 +147,7 @@ func TestColumnSpecFromField_TranslateJSONMap(t *testing.T) {
 }
 
 func TestColumnSpecFromField_CompanyDependent(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 
 	selectionField := newFieldWithOptions(t, "CompanyStatus", `{"type":"selection","companyDependent":true}`)
@@ -171,6 +176,7 @@ func TestColumnSpecFromField_CompanyDependent(t *testing.T) {
 }
 
 func TestColumnSpecFromField_BinarySkipVsDocumentCarrier(t *testing.T) {
+	t.Parallel()
 	binaryField := newFieldWithOptions(t, "Payload", `{"type":"binary"}`)
 
 	ownerModel := &meta.Model{Name: "User", Application: "auth", ModelTable: "auth_user"}
@@ -196,6 +202,7 @@ func TestColumnSpecFromField_BinarySkipVsDocumentCarrier(t *testing.T) {
 }
 
 func TestColumnSpecFromField_ManyToOneDefaults(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 
 	manyToOneField := newFieldWithOptions(t, "OwnerId", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)
@@ -237,6 +244,7 @@ func TestColumnSpecFromField_ManyToOneDefaults(t *testing.T) {
 }
 
 func TestColumnSpecFromField_DecimalIgnoresPrecision(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 	field := &meta.Field{Name: "Amount"}
 	spec := &meta.FieldResolvedSpec{
@@ -281,6 +289,7 @@ func TestColumnSpecFromField_DecimalIgnoresPrecision(t *testing.T) {
 }
 
 func TestColumnSpecFromField_CheckConstraint(t *testing.T) {
+	t.Parallel()
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order"}
 	field := newFieldWithOptions(t, "Status", `{"type":"selection","column":{"checkConstraint":"status in ('draft','done')"}}`)
 	col, err := columnSpecFromField(field, model)
@@ -293,6 +302,7 @@ func TestColumnSpecFromField_CheckConstraint(t *testing.T) {
 }
 
 func TestBuildDesired_FiltersModels(t *testing.T) {
+	t.Parallel()
 	disabledAutoMigrate := false
 	models := []*meta.Model{
 		{

@@ -17,6 +17,7 @@ import (
 )
 
 func TestPickTranslationTermOwnerModule_EmptyEntryAllowed(t *testing.T) {
+	t.Parallel()
 	mods := []*meta.Module{
 		nil,
 		{Name: "web", Path: "/virtual/modules/web", ApplicationStr: "web", ServiceEntryPoint: ""},
@@ -40,6 +41,7 @@ func TestPickTranslationTermOwnerModule_EmptyEntryAllowed(t *testing.T) {
 }
 
 func TestAppendTranslationTermOwnersFromInstalled_EmptyEntryApp(t *testing.T) {
+	t.Parallel()
 	existing := []*meta.Module{
 		nil,
 		{Name: "auth", Path: "/m/auth", ApplicationStr: "auth", ServiceEntryPoint: "service/index.ts"},
@@ -73,6 +75,7 @@ func TestAppendTranslationTermOwnersFromInstalled_EmptyEntryApp(t *testing.T) {
 }
 
 func TestPickBackendBundleRepresentative_FallsBackToTranslationTermOwner(t *testing.T) {
+	t.Parallel()
 	if got := pickBackendBundleRepresentative(nil, nil, nil); got != nil {
 		t.Fatalf("expected nil, got %#v", got)
 	}
@@ -110,6 +113,7 @@ func (s *stubBundlerToDir) BundleToDirCtx(_ context.Context, distAppDir string) 
 }
 
 func TestWriteBackendBundleToDir(t *testing.T) {
+	t.Parallel()
 	if err := writeBackendBundleToDir(context.Background(), struct{}{}, t.TempDir()); err == nil ||
 		!strings.Contains(err.Error(), "does not support BundleToDirCtx") {
 		t.Fatalf("expected BundlerToDir !ok error, got %v", err)
@@ -132,6 +136,7 @@ func TestWriteBackendBundleToDir(t *testing.T) {
 }
 
 func TestBuildBackendBundlesToDir_NoRepresentativeReturnsNil(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
@@ -183,6 +188,7 @@ func TestBuildBackendBundlesToDir_SuccessfulWrite(t *testing.T) {
 }
 
 func TestBuildBackendBundlesToDir_EmptyEntryOnlyStillInjectsTranslationTerm(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {

@@ -48,6 +48,7 @@ func (s *stubMigrationRunner) RunPhase(ctx context.Context, opts scripts.RunOpti
 }
 
 func TestReuseExecutorScriptsEnabled(t *testing.T) {
+	t.Parallel()
 	if reuseExecutorScriptsEnabled(nil) {
 		t.Fatal("nil manager")
 	}
@@ -74,6 +75,7 @@ func (n *nopScriptExecutor) SetJsScripts(scripts []*jsengine.JsScript) {
 func (n *nopScriptExecutor) Reload(scripts ...*jsengine.JsScript) error { return nil }
 
 func TestRunUpgradePrepareMigrationScripts(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	upgrader := &moduleUpgrader{
 		runtimeScope: &testLogScope{
@@ -131,6 +133,7 @@ func TestRunUpgradePrepareMigrationScripts(t *testing.T) {
 }
 
 func TestRunUpgradeFinalizeMigrationScripts(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	upgrader := &moduleUpgrader{
 		runtimeScope: &testLogScope{
@@ -396,6 +399,7 @@ func TestRunUninstallHookPhaseErrors(t *testing.T) {
 }
 
 func TestModuleManagerJSExecutorAndNameOrEmpty(t *testing.T) {
+	t.Parallel()
 	if moduleManagerJSExecutor(nil) != nil {
 		t.Fatal("nil manager")
 	}
@@ -408,6 +412,7 @@ func TestModuleManagerJSExecutorAndNameOrEmpty(t *testing.T) {
 }
 
 func TestNewMigrationScriptRunner_ReturnsUntypedNil(t *testing.T) {
+	t.Parallel()
 	// NewRunner returns nil when module is nil; factory must not box that as typed-nil.
 	rtScope := &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))}
 	got := newMigrationScriptRunner(rtScope, &nopScriptExecutor{}, nil)

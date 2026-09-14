@@ -16,6 +16,7 @@ import (
 )
 
 func TestMigrateSchema_JoinTableEndToEnd(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	user := &meta.Model{Application: "auth", Name: "User", ModelTable: "auth_user", Fields: []*meta.Field{
 		newFieldWithOptions(t, "Id", `{"type":"char","size":20}`),
@@ -52,6 +53,7 @@ func TestMigrateSchema_JoinTableEndToEnd(t *testing.T) {
 }
 
 func TestDesired_JoinTableSpec(t *testing.T) {
+	t.Parallel()
 	user := &meta.Model{
 		Application: "auth",
 		Name:        "User",
@@ -134,6 +136,7 @@ func TestDesired_JoinTableSpec(t *testing.T) {
 }
 
 func TestPlan_CreateJoinTableNoOp(t *testing.T) {
+	t.Parallel()
 	cols := []ColumnSpec{
 		{Name: "user_id", FieldName: "UserId", PhysicalType: "varchar"},
 		{Name: "role_id", FieldName: "RoleId", PhysicalType: "varchar"},
@@ -346,6 +349,7 @@ func TestApply_CreateJoinTable(t *testing.T) {
 }
 
 func TestLeftover_ChoysumOwnedAndIntentFilter(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 
@@ -549,6 +553,7 @@ func TestEnsureTaskJobExecution_Path1(t *testing.T) {
 }
 
 func TestSaveSnapshots_MissingTable(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.Migrator().DropTable(&modmeta.SchemaSnapshot{}); err != nil {

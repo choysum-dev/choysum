@@ -18,6 +18,7 @@ import (
 )
 
 func TestTranslatedTrigramIndexName(t *testing.T) {
+	t.Parallel()
 	got := translatedTrigramIndexName("base_language", "name")
 	if got != "idx_base_language_name_trgm" {
 		t.Fatalf("unexpected index name: %s", got)
@@ -25,6 +26,7 @@ func TestTranslatedTrigramIndexName(t *testing.T) {
 }
 
 func TestCreateTranslatedTrigramIndexSQL(t *testing.T) {
+	t.Parallel()
 	sql := createTranslatedTrigramIndexSQL("base_language", "name", "idx_base_language_name_trgm")
 	if !strings.Contains(sql, "jsonb_path_query_array") {
 		t.Fatalf("expected jsonb_path_query_array in DDL, got %s", sql)
@@ -38,6 +40,7 @@ func TestCreateTranslatedTrigramIndexSQL(t *testing.T) {
 }
 
 func TestHasTrigramOnSQLiteIsFalse(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:trigram_probe?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -48,6 +51,7 @@ func TestHasTrigramOnSQLiteIsFalse(t *testing.T) {
 }
 
 func TestEnsureTranslatedTrigramIndexSkipsWithoutExtension(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:trigram_ensure?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -64,6 +68,7 @@ func TestEnsureTranslatedTrigramIndexSkipsWithoutExtension(t *testing.T) {
 }
 
 func TestIsTranslatedTrigramField(t *testing.T) {
+	t.Parallel()
 	trueVal := true
 	trigram := "trigram"
 	btree := "idx_name"
@@ -110,6 +115,7 @@ func TestIsTranslatedTrigramField(t *testing.T) {
 }
 
 func TestEnsureTranslatedTrigramIndexGuards(t *testing.T) {
+	t.Parallel()
 	if err := ensureTranslatedTrigramIndex(nil, "base_language", "Name"); err != nil {
 		t.Fatalf("nil db: %v", err)
 	}
@@ -129,6 +135,7 @@ func TestEnsureTranslatedTrigramIndexGuards(t *testing.T) {
 }
 
 func TestApplyTableTranslatedTrigramIndexesSkipsNonPostgres(t *testing.T) {
+	t.Parallel()
 	db, err := gorm.Open(sqlite.Open("file:trigram_apply?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -184,6 +191,7 @@ func openPostgresNamedSQLite(t *testing.T, dsn string) *gorm.DB {
 }
 
 func TestHasTrigramPostgresProbePaths(t *testing.T) {
+	t.Parallel()
 	db := openPostgresNamedSQLite(t, "file:trigram_pg_probe?mode=memory&cache=shared")
 	if hasTrigram(db) {
 		t.Fatal("postgres-named sqlite without pg_extension must be false")
@@ -222,6 +230,7 @@ func TestHasTrigramPostgresProbePaths(t *testing.T) {
 }
 
 func TestEnsureTranslatedTrigramIndexWithExtension(t *testing.T) {
+	t.Parallel()
 	db := openPostgresNamedSQLite(t, "file:trigram_pg_ensure?mode=memory&cache=shared")
 	if err := db.Exec(`CREATE TABLE base_language (id text primary key, name text)`).Error; err != nil {
 		t.Fatalf("create table: %v", err)
@@ -260,6 +269,7 @@ func TestEnsureTranslatedTrigramIndexWithExtension(t *testing.T) {
 }
 
 func TestApplyTableTranslatedTrigramIndexesPostgresPath(t *testing.T) {
+	t.Parallel()
 	db := openPostgresNamedSQLite(t, "file:trigram_pg_apply?mode=memory&cache=shared")
 	if err := db.Exec(`CREATE TABLE base_language (id text primary key, name text)`).Error; err != nil {
 		t.Fatalf("create table: %v", err)
@@ -326,6 +336,7 @@ func TestApplyTableTranslatedTrigramIndexesPostgresPath(t *testing.T) {
 }
 
 func TestIsTranslatedTrigramFieldCorruptSpec(t *testing.T) {
+	t.Parallel()
 	field := &meta.Field{Name: "Name", ResolvedSpec: "not-json"}
 	if isTranslatedTrigramField(field) {
 		t.Fatal("corrupt ResolvedSpec must not be treated as trigram field")
@@ -333,6 +344,7 @@ func TestIsTranslatedTrigramFieldCorruptSpec(t *testing.T) {
 }
 
 func TestApplyTableTranslatedTrigramIndexesSkipsWithoutPgTrgm(t *testing.T) {
+	t.Parallel()
 	db := openPostgresNamedSQLite(t, "file:trigram_pg_skip_ext?mode=memory&cache=shared")
 	if err := db.Exec(`CREATE TABLE base_language (id text primary key, name text)`).Error; err != nil {
 		t.Fatalf("create table: %v", err)
@@ -365,6 +377,7 @@ func TestApplyTableTranslatedTrigramIndexesSkipsWithoutPgTrgm(t *testing.T) {
 }
 
 func TestMigrateSchemaWrapsTranslatedTrigramIndexError(t *testing.T) {
+	t.Parallel()
 	db := openPostgresNamedSQLite(t, "file:trigram_migrate_wrap?mode=memory&cache=shared")
 	if err := db.Exec(`CREATE TABLE pg_extension (extname text)`).Error; err != nil {
 		t.Fatalf("create pg_extension: %v", err)

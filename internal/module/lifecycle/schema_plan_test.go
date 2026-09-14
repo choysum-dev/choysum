@@ -15,6 +15,7 @@ import (
 )
 
 func TestSchemaPlan_ReadOnlyModuleLookup(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("auto migrate module: %v", err)
@@ -132,6 +133,7 @@ func TestSchemaPlan_ReadOnlyModuleLookup(t *testing.T) {
 }
 
 func TestService_SchemaPlanDelegates(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("auto migrate module: %v", err)

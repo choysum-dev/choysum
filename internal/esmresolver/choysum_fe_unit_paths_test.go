@@ -12,6 +12,7 @@ import (
 )
 
 func TestApplyChoysumFEUnitTsconfigPaths(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	modulesDir := filepath.Join(root, "modules")
 	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
@@ -58,6 +59,7 @@ func TestApplyChoysumFEUnitTsconfigPaths(t *testing.T) {
 }
 
 func TestUpdateTsconfigPaths_WritesChoysumFEUnitPaths(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	modulesDir := filepath.Join(root, "modules")
 	tsconfigPath := filepath.Join(modulesDir, "tsconfig.json")

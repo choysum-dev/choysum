@@ -16,6 +16,7 @@ import (
 )
 
 func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}); err != nil {
 		t.Fatalf("auto migrate base tables: %v", err)
@@ -30,6 +31,7 @@ func TestBootstrapMetaTablesSkipsWhenBaseTablesExist(t *testing.T) {
 }
 
 func TestBootstrapMetaTablesEnsuresUniqueIndexWhenModelExists(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
 		t.Fatalf("auto migrate base tables: %v", err)
@@ -47,6 +49,7 @@ func TestBootstrapMetaTablesEnsuresUniqueIndexWhenModelExists(t *testing.T) {
 }
 
 func TestBootstrapMetaTablesEnsureUniqueIndexErrorWhenModelExists(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}, &meta.Model{}); err != nil {
 		t.Fatalf("auto migrate base tables: %v", err)
@@ -62,6 +65,7 @@ func TestBootstrapMetaTablesEnsureUniqueIndexErrorWhenModelExists(t *testing.T) 
 }
 
 func TestBootstrapMetaTablesFullPathEnsuresUniqueIndex(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
@@ -75,6 +79,7 @@ func TestBootstrapMetaTablesFullPathEnsuresUniqueIndex(t *testing.T) {
 }
 
 func TestBootstrapMetaTablesFullPathEnsureUniqueIndexError(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
@@ -88,6 +93,7 @@ func TestBootstrapMetaTablesFullPathEnsureUniqueIndexError(t *testing.T) {
 }
 
 func TestModuleManagerMigrateBaseModuleEnsureUniqueIndexError(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
@@ -126,6 +132,7 @@ func seedDuplicateLiveModelsForTest(t *testing.T, db *gorm.DB) {
 }
 
 func TestModuleManagerListInstalledApps(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
@@ -161,6 +168,7 @@ func TestModuleManagerListInstalledApps(t *testing.T) {
 }
 
 func TestModuleManagerListInstalledAppsQueryError(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)
@@ -179,6 +187,7 @@ func TestModuleManagerListInstalledAppsQueryError(t *testing.T) {
 }
 
 func TestModuleOpCtxBinderDelegatesToCtxMethods(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate meta entities: %v", err)

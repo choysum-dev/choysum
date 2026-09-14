@@ -11,6 +11,7 @@ import (
 )
 
 func TestTaskJobExecutionHelpers(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	if err := ensureTaskJobExecutionTable(&schemaTestScope{}); err != nil {
 		t.Fatalf("ensureTaskJobExecutionTable(nil session) error = %v", err)

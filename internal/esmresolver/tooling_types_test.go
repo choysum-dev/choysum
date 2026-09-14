@@ -6,6 +6,7 @@ package esmresolver
 import "testing"
 
 func TestIDEToolingTypePackages(t *testing.T) {
+	t.Parallel()
 	pkgs := IDEToolingTypePackages()
 	seen := map[string]bool{}
 	for _, pkg := range pkgs {

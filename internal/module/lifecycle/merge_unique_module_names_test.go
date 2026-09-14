@@ -10,6 +10,7 @@ import (
 )
 
 func TestMergeUniqueModuleNames(t *testing.T) {
+	t.Parallel()
 	got := mergeUniqueModuleNames(
 		[]string{"", " web ", "auth"},
 		nil,
@@ -31,6 +32,7 @@ func TestMergeUniqueModuleNames(t *testing.T) {
 }
 
 func TestModuleOperationPlanInfoAttrsIncludesEnsure(t *testing.T) {
+	t.Parallel()
 	attrs := attrsToMap(t, moduleOperationPlanInfoAttrs(moduleplan.Plan{
 		ModuleOrder:         []string{"partner"},
 		EnsureOrder:         []string{"auth", "web"},

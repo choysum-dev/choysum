@@ -28,6 +28,7 @@ func (d fakeDialector) QuoteTo(clause.Writer, string)                         {}
 func (d fakeDialector) Explain(sql string, vars ...interface{}) string        { return sql }
 
 func TestModelMigratorRuntimePaths(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	disabledAutoMigrate := false
 	active := &meta.Model{
@@ -60,6 +61,7 @@ func TestModelMigratorRuntimePaths(t *testing.T) {
 }
 
 func TestModelMigratorErrorPaths(t *testing.T) {
+	t.Parallel()
 	t.Run("field metadata errors bubble up", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
 		broken := &meta.Model{
@@ -126,6 +128,7 @@ func TestModelMigratorErrorPaths(t *testing.T) {
 }
 
 func TestGetDialect(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name      string
 		dialector string
@@ -149,6 +152,7 @@ func TestGetDialect(t *testing.T) {
 }
 
 func TestColumnSpecFromFieldEdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("nil field and missing resolved spec", func(t *testing.T) {
 		if col, err := columnSpecFromField(nil, nil); err != nil || col != nil {
 			t.Fatalf("nil field = (%v, %v)", col, err)
@@ -201,6 +205,7 @@ func TestColumnSpecFromFieldEdgeCases(t *testing.T) {
 }
 
 func TestMigrateSchema_EnsureTaskJobExecutionTableFailure(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db, _ := runtimeScope.Session().DB.DB()
 	if err := db.Close(); err != nil {

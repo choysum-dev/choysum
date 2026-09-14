@@ -15,6 +15,7 @@ import (
 )
 
 func TestForeignKeySQLBuilders(t *testing.T) {
+	t.Parallel()
 	fk := ForeignKeyInfo{TableName: "order", ColumnName: "user_id", ReferTableName: "user", ReferColumnName: "id", OnDelete: "CASCADE", OnUpdate: "RESTRICT"}
 
 	pgCreate := (&PostgresForeignKeyBuilder{}).BuildForeignKeySQL(fk)
@@ -37,6 +38,7 @@ func TestForeignKeySQLBuilders(t *testing.T) {
 }
 
 func TestForeignKeyDiscoveryAndConstructors(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	migrateSchemaMetaTables(t, runtimeScope.Session())
 	module := &meta.Module{}
@@ -74,6 +76,7 @@ func TestForeignKeyDiscoveryAndConstructors(t *testing.T) {
 }
 
 func TestForeignKeyMigratorRuntimePaths(t *testing.T) {
+	t.Parallel()
 	t.Run("resolves target model from database and migrates sqlite no-op", func(t *testing.T) {
 		runtimeScope := newSchemaTestScope(t)
 		migrateSchemaMetaTables(t, runtimeScope.Session())

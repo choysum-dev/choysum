@@ -75,6 +75,7 @@ func attrsToMap(t *testing.T, attrs []any) map[string]any {
 }
 
 func TestModuleOperationPlanInfoAttrsIncludesSmallNameLists(t *testing.T) {
+	t.Parallel()
 	attrs := attrsToMap(t, moduleOperationPlanInfoAttrs(moduleplan.Plan{
 		ModuleOrder:         []string{"core"},
 		AffectedApps:        []string{"auth", "base", "task"},
@@ -101,6 +102,7 @@ func TestModuleOperationPlanInfoAttrsIncludesSmallNameLists(t *testing.T) {
 }
 
 func TestModuleOperationPlanInfoAttrsOmitsLargeOrAmbiguousNameLists(t *testing.T) {
+	t.Parallel()
 	attrs := attrsToMap(t, moduleOperationPlanInfoAttrs(moduleplan.Plan{
 		ModuleOrder:  []string{"m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"},
 		AffectedApps: []string{"auth", "", "auth"},
@@ -121,6 +123,7 @@ func TestModuleOperationPlanInfoAttrsOmitsLargeOrAmbiguousNameLists(t *testing.T
 }
 
 func TestModuleOperationCompletedInfoAttrsIncludesSmallNameLists(t *testing.T) {
+	t.Parallel()
 	attrs := attrsToMap(t, moduleOperationCompletedInfoAttrs(moduleplan.Plan{
 		ModuleOrder:  []string{"core"},
 		AffectedApps: []string{"auth", "base", "task"},
@@ -146,6 +149,7 @@ func TestModuleOperationCompletedInfoAttrsIncludesSmallNameLists(t *testing.T) {
 }
 
 func TestModuleOperationCompletedInfoAttrsOmitsLargeOrAmbiguousNameLists(t *testing.T) {
+	t.Parallel()
 	attrs := attrsToMap(t, moduleOperationCompletedInfoAttrs(moduleplan.Plan{
 		ModuleOrder:  []string{"m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"},
 		AffectedApps: []string{"auth", "", "auth"},
@@ -169,6 +173,7 @@ func TestModuleOperationCompletedInfoAttrsOmitsLargeOrAmbiguousNameLists(t *test
 }
 
 func TestModuleOperationStepInfoAttrsIncludesStepDurationAndVersions(t *testing.T) {
+	t.Parallel()
 	attrs := attrsToMap(t, moduleOperationStepInfoAttrs(" build ", 24591*time.Millisecond, "from_version", "v0.1.0", "to_version", "v0.2.0"))
 
 	if got := attrs["duration_ms"]; got != int64(24591) {
@@ -186,6 +191,7 @@ func TestModuleOperationStepInfoAttrsIncludesStepDurationAndVersions(t *testing.
 }
 
 func TestModuleOperationStepInfoAttrsOmitsBlankStep(t *testing.T) {
+	t.Parallel()
 	attrs := attrsToMap(t, moduleOperationStepInfoAttrs("   ", 2*time.Second))
 
 	if got := attrs["duration_ms"]; got != int64(2000) {
@@ -197,6 +203,7 @@ func TestModuleOperationStepInfoAttrsOmitsBlankStep(t *testing.T) {
 }
 
 func TestModuleOperationStepMessageByOperation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		op   moduleplan.OpType
@@ -217,6 +224,7 @@ func TestModuleOperationStepMessageByOperation(t *testing.T) {
 }
 
 func TestModuleUpgraderLogUpgradeStepIncludesOperationContext(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	testScope := &testLogScope{
 		ctx:    staging.WithOpID(context.Background(), "op-test-123"),
@@ -244,6 +252,7 @@ func TestModuleUpgraderLogUpgradeStepIncludesOperationContext(t *testing.T) {
 }
 
 func TestModuleUpgraderLogUpgradeStepPrefersOperationContextOpID(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	testScope := &testLogScope{
 		ctx:    context.Background(),
@@ -263,6 +272,7 @@ func TestModuleUpgraderLogUpgradeStepPrefersOperationContextOpID(t *testing.T) {
 }
 
 func TestLogModuleOperationStepUsesInstallAndUninstallMessages(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		op      moduleplan.OpType
@@ -301,6 +311,7 @@ func TestLogModuleOperationStepUsesInstallAndUninstallMessages(t *testing.T) {
 }
 
 func TestLogModuleOperationStep_HookSubstepAttrs(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	testScope := &testLogScope{
 		ctx:    context.Background(),
@@ -345,6 +356,7 @@ func TestLogModuleOperationStep_HookSubstepAttrs(t *testing.T) {
 }
 
 func TestModuleStepHookAndScriptsNames(t *testing.T) {
+	t.Parallel()
 	if got := moduleStepHook(hooks.PhasePreInit); got != "hook.pre_init" {
 		t.Fatalf("hook=%q", got)
 	}
@@ -354,6 +366,7 @@ func TestModuleStepHookAndScriptsNames(t *testing.T) {
 }
 
 func TestSyncModuleIndexAfterInstall_MetaIncludedTriggersSyncErrorIgnored(t *testing.T) {
+	t.Parallel()
 	called := false
 	m := &ModuleManager{
 		runtimeScope: &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))},
@@ -372,6 +385,7 @@ func TestSyncModuleIndexAfterInstall_MetaIncludedTriggersSyncErrorIgnored(t *tes
 }
 
 func TestSyncModuleIndexAfterInstall_MetaNotIncludedSkipsSync(t *testing.T) {
+	t.Parallel()
 	called := false
 	m := &ModuleManager{
 		runtimeScope: &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))},
@@ -390,6 +404,7 @@ func TestSyncModuleIndexAfterInstall_MetaNotIncludedSkipsSync(t *testing.T) {
 }
 
 func TestSyncModuleIndexAfterInstall_UsesDefaultSyncFunctionWhenNil(t *testing.T) {
+	t.Parallel()
 	m := &ModuleManager{
 		runtimeScope: &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))},
 		lockerFactory: func(scope.Scope) statepkg.Locker {
@@ -403,6 +418,7 @@ func TestSyncModuleIndexAfterInstall_UsesDefaultSyncFunctionWhenNil(t *testing.T
 }
 
 func TestContainsModuleName_CaseInsensitiveAndTrimmed(t *testing.T) {
+	t.Parallel()
 	if !containsModuleName([]string{" core ", " Meta "}, "meta") {
 		t.Fatal("expected containsModuleName() to match case-insensitive trimmed target")
 	}
@@ -454,6 +470,7 @@ func newDebugTestLogScope(buf *bytes.Buffer) *testLogScope {
 }
 
 func TestReleaseLeaseWithContextFallback_NilLockerNoop(t *testing.T) {
+	t.Parallel()
 	releaseLeaseWithContextFallback(newDebugTestLogScope(&bytes.Buffer{}), nil, context.Background(), "lease-resource", "owner-1", "module manager")
 }
 
@@ -574,6 +591,7 @@ func (s *dialectNilDialectorScope) Session() *scope.Session {
 }
 
 func TestRunWithLeaseRenewPaused(t *testing.T) {
+	t.Parallel()
 	if err := runWithLeaseRenewPaused(nil, nil); err != nil {
 		t.Fatalf("nil manager nil fn: %v", err)
 	}
@@ -610,6 +628,7 @@ func (l *renewCountLocker) Renew(context.Context, string, string, time.Duration)
 func (l *renewCountLocker) Release(context.Context, string, string) error { return nil }
 
 func TestRenewLeaseOnTick(t *testing.T) {
+	t.Parallel()
 	(*ModuleManager)(nil).renewLeaseOnTick(nil, context.Background(), "r", "o", time.Second)
 	m := &ModuleManager{runtimeScope: newDebugTestLogScope(&bytes.Buffer{})}
 	m.renewLeaseOnTick(nil, context.Background(), "r", "o", time.Second)
@@ -696,6 +715,7 @@ func TestModuleManagerLeaseRenewInterval(t *testing.T) {
 }
 
 func TestReleaseLeaseWithContextFallback_PrimarySuccessNoFallback(t *testing.T) {
+	t.Parallel()
 	locker := &releaseSequenceLocker{releaseErrs: []error{nil}}
 	releaseLeaseWithContextFallback(newDebugTestLogScope(&bytes.Buffer{}), locker, context.Background(), "lease-resource", "owner-1", "module manager")
 
@@ -708,6 +728,7 @@ func TestReleaseLeaseWithContextFallback_PrimarySuccessNoFallback(t *testing.T) 
 }
 
 func TestReleaseLeaseWithContextFallback_PrimaryNotOwnerSkipsFallback(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	locker := &releaseSequenceLocker{releaseErrs: []error{statepkg.ErrLeaseNotOwner}}
 	releaseLeaseWithContextFallback(newDebugTestLogScope(&logBuf), locker, context.Background(), "lease-resource", "owner-1", "module manager")
@@ -729,6 +750,7 @@ func TestReleaseLeaseWithContextFallback_PrimaryNotOwnerSkipsFallback(t *testing
 }
 
 func TestReleaseLeaseWithContextFallback_CanceledOperationContextSkipsPrimary(t *testing.T) {
+	t.Parallel()
 	opCtx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -744,6 +766,7 @@ func TestReleaseLeaseWithContextFallback_CanceledOperationContextSkipsPrimary(t 
 }
 
 func TestReleaseLeaseWithContextFallback_PrimaryErrorFallsBackAndWarns(t *testing.T) {
+	t.Parallel()
 	var logBuf bytes.Buffer
 	locker := &releaseSequenceLocker{releaseErrs: []error{errors.New("primary release failed"), errors.New("background release failed")}}
 	releaseLeaseWithContextFallback(newDebugTestLogScope(&logBuf), locker, context.Background(), "lease-resource", "owner-1", "module manager")
@@ -774,6 +797,7 @@ func TestReleaseLeaseWithContextFallback_PrimaryErrorFallsBackAndWarns(t *testin
 }
 
 func TestReleaseLeaseWithContextFallback_FallbackExpectedErrorsSkipWarn(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		fallbackErr error
@@ -804,6 +828,7 @@ func TestReleaseLeaseWithContextFallback_FallbackExpectedErrorsSkipWarn(t *testi
 }
 
 func TestHandleUpgradeEnsureProgress(t *testing.T) {
+	t.Parallel()
 	stages := make(map[string]string)
 	setSpinnerStage := func(stage, message string) {
 		stages[stage] = message
@@ -915,6 +940,7 @@ func TestHandleUpgradeEnsureProgress(t *testing.T) {
 }
 
 func TestHandlePipelineSharedProgress(t *testing.T) {
+	t.Parallel()
 	stages := make(map[string]string)
 	setSpinnerStage := func(stage, message string) {
 		stages[stage] = message

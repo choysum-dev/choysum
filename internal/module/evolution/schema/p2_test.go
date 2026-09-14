@@ -11,6 +11,7 @@ import (
 )
 
 func TestIntentBag_AddListClear(t *testing.T) {
+	t.Parallel()
 	bag := NewMemoryIntentBag()
 	bag.Add(
 		Intent{Kind: IntentDropColumn, Table: "t", Name: "old_code"},
@@ -35,6 +36,7 @@ func TestIntentBag_AddListClear(t *testing.T) {
 }
 
 func TestValidate_ManualDropSatisfiedByIntent(t *testing.T) {
+	t.Parallel()
 	bag := NewMemoryIntentBag()
 	bag.Add(Intent{Kind: IntentDropColumn, Table: "sales_order", Name: "old_code"})
 	plan := SchemaPlan{Ops: []PlanOp{{
@@ -53,6 +55,7 @@ func TestValidate_ManualDropSatisfiedByIntent(t *testing.T) {
 }
 
 func TestPlan_RenameFromAuto(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", Size: intPtrValue(32)}},
 	}}
@@ -78,6 +81,7 @@ func TestPlan_RenameFromAuto(t *testing.T) {
 }
 
 func TestPlan_RenameFollowedByAttributeDiff(t *testing.T) {
+	t.Parallel()
 	nullable := true
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code", NotNull: true, Size: intPtrValue(64)}},
@@ -107,6 +111,7 @@ func TestPlan_RenameFollowedByAttributeDiff(t *testing.T) {
 }
 
 func TestPlan_RenameTypeMismatchGuarded(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "integer", RenameFrom: "old_code"}},
 	}}
@@ -124,6 +129,7 @@ func TestPlan_RenameTypeMismatchGuarded(t *testing.T) {
 }
 
 func TestPlan_RenameMissingOldErrors(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code"}},
 	}}
@@ -138,6 +144,7 @@ func TestPlan_RenameMissingOldErrors(t *testing.T) {
 }
 
 func TestPlan_RenameAlreadyDoneNoOp(t *testing.T) {
+	t.Parallel()
 	desired := DesiredSchema{Tables: map[string][]ColumnSpec{
 		"t": {{Name: "code", FieldName: "Code", PhysicalType: "varchar", RenameFrom: "old_code"}},
 	}}
@@ -157,6 +164,7 @@ func TestPlan_RenameAlreadyDoneNoOp(t *testing.T) {
 }
 
 func TestApply_RenamePreservesData(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.Exec(`CREATE TABLE rename_data (old_code text)`).Error; err != nil {
@@ -183,6 +191,7 @@ func TestApply_RenamePreservesData(t *testing.T) {
 }
 
 func TestHelper_DropColumnSqlite(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.Exec(`CREATE TABLE drop_me (id integer, old_code text)`).Error; err != nil {
@@ -202,6 +211,7 @@ func TestHelper_DropColumnSqlite(t *testing.T) {
 }
 
 func TestHelper_RejectsNonChoysumName(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newSchemaTestScope(t)
 	db := runtimeScope.Session().DB
 	if err := db.Exec(`CREATE TABLE idx_tbl (code text)`).Error; err != nil {
@@ -217,6 +227,7 @@ func TestHelper_RejectsNonChoysumName(t *testing.T) {
 }
 
 func TestDesired_RenameFromDropAfter(t *testing.T) {
+	t.Parallel()
 	field := newFieldWithOptions(t, "Code", `{"type":"varchar","size":32,"renameFrom":"OldCode","dropAfter":"2.0.0"}`)
 	model := &meta.Model{Name: "Order", ModelTable: "sales_order", Fields: []*meta.Field{field}}
 	col, err := columnSpecFromField(field, model)
@@ -229,6 +240,7 @@ func TestDesired_RenameFromDropAfter(t *testing.T) {
 }
 
 func TestIntentBagFromContext(t *testing.T) {
+	t.Parallel()
 	if IntentBagFromContext(nil) != nil {
 		t.Fatal("nil ctx")
 	}

@@ -11,6 +11,7 @@ import (
 )
 
 func TestDisableLegacyModuleIndexDailyScheduleDeletesLegacyEntry(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&internaltask.Schedule{}); err != nil {
 		t.Fatalf("auto migrate task schedule: %v", err)
@@ -64,6 +65,7 @@ func TestDisableLegacyModuleIndexDailyScheduleDeletesLegacyEntry(t *testing.T) {
 }
 
 func TestDisableLegacyModuleIndexDailyScheduleDeletesTranslatedEntry(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&internaltask.Schedule{}); err != nil {
 		t.Fatalf("auto migrate task schedule: %v", err)
@@ -98,6 +100,7 @@ func TestDisableLegacyModuleIndexDailyScheduleDeletesTranslatedEntry(t *testing.
 }
 
 func TestDisableLegacyModuleIndexDailyScheduleNoTableNoop(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 

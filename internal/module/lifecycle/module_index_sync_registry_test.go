@@ -24,6 +24,7 @@ func (f catalogRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, erro
 }
 
 func TestFetchCatalogIndexUsesDefaultURLWhenEmpty(t *testing.T) {
+	t.Parallel()
 	requestedURL := ""
 	testClient := &http.Client{
 		Transport: catalogRoundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -50,6 +51,7 @@ func TestFetchCatalogIndexUsesDefaultURLWhenEmpty(t *testing.T) {
 }
 
 func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 
@@ -123,6 +125,7 @@ func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testin
 }
 
 func TestSyncRegistryModuleIndexFallsBackToRowUpsertsAfterBatchFailure(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 
@@ -160,6 +163,7 @@ END`).Error; err != nil {
 }
 
 func TestSyncRegistryModuleIndexReconcilesOrphanWithoutID(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 
@@ -196,6 +200,7 @@ VALUES ('orphan', 'registry', '@legacy/orphan', 1, datetime('now'), datetime('no
 }
 
 func TestSyncRegistryModuleIndexWarnsWhenBatchSyncTimestampUpdateFails(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 

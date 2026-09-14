@@ -10,6 +10,7 @@ import (
 )
 
 func TestScopeSchemaIntents_RestoresOuterBag(t *testing.T) {
+	t.Parallel()
 	ctx := newOpContext()
 	outer := ctx.schemaIntents
 	outer.Add(schema.Intent{Kind: schema.IntentDropColumn, Table: "t", Name: "c"})

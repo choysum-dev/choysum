@@ -9,6 +9,7 @@ import (
 )
 
 func TestOperationOptionsContextAndPlanBuildOptions(t *testing.T) {
+	t.Parallel()
 	// Intentionally pass nil: production helpers must treat a missing Context as empty options.
 	if got := OperationOptionsFromContext(nil); got.WithDemo || got.SkipWebShell {
 		t.Fatalf("nil ctx options = %#v", got)

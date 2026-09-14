@@ -19,6 +19,7 @@ import (
 )
 
 func TestEnsureInjectedAppModelsForCodegenEarlyReturns(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
@@ -47,6 +48,7 @@ func TestEnsureInjectedAppModelsForCodegenEarlyReturns(t *testing.T) {
 }
 
 func TestEnsureInjectedAppModelsForCodegenCountPaths(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
@@ -178,6 +180,7 @@ func TestGenerateAppToDirsPropagatesEnsureInjectedError(t *testing.T) {
 }
 
 func TestBuildBackendAppToDir_EnsureOnlyStubAndInjectError(t *testing.T) {
+	t.Parallel()
 	modulesPath := t.TempDir()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {

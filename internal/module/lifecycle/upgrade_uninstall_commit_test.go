@@ -47,6 +47,7 @@ func newLifecycleCommitTestScope(t *testing.T) scope.Scope {
 }
 
 func TestModuleUpgraderCommitRollsBackOnFailure(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	modulePath := t.TempDir()
 	mod := &meta.Module{
@@ -227,6 +228,7 @@ func TestRunUpgradeCommitTX_WithAndWithoutManager(t *testing.T) {
 }
 
 func TestModuleUninstallerCommitRollsBackOnFailure(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
 		Name:    "demo",

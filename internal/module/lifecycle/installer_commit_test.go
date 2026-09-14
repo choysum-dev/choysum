@@ -36,6 +36,7 @@ func (commitStubBuilder) Build() (*moduleresult.BuildResult, error) {
 }
 
 func TestCommitInstallSoftDeleteRestoreAndSave(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	modulePath := t.TempDir()
 	i18nDir := filepath.Join(modulePath, "i18n")
@@ -97,6 +98,7 @@ msgstr "你好"
 }
 
 func TestRunInstallCommitTX_WithAndWithoutManager(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
 		Name: "commit_tx_demo", Version: "1.0.0", Status: meta.ToInstall,
@@ -142,6 +144,7 @@ func TestRunInstallCommitTX_WithAndWithoutManager(t *testing.T) {
 }
 
 func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
 		Name: "install_path_demo", Version: "1.0.0", Status: meta.ToInstall,
@@ -244,6 +247,7 @@ func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
 }
 
 func TestCommitInstall_NoHooksInsideTX(t *testing.T) {
+	t.Parallel()
 	// Commit TX must not run pre_init: nil js executor used to fail inside commitInstall.
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
@@ -624,6 +628,7 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 }
 
 func TestInstallPreInitHookError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
 		Name: "demo_pre_init_err", Version: "1.0.0", Status: meta.ToInstall,
@@ -649,6 +654,7 @@ func TestInstallPreInitHookError(t *testing.T) {
 }
 
 func TestFinalizeInstallNoopHooks(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	installer := &moduleInstaller{
 		module:        &meta.Module{Name: "demo", Path: t.TempDir()},
@@ -722,6 +728,7 @@ func TestRunInstallHookPhaseBranches(t *testing.T) {
 }
 
 func TestInstallerJSExecutorAndServiceEntryPoint(t *testing.T) {
+	t.Parallel()
 	if installerJSExecutor(nil) != nil {
 		t.Fatal("nil installer")
 	}
@@ -752,6 +759,7 @@ func TestInstallerJSExecutorAndServiceEntryPoint(t *testing.T) {
 }
 
 func TestRunInstallCommitTX_PersistLaterNoDuplicateModule(t *testing.T) {
+	t.Parallel()
 	// BuildWithoutPersist leaves buildResult.Module on the outer installer module.
 	// forCommitScope copies that module for the Required TX; Persist must write the
 	// copy (via bindCommitBuildModule), otherwise the final Save inserts a second row.
@@ -792,6 +800,7 @@ func TestRunInstallCommitTX_PersistLaterNoDuplicateModule(t *testing.T) {
 }
 
 func TestBindCommitBuildModule(t *testing.T) {
+	t.Parallel()
 	bindCommitBuildModule(nil, &meta.Module{})
 	bindCommitBuildModule(&moduleresult.BuildResult{}, nil)
 	mod := &meta.Module{Name: "x"}
@@ -803,6 +812,7 @@ func TestBindCommitBuildModule(t *testing.T) {
 }
 
 func TestCommitInstallNilInstaller(t *testing.T) {
+	t.Parallel()
 	if _, err := (*moduleInstaller)(nil).commitInstall(nil, false); err == nil || !strings.Contains(err.Error(), "install commit installer is nil") {
 		t.Fatalf("nil installer: %v", err)
 	}
@@ -812,6 +822,7 @@ func TestCommitInstallNilInstaller(t *testing.T) {
 }
 
 func TestCommitInstallPersistLaterBranches(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
 		Name:   "demo",
@@ -842,6 +853,7 @@ func TestCommitInstallPersistLaterBranches(t *testing.T) {
 }
 
 func TestCommitInstall_ReturnsBuiltResult(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
 		Name:           "commit_build_result",
@@ -871,6 +883,7 @@ func TestCommitInstall_ReturnsBuiltResult(t *testing.T) {
 }
 
 func TestCommitInstallNewMigratorError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
 		Name:           "demo_mig_err",
@@ -901,6 +914,7 @@ func TestCommitInstallNewMigratorError(t *testing.T) {
 }
 
 func TestCommitUpgradeNewMigratorError(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{
 		Name:           "demo_upgrade_mig_err",
@@ -1028,6 +1042,7 @@ END`).Error; err != nil {
 }
 
 func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&internaltask.Schedule{}, &meta.Module{}); err != nil {
 		t.Fatal(err)
@@ -1087,6 +1102,7 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 }
 
 func TestEnsureDocumentAttachmentGCScheduleDirect(t *testing.T) {
+	t.Parallel()
 	db := newModuleIndexSyncDB(t)
 	if err := db.AutoMigrate(&internaltask.Schedule{}); err != nil {
 		t.Fatal(err)
@@ -1109,6 +1125,7 @@ func TestEnsureDocumentAttachmentGCScheduleDirect(t *testing.T) {
 }
 
 func TestRestoreModuleIfSoftDeletedStandalone(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	mod := &meta.Module{Name: "solo", Status: meta.Uninstalled, Path: t.TempDir()}
 	mod.Id = sql.NullString{String: xid.New().String(), Valid: true}

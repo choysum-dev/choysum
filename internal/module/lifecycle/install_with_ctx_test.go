@@ -11,6 +11,7 @@ import (
 )
 
 func TestInstallWithCtxMarksTouchedOnlyOnRealWork(t *testing.T) {
+	t.Parallel()
 	runtimeScope := newLifecycleCommitTestScope(t)
 	manager := NewModuleManager(runtimeScope, &moduleManagerNoopScriptExecutor{})
 
