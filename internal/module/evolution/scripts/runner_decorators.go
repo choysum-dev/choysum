@@ -118,6 +118,11 @@ func (r *Runner) RunPhase(ctx context.Context, opts RunOptions) error {
 		return nil
 	}
 
+	// PhaseEnd with no declared end migrations: skip without semantic build or executor load.
+	if opts.Phase == PhaseEnd && !moduleSourceDeclaresEndMigration(r.module) {
+		return nil
+	}
+
 	scripts, err := r.resolveScripts(ctx, opts.Phase == PhaseEnd)
 	if err != nil {
 		return err

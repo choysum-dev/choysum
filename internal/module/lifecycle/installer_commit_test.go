@@ -152,7 +152,7 @@ func TestModuleInstallerInstall_RunsCommitPath(t *testing.T) {
 		moduleManager: &ModuleManager{runtimeScope: runtimeScope, jsExecutor: &moduleManagerNoopScriptExecutor{}},
 		ctx:           newOpContext(),
 	}
-	if err := installer.install(); err != nil {
+	if _, err := installer.install(); err != nil {
 		t.Fatalf("install: %v", err)
 	}
 	var got meta.Module

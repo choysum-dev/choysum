@@ -370,6 +370,8 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 func TestRunnerRunPhaseReuseExecutorScriptsAvoidsRedundantReload(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
+	prepareRunnerModuleSource(t, testRuntimeScope, "task", "service/index.ts", "export const migration = {}\n")
 
 	engine := &scriptsSelectiveEngine{execute: func(req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
 		switch req.Service {
@@ -382,13 +384,19 @@ func TestRunnerRunPhaseReuseExecutorScriptsAvoidsRedundantReload(t *testing.T) {
 	baseExecutor := newScriptsTestExecutorWithEngine(t, testRuntimeScope, engine)
 	countingExecutor := &reloadCountingExecutor{inner: baseExecutor}
 
-	runnerBase := NewRunner(testRuntimeScope, countingExecutor, &meta.Module{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
-	if err := runnerBase.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhaseEnd, ReuseExecutorScripts: true}); err != nil {
+	runnerBase := NewRunner(testRuntimeScope, countingExecutor, &meta.Module{
+		Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts",
+		Path: filepath.Join(testRuntimeScope.cfg.ModulesPath, "base"),
+	})
+	if err := runnerBase.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhasePre, ReuseExecutorScripts: true}); err != nil {
 		t.Fatalf("runnerBase RunPhase() error = %v", err)
 	}
 
-	runnerTask := NewRunner(testRuntimeScope, countingExecutor, &meta.Module{Name: "task", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
-	if err := runnerTask.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhaseEnd, ReuseExecutorScripts: true}); err != nil {
+	runnerTask := NewRunner(testRuntimeScope, countingExecutor, &meta.Module{
+		Name: "task", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts",
+		Path: filepath.Join(testRuntimeScope.cfg.ModulesPath, "task"),
+	})
+	if err := runnerTask.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhasePre, ReuseExecutorScripts: true}); err != nil {
 		t.Fatalf("runnerTask RunPhase() error = %v", err)
 	}
 

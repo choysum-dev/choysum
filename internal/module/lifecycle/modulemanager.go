@@ -272,6 +272,57 @@ func (m *ModuleManager) buildGlobalWebToDir(ctx context.Context, distWebDir stri
 	return nil
 }
 
+func forceWebBuildFromEnv() bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv(internalwebmodulebuilder.ForceWebBuildEnv)))
+	switch v {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func (m *ModuleManager) globalWebSkipCallbacks() (
+	shouldSkip func(context.Context, string) (bool, string, error),
+	remember func(context.Context, string, string) error,
+) {
+	shouldSkip = func(ctx context.Context, distWebDir string) (bool, string, error) {
+		select {
+		case <-ctx.Done():
+			return false, "", ctx.Err()
+		default:
+		}
+		runtimeOpts := m.resolvedRuntimeOptions()
+		compileOpts, _ := scope.CompileRuntimeOptionsFromScope(m.runtimeScope)
+		inputs, err := internalwebmodulebuilder.LoadWebInputDigestInputs(
+			m.runtimeScope,
+			runtimeOpts.modulesPath,
+			compileOpts.SourceMap,
+			compileOpts.Minify,
+			compileOpts.TreeShaking,
+			forceWebBuildFromEnv(),
+		)
+		if err != nil {
+			return false, "", err
+		}
+		digest, err := internalwebmodulebuilder.ComputeWebInputDigest(inputs)
+		if err != nil {
+			return false, "", err
+		}
+		skip, err := internalwebmodulebuilder.ShouldSkipGlobalWebBuild(distWebDir, digest)
+		return skip, digest, err
+	}
+	remember = func(ctx context.Context, distWebDir string, digest string) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		return internalwebmodulebuilder.WriteStoredWebInputDigest(distWebDir, digest)
+	}
+	return shouldSkip, remember
+}
+
 type ModuleManager struct {
 	runtimeScope             scope.Scope
 	runtimeOptions           runtimeOptions
@@ -1314,6 +1365,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			}
 		}
 		moduleOps := moduleOpCtxBinder{m: m, opCtx: opCtx}
+		skipWeb, rememberWeb := m.globalWebSkipCallbacks()
 		err = pipeline.Execute(stageCtx, opPlan, rootModule, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
@@ -1389,6 +1441,8 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			GlobalWebBuild: func(stageCtx context.Context, distWebStagingDir string) error {
 				return m.buildGlobalWebToDir(stageCtx, distWebStagingDir)
 			},
+			ShouldSkipGlobalWebBuild: skipWeb,
+			RememberGlobalWebDigest:  rememberWeb,
 		})
 		if err != nil {
 			clearSpinnerState()
@@ -1398,13 +1452,14 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		logger.Info("module operation finalizing started")
 		finalizingStarted := time.Now()
 
-		totalFinalizingModules := len(opPlan.ModuleOrder)
+		phaseEndModules := phaseEndCandidates(plan.OpInstall, opPlan.ModuleOrder, nil, opCtx)
+		totalFinalizingModules := len(phaseEndModules)
 		setSpinnerStage(
 			"finalizing.phase_end",
 			fmt.Sprintf("%s: finalizing phase end (%d modules)", rootModuleName, totalFinalizingModules),
 		)
 		phaseEndStarted := time.Now()
-		for i, name := range opPlan.ModuleOrder {
+		for i, name := range phaseEndModules {
 			moduleName := strings.TrimSpace(name)
 			if moduleName == "" {
 				moduleName = "unknown"
@@ -1562,6 +1617,7 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 		}
 		moduleOps := moduleOpCtxBinder{m: m, opCtx: opCtx}
 		started := time.Now()
+		skipWeb, rememberWeb := m.globalWebSkipCallbacks()
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
@@ -1626,6 +1682,8 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			GlobalWebBuild: func(stageCtx context.Context, distWebStagingDir string) error {
 				return m.buildGlobalWebToDir(stageCtx, distWebStagingDir)
 			},
+			ShouldSkipGlobalWebBuild: skipWeb,
+			RememberGlobalWebDigest:  rememberWeb,
 		})
 		if err != nil {
 			clearSpinnerState()
@@ -1775,6 +1833,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		}
 		started := time.Now()
 		moduleOps := moduleOpCtxBinder{m: m, opCtx: opCtx}
+		skipWeb, rememberWeb := m.globalWebSkipCallbacks()
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
@@ -1823,15 +1882,17 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			GlobalWebBuild: func(stageCtx context.Context, distWebStagingDir string) error {
 				return m.buildGlobalWebToDir(stageCtx, distWebStagingDir)
 			},
+			ShouldSkipGlobalWebBuild: skipWeb,
+			RememberGlobalWebDigest:  rememberWeb,
 		})
 		if err != nil {
 			clearSpinnerState()
 			return rollbackUpgradeOrigin(err)
 		}
 		clearSpinnerState()
-		// Include EnsureOrder so newly installed shell deps (e.g. web) also run
-		// phase-end hooks and receive module-index refresh after upgrade.
-		finalizeModules := mergeUniqueModuleNames(plan.EnsureOrder, plan.ModuleOrder)
+		// PhaseEnd only for upgraded targets plus EnsureOrder modules newly installed
+		// in this op (already-installed shell deps are skipped).
+		finalizeModules := phaseEndCandidates(plan.Op, plan.ModuleOrder, plan.EnsureOrder, opCtx)
 		phaseEndStarted := time.Now()
 		for _, moduleName := range finalizeModules {
 			mod, err := m.Load(moduleName)
@@ -1861,7 +1922,9 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
 		logFinalizingPhaseEnd(logger, phaseEndDuration)
-		if err := m.refreshModuleIndexForLocalModules(ctx, finalizeModules); err != nil {
+		// Index refresh still covers EnsureOrder ∪ ModuleOrder so newly ensured shells stay indexed.
+		indexModules := mergeUniqueModuleNames(plan.EnsureOrder, plan.ModuleOrder)
+		if err := m.refreshModuleIndexForLocalModules(ctx, indexModules); err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
 		if originSwitch != nil {
@@ -1938,8 +2001,13 @@ func (m *ModuleManager) installWithCtx(module *meta.Module, ctx *opContext) erro
 	defer ctx.popInstall(module.Name)
 
 	installer := newModuleInstaller(m.runtimeScope, m.jsExecutor, module, m, ctx)
-	if err := installer.install(); err != nil {
+	didInstall, err := installer.install()
+	if err != nil {
 		return xfmt.Errorf("error installing module %s: %w", module.Name, err)
+	}
+	// already_installed short-circuit returns didInstall=false without install work.
+	if didInstall {
+		ctx.markInstallTouched(module.Name)
 	}
 	ctx.markInstallDone(module.Name)
 	return nil
@@ -1981,6 +2049,7 @@ func (m *ModuleManager) upgradeWithCtx(module *meta.Module, ctx *opContext) erro
 	if err := upgrader.upgrade(); err != nil {
 		return xfmt.Errorf("error upgrading module %s: %w", module.Name, err)
 	}
+	ctx.markUpgradeTouched(module.Name)
 	ctx.markUpgradeDone(module.Name)
 	return nil
 }

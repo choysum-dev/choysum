@@ -3,7 +3,10 @@
 
 package config
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestCompileConfigNormalizedBundleMode(t *testing.T) {
 	t.Run("defaults empty to bundle", func(t *testing.T) {
@@ -40,5 +43,39 @@ func TestNewDefaultCompileConfig(t *testing.T) {
 	}
 	if !cfg.Production || !cfg.Minify || !cfg.TreeShaking || cfg.SourceMap {
 		t.Fatalf("unexpected compile defaults: %#v", cfg)
+	}
+}
+
+func TestCompileSourceMapEnvMatrix(t *testing.T) {
+	cases := []struct {
+		name string
+		env  string
+		want bool
+	}{
+		{name: "unset keeps default false", env: "", want: false},
+		{name: "true enables", env: "true", want: true},
+		{name: "false disables", env: "false", want: false},
+		{name: "1 enables", env: "1", want: true},
+		{name: "0 disables", env: "0", want: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfgPath := writeTestConfig(t, "default_choysum_path: ./.choysum-custom\n")
+			t.Setenv("CHOYSUM_TEST_COMPILE_SOURCEMAP", tc.env)
+			if tc.env == "" {
+				t.Setenv("CHOYSUM_TEST_COMPILE_SOURCEMAP", "")
+				_ = os.Unsetenv("CHOYSUM_TEST_COMPILE_SOURCEMAP")
+			}
+			cfg := defaultConfig()
+			if err := cfg.unmarshal(cfgPath, WithEnvPrefix("CHOYSUM_TEST")); err != nil {
+				t.Fatalf("unmarshal() error = %v", err)
+			}
+			if cfg.Compile == nil {
+				t.Fatal("expected compile config")
+			}
+			if cfg.Compile.SourceMap != tc.want {
+				t.Fatalf("SourceMap = %v, want %v (env=%q)", cfg.Compile.SourceMap, tc.want, tc.env)
+			}
+		})
 	}
 }
