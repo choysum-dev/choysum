@@ -177,6 +177,45 @@ function normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
   return value;
 }
 
+async function fieldDefaultStoreTableExists(dialect: string, table: string): Promise<boolean> {
+  const db = ($choysum as any)?.db;
+  // QuickJS bridge callables may not report typeof === 'function'; rely on presence + call.
+  if (db == null || db.query == null) {
+    // No probe available; allow the CREATE INDEX attempt.
+    return true;
+  }
+  // Catalog probe interpolates a metadata-controlled table name; require a plain
+  // identifier so dialect-specific escaping (e.g. MySQL backslash) cannot break out.
+  const lit = String(table);
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(lit)) {
+    return true;
+  }
+  let sql = '';
+  if (dialect === 'postgres' || dialect === 'postgresql') {
+    sql = `SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = '${lit}' LIMIT 1`;
+  } else if (dialect === 'mysql') {
+    sql = `SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '${lit}' LIMIT 1`;
+  } else {
+    sql = `SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = '${lit}' LIMIT 1`;
+  }
+  try {
+    const raw = await db.query(sql, '[]');
+    const rows = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    // Empty catalog hits may arrive as null (historical bridge marshal) or [].
+    if (rows == null) {
+      return false;
+    }
+    if (!Array.isArray(rows)) {
+      // Unknown result shape — allow CREATE INDEX rather than falsely skipping.
+      return true;
+    }
+    return rows.length > 0;
+  } catch {
+    // Probe failed — still try CREATE INDEX (existing best-effort path).
+    return true;
+  }
+}
+
 async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBaseModel>): Promise<void> {
   const meta = storeMeta(ctor);
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
@@ -194,12 +233,43 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
 
   try {
     const exec = ($choysum as any)?.db?.execute;
-    if (typeof exec === 'function') {
-      await exec.call(($choysum as any).db, ddl, '[]');
+    // QuickJS bridge callables may not report typeof === 'function'.
+    if (exec == null) {
+      return;
+    }
+    // Skip DDL when the store table is not migrated yet (unit-test apps, deferred schema).
+    // Do not mark ensured: once the table appears, the next Set can create the index.
+    if (!(await fieldDefaultStoreTableExists(dialect, table))) {
+      return;
+    }
+    await exec.call(($choysum as any).db, ddl, '[]');
+    ensuredUniqueIndexTables.add(table);
+  } catch (err) {
+    // Best-effort: upsert path still enforces uniqueness in application logic.
+    const message = String((err as any)?.message ?? err).toLowerCase();
+    const code = String((err as any)?.code ?? '').toLowerCase();
+    const transient =
+      message.includes('database is locked') ||
+      message.includes('database table is locked') ||
+      message.includes('database is busy') ||
+      message.includes('sqlite_busy') ||
+      message.includes('locking protocol') ||
+      message.includes('deadlock') ||
+      message.includes('40p01') ||
+      message.includes('serialization failure') ||
+      message.includes('could not serialize access') ||
+      code.includes('40001') ||
+      code.includes('40p01');
+    // Missing relation is not permanent: probe false-positives (or later migrations)
+    // must still allow CREATE INDEX once the store table appears.
+    const missingRelation =
+      message.includes('no such table') ||
+      message.includes('no such index') ||
+      message.includes('does not exist');
+    if (!transient && !missingRelation) {
+      // Permanent DDL failure: avoid retrying CREATE INDEX on every later Set.
       ensuredUniqueIndexTables.add(table);
     }
-  } catch {
-    // Best-effort: upsert path still enforces uniqueness in application logic.
   }
 }
 
