@@ -163,7 +163,19 @@ func (m *moduleInstaller) installAfterPrepare(buildResult *module.BuildResult, p
 			return
 		}
 		if r := recover(); r != nil {
-			_ = m.markPostCommitHooksIncomplete()
+			if markErr := m.markPostCommitHooksIncomplete(); markErr != nil {
+				name := ""
+				if m.module != nil {
+					name = m.module.Name
+				}
+				if m.runtimeScope != nil && m.runtimeScope.Logger() != nil {
+					m.runtimeScope.Logger().Error(
+						"failed reverting module status after post-commit panic",
+						"module", name,
+						"error", markErr,
+					)
+				}
+			}
 			panic(r)
 		}
 	}()
@@ -433,7 +445,7 @@ func (m *moduleInstaller) markPostCommitHooksIncomplete() error {
 	}
 	name := strings.TrimSpace(m.module.Name)
 	if name == "" && !(m.module.Id.Valid && strings.TrimSpace(m.module.Id.String) != "") {
-		return nil
+		return xfmt.Errorf("cannot revert module status: module id and name are both empty")
 	}
 	var affected int64
 	if err := sqliteretry.WithLockRetry(func() error {

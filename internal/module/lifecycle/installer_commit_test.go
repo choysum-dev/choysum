@@ -376,8 +376,8 @@ func TestMarkPostCommitHooksIncomplete(t *testing.T) {
 		module:       &meta.Module{Name: "  "},
 		runtimeScope: runtimeScope,
 	}
-	if err := emptyName.markPostCommitHooksIncomplete(); err != nil {
-		t.Fatal(err)
+	if err := emptyName.markPostCommitHooksIncomplete(); err == nil || !strings.Contains(err.Error(), "both empty") {
+		t.Fatalf("expected empty id/name error, got %v", err)
 	}
 
 	mod := &meta.Module{
