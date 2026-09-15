@@ -2,10 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
-import {
-  OWNER_AUTHZ_SERVICE,
-  type OwnerAuthzService,
-} from '@/core/service/api/owner_authz';
 import type { ConditionEnvelope, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -14,12 +10,21 @@ const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
 /** Owner record ids commonly used by document unit suites (probe Search stub). */
 const KNOWN_OWNER_RECORD_IDS = new Set(['usr_document_test', 'usr_scope_a', 'usr_scope_b']);
 
-/** Opaque owner model string used by document attachment fixtures (not a product model). */
-export const DOCUMENT_TEST_OWNER_MODEL = 'auth.User';
+/**
+ * Dial target for owner RR/FR (and probe Search when ownerModel is auth.User).
+ * Matches the auto-exposed auth.User gRPC surface; unit suites stub this factory
+ * so document does not soft-install auth.
+ */
+export const DOCUMENT_TEST_AUTH_USER_MODEL = 'auth.User';
 
-let previousOwnerAuthzFactory: ReturnType<typeof getServiceFactory> | undefined;
-let previousOwnerProbeFactory: ReturnType<typeof getServiceFactory> | undefined;
-let ownerAuthzStubInstalled = false;
+type AuthUserOwnerAuthzStub = {
+  GetRecordRuleCondition(model: string, op: RecordRuleOp): Promise<ConditionEnvelope>;
+  GetFieldRuleSpec(model: string): Promise<FieldRuleSpec>;
+  Search(condition: unknown, options?: unknown): Promise<unknown[]>;
+};
+
+let previousAuthUserFactory: ReturnType<typeof getServiceFactory> | undefined;
+let authUserStubInstalled = false;
 let previousRecordRuleEnabled: unknown = undefined;
 let capturedRecordRuleEnv = false;
 let previousFieldRuleEnabled: unknown = undefined;
@@ -38,7 +43,7 @@ function clearRequestAuthzCaches(): void {
  * Document unit tests historically relied on repository RecordRule allow-by-default
  * for UploadSession / Binding / Content CRUD. Under deny-default those writes need
  * either grant packs or a repository-layer disable. Owner authorization dials
- * {@link OWNER_AUTHZ_SERVICE} directly (unaffected by this flag).
+ * auth.User GetRecordRuleCondition directly (unaffected by this flag).
  */
 export function disableRepositoryRecordRuleForDocumentTests(): void {
   const root = globalThis as any;
@@ -53,7 +58,7 @@ export function disableRepositoryRecordRuleForDocumentTests(): void {
 /**
  * Mirror RecordRule disable for repository FieldRule: nested Create/Update at depth>0
  * ignores top-level fieldRuleMode=skip, so deny-default would block UploadSession rows.
- * Owner authorization dials {@link OWNER_AUTHZ_SERVICE} directly (unaffected by this flag).
+ * Owner authorization dials auth.User GetFieldRuleSpec directly (unaffected by this flag).
  */
 export function disableRepositoryFieldRuleForDocumentTests(): void {
   const root = globalThis as any;
@@ -69,22 +74,6 @@ function isUnknownOwnerModel(model: string): boolean {
   const text = String(model || '').trim();
   if (!text.includes('.')) return true;
   return text.toLowerCase().startsWith('unknown.');
-}
-
-function createAllowAllOwnerAuthz(): OwnerAuthzService {
-  return {
-    GetRecordRuleCondition: async (model: string, _op: RecordRuleOp): Promise<ConditionEnvelope> => {
-      if (isUnknownOwnerModel(model)) {
-        return { kind: 'false', reason: 'unknown_model' };
-      }
-      return { kind: 'true', reason: 'document_test_allow' };
-    },
-    GetFieldRuleSpec: async (_model: string): Promise<FieldRuleSpec> => ({
-      denyReadFields: [],
-      denyWriteFields: [],
-      reason: 'document_test_allow',
-    }),
-  };
 }
 
 function collectIdEquals(condition: unknown): string[] {
@@ -106,8 +95,19 @@ function collectIdEquals(condition: unknown): string[] {
   return [];
 }
 
-function createOwnerProbeSearchStub(): { Search: (condition: unknown, options?: unknown) => Promise<unknown[]> } {
+function createAllowAllAuthUserStub(): AuthUserOwnerAuthzStub {
   return {
+    GetRecordRuleCondition: async (model: string, _op: RecordRuleOp): Promise<ConditionEnvelope> => {
+      if (isUnknownOwnerModel(model)) {
+        return { kind: 'false', reason: 'unknown_model' };
+      }
+      return { kind: 'true', reason: 'document_test_allow' };
+    },
+    GetFieldRuleSpec: async (_model: string): Promise<FieldRuleSpec> => ({
+      denyReadFields: [],
+      denyWriteFields: [],
+      reason: 'document_test_allow',
+    }),
     Search: async (condition: unknown) => {
       const ids = collectIdEquals(condition);
       if (ids.length === 0) return [];
@@ -125,30 +125,29 @@ function restoreFactory(modelName: string, previous: ReturnType<typeof getServic
 }
 
 /**
- * Install allow-all {@link OWNER_AUTHZ_SERVICE} plus a minimal owner-model Search stub
- * so document unit suites do not need auth soft-installed.
+ * Install an allow-all auth.User stub (RR/FR + minimal Search) so document unit
+ * suites do not need auth soft-installed.
  */
-export function ensureDocumentOwnerAuthzStub(): void {
-  if (!ownerAuthzStubInstalled) {
-    previousOwnerAuthzFactory = getServiceFactory(OWNER_AUTHZ_SERVICE);
-    previousOwnerProbeFactory = getServiceFactory(DOCUMENT_TEST_OWNER_MODEL);
-    ownerAuthzStubInstalled = true;
+export function ensureDocumentAuthUserStub(): void {
+  if (!authUserStubInstalled) {
+    previousAuthUserFactory = getServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL);
+    authUserStubInstalled = true;
   }
-  registerServiceFactory(OWNER_AUTHZ_SERVICE, () => createAllowAllOwnerAuthz());
-  registerServiceFactory(DOCUMENT_TEST_OWNER_MODEL, () => createOwnerProbeSearchStub());
+  registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => createAllowAllAuthUserStub());
   clearRequestAuthzCaches();
 }
 
 /**
- * Temporarily override the owner-authz stub (e.g. field deny / expr deny cases).
+ * Temporarily override auth.User stub RR/FR methods (e.g. field deny / expr deny).
  */
-export async function withDocumentOwnerAuthzOverride<T>(
-  override: Partial<OwnerAuthzService>,
+export async function withDocumentAuthUserStubOverride<T>(
+  override: Partial<Pick<AuthUserOwnerAuthzStub, 'GetRecordRuleCondition' | 'GetFieldRuleSpec'>>,
   fn: () => Promise<T>
 ): Promise<T> {
-  ensureDocumentOwnerAuthzStub();
-  const base = createAllowAllOwnerAuthz();
-  const merged: OwnerAuthzService = {
+  ensureDocumentAuthUserStub();
+  const base = createAllowAllAuthUserStub();
+  const merged: AuthUserOwnerAuthzStub = {
+    ...base,
     GetRecordRuleCondition: override.GetRecordRuleCondition
       ? (model, op) => override.GetRecordRuleCondition!(model, op)
       : base.GetRecordRuleCondition,
@@ -156,24 +155,24 @@ export async function withDocumentOwnerAuthzOverride<T>(
       ? model => override.GetFieldRuleSpec!(model)
       : base.GetFieldRuleSpec,
   };
-  registerServiceFactory(OWNER_AUTHZ_SERVICE, () => merged);
+  registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => merged);
   clearRequestAuthzCaches();
   try {
     return await fn();
   } finally {
-    registerServiceFactory(OWNER_AUTHZ_SERVICE, () => createAllowAllOwnerAuthz());
+    registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => createAllowAllAuthUserStub());
     clearRequestAuthzCaches();
   }
 }
 
-/** Alias for {@link ensureDocumentOwnerAuthzStub} (call-site compatibility). */
+/** Alias for {@link ensureDocumentAuthUserStub} (call-site compatibility). */
 export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
-  ensureDocumentOwnerAuthzStub();
+  ensureDocumentAuthUserStub();
 }
 
-/** Alias for {@link ensureDocumentOwnerAuthzStub} (call-site compatibility). */
+/** Alias for {@link ensureDocumentAuthUserStub} (call-site compatibility). */
 export async function ensureAuthUserOwnerFieldRuleGrants(): Promise<void> {
-  ensureDocumentOwnerAuthzStub();
+  ensureDocumentAuthUserStub();
 }
 
 /**
@@ -206,12 +205,10 @@ export async function restoreDocumentOwnerAuthFixtures(): Promise<void> {
     previousFieldRuleEnabled = undefined;
   }
 
-  if (ownerAuthzStubInstalled) {
-    restoreFactory(OWNER_AUTHZ_SERVICE, previousOwnerAuthzFactory);
-    restoreFactory(DOCUMENT_TEST_OWNER_MODEL, previousOwnerProbeFactory);
-    previousOwnerAuthzFactory = undefined;
-    previousOwnerProbeFactory = undefined;
-    ownerAuthzStubInstalled = false;
+  if (authUserStubInstalled) {
+    restoreFactory(DOCUMENT_TEST_AUTH_USER_MODEL, previousAuthUserFactory);
+    previousAuthUserFactory = undefined;
+    authUserStubInstalled = false;
   }
 
   clearRequestAuthzCaches();

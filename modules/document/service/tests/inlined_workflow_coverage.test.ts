@@ -16,7 +16,7 @@ import {
   ensureAuthUserOwnerRecordRuleGrants,
   disableRepositoryFieldRuleForDocumentTests,
   disableRepositoryRecordRuleForDocumentTests,
-  withDocumentOwnerAuthzOverride,
+  withDocumentAuthUserStubOverride,
 } from './_owner_auth_test_fixtures';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -756,7 +756,7 @@ test('inlined owner auth coverage: probe and expr scope denials', async () => {
       await documentProbeOwnerRecordForTest('bind', 'auth.User', TEST_USER_ID, ['Id', '=', uid('expr_miss')] as any)
     ).toBe(false);
 
-    await withDocumentOwnerAuthzOverride(
+    await withDocumentAuthUserStubOverride(
       {
         GetRecordRuleCondition: async () => ({
           kind: 'expr',

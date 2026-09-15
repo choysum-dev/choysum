@@ -21,7 +21,7 @@ import {
   disableRepositoryRecordRuleForDocumentTests,
   disableRepositoryFieldRuleForDocumentTests,
   restoreDocumentOwnerAuthFixtures,
-  withDocumentOwnerAuthzOverride,
+  withDocumentAuthUserStubOverride,
 } from './_owner_auth_test_fixtures';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -649,7 +649,7 @@ test('document.attachment_binding: descriptor read interface denies owner field 
   await withDocumentScope(async () => {
     const deniedFieldName = 'PasswordHash';
 
-    await withDocumentOwnerAuthzOverride(
+    await withDocumentAuthUserStubOverride(
       {
         GetFieldRuleSpec: async () => ({
           denyReadFields: [deniedFieldName],

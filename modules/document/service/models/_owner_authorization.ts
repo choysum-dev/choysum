@@ -5,7 +5,6 @@ import { dial } from '@/core/service';
 import { assertRecordReadable } from '@/core/service/orm/model';
 import { parseConditionEnvelopeFromUnknown, parseFieldRuleSpecFromUnknown, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
-import { dialOwnerAuthz, OWNER_AUTHZ_SERVICE, type OwnerAuthzService } from '@/core/service/api/owner_authz';
 import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
@@ -47,9 +46,16 @@ type OwnerReadAuthorizationInput = {
   userId: string;
 };
 
+type AuthUserServiceLike = {
+  GetRecordRuleCondition(model: string, op: RecordRuleOp): Promise<unknown>;
+  GetFieldRuleSpec(model: string): Promise<unknown>;
+};
+
 type OwnerModelServiceLike = {
   Search(condition: unknown, options?: unknown): Promise<unknown>;
 };
+
+const AUTH_USER_MODEL = 'auth.User';
 
 /**
  * Verifies write access to the owner model and field used by a document mutation.
@@ -162,9 +168,9 @@ export async function assertOwnerReadAuthorization(input: OwnerReadAuthorization
 }
 
 async function fetchRecordRuleEnvelope(ownerModel: string, op: RecordRuleOp, stage: OwnerPermissionStage): Promise<ConditionEnvelope> {
-  const ownerAuthz = getOwnerAuthzService(stage);
+  const authService = getAuthUserService(stage);
   try {
-    const raw = await ownerAuthz.GetRecordRuleCondition(ownerModel, op);
+    const raw = await authService.GetRecordRuleCondition(ownerModel, op);
     return parseConditionEnvelopeFromUnknown(raw);
   } catch (err) {
     throw permissionDenied(stage, _t('failed to fetch owner record rule condition', { scope: 'service/models/_owner_authorization' }), {
@@ -176,9 +182,9 @@ async function fetchRecordRuleEnvelope(ownerModel: string, op: RecordRuleOp, sta
 }
 
 async function fetchFieldRuleSpec(ownerModel: string, stage: OwnerPermissionStage): Promise<FieldRuleSpec> {
-  const ownerAuthz = getOwnerAuthzService(stage);
+  const authService = getAuthUserService(stage);
   try {
-    const raw = await ownerAuthz.GetFieldRuleSpec(ownerModel);
+    const raw = await authService.GetFieldRuleSpec(ownerModel);
     return parseFieldRuleSpecFromUnknown(raw);
   } catch (err) {
     throw permissionDenied(stage, _t('failed to fetch owner field rule spec', { scope: 'service/models/_owner_authorization' }), {
@@ -188,12 +194,12 @@ async function fetchFieldRuleSpec(ownerModel: string, stage: OwnerPermissionStag
   }
 }
 
-function getOwnerAuthzService(stage: OwnerPermissionStage): OwnerAuthzService {
+function getAuthUserService(stage: OwnerPermissionStage): AuthUserServiceLike {
   try {
-    return dialOwnerAuthz();
+    return dial<AuthUserServiceLike>(AUTH_USER_MODEL);
   } catch (err) {
-    throw permissionDenied(stage, _t('owner authz service is unavailable for owner authorization check', { scope: 'service/models/_owner_authorization' }), {
-      model: OWNER_AUTHZ_SERVICE,
+    throw permissionDenied(stage, _t('auth service is unavailable for owner authorization check', { scope: 'service/models/_owner_authorization' }), {
+      model: AUTH_USER_MODEL,
       detail: errorMessage(err),
     });
   }
