@@ -93,6 +93,10 @@ def partition_packages(cwd: pathlib.Path = REPO_ROOT) -> dict[str, list[str]]:
         assigned |= pkgs
 
     rest = sorted(all_set - assigned)
+    if not rest:
+        raise SystemExit(
+            "shard rest: complement is empty; every package is covered by a named shard"
+        )
     shards["rest"] = rest
     return shards
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import pathlib
+import re
 import tempfile
 import unittest
 import unittest.mock as mock
@@ -46,19 +47,27 @@ class GoTestShardsTest(unittest.TestCase):
 
     def test_workflow_matrix_matches_shard_meta(self):
         mod = load_mod()
+        expected = {row["shard"]: row["chromium"] for row in mod.shard_meta()}
         for wf in ("pr-gate.yml", "mainline-verify.yml"):
             text = (REPO_ROOT / ".github" / "workflows" / wf).read_text(encoding="utf-8")
-            for row in mod.shard_meta():
-                self.assertIn(
-                    f"- shard: {row['shard']}",
-                    text,
-                    f"{wf} matrix missing {row['shard']}",
-                )
-                self.assertIn(
-                    f'chromium: "{row["chromium"]}"',
-                    text,
-                    f"{wf} chromium flag mismatch for {row['shard']}",
-                )
+            found = dict(re.findall(r'- shard: (\S+)\s*\n\s+chromium: "(\w+)"', text))
+            self.assertEqual(found, expected, f"{wf} matrix mismatch")
+
+    def test_empty_rest_rejected(self):
+        mod = load_mod()
+        with mock.patch.object(mod, "run_go_list") as gl:
+            gl.side_effect = [
+                ["a"],  # ./...
+                ["a"],  # cmd covers everything
+            ]
+            with mock.patch.object(
+                mod,
+                "SHARD_SPECS",
+                [{"name": "cmd", "patterns": ["./cmd/..."], "chromium": False}],
+            ):
+                with self.assertRaises(SystemExit) as cm:
+                    mod.partition_packages()
+                self.assertIn("complement is empty", str(cm.exception))
 
     def test_overlap_detected(self):
         mod = load_mod()

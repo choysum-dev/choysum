@@ -47,13 +47,18 @@ GO_TEST_EXACT = {
     # Jobs that run / aggregate go-test; workflow-only edits must still exercise shards.
     ".github/workflows/pr-gate.yml",
     ".github/workflows/mainline-verify.yml",
+    # CI harness that directly shapes go-test shards / routing / Chromium pin.
+    "scripts/ci/go_test_shards.py",
+    "scripts/ci/go_test_shards_test.py",
+    "scripts/ci/pr_gate_discover_impact.py",
+    "scripts/ci/pr_gate_discover_impact_test.py",
+    "scripts/ci/record_cmd_wall.sh",
+    "scripts/ci/install_chromium.py",
 }
 GO_TEST_PREFIXES = (
     "cmd/",
     "internal/",
     "pkg/",
-    # CI harness (shards, chromium pin, wall timing, discover-impact routing).
-    "scripts/ci/",
 )
 
 
