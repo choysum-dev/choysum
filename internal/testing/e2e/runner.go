@@ -1144,6 +1144,9 @@ func resolveScenarioBackendEnv(m *sourceModulePackage, scenario string) (map[str
 			if err := validateBackendEnvKey(k); err != nil {
 				return nil, xfmt.Errorf("scenario %q: %w", name, err)
 			}
+			if strings.ContainsRune(v, 0) {
+				return nil, xfmt.Errorf("scenario %q: backendEnv key %q contains a NUL byte", name, k)
+			}
 			out[k] = v
 		}
 		return out, nil

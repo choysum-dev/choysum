@@ -468,9 +468,21 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 			Extends:    "default",
 			BackendEnv: map[string]string{"SHARED": "from-child", "CHILD_ONLY": "yes"},
 		},
+		"grandchild": {
+			Extends:    "child",
+			BackendEnv: map[string]string{"SHARED": "from-grandchild"},
+		},
 		"broken": {Extends: "missing"},
 	}}}
-	env, err := resolveScenarioBackendEnv(envMod, "child")
+	env, err := resolveScenarioBackendEnv(envMod, "grandchild")
+	if err != nil {
+		t.Fatalf("resolveScenarioBackendEnv(grandchild): %v", err)
+	}
+	wantGrandchild := map[string]string{"SHARED": "from-grandchild", "ONLY_DEFAULT": "1", "CHILD_ONLY": "yes"}
+	if !reflect.DeepEqual(env, wantGrandchild) {
+		t.Fatalf("multi-level backendEnv merge = %#v, want %#v", env, wantGrandchild)
+	}
+	env, err = resolveScenarioBackendEnv(envMod, "child")
 	if err != nil {
 		t.Fatalf("resolveScenarioBackendEnv(child): %v", err)
 	}
@@ -511,6 +523,14 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 	_, err = resolveScenarioBackendEnv(cycleMod, "a")
 	if err == nil || !strings.Contains(err.Error(), "scenario extends cycle") {
 		t.Fatalf("expected backendEnv extends cycle error, got %v", err)
+	}
+
+	nulMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
+		"default": {BackendEnv: map[string]string{"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "ok\x00bad"}},
+	}}}
+	_, err = resolveScenarioBackendEnv(nulMod, "default")
+	if err == nil || !strings.Contains(err.Error(), "NUL byte") {
+		t.Fatalf("expected NUL value error, got %v", err)
 	}
 
 	formatted := formatBackendEnvYAML(map[string]string{
