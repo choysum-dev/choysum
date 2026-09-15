@@ -540,6 +540,10 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 	if formatted != "  \"AAA\": \"1\"\n  \"CHOYSUM_E2E_FORCE_LOCK_CONFLICT\": \"true\"\n" {
 		t.Fatalf("unexpected formatBackendEnvYAML: %q", formatted)
 	}
+	hostile := formatBackendEnvYAML(map[string]string{"A": "x\ny\"z\\injected: 1"})
+	if want := "  \"A\": \"x\\ny\\\"z\\\\injected: 1\"\n"; hostile != want {
+		t.Fatalf("expected escaped YAML value %q, got %q", want, hostile)
+	}
 	if formatBackendEnvYAML(nil) != "" || formatBackendEnvYAML(map[string]string{}) != "" {
 		t.Fatalf("expected empty YAML for empty backendEnv")
 	}
