@@ -14,6 +14,7 @@ from unittest.mock import Mock, patch
 
 
 SCRIPT = pathlib.Path(__file__).resolve().parent / "pr_gate_discover_impact.py"
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 def load_mod():
@@ -135,36 +136,58 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
             self.assertEqual(out["run_full_matrix"], "true")
             self.assertNotIn("run_bootstrap_verify", out)
 
-    def test_build_pipeline_still_arms_full_matrix_without_bootstrap_verify(self):
+    def test_each_build_pipeline_prefix_arms_full_matrix_without_bootstrap_verify(self):
         mod = load_mod()
-        with tempfile.TemporaryDirectory() as tmp:
-            modules = pathlib.Path(tmp) / "modules"
-            (modules / "auth" / "e2e").mkdir(parents=True)
-            (modules / "auth" / "e2e" / "smoke.spec.ts").write_text("// smoke\n", encoding="utf-8")
+        # Each BUILD_PREFIXES entry must independently classify as build-pipeline;
+        # bundling paths would let one hit mask a regression in another.
+        build_paths = [
+            "internal/bootstrap/web/src/main.ts",
+            "pkg/jsengine/scripts/vuesfc/src/index.ts",
+            "pkg/jsengine/scripts/vuevirtual/src/index.ts",
+        ]
+        for path in build_paths:
+            with self.subTest(path=path):
+                with tempfile.TemporaryDirectory() as tmp:
+                    modules = pathlib.Path(tmp) / "modules"
+                    (modules / "auth" / "e2e").mkdir(parents=True)
+                    (modules / "auth" / "e2e" / "smoke.spec.ts").write_text(
+                        "// smoke\n", encoding="utf-8"
+                    )
 
-            changed = [
-                "internal/bootstrap/web/src/main.ts",
-                "pkg/jsengine/scripts/vuesfc/src/index.ts",
-            ]
+                    with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                        mod.subprocess, "run"
+                    ) as run_mock:
+                        run_mock.return_value = Mock(
+                            stdout=path + "\n",
+                            returncode=0,
+                        )
+                        with patch.dict(
+                            mod.os.environ,
+                            {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                            clear=False,
+                        ):
+                            out = mod.pull_request_outputs(["auth"])
 
-            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
-                mod.subprocess, "run"
-            ) as run_mock:
-                run_mock.return_value = Mock(
-                    stdout="\n".join(changed) + "\n",
-                    returncode=0,
-                )
-                with patch.dict(
-                    mod.os.environ,
-                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
-                    clear=False,
-                ):
-                    out = mod.pull_request_outputs(["auth"])
+                    self.assertEqual(out["reason"], "build-pipeline")
+                    self.assertEqual(out["run_full_matrix"], "true")
+                    self.assertEqual(out["run_go_test"], "true")
+                    self.assertEqual(out["run_pr_smoke_e2e"], "true")
+                    self.assertEqual(out["impacted_smoke_e2e_modules_json"], '["auth"]')
+                    self.assertNotIn("run_bootstrap_verify", out)
 
-            self.assertEqual(out["reason"], "build-pipeline")
-            self.assertEqual(out["run_full_matrix"], "true")
-            self.assertEqual(out["run_go_test"], "true")
-            self.assertNotIn("run_bootstrap_verify", out)
+    def test_merge_group_outputs_omit_run_bootstrap_verify(self):
+        mod = load_mod()
+        out = mod.merge_group_or_dispatch_outputs(["auth"], "merge-group")
+        self.assertEqual(out["run_full_matrix"], "true")
+        self.assertEqual(out["run_go_test"], "true")
+        self.assertNotIn("run_bootstrap_verify", out)
+
+    def test_no_workflow_still_references_removed_bootstrap_verify(self):
+        workflows = REPO_ROOT / ".github" / "workflows"
+        for path in sorted(workflows.glob("*.yml")):
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("bootstrap-verify.yml", text, path.name)
+            self.assertNotIn("run_bootstrap_verify", text, path.name)
 
 
 if __name__ == "__main__":
