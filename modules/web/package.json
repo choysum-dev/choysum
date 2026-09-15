@@ -59,15 +59,24 @@
         },
         "result-failed": {
           "extends": "default",
-          "fixtures": []
+          "fixtures": [],
+          "backendEnv": {
+            "CHOYSUM_E2E_FORCE_RESULT_STATUS": "FAILED"
+          }
         },
         "reload-failed": {
           "extends": "default",
-          "fixtures": []
+          "fixtures": [],
+          "backendEnv": {
+            "CHOYSUM_E2E_FORCE_RELOAD_FAILED": "true"
+          }
         },
         "lock-conflict": {
           "extends": "default",
-          "fixtures": []
+          "fixtures": [],
+          "backendEnv": {
+            "CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true"
+          }
         }
       }
     }

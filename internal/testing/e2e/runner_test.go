@@ -461,6 +461,42 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "extends missing parent") {
 		t.Fatalf("expected missing parent error, got %v", err)
 	}
+
+	envMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
+		"default": {BackendEnv: map[string]string{"SHARED": "from-default", "ONLY_DEFAULT": "1"}},
+		"child": {
+			Extends:    "default",
+			BackendEnv: map[string]string{"SHARED": "from-child", "CHILD_ONLY": "yes"},
+		},
+		"broken": {Extends: "missing"},
+	}}}
+	env, err := resolveScenarioBackendEnv(envMod, "child")
+	if err != nil {
+		t.Fatalf("resolveScenarioBackendEnv(child): %v", err)
+	}
+	wantEnv := map[string]string{"SHARED": "from-child", "ONLY_DEFAULT": "1", "CHILD_ONLY": "yes"}
+	if !reflect.DeepEqual(env, wantEnv) {
+		t.Fatalf("backendEnv merge = %#v, want %#v", env, wantEnv)
+	}
+	env, err = resolveScenarioBackendEnv(envMod, "unknown")
+	if err != nil || len(env) != 0 {
+		t.Fatalf("unknown scenario backendEnv = %#v err=%v", env, err)
+	}
+	_, err = resolveScenarioBackendEnv(envMod, "broken")
+	if err == nil || !strings.Contains(err.Error(), "extends missing parent") {
+		t.Fatalf("expected missing parent error for backendEnv, got %v", err)
+	}
+
+	formatted := formatBackendEnvYAML(map[string]string{
+		"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true",
+		"AAA":                             "1",
+	})
+	if formatted != "  AAA: \"1\"\n  CHOYSUM_E2E_FORCE_LOCK_CONFLICT: \"true\"\n" {
+		t.Fatalf("unexpected formatBackendEnvYAML: %q", formatted)
+	}
+	if formatBackendEnvYAML(nil) != "" || formatBackendEnvYAML(map[string]string{}) != "" {
+		t.Fatalf("expected empty YAML for empty backendEnv")
+	}
 }
 
 func TestE2EUtilityHelpers(t *testing.T) {
