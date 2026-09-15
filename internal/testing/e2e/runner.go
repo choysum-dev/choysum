@@ -1074,6 +1074,30 @@ func resolveScenarioFixtures(m *sourceModulePackage, scenario string) ([]string,
 	return paths, true, nil
 }
 
+var (
+	backendEnvKeyPattern   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	reservedBackendEnvKeys = map[string]struct{}{
+		"CHOYSUM_E2E_SKIP_RELOAD":           {},
+		"CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC": {},
+	}
+)
+
+// validateBackendEnvKey rejects empty/whitespace-padded keys, non-env names, and
+// stabilizer keys the runner always writes into generated backendEnv.
+func validateBackendEnvKey(key string) error {
+	trimmed := strings.TrimSpace(key)
+	if trimmed == "" {
+		return xfmt.Errorf("invalid backendEnv key %q", key)
+	}
+	if trimmed != key || !backendEnvKeyPattern.MatchString(trimmed) {
+		return xfmt.Errorf("invalid backendEnv key %q", key)
+	}
+	if _, reserved := reservedBackendEnvKeys[trimmed]; reserved {
+		return xfmt.Errorf("backendEnv key %q is reserved for the e2e runner", trimmed)
+	}
+	return nil
+}
+
 // resolveScenarioBackendEnv merges choysum.e2e.scenarios.<name>.backendEnv along
 // the scenario extends chain for one module. Parent keys apply first; the child
 // scenario overrides colliding keys. Missing scenarios yield an empty map.
@@ -1109,11 +1133,10 @@ func resolveScenarioBackendEnv(m *sourceModulePackage, scenario string) (map[str
 			}
 		}
 		for k, v := range sc.BackendEnv {
-			key := strings.TrimSpace(k)
-			if key == "" {
-				continue
+			if err := validateBackendEnvKey(k); err != nil {
+				return nil, err
 			}
-			out[key] = v
+			out[k] = v
 		}
 		return out, nil
 	}

@@ -487,6 +487,23 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 		t.Fatalf("expected missing parent error for backendEnv, got %v", err)
 	}
 
+	for _, badKey := range []string{"BAD: KEY", "BAD\nkey", " CHOYSUM_X", "CHOYSUM_E2E_SKIP_RELOAD", "CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC"} {
+		badMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
+			"default": {BackendEnv: map[string]string{badKey: "1"}},
+		}}}
+		_, err = resolveScenarioBackendEnv(badMod, "default")
+		if err == nil {
+			t.Fatalf("expected error for backendEnv key %q", badKey)
+		}
+		if strings.HasPrefix(badKey, "CHOYSUM_E2E_SKIP_") {
+			if !strings.Contains(err.Error(), "reserved") {
+				t.Fatalf("expected reserved-key error for %q, got %v", badKey, err)
+			}
+		} else if !strings.Contains(err.Error(), "invalid backendEnv key") {
+			t.Fatalf("expected invalid-key error for %q, got %v", badKey, err)
+		}
+	}
+
 	formatted := formatBackendEnvYAML(map[string]string{
 		"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true",
 		"AAA":                             "1",

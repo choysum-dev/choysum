@@ -489,6 +489,42 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_LOCK_CONFLICT") {
 			t.Fatalf("scenario name alone must not inject FORCE_LOCK, got %q", seenConfig)
 		}
+
+		seenConfig = ""
+		manifestsOverride := map[string]*sourceModulePackage{
+			"web": {
+				DirName: "web",
+				Depends: []string{"meta"},
+				E2E: &packageE2E{
+					Specs: "e2e",
+					Scenarios: map[string]packageScene{
+						"lock-conflict": {
+							BackendEnv: map[string]string{"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "from-web"},
+						},
+					},
+				},
+			},
+			"meta": {
+				DirName: "meta",
+				E2E: &packageE2E{
+					Scenarios: map[string]packageScene{
+						"lock-conflict": {
+							BackendEnv: map[string]string{"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "from-meta"},
+						},
+					},
+				},
+			},
+		}
+		err = runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifestsOverride, "lock-conflict")
+		if err != nil {
+			t.Fatalf("runOneScenario(web lock-conflict override) error: %v", err)
+		}
+		if !strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_LOCK_CONFLICT: \"from-web\"") {
+			t.Fatalf("expected target backendEnv to override dependency, got %q", seenConfig)
+		}
+		if strings.Contains(seenConfig, "from-meta") {
+			t.Fatalf("dependency backendEnv must not win over target, got %q", seenConfig)
+		}
 	})
 
 	t.Run("invalid specs rel is rejected", func(t *testing.T) {
