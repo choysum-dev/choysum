@@ -272,7 +272,7 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
         mod = load_mod()
         workflows = REPO_ROOT / ".github" / "workflows"
         referenced = set()
-        pending = ["pr-gate.yml", "mainline-verify.yml", "nightly-audit.yml"]
+        pending = [p.removeprefix(".github/workflows/") for p in mod.SHARED_WORKFLOW_EXACT]
         seen = set()
         while pending:
             name = pending.pop()

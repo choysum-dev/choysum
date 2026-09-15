@@ -37,6 +37,13 @@ class GoTestShardsTest(unittest.TestCase):
         self.assertGreater(len(shards["module"]), 0)
         self.assertGreater(len(shards["runtime"]), 0)
         self.assertGreater(len(shards["rest"]), 0)
+        # cmd/cli fold into `rest`; keep them covered after dropping the `cmd` shard.
+        rest = shards["rest"]
+        self.assertTrue(
+            any(p.endswith("/cmd") or "/cmd/" in p for p in rest),
+            sorted(rest),
+        )
+        self.assertTrue(any("/internal/cli" in p for p in rest), sorted(rest))
         # Chromium only for testing.
         meta = {row["shard"]: row["chromium"] for row in mod.shard_meta()}
         self.assertEqual(meta["testing"], "true")

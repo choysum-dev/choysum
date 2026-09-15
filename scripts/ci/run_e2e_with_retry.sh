@@ -16,6 +16,10 @@ if [[ -z "${CHOYSUM_BIN:-}" || -z "${MODULE:-}" ]]; then
   echo "error: CHOYSUM_BIN and MODULE are required" >&2
   exit 1
 fi
+if [[ ! -x "$CHOYSUM_BIN" ]]; then
+  echo "error: CHOYSUM_BIN is not executable: $CHOYSUM_BIN" >&2
+  exit 1
+fi
 
 max_attempts="${E2E_MAX_ATTEMPTS:-2}"
 if ! [[ "$max_attempts" =~ ^[1-9][0-9]*$ ]]; then
@@ -24,6 +28,10 @@ if ! [[ "$max_attempts" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 attempt_timeout="${E2E_ATTEMPT_TIMEOUT:-30m}"
+if ! [[ "$attempt_timeout" =~ ^[1-9][0-9]*[smhd]?$ ]]; then
+  echo "error: E2E_ATTEMPT_TIMEOUT must be a duration like 30m, got '${attempt_timeout}'" >&2
+  exit 1
+fi
 
 extra_args=()
 if [[ -n "${E2E_EXTRA_ARGS:-}" ]]; then
@@ -43,6 +51,11 @@ while true; do
   set -e
   if [[ "$exit_code" -eq 0 ]]; then
     exit 0
+  fi
+  # Setup / misconfig exits: do not retry as flakes.
+  if [[ "$exit_code" -eq 125 || "$exit_code" -eq 126 || "$exit_code" -eq 127 ]]; then
+    echo "error: E2E setup/misconfiguration (exit=${exit_code}); not retrying" >&2
+    exit "$exit_code"
   fi
   if [[ "$attempt" -ge "$max_attempts" ]]; then
     echo "E2E failed after ${max_attempts} attempt(s) (exit=${exit_code})" >&2

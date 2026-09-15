@@ -41,7 +41,7 @@ jobs:
   build-choysum-cli:
     name: build-choysum-cli
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 40
     steps:
       - name: Validate warm typecheck inputs
         if: ${{ inputs.warm_typecheck_types == 'true' && inputs.modules_tsconfig_artifact_name == '' }}
