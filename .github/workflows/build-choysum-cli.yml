@@ -121,16 +121,20 @@ jobs:
         uses: ./.github/actions/setup-cli-testing-cache
 
       - name: Warm type-fetch assets into CLI pkg cache
+        id: warm_types
         if: ${{ inputs.warm_typecheck_types == 'true' }}
+        continue-on-error: true
         env:
           CHOYSUM_BIN: ${{ github.workspace }}/${{ inputs.choysum_binary_path }}
         # Bound warm so an esm.sh stall cannot hold the whole CLI job (and unit/e2e).
+        # continue-on-error: CLI artifact is already uploaded; unit/e2e must not be skipped
+        # when only typewarm fails (typecheck will fail later if tsconfig is missing).
         run: timeout --signal=TERM --kill-after=30s 30m bash scripts/ci/warm_typecheck_types.sh
 
       # modules/tsconfig.json is gitignored; type-fetch writes path maps here.
       # Shards restore the pkg cache but need these maps (no root node_modules).
       - name: Upload modules tsconfig path maps
-        if: ${{ inputs.warm_typecheck_types == 'true' }}
+        if: ${{ inputs.warm_typecheck_types == 'true' && steps.warm_types.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.modules_tsconfig_artifact_name }}

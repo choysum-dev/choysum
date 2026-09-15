@@ -396,6 +396,10 @@ jobs:
             fi
           done < <(find .choysum/test-results/main/unit -type f -name '*.junit.xml' 2>/dev/null | sort || true)
 
+          if [[ -z "$coverage_files" ]]; then
+            echo "::warning title=unit coverage::no lcov.info collected although modules were discovered (Codecov upload will be skipped)"
+          fi
+
           echo "coverage_files=${coverage_files}" >> "$GITHUB_OUTPUT"
           echo "test_result_files=${test_result_files}" >> "$GITHUB_OUTPUT"
 

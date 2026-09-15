@@ -49,6 +49,7 @@ while true; do
     exit "$exit_code"
   fi
   echo "E2E attempt ${attempt} failed (exit=${exit_code}); retrying..." >&2
+  echo "::warning title=E2E flake::module=${MODULE} attempt ${attempt}/${max_attempts} failed (exit=${exit_code}); retrying" || true
   attempt=$((attempt + 1))
   sleep 5
 done

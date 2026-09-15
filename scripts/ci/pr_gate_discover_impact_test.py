@@ -244,11 +244,26 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
         mod = load_mod()
         workflows = REPO_ROOT / ".github" / "workflows"
         referenced = set()
-        for name in ("pr-gate.yml", "mainline-verify.yml", "nightly-audit.yml"):
-            text = (workflows / name).read_text(encoding="utf-8")
-            referenced.update(
+        pending = ["pr-gate.yml", "mainline-verify.yml", "nightly-audit.yml"]
+        seen = set()
+        while pending:
+            name = pending.pop()
+            if name in seen:
+                continue
+            seen.add(name)
+            path = workflows / name
+            if not path.is_file():
+                # uses: paths are repo-relative (.github/workflows/...).
+                path = REPO_ROOT / name
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8")
+            found = set(
                 re.findall(r"uses:\s*\./(\.github/workflows/[^\s\"']+)", text)
             )
+            referenced.update(found)
+            for ref in found:
+                pending.append(ref.removeprefix(".github/workflows/"))
         missing = referenced - set(mod.SHARED_WORKFLOW_EXACT)
         self.assertFalse(
             missing,
