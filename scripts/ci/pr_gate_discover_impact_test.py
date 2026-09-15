@@ -90,5 +90,48 @@ class DiscoverImpactE2ERoutingTest(unittest.TestCase):
             self.assertEqual(out["run_pr_smoke_e2e"], "true")
 
 
+class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
+    def test_is_go_test_path_covers_ci_harness_and_go_test_workflows(self):
+        mod = load_mod()
+        self.assertTrue(mod.is_go_test_path("scripts/ci/go_test_shards.py"))
+        self.assertTrue(mod.is_go_test_path("scripts/ci/pr_gate_discover_impact.py"))
+        self.assertTrue(mod.is_go_test_path(".github/workflows/pr-gate.yml"))
+        self.assertTrue(mod.is_go_test_path(".github/workflows/mainline-verify.yml"))
+        self.assertFalse(mod.is_go_test_path(".github/workflows/i18n-status.yml"))
+        self.assertFalse(mod.is_go_test_path("AGENTS.md"))
+        self.assertFalse(mod.is_go_test_path("CONTRIBUTING.md"))
+
+    def test_ci_harness_edit_arms_run_go_test_under_shared_runtime(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            modules = pathlib.Path(tmp) / "modules"
+            (modules / "auth" / "e2e").mkdir(parents=True)
+            (modules / "auth" / "e2e" / "smoke.spec.ts").write_text("// smoke\n", encoding="utf-8")
+
+            changed = [
+                "scripts/ci/go_test_shards.py",
+                ".github/workflows/pr-gate.yml",
+                "AGENTS.md",
+            ]
+
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["auth"])
+
+            self.assertEqual(out["reason"], "shared-runtime")
+            self.assertEqual(out["run_go_test"], "true")
+            self.assertEqual(out["run_full_matrix"], "true")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -44,11 +44,16 @@ GO_TEST_EXACT = {
     "main_test.go",
     "go.mod",
     "go.sum",
+    # Jobs that run / aggregate go-test; workflow-only edits must still exercise shards.
+    ".github/workflows/pr-gate.yml",
+    ".github/workflows/mainline-verify.yml",
 }
 GO_TEST_PREFIXES = (
     "cmd/",
     "internal/",
     "pkg/",
+    # CI harness (shards, chromium pin, wall timing, discover-impact routing).
+    "scripts/ci/",
 )
 
 
