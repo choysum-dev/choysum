@@ -51,8 +51,8 @@ func TestFilterE2ESpecsByArgs(t *testing.T) {
 }
 
 func TestUniqueScenarioFixtureModules(t *testing.T) {
-	got := uniqueScenarioFixtureModules([]string{"base", "meta", "auth", "meta", "", "base"}, "partner")
-	want := []string{"base", "auth"}
+	got := uniqueScenarioFixtureModules([]string{"base", "meta", "auth", "meta", "", "base"})
+	want := []string{"base", "meta", "auth"}
 	if len(got) != len(want) {
 		t.Fatalf("got=%v want=%v", got, want)
 	}
@@ -62,7 +62,7 @@ func TestUniqueScenarioFixtureModules(t *testing.T) {
 		}
 	}
 
-	gotMeta := uniqueScenarioFixtureModules([]string{"meta", "task", "meta"}, "meta")
+	gotMeta := uniqueScenarioFixtureModules([]string{"meta", "task", "meta"})
 	wantMeta := []string{"meta", "task"}
 	if len(gotMeta) != len(wantMeta) {
 		t.Fatalf("meta got=%v want=%v", gotMeta, wantMeta)
