@@ -406,7 +406,7 @@ jobs:
           retention-days: 1
 
       - name: Fail unit shard if tests failed
-        if: ${{ steps.unit_tests.outputs.exit_code != '0' }}
+        if: ${{ steps.unit_tests.outputs.exit_code != '' && steps.unit_tests.outputs.exit_code != '0' }}
         run: exit "${{ steps.unit_tests.outputs.exit_code }}"
 
   unit-all:

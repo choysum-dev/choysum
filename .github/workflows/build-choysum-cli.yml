@@ -43,6 +43,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
+      - name: Validate warm typecheck inputs
+        if: ${{ inputs.warm_typecheck_types == 'true' && inputs.modules_tsconfig_artifact_name == '' }}
+        run: |
+          echo "error: modules_tsconfig_artifact_name is required when warm_typecheck_types is true" >&2
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -106,12 +112,6 @@ jobs:
       # also run typecheck should set warm_typecheck_types=true (and a tsconfig
       # artifact name). Warm stays in this job so typecheck avoids a second VM,
       # at the cost of unit/e2e waiting on type-fetch when warm is enabled.
-      - name: Validate warm typecheck inputs
-        if: ${{ inputs.warm_typecheck_types == 'true' && inputs.modules_tsconfig_artifact_name == '' }}
-        run: |
-          echo "error: modules_tsconfig_artifact_name is required when warm_typecheck_types is true" >&2
-          exit 1
-
       - name: Make choysum CLI executable
         if: ${{ inputs.warm_typecheck_types == 'true' }}
         run: chmod +x "${{ inputs.choysum_binary_path }}"
@@ -131,7 +131,7 @@ jobs:
         # when only typewarm fails (typecheck will fail later if tsconfig is missing).
         run: |
           set -euo pipefail
-          if ! timeout --signal=TERM --kill-after=30s 30m bash scripts/ci/warm_typecheck_types.sh; then
+          if ! timeout --signal=TERM --kill-after=30s 15m bash scripts/ci/warm_typecheck_types.sh; then
             echo "::error title=typefetch warm::warm_typecheck_types.sh failed; typecheck shards will fail without the modules tsconfig artifact" >&2
             exit 1
           fi

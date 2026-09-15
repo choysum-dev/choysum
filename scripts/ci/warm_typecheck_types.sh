@@ -8,6 +8,10 @@
 
 set -euo pipefail
 
+# type-fetch writes modules/tsconfig.json relative to the repo root.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/../.."
+
 if [[ -z "${CHOYSUM_BIN:-}" ]]; then
   echo "error: CHOYSUM_BIN is required" >&2
   exit 1
