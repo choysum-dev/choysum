@@ -498,7 +498,7 @@ compile:
 		// so ensure base fixtures are applied before auth when auth is force-included.
 		fixtureClosure = append(fixtureClosure, "base", "auth")
 	}
-	uniqueFixtures := uniqueScenarioFixtureModules(fixtureClosure, opts.Module)
+	uniqueFixtures := uniqueScenarioFixtureModules(fixtureClosure)
 	loadedFixtures := []string{}
 	if err := applyScenarioFixturesHook(ctx, configPath, uniqueFixtures, packages, scenario, opts.Module, opts.Verbose, opts.Stderr, &loadedFixtures); err != nil {
 		return err
@@ -812,18 +812,13 @@ func discoverE2ESpecFiles(specsDir string) ([]string, error) {
 	return specFiles, nil
 }
 
-// uniqueScenarioFixtureModules dedupes fixture modules for one scenario run.
-// Meta default fixtures seed uninstalled placeholder MetaModule rows (e.g. Name=partner)
-// that collide when those modules are really installed for a non-meta target, so skip
-// meta fixtures unless the target module is meta.
-func uniqueScenarioFixtureModules(fixtureClosure []string, targetModule string) []string {
+// uniqueScenarioFixtureModules dedupes fixture modules for one scenario run
+// while preserving closure order.
+func uniqueScenarioFixtureModules(fixtureClosure []string) []string {
 	unique := make([]string, 0, len(fixtureClosure))
 	seen := map[string]bool{}
 	for _, mod := range fixtureClosure {
 		if mod == "" || seen[mod] {
-			continue
-		}
-		if mod == "meta" && targetModule != "meta" {
 			continue
 		}
 		seen[mod] = true

@@ -1032,7 +1032,7 @@ test('meta module management: kanban usable when registry sync fails', async () 
     // The board remains interactive despite registry sync failures.
     const searchInput = page.locator('.o-kanban__search .o-search__input');
     if (await searchInput.isVisible().catch(() => false)) {
-      await searchInput.fill('partner');
+      await searchInput.fill('e2e_fixture');
       await searchInput.press('Enter');
       await waitForModuleList(page);
       await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });

@@ -1,14 +1,14 @@
 {
   "records": [
     {
-      "name": "e2e_partner_module",
+      "name": "e2e_fixture_module",
       "model": "MetaModule",
       "values": {
-        "Name": "partner",
+        "Name": "e2e_fixture_mod",
         "Status": "uninstalled",
         "ApplicationStr": "base",
         "Category": "Base",
-        "Summary": "E2E fixture module"
+        "Summary": "E2E fixture placeholder (not a real installable module)"
       }
     }
   ]
