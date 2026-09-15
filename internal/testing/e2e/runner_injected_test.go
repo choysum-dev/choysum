@@ -382,6 +382,190 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 	})
 
+	t.Run("scenario backendEnv comes from package.json not scenario name", func(t *testing.T) {
+		oldInstall := installForE2EHook
+		oldApply := applyScenarioFixturesHook
+		oldSeed := seedModuleIndexHook
+		oldStart := startServerHook
+		oldStop := stopServerHook
+		oldWait := waitForHTTP200Hook
+		oldRunE2EHost := runE2EHostHook
+		defer func() {
+			installForE2EHook = oldInstall
+			applyScenarioFixturesHook = oldApply
+			seedModuleIndexHook = oldSeed
+			startServerHook = oldStart
+			stopServerHook = oldStop
+			waitForHTTP200Hook = oldWait
+			runE2EHostHook = oldRunE2EHost
+		}()
+
+		var seenConfig string
+		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error {
+			if seenConfig == "" {
+				raw, err := os.ReadFile(configPath)
+				if err != nil {
+					return err
+				}
+				seenConfig = string(raw)
+			}
+			return nil
+		}
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+			return nil
+		}
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+			return nil
+		}
+		startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
+			return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
+		}
+		stopServerHook = func(cmd *exec.Cmd) {}
+		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
+		runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+			return nil
+		}
+
+		modulesPath := t.TempDir()
+		specsDir := filepath.Join(modulesPath, "web", "e2e")
+		if err := os.MkdirAll(specsDir, 0o755); err != nil {
+			t.Fatalf("mkdir specs dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+			t.Fatalf("write spec file: %v", err)
+		}
+
+		manifests := map[string]*sourceModulePackage{
+			"web": {
+				DirName: "web",
+				Depends: []string{"meta"},
+				E2E: &packageE2E{
+					Specs: "e2e",
+					Scenarios: map[string]packageScene{
+						"lock-conflict": {Extends: "default"},
+						"default":       {},
+					},
+				},
+			},
+			"meta": {
+				DirName: "meta",
+				E2E: &packageE2E{
+					Scenarios: map[string]packageScene{
+						"lock-conflict": {
+							BackendEnv: map[string]string{"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true"},
+						},
+					},
+				},
+			},
+		}
+
+		err := runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "lock-conflict")
+		if err != nil {
+			t.Fatalf("runOneScenario(web lock-conflict) error: %v", err)
+		}
+		if !strings.Contains(seenConfig, `"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true"`) {
+			t.Fatalf("expected FORCE_LOCK from meta scenario backendEnv, got %q", seenConfig)
+		}
+		if strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_RELOAD_FAILED") || strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_RESULT_STATUS") {
+			t.Fatalf("unexpected other FORCE_* keys from hard-coded scenario switch, got %q", seenConfig)
+		}
+
+		// Target does not declare the scenario; FORCE_* still comes from a dependency.
+		seenConfig = ""
+		manifestsDepOnly := map[string]*sourceModulePackage{
+			"web": {
+				DirName: "web",
+				Depends: []string{"meta"},
+				E2E: &packageE2E{
+					Specs:     "e2e",
+					Scenarios: map[string]packageScene{"default": {}},
+				},
+			},
+			"meta": manifests["meta"],
+		}
+		err = runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifestsDepOnly, "lock-conflict")
+		if err != nil {
+			t.Fatalf("runOneScenario(web dep-only lock-conflict) error: %v", err)
+		}
+		if !strings.Contains(seenConfig, `"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true"`) {
+			t.Fatalf("expected FORCE_LOCK from dependency-only scenario backendEnv, got %q", seenConfig)
+		}
+
+		seenConfig = ""
+		manifestsNoEnv := map[string]*sourceModulePackage{
+			"web": {
+				DirName: "web",
+				E2E: &packageE2E{
+					Specs: "e2e",
+					Scenarios: map[string]packageScene{
+						"lock-conflict": {},
+					},
+				},
+			},
+		}
+		err = runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifestsNoEnv, "lock-conflict")
+		if err != nil {
+			t.Fatalf("runOneScenario(web lock-conflict no env) error: %v", err)
+		}
+		if strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_LOCK_CONFLICT") {
+			t.Fatalf("scenario name alone must not inject FORCE_LOCK, got %q", seenConfig)
+		}
+
+		seenConfig = ""
+		manifestsOverride := map[string]*sourceModulePackage{
+			"web": {
+				DirName: "web",
+				Depends: []string{"meta"},
+				E2E: &packageE2E{
+					Specs: "e2e",
+					Scenarios: map[string]packageScene{
+						"lock-conflict": {
+							BackendEnv: map[string]string{"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "from-web"},
+						},
+					},
+				},
+			},
+			"meta": {
+				DirName: "meta",
+				E2E: &packageE2E{
+					Scenarios: map[string]packageScene{
+						"lock-conflict": {
+							BackendEnv: map[string]string{"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "from-meta"},
+						},
+					},
+				},
+			},
+		}
+		err = runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifestsOverride, "lock-conflict")
+		if err != nil {
+			t.Fatalf("runOneScenario(web lock-conflict override) error: %v", err)
+		}
+		if !strings.Contains(seenConfig, `"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "from-web"`) {
+			t.Fatalf("expected target backendEnv to override dependency, got %q", seenConfig)
+		}
+		if strings.Contains(seenConfig, "from-meta") {
+			t.Fatalf("dependency backendEnv must not win over target, got %q", seenConfig)
+		}
+
+		badKeyManifests := map[string]*sourceModulePackage{
+			"web": {
+				DirName: "web",
+				E2E: &packageE2E{
+					Specs: "e2e",
+					Scenarios: map[string]packageScene{
+						"default": {
+							BackendEnv: map[string]string{"CHOYSUM_E2E_SKIP_RELOAD": "true"},
+						},
+					},
+				},
+			},
+		}
+		err = runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, badKeyManifests, "default")
+		if err == nil || !strings.Contains(err.Error(), "reserved") {
+			t.Fatalf("expected reserved backendEnv error from runOneScenario, got %v", err)
+		}
+	})
+
 	t.Run("invalid specs rel is rejected", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		manifests := map[string]*sourceModulePackage{

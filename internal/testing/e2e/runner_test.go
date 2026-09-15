@@ -461,6 +461,92 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "extends missing parent") {
 		t.Fatalf("expected missing parent error, got %v", err)
 	}
+
+	envMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
+		"default": {BackendEnv: map[string]string{"SHARED": "from-default", "ONLY_DEFAULT": "1"}},
+		"child": {
+			Extends:    "default",
+			BackendEnv: map[string]string{"SHARED": "from-child", "CHILD_ONLY": "yes"},
+		},
+		"grandchild": {
+			Extends:    "child",
+			BackendEnv: map[string]string{"SHARED": "from-grandchild"},
+		},
+		"broken": {Extends: "missing"},
+	}}}
+	env, err := resolveScenarioBackendEnv(envMod, "grandchild")
+	if err != nil {
+		t.Fatalf("resolveScenarioBackendEnv(grandchild): %v", err)
+	}
+	wantGrandchild := map[string]string{"SHARED": "from-grandchild", "ONLY_DEFAULT": "1", "CHILD_ONLY": "yes"}
+	if !reflect.DeepEqual(env, wantGrandchild) {
+		t.Fatalf("multi-level backendEnv merge = %#v, want %#v", env, wantGrandchild)
+	}
+	env, err = resolveScenarioBackendEnv(envMod, "child")
+	if err != nil {
+		t.Fatalf("resolveScenarioBackendEnv(child): %v", err)
+	}
+	wantEnv := map[string]string{"SHARED": "from-child", "ONLY_DEFAULT": "1", "CHILD_ONLY": "yes"}
+	if !reflect.DeepEqual(env, wantEnv) {
+		t.Fatalf("backendEnv merge = %#v, want %#v", env, wantEnv)
+	}
+	env, err = resolveScenarioBackendEnv(envMod, "unknown")
+	if err != nil || len(env) != 0 {
+		t.Fatalf("unknown scenario backendEnv = %#v err=%v", env, err)
+	}
+	_, err = resolveScenarioBackendEnv(envMod, "broken")
+	if err == nil || !strings.Contains(err.Error(), "extends missing parent") {
+		t.Fatalf("expected missing parent error for backendEnv, got %v", err)
+	}
+
+	for _, badKey := range []string{"", "BAD: KEY", "BAD\nkey", " CHOYSUM_X", "CHOYSUM_E2E_SKIP_RELOAD", "CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC"} {
+		badMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
+			"default": {BackendEnv: map[string]string{badKey: "1"}},
+		}}}
+		_, err = resolveScenarioBackendEnv(badMod, "default")
+		if err == nil {
+			t.Fatalf("expected error for backendEnv key %q", badKey)
+		}
+		if strings.HasPrefix(badKey, "CHOYSUM_E2E_SKIP_") {
+			if !strings.Contains(err.Error(), "reserved") {
+				t.Fatalf("expected reserved-key error for %q, got %v", badKey, err)
+			}
+		} else if !strings.Contains(err.Error(), "invalid backendEnv key") {
+			t.Fatalf("expected invalid-key error for %q, got %v", badKey, err)
+		}
+	}
+
+	cycleMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
+		"a": {Extends: "b"},
+		"b": {Extends: "a"},
+	}}}
+	_, err = resolveScenarioBackendEnv(cycleMod, "a")
+	if err == nil || !strings.Contains(err.Error(), "scenario extends cycle") {
+		t.Fatalf("expected backendEnv extends cycle error, got %v", err)
+	}
+
+	nulMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
+		"default": {BackendEnv: map[string]string{"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "ok\x00bad"}},
+	}}}
+	_, err = resolveScenarioBackendEnv(nulMod, "default")
+	if err == nil || !strings.Contains(err.Error(), "NUL byte") {
+		t.Fatalf("expected NUL value error, got %v", err)
+	}
+
+	formatted := formatBackendEnvYAML(map[string]string{
+		"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true",
+		"AAA":                             "1",
+	})
+	if formatted != "  \"AAA\": \"1\"\n  \"CHOYSUM_E2E_FORCE_LOCK_CONFLICT\": \"true\"\n" {
+		t.Fatalf("unexpected formatBackendEnvYAML: %q", formatted)
+	}
+	hostile := formatBackendEnvYAML(map[string]string{"A": "x\ny\"z\\injected: 1"})
+	if want := "  \"A\": \"x\\ny\\\"z\\\\injected: 1\"\n"; hostile != want {
+		t.Fatalf("expected escaped YAML value %q, got %q", want, hostile)
+	}
+	if formatBackendEnvYAML(nil) != "" || formatBackendEnvYAML(map[string]string{}) != "" {
+		t.Fatalf("expected empty YAML for empty backendEnv")
+	}
 }
 
 func TestE2EUtilityHelpers(t *testing.T) {
