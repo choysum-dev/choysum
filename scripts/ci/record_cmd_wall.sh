@@ -36,7 +36,7 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo
     printf 'Command: `%s`\n' "$*"
     echo
-    echo "CI measurement. Do not compare to a local \`go test ./...\` without \`-count=1\` / \`-cover\`."
+    echo "CI measurement (often one shard). Do not compare to a local \`go test ./...\` without \`-count=1\` / \`-cover\`."
     echo
     if [[ -s "$timing" ]]; then
       echo '```'

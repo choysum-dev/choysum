@@ -61,9 +61,19 @@ All contributors must sign the CLA before their pull request can be merged. We u
 
 ---
 
+## 🧪 Local vs CI Go tests
+
+- **Local (developer default):** `go test ./...` (optionally `-count=1`). No coverage flags required for day-to-day work.
+- **CI (PR Gate / Mainline):** sharded `go test` with `-count=1 -covermode=atomic -coverprofile=...` via `scripts/ci/go_test_shards.py`. Only the `testing` shard installs Chromium.
+- Do **not** treat a local wall-clock and a CI step summary as the same metric: CI always uses `-count=1` + cover, and may run fewer packages per job.
+
+```bash
+python3 scripts/ci/go_test_shards.py check   # union(shards) == go list ./...
+```
+
 ## 🚀 Pull Request Checklist
 
 1. **Focused Changes:** Keep the change focused.
-2. **Tests:** Ensure `go test ./...` passes.
+2. **Tests:** Ensure `go test ./...` passes locally.
 3. **SPDX:** Add correct SPDX headers for new files.
 4. **Sign-off:** Ensure you have replied to the bot to sign the CLA.
