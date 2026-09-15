@@ -138,13 +138,9 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
 
     def test_each_build_pipeline_prefix_arms_full_matrix_without_bootstrap_verify(self):
         mod = load_mod()
-        # Each BUILD_PREFIXES entry must independently classify as build-pipeline;
-        # bundling paths would let one hit mask a regression in another.
-        build_paths = [
-            "internal/bootstrap/web/src/main.ts",
-            "pkg/jsengine/scripts/vuesfc/src/index.ts",
-            "pkg/jsengine/scripts/vuevirtual/src/index.ts",
-        ]
+        # Derive from BUILD_PREFIXES so renamed/added prefixes stay covered.
+        build_paths = [f"{prefix}marker.ts" for prefix in mod.BUILD_PREFIXES]
+        self.assertGreater(len(build_paths), 0)
         for path in build_paths:
             with self.subTest(path=path):
                 with tempfile.TemporaryDirectory() as tmp:
@@ -154,13 +150,13 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
                         "// smoke\n", encoding="utf-8"
                     )
 
+                    def fake_run(cmd, *args, **kwargs):
+                        stdout = path + "\n" if "diff" in cmd else ""
+                        return Mock(stdout=stdout, returncode=0)
+
                     with patch.object(mod, "MODULES_ROOT", modules), patch.object(
-                        mod.subprocess, "run"
-                    ) as run_mock:
-                        run_mock.return_value = Mock(
-                            stdout=path + "\n",
-                            returncode=0,
-                        )
+                        mod.subprocess, "run", side_effect=fake_run
+                    ):
                         with patch.dict(
                             mod.os.environ,
                             {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
@@ -177,16 +173,22 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
 
     def test_merge_group_outputs_omit_run_bootstrap_verify(self):
         mod = load_mod()
-        out = mod.merge_group_or_dispatch_outputs(["auth"], "merge-group")
+        with patch.object(mod, "has_smoke_spec", return_value=True):
+            out = mod.merge_group_or_dispatch_outputs(["auth"], "merge-group")
         self.assertEqual(out["run_full_matrix"], "true")
         self.assertEqual(out["run_go_test"], "true")
+        self.assertEqual(out["run_pr_smoke_e2e"], "true")
+        self.assertEqual(out["impacted_smoke_e2e_modules_json"], '["auth"]')
         self.assertNotIn("run_bootstrap_verify", out)
 
     def test_no_workflow_still_references_removed_bootstrap_verify(self):
         workflows = REPO_ROOT / ".github" / "workflows"
-        for path in sorted(workflows.glob("*.yml")):
+        paths = sorted(workflows.glob("*.yml")) + sorted(workflows.glob("*.yaml"))
+        self.assertGreater(len(paths), 0)
+        for path in paths:
             text = path.read_text(encoding="utf-8")
-            self.assertNotIn("bootstrap-verify.yml", text, path.name)
+            # Catch job ids / needs / uses, not only the deleted filename.
+            self.assertNotIn("bootstrap-verify", text, path.name)
             self.assertNotIn("run_bootstrap_verify", text, path.name)
 
 
