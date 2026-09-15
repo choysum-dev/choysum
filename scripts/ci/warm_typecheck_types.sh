@@ -40,7 +40,8 @@ echo "Re-fetching vue type graph"
 "$CHOYSUM_BIN" type-fetch web
 
 # Require the tsconfig-pinned vue entry (not a hollow/wrong-version graph).
-pinned="$(grep -oE 'esm\.sh_vue@[0-9][^/_"]+' modules/tsconfig.json | head -1 | sed 's/.*@//')"
+# `|| true`: under pipefail, grep exit 1 on no match would skip the diagnostic below.
+pinned="$(grep -oE 'esm\.sh_vue@[0-9][^/_"]+' modules/tsconfig.json | head -1 | sed 's/.*@//' || true)"
 if [[ -z "$pinned" ]]; then
   echo "error: pinned vue version not found in modules/tsconfig.json" >&2
   exit 1

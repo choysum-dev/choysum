@@ -82,12 +82,12 @@ jobs:
         # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # queries: security-extended,security-and-quality
 
-    # Reuse the same embedded-assets cache key as prepare-embedded-assets.yml so
-    # CodeQL does not cold `go generate` while Mainline Verify is also running.
+    # Restore-only: never save this key from CodeQL. A failed mid-generate job
+    # must not poison the shared key used by prepare-embedded-assets.yml.
     - name: Restore embedded assets cache
       id: embedded-cache
       if: matrix.language == 'go' && matrix.build-mode == 'manual'
-      uses: actions/cache@v6
+      uses: actions/cache/restore@v6
       with:
         path: |
           internal/bootstrap/web/dist
@@ -112,12 +112,21 @@ jobs:
       run: |
         set -euo pipefail
 
-        if [[ "${{ steps.embedded-cache.outputs.cache-hit }}" != "true" ]]; then
+        need_generate=true
+        if [[ "${{ steps.embedded-cache.outputs.cache-hit }}" == "true" \
+          && -d internal/bootstrap/web/dist \
+          && -d pkg/jsengine/scripts/vuesfc/dist \
+          && -d pkg/jsengine/scripts/vuevirtual/dist ]]; then
+          echo "Embedded assets cache hit; skipping go generate"
+          need_generate=false
+        elif [[ "${{ steps.embedded-cache.outputs.cache-hit }}" == "true" ]]; then
+          echo "Embedded assets cache hit but dist trees incomplete; regenerating" >&2
+        fi
+
+        if [[ "$need_generate" == "true" ]]; then
           go generate ./pkg/jsengine/scripts/vuesfc/...
           go generate ./pkg/jsengine/scripts/vuevirtual/...
           go generate ./internal/bootstrap/web/...
-        else
-          echo "Embedded assets cache hit; skipping go generate"
         fi
 
         go build ./...

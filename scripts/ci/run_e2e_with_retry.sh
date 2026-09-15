@@ -3,7 +3,11 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 #
 # Run `choysum test e2e` with a small retry budget for flake isolation.
-# Env: CHOYSUM_BIN, MODULE, optional E2E_EXTRA_ARGS, E2E_MAX_ATTEMPTS (default 2).
+# Env:
+#   CHOYSUM_BIN, MODULE (required)
+#   E2E_EXTRA_ARGS       optional whitespace-separated CLI args after MODULE
+#   E2E_MAX_ATTEMPTS     positive integer, default 2
+#   E2E_ATTEMPT_TIMEOUT  GNU timeout duration per attempt, default 30m
 
 set -euo pipefail
 
@@ -13,18 +17,26 @@ if [[ -z "${CHOYSUM_BIN:-}" || -z "${MODULE:-}" ]]; then
 fi
 
 max_attempts="${E2E_MAX_ATTEMPTS:-2}"
+if ! [[ "$max_attempts" =~ ^[1-9][0-9]*$ ]]; then
+  echo "error: E2E_MAX_ATTEMPTS must be a positive integer, got '${max_attempts}'" >&2
+  exit 1
+fi
+
+attempt_timeout="${E2E_ATTEMPT_TIMEOUT:-30m}"
+
 extra_args=()
-# shellcheck disable=SC2206
 if [[ -n "${E2E_EXTRA_ARGS:-}" ]]; then
-  # Intentionally unquoted: callers pass a space-separated flag string.
-  extra_args=(${E2E_EXTRA_ARGS})
+  # Split on whitespace without pathname glob expansion.
+  read -r -a extra_args <<< "${E2E_EXTRA_ARGS}"
 fi
 
 attempt=1
 while true; do
-  echo "E2E attempt ${attempt}/${max_attempts} for module=${MODULE}"
+  echo "E2E attempt ${attempt}/${max_attempts} for module=${MODULE} (timeout=${attempt_timeout})"
   set +e
-  "$CHOYSUM_BIN" test e2e "$MODULE" "${extra_args[@]}"
+  # Bound each attempt so a hung Chromium run cannot consume the whole job timeout.
+  timeout --signal=TERM --kill-after=30s "${attempt_timeout}" \
+    "$CHOYSUM_BIN" test e2e "$MODULE" "${extra_args[@]}"
   exit_code=$?
   set -e
   if [[ "$exit_code" -eq 0 ]]; then

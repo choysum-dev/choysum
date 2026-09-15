@@ -84,8 +84,9 @@ jobs:
       choysum_artifact_name: pr-choysum-cli
       choysum_binary_path: .choysum/tmp/choysum
       retention_days: 1
-      warm_typecheck_types: "true"
-      modules_tsconfig_artifact_name: pr-modules-tsconfig
+      # Warm only when typecheck will run; smoke/e2e-only PRs should not wait on esm.sh.
+      warm_typecheck_types: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' && 'true' || 'false' }}
+      modules_tsconfig_artifact_name: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' && 'pr-modules-tsconfig' || '' }}
 
   go-test-shards:
     name: pr / go-test (${{ matrix.shard }})

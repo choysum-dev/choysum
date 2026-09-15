@@ -238,6 +238,23 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
             self.assertEqual(out["impacted_modules_json"], "[]")
             self.assertEqual(out["run_go_test"], "false")
 
+    def test_shared_workflow_exact_covers_reusable_workflows_used_by_gate(self):
+        import re
+
+        mod = load_mod()
+        workflows = REPO_ROOT / ".github" / "workflows"
+        referenced = set()
+        for name in ("pr-gate.yml", "mainline-verify.yml", "nightly-audit.yml"):
+            text = (workflows / name).read_text(encoding="utf-8")
+            referenced.update(
+                re.findall(r"uses:\s*\./(\.github/workflows/[^\s\"']+)", text)
+            )
+        missing = referenced - set(mod.SHARED_WORKFLOW_EXACT)
+        self.assertFalse(
+            missing,
+            f"gate-referenced workflows missing from SHARED_WORKFLOW_EXACT: {sorted(missing)}",
+        )
+
     def test_gate_reusable_workflows_still_expand_full_matrix(self):
         mod = load_mod()
         for path in sorted(mod.SHARED_WORKFLOW_EXACT):
@@ -266,6 +283,34 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
                     self.assertEqual(out["reason"], "shared-runtime")
                     self.assertEqual(out["run_full_matrix"], "true")
                     self.assertEqual(out["impacted_modules_json"], '["auth"]')
+
+    def test_codeql_workflow_edit_does_not_expand_module_matrix(self):
+        # CodeQL shares the embed cache key but runs as its own workflow; editing
+        # only codeql.yml must not pull the 12-module gate matrix.
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            modules = pathlib.Path(tmp) / "modules"
+            (modules / "auth").mkdir(parents=True)
+
+            changed = [".github/workflows/codeql.yml"]
+
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["auth"])
+
+            self.assertEqual(out["run_full_matrix"], "false")
+            self.assertEqual(out["impacted_modules_json"], "[]")
+            self.assertEqual(out["run_go_test"], "false")
 
     def test_no_workflow_still_references_removed_bootstrap_verify(self):
         workflows = REPO_ROOT / ".github" / "workflows"
