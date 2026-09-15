@@ -10,9 +10,10 @@ import importlib.util
 import pathlib
 import tempfile
 import unittest
-from unittest import mock
+import unittest.mock as mock
 
 SCRIPT = pathlib.Path(__file__).resolve().parent / "go_test_shards.py"
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 def load_mod():
@@ -43,6 +44,22 @@ class GoTestShardsTest(unittest.TestCase):
         rows = mod.shard_meta()
         self.assertEqual([r["shard"] for r in rows], ["cmd", "testing", "module", "runtime", "rest"])
 
+    def test_workflow_matrix_matches_shard_meta(self):
+        mod = load_mod()
+        for wf in ("pr-gate.yml", "mainline-verify.yml"):
+            text = (REPO_ROOT / ".github" / "workflows" / wf).read_text(encoding="utf-8")
+            for row in mod.shard_meta():
+                self.assertIn(
+                    f"- shard: {row['shard']}",
+                    text,
+                    f"{wf} matrix missing {row['shard']}",
+                )
+                self.assertIn(
+                    f'chromium: "{row["chromium"]}"',
+                    text,
+                    f"{wf} chromium flag mismatch for {row['shard']}",
+                )
+
     def test_overlap_detected(self):
         mod = load_mod()
         with mock.patch.object(mod, "run_go_list") as gl:
@@ -51,8 +68,6 @@ class GoTestShardsTest(unittest.TestCase):
                 ["a"],  # cmd
                 ["a"],  # testing overlaps
             ]
-            # Rebuild specs to only two shards for this unit test path is hard;
-            # instead call partition with patched list that overlaps within first two.
             with mock.patch.object(
                 mod,
                 "SHARD_SPECS",
@@ -64,6 +79,22 @@ class GoTestShardsTest(unittest.TestCase):
                 with self.assertRaises(SystemExit) as cm:
                     mod.partition_packages()
                 self.assertIn("overlaps", str(cm.exception))
+
+    def test_empty_named_shard_rejected(self):
+        mod = load_mod()
+        with mock.patch.object(mod, "run_go_list") as gl:
+            gl.side_effect = [
+                ["a", "b"],  # ./...
+                [],  # cmd empty
+            ]
+            with mock.patch.object(
+                mod,
+                "SHARD_SPECS",
+                [{"name": "cmd", "patterns": ["./cmd/..."], "chromium": False}],
+            ):
+                with self.assertRaises(SystemExit) as cm:
+                    mod.partition_packages()
+                self.assertIn("matched no packages", str(cm.exception))
 
     def test_merge_coverprofiles(self):
         mod = load_mod()
@@ -90,6 +121,39 @@ class GoTestShardsTest(unittest.TestCase):
             b.write_text("mode: set\n", encoding="utf-8")
             with self.assertRaises(SystemExit):
                 mod.merge_coverprofiles([a, b], root / "out.out")
+
+    def test_merge_rejects_empty_mode(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            a = root / "a.out"
+            a.write_text("mode:\n", encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                mod.merge_coverprofiles([a], root / "out.out")
+            self.assertIn("empty mode", str(cm.exception))
+
+    def test_merge_require_all_shards(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            paths = []
+            for name in mod.coverprofile_basenames():
+                path = root / name
+                path.write_text("mode: atomic\n", encoding="utf-8")
+                paths.append(path)
+            out = root / "merged.out"
+            mod.merge_coverprofiles(paths, out, require_all_shards=True)
+            # Drop one shard -> mismatch.
+            with self.assertRaises(SystemExit) as cm:
+                mod.merge_coverprofiles(paths[:-1], out, require_all_shards=True)
+            self.assertIn("shard set mismatch", str(cm.exception))
+
+    def test_packages_rejects_unknown_shard(self):
+        mod = load_mod()
+        with mock.patch.object(mod, "partition_packages", return_value={"cmd": []}):
+            with self.assertRaises(SystemExit) as cm:
+                mod.main(["packages", "nope"])
+            self.assertIn("unknown shard", str(cm.exception))
 
 
 if __name__ == "__main__":

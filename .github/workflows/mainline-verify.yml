@@ -94,7 +94,11 @@ jobs:
           cache: true
 
       - name: Verify go-test shard partition
-        run: python3 scripts/ci/go_test_shards.py check
+        if: ${{ matrix.shard == 'cmd' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/go_test_shards_test.py
+          python3 scripts/ci/go_test_shards.py check
 
       - name: Install Chromium for e2e unit coverage
         if: ${{ matrix.chromium == 'true' }}
@@ -108,11 +112,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .choysum/coverage/main
-          mapfile -t pkgs < <(python3 scripts/ci/go_test_shards.py packages "${{ matrix.shard }}")
-          if [[ ${#pkgs[@]} -eq 0 ]]; then
+          if ! pkg_list="$(python3 scripts/ci/go_test_shards.py packages "${{ matrix.shard }}")"; then
+            echo "error: failed to resolve packages for shard ${{ matrix.shard }}" >&2
+            exit 1
+          fi
+          if [[ -z "${pkg_list}" ]]; then
             echo "error: shard ${{ matrix.shard }} has no packages" >&2
             exit 1
           fi
+          mapfile -t pkgs <<< "${pkg_list}"
           ./scripts/ci/record_cmd_wall.sh \
             go test "${pkgs[@]}" -count=1 -covermode=atomic \
             -coverprofile=".choysum/coverage/main/shard-${{ matrix.shard }}.out"
@@ -176,6 +184,7 @@ jobs:
             exit 1
           fi
           python3 scripts/ci/go_test_shards.py merge-coverprofiles \
+            --require-all-shards \
             -o .choysum/coverage/main/go.out "${inputs[@]}"
           ls -la .choysum/coverage/main/go.out
 

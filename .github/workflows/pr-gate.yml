@@ -120,7 +120,11 @@ jobs:
           cache: true
 
       - name: Verify go-test shard partition
-        run: python3 scripts/ci/go_test_shards.py check
+        if: ${{ matrix.shard == 'cmd' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/go_test_shards_test.py
+          python3 scripts/ci/go_test_shards.py check
 
       - name: Install Chromium for e2e unit coverage
         if: ${{ matrix.chromium == 'true' }}
@@ -134,11 +138,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .choysum/coverage/pr
-          mapfile -t pkgs < <(python3 scripts/ci/go_test_shards.py packages "${{ matrix.shard }}")
-          if [[ ${#pkgs[@]} -eq 0 ]]; then
+          if ! pkg_list="$(python3 scripts/ci/go_test_shards.py packages "${{ matrix.shard }}")"; then
+            echo "error: failed to resolve packages for shard ${{ matrix.shard }}" >&2
+            exit 1
+          fi
+          if [[ -z "${pkg_list}" ]]; then
             echo "error: shard ${{ matrix.shard }} has no packages" >&2
             exit 1
           fi
+          mapfile -t pkgs <<< "${pkg_list}"
           ./scripts/ci/record_cmd_wall.sh \
             go test "${pkgs[@]}" -count=1 -covermode=atomic \
             -coverprofile=".choysum/coverage/pr/shard-${{ matrix.shard }}.out"
@@ -163,15 +171,23 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Fail when routing job did not succeed
+        if: ${{ needs.discover-impact.result != 'success' }}
+        env:
+          DISCOVER_RESULT: ${{ needs.discover-impact.result }}
+        run: |
+          echo "discover-impact did not succeed (result=${DISCOVER_RESULT}); refusing to report green." >&2
+          exit 1
+
       - name: Skip Go baseline when routing says no
-        if: ${{ needs.discover-impact.outputs.run_go_test != 'true' }}
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test != 'true' }}
         env:
           RUN_GO_TEST: ${{ needs.discover-impact.outputs.run_go_test }}
           DISCOVER_REASON: ${{ needs.discover-impact.outputs.reason }}
         run: echo "go test skipped by routing (run_go_test=${RUN_GO_TEST}; reason=${DISCOVER_REASON})"
 
       - name: Verify go-test shards
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
         env:
           SHARD_RESULT: ${{ needs.go-test-shards.result }}
         run: |
@@ -190,13 +206,13 @@ jobs:
           fi
 
       - name: Checkout
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Download shard coverprofiles
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/download-artifact@v8
         with:
           pattern: pr-go-cover-*
@@ -204,7 +220,7 @@ jobs:
           merge-multiple: true
 
       - name: Merge coverprofiles
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
         run: |
           set -euo pipefail
           mkdir -p .choysum/coverage/pr
@@ -214,11 +230,12 @@ jobs:
             exit 1
           fi
           python3 scripts/ci/go_test_shards.py merge-coverprofiles \
+            --require-all-shards \
             -o .choysum/coverage/pr/go.out "${inputs[@]}"
           ls -la .choysum/coverage/pr/go.out
 
       - name: Upload Go coverage to Codecov
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
         continue-on-error: true
         uses: codecov/codecov-action@v7
         with:
