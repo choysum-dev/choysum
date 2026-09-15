@@ -480,21 +480,6 @@ compile:
 	if err := installForE2EHook(ctx, configPath, opts.Module, opts.WithDemo); err != nil {
 		return err
 	}
-	// Module management E2E relies on task job tables; install task module when testing meta.
-	if opts.Module == "meta" {
-		if err := installForE2EHook(ctx, configPath, "task", opts.WithDemo); err != nil {
-			return err
-		}
-		if err := installForE2EHook(ctx, configPath, "auth", opts.WithDemo); err != nil {
-			return err
-		}
-	}
-	// Auth E2E needs meta services for permission bootstrap (Model/Service lookups).
-	if opts.Module == "auth" {
-		if err := installForE2EHook(ctx, configPath, "meta", opts.WithDemo); err != nil {
-			return err
-		}
-	}
 	if authEnabled && !authInClosure && opts.Module != "auth" {
 		if err := installForE2EHook(ctx, configPath, "auth", opts.WithDemo); err != nil {
 			return err

@@ -90,8 +90,8 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runOneScenario error: %v", err)
 	}
-	if installCalls < 2 {
-		t.Fatalf("expected at least auth+meta install calls, got %d", installCalls)
+	if installCalls != 1 {
+		t.Fatalf("expected single target install (auth), got %d", installCalls)
 	}
 	if !stopCalled {
 		t.Fatalf("expected stopServer hook called")
@@ -234,7 +234,7 @@ func TestRunModulePropagatesScenarioHookError(t *testing.T) {
 }
 
 func TestRunOneScenarioAdditionalBranches(t *testing.T) {
-	t.Run("meta module installs task and auth", func(t *testing.T) {
+	t.Run("meta module force-enables auth soft-install", func(t *testing.T) {
 		oldInstall := installForE2EHook
 		oldApply := applyScenarioFixturesHook
 		oldSeed := seedModuleIndexHook
@@ -290,7 +290,9 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("runOneScenario(meta) error: %v", err)
 		}
-		if !reflect.DeepEqual(installed, []string{"meta", "task", "auth", "auth"}) {
+		// Target install only; force-enable still soft-installs auth (Phase 3 removes that).
+		// Redundant task/auth/meta peer installs from depends are gone.
+		if !reflect.DeepEqual(installed, []string{"meta", "auth"}) {
 			t.Fatalf("unexpected install order/modules: %#v", installed)
 		}
 	})
