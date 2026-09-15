@@ -180,11 +180,19 @@ jobs:
           exit 1
 
       - name: Skip Go baseline when routing says no
-        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test != 'true' }}
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'false' }}
         env:
           RUN_GO_TEST: ${{ needs.discover-impact.outputs.run_go_test }}
           DISCOVER_REASON: ${{ needs.discover-impact.outputs.reason }}
         run: echo "go test skipped by routing (run_go_test=${RUN_GO_TEST}; reason=${DISCOVER_REASON})"
+
+      - name: Fail on unrecognized routing output
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test != 'true' && needs.discover-impact.outputs.run_go_test != 'false' }}
+        env:
+          RUN_GO_TEST: ${{ needs.discover-impact.outputs.run_go_test }}
+        run: |
+          echo "unexpected run_go_test value '${RUN_GO_TEST}'; refusing to report green." >&2
+          exit 1
 
       - name: Verify go-test shards
         if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}

@@ -47,10 +47,10 @@ class GoTestShardsTest(unittest.TestCase):
 
     def test_workflow_matrix_matches_shard_meta(self):
         mod = load_mod()
-        expected = {row["shard"]: row["chromium"] for row in mod.shard_meta()}
+        expected = [(row["shard"], row["chromium"]) for row in mod.shard_meta()]
         for wf in ("pr-gate.yml", "mainline-verify.yml"):
             text = (REPO_ROOT / ".github" / "workflows" / wf).read_text(encoding="utf-8")
-            found = dict(re.findall(r'- shard: (\S+)\s*\n\s+chromium: "(\w+)"', text))
+            found = re.findall(r'- shard: (\S+)\s*\n\s+chromium: "(\w+)"', text)
             self.assertEqual(found, expected, f"{wf} matrix mismatch")
 
     def test_empty_rest_rejected(self):
@@ -141,7 +141,33 @@ class GoTestShardsTest(unittest.TestCase):
                 mod.merge_coverprofiles([a], root / "out.out")
             self.assertIn("empty mode", str(cm.exception))
 
+    def test_merge_rejects_missing_mode(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            a = root / "a.out"
+            a.write_text("foo.go:1.2,3.4 1 1\n", encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                mod.merge_coverprofiles([a], root / "out.out")
+            self.assertIn("missing mode", str(cm.exception))
+
     def test_merge_require_all_shards(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            paths = []
+            for i, name in enumerate(mod.coverprofile_basenames()):
+                path = root / name
+                path.write_text(f"mode: atomic\np{i}.go:1.2,3.4 1 1\n", encoding="utf-8")
+                paths.append(path)
+            out = root / "merged.out"
+            mod.merge_coverprofiles(paths, out, require_all_shards=True)
+            # Drop one shard -> mismatch.
+            with self.assertRaises(SystemExit) as cm:
+                mod.merge_coverprofiles(paths[:-1], out, require_all_shards=True)
+            self.assertIn("shard set mismatch", str(cm.exception))
+
+    def test_merge_require_all_shards_rejects_empty_body(self):
         mod = load_mod()
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
@@ -150,12 +176,17 @@ class GoTestShardsTest(unittest.TestCase):
                 path = root / name
                 path.write_text("mode: atomic\n", encoding="utf-8")
                 paths.append(path)
-            out = root / "merged.out"
-            mod.merge_coverprofiles(paths, out, require_all_shards=True)
-            # Drop one shard -> mismatch.
             with self.assertRaises(SystemExit) as cm:
-                mod.merge_coverprofiles(paths[:-1], out, require_all_shards=True)
-            self.assertIn("shard set mismatch", str(cm.exception))
+                mod.merge_coverprofiles(paths, root / "out.out", require_all_shards=True)
+            self.assertIn("no coverage lines", str(cm.exception))
+
+    def test_run_go_list_failure_raises(self):
+        mod = load_mod()
+        with mock.patch.object(mod.subprocess, "run") as run_mock:
+            run_mock.return_value = mock.Mock(returncode=1, stdout="", stderr="boom")
+            with self.assertRaises(SystemExit) as cm:
+                mod.run_go_list(["./..."])
+            self.assertIn("go list failed", str(cm.exception))
 
     def test_packages_rejects_unknown_shard(self):
         mod = load_mod()

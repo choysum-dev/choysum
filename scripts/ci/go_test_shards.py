@@ -168,6 +168,10 @@ def merge_coverprofiles(
         elif mode != file_mode:
             raise SystemExit(f"cover mode mismatch: {mode} vs {file_mode} ({path})")
         body.extend(line for line in lines[1:] if line.strip())
+    if require_all_shards and not body:
+        raise SystemExit(
+            "merge-coverprofiles: all shards present but no coverage lines found"
+        )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         "mode: " + (mode or "set") + "\n" + "\n".join(body) + ("\n" if body else ""),
