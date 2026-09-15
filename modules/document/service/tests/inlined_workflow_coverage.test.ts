@@ -12,8 +12,7 @@ import {
   documentProbeOwnerRecordForTest,
 } from '../models/_owner_authorization';
 import {
-  ensureAuthUserOwnerFieldRuleGrants,
-  ensureAuthUserOwnerRecordRuleGrants,
+  ensureDocumentAuthUserStub,
   disableRepositoryFieldRuleForDocumentTests,
   disableRepositoryRecordRuleForDocumentTests,
   withDocumentAuthUserStubOverride,
@@ -69,8 +68,7 @@ async function withDocumentScope<T>(fn: () => Promise<T>): Promise<T> {
   return withContext(
     { activeCompanyId: TEST_COMPANY_ID, enabledCompanyIds: [TEST_COMPANY_ID] } as any,
     async () => {
-      await ensureAuthUserOwnerRecordRuleGrants();
-      await ensureAuthUserOwnerFieldRuleGrants();
+      ensureDocumentAuthUserStub();
       return fn();
     },
     { merge: false }
@@ -476,6 +474,19 @@ test('inlined upload coverage: authorize short-circuits when session status is a
 test('inlined upload coverage: branch fallbacks for create op, defaults, and finalize metadata', async () => {
   resetRequestContext();
   await withDocumentScope(async () => {
+    await withDocumentAuthUserStubOverride(
+      {
+        GetRecordRuleCondition: async (model, op) => {
+          if (String(model || '').trim().toLowerCase() !== 'auth.user') {
+            return { kind: 'false', reason: 'unknown_model' };
+          }
+          if (op === 'read' || op === 'write' || op === 'create') {
+            return { kind: 'true', reason: 'document_test_allow_create' };
+          }
+          return { kind: 'false', reason: 'document_test_op_denied' };
+        },
+      },
+      async () => {
       const createPrepared = await AttachmentObject.PrepareUpload({
         ownerModel: 'auth.User',
         ownerRecordId: uid('owner_cov_create_op'),
@@ -744,6 +755,8 @@ test('inlined upload coverage: branch fallbacks for create op, defaults, and fin
         businessRequestId: createFinalizeBiz,
       });
       expect(createFinalized.mimeType).toBe('text/plain');
+      }
+    );
   });
 });
 

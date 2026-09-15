@@ -70,10 +70,8 @@ export function disableRepositoryFieldRuleForDocumentTests(): void {
   root.__CHOYSUM_RUNTIME_ENV__ = { ...prev, CHOYSUM_GRPC_FIELD_RULE_ENABLED: false };
 }
 
-function isUnknownOwnerModel(model: string): boolean {
-  const text = String(model || '').trim();
-  if (!text.includes('.')) return true;
-  return text.toLowerCase().startsWith('unknown.');
+function isGrantedOwnerModel(model: string): boolean {
+  return String(model || '').trim().toLowerCase() === DOCUMENT_TEST_AUTH_USER_MODEL.toLowerCase();
 }
 
 function collectIdEquals(condition: unknown): string[] {
@@ -95,11 +93,19 @@ function collectIdEquals(condition: unknown): string[] {
   return [];
 }
 
-function createAllowAllAuthUserStub(): AuthUserOwnerAuthzStub {
+/**
+ * Default stub mirrors the old everyone grant on auth.User (read+write only).
+ * Other owner models and create/delete stay denied; suites that need create
+ * must use {@link withDocumentAuthUserStubOverride}.
+ */
+function createDefaultAuthUserStub(): AuthUserOwnerAuthzStub {
   return {
-    GetRecordRuleCondition: async (model: string, _op: RecordRuleOp): Promise<ConditionEnvelope> => {
-      if (isUnknownOwnerModel(model)) {
+    GetRecordRuleCondition: async (model: string, op: RecordRuleOp): Promise<ConditionEnvelope> => {
+      if (!isGrantedOwnerModel(model)) {
         return { kind: 'false', reason: 'unknown_model' };
+      }
+      if (op !== 'read' && op !== 'write') {
+        return { kind: 'false', reason: 'document_test_op_denied' };
       }
       return { kind: 'true', reason: 'document_test_allow' };
     },
@@ -125,54 +131,50 @@ function restoreFactory(modelName: string, previous: ReturnType<typeof getServic
 }
 
 /**
- * Install an allow-all auth.User stub (RR/FR + minimal Search) so document unit
- * suites do not need auth soft-installed.
+ * Install the default auth.User stub once per suite process so nested
+ * {@link withDocumentAuthUserStubOverride} calls are not clobbered by re-ensure.
  */
 export function ensureDocumentAuthUserStub(): void {
-  if (!authUserStubInstalled) {
-    previousAuthUserFactory = getServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL);
-    authUserStubInstalled = true;
+  if (authUserStubInstalled) {
+    clearRequestAuthzCaches();
+    return;
   }
-  registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => createAllowAllAuthUserStub());
+  previousAuthUserFactory = getServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL);
+  registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => createDefaultAuthUserStub());
+  authUserStubInstalled = true;
   clearRequestAuthzCaches();
 }
 
 /**
- * Temporarily override auth.User stub RR/FR methods (e.g. field deny / expr deny).
+ * Temporarily override auth.User stub methods (e.g. field deny / expr deny / create grant).
+ * Restores the factory that was active before this override (supports nesting).
  */
 export async function withDocumentAuthUserStubOverride<T>(
-  override: Partial<Pick<AuthUserOwnerAuthzStub, 'GetRecordRuleCondition' | 'GetFieldRuleSpec'>>,
+  override: Partial<Pick<AuthUserOwnerAuthzStub, 'GetRecordRuleCondition' | 'GetFieldRuleSpec' | 'Search'>>,
   fn: () => Promise<T>
 ): Promise<T> {
   ensureDocumentAuthUserStub();
-  const base = createAllowAllAuthUserStub();
+  const base = createDefaultAuthUserStub();
   const merged: AuthUserOwnerAuthzStub = {
-    ...base,
     GetRecordRuleCondition: override.GetRecordRuleCondition
       ? (model, op) => override.GetRecordRuleCondition!(model, op)
       : base.GetRecordRuleCondition,
     GetFieldRuleSpec: override.GetFieldRuleSpec
       ? model => override.GetFieldRuleSpec!(model)
       : base.GetFieldRuleSpec,
+    Search: override.Search
+      ? (condition, options) => override.Search!(condition, options)
+      : base.Search,
   };
+  const priorFactory = getServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL);
   registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => merged);
   clearRequestAuthzCaches();
   try {
     return await fn();
   } finally {
-    registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => createAllowAllAuthUserStub());
+    restoreFactory(DOCUMENT_TEST_AUTH_USER_MODEL, priorFactory);
     clearRequestAuthzCaches();
   }
-}
-
-/** Alias for {@link ensureDocumentAuthUserStub} (call-site compatibility). */
-export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
-  ensureDocumentAuthUserStub();
-}
-
-/** Alias for {@link ensureDocumentAuthUserStub} (call-site compatibility). */
-export async function ensureAuthUserOwnerFieldRuleGrants(): Promise<void> {
-  ensureDocumentAuthUserStub();
 }
 
 /**

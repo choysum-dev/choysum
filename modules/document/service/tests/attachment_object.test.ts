@@ -7,8 +7,7 @@ import AttachmentObject from '../models/attachment_object';
 import UploadSession from '../models/upload_session';
 import StoredContent from '../models/stored_content';
 import {
-  ensureAuthUserOwnerRecordRuleGrants,
-  ensureAuthUserOwnerFieldRuleGrants,
+  ensureDocumentAuthUserStub,
   disableRepositoryRecordRuleForDocumentTests,
   disableRepositoryFieldRuleForDocumentTests,
   restoreDocumentOwnerAuthFixtures,
@@ -67,8 +66,7 @@ async function withDocumentScope<T>(fn: () => Promise<T>): Promise<T> {
       enabledCompanyIds: [TEST_COMPANY_ID],
     } as any,
     async () => {
-      await ensureAuthUserOwnerRecordRuleGrants();
-      await ensureAuthUserOwnerFieldRuleGrants();
+      ensureDocumentAuthUserStub();
       return fn();
     },
     { merge: false }
@@ -91,8 +89,7 @@ async function withScope<T>(companyId: string, userId: string, fn: () => Promise
       jsCtx.identity = {
         userId,
       };
-      await ensureAuthUserOwnerRecordRuleGrants();
-      await ensureAuthUserOwnerFieldRuleGrants();
+      ensureDocumentAuthUserStub();
       return fn();
     },
     { merge: false }

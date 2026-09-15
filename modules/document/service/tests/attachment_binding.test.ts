@@ -16,8 +16,7 @@ import UploadSession from '../models/upload_session';
 import StoredContent from '../models/stored_content';
 import { assertBatchDescribeReq } from '../models/_attachment_binding_codec';
 import {
-  ensureAuthUserOwnerRecordRuleGrants,
-  ensureAuthUserOwnerFieldRuleGrants,
+  ensureDocumentAuthUserStub,
   disableRepositoryRecordRuleForDocumentTests,
   disableRepositoryFieldRuleForDocumentTests,
   restoreDocumentOwnerAuthFixtures,
@@ -83,8 +82,7 @@ async function withDocumentScope<T>(fn: () => Promise<T>): Promise<T> {
       enabledCompanyIds: [TEST_COMPANY_ID],
     } as any,
     async () => {
-      await ensureAuthUserOwnerRecordRuleGrants();
-      await ensureAuthUserOwnerFieldRuleGrants();
+      ensureDocumentAuthUserStub();
       return fn();
     },
     { merge: false }
@@ -107,8 +105,7 @@ async function withScope<T>(companyId: string, enabledCompanyIds: string[], user
       jsCtx.identity = {
         userId,
       };
-      await ensureAuthUserOwnerRecordRuleGrants();
-      await ensureAuthUserOwnerFieldRuleGrants();
+      ensureDocumentAuthUserStub();
       return fn();
     },
     { merge: false }
@@ -648,14 +645,18 @@ test('document.attachment_binding: descriptor read interface denies owner field 
   resetRequestContext();
   await withDocumentScope(async () => {
     const deniedFieldName = 'PasswordHash';
+    const queriedFieldRuleModels: string[] = [];
 
     await withDocumentAuthUserStubOverride(
       {
-        GetFieldRuleSpec: async () => ({
-          denyReadFields: [deniedFieldName],
-          denyWriteFields: [],
-          reason: 'document_test_field_deny',
-        }),
+        GetFieldRuleSpec: async (model: string) => {
+          queriedFieldRuleModels.push(model);
+          return {
+            denyReadFields: [deniedFieldName],
+            denyWriteFields: [],
+            reason: 'document_test_field_deny',
+          };
+        },
       },
       async () => {
         for (const backend of ['db', 's3'] as const) {
@@ -690,6 +691,8 @@ test('document.attachment_binding: descriptor read interface denies owner field 
         }
       }
     );
+    expect(queriedFieldRuleModels.length).toBeGreaterThan(0);
+    expect(queriedFieldRuleModels.every(model => model === 'auth.User')).toBe(true);
   });
 });
 
