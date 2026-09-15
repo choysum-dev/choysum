@@ -113,10 +113,11 @@ jobs:
         set -euo pipefail
 
         need_generate=true
+        # Entry files match prepare-embedded-assets pack paths (not empty dist dirs).
         if [[ "${{ steps.embedded-cache.outputs.cache-hit }}" == "true" \
           && -d internal/bootstrap/web/dist \
-          && -d pkg/jsengine/scripts/vuesfc/dist \
-          && -d pkg/jsengine/scripts/vuevirtual/dist ]]; then
+          && -f pkg/jsengine/scripts/vuesfc/dist/index.js \
+          && -f pkg/jsengine/scripts/vuevirtual/dist/index.js ]]; then
           echo "Embedded assets cache hit; skipping go generate"
           need_generate=false
         elif [[ "${{ steps.embedded-cache.outputs.cache-hit }}" == "true" ]]; then

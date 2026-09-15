@@ -49,12 +49,17 @@ jobs:
           python3 scripts/ci/pr_gate_discover_impact.py
 
       - name: Log discover routing outputs
+        env:
+          RUN_FULL_MATRIX: ${{ steps.discover.outputs.run_full_matrix }}
+          RUN_GO_TEST: ${{ steps.discover.outputs.run_go_test }}
+          DOCS_ONLY: ${{ steps.discover.outputs.docs_only }}
+          DISCOVER_REASON: ${{ steps.discover.outputs.reason }}
         run: |
           set -euo pipefail
-          echo "run_full_matrix=${{ steps.discover.outputs.run_full_matrix }}"
-          echo "run_go_test=${{ steps.discover.outputs.run_go_test }}"
-          echo "docs_only=${{ steps.discover.outputs.docs_only }}"
-          echo "reason=${{ steps.discover.outputs.reason }}"
+          echo "run_full_matrix=${RUN_FULL_MATRIX}"
+          echo "run_go_test=${RUN_GO_TEST}"
+          echo "docs_only=${DOCS_ONLY}"
+          echo "reason=${DISCOVER_REASON}"
 
   prepare-embedded-assets:
     name: pr / prepare-embedded-assets

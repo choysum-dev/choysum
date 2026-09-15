@@ -90,6 +90,8 @@ jobs:
           CHOYSUM_BIN: ${{ github.workspace }}/.choysum/tmp/choysum
           MODULE: ${{ matrix.module }}
           E2E_MAX_ATTEMPTS: "3"
+          # 3×30m would exhaust job timeout-minutes: 90 with no room for setup.
+          E2E_ATTEMPT_TIMEOUT: "20m"
         run: bash scripts/ci/run_e2e_with_retry.sh
 
   e2e-all:

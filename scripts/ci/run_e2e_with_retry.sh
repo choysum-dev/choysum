@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 #
 # Run `choysum test e2e` with a small retry budget for flake isolation.
+# Requires GNU coreutils `timeout` (GitHub ubuntu-latest runners).
 # Env:
 #   CHOYSUM_BIN, MODULE (required)
 #   E2E_EXTRA_ARGS       optional whitespace-separated CLI args after MODULE
@@ -35,8 +36,9 @@ while true; do
   echo "E2E attempt ${attempt}/${max_attempts} for module=${MODULE} (timeout=${attempt_timeout})"
   set +e
   # Bound each attempt so a hung Chromium run cannot consume the whole job timeout.
+  # ${arr[@]+"${arr[@]}"} avoids set -u unbound-array on empty extra_args (bash <4.4).
   timeout --signal=TERM --kill-after=30s "${attempt_timeout}" \
-    "$CHOYSUM_BIN" test e2e "$MODULE" "${extra_args[@]}"
+    "$CHOYSUM_BIN" test e2e "$MODULE" ${extra_args[@]+"${extra_args[@]}"}
   exit_code=$?
   set -e
   if [[ "$exit_code" -eq 0 ]]; then

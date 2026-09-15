@@ -124,7 +124,8 @@ jobs:
         if: ${{ inputs.warm_typecheck_types == 'true' }}
         env:
           CHOYSUM_BIN: ${{ github.workspace }}/${{ inputs.choysum_binary_path }}
-        run: bash scripts/ci/warm_typecheck_types.sh
+        # Bound warm so an esm.sh stall cannot hold the whole CLI job (and unit/e2e).
+        run: timeout --signal=TERM --kill-after=30s 30m bash scripts/ci/warm_typecheck_types.sh
 
       # modules/tsconfig.json is gitignored; type-fetch writes path maps here.
       # Shards restore the pkg cache but need these maps (no root node_modules).
