@@ -470,6 +470,27 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			t.Fatalf("unexpected other FORCE_* keys from hard-coded scenario switch, got %q", seenConfig)
 		}
 
+		// Target does not declare the scenario; FORCE_* still comes from a dependency.
+		seenConfig = ""
+		manifestsDepOnly := map[string]*sourceModulePackage{
+			"web": {
+				DirName: "web",
+				Depends: []string{"meta"},
+				E2E: &packageE2E{
+					Specs:     "e2e",
+					Scenarios: map[string]packageScene{"default": {}},
+				},
+			},
+			"meta": manifests["meta"],
+		}
+		err = runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifestsDepOnly, "lock-conflict")
+		if err != nil {
+			t.Fatalf("runOneScenario(web dep-only lock-conflict) error: %v", err)
+		}
+		if !strings.Contains(seenConfig, `"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true"`) {
+			t.Fatalf("expected FORCE_LOCK from dependency-only scenario backendEnv, got %q", seenConfig)
+		}
+
 		seenConfig = ""
 		manifestsNoEnv := map[string]*sourceModulePackage{
 			"web": {
