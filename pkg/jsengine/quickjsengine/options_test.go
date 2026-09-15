@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/jsengine"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 func TestEngineOptionsApplyAndValidate(t *testing.T) {
@@ -157,5 +158,48 @@ func TestQuickjsEngineLoadAndExecutePaths(t *testing.T) {
 	}
 	if _, err := bad.Execute(context.Background(), &jsengine.JsRequest{Id: "no-rpc", Service: "demo"}); err == nil || !strings.Contains(err.Error(), "failed to evaluate RPC script") {
 		t.Fatalf("expected missing rpc error, got %v", err)
+	}
+
+	throwing := newTestQuickjsEngine(t)
+	if err := throwing.Load([]*jsengine.JsScript{{
+		FileName: "throw_rpc.js",
+		Content: `
+			globalThis.$choysum = {
+				__rpc__: function(req) {
+					throw new Error("rpc boom");
+				}
+			};
+		`,
+	}}); err != nil {
+		t.Fatalf("Load(throwing): %v", err)
+	}
+	_, execErr := throwing.Execute(context.Background(), &jsengine.JsRequest{Id: "boom", Service: "demo"})
+	if execErr == nil || !strings.Contains(execErr.Error(), "failed to call function") {
+		t.Fatalf("expected call-function error, got %v", execErr)
+	}
+	if !strings.Contains(execErr.Error(), "rpc boom") {
+		t.Fatalf("expected the JS error message to be preserved, got %v", execErr)
+	}
+	info := oerrors.GetErrorInfo(execErr)
+	if info == nil || info.Domain != "js" || info.Code != "QUICKJS_ERROR" {
+		t.Fatalf("expected js/QUICKJS_ERROR after NormalizeError, got %#v (err=%v)", info, execErr)
+	}
+
+	structured := newTestQuickjsEngine(t)
+	if err := structured.Load([]*jsengine.JsScript{{
+		FileName: "throw_structured.js",
+		Content: `
+			globalThis.$choysum = {
+				__rpc__: function(req) {
+					throw new Error(JSON.stringify({domain:"web",code:"EJS",message:"structured"}));
+				}
+			};
+		`,
+	}}); err != nil {
+		t.Fatalf("Load(structured): %v", err)
+	}
+	_, structuredErr := structured.Execute(context.Background(), &jsengine.JsRequest{Id: "structured", Service: "demo"})
+	if sinfo := oerrors.GetErrorInfo(structuredErr); sinfo == nil || sinfo.Domain != "web" || sinfo.Code != "EJS" {
+		t.Fatalf("expected structured JS error to keep domain/code, got %#v (err=%v)", sinfo, structuredErr)
 	}
 }

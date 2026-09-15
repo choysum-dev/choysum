@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	quickjs "github.com/buke/quickjs-go"
 )
 
 func TestGetErrorInfoAttrsAndFormatBrief(t *testing.T) {
@@ -43,45 +41,64 @@ func TestGetErrorInfoAttrsAndFormatBrief(t *testing.T) {
 	}
 }
 
-func TestGetErrorInfoFromQuickJSErrorAndHelperNegatives(t *testing.T) {
-	t.Run("extracts quickjs error info from JSON", func(t *testing.T) {
-		qjsErr := &quickjs.Error{
-			Message:    "js exploded",
-			JSONString: `{"errorId":"err-1","domain":"web","code":"EJS","grpcCode":7,"metadata":{"tenant":"acme"}}`,
-		}
+func TestHelperNegatives(t *testing.T) {
+	choysumErr := New("billing", "E100", "payment failed")
+	if !Is(choysumErr, "billing", "") {
+		t.Fatal("expected empty code to match on direct ChoysumError")
+	}
+	if Is(choysumErr, "orders", "") {
+		t.Fatal("expected domain mismatch to return false")
+	}
+	if Is(choysumErr, "billing", "OTHER") {
+		t.Fatal("expected code mismatch to return false")
+	}
+	if As(errors.New("plain")) != nil {
+		t.Fatal("expected As to reject plain errors")
+	}
+	if !Has(fmt.Errorf("wrap: %w", choysumErr), choysumErr) {
+		t.Fatal("expected Has to find wrapped ChoysumError")
+	}
+}
 
-		info := GetErrorInfo(qjsErr)
-		if info == nil {
-			t.Fatal("expected quickjs error info to be extracted")
-		}
-		if info.ErrorId != "err-1" || info.Domain != "web" || info.Code != "EJS" || info.Message != "js exploded" || info.GrpcCode != 7 {
-			t.Fatalf("unexpected quickjs error info: %#v", info)
-		}
-		if info.Metadata["tenant"] != "acme" {
-			t.Fatalf("expected quickjs metadata to be preserved, got %#v", info.Metadata)
-		}
-	})
-
-	t.Run("invalid quickjs JSON returns nil", func(t *testing.T) {
-		qjsErr := &quickjs.Error{Message: "bad json", JSONString: "{"}
-		if info := GetErrorInfo(qjsErr); info != nil {
-			t.Fatalf("expected invalid quickjs JSON to return nil, got %#v", info)
-		}
-	})
-
-	t.Run("Is and As reject non matching inputs", func(t *testing.T) {
-		choysumErr := New("billing", "E100", "payment failed")
-		if !Is(choysumErr, "billing", "") {
-			t.Fatal("expected empty code to match on direct ChoysumError")
-		}
-		if Is(choysumErr, "orders", "") {
-			t.Fatal("expected domain mismatch to return false")
-		}
-		if Is(choysumErr, "billing", "OTHER") {
-			t.Fatal("expected code mismatch to return false")
-		}
-		if As(errors.New("plain")) != nil {
-			t.Fatal("expected As to ignore non-Choysum errors")
-		}
-	})
+func TestFromInfo(t *testing.T) {
+	cause := errors.New("root")
+	src := &ErrorInfo{
+		Domain:   "web",
+		Code:     "EJS",
+		Message:  "boom",
+		Metadata: map[string]string{"k": "v"},
+	}
+	ce := FromInfo(src, cause)
+	if ce == nil {
+		t.Fatal("expected FromInfo to return ChoysumError")
+	}
+	if ce.ErrorId == "" {
+		t.Fatal("expected missing ErrorId to be filled")
+	}
+	if src.ErrorId != "" {
+		t.Fatal("expected FromInfo not to mutate caller's ErrorId")
+	}
+	if ce.Metadata["k"] != "v" {
+		t.Fatalf("expected metadata copied, got %#v", ce.Metadata)
+	}
+	ce.Metadata["k"] = "mutated"
+	if src.Metadata["k"] != "v" {
+		t.Fatal("expected FromInfo to clone Metadata")
+	}
+	if !errors.Is(ce, cause) {
+		t.Fatal("expected cause to be unwrap-able")
+	}
+	if FromInfo(nil, nil) != nil {
+		t.Fatal("expected nil info to return nil")
+	}
+	if FromInfo(&ErrorInfo{ErrorId: "x"}, nil) != nil {
+		t.Fatal("expected info without domain/code to return nil")
+	}
+	withID := FromInfo(&ErrorInfo{ErrorId: "keep", Domain: "web", Code: "E1"}, nil)
+	if withID.ErrorId != "keep" {
+		t.Fatalf("expected existing ErrorId preserved, got %q", withID.ErrorId)
+	}
+	if noMeta := FromInfo(&ErrorInfo{Domain: "web", Code: "E1"}, nil); noMeta.Metadata == nil {
+		t.Fatal("expected nil Metadata to become an empty map")
+	}
 }

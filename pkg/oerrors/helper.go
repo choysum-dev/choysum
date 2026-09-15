@@ -4,11 +4,8 @@
 package oerrors
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-
-	"github.com/buke/quickjs-go"
 )
 
 // GetErrorInfo extracts ErrorInfo from an error for logging.
@@ -17,43 +14,11 @@ func GetErrorInfo(err error) *ErrorInfo {
 		return nil
 	}
 
-	// Try extracting a ChoysumError first.
 	var choysumErr *ChoysumError
 	if errors.As(err, &choysumErr) {
 		return choysumErr.ErrorInfo
 	}
 
-	var qjsErr *quickjs.Error
-	if errors.As(err, &qjsErr) {
-		var errorInfo struct {
-			ErrorId  string            `json:"errorId"`
-			Domain   string            `json:"domain"`
-			Code     string            `json:"code"`
-			Message  string            `json:"message"`
-			GrpcCode int32             `json:"grpcCode"`
-			Metadata map[string]string `json:"metadata"`
-			Cause    map[string]string `json:"cause"`
-		}
-
-		if err := json.Unmarshal([]byte(qjsErr.JSONString), &errorInfo); err != nil {
-			return nil
-		}
-
-		// cause qjsErr.JSONString dit not contain message
-		errorInfo.Message = qjsErr.Message
-
-		return &ErrorInfo{
-			ErrorId:  errorInfo.ErrorId,
-			Domain:   errorInfo.Domain,
-			Code:     errorInfo.Code,
-			Message:  errorInfo.Message,
-			GrpcCode: errorInfo.GrpcCode,
-			Metadata: errorInfo.Metadata,
-		}
-
-	}
-
-	// Return nil for unrecognized error types.
 	return nil
 }
 

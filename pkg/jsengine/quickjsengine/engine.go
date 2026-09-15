@@ -91,7 +91,7 @@ func (e *QuickjsEngine) Load(scripts []*jsengine.JsScript) error {
 		}
 		if ret.IsException() {
 			ret.Free()
-			return fmt.Errorf("failed to execute init script %s: %w", script.FileName, e.Ctx.Exception())
+			return fmt.Errorf("failed to execute init script %s: %w", script.FileName, NormalizeException(e.Ctx.Exception(), "exception without details"))
 		}
 		ret.Free()
 	}
@@ -128,7 +128,7 @@ func (e *QuickjsEngine) Execute(ctx context.Context, req *jsengine.JsRequest) (*
 	fn := e.Ctx.Eval("$choysum.__rpc__")
 	defer fn.Free()
 	if fn.IsException() {
-		return nil, fmt.Errorf("failed to evaluate RPC script: %w", e.Ctx.Exception())
+		return nil, fmt.Errorf("failed to evaluate RPC script: %w", NormalizeException(e.Ctx.Exception(), "exception without details"))
 	}
 
 	// Marshal the request to a JS value
@@ -152,7 +152,7 @@ func (e *QuickjsEngine) Execute(ctx context.Context, req *jsengine.JsRequest) (*
 			_ = e.Ctx.Exception()
 			return nil, context.DeadlineExceeded
 		}
-		return nil, fmt.Errorf("failed to call function: %w", e.Ctx.Exception())
+		return nil, fmt.Errorf("failed to call function: %w", NormalizeException(e.Ctx.Exception(), "exception without details"))
 	}
 
 	// Unmarshal the JS response back to Go

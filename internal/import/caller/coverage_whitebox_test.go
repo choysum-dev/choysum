@@ -4,11 +4,14 @@
 package caller
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
+	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
 )
 
 func TestInvokeRPC_ErrorObject(t *testing.T) {
@@ -66,5 +69,27 @@ func TestInvokeRPC_MarshalAndUnmarshalErrors(t *testing.T) {
 	_, err = invokeRPC(engine.Ctx, &jsengine.JsRequest{Id: "1", Service: "base.Country.Create", Args: []any{}})
 	if err == nil {
 		t.Fatal("expected unmarshal error")
+	}
+}
+
+func TestFormatCallJSError(t *testing.T) {
+	err := formatCallJSError("svc", nil, "raw-value")
+	if err == nil || !strings.Contains(err.Error(), "unknown JS error: raw-value") {
+		t.Fatalf("expected detailed unknown error, got %v", err)
+	}
+	err = formatCallJSError("svc", nil, "")
+	if err == nil || err.Error() != "caller: call svc: unknown JS error" {
+		t.Fatalf("expected plain unknown error, got %v", err)
+	}
+	qjsErr := formatCallJSError("svc", errors.New("plain"), "")
+	if qjsErr == nil || !strings.Contains(qjsErr.Error(), "plain") {
+		t.Fatalf("expected wrapped plain error, got %v", qjsErr)
+	}
+	structured := formatCallJSError("svc", &quickjs.Error{
+		Message:    "boom",
+		JSONString: `{"domain":"web","code":"EJS","message":"boom"}`,
+	}, "")
+	if info := oerrors.GetErrorInfo(structured); info == nil || info.Domain != "web" || info.Code != "EJS" {
+		t.Fatalf("expected structured JS error to keep domain/code, got %#v (err=%v)", info, structured)
 	}
 }

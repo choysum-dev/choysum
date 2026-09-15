@@ -55,14 +55,18 @@ func WithScript(s *jsengine.JsScript) jsengine.JsEngineOption {
 
 		bytecode, err := compileScriptBytecode(jse, s)
 		if err != nil {
-			return err
+			return NormalizeError(err)
 		}
 
 		ret := jse.Ctx.EvalBytecode(bytecode)
 		defer ret.Free()
 		if ret.IsException() {
-			return jse.Ctx.Exception()
+			return normalizeScriptEvalException(s.FileName, jse.Ctx.Exception())
 		}
 		return nil
 	}
+}
+
+func normalizeScriptEvalException(fileName string, ex error) error {
+	return NormalizeException(ex, fmt.Sprintf("script %s: eval raised an exception without details", fileName))
 }
