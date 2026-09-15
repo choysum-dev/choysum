@@ -234,7 +234,7 @@ func TestRunModulePropagatesScenarioHookError(t *testing.T) {
 }
 
 func TestRunOneScenarioAdditionalBranches(t *testing.T) {
-	t.Run("meta module force-enables auth soft-install", func(t *testing.T) {
+	t.Run("closure without auth does not enable or install auth", func(t *testing.T) {
 		oldInstall := installForE2EHook
 		oldApply := applyScenarioFixturesHook
 		oldSeed := seedModuleIndexHook
@@ -253,7 +253,15 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}()
 
 		installed := []string{}
+		var seenConfig string
 		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error {
+			if seenConfig == "" {
+				raw, err := os.ReadFile(configPath)
+				if err != nil {
+					return err
+				}
+				seenConfig = string(raw)
+			}
 			installed = append(installed, moduleName)
 			return nil
 		}
@@ -282,7 +290,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 
 		manifests := map[string]*sourceModulePackage{
-			"meta": {DirName: "meta", E2E: &packageE2E{Specs: "e2e"}},
+			"meta": {DirName: "meta", Depends: []string{"task"}, E2E: &packageE2E{Specs: "e2e"}},
+			"task": {DirName: "task", E2E: &packageE2E{Specs: "e2e"}},
 			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 		}
 
@@ -290,10 +299,86 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("runOneScenario(meta) error: %v", err)
 		}
-		// Target install only; force-enable still soft-installs auth (Phase 3 removes that).
-		// Redundant task/auth/meta peer installs from depends are gone.
-		if !reflect.DeepEqual(installed, []string{"meta", "auth"}) {
+		if !reflect.DeepEqual(installed, []string{"meta"}) {
 			t.Fatalf("unexpected install order/modules: %#v", installed)
+		}
+		if !strings.Contains(seenConfig, "auth:\n  enabled: false\n") {
+			t.Fatalf("expected auth.enabled false when auth is absent from depends closure, got %q", seenConfig)
+		}
+		if !strings.Contains(seenConfig, "CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC: \"true\"") {
+			t.Fatalf("expected global skip index stale sync, got %q", seenConfig)
+		}
+	})
+
+	t.Run("closure with auth enables auth without extra installs", func(t *testing.T) {
+		oldInstall := installForE2EHook
+		oldApply := applyScenarioFixturesHook
+		oldSeed := seedModuleIndexHook
+		oldStart := startServerHook
+		oldStop := stopServerHook
+		oldWait := waitForHTTP200Hook
+		oldRunE2EHost := runE2EHostHook
+		defer func() {
+			installForE2EHook = oldInstall
+			applyScenarioFixturesHook = oldApply
+			seedModuleIndexHook = oldSeed
+			startServerHook = oldStart
+			stopServerHook = oldStop
+			waitForHTTP200Hook = oldWait
+			runE2EHostHook = oldRunE2EHost
+		}()
+
+		installed := []string{}
+		var seenConfig string
+		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error {
+			if seenConfig == "" {
+				raw, err := os.ReadFile(configPath)
+				if err != nil {
+					return err
+				}
+				seenConfig = string(raw)
+			}
+			installed = append(installed, moduleName)
+			return nil
+		}
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+			return nil
+		}
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+			return nil
+		}
+		startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
+			return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
+		}
+		stopServerHook = func(cmd *exec.Cmd) {}
+		waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return nil }
+		runE2EHostHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string, onlyFiles []string) error {
+			return nil
+		}
+
+		modulesPath := t.TempDir()
+		specsDir := filepath.Join(modulesPath, "web", "e2e")
+		if err := os.MkdirAll(specsDir, 0o755); err != nil {
+			t.Fatalf("mkdir specs dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("import { test } from '@choysum/e2e';\ntest('sample', async () => {});\n"), 0o644); err != nil {
+			t.Fatalf("write spec file: %v", err)
+		}
+
+		manifests := map[string]*sourceModulePackage{
+			"web":  {DirName: "web", Depends: []string{"auth"}, E2E: &packageE2E{Specs: "e2e"}},
+			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
+		}
+
+		err := runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+		if err != nil {
+			t.Fatalf("runOneScenario(web) error: %v", err)
+		}
+		if !reflect.DeepEqual(installed, []string{"web"}) {
+			t.Fatalf("unexpected install order/modules: %#v", installed)
+		}
+		if !strings.Contains(seenConfig, "auth:\n  enabled: true\n") {
+			t.Fatalf("expected auth.enabled true when auth is in depends closure, got %q", seenConfig)
 		}
 	})
 

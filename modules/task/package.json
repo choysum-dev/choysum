@@ -23,26 +23,6 @@
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {
       "service": "./service/index.ts"
-    },
-    "e2e": {
-      "specs": "e2e",
-      "scenarios": {
-        "default": {
-          "fixtures": []
-        },
-        "result-failed": {
-          "extends": "default",
-          "fixtures": []
-        },
-        "reload-failed": {
-          "extends": "default",
-          "fixtures": []
-        },
-        "lock-conflict": {
-          "extends": "default",
-          "fixtures": []
-        }
-      }
     }
   },
   "publishConfig": {

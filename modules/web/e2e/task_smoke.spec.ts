@@ -218,6 +218,7 @@ function makeTaskClients(
 
 test('task: create schedule and trigger job via gRPC-web', async () => {
   test.setTimeout(120_000);
+  test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
 
   const baseURL = runtime.baseURL;
   const taskPb = await getTaskPbModule();

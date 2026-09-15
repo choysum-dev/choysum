@@ -177,6 +177,7 @@ async function updateLanguageSeparators(baseURL: string, languageId: string) {
 
 test('base T2.6: Language thousand separator change updates exchange rate list display', async () => {
   test.setTimeout(180_000);
+  test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
 
   const baseURL = runtime.baseURL;
 
