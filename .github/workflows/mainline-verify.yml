@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: mainline-verify-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   prepare-embedded-assets:
@@ -52,6 +52,8 @@ jobs:
       choysum_artifact_name: main-choysum-cli
       choysum_binary_path: .choysum/tmp/choysum
       retention_days: 1
+      warm_typecheck_types: "true"
+      modules_tsconfig_artifact_name: main-modules-tsconfig
 
   go-test-shards:
     name: main / go-test (${{ matrix.shard }})
@@ -65,8 +67,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: cmd
-            chromium: "false"
           - shard: testing
             chromium: "true"
           - shard: module
@@ -94,7 +94,7 @@ jobs:
           cache: true
 
       - name: Verify go-test shard partition
-        if: ${{ matrix.shard == 'cmd' }}
+        if: ${{ matrix.shard == 'testing' }}
         run: |
           set -euo pipefail
           python3 scripts/ci/go_test_shards_test.py
@@ -155,10 +155,10 @@ jobs:
               echo "### go-test shards failed"
               echo
               echo "Aggregate check \`main / go-test\` is red because one or more matrix jobs failed."
-              echo "Inspect jobs named \`main / go-test (<shard>)\` — shards: \`cmd\`, \`testing\`, \`module\`, \`runtime\`, \`rest\`."
+              echo "Inspect jobs named \`main / go-test (<shard>)\` — shards: \`testing\`, \`module\`, \`runtime\`, \`rest\`."
             } >> "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
             echo "One or more go-test shards failed (result=${SHARD_RESULT})." >&2
-            echo "Inspect matrix jobs: main / go-test (cmd|testing|module|runtime|rest)." >&2
+            echo "Inspect matrix jobs: main / go-test (testing|module|runtime|rest)." >&2
             exit 1
           fi
 
@@ -199,106 +199,12 @@ jobs:
           use_oidc: true
           verbose: true
 
-  prepare-typecheck-types:
-    name: main / prepare-typecheck-types
-    if: ${{ needs.discover-modules.outputs.modules_json != '[]' }}
-    needs:
-      - discover-modules
-      - build-choysum-cli
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: Download choysum CLI
-        uses: actions/download-artifact@v8
-        with:
-          name: main-choysum-cli
-          path: .choysum/tmp
-
-      - name: Make choysum CLI executable
-        run: chmod +x .choysum/tmp/choysum
-
-      - name: Setup CLI testing pkg cache
-        uses: ./.github/actions/setup-cli-testing-cache
-
-      - name: Warm type-fetch assets into CLI pkg cache
-        run: |
-          set -euo pipefail
-          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
-          # Idempotent: cached packages are reused. Needed because restore-keys may
-          # return an ESM-only or otherwise incomplete pkg tree without types.
-          echo "Warming type-fetch cache via type-fetch --all"
-          "$CHOYSUM_BIN" type-fetch --all
-          types_dir="${CHOYSUM_TEST_TMP}/cache/pkg/types"
-          mkdir -p "$types_dir"
-          rm -f "$types_dir"/vue@*.d.ts \
-            "$types_dir"/esm.sh_vue@* \
-            "$types_dir"/esm.sh_@vue_runtime-dom@* \
-            "$types_dir"/esm.sh_@vue_runtime-core@* \
-            "$types_dir"/esm.sh_@vue_reactivity@*
-          echo "Re-fetching vue type graph"
-          "$CHOYSUM_BIN" type-fetch web
-          # Require the tsconfig-pinned vue entry (not a hollow/wrong-version graph).
-          # Keep this a one-liner: a <<-heredoc with unindented Python breaks YAML.
-          pinned="$(grep -oE 'esm\.sh_vue@[0-9][^/_"]+' modules/tsconfig.json | head -1 | sed 's/.*@//')"
-          if [[ -z "$pinned" ]]; then
-            echo "error: pinned vue version not found in modules/tsconfig.json" >&2
-            exit 1
-          fi
-          echo "Pinned vue from tsconfig: $pinned"
-          vue_entry="$types_dir/esm.sh_vue@${pinned}_dist_vue.d.mts.d.ts"
-          core_dts="$types_dir/esm.sh_@vue_runtime-core@${pinned}_dist_runtime-core.d.ts.d.ts"
-          react_dts="$types_dir/esm.sh_@vue_reactivity@${pinned}_dist_reactivity.d.ts.d.ts"
-          if [[ ! -s "$vue_entry" || ! -s "$core_dts" || ! -s "$react_dts" ]]; then
-            echo "error: pinned vue@$pinned type-fetch graph missing under $types_dir" >&2
-            ls -la "$types_dir"/esm.sh_vue@* "$types_dir"/esm.sh_@vue_runtime-* "$types_dir"/esm.sh_@vue_reactivity@* 2>/dev/null || true
-            exit 1
-          fi
-          if ! grep -Eq '\bPropType\b' "$core_dts"; then
-            echo "error: runtime-core@$pinned missing PropType (hollow?)" >&2
-            exit 1
-          fi
-          if ! grep -Eq '\btoRef\b' "$react_dts"; then
-            echo "error: reactivity@$pinned missing toRef (hollow?)" >&2
-            exit 1
-          fi
-          core_bytes="$(wc -c < "$core_dts" | tr -d ' ')"
-          if [[ "$core_bytes" -lt 10000 ]]; then
-            echo "error: runtime-core@$pinned too small (${core_bytes} bytes); expected full .d.ts" >&2
-            exit 1
-          fi
-          echo "Vue type-fetch graph OK (vue@$pinned, runtime-core ${core_bytes} bytes)"
-          node_bridge="${types_dir}/typeRoots/node/index.d.ts"
-          if [[ ! -s "$node_bridge" ]]; then
-            echo "error: @types/node typeRoots bridge missing at $node_bridge" >&2
-            ls -la "$types_dir"/typeRoots 2>/dev/null || true
-            ls -la "$types_dir"/esm.sh_@types_node@* 2>/dev/null || true
-            exit 1
-          fi
-          echo "Node typeRoots bridge OK ($node_bridge)"
-
-      # modules/tsconfig.json is gitignored; type-fetch writes path maps here.
-      # Shards restore the pkg cache but need these maps (no root node_modules).
-      - name: Upload modules tsconfig path maps
-        uses: actions/upload-artifact@v7
-        with:
-          name: main-modules-tsconfig
-          path: modules/tsconfig.json
-          retention-days: 1
-          if-no-files-found: error
-
   typecheck-shard:
     name: main / typecheck-shard (${{ matrix.module }})
     if: ${{ needs.discover-modules.outputs.modules_json != '[]' }}
     needs:
-      - prepare-embedded-assets
       - discover-modules
       - build-choysum-cli
-      - prepare-typecheck-types
     strategy:
       fail-fast: false
       matrix:
@@ -310,12 +216,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-
-      - name: Download and extract embedded assets
-        uses: ./.github/actions/download-extract-embedded-assets
-        with:
-          artifact-name: main-embedded-assets
-          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
@@ -364,7 +264,6 @@ jobs:
     name: main / unit-shard (${{ matrix.module }})
     if: ${{ needs.discover-modules.outputs.modules_json != '[]' }}
     needs:
-      - prepare-embedded-assets
       - discover-modules
       - build-choysum-cli
     strategy:
@@ -375,18 +274,11 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-
-      - name: Download and extract embedded assets
-        uses: ./.github/actions/download-extract-embedded-assets
-        with:
-          artifact-name: main-embedded-assets
-          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
@@ -407,10 +299,6 @@ jobs:
         run: |
           coverage_root=".choysum/coverage/main/unit/$MODULE"
           junit_root=".choysum/test-results/main/unit"
-          backend_lcov="$coverage_root/lcov.info"
-          frontend_lcov="$coverage_root/fe/$MODULE/lcov.info"
-          backend_junit="$junit_root/$MODULE.backend.junit.xml"
-          frontend_junit="$junit_root/$MODULE.frontend.junit.xml"
 
           mkdir -p "$coverage_root" "$junit_root"
 
@@ -426,60 +314,27 @@ jobs:
           exit_code=$?
           set -e
 
-          coverage_files=""
-          if [ -s "$backend_lcov" ]; then
-            coverage_files="$backend_lcov"
-          fi
-          if [ -s "$frontend_lcov" ]; then
-            if [ -n "$coverage_files" ]; then
-              coverage_files="$coverage_files,$frontend_lcov"
-            else
-              coverage_files="$frontend_lcov"
-            fi
-          fi
-
-          test_result_files=""
-          if [ -f "$backend_junit" ]; then
-            test_result_files="$backend_junit"
-          fi
-          if [ -f "$frontend_junit" ]; then
-            if [ -n "$test_result_files" ]; then
-              test_result_files="$test_result_files,$frontend_junit"
-            else
-              test_result_files="$frontend_junit"
-            fi
-          fi
-
-          echo "coverage_files=$coverage_files" >> "$GITHUB_OUTPUT"
-          echo "test_result_files=$test_result_files" >> "$GITHUB_OUTPUT"
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
 
-      # Coverage (BE+FE) in one upload; test_results stay separate (different report_type).
-      - name: Upload unit coverage to Codecov
-        if: ${{ !cancelled() && steps.unit_tests.outputs.coverage_files != '' }}
-        continue-on-error: true
-        uses: codecov/codecov-action@v7
+      # Upload the unit/ parent so merge-multiple keeps per-module directories.
+      - name: Upload unit coverage artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
         with:
-          disable_search: true
-          fail_ci_if_error: false
-          files: ${{ steps.unit_tests.outputs.coverage_files }}
-          name: mainline-unit-${{ matrix.module }}-coverage
-          use_oidc: true
-          verbose: true
+          name: main-unit-cover-${{ matrix.module }}
+          path: .choysum/coverage/main/unit
+          if-no-files-found: ignore
+          retention-days: 1
 
-      - name: Upload unit test results to Codecov
-        if: ${{ !cancelled() && steps.unit_tests.outputs.test_result_files != '' }}
-        continue-on-error: true
-        uses: codecov/codecov-action@v7
+      - name: Upload unit junit artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
         with:
-          disable_search: true
-          fail_ci_if_error: false
-          files: ${{ steps.unit_tests.outputs.test_result_files }}
-          name: mainline-unit-${{ matrix.module }}-tests
-          report_type: test_results
-          use_oidc: true
-          verbose: true
+          name: main-unit-junit-${{ matrix.module }}
+          path: .choysum/test-results/main/unit
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Fail unit shard if tests failed
         if: ${{ steps.unit_tests.outputs.exit_code != '0' }}
@@ -492,10 +347,82 @@ jobs:
       - unit-shard
     if: ${{ always() }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Skip unit aggregate when no modules are discovered
         if: ${{ needs.discover-modules.outputs.modules_json == '[]' }}
         run: 'echo "unit skipped: no modules discovered"'
+
+      - name: Download unit coverage artifacts
+        if: ${{ needs.discover-modules.outputs.modules_json != '[]' && needs.unit-shard.result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: main-unit-cover-*
+          path: .choysum/coverage/main/unit
+          merge-multiple: true
+
+      - name: Download unit junit artifacts
+        if: ${{ needs.discover-modules.outputs.modules_json != '[]' && needs.unit-shard.result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: main-unit-junit-*
+          path: .choysum/test-results/main/unit
+          merge-multiple: true
+
+      - name: Collect unit coverage and junit paths
+        id: collect_codecov
+        if: ${{ needs.discover-modules.outputs.modules_json != '[]' && needs.unit-shard.result != 'skipped' }}
+        run: |
+          set -euo pipefail
+          coverage_files=""
+          while IFS= read -r f; do
+            if [[ -n "$coverage_files" ]]; then
+              coverage_files="${coverage_files},${f}"
+            else
+              coverage_files="${f}"
+            fi
+          done < <(find .choysum/coverage/main/unit -type f -name 'lcov.info' 2>/dev/null | sort || true)
+
+          test_result_files=""
+          while IFS= read -r f; do
+            if [[ -n "$test_result_files" ]]; then
+              test_result_files="${test_result_files},${f}"
+            else
+              test_result_files="${f}"
+            fi
+          done < <(find .choysum/test-results/main/unit -type f -name '*.junit.xml' 2>/dev/null | sort || true)
+
+          echo "coverage_files=${coverage_files}" >> "$GITHUB_OUTPUT"
+          echo "test_result_files=${test_result_files}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload unit coverage to Codecov
+        if: ${{ needs.discover-modules.outputs.modules_json != '[]' && needs.unit-shard.result != 'skipped' && steps.collect_codecov.outputs.coverage_files != '' }}
+        continue-on-error: true
+        uses: codecov/codecov-action@v7
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: ${{ steps.collect_codecov.outputs.coverage_files }}
+          name: mainline-unit
+          use_oidc: true
+          verbose: true
+
+      - name: Upload unit test results to Codecov
+        if: ${{ needs.discover-modules.outputs.modules_json != '[]' && needs.unit-shard.result != 'skipped' && steps.collect_codecov.outputs.test_result_files != '' }}
+        continue-on-error: true
+        uses: codecov/codecov-action@v7
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: ${{ steps.collect_codecov.outputs.test_result_files }}
+          name: mainline-unit
+          report_type: test_results
+          use_oidc: true
+          verbose: true
 
       - name: Verify unit matrix result
         if: ${{ needs.discover-modules.outputs.modules_json != '[]' }}
@@ -509,7 +436,6 @@ jobs:
     name: main / e2e-shard (${{ matrix.module }})
     if: ${{ needs.discover-modules.outputs.e2e_modules_json != '[]' }}
     needs:
-      - prepare-embedded-assets
       - discover-modules
       - build-choysum-cli
     strategy:
@@ -523,12 +449,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-
-      - name: Download and extract embedded assets
-        uses: ./.github/actions/download-extract-embedded-assets
-        with:
-          artifact-name: main-embedded-assets
-          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
@@ -546,9 +466,11 @@ jobs:
         uses: ./.github/actions/setup-chromium
 
       - name: Run E2E suite
-        run: |
-          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
-          "$CHOYSUM_BIN" test e2e ${{ matrix.module }}
+        env:
+          CHOYSUM_BIN: ${{ github.workspace }}/.choysum/tmp/choysum
+          MODULE: ${{ matrix.module }}
+          E2E_MAX_ATTEMPTS: "2"
+        run: bash scripts/ci/run_e2e_with_retry.sh
 
   e2e-all:
     name: main / e2e-all

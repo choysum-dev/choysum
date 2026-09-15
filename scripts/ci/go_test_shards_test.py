@@ -32,8 +32,7 @@ class GoTestShardsTest(unittest.TestCase):
     def test_check_partition_against_repo(self):
         mod = load_mod()
         shards = mod.check_partition()
-        self.assertEqual(set(shards), {"cmd", "testing", "module", "runtime", "rest"})
-        self.assertGreater(len(shards["cmd"]), 0)
+        self.assertEqual(set(shards), {"testing", "module", "runtime", "rest"})
         self.assertGreater(len(shards["testing"]), 0)
         self.assertGreater(len(shards["module"]), 0)
         self.assertGreater(len(shards["runtime"]), 0)
@@ -46,7 +45,7 @@ class GoTestShardsTest(unittest.TestCase):
     def test_matrix_json_shape(self):
         mod = load_mod()
         rows = mod.shard_meta()
-        self.assertEqual([r["shard"] for r in rows], ["cmd", "testing", "module", "runtime", "rest"])
+        self.assertEqual([r["shard"] for r in rows], ["testing", "module", "runtime", "rest"])
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self.assertEqual(mod.main(["matrix"]), 0)

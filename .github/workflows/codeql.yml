@@ -82,21 +82,43 @@ jobs:
         # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # queries: security-extended,security-and-quality
 
-    # If the analyze step fails for one of the languages you are analyzing with
-    # "We were unable to automatically build your code", modify the matrix above
-    # to set the build mode to "manual" for that language. Then modify this step
-    # to build your code.
-    # ℹ️ Command-line programs to run using the OS shell.
-    # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
+    # Reuse the same embedded-assets cache key as prepare-embedded-assets.yml so
+    # CodeQL does not cold `go generate` while Mainline Verify is also running.
+    - name: Restore embedded assets cache
+      id: embedded-cache
+      if: matrix.language == 'go' && matrix.build-mode == 'manual'
+      uses: actions/cache@v6
+      with:
+        path: |
+          internal/bootstrap/web/dist
+          pkg/jsengine/scripts/vuesfc/dist
+          pkg/jsengine/scripts/vuevirtual/dist
+        key: ${{ runner.os }}-embedded-v3-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**', 'pkg/jsengine/scripts/vuevirtual/**/*.go', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock', 'pkg/jsengine/scripts/vuevirtual/src/**', 'internal/esmresolver/**/*.go', 'internal/vueplugin/**/*.go', 'internal/defaultengine/**/*.go', 'internal/defaultjsexecutor/**/*.go', 'internal/module/artifact/generate/grpcwebplugin/gots/**/*.go', 'pkg/config/**/*.go', 'pkg/jsexecutor/**/*.go', 'pkg/scope/**/*.go') }}
+
+    - name: Cache esm packages for go generate
+      if: matrix.language == 'go' && matrix.build-mode == 'manual' && steps.embedded-cache.outputs.cache-hit != 'true'
+      uses: actions/cache@v6
+      with:
+        path: .choysum/pkg/esm
+        key: ${{ runner.os }}-esm-generate-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-esm-generate-v1-
+
     - name: Run manual build steps
       if: matrix.language == 'go' && matrix.build-mode == 'manual'
       shell: bash
+      env:
+        CHOYSUM_HOME: ${{ github.workspace }}/.choysum
       run: |
         set -euo pipefail
 
-        go generate ./pkg/jsengine/scripts/vuesfc/...
-        go generate ./pkg/jsengine/scripts/vuevirtual/...
-        go generate ./internal/bootstrap/web/...
+        if [[ "${{ steps.embedded-cache.outputs.cache-hit }}" != "true" ]]; then
+          go generate ./pkg/jsengine/scripts/vuesfc/...
+          go generate ./pkg/jsengine/scripts/vuevirtual/...
+          go generate ./internal/bootstrap/web/...
+        else
+          echo "Embedded assets cache hit; skipping go generate"
+        fi
 
         go build ./...
 

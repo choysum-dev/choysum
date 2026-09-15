@@ -99,8 +99,11 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
         self.assertTrue(mod.is_go_test_path("scripts/ci/install_chromium.py"))
         self.assertTrue(mod.is_go_test_path(".github/workflows/pr-gate.yml"))
         self.assertTrue(mod.is_go_test_path(".github/workflows/mainline-verify.yml"))
+        self.assertTrue(mod.is_go_test_path(".github/workflows/prepare-embedded-assets.yml"))
+        self.assertTrue(mod.is_go_test_path(".github/workflows/build-choysum-cli.yml"))
         self.assertFalse(mod.is_go_test_path("scripts/ci/modules_npm_trust.py"))
         self.assertFalse(mod.is_go_test_path(".github/workflows/i18n-status.yml"))
+        self.assertFalse(mod.is_go_test_path(".github/workflows/pr-agent.yml"))
         self.assertFalse(mod.is_go_test_path("AGENTS.md"))
         self.assertFalse(mod.is_go_test_path("CONTRIBUTING.md"))
 
@@ -180,6 +183,89 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
         self.assertEqual(out["run_pr_smoke_e2e"], "true")
         self.assertEqual(out["impacted_smoke_e2e_modules_json"], '["auth"]')
         self.assertNotIn("run_bootstrap_verify", out)
+
+    def test_workflow_only_pr_agent_does_not_expand_module_matrix(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            modules = pathlib.Path(tmp) / "modules"
+            (modules / "auth" / "e2e").mkdir(parents=True)
+            (modules / "auth" / "e2e" / "smoke.spec.ts").write_text("// smoke\n", encoding="utf-8")
+
+            changed = [".github/workflows/pr-agent.yml"]
+
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["auth"])
+
+            self.assertEqual(out["run_full_matrix"], "false")
+            self.assertEqual(out["impacted_modules_json"], "[]")
+            self.assertEqual(out["run_go_test"], "false")
+            self.assertEqual(out["reason"], "no-impactable-tests")
+
+    def test_i18n_status_workflow_does_not_expand_module_matrix(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            modules = pathlib.Path(tmp) / "modules"
+            (modules / "auth").mkdir(parents=True)
+
+            changed = [".github/workflows/i18n-status.yml"]
+
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["auth"])
+
+            self.assertEqual(out["run_full_matrix"], "false")
+            self.assertEqual(out["impacted_modules_json"], "[]")
+            self.assertEqual(out["run_go_test"], "false")
+
+    def test_gate_reusable_workflows_still_expand_full_matrix(self):
+        mod = load_mod()
+        for path in sorted(mod.SHARED_WORKFLOW_EXACT):
+            with self.subTest(path=path):
+                with tempfile.TemporaryDirectory() as tmp:
+                    modules = pathlib.Path(tmp) / "modules"
+                    (modules / "auth" / "e2e").mkdir(parents=True)
+                    (modules / "auth" / "e2e" / "smoke.spec.ts").write_text(
+                        "// smoke\n", encoding="utf-8"
+                    )
+
+                    with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                        mod.subprocess, "run"
+                    ) as run_mock:
+                        run_mock.return_value = Mock(
+                            stdout=path + "\n",
+                            returncode=0,
+                        )
+                        with patch.dict(
+                            mod.os.environ,
+                            {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                            clear=False,
+                        ):
+                            out = mod.pull_request_outputs(["auth"])
+
+                    self.assertEqual(out["reason"], "shared-runtime")
+                    self.assertEqual(out["run_full_matrix"], "true")
+                    self.assertEqual(out["impacted_modules_json"], '["auth"]')
 
     def test_no_workflow_still_references_removed_bootstrap_verify(self):
         workflows = REPO_ROOT / ".github" / "workflows"

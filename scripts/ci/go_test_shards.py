@@ -4,13 +4,12 @@
 """Partition `go list ./...` into CI go-test shards with union/overlap checks.
 
 Shards (intent):
-  cmd      ./cmd/... ./internal/cli/...
   testing  ./internal/testing/...          (needs Chromium)
   module   ./internal/module/...
   runtime  ./internal/server/... ./internal/esmresolver/...
            ./internal/typecheck/... ./internal/defaultengine/...
            ./internal/defaultjsexecutor/...
-  rest     explicit difference of go list ./... minus the above
+  rest     complement of go list ./... (includes ./cmd/... ./internal/cli/...)
 """
 
 from __future__ import annotations
@@ -25,12 +24,9 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 # Named shards with go-list patterns. Order matters only for display.
 # `rest` is computed as the complement and must not appear here.
+# cmd/cli packages fold into `rest` so Free-tier Mainline frees one concurrent
+# slot for the Chromium `testing` shard (reduces empty-window queue delay).
 SHARD_SPECS: list[dict[str, object]] = [
-    {
-        "name": "cmd",
-        "patterns": ["./cmd/...", "./internal/cli/..."],
-        "chromium": False,
-    },
     {
         "name": "testing",
         "patterns": ["./internal/testing/..."],
@@ -205,7 +201,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     packages = sub.add_parser("packages", help="Print packages for one shard (one per line)")
-    packages.add_argument("shard", help="Shard name (cmd|testing|module|runtime|rest)")
+    packages.add_argument("shard", help="Shard name (testing|module|runtime|rest)")
 
     merge = sub.add_parser("merge-coverprofiles", help="Merge go coverprofiles into one file")
     merge.add_argument("--output", "-o", required=True, type=pathlib.Path)
