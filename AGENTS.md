@@ -77,7 +77,7 @@ at `/web/register`, which auto-logs in — the simplest way to exercise the stac
 | Go tests (CI) | sharded `go test` with `-count=1 -covermode=atomic` (see `scripts/ci/go_test_shards.py`); do not compare CI wall times to a local run without cover |
 | Module typecheck | `./choysum test typecheck <module>` or `--all` (Go-native; no Node) |
 | Module unit (BE+FE) | `./choysum test unit <module>` (`--be` / `--fe` to scope; `--fe` = QuickJS) |
-| Module E2E | `./choysum test e2e <module>` (auth/base/meta/task/partner; needs Chromium) |
+| Module E2E | `./choysum test e2e <module>` (auth/web/partner; needs Chromium) |
 
 Module unit tests (BE + FE), module typecheck, and module `test e2e` do
 **not** need a Node binary or `node_modules` (typecheck is Go-native; FE/E2E

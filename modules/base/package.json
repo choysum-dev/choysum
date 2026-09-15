@@ -35,7 +35,6 @@
       "demo/demo.json"
     ],
     "e2e": {
-      "specs": "e2e",
       "scenarios": {
         "default": {
           "fixtures": [
