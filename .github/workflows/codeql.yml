@@ -82,21 +82,55 @@ jobs:
         # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # queries: security-extended,security-and-quality
 
-    # If the analyze step fails for one of the languages you are analyzing with
-    # "We were unable to automatically build your code", modify the matrix above
-    # to set the build mode to "manual" for that language. Then modify this step
-    # to build your code.
-    # ℹ️ Command-line programs to run using the OS shell.
-    # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
+    # Restore-only: never save this key from CodeQL. A failed mid-generate job
+    # must not poison the shared key used by prepare-embedded-assets.yml.
+    - name: Restore embedded assets cache
+      id: embedded-cache
+      if: matrix.language == 'go' && matrix.build-mode == 'manual'
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          internal/bootstrap/web/dist
+          pkg/jsengine/scripts/vuesfc/dist
+          pkg/jsengine/scripts/vuevirtual/dist
+        key: ${{ runner.os }}-embedded-v3-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/generate.go', 'internal/bootstrap/web/gen.go', 'internal/bootstrap/web/package.json', 'internal/bootstrap/web/tsconfig.json', 'internal/bootstrap/web/index.html', 'internal/bootstrap/web/src/**', 'pkg/jsengine/scripts/vuesfc/**/*.go', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuesfc/tsconfig.json', 'pkg/jsengine/scripts/vuesfc/src/**', 'pkg/jsengine/scripts/vuevirtual/**/*.go', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock', 'pkg/jsengine/scripts/vuevirtual/src/**', 'internal/esmresolver/**/*.go', 'internal/vueplugin/**/*.go', 'internal/defaultengine/**/*.go', 'internal/defaultjsexecutor/**/*.go', 'internal/module/artifact/generate/grpcwebplugin/gots/**/*.go', 'pkg/config/**/*.go', 'pkg/jsexecutor/**/*.go', 'pkg/scope/**/*.go') }}
+
+    - name: Restore esm packages for go generate
+      # Always restore: embedded cache may hit with incomplete dist and still need
+      # go generate (need_generate=true); that path must not cold-fetch esm.sh.
+      if: matrix.language == 'go' && matrix.build-mode == 'manual'
+      uses: actions/cache/restore@v6
+      with:
+        path: .choysum/pkg/esm
+        key: ${{ runner.os }}-esm-generate-v1-${{ hashFiles('go.mod', 'go.sum', 'internal/bootstrap/web/package.json', 'pkg/jsengine/scripts/vuesfc/package.json', 'pkg/jsengine/scripts/vuesfc/esm.lock', 'pkg/jsengine/scripts/vuevirtual/package.json', 'pkg/jsengine/scripts/vuevirtual/esm.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-esm-generate-v1-
+
     - name: Run manual build steps
       if: matrix.language == 'go' && matrix.build-mode == 'manual'
       shell: bash
+      env:
+        CHOYSUM_HOME: ${{ github.workspace }}/.choysum
       run: |
         set -euo pipefail
 
-        go generate ./pkg/jsengine/scripts/vuesfc/...
-        go generate ./pkg/jsengine/scripts/vuevirtual/...
-        go generate ./internal/bootstrap/web/...
+        need_generate=true
+        # Entry files match prepare-embedded-assets pack paths (not empty dist dirs).
+        if [[ "${{ steps.embedded-cache.outputs.cache-hit }}" == "true" \
+          && -n "$(ls -A internal/bootstrap/web/dist 2>/dev/null)" \
+          && -f pkg/jsengine/scripts/vuesfc/dist/index.js \
+          && -f pkg/jsengine/scripts/vuevirtual/dist/index.js ]]; then
+          echo "Embedded assets cache hit; skipping go generate"
+          need_generate=false
+        elif [[ "${{ steps.embedded-cache.outputs.cache-hit }}" == "true" ]]; then
+          echo "Embedded assets cache hit but dist trees incomplete; regenerating" >&2
+        fi
+
+        if [[ "$need_generate" == "true" ]]; then
+          go generate ./pkg/jsengine/scripts/vuesfc/...
+          go generate ./pkg/jsengine/scripts/vuevirtual/...
+          go generate ./internal/bootstrap/web/...
+        fi
 
         go build ./...
 

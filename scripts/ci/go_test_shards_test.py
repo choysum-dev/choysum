@@ -32,12 +32,18 @@ class GoTestShardsTest(unittest.TestCase):
     def test_check_partition_against_repo(self):
         mod = load_mod()
         shards = mod.check_partition()
-        self.assertEqual(set(shards), {"cmd", "testing", "module", "runtime", "rest"})
-        self.assertGreater(len(shards["cmd"]), 0)
+        self.assertEqual(set(shards), {"testing", "module", "runtime", "rest"})
         self.assertGreater(len(shards["testing"]), 0)
         self.assertGreater(len(shards["module"]), 0)
         self.assertGreater(len(shards["runtime"]), 0)
         self.assertGreater(len(shards["rest"]), 0)
+        # cmd/cli fold into `rest`; keep them covered after dropping the `cmd` shard.
+        rest = shards["rest"]
+        self.assertTrue(
+            any(p.endswith("/cmd") or "/cmd/" in p for p in rest),
+            sorted(rest),
+        )
+        self.assertTrue(any("/internal/cli" in p for p in rest), sorted(rest))
         # Chromium only for testing.
         meta = {row["shard"]: row["chromium"] for row in mod.shard_meta()}
         self.assertEqual(meta["testing"], "true")
@@ -46,7 +52,7 @@ class GoTestShardsTest(unittest.TestCase):
     def test_matrix_json_shape(self):
         mod = load_mod()
         rows = mod.shard_meta()
-        self.assertEqual([r["shard"] for r in rows], ["cmd", "testing", "module", "runtime", "rest"])
+        self.assertEqual([r["shard"] for r in rows], ["testing", "module", "runtime", "rest"])
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             self.assertEqual(mod.main(["matrix"]), 0)
@@ -199,10 +205,11 @@ class GoTestShardsTest(unittest.TestCase):
 
     def test_packages_rejects_unknown_shard(self):
         mod = load_mod()
-        with mock.patch.object(mod, "partition_packages", return_value={"cmd": []}):
+        with contextlib.redirect_stderr(io.StringIO()) as err:
             with self.assertRaises(SystemExit) as cm:
                 mod.main(["packages", "nope"])
-            self.assertIn("unknown shard", str(cm.exception))
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("invalid choice", err.getvalue())
 
     def test_shard_package_not_in_go_list_rejected(self):
         mod = load_mod()

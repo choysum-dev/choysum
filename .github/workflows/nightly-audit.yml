@@ -1,3 +1,4 @@
+# Nightly is a flake soak (higher E2E retries), not a duplicate admission gate.
 name: Nightly Audit
 
 on:
@@ -55,7 +56,6 @@ jobs:
     name: nightly / e2e-shard (${{ matrix.module }})
     if: ${{ needs.discover-modules.outputs.e2e_modules_json != '[]' }}
     needs:
-      - prepare-embedded-assets
       - discover-modules
       - build-choysum-cli
     strategy:
@@ -63,18 +63,12 @@ jobs:
       matrix:
         module: ${{ fromJson(needs.discover-modules.outputs.e2e_modules_json) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-
-      - name: Download and extract embedded assets
-        uses: ./.github/actions/download-extract-embedded-assets
-        with:
-          artifact-name: nightly-embedded-assets
-          archive-path: .choysum/tmp/nightly-embedded-assets.tar.gz
 
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
@@ -92,9 +86,13 @@ jobs:
         uses: ./.github/actions/setup-chromium
 
       - name: Run E2E suite
-        run: |
-          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
-          "$CHOYSUM_BIN" test e2e ${{ matrix.module }}
+        env:
+          CHOYSUM_BIN: ${{ github.workspace }}/.choysum/tmp/choysum
+          MODULE: ${{ matrix.module }}
+          E2E_MAX_ATTEMPTS: "3"
+          # 3×25m leaves margin for checkout/CLI/Chromium inside job timeout 120.
+          E2E_ATTEMPT_TIMEOUT: "25m"
+        run: bash scripts/ci/run_e2e_with_retry.sh
 
   e2e-all:
     name: nightly / e2e-all

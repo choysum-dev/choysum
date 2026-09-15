@@ -23,6 +23,16 @@ on:
         description: "Artifact retention days"
         required: true
         type: number
+      warm_typecheck_types:
+        description: "After building CLI, warm type-fetch cache and upload modules/tsconfig.json"
+        required: false
+        default: "false"
+        type: string
+      modules_tsconfig_artifact_name:
+        description: "Artifact name for modules/tsconfig.json when warm_typecheck_types is true"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -31,8 +41,14 @@ jobs:
   build-choysum-cli:
     name: build-choysum-cli
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
+      - name: Validate warm typecheck inputs
+        if: ${{ inputs.warm_typecheck_types == 'true' && inputs.modules_tsconfig_artifact_name == '' }}
+        run: |
+          echo "error: modules_tsconfig_artifact_name is required when warm_typecheck_types is true" >&2
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -91,3 +107,42 @@ jobs:
           path: ${{ inputs.choysum_binary_path }}
           if-no-files-found: error
           retention-days: ${{ inputs.retention_days }}
+
+      # Type-fetch warm is optional: unit/e2e only need the CLI binary. Callers that
+      # also run typecheck should set warm_typecheck_types=true (and a tsconfig
+      # artifact name). Warm stays in this job so typecheck avoids a second VM,
+      # at the cost of unit/e2e waiting on type-fetch when warm is enabled.
+      - name: Make choysum CLI executable
+        if: ${{ inputs.warm_typecheck_types == 'true' }}
+        run: chmod +x "${{ inputs.choysum_binary_path }}"
+
+      - name: Setup CLI testing pkg cache
+        if: ${{ inputs.warm_typecheck_types == 'true' }}
+        uses: ./.github/actions/setup-cli-testing-cache
+
+      - name: Warm type-fetch assets into CLI pkg cache
+        id: warm_types
+        if: ${{ inputs.warm_typecheck_types == 'true' }}
+        continue-on-error: true
+        env:
+          CHOYSUM_BIN: ${{ github.workspace }}/${{ inputs.choysum_binary_path }}
+        # Bound warm so an esm.sh stall cannot hold the whole CLI job (and unit/e2e).
+        # continue-on-error: CLI artifact is already uploaded; unit/e2e must not be skipped
+        # when only typewarm fails (typecheck will fail later if tsconfig is missing).
+        run: |
+          set -euo pipefail
+          if ! timeout --signal=TERM --kill-after=30s 15m bash scripts/ci/warm_typecheck_types.sh; then
+            echo "::error title=typefetch warm::warm_typecheck_types.sh failed; typecheck shards will fail without the modules tsconfig artifact" >&2
+            exit 1
+          fi
+
+      # modules/tsconfig.json is gitignored; type-fetch writes path maps here.
+      # Shards restore the pkg cache but need these maps (no root node_modules).
+      - name: Upload modules tsconfig path maps
+        if: ${{ inputs.warm_typecheck_types == 'true' && steps.warm_types.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.modules_tsconfig_artifact_name }}
+          path: modules/tsconfig.json
+          retention-days: ${{ inputs.retention_days }}
+          if-no-files-found: error

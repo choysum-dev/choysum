@@ -25,8 +25,21 @@ SHARED_PREFIXES = (
     "cmd/",
     "internal/",
     "pkg/",
-    ".github/workflows/",
+    ".github/actions/",
 )
+# Workflows that reshape the PR/Main gate graph (not every .github/workflows/*.yml).
+# Nightly soak is intentionally omitted: editing only nightly-audit.yml must not
+# expand the PR module matrix.
+SHARED_WORKFLOW_EXACT = {
+    ".github/workflows/pr-gate.yml",
+    ".github/workflows/mainline-verify.yml",
+    ".github/workflows/prepare-embedded-assets.yml",
+    ".github/workflows/build-choysum-cli.yml",
+}
+# Entry workflows that call reusables (includes nightly for closure tests only).
+GATE_ENTRY_WORKFLOWS = SHARED_WORKFLOW_EXACT | {
+    ".github/workflows/nightly-audit.yml",
+}
 SHARED_EXACT = {
     "main.go",
     "main_test.go",
@@ -36,6 +49,7 @@ SHARED_EXACT = {
     "package-lock.json",
     "codecov.yml",
     "config.sample.yaml",
+    *SHARED_WORKFLOW_EXACT,
 }
 
 # Paths that require the PR Gate go-test baseline (compile + coverage).
@@ -47,6 +61,8 @@ GO_TEST_EXACT = {
     # Jobs that run / aggregate go-test; workflow-only edits must still exercise shards.
     ".github/workflows/pr-gate.yml",
     ".github/workflows/mainline-verify.yml",
+    ".github/workflows/prepare-embedded-assets.yml",
+    ".github/workflows/build-choysum-cli.yml",
     # CI harness that directly shapes go-test shards / routing / Chromium pin.
     "scripts/ci/go_test_shards.py",
     "scripts/ci/go_test_shards_test.py",
@@ -261,6 +277,10 @@ def pull_request_outputs(modules):
             continue
         if is_shared_path(path):
             shared_hit = True
+            continue
+        # Non-gate workflow-only edits must not expand the module matrix
+        # (e.g. pr-agent.yml, i18n-status.yml).
+        if path.startswith(".github/workflows/"):
             continue
 
         shared_hit = True
