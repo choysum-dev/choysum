@@ -30,22 +30,25 @@ fi
 echo "Warming type-fetch cache via type-fetch --all"
 "$CHOYSUM_BIN" type-fetch --all
 
-# Force-repair vue: --all can keep hollow runtime-* siblings that Stat
-# as present. Delete the package cache + entry so the next fetch
-# re-materializes @vue/runtime-dom/core/reactivity.
 types_dir="${CHOYSUM_TEST_TMP}/cache/pkg/types"
 mkdir -p "$types_dir"
-rm -f "$types_dir"/vue@*.d.ts \
-  "$types_dir"/esm.sh_vue@* \
-  "$types_dir"/esm.sh_@vue_runtime-dom@* \
-  "$types_dir"/esm.sh_@vue_runtime-core@* \
-  "$types_dir"/esm.sh_@vue_reactivity@*
-echo "Re-fetching vue type graph"
-"$CHOYSUM_BIN" type-fetch web
 
-# Require the tsconfig-pinned vue entry (not a hollow/wrong-version graph).
-# `|| true`: under pipefail, grep exit 1 on no match would skip the diagnostic below.
+# `|| true`: under pipefail, grep exit 1 on no match would skip diagnostics below.
 pinned="$(grep -oE 'esm\.sh_vue@[0-9][^/_"]+' modules/tsconfig.json | head -1 | sed 's/.*@//' || true)"
+core_dts="$types_dir/esm.sh_@vue_runtime-core@${pinned}_dist_runtime-core.d.ts.d.ts"
+# Repair only when hollow/missing. Unconditional rm + mid-timeout kill can publish
+# a vue-less pkg cache from the shared cache post-step.
+if [[ -z "$pinned" || ! -s "$core_dts" ]] || ! grep -Eq '\bPropType\b' "$core_dts"; then
+  echo "Vue type graph hollow/missing; re-fetching"
+  rm -f "$types_dir"/vue@*.d.ts \
+    "$types_dir"/esm.sh_vue@* \
+    "$types_dir"/esm.sh_@vue_runtime-dom@* \
+    "$types_dir"/esm.sh_@vue_runtime-core@* \
+    "$types_dir"/esm.sh_@vue_reactivity@*
+  "$CHOYSUM_BIN" type-fetch web
+  pinned="$(grep -oE 'esm\.sh_vue@[0-9][^/_"]+' modules/tsconfig.json | head -1 | sed 's/.*@//' || true)"
+fi
+
 if [[ -z "$pinned" ]]; then
   echo "error: pinned vue version not found in modules/tsconfig.json" >&2
   exit 1

@@ -201,8 +201,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     packages = sub.add_parser("packages", help="Print packages for one shard (one per line)")
-    shard_names = "|".join([*(str(s["name"]) for s in SHARD_SPECS), "rest"])
-    packages.add_argument("shard", help=f"Shard name ({shard_names})")
+    shard_names = [*(str(s["name"]) for s in SHARD_SPECS), "rest"]
+    packages.add_argument(
+        "shard",
+        choices=shard_names,
+        help=f"Shard name ({'|'.join(shard_names)})",
+    )
 
     merge = sub.add_parser("merge-coverprofiles", help="Merge go coverprofiles into one file")
     merge.add_argument("--output", "-o", required=True, type=pathlib.Path)

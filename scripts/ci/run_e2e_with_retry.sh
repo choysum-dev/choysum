@@ -16,6 +16,11 @@ if [[ -z "${CHOYSUM_BIN:-}" || -z "${MODULE:-}" ]]; then
   echo "error: CHOYSUM_BIN and MODULE are required" >&2
   exit 1
 fi
+# MODULE comes from modules/<name> and is echoed into workflow commands; reject unsafe names.
+if [[ ! "$MODULE" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  echo "error: invalid MODULE name: ${MODULE}" >&2
+  exit 1
+fi
 if [[ ! -x "$CHOYSUM_BIN" ]]; then
   echo "error: CHOYSUM_BIN is not executable: $CHOYSUM_BIN" >&2
   exit 1

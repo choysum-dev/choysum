@@ -205,10 +205,11 @@ class GoTestShardsTest(unittest.TestCase):
 
     def test_packages_rejects_unknown_shard(self):
         mod = load_mod()
-        with mock.patch.object(mod, "partition_packages", return_value={"cmd": []}):
+        with contextlib.redirect_stderr(io.StringIO()) as err:
             with self.assertRaises(SystemExit) as cm:
                 mod.main(["packages", "nope"])
-            self.assertIn("unknown shard", str(cm.exception))
+        self.assertEqual(cm.exception.code, 2)
+        self.assertIn("invalid choice", err.getvalue())
 
     def test_shard_package_not_in_go_list_rejected(self):
         mod = load_mod()

@@ -28,11 +28,16 @@ SHARED_PREFIXES = (
     ".github/actions/",
 )
 # Workflows that reshape the PR/Main gate graph (not every .github/workflows/*.yml).
+# Nightly soak is intentionally omitted: editing only nightly-audit.yml must not
+# expand the PR module matrix.
 SHARED_WORKFLOW_EXACT = {
     ".github/workflows/pr-gate.yml",
     ".github/workflows/mainline-verify.yml",
     ".github/workflows/prepare-embedded-assets.yml",
     ".github/workflows/build-choysum-cli.yml",
+}
+# Entry workflows that call reusables (includes nightly for closure tests only).
+GATE_ENTRY_WORKFLOWS = SHARED_WORKFLOW_EXACT | {
     ".github/workflows/nightly-audit.yml",
 }
 SHARED_EXACT = {

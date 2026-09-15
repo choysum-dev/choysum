@@ -45,6 +45,7 @@ jobs:
     name: main / build-choysum-cli
     needs:
       - prepare-embedded-assets
+      - discover-modules
     uses: ./.github/workflows/build-choysum-cli.yml
     with:
       embedded_assets_artifact_name: main-embedded-assets
@@ -52,8 +53,8 @@ jobs:
       choysum_artifact_name: main-choysum-cli
       choysum_binary_path: .choysum/tmp/choysum
       retention_days: 1
-      warm_typecheck_types: "true"
-      modules_tsconfig_artifact_name: main-modules-tsconfig
+      warm_typecheck_types: ${{ needs.discover-modules.outputs.modules_json != '[]' && 'true' || 'false' }}
+      modules_tsconfig_artifact_name: ${{ needs.discover-modules.outputs.modules_json != '[]' && 'main-modules-tsconfig' || '' }}
 
   go-test-shards:
     name: main / go-test (${{ matrix.shard }})

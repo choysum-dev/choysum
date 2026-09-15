@@ -272,7 +272,7 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
         mod = load_mod()
         workflows = REPO_ROOT / ".github" / "workflows"
         referenced = set()
-        pending = [p.removeprefix(".github/workflows/") for p in mod.SHARED_WORKFLOW_EXACT]
+        pending = [p.removeprefix(".github/workflows/") for p in mod.GATE_ENTRY_WORKFLOWS]
         seen = set()
         while pending:
             name = pending.pop()
@@ -283,8 +283,7 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
             if not path.is_file():
                 # uses: paths are repo-relative (.github/workflows/...).
                 path = REPO_ROOT / name
-            if not path.is_file():
-                continue
+            self.assertTrue(path.is_file(), f"missing gate/shared workflow: {name}")
             text = path.read_text(encoding="utf-8")
             found = set(
                 re.findall(r"uses:\s*\./(\.github/workflows/[^\s\"']+)", text)
@@ -297,6 +296,32 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
             missing,
             f"gate-referenced workflows missing from SHARED_WORKFLOW_EXACT: {sorted(missing)}",
         )
+
+    def test_nightly_workflow_edit_does_not_expand_module_matrix(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            modules = pathlib.Path(tmp) / "modules"
+            (modules / "auth").mkdir(parents=True)
+
+            changed = [".github/workflows/nightly-audit.yml"]
+
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["auth"])
+
+            self.assertEqual(out["run_full_matrix"], "false")
+            self.assertEqual(out["impacted_modules_json"], "[]")
+            self.assertEqual(out["run_go_test"], "false")
 
     def test_gate_reusable_workflows_still_expand_full_matrix(self):
         mod = load_mod()
