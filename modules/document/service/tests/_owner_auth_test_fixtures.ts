@@ -171,9 +171,9 @@ export async function withDocumentAuthUserStubOverride<T>(
       ? (condition, options) => override.Search!(condition, options)
       : base.Search,
   };
-  registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => merged);
-  clearRequestAuthzCaches();
   try {
+    registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => merged);
+    clearRequestAuthzCaches();
     return await fn();
   } finally {
     restoreFactory(DOCUMENT_TEST_AUTH_USER_MODEL, priorFactory);
