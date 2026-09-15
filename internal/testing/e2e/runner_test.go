@@ -487,7 +487,7 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 		t.Fatalf("expected missing parent error for backendEnv, got %v", err)
 	}
 
-	for _, badKey := range []string{"BAD: KEY", "BAD\nkey", " CHOYSUM_X", "CHOYSUM_E2E_SKIP_RELOAD", "CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC"} {
+	for _, badKey := range []string{"", "BAD: KEY", "BAD\nkey", " CHOYSUM_X", "CHOYSUM_E2E_SKIP_RELOAD", "CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC"} {
 		badMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
 			"default": {BackendEnv: map[string]string{badKey: "1"}},
 		}}}
@@ -504,11 +504,20 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 		}
 	}
 
+	cycleMod := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
+		"a": {Extends: "b"},
+		"b": {Extends: "a"},
+	}}}
+	_, err = resolveScenarioBackendEnv(cycleMod, "a")
+	if err == nil || !strings.Contains(err.Error(), "scenario extends cycle") {
+		t.Fatalf("expected backendEnv extends cycle error, got %v", err)
+	}
+
 	formatted := formatBackendEnvYAML(map[string]string{
 		"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true",
 		"AAA":                             "1",
 	})
-	if formatted != "  AAA: \"1\"\n  CHOYSUM_E2E_FORCE_LOCK_CONFLICT: \"true\"\n" {
+	if formatted != "  \"AAA\": \"1\"\n  \"CHOYSUM_E2E_FORCE_LOCK_CONFLICT\": \"true\"\n" {
 		t.Fatalf("unexpected formatBackendEnvYAML: %q", formatted)
 	}
 	if formatBackendEnvYAML(nil) != "" || formatBackendEnvYAML(map[string]string{}) != "" {

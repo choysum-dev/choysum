@@ -463,7 +463,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("runOneScenario(web lock-conflict) error: %v", err)
 		}
-		if !strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_LOCK_CONFLICT: \"true\"") {
+		if !strings.Contains(seenConfig, `"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "true"`) {
 			t.Fatalf("expected FORCE_LOCK from meta scenario backendEnv, got %q", seenConfig)
 		}
 		if strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_RELOAD_FAILED") || strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_RESULT_STATUS") {
@@ -519,11 +519,29 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("runOneScenario(web lock-conflict override) error: %v", err)
 		}
-		if !strings.Contains(seenConfig, "CHOYSUM_E2E_FORCE_LOCK_CONFLICT: \"from-web\"") {
+		if !strings.Contains(seenConfig, `"CHOYSUM_E2E_FORCE_LOCK_CONFLICT": "from-web"`) {
 			t.Fatalf("expected target backendEnv to override dependency, got %q", seenConfig)
 		}
 		if strings.Contains(seenConfig, "from-meta") {
 			t.Fatalf("dependency backendEnv must not win over target, got %q", seenConfig)
+		}
+
+		badKeyManifests := map[string]*sourceModulePackage{
+			"web": {
+				DirName: "web",
+				E2E: &packageE2E{
+					Specs: "e2e",
+					Scenarios: map[string]packageScene{
+						"default": {
+							BackendEnv: map[string]string{"CHOYSUM_E2E_SKIP_RELOAD": "true"},
+						},
+					},
+				},
+			},
+		}
+		err = runOneScenario(context.Background(), RunOptions{Module: "web", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, badKeyManifests, "default")
+		if err == nil || !strings.Contains(err.Error(), "reserved") {
+			t.Fatalf("expected reserved backendEnv error from runOneScenario, got %v", err)
 		}
 	})
 

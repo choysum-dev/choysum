@@ -412,7 +412,15 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	}
 
 	scenarioBackendEnv := map[string]string{}
+	// Apply dependency modules first, then the target last so its backendEnv always wins.
+	backendEnvModules := make([]string, 0, len(closure))
 	for _, modName := range closure {
+		if modName != opts.Module {
+			backendEnvModules = append(backendEnvModules, modName)
+		}
+	}
+	backendEnvModules = append(backendEnvModules, opts.Module)
+	for _, modName := range backendEnvModules {
 		modEnv, err := resolveScenarioBackendEnv(packages[modName], scenario)
 		if err != nil {
 			return xfmt.Errorf("resolve backendEnv: module=%s scenario=%s: %w", modName, scenario, err)
@@ -1134,7 +1142,7 @@ func resolveScenarioBackendEnv(m *sourceModulePackage, scenario string) (map[str
 		}
 		for k, v := range sc.BackendEnv {
 			if err := validateBackendEnvKey(k); err != nil {
-				return nil, err
+				return nil, xfmt.Errorf("scenario %q: %w", name, err)
 			}
 			out[k] = v
 		}
@@ -1156,7 +1164,7 @@ func formatBackendEnvYAML(env map[string]string) string {
 	sort.Strings(keys)
 	var b strings.Builder
 	for _, k := range keys {
-		fmt.Fprintf(&b, "  %s: %q\n", k, env[k])
+		fmt.Fprintf(&b, "  %q: %q\n", k, env[k])
 	}
 	return b.String()
 }
