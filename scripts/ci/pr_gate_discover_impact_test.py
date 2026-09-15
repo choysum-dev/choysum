@@ -133,6 +133,38 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
             self.assertEqual(out["reason"], "shared-runtime")
             self.assertEqual(out["run_go_test"], "true")
             self.assertEqual(out["run_full_matrix"], "true")
+            self.assertNotIn("run_bootstrap_verify", out)
+
+    def test_build_pipeline_still_arms_full_matrix_without_bootstrap_verify(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            modules = pathlib.Path(tmp) / "modules"
+            (modules / "auth" / "e2e").mkdir(parents=True)
+            (modules / "auth" / "e2e" / "smoke.spec.ts").write_text("// smoke\n", encoding="utf-8")
+
+            changed = [
+                "internal/bootstrap/web/src/main.ts",
+                "pkg/jsengine/scripts/vuesfc/src/index.ts",
+            ]
+
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["auth"])
+
+            self.assertEqual(out["reason"], "build-pipeline")
+            self.assertEqual(out["run_full_matrix"], "true")
+            self.assertEqual(out["run_go_test"], "true")
+            self.assertNotIn("run_bootstrap_verify", out)
 
 
 if __name__ == "__main__":
