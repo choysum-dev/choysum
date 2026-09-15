@@ -3,13 +3,6 @@
 
 import { withContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
-import { createServiceByModel } from '@/core/service/rpc';
-import { withPermissionGraphBypass } from '@/core/service/testing';
-import type RoleRecordRuleModel from '@/auth/service/models/role_record_rule';
-import type MetaModelModel from '@/meta/service/models/model';
-
-const RoleRecordRule = createServiceByModel<typeof RoleRecordRuleModel>('auth.RoleRecordRule');
-const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 import AttachmentObject from '../models/attachment_object';
 import UploadSession from '../models/upload_session';
 import StoredContent from '../models/stored_content';
@@ -19,10 +12,10 @@ import {
   documentProbeOwnerRecordForTest,
 } from '../models/_owner_authorization';
 import {
-  ensureAuthUserOwnerFieldRuleGrants,
-  ensureAuthUserOwnerRecordRuleGrants,
+  ensureDocumentAuthUserStub,
   disableRepositoryFieldRuleForDocumentTests,
   disableRepositoryRecordRuleForDocumentTests,
+  withDocumentAuthUserStubOverride,
 } from './_owner_auth_test_fixtures';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -75,8 +68,7 @@ async function withDocumentScope<T>(fn: () => Promise<T>): Promise<T> {
   return withContext(
     { activeCompanyId: TEST_COMPANY_ID, enabledCompanyIds: [TEST_COMPANY_ID] } as any,
     async () => {
-      await ensureAuthUserOwnerRecordRuleGrants();
-      await ensureAuthUserOwnerFieldRuleGrants();
+      ensureDocumentAuthUserStub();
       return fn();
     },
     { merge: false }
@@ -482,36 +474,19 @@ test('inlined upload coverage: authorize short-circuits when session status is a
 test('inlined upload coverage: branch fallbacks for create op, defaults, and finalize metadata', async () => {
   resetRequestContext();
   await withDocumentScope(async () => {
-    let createGrantRuleId = '';
-    let createGrantOriginal: Record<string, unknown> | null = null;
-    await withPermissionGraphBypass(async () => {
-      const modelRows = await MetaModel.Search({ And: [['Application', '=', 'auth'], ['Name', '=', 'User']] } as any, {
-        fields: ['Id'],
-        limit: 1,
-      } as any);
-      const modelId = String((modelRows[0] as any)?.Id || '').trim();
-      const existing = await RoleRecordRule.Search(
-        {
-          And: [
-            ['RoleId', 'is', null],
-            ['Kind', '=', 'grant'],
-            ['MetaModelId', '=', modelId],
-            ['PermRead', '=', true],
-            ['PermWrite', '=', true],
-          ],
-        } as any,
-        { fields: ['Id', 'PermCreate', 'PermDelete'], limit: 1 } as any
-      );
-      const grant = (existing || [])[0] as any;
-      createGrantRuleId = String(grant?.Id || '').trim();
-      createGrantOriginal = { PermCreate: grant?.PermCreate, PermDelete: grant?.PermDelete };
-      if (createGrantRuleId) {
-        await RoleRecordRule.UpdateById(createGrantRuleId, { PermCreate: true } as any, ['Id'] as any);
-      }
-    });
-    delete (ensureRequestContext() as any)[RR_CACHE_KEY];
-
-    try {
+    await withDocumentAuthUserStubOverride(
+      {
+        GetRecordRuleCondition: async (model, op) => {
+          if (String(model || '').trim().toLowerCase() !== 'auth.user') {
+            return { kind: 'false', reason: 'unknown_model' };
+          }
+          if (op === 'read' || op === 'write' || op === 'create') {
+            return { kind: 'true', reason: 'document_test_allow_create' };
+          }
+          return { kind: 'false', reason: 'document_test_op_denied' };
+        },
+      },
+      async () => {
       const createPrepared = await AttachmentObject.PrepareUpload({
         ownerModel: 'auth.User',
         ownerRecordId: uid('owner_cov_create_op'),
@@ -780,14 +755,8 @@ test('inlined upload coverage: branch fallbacks for create op, defaults, and fin
         businessRequestId: createFinalizeBiz,
       });
       expect(createFinalized.mimeType).toBe('text/plain');
-    } finally {
-      if (createGrantRuleId && createGrantOriginal) {
-        await withPermissionGraphBypass(async () => {
-          await RoleRecordRule.UpdateById(createGrantRuleId, createGrantOriginal as any, ['Id'] as any);
-        });
-        delete (ensureRequestContext() as any)[RR_CACHE_KEY];
       }
-    }
+    );
   });
 });
 
@@ -800,76 +769,46 @@ test('inlined owner auth coverage: probe and expr scope denials', async () => {
       await documentProbeOwnerRecordForTest('bind', 'auth.User', TEST_USER_ID, ['Id', '=', uid('expr_miss')] as any)
     ).toBe(false);
 
-    let grantRuleId = '';
-    let originalCondition: unknown = { And: [] };
-    await withPermissionGraphBypass(async () => {
-      const modelRows = await MetaModel.Search({ And: [['Application', '=', 'auth'], ['Name', '=', 'User']] } as any, {
-        fields: ['Id'],
-        limit: 1,
-      } as any);
-      const modelId = String((modelRows[0] as any)?.Id || '').trim();
-      const existing = await RoleRecordRule.Search(
-        {
-          And: [
-            ['RoleId', 'is', null],
-            ['Kind', '=', 'grant'],
-            ['MetaModelId', '=', modelId],
-            ['MetaApplicationId', 'is', null],
-            ['PermRead', '=', true],
-            ['PermWrite', '=', true],
-          ],
-        } as any,
-        { fields: ['Id', 'Condition'], limit: 8 } as any
-      );
-      const grant = (existing || [])[0] as any;
-      grantRuleId = String(grant?.Id || '').trim();
-      originalCondition = grant?.Condition ?? { And: [] };
-      await RoleRecordRule.UpdateById(
-        grantRuleId,
-        { Condition: ['Id', '=', uid('rr_expr_block')] as any } as any,
-        ['Id'] as any
-      );
-    });
-    delete (ensureRequestContext() as any)[RR_CACHE_KEY];
+    await withDocumentAuthUserStubOverride(
+      {
+        GetRecordRuleCondition: async () => ({
+          kind: 'expr',
+          expr: ['Id', '=', uid('rr_expr_block')],
+          reason: 'document_test_expr_deny',
+        }),
+      },
+      async () => {
+        try {
+          await assertOwnerWriteAuthorization({
+            stage: 'bind',
+            ownerModel: 'auth.User',
+            ownerRecordId: TEST_USER_ID,
+            fieldName: 'Avatar',
+            operation: 'update',
+            companyId: TEST_COMPANY_ID,
+            companyIds: [TEST_COMPANY_ID],
+            userId: TEST_USER_ID,
+          });
+          throw new Error('expected expr write scope deny');
+        } catch (err) {
+          expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
+        }
 
-    try {
-      try {
-        await assertOwnerWriteAuthorization({
-          stage: 'bind',
-          ownerModel: 'auth.User',
-          ownerRecordId: TEST_USER_ID,
-          fieldName: 'Avatar',
-          operation: 'update',
-          companyId: TEST_COMPANY_ID,
-          companyIds: [TEST_COMPANY_ID],
-          userId: TEST_USER_ID,
-        });
-        throw new Error('expected expr write scope deny');
-      } catch (err) {
-        expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
+        try {
+          await assertOwnerReadAuthorization({
+            stage: 'descriptor',
+            ownerModel: 'auth.User',
+            ownerRecordId: TEST_USER_ID,
+            fieldName: 'Avatar',
+            companyId: TEST_COMPANY_ID,
+            companyIds: [TEST_COMPANY_ID],
+            userId: TEST_USER_ID,
+          });
+          throw new Error('expected expr read scope deny');
+        } catch (err) {
+          expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
+        }
       }
-
-      try {
-        await assertOwnerReadAuthorization({
-          stage: 'descriptor',
-          ownerModel: 'auth.User',
-          ownerRecordId: TEST_USER_ID,
-          fieldName: 'Avatar',
-          companyId: TEST_COMPANY_ID,
-          companyIds: [TEST_COMPANY_ID],
-          userId: TEST_USER_ID,
-        });
-        throw new Error('expected expr read scope deny');
-      } catch (err) {
-        expect((err as ChoysumError).code).toBe('PERMISSION_DENIED');
-      }
-    } finally {
-      if (grantRuleId) {
-        await withPermissionGraphBypass(async () => {
-          await RoleRecordRule.UpdateById(grantRuleId, { Condition: originalCondition as any } as any, ['Id'] as any);
-        });
-        delete (ensureRequestContext() as any)[RR_CACHE_KEY];
-      }
-    }
+    );
   });
 });

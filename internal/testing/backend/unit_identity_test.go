@@ -605,34 +605,6 @@ func (r *recordingInstaller) Install(ctx context.Context, req lifecycle.InstallR
 	return r.err
 }
 
-func TestEnsureAuthPeerInstalledForUnitApp(t *testing.T) {
-	t.Run("skip_base", func(t *testing.T) {
-		inst := &recordingInstaller{}
-		if err := ensureAuthPeerInstalledForUnitApp(context.Background(), inst, "base"); err != nil {
-			t.Fatalf("err=%v", err)
-		}
-		if len(inst.calls) != 0 {
-			t.Fatalf("calls=%v", inst.calls)
-		}
-	})
-	t.Run("install_document", func(t *testing.T) {
-		inst := &recordingInstaller{}
-		if err := ensureAuthPeerInstalledForUnitApp(context.Background(), inst, "document"); err != nil {
-			t.Fatalf("err=%v", err)
-		}
-		if len(inst.calls) != 1 || inst.calls[0].Name != "auth" || !inst.calls[0].SkipWebShell {
-			t.Fatalf("calls=%+v", inst.calls)
-		}
-	})
-	t.Run("install_error", func(t *testing.T) {
-		inst := &recordingInstaller{err: errors.New("install auth peer failed")}
-		err := ensureAuthPeerInstalledForUnitApp(context.Background(), inst, "document")
-		if err == nil || !strings.Contains(err.Error(), "install auth peer failed") {
-			t.Fatalf("err=%v", err)
-		}
-	})
-}
-
 func TestInstallUnitAppModules(t *testing.T) {
 	t.Run("base_single_install", func(t *testing.T) {
 		inst := &recordingInstaller{}
@@ -661,14 +633,12 @@ func TestInstallUnitAppModules(t *testing.T) {
 			t.Fatalf("calls=%+v", inst.calls)
 		}
 	})
-	t.Run("document_installs_auth_peer", func(t *testing.T) {
+	t.Run("document_single_install", func(t *testing.T) {
 		inst := &recordingInstaller{}
 		if err := installUnitAppModules(context.Background(), inst, "document"); err != nil {
 			t.Fatalf("err=%v", err)
 		}
-		if len(inst.calls) != 2 ||
-			inst.calls[0].Name != "document" || !inst.calls[0].SkipWebShell ||
-			inst.calls[1].Name != "auth" || !inst.calls[1].SkipWebShell {
+		if len(inst.calls) != 1 || inst.calls[0].Name != "document" || !inst.calls[0].SkipWebShell {
 			t.Fatalf("calls=%+v", inst.calls)
 		}
 	})
@@ -677,16 +647,6 @@ func TestInstallUnitAppModules(t *testing.T) {
 		err := installUnitAppModules(context.Background(), inst, "web")
 		if err == nil || !strings.Contains(err.Error(), "app install failed") {
 			t.Fatalf("err=%v", err)
-		}
-	})
-	t.Run("document_auth_peer_install_error", func(t *testing.T) {
-		inst := &recordingInstaller{err: errors.New("install auth peer failed"), failOnName: "auth"}
-		err := installUnitAppModules(context.Background(), inst, "document")
-		if err == nil || !strings.Contains(err.Error(), "install auth peer failed") {
-			t.Fatalf("err=%v", err)
-		}
-		if len(inst.calls) != 2 || inst.calls[0].Name != "document" || inst.calls[1].Name != "auth" {
-			t.Fatalf("calls=%+v", inst.calls)
 		}
 	})
 }
@@ -758,22 +718,4 @@ func TestJsContextWithUnitTestIdentity(t *testing.T) {
 			t.Fatalf("userId=%v", identity["userId"])
 		}
 	})
-}
-
-func TestShouldInstallAuthPeerForUnitApp(t *testing.T) {
-	cases := []struct {
-		app  string
-		want bool
-	}{
-		{"document", true},
-		{" Document ", true},
-		{"auth", false},
-		{"base", false},
-		{"", false},
-	}
-	for _, tc := range cases {
-		if got := shouldInstallAuthPeerForUnitApp(tc.app); got != tc.want {
-			t.Fatalf("shouldInstallAuthPeerForUnitApp(%q)=%v, want %v", tc.app, got, tc.want)
-		}
-	}
 }

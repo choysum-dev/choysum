@@ -5,7 +5,6 @@ import { dial } from '@/core/service';
 import { assertRecordReadable } from '@/core/service/orm/model';
 import { parseConditionEnvelopeFromUnknown, parseFieldRuleSpecFromUnknown, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
-import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
