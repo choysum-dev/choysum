@@ -136,6 +136,9 @@ function restoreFactory(modelName: string, previous: ReturnType<typeof getServic
  */
 export function ensureDocumentAuthUserStub(): void {
   if (authUserStubInstalled) {
+    if (!getServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL)) {
+      registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => createDefaultAuthUserStub());
+    }
     clearRequestAuthzCaches();
     return;
   }
@@ -147,14 +150,16 @@ export function ensureDocumentAuthUserStub(): void {
 
 /**
  * Temporarily override auth.User stub methods (e.g. field deny / expr deny / create grant).
- * Restores the factory that was active before this override (supports nesting).
+ * Merges onto the currently registered factory so nested overrides compose; restores
+ * that prior factory when the callback finishes.
  */
 export async function withDocumentAuthUserStubOverride<T>(
   override: Partial<Pick<AuthUserOwnerAuthzStub, 'GetRecordRuleCondition' | 'GetFieldRuleSpec' | 'Search'>>,
   fn: () => Promise<T>
 ): Promise<T> {
   ensureDocumentAuthUserStub();
-  const base = createDefaultAuthUserStub();
+  const priorFactory = getServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL);
+  const base = (priorFactory ? priorFactory() : createDefaultAuthUserStub()) as AuthUserOwnerAuthzStub;
   const merged: AuthUserOwnerAuthzStub = {
     GetRecordRuleCondition: override.GetRecordRuleCondition
       ? (model, op) => override.GetRecordRuleCondition!(model, op)
@@ -166,7 +171,6 @@ export async function withDocumentAuthUserStubOverride<T>(
       ? (condition, options) => override.Search!(condition, options)
       : base.Search,
   };
-  const priorFactory = getServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL);
   registerServiceFactory(DOCUMENT_TEST_AUTH_USER_MODEL, () => merged);
   clearRequestAuthzCaches();
   try {
