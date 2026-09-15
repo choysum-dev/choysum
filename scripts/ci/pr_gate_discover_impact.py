@@ -25,6 +25,7 @@ SHARED_PREFIXES = (
     "cmd/",
     "internal/",
     "pkg/",
+    ".github/actions/",
 )
 # Workflows that reshape the PR/Main gate graph (not every .github/workflows/*.yml).
 SHARED_WORKFLOW_EXACT = {

@@ -115,7 +115,7 @@ jobs:
         need_generate=true
         # Entry files match prepare-embedded-assets pack paths (not empty dist dirs).
         if [[ "${{ steps.embedded-cache.outputs.cache-hit }}" == "true" \
-          && -d internal/bootstrap/web/dist \
+          && -n "$(ls -A internal/bootstrap/web/dist 2>/dev/null)" \
           && -f pkg/jsengine/scripts/vuesfc/dist/index.js \
           && -f pkg/jsengine/scripts/vuevirtual/dist/index.js ]]; then
           echo "Embedded assets cache hit; skipping go generate"

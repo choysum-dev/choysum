@@ -48,8 +48,12 @@ while true; do
     echo "E2E failed after ${max_attempts} attempt(s) (exit=${exit_code})" >&2
     exit "$exit_code"
   fi
-  echo "E2E attempt ${attempt} failed (exit=${exit_code}); retrying..." >&2
-  echo "::warning title=E2E flake::module=${MODULE} attempt ${attempt}/${max_attempts} failed (exit=${exit_code}); retrying" || true
+  reason="assertion-or-runtime"
+  if [[ "$exit_code" -eq 124 || "$exit_code" -eq 137 ]]; then
+    reason="attempt-timeout"
+  fi
+  echo "E2E attempt ${attempt} failed (exit=${exit_code}, reason=${reason}); retrying..." >&2
+  echo "::warning title=E2E ${reason}::module=${MODULE} attempt ${attempt}/${max_attempts} failed (exit=${exit_code}); retrying" || true
   attempt=$((attempt + 1))
   sleep 5
 done

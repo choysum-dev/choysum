@@ -454,7 +454,7 @@ jobs:
             else
               coverage_files="${f}"
             fi
-          done < <(find .choysum/coverage/pr/unit -type f -name 'lcov.info' 2>/dev/null | sort || true)
+          done < <(find .choysum/coverage/pr/unit -type f -name 'lcov.info' -size +0c 2>/dev/null | sort || true)
 
           test_result_files=""
           while IFS= read -r f; do

@@ -238,6 +238,34 @@ class DiscoverImpactGoTestRoutingTest(unittest.TestCase):
             self.assertEqual(out["impacted_modules_json"], "[]")
             self.assertEqual(out["run_go_test"], "false")
 
+    def test_github_actions_composite_edits_expand_full_matrix(self):
+        mod = load_mod()
+        self.assertTrue(mod.is_shared_path(".github/actions/setup-chromium/action.yml"))
+        with tempfile.TemporaryDirectory() as tmp:
+            modules = pathlib.Path(tmp) / "modules"
+            (modules / "auth" / "e2e").mkdir(parents=True)
+            (modules / "auth" / "e2e" / "smoke.spec.ts").write_text("// smoke\n", encoding="utf-8")
+
+            changed = [".github/actions/setup-chromium/action.yml"]
+
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["auth"])
+
+            self.assertEqual(out["reason"], "shared-runtime")
+            self.assertEqual(out["run_full_matrix"], "true")
+            self.assertEqual(out["impacted_modules_json"], '["auth"]')
+
     def test_shared_workflow_exact_covers_reusable_workflows_used_by_gate(self):
         import re
 
