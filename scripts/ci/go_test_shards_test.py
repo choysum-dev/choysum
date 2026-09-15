@@ -6,7 +6,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import json
 import pathlib
 import re
 import tempfile
@@ -44,6 +47,12 @@ class GoTestShardsTest(unittest.TestCase):
         mod = load_mod()
         rows = mod.shard_meta()
         self.assertEqual([r["shard"] for r in rows], ["cmd", "testing", "module", "runtime", "rest"])
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.assertEqual(mod.main(["matrix"]), 0)
+        payload = json.loads(buf.getvalue())
+        self.assertEqual(list(payload.keys()), ["include"])
+        self.assertEqual(payload["include"], rows)
 
     def test_workflow_matrix_matches_shard_meta(self):
         mod = load_mod()
@@ -194,6 +203,40 @@ class GoTestShardsTest(unittest.TestCase):
             with self.assertRaises(SystemExit) as cm:
                 mod.main(["packages", "nope"])
             self.assertIn("unknown shard", str(cm.exception))
+
+    def test_shard_package_not_in_go_list_rejected(self):
+        mod = load_mod()
+        with mock.patch.object(mod, "run_go_list") as gl:
+            gl.side_effect = [["a"], ["b"]]  # ./... ; shard returns unknown pkg
+            with mock.patch.object(
+                mod,
+                "SHARD_SPECS",
+                [{"name": "cmd", "patterns": ["./cmd/..."], "chromium": False}],
+            ):
+                with self.assertRaises(SystemExit) as cm:
+                    mod.partition_packages()
+                self.assertIn("not in go list", str(cm.exception))
+
+    def test_merge_rejects_duplicate_blocks(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            a = root / "a.out"
+            b = root / "b.out"
+            a.write_text("mode: atomic\nfoo.go:1.2,3.4 1 1\n", encoding="utf-8")
+            b.write_text("mode: atomic\nfoo.go:1.2,3.4 1 0\n", encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                mod.merge_coverprofiles([a, b], root / "out.out")
+            self.assertIn("duplicate coverage block", str(cm.exception))
+
+    def test_merge_rejects_missing_input_files(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            missing = root / "missing.out"
+            with self.assertRaises(SystemExit) as cm:
+                mod.merge_coverprofiles([missing], root / "out.out")
+            self.assertIn("missing input files", str(cm.exception))
 
 
 if __name__ == "__main__":

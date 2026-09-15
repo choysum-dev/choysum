@@ -144,6 +144,9 @@ def merge_coverprofiles(
 ) -> None:
     if not inputs:
         raise SystemExit("merge-coverprofiles: no input files")
+    missing = [str(path) for path in inputs if not path.is_file()]
+    if missing:
+        raise SystemExit(f"merge-coverprofiles: missing input files: {missing}")
     if require_all_shards:
         got = sorted(path.name for path in inputs)
         expected = sorted(coverprofile_basenames())
@@ -154,6 +157,7 @@ def merge_coverprofiles(
             )
     mode: str | None = None
     body: list[str] = []
+    blocks: set[str] = set()
     for path in inputs:
         text = path.read_text(encoding="utf-8")
         lines = text.splitlines()
@@ -167,7 +171,17 @@ def merge_coverprofiles(
             mode = file_mode
         elif mode != file_mode:
             raise SystemExit(f"cover mode mismatch: {mode} vs {file_mode} ({path})")
-        body.extend(line for line in lines[1:] if line.strip())
+        for line in lines[1:]:
+            if not line.strip():
+                continue
+            key = line.rsplit(" ", 2)[0]
+            if key in blocks:
+                raise SystemExit(
+                    f"duplicate coverage block {key!r} in {path}: "
+                    "shard profiles must not overlap"
+                )
+            blocks.add(key)
+            body.append(line)
     if require_all_shards and not body:
         raise SystemExit(
             "merge-coverprofiles: all shards present but no coverage lines found"
@@ -217,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "matrix":
-        print(json.dumps(shard_meta(), separators=(",", ":")))
+        print(json.dumps({"include": shard_meta()}, separators=(",", ":")))
         return 0
 
     if args.command == "coverprofile-names":
