@@ -1,61 +1,29 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createServiceByModel } from '@/core/service/rpc';
-import type MetaModelModel from '@/meta/service/models/model';
-import type RoleModel from '@/auth/service/models/role';
-import type RoleFieldRuleModel from '@/auth/service/models/role_field_rule';
-import type RoleRecordRuleModel from '@/auth/service/models/role_record_rule';
-import type UserModel from '@/auth/service/models/user/user';
-import type UserRoleModel from '@/auth/service/models/user_role';
-import { getTestRepository, invalidateAuthzCachesForUsers, withPermissionGraphBypass } from '@/core/service/testing';
-
-const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
-const Role = createServiceByModel<typeof RoleModel>('auth.Role');
-const RoleFieldRule = createServiceByModel<typeof RoleFieldRuleModel>('auth.RoleFieldRule');
-const RoleRecordRule = createServiceByModel<typeof RoleRecordRuleModel>('auth.RoleRecordRule');
-const User = createServiceByModel<typeof UserModel>('auth.User');
-const UserRole = createServiceByModel<typeof UserRoleModel>('auth.UserRole');
+import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
+import {
+  OWNER_AUTHZ_SERVICE,
+  type OwnerAuthzService,
+} from '@/core/service/api/owner_authz';
+import type { ConditionEnvelope, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
 
-const FR_FIXTURE_ROLE_CODE = 'document.fixture.fr_allow';
-const KNOWN_DOCUMENT_TEST_USER_IDS = ['usr_document_test', 'usr_scope_a', 'usr_scope_b'];
+/** Owner record ids commonly used by document unit suites (probe Search stub). */
+const KNOWN_OWNER_RECORD_IDS = new Set(['usr_document_test', 'usr_scope_a', 'usr_scope_b']);
 
-let authUserOwnerGrantsSeeded = false;
-let createdOwnerGrantRuleId = '';
-let createdOwnerFrRuleId = '';
-let createdOwnerFrRoleId = '';
-/** Resolution memo (may point at reused pre-existing rows that teardown must not delete). */
-let resolvedOwnerFrRoleId = '';
-let ownerFrRuleEnsured = false;
-const createdOwnerFrUserRoleIds: string[] = [];
-const createdOwnerFrUserIds: string[] = [];
+/** Opaque owner model string used by document attachment fixtures (not a product model). */
+export const DOCUMENT_TEST_OWNER_MODEL = 'auth.User';
+
+let previousOwnerAuthzFactory: ReturnType<typeof getServiceFactory> | undefined;
+let previousOwnerProbeFactory: ReturnType<typeof getServiceFactory> | undefined;
+let ownerAuthzStubInstalled = false;
 let previousRecordRuleEnabled: unknown = undefined;
 let capturedRecordRuleEnv = false;
 let previousFieldRuleEnabled: unknown = undefined;
 let capturedFieldRuleEnv = false;
-
-function isEmptyCondition(cond: unknown): boolean {
-  if (cond == null) return true;
-  if (typeof cond !== 'object' || Array.isArray(cond)) return false;
-  const keys = Object.keys(cond as Record<string, unknown>);
-  if (keys.length === 0) return true;
-  if (keys.length === 1) {
-    const key = keys[0];
-    const val = (cond as Record<string, unknown>)[key];
-    if ((key === 'And' || key === 'Or') && Array.isArray(val) && val.length === 0) return true;
-  }
-  return false;
-}
-
-function isNotFoundDeleteError(err: unknown): boolean {
-  const code = String((err as any)?.code || '').toLowerCase();
-  if (code === 'not_found' || code === 'notfound' || code === '5') return true;
-  const msg = String((err as any)?.message || err || '').toLowerCase();
-  return msg.includes('not found') || msg.includes('not_found');
-}
 
 function clearRequestAuthzCaches(): void {
   const root: any = (globalThis as any).$choysum ?? {};
@@ -66,16 +34,11 @@ function clearRequestAuthzCaches(): void {
   }
 }
 
-function currentIdentityUserId(): string {
-  const root: any = (globalThis as any).$choysum ?? {};
-  return String(root?.request?.context?.identity?.userId || '').trim();
-}
-
 /**
  * Document unit tests historically relied on repository RecordRule allow-by-default
  * for UploadSession / Binding / Content CRUD. Under deny-default those writes need
- * either grant packs or a repository-layer disable. Owner authorization still calls
- * GetRecordRuleCondition directly (unaffected by this flag).
+ * either grant packs or a repository-layer disable. Owner authorization dials
+ * {@link OWNER_AUTHZ_SERVICE} directly (unaffected by this flag).
  */
 export function disableRepositoryRecordRuleForDocumentTests(): void {
   const root = globalThis as any;
@@ -90,7 +53,7 @@ export function disableRepositoryRecordRuleForDocumentTests(): void {
 /**
  * Mirror RecordRule disable for repository FieldRule: nested Create/Update at depth>0
  * ignores top-level fieldRuleMode=skip, so deny-default would block UploadSession rows.
- * Owner authorization still calls GetFieldRuleSpec directly (unaffected by this flag).
+ * Owner authorization dials {@link OWNER_AUTHZ_SERVICE} directly (unaffected by this flag).
  */
 export function disableRepositoryFieldRuleForDocumentTests(): void {
   const root = globalThis as any;
@@ -102,233 +65,119 @@ export function disableRepositoryFieldRuleForDocumentTests(): void {
   root.__CHOYSUM_RUNTIME_ENV__ = { ...prev, CHOYSUM_GRPC_FIELD_RULE_ENABLED: false };
 }
 
+function isUnknownOwnerModel(model: string): boolean {
+  const text = String(model || '').trim();
+  if (!text.includes('.')) return true;
+  return text.toLowerCase().startsWith('unknown.');
+}
+
+function createAllowAllOwnerAuthz(): OwnerAuthzService {
+  return {
+    GetRecordRuleCondition: async (model: string, _op: RecordRuleOp): Promise<ConditionEnvelope> => {
+      if (isUnknownOwnerModel(model)) {
+        return { kind: 'false', reason: 'unknown_model' };
+      }
+      return { kind: 'true', reason: 'document_test_allow' };
+    },
+    GetFieldRuleSpec: async (_model: string): Promise<FieldRuleSpec> => ({
+      denyReadFields: [],
+      denyWriteFields: [],
+      reason: 'document_test_allow',
+    }),
+  };
+}
+
+function collectIdEquals(condition: unknown): string[] {
+  if (Array.isArray(condition) && condition.length >= 3) {
+    const field = String(condition[0] ?? '').trim();
+    const op = String(condition[1] ?? '').trim();
+    if (field === 'Id' && op === '=') {
+      const id = String(condition[2] ?? '').trim();
+      return id ? [id] : [];
+    }
+    return [];
+  }
+  if (condition && typeof condition === 'object' && !Array.isArray(condition)) {
+    const and = (condition as { And?: unknown }).And;
+    if (Array.isArray(and)) {
+      return and.flatMap(item => collectIdEquals(item));
+    }
+  }
+  return [];
+}
+
+function createOwnerProbeSearchStub(): { Search: (condition: unknown, options?: unknown) => Promise<unknown[]> } {
+  return {
+    Search: async (condition: unknown) => {
+      const ids = collectIdEquals(condition);
+      if (ids.length === 0) return [];
+      const first = ids[0];
+      if (!ids.every(id => id === first)) return [];
+      if (KNOWN_OWNER_RECORD_IDS.has(first)) return [{ Id: first }];
+      return [];
+    },
+  };
+}
+
+function restoreFactory(modelName: string, previous: ReturnType<typeof getServiceFactory> | undefined): void {
+  unregisterServiceFactory(modelName);
+  if (previous) registerServiceFactory(modelName, previous);
+}
+
 /**
- * Seed an everyone grant on auth.User (read+write only) so document owner-authorization
- * happy paths work under RecordRule deny-default. Deny cases that use unknown.Model
- * remain unaffected. Tracks the created id for optional teardown.
+ * Install allow-all {@link OWNER_AUTHZ_SERVICE} plus a minimal owner-model Search stub
+ * so document unit suites do not need auth soft-installed.
  */
+export function ensureDocumentOwnerAuthzStub(): void {
+  if (!ownerAuthzStubInstalled) {
+    previousOwnerAuthzFactory = getServiceFactory(OWNER_AUTHZ_SERVICE);
+    previousOwnerProbeFactory = getServiceFactory(DOCUMENT_TEST_OWNER_MODEL);
+    ownerAuthzStubInstalled = true;
+  }
+  registerServiceFactory(OWNER_AUTHZ_SERVICE, () => createAllowAllOwnerAuthz());
+  registerServiceFactory(DOCUMENT_TEST_OWNER_MODEL, () => createOwnerProbeSearchStub());
+  clearRequestAuthzCaches();
+}
+
+/**
+ * Temporarily override the owner-authz stub (e.g. field deny / expr deny cases).
+ */
+export async function withDocumentOwnerAuthzOverride<T>(
+  override: Partial<OwnerAuthzService>,
+  fn: () => Promise<T>
+): Promise<T> {
+  ensureDocumentOwnerAuthzStub();
+  const base = createAllowAllOwnerAuthz();
+  const merged: OwnerAuthzService = {
+    GetRecordRuleCondition: override.GetRecordRuleCondition
+      ? (model, op) => override.GetRecordRuleCondition!(model, op)
+      : base.GetRecordRuleCondition,
+    GetFieldRuleSpec: override.GetFieldRuleSpec
+      ? model => override.GetFieldRuleSpec!(model)
+      : base.GetFieldRuleSpec,
+  };
+  registerServiceFactory(OWNER_AUTHZ_SERVICE, () => merged);
+  clearRequestAuthzCaches();
+  try {
+    return await fn();
+  } finally {
+    registerServiceFactory(OWNER_AUTHZ_SERVICE, () => createAllowAllOwnerAuthz());
+    clearRequestAuthzCaches();
+  }
+}
+
+/** Alias for {@link ensureDocumentOwnerAuthzStub} (call-site compatibility). */
 export async function ensureAuthUserOwnerRecordRuleGrants(): Promise<void> {
-  if (authUserOwnerGrantsSeeded) return;
-
-  await withPermissionGraphBypass(async () => {
-    const modelRows = await MetaModel.Search(
-      { And: [['Application', '=', 'auth'], ['Name', '=', 'User']] } as any,
-      { fields: ['Id'], limit: 1 } as any
-    );
-    const modelId = String(modelRows?.[0]?.Id || '').trim();
-    if (!modelId) {
-      throw new Error('meta model auth.User not found for document owner RR fixture');
-    }
-
-    // Reuse only an exact fixture-shaped grant (R/W only, empty Condition).
-    const existing = await RoleRecordRule.Search(
-      {
-        And: [
-          ['RoleId', 'is', null],
-          ['Kind', '=', 'grant'],
-          ['MetaModelId', '=', modelId],
-          ['MetaApplicationId', 'is', null],
-          ['PermRead', '=', true],
-          ['PermWrite', '=', true],
-          ['PermCreate', '=', false],
-          ['PermDelete', '=', false],
-        ],
-      } as any,
-      { fields: ['Id', 'Condition'], limit: 8 } as any
-    );
-    const reusable = (existing || []).find(r => isEmptyCondition((r as any)?.Condition));
-    if (reusable) {
-      // Pre-existing exact-shape rule; do not delete it on teardown.
-      return;
-    }
-
-    const created = await RoleRecordRule.Create(
-      {
-        RoleId: null as any,
-        Kind: 'grant',
-        MetaModelId: modelId,
-        MetaApplicationId: null,
-        Condition: { And: [] } as any,
-        PermRead: true,
-        PermWrite: true,
-        PermCreate: false,
-        PermDelete: false,
-      } as any,
-      ['Id'] as any
-    );
-    createdOwnerGrantRuleId = String((created as any)?.Id || '').trim();
-  });
-
-  authUserOwnerGrantsSeeded = true;
-  clearRequestAuthzCaches();
+  ensureDocumentOwnerAuthzStub();
 }
 
-/**
- * Seed a fixture role with global FieldRule allow and attach it to document test
- * identities so GetFieldRuleSpec happy paths work under FieldRule deny-default.
- * Explicit field-deny cases (extra RoleFieldRule on admin) still win via specificity.
- *
- * Safe to call repeatedly: role/rule creation is idempotent; UserRole grants are
- * ensured for the current identity on every call.
- */
+/** Alias for {@link ensureDocumentOwnerAuthzStub} (call-site compatibility). */
 export async function ensureAuthUserOwnerFieldRuleGrants(): Promise<void> {
-  const userIds = new Set<string>(KNOWN_DOCUMENT_TEST_USER_IDS);
-  const current = currentIdentityUserId();
-  if (current) userIds.add(current);
-
-  await withPermissionGraphBypass(async () => {
-    const roleId = await ensureFixtureFrRole();
-    await ensureFixtureFrRule(roleId);
-
-    for (const userId of userIds) {
-      await ensureFixtureUser(userId);
-      await ensureFixtureUserRole(userId, roleId);
-    }
-
-    await invalidateAuthzCachesForUsers(Array.from(userIds));
-  });
-
-  clearRequestAuthzCaches();
-}
-
-async function ensureFixtureFrRole(): Promise<string> {
-  if (resolvedOwnerFrRoleId) return resolvedOwnerFrRoleId;
-
-  // Include soft-deleted rows: Code is UNIQUE across deleted rows, so a prior
-  // suite teardown that soft-deleted this fixture would otherwise make Create fail.
-  const existingRoles = await Role.Search(['Code', '=', FR_FIXTURE_ROLE_CODE] as any, {
-    fields: ['Id', 'DeletedAt'],
-    limit: 1,
-    withDeleted: true,
-  } as any);
-  const existing = (existingRoles as any)?.[0];
-  const existingId = String(existing?.Id || '').trim();
-  if (existingId) {
-    if (existing?.DeletedAt != null) {
-      const repo = getTestRepository(Role as any).withDeleted();
-      await repo.update({ DeletedAt: null, IsActive: true } as any, ['Id', '=', existingId] as any);
-    }
-    resolvedOwnerFrRoleId = existingId;
-    return existingId;
-  }
-
-  const createdRole = await Role.Create(
-    {
-      Name: 'Document Fixture FR Allow',
-      Code: FR_FIXTURE_ROLE_CODE,
-      Description: 'test fixture: global field-rule allow for document owner auth',
-      IsActive: true,
-      IsSystem: false,
-    } as any,
-    ['Id'] as any
-  );
-  createdOwnerFrRoleId = String((createdRole as any)?.Id || '').trim();
-  if (!createdOwnerFrRoleId) throw new Error('failed to create document FR fixture role');
-  resolvedOwnerFrRoleId = createdOwnerFrRoleId;
-  return createdOwnerFrRoleId;
-}
-
-async function ensureFixtureFrRule(roleId: string): Promise<void> {
-  if (ownerFrRuleEnsured) return;
-
-  const existingFr = await RoleFieldRule.Search(
-    {
-      And: [
-        ['RoleId', '=', roleId],
-        ['MetaApplicationId', 'is', null],
-        ['MetaModelId', 'is', null],
-        ['MetaFieldId', 'is', null],
-        ['PermRead', '=', 'allow'],
-        ['PermWrite', '=', 'allow'],
-      ],
-    } as any,
-    { fields: ['Id', 'DeletedAt'], limit: 1, withDeleted: true } as any
-  );
-  const existing = (existingFr as any)?.[0];
-  const existingId = String(existing?.Id || '').trim();
-  if (existingId) {
-    if (existing?.DeletedAt != null) {
-      const repo = getTestRepository(RoleFieldRule as any).withDeleted();
-      await repo.update({ DeletedAt: null } as any, ['Id', '=', existingId] as any);
-    }
-    // Pre-existing / revived rule; leave teardown alone.
-    ownerFrRuleEnsured = true;
-    return;
-  }
-
-  const createdFr = await RoleFieldRule.Create(
-    {
-      RoleId: { Id: roleId } as any,
-      MetaApplicationId: null,
-      MetaModelId: null,
-      MetaFieldId: null,
-      PermRead: 'allow',
-      PermWrite: 'allow',
-    } as any,
-    ['Id'] as any
-  );
-  createdOwnerFrRuleId = String((createdFr as any)?.Id || '').trim();
-  if (!createdOwnerFrRuleId) throw new Error('failed to create document FR fixture rule');
-  ownerFrRuleEnsured = true;
-}
-
-async function ensureFixtureUser(userId: string): Promise<void> {
-  const existing = await User.Search(['Id', '=', userId] as any, {
-    fields: ['Id', 'DeletedAt'],
-    limit: 1,
-    withDeleted: true,
-  } as any);
-  const row = (existing as any)?.[0];
-  if (row) {
-    if (row.DeletedAt != null) {
-      const repo = getTestRepository(User as any).withDeleted();
-      await repo.update({ DeletedAt: null, IsActive: true } as any, ['Id', '=', userId] as any);
-    }
-    return;
-  }
-
-  await User.Create(
-    {
-      Id: userId,
-      Username: `doc_fr_${userId}`.slice(0, 64),
-      PasswordHash: 'test',
-      FirstName: 'Doc',
-      LastName: 'Fixture',
-      IsActive: true,
-    } as any,
-    ['Id'] as any
-  );
-  createdOwnerFrUserIds.push(userId);
-}
-
-async function ensureFixtureUserRole(userId: string, roleId: string): Promise<void> {
-  const existing = await UserRole.Search(
-    {
-      And: [
-        ['UserId', '=', userId],
-        ['RoleId', '=', roleId],
-        ['CompanyId', 'is', null],
-      ],
-    } as any,
-    { fields: ['Id'], limit: 1 } as any
-  );
-  if ((existing || []).length > 0) return;
-
-  const created = await UserRole.Create(
-    {
-      UserId: { Id: userId } as any,
-      RoleId: { Id: roleId } as any,
-      CompanyId: null as any,
-    } as any,
-    ['Id'] as any
-  );
-  const id = String((created as any)?.Id || '').trim();
-  if (id) createdOwnerFrUserRoleIds.push(id);
+  ensureDocumentOwnerAuthzStub();
 }
 
 /**
- * Restore process env mutated by document fixtures and delete suite-owned
- * RR/FR fixtures (never deletes pre-existing reused rules).
+ * Restore process env mutated by document fixtures and drop suite-owned stubs.
  */
 export async function restoreDocumentOwnerAuthFixtures(): Promise<void> {
   if (capturedRecordRuleEnv) {
@@ -357,46 +206,13 @@ export async function restoreDocumentOwnerAuthFixtures(): Promise<void> {
     previousFieldRuleEnabled = undefined;
   }
 
-  // Always allow a later ensure* to re-seed / refresh caches.
-  authUserOwnerGrantsSeeded = false;
-  resolvedOwnerFrRoleId = '';
-  ownerFrRuleEnsured = false;
-
-  await withPermissionGraphBypass(async () => {
-    if (createdOwnerGrantRuleId) {
-      await safeDeleteById(async () => RoleRecordRule.DeleteById(createdOwnerGrantRuleId), createdOwnerGrantRuleId, async id => {
-        const stillThere = await RoleRecordRule.Search([['Id', '=', id]] as any, { fields: ['Id'], limit: 1 } as any);
-        return (stillThere || []).length > 0;
-      });
-      createdOwnerGrantRuleId = '';
-    }
-
-    for (const userRoleId of createdOwnerFrUserRoleIds.splice(0)) {
-      await safeDeleteById(async () => UserRole.DeleteById(userRoleId), userRoleId, async id => {
-        const stillThere = await UserRole.Search([['Id', '=', id]] as any, { fields: ['Id'], limit: 1 } as any);
-        return (stillThere || []).length > 0;
-      });
-    }
-
-    // Keep FR fixture Role/RoleFieldRule/User for the process lifetime.
-    // Soft-deleting them leaves UNIQUE indexes occupied and breaks the next suite.
-    createdOwnerFrRuleId = '';
-    createdOwnerFrRoleId = '';
-    createdOwnerFrUserIds.length = 0;
-  });
+  if (ownerAuthzStubInstalled) {
+    restoreFactory(OWNER_AUTHZ_SERVICE, previousOwnerAuthzFactory);
+    restoreFactory(DOCUMENT_TEST_OWNER_MODEL, previousOwnerProbeFactory);
+    previousOwnerAuthzFactory = undefined;
+    previousOwnerProbeFactory = undefined;
+    ownerAuthzStubInstalled = false;
+  }
 
   clearRequestAuthzCaches();
-}
-
-async function safeDeleteById(
-  deleteFn: () => Promise<unknown>,
-  id: string,
-  stillExists: (id: string) => Promise<boolean>
-): Promise<void> {
-  try {
-    await deleteFn();
-  } catch (err) {
-    if (isNotFoundDeleteError(err)) return;
-    if (await stillExists(id)) throw err;
-  }
 }

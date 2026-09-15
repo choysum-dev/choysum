@@ -3,20 +3,6 @@
 
 import { withContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
-import { createServiceByModel } from '@/core/service/rpc';
-import type RoleModel from '@/auth/service/models/role';
-import type RoleFieldRuleModel from '@/auth/service/models/role_field_rule';
-import type UserModel from '@/auth/service/models/user/user';
-import type UserRoleModel from '@/auth/service/models/user_role';
-import type MetaFieldModel from '@/meta/service/models/field';
-import type MetaModelModel from '@/meta/service/models/model';
-
-const Role = createServiceByModel<typeof RoleModel>('auth.Role');
-const RoleFieldRule = createServiceByModel<typeof RoleFieldRuleModel>('auth.RoleFieldRule');
-const User = createServiceByModel<typeof UserModel>('auth.User');
-const UserRole = createServiceByModel<typeof UserRoleModel>('auth.UserRole');
-const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
-const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 import AttachmentBinding, {
   documentHardDeleteBindingForTest,
   documentPurgeConflictingUnboundBindingsForTest,
@@ -35,6 +21,7 @@ import {
   disableRepositoryRecordRuleForDocumentTests,
   disableRepositoryFieldRuleForDocumentTests,
   restoreDocumentOwnerAuthFixtures,
+  withDocumentOwnerAuthzOverride,
 } from './_owner_auth_test_fixtures';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -54,12 +41,6 @@ function uid(prefix: string): string {
   const xid = (globalThis as any).$choysum?.xid?.New?.();
   const token = typeof xid === 'string' && xid.trim() ? xid.trim() : `${Date.now()}${Math.random()}`;
   return `${prefix}_${token}`;
-}
-
-function shortUid(prefix: string, maxLen = 40): string {
-  const value = uid(prefix);
-  if (value.length <= maxLen) return value;
-  return value.slice(0, maxLen);
 }
 
 function ensureRequestContext(): any {
@@ -233,47 +214,6 @@ async function createActiveObjectForBackend(ownerRecordId: string, fieldName: st
     mimeType: 'application/octet-stream',
     sizeBytes: 0,
   });
-}
-
-async function mustFindAdminUserId(): Promise<string> {
-  const rows = await User.Search(['Username', '=', 'admin'] as any, { fields: ['Id'], limit: 1 } as any);
-  const userId = String((rows[0] as any)?.Id || '').trim();
-  if (!userId) {
-    throw new Error('admin user not found for descriptor field-rule deny fixture');
-  }
-  return userId;
-}
-
-async function mustFindAuthUserFieldScope(fieldName: string): Promise<{ modelId: string; fieldId: string }> {
-  const modelRows = await MetaModel.Search(
-    {
-      And: [
-        ['Application', '=', 'auth'],
-        ['Name', '=', 'User'],
-      ],
-    } as any,
-    { fields: ['Id'], limit: 1 } as any
-  );
-  const modelId = String((modelRows[0] as any)?.Id || '').trim();
-  if (!modelId) {
-    throw new Error('meta model auth.User not found for descriptor field-rule deny fixture');
-  }
-
-  const fieldRows = await MetaField.Search(
-    {
-      And: [
-        ['ModelId', '=', modelId],
-        ['Name', '=', fieldName],
-      ],
-    } as any,
-    { fields: ['Id'], limit: 1 } as any
-  );
-  const fieldId = String((fieldRows[0] as any)?.Id || '').trim();
-  if (!fieldId) {
-    throw new Error(`meta field auth.User.${fieldName} not found for descriptor field-rule deny fixture`);
-  }
-
-  return { modelId, fieldId };
 }
 
 test('document.attachment_binding: Bind replays first success snapshot by mutationId', async () => {
@@ -707,56 +647,22 @@ test('document.attachment_binding: descriptor read interface denies owner record
 test('document.attachment_binding: descriptor read interface denies owner field deny-read', async () => {
   resetRequestContext();
   await withDocumentScope(async () => {
-    const adminUserId = await mustFindAdminUserId();
     const deniedFieldName = 'PasswordHash';
-    const deniedFieldScope = await mustFindAuthUserFieldScope(deniedFieldName);
 
-    const createdRole = await Role.Create(
+    await withDocumentOwnerAuthzOverride(
       {
-        Name: shortUid('document_descriptor_deny_role', 90),
-        Code: shortUid('document.descriptor.deny', 45),
-        Description: 'document descriptor field deny fixture',
-        IsActive: true,
-        IsSystem: false,
-      } as any,
-      ['Id'] as any
-    );
-    const roleId = String((createdRole as any)?.Id || '').trim();
-    expect(roleId).toBeTruthy();
+        GetFieldRuleSpec: async () => ({
+          denyReadFields: [deniedFieldName],
+          denyWriteFields: [],
+          reason: 'document_test_field_deny',
+        }),
+      },
+      async () => {
+        for (const backend of ['db', 's3'] as const) {
+          const ownerRecordId = uid(`owner_descriptor_field_deny_${backend}`);
+          const attachmentObjectId = await createActiveObjectForBackend(ownerRecordId, 'AttachmentField', backend);
 
-    const createdUserRole = await UserRole.Create(
-      {
-        UserId: { Id: adminUserId } as any,
-        RoleId: { Id: roleId } as any,
-        CompanyId: TEST_COMPANY_ID,
-      } as any,
-      ['Id'] as any
-    );
-    const userRoleId = String((createdUserRole as any)?.Id || '').trim();
-    expect(userRoleId).toBeTruthy();
-
-    const createdRule = await RoleFieldRule.Create(
-      {
-        RoleId: { Id: roleId } as any,
-        MetaApplicationId: null,
-        MetaModelId: deniedFieldScope.modelId,
-        MetaFieldId: deniedFieldScope.fieldId,
-        PermRead: 'deny',
-      } as any,
-      ['Id'] as any
-    );
-    const ruleId = String((createdRule as any)?.Id || '').trim();
-    expect(ruleId).toBeTruthy();
-
-    try {
-      for (const backend of ['db', 's3'] as const) {
-        const ownerRecordId = uid(`owner_descriptor_field_deny_${backend}`);
-        const attachmentObjectId = await withScope(TEST_COMPANY_ID, [TEST_COMPANY_ID], adminUserId, async () => {
-          return createActiveObjectForBackend(ownerRecordId, 'AttachmentField', backend);
-        });
-
-        const createdBinding = await withScope(TEST_COMPANY_ID, [TEST_COMPANY_ID], adminUserId, async () => {
-          return AttachmentBinding.Create(
+          const createdBinding = await AttachmentBinding.Create(
             {
               OwnerModel: 'auth.User',
               OwnerRecordId: ownerRecordId,
@@ -768,11 +674,9 @@ test('document.attachment_binding: descriptor read interface denies owner field 
             } as any,
             ['Id'] as any
           );
-        });
-        const attachmentBindingId = String((createdBinding as any)?.Id || '').trim();
-        expect(attachmentBindingId).toBeTruthy();
+          const attachmentBindingId = String((createdBinding as any)?.Id || '').trim();
+          expect(attachmentBindingId).toBeTruthy();
 
-        await withScope(TEST_COMPANY_ID, [TEST_COMPANY_ID], adminUserId, async () => {
           try {
             await AttachmentBindingDescriptorTestProxy.BuildDescriptor(attachmentBindingId);
             throw new Error(`expected owner field deny-read error on descriptor read (backend=${backend})`);
@@ -783,15 +687,9 @@ test('document.attachment_binding: descriptor read interface denies owner field 
             expect(oe.code).toBe('PERMISSION_DENIED');
             expect(oe.metadata?.stage).toBe('descriptor');
           }
-        });
+        }
       }
-    } finally {
-      await withScope(TEST_COMPANY_ID, [TEST_COMPANY_ID], adminUserId, async () => {
-        await RoleFieldRule.DeleteById(ruleId as any);
-        await UserRole.DeleteById(userRoleId as any);
-        await Role.DeleteById(roleId as any);
-      });
-    }
+    );
   });
 });
 

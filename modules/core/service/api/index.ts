@@ -65,6 +65,11 @@ export type {
 } from './query';
 
 export type { RecordRuleOp, ConditionExpr, ConditionEnvelope } from './authz';
+export {
+  OWNER_AUTHZ_SERVICE,
+  dialOwnerAuthz,
+} from './owner_authz';
+export type { OwnerAuthzService } from './owner_authz';
 
 export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations } from './relation';
 

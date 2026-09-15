@@ -33,3 +33,4 @@ export {
   type MessageThreadPostReq,
   type MessageThreadUnfollowReq,
 } from './mixins';
+export { OWNER_AUTHZ_SERVICE, dialOwnerAuthz, type OwnerAuthzService } from './api/owner_authz';
