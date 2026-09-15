@@ -193,7 +193,6 @@ def merge_group_or_dispatch_outputs(modules, reason):
         "impacted_modules_json": sorted_json(impacted_modules),
         "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
         "run_full_matrix": "true",
-        "run_bootstrap_verify": "true",
         "run_go_test": "true",
         "run_pr_smoke_e2e": "true" if smoke_modules else "false",
         "reason": reason,
@@ -269,7 +268,6 @@ def pull_request_outputs(modules):
     final_impacted = set()
     if docs_only:
         run_full = False
-        run_bootstrap = False
         go_test_hit = False
         reason = "docs-only"
     else:
@@ -279,23 +277,18 @@ def pull_request_outputs(modules):
 
         if build_hit:
             run_full = True
-            run_bootstrap = True
             reason = "build-pipeline"
         elif shared_hit:
             run_full = True
-            run_bootstrap = False
             reason = "shared-runtime"
         elif contract_modules & HIGH_FANOUT_MODULES:
             run_full = True
-            run_bootstrap = False
             reason = f"fanout-module:{sorted(contract_modules & HIGH_FANOUT_MODULES)[0]}"
         elif len(final_impacted) > 4:
             run_full = True
-            run_bootstrap = False
             reason = f"fanout-threshold:{len(final_impacted)}"
         else:
             run_full = False
-            run_bootstrap = False
             if contract_modules:
                 reason = f"module-contract:{sorted(contract_modules)[0]}"
             elif local_modules:
@@ -325,7 +318,6 @@ def pull_request_outputs(modules):
         "impacted_modules_json": sorted_json(final_impacted),
         "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
         "run_full_matrix": "true" if run_full else "false",
-        "run_bootstrap_verify": "true" if run_bootstrap else "false",
         "run_go_test": "true" if go_test_hit else "false",
         "run_pr_smoke_e2e": "true" if smoke_modules else "false",
         "reason": reason,

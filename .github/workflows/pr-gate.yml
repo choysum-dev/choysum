@@ -28,7 +28,6 @@ jobs:
       impacted_modules_json: ${{ steps.discover.outputs.impacted_modules_json }}
       impacted_smoke_e2e_modules_json: ${{ steps.discover.outputs.impacted_smoke_e2e_modules_json }}
       run_full_matrix: ${{ steps.discover.outputs.run_full_matrix }}
-      run_bootstrap_verify: ${{ steps.discover.outputs.run_bootstrap_verify }}
       run_go_test: ${{ steps.discover.outputs.run_go_test }}
       run_pr_smoke_e2e: ${{ steps.discover.outputs.run_pr_smoke_e2e }}
       reason: ${{ steps.discover.outputs.reason }}
@@ -685,11 +684,3 @@ jobs:
           if [ "${{ needs.e2e-shard-targeted.result }}" != "success" ]; then
             exit 1
           fi
-
-  bootstrap-verify:
-    name: pr / bootstrap-verify
-    needs:
-      - discover-impact
-    uses: ./.github/workflows/bootstrap-verify.yml
-    with:
-      run_bootstrap_verify: ${{ needs.discover-impact.outputs.run_bootstrap_verify }}

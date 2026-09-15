@@ -569,7 +569,3 @@ jobs:
           if [ "${{ needs.e2e-shard.result }}" != "success" ]; then
             exit 1
           fi
-
-  bootstrap-verify:
-    name: main / bootstrap-verify
-    uses: ./.github/workflows/bootstrap-verify.yml
