@@ -504,12 +504,6 @@ func shouldSkipWebShellForUnitApp(app string) bool {
 	return !strings.EqualFold(strings.TrimSpace(app), "auth")
 }
 
-// shouldInstallMetaForUnitApp installs meta for auth (gRPC) and web (FieldDefault/AppSetting + authz seeds).
-func shouldInstallMetaForUnitApp(app string) bool {
-	app = strings.TrimSpace(app)
-	return strings.EqualFold(app, "auth") || strings.EqualFold(app, "web")
-}
-
 // shouldInstallAuthPeerForUnitApp installs auth when the shard dials auth.User for
 // owner authorization but no longer declares depends: auth (document).
 func shouldInstallAuthPeerForUnitApp(app string) bool {
@@ -521,7 +515,7 @@ type unitAppInstaller interface {
 }
 
 // installUnitAppModules installs the unit shard (optionally skipping the web shell),
-// then soft peers / meta when needed.
+// then soft-installs auth for document when owner-authorization dials require it.
 func installUnitAppModules(ctx context.Context, installer unitAppInstaller, app string) error {
 	if err := installer.Install(ctx, lifecycle.InstallRequest{
 		Name:         app,
@@ -529,10 +523,7 @@ func installUnitAppModules(ctx context.Context, installer unitAppInstaller, app 
 	}); err != nil {
 		return err
 	}
-	if err := ensureAuthPeerInstalledForUnitApp(ctx, installer, app); err != nil {
-		return err
-	}
-	return ensureMetaInstalledForUnitApp(ctx, installer, app)
+	return ensureAuthPeerInstalledForUnitApp(ctx, installer, app)
 }
 
 // ensureAuthPeerInstalledForUnitApp installs auth for document unit shards so
@@ -542,14 +533,6 @@ func ensureAuthPeerInstalledForUnitApp(ctx context.Context, installer unitAppIns
 		return nil
 	}
 	return installer.Install(ctx, lifecycle.InstallRequest{Name: "auth", SkipWebShell: true})
-}
-
-// ensureMetaInstalledForUnitApp installs meta when the shard needs MetaModel/gRPC services.
-func ensureMetaInstalledForUnitApp(ctx context.Context, installer unitAppInstaller, app string) error {
-	if !shouldInstallMetaForUnitApp(app) {
-		return nil
-	}
-	return installer.Install(ctx, lifecycle.InstallRequest{Name: "meta", SkipWebShell: true})
 }
 
 // jsContextWithUnitTestIdentity seeds bootstrap admin into JsRequest.Context when auth is installed.
