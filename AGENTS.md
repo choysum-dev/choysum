@@ -73,7 +73,8 @@ at `/web/register`, which auto-logs in — the simplest way to exercise the stac
 | --- | --- |
 | Go format (lint) | `go fmt ./...` |
 | Go build | `go build ./...` |
-| Go tests | `go test ./... -count=1` |
+| Go tests (local) | `go test ./...` or `go test ./... -count=1` |
+| Go tests (CI) | sharded `go test` with `-count=1 -covermode=atomic` (see `scripts/ci/go_test_shards.py`); do not compare CI wall times to a local run without cover |
 | Module typecheck | `./choysum test typecheck <module>` or `--all` (Go-native; no Node) |
 | Module unit (BE+FE) | `./choysum test unit <module>` (`--be` / `--fe` to scope; `--fe` = QuickJS) |
 | Module E2E | `./choysum test e2e <module>` (auth/base/meta/task/partner; needs Chromium) |
@@ -84,7 +85,14 @@ use QuickJS + Chromium).
 
 E2E needs a Chrome/Chromium binary (system install, or set
 `CHOYSUM_CHROMIUM_PATH`). CI provisions Chrome for Testing via
-`scripts/ci/install_chromium.py`; the CLI does not install browsers.
+`scripts/ci/install_chromium.py` for the `testing` go-test shard only; the CLI
+does not install browsers.
+
+Shard partition check (CI also runs this):
+
+```bash
+python3 scripts/ci/go_test_shards.py check
+```
 
 ### Publishing npm modules (`@choysum-dev/*`)
 

@@ -77,62 +77,173 @@ jobs:
       choysum_binary_path: .choysum/tmp/choysum
       retention_days: 1
 
-  go-test:
-    name: pr / go-test
+  go-test-shards:
+    name: pr / go-test (${{ matrix.shard }})
     needs:
       - discover-impact
       - prepare-embedded-assets
+    if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     permissions:
       contents: read
-      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: cmd
+            chromium: "false"
+          - shard: testing
+            chromium: "true"
+          - shard: module
+            chromium: "false"
+          - shard: runtime
+            chromium: "false"
+          - shard: rest
+            chromium: "false"
     steps:
-      - name: Skip Go baseline when routing says no
-        if: ${{ needs.discover-impact.outputs.run_go_test != 'true' }}
-        env:
-          RUN_GO_TEST: ${{ needs.discover-impact.outputs.run_go_test }}
-          DISCOVER_REASON: ${{ needs.discover-impact.outputs.reason }}
-        run: echo "go test skipped by routing (run_go_test=${RUN_GO_TEST}; reason=${DISCOVER_REASON})"
-
       - name: Checkout
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Download and extract embedded assets
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: ./.github/actions/download-extract-embedded-assets
         with:
           artifact-name: pr-embedded-assets
           archive-path: .choysum/tmp/pr-embedded-assets.tar.gz
 
       - name: Setup Go
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
+      - name: Verify go-test shard partition
+        if: ${{ matrix.shard == 'cmd' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/go_test_shards_test.py
+          python3 scripts/ci/go_test_shards.py check
+
       - name: Install Chromium for e2e unit coverage
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+        if: ${{ matrix.chromium == 'true' }}
         run: |
           set -euo pipefail
           python3 scripts/ci/install_chromium.py
           echo "CHOYSUM_HOME=${CHOYSUM_HOME:-$HOME/.choysum}" >> "$GITHUB_ENV"
 
       # Coverage compile already typechecks; a separate `go build ./...` only doubles wall clock.
-      - name: Run go test
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+      - name: Run go test shard
         run: |
           set -euo pipefail
           mkdir -p .choysum/coverage/pr
+          if ! pkg_list="$(python3 scripts/ci/go_test_shards.py packages "${{ matrix.shard }}")"; then
+            echo "error: failed to resolve packages for shard ${{ matrix.shard }}" >&2
+            exit 1
+          fi
+          if [[ -z "${pkg_list}" ]]; then
+            echo "error: shard ${{ matrix.shard }} has no packages" >&2
+            exit 1
+          fi
+          mapfile -t pkgs <<< "${pkg_list}"
           ./scripts/ci/record_cmd_wall.sh \
-            go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/pr/go.out
+            go test "${pkgs[@]}" -count=1 -covermode=atomic \
+            -coverprofile=".choysum/coverage/pr/shard-${{ matrix.shard }}.out"
+
+      - name: Upload shard coverprofile
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-go-cover-${{ matrix.shard }}
+          path: .choysum/coverage/pr/shard-${{ matrix.shard }}.out
+          if-no-files-found: error
+          retention-days: 1
+
+  go-test:
+    name: pr / go-test
+    needs:
+      - discover-impact
+      - go-test-shards
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Fail when routing job did not succeed
+        if: ${{ needs.discover-impact.result != 'success' }}
+        env:
+          DISCOVER_RESULT: ${{ needs.discover-impact.result }}
+        run: |
+          echo "discover-impact did not succeed (result=${DISCOVER_RESULT}); refusing to report green." >&2
+          exit 1
+
+      - name: Skip Go baseline when routing says no
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'false' }}
+        env:
+          RUN_GO_TEST: ${{ needs.discover-impact.outputs.run_go_test }}
+          DISCOVER_REASON: ${{ needs.discover-impact.outputs.reason }}
+        run: echo "go test skipped by routing (run_go_test=${RUN_GO_TEST}; reason=${DISCOVER_REASON})"
+
+      - name: Fail on unrecognized routing output
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test != 'true' && needs.discover-impact.outputs.run_go_test != 'false' }}
+        env:
+          RUN_GO_TEST: ${{ needs.discover-impact.outputs.run_go_test }}
+        run: |
+          echo "unexpected run_go_test value '${RUN_GO_TEST}'; refusing to report green." >&2
+          exit 1
+
+      - name: Verify go-test shards
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
+        env:
+          SHARD_RESULT: ${{ needs.go-test-shards.result }}
+        run: |
+          set -euo pipefail
+          echo "go-test-shards result=${SHARD_RESULT}"
+          if [[ "${SHARD_RESULT}" != "success" ]]; then
+            {
+              echo "### go-test shards failed"
+              echo
+              echo "Aggregate check \`pr / go-test\` is red because one or more matrix jobs failed."
+              echo "Inspect jobs named \`pr / go-test (<shard>)\` — shards: \`cmd\`, \`testing\`, \`module\`, \`runtime\`, \`rest\`."
+            } >> "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
+            echo "One or more go-test shards failed (result=${SHARD_RESULT})." >&2
+            echo "Inspect matrix jobs: pr / go-test (cmd|testing|module|runtime|rest)." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download shard coverprofiles
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
+        uses: actions/download-artifact@v8
+        with:
+          pattern: pr-go-cover-*
+          path: .choysum/coverage/pr/shards
+          merge-multiple: true
+
+      - name: Merge coverprofiles
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/coverage/pr
+          mapfile -t inputs < <(find .choysum/coverage/pr/shards -type f -name 'shard-*.out' | sort)
+          if [[ ${#inputs[@]} -eq 0 ]]; then
+            echo "error: no shard coverprofiles downloaded" >&2
+            exit 1
+          fi
+          python3 scripts/ci/go_test_shards.py merge-coverprofiles \
+            --require-all-shards \
+            -o .choysum/coverage/pr/go.out "${inputs[@]}"
+          ls -la .choysum/coverage/pr/go.out
 
       - name: Upload Go coverage to Codecov
-        if: ${{ needs.discover-impact.outputs.run_go_test == 'true' }}
+        if: ${{ needs.discover-impact.result == 'success' && needs.discover-impact.outputs.run_go_test == 'true' }}
         continue-on-error: true
         uses: codecov/codecov-action@v7
         with:
