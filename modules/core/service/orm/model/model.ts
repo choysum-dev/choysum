@@ -507,7 +507,7 @@ class BaseModel {
    * Direct instantiation is blocked by the factory token guard.
    */
   constructor(
-    factoryToken: Symbol,
+    factoryToken: symbol,
     private readonly entity: Entity,
     private fields?: unknown
   ) {

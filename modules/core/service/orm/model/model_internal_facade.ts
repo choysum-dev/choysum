@@ -15,5 +15,5 @@ export function getModelRepository<T extends BaseModel>(ModelCtor: ModelInternal
 }
 
 export function createModelProxy<T extends BaseModel>(ModelCtor: ModelInternalFacadeCtor<T>, entity: Entity, fields?: FieldSelection<T>): T {
-  return hydrateModel<T>(ModelCtor as unknown as ModelStatic<T>, entity, fields);
+  return hydrateModel<T>(ModelCtor, entity, fields);
 }
