@@ -78,6 +78,12 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 		return nil
 	}
 
+	// Empty phase: skip Bundle / Reload when sources declare no @Hook* for phase.
+	// Fail-open scan (missing Path / I/O) still loads so real hooks are not skipped.
+	if !moduleSourceDeclaresHookPhase(r.module, phase) {
+		return nil
+	}
+
 	resolved := normalizeConfig(phase)
 
 	scripts, err := r.resolveScripts(ctx, phase, opts, resolved.Required)
