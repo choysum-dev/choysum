@@ -50,7 +50,15 @@ type BindAttachmentFn = (req: {
 type AttachmentBindingServiceLike = { Bind?: BindAttachmentFn };
 
 /** Typing stub: message must not import document.AttachmentBinding. */
-declare abstract class AttachmentBindingStub extends BaseModel {}
+declare abstract class AttachmentBindingStub extends BaseModel {
+  static Bind(req: {
+    attachmentObjectId: string;
+    ownerModel: string;
+    ownerRecordId: string;
+    fieldName: string;
+    mutationId: string;
+  }): Promise<unknown>;
+}
 
 type DialFn = (fullModelName: string) => AttachmentBindingServiceLike;
 type XidNewFn = () => string | null | undefined;
@@ -159,7 +167,7 @@ function resolveBind(): BindAttachmentFn | null {
   try {
     const svc = dialOverride
       ? dialOverride('document.AttachmentBinding')
-      : (dial<typeof AttachmentBindingStub>('document.AttachmentBinding') as unknown as AttachmentBindingServiceLike);
+      : dial<typeof AttachmentBindingStub>('document.AttachmentBinding');
     if (typeof svc?.Bind !== 'function') return null;
     return svc.Bind.bind(svc);
   } catch {

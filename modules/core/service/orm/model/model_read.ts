@@ -44,6 +44,10 @@ import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/dateti
 /** Typing stub for cross-app dial; core must not import the document model. */
 declare abstract class AttachmentBindingModelStub extends BaseModel {}
 
+type AttachmentBindingSearchService = {
+  Search(condition: unknown, options?: unknown): Promise<ObjectRecord[]>;
+};
+
 /**
  * Read-related delegated operations.
  * - Only perform data access and lightweight validation, returning raw entity records as plain objects.
@@ -202,13 +206,11 @@ export class ReadOperations {
     return allAttachmentFields.filter(fieldName => requested.names.has(fieldName));
   }
 
-  private static resolveAttachmentBindingService(): { Search: (condition: unknown, options?: unknown) => Promise<ObjectRecord[]> } | undefined {
+  private static resolveAttachmentBindingService(): AttachmentBindingSearchService | undefined {
     try {
       const service = createServiceByModel<typeof AttachmentBindingModelStub>(
         'document.AttachmentBinding'
-      ) as unknown as {
-        Search?: (condition: unknown, options?: unknown) => Promise<ObjectRecord[]>;
-      };
+      ) as unknown as { Search?: AttachmentBindingSearchService['Search'] };
       if (!service || typeof service.Search !== 'function') {
         return undefined;
       }
