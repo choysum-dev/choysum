@@ -239,7 +239,7 @@ async function findUploadSessionByBusinessRequestId(
         ['IssuerUserId', '=', issuerUserId],
       ],
     } as any,
-    { limit: 1 } as any
+    { limit: 1 }
   );
   return rows[0] ?? null;
 }
@@ -247,7 +247,8 @@ async function findUploadSessionByBusinessRequestId(
 async function mustLoadUploadSession(uploadId: string): Promise<AttachmentUploadSession> {
   const AttachmentUploadSessionModel = getAttachmentUploadSessionModel();
   return mustLoadOne<AttachmentUploadSession>(
-    (condition, opts) => AttachmentUploadSessionModel.Search(condition, opts as any),
+    (condition, opts) =>
+      AttachmentUploadSessionModel.Search(condition as any, opts as any) as Promise<AttachmentUploadSession[]>,
     ['Id', '=', uploadId],
     _t('Upload session not found', { scope: 'service/models/attachment_object' }),
     { uploadId }

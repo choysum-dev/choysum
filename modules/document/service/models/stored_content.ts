@@ -88,7 +88,7 @@ export default class StoredContent extends BaseModel {
    */
   public static async mustLoadByID(storedContentId: string): Promise<StoredContent> {
     return mustLoadOne<StoredContent>(
-      (condition, opts) => this.Search(condition, opts as any),
+      (condition, opts) => this.Search(condition as any, opts as any) as Promise<StoredContent[]>,
       ['Id', '=', storedContentId],
       _t('Stored content not found', { scope: 'service/models/stored_content' }),
       {

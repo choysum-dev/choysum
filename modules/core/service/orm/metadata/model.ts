@@ -4,11 +4,10 @@
 import { FieldMetadata } from './field';
 import { ServiceMetadata } from './service';
 import type { ConstraintMeta } from './constraint';
-import { OrderBy } from '../repository';
 import type BaseModel from '../model/model';
-import type { ObjectRecord } from '../../../utils/types';
 
-type ModelOrderBy = OrderBy<ObjectRecord>;
+/** Default model sort from @Model; field is a stored column/property name. */
+type ModelOrderBy = { field: string; order: 'asc' | 'desc' };
 
 /**
  * Parsed dependency that starts from a scalar or ManyToOne root and stores the remaining chain.

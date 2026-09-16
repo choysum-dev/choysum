@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { QueryCondition } from '../api/query';
+import type { QueryCondition, OrderBy } from '../api/query';
 import type { FieldSelection } from '../api/selection';
+import type { Selectable } from '../orm/repository/types';
 import BaseModel from '../orm/model/model';
 import type { ModelCtor } from '../orm/model/types';
 
@@ -59,7 +60,10 @@ export default abstract class PolymorphicRecordModel extends BaseModel {
     } as QueryCondition<InstanceType<C>>;
     return (this as unknown as ModelCtor<InstanceType<C>>).Search<InstanceType<C>>(condition, {
       fields,
-      orderBy: { field: this.polymorphicOrderByField() as Extract<keyof InstanceType<C>, string>, order: 'asc' },
+      orderBy: {
+        field: this.polymorphicOrderByField() as Extract<keyof Selectable<InstanceType<C>>, string>,
+        order: 'asc',
+      } satisfies OrderBy<InstanceType<C>>,
     });
   }
 }

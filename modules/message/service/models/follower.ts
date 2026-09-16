@@ -235,7 +235,7 @@ export default class Follower extends PolymorphicRecordModel {
     }
 
     try {
-      return await this.Create(
+      return (await this.Create(
         {
           Model: model,
           ResId: resId,
@@ -244,7 +244,7 @@ export default class Follower extends PolymorphicRecordModel {
           CompanyId: companyId,
         },
         returnFields
-      );
+      )) as Follower;
     } catch (err) {
       if (!isUniqueConstraintError(err)) throw err;
       const raced = await findFollowRow(model, resId, userId, returnFields);

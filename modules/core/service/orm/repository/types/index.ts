@@ -7,7 +7,8 @@ export { SimplifyResult } from './common';
 export type { RepositoryQueryLike, RepositoryExecute } from './execution';
 export type { SelectResult, Entity, FilteredQueryProperties, FilteredInputProperties, Selectable, Queryable } from './common';
 export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations, Insertable, Updateable } from './input';
-export type { DeepRelationSelection, FieldSelection } from './selection';
+export type { DeepRelationSelection, FieldSelection, Projected } from './selection';
+export { fields } from './selection';
 export type {
   Operator,
   BaseCondition,
@@ -23,6 +24,7 @@ export type {
   UpdateOptions,
   DeleteOptions,
 } from './query';
+export { condition } from './query';
 export type {
   TemporalGranularity,
   AggregateFunction,

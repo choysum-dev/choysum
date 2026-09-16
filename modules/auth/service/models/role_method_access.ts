@@ -315,8 +315,11 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   ): Promise<Partial<T>> {
     let previousLogicalModelName: string | null | undefined;
     if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
-      const existing = await this.Search<T>(['Id', '=', id] as QueryCondition<T>, {
-        fields: ['LogicalModelName'] as FieldSelection<T>,
+      const existing = await (this.Search as (
+        condition?: QueryCondition<T> | [],
+        options?: import('@/core/service/api/query').SearchOptions<T>
+      ) => Promise<T[]>)(['Id', '=', id] as QueryCondition<T>, {
+        fields: ['LogicalModelName'] as unknown as FieldSelection<T>,
         limit: 1,
       });
       previousLogicalModelName = String((existing?.[0] as { LogicalModelName?: string } | undefined)?.LogicalModelName || '').trim() || null;

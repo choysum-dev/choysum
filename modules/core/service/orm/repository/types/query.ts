@@ -87,10 +87,21 @@ type QueryConditionNode<T> = { And: Array<QueryCondition<T>> } | { Or: Array<Que
 export type QueryCondition<T> = SingleCondition<T> | QueryConditionNode<T>;
 
 /**
+ * Assert an untyped condition tree as {@link QueryCondition} for one model.
+ * Used when And/Or trees are built dynamically and cannot be inferred as typed fields.
+ * Without a type argument, returns {@link BaseQueryCondition} (e.g. authz envelopes).
+ */
+export function condition(tree: BaseQueryCondition): BaseQueryCondition;
+export function condition<T>(tree: BaseQueryCondition): QueryCondition<T>;
+export function condition<T>(tree: BaseQueryCondition): QueryCondition<T> | BaseQueryCondition {
+  return tree as QueryCondition<T>;
+}
+
+/**
  * Sort specification for repository reads.
  */
 export type OrderBy<T> = {
-  field: Extract<keyof T, string>;
+  field: Extract<keyof Selectable<T>, string>;
   order: 'asc' | 'desc';
 };
 

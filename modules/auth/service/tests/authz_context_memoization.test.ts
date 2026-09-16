@@ -511,7 +511,7 @@ test('P3-1: same request Role.UpdateById invalidates authz context memo', async 
   const origUserRoleSearch = UserRole.Search;
   (UserRole as any).Search = async (...args: any[]) => {
     userRoleSearchCalls++;
-    return await origUserRoleSearch.apply(UserRole, args as any);
+    return await (origUserRoleSearch as any).apply(UserRole, args);
   };
 
   try {

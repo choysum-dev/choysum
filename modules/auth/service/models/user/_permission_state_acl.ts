@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { condition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
@@ -45,12 +46,12 @@ export async function buildAclAggregation(
   roleIds: string[],
   roleScopesById: Record<string, { global: boolean; companies: string[] }>
 ): Promise<AclAggregationResult> {
-  const accessesRaw = await RoleMethodAccess.Search(['RoleId', 'in', roleIds] as any, {
-    fields: ['RoleId', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName', 'LogicalMethods', 'Mode', 'Source'],
+  const accessesRaw = await RoleMethodAccess.Search(condition<RoleMethodAccess>(['RoleId', 'in', roleIds]), {
+    fields: ['RoleId', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName', 'LogicalMethods', 'Mode', 'Source'] as const,
     limit: 50000,
   });
   // UI-Option-A: ignore legacy Source=ui rows in PermissionState ACL aggregation.
-  const accesses = (accessesRaw || []).filter(a => String((a as any).Source || 'manual').toLowerCase() !== 'ui');
+  const accesses = (accessesRaw || []).filter(a => String(a.Source || 'manual').toLowerCase() !== 'ui');
 
   const aggByCompany = new Map<string, Map<string, ServiceAgg>>();
   const companyGlobalAllow = new Set<string>();
@@ -70,26 +71,34 @@ export async function buildAclAggregation(
     return a;
   };
 
-  const irServiceIds = Array.from(new Set(accesses.map(a => String((a as any).MetaServiceId || '').trim()).filter(Boolean)));
-  const irModelIds = Array.from(new Set(accesses.map(a => String((a as any).MetaModelId || '').trim()).filter(Boolean)));
-  const irApplicationIds = Array.from(new Set(accesses.map(a => String((a as any).MetaApplicationId || '').trim()).filter(Boolean)));
+  const irServiceIds = Array.from(new Set(accesses.map(a => String(a.MetaServiceId || '').trim()).filter(Boolean)));
+  const irModelIds = Array.from(new Set(accesses.map(a => String(a.MetaModelId || '').trim()).filter(Boolean)));
+  const irApplicationIds = Array.from(new Set(accesses.map(a => String(a.MetaApplicationId || '').trim()).filter(Boolean)));
 
   const serviceById = new Map<string, { modelId: string; name: string }>();
   const modelById = new Map<string, { app: string; name: string }>();
 
   // 4.1) Resolve service -> model + method & 4.3) Resolve applicationId -> applicationName
   const [services, apps] = await Promise.all([
-    irServiceIds.length > 0 ? MetaService.Search(['Id', 'in', irServiceIds] as any, { fields: ['Id', 'ModelId', 'Name'], limit: 50000 }) : Promise.resolve([]),
+    irServiceIds.length > 0
+      ? MetaService.Search(condition<MetaServiceModel>(['Id', 'in', irServiceIds]), {
+          fields: ['Id', 'ModelId', 'Name'] as const,
+          limit: 50000,
+        })
+      : Promise.resolve([]),
     irApplicationIds.length > 0
-      ? MetaApplication.Search(['Id', 'in', irApplicationIds] as any, { fields: ['Id', 'Name'], limit: 50000 } as any)
+      ? MetaApplication.Search(condition<MetaApplicationModel>(['Id', 'in', irApplicationIds]), {
+          fields: ['Id', 'Name'] as const,
+          limit: 50000,
+        })
       : Promise.resolve([]),
   ]);
 
   const modelIdsFromServices = new Set<string>();
   for (const s of services || []) {
-    const sid = String((s as any).Id || '').trim();
-    const mid = maybeId((s as any).ModelId);
-    const name = String((s as any).Name || '').trim();
+    const sid = String(s.Id || '').trim();
+    const mid = maybeId(s.ModelId);
+    const name = String(s.Name || '').trim();
     if (!sid || !mid || !name) continue;
     serviceById.set(sid, { modelId: mid, name });
     modelIdsFromServices.add(mid);
@@ -97,8 +106,8 @@ export async function buildAclAggregation(
 
   const appNameById = new Map<string, string>();
   for (const a of apps || []) {
-    const id = String((a as any).Id || '').trim();
-    const name = String((a as any).Name || '').trim();
+    const id = String(a.Id || '').trim();
+    const name = String(a.Name || '').trim();
     if (!id || !name) continue;
     appNameById.set(id, name);
   }
@@ -106,11 +115,14 @@ export async function buildAclAggregation(
   // 4.2) Resolve model -> app + name
   const needModelIds = Array.from(new Set([...irModelIds, ...Array.from(modelIdsFromServices)]));
   if (needModelIds.length > 0) {
-    const models = await MetaModel.Search(['Id', 'in', needModelIds] as any, { fields: ['Id', 'Name', 'Application'], limit: 50000 });
+    const models = await MetaModel.Search(condition<MetaModelModel>(['Id', 'in', needModelIds]), {
+      fields: ['Id', 'Name', 'Application'] as const,
+      limit: 50000,
+    });
     for (const m of models || []) {
-      const mid = String((m as any).Id || '').trim();
-      const app = String((m as any).Application || '').trim();
-      const name = String((m as any).Name || '').trim();
+      const mid = String(m.Id || '').trim();
+      const app = String(m.Application || '').trim();
+      const name = String(m.Name || '').trim();
       if (!mid || !app || !name) continue;
       modelById.set(mid, { app, name });
     }
@@ -118,23 +130,23 @@ export async function buildAclAggregation(
 
   // Effective projections: at most one live row per (application, name).
   // Deduplicate by name in case legacy shells still coexist.
-  const trimMetaLabel = (v: any): string => {
+  const trimMetaLabel = (v: unknown): string => {
     if (v == null) return '';
     return String(v).trim();
   };
   const modelsByApp = new Map<string, Array<{ app: string; name: string }>>();
   const appNames = Array.from(new Set(appNameById.values()));
   if (appNames.length > 0) {
-    const rows = await MetaModel.Search(['Application', 'in', appNames] as any, {
-      fields: ['Application', 'Name', 'ModuleId', 'UpdatedAt'],
+    const rows = await MetaModel.Search(condition<MetaModelModel>(['Application', 'in', appNames]), {
+      fields: ['Application', 'Name', 'ModuleId', 'UpdatedAt'] as const,
       orderBy: { field: 'UpdatedAt', order: 'desc' },
       limit: 50000,
-    } as any);
+    });
     const seen = new Set<string>();
     const list = rows == null ? [] : rows;
     for (const r of list) {
-      const app = trimMetaLabel((r as any).Application);
-      const name = trimMetaLabel((r as any).Name);
+      const app = trimMetaLabel(r.Application);
+      const name = trimMetaLabel(r.Name);
       if (!app) continue;
       if (!name) continue;
       const key = `${app}\0${name}`;
@@ -153,17 +165,17 @@ export async function buildAclAggregation(
   let allModels: Array<{ app: string; name: string }> | undefined;
   const getAllModels = async (): Promise<Array<{ app: string; name: string }>> => {
     if (allModels) return allModels;
-    const rows = await MetaModel.Search([] as any, {
-      fields: ['Application', 'Name', 'UpdatedAt'],
+    const rows = await MetaModel.Search([], {
+      fields: ['Application', 'Name', 'UpdatedAt'] as const,
       orderBy: { field: 'UpdatedAt', order: 'desc' },
       limit: 50000,
-    } as any);
+    });
     const seen = new Set<string>();
     const out: Array<{ app: string; name: string }> = [];
     const list = rows == null ? [] : rows;
     for (const r of list) {
-      const app = trimMetaLabel((r as any).Application);
-      const name = trimMetaLabel((r as any).Name);
+      const app = trimMetaLabel(r.Application);
+      const name = trimMetaLabel(r.Name);
       if (!app) continue;
       if (!name) continue;
       const key = `${app}\0${name}`;
@@ -179,12 +191,12 @@ export async function buildAclAggregation(
 
   // 4.4) Apply rules into per-company aggregates
   for (const a of accesses || []) {
-    const roleId = maybeId((a as any).RoleId);
-    const sid = String((a as any).MetaServiceId || '').trim();
-    const mid = String((a as any).MetaModelId || '').trim();
-    const aid = String((a as any).MetaApplicationId || '').trim();
-    const logicalName = String((a as any).LogicalModelName || '').trim();
-    const mode = String((a as any).Mode || '').toLowerCase();
+    const roleId = maybeId(a.RoleId);
+    const sid = String(a.MetaServiceId || '').trim();
+    const mid = String(a.MetaModelId || '').trim();
+    const aid = String(a.MetaApplicationId || '').trim();
+    const logicalName = String(a.LogicalModelName || '').trim();
+    const mode = String(a.Mode || '').toLowerCase();
     if (!roleId || (mode !== 'allow' && mode !== 'deny')) continue;
 
     // LogicalModel scope: all host apps whose @Model short name matches.
@@ -193,7 +205,7 @@ export async function buildAclAggregation(
       if (models.length === 0) continue;
       let methods: string[] | null;
       try {
-        methods = assertLogicalMethods((a as any).LogicalMethods);
+        methods = assertLogicalMethods(a.LogicalMethods);
       } catch {
         // Malformed payload: deny → model-wide (fail closed); allow → skip (no over-grant).
         if (mode === 'deny') methods = null;

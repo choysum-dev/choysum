@@ -13,7 +13,8 @@ import { getRuntimeGlobalPoolValue, setRuntimeGlobalPoolValue } from '@/core/uti
 import { asObjectRecord, asRuntimeCarrier } from '@/core/utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 
-type ModelDecoratorOrderBy = OrderBy<ObjectRecord>;
+/** Decorator default sort; field names are model-specific strings, not ObjectRecord keys. */
+type ModelDecoratorOrderBy = { field: string; order: 'asc' | 'desc' };
 type RegisteredModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T>;
 type GlobalPoolLike = {
   set(name: string, model: RegisteredModelCtor<BaseModel>): void;

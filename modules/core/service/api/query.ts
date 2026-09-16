@@ -20,3 +20,5 @@ export type {
   ReadGroupCountOptions,
   ReadGroupResult,
 } from '../orm/repository/types';
+
+export { condition } from '../orm/repository/types';

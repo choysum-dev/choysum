@@ -6,6 +6,7 @@
  * Assertions live in a never-invoked function so module evaluation does not run ORM calls.
  */
 import BaseModel from './model';
+import type { Projected } from '../repository/types';
 
 class Probe extends BaseModel {
   Name!: string;
@@ -18,8 +19,11 @@ function typecheckStaticThis(): void {
   const searched: Promise<Probe[]> = Probe.Search(['Name', '=', 'x']);
   void searched;
 
-  const browsed: Promise<Probe[]> = Probe.BrowseMany(['id'], ['Name']);
-  void browsed;
+  const browsedProjected: Promise<Array<Projected<Probe, ['Name']>>> = Probe.BrowseMany(['id'], ['Name'] as const);
+  void browsedProjected;
+
+  const browsedFull: Promise<Probe[]> = Probe.BrowseMany(['id']);
+  void browsedFull;
 
   // @ts-expect-error unknown field is not a QueryCondition path
   const invalidSearch = Probe.Search(['NoSuch', '=', 1]);
