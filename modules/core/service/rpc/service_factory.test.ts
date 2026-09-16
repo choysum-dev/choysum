@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import BaseModel from '../orm/model/model';
+import type BaseModel from '../orm/model/model';
 import {
   createServiceByModel,
   getServiceFactory,
@@ -14,6 +14,7 @@ test('registerServiceFactory + createServiceByModel should create service instan
   const serviceInstance = { Ping: () => 'pong' };
 
   registerServiceFactory(modelName, () => serviceInstance);
+  // Ping is sync; ModelService only maps async Capitalized statics.
   const created = createServiceByModel<typeof BaseModel>(modelName) as unknown as { Ping: () => string };
 
   expect(created).toBe(serviceInstance);

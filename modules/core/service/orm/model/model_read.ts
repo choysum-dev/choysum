@@ -37,12 +37,13 @@ import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 import type { ObjectRecord } from '../../../utils/types';
 import type { ModelCtor } from './types';
 import { createServiceByModel } from '../../rpc';
+import type { ModelConstructor } from '../../../rpc/types';
 import { _t } from '@/core/service/i18n_binder';
 import { mergeCallerConditionWithForField } from './model_for_field_condition';
 import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/datetime';
 
 /** Typing stub for cross-app dial; core must not import the document model. */
-declare abstract class AttachmentBindingModelStub extends BaseModel {}
+type AttachmentBindingModelStub = ModelConstructor;
 
 type AttachmentBindingSearchService = {
   Search(condition: unknown, options?: unknown): Promise<ObjectRecord[]>;
@@ -208,7 +209,7 @@ export class ReadOperations {
 
   private static resolveAttachmentBindingService(): AttachmentBindingSearchService | undefined {
     try {
-      const service = createServiceByModel<typeof AttachmentBindingModelStub>(
+      const service = createServiceByModel<AttachmentBindingModelStub>(
         'document.AttachmentBinding'
       ) as unknown as { Search?: AttachmentBindingSearchService['Search'] };
       if (!service || typeof service.Search !== 'function') {

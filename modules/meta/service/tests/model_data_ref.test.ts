@@ -87,10 +87,7 @@ test('createServiceByModel(meta.MetaModelData) dials Ref after factory registrat
     Ref: (xmlId: string) => MetaModelData.Ref(xmlId),
     RefOrNull: (xmlId: string) => MetaModelData.RefOrNull(xmlId),
   }));
-  const dialed = createServiceByModel<typeof MetaModelData>('meta.MetaModelData') as {
-    Ref: (xmlId: string) => Promise<string>;
-    RefOrNull: (xmlId: string) => Promise<string | null>;
-  };
+  const dialed = createServiceByModel<typeof MetaModelData>('meta.MetaModelData');
   expect(typeof dialed.Ref).toBe('function');
   expect(typeof dialed.RefOrNull).toBe('function');
 
