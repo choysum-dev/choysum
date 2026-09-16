@@ -6,6 +6,7 @@ import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
+import type { ModelConstructor } from '@/core/rpc/types';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
 import { _lt } from '../i18n';
 import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
@@ -52,9 +53,9 @@ type BindAttachmentFn = (req: BindAttachmentReq) => Promise<unknown>;
 type AttachmentBindingServiceLike = { Bind?: BindAttachmentFn };
 
 /** Typing stub: message must not import document.AttachmentBinding. */
-declare abstract class AttachmentBindingStub extends BaseModel {
-  static Bind(req: BindAttachmentReq): Promise<unknown>;
-}
+type AttachmentBindingStub = ModelConstructor & {
+  Bind(req: BindAttachmentReq): Promise<unknown>;
+};
 
 type DialFn = (fullModelName: string) => AttachmentBindingServiceLike;
 type XidNewFn = () => string | null | undefined;
@@ -163,7 +164,7 @@ function resolveBind(): BindAttachmentFn | null {
   try {
     const svc: AttachmentBindingServiceLike = dialOverride
       ? dialOverride('document.AttachmentBinding')
-      : dial<typeof AttachmentBindingStub>('document.AttachmentBinding');
+      : dial<AttachmentBindingStub>('document.AttachmentBinding');
     if (typeof svc?.Bind !== 'function') return null;
     return svc.Bind.bind(svc);
   } catch {

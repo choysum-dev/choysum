@@ -211,7 +211,7 @@ export class ReadOperations {
     try {
       const service = createServiceByModel<AttachmentBindingModelStub>(
         'document.AttachmentBinding'
-      ) as unknown as { Search?: AttachmentBindingSearchService['Search'] };
+      ) as unknown as Partial<AttachmentBindingSearchService>;
       if (!service || typeof service.Search !== 'function') {
         return undefined;
       }

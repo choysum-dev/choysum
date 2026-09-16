@@ -125,6 +125,8 @@ type CrudService<C extends ModelConstructor> = {
   };
 };
 
-export type ModelService<TCtor extends ModelConstructor> = CrudService<TCtor> & {
-  [K in Exclude<ModelServiceMethodKey<TCtor>, keyof CrudService<TCtor>>]: TCtor[K] extends RpcServiceFn ? ClientModelService<TCtor[K]> : never;
-};
+export type ModelService<TCtor extends ModelConstructor> = [TCtor] extends [never]
+  ? never
+  : CrudService<TCtor> & {
+      [K in Exclude<ModelServiceMethodKey<TCtor>, keyof CrudService<TCtor>>]: TCtor[K] extends RpcServiceFn ? ClientModelService<TCtor[K]> : never;
+    };

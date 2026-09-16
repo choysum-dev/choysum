@@ -58,8 +58,6 @@ type OwnerModelServiceLike = {
   Search(condition: unknown, options?: unknown): Promise<unknown>;
 };
 
-type OwnerModelStub = ModelConstructor & OwnerModelServiceLike;
-
 const AUTH_USER_MODEL = 'auth.User';
 
 /**
@@ -230,7 +228,7 @@ async function probeOwnerRecord(
   let ownerService: OwnerModelServiceLike;
   try {
     // Search is CrudService-bound on ModelService; cast keeps the loose owner probe contract.
-    ownerService = dial<OwnerModelStub>(ownerModel) as unknown as OwnerModelServiceLike;
+    ownerService = dial<ModelConstructor>(ownerModel) as unknown as OwnerModelServiceLike;
   } catch {
     return false;
   }

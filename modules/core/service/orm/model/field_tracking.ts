@@ -13,10 +13,10 @@
 import { dial } from './model_pool';
 import { MetadataStorage } from '../metadata';
 import type { FieldMetadata } from '../metadata/field';
-import type BaseModel from './model';
 import type { ModelCtor } from './types';
 import type { ObjectRecord } from '../../../utils/types';
 import { getActiveCompanyId } from '../../runtime/context';
+import type { ModelConstructor } from '../../../rpc/types';
 
 const AUDIT_FIELD_CHANGE = 'audit.FieldChange';
 
@@ -30,6 +30,7 @@ type AppendFn = (req: {
   CompanyId?: string | null;
 }) => Promise<unknown>;
 
+type FieldChangeModelStub = ModelConstructor & { Append: AppendFn };
 type DialFn = (fullModelName: string) => { Append?: AppendFn };
 type ActiveCompanyIdFn = () => string | undefined;
 
@@ -117,9 +118,7 @@ export function __valuesEqualForTest(a: unknown, b: unknown): boolean {
 function resolveAppend(): AppendFn | null {
   if (appendOverride !== undefined) return appendOverride;
   try {
-    const svc = dialOverride
-      ? dialOverride(AUDIT_FIELD_CHANGE)
-      : (dial<typeof BaseModel>(AUDIT_FIELD_CHANGE) as { Append?: AppendFn });
+    const svc = dialOverride ? dialOverride(AUDIT_FIELD_CHANGE) : dial<FieldChangeModelStub>(AUDIT_FIELD_CHANGE);
     if (typeof svc?.Append !== 'function') return null;
     return svc.Append.bind(svc);
   } catch {
