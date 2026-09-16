@@ -29,3 +29,8 @@ export type Hc6OmittedPoolIsNever = ExpectTrue<[ReturnType<typeof hc6PoolOmitsCt
 export type Hc6OmittedFactoryIsNever = ExpectTrue<[ReturnType<typeof hc6FactoryOmitsCtor>] extends [never] ? true : false>;
 export type Hc6OmittedStaticDialIsNever = ExpectTrue<[ReturnType<typeof hc6StaticDialOmitsCtor>] extends [never] ? true : false>;
 export type Hc6OmittedStaticPoolIsNever = ExpectTrue<[ReturnType<typeof hc6StaticPoolOmitsCtor>] extends [never] ? true : false>;
+
+// Positive guard: a real ctor type argument must still produce a usable service.
+export const hc6DialWithCtor = (fullName: string) => dial<typeof BaseModel>(fullName);
+export type Hc6ProvidedDialIsNotNever = ExpectTrue<[ReturnType<typeof hc6DialWithCtor>] extends [never] ? false : true>;
+export type Hc6ProvidedDialHasSearch = ExpectTrue<'Search' extends keyof ReturnType<typeof hc6DialWithCtor> ? true : false>;

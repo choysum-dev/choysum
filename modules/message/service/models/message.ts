@@ -54,7 +54,7 @@ type AttachmentBindingServiceLike = { Bind?: BindAttachmentFn };
 
 /** Typing stub: message must not import document.AttachmentBinding. */
 type AttachmentBindingStub = ModelConstructor & {
-  Bind(req: BindAttachmentReq): Promise<unknown>;
+  Bind: BindAttachmentFn;
 };
 
 type DialFn = (fullModelName: string) => AttachmentBindingServiceLike;
