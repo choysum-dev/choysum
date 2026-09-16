@@ -1194,6 +1194,8 @@ test('PermissionState smoke: declared resource -> persisted dictionary -> explic
 
       // Seed catalog rows that production gets from web build / defineRoute persist.
       // Auth BE unit install skips the SPA shell, so tests create them explicitly.
+      // Grant only the ACTION so route/menu assertions exercise relation projection
+      // (action→route via MetaUiResourceRouteAction, route→menu via MenuRoute).
       const routeId = 'auth.route.token_list';
       const menuId = 'auth.menu.token_list';
       const actionId = 'auth.action.token_edit';
@@ -1204,7 +1206,6 @@ test('PermissionState smoke: declared resource -> persisted dictionary -> explic
       await createMenuRouteRelation({ menuResourceId: menuId, routeResourceId: routeId });
       await createRouteActionRelation({ routeResourceId: routeId, actionResourceId: actionId });
 
-      await createRoleUiResourceGrant({ roleId: r.id, resourceId: routeId });
       await createRoleUiResourceGrant({ roleId: r.id, resourceId: actionId });
 
       disableAllowlist();
