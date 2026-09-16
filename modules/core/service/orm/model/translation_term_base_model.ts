@@ -22,9 +22,10 @@ import {
   modulesFromPayloads,
   modulesFromRows,
 } from './_translation_term_cache';
+import type { ModelConstructor } from '../../../rpc/types';
 
 /** Minimal surface for `pool<TranslationTermModelCtor>('TranslationTerm')` typing. */
-export type TranslationTermModelCtor = {
+export type TranslationTermModelCtor = ModelConstructor & {
   GetTranslations(req: GetTranslationsReq): Promise<GetTranslationsResp>;
 };
 

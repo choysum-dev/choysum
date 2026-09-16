@@ -300,7 +300,7 @@ class BaseModel {
    *
    * Not `globalThis.pool`. Does not cross applications. See {@link pool}.
    */
-  static pool<C>(this: typeof BaseModel, shortName: string): C {
+  static pool<C extends ModelConstructor>(this: typeof BaseModel, shortName: string): C {
     const app = String(MetadataStorage.instance.getModelMetadata(this as any)?.application || '').trim();
     return poolModel<C>(app, shortName);
   }

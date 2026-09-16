@@ -39,25 +39,21 @@ export type PostMessageReq = {
   AttachmentMutationId?: string | null;
 };
 
-type BindAttachmentFn = (req: {
+type BindAttachmentReq = {
   attachmentObjectId: string;
   ownerModel: string;
   ownerRecordId: string;
   fieldName: string;
   mutationId: string;
-}) => Promise<unknown>;
+};
+
+type BindAttachmentFn = (req: BindAttachmentReq) => Promise<unknown>;
 
 type AttachmentBindingServiceLike = { Bind?: BindAttachmentFn };
 
 /** Typing stub: message must not import document.AttachmentBinding. */
 declare abstract class AttachmentBindingStub extends BaseModel {
-  static Bind(req: {
-    attachmentObjectId: string;
-    ownerModel: string;
-    ownerRecordId: string;
-    fieldName: string;
-    mutationId: string;
-  }): Promise<unknown>;
+  static Bind(req: BindAttachmentReq): Promise<unknown>;
 }
 
 type DialFn = (fullModelName: string) => AttachmentBindingServiceLike;

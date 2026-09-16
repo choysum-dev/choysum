@@ -119,7 +119,7 @@ function resolveAppend(): AppendFn | null {
   if (appendOverride !== undefined) return appendOverride;
   try {
     const dialFn = dialOverride || dial;
-    const svc = dialFn<typeof BaseModel>(AUDIT_FIELD_CHANGE) as unknown as { Append?: AppendFn };
+    const svc = dialFn<typeof BaseModel>(AUDIT_FIELD_CHANGE) as { Append?: AppendFn };
     if (typeof svc?.Append !== 'function') return null;
     return svc.Append.bind(svc);
   } catch {

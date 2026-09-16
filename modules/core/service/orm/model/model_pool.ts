@@ -16,7 +16,7 @@ import type BaseModel from './model';
  *
  * Not an alias of `globalThis.pool` (ApplicationModelPool registration table).
  */
-export function pool<C>(application: string, shortName: string): C {
+export function pool<C extends ModelConstructor>(application: string, shortName: string): C {
   const app = String(application || '').trim();
   const short = String(shortName || '').trim();
   if (!short) {
@@ -34,7 +34,7 @@ export function pool<C>(application: string, shortName: string): C {
   if (!ctor) {
     raiseDomainError('core', 'POOL_MODEL_NOT_FOUND', `model ${fullName} is not registered`);
   }
-  return ctor as C;
+  return ctor as unknown as C;
 }
 
 /**
