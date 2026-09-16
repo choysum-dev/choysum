@@ -3,7 +3,7 @@
 
 import { RelationFactory } from '../relation';
 import type { QueryCondition, Updateable, FieldSelection, UpdateOptions } from '../repository/types';
-import BaseModel from './model';
+import type BaseModel from './model';
 import { normalizePrefetchedRows } from './model_update_prefetch';
 import { getModelRepository } from './model_internal_facade';
 import { searchModels } from './model_read_facade';

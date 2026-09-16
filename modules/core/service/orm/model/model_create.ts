@@ -4,7 +4,7 @@
 import { RelationFactory } from '../relation';
 import type { ExtractedRelations } from '../relation/types';
 import type { Insertable, FieldSelection } from '../repository/types';
-import BaseModel from './model';
+import type BaseModel from './model';
 import { getModelRepository } from './model_internal_facade';
 import { browseManyModels, browseModel, searchModels } from './model_read_facade';
 import type { ModelCtor } from './types';

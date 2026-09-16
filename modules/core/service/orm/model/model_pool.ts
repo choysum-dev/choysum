@@ -16,7 +16,7 @@ import type BaseModel from './model';
  *
  * Not an alias of `globalThis.pool` (ApplicationModelPool registration table).
  */
-export function pool<C extends ModelConstructor>(application: string, shortName: string): C {
+export function pool<C extends ModelConstructor = never>(application: string, shortName: string): C {
   const app = String(application || '').trim();
   const short = String(shortName || '').trim();
   if (!short) {
@@ -44,7 +44,7 @@ export function pool<C extends ModelConstructor>(application: string, shortName:
  * the factory is often in-process. Requires a full `app.Model` name.
  * Callers must pass the model ctor type argument (HC6).
  */
-export function dial<C extends ModelConstructor>(fullModelName: string): ModelService<C> {
+export function dial<C extends ModelConstructor = never>(fullModelName: string): ModelService<C> {
   const key = String(fullModelName || '').trim();
   if (!key || !isValidFullModelName(key)) {
     raiseDomainError('core', 'DIAL_INVALID_MODEL', `dial requires a full model name app.Model, got ${key || '(empty)'}`);

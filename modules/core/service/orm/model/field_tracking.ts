@@ -31,7 +31,7 @@ type AppendFn = (req: {
   CompanyId?: string | null;
 }) => Promise<unknown>;
 
-type DialFn = <C extends ModelConstructor>(fullModelName: string) => ModelService<C>;
+type DialFn = <C extends ModelConstructor = never>(fullModelName: string) => ModelService<C>;
 type ActiveCompanyIdFn = () => string | undefined;
 
 /** Test seam: undefined = live dial; null = force missing; function = stub Append. */

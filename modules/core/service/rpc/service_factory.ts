@@ -35,7 +35,7 @@ export function unregisterServiceFactory(modelName: string): void {
  * Creates a service instance from the factory registered for the model name.
  * Callers must pass the model ctor type argument (HC6).
  */
-export function createServiceByModel<TCtor extends ModelConstructor>(modelName: string): ModelService<TCtor> {
+export function createServiceByModel<TCtor extends ModelConstructor = never>(modelName: string): ModelService<TCtor> {
   const factory = getServiceFactory(modelName);
   if (!factory) {
     throw new Error(`Service factory for model '${modelName}' not found. Make sure the module is loaded.`);

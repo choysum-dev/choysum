@@ -300,7 +300,7 @@ class BaseModel {
    *
    * Not `globalThis.pool`. Does not cross applications. See {@link pool}.
    */
-  static pool<C extends ModelConstructor>(this: typeof BaseModel, shortName: string): C {
+  static pool<C extends ModelConstructor = never>(this: typeof BaseModel, shortName: string): C {
     const app = String(MetadataStorage.instance.getModelMetadata(this as any)?.application || '').trim();
     return poolModel<C>(app, shortName);
   }
@@ -311,7 +311,7 @@ class BaseModel {
    * `this.application` and does not imply network RPC.
    * Callers must pass the model ctor type argument (HC6).
    */
-  static dial<C extends ModelConstructor>(fullModelName: string): ModelService<C> {
+  static dial<C extends ModelConstructor = never>(fullModelName: string): ModelService<C> {
     return dialService<C>(fullModelName);
   }
 

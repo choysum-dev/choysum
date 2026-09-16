@@ -161,7 +161,7 @@ function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Messag
 function resolveBind(): BindAttachmentFn | null {
   if (bindAttachmentOverride !== undefined) return bindAttachmentOverride;
   try {
-    const svc = dialOverride
+    const svc: AttachmentBindingServiceLike = dialOverride
       ? dialOverride('document.AttachmentBinding')
       : dial<typeof AttachmentBindingStub>('document.AttachmentBinding');
     if (typeof svc?.Bind !== 'function') return null;
