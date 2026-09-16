@@ -12,8 +12,8 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
-// Canonical @Hook* decorator forms used by module sources. Aliases / dynamic
-// registration are not detected; those trees fail open (see below).
+// Canonical @Hook* decorator forms used by module sources. Aliased / dynamic
+// registration is not detected (authors should use the canonical decorator names).
 var hookPhaseDecoratorPatterns = map[Phase]*regexp.Regexp{
 	PhasePreInit:       regexp.MustCompile(`@HookPreInit\s*(?:<[^>]*>)?\s*\(`),
 	PhasePostInit:      regexp.MustCompile(`@HookPostInit\s*(?:<[^>]*>)?\s*\(`),
@@ -27,8 +27,9 @@ var hookPhaseDecoratorPatterns = map[Phase]*regexp.Regexp{
 // canonical @Hook* decorator for phase. Used to skip RunPhase without Bundle /
 // executor Reload when the registry would be empty.
 //
-// Returns true (fail open) when sources cannot be inspected so required phases
-// still load JS rather than silently skipping real hooks.
+// Returns true (fail open) when sources cannot be inspected — missing Path,
+// Stat/EvalSymlinks errors, walk I/O errors, or any symlink entry — so required
+// phases still load JS rather than silently skipping real hooks.
 func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 	if module == nil {
 		return false
@@ -41,6 +42,13 @@ func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 	if root == "" {
 		return true
 	}
+	// os.Stat follows symlinks but WalkDir Lstats the root, so a symlinked
+	// module dir would otherwise look like a non-dir and never be scanned.
+	resolved, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return true
+	}
+	root = resolved
 	info, err := os.Stat(root)
 	if err != nil || !info.IsDir() {
 		return true
@@ -48,6 +56,11 @@ func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 	found := false
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			found = true
+			return filepath.SkipAll
+		}
+		// WalkDir does not follow symlinks; treat any as indeterminate.
+		if d.Type()&os.ModeSymlink != 0 {
 			found = true
 			return filepath.SkipAll
 		}

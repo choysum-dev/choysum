@@ -65,6 +65,33 @@ export class Hooks {
 		t.Fatal("nil module must be false")
 	}
 
+	realMod := filepath.Join(root, "real_mod")
+	mustWriteHookScanFile(t, filepath.Join(realMod, "service", "hook.ts"), `
+export class Hooks {
+  @HookPostInit()
+  static async ensure(): Promise<void> {}
+}
+`)
+	linkMod := filepath.Join(root, "link_mod")
+	if err := os.Symlink(realMod, linkMod); err != nil {
+		t.Fatal(err)
+	}
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: linkMod}, PhasePostInit) {
+		t.Fatal("symlinked module root must still detect @HookPostInit")
+	}
+
+	nested := filepath.Join(root, "nested_link")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWriteHookScanFile(t, filepath.Join(nested, "other.ts"), "export {}\n")
+	if err := os.Symlink(filepath.Join(realMod, "service"), filepath.Join(nested, "service")); err != nil {
+		t.Fatal(err)
+	}
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: nested}, PhasePostInit) {
+		t.Fatal("nested source symlink must fail open")
+	}
+
 	typed := filepath.Join(root, "typed")
 	if err := os.MkdirAll(typed, 0o755); err != nil {
 		t.Fatal(err)
