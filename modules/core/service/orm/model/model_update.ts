@@ -340,6 +340,23 @@ export class UpdateOperations {
     // 1.6) Sync prepareUpdate policy (domain normalization before relation planning).
     values = applyPrepareUpdate(ModelCtor, meta, values as UnknownRecord) as Partial<Updateable<T>>;
 
+    // 1.7) Defensively strip compute fields again — prepareUpdate may return a fresh object.
+    if (meta.computeGraph?.computeFields?.size) {
+      const cleaned: UnknownRecord = { ...(values as UnknownRecord) };
+      const virtualComputeFields = meta.computeGraph?.virtualComputeFields || new Set<string>();
+      let removed = 0;
+      meta.computeGraph.computeFields.forEach((f: string) => {
+        if (f in cleaned) {
+          const handler = meta.computeHandlers?.get(f);
+          const isVirtual = virtualComputeFields.has(f) || handler?.store === false;
+          if (isVirtual) return;
+          delete cleaned[f];
+          removed++;
+        }
+      });
+      if (removed) values = cleaned as Partial<Updateable<T>>;
+    }
+
     // 2) Preprocess relations.
     const { processedValue, relations } = await RelationFactory.prepareForUpdate(ModelCtor, values);
     const baseChangedInitial = Object.keys(processedValue);

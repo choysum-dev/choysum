@@ -14,6 +14,7 @@ import User from '../models/user/user';
 import UserRole from '../models/user_role';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
 import { MetadataStorage } from '@/core/service/orm/metadata';
+import { getModelRuntimeMetadata } from '@/core/service/orm/model/model_runtime_service_facade';
 
 function withServiceFactory<T>(modelName: string, factory: () => unknown, fn: () => Promise<T> | T): Promise<T> | T {
   const previous = getServiceFactory(modelName);
@@ -44,6 +45,10 @@ test('auth models: Role / UserRole / RoleInheritance extend BaseModel with after
   const userRoleMeta = MetadataStorage.instance.getModelMetadata(UserRole as any);
   expect(roleMeta.afterMutation).toEqual({ invalidateAuthz: 'all' });
   expect(userRoleMeta.afterMutation).toEqual({ invalidateAuthz: 'usersFromPayload' });
+
+  // Write pipeline consumes getModelRuntimeMetadata — ensure policies survive there too.
+  expect(getModelRuntimeMetadata(Role as any).afterMutation).toEqual({ invalidateAuthz: 'all' });
+  expect(getModelRuntimeMetadata(UserRole as any).afterMutation).toEqual({ invalidateAuthz: 'usersFromPayload' });
 });
 
 test('authz mutation helpers: userIdsFromUserRolePayloads extracts UserId refs', () => {

@@ -232,9 +232,11 @@ export class CreateOperations {
     value = this.stripComputedFields<T>(ModelCtor, value as Partial<Insertable<T>>);
 
     // 2.15) Sync write policies: prepareCreate then stampActor (trusted identity wins).
+    // Re-strip after prepare — hooks may return a fresh object that reintroduces compute fields.
     {
       const prepared = applyPrepareCreate(ModelCtor, meta, value as UnknownRecord);
-      value = applyStampActor(meta, prepared) as Partial<Insertable<T>>;
+      const stamped = applyStampActor(meta, prepared) as Partial<Insertable<T>>;
+      value = this.stripComputedFields<T>(ModelCtor, stamped);
     }
 
     // 2.2) Normalize binary/image field writes into set/clear/noop actions.
@@ -468,7 +470,9 @@ export class CreateOperations {
       const next = await ModelCtor.DefaultGet(v);
       const stripped = this.stripComputedFields<T>(ModelCtor, next as Partial<Insertable<T>>);
       const prepared = applyPrepareCreate(ModelCtor, meta, stripped as UnknownRecord);
-      preProcessed.push(applyStampActor(meta, prepared) as Partial<Insertable<T>>);
+      const stamped = applyStampActor(meta, prepared) as Partial<Insertable<T>>;
+      // Re-strip after prepare — hooks may return a fresh object that reintroduces compute fields.
+      preProcessed.push(this.stripComputedFields<T>(ModelCtor, stamped));
     }
 
     const repository = getModelRepository(ModelCtor);

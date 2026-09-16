@@ -5,7 +5,7 @@ import { Field, Model } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import { AuditErrCode, newAuditError } from '../error';
+import { AuditErrCode, AUDIT_DOMAIN, newAuditError } from '../error';
 import { _lt } from '../i18n';
 import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
 import { assertTargetRecordReadable } from '../target_record';
@@ -127,7 +127,7 @@ function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelecti
   application: 'audit',
   softDelete: false,
   orderBy: { field: 'At', order: 'asc' },
-  appendOnly: true,
+  appendOnly: { domain: AUDIT_DOMAIN, code: AuditErrCode.APPEND_ONLY },
   stampActor: 'ActorUid',
   prepareCreate: 'prepareCreate',
 })

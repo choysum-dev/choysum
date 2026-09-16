@@ -57,6 +57,9 @@ let xidNewOverride: XidNewFn | undefined;
 export const MESSAGE_TYPES = ['comment', 'email', 'note'] as const;
 export type MessageTypeLiteral = (typeof MESSAGE_TYPES)[number];
 
+/** Default Message.Type when create payload omits or blanks Type. */
+export const DEFAULT_MESSAGE_TYPE: MessageTypeLiteral = 'comment';
+
 /** Owner field name used when Post binds an attachment via document.AttachmentBinding. */
 export const MESSAGE_ATTACHMENT_FIELD = 'Attachment';
 
@@ -103,12 +106,12 @@ type MessageInsert = Partial<Insertable<Message>>;
 
 /**
  * Normalize Type for create. AuthorUid is stamped by @Model stampActor.
- * Blank Type becomes `comment` here (prepare runs after DefaultGet, so omit-to-default no longer works).
+ * Blank Type becomes DEFAULT_MESSAGE_TYPE here (prepare runs after DefaultGet, so omit-to-default no longer works).
  */
 function prepareCreatePayload(value: MessageInsert): MessageInsert {
   const payload: MessageInsert = { ...value };
   if (value.Type == null || String(value.Type).trim() === '') {
-    payload.Type = 'comment';
+    payload.Type = DEFAULT_MESSAGE_TYPE;
   } else {
     payload.Type = assertMessageType(String(value.Type));
   }
@@ -218,7 +221,7 @@ export default class Message extends PolymorphicRecordModel {
     size: 16,
     notNull: true,
     index: true,
-    default: () => 'comment',
+    default: () => DEFAULT_MESSAGE_TYPE,
     string: _lt('Type', { scope: 'message.model.Message.fields' }),
   })
   Type: string;
