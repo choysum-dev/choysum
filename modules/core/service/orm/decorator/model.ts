@@ -12,6 +12,7 @@ import { installConventionalServiceRuntimeWrappers, registerLoadedModelForGenera
 import { getRuntimeGlobalPoolValue, setRuntimeGlobalPoolValue } from '@/core/utils/env';
 import { asObjectRecord, asRuntimeCarrier } from '@/core/utils/object';
 import type { ObjectRecord } from '../../../utils/types';
+import type { AfterMutationPolicy, AppendOnlyPolicy, PrepareWritePolicy } from '../model/model_write_policy';
 
 type ModelDecoratorOrderBy = OrderBy<ObjectRecord>;
 type RegisteredModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T>;
@@ -61,10 +62,27 @@ export interface ModelOptions {
    * (company-field-design D12): isolation does **not** forbid companyDependent fields.
    */
   companyField?: string;
+  /**
+   * When set, Update/Delete throw APPEND_ONLY (domain defaults to application).
+   */
+  appendOnly?: AppendOnlyPolicy;
+  /**
+   * Field name overwritten from trusted request identity (`getUserId`) on create.
+   */
+  stampActor?: string;
+  /**
+   * Sync create-payload normalizer: static method name on the model ctor, or a function.
+   */
+  prepareCreate?: PrepareWritePolicy;
+  /**
+   * Sync update-payload normalizer: static method name on the model ctor, or a function.
+   */
+  prepareUpdate?: PrepareWritePolicy;
+  /**
+   * Runs after a successful Create/Update/Delete to invalidate request-scoped authz caches.
+   */
+  afterMutation?: AfterMutationPolicy;
 }
-
-/** @deprecated Prefer ModelOptions. Kept for compatibility. */
-export type modelOptions = ModelOptions;
 
 function toSnakeCase(str: string): string {
   return (
@@ -149,6 +167,11 @@ export function Model(name: string, options?: ModelOptions) {
       autoMigrate: options?.autoMigrate,
       readonly: options?.readonly,
       parentField: options?.parentField,
+      appendOnly: options?.appendOnly,
+      stampActor: options?.stampActor,
+      prepareCreate: options?.prepareCreate,
+      prepareUpdate: options?.prepareUpdate,
+      afterMutation: options?.afterMutation,
     });
 
     // companyField / monetary targets resolve after @Field decorators ran.

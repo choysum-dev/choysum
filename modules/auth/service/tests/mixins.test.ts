@@ -3,7 +3,7 @@
 
 import { BaseModel } from '@/core/service';
 import AttachmentOwnerMixin from '@/core/service/mixins/attachment_owner_model';
-import AuthzMutationModel, {
+import {
   mutateThenInvalidateAllAuthzCaches,
   mutateThenInvalidateAuthzCachesForUsers,
   userIdsFromUserRolePayloads,
@@ -13,12 +13,7 @@ import Role from '../models/role';
 import User from '../models/user/user';
 import UserRole from '../models/user_role';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
-
-/**
- * Harness consumer for AuthzMutationModel extend contract (not a persisted domain model).
- * Mirrors other apps: `@Model('X') class X extends AuthzMutationModel`.
- */
-class AuthzMutationHarness extends AuthzMutationModel {}
+import { MetadataStorage } from '@/core/service/orm/metadata';
 
 function withServiceFactory<T>(modelName: string, factory: () => unknown, fn: () => Promise<T> | T): Promise<T> | T {
   const previous = getServiceFactory(modelName);
@@ -40,31 +35,28 @@ function withServiceFactory<T>(modelName: string, factory: () => unknown, fn: ()
   }
 }
 
-test('AuthzMutationModel: RoleInheritance, UserRole, and Role extend the mixin', () => {
-  expect(Object.prototype.isPrototypeOf.call(AuthzMutationModel, RoleInheritance)).toBe(true);
-  expect(Object.prototype.isPrototypeOf.call(AuthzMutationModel, UserRole)).toBe(true);
-  expect(Object.prototype.isPrototypeOf.call(AuthzMutationModel, Role)).toBe(true);
-  expect(Object.prototype.isPrototypeOf.call(AuthzMutationModel, AuthzMutationHarness)).toBe(true);
-  expect(Role.prototype instanceof AuthzMutationModel).toBe(true);
+test('auth models: Role / UserRole / RoleInheritance extend BaseModel with afterMutation policy', () => {
+  expect(Role.prototype instanceof BaseModel).toBe(true);
+  expect(UserRole.prototype instanceof BaseModel).toBe(true);
+  expect(RoleInheritance.prototype instanceof BaseModel).toBe(true);
+
+  const roleMeta = MetadataStorage.instance.getModelMetadata(Role as any);
+  const userRoleMeta = MetadataStorage.instance.getModelMetadata(UserRole as any);
+  expect(roleMeta.afterMutation).toEqual({ invalidateAuthz: 'all' });
+  expect(userRoleMeta.afterMutation).toEqual({ invalidateAuthz: 'usersFromPayload' });
 });
 
-test('AuthzMutationModel helpers: userIdsFromUserRolePayloads extracts UserId refs', () => {
+test('authz mutation helpers: userIdsFromUserRolePayloads extracts UserId refs', () => {
   expect(userIdsFromUserRolePayloads({ UserId: 'u1' })).toEqual(['u1']);
   expect(userIdsFromUserRolePayloads([{ UserId: { Id: 'u2' } }, { UserId: 'u2' }, { UserId: 'u3' }])).toEqual(['u2', 'u3']);
   expect(userIdsFromUserRolePayloads(null)).toEqual([]);
 });
 
-test('AuthzMutationModel helpers: mutateThenInvalidate wrappers return mutate result', async () => {
+test('authz mutation helpers: mutateThenInvalidate wrappers return mutate result', async () => {
   const all = await mutateThenInvalidateAllAuthzCaches(async () => 42);
   expect(all).toBe(42);
   const users = await mutateThenInvalidateAuthzCachesForUsers(['u1'], async () => 'ok');
   expect(users).toBe('ok');
-});
-
-test('AuthzMutationModel: harness Create is defined on the mixin prototype chain', () => {
-  expect(typeof AuthzMutationHarness.Create).toBe('function');
-  expect(typeof AuthzMutationHarness.DeleteById).toBe('function');
-  expect(typeof BaseModel.Create).toBe('function');
 });
 
 test('User: extends AttachmentOwnerMixin and exposes bind/unbind entry points', () => {

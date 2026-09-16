@@ -1,16 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
-import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
+import { BaseModel, Model, Field } from '@/core/service';
+import type { QueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
 import type MetaModel from '@/meta/service/models/model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import AuthzMutationModel from '../mixins/authz_mutation_model';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
@@ -29,8 +26,12 @@ export type RoleRecordRuleKind = 'grant' | 'restrict';
  * means it applies to that role only. This is orthogonal to Kind and to
  * model/app/global scope.
  */
-@Model('RoleRecordRule')
-export default class RoleRecordRule extends AuthzMutationModel {
+@Model('RoleRecordRule', {
+  afterMutation: { invalidateAuthz: 'all' },
+  prepareCreate: 'prepareCreate',
+  prepareUpdate: 'prepareUpdate',
+})
+export default class RoleRecordRule extends BaseModel {
   /**
    * Role that owns this record-rule entry.
    *
@@ -236,55 +237,16 @@ export default class RoleRecordRule extends AuthzMutationModel {
   }
 
   /**
-   * Create one RoleRecordRule row and invalidate request-scoped auth caches.
+   * Sync create-payload normalizer for the write-policy pipeline.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    RoleRecordRule._prepareValues(value as Record<string, unknown>, 'create');
-    return super.Create<T>(value, returnFields);
+  static prepareCreate(values: Record<string, unknown>): void {
+    RoleRecordRule._prepareValues(values, 'create');
   }
 
   /**
-   * Create multiple RoleRecordRule rows and invalidate request-scoped auth caches.
+   * Sync update-payload normalizer for the write-policy pipeline.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    const rows = values || [];
-    for (const v of rows) RoleRecordRule._prepareValues(v as Record<string, unknown>, 'create');
-    return super.CreateMany<T>(rows, returnFields);
-  }
-
-  /**
-   * Update RoleRecordRule rows and invalidate request-scoped auth caches.
-   */
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
-  ): Promise<Partial<T>[]> {
-    RoleRecordRule._prepareValues(values as Record<string, unknown>, 'update');
-    return super.Update<T>(condition, values, returnFields, options);
-  }
-
-  /**
-   * Update one RoleRecordRule row by Id and invalidate request-scoped auth caches.
-   */
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
-    id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
-  ): Promise<Partial<T>> {
-    RoleRecordRule._prepareValues(values as Record<string, unknown>, 'update');
-    return super.UpdateById<T>(id, values, returnFields, options);
+  static prepareUpdate(values: Record<string, unknown>): void {
+    RoleRecordRule._prepareValues(values, 'update');
   }
 }

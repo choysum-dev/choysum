@@ -17,6 +17,7 @@ import {
   triggerModelUpstream,
 } from './model_runtime_service_facade';
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
+import { applyAfterMutation, applyPrepareUpdate, assertNotAppendOnly } from './model_write_policy';
 import { recordFieldTrackingEvents, resolveTrackingCompanyField } from './field_tracking';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
@@ -304,6 +305,7 @@ export class UpdateOperations {
     options?: UpdateOptions
   ): Promise<Partial<T>[]> {
     const meta = getModelRuntimeMetadata(ModelCtor);
+    assertNotAppendOnly(meta, 'Update');
     const ownerModel = resolveOwnerModelName(meta);
     const repository = UpdateOperations.resolveRepository(ModelCtor, options);
 
@@ -334,6 +336,9 @@ export class UpdateOperations {
     if (attachmentActions.size) {
       values = rewriteUpdateInputForAttachments(values as UnknownRecord, attachmentActions) as Partial<Updateable<T>>;
     }
+
+    // 1.6) Sync prepareUpdate policy (domain normalization before relation planning).
+    values = applyPrepareUpdate(ModelCtor, meta, values as UnknownRecord) as Partial<Updateable<T>>;
 
     // 2) Preprocess relations.
     const { processedValue, relations } = await RelationFactory.prepareForUpdate(ModelCtor, values);
@@ -412,6 +417,9 @@ export class UpdateOperations {
         queryFields.add(companyField);
       }
     }
+    if (meta.afterMutation?.invalidateAuthz === 'usersFromPayload' && meta.fields?.has('UserId')) {
+      queryFields.add('UserId');
+    }
     if (g && affectedCompute.size) {
       affectedCompute.forEach(cf => {
         // The compute field itself.
@@ -430,6 +438,7 @@ export class UpdateOperations {
 
     // 5) Update rows one by one.
     const updatedIds: string[] = [];
+    const beforeEntities: UnknownRecord[] = [];
 
     for (const row of locked) {
       const entityId = typeof row.Id === 'string' ? row.Id : '';
@@ -437,6 +446,7 @@ export class UpdateOperations {
         throw new Error('[Update] Read an invalid record Id.');
       }
       const beforeEntityForUpstream = { ...row } as UnknownRecord;
+      beforeEntities.push(beforeEntityForUpstream);
 
       // 5.1) Update scalar fields.
       const entityObj: UnknownRecord = { ...row }; // Start from the locked row so scaleField companions are available.
@@ -627,6 +637,12 @@ export class UpdateOperations {
 
       updatedIds.push(entityId);
     }
+
+    applyAfterMutation(meta, {
+      operation: 'update',
+      payloads: values as UnknownRecord,
+      beforeEntities,
+    });
 
     if (returnFields && updatedIds.length > 0) {
       const searchOptions: {

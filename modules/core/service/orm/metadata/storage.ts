@@ -334,6 +334,11 @@ export class MetadataStorage {
     if (patch.autoMigrate !== undefined) target.autoMigrate = patch.autoMigrate;
     if (patch.readonly !== undefined) target.readonly = patch.readonly;
     if (patch.parentField !== undefined) target.parentField = patch.parentField;
+    if (patch.appendOnly !== undefined) target.appendOnly = patch.appendOnly;
+    if (patch.stampActor !== undefined) target.stampActor = patch.stampActor;
+    if (patch.prepareCreate !== undefined) target.prepareCreate = patch.prepareCreate;
+    if (patch.prepareUpdate !== undefined) target.prepareUpdate = patch.prepareUpdate;
+    if (patch.afterMutation !== undefined) target.afterMutation = patch.afterMutation;
     if (patch.computeGraph !== undefined) target.computeGraph = patch.computeGraph;
 
     if (patch.fields instanceof Map) {

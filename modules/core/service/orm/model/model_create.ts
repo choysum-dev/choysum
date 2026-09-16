@@ -15,6 +15,7 @@ import {
   triggerModelUpstreamCreateBatch,
 } from './model_runtime_service_facade';
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
+import { applyAfterMutation, applyPrepareCreate, applyStampActor } from './model_write_policy';
 import { recordFieldTrackingEvents } from './field_tracking';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
@@ -230,6 +231,12 @@ export class CreateOperations {
     // 2.1) Defensively strip again so DefaultGet or callers cannot reintroduce compute fields into the create payload.
     value = this.stripComputedFields<T>(ModelCtor, value as Partial<Insertable<T>>);
 
+    // 2.15) Sync write policies: prepareCreate then stampActor (trusted identity wins).
+    {
+      const prepared = applyPrepareCreate(ModelCtor, meta, value as UnknownRecord);
+      value = applyStampActor(meta, prepared) as Partial<Insertable<T>>;
+    }
+
     // 2.2) Normalize binary/image field writes into set/clear/noop actions.
     const attachmentActions = isAttachmentWritePipelineEnabled(ownerModel)
       ? collectAttachmentWriteActions(meta.fields as Map<string, { type?: string }>, value as UnknownRecord)
@@ -430,6 +437,11 @@ export class CreateOperations {
       }
     }
 
+    applyAfterMutation(meta, {
+      operation: 'create',
+      payloads: processedValue as UnknownRecord,
+    });
+
     return (await browseModel(ModelCtor, parentId, returnFields)) as T;
   }
 
@@ -441,17 +453,22 @@ export class CreateOperations {
     values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    if (!values.length) return [];
+    const rows = values || [];
+    if (!rows.length) return [];
+
+    const meta = getModelRuntimeMetadata(ModelCtor);
 
     // 1) Strip computed fields.
-    const strippedInput = values.map(v => this.stripComputedFields<T>(ModelCtor, v));
+    const strippedInput = rows.map(v => this.stripComputedFields<T>(ModelCtor, v));
 
     // 2) DefaultGet — polymorphic hook (must not bypass ModelCtor.DefaultGet).
     // Sequential: overrides may do I/O; avoid unbounded concurrency and orphaned rejections.
     const preProcessed: Array<Partial<Insertable<T>>> = [];
     for (const v of strippedInput) {
       const next = await ModelCtor.DefaultGet(v);
-      preProcessed.push(this.stripComputedFields<T>(ModelCtor, next as Partial<Insertable<T>>));
+      const stripped = this.stripComputedFields<T>(ModelCtor, next as Partial<Insertable<T>>);
+      const prepared = applyPrepareCreate(ModelCtor, meta, stripped as UnknownRecord);
+      preProcessed.push(applyStampActor(meta, prepared) as Partial<Insertable<T>>);
     }
 
     const repository = getModelRepository(ModelCtor);
@@ -506,6 +523,11 @@ export class CreateOperations {
         console.warn('[CreateMany] upstream recompute failed and was ignored:', e);
       }
     }
+
+    applyAfterMutation(meta, {
+      operation: 'create',
+      payloads: processedValues as UnknownRecord[],
+    });
 
     if (returnFields) {
       return (await searchModels(ModelCtor, ['Id', 'in', parentIds], { fields: returnFields })) as T[];

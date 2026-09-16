@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor } from '@/core/service';
-import { getUserId } from '@/core/service/api/context';
+import { Field, Model } from '@/core/service';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
@@ -102,15 +101,14 @@ export function assertMessageType(type: string): MessageTypeLiteral {
 
 type MessageInsert = Partial<Insertable<Message>>;
 
+/**
+ * Normalize Type for create. AuthorUid is stamped by @Model stampActor.
+ * Blank Type becomes `comment` here (prepare runs after DefaultGet, so omit-to-default no longer works).
+ */
 function prepareCreatePayload(value: MessageInsert): MessageInsert {
-  const uid = getUserId();
-  const payload: MessageInsert = {
-    ...value,
-    AuthorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
-  };
+  const payload: MessageInsert = { ...value };
   if (value.Type == null || String(value.Type).trim() === '') {
-    // Omit Type so the field default (`comment`) applies.
-    delete payload.Type;
+    payload.Type = 'comment';
   } else {
     payload.Type = assertMessageType(String(value.Type));
   }
@@ -183,6 +181,8 @@ const DEFAULT_POST_FIELDS = [
   softDelete: true,
   companyField: 'CompanyId',
   orderBy: { field: 'CreatedAt', order: 'asc' },
+  stampActor: 'AuthorUid',
+  prepareCreate: 'prepareCreate',
 })
 export default class Message extends PolymorphicRecordModel {
   protected static override polymorphicOrderByField(): string {
@@ -199,6 +199,13 @@ export default class Message extends PolymorphicRecordModel {
 
   protected static override async assertPolymorphicTargetReadable(model: string, resId: string): Promise<void> {
     await assertTargetRecordReadable(model, resId, this.polymorphicDeniedMessage());
+  }
+
+  /**
+   * Sync create-payload normalizer: validates Type (AuthorUid via stampActor).
+   */
+  static prepareCreate(value: MessageInsert): MessageInsert {
+    return prepareCreatePayload(value);
   }
 
   @Field({
@@ -351,29 +358,5 @@ export default class Message extends PolymorphicRecordModel {
     await Notification.FanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
     return created;
-  }
-
-  /**
-   * Create stamps Type and AuthorUid from trusted identity.
-   */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    const payload = prepareCreatePayload(value as MessageInsert);
-    return super.Create<T>(payload as Partial<Insertable<T>>, returnFields);
-  }
-
-  /**
-   * CreateMany stamps Type and AuthorUid on every row.
-   */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    const rows = (values || []).map(row => prepareCreatePayload(row as MessageInsert));
-    return super.CreateMany<T>(rows as Partial<Insertable<T>>[], returnFields);
   }
 }

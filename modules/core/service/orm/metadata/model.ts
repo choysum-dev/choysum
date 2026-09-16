@@ -7,6 +7,7 @@ import type { ConstraintMeta } from './constraint';
 import { OrderBy } from '../repository';
 import type BaseModel from '../model/model';
 import type { ObjectRecord } from '../../../utils/types';
+import type { AfterMutationPolicy, AppendOnlyPolicy, PrepareWritePolicy } from '../model/model_write_policy';
 
 type ModelOrderBy = OrderBy<ObjectRecord>;
 
@@ -202,6 +203,17 @@ export interface ModelMetadata {
 
   // Only parentField remains configurable; ParentPath stays fixed.
   parentField?: string;
+
+  /** When set, Update/Delete throw APPEND_ONLY (domain defaults to application). */
+  appendOnly?: AppendOnlyPolicy;
+  /** Field name overwritten from trusted request identity (`getUserId`) on create. */
+  stampActor?: string;
+  /** Sync create-payload normalizer: static method name or function. */
+  prepareCreate?: PrepareWritePolicy;
+  /** Sync update-payload normalizer: static method name or function. */
+  prepareUpdate?: PrepareWritePolicy;
+  /** Runs after a successful Create/Update/Delete to invalidate request-scoped authz caches. */
+  afterMutation?: AfterMutationPolicy;
 
   // Onchange
   onchangeHandlers?: OnchangeHandlerMeta[]; // May be an empty array; merge logic must deduplicate by method.

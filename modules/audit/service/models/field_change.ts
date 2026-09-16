@@ -1,11 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor } from '@/core/service';
+import { Field, Model } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
-import type { Insertable, Updateable } from '@/core/service/api/input';
+import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
 import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
@@ -91,14 +90,12 @@ function resolveCorrelation(): { requestId?: string; traceId?: string } {
 type FieldChangeInsert = Partial<Insertable<FieldChange>>;
 
 /**
- * Normalize Kind and force ActorUid from trusted request identity for every create path.
+ * Normalize Kind for every create path. ActorUid is stamped by @Model stampActor.
  */
 function prepareCreatePayload(value: FieldChangeInsert): FieldChangeInsert {
-  const uid = getUserId();
   return {
     ...value,
     Kind: assertFieldChangeKind(value.Kind == null ? '' : String(value.Kind)),
-    ActorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
   };
 }
 
@@ -130,6 +127,9 @@ function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelecti
   application: 'audit',
   softDelete: false,
   orderBy: { field: 'At', order: 'asc' },
+  appendOnly: true,
+  stampActor: 'ActorUid',
+  prepareCreate: 'prepareCreate',
 })
 export default class FieldChange extends PolymorphicRecordModel {
   protected static override polymorphicOrderByField(): string {
@@ -146,6 +146,13 @@ export default class FieldChange extends PolymorphicRecordModel {
 
   protected static override async assertPolymorphicTargetReadable(model: string, resId: string): Promise<void> {
     await assertTargetRecordReadable(model, resId, this.polymorphicDeniedMessage());
+  }
+
+  /**
+   * Sync create-payload normalizer: validates and trims Kind.
+   */
+  static prepareCreate(value: FieldChangeInsert): FieldChangeInsert {
+    return prepareCreatePayload(value);
   }
 
   @Field({
@@ -283,69 +290,5 @@ export default class FieldChange extends PolymorphicRecordModel {
       At: at,
     });
     return created;
-  }
-
-  /**
-   * Create validates Kind, persists the trimmed Kind, and stamps ActorUid from request identity.
-   */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    const payload = prepareCreatePayload(value as FieldChangeInsert);
-    return super.Create<T>(payload as Partial<Insertable<T>>, returnFields);
-  }
-
-  /**
-   * CreateMany validates Kind, persists trimmed Kind, and stamps ActorUid on every row.
-   */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    const rows = (values || []).map(row => prepareCreatePayload(row as FieldChangeInsert));
-    return super.CreateMany<T>(rows as Partial<Insertable<T>>[], returnFields);
-  }
-
-  /** FieldChange is append-only. */
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    _condition: QueryCondition<T>,
-    _values: Partial<Updateable<T>>,
-    _returnFields?: FieldSelection<T>,
-    _options?: UpdateOptions
-  ): Promise<never> {
-    throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Update' });
-  }
-
-  /** FieldChange is append-only. */
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
-    _id: string,
-    _values: Partial<Updateable<T>>,
-    _returnFields?: FieldSelection<T>,
-    _options?: UpdateOptions
-  ): Promise<never> {
-    throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support UpdateById' });
-  }
-
-  /** FieldChange is append-only. */
-  static override async Delete<T extends BaseModel>(
-    this: ModelCtor<T>,
-    _condition: QueryCondition<T>,
-    _options?: DeleteOptions
-  ): Promise<never> {
-    throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Delete' });
-  }
-
-  /** FieldChange is append-only. */
-  static override async DeleteById<T extends BaseModel>(
-    this: ModelCtor<T>,
-    _id: string,
-    _options?: DeleteOptions
-  ): Promise<never> {
-    throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support DeleteById' });
   }
 }

@@ -3,7 +3,7 @@
 
 import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
-import type { Insertable, Updateable } from '@/core/service/api/input';
+import type { Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
@@ -11,7 +11,6 @@ import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
 import type MetaModel from '@/meta/service/models/model';
 import type MetaService from '@/meta/service/models/service';
-import AuthzMutationModel from '../mixins/authz_mutation_model';
 import { listLogicalModelSelection, assertLogicalMethods } from './_logical_model_registry';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
@@ -19,8 +18,11 @@ import { assertExclusiveScope } from './_rule_scope_helpers';
  * RoleMethodAccess stores role-level RPC allow and deny overrides at global,
  * application, model, service, or logical-model scope.
  */
-@Model('RoleMethodAccess')
-export default class RoleMethodAccess extends AuthzMutationModel {
+@Model('RoleMethodAccess', {
+  afterMutation: { invalidateAuthz: 'all' },
+  prepareCreate: 'prepareCreate',
+})
+export default class RoleMethodAccess extends BaseModel {
   /**
    * Role that owns this method-access entry.
    */
@@ -220,6 +222,13 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   }
 
   /**
+   * Sync create-payload normalizer for the write-policy pipeline.
+   */
+  static prepareCreate(values: Record<string, unknown>): void {
+    RoleMethodAccess._prepareValues(values, 'create');
+  }
+
+  /**
    * Whether this update payload needs the persisted LogicalModelName for rename checks.
    */
   private static _needsPreviousLogicalModelName(values: Record<string, unknown>): boolean {
@@ -231,34 +240,10 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   }
 
   /**
-   * Create one RoleMethodAccess row and invalidate request-scoped auth caches.
-   */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    RoleMethodAccess._prepareValues(value as Record<string, unknown>, 'create');
-    return super.Create<T>(value, returnFields);
-  }
-
-  /**
-   * Create multiple RoleMethodAccess rows and invalidate request-scoped auth caches.
-   */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    const rows = values || [];
-    for (const v of rows) {
-      RoleMethodAccess._prepareValues(v as Record<string, unknown>, 'create');
-    }
-    return super.CreateMany<T>(rows, returnFields);
-  }
-
-  /**
-   * Update RoleMethodAccess rows and invalidate request-scoped auth caches.
+   * Update RoleMethodAccess rows.
+   *
+   * Keeps an async Count proof for LogicalModelName renames without LogicalMethods
+   * (prepareUpdate cannot do IO). Authz cache invalidation is handled by afterMutation.
    */
   static override async Update<T extends BaseModel>(
     this: ModelCtor<T>,
@@ -304,7 +289,8 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   }
 
   /**
-   * Update one RoleMethodAccess row by Id and invalidate request-scoped auth caches.
+   * Update one RoleMethodAccess row by Id.
+   * Keeps a Search of the persisted LogicalModelName for rename checks (IO).
    */
   static override async UpdateById<T extends BaseModel>(
     this: ModelCtor<T>,

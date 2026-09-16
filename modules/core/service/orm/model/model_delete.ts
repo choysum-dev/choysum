@@ -5,8 +5,9 @@ import type { QueryCondition, DeleteOptions } from '../repository/types';
 import { MetadataStorage } from '../metadata';
 import type BaseModel from './model';
 import { resolveRepositoryWithSoftDeleteOptions } from './model_soft_delete_scope';
-import { collectModelUpstreamInverseFields, triggerModelUpstream } from './model_runtime_service_facade';
+import { collectModelUpstreamInverseFields, getModelRuntimeMetadata, triggerModelUpstream } from './model_runtime_service_facade';
 import { recordFieldTrackingEvents, resolveTrackingCompanyField } from './field_tracking';
+import { applyAfterMutation, assertNotAppendOnly } from './model_write_policy';
 import type { ModelCtor } from './types';
 import type { ObjectRecord } from '../../../utils/types';
 import { purgePropertyDefinitionsAfterParentDelete } from './properties_definition_purge';
@@ -29,6 +30,8 @@ export class DeleteOperations {
    * - Does not perform cascade or compute handling, matching the existing behavior.
    */
   static async Delete<T extends BaseModel>(ModelCtor: ModelCtor<T>, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
+    const meta = getModelRuntimeMetadata(ModelCtor);
+    assertNotAppendOnly(meta, 'Delete');
     const repository = DeleteOperations.resolveRepository(ModelCtor, options);
     const upstreamInverseFields = collectModelUpstreamInverseFields(ModelCtor);
     const companyField = resolveTrackingCompanyField(MetadataStorage.instance.getModelMetadata(ModelCtor as any));
@@ -36,6 +39,9 @@ export class DeleteOperations {
     const metaFields = MetadataStorage.instance.getModelMetadata(ModelCtor as any)?.fields;
     if (metaFields?.has(companyField)) {
       snapshotFields.push(companyField);
+    }
+    if (meta.afterMutation?.invalidateAuthz === 'usersFromPayload' && metaFields?.has('UserId')) {
+      snapshotFields.push('UserId');
     }
     const oldRows = await repository.search(condition as unknown, {
       fields: snapshotFields as unknown,
@@ -78,6 +84,11 @@ export class DeleteOperations {
         }
       }
     }
+
+    applyAfterMutation(meta, {
+      operation: 'delete',
+      beforeEntities: (oldRows || []) as ObjectRecord[],
+    });
 
     return result.length;
   }
