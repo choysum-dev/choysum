@@ -103,8 +103,8 @@ export function parseSortSpecs(orderBy: unknown): SortSpec[] {
 
 export function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortSpec[]): number {
   for (const spec of specs) {
-    const av = toComparableValue((a as Record<string, unknown>)[spec.field]);
-    const bv = toComparableValue((b as Record<string, unknown>)[spec.field]);
+    const av = toComparableValue((a as Record<string, unknown> | null | undefined)?.[spec.field]);
+    const bv = toComparableValue((b as Record<string, unknown> | null | undefined)?.[spec.field]);
     if (av == null && bv == null) continue;
     if (av == null) return spec.desc ? 1 : -1;
     if (bv == null) return spec.desc ? -1 : 1;

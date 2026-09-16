@@ -291,7 +291,7 @@ export default class MetaModuleIndex extends BaseModel {
 
     const projected = projectFields(finalRows, requestedFields);
     const hydrateFields = requestedFields.length > 0 ? (requestedFields as FieldSelection<T>) : undefined;
-    return projected.map(row => this.hydrate<T>(row as never, hydrateFields));
+    return projected.map(row => this.hydrate<T>(row as Record<string, unknown>, hydrateFields));
   }
 
   static async Count<T extends BaseModel>(
