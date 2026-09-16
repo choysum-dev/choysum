@@ -3,6 +3,7 @@
 
 /**
  * Compile-only guard: collection APIs infer the row type from the calling ctor.
+ * Assertions live in a never-invoked function so module evaluation does not run ORM calls.
  */
 import BaseModel from './model';
 
@@ -10,15 +11,18 @@ class Probe extends BaseModel {
   Name!: string;
 }
 
-const created: Promise<Probe> = Probe.Create({ Name: 'x' });
-void created;
+function typecheckStaticThis(): void {
+  const created: Promise<Probe> = Probe.Create({ Name: 'x' });
+  void created;
 
-const searched: Promise<Probe[]> = Probe.Search(['Name', '=', 'x']);
-void searched;
+  const searched: Promise<Probe[]> = Probe.Search(['Name', '=', 'x']);
+  void searched;
 
-const browsed: Promise<Probe[]> = Probe.BrowseMany(['id'], ['Name']);
-void browsed;
+  const browsed: Promise<Probe[]> = Probe.BrowseMany(['id'], ['Name']);
+  void browsed;
 
-// @ts-expect-error unknown field is not a QueryCondition path
-const invalidSearch = Probe.Search(['NoSuch', '=', 1]);
-void invalidSearch;
+  // @ts-expect-error unknown field is not a QueryCondition path
+  const invalidSearch = Probe.Search(['NoSuch', '=', 1]);
+  void invalidSearch;
+}
+void typecheckStaticThis;
