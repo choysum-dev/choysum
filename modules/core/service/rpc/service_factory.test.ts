@@ -33,11 +33,16 @@ test('createServiceByModel should throw when service factory missing', () => {
 
 test('createServiceByModel should throw when factory returns a non-instance value', () => {
   const modelName = `null.Model.${Date.now()}`;
-  registerServiceFactory(modelName, () => null);
-  expect(() => createServiceByModel<typeof BaseModel>(modelName)).toThrow(
-    `Service factory for model '${modelName}' returned no service instance.`
-  );
-  unregisterServiceFactory(modelName);
+  try {
+    for (const value of [undefined, null, 0, 'service'] as const) {
+      registerServiceFactory(modelName, () => value as any);
+      expect(() => createServiceByModel<typeof BaseModel>(modelName)).toThrow(
+        `Service factory for model '${modelName}' returned no service instance.`
+      );
+    }
+  } finally {
+    unregisterServiceFactory(modelName);
+  }
 });
 
 test('createServiceByModel should accept callable function service instances', () => {

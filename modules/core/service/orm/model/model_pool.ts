@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { raiseDomainError } from '@/core/service/error';
-import type { MissingModelCtorTypeArgument, ModelConstructor, ModelService } from '../../../rpc/types';
+import type { ModelConstructor, ModelCtorOrMissingSentinel, ModelService } from '../../../rpc/types';
 import { createServiceByModel } from '../../rpc/service_factory';
 import { MetadataStorage } from '../metadata/storage';
 import { lookupModelCtorByFullName } from './model_ctor_lookup';
@@ -19,7 +19,7 @@ import type BaseModel from './model';
 export function pool<C extends ModelConstructor = never>(
   application: string,
   shortName: string
-): [C] extends [never] ? MissingModelCtorTypeArgument : C {
+): ModelCtorOrMissingSentinel<C> {
   const app = String(application || '').trim();
   const short = String(shortName || '').trim();
   if (!short) {
@@ -37,7 +37,7 @@ export function pool<C extends ModelConstructor = never>(
   if (!ctor) {
     raiseDomainError('core', 'POOL_MODEL_NOT_FOUND', `model ${fullName} is not registered`);
   }
-  return ctor as unknown as [C] extends [never] ? MissingModelCtorTypeArgument : C;
+  return ctor as unknown as ModelCtorOrMissingSentinel<C>;
 }
 
 /**

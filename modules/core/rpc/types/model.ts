@@ -134,6 +134,11 @@ export type MissingModelCtorTypeArgument = {
   readonly __modelCtorTypeArgumentRequired: never;
 };
 
+/** Result of pool when the ctor type argument is provided, else the omit sentinel. */
+export type ModelCtorOrMissingSentinel<C extends ModelConstructor> = [C] extends [never]
+  ? MissingModelCtorTypeArgument
+  : C;
+
 export type ModelService<TCtor extends ModelConstructor> = [TCtor] extends [never]
   ? MissingModelCtorTypeArgument
   : CrudService<TCtor> & {

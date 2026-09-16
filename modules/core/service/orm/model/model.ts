@@ -66,7 +66,7 @@ import { browseModel, browseManyModels, searchModels, countModels, readGroupedMo
 import { withModelSavepoint, hydrateModelFacade, toPlainObject as toPlainObjectExternal, toEntity as toEntityExternal } from './model_edge_facade';
 import { runModelOnchange } from './model_runtime_service_facade';
 import { pool as poolModel, dial as dialService } from './model_pool';
-import type { MissingModelCtorTypeArgument, ModelConstructor, ModelService } from '../../../rpc/types';
+import type { ModelConstructor, ModelCtorOrMissingSentinel, ModelService } from '../../../rpc/types';
 import { runDefaultGetPipeline } from './model_default_get_pipeline';
 import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
@@ -303,7 +303,7 @@ class BaseModel {
   static pool<C extends ModelConstructor = never>(
     this: typeof BaseModel,
     shortName: string
-  ): [C] extends [never] ? MissingModelCtorTypeArgument : C {
+  ): ModelCtorOrMissingSentinel<C> {
     const app = String(MetadataStorage.instance.getModelMetadata(this as any)?.application || '').trim();
     return poolModel<C>(app, shortName);
   }
