@@ -14,13 +14,23 @@ import (
 
 // Canonical @Hook* decorator forms used by module sources. Aliased / dynamic
 // registration is not detected (authors should use the canonical decorator names).
+// Generic args use [^()\n]* so nested brackets like <Map<string, number>> still match.
 var hookPhaseDecoratorPatterns = map[Phase]*regexp.Regexp{
-	PhasePreInit:       regexp.MustCompile(`@HookPreInit\s*(?:<[^>]*>)?\s*\(`),
-	PhasePostInit:      regexp.MustCompile(`@HookPostInit\s*(?:<[^>]*>)?\s*\(`),
-	PhasePreUpgrade:    regexp.MustCompile(`@HookPreUpgrade\s*(?:<[^>]*>)?\s*\(`),
-	PhasePostUpgrade:   regexp.MustCompile(`@HookPostUpgrade\s*(?:<[^>]*>)?\s*\(`),
-	PhasePreUninstall:  regexp.MustCompile(`@HookPreUninstall\s*(?:<[^>]*>)?\s*\(`),
-	PhasePostUninstall: regexp.MustCompile(`@HookPostUninstall\s*(?:<[^>]*>)?\s*\(`),
+	PhasePreInit:       regexp.MustCompile(`@HookPreInit\s*(?:<[^()\n]*>)?\s*\(`),
+	PhasePostInit:      regexp.MustCompile(`@HookPostInit\s*(?:<[^()\n]*>)?\s*\(`),
+	PhasePreUpgrade:    regexp.MustCompile(`@HookPreUpgrade\s*(?:<[^()\n]*>)?\s*\(`),
+	PhasePostUpgrade:   regexp.MustCompile(`@HookPostUpgrade\s*(?:<[^()\n]*>)?\s*\(`),
+	PhasePreUninstall:  regexp.MustCompile(`@HookPreUninstall\s*(?:<[^()\n]*>)?\s*\(`),
+	PhasePostUninstall: regexp.MustCompile(`@HookPostUninstall\s*(?:<[^()\n]*>)?\s*\(`),
+}
+
+func isIgnoredHookScanDir(name string) bool {
+	switch name {
+	case "node_modules", "dist", ".git", "coverage", "demo", "__tests__":
+		return true
+	default:
+		return false
+	}
 }
 
 // moduleSourceDeclaresHookPhase reports whether module sources declare a
@@ -28,8 +38,8 @@ var hookPhaseDecoratorPatterns = map[Phase]*regexp.Regexp{
 // executor Reload when the registry would be empty.
 //
 // Returns true (fail open) when sources cannot be inspected — missing Path,
-// Stat/EvalSymlinks errors, walk I/O errors, or any symlink entry — so required
-// phases still load JS rather than silently skipping real hooks.
+// Stat/EvalSymlinks errors, walk I/O errors, or an unexpected symlink — so
+// required phases still load JS rather than silently skipping real hooks.
 func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 	if module == nil {
 		return false
@@ -59,14 +69,17 @@ func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 			found = true
 			return filepath.SkipAll
 		}
-		// WalkDir does not follow symlinks; treat any as indeterminate.
+		// WalkDir does not follow symlinks. Skip known-irrelevant names first
+		// (e.g. pnpm symlinked node_modules) so they do not force fail-open.
 		if d.Type()&os.ModeSymlink != 0 {
+			if isIgnoredHookScanDir(d.Name()) {
+				return nil
+			}
 			found = true
 			return filepath.SkipAll
 		}
 		if d.IsDir() {
-			name := d.Name()
-			if name == "node_modules" || name == "dist" || name == ".git" || name == "coverage" || name == "demo" || name == "__tests__" {
+			if isIgnoredHookScanDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil

@@ -65,33 +65,6 @@ export class Hooks {
 		t.Fatal("nil module must be false")
 	}
 
-	realMod := filepath.Join(root, "real_mod")
-	mustWriteHookScanFile(t, filepath.Join(realMod, "service", "hook.ts"), `
-export class Hooks {
-  @HookPostInit()
-  static async ensure(): Promise<void> {}
-}
-`)
-	linkMod := filepath.Join(root, "link_mod")
-	if err := os.Symlink(realMod, linkMod); err != nil {
-		t.Fatal(err)
-	}
-	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: linkMod}, PhasePostInit) {
-		t.Fatal("symlinked module root must still detect @HookPostInit")
-	}
-
-	nested := filepath.Join(root, "nested_link")
-	if err := os.MkdirAll(nested, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	mustWriteHookScanFile(t, filepath.Join(nested, "other.ts"), "export {}\n")
-	if err := os.Symlink(filepath.Join(realMod, "service"), filepath.Join(nested, "service")); err != nil {
-		t.Fatal(err)
-	}
-	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: nested}, PhasePostInit) {
-		t.Fatal("nested source symlink must fail open")
-	}
-
 	typed := filepath.Join(root, "typed")
 	if err := os.MkdirAll(typed, 0o755); err != nil {
 		t.Fatal(err)
@@ -102,6 +75,18 @@ export class Hooks {
 `)
 	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: typed}, PhasePreUpgrade) {
 		t.Fatal("expected typed @HookPreUpgrade to match")
+	}
+
+	nestedGeneric := filepath.Join(root, "nested_generic")
+	if err := os.MkdirAll(nestedGeneric, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWriteHookScanFile(t, filepath.Join(nestedGeneric, "hooks.ts"), `
+  @HookPreUpgrade<Map<string, number>>()
+  static async pre(): Promise<void> {}
+`)
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: nestedGeneric}, PhasePreUpgrade) {
+		t.Fatal("expected nested generic @HookPreUpgrade to match")
 	}
 
 	skippedDirs := []string{"node_modules", "dist", "demo", "__tests__", "coverage"}
@@ -115,6 +100,51 @@ export class Hooks {
 		if moduleSourceDeclaresHookPhase(&meta.Module{Path: blocked}, PhasePostUninstall) {
 			t.Fatalf("%s contents must be ignored", dir)
 		}
+	}
+
+	realMod := filepath.Join(root, "real_mod")
+	mustWriteHookScanFile(t, filepath.Join(realMod, "service", "hook.ts"), `
+export class Hooks {
+  @HookPostInit()
+  static async ensure(): Promise<void> {}
+}
+`)
+	linkMod := filepath.Join(root, "link_mod")
+	if err := os.Symlink(realMod, linkMod); err != nil {
+		t.Skipf("symlinks unsupported on this platform: %v", err)
+	}
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: linkMod}, PhasePostInit) {
+		t.Fatal("symlinked module root must still detect @HookPostInit")
+	}
+
+	nested := filepath.Join(root, "nested_link")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWriteHookScanFile(t, filepath.Join(nested, "other.ts"), "export {}\n")
+	if err := os.Symlink(filepath.Join(realMod, "service"), filepath.Join(nested, "service")); err != nil {
+		t.Skipf("symlinks unsupported on this platform: %v", err)
+	}
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: nested}, PhasePostInit) {
+		t.Fatal("nested source symlink must fail open")
+	}
+
+	// Symlinked dependency dirs must not force fail-open (e.g. pnpm node_modules).
+	depLink := filepath.Join(root, "with_nm_link")
+	if err := os.MkdirAll(depLink, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWriteHookScanFile(t, filepath.Join(depLink, "index.ts"), "export {}\n")
+	nmTarget := filepath.Join(root, "nm_target")
+	if err := os.MkdirAll(nmTarget, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWriteHookScanFile(t, filepath.Join(nmTarget, "hook.ts"), "@HookPreInit()\n")
+	if err := os.Symlink(nmTarget, filepath.Join(depLink, "node_modules")); err != nil {
+		t.Skipf("symlinks unsupported on this platform: %v", err)
+	}
+	if moduleSourceDeclaresHookPhase(&meta.Module{Path: depLink}, PhasePreInit) {
+		t.Fatal("symlinked node_modules must be ignored, not fail-open")
 	}
 }
 
