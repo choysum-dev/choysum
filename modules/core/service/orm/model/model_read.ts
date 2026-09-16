@@ -42,7 +42,7 @@ import { mergeCallerConditionWithForField } from './model_for_field_condition';
 import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/datetime';
 
 /** Typing stub for cross-app dial; core must not import the document model. */
-abstract class AttachmentBindingModelStub extends BaseModel {}
+declare abstract class AttachmentBindingModelStub extends BaseModel {}
 
 /**
  * Read-related delegated operations.

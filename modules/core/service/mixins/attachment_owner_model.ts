@@ -16,7 +16,7 @@ type AttachmentBindingService = {
 };
 
 /** Typing stub: core must not import document.AttachmentBinding. */
-abstract class DocumentAttachmentBindingStub extends BaseModel {}
+declare abstract class DocumentAttachmentBindingStub extends BaseModel {}
 
 /**
  * Opt-in dial facade for business models with attachment owner fields.

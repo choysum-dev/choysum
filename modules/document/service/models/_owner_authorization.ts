@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { dial } from '@/core/service';
-import BaseModel from '@/core/service/orm/model/model';
+import type BaseModel from '@/core/service/orm/model/model';
 import { assertRecordReadable } from '@/core/service/orm/model';
 import { parseConditionEnvelopeFromUnknown, parseFieldRuleSpecFromUnknown, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';

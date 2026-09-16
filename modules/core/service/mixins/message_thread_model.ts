@@ -22,8 +22,8 @@ type FollowerService = {
 };
 
 /** Typing stubs: core must not import message.Message / message.Follower. */
-abstract class MessageModelStub extends BaseModel {}
-abstract class FollowerModelStub extends BaseModel {}
+declare abstract class MessageModelStub extends BaseModel {}
+declare abstract class FollowerModelStub extends BaseModel {}
 
 /**
  * Opt-in dial facade for business models that participate in a message thread

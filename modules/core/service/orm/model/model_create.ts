@@ -52,7 +52,7 @@ type AttachmentBindingServiceLike = {
 };
 
 /** Typing stub for cross-app dial; core must not import the document model. */
-abstract class AttachmentBindingModelStub extends BaseModel {}
+declare abstract class AttachmentBindingModelStub extends BaseModel {}
 
 function normalizeText(value: unknown): string | undefined {
   const text = String(value ?? '').trim();

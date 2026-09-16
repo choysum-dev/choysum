@@ -50,7 +50,7 @@ type BindAttachmentFn = (req: {
 type AttachmentBindingServiceLike = { Bind?: BindAttachmentFn };
 
 /** Typing stub: message must not import document.AttachmentBinding. */
-abstract class AttachmentBindingStub extends BaseModel {}
+declare abstract class AttachmentBindingStub extends BaseModel {}
 
 type DialFn = (fullModelName: string) => AttachmentBindingServiceLike;
 type XidNewFn = () => string | null | undefined;

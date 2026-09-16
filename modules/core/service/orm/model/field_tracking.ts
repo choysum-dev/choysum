@@ -13,7 +13,7 @@
 import { dial } from './model_pool';
 import { MetadataStorage } from '../metadata';
 import type { FieldMetadata } from '../metadata/field';
-import BaseModel from './model';
+import type BaseModel from './model';
 import type { ModelCtor } from './types';
 import type { ObjectRecord } from '../../../utils/types';
 import { getActiveCompanyId } from '../../runtime/context';
