@@ -41,7 +41,7 @@ export function createServiceByModel<TCtor extends ModelConstructor = never>(mod
     throw new Error(`Service factory for model '${modelName}' not found. Make sure the module is loaded.`);
   }
   const service = factory();
-  if (!service || typeof service !== 'object') {
+  if (!service || (typeof service !== 'object' && typeof service !== 'function')) {
     throw new Error(`Service factory for model '${modelName}' returned no service instance.`);
   }
   return service as ModelService<TCtor>;

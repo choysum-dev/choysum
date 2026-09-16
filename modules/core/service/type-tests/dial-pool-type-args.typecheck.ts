@@ -45,6 +45,9 @@ declare const ProbeCtor: ModelConstructor & {
 export const dialProbeOp = () => dial<typeof ProbeCtor>('probe.Model');
 export type DialKeepsModelStatics = ExpectTrue<'ProbeOp' extends keyof ReturnType<typeof dialProbeOp> ? true : false>;
 
+export const factoryProbeOp = () => createServiceByModel<typeof ProbeCtor>('probe.Model');
+export type FactoryKeepsModelStatics = ExpectTrue<'ProbeOp' extends keyof ReturnType<typeof factoryProbeOp> ? true : false>;
+
 type AnyAnnotatedService = { Search(...args: never[]): unknown };
 // @ts-expect-error omitted dial is not assignable to an ordinary service shape
 export const omittedDialNotAssignable = (): AnyAnnotatedService => dial('probe.OmitCtor');

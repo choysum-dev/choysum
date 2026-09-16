@@ -30,3 +30,22 @@ test('createServiceByModel should throw when service factory missing', () => {
     `Service factory for model '${modelName}' not found.`
   );
 });
+
+test('createServiceByModel should throw when factory returns a non-instance value', () => {
+  const modelName = `null.Model.${Date.now()}`;
+  registerServiceFactory(modelName, () => null);
+  expect(() => createServiceByModel<typeof BaseModel>(modelName)).toThrow(
+    `Service factory for model '${modelName}' returned no service instance.`
+  );
+  unregisterServiceFactory(modelName);
+});
+
+test('createServiceByModel should accept callable function service instances', () => {
+  const modelName = `fn.Model.${Date.now()}`;
+  const serviceInstance = Object.assign(function service() {}, { Ping: () => 'pong' });
+  registerServiceFactory(modelName, () => serviceInstance);
+  const created = createServiceByModel<typeof BaseModel>(modelName) as unknown as { Ping: () => string };
+  expect(created).toBe(serviceInstance);
+  expect(created.Ping()).toBe('pong');
+  unregisterServiceFactory(modelName);
+});
