@@ -24,6 +24,9 @@ export type FieldSelection<T> = ReadonlyArray<'*' | keyof Selectable<T> | Relati
 /** Scalar / relation key names that can appear in a field selection (excludes `*` and nested objects). */
 type FieldName<T> = Exclude<FieldSelection<T>[number], object | '*'>;
 
+/** Relation keys selected via object-form {@link DeepRelationSelection} (V1 keeps the key, not nested Pick). */
+type RelationSelected<T, F extends FieldSelection<T>> = keyof Extract<F[number], DeepRelationSelection<T>>;
+
 /**
  * V1 honest projection: top-level Pick of selected keys.
  * `'*'` (or a selection that includes `'*'`) yields full {@link Selectable}.
@@ -33,7 +36,7 @@ type FieldName<T> = Exclude<FieldSelection<T>[number], object | '*'>;
 export type Projected<T, F extends FieldSelection<T>> = F extends readonly []
   ? Selectable<T>
   : Extract<F[number], '*'> extends never
-    ? Pick<Selectable<T>, Extract<F[number], FieldName<T>> & keyof Selectable<T>>
+    ? Pick<Selectable<T>, (Extract<F[number], FieldName<T>> | RelationSelected<T, F>) & keyof Selectable<T>>
     : Selectable<T>;
 
 /**

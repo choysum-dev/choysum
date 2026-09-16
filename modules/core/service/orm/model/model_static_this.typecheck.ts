@@ -7,6 +7,7 @@
  */
 import BaseModel from './model';
 import type { Projected } from '../repository/types';
+import { fields } from '../repository/types';
 
 class Probe extends BaseModel {
   Name!: string;
@@ -24,6 +25,21 @@ function typecheckStaticThis(): void {
 
   const browsedFull: Promise<Probe[]> = Probe.BrowseMany(['id']);
   void browsedFull;
+
+  const searchedProjected: Promise<Array<Projected<Probe, ['Name']>>> = Probe.Search([], {
+    fields: fields<Probe>()('Name'),
+  });
+  void searchedProjected;
+
+  const createdProjected: Promise<Projected<Probe, ['Name']>> = Probe.Create({ Name: 'x' }, fields<Probe>()('Name'));
+  void createdProjected;
+
+  const updatedProjected: Promise<Array<Projected<Probe, ['Name']>>> = Probe.Update(
+    ['Id', '=', 'id'],
+    { Name: 'x' },
+    fields<Probe>()('Name')
+  );
+  void updatedProjected;
 
   // @ts-expect-error unknown field is not a QueryCondition path
   const invalidSearch = Probe.Search(['NoSuch', '=', 1]);
