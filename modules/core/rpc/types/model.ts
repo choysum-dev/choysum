@@ -125,8 +125,17 @@ type CrudService<C extends ModelConstructor> = {
   };
 };
 
+/**
+ * Sentinel returned by {@link ModelService} when the model ctor type argument is
+ * omitted (defaults to `never`). Unlike bare `never`, this is not assignable to
+ * ordinary service shapes, so `const svc: SomeService = dial('x')` fails closed.
+ */
+export type Hc6MissingModelCtorTypeArgument = {
+  readonly __hc6ModelCtorTypeArgumentRequired: never;
+};
+
 export type ModelService<TCtor extends ModelConstructor> = [TCtor] extends [never]
-  ? never
+  ? Hc6MissingModelCtorTypeArgument
   : CrudService<TCtor> & {
       [K in Exclude<ModelServiceMethodKey<TCtor>, keyof CrudService<TCtor>>]: TCtor[K] extends RpcServiceFn ? ClientModelService<TCtor[K]> : never;
     };
