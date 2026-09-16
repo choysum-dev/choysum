@@ -307,7 +307,7 @@ export async function copyModel<T extends BaseModel>(
   const fields = buildCopyBrowseSelection(meta);
   const row = (await ReadOperations.Browse(ModelCtor, trimmedId, fields as FieldSelection<T>)) as ObjectRecord;
   const values = buildCopyValues(
-    ModelCtor as ModelCtor,
+    ModelCtor,
     row,
     defaults,
     {

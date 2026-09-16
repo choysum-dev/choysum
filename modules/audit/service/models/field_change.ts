@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor } from '@/core/service';
+import { BaseModel, Field, Model, type ModelClass } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
@@ -289,7 +289,7 @@ export default class FieldChange extends PolymorphicRecordModel {
    * Create validates Kind, persists the trimmed Kind, and stamps ActorUid from request identity.
    */
   static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
+    this: ModelClass<T>,
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
@@ -301,7 +301,7 @@ export default class FieldChange extends PolymorphicRecordModel {
    * CreateMany validates Kind, persists trimmed Kind, and stamps ActorUid on every row.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
+    this: ModelClass<T>,
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
@@ -315,7 +315,7 @@ export default class FieldChange extends PolymorphicRecordModel {
 
   /** FieldChange is append-only. */
   static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
+    this: ModelClass<T>,
     _condition: QueryCondition<T>,
     _values: Partial<Updateable<T & BaseModel>>,
     _returnFields?: FieldSelection<T>,
@@ -326,7 +326,7 @@ export default class FieldChange extends PolymorphicRecordModel {
 
   /** FieldChange is append-only. */
   static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+    this: ModelClass<T>,
     _id: string,
     _values: Partial<Updateable<T & BaseModel>>,
     _returnFields?: FieldSelection<T>,
@@ -337,7 +337,7 @@ export default class FieldChange extends PolymorphicRecordModel {
 
   /** FieldChange is append-only. */
   static override async Delete<T extends BaseModel>(
-    this: ModelCtor<T>,
+    this: ModelClass<T>,
     _condition: QueryCondition<T>,
     _options?: DeleteOptions
   ): Promise<never> {
@@ -346,7 +346,7 @@ export default class FieldChange extends PolymorphicRecordModel {
 
   /** FieldChange is append-only. */
   static override async DeleteById<T extends BaseModel>(
-    this: ModelCtor<T>,
+    this: ModelClass<T>,
     _id: string,
     _options?: DeleteOptions
   ): Promise<never> {
