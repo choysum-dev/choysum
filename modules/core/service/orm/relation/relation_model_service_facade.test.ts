@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
+import type { ModelClass } from '../model/types';
+import type { FieldSelection } from '../repository/types';
 import { Field, Model } from '../decorator';
 import { CreateOperations } from '../model/model_create';
 import { UpdateOperations } from '../model/model_update';
@@ -18,14 +20,19 @@ class RelationFacadeOverrideModel extends BaseModel {
   @Field({ type: 'varchar', size: 64 })
   Name!: string;
 
-  static override async Create<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, value: Record<string, any>): Promise<T> {
+  static override async Create<T extends BaseModel>(
+    this: ModelClass<T>,
+    value: Record<string, any>,
+    _returnFields?: FieldSelection<T>
+  ): Promise<T> {
     return { Id: 'OVERRIDE-CREATE', ...value } as T;
   }
 
   static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelClass<T>,
     id: string,
-    values: Record<string, any>
+    values: Record<string, any>,
+    _returnFields?: FieldSelection<T>
   ): Promise<Partial<T>> {
     return { Id: id, ...values } as Partial<T>;
   }

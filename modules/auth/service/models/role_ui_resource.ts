@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition } from '@/core/service/api/query';
+import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
@@ -97,7 +97,7 @@ export default class RoleUiResource extends AuthzMutationModel {
   /**
    * Normalize and validate the Mode field for create and update operations.
    */
-  private static _validateMode(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _validateMode(values: Record<string, unknown>, mode: 'create' | 'update'): void {
     const touchesMode = Object.prototype.hasOwnProperty.call(values, 'Mode');
     if (!touchesMode && mode !== 'create') return;
 
@@ -107,7 +107,7 @@ export default class RoleUiResource extends AuthzMutationModel {
   /**
    * Run scope and mode validation before mutating RoleUiResource rows.
    */
-  private static _prepareValues(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _prepareValues(values: Record<string, unknown>, mode: 'create' | 'update'): void {
     assertExclusiveScope(values, mode, 'ui');
     this._validateMode(values, mode);
   }
@@ -116,52 +116,52 @@ export default class RoleUiResource extends AuthzMutationModel {
    * Create one RoleUiResource row and invalidate request-scoped auth caches.
    */
   static override async Create<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    value: Partial<Insertable<T & BaseModel>>,
+    this: ModelCtor<T>,
+    value: Partial<Insertable<T>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    RoleUiResource._prepareValues(value as any, 'create');
-    return (await super.Create(value as any, returnFields as any)) as unknown as T;
+    RoleUiResource._prepareValues(value as Record<string, unknown>, 'create');
+    return super.Create<T>(value, returnFields);
   }
 
   /**
    * Create multiple RoleUiResource rows and invalidate request-scoped auth caches.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    values: Partial<Insertable<T & BaseModel>>[],
+    this: ModelCtor<T>,
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const rows = values || [];
-    for (const v of rows) RoleUiResource._prepareValues(v as any, 'create');
-    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
+    for (const v of rows) RoleUiResource._prepareValues(v as Record<string, unknown>, 'create');
+    return super.CreateMany<T>(rows, returnFields);
   }
 
   /**
    * Update RoleUiResource rows and invalidate request-scoped auth caches.
    */
   static override async Update<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     condition: QueryCondition<T>,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>[]> {
-    RoleUiResource._prepareValues(values as any, 'update');
-    return (await super.Update(condition as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>[];
+    RoleUiResource._prepareValues(values as Record<string, unknown>, 'update');
+    return super.Update<T>(condition, values, returnFields, options);
   }
 
   /**
    * Update one RoleUiResource row by Id and invalidate request-scoped auth caches.
    */
   static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     id: string,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>> {
-    RoleUiResource._prepareValues(values as any, 'update');
-    return (await super.UpdateById(id as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>;
+    RoleUiResource._prepareValues(values as Record<string, unknown>, 'update');
+    return super.UpdateById<T>(id, values, returnFields, options);
   }
 }

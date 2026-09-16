@@ -10,6 +10,7 @@ export type {
   CountOptions,
   UpdateOptions,
   DeleteOptions,
+  SoftDeleteOptions,
   OrderBy,
   AggregateFunction,
   GroupBySpec,

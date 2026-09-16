@@ -60,7 +60,8 @@ declare global {
     toBeLessThan(expected: number): void;
     toBeLessThanOrEqual(expected: number): void;
     toThrow(expected?: string | RegExp): void;
-    toBeInstanceOf(expected: abstract new (...args: any[]) => any): void;
+    // Function keeps ErrorConstructor assignable under hard-cut ctor typing.
+    toBeInstanceOf(expected: Function): void;
   }
 
   interface ExpectStatic {

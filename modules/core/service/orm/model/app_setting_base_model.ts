@@ -24,7 +24,7 @@ function fail(code: string, message: string): never {
 }
 
 function storeMeta(ctor: ModelCtor<AppSettingBaseModel>) {
-  return MetadataStorage.instance.getModelMetadata(ctor as any);
+  return MetadataStorage.instance.getModelMetadata(ctor);
 }
 
 function storeApplication(ctor: ModelCtor<AppSettingBaseModel>): string {
@@ -86,9 +86,9 @@ async function findByKey(
   ctor: ModelCtor<AppSettingBaseModel>,
   key: string
 ): Promise<AppSettingBaseModel | undefined> {
-  const rows = await (ctor as any).Search(
-    { And: [['Key', '=', key]] } as any,
-    { fields: ['Id', 'Key', 'Value'] as any, limit: 2 } as any
+  const rows = await ctor.Search<AppSettingBaseModel>(
+    { And: [['Key', '=', key]] },
+    { fields: ['Id', 'Key', 'Value'], limit: 2 }
   );
   return (rows && rows[0]) || undefined;
 }
@@ -134,7 +134,7 @@ export default class AppSettingBaseModel extends BaseModel {
     const found = await memoizeInReqState(appSettingReqState(), memoKey, async () => {
       const row = await findByKey(this, k);
       if (!row) return { miss: true as const };
-      return { miss: false as const, value: String((row as any).Value ?? '') };
+      return { miss: false as const, value: String(row.Value ?? '') };
     });
 
     if (!found || (found as { miss?: boolean }).miss) {
@@ -155,11 +155,11 @@ export default class AppSettingBaseModel extends BaseModel {
     const application = resolveWritableApplication(this);
 
     const existing = await findByKey(this, k);
-    const previous = existing ? String((existing as any).Value ?? '') : null;
+    const previous = existing ? String(existing.Value ?? '') : null;
 
     if (value === null || value === undefined) {
       if (existing?.Id) {
-        await (this as any).DeleteById(existing.Id);
+        await this.DeleteById<AppSettingBaseModel>(existing.Id);
       }
       invalidateAppSettingMemo(application, k);
       return previous;
@@ -171,21 +171,21 @@ export default class AppSettingBaseModel extends BaseModel {
         invalidateAppSettingMemo(application, k);
         return previous;
       }
-      await (this as any).UpdateById(existing.Id, { Value: stored } as any);
+      await this.UpdateById<AppSettingBaseModel>(existing.Id, { Value: stored });
       invalidateAppSettingMemo(application, k);
       return previous;
     }
 
     try {
-      await (this as any).Create({ Key: k, Value: stored } as any);
+      await this.Create<AppSettingBaseModel>({ Key: k, Value: stored });
     } catch (err) {
       // Concurrent Create on the same absent key: unique hit → reload and update.
       if (!isUniqueConstraintError(err)) throw err;
       const raced = await findByKey(this, k);
       if (!raced?.Id) throw err;
-      const racedPrevious = String((raced as any).Value ?? '');
+      const racedPrevious = String(raced.Value ?? '');
       if (racedPrevious !== stored) {
-        await (this as any).UpdateById(raced.Id, { Value: stored } as any);
+        await this.UpdateById<AppSettingBaseModel>(raced.Id, { Value: stored });
       }
       invalidateAppSettingMemo(application, k);
       return racedPrevious;
