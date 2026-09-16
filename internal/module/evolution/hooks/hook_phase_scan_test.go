@@ -148,6 +148,110 @@ export class Hooks {
 	}
 }
 
+func TestModuleSourceDeclaresHookPhase_CoverageEdges(t *testing.T) {
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: t.TempDir()}, Phase("unknown")) {
+		t.Fatal("unknown phase must fail open")
+	}
+
+	fileRoot := filepath.Join(t.TempDir(), "not_a_dir.ts")
+	mustWriteHookScanFile(t, fileRoot, "export {}\n")
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: fileRoot}, PhasePreInit) {
+		t.Fatal("file Path must fail open")
+	}
+
+	t.Run("stat error after eval", func(t *testing.T) {
+		dir := t.TempDir()
+		old := hookPhaseScanStat
+		hookPhaseScanStat = func(string) (os.FileInfo, error) {
+			return nil, os.ErrPermission
+		}
+		t.Cleanup(func() { hookPhaseScanStat = old })
+		if !moduleSourceDeclaresHookPhase(&meta.Module{Path: dir}, PhasePreInit) {
+			t.Fatal("Stat error must fail open")
+		}
+	})
+
+	nonSrc := t.TempDir()
+	mustWriteHookScanFile(t, filepath.Join(nonSrc, "readme.md"), "# no hooks\n")
+	mustWriteHookScanFile(t, filepath.Join(nonSrc, "data.json"), "{}\n")
+	if moduleSourceDeclaresHookPhase(&meta.Module{Path: nonSrc}, PhasePostInit) {
+		t.Fatal("non-source files must not declare hooks")
+	}
+
+	emptyFile := t.TempDir()
+	mustWriteHookScanFile(t, filepath.Join(emptyFile, "empty.ts"), "")
+	if moduleSourceDeclaresHookPhase(&meta.Module{Path: emptyFile}, PhasePostInit) {
+		t.Fatal("empty source must not declare hooks")
+	}
+
+	noNL := t.TempDir()
+	pathNoNL := filepath.Join(noNL, "hook.ts")
+	if err := os.MkdirAll(filepath.Dir(pathNoNL), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// No trailing newline exercises stripLineComments' final segment.
+	if err := os.WriteFile(pathNoNL, []byte("  @HookPostInit()"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: noNL}, PhasePostInit) {
+		t.Fatal("decorator without trailing newline must match")
+	}
+
+	if got := stripLineComments(nil); len(got) != 0 {
+		t.Fatalf("nil input: got %q", got)
+	}
+	if got := stripLineComments([]byte{}); len(got) != 0 {
+		t.Fatalf("empty input: got %q", got)
+	}
+
+	t.Run("unreadable source file", func(t *testing.T) {
+		blocked := t.TempDir()
+		blockedFile := filepath.Join(blocked, "service", "secret.ts")
+		mustWriteHookScanFile(t, blockedFile, "export {}\n")
+		if err := os.Chmod(blockedFile, 0); err != nil {
+			t.Fatalf("chmod: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(blockedFile, 0o644) })
+		if _, err := os.ReadFile(blockedFile); err == nil {
+			t.Skip("filesystem permits read despite mode 0")
+		}
+		if !moduleSourceDeclaresHookPhase(&meta.Module{Path: blocked}, PhasePostInit) {
+			t.Fatal("unreadable source should fail open")
+		}
+	})
+
+	t.Run("unreadable directory", func(t *testing.T) {
+		blockedDir := t.TempDir()
+		secretDir := filepath.Join(blockedDir, "secret")
+		mustWriteHookScanFile(t, filepath.Join(secretDir, "x.ts"), "export {}\n")
+		if err := os.Chmod(secretDir, 0); err != nil {
+			t.Fatalf("chmod secret dir: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(secretDir, 0o755) })
+		if _, err := os.ReadDir(secretDir); err == nil {
+			t.Skip("filesystem permits readdir despite mode 0")
+		}
+		if !moduleSourceDeclaresHookPhase(&meta.Module{Path: blockedDir}, PhasePostInit) {
+			t.Fatal("unreadable directory should fail open")
+		}
+	})
+
+	// Hit remaining ignored-dir name and source extensions.
+	extRoot := t.TempDir()
+	for _, name := range []string{"a.tsx", "b.js", "c.jsx", "d.mts", "e.cts"} {
+		mustWriteHookScanFile(t, filepath.Join(extRoot, name), "export {}\n")
+	}
+	mustWriteHookScanFile(t, filepath.Join(extRoot, ".git", "hooks.ts"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "x.spec.ts"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "y.spec.tsx"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "z.spec.js"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "w.test.js"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "v.test.tsx"), "@HookPreInit()\n")
+	if moduleSourceDeclaresHookPhase(&meta.Module{Path: extRoot}, PhasePreInit) {
+		t.Fatal("ignored dirs/tests and empty sources must not declare pre_init")
+	}
+}
+
 func TestRunPhase_NoHooks_NoExecutorLoad(t *testing.T) {
 	testRuntimeScope := newHooksTestScope(t)
 	writeHooksRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")

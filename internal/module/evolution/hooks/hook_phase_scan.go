@@ -33,6 +33,9 @@ func isIgnoredHookScanDir(name string) bool {
 	}
 }
 
+// Overridable in tests for fail-open branches after EvalSymlinks.
+var hookPhaseScanStat = os.Stat
+
 // moduleSourceDeclaresHookPhase reports whether module sources declare a
 // canonical @Hook* decorator for phase. Used to skip RunPhase without Bundle /
 // executor Reload when the registry would be empty.
@@ -59,8 +62,11 @@ func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 		return true
 	}
 	root = resolved
-	info, err := os.Stat(root)
-	if err != nil || !info.IsDir() {
+	info, err := hookPhaseScanStat(root)
+	if err != nil {
+		return true
+	}
+	if !info.IsDir() {
 		return true
 	}
 	found := false
