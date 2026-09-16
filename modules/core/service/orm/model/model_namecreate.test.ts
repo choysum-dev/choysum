@@ -5,10 +5,12 @@ import { Field } from '../decorator/field';
 import { Model } from '../decorator/model';
 import BaseModel from './model';
 import type { ModelCtor } from './types';
+import type { Insertable } from '../repository/types';
 import {
   isWritableStoredField,
   nameCreateModels,
   resolveNameCreateField,
+  type NameCreateOptions,
 } from './model_namecreate';
 import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 
@@ -38,11 +40,11 @@ class NameCreateOverrideWidget extends BaseModel {
   static override async NameCreate<T extends BaseModel>(
     this: ModelCtor<T>,
     name: string,
-    values?: any,
-    options?: any
+    values?: Partial<Insertable<T>>,
+    options?: NameCreateOptions<T>
   ): Promise<T> {
     const kw = String(name ?? '').trim();
-    return (await (this as any).Create({ ...(values || {}), Name: kw, Code: `C-${kw}` }, options?.returnFields)) as T;
+    return this.Create<T>({ ...(values || {}), Name: kw, Code: `C-${kw}` } as Partial<Insertable<T>>, options?.returnFields);
   }
 }
 

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
+import type { ModelClass } from '../model/types';
+import type { FieldSelection } from '../repository/types';
 import { Field, Model } from '../decorator';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { ManyToOneProcessor } from './many-to-one';
@@ -13,7 +15,11 @@ class ManyToOneTarget extends BaseModel {
 
   static createCalls: Array<Record<string, any>> = [];
 
-  static override async Create<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, value: Record<string, any>): Promise<T> {
+  static override async Create<T extends BaseModel>(
+    this: ModelClass<T>,
+    value: Record<string, any>,
+    _returnFields?: FieldSelection<T>
+  ): Promise<T> {
     ManyToOneTarget.createCalls.push({ ...value });
     return { Id: `NEW-M2O-${ManyToOneTarget.createCalls.length}`, ...value } as T;
   }

@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel } from '@/core/service';
+import { BaseModel, type ModelCtor } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition } from '@/core/service/api/query';
+import type { DeleteOptions, QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { normalizeRefId, uniqStrings } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from '../models/_request_cache_invalidation';
 
@@ -34,12 +34,18 @@ export async function mutateThenInvalidateAuthzCachesForUsers<T>(
   return out;
 }
 
+type UserRoleUserIdPayload = {
+  UserId?: string | { Id: string } | null;
+};
+
 /**
  * Collect UserId refs from a UserRole create payload (single row or many).
  */
-export function userIdsFromUserRolePayloads(values: unknown): string[] {
+export function userIdsFromUserRolePayloads(
+  values: Partial<UserRoleUserIdPayload> | Array<Partial<UserRoleUserIdPayload>> | null | undefined
+): string[] {
   const rows = Array.isArray(values) ? values : values != null ? [values] : [];
-  return uniqStrings(rows.map((v: any) => normalizeRefId(v?.UserId)));
+  return uniqStrings(rows.map(v => normalizeRefId(v?.UserId)));
 }
 
 /**
@@ -56,77 +62,65 @@ export default abstract class AuthzMutationModel extends BaseModel {
    * Create one row and invalidate every request-scoped authz cache.
    */
   static override async Create<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    value: Partial<Insertable<T & BaseModel>>,
+    this: ModelCtor<T>,
+    value: Partial<Insertable<T>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Create(value as any, returnFields as any);
-      return out as unknown as T;
-    });
+    return mutateThenInvalidateAllAuthzCaches(() => super.Create<T>(value, returnFields));
   }
 
   /**
    * Create many rows and invalidate every request-scoped authz cache.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    values: Partial<Insertable<T & BaseModel>>[],
+    this: ModelCtor<T>,
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.CreateMany(values as any, returnFields as any);
-      return out as unknown as T[];
-    });
+    return mutateThenInvalidateAllAuthzCaches(() => super.CreateMany<T>(values, returnFields));
   }
 
   /**
    * Update matching rows and invalidate every request-scoped authz cache.
    */
   static override async Update<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     condition: QueryCondition<T>,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>[]> {
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-      return out as unknown as Partial<T>[];
-    });
+    return mutateThenInvalidateAllAuthzCaches(() => super.Update<T>(condition, values, returnFields, options));
   }
 
   /**
    * Update one row by Id and invalidate every request-scoped authz cache.
    */
   static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     id: string,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>> {
-    return mutateThenInvalidateAllAuthzCaches(async () => {
-      const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-      return out as unknown as Partial<T>;
-    });
+    return mutateThenInvalidateAllAuthzCaches(() => super.UpdateById<T>(id, values, returnFields, options));
   }
 
   /**
    * Delete matching rows and invalidate every request-scoped authz cache.
    */
   static override async Delete<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     condition: QueryCondition<T>,
-    options?: any
+    options?: DeleteOptions
   ): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Delete(condition as any, options as any));
+    return mutateThenInvalidateAllAuthzCaches(() => super.Delete<T>(condition, options));
   }
 
   /**
    * Delete one row by Id and invalidate every request-scoped authz cache.
    */
-  static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById(id as any, options as any));
+  static override async DeleteById<T extends BaseModel>(this: ModelCtor<T>, id: string, options?: DeleteOptions): Promise<number> {
+    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById<T>(id, options));
   }
 }

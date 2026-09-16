@@ -33,14 +33,14 @@ export type ModuleIndexRecord = {
 };
 
 /** Default search when the caller omits a filter (not applied to empty/invalid payloads). */
-export const DEFAULT_MODULE_INDEX_SEARCH: any = ['Available', '=', true];
+export const DEFAULT_MODULE_INDEX_SEARCH = ['Available', '=', true] as const;
 
 /**
  * Assert a module-index search condition shape.
  * Empty array/object is rejected — callers that want the catalog default must pass
  * {@link DEFAULT_MODULE_INDEX_SEARCH} explicitly.
  */
-export function assertSearchCondition(condition: any[] | Record<string, any>): any {
+export function assertSearchCondition(condition: unknown): unknown {
   if (condition == null) {
     throw new Error('search condition is required');
   }
@@ -81,7 +81,7 @@ export function toComparableValue(value: unknown): unknown {
   return String(value).toLowerCase();
 }
 
-export function parseSortSpecs(orderBy: any): SortSpec[] {
+export function parseSortSpecs(orderBy: unknown): SortSpec[] {
   if (!orderBy) return [];
   const rawList = Array.isArray(orderBy) ? orderBy : [orderBy];
   const specs: SortSpec[] = [];
@@ -92,9 +92,10 @@ export function parseSortSpecs(orderBy: any): SortSpec[] {
       continue;
     }
     if (typeof item !== 'object') continue;
-    const field = String((item as any).field ?? (item as any).Field ?? '').trim();
+    const rec = item as Record<string, unknown>;
+    const field = String(rec.field ?? rec.Field ?? '').trim();
     if (!field) continue;
-    const orderText = toText((item as any).order ?? (item as any).Order ?? 'asc');
+    const orderText = toText(rec.order ?? rec.Order ?? 'asc');
     specs.push({ field, desc: orderText === 'desc' });
   }
   return specs;
@@ -102,8 +103,8 @@ export function parseSortSpecs(orderBy: any): SortSpec[] {
 
 export function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortSpec[]): number {
   for (const spec of specs) {
-    const av = toComparableValue((a as any)?.[spec.field]);
-    const bv = toComparableValue((b as any)?.[spec.field]);
+    const av = toComparableValue((a as Record<string, unknown>)[spec.field]);
+    const bv = toComparableValue((b as Record<string, unknown>)[spec.field]);
     if (av == null && bv == null) continue;
     if (av == null) return spec.desc ? 1 : -1;
     if (bv == null) return spec.desc ? -1 : 1;
@@ -119,10 +120,10 @@ export function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs
 
 export function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<string, unknown>): void {
   if (Object.prototype.hasOwnProperty.call(source, 'withDeleted')) {
-    target.withDeleted = !!(source as any).withDeleted;
+    target.withDeleted = !!source.withDeleted;
   }
   if (Object.prototype.hasOwnProperty.call(source, 'onlyDeleted')) {
-    target.onlyDeleted = !!(source as any).onlyDeleted;
+    target.onlyDeleted = !!source.onlyDeleted;
   }
 }
 
@@ -175,29 +176,30 @@ export function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
   };
 }
 
-export function extractGroupedModuleNames(rows: any[]): string[] {
+export function extractGroupedModuleNames(rows: unknown[]): string[] {
   const out: string[] = [];
   for (const row of rows || []) {
-    const moduleName = String((row as any)?.ModuleName ?? (row as any)?.module_name ?? '').trim();
+    const rec = row && typeof row === 'object' ? (row as Record<string, unknown>) : {};
+    const moduleName = String(rec.ModuleName ?? rec.module_name ?? '').trim();
     if (!moduleName) continue;
     out.push(moduleName);
   }
   return out;
 }
 
-export function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): any {
+export function buildModuleNamesCondition(baseCondition: unknown, moduleNames: string[]): unknown {
   if (!Array.isArray(moduleNames) || moduleNames.length === 0) {
-    return ['Id', '=', '__never_match__'] as any;
+    return ['Id', '=', '__never_match__'];
   }
-  const inCondition = ['ModuleName', 'in', moduleNames] as any;
+  const inCondition = ['ModuleName', 'in', moduleNames];
   const isEmptyArray = Array.isArray(baseCondition) && baseCondition.length === 0;
   const isEmptyObject = !!baseCondition && !Array.isArray(baseCondition) && typeof baseCondition === 'object' && Object.keys(baseCondition).length === 0;
   if (!baseCondition || isEmptyArray || isEmptyObject) {
     return inCondition;
   }
   return {
-    And: [baseCondition as any, inCondition],
-  } as any;
+    And: [baseCondition, inCondition],
+  };
 }
 
 export function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {

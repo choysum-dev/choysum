@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import type { QueryCondition } from '../api/query';
 import type { FieldSelection } from '../api/selection';
 import BaseModel from '../orm/model/model';
+import type { ModelCtor } from '../orm/model/types';
 
 /**
  * Shared SearchByRecord skeleton for models keyed by polymorphic Model + ResId
@@ -37,29 +39,27 @@ export default abstract class PolymorphicRecordModel extends BaseModel {
   /**
    * Searches this model's rows for one target record after a readability probe.
    */
-  public static async SearchByRecord(
-    this: typeof PolymorphicRecordModel,
+  public static async SearchByRecord<C extends typeof PolymorphicRecordModel>(
+    this: C,
     model: string,
     resId: string,
-    fields?: FieldSelection<any>
-  ): Promise<Partial<any>[]> {
+    fields?: FieldSelection<InstanceType<C>>
+  ): Promise<Partial<InstanceType<C>>[]> {
     const m = String(model || '').trim();
     const id = String(resId || '').trim();
     if (!m || !id) {
       this.raisePolymorphicInvalidArgument('SearchByRecord requires Model and ResId');
     }
     await this.assertPolymorphicTargetReadable(m, id);
-    return await (this as any).Search(
-      {
-        And: [
-          ['Model', '=', m],
-          ['ResId', '=', id],
-        ],
-      },
-      {
-        fields,
-        orderBy: { field: this.polymorphicOrderByField(), order: 'asc' },
-      }
-    );
+    const condition = {
+      And: [
+        ['Model', '=', m],
+        ['ResId', '=', id],
+      ],
+    } as QueryCondition<InstanceType<C>>;
+    return (this as unknown as ModelCtor<InstanceType<C>>).Search<InstanceType<C>>(condition, {
+      fields,
+      orderBy: { field: this.polymorphicOrderByField() as Extract<keyof InstanceType<C>, string>, order: 'asc' },
+    });
   }
 }

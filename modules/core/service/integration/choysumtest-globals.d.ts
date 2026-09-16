@@ -60,7 +60,7 @@ declare global {
     toBeLessThan(expected: number): void;
     toBeLessThanOrEqual(expected: number): void;
     toThrow(expected?: string | RegExp): void;
-    toBeInstanceOf(expected: abstract new (...args: any[]) => any): void;
+    toBeInstanceOf(expected: abstract new (...args: unknown[]) => unknown): void;
   }
 
   interface ExpectStatic {

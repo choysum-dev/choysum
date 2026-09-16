@@ -96,11 +96,11 @@ const PROFILE_SPECS: Record<RuleScopeProfile, ProfileSpec> = {
   },
 };
 
-function hasOwn(values: Record<string, any>, key: string): boolean {
+function hasOwn(values: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(values, key);
 }
 
-function touchesAnyScopeField(values: Record<string, any>, fields: ScopeFieldKey[]): boolean {
+function touchesAnyScopeField(values: Record<string, unknown>, fields: ScopeFieldKey[]): boolean {
   for (const f of fields) {
     if (hasOwn(values, f)) return true;
   }
@@ -116,7 +116,7 @@ function touchesAnyScopeField(values: Record<string, any>, fields: ScopeFieldKey
  *
  * Mutates `values` in place when scope columns are validated/normalized.
  */
-export function assertExclusiveScope(values: Record<string, any>, mode: AssertExclusiveScopeMode, profile: RuleScopeProfile): void {
+export function assertExclusiveScope(values: Record<string, unknown>, mode: AssertExclusiveScopeMode, profile: RuleScopeProfile): void {
   const spec = PROFILE_SPECS[profile];
   if (!spec) {
     throw new Error(`unknown rule scope profile: ${String(profile)}`);
@@ -137,9 +137,9 @@ export function assertExclusiveScope(values: Record<string, any>, mode: AssertEx
   const ids = {} as Record<ScopeFieldKey, string | null>;
   for (const f of spec.fields) {
     if (f === 'LogicalModelName') {
-      ids[f] = assertLogicalModelName((values as any)[f]);
+      ids[f] = assertLogicalModelName(values[f]);
     } else {
-      ids[f] = normalizeRefId((values as any)[f]);
+      ids[f] = normalizeRefId(values[f]);
     }
   }
 
@@ -148,6 +148,6 @@ export function assertExclusiveScope(values: Record<string, any>, mode: AssertEx
   }
 
   for (const f of spec.fields) {
-    (values as any)[f] = ids[f];
+    values[f] = ids[f];
   }
 }

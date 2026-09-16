@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition } from '@/core/service/api/query';
+import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { listLogicalModelSelection } from './_logical_model_registry';
 import { _lt } from '../i18n';
 import Role from './role';
@@ -161,7 +161,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
    * On update, only rewrite keys present in `values` so a partial patch does not
    * null out the untouched permission column. Create still requires at least one.
    */
-  private static _validatePerms(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _validatePerms(values: Record<string, unknown>, mode: 'create' | 'update'): void {
     const hasRead = Object.prototype.hasOwnProperty.call(values, 'PermRead');
     const hasWrite = Object.prototype.hasOwnProperty.call(values, 'PermWrite');
     if (!hasRead && !hasWrite && mode !== 'create') return;
@@ -185,7 +185,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
   /**
    * Run scope and permission validation before mutating RoleFieldRule rows.
    */
-  private static _prepareValues(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _prepareValues(values: Record<string, unknown>, mode: 'create' | 'update'): void {
     assertExclusiveScope(values, mode, 'field');
     this._validatePerms(values, mode);
   }
@@ -194,53 +194,53 @@ export default class RoleFieldRule extends AuthzMutationModel {
    * Create one RoleFieldRule row and invalidate request-scoped auth caches.
    */
   static override async Create<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    value: Partial<Insertable<T & BaseModel>>,
+    this: ModelCtor<T>,
+    value: Partial<Insertable<T>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    RoleFieldRule._prepareValues(value as any, 'create');
-    return (await super.Create(value as any, returnFields as any)) as unknown as T;
+    RoleFieldRule._prepareValues(value as Record<string, unknown>, 'create');
+    return super.Create<T>(value, returnFields);
   }
 
   /**
    * Create multiple RoleFieldRule rows and invalidate request-scoped auth caches.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    values: Partial<Insertable<T & BaseModel>>[],
+    this: ModelCtor<T>,
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const rows = values || [];
-    for (const v of rows) RoleFieldRule._prepareValues(v as any, 'create');
-    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
+    for (const v of rows) RoleFieldRule._prepareValues(v as Record<string, unknown>, 'create');
+    return super.CreateMany<T>(rows, returnFields);
   }
 
   /**
    * Update RoleFieldRule rows and invalidate request-scoped auth caches.
    */
   static override async Update<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     condition: QueryCondition<T>,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>[]> {
-    RoleFieldRule._prepareValues(values as any, 'update');
-    return (await super.Update(condition as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>[];
+    RoleFieldRule._prepareValues(values as Record<string, unknown>, 'update');
+    return super.Update<T>(condition, values, returnFields, options);
   }
 
   /**
    * Update one RoleFieldRule row by Id and invalidate request-scoped auth caches.
    */
   static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     id: string,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>> {
-    RoleFieldRule._prepareValues(values as any, 'update');
-    return (await super.UpdateById(id as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>;
+    RoleFieldRule._prepareValues(values as Record<string, unknown>, 'update');
+    return super.UpdateById<T>(id, values, returnFields, options);
   }
 
   /**

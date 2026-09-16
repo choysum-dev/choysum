@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import { _lt } from '../i18n';
@@ -68,15 +68,14 @@ export default class UserRole extends AuthzMutationModel {
    * Create one UserRole row and invalidate request-scoped caches for the affected users.
    */
   static override async Create<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    value: Partial<Insertable<T & BaseModel>>,
+    this: ModelCtor<T>,
+    value: Partial<Insertable<T>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     // Role assignments can change effective permissions within the same request;
     // invalidate request-scoped authz/field/record caches for the affected users only.
     return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(value), async () => {
-      const created = await BaseModel.Create.call(this as any, value as any, returnFields as any);
-      return created as unknown as T;
+      return BaseModel.Create.call(this, value, returnFields) as Promise<T>;
     });
   }
 
@@ -84,13 +83,12 @@ export default class UserRole extends AuthzMutationModel {
    * Create multiple UserRole rows and invalidate request-scoped caches for the affected users.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    values: Partial<Insertable<T & BaseModel>>[],
+    this: ModelCtor<T>,
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(values), async () => {
-      const created = await BaseModel.CreateMany.call(this as any, values as any, returnFields as any);
-      return created as unknown as T[];
+      return BaseModel.CreateMany.call(this, values, returnFields) as Promise<T[]>;
     });
   }
 }

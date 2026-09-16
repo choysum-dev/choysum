@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, SqlCompute } from '@/core/service';
+import { BaseModel, Field, Model, SqlCompute, type ModelCtor } from '@/core/service';
 import { getModelRepository } from '@/core/service/orm/model';
+import type { QueryCondition, SearchOptions, CountOptions } from '@/core/service/api/query';
+import type { FieldSelection } from '@/core/service/api/selection';
 import { createServiceByModel } from '@/core/service/rpc';
 import { sql } from 'kysely';
 import type JobModel from '@/task/service/models/job';
@@ -180,12 +182,12 @@ export default class MetaModuleIndex extends BaseModel {
   }
 
   static async Search<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: any[] | Record<string, any> = DEFAULT_MODULE_INDEX_SEARCH,
-    options?: any
+    this: ModelCtor<T>,
+    condition: QueryCondition<T> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<T>,
+    options?: SearchOptions<T>
   ): Promise<T[]> {
     const normalized = assertSearchCondition(condition);
-    const rawOptions = { ...(options || {}) };
+    const rawOptions = { ...(options || {}) } as Record<string, unknown>;
     const requestedFields = normalizeFields(rawOptions.fields);
     const sortSpecs = parseSortSpecs(rawOptions.orderBy);
     const offset = normalizeOffset(rawOptions.offset);
@@ -204,14 +206,14 @@ export default class MetaModuleIndex extends BaseModel {
       readGroupOptions.orderBy = sortPlan.orderBy;
     }
     applySoftDeleteOptions(readGroupOptions, rawOptions);
-    const repository = getModelRepository(this as any);
+    const repository = getModelRepository(this);
     const groupedRows = await repository.readGroup({
       ...readGroupOptions,
       condition: normalized,
-    } as any);
-    const groupedModuleNames = extractGroupedModuleNames(groupedRows as any[]);
+    } as Parameters<typeof repository.readGroup>[0]);
+    const groupedModuleNames = extractGroupedModuleNames(groupedRows);
     if (groupedModuleNames.length === 0) {
-      return [] as unknown as T[];
+      return [];
     }
 
     const detailFields = [
@@ -235,7 +237,11 @@ export default class MetaModuleIndex extends BaseModel {
     };
     applySoftDeleteOptions(detailOptions, rawOptions);
 
-    const detailRows = (await (BaseModel as any).Search.call(this, buildModuleNamesCondition(normalized, groupedModuleNames), detailOptions)) as any[];
+    const detailRows = (await BaseModel.Search.call(
+      this,
+      buildModuleNamesCondition(normalized, groupedModuleNames) as QueryCondition<BaseModel>,
+      detailOptions as SearchOptions<BaseModel>
+    )) as T[];
 
     const installedByName = new Map<string, { status?: string; version?: string }>();
     if (groupedModuleNames.length > 0) {
@@ -284,14 +290,14 @@ export default class MetaModuleIndex extends BaseModel {
     }
 
     const projected = projectFields(finalRows, requestedFields);
-    const hydrateFields = requestedFields.length > 0 ? (requestedFields as any) : undefined;
-    return projected.map(row => this.hydrate(row as any, hydrateFields)) as unknown as T[];
+    const hydrateFields = requestedFields.length > 0 ? (requestedFields as FieldSelection<T>) : undefined;
+    return projected.map(row => this.hydrate<T>(row as never, hydrateFields));
   }
 
   static async Count<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    condition: any[] | Record<string, any> = DEFAULT_MODULE_INDEX_SEARCH,
-    options?: any
+    this: ModelCtor<T>,
+    condition: QueryCondition<T> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<T>,
+    options?: CountOptions
   ): Promise<number> {
     const normalized = assertSearchCondition(condition);
     const readGroupCountOptions: Record<string, unknown> = {
@@ -299,8 +305,8 @@ export default class MetaModuleIndex extends BaseModel {
       condition: normalized,
     };
     applySoftDeleteOptions(readGroupCountOptions, { ...(options || {}) });
-    const repository = getModelRepository(this as any);
-    return repository.readGroupCount(readGroupCountOptions as any);
+    const repository = getModelRepository(this);
+    return repository.readGroupCount(readGroupCountOptions as unknown as Parameters<typeof repository.readGroupCount>[0]);
   }
 
   static async RequestSync(params: RequestSyncParams = {}): Promise<string> {
@@ -321,7 +327,7 @@ export default class MetaModuleIndex extends BaseModel {
       if (runningJobId) return runningJobId;
     }
     if (ifStale && !force) {
-      const repo = getModelRepository(this as any);
+      const repo = getModelRepository(this);
       const isOriginStale = async (target: ModuleOriginType): Promise<boolean> => {
         let query = repo
           .selectQueryBuilder()

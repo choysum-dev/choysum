@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition } from '@/core/service/api/query';
+import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
@@ -154,7 +154,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   /**
    * UI-Option-A: never persist Source=ui (runtime ui-derived ACL replaces materialization).
    */
-  private static _coerceSourceManual(values: Record<string, any>, _mode: 'create' | 'update'): void {
+  private static _coerceSourceManual(values: Record<string, unknown>, _mode: 'create' | 'update'): void {
     if (!values) return;
     // Only coerce when Source is present in the payload (ui → manual). Create without Source
     // keeps the Field default factory (`manual`) so defaults stay reachable.
@@ -170,7 +170,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
    *   When omitted on an update that touches LogicalModelName without LogicalMethods, treat as a rename.
    */
   private static _assertLogicalMethodsPayload(
-    values: Record<string, any>,
+    values: Record<string, unknown>,
     mode: 'create' | 'update',
     previousLogicalModelName?: string | null
   ): void {
@@ -210,7 +210,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   }
 
   private static _prepareValues(
-    values: Record<string, any>,
+    values: Record<string, unknown>,
     mode: 'create' | 'update',
     previousLogicalModelName?: string | null
   ): void {
@@ -222,7 +222,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   /**
    * Whether this update payload needs the persisted LogicalModelName for rename checks.
    */
-  private static _needsPreviousLogicalModelName(values: Record<string, any>): boolean {
+  private static _needsPreviousLogicalModelName(values: Record<string, unknown>): boolean {
     if (!values) return false;
     const touchesMethods = Object.prototype.hasOwnProperty.call(values, 'LogicalMethods');
     const touchesLogicalName = Object.prototype.hasOwnProperty.call(values, 'LogicalModelName');
@@ -234,64 +234,64 @@ export default class RoleMethodAccess extends AuthzMutationModel {
    * Create one RoleMethodAccess row and invalidate request-scoped auth caches.
    */
   static override async Create<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    value: Partial<Insertable<T & BaseModel>>,
+    this: ModelCtor<T>,
+    value: Partial<Insertable<T>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    RoleMethodAccess._prepareValues(value as any, 'create');
-    return (await super.Create(value as any, returnFields as any)) as unknown as T;
+    RoleMethodAccess._prepareValues(value as Record<string, unknown>, 'create');
+    return super.Create<T>(value, returnFields);
   }
 
   /**
    * Create multiple RoleMethodAccess rows and invalidate request-scoped auth caches.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    values: Partial<Insertable<T & BaseModel>>[],
+    this: ModelCtor<T>,
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const rows = values || [];
     for (const v of rows) {
-      RoleMethodAccess._prepareValues(v as any, 'create');
+      RoleMethodAccess._prepareValues(v as Record<string, unknown>, 'create');
     }
-    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
+    return super.CreateMany<T>(rows, returnFields);
   }
 
   /**
    * Update RoleMethodAccess rows and invalidate request-scoped auth caches.
    */
   static override async Update<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     condition: QueryCondition<T>,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>[]> {
     let previousLogicalModelName: string | null | undefined;
     let updateCondition: QueryCondition<T> = condition;
-    if (RoleMethodAccess._needsPreviousLogicalModelName(values as any)) {
+    if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
       // Guard already proved LogicalModelName is a non-empty string after trim.
-      const next = String((values as any).LogicalModelName).trim();
+      const next = String((values as Record<string, unknown>).LogicalModelName).trim();
       // Prove every matched row already has LogicalModelName === next (no sampling).
       // Null/empty/other names fail Count equality → fail closed (null whitelist = all methods).
       // Pass the same options as super.Update so withDeleted/onlyDeleted stay aligned.
-      const matched = Number(await (this as any).Count(condition as any, options as any)) || 0;
+      const matched = Number(await this.Count<T>(condition, options)) || 0;
       if (matched > 0) {
         const alreadyAtNext =
           Number(
-            await (this as any).Count(
+            await this.Count<T>(
               {
-                And: [condition as any, ['LogicalModelName', '=', next] as any],
-              } as any,
-              options as any
+                And: [condition, ['LogicalModelName', '=', next]],
+              } as QueryCondition<T>,
+              options
             )
           ) || 0;
         if (alreadyAtNext === matched) {
           previousLogicalModelName = next;
           // Couple the write to the proof: rows that race away from `next` are skipped, not renamed.
           updateCondition = {
-            And: [condition as any, ['LogicalModelName', '=', next] as any],
-          } as any;
+            And: [condition, ['LogicalModelName', '=', next]],
+          } as QueryCondition<T>;
         } else {
           previousLogicalModelName = null;
         }
@@ -299,30 +299,30 @@ export default class RoleMethodAccess extends AuthzMutationModel {
         previousLogicalModelName = null;
       }
     }
-    RoleMethodAccess._prepareValues(values as any, 'update', previousLogicalModelName);
-    return (await super.Update(updateCondition as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>[];
+    RoleMethodAccess._prepareValues(values as Record<string, unknown>, 'update', previousLogicalModelName);
+    return super.Update<T>(updateCondition, values, returnFields, options);
   }
 
   /**
    * Update one RoleMethodAccess row by Id and invalidate request-scoped auth caches.
    */
   static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     id: string,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>> {
     let previousLogicalModelName: string | null | undefined;
-    if (RoleMethodAccess._needsPreviousLogicalModelName(values as any)) {
-      const existing = await (this as any).Search(['Id', '=', id] as any, {
-        fields: ['LogicalModelName'],
+    if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
+      const existing = await this.Search<T>(['Id', '=', id] as QueryCondition<T>, {
+        fields: ['LogicalModelName'] as FieldSelection<T>,
         limit: 1,
-      } as any);
-      previousLogicalModelName = String((existing?.[0] as any)?.LogicalModelName || '').trim() || null;
+      });
+      previousLogicalModelName = String((existing?.[0] as { LogicalModelName?: string } | undefined)?.LogicalModelName || '').trim() || null;
     }
-    RoleMethodAccess._prepareValues(values as any, 'update', previousLogicalModelName);
-    return (await super.UpdateById(id as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>;
+    RoleMethodAccess._prepareValues(values as Record<string, unknown>, 'update', previousLogicalModelName);
+    return super.UpdateById<T>(id, values, returnFields, options);
   }
 
   /**

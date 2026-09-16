@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelClass } from '@/core/service';
+import { BaseModel, Field, Model, type ModelCtor } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
@@ -289,35 +289,31 @@ export default class FieldChange extends PolymorphicRecordModel {
    * Create validates Kind, persists the trimmed Kind, and stamps ActorUid from request identity.
    */
   static override async Create<T extends BaseModel>(
-    this: ModelClass<T>,
-    value: Partial<Insertable<T & BaseModel>>,
+    this: ModelCtor<T>,
+    value: Partial<Insertable<T>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     const payload = prepareCreatePayload(value as FieldChangeInsert);
-    return (await super.Create.call(this, payload as Partial<Insertable<T & BaseModel>>, returnFields)) as T;
+    return super.Create<T>(payload as Partial<Insertable<T>>, returnFields);
   }
 
   /**
    * CreateMany validates Kind, persists trimmed Kind, and stamps ActorUid on every row.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: ModelClass<T>,
-    values: Partial<Insertable<T & BaseModel>>[],
+    this: ModelCtor<T>,
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const rows = (values || []).map(row => prepareCreatePayload(row as FieldChangeInsert));
-    return (await super.CreateMany.call(
-      this,
-      rows as Partial<Insertable<T & BaseModel>>[],
-      returnFields
-    )) as T[];
+    return super.CreateMany<T>(rows as Partial<Insertable<T>>[], returnFields);
   }
 
   /** FieldChange is append-only. */
   static override async Update<T extends BaseModel>(
-    this: ModelClass<T>,
+    this: ModelCtor<T>,
     _condition: QueryCondition<T>,
-    _values: Partial<Updateable<T & BaseModel>>,
+    _values: Partial<Updateable<T>>,
     _returnFields?: FieldSelection<T>,
     _options?: UpdateOptions
   ): Promise<never> {
@@ -326,9 +322,9 @@ export default class FieldChange extends PolymorphicRecordModel {
 
   /** FieldChange is append-only. */
   static override async UpdateById<T extends BaseModel>(
-    this: ModelClass<T>,
+    this: ModelCtor<T>,
     _id: string,
-    _values: Partial<Updateable<T & BaseModel>>,
+    _values: Partial<Updateable<T>>,
     _returnFields?: FieldSelection<T>,
     _options?: UpdateOptions
   ): Promise<never> {
@@ -337,7 +333,7 @@ export default class FieldChange extends PolymorphicRecordModel {
 
   /** FieldChange is append-only. */
   static override async Delete<T extends BaseModel>(
-    this: ModelClass<T>,
+    this: ModelCtor<T>,
     _condition: QueryCondition<T>,
     _options?: DeleteOptions
   ): Promise<never> {
@@ -346,7 +342,7 @@ export default class FieldChange extends PolymorphicRecordModel {
 
   /** FieldChange is append-only. */
   static override async DeleteById<T extends BaseModel>(
-    this: ModelClass<T>,
+    this: ModelCtor<T>,
     _id: string,
     _options?: DeleteOptions
   ): Promise<never> {

@@ -27,10 +27,7 @@ export function normalizeContainerModelName(value: unknown): string | null {
   return dot >= 0 ? raw.slice(dot + 1) || null : raw;
 }
 
-type ParentWritableProbe = (
-  parentCtor: { Search: (...args: any[]) => Promise<any[]>; new (...args: any[]): unknown },
-  containerId: string
-) => Promise<void>;
+type ParentWritableProbe = (parentCtor: ModelCtor, containerId: string) => Promise<void>;
 
 type ParentAclState = {
   propertyDefinitionParentAclBypassDepth?: number;
@@ -132,14 +129,11 @@ export function __setParentWritableProbeForTest(probe: ParentWritableProbe | und
   parentWritableProbeOverride = probe;
 }
 
-async function defaultParentWritableProbe(
-  parentCtor: { Search: (...args: any[]) => Promise<any[]> },
-  containerId: string
-): Promise<void> {
-  const rows = await parentCtor.Search({ And: [['Id', '=', containerId]] } as any, {
-    fields: ['Id'] as any,
+async function defaultParentWritableProbe(parentCtor: ModelCtor, containerId: string): Promise<void> {
+  const rows = await parentCtor.Search({ And: [['Id', '=', containerId]] }, {
+    fields: ['Id'],
     limit: 1,
-  } as any);
+  });
   if (!rows?.length) {
     fail(
       'PROPERTY_DEFINITION_PARENT_MISSING',
@@ -147,7 +141,7 @@ async function defaultParentWritableProbe(
     );
   }
 
-  const repo = RepositoryFactory.getRepository(parentCtor as any);
+  const repo = RepositoryFactory.getRepository(parentCtor);
   // Company + write RecordRule — same gates Update uses before mutating.
   await repo.assertCompanyWriteAccessForIds([containerId]);
   await repo.assertRecordRuleTargetsAllowed('write', [containerId]);
@@ -211,13 +205,13 @@ export async function assertPropertyDefinitionParentWritable(
     return;
   }
 
-  const meta = MetadataStorage.instance.getModelMetadata(defCtor as any);
+  const meta = MetadataStorage.instance.getModelMetadata(defCtor);
   const application = String((meta as any)?.application || '').trim();
   const parentCtor =
     (application ? resolveModelConstructor(`${application}.${containerModel}`) : undefined) ||
     resolveModelConstructor(containerModel!);
 
-  if (!parentCtor || typeof (parentCtor as any).Search !== 'function') {
+  if (!parentCtor || typeof parentCtor.Search !== 'function') {
     fail(
       'PROPERTY_DEFINITION_PARENT_MODEL',
       `PropertyDefinition parent model "${containerModel}" is not registered in application "${application || '?'}"`
@@ -225,7 +219,7 @@ export async function assertPropertyDefinitionParentWritable(
   }
 
   try {
-    await defaultParentWritableProbe(parentCtor as any, containerId);
+    await defaultParentWritableProbe(parentCtor, containerId);
   } catch (err: any) {
     remapParentProbeError(err, containerModel!, containerId);
   }

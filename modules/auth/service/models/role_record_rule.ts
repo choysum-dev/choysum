@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
-import type { QueryCondition } from '@/core/service/api/query';
+import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
@@ -170,7 +170,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
    * On create, if Kind is omitted, leave it unset so the Field `default: () => 'grant'`
    * applies at persistence time (keeps schema default reachable for coverage/runtime).
    */
-  private static _validateKind(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _validateKind(values: Record<string, unknown>, mode: 'create' | 'update'): void {
     const touchesKind = Object.prototype.hasOwnProperty.call(values, 'Kind');
     if (!touchesKind) return;
     (values as any).Kind = this._assertKind((values as any).Kind);
@@ -179,7 +179,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
   /**
    * Normalize RoleId when present (empty / blank → null = everyone).
    */
-  private static _normalizeRoleId(values: Record<string, any>, _mode: 'create' | 'update'): void {
+  private static _normalizeRoleId(values: Record<string, unknown>, _mode: 'create' | 'update'): void {
     const touchesRole = Object.prototype.hasOwnProperty.call(values, 'RoleId');
     if (!touchesRole) return;
 
@@ -206,7 +206,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
    * while Kind stays grant (or setting Kind=grant while RoleId stays null) may
    * not warn. Full create paths and updates that send both fields are covered.
    */
-  private static _warnGrantForEveryone(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _warnGrantForEveryone(values: Record<string, unknown>, mode: 'create' | 'update'): void {
     const kind = String((values as any).Kind ?? (mode === 'create' ? 'grant' : ''))
       .trim()
       .toLowerCase();
@@ -228,7 +228,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
   /**
    * Run scope / Kind / RoleId validation before mutating RoleRecordRule rows.
    */
-  private static _prepareValues(values: Record<string, any>, mode: 'create' | 'update'): void {
+  private static _prepareValues(values: Record<string, unknown>, mode: 'create' | 'update'): void {
     assertExclusiveScope(values, mode, 'record');
     this._validateKind(values, mode);
     this._normalizeRoleId(values, mode);
@@ -239,52 +239,52 @@ export default class RoleRecordRule extends AuthzMutationModel {
    * Create one RoleRecordRule row and invalidate request-scoped auth caches.
    */
   static override async Create<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    value: Partial<Insertable<T & BaseModel>>,
+    this: ModelCtor<T>,
+    value: Partial<Insertable<T>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
-    RoleRecordRule._prepareValues(value as any, 'create');
-    return (await super.Create(value as any, returnFields as any)) as unknown as T;
+    RoleRecordRule._prepareValues(value as Record<string, unknown>, 'create');
+    return super.Create<T>(value, returnFields);
   }
 
   /**
    * Create multiple RoleRecordRule rows and invalidate request-scoped auth caches.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
-    values: Partial<Insertable<T & BaseModel>>[],
+    this: ModelCtor<T>,
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const rows = values || [];
-    for (const v of rows) RoleRecordRule._prepareValues(v as any, 'create');
-    return (await super.CreateMany(rows as any, returnFields as any)) as unknown as T[];
+    for (const v of rows) RoleRecordRule._prepareValues(v as Record<string, unknown>, 'create');
+    return super.CreateMany<T>(rows, returnFields);
   }
 
   /**
    * Update RoleRecordRule rows and invalidate request-scoped auth caches.
    */
   static override async Update<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     condition: QueryCondition<T>,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>[]> {
-    RoleRecordRule._prepareValues(values as any, 'update');
-    return (await super.Update(condition as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>[];
+    RoleRecordRule._prepareValues(values as Record<string, unknown>, 'update');
+    return super.Update<T>(condition, values, returnFields, options);
   }
 
   /**
    * Update one RoleRecordRule row by Id and invalidate request-scoped auth caches.
    */
   static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     id: string,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: any
+    options?: UpdateOptions
   ): Promise<Partial<T>> {
-    RoleRecordRule._prepareValues(values as any, 'update');
-    return (await super.UpdateById(id as any, values as any, returnFields as any, options as any)) as unknown as Partial<T>;
+    RoleRecordRule._prepareValues(values as Record<string, unknown>, 'update');
+    return super.UpdateById<T>(id, values, returnFields, options);
   }
 }

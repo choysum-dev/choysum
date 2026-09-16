@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
+import type { ModelClass } from '../model/types';
+import type { FieldSelection } from '../repository/types';
 import { Field, Model } from '../decorator';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
@@ -43,15 +45,20 @@ class OneToManyProcessorChild extends BaseModel {
 
   static updateCalls: Array<{ id: string; values: Record<string, any> }> = [];
 
-  static override async Create<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, value: Record<string, any>): Promise<T> {
+  static override async Create<T extends BaseModel>(
+    this: ModelClass<T>,
+    value: Record<string, any>,
+    _returnFields?: FieldSelection<T>
+  ): Promise<T> {
     OneToManyProcessorChild.createCalls.push({ ...value });
     return { Id: `CREATED-${OneToManyProcessorChild.createCalls.length}`, ...value } as T;
   }
 
   static override async UpdateById<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelClass<T>,
     id: string,
-    values: Record<string, any>
+    values: Record<string, any>,
+    _returnFields?: FieldSelection<T>
   ): Promise<Partial<T>> {
     OneToManyProcessorChild.updateCalls.push({ id, values: { ...values } });
     return { Id: id, ...values } as Partial<T>;

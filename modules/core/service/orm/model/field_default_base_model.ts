@@ -16,6 +16,7 @@ import BaseModel from './model';
 import { resolveEffectiveFieldDefaults } from './field_default_resolve';
 import { resolveModelConstructor } from './model_registry';
 import type { ModelCtor } from './types';
+import type { Insertable, QueryCondition, Updateable } from '../repository/types';
 import { registerLogicalModelName } from './logical_model_registry';
 
 /** Align Odoo: False→global; True→current; id→specific. */
@@ -104,12 +105,12 @@ function resolveScopeDim(dim: FieldDefaultScopeDim, current: string | undefined,
   return id;
 }
 
-function scopeCondition(field: string, value: string | null): any {
+function scopeCondition(field: string, value: string | null): [string, string, string | null] {
   return value == null ? [field, 'is', null] : [field, '=', value];
 }
 
 function storeMeta(ctor: ModelCtor<FieldDefaultBaseModel>) {
-  return MetadataStorage.instance.getModelMetadata(ctor as any);
+  return MetadataStorage.instance.getModelMetadata(ctor);
 }
 
 function resolveTargetModel(
@@ -282,11 +283,11 @@ async function findExactRow(
 ): Promise<FieldDefaultBaseModel | undefined> {
   // Store lookup is not RecordRule-scoped (design §6.3); Method ACL gates Get/Set/Unset.
   const rows = await withRecordRuleAndFieldRuleBypass(async () =>
-    (ctor as any).Search(
+    ctor.Search<FieldDefaultBaseModel>(
       {
         And: [['Model', '=', model], ['Field', '=', field], scopeCondition('UserId', userId), scopeCondition('CompanyId', companyId)],
-      } as any,
-      { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'] as any, limit: 2 } as any
+      } as QueryCondition<FieldDefaultBaseModel>,
+      { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'], limit: 2 }
     )
   );
   return (rows && rows[0]) || undefined;
@@ -325,8 +326,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
     const { targetMeta } = resolveTargetModel(this, model);
     const fieldDef = resolveTargetField(targetMeta, field);
     const stored = normalizeStoredValue(fieldDef, value);
-    const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
-    const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
+    const userId = resolveScopeDim(opts?.userId, this.userId, 'userId');
+    const companyId = resolveScopeDim(opts?.companyId, this.companyId, 'companyId');
     const modelShort = String(model).trim();
     const fieldName = String(field).trim();
 
@@ -335,19 +336,19 @@ export default class FieldDefaultBaseModel extends BaseModel {
     // Method ACL gates Set; store rows are not RecordRule-scoped (design §6.3).
     try {
       await withRecordRuleAndFieldRuleBypass(async () => {
-        await (this as any).withSavepoint(async () => {
+        await this.withSavepoint(async () => {
           const existing = await findExactRow(this, modelShort, fieldName, userId, companyId);
           if (existing?.Id) {
-            await (this as any).UpdateById(existing.Id, { Value: stored } as any);
+            await this.UpdateById<FieldDefaultBaseModel>(existing.Id, { Value: stored } as Partial<Updateable<FieldDefaultBaseModel>>);
             return;
           }
-          await (this as any).Create({
+          await this.Create<FieldDefaultBaseModel>({
             Model: modelShort,
             Field: fieldName,
             UserId: userId,
             CompanyId: companyId,
             Value: stored,
-          } as any);
+          } as Partial<Insertable<FieldDefaultBaseModel>>);
         });
       });
     } catch (err) {
@@ -372,10 +373,10 @@ export default class FieldDefaultBaseModel extends BaseModel {
   ): Promise<unknown | undefined> {
     const { targetMeta } = resolveTargetModel(this, model);
     resolveTargetField(targetMeta, field);
-    const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
-    const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
+    const userId = resolveScopeDim(opts?.userId, this.userId, 'userId');
+    const companyId = resolveScopeDim(opts?.companyId, this.companyId, 'companyId');
     const row = await findExactRow(this, String(model).trim(), String(field).trim(), userId, companyId);
-    return row ? (row as any).Value : undefined;
+    return row ? row.Value : undefined;
   }
 
   /**
@@ -390,13 +391,13 @@ export default class FieldDefaultBaseModel extends BaseModel {
     const { targetMeta } = resolveTargetModel(this, model);
     const modelShort = String(model).trim();
     const application = resolveFieldDefaultApplication(this, targetMeta);
-    const uid = String((this as any).userId || '').trim() || null;
-    const companyId = String((this as any).companyId || '').trim() || null;
+    const uid = String(this.userId || '').trim() || null;
+    const companyId = String(this.companyId || '').trim() || null;
     const memoKey = fieldDefaultMemoKey(application, modelShort, uid, companyId);
 
     const fullRaw = await memoizeInReqState(fieldDefaultReqState(), memoKey, async () => {
       // Load all candidate rows for this model+identity (field filter applied after memo).
-      const and: any[] = [['Model', '=', modelShort]];
+      const and: QueryCondition<FieldDefaultBaseModel>[] = [['Model', '=', modelShort]];
       and.push({ Or: [scopeCondition('UserId', null), ...(uid ? [['UserId', '=', uid]] : [])] });
       if (companyId) {
         and.push({ Or: [scopeCondition('CompanyId', null), ['CompanyId', '=', companyId]] });
@@ -406,9 +407,9 @@ export default class FieldDefaultBaseModel extends BaseModel {
 
       // Silent RR+FR bypass (no Model.sudo audit); pipeline/internal read channel, §7.3.
       const rows = await withRecordRuleAndFieldRuleBypass(async () =>
-        (this as any).Search(
-          { And: and } as any,
-          { fields: ['Id', 'Field', 'UserId', 'CompanyId', 'Value'] as any } as any
+        this.Search<FieldDefaultBaseModel>(
+          { And: and } as QueryCondition<FieldDefaultBaseModel>,
+          { fields: ['Id', 'Field', 'UserId', 'CompanyId', 'Value'] }
         )
       );
       return resolveEffectiveFieldDefaults(rows || []);
@@ -438,14 +439,14 @@ export default class FieldDefaultBaseModel extends BaseModel {
   ): Promise<void> {
     const { targetMeta } = resolveTargetModel(this, model);
     resolveTargetField(targetMeta, field);
-    const userId = resolveScopeDim(opts?.userId, (this as any).userId, 'userId');
-    const companyId = resolveScopeDim(opts?.companyId, (this as any).companyId, 'companyId');
+    const userId = resolveScopeDim(opts?.userId, this.userId, 'userId');
+    const companyId = resolveScopeDim(opts?.companyId, this.companyId, 'companyId');
     const modelShort = String(model).trim();
     const row = await findExactRow(this, modelShort, String(field).trim(), userId, companyId);
     if (row?.Id) {
       // Method ACL gates Unset when exposed; store delete is not RecordRule-scoped (§6.3).
       await withRecordRuleAndFieldRuleBypass(async () => {
-        await (this as any).DeleteById(row.Id);
+        await this.DeleteById<FieldDefaultBaseModel>(row.Id);
       });
       invalidateFieldDefaultMemo(resolveFieldDefaultApplication(this, targetMeta), modelShort);
     }
