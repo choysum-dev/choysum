@@ -225,7 +225,7 @@ export class CreateOperations {
     value = this.stripComputedFields<T>(ModelCtor, value);
 
     // 2) DefaultGet — polymorphic hook (must not bypass ModelCtor.DefaultGet)
-    value = (await ModelCtor.DefaultGet(value as Partial<Insertable<T & BaseModel>>)) as Partial<Insertable<T>>;
+    value = (await ModelCtor.DefaultGet(value)) as Partial<Insertable<T>>;
 
     // 2.1) Defensively strip again so DefaultGet or callers cannot reintroduce compute fields into the create payload.
     value = this.stripComputedFields<T>(ModelCtor, value as Partial<Insertable<T>>);
@@ -450,7 +450,7 @@ export class CreateOperations {
     // Sequential: overrides may do I/O; avoid unbounded concurrency and orphaned rejections.
     const preProcessed: Array<Partial<Insertable<T>>> = [];
     for (const v of strippedInput) {
-      const next = await ModelCtor.DefaultGet(v as Partial<Insertable<T & BaseModel>>);
+      const next = await ModelCtor.DefaultGet(v);
       preProcessed.push(this.stripComputedFields<T>(ModelCtor, next as Partial<Insertable<T>>));
     }
 

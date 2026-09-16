@@ -19,8 +19,8 @@ import type { ObjectRecord } from '../../../utils/types';
  */
 export async function runDefaultGetPipeline<T extends BaseModel>(
   ModelCtor: ModelCtor<T>,
-  value: Partial<Insertable<T & BaseModel>>
-): Promise<Partial<Insertable<T & BaseModel>>> {
+  value: Partial<Insertable<T>>
+): Promise<Partial<Insertable<T>>> {
   const result: ObjectRecord = { ...(value as ObjectRecord) };
   const meta = MetadataStorage.instance.getModelMetadata(ModelCtor);
   const fieldNames = [...meta.fields.keys()];
@@ -60,7 +60,7 @@ export async function runDefaultGetPipeline<T extends BaseModel>(
 
   const withColumnDefaults = (await applyFieldColumnDefaults(
     ModelCtor,
-    result as Partial<Insertable<T & BaseModel>>
+    result as Partial<Insertable<T>>
   )) as ObjectRecord;
 
   for (const [fieldName, fm] of meta.fields) {
@@ -86,5 +86,5 @@ export async function runDefaultGetPipeline<T extends BaseModel>(
     }
   }
 
-  return withColumnDefaults as Partial<Insertable<T & BaseModel>>;
+  return withColumnDefaults as Partial<Insertable<T>>;
 }

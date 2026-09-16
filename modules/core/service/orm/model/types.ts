@@ -9,12 +9,12 @@ export type ModelFactoryArgs = [factoryToken: symbol, entity: Entity, fields?: u
 
 /**
  * Constructable model class (factory constructor only).
- * Use this as the `this` type on BaseModel collection methods.
+ * Collection methods use this as `this` so existing CRUD overrides stay compatible.
  */
 export type ModelClass<T extends BaseModel = BaseModel> = new (...args: ModelFactoryArgs) => T;
 
 /**
  * Runtime model constructor: factory construct signature plus BaseModel statics.
- * Metadata, facades, and hydration all use this type.
+ * Metadata, facades, and hydration use this type.
  */
 export type ModelCtor<T extends BaseModel = BaseModel> = ModelClass<T> & typeof BaseModel;

@@ -4,6 +4,7 @@
 import { Field } from '../decorator/field';
 import { Model } from '../decorator/model';
 import BaseModel from './model';
+import type { ModelCtor } from './types';
 import {
   isWritableStoredField,
   nameCreateModels,
@@ -35,7 +36,7 @@ class NameCreateOverrideWidget extends BaseModel {
   Code!: string;
 
   static override async NameCreate<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     name: string,
     values?: any,
     options?: any

@@ -16,7 +16,6 @@ import type {
   ReadGroupOptions,
   ReadGroupResult,
   SearchOptions,
-  Selectable,
   SoftDeleteOptions,
 } from '../repository/types';
 import type { Entity } from '../repository';
@@ -54,15 +53,16 @@ export async function browseModel<T extends BaseModel>(
 export async function browseManyModels<T extends BaseModel>(
   ModelCtor: ModelReadFacadeCtor<T>,
   ids: string[],
-  fields?: (keyof Selectable<T>)[],
+  fields?: FieldSelection<T>,
   options?: SoftDeleteOptions
 ): Promise<T[]> {
   if (!ids.length) return [];
-  const searchOptions = fields ? ({ fields } as SearchOptions<T>) : ({} as SearchOptions<T>);
+  const searchOptions: SearchOptions<T> = {};
+  if (fields) searchOptions.fields = fields;
   if (options?.withDeleted) searchOptions.withDeleted = true;
   if (options?.onlyDeleted) searchOptions.onlyDeleted = true;
   const results = await ReadOperations.Search<T>(ModelCtor, ['Id', 'in', ids] as QueryCondition<T>, searchOptions);
-  return results.map(entity => createProxyModel(ModelCtor, entity, fields as FieldSelection<T> | undefined));
+  return results.map(entity => createProxyModel(ModelCtor, entity, fields));
 }
 
 export async function searchModels<T extends BaseModel>(

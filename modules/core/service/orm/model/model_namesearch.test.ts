@@ -4,6 +4,7 @@
 import { Field } from '../decorator/field';
 import { Model } from '../decorator/model';
 import BaseModel from './model';
+import type { ModelCtor } from './types';
 import { buildNameSearchCondition, mergeNameSearchOptions, nameSearchModels } from './model_namesearch';
 
 @Model('NameSearchWidget', { application: 'demo' })
@@ -24,7 +25,7 @@ class NameSearchOverrideWidget extends BaseModel {
   Code!: string;
 
   static override async NameSearch<T extends BaseModel>(
-    this: { new (...args: any[]): T } & typeof BaseModel,
+    this: ModelCtor<T>,
     name: string,
     condition: any = [],
     options?: any

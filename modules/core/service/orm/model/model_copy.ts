@@ -317,5 +317,5 @@ export async function copyModel<T extends BaseModel>(
     options
   );
 
-  return (await createModel(ModelCtor, values as Partial<Insertable<T & BaseModel>>)) as T;
+  return await createModel<T>(ModelCtor, values as Partial<Insertable<T>>);
 }

@@ -113,7 +113,7 @@ function resolveContainerModelName(containerFieldMeta: FieldMetadata | undefined
  */
 export async function resolveProperties(
   ModelCtor: ModelCtor<BaseModel>,
-  record: ObjectRecord | BaseModel | null | undefined,
+  record: ObjectRecord | BaseModel | Partial<BaseModel> | null | undefined,
   fieldName: string,
   opts?: ResolvePropertiesOptions
 ): Promise<ResolvedPropertyItem[]> {

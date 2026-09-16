@@ -435,7 +435,7 @@ export default class TranslationTermBaseModel extends BaseModel {
 
   static override async Create<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
-    value: Partial<Insertable<T & BaseModel>>,
+    value: Partial<Insertable<T>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     const application = hostApplication(this);
@@ -449,7 +449,7 @@ export default class TranslationTermBaseModel extends BaseModel {
 
   static override async CreateMany<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
-    values: Partial<Insertable<T & BaseModel>>[],
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const application = hostApplication(this);
@@ -464,7 +464,7 @@ export default class TranslationTermBaseModel extends BaseModel {
   static override async Update<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
     condition: QueryCondition<T>,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>[]> {
@@ -485,7 +485,7 @@ export default class TranslationTermBaseModel extends BaseModel {
   static override async UpdateById<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
     id: string,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>> {

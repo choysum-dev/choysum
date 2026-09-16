@@ -38,8 +38,8 @@ type RuntimeEntityInput = UnknownRecord | BaseModel;
  */
 export async function defaultModelValues<T extends BaseModel>(
   ModelCtor: ModelRuntimeServiceFacadeCtor<T>,
-  value: Partial<Insertable<T & BaseModel>>
-): Promise<Partial<Insertable<T & BaseModel>>> {
+  value: Partial<Insertable<T>>
+): Promise<Partial<Insertable<T>>> {
   return await DefaultOperations.DefaultGet(ModelCtor, value);
 }
 
