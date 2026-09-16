@@ -15,4 +15,42 @@ export type DeepRelationSelection<T> = {
   [K in RelationKeys<T>]?: Array<keyof Selectable<ModelElem<T[K]>> | DeepRelationSelection<ModelElem<T[K]>>>;
 };
 
-export type FieldSelection<T> = Array<'*' | keyof Selectable<T> | RelationKeys<T> | DeepRelationSelection<T>>;
+/**
+ * Field selection for Browse/Search/Create return projections.
+ * ReadonlyArray so `as const` / `fields()` helpers keep literal keys for {@link Projected}.
+ */
+export type FieldSelection<T> = ReadonlyArray<'*' | keyof Selectable<T> | RelationKeys<T> | DeepRelationSelection<T>>;
+
+/** Scalar / relation key names that can appear in a field selection (excludes `*` and nested objects). */
+type FieldName<T> = Exclude<FieldSelection<T>[number], object | '*'>;
+
+/** Relation keys selected via object-form {@link DeepRelationSelection} (V1 keeps the key, not nested Pick). */
+type RelationSelected<T, F extends FieldSelection<T>> = F[number] extends infer R
+  ? R extends DeepRelationSelection<T>
+    ? keyof R
+    : never
+  : never;
+
+/**
+ * V1 honest projection: top-level Pick of selected keys.
+ * `'*'` (or a selection that includes `'*'`) yields full {@link Selectable}.
+ * An empty selection is treated as a full row (ORM default), not `{}`.
+ * Nested {@link DeepRelationSelection} entries are not expanded (relation keys stay unprojected).
+ */
+export type Projected<T, F extends FieldSelection<T>> = F extends readonly []
+  ? Selectable<T>
+  : Extract<F[number], '*'> extends never
+    ? Pick<Selectable<T>, (Extract<F[number], FieldName<T>> | RelationSelected<T, F>) & keyof Selectable<T>>
+    : Selectable<T>;
+
+/**
+ * Build a field-selection tuple that preserves literal keys for {@link Projected} inference.
+ *
+ * @example
+ * ```ts
+ * await Model.Search(cond, { fields: fields<Model>()('Id', 'Name') });
+ * ```
+ */
+export function fields<T>() {
+  return <const F extends FieldSelection<T>>(...names: F): F => names;
+}

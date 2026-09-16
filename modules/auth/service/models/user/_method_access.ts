@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
+import { condition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
@@ -21,17 +22,17 @@ const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.Me
 
 async function metaModelId(appName: string, modelName: string): Promise<string> {
   const rows = await MetaModel.Search(
-    { And: [['Application', '=', appName], ['Name', '=', modelName]] } as any,
-    { fields: ['Id'], limit: 1 } as any
+    condition<MetaModelModel>({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
+    { fields: ['Id'] as const, limit: 1 }
   );
   return String(rows?.[0]?.Id || '').trim();
 }
 
 async function metaApplicationId(appName: string): Promise<string> {
-  const rows = await MetaApplication.Search(['Name', '=', appName] as any, {
-    fields: ['Id'],
+  const rows = await MetaApplication.Search(['Name', '=', appName], {
+    fields: ['Id'] as const,
     limit: 1,
-  } as any);
+  });
   return String(rows?.[0]?.Id || '').trim();
 }
 

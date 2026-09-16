@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
+import { condition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import type MetaApplicationModel from '@/meta/service/models/application';
@@ -47,10 +48,10 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
   const key = buildRecordRuleMetaCacheKey(appName, modelName);
   return await memoizeInReqState(state, key, async () => {
     const [appRows, modelRows] = await Promise.all([
-      MetaApplication.Search(['Name', '=', appName] as any, { fields: ['Id'], limit: 1 } as any),
+      MetaApplication.Search(['Name', '=', appName], { fields: ['Id'] as const, limit: 1 }),
       MetaModel.Search(
-        { And: [['Application', '=', appName], ['Name', '=', modelName]] } as any,
-        { fields: ['Id', 'CompanyField'], limit: 1 } as any
+        condition<MetaModelModel>({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
+        { fields: ['Id', 'CompanyField'] as const, limit: 1 }
       ),
     ]);
     const irApplicationId = String(appRows?.[0]?.Id || '').trim();
@@ -230,10 +231,10 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
 
     const RULE_FETCH_LIMIT = 5000;
     const allRules = await RoleRecordRule.Search(
-      {
+      condition<RoleRecordRule>({
         And: [{ Or: audienceOr }, [permField as any, '=', true], { Or: scopeOr }],
-      } as any,
-      { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'MetaModelId', 'MetaApplicationId'], limit: RULE_FETCH_LIMIT + 1 }
+      }),
+      { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'MetaModelId', 'MetaApplicationId'] as const, limit: RULE_FETCH_LIMIT + 1 }
     );
 
     if ((allRules || []).length > RULE_FETCH_LIMIT) {
@@ -250,16 +251,16 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     let hasUnconstrainedGrant = false;
 
     for (const r of allRules || []) {
-      const rModelId = maybeId((r as any).MetaModelId);
-      const rAppId = maybeId((r as any).MetaApplicationId);
+      const rModelId = maybeId(r.MetaModelId);
+      const rAppId = maybeId(r.MetaApplicationId);
       const modelScoped = rModelId === modelId && !rAppId;
       const appScoped = !rModelId && !!irApplicationId && rAppId === irApplicationId;
       const globalScoped = !rModelId && !rAppId;
       if (!modelScoped && !appScoped && !globalScoped) continue;
 
-      const kind = assertKind((r as any).Kind);
+      const kind = assertKind(r.Kind);
       const expr = buildRuleExpr(r, companyGate, input.roleScopesById || {});
-      const ruleId = String((r as any)?.Id || '').trim();
+      const ruleId = String(r?.Id || '').trim();
       if (kind === 'restrict') {
         if (expr != null) {
           restrictExprs.push(expr);
@@ -305,6 +306,6 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       };
     }
     // parts.length > 1 ⇒ AND-compose (never call a 1-element helper).
-    return { kind: 'expr', expr: { And: parts } as any, reason: 'grant_or_and_restricts', hitRuleIds: uniqueHitRuleIds };
+    return { kind: 'expr', expr: condition({ And: parts }), reason: 'grant_or_and_restricts', hitRuleIds: uniqueHitRuleIds };
   });
 }

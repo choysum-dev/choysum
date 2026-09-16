@@ -11,6 +11,7 @@ import {
   Insertable,
   Updateable,
   FieldSelection,
+  Projected,
   SoftDeleteOptions,
   CountOptions,
   UpdateOptions,
@@ -670,6 +671,16 @@ class BaseModel {
   /**
    * Creates one record and optionally returns a selected field projection.
    */
+  static Create<T extends BaseModel, F extends FieldSelection<T>>(
+    this: ModelClass<T>,
+    value: Partial<Insertable<T>>,
+    returnFields: F
+  ): Promise<Projected<T, F>>;
+  static Create<T extends BaseModel>(
+    this: ModelClass<T>,
+    value: Partial<Insertable<T>>,
+    returnFields?: FieldSelection<T>
+  ): Promise<T>;
   static async Create<T extends BaseModel>(
     this: ModelClass<T>,
     value: Partial<Insertable<T>>,
@@ -681,6 +692,16 @@ class BaseModel {
   /**
    * Creates multiple records and optionally returns a selected field projection.
    */
+  static CreateMany<T extends BaseModel, F extends FieldSelection<T>>(
+    this: ModelClass<T>,
+    values: Partial<Insertable<T>>[],
+    returnFields: F
+  ): Promise<Array<Projected<T, F>>>;
+  static CreateMany<T extends BaseModel>(
+    this: ModelClass<T>,
+    values: Partial<Insertable<T>>[],
+    returnFields?: FieldSelection<T>
+  ): Promise<T[]>;
   static async CreateMany<T extends BaseModel>(
     this: ModelClass<T>,
     values: Partial<Insertable<T>>[],
@@ -692,6 +713,18 @@ class BaseModel {
   /**
    * Loads a single record by Id.
    */
+  static Browse<T extends BaseModel, F extends FieldSelection<T>>(
+    this: ModelClass<T>,
+    id: string,
+    fields: F,
+    options?: SoftDeleteOptions
+  ): Promise<Projected<T, F>>;
+  static Browse<T extends BaseModel>(
+    this: ModelClass<T>,
+    id: string,
+    fields?: FieldSelection<T>,
+    options?: SoftDeleteOptions
+  ): Promise<T>;
   static async Browse<T extends BaseModel>(
     this: ModelClass<T>,
     id: string,
@@ -704,6 +737,18 @@ class BaseModel {
   /**
    * Loads multiple records by Id while preserving BrowseMany compatibility.
    */
+  static BrowseMany<T extends BaseModel, F extends FieldSelection<T>>(
+    this: ModelClass<T>,
+    ids: string[],
+    fields: F,
+    options?: SoftDeleteOptions
+  ): Promise<Array<Projected<T, F>>>;
+  static BrowseMany<T extends BaseModel>(
+    this: ModelClass<T>,
+    ids: string[],
+    fields?: FieldSelection<T>,
+    options?: SoftDeleteOptions
+  ): Promise<T[]>;
   static async BrowseMany<T extends BaseModel>(
     this: ModelClass<T>,
     ids: string[],
@@ -716,6 +761,16 @@ class BaseModel {
   /**
    * Searches for records matching a query condition.
    */
+  static Search<T extends BaseModel, F extends FieldSelection<T>>(
+    this: ModelClass<T>,
+    condition: QueryCondition<T> | [],
+    options: SearchOptions<T> & { fields: F }
+  ): Promise<Array<Projected<T, F>>>;
+  static Search<T extends BaseModel>(
+    this: ModelClass<T>,
+    condition?: QueryCondition<T> | [],
+    options?: SearchOptions<T>
+  ): Promise<T[]>;
   static async Search<T extends BaseModel>(
     this: ModelClass<T>,
     condition: QueryCondition<T> | [] = [],
@@ -762,6 +817,20 @@ class BaseModel {
   /**
    * Updates all records matching a condition and optionally returns selected fields.
    */
+  static Update<T extends BaseModel, F extends FieldSelection<T>>(
+    this: ModelClass<T>,
+    condition: QueryCondition<T>,
+    values: Partial<Updateable<T>>,
+    returnFields: F,
+    options?: UpdateOptions
+  ): Promise<Array<Projected<T, F>>>;
+  static Update<T extends BaseModel>(
+    this: ModelClass<T>,
+    condition: QueryCondition<T>,
+    values: Partial<Updateable<T>>,
+    returnFields?: FieldSelection<T>,
+    options?: UpdateOptions
+  ): Promise<Partial<T>[]>;
   static async Update<T extends BaseModel>(
     this: ModelClass<T>,
     condition: QueryCondition<T>,
@@ -775,6 +844,20 @@ class BaseModel {
   /**
    * Updates a single record by Id and optionally returns selected fields.
    */
+  static UpdateById<T extends BaseModel, F extends FieldSelection<T>>(
+    this: ModelClass<T>,
+    id: string,
+    values: Partial<Updateable<T>>,
+    returnFields: F,
+    options?: UpdateOptions
+  ): Promise<Projected<T, F>>;
+  static UpdateById<T extends BaseModel>(
+    this: ModelClass<T>,
+    id: string,
+    values: Partial<Updateable<T>>,
+    returnFields?: FieldSelection<T>,
+    options?: UpdateOptions
+  ): Promise<Partial<T>>;
   static async UpdateById<T extends BaseModel>(
     this: ModelClass<T>,
     id: string,

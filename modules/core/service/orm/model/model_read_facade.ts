@@ -40,6 +40,10 @@ function resolveReadGroupTimezone<T extends BaseModel>(ModelCtor: ModelReadFacad
   return options?.timezone ?? ctx?.timezone ?? ctx?.tz;
 }
 
+/**
+ * Browse by Id. Runtime may return a field subset when `fields` is set;
+ * callers see {@link Projected} via BaseModel overloads.
+ */
 export async function browseModel<T extends BaseModel>(
   ModelCtor: ModelReadFacadeCtor<T>,
   id: string,
@@ -50,6 +54,10 @@ export async function browseModel<T extends BaseModel>(
   return createProxyModel(ModelCtor, entity, fields);
 }
 
+/**
+ * Browse many by Id. Runtime may return a field subset when `fields` is set;
+ * callers see {@link Projected} via BaseModel overloads.
+ */
 export async function browseManyModels<T extends BaseModel>(
   ModelCtor: ModelReadFacadeCtor<T>,
   ids: string[],
@@ -65,6 +73,10 @@ export async function browseManyModels<T extends BaseModel>(
   return results.map(entity => createProxyModel(ModelCtor, entity, fields));
 }
 
+/**
+ * Search records. Runtime may return a field subset when `options.fields` is set;
+ * callers see {@link Projected} via BaseModel overloads.
+ */
 export async function searchModels<T extends BaseModel>(
   ModelCtor: ModelReadFacadeCtor<T>,
   condition: QueryCondition<T> | [] = [],

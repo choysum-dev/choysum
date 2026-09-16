@@ -29,6 +29,8 @@ import { requireText, requireUserId, requireCompanyId } from './_document_bridge
 import { mustLoadOne } from './_query_loaders';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import { isMimeTypeAllowed } from '@/core/service/utils/mime';
+import { condition } from '@/core/service/api/query';
+import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
 import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS, DEFAULT_MAX_UPLOAD_BYTES, EMPTY_SHA256, assertPrepareUploadReq, assertAuthorizeUploadPutReq, assertCommitUploadPutReq, assertUploadSessionPrincipal, assertFinalizeIdentity, assertPrepareReplayConsistency } from './_upload';
 import { throwUploadSessionExpired, throwUploadSessionFinalized, normalizeAllowedMimeTypes, buildPayloadWriteTicket, buildUploadedPayloadRefFromPayloadId, parseUploadedPayloadRefFromUnknown, isSessionExpired, buildPrepareUploadResp, buildFinalizeResp } from './_attachment_upload_codec';
 
@@ -232,14 +234,14 @@ async function findUploadSessionByBusinessRequestId(
 ): Promise<AttachmentUploadSession | null> {
   const AttachmentUploadSessionModel = getAttachmentUploadSessionModel();
   const rows = await AttachmentUploadSessionModel.Search(
-    {
+    condition<AttachmentUploadSession>({
       And: [
         ['BusinessRequestId', '=', businessRequestId],
         ['CompanyId', '=', companyId],
         ['IssuerUserId', '=', issuerUserId],
       ],
-    } as any,
-    { limit: 1 } as any
+    }),
+    { limit: 1 }
   );
   return rows[0] ?? null;
 }
@@ -247,7 +249,11 @@ async function findUploadSessionByBusinessRequestId(
 async function mustLoadUploadSession(uploadId: string): Promise<AttachmentUploadSession> {
   const AttachmentUploadSessionModel = getAttachmentUploadSessionModel();
   return mustLoadOne<AttachmentUploadSession>(
-    (condition, opts) => AttachmentUploadSessionModel.Search(condition, opts as any),
+    (cond, opts) =>
+      AttachmentUploadSessionModel.Search(
+        cond as QueryCondition<AttachmentUploadSession>,
+        opts as SearchOptions<AttachmentUploadSession> | undefined
+      ) as Promise<AttachmentUploadSession[]>,
     ['Id', '=', uploadId],
     _t('Upload session not found', { scope: 'service/models/attachment_object' }),
     { uploadId }

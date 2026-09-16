@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition, QueryCondition, SearchOptions } from '../repository/types';
+import type { BaseQueryCondition, FieldSelection, QueryCondition, SearchOptions } from '../repository/types';
 import { andRepositoryConditions, isEmptyRepositoryCondition } from '../repository/query/condition_layer';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
@@ -35,24 +35,25 @@ export function mergeNameSearchOptions<T extends BaseModel>(options?: SearchOpti
   if (options?.fields != null) return options;
   return {
     ...(options || {}),
-    fields: [...DEFAULT_NAME_SEARCH_FIELDS] as SearchOptions<T>['fields'],
+    fields: [...DEFAULT_NAME_SEARCH_FIELDS] as unknown as FieldSelection<T>,
   };
 }
-
-type NameSearchModelCtor<T extends BaseModel> = ModelCtor<T> & {
-  Search: (condition?: QueryCondition<T> | [], options?: SearchOptions<T>) => Promise<T[]>;
-};
 
 /**
  * Default NameSearch: DisplayName keyword + domain → Model.Search (D1/D2/D4).
  */
 export async function nameSearchModels<T extends BaseModel>(
-  ModelCtor: NameSearchModelCtor<T>,
+  ModelCtor: ModelCtor<T>,
   name: string,
   condition?: QueryCondition<T> | [],
   options?: SearchOptions<T>
 ): Promise<T[]> {
   const merged = buildNameSearchCondition(name, condition);
   const searchOptions = mergeNameSearchOptions(options);
-  return await ModelCtor.Search(merged, searchOptions);
+  // Default fields are Id+DisplayName; keep the NameSearch contract as full T[].
+  const search = ModelCtor.Search as (
+    condition?: QueryCondition<T> | [],
+    options?: SearchOptions<T>
+  ) => Promise<T[]>;
+  return await search.call(ModelCtor, merged, searchOptions);
 }

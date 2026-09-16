@@ -237,7 +237,11 @@ export default class MetaModuleIndex extends BaseModel {
     };
     applySoftDeleteOptions(detailOptions, rawOptions);
 
-    const detailRows = (await BaseModel.Search.call(
+    const search = BaseModel.Search as (
+      condition: QueryCondition<BaseModel> | [],
+      options?: SearchOptions<BaseModel>
+    ) => Promise<BaseModel[]>;
+    const detailRows = (await search.call(
       this,
       buildModuleNamesCondition(normalized, groupedModuleNames) as QueryCondition<BaseModel>,
       detailOptions as SearchOptions<BaseModel>

@@ -37,7 +37,7 @@ export function unregisterServiceFactory(modelName: string): void {
  */
 export function createServiceByModel(modelName: string): UntypedModelService;
 export function createServiceByModel<TCtor extends ModelConstructor>(modelName: string): ModelService<TCtor>;
-export function createServiceByModel(modelName: string): UntypedModelService {
+export function createServiceByModel(modelName: string): UntypedModelService | ModelService<ModelConstructor> {
   const factory = getServiceFactory(modelName);
   if (!factory) {
     throw new Error(`Service factory for model '${modelName}' not found. Make sure the module is loaded.`);

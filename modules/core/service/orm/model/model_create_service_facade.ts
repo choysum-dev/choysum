@@ -8,6 +8,10 @@ import { CreateOperations } from './model_create';
 
 type ModelCreateServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
+/**
+ * Create one record. Runtime may return a field subset when `returnFields` is set;
+ * callers see {@link Projected} via BaseModel overloads.
+ */
 export async function createModel<T extends BaseModel>(
   ModelCtor: ModelCreateServiceFacadeCtor<T>,
   value: Partial<Insertable<T>>,
@@ -16,6 +20,10 @@ export async function createModel<T extends BaseModel>(
   return await CreateOperations.Create<T>(ModelCtor, value, returnFields);
 }
 
+/**
+ * Create many records. Runtime may return a field subset when `returnFields` is set;
+ * callers see {@link Projected} via BaseModel overloads.
+ */
 export async function createManyModels<T extends BaseModel>(
   ModelCtor: ModelCreateServiceFacadeCtor<T>,
   values: Partial<Insertable<T>>[],

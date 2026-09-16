@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
 import { AttachmentBackend } from '../contracts';
 import { _t, _lt } from '../i18n';
 import { mustLoadOne } from './_query_loaders';
@@ -88,7 +89,11 @@ export default class StoredContent extends BaseModel {
    */
   public static async mustLoadByID(storedContentId: string): Promise<StoredContent> {
     return mustLoadOne<StoredContent>(
-      (condition, opts) => this.Search(condition, opts as any),
+      (cond, opts) =>
+        this.Search(
+          cond as QueryCondition<StoredContent>,
+          opts as SearchOptions<StoredContent> | undefined
+        ) as Promise<StoredContent[]>,
       ['Id', '=', storedContentId],
       _t('Stored content not found', { scope: 'service/models/stored_content' }),
       {

@@ -331,7 +331,10 @@ export default class Role extends AuthzMutationModel {
     let roleIdForSync: string | null = null;
     let accessIdsForSync: string[] | null = null;
     if (Object.prototype.hasOwnProperty.call(payload, 'AccessUiResourceIds')) {
-      const targetRows = await super.Search<T>(condition, { fields: ['Id'] as FieldSelection<T> });
+      const targetRows = await (super.Search as (
+        condition: QueryCondition<T> | [],
+        options?: SearchOptions<T>
+      ) => Promise<T[]>)(condition, { fields: ['Id'] as unknown as FieldSelection<T> });
       const roleIds = targetRows.map(row => normalizeRefId((row as { Id?: unknown }).Id)).filter(Boolean) as string[];
       if (roleIds.length > 1) {
         throw new Error('Role.Update with AccessUiResourceIds only supports single record update');
