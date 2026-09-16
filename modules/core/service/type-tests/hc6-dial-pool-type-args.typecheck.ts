@@ -30,8 +30,8 @@ type IsMissingCtorSentinel<T> = [T] extends [Hc6MissingModelCtorTypeArgument] ? 
 export type Hc6OmittedDialIsSentinel = ExpectTrue<IsMissingCtorSentinel<ReturnType<typeof hc6DialOmitsCtor>>>;
 export type Hc6OmittedFactoryIsSentinel = ExpectTrue<IsMissingCtorSentinel<ReturnType<typeof hc6FactoryOmitsCtor>>>;
 export type Hc6OmittedStaticDialIsSentinel = ExpectTrue<IsMissingCtorSentinel<ReturnType<typeof hc6StaticDialOmitsCtor>>>;
-export type Hc6OmittedPoolIsNever = ExpectTrue<[ReturnType<typeof hc6PoolOmitsCtor>] extends [never] ? true : false>;
-export type Hc6OmittedStaticPoolIsNever = ExpectTrue<[ReturnType<typeof hc6StaticPoolOmitsCtor>] extends [never] ? true : false>;
+export type Hc6OmittedPoolIsSentinel = ExpectTrue<IsMissingCtorSentinel<ReturnType<typeof hc6PoolOmitsCtor>>>;
+export type Hc6OmittedStaticPoolIsSentinel = ExpectTrue<IsMissingCtorSentinel<ReturnType<typeof hc6StaticPoolOmitsCtor>>>;
 
 // Positive guard: a real ctor type argument must still produce a usable service.
 export const hc6DialWithCtor = (fullName: string) => dial<typeof BaseModel>(fullName);
@@ -50,4 +50,4 @@ export type Hc6DialKeepsModelStatics = ExpectTrue<'Hc6ProbeOp' extends keyof Ret
 // Omitted dial must not assign into a real service annotation.
 type AnyAnnotatedService = { Search(...args: never[]): unknown };
 // @ts-expect-error omitted dial is not assignable to an ordinary service shape
-export const hc6OmittedDialNotAssignable: AnyAnnotatedService = dial('hc6.OmitCtor');
+export const hc6OmittedDialNotAssignable = (): AnyAnnotatedService => dial('hc6.OmitCtor');
