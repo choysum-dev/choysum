@@ -13,11 +13,10 @@ import { LockUtils } from '../utils/lock';
 import type BaseModel from './model';
 import { browseModel } from './model_read_facade';
 import { updateModels } from './model_update_service_facade';
-import type { RuntimeModelCtor } from './types';
-
+import type { ModelStatic } from './types';
 export type FieldCompanyValuesMap = CompanyValueMap;
 
-type FieldCompanyValuesCtor<T extends BaseModel> = RuntimeModelCtor<T>;
+type FieldCompanyValuesCtor<T extends BaseModel> = ModelStatic<T>;
 
 function resolveCompanyDependentFieldMeta(ModelCtor: FieldCompanyValuesCtor<BaseModel>, fieldName: string) {
   const name = String(fieldName || '').trim();

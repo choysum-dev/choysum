@@ -15,11 +15,11 @@ import { OnchangeOperations } from './model_onchange';
 import { ComputeEngine } from '../../runtime/compute/engine';
 import { ComputeCascadeEngine } from '../../runtime/compute/cascade';
 import { getCachedModelMetadata } from './model_runtime';
-import type { RuntimeModelCtor } from './types';
+import type { ModelStatic } from './types';
 import { asObjectRecord } from '../../../utils/object';
 import type { UnknownRecord } from '../../../utils/types';
 
-type ModelRuntimeServiceFacadeCtor<T extends BaseModel> = RuntimeModelCtor<T>;
+type ModelRuntimeServiceFacadeCtor<T extends BaseModel> = ModelStatic<T>;
 
 type ModelOnchangeOptions = {
   withCompute?: boolean;

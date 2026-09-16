@@ -17,8 +17,7 @@ import {
   resolveRepositoryPlatformRejectUnknownFields,
 } from './platform_helpers';
 import { validatePropertiesFieldsOnWrite } from '../../model/properties_write';
-import type { RuntimeModelCtor } from '../../model/types';
-
+import type { ModelStatic } from '../../model/types';
 export { selectPrimaryValidationIssue, wrapRepositoryValidationError } from './error_helpers';
 export { throwRepositorySqlWriteError } from './sql_helpers';
 export {
@@ -61,7 +60,7 @@ export async function validateRepositoryWrite(params: {
       }
     );
     await validatePropertiesFieldsOnWrite({
-      ModelCtor: meta.type as RuntimeModelCtor<BaseModel>,
+      ModelCtor: meta.type as ModelStatic<BaseModel>,
       input: input as ObjectRecord,
       current: current as ObjectRecord | undefined,
       mode,

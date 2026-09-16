@@ -4,8 +4,7 @@
 import type { BaseQueryCondition, QueryCondition, SearchOptions } from '../repository/types';
 import { andRepositoryConditions, isEmptyRepositoryCondition } from '../repository/query/condition_layer';
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
-
+import type { ModelStatic } from './types';
 const DEFAULT_NAME_SEARCH_FIELDS = ['Id', 'DisplayName'] as const;
 
 /**
@@ -40,7 +39,7 @@ export function mergeNameSearchOptions<T extends BaseModel>(options?: SearchOpti
   };
 }
 
-type NameSearchModelCtor<T extends BaseModel> = RuntimeModelCtor<T> & {
+type NameSearchModelCtor<T extends BaseModel> = ModelStatic<T> & {
   Search: (condition?: QueryCondition<T> | [], options?: SearchOptions<T>) => Promise<T[]>;
 };
 

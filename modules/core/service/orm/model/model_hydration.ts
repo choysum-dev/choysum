@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { InstantiableModelCtor } from './types';
+import type { ModelStatic } from './types';
 import type { Entity, FieldSelection } from '../repository/types';
 import { ModelProxyFactory } from '../../runtime/proxy';
 import { asRuntimeCarrier } from '../../../utils/object';
 
-type HydrationModelCtor<T extends BaseModel = BaseModel> = InstantiableModelCtor<T>;
+type HydrationModelCtor<T extends BaseModel = BaseModel> = ModelStatic<T>;
 
 /**
  * Hydrates a proxy-wrapped model instance from an entity payload.

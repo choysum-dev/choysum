@@ -5,7 +5,7 @@ import { Watcher } from './watcher';
 import { Dep } from './dep';
 import { Entity } from '../../orm/repository';
 import BaseModel from '../../orm/model/model';
-import type { InstantiableModelCtor } from '../../orm/model/types';
+import type { ModelStatic } from '../../orm/model/types';
 import { MetadataStorage, ModelMetadata, FieldMetadata, ManyToOneMetadata, OneToManyMetadata, ManyToManyMetadata } from '../../orm/metadata';
 import { buildRelationAliasCandidates, REL_ALIAS_PREFIX } from '../../orm/relation/relation_alias';
 import { MODEL_SYMBOLS } from './symbols';
@@ -70,7 +70,7 @@ function getModelSummary(meta: ModelMetadata, ctor: Function) {
 }
 
 function hydrateRelatedModel<T extends BaseModel>(
-  ModelCtor: InstantiableModelCtor<T> | undefined,
+  ModelCtor: ModelStatic<T> | undefined,
   entity: UnknownRecord,
   fields?: FieldSelection<T>
 ): T | undefined {
@@ -105,7 +105,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
   constructor(target: T, entity: Entity, fields?: FieldSelection<T>) {
     this.target = target;
     this.entity = entity;
-    this.meta = MetadataStorage.instance.getModelMetadata(target.constructor as InstantiableModelCtor<BaseModel>);
+    this.meta = MetadataStorage.instance.getModelMetadata(target.constructor as ModelStatic<BaseModel>);
     this.fields = fields;
 
     this.originalValues.set(this.target, new Map());
@@ -249,7 +249,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
           preloaded === null
             ? null
             : preloadedRecord
-              ? (hydrateRelatedModel(targetModel as InstantiableModelCtor<BaseModel>, preloadedRecord, this.getFieldFields(key)) ?? preloaded)
+              ? (hydrateRelatedModel(targetModel as ModelStatic<BaseModel>, preloadedRecord, this.getFieldFields(key)) ?? preloaded)
               : preloaded;
         this.relationCache.set(key, hydrated);
         return hydrated;
@@ -264,7 +264,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
           targetModel && Array.isArray(preloaded)
             ? preloaded.map(item => {
                 const itemRecord = asObjectRecord(item);
-                return itemRecord ? (hydrateRelatedModel(targetModel as InstantiableModelCtor<BaseModel>, itemRecord, fields) ?? item) : item;
+                return itemRecord ? (hydrateRelatedModel(targetModel as ModelStatic<BaseModel>, itemRecord, fields) ?? item) : item;
               })
             : Array.isArray(preloaded)
               ? preloaded

@@ -23,7 +23,7 @@ import {
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
 import type { ModelCtor, OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';
-import type { BaseModelCtor, RuntimeModelCtor } from './types';
+import type { ModelClass, ModelStatic } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
 import type { ObjectRecord } from '../../../utils/types';
@@ -525,7 +525,7 @@ class BaseModel {
     if (!id) {
       throw new Error('Cannot copy an instance without Id');
     }
-    return (await copyModel(this.constructor as unknown as RuntimeModelCtor<this>, id, defaults, options)) as this;
+    return (await copyModel(this.constructor as unknown as ModelStatic<this>, id, defaults, options)) as this;
   }
 
   /**
@@ -560,8 +560,8 @@ class BaseModel {
    * Resolves default values for a pending create payload via {@link runDefaultGetPipeline}.
    * Overrides should call `super.DefaultGet` to keep platform merge layers.
    */
-  static async DefaultGet<T extends BaseModel>(this: BaseModelCtor<T>, value: Partial<Insertable<T & BaseModel>>): Promise<Partial<Insertable<T & BaseModel>>> {
-    return await runDefaultGetPipeline<T>(this as unknown as RuntimeModelCtor<T>, value);
+  static async DefaultGet<T extends BaseModel>(this: ModelClass<T>, value: Partial<Insertable<T & BaseModel>>): Promise<Partial<Insertable<T & BaseModel>>> {
+    return await runDefaultGetPipeline<T>(this as unknown as ModelStatic<T>, value);
   }
 
   /**
@@ -569,11 +569,11 @@ class BaseModel {
    * Translates field titles and static selection labels; filters deny-read fields.
    */
   static async FieldsGet<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     fields?: string[],
     attributes?: string[]
   ): Promise<Record<string, FieldsGetFieldMeta>> {
-    return await fieldsGetModels(this as unknown as RuntimeModelCtor<T>, fields, attributes);
+    return await fieldsGetModels(this as unknown as ModelStatic<T>, fields, attributes);
   }
 
   /**
@@ -581,12 +581,12 @@ class BaseModel {
    * Optional `langs` filters to the requested keys that exist.
    */
   static async GetFieldTranslations<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     id: string,
     fieldName: string,
     langs?: string[]
   ): Promise<FieldTranslationsMap> {
-    return await getModelFieldTranslations(this as unknown as RuntimeModelCtor<T>, id, fieldName, langs);
+    return await getModelFieldTranslations(this as unknown as ModelStatic<T>, id, fieldName, langs);
   }
 
   /**
@@ -594,12 +594,12 @@ class BaseModel {
    * `string` writes the key; `false` deletes it; base `en_US` cannot be deleted.
    */
   static async UpdateFieldTranslations<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     id: string,
     fieldName: string,
     translations: Record<string, string | false>
   ): Promise<boolean> {
-    return await updateModelFieldTranslations(this as unknown as RuntimeModelCtor<T>, id, fieldName, translations);
+    return await updateModelFieldTranslations(this as unknown as ModelStatic<T>, id, fieldName, translations);
   }
 
   /**
@@ -607,12 +607,12 @@ class BaseModel {
    * Optional `companyIds` filters to the requested keys that exist.
    */
   static async GetFieldCompanyValues<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     id: string,
     fieldName: string,
     companyIds?: string[]
   ): Promise<FieldCompanyValuesMap> {
-    return await getModelFieldCompanyValues(this as unknown as RuntimeModelCtor<T>, id, fieldName, companyIds);
+    return await getModelFieldCompanyValues(this as unknown as ModelStatic<T>, id, fieldName, companyIds);
   }
 
   /**
@@ -620,12 +620,12 @@ class BaseModel {
    * Scalar/`unknown` writes the key; `false` deletes it (D5 / D12).
    */
   static async UpdateFieldCompanyValues<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     id: string,
     fieldName: string,
     values: Record<string, unknown | false>
   ): Promise<boolean> {
-    return await updateModelFieldCompanyValues(this as unknown as RuntimeModelCtor<T>, id, fieldName, values);
+    return await updateModelFieldCompanyValues(this as unknown as ModelStatic<T>, id, fieldName, values);
   }
 
   /**
@@ -633,12 +633,12 @@ class BaseModel {
    * Browse/Search keep the field value as a map; Form UIs call this for the item list.
    */
   static async ResolveProperties<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     record: Partial<T> | Record<string, unknown> | null | undefined,
     fieldName: string,
     opts?: ResolvePropertiesOptions
   ): Promise<ResolvedPropertyItem[]> {
-    return await resolveProperties(this as unknown as RuntimeModelCtor<T>, record as any, fieldName, opts);
+    return await resolveProperties(this as unknown as ModelStatic<T>, record as any, fieldName, opts);
   }
 
   /**
@@ -648,12 +648,12 @@ class BaseModel {
    * (or defaults) to rewrite the ownership field (company-field-design D10).
    */
   static async Copy<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     id: string,
     defaults?: Partial<Record<string, unknown>>,
     options?: CopyOptions
   ): Promise<T> {
-    return await copyModel<T>(this as unknown as RuntimeModelCtor<T>, id, defaults, options);
+    return await copyModel<T>(this as unknown as ModelStatic<T>, id, defaults, options);
   }
 
   /**
@@ -661,12 +661,12 @@ class BaseModel {
    * Default: DisplayName `like` keyword And domain → Search.
    */
   static async NameSearch<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     name: string,
     condition: QueryCondition<T> | [] = [],
     options?: SearchOptions<T>
   ): Promise<T[]> {
-    return await nameSearchModels<T>(this as unknown as RuntimeModelCtor<T> & typeof BaseModel, name, condition, options);
+    return await nameSearchModels<T>(this as unknown as ModelStatic<T> & typeof BaseModel, name, condition, options);
   }
 
   /**
@@ -674,134 +674,134 @@ class BaseModel {
    * Default: write trim(name) into nameField or stored Name → Create.
    */
   static async NameCreate<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     name: string,
     values?: Partial<Insertable<T & BaseModel>>,
     options?: NameCreateOptions<T>
   ): Promise<T> {
-    return await nameCreateModels<T>(this as unknown as RuntimeModelCtor<T> & typeof BaseModel, name, values, options);
+    return await nameCreateModels<T>(this as unknown as ModelStatic<T> & typeof BaseModel, name, values, options);
   }
 
   /**
    * Creates one record and optionally returns a selected field projection.
    */
-  static async Create<T extends BaseModel>(this: BaseModelCtor<T>, value: Partial<Insertable<T & BaseModel>>, returnFields?: FieldSelection<T>): Promise<T> {
-    return await createModel<T>(this as unknown as RuntimeModelCtor<T>, value, returnFields);
+  static async Create<T extends BaseModel>(this: ModelClass<T>, value: Partial<Insertable<T & BaseModel>>, returnFields?: FieldSelection<T>): Promise<T> {
+    return await createModel<T>(this as unknown as ModelStatic<T>, value, returnFields);
   }
 
   /**
    * Creates multiple records and optionally returns a selected field projection.
    */
   static async CreateMany<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    return await createManyModels<T>(this as unknown as RuntimeModelCtor<T>, values, returnFields);
+    return await createManyModels<T>(this as unknown as ModelStatic<T>, values, returnFields);
   }
 
   /**
    * Loads a single record by Id.
    */
-  static async Browse<T extends BaseModel>(this: BaseModelCtor<T>, id: string, fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<T> {
-    return await browseModel<T>(this as unknown as RuntimeModelCtor<T>, id, fields, options);
+  static async Browse<T extends BaseModel>(this: ModelClass<T>, id: string, fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<T> {
+    return await browseModel<T>(this as unknown as ModelStatic<T>, id, fields, options);
   }
 
   /**
    * Loads multiple records by Id while preserving BrowseMany compatibility.
    */
   static async BrowseMany<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     ids: string[],
     fields?: (keyof Selectable<T>)[],
     options?: SoftDeleteOptions
   ): Promise<T[]> {
-    return await browseManyModels<T>(this as unknown as RuntimeModelCtor<T>, ids, fields, options);
+    return await browseManyModels<T>(this as unknown as ModelStatic<T>, ids, fields, options);
   }
 
   /**
    * Searches for records matching a query condition.
    */
-  static async Search<T extends BaseModel>(this: BaseModelCtor<T>, condition: QueryCondition<T> | [] = [], options?: SearchOptions<T>): Promise<T[]> {
-    return await searchModels<T>(this as unknown as RuntimeModelCtor<T>, condition, options);
+  static async Search<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T> | [] = [], options?: SearchOptions<T>): Promise<T[]> {
+    return await searchModels<T>(this as unknown as ModelStatic<T>, condition, options);
   }
 
   /**
    * Counts records matching a query condition.
    */
-  static async Count<T extends BaseModel>(this: BaseModelCtor<T>, condition: QueryCondition<T> | [] = [], options?: CountOptions): Promise<number> {
-    return await countModels<T>(this as unknown as RuntimeModelCtor<T>, condition, options);
+  static async Count<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T> | [] = [], options?: CountOptions): Promise<number> {
+    return await countModels<T>(this as unknown as ModelStatic<T>, condition, options);
   }
 
   /**
    * Executes a grouped read and returns plain grouped results.
    */
   static async ReadGroup<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
     condition: QueryCondition<T> | [] = [],
     options: ReadGroupOptions<T> = {}
   ): Promise<ReadGroupResult> {
-    return await readGroupedModels<T>(this as unknown as RuntimeModelCtor<T>, groupby, condition, options);
+    return await readGroupedModels<T>(this as unknown as ModelStatic<T>, groupby, condition, options);
   }
 
   /**
    * Counts top-level groups for a grouped read query.
    */
   static async ReadGroupCount<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
     condition: QueryCondition<T> | [] = [],
     options: ReadGroupCountOptions<T> = {}
   ): Promise<number> {
-    return await countGroupedModels<T>(this as unknown as RuntimeModelCtor<T>, groupby, condition, options);
+    return await countGroupedModels<T>(this as unknown as ModelStatic<T>, groupby, condition, options);
   }
 
   /**
    * Updates all records matching a condition and optionally returns selected fields.
    */
   static async Update<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     condition: QueryCondition<T>,
     values: Partial<Updateable<T & BaseModel>>,
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>[]> {
-    return await updateModels<T>(this as unknown as RuntimeModelCtor<T>, condition, values, returnFields, options);
+    return await updateModels<T>(this as unknown as ModelStatic<T>, condition, values, returnFields, options);
   }
 
   /**
    * Updates a single record by Id and optionally returns selected fields.
    */
   static async UpdateById<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     id: string,
     values: Partial<Updateable<T & BaseModel>>,
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>> {
-    return await updateModelById<T>(this as unknown as RuntimeModelCtor<T>, id, values, returnFields, options);
+    return await updateModelById<T>(this as unknown as ModelStatic<T>, id, values, returnFields, options);
   }
 
   /**
    * Deletes all records matching a condition.
    */
-  static async Delete<T extends BaseModel>(this: BaseModelCtor<T>, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
-    return await deleteModels<T>(this as unknown as RuntimeModelCtor<T>, condition, options);
+  static async Delete<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
+    return await deleteModels<T>(this as unknown as ModelStatic<T>, condition, options);
   }
 
   /**
    * Deletes a single record by Id.
    */
-  static async DeleteById<T extends BaseModel>(this: BaseModelCtor<T>, id: string, options?: DeleteOptions): Promise<number> {
-    return await deleteModelById<T>(this as unknown as RuntimeModelCtor<T>, id, options);
+  static async DeleteById<T extends BaseModel>(this: ModelClass<T>, id: string, options?: DeleteOptions): Promise<number> {
+    return await deleteModelById<T>(this as unknown as ModelStatic<T>, id, options);
   }
 
   /**
    * Runs onchange handlers for a draft payload and returns the accumulated result.
    */
   static async Onchange<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     draft: OnchangeDraft,
     changed: OnchangeTrigger<T>[],
     opts?: {
@@ -810,15 +810,15 @@ class BaseModel {
       loopThreshold?: number;
     }
   ): Promise<OnchangeResult> {
-    return await runModelOnchange<T>(this as unknown as RuntimeModelCtor<T>, draft, changed, opts);
+    return await runModelOnchange<T>(this as unknown as ModelStatic<T>, draft, changed, opts);
   }
 
   /**
    * Protect an operation with a savepoint. Throwing rolls back to that savepoint.
    * Note: this is a convenience entry point that delegates to Repository.withSavepoint.
    */
-  static async withSavepoint<T extends BaseModel, R>(this: BaseModelCtor<T>, fn: () => Promise<R>, name?: string): Promise<R> {
-    return await withModelSavepoint<T, R>(this as unknown as RuntimeModelCtor<T>, fn, name);
+  static async withSavepoint<T extends BaseModel, R>(this: ModelClass<T>, fn: () => Promise<R>, name?: string): Promise<R> {
+    return await withModelSavepoint<T, R>(this as unknown as ModelStatic<T>, fn, name);
   }
 
   /**
@@ -850,8 +850,8 @@ class BaseModel {
   /**
    * Hydrates a model instance from an entity payload.
    */
-  static hydrate<T extends BaseModel>(this: BaseModelCtor<T>, entity: ObjectRecord, fields?: FieldSelection<T>): T {
-    return hydrateModelFacade<T>(this as unknown as RuntimeModelCtor<T>, entity, fields);
+  static hydrate<T extends BaseModel>(this: ModelClass<T>, entity: ObjectRecord, fields?: FieldSelection<T>): T {
+    return hydrateModelFacade<T>(this as unknown as ModelStatic<T>, entity, fields);
   }
 }
 

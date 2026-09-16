@@ -2,16 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { ModelCtor as OrmModelCtor } from '../metadata/field';
 import type { Entity } from '../repository/types/common';
 
-export type RuntimeModelCtor<T extends BaseModel = BaseModel> = OrmModelCtor<T> & typeof BaseModel;
+/** Arguments used by the BaseModel factory constructor. */
+export type ModelFactoryArgs<T extends BaseModel = BaseModel> = [
+  factoryToken: Symbol,
+  entity: Entity,
+  fields?: unknown,
+];
 
-/** Constructor this-type used by BaseModel static Create/Update/Search APIs. */
-export type BaseModelCtor<T extends BaseModel = BaseModel> = {
-  new (factoryToken: Symbol, entity: Entity, fields?: unknown): T;
-};
+/**
+ * Constructable model class (factory constructor only).
+ * Use this as the `this` type on BaseModel collection methods.
+ */
+export type ModelClass<T extends BaseModel = BaseModel> = new (...args: ModelFactoryArgs<T>) => T;
 
-type ModelFactoryArgs = [factoryToken: Symbol, entity: Entity, fields?: unknown];
-
-export type InstantiableModelCtor<T extends BaseModel = BaseModel> = RuntimeModelCtor<T> & { new (...args: ModelFactoryArgs): T };
+/**
+ * Collection-entry / metadata / facade ctor: factory constructor plus BaseModel statics.
+ */
+export type ModelStatic<T extends BaseModel = BaseModel> = ModelClass<T> & typeof BaseModel;

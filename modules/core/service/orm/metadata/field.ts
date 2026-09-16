@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
+import type { ModelStatic } from '../model/types';
 import type { ExpressionWrapper, ExpressionBuilder, Expression } from 'kysely';
 import Decimal, { DecimalRound } from '@/core/utils/decimal';
 import type { TermReference } from '../../i18n';
@@ -562,8 +563,9 @@ export type OneToManyInverseFieldKey<T extends BaseModel> = Extract<
 
 /**
  * Constructor type for runtime model classes.
+ * Alias of {@link ModelStatic}; collection APIs and metadata share one ctor family.
  */
-export type ModelCtor<T extends BaseModel = BaseModel> = new (...args: never[]) => T;
+export type ModelCtor<T extends BaseModel = BaseModel> = ModelStatic<T>;
 
 type __M2OScalarPaths<T, D extends number = 5> = D extends 0
   ? never

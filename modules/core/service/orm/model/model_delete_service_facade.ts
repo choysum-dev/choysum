@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
+import type { ModelStatic } from './types';
 import type { DeleteOptions, QueryCondition } from '../repository/types';
 import { DeleteOperations } from './model_delete';
 
-type ModelDeleteServiceFacadeCtor<T extends BaseModel> = RuntimeModelCtor<T>;
+type ModelDeleteServiceFacadeCtor<T extends BaseModel> = ModelStatic<T>;
 
 export async function deleteModels<T extends BaseModel>(
   ModelCtor: ModelDeleteServiceFacadeCtor<T>,

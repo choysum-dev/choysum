@@ -35,7 +35,7 @@ import { resolveRepositoryWithSoftDeleteOptions } from './model_soft_delete_scop
 import { ComputeEngine } from '../../runtime/compute/engine';
 import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 import type { ObjectRecord } from '../../../utils/types';
-import type { RuntimeModelCtor } from './types';
+import type { ModelStatic } from './types';
 import { createServiceByModel } from '../../rpc';
 import { _t } from '@/core/service/i18n_binder';
 import { mergeCallerConditionWithForField } from './model_for_field_condition';
@@ -49,7 +49,7 @@ import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/dateti
  */
 export class ReadOperations {
   private static resolveRepository<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelStatic<T>,
     options?: SoftDeleteOptions
   ): {
     search: (condition: unknown, options?: SearchOptions<T>) => Promise<ObjectRecord[]>;
@@ -133,7 +133,7 @@ export class ReadOperations {
     );
   }
 
-  private static resolveOwnerModelLabel<T extends BaseModel>(ModelCtor: RuntimeModelCtor<T>): string | undefined {
+  private static resolveOwnerModelLabel<T extends BaseModel>(ModelCtor: ModelStatic<T>): string | undefined {
     const meta = MetadataStorage.instance.getModelMetadata(ModelCtor);
     const full = String(meta?.fullModelName || '').trim();
     if (full) return full;
@@ -177,7 +177,7 @@ export class ReadOperations {
     return { wildcard, names };
   }
 
-  private static resolveAttachmentReadFieldNames<T extends BaseModel>(ModelCtor: RuntimeModelCtor<T>, fields?: FieldSelection<BaseModel>): string[] {
+  private static resolveAttachmentReadFieldNames<T extends BaseModel>(ModelCtor: ModelStatic<T>, fields?: FieldSelection<BaseModel>): string[] {
     const runtimeMeta = getModelRuntimeMetadata(ModelCtor);
     if (ReadOperations.isStorageBlobCarrierModel(runtimeMeta as any)) {
       return [];
@@ -216,7 +216,7 @@ export class ReadOperations {
   }
 
   private static async injectAttachmentBindingsForRead<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelStatic<T>,
     rows: ObjectRecord[],
     fields?: FieldSelection<BaseModel>
   ): Promise<void> {
@@ -285,7 +285,7 @@ export class ReadOperations {
   }
 
   private static injectVirtualComputeForRead<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelStatic<T>,
     rows: ObjectRecord[],
     fields?: FieldSelection<BaseModel>
   ): void {
@@ -299,7 +299,7 @@ export class ReadOperations {
   }
 
   static async Browse<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelStatic<T>,
     id: string,
     fields?: FieldSelection<T>,
     softDeleteOptions?: SoftDeleteOptions
@@ -325,7 +325,7 @@ export class ReadOperations {
   }
 
   static async Search<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelStatic<T>,
     condition: QueryCondition<T> | [] = [],
     options?: SearchOptions<T>
   ): Promise<ObjectRecord[]> {
@@ -342,7 +342,7 @@ export class ReadOperations {
     return rows;
   }
 
-  static async Count<T extends BaseModel>(ModelCtor: RuntimeModelCtor<T>, condition: QueryCondition<T> | [] = [], options?: CountOptions): Promise<number> {
+  static async Count<T extends BaseModel>(ModelCtor: ModelStatic<T>, condition: QueryCondition<T> | [] = [], options?: CountOptions): Promise<number> {
     const repository = ReadOperations.resolveRepository(ModelCtor, options);
     return await repository.count(condition as QueryCondition<T>);
   }
@@ -353,7 +353,7 @@ export class ReadOperations {
    * - Supports expand, shape, fillTemporalGaps, and includeTotals.
    */
   static async ReadGroup<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelStatic<T>,
     groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
     condition: QueryCondition<T> | [] = [],
     options: ReadGroupOptions<T> = {}
@@ -599,7 +599,7 @@ export class ReadOperations {
    * - having and fields apply only to the top level.
    */
   static async ReadGroupCount<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelStatic<T>,
     groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
     condition: QueryCondition<T> | [] = [],
     options: ReadGroupCountOptions<T> = {}

@@ -5,7 +5,7 @@ import { MetadataStorage } from '../metadata/storage';
 import { ValidationPipelineError } from '../metadata';
 import type { ObjectRecord } from '../../../utils/types';
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
+import type { ModelStatic } from './types';
 import { loadEffectivePropertySchema } from './properties_resolve';
 import { isPlainPropertiesMap, normalizePropertiesMap, propertyValueMatchesType } from './properties_types';
 
@@ -34,7 +34,7 @@ function fail(fieldName: string, code: string, message: string): never {
  * Callers should assign the returned map onto the write payload (whole-column replace).
  */
 export async function validatePropertiesWrite(
-  ModelCtor: RuntimeModelCtor<BaseModel>,
+  ModelCtor: ModelStatic<BaseModel>,
   fieldName: string,
   value: unknown,
   rowCtx: ObjectRecord,
@@ -103,7 +103,7 @@ export async function validatePropertiesWrite(
  * Validate all `properties` fields present on a create/update payload and rewrite maps in place.
  */
 export async function validatePropertiesFieldsOnWrite(params: {
-  ModelCtor: RuntimeModelCtor<BaseModel>;
+  ModelCtor: ModelStatic<BaseModel>;
   input: ObjectRecord;
   current?: ObjectRecord;
   mode: 'create' | 'update' | string;

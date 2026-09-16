@@ -12,8 +12,7 @@ import { createModel } from './model_create_service_facade';
 import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 import { ReadOperations } from './model_read';
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
-
+import type { ModelStatic } from './types';
 /** Max nested OneToMany depth for Copy (design §6.1). */
 export const COPY_MAX_RELATION_DEPTH = 8;
 
@@ -121,7 +120,7 @@ function getTargetModelMetadata(field: FieldMetadata): ModelMetadata | undefined
   const targetModel = relation?.targetModel;
   if (typeof targetModel !== 'function') return undefined;
   try {
-    return MetadataStorage.instance.getModelMetadata(targetModel() as RuntimeModelCtor);
+    return MetadataStorage.instance.getModelMetadata(targetModel() as ModelStatic);
   } catch {
     return undefined;
   }
@@ -194,7 +193,7 @@ function copyManyToManyIds(value: unknown): string[] | undefined {
  * Transform a Browse row into a Create payload for Copy (design §5–§6).
  */
 export function buildCopyValues(
-  ModelCtor: RuntimeModelCtor,
+  ModelCtor: ModelStatic,
   row: ObjectRecord,
   defaults?: Partial<Record<string, unknown>>,
   state?: CopyWalkState,
@@ -231,7 +230,7 @@ export function buildCopyValues(
 
       const o2m = resolveOneToManyRelationConfig(field.relation);
       if (!o2m) continue;
-      const childCtor = o2m.targetModel() as RuntimeModelCtor;
+      const childCtor = o2m.targetModel() as ModelStatic;
       const childValues: UnknownRecord[] = [];
 
       for (const child of raw) {
@@ -294,7 +293,7 @@ export function buildCopyValues(
  * Duplicate one record via Browse → buildCopyValues → Create (design D2).
  */
 export async function copyModel<T extends BaseModel>(
-  ModelCtor: RuntimeModelCtor<T>,
+  ModelCtor: ModelStatic<T>,
   id: string,
   defaults?: Partial<Record<string, unknown>>,
   options?: CopyOptions
@@ -308,7 +307,7 @@ export async function copyModel<T extends BaseModel>(
   const fields = buildCopyBrowseSelection(meta);
   const row = (await ReadOperations.Browse(ModelCtor, trimmedId, fields as FieldSelection<T>)) as ObjectRecord;
   const values = buildCopyValues(
-    ModelCtor as RuntimeModelCtor,
+    ModelCtor as ModelStatic,
     row,
     defaults,
     {

@@ -4,7 +4,7 @@
 /**
  * Re-exported runtime model constructor type used by onchange plan helpers.
  */
-export type { RuntimeModelCtor as ModelCtor } from '../../../orm/model/types';
+export type { ModelStatic as ModelCtor } from '../../../orm/model/types';
 import type { ObjectRecord } from '../../../../utils/types';
 
 /**

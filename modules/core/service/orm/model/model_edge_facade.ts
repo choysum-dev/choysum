@@ -5,10 +5,10 @@ import { EntityConverter } from '../utils/converter';
 import type { Entity } from '../repository';
 import type { FieldSelection } from '../repository/types';
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
+import type { ModelStatic } from './types';
 import { createModelProxy, getModelRepository } from './model_internal_facade';
 
-type ModelEdgeFacadeCtor<T extends BaseModel> = RuntimeModelCtor<T>;
+type ModelEdgeFacadeCtor<T extends BaseModel> = ModelStatic<T>;
 
 type ModelEdgeFacadeInstance = {
   entity: Entity;

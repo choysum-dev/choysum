@@ -15,7 +15,7 @@ import {
 import BaseModel from './model';
 import { resolveEffectiveFieldDefaults } from './field_default_resolve';
 import { resolveModelConstructor } from './model_registry';
-import type { InstantiableModelCtor } from './types';
+import type { ModelStatic } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
 
 /** Align Odoo: False→global; True→current; id→specific. */
@@ -72,7 +72,7 @@ function fieldDefaultReqState(): Record<string, unknown> | undefined {
 
 /** Prefer the FieldDefault store application; fall back to the target model application. */
 function resolveFieldDefaultApplication(
-  ctor: InstantiableModelCtor<FieldDefaultBaseModel>,
+  ctor: ModelStatic<FieldDefaultBaseModel>,
   targetMeta?: ModelMetadata
 ): string {
   const fromStore = String(storeMeta(ctor).application || '').trim();
@@ -108,12 +108,12 @@ function scopeCondition(field: string, value: string | null): any {
   return value == null ? [field, 'is', null] : [field, '=', value];
 }
 
-function storeMeta(ctor: InstantiableModelCtor<FieldDefaultBaseModel>) {
+function storeMeta(ctor: ModelStatic<FieldDefaultBaseModel>) {
   return MetadataStorage.instance.getModelMetadata(ctor as any);
 }
 
 function resolveTargetModel(
-  ctor: InstantiableModelCtor<FieldDefaultBaseModel>,
+  ctor: ModelStatic<FieldDefaultBaseModel>,
   modelShortName: string
 ): { ctor: typeof BaseModel; targetMeta: ModelMetadata } {
   const short = String(modelShortName || '').trim();
@@ -216,7 +216,7 @@ async function fieldDefaultStoreTableExists(dialect: string, table: string): Pro
   }
 }
 
-async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBaseModel>): Promise<void> {
+async function ensureScopeUniqueIndex(ctor: ModelStatic<FieldDefaultBaseModel>): Promise<void> {
   const meta = storeMeta(ctor);
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;
@@ -274,7 +274,7 @@ async function ensureScopeUniqueIndex(ctor: InstantiableModelCtor<FieldDefaultBa
 }
 
 async function findExactRow(
-  ctor: InstantiableModelCtor<FieldDefaultBaseModel>,
+  ctor: ModelStatic<FieldDefaultBaseModel>,
   model: string,
   field: string,
   userId: string | null,
@@ -316,7 +316,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
    * Upsert a default for an exact user/company scope (Odoo `ir.default.set`).
    */
   static async Set(
-    this: InstantiableModelCtor<FieldDefaultBaseModel>,
+    this: ModelStatic<FieldDefaultBaseModel>,
     model: string,
     field: string,
     value: unknown,
@@ -365,7 +365,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
    * Read the exact-scope default (Odoo `ir.default._get`). Missing → undefined.
    */
   static async Get(
-    this: InstantiableModelCtor<FieldDefaultBaseModel>,
+    this: ModelStatic<FieldDefaultBaseModel>,
     model: string,
     field: string,
     opts?: FieldDefaultScopeOpts
@@ -383,7 +383,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
    * Memoized per request (§5.3); candidate Search runs under sudo (§7.3).
    */
   static async GetEffective(
-    this: InstantiableModelCtor<FieldDefaultBaseModel>,
+    this: ModelStatic<FieldDefaultBaseModel>,
     model: string,
     fields?: string[]
   ): Promise<Record<string, unknown>> {
@@ -431,7 +431,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
    * Delete the exact-scope default row when present.
    */
   static async Unset(
-    this: InstantiableModelCtor<FieldDefaultBaseModel>,
+    this: ModelStatic<FieldDefaultBaseModel>,
     model: string,
     field: string,
     opts?: FieldDefaultScopeOpts
