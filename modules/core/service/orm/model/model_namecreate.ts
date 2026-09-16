@@ -13,7 +13,7 @@ export type NameCreateOptions<T extends BaseModel> = {
 };
 
 type NameCreateModelCtor<T extends BaseModel> = ModelCtor<T> & {
-  Create: (value: Partial<Insertable<T & BaseModel>>, returnFields?: FieldSelection<T>) => Promise<T>;
+  Create: (value: Partial<Insertable<T>>, returnFields?: FieldSelection<T>) => Promise<T>;
 };
 
 /**
@@ -56,7 +56,7 @@ export function resolveNameCreateField(meta: ModelMetadata, nameField?: string):
 export async function nameCreateModels<T extends BaseModel>(
   ModelCtor: NameCreateModelCtor<T>,
   name: string,
-  values?: Partial<Insertable<T & BaseModel>>,
+  values?: Partial<Insertable<T>>,
   options?: NameCreateOptions<T>
 ): Promise<T> {
   const kw = String(name ?? '').trim();
@@ -68,6 +68,6 @@ export async function nameCreateModels<T extends BaseModel>(
   const payload = {
     ...(values || {}),
     [field]: kw,
-  } as Partial<Insertable<T & BaseModel>>;
+  } as Partial<Insertable<T>>;
   return (await ModelCtor.Create(payload, options?.returnFields)) as T;
 }

@@ -10,16 +10,16 @@ type ModelCreateServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 export async function createModel<T extends BaseModel>(
   ModelCtor: ModelCreateServiceFacadeCtor<T>,
-  value: Partial<Insertable<T & BaseModel>>,
+  value: Partial<Insertable<T>>,
   returnFields?: FieldSelection<T>
 ): Promise<T> {
-  return (await CreateOperations.Create(ModelCtor, value as Partial<Insertable<T>>, returnFields)) as T;
+  return await CreateOperations.Create<T>(ModelCtor, value, returnFields);
 }
 
 export async function createManyModels<T extends BaseModel>(
   ModelCtor: ModelCreateServiceFacadeCtor<T>,
-  values: Partial<Insertable<T & BaseModel>>[],
+  values: Partial<Insertable<T>>[],
   returnFields?: FieldSelection<T>
 ): Promise<T[]> {
-  return (await CreateOperations.CreateMany(ModelCtor, values as Array<Partial<Insertable<T>>>, returnFields)) as T[];
+  return await CreateOperations.CreateMany<T>(ModelCtor, values, returnFields);
 }

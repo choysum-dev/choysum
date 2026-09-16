@@ -10,7 +10,6 @@ import {
   SearchOptions,
   Insertable,
   Updateable,
-  Selectable,
   FieldSelection,
   SoftDeleteOptions,
   CountOptions,
@@ -91,6 +90,11 @@ import { currentBridgeFrame } from '../../runtime/compute/bridge';
 // Delegated implementation.
 
 type ModelLoadFieldSelection = FieldSelection<ObjectRecord>;
+
+/** Bind collection `this` (factory construct only) to the facade ctor that includes BaseModel statics. */
+function asCollectionCtor<T extends BaseModel>(ctor: ModelClass<T>): ModelCtor<T> {
+  return ctor as ModelCtor<T>;
+}
 
 export type SqlComputeCtx<TModel extends BaseModel = BaseModel> = {
   field: {
@@ -311,15 +315,15 @@ class BaseModel {
   /**
    * Returns the resolved effective constraints for the calling model constructor.
    */
-  static getEffectiveConstraints<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel): EffectiveConstraintMeta[] {
-    return getEffectiveConstraints(this as any);
+  static getEffectiveConstraints<C extends ModelCtor>(this: C): EffectiveConstraintMeta[] {
+    return getEffectiveConstraints(this);
   }
 
   /**
    * Returns the resolved effective onchange handlers for the calling model constructor.
    */
-  static getEffectiveOnchange<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel): EffectiveOnchangeMeta[] {
-    return getEffectiveOnchange(this as any);
+  static getEffectiveOnchange<C extends ModelCtor>(this: C): EffectiveOnchangeMeta[] {
+    return getEffectiveOnchange(this);
   }
 
   /**
@@ -525,7 +529,7 @@ class BaseModel {
     if (!id) {
       throw new Error('Cannot copy an instance without Id');
     }
-    return (await copyModel(this.constructor as unknown as ModelCtor<this>, id, defaults, options)) as this;
+    return await copyModel(this.constructor as ModelCtor<this>, id, defaults, options);
   }
 
   /**
@@ -560,33 +564,24 @@ class BaseModel {
    * Resolves default values for a pending create payload via {@link runDefaultGetPipeline}.
    * Overrides should call `super.DefaultGet` to keep platform merge layers.
    */
-  static async DefaultGet<T extends BaseModel>(this: ModelClass<T>, value: Partial<Insertable<T & BaseModel>>): Promise<Partial<Insertable<T & BaseModel>>> {
-    return await runDefaultGetPipeline<T>(this as unknown as ModelCtor<T>, value);
+  static async DefaultGet<T extends BaseModel>(this: ModelClass<T>, value: Partial<Insertable<T>>): Promise<Partial<Insertable<T>>> {
+    return await runDefaultGetPipeline<T>(asCollectionCtor(this), value);
   }
 
   /**
    * Returns readable field presentation metadata for the current request language.
    * Translates field titles and static selection labels; filters deny-read fields.
    */
-  static async FieldsGet<T extends BaseModel>(
-    this: ModelClass<T>,
-    fields?: string[],
-    attributes?: string[]
-  ): Promise<Record<string, FieldsGetFieldMeta>> {
-    return await fieldsGetModels(this as unknown as ModelCtor<T>, fields, attributes);
+  static async FieldsGet<T extends BaseModel>(this: ModelClass<T>, fields?: string[], attributes?: string[]): Promise<Record<string, FieldsGetFieldMeta>> {
+    return await fieldsGetModels(asCollectionCtor(this), fields, attributes);
   }
 
   /**
    * Returns the stored language map for a translated field (data i18n).
    * Optional `langs` filters to the requested keys that exist.
    */
-  static async GetFieldTranslations<T extends BaseModel>(
-    this: ModelClass<T>,
-    id: string,
-    fieldName: string,
-    langs?: string[]
-  ): Promise<FieldTranslationsMap> {
-    return await getModelFieldTranslations(this as unknown as ModelCtor<T>, id, fieldName, langs);
+  static async GetFieldTranslations<T extends BaseModel>(this: ModelClass<T>, id: string, fieldName: string, langs?: string[]): Promise<FieldTranslationsMap> {
+    return await getModelFieldTranslations<T>(asCollectionCtor(this), id, fieldName, langs);
   }
 
   /**
@@ -599,20 +594,15 @@ class BaseModel {
     fieldName: string,
     translations: Record<string, string | false>
   ): Promise<boolean> {
-    return await updateModelFieldTranslations(this as unknown as ModelCtor<T>, id, fieldName, translations);
+    return await updateModelFieldTranslations<T>(asCollectionCtor(this), id, fieldName, translations);
   }
 
   /**
    * Returns the stored company map for a companyDependent field.
    * Optional `companyIds` filters to the requested keys that exist.
    */
-  static async GetFieldCompanyValues<T extends BaseModel>(
-    this: ModelClass<T>,
-    id: string,
-    fieldName: string,
-    companyIds?: string[]
-  ): Promise<FieldCompanyValuesMap> {
-    return await getModelFieldCompanyValues(this as unknown as ModelCtor<T>, id, fieldName, companyIds);
+  static async GetFieldCompanyValues<T extends BaseModel>(this: ModelClass<T>, id: string, fieldName: string, companyIds?: string[]): Promise<FieldCompanyValuesMap> {
+    return await getModelFieldCompanyValues<T>(asCollectionCtor(this), id, fieldName, companyIds);
   }
 
   /**
@@ -625,7 +615,7 @@ class BaseModel {
     fieldName: string,
     values: Record<string, unknown | false>
   ): Promise<boolean> {
-    return await updateModelFieldCompanyValues(this as unknown as ModelCtor<T>, id, fieldName, values);
+    return await updateModelFieldCompanyValues<T>(asCollectionCtor(this), id, fieldName, values);
   }
 
   /**
@@ -638,7 +628,7 @@ class BaseModel {
     fieldName: string,
     opts?: ResolvePropertiesOptions
   ): Promise<ResolvedPropertyItem[]> {
-    return await resolveProperties(this as unknown as ModelCtor<T>, record as any, fieldName, opts);
+    return await resolveProperties(asCollectionCtor(this), record, fieldName, opts);
   }
 
   /**
@@ -647,13 +637,8 @@ class BaseModel {
    * Isolated models keep source ownership by default; pass `copyCompany: 'active'`
    * (or defaults) to rewrite the ownership field (company-field-design D10).
    */
-  static async Copy<T extends BaseModel>(
-    this: ModelClass<T>,
-    id: string,
-    defaults?: Partial<Record<string, unknown>>,
-    options?: CopyOptions
-  ): Promise<T> {
-    return await copyModel<T>(this as unknown as ModelCtor<T>, id, defaults, options);
+  static async Copy<T extends BaseModel>(this: ModelClass<T>, id: string, defaults?: Partial<Record<string, unknown>>, options?: CopyOptions): Promise<T> {
+    return await copyModel<T>(asCollectionCtor(this), id, defaults, options);
   }
 
   /**
@@ -666,7 +651,7 @@ class BaseModel {
     condition: QueryCondition<T> | [] = [],
     options?: SearchOptions<T>
   ): Promise<T[]> {
-    return await nameSearchModels<T>(this as unknown as ModelCtor<T>, name, condition, options);
+    return await nameSearchModels<T>(asCollectionCtor(this), name, condition, options);
   }
 
   /**
@@ -676,17 +661,21 @@ class BaseModel {
   static async NameCreate<T extends BaseModel>(
     this: ModelClass<T>,
     name: string,
-    values?: Partial<Insertable<T & BaseModel>>,
+    values?: Partial<Insertable<T>>,
     options?: NameCreateOptions<T>
   ): Promise<T> {
-    return await nameCreateModels<T>(this as unknown as ModelCtor<T>, name, values, options);
+    return await nameCreateModels<T>(asCollectionCtor(this), name, values, options);
   }
 
   /**
    * Creates one record and optionally returns a selected field projection.
    */
-  static async Create<T extends BaseModel>(this: ModelClass<T>, value: Partial<Insertable<T & BaseModel>>, returnFields?: FieldSelection<T>): Promise<T> {
-    return await createModel<T>(this as unknown as ModelCtor<T>, value, returnFields);
+  static async Create<T extends BaseModel>(
+    this: ModelClass<T>,
+    value: Partial<Insertable<T>>,
+    returnFields?: FieldSelection<T>
+  ): Promise<T> {
+    return await createModel<T>(asCollectionCtor(this), value, returnFields);
   }
 
   /**
@@ -694,17 +683,22 @@ class BaseModel {
    */
   static async CreateMany<T extends BaseModel>(
     this: ModelClass<T>,
-    values: Partial<Insertable<T & BaseModel>>[],
+    values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    return await createManyModels<T>(this as unknown as ModelCtor<T>, values, returnFields);
+    return await createManyModels<T>(asCollectionCtor(this), values, returnFields);
   }
 
   /**
    * Loads a single record by Id.
    */
-  static async Browse<T extends BaseModel>(this: ModelClass<T>, id: string, fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<T> {
-    return await browseModel<T>(this as unknown as ModelCtor<T>, id, fields, options);
+  static async Browse<T extends BaseModel>(
+    this: ModelClass<T>,
+    id: string,
+    fields?: FieldSelection<T>,
+    options?: SoftDeleteOptions
+  ): Promise<T> {
+    return await browseModel<T>(asCollectionCtor(this), id, fields, options);
   }
 
   /**
@@ -713,24 +707,32 @@ class BaseModel {
   static async BrowseMany<T extends BaseModel>(
     this: ModelClass<T>,
     ids: string[],
-    fields?: (keyof Selectable<T>)[],
+    fields?: FieldSelection<T>,
     options?: SoftDeleteOptions
   ): Promise<T[]> {
-    return await browseManyModels<T>(this as unknown as ModelCtor<T>, ids, fields, options);
+    return await browseManyModels<T>(asCollectionCtor(this), ids, fields, options);
   }
 
   /**
    * Searches for records matching a query condition.
    */
-  static async Search<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T> | [] = [], options?: SearchOptions<T>): Promise<T[]> {
-    return await searchModels<T>(this as unknown as ModelCtor<T>, condition, options);
+  static async Search<T extends BaseModel>(
+    this: ModelClass<T>,
+    condition: QueryCondition<T> | [] = [],
+    options?: SearchOptions<T>
+  ): Promise<T[]> {
+    return await searchModels<T>(asCollectionCtor(this), condition, options);
   }
 
   /**
    * Counts records matching a query condition.
    */
-  static async Count<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T> | [] = [], options?: CountOptions): Promise<number> {
-    return await countModels<T>(this as unknown as ModelCtor<T>, condition, options);
+  static async Count<T extends BaseModel>(
+    this: ModelClass<T>,
+    condition: QueryCondition<T> | [] = [],
+    options?: CountOptions
+  ): Promise<number> {
+    return await countModels<T>(asCollectionCtor(this), condition, options);
   }
 
   /**
@@ -742,7 +744,7 @@ class BaseModel {
     condition: QueryCondition<T> | [] = [],
     options: ReadGroupOptions<T> = {}
   ): Promise<ReadGroupResult> {
-    return await readGroupedModels<T>(this as unknown as ModelCtor<T>, groupby, condition, options);
+    return await readGroupedModels<T>(asCollectionCtor(this), groupby, condition, options);
   }
 
   /**
@@ -754,7 +756,7 @@ class BaseModel {
     condition: QueryCondition<T> | [] = [],
     options: ReadGroupCountOptions<T> = {}
   ): Promise<number> {
-    return await countGroupedModels<T>(this as unknown as ModelCtor<T>, groupby, condition, options);
+    return await countGroupedModels<T>(asCollectionCtor(this), groupby, condition, options);
   }
 
   /**
@@ -763,11 +765,11 @@ class BaseModel {
   static async Update<T extends BaseModel>(
     this: ModelClass<T>,
     condition: QueryCondition<T>,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>[]> {
-    return await updateModels<T>(this as unknown as ModelCtor<T>, condition, values, returnFields, options);
+    return await updateModels<T>(asCollectionCtor(this), condition, values, returnFields, options);
   }
 
   /**
@@ -776,25 +778,25 @@ class BaseModel {
   static async UpdateById<T extends BaseModel>(
     this: ModelClass<T>,
     id: string,
-    values: Partial<Updateable<T & BaseModel>>,
+    values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>> {
-    return await updateModelById<T>(this as unknown as ModelCtor<T>, id, values, returnFields, options);
+    return await updateModelById<T>(asCollectionCtor(this), id, values, returnFields, options);
   }
 
   /**
    * Deletes all records matching a condition.
    */
   static async Delete<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
-    return await deleteModels<T>(this as unknown as ModelCtor<T>, condition, options);
+    return await deleteModels<T>(asCollectionCtor(this), condition, options);
   }
 
   /**
    * Deletes a single record by Id.
    */
   static async DeleteById<T extends BaseModel>(this: ModelClass<T>, id: string, options?: DeleteOptions): Promise<number> {
-    return await deleteModelById<T>(this as unknown as ModelCtor<T>, id, options);
+    return await deleteModelById<T>(asCollectionCtor(this), id, options);
   }
 
   /**
@@ -810,7 +812,7 @@ class BaseModel {
       loopThreshold?: number;
     }
   ): Promise<OnchangeResult> {
-    return await runModelOnchange<T>(this as unknown as ModelCtor<T>, draft, changed, opts);
+    return await runModelOnchange<T>(asCollectionCtor(this), draft, changed, opts);
   }
 
   /**
@@ -818,7 +820,7 @@ class BaseModel {
    * Note: this is a convenience entry point that delegates to Repository.withSavepoint.
    */
   static async withSavepoint<T extends BaseModel, R>(this: ModelClass<T>, fn: () => Promise<R>, name?: string): Promise<R> {
-    return await withModelSavepoint<T, R>(this as unknown as ModelCtor<T>, fn, name);
+    return await withModelSavepoint<T, R>(asCollectionCtor(this), fn, name);
   }
 
   /**
@@ -851,7 +853,7 @@ class BaseModel {
    * Hydrates a model instance from an entity payload.
    */
   static hydrate<T extends BaseModel>(this: ModelClass<T>, entity: ObjectRecord, fields?: FieldSelection<T>): T {
-    return hydrateModelFacade<T>(this as unknown as ModelCtor<T>, entity, fields);
+    return hydrateModelFacade<T>(asCollectionCtor(this), entity, fields);
   }
 }
 

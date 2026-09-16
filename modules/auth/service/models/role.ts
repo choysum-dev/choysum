@@ -239,7 +239,7 @@ export default class Role extends AuthzMutationModel {
   static override async BrowseMany<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
     ids: string[],
-    fields?: (keyof any)[],
+    fields?: FieldSelection<T>,
     options?: any
   ): Promise<T[]> {
     const rows = (await super.BrowseMany(ids as any, fields as any, options as any)) as any[];

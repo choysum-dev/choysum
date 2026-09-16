@@ -11,19 +11,19 @@ type ModelUpdateServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 export async function updateModels<T extends BaseModel>(
   ModelCtor: ModelUpdateServiceFacadeCtor<T>,
   condition: QueryCondition<T>,
-  values: Partial<Updateable<T & BaseModel>>,
+  values: Partial<Updateable<T>>,
   returnFields?: FieldSelection<T>,
   options?: UpdateOptions
 ): Promise<Partial<T>[]> {
-  return await UpdateOperations.Update<T>(ModelCtor, condition, values as Partial<Updateable<T>>, returnFields, options);
+  return await UpdateOperations.Update<T>(ModelCtor, condition, values, returnFields, options);
 }
 
 export async function updateModelById<T extends BaseModel>(
   ModelCtor: ModelUpdateServiceFacadeCtor<T>,
   id: string,
-  values: Partial<Updateable<T & BaseModel>>,
+  values: Partial<Updateable<T>>,
   returnFields?: FieldSelection<T>,
   options?: UpdateOptions
 ): Promise<Partial<T>> {
-  return await UpdateOperations.UpdateById<T>(ModelCtor, id, values as Partial<Updateable<T>>, returnFields, options);
+  return await UpdateOperations.UpdateById<T>(ModelCtor, id, values, returnFields, options);
 }
