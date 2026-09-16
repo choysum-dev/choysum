@@ -60,7 +60,7 @@ declare global {
     toBeLessThan(expected: number): void;
     toBeLessThanOrEqual(expected: number): void;
     toThrow(expected?: string | RegExp): void;
-    // Function (not `new (...args: any[])`) so ErrorConstructor stays assignable under hard-cut ctor typing.
+    // Function keeps ErrorConstructor assignable under hard-cut ctor typing.
     toBeInstanceOf(expected: Function): void;
   }
 
