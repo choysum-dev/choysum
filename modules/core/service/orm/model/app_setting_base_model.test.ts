@@ -228,29 +228,29 @@ test('pool resolves same-app AppSetting and rejects empty / core / missing', () 
   const viaModule = pool<AppSettingModelCtor>('as1partner', 'AppSetting');
   expect(viaModule).toBe(As1AppSetting);
 
-  expect(As1AuthUser.pool('AppSetting')).toBe(As1AuthAppSetting);
-  expect(As1Partner.pool('AppSetting')).not.toBe(As1AuthAppSetting);
+  expect(As1AuthUser.pool<typeof As1AuthAppSetting>('AppSetting')).toBe(As1AuthAppSetting);
+  expect(As1Partner.pool<typeof As1AppSetting>('AppSetting')).not.toBe(As1AuthAppSetting);
 
   try {
-    pool('as1partner', '');
+    pool<typeof As1AppSetting>('as1partner', '');
     expect(false).toBe(true);
   } catch (err) {
     expect((err as ChoysumError).code).toBe('POOL_INVALID_SHORT_NAME');
   }
   try {
-    pool('', 'AppSetting');
+    pool<typeof As1AppSetting>('', 'AppSetting');
     expect(false).toBe(true);
   } catch (err) {
     expect((err as ChoysumError).code).toBe('POOL_APPLICATION_INVALID');
   }
   try {
-    pool('core', 'AppSetting');
+    pool<typeof As1AppSetting>('core', 'AppSetting');
     expect(false).toBe(true);
   } catch (err) {
     expect((err as ChoysumError).code).toBe('POOL_APPLICATION_INVALID');
   }
   try {
-    pool('as1partner', 'MissingModel');
+    pool<typeof As1AppSetting>('as1partner', 'MissingModel');
     expect(false).toBe(true);
   } catch (err) {
     expect((err as ChoysumError).code).toBe('POOL_MODEL_NOT_FOUND');
@@ -258,8 +258,8 @@ test('pool resolves same-app AppSetting and rejects empty / core / missing', () 
 });
 
 test('pool does not use global short-name scan for Ambiguous short names', () => {
-  const a = pool('as1partner', 'AppSetting');
-  const b = pool('as1auth', 'AppSetting');
+  const a = pool<typeof As1AppSetting>('as1partner', 'AppSetting');
+  const b = pool<typeof As1AuthAppSetting>('as1auth', 'AppSetting');
   expect(a).toBe(As1AppSetting);
   expect(b).toBe(As1AuthAppSetting);
   expect(a).not.toBe(b);
@@ -268,7 +268,7 @@ test('pool does not use global short-name scan for Ambiguous short names', () =>
   // pool must stay app-scoped and not follow that path.
   const scanned = resolveModelConstructor('AppSetting');
   expect(scanned === As1AppSetting || scanned === As1AuthAppSetting).toBe(true);
-  expect(As1Partner.pool('AppSetting')).toBe(As1AppSetting);
+  expect(As1Partner.pool<typeof As1AppSetting>('AppSetting')).toBe(As1AppSetting);
 });
 
 test('dial wraps createServiceByModel; rejects empty and short names', () => {
@@ -276,25 +276,25 @@ test('dial wraps createServiceByModel; rejects empty and short names', () => {
   const svc = { Ref: (id: string) => `ok:${id}` } as any;
   registerServiceFactory(modelName, () => svc);
 
-  expect(BaseModel.dial(modelName) as any).toBe(svc);
-  expect(dial(modelName)).toBe(createServiceByModel(modelName));
-  expect((BaseModel.dial(modelName) as typeof svc).Ref('x')).toBe('ok:x');
+  expect(BaseModel.dial<typeof BaseModel>(modelName) as any).toBe(svc);
+  expect(dial<typeof BaseModel>(modelName)).toBe(createServiceByModel<typeof BaseModel>(modelName));
+  expect((BaseModel.dial<typeof BaseModel>(modelName) as typeof svc).Ref('x')).toBe('ok:x');
 
   try {
-    dial('');
+    dial<typeof BaseModel>('');
     expect(false).toBe(true);
   } catch (err) {
     expect((err as ChoysumError).code).toBe('DIAL_INVALID_MODEL');
   }
   try {
-    dial('SoloShort');
+    dial<typeof BaseModel>('SoloShort');
     expect(false).toBe(true);
   } catch (err) {
     expect((err as ChoysumError).code).toBe('DIAL_INVALID_MODEL');
   }
   for (const bad of ['app.', '.Model', 'app..Model']) {
     try {
-      dial(bad);
+      dial<typeof BaseModel>(bad);
       expect(false).toBe(true);
     } catch (err) {
       expect((err as ChoysumError).code).toBe('DIAL_INVALID_MODEL');
@@ -305,5 +305,5 @@ test('dial wraps createServiceByModel; rejects empty and short names', () => {
   const dotted = `as1.test.DialProbe_${Date.now()}`;
   const dottedSvc = { ping: () => 'pong' };
   registerServiceFactory(dotted, () => dottedSvc);
-  expect(dial(dotted)).toBe(dottedSvc);
+  expect(dial<typeof BaseModel>(dotted)).toBe(dottedSvc as any);
 });

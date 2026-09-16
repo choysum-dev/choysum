@@ -21,6 +21,10 @@ type FollowerService = {
   SearchByRecord(model: string, resId: string, fields?: FieldSelection<any>): Promise<Partial<any>[]>;
 };
 
+/** Typing stubs: core must not import message.Message / message.Follower. */
+abstract class MessageModelStub extends BaseModel {}
+abstract class FollowerModelStub extends BaseModel {}
+
 /**
  * Opt-in dial facade for business models that participate in a message thread
  * (Odoo `mail.thread` style).
@@ -39,7 +43,7 @@ type FollowerService = {
 export default abstract class MessageThreadModel extends BaseModel {
   /** Post a collaboration message on a business record (Unary). */
   public static async MessagePost(req: MessageThreadPostReq, fields?: FieldSelection<any>): Promise<any> {
-    return dial<MessageService>('message.Message').Post(req, fields);
+    return (dial<typeof MessageModelStub>('message.Message') as unknown as MessageService).Post(req, fields);
   }
 
   /** List messages for one business record. */
@@ -48,17 +52,17 @@ export default abstract class MessageThreadModel extends BaseModel {
     resId: string,
     fields?: FieldSelection<any>
   ): Promise<Partial<any>[]> {
-    return dial<MessageService>('message.Message').SearchByRecord(model, resId, fields);
+    return (dial<typeof MessageModelStub>('message.Message') as unknown as MessageService).SearchByRecord(model, resId, fields);
   }
 
   /** Subscribe a user to a business record thread. */
   public static async MessageFollow(req: MessageThreadFollowReq, fields?: FieldSelection<any>): Promise<any> {
-    return dial<FollowerService>('message.Follower').Follow(req, fields);
+    return (dial<typeof FollowerModelStub>('message.Follower') as unknown as FollowerService).Follow(req, fields);
   }
 
   /** Remove a follower from a business record thread. */
   public static async MessageUnfollow(req: MessageThreadUnfollowReq): Promise<number> {
-    return dial<FollowerService>('message.Follower').Unfollow(req);
+    return (dial<typeof FollowerModelStub>('message.Follower') as unknown as FollowerService).Unfollow(req);
   }
 
   /** List followers for one business record. */
@@ -67,6 +71,6 @@ export default abstract class MessageThreadModel extends BaseModel {
     resId: string,
     fields?: FieldSelection<any>
   ): Promise<Partial<any>[]> {
-    return dial<FollowerService>('message.Follower').SearchByRecord(model, resId, fields);
+    return (dial<typeof FollowerModelStub>('message.Follower') as unknown as FollowerService).SearchByRecord(model, resId, fields);
   }
 }

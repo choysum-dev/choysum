@@ -7,7 +7,6 @@ import type { ModelConstructor, ModelService } from '../../rpc/types';
  * Builds a runtime service instance for a model.
  */
 export type ServiceFactory<TService = unknown> = () => TService;
-type UntypedModelService = Record<string, (...args: unknown[]) => unknown>;
 
 const serviceFactoryRegistry = new Map<string, ServiceFactory>();
 
@@ -34,13 +33,12 @@ export function unregisterServiceFactory(modelName: string): void {
 
 /**
  * Creates a service instance from the factory registered for the model name.
+ * Callers must pass the model ctor type argument (HC6).
  */
-export function createServiceByModel(modelName: string): UntypedModelService;
-export function createServiceByModel<TCtor extends ModelConstructor>(modelName: string): ModelService<TCtor>;
-export function createServiceByModel(modelName: string): UntypedModelService | ModelService<ModelConstructor> {
+export function createServiceByModel<TCtor extends ModelConstructor>(modelName: string): ModelService<TCtor> {
   const factory = getServiceFactory(modelName);
   if (!factory) {
     throw new Error(`Service factory for model '${modelName}' not found. Make sure the module is loaded.`);
   }
-  return factory() as UntypedModelService;
+  return factory() as ModelService<TCtor>;
 }

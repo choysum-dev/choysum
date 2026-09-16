@@ -47,7 +47,12 @@ type BindAttachmentFn = (req: {
   mutationId: string;
 }) => Promise<unknown>;
 
-type DialFn = <T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string) => T;
+type AttachmentBindingServiceLike = { Bind?: BindAttachmentFn };
+
+/** Typing stub: message must not import document.AttachmentBinding. */
+abstract class AttachmentBindingStub extends BaseModel {}
+
+type DialFn = (fullModelName: string) => AttachmentBindingServiceLike;
 type XidNewFn = () => string | null | undefined;
 
 let bindAttachmentOverride: BindAttachmentFn | null | undefined;
@@ -152,8 +157,9 @@ function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Messag
 function resolveBind(): BindAttachmentFn | null {
   if (bindAttachmentOverride !== undefined) return bindAttachmentOverride;
   try {
-    const dialFn = dialOverride || dial;
-    const svc = dialFn<{ Bind?: BindAttachmentFn }>('document.AttachmentBinding');
+    const svc = dialOverride
+      ? dialOverride('document.AttachmentBinding')
+      : (dial<typeof AttachmentBindingStub>('document.AttachmentBinding') as unknown as AttachmentBindingServiceLike);
     if (typeof svc?.Bind !== 'function') return null;
     return svc.Bind.bind(svc);
   } catch {

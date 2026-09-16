@@ -3,7 +3,7 @@
 
 import { RelationFactory } from '../relation';
 import type { QueryCondition, Updateable, FieldSelection, UpdateOptions } from '../repository/types';
-import type BaseModel from './model';
+import BaseModel from './model';
 import { normalizePrefetchedRows } from './model_update_prefetch';
 import { getModelRepository } from './model_internal_facade';
 import { searchModels } from './model_read_facade';
@@ -63,6 +63,9 @@ type AttachmentBindingServiceLike = {
   Unbind(req: AttachmentBindingUnbindReq): Promise<unknown>;
   Search(condition: unknown, options?: unknown): Promise<unknown>;
 };
+
+/** Typing stub for cross-app dial; core must not import the document model. */
+abstract class AttachmentBindingModelStub extends BaseModel {}
 
 function normalizeText(value: unknown): string | undefined {
   const text = String(value ?? '').trim();
@@ -176,7 +179,9 @@ function rewriteUpdateInputForAttachments(input: UnknownRecord, actions: Map<str
 }
 
 function resolveAttachmentBindingService(): AttachmentBindingServiceLike {
-  const service = createServiceByModel('document.AttachmentBinding') as unknown as AttachmentBindingServiceLike;
+  const service = createServiceByModel<typeof AttachmentBindingModelStub>(
+    'document.AttachmentBinding'
+  ) as unknown as AttachmentBindingServiceLike;
   if (!service || typeof service.Bind !== 'function' || typeof service.Unbind !== 'function' || typeof service.Search !== 'function') {
     throw new Error('[Update] document.AttachmentBinding service is unavailable.');
   }

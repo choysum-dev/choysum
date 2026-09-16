@@ -4,7 +4,7 @@
 import { RelationFactory } from '../relation';
 import type { ExtractedRelations } from '../relation/types';
 import type { Insertable, FieldSelection } from '../repository/types';
-import type BaseModel from './model';
+import BaseModel from './model';
 import { getModelRepository } from './model_internal_facade';
 import { browseManyModels, browseModel, searchModels } from './model_read_facade';
 import type { ModelCtor } from './types';
@@ -50,6 +50,9 @@ type AttachmentBindingBindResp = {
 type AttachmentBindingServiceLike = {
   Bind(req: AttachmentBindingBindReq): Promise<AttachmentBindingBindResp>;
 };
+
+/** Typing stub for cross-app dial; core must not import the document model. */
+abstract class AttachmentBindingModelStub extends BaseModel {}
 
 function normalizeText(value: unknown): string | undefined {
   const text = String(value ?? '').trim();
@@ -164,7 +167,9 @@ function rewriteCreateInputForAttachments(input: UnknownRecord, actions: Map<str
 }
 
 function resolveAttachmentBindingService(): AttachmentBindingServiceLike {
-  const service = createServiceByModel('document.AttachmentBinding') as unknown as AttachmentBindingServiceLike;
+  const service = createServiceByModel<typeof AttachmentBindingModelStub>(
+    'document.AttachmentBinding'
+  ) as unknown as AttachmentBindingServiceLike;
   if (!service || typeof service.Bind !== 'function') {
     throw new Error('[Create] document.AttachmentBinding service is unavailable.');
   }

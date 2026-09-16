@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type BaseModel from './model';
+import BaseModel from './model';
 import {
   QueryCondition,
   SearchOptions,
@@ -40,6 +40,9 @@ import { createServiceByModel } from '../../rpc';
 import { _t } from '@/core/service/i18n_binder';
 import { mergeCallerConditionWithForField } from './model_for_field_condition';
 import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/datetime';
+
+/** Typing stub for cross-app dial; core must not import the document model. */
+abstract class AttachmentBindingModelStub extends BaseModel {}
 
 /**
  * Read-related delegated operations.
@@ -201,7 +204,9 @@ export class ReadOperations {
 
   private static resolveAttachmentBindingService(): { Search: (condition: unknown, options?: unknown) => Promise<ObjectRecord[]> } | undefined {
     try {
-      const service = createServiceByModel('document.AttachmentBinding') as unknown as {
+      const service = createServiceByModel<typeof AttachmentBindingModelStub>(
+        'document.AttachmentBinding'
+      ) as unknown as {
         Search?: (condition: unknown, options?: unknown) => Promise<ObjectRecord[]>;
       };
       if (!service || typeof service.Search !== 'function') {

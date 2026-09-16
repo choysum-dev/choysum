@@ -15,6 +15,9 @@ type AttachmentBindingService = {
   Unbind(req: AttachmentOwnerUnbindReq): Promise<AttachmentOwnerUnbindResp>;
 };
 
+/** Typing stub: core must not import document.AttachmentBinding. */
+abstract class DocumentAttachmentBindingStub extends BaseModel {}
+
 /**
  * Opt-in dial facade for business models with attachment owner fields.
  *
@@ -31,11 +34,15 @@ type AttachmentBindingService = {
 export default abstract class AttachmentOwnerMixin extends BaseModel {
   /** Bind finalized attachment content to an owner record field. */
   public static async AttachmentBind(req: AttachmentOwnerBindReq): Promise<AttachmentOwnerBindResp> {
-    return dial<AttachmentBindingService>('document.AttachmentBinding').Bind(req);
+    return (dial<typeof DocumentAttachmentBindingStub>('document.AttachmentBinding') as unknown as AttachmentBindingService).Bind(
+      req
+    );
   }
 
   /** Unbind an attachment from an owner record field. */
   public static async AttachmentUnbind(req: AttachmentOwnerUnbindReq): Promise<AttachmentOwnerUnbindResp> {
-    return dial<AttachmentBindingService>('document.AttachmentBinding').Unbind(req);
+    return (dial<typeof DocumentAttachmentBindingStub>('document.AttachmentBinding') as unknown as AttachmentBindingService).Unbind(
+      req
+    );
   }
 }

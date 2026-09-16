@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import BaseModel from '../orm/model/model';
 import {
   createServiceByModel,
   getServiceFactory,
@@ -13,7 +14,7 @@ test('registerServiceFactory + createServiceByModel should create service instan
   const serviceInstance = { Ping: () => 'pong' };
 
   registerServiceFactory(modelName, () => serviceInstance);
-  const created = createServiceByModel(modelName);
+  const created = createServiceByModel<typeof BaseModel>(modelName) as unknown as { Ping: () => string };
 
   expect(created).toBe(serviceInstance);
   expect(created.Ping()).toBe('pong');
@@ -24,5 +25,7 @@ test('registerServiceFactory + createServiceByModel should create service instan
 test('createServiceByModel should throw when service factory missing', () => {
   const modelName = `missing.Model.${Date.now()}`;
 
-  expect(() => createServiceByModel(modelName)).toThrow(`Service factory for model '${modelName}' not found.`);
+  expect(() => createServiceByModel<typeof BaseModel>(modelName)).toThrow(
+    `Service factory for model '${modelName}' not found.`
+  );
 });

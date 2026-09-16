@@ -202,8 +202,8 @@ test('pool falls back to MetadataStorage when global pool misses', () => {
     },
   };
   try {
-    expect(pool('as1cov', 'AppSetting')).toBe(As1CovAppSetting);
-    expect(As1CovPartner.pool('AppSetting')).toBe(As1CovAppSetting);
+    expect(pool<typeof As1CovAppSetting>('as1cov', 'AppSetting')).toBe(As1CovAppSetting);
+    expect(As1CovPartner.pool<typeof As1CovAppSetting>('AppSetting')).toBe(As1CovAppSetting);
   } finally {
     (globalThis as any).pool = previous;
   }
@@ -218,7 +218,7 @@ test('pool metadata fallback skips null ctors and missing models map', () => {
   try {
     storage.models = undefined;
     try {
-      pool('as1cov', 'AppSetting');
+      pool<typeof As1CovAppSetting>('as1cov', 'AppSetting');
       expect(false).toBe(true);
     } catch (err) {
       expect((err as ChoysumError).code).toBe('POOL_MODEL_NOT_FOUND');
@@ -229,13 +229,13 @@ test('pool metadata fallback skips null ctors and missing models map', () => {
       [As1CovAppSetting, { fullModelName: 'as1cov.AppSetting' }],
     ]);
     storage.models = map;
-    expect(pool('as1cov', 'AppSetting')).toBe(As1CovAppSetting);
+    expect(pool<typeof As1CovAppSetting>('as1cov', 'AppSetting')).toBe(As1CovAppSetting);
 
     (globalThis as any).pool = {};
-    expect(pool('as1cov', 'AppSetting')).toBe(As1CovAppSetting);
+    expect(pool<typeof As1CovAppSetting>('as1cov', 'AppSetting')).toBe(As1CovAppSetting);
 
     (globalThis as any).pool = { get: () => ({ not: 'a function' }) };
-    expect(pool('as1cov', 'AppSetting')).toBe(As1CovAppSetting);
+    expect(pool<typeof As1CovAppSetting>('as1cov', 'AppSetting')).toBe(As1CovAppSetting);
   } finally {
     storage.models = previousModels;
     (globalThis as any).pool = previousPool;
@@ -245,7 +245,7 @@ test('pool metadata fallback skips null ctors and missing models map', () => {
 test('BaseModel.pool with blank application raises POOL_APPLICATION_INVALID', () => {
   class As1NoApp extends BaseModel {}
   try {
-    As1NoApp.pool('AppSetting');
+    As1NoApp.pool<typeof As1CovAppSetting>('AppSetting');
     expect(false).toBe(true);
   } catch (err) {
     expect((err as ChoysumError).code).toBe('POOL_APPLICATION_INVALID');
@@ -256,7 +256,7 @@ test('BaseModel.pool with blank application raises POOL_APPLICATION_INVALID', ()
   (storage as any).getModelMetadata = () => undefined;
   try {
     try {
-      As1NoApp.pool('AppSetting');
+      As1NoApp.pool<typeof As1CovAppSetting>('AppSetting');
       expect(false).toBe(true);
     } catch (err) {
       expect((err as ChoysumError).code).toBe('POOL_APPLICATION_INVALID');
@@ -268,7 +268,7 @@ test('BaseModel.pool with blank application raises POOL_APPLICATION_INVALID', ()
 
 test('dial rejects whitespace-only model names', () => {
   try {
-    dial('   ');
+    dial<typeof BaseModel>('   ');
     expect(false).toBe(true);
   } catch (err) {
     expect((err as ChoysumError).code).toBe('DIAL_INVALID_MODEL');
