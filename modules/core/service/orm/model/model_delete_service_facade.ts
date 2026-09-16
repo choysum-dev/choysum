@@ -13,9 +13,9 @@ export async function deleteModels<T extends BaseModel>(
   condition: QueryCondition<T>,
   options?: DeleteOptions
 ): Promise<number> {
-  return await DeleteOperations.Delete(ModelCtor, condition, options);
+  return await DeleteOperations.Delete<T>(ModelCtor, condition, options);
 }
 
 export async function deleteModelById<T extends BaseModel>(ModelCtor: ModelDeleteServiceFacadeCtor<T>, id: string, options?: DeleteOptions): Promise<number> {
-  return await DeleteOperations.DeleteById(ModelCtor, id, options);
+  return await DeleteOperations.DeleteById<T>(ModelCtor, id, options);
 }

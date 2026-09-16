@@ -20,7 +20,7 @@ type DeleteRepositoryLike = {
  * DeleteOperations owns model delete flows and upstream recompute propagation.
  */
 export class DeleteOperations {
-  private static resolveRepository(ModelCtor: ModelStatic, options?: DeleteOptions): DeleteRepositoryLike {
+  private static resolveRepository<T extends BaseModel>(ModelCtor: ModelStatic<T>, options?: DeleteOptions): DeleteRepositoryLike {
     return resolveRepositoryWithSoftDeleteOptions(ModelCtor, options) as unknown as DeleteRepositoryLike;
   }
 
@@ -28,7 +28,7 @@ export class DeleteOperations {
    * Static delete by condition. Returns the affected row count.
    * - Does not perform cascade or compute handling, matching the existing behavior.
    */
-  static async Delete<T extends BaseModel>(ModelCtor: ModelStatic, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
+  static async Delete<T extends BaseModel>(ModelCtor: ModelStatic<T>, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
     const repository = DeleteOperations.resolveRepository(ModelCtor, options);
     const upstreamInverseFields = collectModelUpstreamInverseFields(ModelCtor);
     const companyField = resolveTrackingCompanyField(MetadataStorage.instance.getModelMetadata(ModelCtor as any));
@@ -85,7 +85,7 @@ export class DeleteOperations {
   /**
    * Static delete by Id. Returns the affected row count.
    */
-  static async DeleteById<T extends BaseModel>(ModelCtor: ModelStatic, id: string, options?: DeleteOptions): Promise<number> {
+  static async DeleteById<T extends BaseModel>(ModelCtor: ModelStatic<T>, id: string, options?: DeleteOptions): Promise<number> {
     return await DeleteOperations.Delete<T>(ModelCtor, ['Id', '=', id] as QueryCondition<T>, options);
   }
 }
