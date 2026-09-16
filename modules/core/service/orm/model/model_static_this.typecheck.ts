@@ -41,6 +41,22 @@ function typecheckStaticThis(): void {
   );
   void updatedProjected;
 
+  const browsedOneProjected: Promise<Projected<Probe, ['Name']>> = Probe.Browse('id', fields<Probe>()('Name'));
+  void browsedOneProjected;
+
+  const createdManyProjected: Promise<Array<Projected<Probe, ['Name']>>> = Probe.CreateMany(
+    [{ Name: 'x' }],
+    fields<Probe>()('Name')
+  );
+  void createdManyProjected;
+
+  const updatedByIdProjected: Promise<Projected<Probe, ['Name']>> = Probe.UpdateById(
+    'id',
+    { Name: 'x' },
+    fields<Probe>()('Name')
+  );
+  void updatedByIdProjected;
+
   // @ts-expect-error unknown field is not a QueryCondition path
   const invalidSearch = Probe.Search(['NoSuch', '=', 1]);
   void invalidSearch;

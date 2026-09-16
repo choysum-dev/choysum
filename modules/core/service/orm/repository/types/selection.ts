@@ -25,7 +25,11 @@ export type FieldSelection<T> = ReadonlyArray<'*' | keyof Selectable<T> | Relati
 type FieldName<T> = Exclude<FieldSelection<T>[number], object | '*'>;
 
 /** Relation keys selected via object-form {@link DeepRelationSelection} (V1 keeps the key, not nested Pick). */
-type RelationSelected<T, F extends FieldSelection<T>> = keyof Extract<F[number], DeepRelationSelection<T>>;
+type RelationSelected<T, F extends FieldSelection<T>> = F[number] extends infer R
+  ? R extends DeepRelationSelection<T>
+    ? keyof R
+    : never
+  : never;
 
 /**
  * V1 honest projection: top-level Pick of selected keys.

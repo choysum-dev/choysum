@@ -43,12 +43,26 @@ type WithRelationProbe = Probe & { Partner?: RelTargetModel };
 type RelProjected = Projected<WithRelationProbe, [{ Partner: ['Id'] }]>;
 type ExpectPartnerKey = ExpectTrue<'Partner' extends keyof RelProjected ? true : false>;
 
+type TwoRelationProbe = Probe & { Partner?: RelTargetModel; Owner?: RelTargetModel };
+type TwoRelProjected = Projected<TwoRelationProbe, [{ Partner: ['Id'] }, { Owner: ['Id'] }]>;
+type ExpectBothRelationKeys = ExpectTrue<
+  'Partner' extends keyof TwoRelProjected ? ('Owner' extends keyof TwoRelProjected ? true : false) : false
+>;
+
 // `fields()` must preserve literal keys so callers get a projection, not full rows.
 const _selected = fields<Probe>()('Id', 'Name');
 type ExpectLiteralKeys = ExpectTrue<typeof _selected extends readonly ['Id', 'Name'] ? true : false>;
 
 const _typecheckHold:
-  | [ExpectId, ExpectNameOnStar, ExpectCode, ExpectNameOnEmpty, ExpectPartnerKey, ExpectLiteralKeys]
+  | [
+      ExpectId,
+      ExpectNameOnStar,
+      ExpectCode,
+      ExpectNameOnEmpty,
+      ExpectPartnerKey,
+      ExpectBothRelationKeys,
+      ExpectLiteralKeys,
+    ]
   | undefined = undefined;
 void _typecheckHold;
 void 0 as unknown as NoName;
