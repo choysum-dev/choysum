@@ -5,6 +5,7 @@
  * Compile-only guards for {@link Projected} (not executed at runtime).
  */
 import type { Projected } from './selection';
+import { fields } from './selection';
 
 type ExpectTrue<T extends true> = T;
 
@@ -27,7 +28,14 @@ type ExpectCode = ExpectTrue<'Code' extends keyof Multi ? true : false>;
 // @ts-expect-error Name was not selected in multi projection
 type NoNameMulti = Multi['Name'];
 
-const _typecheckHold: [ExpectId, ExpectNameOnStar, ExpectCode] | undefined = undefined;
+type Empty = Projected<Probe, []>;
+type ExpectNameOnEmpty = ExpectTrue<'Name' extends keyof Empty ? true : false>;
+
+// `fields()` must preserve literal keys so callers get a projection, not full rows.
+const _selected = fields<Probe>()('Id', 'Name');
+type ExpectLiteralKeys = ExpectTrue<typeof _selected extends readonly ['Id', 'Name'] ? true : false>;
+
+const _typecheckHold: [ExpectId, ExpectNameOnStar, ExpectCode, ExpectNameOnEmpty, ExpectLiteralKeys] | undefined = undefined;
 void _typecheckHold;
 void 0 as unknown as NoName;
 void 0 as unknown as NoNameMulti;

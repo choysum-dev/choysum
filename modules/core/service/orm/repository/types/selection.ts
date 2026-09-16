@@ -27,10 +27,12 @@ type FieldName<T> = Exclude<FieldSelection<T>[number], object | '*'>;
 /**
  * V1 honest projection: top-level Pick of selected keys.
  * `'*'` (or a selection that includes `'*'`) yields full {@link Selectable}.
+ * An empty selection is treated as a full row (ORM default), not `{}`.
  * Nested {@link DeepRelationSelection} entries are not expanded (relation keys stay unprojected).
  */
-export type Projected<T, F extends FieldSelection<T>> =
-  Extract<F[number], '*'> extends never
+export type Projected<T, F extends FieldSelection<T>> = F extends readonly []
+  ? Selectable<T>
+  : Extract<F[number], '*'> extends never
     ? Pick<Selectable<T>, Extract<F[number], FieldName<T>> & keyof Selectable<T>>
     : Selectable<T>;
 

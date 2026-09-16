@@ -55,5 +55,5 @@ export async function nameSearchModels<T extends BaseModel>(
     condition?: QueryCondition<T> | [],
     options?: SearchOptions<T>
   ) => Promise<T[]>;
-  return await search(merged, searchOptions);
+  return await search.call(ModelCtor, merged, searchOptions);
 }
