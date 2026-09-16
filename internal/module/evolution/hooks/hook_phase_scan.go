@@ -4,25 +4,30 @@
 package hooks
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
 // Canonical @Hook* decorator forms used by module sources. Aliased / dynamic
 // registration is not detected (authors should use the canonical decorator names).
-// Generic args use [^()\n]* so nested brackets like <Map<string, number>> still match.
+// Generic args use non-greedy [^\n]*? so nested brackets and parentheses inside
+// type arguments (e.g. <Map<string, number>>, <() => void>) still match.
 var hookPhaseDecoratorPatterns = map[Phase]*regexp.Regexp{
-	PhasePreInit:       regexp.MustCompile(`@HookPreInit\s*(?:<[^()\n]*>)?\s*\(`),
-	PhasePostInit:      regexp.MustCompile(`@HookPostInit\s*(?:<[^()\n]*>)?\s*\(`),
-	PhasePreUpgrade:    regexp.MustCompile(`@HookPreUpgrade\s*(?:<[^()\n]*>)?\s*\(`),
-	PhasePostUpgrade:   regexp.MustCompile(`@HookPostUpgrade\s*(?:<[^()\n]*>)?\s*\(`),
-	PhasePreUninstall:  regexp.MustCompile(`@HookPreUninstall\s*(?:<[^()\n]*>)?\s*\(`),
-	PhasePostUninstall: regexp.MustCompile(`@HookPostUninstall\s*(?:<[^()\n]*>)?\s*\(`),
+	PhasePreInit:       regexp.MustCompile(`@HookPreInit\s*(?:<[^\n]*?>)?\s*\(`),
+	PhasePostInit:      regexp.MustCompile(`@HookPostInit\s*(?:<[^\n]*?>)?\s*\(`),
+	PhasePreUpgrade:    regexp.MustCompile(`@HookPreUpgrade\s*(?:<[^\n]*?>)?\s*\(`),
+	PhasePostUpgrade:   regexp.MustCompile(`@HookPostUpgrade\s*(?:<[^\n]*?>)?\s*\(`),
+	PhasePreUninstall:  regexp.MustCompile(`@HookPreUninstall\s*(?:<[^\n]*?>)?\s*\(`),
+	PhasePostUninstall: regexp.MustCompile(`@HookPostUninstall\s*(?:<[^\n]*?>)?\s*\(`),
 }
+
+var hookMarker = []byte("@Hook")
 
 func isIgnoredHookScanDir(name string) bool {
 	switch name {
@@ -33,22 +38,43 @@ func isIgnoredHookScanDir(name string) bool {
 	}
 }
 
+func isHookScanTestFile(base string) bool {
+	stem := strings.TrimSuffix(base, filepath.Ext(base))
+	return strings.HasSuffix(stem, ".test") || strings.HasSuffix(stem, ".spec")
+}
+
 // Overridable in tests for fail-open branches after EvalSymlinks.
 var hookPhaseScanStat = os.Stat
+
+// Per resolved module path: one tree walk serves all lifecycle phases.
+var hookPhaseScanMemo sync.Map // map[string]*hookPhaseScanCache
+
+type hookPhaseScanCache struct {
+	indeterminate bool
+	phases        map[Phase]struct{}
+}
+
+func (c *hookPhaseScanCache) has(phase Phase) bool {
+	if c == nil || c.indeterminate {
+		return true
+	}
+	_, ok := c.phases[phase]
+	return ok
+}
 
 // moduleSourceDeclaresHookPhase reports whether module sources declare a
 // canonical @Hook* decorator for phase. Used to skip RunPhase without Bundle /
 // executor Reload when the registry would be empty.
 //
-// Returns true (fail open) when sources cannot be inspected — missing Path,
+// Returns true (fail open) when sources cannot be inspected — missing/blank Path,
 // Stat/EvalSymlinks errors, walk I/O errors, or an unexpected symlink — so
 // required phases still load JS rather than silently skipping real hooks.
+// A nil module returns false (no sources to run); that is not an inspection failure.
 func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 	if module == nil {
 		return false
 	}
-	pattern := hookPhaseDecoratorPatterns[phase]
-	if pattern == nil {
+	if _, ok := hookPhaseDecoratorPatterns[phase]; !ok {
 		return true
 	}
 	root := strings.TrimSpace(module.Path)
@@ -61,18 +87,28 @@ func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 	if err != nil {
 		return true
 	}
-	root = resolved
-	info, err := hookPhaseScanStat(root)
+	info, err := hookPhaseScanStat(resolved)
 	if err != nil {
 		return true
 	}
 	if !info.IsDir() {
 		return true
 	}
-	found := false
+	if cached, ok := hookPhaseScanMemo.Load(resolved); ok {
+		return cached.(*hookPhaseScanCache).has(phase)
+	}
+	cache := scanModuleHookPhases(resolved)
+	hookPhaseScanMemo.Store(resolved, cache)
+	return cache.has(phase)
+}
+
+// scanModuleHookPhases walks module sources once and records every phase whose
+// canonical decorator appears.
+func scanModuleHookPhases(root string) *hookPhaseScanCache {
+	cache := &hookPhaseScanCache{phases: make(map[Phase]struct{})}
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			found = true
+			cache.indeterminate = true
 			return filepath.SkipAll
 		}
 		// WalkDir does not follow symlinks. Skip known-irrelevant names first
@@ -81,19 +117,19 @@ func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 			if isIgnoredHookScanDir(d.Name()) {
 				return nil
 			}
-			found = true
+			cache.indeterminate = true
 			return filepath.SkipAll
 		}
 		if d.IsDir() {
-			if isIgnoredHookScanDir(d.Name()) {
+			// Do not SkipDir the module root when its basename is an ignore name
+			// (e.g. a module checked out as .../demo).
+			if path != root && isIgnoredHookScanDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
 		base := strings.ToLower(d.Name())
-		if strings.HasSuffix(base, ".test.ts") || strings.HasSuffix(base, ".test.tsx") ||
-			strings.HasSuffix(base, ".test.js") || strings.HasSuffix(base, ".spec.ts") ||
-			strings.HasSuffix(base, ".spec.tsx") || strings.HasSuffix(base, ".spec.js") {
+		if isHookScanTestFile(base) {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(path)) {
@@ -103,16 +139,25 @@ func moduleSourceDeclaresHookPhase(module *meta.Module, phase Phase) bool {
 		}
 		raw, readErr := os.ReadFile(path)
 		if readErr != nil {
-			found = true
+			cache.indeterminate = true
 			return filepath.SkipAll
 		}
-		if pattern.Match(stripLineComments(raw)) {
-			found = true
-			return filepath.SkipAll
+		// Every pattern requires "@Hook"; skip the comment-strip copy otherwise.
+		if !bytes.Contains(raw, hookMarker) {
+			return nil
+		}
+		stripped := stripLineComments(raw)
+		for phase, pattern := range hookPhaseDecoratorPatterns {
+			if _, already := cache.phases[phase]; already {
+				continue
+			}
+			if pattern.Match(stripped) {
+				cache.phases[phase] = struct{}{}
+			}
 		}
 		return nil
 	})
-	return found
+	return cache
 }
 
 // stripLineComments drops //... tails per line so disabled decorators like

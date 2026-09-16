@@ -89,6 +89,36 @@ export class Hooks {
 		t.Fatal("expected nested generic @HookPreUpgrade to match")
 	}
 
+	parenGeneric := filepath.Join(root, "paren_generic")
+	if err := os.MkdirAll(parenGeneric, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWriteHookScanFile(t, filepath.Join(parenGeneric, "hooks.ts"), `
+  @HookPreInit<() => void>()
+  static async pre(): Promise<void> {}
+`)
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: parenGeneric}, PhasePreInit) {
+		t.Fatal("expected parenthesized generic @HookPreInit to match")
+	}
+
+	// Module root basename may itself be an ignore name (e.g. .../demo).
+	demoRoot := filepath.Join(root, "demo")
+	mustWriteHookScanFile(t, filepath.Join(demoRoot, "service", "hook.ts"), `
+  @HookPostInit()
+  static async ensure(): Promise<void> {}
+`)
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: demoRoot}, PhasePostInit) {
+		t.Fatal("module rooted at demo/ must still be scanned")
+	}
+
+	// Two files declaring the same phase hit the per-phase "already" continue.
+	dupPhase := filepath.Join(root, "dup_phase")
+	mustWriteHookScanFile(t, filepath.Join(dupPhase, "a.ts"), "@HookPostUpgrade()\n")
+	mustWriteHookScanFile(t, filepath.Join(dupPhase, "b.ts"), "@HookPostUpgrade()\n")
+	if !moduleSourceDeclaresHookPhase(&meta.Module{Path: dupPhase}, PhasePostUpgrade) {
+		t.Fatal("duplicate phase declarations must still match")
+	}
+
 	skippedDirs := []string{"node_modules", "dist", "demo", "__tests__", "coverage"}
 	for _, dir := range skippedDirs {
 		blocked := filepath.Join(root, "skip_"+dir)
@@ -247,6 +277,10 @@ func TestModuleSourceDeclaresHookPhase_CoverageEdges(t *testing.T) {
 	mustWriteHookScanFile(t, filepath.Join(extRoot, "z.spec.js"), "@HookPreInit()\n")
 	mustWriteHookScanFile(t, filepath.Join(extRoot, "w.test.js"), "@HookPreInit()\n")
 	mustWriteHookScanFile(t, filepath.Join(extRoot, "v.test.tsx"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "u.test.jsx"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "t.spec.jsx"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "s.test.mts"), "@HookPreInit()\n")
+	mustWriteHookScanFile(t, filepath.Join(extRoot, "r.spec.cts"), "@HookPreInit()\n")
 	if moduleSourceDeclaresHookPhase(&meta.Module{Path: extRoot}, PhasePreInit) {
 		t.Fatal("ignored dirs/tests and empty sources must not declare pre_init")
 	}
