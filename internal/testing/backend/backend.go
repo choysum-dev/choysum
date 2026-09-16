@@ -503,10 +503,10 @@ type unitAppInstaller interface {
 	Install(ctx context.Context, req lifecycle.InstallRequest) error
 }
 
-// installUnitAppModules installs the unit shard without the SPA web shell.
-// Backend unit tests do not need dist/web or MetaUiResource rows from global web
-// build; suites that need UI catalog rows seed them in the test (see auth
-// permission_state fixtures).
+// installUnitAppModules installs the unit shard without auto-pulling the SPA
+// shell for domain modules (SkipWebShell). Installing app "web" itself still
+// builds dist/web because web is in ModuleOrder. Backend suites that need UI
+// catalog rows seed MetaUiResource in the test (see auth permission_state).
 func installUnitAppModules(ctx context.Context, installer unitAppInstaller, app string) error {
 	return installer.Install(ctx, lifecycle.InstallRequest{
 		Name:         app,
@@ -625,9 +625,9 @@ func RunOneAppBackendTests(
 		// Let module installation manage its own transactional/lease lifecycle.
 		// The outer test transaction is only needed for bundle/test execution state.
 		//
-		// Always SkipWebShell: entryPoints.web would otherwise pull the SPA shell
-		// (web→message/audit) and run web_build. BE suites seed any needed
-		// MetaUiResource rows themselves.
+		// Always SkipWebShell for domain shards (do not pull SPA deps). Installing
+		// app "web" itself still runs global web build (web ∈ ModuleOrder).
+		// BE suites seed any needed MetaUiResource rows themselves.
 		moduleLifecycle := lifecycle.NewService(testScope, jsExec)
 		// Auth backend tests rely on meta gRPC services (Model/Application).
 		// Web backend tests need meta for FieldDefault/AppSetting and authz ModelData seeds.

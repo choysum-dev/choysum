@@ -375,6 +375,18 @@ func TestBuildPlan_NeedsGlobalWebBuildTrueWhenRootIsWeb(t *testing.T) {
 	if !plan.NeedsGlobalWebBuild {
 		t.Fatalf("expected NeedsGlobalWebBuild=true, got false")
 	}
+
+	// Installing module "web" with SkipWebShell must still build dist/web.
+	planSkip, err := BuildPlan(context.Background(), OpInstall, root, r, WithSkipWebShell(true))
+	if err != nil {
+		t.Fatalf("BuildPlan SkipWebShell error: %v", err)
+	}
+	if !planSkip.NeedsGlobalWebBuild {
+		t.Fatalf("expected NeedsGlobalWebBuild=true when root is web even with SkipWebShell")
+	}
+	if !moduleOrderContains(planSkip.ModuleOrder, "web") {
+		t.Fatalf("expected web in ModuleOrder, got %v", planSkip.ModuleOrder)
+	}
 }
 
 func TestBuildPlan_NeedsGlobalWebBuildTrueWhenWebInstalled(t *testing.T) {
