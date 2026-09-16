@@ -214,6 +214,7 @@ async function createUiResource(input: {
   parentId?: string;
   requires?: string[];
   MetaApplicationId?: string | null;
+  module?: string;
 }): Promise<void> {
   const parentDbId = input.parentId ? await resolveUiResourceDbId(input.parentId) : null;
   await MetaUiResource.Create(
@@ -223,7 +224,7 @@ async function createUiResource(input: {
       ParentId: parentDbId ? ({ Id: parentDbId } as any) : null,
       Requires: input.requires ?? [],
       MetaApplicationId: input.MetaApplicationId ?? null,
-      Module: 'auth',
+      Module: input.module ?? 'auth',
     } as any,
     ['Id'] as any
   );
@@ -1191,23 +1192,24 @@ test('PermissionState smoke: declared resource -> persisted dictionary -> explic
         ['Id'] as any
       );
 
-      // These IDs come from auth declaration code and should exist after build/persist.
+      // Seed catalog rows that production gets from web build / defineRoute persist.
+      // Auth BE unit install skips the SPA shell, so tests create them explicitly.
       const routeId = 'auth.route.token_list';
       const menuId = 'auth.menu.token_list';
       const actionId = 'auth.action.token_edit';
-      const fallbackActionId = 'auth.action.smoke_fallback';
+
+      await createUiResource({ resourceId: menuId, type: 'MENU', requires: [] });
+      await createUiResource({ resourceId: routeId, type: 'ROUTE', requires: [] });
+      await createUiResource({ resourceId: actionId, type: 'ACTION', requires: [] });
+      await createMenuRouteRelation({ menuResourceId: menuId, routeResourceId: routeId });
+      await createRouteActionRelation({ routeResourceId: routeId, actionResourceId: actionId });
 
       await createRoleUiResourceGrant({ roleId: r.id, resourceId: routeId });
-      try {
-        await createRoleUiResourceGrant({ roleId: r.id, resourceId: actionId });
-      } catch {
-        await createUiResource({ resourceId: fallbackActionId, type: 'ACTION', requires: [] });
-        await createRoleUiResourceGrant({ roleId: r.id, resourceId: fallbackActionId });
-      }
+      await createRoleUiResourceGrant({ roleId: r.id, resourceId: actionId });
 
       disableAllowlist();
       const ps = await User.GetPermissionState();
-      return { ps, routeId, menuId, actionId, fallbackActionId };
+      return { ps, routeId, menuId, actionId };
     },
     { merge: false }
   );
@@ -1215,7 +1217,7 @@ test('PermissionState smoke: declared resource -> persisted dictionary -> explic
   const globalUi = out.ps.byCompany['*']?.ui ?? {};
   expect((globalUi.routes ?? []).includes(out.routeId)).toBe(true);
   expect((globalUi.menus ?? []).includes(out.menuId)).toBe(true);
-  expect((globalUi.actions ?? []).includes(out.actionId) || (globalUi.actions ?? []).includes(out.fallbackActionId)).toBe(true);
+  expect((globalUi.actions ?? []).includes(out.actionId)).toBe(true);
 });
 
 test('PermissionState: application scope ui grant takes effect after refresh', async () => {
@@ -1419,8 +1421,16 @@ test('PermissionState: bootstrap base.user gets home baseline menu', async () =>
     async () => {
       const userId = await createUser(c1.Id);
       const baseUserRoleId = await resolveRoleByCode('base.user');
-      await resolveUiResourceDbId('web.menu.home');
-      await resolveUiResourceDbId('web.route.home');
+
+      // Production seeds these via web defineRoute/Menu defaultRoles=['base.user'].
+      // Auth BE skips SPA install, so mirror the catalog + grant here.
+      const homeMenuId = 'web.menu.home';
+      const homeRouteId = 'web.route.home';
+      await createUiResource({ resourceId: homeMenuId, type: 'MENU', module: 'web', requires: [] });
+      await createUiResource({ resourceId: homeRouteId, type: 'ROUTE', module: 'web', requires: [] });
+      await createMenuRouteRelation({ menuResourceId: homeMenuId, routeResourceId: homeRouteId });
+      await createRoleUiResourceGrant({ roleId: baseUserRoleId, resourceId: homeMenuId });
+      await createRoleUiResourceGrant({ roleId: baseUserRoleId, resourceId: homeRouteId });
 
       await UserRole.Create(
         {

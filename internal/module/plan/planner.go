@@ -99,6 +99,10 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver, op
 			return Plan{}, err
 		}
 	}
+	// --no-web / unit BE: do not pull the SPA shell and do not run global web build.
+	if buildOpts.SkipWebShell {
+		plan.NeedsGlobalWebBuild = false
+	}
 
 	for app := range apps {
 		plan.AffectedApps = append(plan.AffectedApps, app)
