@@ -3,7 +3,7 @@
 
 import type BaseModel from './model';
 import type { ModelMetadata } from '../metadata';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 import { MetadataStorage } from '../metadata/storage';
 import { buildComputeGraph } from '../../runtime/compute/graph';
 import { EntityConverter } from '../utils/converter';
@@ -18,7 +18,7 @@ type BaseModelRuntimeState = {
   fields?: unknown;
 };
 
-export function getCachedModelMetadata<T extends BaseModel>(ModelCtor: ModelStatic<T>): ModelMetadata {
+export function getCachedModelMetadata<T extends BaseModel>(ModelCtor: ModelCtor<T>): ModelMetadata {
   const runtimeCtor = ModelCtor as unknown as ModelCtorMetadataCarrier;
   if (!runtimeCtor.metadata) {
     runtimeCtor.metadata = MetadataStorage.instance.getModelMetadata(ModelCtor);
@@ -48,7 +48,7 @@ export function markPlainShallow<T>(val: T): T {
 }
 
 export function toTransportObject(instance: BaseModel): ObjectRecord {
-  const ctor = instance.constructor as ModelStatic;
+  const ctor = instance.constructor as ModelCtor;
   const runtimeState = instance as unknown as BaseModelRuntimeState;
   const payload = EntityConverter.entityToPlainObject(ctor, runtimeState.entity, runtimeState.fields as never);
   return markPlainShallow(payload);

@@ -22,8 +22,8 @@ import {
   GroupBySpec,
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
-import type { ModelCtor, OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';
-import type { ModelClass, ModelStatic } from './types';
+import type { OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';
+import type { ModelClass, ModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
 import type { ObjectRecord } from '../../../utils/types';
@@ -525,7 +525,7 @@ class BaseModel {
     if (!id) {
       throw new Error('Cannot copy an instance without Id');
     }
-    return (await copyModel(this.constructor as unknown as ModelStatic<this>, id, defaults, options)) as this;
+    return (await copyModel(this.constructor as unknown as ModelCtor<this>, id, defaults, options)) as this;
   }
 
   /**
@@ -561,7 +561,7 @@ class BaseModel {
    * Overrides should call `super.DefaultGet` to keep platform merge layers.
    */
   static async DefaultGet<T extends BaseModel>(this: ModelClass<T>, value: Partial<Insertable<T & BaseModel>>): Promise<Partial<Insertable<T & BaseModel>>> {
-    return await runDefaultGetPipeline<T>(this as unknown as ModelStatic<T>, value);
+    return await runDefaultGetPipeline<T>(this as unknown as ModelCtor<T>, value);
   }
 
   /**
@@ -573,7 +573,7 @@ class BaseModel {
     fields?: string[],
     attributes?: string[]
   ): Promise<Record<string, FieldsGetFieldMeta>> {
-    return await fieldsGetModels(this as unknown as ModelStatic<T>, fields, attributes);
+    return await fieldsGetModels(this as unknown as ModelCtor<T>, fields, attributes);
   }
 
   /**
@@ -586,7 +586,7 @@ class BaseModel {
     fieldName: string,
     langs?: string[]
   ): Promise<FieldTranslationsMap> {
-    return await getModelFieldTranslations(this as unknown as ModelStatic<T>, id, fieldName, langs);
+    return await getModelFieldTranslations(this as unknown as ModelCtor<T>, id, fieldName, langs);
   }
 
   /**
@@ -599,7 +599,7 @@ class BaseModel {
     fieldName: string,
     translations: Record<string, string | false>
   ): Promise<boolean> {
-    return await updateModelFieldTranslations(this as unknown as ModelStatic<T>, id, fieldName, translations);
+    return await updateModelFieldTranslations(this as unknown as ModelCtor<T>, id, fieldName, translations);
   }
 
   /**
@@ -612,7 +612,7 @@ class BaseModel {
     fieldName: string,
     companyIds?: string[]
   ): Promise<FieldCompanyValuesMap> {
-    return await getModelFieldCompanyValues(this as unknown as ModelStatic<T>, id, fieldName, companyIds);
+    return await getModelFieldCompanyValues(this as unknown as ModelCtor<T>, id, fieldName, companyIds);
   }
 
   /**
@@ -625,7 +625,7 @@ class BaseModel {
     fieldName: string,
     values: Record<string, unknown | false>
   ): Promise<boolean> {
-    return await updateModelFieldCompanyValues(this as unknown as ModelStatic<T>, id, fieldName, values);
+    return await updateModelFieldCompanyValues(this as unknown as ModelCtor<T>, id, fieldName, values);
   }
 
   /**
@@ -638,7 +638,7 @@ class BaseModel {
     fieldName: string,
     opts?: ResolvePropertiesOptions
   ): Promise<ResolvedPropertyItem[]> {
-    return await resolveProperties(this as unknown as ModelStatic<T>, record as any, fieldName, opts);
+    return await resolveProperties(this as unknown as ModelCtor<T>, record as any, fieldName, opts);
   }
 
   /**
@@ -653,7 +653,7 @@ class BaseModel {
     defaults?: Partial<Record<string, unknown>>,
     options?: CopyOptions
   ): Promise<T> {
-    return await copyModel<T>(this as unknown as ModelStatic<T>, id, defaults, options);
+    return await copyModel<T>(this as unknown as ModelCtor<T>, id, defaults, options);
   }
 
   /**
@@ -666,7 +666,7 @@ class BaseModel {
     condition: QueryCondition<T> | [] = [],
     options?: SearchOptions<T>
   ): Promise<T[]> {
-    return await nameSearchModels<T>(this as unknown as ModelStatic<T> & typeof BaseModel, name, condition, options);
+    return await nameSearchModels<T>(this as unknown as ModelCtor<T>, name, condition, options);
   }
 
   /**
@@ -679,14 +679,14 @@ class BaseModel {
     values?: Partial<Insertable<T & BaseModel>>,
     options?: NameCreateOptions<T>
   ): Promise<T> {
-    return await nameCreateModels<T>(this as unknown as ModelStatic<T> & typeof BaseModel, name, values, options);
+    return await nameCreateModels<T>(this as unknown as ModelCtor<T>, name, values, options);
   }
 
   /**
    * Creates one record and optionally returns a selected field projection.
    */
   static async Create<T extends BaseModel>(this: ModelClass<T>, value: Partial<Insertable<T & BaseModel>>, returnFields?: FieldSelection<T>): Promise<T> {
-    return await createModel<T>(this as unknown as ModelStatic<T>, value, returnFields);
+    return await createModel<T>(this as unknown as ModelCtor<T>, value, returnFields);
   }
 
   /**
@@ -697,14 +697,14 @@ class BaseModel {
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
-    return await createManyModels<T>(this as unknown as ModelStatic<T>, values, returnFields);
+    return await createManyModels<T>(this as unknown as ModelCtor<T>, values, returnFields);
   }
 
   /**
    * Loads a single record by Id.
    */
   static async Browse<T extends BaseModel>(this: ModelClass<T>, id: string, fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<T> {
-    return await browseModel<T>(this as unknown as ModelStatic<T>, id, fields, options);
+    return await browseModel<T>(this as unknown as ModelCtor<T>, id, fields, options);
   }
 
   /**
@@ -716,21 +716,21 @@ class BaseModel {
     fields?: (keyof Selectable<T>)[],
     options?: SoftDeleteOptions
   ): Promise<T[]> {
-    return await browseManyModels<T>(this as unknown as ModelStatic<T>, ids, fields, options);
+    return await browseManyModels<T>(this as unknown as ModelCtor<T>, ids, fields, options);
   }
 
   /**
    * Searches for records matching a query condition.
    */
   static async Search<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T> | [] = [], options?: SearchOptions<T>): Promise<T[]> {
-    return await searchModels<T>(this as unknown as ModelStatic<T>, condition, options);
+    return await searchModels<T>(this as unknown as ModelCtor<T>, condition, options);
   }
 
   /**
    * Counts records matching a query condition.
    */
   static async Count<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T> | [] = [], options?: CountOptions): Promise<number> {
-    return await countModels<T>(this as unknown as ModelStatic<T>, condition, options);
+    return await countModels<T>(this as unknown as ModelCtor<T>, condition, options);
   }
 
   /**
@@ -742,7 +742,7 @@ class BaseModel {
     condition: QueryCondition<T> | [] = [],
     options: ReadGroupOptions<T> = {}
   ): Promise<ReadGroupResult> {
-    return await readGroupedModels<T>(this as unknown as ModelStatic<T>, groupby, condition, options);
+    return await readGroupedModels<T>(this as unknown as ModelCtor<T>, groupby, condition, options);
   }
 
   /**
@@ -754,7 +754,7 @@ class BaseModel {
     condition: QueryCondition<T> | [] = [],
     options: ReadGroupCountOptions<T> = {}
   ): Promise<number> {
-    return await countGroupedModels<T>(this as unknown as ModelStatic<T>, groupby, condition, options);
+    return await countGroupedModels<T>(this as unknown as ModelCtor<T>, groupby, condition, options);
   }
 
   /**
@@ -767,7 +767,7 @@ class BaseModel {
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>[]> {
-    return await updateModels<T>(this as unknown as ModelStatic<T>, condition, values, returnFields, options);
+    return await updateModels<T>(this as unknown as ModelCtor<T>, condition, values, returnFields, options);
   }
 
   /**
@@ -780,21 +780,21 @@ class BaseModel {
     returnFields?: FieldSelection<T>,
     options?: UpdateOptions
   ): Promise<Partial<T>> {
-    return await updateModelById<T>(this as unknown as ModelStatic<T>, id, values, returnFields, options);
+    return await updateModelById<T>(this as unknown as ModelCtor<T>, id, values, returnFields, options);
   }
 
   /**
    * Deletes all records matching a condition.
    */
   static async Delete<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
-    return await deleteModels<T>(this as unknown as ModelStatic<T>, condition, options);
+    return await deleteModels<T>(this as unknown as ModelCtor<T>, condition, options);
   }
 
   /**
    * Deletes a single record by Id.
    */
   static async DeleteById<T extends BaseModel>(this: ModelClass<T>, id: string, options?: DeleteOptions): Promise<number> {
-    return await deleteModelById<T>(this as unknown as ModelStatic<T>, id, options);
+    return await deleteModelById<T>(this as unknown as ModelCtor<T>, id, options);
   }
 
   /**
@@ -810,7 +810,7 @@ class BaseModel {
       loopThreshold?: number;
     }
   ): Promise<OnchangeResult> {
-    return await runModelOnchange<T>(this as unknown as ModelStatic<T>, draft, changed, opts);
+    return await runModelOnchange<T>(this as unknown as ModelCtor<T>, draft, changed, opts);
   }
 
   /**
@@ -818,7 +818,7 @@ class BaseModel {
    * Note: this is a convenience entry point that delegates to Repository.withSavepoint.
    */
   static async withSavepoint<T extends BaseModel, R>(this: ModelClass<T>, fn: () => Promise<R>, name?: string): Promise<R> {
-    return await withModelSavepoint<T, R>(this as unknown as ModelStatic<T>, fn, name);
+    return await withModelSavepoint<T, R>(this as unknown as ModelCtor<T>, fn, name);
   }
 
   /**
@@ -851,7 +851,7 @@ class BaseModel {
    * Hydrates a model instance from an entity payload.
    */
   static hydrate<T extends BaseModel>(this: ModelClass<T>, entity: ObjectRecord, fields?: FieldSelection<T>): T {
-    return hydrateModelFacade<T>(this as unknown as ModelStatic<T>, entity, fields);
+    return hydrateModelFacade<T>(this as unknown as ModelCtor<T>, entity, fields);
   }
 }
 

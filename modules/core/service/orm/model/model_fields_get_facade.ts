@@ -6,7 +6,7 @@ import { MetadataStorage } from '../metadata/storage';
 import type { FieldMetadata, SelectionItem } from '../metadata/field';
 import { getModelRepository } from './model_internal_facade';
 import type BaseModel from './model';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 /** Presentation slice returned by FieldsGet (aligned with FE WebFieldMetadata). */
 export type FieldsGetFieldMeta = {
   type: string;
@@ -30,7 +30,7 @@ export type FieldsGetFieldMeta = {
   [key: string]: unknown;
 };
 
-type ModelFieldsGetCtor = ModelStatic<BaseModel>;
+type ModelFieldsGetCtor = ModelCtor<BaseModel>;
 
 function sortedUniqueStrings(values: string[] | undefined): string[] | undefined {
   if (!values) return undefined;

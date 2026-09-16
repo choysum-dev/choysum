@@ -7,7 +7,7 @@ import { MetadataStorage } from '../metadata/storage';
 import BaseModel from './model';
 import { registerLogicalModelName } from './logical_model_registry';
 import { assertValidPropertyDefinitionItems } from './properties_types';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 import type { Insertable, Updateable, FieldSelection, QueryCondition, UpdateOptions, DeleteOptions } from '../repository/types';
 import {
   assertPropertyDefinitionParentWritable,
@@ -42,7 +42,7 @@ export function __resetPropertyDefinitionUniqueIndexTablesForTest(): void {
 
 /** Test-only: run unique-index ensure for a PropertyDefinition ctor. */
 export async function __ensureDefinitionUniqueIndexForTest(
-  ctor: ModelStatic<PropertyDefinitionBaseModel>
+  ctor: ModelCtor<PropertyDefinitionBaseModel>
 ): Promise<void> {
   await ensureDefinitionUniqueIndex(ctor);
 }
@@ -62,7 +62,7 @@ export function __touchesDefinitionScopeForTest(vals: Record<string, unknown> | 
   return touchesDefinitionScope(vals);
 }
 
-function storeMeta(ctor: ModelStatic<PropertyDefinitionBaseModel>) {
+function storeMeta(ctor: ModelCtor<PropertyDefinitionBaseModel>) {
   return MetadataStorage.instance.getModelMetadata(ctor as any);
 }
 
@@ -81,7 +81,7 @@ function scopeEq(field: string, value: string | null): unknown[] {
  * Complements the DB unique index and covers environments where DDL ensure is unavailable.
  */
 async function assertUniqueDefinitionScope(
-  ctor: ModelStatic<PropertyDefinitionBaseModel>,
+  ctor: ModelCtor<PropertyDefinitionBaseModel>,
   vals: Record<string, unknown>,
   excludeId?: string
 ): Promise<void> {
@@ -124,7 +124,7 @@ function touchesDefinitionScope(vals: Record<string, unknown> | undefined): bool
 }
 
 async function assertParentsWritableDeduped(
-  ctor: ModelStatic<PropertyDefinitionBaseModel>,
+  ctor: ModelCtor<PropertyDefinitionBaseModel>,
   scopes: Record<string, unknown>[]
 ): Promise<void> {
   const seen = new Set<string>();
@@ -141,7 +141,7 @@ async function assertParentsWritableDeduped(
  * Uses COALESCE for all dialects so PostgreSQL 14 and older remain compatible
  * (avoids PG15-only NULLS NOT DISTINCT). DDL failures propagate.
  */
-async function ensureDefinitionUniqueIndex(ctor: ModelStatic<PropertyDefinitionBaseModel>): Promise<void> {
+async function ensureDefinitionUniqueIndex(ctor: ModelCtor<PropertyDefinitionBaseModel>): Promise<void> {
   const meta = storeMeta(ctor);
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;

@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 import type { FieldSelection, Insertable } from '../repository/types';
 import { CreateOperations } from './model_create';
 
-type ModelCreateServiceFacadeCtor<T extends BaseModel> = ModelStatic<T>;
+type ModelCreateServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 export async function createModel<T extends BaseModel>(
   ModelCtor: ModelCreateServiceFacadeCtor<T>,

@@ -14,6 +14,7 @@ export type ModelFactoryArgs = [factoryToken: symbol, entity: Entity, fields?: u
 export type ModelClass<T extends BaseModel = BaseModel> = new (...args: ModelFactoryArgs) => T;
 
 /**
- * Collection-entry / metadata / facade ctor: factory constructor plus BaseModel statics.
+ * Runtime model constructor: factory construct signature plus BaseModel statics.
+ * Metadata, facades, and hydration all use this type.
  */
-export type ModelStatic<T extends BaseModel = BaseModel> = ModelClass<T> & typeof BaseModel;
+export type ModelCtor<T extends BaseModel = BaseModel> = ModelClass<T> & typeof BaseModel;

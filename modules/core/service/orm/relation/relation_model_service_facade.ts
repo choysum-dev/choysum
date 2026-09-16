@@ -4,11 +4,11 @@
 import BaseModel from '../model/model';
 import { createModel } from '../model/model_create_service_facade';
 import { updateModelById } from '../model/model_update_service_facade';
-import type { ModelStatic } from '../model/types';
+import type { ModelCtor } from '../model/types';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 
-type RelationModelCtor<T extends BaseModel = BaseModel> = ModelStatic<T>;
+type RelationModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T>;
 
 function hasStaticOverride(ModelCtor: RelationModelCtor, methodName: 'Create' | 'UpdateById'): boolean {
   return ModelCtor[methodName] !== BaseModel[methodName];

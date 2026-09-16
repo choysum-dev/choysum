@@ -13,10 +13,10 @@ import { LockUtils } from '../utils/lock';
 import type BaseModel from './model';
 import { browseModel } from './model_read_facade';
 import { updateModels } from './model_update_service_facade';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 export type FieldTranslationsMap = Record<string, string>;
 
-type FieldTranslationsCtor<T extends BaseModel> = ModelStatic<T>;
+type FieldTranslationsCtor<T extends BaseModel> = ModelCtor<T>;
 
 function resolveTranslateFieldMeta(ModelCtor: FieldTranslationsCtor<BaseModel>, fieldName: string) {
   const name = String(fieldName || '').trim();

@@ -6,22 +6,22 @@ import { RepositoryFactory } from '../repository/repository_factory';
 import { RelationProcessor } from './processor';
 import { ManyToOneOperation, PrepareResult, RelationProcessingResult, BatchProcessingResult } from './types';
 import type { BaseQueryCondition } from '../repository/types';
-import type { ModelStatic } from '../model/types';
+import type { ModelCtor } from '../model/types';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 
 type ManyToOneBatchGroup = {
-  targetModel: ModelStatic;
+  targetModel: ModelCtor;
   fieldName: string;
   items: Map<string, unknown>;
 };
 
-function resolveManyToOneTargetModel(value: unknown): ModelStatic | undefined {
+function resolveManyToOneTargetModel(value: unknown): ModelCtor | undefined {
   const relation = asObjectRecord(value);
   const targetModelFn = relation?.targetModel;
   if (typeof targetModelFn !== 'function') return undefined;
   const targetModel = targetModelFn();
-  return typeof targetModel === 'function' ? (targetModel as ModelStatic) : undefined;
+  return typeof targetModel === 'function' ? (targetModel as ModelCtor) : undefined;
 }
 
 /**

@@ -6,7 +6,7 @@ import type { FieldMetadata } from '../metadata/field';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 import type BaseModel from './model';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 import { lookupPropertyDefinitionModel } from './properties_lookup';
 import {
   filterReadablePropertyDefinitionItems,
@@ -112,7 +112,7 @@ function resolveContainerModelName(containerFieldMeta: FieldMetadata | undefined
  * Browse never attaches this — Form / callers invoke explicitly.
  */
 export async function resolveProperties(
-  ModelCtor: ModelStatic<BaseModel>,
+  ModelCtor: ModelCtor<BaseModel>,
   record: ObjectRecord | BaseModel | null | undefined,
   fieldName: string,
   opts?: ResolvePropertiesOptions
@@ -166,7 +166,7 @@ export async function resolveProperties(
  * Load effective schema items only (no values). Used by write validation / DefaultGet.
  */
 export async function loadEffectivePropertySchema(
-  ModelCtor: ModelStatic<BaseModel>,
+  ModelCtor: ModelCtor<BaseModel>,
   fieldName: string,
   rowCtx: ObjectRecord,
   opts?: ResolvePropertiesOptions

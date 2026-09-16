@@ -8,7 +8,7 @@ import { LockUtils } from '../utils/lock';
 import { EntityConverter } from '../utils/converter';
 import { RelationFactory } from '../relation';
 import type { RelationChangesCollection } from '../relation/types';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 import { resolveRepositoryWithSoftDeleteOptions } from './model_soft_delete_scope';
 import { toTransportObject as toTransportObjectImpl } from './model_runtime';
 import { collectModelUpstreamInverseFields, getModelRuntimeMetadata, recomputeModelMetadata, triggerModelUpstream } from './model_runtime_service_facade';
@@ -46,7 +46,7 @@ function resetModelChanges(instance: BaseModel): void {
 }
 
 function resolveInstanceReadRepository(instance: BaseModel, options?: SoftDeleteOptions): InstanceRepositoryLike {
-  return resolveRepositoryWithSoftDeleteOptions(instance.constructor as ModelStatic, options) as unknown as InstanceRepositoryLike;
+  return resolveRepositoryWithSoftDeleteOptions(instance.constructor as ModelCtor, options) as unknown as InstanceRepositoryLike;
 }
 
 function mergeFields(instance: BaseModel, newFields: InstanceLoadFieldSelection): void {
@@ -83,7 +83,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
       return await runWithValidationBypass(repository, async () => await repository.update(values, condition));
     };
 
-    const upstreamInverseFields = collectModelUpstreamInverseFields(instance.constructor as ModelStatic);
+    const upstreamInverseFields = collectModelUpstreamInverseFields(instance.constructor as ModelCtor);
     const currentFields = Array.from(new Set<string>(['Id', 'UpdatedAt', ...upstreamInverseFields]));
     const currentEntities = await repository.search(['Id', '=', instance.Id], {
       fields: currentFields,
@@ -93,10 +93,10 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
     }
     const currentUpdatedAt = currentEntities[0].UpdatedAt as Date | undefined;
 
-    const { processedValue, relations } = await RelationFactory.prepareForUpdate(instance.constructor as ModelStatic, updateObj, Object.keys(updateObj));
+    const { processedValue, relations } = await RelationFactory.prepareForUpdate(instance.constructor as ModelCtor, updateObj, Object.keys(updateObj));
 
     if (hasRelationChanges) {
-      RelationFactory.prepareRelationChanges(instance.constructor as ModelStatic, instance, relationChanges, relations);
+      RelationFactory.prepareRelationChanges(instance.constructor as ModelCtor, instance, relationChanges, relations);
     }
 
     // Optimistic lock uses the previously read UpdatedAt; repository prepare stamps the new UpdatedAt/UpdatedUid.
@@ -107,7 +107,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
     }
 
     if (relations.oneToManyRelations.length > 0 || relations.manyToManyRelations.length > 0) {
-      const relResults = await RelationFactory.batchProcessToManyRelations(instance.constructor as ModelStatic, [instance.Id], [relations]);
+      const relResults = await RelationFactory.batchProcessToManyRelations(instance.constructor as ModelCtor, [instance.Id], [relations]);
 
       const relErrors: string[] = [];
       for (const relationResult of relResults || []) {
@@ -121,7 +121,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
       }
 
       if (relations.touchedCollections?.size) {
-        const meta = getModelRuntimeMetadata(instance.constructor as ModelStatic);
+        const meta = getModelRuntimeMetadata(instance.constructor as ModelCtor);
         if (meta.computeGraph) {
           const collChanged = new Set<string>(relations.touchedCollections);
           await recomputeModelMetadata(meta, instanceState as UnknownRecord, collChanged, 'persist');
@@ -153,7 +153,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
 
       try {
         await triggerModelUpstream({
-          childCtor: instance.constructor as ModelStatic,
+          childCtor: instance.constructor as ModelCtor,
           operation: 'update',
           changedFields: allChangedFields,
           beforeEntity: beforeEntityForUpstream,
@@ -181,7 +181,7 @@ export async function deleteModelInstance(instance: BaseModel, options?: DeleteO
   }
 
   const repository = resolveInstanceReadRepository(instance, options);
-  const upstreamInverseFields = collectModelUpstreamInverseFields(instance.constructor as ModelStatic);
+  const upstreamInverseFields = collectModelUpstreamInverseFields(instance.constructor as ModelCtor);
   const oldRows = await repository.search(['Id', '=', instance.Id], {
     fields: Array.from(new Set<string>(['Id', ...upstreamInverseFields])),
   });
@@ -200,7 +200,7 @@ export async function deleteModelInstance(instance: BaseModel, options?: DeleteO
 
   try {
     await triggerModelUpstream({
-      childCtor: instance.constructor as ModelStatic,
+      childCtor: instance.constructor as ModelCtor,
       operation: 'delete',
       changedFields: [],
       beforeEntity: oldRows?.[0],

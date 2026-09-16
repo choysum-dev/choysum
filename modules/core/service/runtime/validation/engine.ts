@@ -416,7 +416,7 @@ export class ValidationEngine {
     return undefined;
   }
 
-  private static isModelStatic(value: unknown): value is ModelCtor<BaseModel> & typeof BaseModel {
+  private static isModelCtor(value: unknown): value is ModelCtor<BaseModel> & typeof BaseModel {
     return typeof value === 'function';
   }
 
@@ -444,7 +444,7 @@ export class ValidationEngine {
     if (typeof resolver === 'function') {
       try {
         const ctor = (resolver as () => unknown)();
-        if (ValidationEngine.isModelStatic(ctor)) return ctor;
+        if (ValidationEngine.isModelCtor(ctor)) return ctor;
       } catch {
         // ignore and try direct constructor branch
       }
@@ -458,7 +458,7 @@ export class ValidationEngine {
     if (typeof resolver === 'string') {
       const pool = ValidationEngine.getGlobalPool();
       const ctor = pool?.get?.(resolver);
-      if (ValidationEngine.isModelStatic(ctor)) {
+      if (ValidationEngine.isModelCtor(ctor)) {
         return ctor;
       }
     }

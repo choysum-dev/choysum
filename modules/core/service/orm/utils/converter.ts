@@ -5,7 +5,7 @@ import { Entity } from '../repository';
 import { MetadataStorage } from '../metadata/storage';
 import { FieldMetadata, ManyToOneMetadata, OneToManyMetadata, ManyToManyMetadata } from '../metadata';
 import BaseModel from '../model/model';
-import type { ModelStatic } from '../model/types';
+import type { ModelCtor } from '../model/types';
 import { hydrateModel } from '../model/model_hydration';
 import { buildRelationAliasCandidates, REL_ALIAS_PREFIX } from '../relation/relation_alias';
 import { FieldSelection } from '../repository';
@@ -20,10 +20,10 @@ type OrmRelationFieldMetadata = FieldMetadata & {
 };
 
 // Cache the set of public non-relation fields to speed up calls without an explicit fields list.
-const NON_REL_PUBLIC_FIELD_CACHE = new WeakMap<ModelStatic<BaseModel>, string[]>();
+const NON_REL_PUBLIC_FIELD_CACHE = new WeakMap<ModelCtor<BaseModel>, string[]>();
 
 // Compiled-plan cache: ModelCtor -> signature -> plan.
-const PLAN_CACHE = new WeakMap<ModelStatic<BaseModel>, Map<string, CompiledPlan>>();
+const PLAN_CACHE = new WeakMap<ModelCtor<BaseModel>, Map<string, CompiledPlan>>();
 
 type ScalarConv = 'none' | 'date' | 'decimal' | 'bigint' | 'serialize';
 type FieldOp =
@@ -37,12 +37,12 @@ type FieldOp =
       key: string;
       cardinality: 'one' | 'many';
       // Relation target.
-      childCtor?: ModelStatic<BaseModel>;
+      childCtor?: ModelCtor<BaseModel>;
       childPlan?: CompiledPlan;
     };
 
 type CompiledPlan = {
-  ctor: ModelStatic<BaseModel>;
+  ctor: ModelCtor<BaseModel>;
   ops: FieldOp[];
   // Whether the plan is JSON-safe and avoids fields that require normalization.
   jsonSafe: boolean;
@@ -62,12 +62,12 @@ function normalizeValueForTransport(value: unknown): unknown {
   return serialize(value);
 }
 
-function getRelationTargetCtor(relation: unknown): ModelStatic<BaseModel> | undefined {
+function getRelationTargetCtor(relation: unknown): ModelCtor<BaseModel> | undefined {
   const relationRecord = asObjectRecord(relation);
   const targetModel = relationRecord?.targetModel;
   if (typeof targetModel !== 'function') return undefined;
   const resolved = targetModel();
-  return typeof resolved === 'function' ? (resolved as ModelStatic<BaseModel>) : undefined;
+  return typeof resolved === 'function' ? (resolved as ModelCtor<BaseModel>) : undefined;
 }
 
 function isOrmRelationFieldMeta(fm: unknown): fm is OrmRelationFieldMetadata {
@@ -83,7 +83,7 @@ function assignField(instance: BaseModel, key: string, value: unknown): void {
 export class EntityConverter {
   private static isPublicKey = (k: string) => /^[A-Z]/.test(k);
 
-  private static hydrateRelationTarget<T extends BaseModel>(targetCtor: ModelStatic<T> | undefined, value: unknown): T | undefined {
+  private static hydrateRelationTarget<T extends BaseModel>(targetCtor: ModelCtor<T> | undefined, value: unknown): T | undefined {
     if (!targetCtor) return undefined;
     return hydrateModel<T>(targetCtor, value as Entity);
   }
@@ -101,7 +101,7 @@ export class EntityConverter {
     }
   }
 
-  private static getNonRelPublicFields<T extends BaseModel>(ctor: ModelStatic<T>): string[] {
+  private static getNonRelPublicFields<T extends BaseModel>(ctor: ModelCtor<T>): string[] {
     const cached = NON_REL_PUBLIC_FIELD_CACHE.get(ctor);
     if (cached) return cached;
 
@@ -117,7 +117,7 @@ export class EntityConverter {
   }
 
   static entityToModel<T extends BaseModel>(instance: T, entity: Entity): void {
-    const meta = MetadataStorage.instance.getModelMetadata(instance.constructor as ModelStatic<BaseModel>);
+    const meta = MetadataStorage.instance.getModelMetadata(instance.constructor as ModelCtor<BaseModel>);
 
     // 1. Walk entity keys and handle directly matching fields, including relations.
     for (const [key, value] of Object.entries(entity)) {
@@ -293,7 +293,7 @@ export class EntityConverter {
   }
 
   // Compile the conversion plan recursively.
-  private static compilePlan<T extends BaseModel>(ctor: ModelStatic<T>, fields?: FieldSelection<T> | unknown[]): CompiledPlan {
+  private static compilePlan<T extends BaseModel>(ctor: ModelCtor<T>, fields?: FieldSelection<T> | unknown[]): CompiledPlan {
     const meta = MetadataStorage.instance.getModelMetadata(ctor);
     const ops: FieldOp[] = [];
     let jsonSafe = true;
@@ -378,7 +378,7 @@ export class EntityConverter {
     return { ctor, ops, jsonSafe, hasRelations };
   }
 
-  private static getOrBuildPlan<T extends BaseModel>(ctor: ModelStatic<T>, fields?: FieldSelection<T> | unknown[]): CompiledPlan {
+  private static getOrBuildPlan<T extends BaseModel>(ctor: ModelCtor<T>, fields?: FieldSelection<T> | unknown[]): CompiledPlan {
     let bySig = PLAN_CACHE.get(ctor);
     if (!bySig) {
       bySig = new Map<string, CompiledPlan>();
@@ -514,13 +514,13 @@ export class EntityConverter {
   }
 
   // Convert a query row into a client-facing plain object without building models or proxies.
-  static entityToPlainObject<T extends BaseModel>(ctor: ModelStatic<T>, row: ObjectRecord, fields?: FieldSelection<T>): ObjectRecord {
+  static entityToPlainObject<T extends BaseModel>(ctor: ModelCtor<T>, row: ObjectRecord, fields?: FieldSelection<T>): ObjectRecord {
     // Plan cache hit rates are high because the same list usually reuses the same plan.
     const plan = this.getOrBuildPlan(ctor, fields);
     return this.executePlan(plan, row);
   }
 
-  static entityArrayToPlainObject<T extends BaseModel>(ctor: ModelStatic<T>, rows: ObjectRecord[], fields?: FieldSelection<T>): ObjectRecord[] {
+  static entityArrayToPlainObject<T extends BaseModel>(ctor: ModelCtor<T>, rows: ObjectRecord[], fields?: FieldSelection<T>): ObjectRecord[] {
     try {
       const plan = this.getOrBuildPlan(ctor, fields);
       const out = new Array(rows.length);

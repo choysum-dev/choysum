@@ -6,9 +6,9 @@ import type { Repository, Entity } from '../repository';
 import type { FieldSelection } from '../repository/types';
 import { hydrateModel } from './model_hydration';
 import type BaseModel from './model';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 
-type ModelInternalFacadeCtor<T extends BaseModel> = ModelStatic<T>;
+type ModelInternalFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 export function getModelRepository<T extends BaseModel>(ModelCtor: ModelInternalFacadeCtor<T>): Repository {
   return RepositoryFactory.getRepository(ModelCtor);

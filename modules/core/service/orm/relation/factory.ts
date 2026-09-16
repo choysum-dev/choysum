@@ -3,7 +3,7 @@
 
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata';
-import type { ModelStatic } from '../model/types';
+import type { ModelCtor } from '../model/types';
 import { RelationProcessor } from './processor';
 import { ManyToOneProcessor } from './many-to-one';
 import { OneToManyProcessor } from './one-to-many';
@@ -47,7 +47,7 @@ function toRelationPayload(items: unknown[]): Array<{ Id: string }> {
 }
 
 function createBatchFailureResult(
-  modelClass: ModelStatic,
+  modelClass: ModelCtor,
   relationType: 'OneToMany' | 'ManyToMany',
   totalOperations: number,
   error: unknown
@@ -83,7 +83,7 @@ export class RelationFactory {
   /**
    * Create a processor instance for the given model and relation type.
    */
-  static createProcessor<T extends BaseModel>(modelClass: ModelStatic<T>, relationType: RelationFieldType): RelationProcessor<T> {
+  static createProcessor<T extends BaseModel>(modelClass: ModelCtor<T>, relationType: RelationFieldType): RelationProcessor<T> {
     const cacheKey = `${modelClass.name}_${relationType}`;
     const cached = this.processorCache.get(cacheKey);
     if (cached) {
@@ -112,7 +112,7 @@ export class RelationFactory {
   /**
    * Get all relation processors needed by the specified model.
    */
-  static getProcessorsForModel<T extends BaseModel>(modelClass: ModelStatic<T>): Map<RelationFieldType, RelationProcessor<T>> {
+  static getProcessorsForModel<T extends BaseModel>(modelClass: ModelCtor<T>): Map<RelationFieldType, RelationProcessor<T>> {
     const result = new Map<RelationFieldType, RelationProcessor<T>>();
     const modelMetadata = MetadataStorage.instance.getModelMetadata(modelClass);
 
@@ -142,7 +142,7 @@ export class RelationFactory {
    * Prepare relation handling for create operations.
    */
   static async prepareForCreate<T extends BaseModel>(
-    modelClass: ModelStatic<T>,
+    modelClass: ModelCtor<T>,
     value: ObjectRecord
   ): Promise<{ processedValue: ObjectRecord; relations: ExtractedRelations }> {
     const processors = this.getProcessorsForModel(modelClass);
@@ -174,7 +174,7 @@ export class RelationFactory {
    * Prepare relation handling for update operations.
    */
   static async prepareForUpdate<T extends BaseModel>(
-    modelClass: ModelStatic<T>,
+    modelClass: ModelCtor<T>,
     value: ObjectRecord,
     changedFields?: string[]
   ): Promise<{ processedValue: ObjectRecord; relations: ExtractedRelations }> {
@@ -207,7 +207,7 @@ export class RelationFactory {
    * Process ToMany relation updates.
    */
   static async processToManyRelations<T extends BaseModel>(
-    modelClass: ModelStatic<T>,
+    modelClass: ModelCtor<T>,
     parentId: string,
     relationData: ExtractedRelations
   ): Promise<RelationProcessingResult[]> {
@@ -234,7 +234,7 @@ export class RelationFactory {
    * Batch-process ToMany relations for multiple entities.
    */
   static async batchProcessToManyRelations<T extends BaseModel>(
-    modelClass: ModelStatic<T>,
+    modelClass: ModelCtor<T>,
     parentIds: string[],
     relationsList: ExtractedRelations[]
   ): Promise<BatchProcessingResult[]> {
@@ -305,7 +305,7 @@ export class RelationFactory {
   /**
    * Check whether a specific processor instance is already cached.
    */
-  static hasProcessorCached<T extends BaseModel>(modelClass: ModelStatic<T>, relationType: RelationFieldType): boolean {
+  static hasProcessorCached<T extends BaseModel>(modelClass: ModelCtor<T>, relationType: RelationFieldType): boolean {
     const cacheKey = `${modelClass.name}_${relationType}`;
     return this.processorCache.has(cacheKey);
   }
@@ -314,7 +314,7 @@ export class RelationFactory {
    * Convert recorded array mutations into relation operations using the current naming model.
    */
   static prepareRelationChanges<T extends BaseModel>(
-    modelClass: ModelStatic<T>,
+    modelClass: ModelCtor<T>,
     modelInstance: T,
     relationChanges: RelationChangesCollection,
     relations: ExtractedRelations

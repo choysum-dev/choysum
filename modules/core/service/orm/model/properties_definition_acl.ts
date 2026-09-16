@@ -6,7 +6,7 @@ import { getCurrentReq, getOrInitReqServiceState } from '../../runtime/context';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { resolveModelConstructor } from './model_registry';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 import type PropertyDefinitionBaseModel from './property_definition_base_model';
 
 function fail(code: string, message: string): never {
@@ -175,7 +175,7 @@ function remapParentProbeError(err: any, containerModel: string, containerId: st
  * App-level rows (both container dims empty) skip this probe — Method ACL alone applies.
  */
 export async function assertPropertyDefinitionParentWritable(
-  defCtor: ModelStatic<PropertyDefinitionBaseModel>,
+  defCtor: ModelCtor<PropertyDefinitionBaseModel>,
   vals: Record<string, unknown>
 ): Promise<void> {
   if (getParentAclBypassDepth() > 0) return;

@@ -6,7 +6,7 @@ import { validateModelCompanyField } from '../metadata/company_field';
 import { validateModelMonetaryCurrencyFields } from '../metadata/monetary_currency';
 import { validateModelPropertiesDefinitionFields } from '../metadata/properties_definition';
 import BaseModel from '../model/model';
-import type { ModelStatic } from '../model/types';
+import type { ModelCtor } from '../model/types';
 import type { OrderBy } from '../repository/types';
 import { installConventionalServiceRuntimeWrappers, registerLoadedModelForGeneratedServiceMetadata } from './service';
 import { getRuntimeGlobalPoolValue, setRuntimeGlobalPoolValue } from '@/core/utils/env';
@@ -14,7 +14,7 @@ import { asObjectRecord, asRuntimeCarrier } from '@/core/utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 
 type ModelDecoratorOrderBy = OrderBy<ObjectRecord>;
-type RegisteredModelCtor<T extends BaseModel = BaseModel> = ModelStatic<T>;
+type RegisteredModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T>;
 type GlobalPoolLike = {
   set(name: string, model: RegisteredModelCtor<BaseModel>): void;
   get(name: string): RegisteredModelCtor<BaseModel> | undefined;
@@ -82,7 +82,7 @@ function resolveParentCompanyField(target: Function): string | undefined {
   let current: unknown = Object.getPrototypeOf(target);
   while (current && current !== Object.prototype && typeof current === 'function') {
     try {
-      const parentMeta = MetadataStorage.instance.getModelMetadata(current as ModelStatic<BaseModel>);
+      const parentMeta = MetadataStorage.instance.getModelMetadata(current as ModelCtor<BaseModel>);
       const field = String(parentMeta?.companyField ?? '').trim();
       if (field) return field;
     } catch {

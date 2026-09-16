@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 import { ReadOperations } from './model_read';
 import { markPlainShallow } from './model_runtime';
 import { createModelProxy } from './model_internal_facade';
@@ -21,7 +21,7 @@ import type {
 } from '../repository/types';
 import type { Entity } from '../repository';
 
-type ModelReadFacadeCtor<T extends BaseModel> = ModelStatic<T> & {
+type ModelReadFacadeCtor<T extends BaseModel> = ModelCtor<T> & {
   ctx: Context;
 };
 

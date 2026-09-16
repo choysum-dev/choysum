@@ -8,7 +8,7 @@ import { lookupFieldDefaultModel } from './field_default_lookup';
 import { loadEffectivePropertySchema } from './properties_resolve';
 import { normalizePropertiesMap } from './properties_types';
 import type BaseModel from './model';
-import type { ModelStatic } from './types';
+import type { ModelCtor } from './types';
 import type { Insertable } from '../repository/types';
 import type { ObjectRecord } from '../../../utils/types';
 
@@ -18,7 +18,7 @@ import type { ObjectRecord } from '../../../utils/types';
  * Only fills keys that are still `undefined` (explicit `null` is preserved).
  */
 export async function runDefaultGetPipeline<T extends BaseModel>(
-  ModelCtor: ModelStatic<T>,
+  ModelCtor: ModelCtor<T>,
   value: Partial<Insertable<T & BaseModel>>
 ): Promise<Partial<Insertable<T & BaseModel>>> {
   const result: ObjectRecord = { ...(value as ObjectRecord) };
