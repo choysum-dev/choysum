@@ -167,7 +167,7 @@ function rewriteCreateInputForAttachments(input: UnknownRecord, actions: Map<str
 
 function resolveAttachmentBindingService(): Pick<ModelService<AttachmentBindingModelStub>, 'Bind'> {
   const service = createServiceByModel<AttachmentBindingModelStub>('document.AttachmentBinding');
-  if (!service || typeof service.Bind !== 'function') {
+  if (typeof service.Bind !== 'function') {
     throw new Error('[Create] document.AttachmentBinding service is unavailable.');
   }
   return service;

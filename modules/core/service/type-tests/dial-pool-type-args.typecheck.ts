@@ -33,6 +33,10 @@ export type OmittedStaticDialIsSentinel = ExpectTrue<IsMissingCtorSentinel<Retur
 export type OmittedPoolIsSentinel = ExpectTrue<IsMissingCtorSentinel<ReturnType<typeof poolOmitsCtor>>>;
 export type OmittedStaticPoolIsSentinel = ExpectTrue<IsMissingCtorSentinel<ReturnType<typeof staticPoolOmitsCtor>>>;
 
+type LegacyServiceShape = { Search(condition: unknown): Promise<unknown> };
+// @ts-expect-error a plain service shape is not a ModelConstructor
+export const legacyServiceShapeRejected = () => dial<LegacyServiceShape>('probe.Model');
+
 export const dialWithCtor = (fullName: string) => dial<typeof BaseModel>(fullName);
 export type ProvidedDialIsNotSentinel = ExpectTrue<
   [ReturnType<typeof dialWithCtor>] extends [MissingModelCtorTypeArgument] ? false : true

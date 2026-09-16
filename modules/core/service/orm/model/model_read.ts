@@ -209,7 +209,7 @@ export class ReadOperations {
       const service = createServiceByModel<ModelConstructor>(
         'document.AttachmentBinding'
       ) as unknown as Partial<AttachmentBindingSearchService>;
-      if (!service || typeof service.Search !== 'function') {
+      if (typeof service.Search !== 'function') {
         return undefined;
       }
       return {

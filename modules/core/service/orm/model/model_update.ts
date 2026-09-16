@@ -184,7 +184,7 @@ function resolveAttachmentBindingService(): AttachmentBindingServiceLike {
   const service = createServiceByModel<AttachmentBindingModelStub>(
     'document.AttachmentBinding'
   ) as AttachmentBindingServiceLike;
-  if (!service || typeof service.Bind !== 'function' || typeof service.Unbind !== 'function' || typeof service.Search !== 'function') {
+  if (typeof service.Bind !== 'function' || typeof service.Unbind !== 'function' || typeof service.Search !== 'function') {
     throw new Error('[Update] document.AttachmentBinding service is unavailable.');
   }
   return service;
