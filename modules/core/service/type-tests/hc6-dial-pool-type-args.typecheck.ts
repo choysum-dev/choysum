@@ -11,14 +11,21 @@ import { createServiceByModel } from '../rpc/service_factory';
 import BaseModel from '../orm/model/model';
 import { dial, pool } from '../orm/model/model_pool';
 
-export const hc6DialOmitsCtor: () => never = () => dial('hc6.OmitCtor');
-export const hc6PoolOmitsCtor: () => never = () => pool('hc6', 'OmitCtor');
-export const hc6FactoryOmitsCtor: () => never = () => createServiceByModel('hc6.OmitCtor');
-export const hc6StaticDialOmitsCtor: () => never = () => BaseModel.dial('hc6.OmitCtor');
-export const hc6StaticPoolOmitsCtor: () => never = () => BaseModel.pool('OmitCtor');
+export const hc6DialOmitsCtor = () => dial('hc6.OmitCtor');
+export const hc6PoolOmitsCtor = () => pool('hc6', 'OmitCtor');
+export const hc6FactoryOmitsCtor = () => createServiceByModel('hc6.OmitCtor');
+export const hc6StaticDialOmitsCtor = () => BaseModel.dial('hc6.OmitCtor');
+export const hc6StaticPoolOmitsCtor = () => BaseModel.pool('OmitCtor');
 
 // @ts-expect-error ModelService must not have a default ctor type argument
 export type Hc6BareModelService = import('../../rpc/types').ModelService;
 
+// @ts-expect-error only model ctor types satisfy the constraint
+export type Hc6NonCtorTypeRejected = import('../../rpc/types').ModelService<string>;
+
 type ExpectTrue<T extends true> = T;
 export type Hc6OmittedDialIsNever = ExpectTrue<[ReturnType<typeof hc6DialOmitsCtor>] extends [never] ? true : false>;
+export type Hc6OmittedPoolIsNever = ExpectTrue<[ReturnType<typeof hc6PoolOmitsCtor>] extends [never] ? true : false>;
+export type Hc6OmittedFactoryIsNever = ExpectTrue<[ReturnType<typeof hc6FactoryOmitsCtor>] extends [never] ? true : false>;
+export type Hc6OmittedStaticDialIsNever = ExpectTrue<[ReturnType<typeof hc6StaticDialOmitsCtor>] extends [never] ? true : false>;
+export type Hc6OmittedStaticPoolIsNever = ExpectTrue<[ReturnType<typeof hc6StaticPoolOmitsCtor>] extends [never] ? true : false>;

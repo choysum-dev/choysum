@@ -42,9 +42,6 @@ import { _t } from '@/core/service/i18n_binder';
 import { mergeCallerConditionWithForField } from './model_for_field_condition';
 import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/datetime';
 
-/** Typing stub for cross-app dial; core must not import the document model. */
-type AttachmentBindingModelStub = ModelConstructor;
-
 type AttachmentBindingSearchService = {
   Search(condition: unknown, options?: unknown): Promise<ObjectRecord[]>;
 };
@@ -209,7 +206,7 @@ export class ReadOperations {
 
   private static resolveAttachmentBindingService(): AttachmentBindingSearchService | undefined {
     try {
-      const service = createServiceByModel<AttachmentBindingModelStub>(
+      const service = createServiceByModel<ModelConstructor>(
         'document.AttachmentBinding'
       ) as unknown as Partial<AttachmentBindingSearchService>;
       if (!service || typeof service.Search !== 'function') {

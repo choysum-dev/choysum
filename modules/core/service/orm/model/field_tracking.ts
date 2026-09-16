@@ -118,7 +118,9 @@ export function __valuesEqualForTest(a: unknown, b: unknown): boolean {
 function resolveAppend(): AppendFn | null {
   if (appendOverride !== undefined) return appendOverride;
   try {
-    const svc = dialOverride ? dialOverride(AUDIT_FIELD_CHANGE) : dial<FieldChangeModelStub>(AUDIT_FIELD_CHANGE);
+    const svc: { Append?: AppendFn } = dialOverride
+      ? dialOverride(AUDIT_FIELD_CHANGE)
+      : dial<FieldChangeModelStub>(AUDIT_FIELD_CHANGE);
     if (typeof svc?.Append !== 'function') return null;
     return svc.Append.bind(svc);
   } catch {

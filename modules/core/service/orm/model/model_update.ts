@@ -65,7 +65,7 @@ type AttachmentBindingModelStub = ModelConstructor & {
   Unbind(req: AttachmentBindingUnbindReq): Promise<unknown>;
 };
 
-type AttachmentBindingServiceLike = ModelService<AttachmentBindingModelStub> & {
+type AttachmentBindingServiceLike = Pick<ModelService<AttachmentBindingModelStub>, 'Bind' | 'Unbind'> & {
   Search(condition: unknown, options?: unknown): Promise<unknown>;
 };
 
