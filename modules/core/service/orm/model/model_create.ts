@@ -7,7 +7,7 @@ import type { Insertable, FieldSelection } from '../repository/types';
 import type BaseModel from './model';
 import { getModelRepository } from './model_internal_facade';
 import { browseManyModels, browseModel, searchModels } from './model_read_facade';
-import type { RuntimeModelCtor } from './types';
+import type { ModelCtor } from './types';
 import {
   getModelRuntimeMetadata,
   recomputeModelMetadata,
@@ -199,7 +199,7 @@ export const __isCreateAttachmentWritePipelineEnabledForTest = isAttachmentWrite
  * CreateOperations owns model create flows, including defaults, relations, attachments, and compute propagation.
  */
 export class CreateOperations {
-  private static stripComputedFields<T extends BaseModel>(ModelCtor: RuntimeModelCtor<T>, value: Partial<Insertable<T>>): Partial<Insertable<T>> {
+  private static stripComputedFields<T extends BaseModel>(ModelCtor: ModelCtor<T>, value: Partial<Insertable<T>>): Partial<Insertable<T>> {
     const meta = getModelRuntimeMetadata(ModelCtor);
     if (!meta.computeGraph?.computeFields?.size) return value;
 
@@ -217,7 +217,7 @@ export class CreateOperations {
   /**
    * Creates a single model record and returns the hydrated result.
    */
-  static async Create<T extends BaseModel>(ModelCtor: RuntimeModelCtor<T>, value: Partial<Insertable<T>>, returnFields?: FieldSelection<T>): Promise<T> {
+  static async Create<T extends BaseModel>(ModelCtor: ModelCtor<T>, value: Partial<Insertable<T>>, returnFields?: FieldSelection<T>): Promise<T> {
     const meta = getModelRuntimeMetadata(ModelCtor);
     const ownerModel = resolveOwnerModelName(meta);
 
@@ -437,7 +437,7 @@ export class CreateOperations {
    * Creates multiple model records and returns the hydrated results.
    */
   static async CreateMany<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelCtor<T>,
     values: Partial<Insertable<T>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {

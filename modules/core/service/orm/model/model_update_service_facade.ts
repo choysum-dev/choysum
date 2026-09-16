@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
+import type { ModelCtor } from './types';
 import type { FieldSelection, QueryCondition, Updateable, UpdateOptions } from '../repository/types';
 import { UpdateOperations } from './model_update';
 
-type ModelUpdateServiceFacadeCtor<T extends BaseModel> = RuntimeModelCtor<T>;
+type ModelUpdateServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 export async function updateModels<T extends BaseModel>(
   ModelCtor: ModelUpdateServiceFacadeCtor<T>,

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export { default as BaseModel } from './model';
-export type { BaseModelCtor, InstantiableModelCtor, RuntimeModelCtor } from './types';
+export type { ModelClass, ModelCtor } from './types';
 export { pool, dial } from './model_pool';
 export {
   assertRecordReadable,

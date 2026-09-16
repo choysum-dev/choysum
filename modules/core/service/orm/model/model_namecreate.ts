@@ -4,7 +4,7 @@
 import type { FieldSelection, Insertable } from '../repository/types';
 import type { ModelMetadata, FieldMetadata } from '../metadata';
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
+import type { ModelCtor } from './types';
 import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 
 export type NameCreateOptions<T extends BaseModel> = {
@@ -12,7 +12,7 @@ export type NameCreateOptions<T extends BaseModel> = {
   returnFields?: FieldSelection<T>;
 };
 
-type NameCreateModelCtor<T extends BaseModel> = RuntimeModelCtor<T> & {
+type NameCreateModelCtor<T extends BaseModel> = ModelCtor<T> & {
   Create: (value: Partial<Insertable<T & BaseModel>>, returnFields?: FieldSelection<T>) => Promise<T>;
 };
 
@@ -63,7 +63,7 @@ export async function nameCreateModels<T extends BaseModel>(
   if (!kw) {
     throw new Error('NameCreate: name is empty');
   }
-  const meta = getModelRuntimeMetadata(ModelCtor as RuntimeModelCtor<T>);
+  const meta = getModelRuntimeMetadata(ModelCtor as ModelCtor<T>);
   const field = resolveNameCreateField(meta, options?.nameField);
   const payload = {
     ...(values || {}),

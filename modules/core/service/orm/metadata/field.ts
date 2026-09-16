@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
+import type { ModelCtor } from '../model/types';
 import type { ExpressionWrapper, ExpressionBuilder, Expression } from 'kysely';
 import Decimal, { DecimalRound } from '@/core/utils/decimal';
 import type { TermReference } from '../../i18n';
 import type { BaseQueryCondition, Operator } from '../repository/types/query';
 import type { Selectable } from '../repository/types/common';
+
+export type { ModelCtor };
 
 type ObjectRecord = Record<string, unknown>;
 
@@ -559,11 +562,6 @@ export type OneToManyInverseFieldKey<T extends BaseModel> = Extract<
   | KeysOfType<T, string | null | undefined>,
   string
 >;
-
-/**
- * Constructor type for runtime model classes.
- */
-export type ModelCtor<T extends BaseModel = BaseModel> = new (...args: never[]) => T;
 
 type __M2OScalarPaths<T, D extends number = 5> = D extends 0
   ? never

@@ -416,11 +416,11 @@ export class ValidationEngine {
     return undefined;
   }
 
-  private static isRuntimeModelCtor(value: unknown): value is ModelCtor<BaseModel> & typeof BaseModel {
+  private static isModelCtor(value: unknown): value is ModelCtor<BaseModel> {
     return typeof value === 'function';
   }
 
-  private static hasConstructPrototype(value: unknown): value is ModelCtor<BaseModel> & typeof BaseModel {
+  private static hasConstructPrototype(value: unknown): value is ModelCtor<BaseModel> {
     if (typeof value !== 'function') {
       return false;
     }
@@ -437,14 +437,14 @@ export class ValidationEngine {
     return pool as GlobalPool;
   }
 
-  private static resolveReferenceTargetCtor(meta: ReferenceModelMeta): (ModelCtor<BaseModel> & typeof BaseModel) | undefined {
+  private static resolveReferenceTargetCtor(meta: ReferenceModelMeta): ModelCtor<BaseModel> | undefined {
     const resolver = (meta?.relation as { targetModel?: unknown } | undefined)?.targetModel;
     if (!resolver) return undefined;
 
     if (typeof resolver === 'function') {
       try {
         const ctor = (resolver as () => unknown)();
-        if (ValidationEngine.isRuntimeModelCtor(ctor)) return ctor;
+        if (ValidationEngine.isModelCtor(ctor)) return ctor;
       } catch {
         // ignore and try direct constructor branch
       }
@@ -458,7 +458,7 @@ export class ValidationEngine {
     if (typeof resolver === 'string') {
       const pool = ValidationEngine.getGlobalPool();
       const ctor = pool?.get?.(resolver);
-      if (ValidationEngine.isRuntimeModelCtor(ctor)) {
+      if (ValidationEngine.isModelCtor(ctor)) {
         return ctor;
       }
     }
@@ -709,7 +709,7 @@ export class ValidationEngine {
    * closest override (child prototype before parent prototype).
    */
   private static resolveConstraintMethod<TModel extends BaseModel>(
-    model: ModelCtor<TModel> & typeof BaseModel,
+    model: ModelCtor<TModel>,
     handler: ConstraintMeta
   ): LegacyConstraintMethod<TModel> | undefined {
     const owner = (handler.isStatic ? model : model.prototype) as unknown as ObjectRecord;
@@ -728,7 +728,7 @@ export class ValidationEngine {
    * the constraint refers to the draft proxy.
    */
   private static resolveInstanceConstraintMethod<TModel extends BaseModel>(
-    model: ModelCtor<TModel> & typeof BaseModel,
+    model: ModelCtor<TModel>,
     handler: ConstraintMeta
   ): InstanceConstraintMethod<TModel> | undefined {
     const owner = model.prototype as unknown as ObjectRecord;

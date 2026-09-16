@@ -5,8 +5,7 @@ import { MetadataStorage } from '../metadata/storage';
 import { withModelSudo } from './model_sudo';
 import { lookupPropertyDefinitionModel } from './properties_lookup';
 import { withPropertyDefinitionParentAclBypass } from './properties_definition_acl';
-import type { RuntimeModelCtor } from './types';
-
+import type { ModelCtor } from './types';
 /**
  * Delete PropertyDefinition rows scoped to the given parent containers.
  * Used when parent records are deleted (§3.4). Does not scrub child properties JSON.
@@ -60,7 +59,7 @@ export async function purgePropertyDefinitionsForContainers(
  * ContainerModel=M and ContainerId ∈ deleted ids (same application).
  */
 export async function purgePropertyDefinitionsAfterParentDelete(
-  ModelCtor: RuntimeModelCtor,
+  ModelCtor: ModelCtor,
   deletedIds: string[]
 ): Promise<void> {
   const ids = [...new Set((deletedIds || []).map(id => String(id || '').trim()).filter(Boolean))];

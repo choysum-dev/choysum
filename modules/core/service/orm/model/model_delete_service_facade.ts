@@ -2,20 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
+import type { ModelCtor } from './types';
 import type { DeleteOptions, QueryCondition } from '../repository/types';
 import { DeleteOperations } from './model_delete';
 
-type ModelDeleteServiceFacadeCtor<T extends BaseModel> = RuntimeModelCtor<T>;
+type ModelDeleteServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 export async function deleteModels<T extends BaseModel>(
   ModelCtor: ModelDeleteServiceFacadeCtor<T>,
   condition: QueryCondition<T>,
   options?: DeleteOptions
 ): Promise<number> {
-  return await DeleteOperations.Delete(ModelCtor, condition, options);
+  return await DeleteOperations.Delete<T>(ModelCtor, condition, options);
 }
 
 export async function deleteModelById<T extends BaseModel>(ModelCtor: ModelDeleteServiceFacadeCtor<T>, id: string, options?: DeleteOptions): Promise<number> {
-  return await DeleteOperations.DeleteById(ModelCtor, id, options);
+  return await DeleteOperations.DeleteById<T>(ModelCtor, id, options);
 }

@@ -6,7 +6,7 @@ import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
 import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
 import BaseModel from './model';
-import type { InstantiableModelCtor } from './types';
+import type { ModelCtor } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
 import type {
   Insertable,
@@ -69,7 +69,7 @@ function fail(code: string, message: string): never {
   raiseDomainError('core', code, message);
 }
 
-function storeMeta(ctor: InstantiableModelCtor<TranslationTermBaseModel>) {
+function storeMeta(ctor: ModelCtor<TranslationTermBaseModel>) {
   return MetadataStorage.instance.getModelMetadata(ctor as any);
 }
 
@@ -227,7 +227,7 @@ function computeTermHash(
   return termHashHex8(new TextEncoder().encode(parts.join('')));
 }
 
-async function ensureTermUniqueIndex(ctor: InstantiableModelCtor<TranslationTermBaseModel>): Promise<void> {
+async function ensureTermUniqueIndex(ctor: ModelCtor<TranslationTermBaseModel>): Promise<void> {
   const meta = storeMeta(ctor);
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;
@@ -324,7 +324,7 @@ export default class TranslationTermBaseModel extends BaseModel {
    * Shape: terms_by_module module → scope → src → value (literal kind only).
    */
   static async GetTranslations(
-    this: InstantiableModelCtor<TranslationTermBaseModel>,
+    this: ModelCtor<TranslationTermBaseModel>,
     req: GetTranslationsReq = {}
   ): Promise<GetTranslationsResp> {
     const lang = String(req?.lang ?? '').trim();
@@ -411,7 +411,7 @@ export default class TranslationTermBaseModel extends BaseModel {
    * Packaged PO upsert via Go shared helper (not the install default path).
    */
   static async ImportPackaged(
-    this: InstantiableModelCtor<TranslationTermBaseModel>,
+    this: ModelCtor<TranslationTermBaseModel>,
     req: ImportPackagedReq
   ): Promise<ImportPackagedResp> {
     const application = String(storeMeta(this)?.application || '').trim();
@@ -540,7 +540,7 @@ export default class TranslationTermBaseModel extends BaseModel {
 }
 
 function hostApplication(ctor: any): string {
-  return String(storeMeta(ctor as InstantiableModelCtor<TranslationTermBaseModel>)?.application || '').trim();
+  return String(storeMeta(ctor as ModelCtor<TranslationTermBaseModel>)?.application || '').trim();
 }
 
 // LogicalModel ACL eligibility (auth RoleMethodAccess / RoleFieldRule).

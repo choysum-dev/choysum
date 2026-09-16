@@ -10,7 +10,7 @@ import {
   getRepositoryCurrentReq,
 } from '../repository/authz';
 import BaseModel from './model';
-import type { InstantiableModelCtor } from './types';
+import type { ModelCtor } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
 
 /** Minimal surface for `pool<AppSettingModelCtor>('AppSetting')` typing. */
@@ -23,16 +23,16 @@ function fail(code: string, message: string): never {
   raiseDomainError('core', code, message);
 }
 
-function storeMeta(ctor: InstantiableModelCtor<AppSettingBaseModel>) {
+function storeMeta(ctor: ModelCtor<AppSettingBaseModel>) {
   return MetadataStorage.instance.getModelMetadata(ctor as any);
 }
 
-function storeApplication(ctor: InstantiableModelCtor<AppSettingBaseModel>): string {
+function storeApplication(ctor: ModelCtor<AppSettingBaseModel>): string {
   return String(storeMeta(ctor)?.application || '').trim();
 }
 
 /** Empty/`core` stores are invalid. Hard-delete requires softDelete: false. */
-function resolveWritableApplication(ctor: InstantiableModelCtor<AppSettingBaseModel>): string {
+function resolveWritableApplication(ctor: ModelCtor<AppSettingBaseModel>): string {
   const meta = storeMeta(ctor);
   const application = String(meta?.application || '').trim();
   if (!application || application === 'core') {
@@ -83,7 +83,7 @@ function isUniqueConstraintError(err: unknown): boolean {
 }
 
 async function findByKey(
-  ctor: InstantiableModelCtor<AppSettingBaseModel>,
+  ctor: ModelCtor<AppSettingBaseModel>,
   key: string
 ): Promise<AppSettingBaseModel | undefined> {
   const rows = await (ctor as any).Search(
@@ -114,7 +114,7 @@ export default class AppSettingBaseModel extends BaseModel {
    * Memoized per request on `(application, key)`.
    */
   static async Get(
-    this: InstantiableModelCtor<AppSettingBaseModel>,
+    this: ModelCtor<AppSettingBaseModel>,
     key: string,
     defaultValue: string | null = null
   ): Promise<string | null> {
@@ -147,7 +147,7 @@ export default class AppSettingBaseModel extends BaseModel {
    * Upsert setting. `null`/`undefined` → hard-delete row when present; returns previous value or `null`.
    */
   static async Set(
-    this: InstantiableModelCtor<AppSettingBaseModel>,
+    this: ModelCtor<AppSettingBaseModel>,
     key: string,
     value: string | null | undefined
   ): Promise<string | null> {

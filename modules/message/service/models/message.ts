@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type BaseModelCtor } from '@/core/service';
+import { BaseModel, Field, Model, type ModelClass } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
@@ -357,7 +357,7 @@ export default class Message extends PolymorphicRecordModel {
    * Create stamps Type and AuthorUid from trusted identity.
    */
   static override async Create<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     value: Partial<Insertable<T & BaseModel>>,
     returnFields?: FieldSelection<T>
   ): Promise<T> {
@@ -369,7 +369,7 @@ export default class Message extends PolymorphicRecordModel {
    * CreateMany stamps Type and AuthorUid on every row.
    */
   static override async CreateMany<T extends BaseModel>(
-    this: BaseModelCtor<T>,
+    this: ModelClass<T>,
     values: Partial<Insertable<T & BaseModel>>[],
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {

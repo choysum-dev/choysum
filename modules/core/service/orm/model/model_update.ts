@@ -8,7 +8,7 @@ import { normalizePrefetchedRows } from './model_update_prefetch';
 import { getModelRepository } from './model_internal_facade';
 import { searchModels } from './model_read_facade';
 import { resolveRepositoryWithSoftDeleteOptions } from './model_soft_delete_scope';
-import type { RuntimeModelCtor } from './types';
+import type { ModelCtor } from './types';
 import {
   collectModelUpstreamInverseFields,
   getModelRuntimeMetadata,
@@ -289,7 +289,7 @@ export const __isUpdateAttachmentWritePipelineEnabledForTest = isAttachmentWrite
  * UpdateOperations owns model update flows, including attachments, relation writes, and compute propagation.
  */
 export class UpdateOperations {
-  private static resolveRepository<T extends BaseModel>(ModelCtor: RuntimeModelCtor<T>, options?: UpdateOptions) {
+  private static resolveRepository<T extends BaseModel>(ModelCtor: ModelCtor<T>, options?: UpdateOptions) {
     return resolveRepositoryWithSoftDeleteOptions(ModelCtor, options);
   }
 
@@ -297,7 +297,7 @@ export class UpdateOperations {
    * Updates all records matching a condition.
    */
   static async Update<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelCtor<T>,
     condition: QueryCondition<T>,
     values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
@@ -646,7 +646,7 @@ export class UpdateOperations {
    * Updates a single record by Id.
    */
   static async UpdateById<T extends BaseModel>(
-    ModelCtor: RuntimeModelCtor<T>,
+    ModelCtor: ModelCtor<T>,
     id: string,
     values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,

@@ -5,7 +5,7 @@ import { MetadataStorage } from '../metadata/storage';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import { getModelRepository } from './model_internal_facade';
 import type { Repository } from '../repository';
-import type { RuntimeModelCtor } from './types';
+import type { ModelCtor } from './types';
 import { _t } from '@/core/service/i18n_binder';
 
 type SoftDeleteOptionLike =
@@ -32,7 +32,7 @@ function assertSoftDeleteOptionsValid(ModelCtor: unknown, options?: SoftDeleteOp
 }
 
 export function resolveRepositoryWithSoftDeleteOptions(ModelCtor: unknown, options?: SoftDeleteOptionLike): Repository {
-  const repository = getModelRepository(ModelCtor as RuntimeModelCtor);
+  const repository = getModelRepository(ModelCtor as ModelCtor);
   assertSoftDeleteOptionsValid(ModelCtor, options);
   if (options?.onlyDeleted) return repository.onlyDeleted();
   if (options?.withDeleted) return repository.withDeleted();

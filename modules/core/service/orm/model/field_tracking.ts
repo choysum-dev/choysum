@@ -14,7 +14,7 @@ import { dial } from './model_pool';
 import { MetadataStorage } from '../metadata';
 import type { FieldMetadata } from '../metadata/field';
 import type BaseModel from './model';
-import type { RuntimeModelCtor } from './types';
+import type { ModelCtor } from './types';
 import type { ObjectRecord } from '../../../utils/types';
 import { getActiveCompanyId } from '../../runtime/context';
 
@@ -60,14 +60,14 @@ export function __setFieldTrackingActiveCompanyIdForTest(fn: ActiveCompanyIdFn |
 }
 
 export type FieldTrackingWriteEvent = {
-  childCtor: RuntimeModelCtor;
+  childCtor: ModelCtor;
   operation: 'create' | 'update' | 'delete';
   changedFields?: string[];
   beforeEntity?: ObjectRecord;
   afterEntity?: ObjectRecord;
 };
 
-function fullModelName(ModelCtor: RuntimeModelCtor): string {
+function fullModelName(ModelCtor: ModelCtor): string {
   const meta = MetadataStorage.instance.getModelMetadata(ModelCtor as any);
   const app = String(meta?.application || '').trim();
   const name = String(meta?.name || ModelCtor?.name || '').trim();
