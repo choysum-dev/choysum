@@ -570,24 +570,6 @@ func TestUnitTestJsRequestContextShape(t *testing.T) {
 	}
 }
 
-func TestShouldSkipWebShellForUnitApp(t *testing.T) {
-	cases := []struct {
-		app  string
-		want bool
-	}{
-		{"auth", false},
-		{" AUTH ", false},
-		{"web", true},
-		{"base", true},
-		{"", true},
-	}
-	for _, tc := range cases {
-		if got := shouldSkipWebShellForUnitApp(tc.app); got != tc.want {
-			t.Fatalf("shouldSkipWebShellForUnitApp(%q)=%v, want %v", tc.app, got, tc.want)
-		}
-	}
-}
-
 type recordingInstaller struct {
 	calls      []lifecycle.InstallRequest
 	err        error
@@ -620,7 +602,7 @@ func TestInstallUnitAppModules(t *testing.T) {
 		if err := installUnitAppModules(context.Background(), inst, "auth"); err != nil {
 			t.Fatalf("err=%v", err)
 		}
-		if len(inst.calls) != 1 || inst.calls[0].Name != "auth" || inst.calls[0].SkipWebShell {
+		if len(inst.calls) != 1 || inst.calls[0].Name != "auth" || !inst.calls[0].SkipWebShell {
 			t.Fatalf("calls=%+v", inst.calls)
 		}
 	})

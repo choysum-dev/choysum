@@ -5,8 +5,9 @@ package plan
 
 // BuildOptions configures BuildPlan behavior beyond the op/root/resolver inputs.
 type BuildOptions struct {
-	// SkipWebShell disables auto-including the web shell when a planned module
-	// declares entryPoints.web (CLI --no-web).
+	// SkipWebShell disables auto-including the web SPA shell when a planned module
+	// declares entryPoints.web (CLI --no-web). When web is not in ModuleOrder it
+	// also clears NeedsGlobalWebBuild; installing module "web" itself still builds dist/web.
 	SkipWebShell bool
 }
 

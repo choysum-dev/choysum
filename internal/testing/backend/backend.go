@@ -499,20 +499,18 @@ type junitFailure struct {
 	Body    string `xml:",chardata"`
 }
 
-// shouldSkipWebShellForUnitApp skips SPA shell install for non-auth unit shards.
-func shouldSkipWebShellForUnitApp(app string) bool {
-	return !strings.EqualFold(strings.TrimSpace(app), "auth")
-}
-
 type unitAppInstaller interface {
 	Install(ctx context.Context, req lifecycle.InstallRequest) error
 }
 
-// installUnitAppModules installs the unit shard (optionally skipping the web shell).
+// installUnitAppModules installs the unit shard without auto-pulling the SPA
+// shell for domain modules (SkipWebShell). Installing app "web" itself still
+// builds dist/web because web is in ModuleOrder. Backend suites that need UI
+// catalog rows seed MetaUiResource in the test (see auth permission_state).
 func installUnitAppModules(ctx context.Context, installer unitAppInstaller, app string) error {
 	return installer.Install(ctx, lifecycle.InstallRequest{
 		Name:         app,
-		SkipWebShell: shouldSkipWebShellForUnitApp(app),
+		SkipWebShell: true,
 	})
 }
 
@@ -627,10 +625,9 @@ func RunOneAppBackendTests(
 		// Let module installation manage its own transactional/lease lifecycle.
 		// The outer test transaction is only needed for bundle/test execution state.
 		//
-		// Skip the SPA shell for most domain shards: entryPoints.web would otherwise
-		// pull web→document→auth into e.g. base. Auth is the exception — its BE
-		// suite needs global web build to persist declared MetaUiResource rows
-		// (PermissionState smoke uses auth.route.token_list, etc.).
+		// Always SkipWebShell for domain shards (do not pull SPA deps). Installing
+		// app "web" itself still runs global web build (web ∈ ModuleOrder).
+		// BE suites seed any needed MetaUiResource rows themselves.
 		moduleLifecycle := lifecycle.NewService(testScope, jsExec)
 		// Auth backend tests rely on meta gRPC services (Model/Application).
 		// Web backend tests need meta for FieldDefault/AppSetting and authz ModelData seeds.

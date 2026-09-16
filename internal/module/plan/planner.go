@@ -99,6 +99,12 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.Module, r Resolver, op
 			return Plan{}, err
 		}
 	}
+	// --no-web / unit BE: skip pulling the SPA shell for domain modules. Clear
+	// NeedsGlobalWebBuild only when web itself is not in the install/upgrade order
+	// (installing module "web" still needs dist/web).
+	if buildOpts.SkipWebShell && !moduleOrderContains(plan.ModuleOrder, "web") {
+		plan.NeedsGlobalWebBuild = false
+	}
 
 	for app := range apps {
 		plan.AffectedApps = append(plan.AffectedApps, app)

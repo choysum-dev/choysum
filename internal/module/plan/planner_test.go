@@ -89,8 +89,8 @@ func TestBuildPlanInstallErrorsAndAppCollection(t *testing.T) {
 	if len(plan.AffectedApps) != 2 || plan.AffectedApps[0] != "crm" || plan.AffectedApps[1] != "web" {
 		t.Fatalf("unexpected affected apps: %v", plan.AffectedApps)
 	}
-	if !plan.NeedsGlobalWebBuild {
-		t.Fatal("expected web entry point dependency to require global web build")
+	if plan.NeedsGlobalWebBuild {
+		t.Fatal("SkipWebShell should disable NeedsGlobalWebBuild")
 	}
 	if peekCalls != 2 {
 		t.Fatalf("expected peek to dedupe dependencies, got %d calls", peekCalls)
@@ -207,6 +207,9 @@ func TestBuildPlanSkipWebShell(t *testing.T) {
 	}
 	if len(plan.EnsureOrder) != 0 {
 		t.Fatalf("expected empty EnsureOrder, got %v", plan.EnsureOrder)
+	}
+	if plan.NeedsGlobalWebBuild {
+		t.Fatal("SkipWebShell should disable NeedsGlobalWebBuild")
 	}
 }
 
@@ -371,6 +374,18 @@ func TestBuildPlan_NeedsGlobalWebBuildTrueWhenRootIsWeb(t *testing.T) {
 	}
 	if !plan.NeedsGlobalWebBuild {
 		t.Fatalf("expected NeedsGlobalWebBuild=true, got false")
+	}
+
+	// Installing module "web" with SkipWebShell must still build dist/web.
+	planSkip, err := BuildPlan(context.Background(), OpInstall, root, r, WithSkipWebShell(true))
+	if err != nil {
+		t.Fatalf("BuildPlan SkipWebShell error: %v", err)
+	}
+	if !planSkip.NeedsGlobalWebBuild {
+		t.Fatalf("expected NeedsGlobalWebBuild=true when root is web even with SkipWebShell")
+	}
+	if !moduleOrderContains(planSkip.ModuleOrder, "web") {
+		t.Fatalf("expected web in ModuleOrder, got %v", planSkip.ModuleOrder)
 	}
 }
 
