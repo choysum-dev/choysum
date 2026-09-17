@@ -8,6 +8,13 @@ import type { DeleteOptions, QueryCondition, UpdateOptions } from '@/core/servic
 import { normalizeRefId, uniqStrings } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from '../models/_request_cache_invalidation';
 
+/** Write op that just completed; passed to {@link AuthzMutationModel.invalidateAuthzCachesAfterWrite}. */
+export type AuthzMutationOp = 'create' | 'createMany' | 'update' | 'updateById' | 'delete' | 'deleteById';
+
+type AuthzInvalidateHost = {
+  invalidateAuthzCachesAfterWrite(op: AuthzMutationOp, payload?: unknown): void;
+};
+
 /**
  * Run a permission-graph mutation, then invalidate every request-scoped authz cache.
  *
@@ -23,7 +30,8 @@ export async function mutateThenInvalidateAllAuthzCaches<T>(mutate: () => Promis
 /**
  * Run a mutation, then invalidate request-scoped authz caches for specific users.
  *
- * Prefer for {@link UserRole} Create / CreateMany where UserId is known up front.
+ * Prefer when UserId is known up front (also what {@link UserRole} uses via
+ * {@link AuthzMutationModel.invalidateAuthzCachesAfterWrite}).
  */
 export async function mutateThenInvalidateAuthzCachesForUsers<T>(
   userIds: Array<string | null | undefined>,
@@ -51,15 +59,27 @@ export function userIdsFromUserRolePayloads(
 /**
  * Base for auth models whose writes change the permission graph.
  *
- * Default Create/Update/Delete* invalidate all request-scoped authz caches after
- * the mutation. Subclasses that need domain prep call it before `super.*`;
- * UserRole overrides Create/CreateMany for targeted per-user invalidation.
+ * Default Create/Update/Delete* call {@link invalidateAuthzCachesAfterWrite} after
+ * a successful mutation (clears all request-scoped authz caches). Subclasses that
+ * need domain prep call it before `super.*`; subclasses that need a different
+ * invalidate policy override {@link invalidateAuthzCachesAfterWrite} (e.g. UserRole).
  *
  * Must be the module default export so `@Model` classes can `extends` it.
  */
 export default abstract class AuthzMutationModel extends BaseModel {
   /**
-   * Create one row and invalidate every request-scoped authz cache.
+   * Invalidate request-scoped authz caches after a successful write.
+   *
+   * Default clears every authz cache for the request. Override for targeted
+   * invalidation; IMD subclasses of that override should usually call `super`
+   * unless they replace the policy entirely.
+   */
+  static invalidateAuthzCachesAfterWrite(_op: AuthzMutationOp, _payload?: unknown): void {
+    invalidateAllAuthzCaches();
+  }
+
+  /**
+   * Create one row then run {@link invalidateAuthzCachesAfterWrite}.
    */
   static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
@@ -67,12 +87,12 @@ export default abstract class AuthzMutationModel extends BaseModel {
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const out = await super.Create<C, F>(value, returnFields);
-    invalidateAllAuthzCaches();
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('create', value);
     return out;
   }
 
   /**
-   * Create many rows and invalidate every request-scoped authz cache.
+   * Create many rows then run {@link invalidateAuthzCachesAfterWrite}.
    */
   static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
@@ -80,12 +100,12 @@ export default abstract class AuthzMutationModel extends BaseModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const out = await super.CreateMany<C, F>(values, returnFields);
-    invalidateAllAuthzCaches();
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('createMany', values);
     return out;
   }
 
   /**
-   * Update matching rows and invalidate every request-scoped authz cache.
+   * Update matching rows then run {@link invalidateAuthzCachesAfterWrite}.
    */
   static override async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
@@ -95,12 +115,12 @@ export default abstract class AuthzMutationModel extends BaseModel {
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     const out = await super.Update<C, F>(condition, values, returnFields, options);
-    invalidateAllAuthzCaches();
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('update', { condition, values });
     return out;
   }
 
   /**
-   * Update one row by Id and invalidate every request-scoped authz cache.
+   * Update one row by Id then run {@link invalidateAuthzCachesAfterWrite}.
    */
   static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
@@ -110,12 +130,12 @@ export default abstract class AuthzMutationModel extends BaseModel {
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     const out = await super.UpdateById<C, F>(id, values, returnFields, options);
-    invalidateAllAuthzCaches();
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('updateById', { id, values });
     return out;
   }
 
   /**
-   * Delete matching rows and invalidate every request-scoped authz cache.
+   * Delete matching rows then run {@link invalidateAuthzCachesAfterWrite}.
    */
   static override async Delete<C extends ModelCtor>(
     this: C,
@@ -123,16 +143,16 @@ export default abstract class AuthzMutationModel extends BaseModel {
     options?: DeleteOptions
   ): Promise<number> {
     const out = await super.Delete<C>(condition, options);
-    invalidateAllAuthzCaches();
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('delete', condition);
     return out;
   }
 
   /**
-   * Delete one row by Id and invalidate every request-scoped authz cache.
+   * Delete one row by Id then run {@link invalidateAuthzCachesAfterWrite}.
    */
   static override async DeleteById<C extends ModelCtor>(this: C, id: string, options?: DeleteOptions): Promise<number> {
     const out = await super.DeleteById<C>(id, options);
-    invalidateAllAuthzCaches();
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('deleteById', id);
     return out;
   }
 }

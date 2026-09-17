@@ -6,4 +6,5 @@ export {
   mutateThenInvalidateAllAuthzCaches,
   mutateThenInvalidateAuthzCachesForUsers,
   userIdsFromUserRolePayloads,
+  type AuthzMutationOp,
 } from './authz_mutation_model';

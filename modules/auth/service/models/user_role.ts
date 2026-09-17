@@ -1,17 +1,15 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Model, Field, BaseModel, type ModelCtor, type RowOf } from '@/core/service';
-import type { Insertable } from '@/core/service/api/input';
-import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
+import { Model, Field } from '@/core/service';
 import { _lt } from '../i18n';
 import User from './user/user';
 import Role from './role';
 import AuthzMutationModel, {
-  mutateThenInvalidateAuthzCachesForUsers,
   userIdsFromUserRolePayloads,
+  type AuthzMutationOp,
 } from '../mixins/authz_mutation_model';
-import { normalizeRefId } from '@/core/service/utils/normalization';
+import { invalidateAuthzCachesForUsers } from './_request_cache_invalidation';
 import type Company from '@/base/service/models/company';
 
 /**
@@ -58,36 +56,14 @@ export default class UserRole extends AuthzMutationModel {
   CompanyId?: string;
 
   /**
-   * Read a trimmed Id from a relation reference or scalar value.
+   * Create/CreateMany: clear authz caches only for UserIds in the write payload.
+   * Other ops keep the mixin default (invalidate all).
    */
-  static _maybeId(v: any): string {
-    return normalizeRefId(v) ?? '';
-  }
-
-  /**
-   * Create one UserRole row and invalidate request-scoped caches for the affected users.
-   */
-  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
-    this: C,
-    value: Partial<Insertable<RowOf<C>>>,
-    returnFields?: F
-  ): Promise<RowOrProjected<RowOf<C>, F>> {
-    // Skip AuthzMutationModel's global invalidate; call BaseModel so only targeted clears run.
-    return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(value), () =>
-      Reflect.apply(BaseModel.Create, this, [value, returnFields]) as Promise<RowOrProjected<RowOf<C>, F>>
-    );
-  }
-
-  /**
-   * Create multiple UserRole rows and invalidate request-scoped caches for the affected users.
-   */
-  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
-    this: C,
-    values: Partial<Insertable<RowOf<C>>>[],
-    returnFields?: F
-  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(values), () =>
-      Reflect.apply(BaseModel.CreateMany, this, [values, returnFields]) as Promise<Array<RowOrProjected<RowOf<C>, F>>>
-    );
+  static override invalidateAuthzCachesAfterWrite(op: AuthzMutationOp, payload?: unknown): void {
+    if (op === 'create' || op === 'createMany') {
+      invalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(payload as never));
+      return;
+    }
+    super.invalidateAuthzCachesAfterWrite(op, payload);
   }
 }
