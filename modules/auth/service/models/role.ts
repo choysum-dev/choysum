@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, SqlCompute, callParentCollection, type ModelCtor, type RowOf } from '@/core/service';
+import { BaseModel, Model, Field, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
+import { callParentCollection } from '@/core/service/orm/model/call_parent_collection';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions, SoftDeleteOptions, UpdateOptions } from '@/core/service/api/query';
