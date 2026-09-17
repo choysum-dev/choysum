@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Prefer bare condition literals at Search call sites when they assign.
- * Use condition() for dynamic trees, or when the target is a collapsed
- * QueryCondition<BaseModel> (e.g. some Count surfaces) that rejects model fields.
+ * Prefer bare condition literals at Search/Count call sites when field names are known.
+ * Use condition() for dynamic trees (variable fields / any[] Or parts).
  */
 import { BaseModel, Model, Field } from '@/core/service';
 import { condition } from '@/core/service/api/query';
 import type { QueryCondition } from '@/core/service/api/query';
-import type { ModelConstructor, ModelService } from '@/core/rpc/types/model';
+import type { ModelService } from '@/core/rpc/types/model';
 
 @Model('ConditionCtxWidget')
 class ConditionCtxWidget extends BaseModel {
@@ -17,24 +16,22 @@ class ConditionCtxWidget extends BaseModel {
   Name!: string;
 }
 
-type WidgetService = ModelService<typeof ConditionCtxWidget & ModelConstructor>;
+type WidgetService = ModelService<typeof ConditionCtxWidget>;
 
 declare const widgetSvc: WidgetService;
-declare function countBase(cond: QueryCondition<BaseModel> | [] | undefined): Promise<number>;
 
-async function conditionBridgesDynamicOrBaseModelTarget(): Promise<void> {
+async function bareLiteralSearchAndCount(): Promise<void> {
+  await widgetSvc.Search({ And: [['Name', '=', 'x']] }, { fields: ['Id', 'Name'] as const, limit: 1 });
+  await widgetSvc.Count({ And: [['Name', '=', 'x']] });
+  await widgetSvc.Delete(['Id', '=', 'x']);
+}
+
+async function conditionForDynamicTree(scopeOr: QueryCondition<ConditionCtxWidget>[]): Promise<void> {
   await widgetSvc.Search(
-    condition({ And: [['Name', '=', 'x']] }),
-    { fields: ['Id', 'Name'] as const, limit: 1 }
-  );
-  await countBase(
-    condition({
-      And: [
-        ['ModelId', '=', 'm1'],
-        ['Name', '=', 'n1'],
-      ],
-    })
+    condition({ And: [['Name', '=', 'x'], { Or: scopeOr }] }),
+    { fields: ['Id'] as const, limit: 1 }
   );
 }
 
-void conditionBridgesDynamicOrBaseModelTarget;
+void bareLiteralSearchAndCount;
+void conditionForDynamicTree;

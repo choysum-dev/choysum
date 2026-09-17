@@ -86,14 +86,12 @@ async function computeCompanyGateMode(
     try {
       const hasOwnershipField =
         Number(
-          await MetaField.Count(
-            condition({
-              And: [
-                ['ModelId', '=', modelId],
-                ['Name', '=', ownershipField],
-              ],
-            })
-          )
+          await MetaField.Count({
+            And: [
+              ['ModelId', '=', modelId],
+              ['Name', '=', ownershipField],
+            ],
+          })
         ) > 0;
       if (!hasOwnershipField) {
         // Isolated model missing its ownership column: do not drop the company boundary.

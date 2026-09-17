@@ -92,10 +92,9 @@ export type QueryCondition<T> = SingleCondition<T> | QueryConditionNode<T>;
  *
  * Prefer a bare literal when it already assigns to the Search/Count parameter
  * (statically known field names on a sound {@link QueryCondition}).
- * Use this helper for dynamic trees (variable field names, `any[]` Or parts), or when the
- * target collapses to {@link QueryCondition}<BaseModel> (some Count surfaces) and rejects
- * model-specific fields. Pass an explicit type argument for method-generic `Model.Search<T>`
- * when nesting would otherwise poison `T`.
+ * Use this helper for dynamic trees (variable field names, `any[]` Or parts).
+ * Pass an explicit type argument for method-generic `Model.Search<T>` when nesting
+ * would otherwise poison `T`.
  */
 export function condition<T>(tree: BaseQueryCondition): QueryCondition<T> {
   return tree as QueryCondition<T>;
