@@ -298,7 +298,7 @@ export default class Message extends PolymorphicRecordModel {
 
     const type = assertMessageType(req.Type == null || req.Type === '' ? 'comment' : String(req.Type));
     const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
-    const returnFields: FieldSelection<Message> = fields ?? DEFAULT_POST_FIELDS;
+    const returnFields: FieldSelection<Message> = fields ?? [...DEFAULT_POST_FIELDS];
     const attachmentObjectId = String(req.AttachmentObjectId || '').trim();
 
     // Resolve Bind before Create so a missing binder does not leave an unbound Message.
@@ -370,8 +370,9 @@ export default class Message extends PolymorphicRecordModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    prepareCreatePayload(asWriteBag(value));
-    return super.Create(value, returnFields);
+    const bag = { ...asWriteBag(value) };
+    prepareCreatePayload(bag);
+    return super.Create(bag as Partial<Insertable<RowOf<C>>>, returnFields);
   }
 
   /**
@@ -382,8 +383,11 @@ export default class Message extends PolymorphicRecordModel {
     values: Partial<Insertable<RowOf<C>>>[],
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const rows = values || [];
-    for (const row of rows) prepareCreatePayload(asWriteBag(row));
+    const rows = (values || []).map(row => {
+      const bag = { ...asWriteBag(row) };
+      prepareCreatePayload(bag);
+      return bag as Partial<Insertable<RowOf<C>>>;
+    });
     return super.CreateMany(rows, returnFields);
   }
 }

@@ -16,6 +16,9 @@ import type {
   UpdateOptions,
 } from '@/core/service/api/query';
 import type { OnchangeResult } from '@/core/service/runtime/onchange/types';
+import type { ResolvePropertiesOptions } from '@/core/service/orm/model/properties_resolve';
+import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
+import type { ReadGroupResult } from '@/core/service/orm/repository/types/groupby';
 import type { TermReference } from '@/core/service/i18n';
 
 /**
@@ -53,7 +56,11 @@ type StoreNameCreate<T extends BaseModel> = (
 ) => Promise<T>;
 type StoreCount<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: CountOptions) => Promise<number>;
 type StoreSearch<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: SearchOptions<T>) => Promise<T[]>;
-type StoreReadGroup<T extends BaseModel> = (groupby: unknown, condition?: QueryCondition<T> | [], options?: unknown) => Promise<unknown>;
+type StoreReadGroup<T extends BaseModel> = (
+  groupby: unknown,
+  condition?: QueryCondition<T> | [],
+  options?: unknown
+) => Promise<ReadGroupResult>;
 type StoreReadGroupCount<T extends BaseModel> = (
   groupby: unknown,
   condition?: QueryCondition<T> | [],
@@ -65,8 +72,8 @@ type StoreOnchange<T extends BaseModel> = (draft: unknown, changed: unknown[], o
 type StoreResolveProperties<T extends BaseModel> = (
   record: Partial<T> | Record<string, unknown> | null | undefined,
   fieldName: string,
-  opts?: unknown
-) => Promise<unknown>;
+  opts?: ResolvePropertiesOptions
+) => Promise<ResolvedPropertyItem[]>;
 
 // Selection dropdown option.
 export type SelectionItem = { value: string; label: string };

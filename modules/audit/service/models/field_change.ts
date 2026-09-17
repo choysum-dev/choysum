@@ -268,12 +268,16 @@ export default class FieldChange extends PolymorphicRecordModel {
       RequestId: req.RequestId ?? correlation.requestId ?? null,
       TraceId: req.TraceId ?? correlation.traceId ?? null,
     };
-    const returnFields: FieldSelection<FieldChange> = fields ?? DEFAULT_APPEND_FIELDS;
+    const returnFields: FieldSelection<FieldChange> = fields ?? [...DEFAULT_APPEND_FIELDS];
     // Always request Id so tip publish does not depend on the caller's projection.
     const createFields = fieldSelectionWithId(returnFields);
     const created = await this.Create(createValue, createFields);
+    const createdId = String((created as { Id?: unknown }).Id || '').trim();
+    if (!createdId) {
+      throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append created row without Id' });
+    }
     await publishFieldChangeAppendedTip({
-      Id: String((created as { Id?: unknown }).Id || ''),
+      Id: createdId,
       Model: model,
       ResId: resId,
       At: at,
@@ -289,8 +293,9 @@ export default class FieldChange extends PolymorphicRecordModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    prepareCreatePayload(asWriteBag(value));
-    return super.Create(value, returnFields);
+    const bag = { ...asWriteBag(value) };
+    prepareCreatePayload(bag);
+    return super.Create(bag as Partial<Insertable<RowOf<C>>>, returnFields);
   }
 
   /**
@@ -301,8 +306,11 @@ export default class FieldChange extends PolymorphicRecordModel {
     values: Partial<Insertable<RowOf<C>>>[],
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const rows = values || [];
-    for (const row of rows) prepareCreatePayload(asWriteBag(row));
+    const rows = (values || []).map(row => {
+      const bag = { ...asWriteBag(row) };
+      prepareCreatePayload(bag);
+      return bag as Partial<Insertable<RowOf<C>>>;
+    });
     return super.CreateMany(rows, returnFields);
   }
 

@@ -131,7 +131,9 @@ async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[], de
 
           const map = new Map<string, any>();
           for (const r of results || []) {
-            const key = String(r?.Id);
+            const row = r as { Id?: unknown; id?: unknown } | null | undefined;
+            const key = String(row?.Id ?? row?.id ?? '');
+            if (!key || key === 'undefined') continue;
             map.set(key, r);
           }
           lookups.set(model, map);

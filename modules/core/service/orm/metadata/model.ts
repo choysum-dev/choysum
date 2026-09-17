@@ -1,7 +1,7 @@
-import type { ModelCtor } from '../model/types';
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import type { ModelCtor } from '../model/types';
 import { FieldMetadata } from './field';
 import { ServiceMetadata } from './service';
 import type { ConstraintMeta } from './constraint';
