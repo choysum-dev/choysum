@@ -41,6 +41,9 @@ console.log(ref, defineStore, createPinia, createI18n);
 		t.Fatalf("bundle: %v", err)
 	}
 	vueVer := regexp.MustCompile(`vue@(\d+\.\d+\.\d+)`)
+	if m := regexp.MustCompile(`vue@[\^~><*]`).FindString(res.JS); m != "" {
+		t.Fatalf("bundle contains an unpinned vue range %q", m)
+	}
 	matches := vueVer.FindAllStringSubmatch(res.JS, -1)
 	if len(matches) == 0 {
 		t.Fatal("expected pinned vue version markers in bundle")

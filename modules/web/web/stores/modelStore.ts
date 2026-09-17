@@ -17,7 +17,7 @@ import type {
   SoftDeleteOptions,
   UpdateOptions,
 } from '@/core/service/api/query';
-import type { Projected, RowOrProjected } from '@/core/service/api/selection';
+import type { PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
 import type { OnchangeDraft, OnchangeResult } from '@/core/service/runtime/onchange/types';
 import type { OnchangeTrigger } from '@/core/service/orm/metadata/field';
 import type { ResolvePropertiesOptions } from '@/core/service/orm/model/properties_resolve';
@@ -30,7 +30,7 @@ import type { TermReference } from '@/core/service/i18n';
 /**
  * Row-bound BaseModel method shapes for the FE store.
  * Field-selecting CRUD methods use call-site generics so literal `fields`
- * preserve {@link Projected} / {@link RowOrProjected} (wrapping via ClientModelService
+ * preserve {@link PartialOrProjected} / {@link RowOrProjected} (wrapping via ClientModelService
  * freezes Parameters/ReturnType).
  */
 type StoreDefaultGet<T extends BaseModel> = (value: Partial<Insertable<T>>) => Promise<Partial<Insertable<T>>>;
@@ -58,7 +58,7 @@ type StoreUpdate<T extends BaseModel> = {
     values: Partial<Updateable<T>>,
     returnFields: F,
     options?: UpdateOptions
-  ): Promise<Array<ClientModel<Projected<T, F>>>>;
+  ): Promise<Array<ClientModel<PartialOrProjected<T, F>>>>;
   (
     condition: QueryCondition<T>,
     values: Partial<Updateable<T>>,
@@ -72,7 +72,7 @@ type StoreUpdateById<T extends BaseModel> = {
     values: Partial<Updateable<T>>,
     returnFields: F,
     options?: UpdateOptions
-  ): Promise<ClientModel<Projected<T, F>>>;
+  ): Promise<ClientModel<PartialOrProjected<T, F>>>;
   (
     id: string,
     values: Partial<Updateable<T>>,

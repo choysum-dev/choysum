@@ -2020,12 +2020,16 @@ func TestRewriteProductionSpecifier(t *testing.T) {
 
 func TestApplyBareImportPin(t *testing.T) {
 	t.Parallel()
+	_ = New(WithBareImportPins(nil))
+	_ = New(WithBareImportPins(map[string]string{}))
 	r := New(WithBareImportPins(map[string]string{
 		"vue":              "3.5.38",
 		"@vue/runtime-dom": "3.5.38",
 		"":                 "ignore",
 		"empty-ver":        "",
 	}))
+	// Second call merges / overwrites.
+	WithBareImportPins(map[string]string{"vue": "3.5.38", " lodash ": " 4.17.21 "})(r)
 	tests := []struct {
 		spec string
 		want string
@@ -2039,7 +2043,7 @@ func TestApplyBareImportPin(t *testing.T) {
 		{"@vue/runtime-dom", "@vue/runtime-dom@3.5.38"},
 		{"@vue/runtime-dom@3.5.43/dist/x", "@vue/runtime-dom@3.5.38/dist/x"},
 		{"@vue/runtime-core", "@vue/runtime-core"},
-		{"lodash", "lodash"},
+		{"lodash", "lodash@4.17.21"},
 		{"", ""},
 	}
 	for _, tt := range tests {
@@ -2050,18 +2054,52 @@ func TestApplyBareImportPin(t *testing.T) {
 	if got := New().applyBareImportPin("vue"); got != "vue" {
 		t.Fatalf("no pins: got %q", got)
 	}
+	if got := (*Resolver)(nil).applyBareImportPin("vue"); got != "vue" {
+		t.Fatalf("nil receiver: got %q", got)
+	}
 	if got := r.applyBareImportPinToAbsPath("/vue@^3.0.0?target=es2020"); got != "/vue@3.5.38?target=es2020" {
 		t.Fatalf("abs path: got %q", got)
+	}
+	if got := (*Resolver)(nil).applyBareImportPinToAbsPath("/vue@1"); got != "/vue@1" {
+		t.Fatalf("nil abs: got %q", got)
+	}
+	if got := New().applyBareImportPinToAbsPath("/vue@1"); got != "/vue@1" {
+		t.Fatalf("empty pins abs: got %q", got)
+	}
+	if got := r.applyBareImportPinToAbsPath("//vue@1"); got != "//vue@1" {
+		t.Fatalf("protocol-relative: got %q", got)
+	}
+	if got := r.applyBareImportPinToAbsPath("vue@^3"); got != "vue@^3" {
+		t.Fatalf("relative path: got %q", got)
 	}
 	if got := r.applyBareImportPinToURL("https://esm.sh/vue@^3.5.11?target=es2020"); got != "https://esm.sh/vue@3.5.38?target=es2020" {
 		t.Fatalf("url: got %q", got)
 	}
-	if got := r.applyBareImportPinToURL("https://esm.sh/lodash@4?target=es2020"); got != "https://esm.sh/lodash@4?target=es2020" {
-		t.Fatalf("unpinned url rewritten: %q", got)
+	already := "https://esm.sh/vue@3.5.38/es2020/vue.mjs"
+	if got := r.applyBareImportPinToURL(already); got != already {
+		t.Fatalf("already-pinned URL changed: got %q", got)
+	}
+	if got := r.applyBareImportPinToURL("https://esm.sh/lodash@4?target=es2020"); got != "https://esm.sh/lodash@4.17.21?target=es2020" {
+		t.Fatalf("unpinned lodash url: got %q want pinned", got)
 	}
 	otherHost := "https://unpkg.com/vue@3.6.0/dist/x.js"
 	if got := r.applyBareImportPinToURL(otherHost); got != otherHost {
 		t.Fatalf("non-upstream host rewritten: got %q", got)
+	}
+	if got := r.applyBareImportPinToURL("http://esm.sh/vue@^3"); got != "http://esm.sh/vue@^3" {
+		t.Fatalf("scheme mismatch rewritten: got %q", got)
+	}
+	if got := r.applyBareImportPinToURL("https://esm.sh"); got != "https://esm.sh" {
+		t.Fatalf("empty path rewritten: got %q", got)
+	}
+	noUp := New(WithBareImportPins(map[string]string{"vue": "3.5.38"}))
+	noUp.upstream = ""
+	raw := "https://esm.sh/vue@^3.0.0"
+	if got := noUp.applyBareImportPinToURL(raw); got != raw {
+		t.Fatalf("empty upstream must fail closed: got %q", got)
+	}
+	if got := (*Resolver)(nil).applyBareImportPinToURL(raw); got != raw {
+		t.Fatalf("nil URL pin: got %q", got)
 	}
 }
 
@@ -2077,10 +2115,14 @@ func TestSplitBarePackage(t *testing.T) {
 		{"vue@3.5.38", "vue", "", true},
 		{"vue/dist/x", "vue", "dist/x", false},
 		{"vue@3.5.38/dist/x", "vue", "dist/x", true},
+		{"vue?target=es2020", "vue", "", false},
+		{"vue#frag", "vue", "", false},
 		{"@vue/runtime-dom", "@vue/runtime-dom", "", false},
 		{"@vue/runtime-dom@3.5.38", "@vue/runtime-dom", "", true},
 		{"@vue/runtime-dom/foo", "@vue/runtime-dom", "foo", false},
 		{"@vue/runtime-dom@3.5.38/foo", "@vue/runtime-dom", "foo", true},
+		{"@scope", "@scope", "", false},
+		{"@scope@1.0.0", "@scope@1.0.0", "", true},
 		{"", "", "", false},
 	}
 	for _, tt := range tests {
@@ -2089,6 +2131,86 @@ func TestSplitBarePackage(t *testing.T) {
 			t.Fatalf("splitBarePackage(%q) = (%q,%q,%v), want (%q,%q,%v)",
 				tt.spec, pkg, sub, ver, tt.pkg, tt.subpath, tt.versioned)
 		}
+	}
+}
+
+func TestPlugin_OnResolve_PinsUpstreamInternalVuePath(t *testing.T) {
+	t.Parallel()
+	r := New(WithBareImportPins(map[string]string{"vue": "3.5.38"}))
+	var onResolve func(api.OnResolveArgs) (api.OnResolveResult, error)
+	r.Plugin().Setup(api.PluginBuild{
+		InitialOptions: &api.BuildOptions{},
+		OnStart:        func(func() (api.OnStartResult, error)) {},
+		OnEnd:          func(func(*api.BuildResult) (api.OnEndResult, error)) {},
+		OnResolve: func(_ api.OnResolveOptions, cb func(api.OnResolveArgs) (api.OnResolveResult, error)) {
+			onResolve = cb
+		},
+		OnLoad:    func(api.OnLoadOptions, func(api.OnLoadArgs) (api.OnLoadResult, error)) {},
+		OnDispose: func(func()) {},
+		Resolve:   func(string, api.ResolveOptions) api.ResolveResult { return api.ResolveResult{} },
+	})
+	if onResolve == nil {
+		t.Fatal("expected OnResolve callback")
+	}
+	res, err := onResolve(api.OnResolveArgs{Path: "/vue@^3.5.11/es2020/vue.mjs"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "https://esm.sh/vue@3.5.38/es2020/vue.mjs"
+	if res.Path != want || res.Namespace != "choysum-esm" {
+		t.Fatalf("got path=%q ns=%q want %q choysum-esm", res.Path, res.Namespace, want)
+	}
+	bare, err := onResolve(api.OnResolveArgs{Path: "vue"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bare.Path != "https://esm.sh/vue@3.5.38?target=es2020" || bare.Namespace != "choysum-esm" {
+		t.Fatalf("bare pin: path=%q ns=%q", bare.Path, bare.Namespace)
+	}
+	ns, err := onResolve(api.OnResolveArgs{
+		Path:      "https://esm.sh/vue@^3.0.0/es2020/vue.mjs",
+		Namespace: "choysum-esm",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ns.Path != "https://esm.sh/vue@3.5.38/es2020/vue.mjs" {
+		t.Fatalf("namespaced pin: %q", ns.Path)
+	}
+}
+
+func TestResolveInNamespace_PinsAbsoluteHTTPVueURL(t *testing.T) {
+	t.Parallel()
+	r := New(WithBareImportPins(map[string]string{"vue": "3.5.38"}))
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/vue@^3.0.0/es2020/vue.mjs",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "https://esm.sh/vue@3.5.38/es2020/vue.mjs"
+	if result.Path != want {
+		t.Fatalf("Path = %q, want %q", result.Path, want)
+	}
+	css, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/vue@^3.0.0/style.css",
+		Kind: api.ResolveCSSURLToken,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !css.External || css.Path != "https://esm.sh/vue@3.5.38/style.css" {
+		t.Fatalf("css pin: %+v", css)
+	}
+	rel, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "/vue@^3.5.11/es2020/vue.mjs",
+		Importer: "https://esm.sh/pinia@3.0.0/index.js?target=es2020",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel.Path != "https://esm.sh/vue@3.5.38/es2020/vue.mjs?target=es2020" {
+		t.Fatalf("relative abs pin: %q", rel.Path)
 	}
 }
 
