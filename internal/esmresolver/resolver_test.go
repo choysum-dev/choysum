@@ -2038,6 +2038,15 @@ func TestApplyBareImportPin(t *testing.T) {
 	if _, ok := r.barePins["latest-pin"]; ok {
 		t.Fatal("latest pin value must be rejected")
 	}
+	var warnBuf strings.Builder
+	warnLogger := slog.New(slog.NewTextHandler(&warnBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	logged := New(WithLogger(warnLogger), WithBareImportPins(map[string]string{"bad": "^1.0.0"}))
+	if _, ok := logged.barePins["bad"]; ok {
+		t.Fatal("non-exact pin with logger must still be rejected")
+	}
+	if !strings.Contains(warnBuf.String(), "ignoring non-exact bare import pin") {
+		t.Fatalf("expected warn log for rejected pin, got %q", warnBuf.String())
+	}
 	tests := []struct {
 		spec string
 		want string
@@ -2115,6 +2124,17 @@ func TestApplyBareImportPin(t *testing.T) {
 	defPort := "https://esm.sh:443/vue@^3.0.0"
 	if got := r.applyBareImportPinToURL(defPort); got != "https://esm.sh:443/vue@3.5.38" {
 		t.Fatalf("default-port upstream pin: got %q", got)
+	}
+	mirror := New(WithUpstream("https://cdn.example.com/esm"), WithBareImportPins(map[string]string{"vue": "3.5.38"}))
+	if got := mirror.applyBareImportPinToURL("https://cdn.example.com/esm/vue@^3.0.0/es2020/vue.mjs"); got != "https://cdn.example.com/esm/vue@3.5.38/es2020/vue.mjs" {
+		t.Fatalf("mirror base-path pin: got %q", got)
+	}
+	if got := mirror.applyBareImportPinToURL("https://cdn.example.com/other/vue@^3.0.0"); got != "https://cdn.example.com/other/vue@^3.0.0" {
+		t.Fatalf("outside mirror base path rewritten: got %q", got)
+	}
+	baseOnly := "https://cdn.example.com/esm"
+	if got := mirror.applyBareImportPinToURL(baseOnly); got != baseOnly {
+		t.Fatalf("mirror base-only path rewritten: got %q", got)
 	}
 	if got := r.applyBareImportPinToURL("https://esm.sh"); got != "https://esm.sh" {
 		t.Fatalf("empty path rewritten: got %q", got)

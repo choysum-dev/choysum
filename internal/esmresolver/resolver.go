@@ -234,9 +234,11 @@ func WithBareImportPins(pins map[string]string) Option {
 				continue
 			}
 			if !isExactPinVersion(ver) {
-				if r.logger != nil {
-					r.logger.Warn("ignoring non-exact bare import pin", "package", name, "version", ver)
+				logger := r.logger
+				if logger == nil {
+					logger = slog.Default()
 				}
+				logger.Warn("ignoring non-exact bare import pin", "package", name, "version", ver)
 				continue
 			}
 			r.barePins[name] = ver
@@ -661,11 +663,24 @@ func (r *Resolver) applyBareImportPinToURL(raw string) string {
 	if upErr != nil || !sameUpstreamOrigin(u, up) {
 		return raw
 	}
-	pinnedPath := r.applyBareImportPinToAbsPath(u.Path)
-	if pinnedPath == u.Path {
+	// Strip a configured upstream base path (mirror mounts like /esm) before
+	// matching pins, then re-attach it so peer URLs under the mirror still pin.
+	basePath := strings.TrimSuffix(up.Path, "/")
+	relPath := u.Path
+	if basePath != "" {
+		if relPath != basePath && !strings.HasPrefix(relPath, basePath+"/") {
+			return raw
+		}
+		relPath = strings.TrimPrefix(relPath, basePath)
+		if relPath == "" {
+			relPath = "/"
+		}
+	}
+	pinnedPath := r.applyBareImportPinToAbsPath(relPath)
+	if pinnedPath == relPath {
 		return raw
 	}
-	u.Path = pinnedPath
+	u.Path = basePath + pinnedPath
 	u.RawPath = ""
 	return u.String()
 }
