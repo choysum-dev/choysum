@@ -57,12 +57,16 @@ export default class UserRole extends AuthzMutationModel {
 
   /**
    * Create/CreateMany: clear authz caches only for UserIds in the write payload.
+   * If no UserId can be resolved, fall back to invalidating all authz caches.
    * Other ops keep the mixin default (invalidate all).
    */
   static override invalidateAuthzCachesAfterWrite(op: AuthzMutationOp, payload?: unknown): void {
     if (op === 'create' || op === 'createMany') {
-      invalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(payload as never));
-      return;
+      const userIds = userIdsFromUserRolePayloads(payload as never);
+      if (userIds.length > 0) {
+        invalidateAuthzCachesForUsers(userIds);
+        return;
+      }
     }
     super.invalidateAuthzCachesAfterWrite(op, payload);
   }

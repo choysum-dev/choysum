@@ -5,6 +5,7 @@ import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
+import { projectToSelection } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
@@ -277,7 +278,8 @@ export default class FieldChange extends PolymorphicRecordModel {
       ResId: resId,
       At: at,
     });
-    return created as Projected<FieldChange, F>;
+    // Strip Create's auto-injected Id (and any other unselected keys) to match Projected<F>.
+    return projectToSelection(created as object, returnFields) as Projected<FieldChange, F>;
   }
 
   /**

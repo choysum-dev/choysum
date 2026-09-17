@@ -11,6 +11,7 @@ import {
 } from '../repository/authz';
 import BaseModel from './model';
 import type { ModelCtor, RowOf } from './types';
+import type { Insertable, Updateable } from '@/core/service/api/input';
 import { registerLogicalModelName } from './logical_model_registry';
 import type { ModelConstructor } from '../../../rpc/types';
 
@@ -172,13 +173,13 @@ export default class AppSettingBaseModel extends BaseModel {
         invalidateAppSettingMemo(application, k);
         return previous;
       }
-      await this.UpdateById(existing.Id, { Value: stored } as never);
+      await this.UpdateById(existing.Id, { Value: stored } as Partial<Updateable<RowOf<C>>>);
       invalidateAppSettingMemo(application, k);
       return previous;
     }
 
     try {
-      await this.Create({ Key: k, Value: stored } as never);
+      await this.Create({ Key: k, Value: stored } as Partial<Insertable<RowOf<C>>>);
     } catch (err) {
       // Concurrent Create on the same absent key: unique hit → reload and update.
       if (!isUniqueConstraintError(err)) throw err;
@@ -186,7 +187,7 @@ export default class AppSettingBaseModel extends BaseModel {
       if (!raced?.Id) throw err;
       const racedPrevious = String((raced as AppSettingBaseModel).Value ?? '');
       if (racedPrevious !== stored) {
-        await this.UpdateById(raced.Id, { Value: stored } as never);
+        await this.UpdateById(raced.Id, { Value: stored } as Partial<Updateable<RowOf<C>>>);
       }
       invalidateAppSettingMemo(application, k);
       return racedPrevious;

@@ -77,8 +77,10 @@ test('UserRole: targeted clears for create, base behavior otherwise', () => {
     UserRole.invalidateAuthzCachesAfterWrite('create', { UserId: 'u1' });
     UserRole.invalidateAuthzCachesAfterWrite('createMany', [{ UserId: 'u1' }, { UserId: 'u2' }]);
     expect(baseCalls).toBe(0);
-    UserRole.invalidateAuthzCachesAfterWrite('delete', ['Id', '=', 'x']);
+    UserRole.invalidateAuthzCachesAfterWrite('create', {});
     expect(baseCalls).toBe(1);
+    UserRole.invalidateAuthzCachesAfterWrite('delete', ['Id', '=', 'x']);
+    expect(baseCalls).toBe(2);
   } finally {
     AuthzMutationModel.invalidateAuthzCachesAfterWrite = base;
   }
