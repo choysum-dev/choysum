@@ -18,12 +18,13 @@ import type {
   UpdateOptions,
 } from '@/core/service/api/query';
 import type { Projected, RowOrProjected } from '@/core/service/api/selection';
-import type { OnchangeResult } from '@/core/service/runtime/onchange/types';
+import type { OnchangeDraft, OnchangeResult } from '@/core/service/runtime/onchange/types';
+import type { OnchangeTrigger } from '@/core/service/orm/metadata/field';
 import type { ResolvePropertiesOptions } from '@/core/service/orm/model/properties_resolve';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
 import type { CopyOptions } from '@/core/service/orm/model/model_copy';
 import type { NameCreateOptions } from '@/core/service/orm/model/model_namecreate';
-import type { ReadGroupResult } from '@/core/service/orm/repository/types/groupby';
+import type { GroupBySpec, ReadGroupResult } from '@/core/service/orm/repository/types/groupby';
 import type { TermReference } from '@/core/service/i18n';
 
 /**
@@ -100,18 +101,22 @@ type StoreSearch<T extends BaseModel> = <F extends FieldSelection<T> | undefined
   options?: Omit<SearchOptions<T>, 'fields'> & { fields?: F }
 ) => Promise<Array<ClientModel<RowOrProjected<T, F>>>>;
 type StoreReadGroup<T extends BaseModel> = (
-  groupby: unknown,
+  groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
   condition?: QueryCondition<T> | [],
   options?: ReadGroupOptions<T>
 ) => Promise<ReadGroupResult>;
 type StoreReadGroupCount<T extends BaseModel> = (
-  groupby: unknown,
+  groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
   condition?: QueryCondition<T> | [],
   options?: ReadGroupCountOptions<T>
 ) => Promise<number>;
 type StoreDelete<T extends BaseModel> = (condition: QueryCondition<T>, options?: DeleteOptions) => Promise<number>;
 type StoreDeleteById<T extends BaseModel> = (id: string, options?: DeleteOptions) => Promise<number>;
-type StoreOnchange<T extends BaseModel> = (draft: unknown, changed: unknown[], opts?: unknown) => Promise<OnchangeResult<T>>;
+type StoreOnchange<T extends BaseModel> = (
+  draft: OnchangeDraft,
+  changed: OnchangeTrigger<T>[],
+  opts?: { withCompute?: boolean; maxIterations?: number; loopThreshold?: number }
+) => Promise<OnchangeResult<T>>;
 type StoreResolveProperties<T extends BaseModel> = (
   record: Partial<T> | Record<string, unknown> | null | undefined,
   fieldName: string,

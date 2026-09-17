@@ -10,8 +10,7 @@ import {
   getRepositoryCurrentReq,
 } from '../repository/authz';
 import BaseModel from './model';
-import type { ModelCtor, RowOf } from './types';
-import type { Insertable, Updateable } from '@/core/service/api/input';
+import type { ModelCtor } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
 import type { ModelConstructor } from '../../../rpc/types';
 
@@ -84,13 +83,13 @@ function isUniqueConstraintError(err: unknown): boolean {
   return /unique constraint|unique index|duplicate key|UNIQUE constraint failed/i.test(msg);
 }
 
-async function findByKey<C extends ModelCtor>(
-  ctor: C,
+async function findByKey(
+  ctor: ModelCtor,
   key: string
-): Promise<RowOf<C> | undefined> {
-  const rows = await ctor.Search(
-    { And: [['Key', '=', key]] } as never,
-    { fields: ['Id', 'Key', 'Value'] as never, limit: 2 }
+): Promise<{ Id?: string; Key?: string; Value?: string } | undefined> {
+  const rows = await (ctor as ModelCtor<AppSettingBaseModel>).Search(
+    { And: [['Key', '=', key]] },
+    { fields: ['Id', 'Key', 'Value'], limit: 2 }
   );
   return (rows && rows[0]) || undefined;
 }
@@ -136,7 +135,7 @@ export default class AppSettingBaseModel extends BaseModel {
     const found = await memoizeInReqState(appSettingReqState(), memoKey, async () => {
       const row = await findByKey(this, k);
       if (!row) return { miss: true as const };
-      return { miss: false as const, value: String((row as AppSettingBaseModel).Value ?? '') };
+      return { miss: false as const, value: String(row.Value ?? '') };
     });
 
     if (!found || (found as { miss?: boolean }).miss) {
@@ -157,7 +156,7 @@ export default class AppSettingBaseModel extends BaseModel {
     const application = resolveWritableApplication(this);
 
     const existing = await findByKey(this, k);
-    const previous = existing ? String((existing as AppSettingBaseModel).Value ?? '') : null;
+    const previous = existing ? String(existing.Value ?? '') : null;
 
     if (value === null || value === undefined) {
       if (existing?.Id) {
@@ -168,26 +167,27 @@ export default class AppSettingBaseModel extends BaseModel {
     }
 
     const stored = String(value);
+    const store = this as unknown as ModelCtor<AppSettingBaseModel>;
     if (existing?.Id) {
       if (previous === stored) {
         invalidateAppSettingMemo(application, k);
         return previous;
       }
-      await this.UpdateById(existing.Id, { Value: stored } as Partial<Updateable<RowOf<C>>>);
+      await store.UpdateById(existing.Id, { Value: stored });
       invalidateAppSettingMemo(application, k);
       return previous;
     }
 
     try {
-      await this.Create({ Key: k, Value: stored } as Partial<Insertable<RowOf<C>>>);
+      await store.Create({ Key: k, Value: stored });
     } catch (err) {
       // Concurrent Create on the same absent key: unique hit → reload and update.
       if (!isUniqueConstraintError(err)) throw err;
       const raced = await findByKey(this, k);
       if (!raced?.Id) throw err;
-      const racedPrevious = String((raced as AppSettingBaseModel).Value ?? '');
+      const racedPrevious = String(raced.Value ?? '');
       if (racedPrevious !== stored) {
-        await this.UpdateById(raced.Id, { Value: stored } as Partial<Updateable<RowOf<C>>>);
+        await store.UpdateById(raced.Id, { Value: stored });
       }
       invalidateAppSettingMemo(application, k);
       return racedPrevious;
