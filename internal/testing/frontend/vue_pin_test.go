@@ -30,14 +30,11 @@ console.log(ref, defineStore, createPinia, createI18n);
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Reuse the process CHOYSUM_HOME / ~/.choysum cache so repeated runs stay offline-friendly.
+	// Prefer CHOYSUM_HOME when set; otherwise the repo-local .choysum cache
+	// (populated by go generate / install) so CI stays offline-friendly.
 	cache := strings.TrimSpace(os.Getenv("CHOYSUM_HOME"))
 	if cache == "" {
-		if home, homeErr := os.UserHomeDir(); homeErr == nil {
-			cache = filepath.Join(home, ".choysum")
-		} else {
-			cache = filepath.Join(dir, "cache")
-		}
+		cache = filepath.Join(repoRoot, ".choysum")
 	}
 	res, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
 		RepoRoot:              repoRoot,

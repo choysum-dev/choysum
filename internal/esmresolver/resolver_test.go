@@ -2027,9 +2027,17 @@ func TestApplyBareImportPin(t *testing.T) {
 		"@vue/runtime-dom": "3.5.38",
 		"":                 "ignore",
 		"empty-ver":        "",
+		"range-pin":        "^3.5.11",
+		"latest-pin":       "latest",
 	}))
 	// Second call merges / overwrites.
 	WithBareImportPins(map[string]string{"vue": "3.5.38", " lodash ": " 4.17.21 "})(r)
+	if _, ok := r.barePins["range-pin"]; ok {
+		t.Fatal("range pin value must be rejected")
+	}
+	if _, ok := r.barePins["latest-pin"]; ok {
+		t.Fatal("latest pin value must be rejected")
+	}
 	tests := []struct {
 		spec string
 		want string
@@ -2126,6 +2134,29 @@ func TestApplyBareImportPin(t *testing.T) {
 	}
 	if got := r.applyBareImportPin("vue@^3/"); got != "vue@3.5.38/" {
 		t.Fatalf("trailing-slash pin: got %q", got)
+	}
+}
+
+func TestIsExactPinVersion(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		ver  string
+		want bool
+	}{
+		{"3.5.38", true},
+		{"3.5.38-beta.1", true},
+		{"^3.5.11", false},
+		{"~3.5.0", false},
+		{"*", false},
+		{"latest", false},
+		{"NEXT", false},
+		{"1.0.0 || 2.0.0", false},
+		{">=1.0.0", false},
+	}
+	for _, tt := range tests {
+		if got := isExactPinVersion(tt.ver); got != tt.want {
+			t.Fatalf("isExactPinVersion(%q) = %v, want %v", tt.ver, got, tt.want)
+		}
 	}
 }
 

@@ -233,9 +233,24 @@ func WithBareImportPins(pins map[string]string) Option {
 			if name == "" || ver == "" {
 				continue
 			}
+			if !isExactPinVersion(ver) {
+				if r.logger != nil {
+					r.logger.Warn("ignoring non-exact bare import pin", "package", name, "version", ver)
+				}
+				continue
+			}
 			r.barePins[name] = ver
 		}
 	}
+}
+
+// isExactPinVersion reports whether ver is an exact pin (not a range, tag, or wildcard).
+func isExactPinVersion(ver string) bool {
+	switch strings.ToLower(ver) {
+	case "*", "latest", "next":
+		return false
+	}
+	return !strings.ContainsAny(ver, "^~*<>=| ")
 }
 
 // WithLogger sets the structured logger for metrics output. When set, the
