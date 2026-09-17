@@ -14,7 +14,7 @@ import RoleRecordRule from './role_record_rule';
 import RoleMethodAccess from './role_method_access';
 import RoleFieldRule from './role_field_rule';
 import RoleUiResource from './role_ui_resource';
-import { normalizeRefId, asWriteBag } from '@/core/service/utils/normalization';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import type MetaUiResource from '@/meta/service/models/ui_resource';
 import {
   applyAccessWriteTransformOnCreate,
@@ -272,10 +272,9 @@ export default class Role extends AuthzMutationModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const payload = { ...(asWriteBag(value)) };
+    const payload = { ...(value as Record<string, unknown>) };
     const accessIds = await applyAccessWriteTransformOnCreate(payload);
-    const row = (await super.Create<C, F>(payload as Partial<Insertable<RowOf<C>>>,
-      returnFields,)) as RowOrProjected<RowOf<C>, F>;
+    const row = await super.Create<C, F>(payload as Partial<Insertable<RowOf<C>>>, returnFields);
     const roleId = normalizeRefId((row as { Id?: unknown }).Id);
     if (roleId && accessIds) {
       await syncAllowResourceGrants(roleId, accessIds);
@@ -294,13 +293,15 @@ export default class Role extends AuthzMutationModel {
     values: Partial<Insertable<RowOf<C>>>[],
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const payloads = [...(values || [])].map(v => ({ ...(asWriteBag(v)) }));
+    const payloads = [...(values || [])].map(v => ({ ...(v as Record<string, unknown>) }));
     const accessList: Array<string[] | null> = [];
     for (const payload of payloads) {
       accessList.push(await applyAccessWriteTransformOnCreate(payload));
     }
-    const rows = (await super.CreateMany<C, F>(payloads as Array<Partial<Insertable<RowOf<C>>>>,
-      returnFields,)) as Array<RowOrProjected<RowOf<C>, F>>;
+    const rows = await super.CreateMany<C, F>(
+      payloads as Array<Partial<Insertable<RowOf<C>>>>,
+      returnFields
+    );
     for (let i = 0; i < rows.length; i++) {
       const roleId = normalizeRefId((rows[i] as { Id?: unknown }).Id);
       const accessIds = accessList[i];
@@ -329,7 +330,7 @@ export default class Role extends AuthzMutationModel {
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     type UpdatedRows = Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>;
-    const payload: Record<string, unknown> = { ...(asWriteBag(values)) };
+    const payload: Record<string, unknown> = { ...(values as Record<string, unknown>) };
     const shouldHydrateAccess = wantsAccessField(returnFields);
     let roleIdForSync: string | null = null;
     let accessIdsForSync: string[] | null = null;
@@ -347,10 +348,12 @@ export default class Role extends AuthzMutationModel {
       }
     }
 
-    const updated = (await super.Update<C, F>(condition,
+    const updated = (await super.Update<C, F>(
+      condition,
       payload as Partial<Updateable<RowOf<C>>>,
       returnFields,
-      options,)) as UpdatedRows;
+      options
+    )) as UpdatedRows;
     if (roleIdForSync && accessIdsForSync) {
       await syncAllowResourceGrants(roleIdForSync, accessIdsForSync);
       if (updated.length && returnFields != null) {
@@ -376,12 +379,14 @@ export default class Role extends AuthzMutationModel {
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
-    const payload: Record<string, unknown> = { ...(asWriteBag(values)) };
+    const payload: Record<string, unknown> = { ...(values as Record<string, unknown>) };
     const accessIds = await applyAccessWriteTransformOnUpdate(payload, id);
-    let row = (await super.UpdateById<C, F>(id,
+    let row = (await super.UpdateById<C, F>(
+      id,
       payload as Partial<Updateable<RowOf<C>>>,
       returnFields,
-      options,)) as UpdatedRow;
+      options
+    )) as UpdatedRow;
     if (accessIds) {
       await syncAllowResourceGrants(id, accessIds);
       if (returnFields != null) {

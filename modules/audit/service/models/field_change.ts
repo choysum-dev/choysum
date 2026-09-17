@@ -4,7 +4,6 @@
 import { BaseModel, Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import { asWriteBag } from '@/core/service/utils/normalization';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
@@ -315,10 +314,9 @@ export default class FieldChange extends PolymorphicRecordModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const bag = { ...asWriteBag(value) };
+    const bag = { ...(value as Record<string, unknown>) };
     prepareCreatePayload(bag);
-    return (await super.Create<C, F>(bag as Partial<Insertable<RowOf<C>>>,
-      returnFields,)) as RowOrProjected<RowOf<C>, F>;
+    return (await super.Create<C, F>(bag as Partial<Insertable<RowOf<C>>>, returnFields)) as RowOrProjected<RowOf<C>, F>;
   }
 
   /**
@@ -330,7 +328,7 @@ export default class FieldChange extends PolymorphicRecordModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = (values || []).map(row => {
-      const bag = { ...asWriteBag(row) };
+      const bag = { ...(row as Record<string, unknown>) };
       prepareCreatePayload(bag);
       return bag as Partial<Insertable<RowOf<C>>>;
     });

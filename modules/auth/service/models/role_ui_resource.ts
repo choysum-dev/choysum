@@ -5,7 +5,6 @@ import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
-import { asWriteBag } from '@/core/service/utils/normalization';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
@@ -121,7 +120,7 @@ export default class RoleUiResource extends AuthzMutationModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    RoleUiResource._prepareValues(asWriteBag(value), 'create');
+    RoleUiResource._prepareValues(value as Record<string, unknown>, 'create');
     return (await super.Create<C, F>(value, returnFields)) as RowOrProjected<RowOf<C>, F>;
   }
 
@@ -134,7 +133,7 @@ export default class RoleUiResource extends AuthzMutationModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = values || [];
-    for (const v of rows) RoleUiResource._prepareValues(asWriteBag(v), 'create');
+    for (const v of rows) RoleUiResource._prepareValues(v as Record<string, unknown>, 'create');
     return (await super.CreateMany<C, F>(rows, returnFields)) as Array<RowOrProjected<RowOf<C>, F>>;
   }
 
@@ -148,7 +147,7 @@ export default class RoleUiResource extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
-    RoleUiResource._prepareValues(asWriteBag(values), 'update');
+    RoleUiResource._prepareValues(values as Record<string, unknown>, 'update');
     return (await super.Update<C, F>(condition, values, returnFields, options)) as Array<
       F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
     >;
@@ -164,7 +163,7 @@ export default class RoleUiResource extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
-    RoleUiResource._prepareValues(asWriteBag(values), 'update');
+    RoleUiResource._prepareValues(values as Record<string, unknown>, 'update');
     return (await super.UpdateById<C, F>(id, values, returnFields, options)) as (
       F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
     );

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Field } from '../decorator/field';
-import { asWriteBag } from '@/core/service/utils/normalization';
 import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
 import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
@@ -491,10 +490,7 @@ export default class TranslationTermBaseModel extends BaseModel {
       fields: ['Module'],
       limit: 0,
     });
-    const out = (await super.Update<C, F>(condition,
-      values,
-      returnFields,
-      options,)) as UpdatedRows;
+    const out = (await super.Update<C, F>(condition, values, returnFields, options)) as UpdatedRows;
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
       ...modulesFromRows(before),
@@ -513,7 +509,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
     const self = asTermCtor(this);
     const application = hostApplication(this);
-    let module = String((asWriteBag(values)).Module ?? '').trim();
+    let module = String((values as Record<string, unknown>).Module ?? '').trim();
     if (!module) {
       try {
         const existing = await self.Browse(id, ['Module']);
@@ -522,10 +518,7 @@ export default class TranslationTermBaseModel extends BaseModel {
         /* Browse may fail if row gone; still attempt update */
       }
     }
-    const out = (await super.UpdateById<C, F>(id,
-      values,
-      returnFields,
-      options,)) as UpdatedRow;
+    const out = (await super.UpdateById<C, F>(id, values, returnFields, options)) as UpdatedRow;
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
     return out;
   }
