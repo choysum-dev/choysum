@@ -4,7 +4,7 @@
 import { ENABLE_PREVIEW_KERNEL_VALIDATION, PREVIEW_KERNEL_RULES } from '../../runtime/onchange/constants';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import { validateRuntimeIssues } from '../../runtime/runtime_validation_facade';
-import type { ModelCtor } from '../metadata/field';
+import type { ModelCtor } from './types';
 import type { ModelMetadata } from '../metadata/model';
 import type { KernelValidationRule } from '../repository/validation';
 import type BaseModel from './model';
@@ -27,7 +27,7 @@ export function buildPreviewValidationOptions(includeKernel: boolean): {
 }
 
 export async function applyModelOnchangePreviewValidation(params: {
-  ModelCtor: ModelCtor<BaseModel> & typeof BaseModel;
+  ModelCtor: ModelCtor<BaseModel>;
   draft: OnchangeDraft;
   meta: ModelMetadata;
   previewProxy: ObjectRecord;
@@ -49,7 +49,7 @@ export async function applyModelOnchangePreviewValidation(params: {
         values: mergedDraft as Partial<BaseModel> & ObjectRecord,
         changedFields: new Set(changedFields),
         repository,
-        requestContext: (ModelCtor as typeof BaseModel).ctx,
+        requestContext: ModelCtor.ctx,
       },
       buildPreviewValidationOptions(ENABLE_PREVIEW_KERNEL_VALIDATION)
     );

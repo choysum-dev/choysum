@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor } from '@/core/service';
+import {  BaseModel, Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
@@ -282,67 +282,67 @@ export default class FieldChange extends PolymorphicRecordModel {
       ResId: resId,
       At: at,
     });
-    return created;
+    return created as FieldChange;
   }
 
   /**
    * Create validates Kind, persists the trimmed Kind, and stamps ActorUid from request identity.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     const payload = prepareCreatePayload(value as FieldChangeInsert);
-    return super.Create<T>(payload as Partial<Insertable<T>>, returnFields);
+    return super.Create(payload as Partial<Insertable<RowOf<C>>>, returnFields);
   }
 
   /**
    * CreateMany validates Kind, persists trimmed Kind, and stamps ActorUid on every row.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = (values || []).map(row => prepareCreatePayload(row as FieldChangeInsert));
-    return super.CreateMany<T>(rows as Partial<Insertable<T>>[], returnFields);
+    return super.CreateMany(rows as Partial<Insertable<RowOf<C>>>[], returnFields);
   }
 
   /** FieldChange is append-only. */
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    _condition: QueryCondition<T>,
-    _values: Partial<Updateable<T>>,
-    _returnFields?: FieldSelection<T>,
+  static override async Update<C extends ModelCtor>(
+    this: C,
+    _condition: QueryCondition<RowOf<C>>,
+    _values: Partial<Updateable<RowOf<C>>>,
+    _returnFields?: FieldSelection<RowOf<C>>,
     _options?: UpdateOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Update' });
   }
 
   /** FieldChange is append-only. */
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async UpdateById<C extends ModelCtor>(
+    this: C,
     _id: string,
-    _values: Partial<Updateable<T>>,
-    _returnFields?: FieldSelection<T>,
+    _values: Partial<Updateable<RowOf<C>>>,
+    _returnFields?: FieldSelection<RowOf<C>>,
     _options?: UpdateOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support UpdateById' });
   }
 
   /** FieldChange is append-only. */
-  static override async Delete<T extends BaseModel>(
-    this: ModelCtor<T>,
-    _condition: QueryCondition<T>,
+  static override async Delete<C extends ModelCtor>(
+    this: C,
+    _condition: QueryCondition<RowOf<C>>,
     _options?: DeleteOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Delete' });
   }
 
   /** FieldChange is append-only. */
-  static override async DeleteById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async DeleteById<C extends ModelCtor>(
+    this: C,
     _id: string,
     _options?: DeleteOptions
   ): Promise<never> {

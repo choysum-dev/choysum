@@ -7,6 +7,7 @@ import { createServiceByModel } from '../../rpc/service_factory';
 import { MetadataStorage } from '../metadata/storage';
 import { lookupModelCtorByFullName } from './model_ctor_lookup';
 import type BaseModel from './model';
+import type { ModelCtor } from './types';
 
 /**
  * Same-app typed resolve by short model name.
@@ -63,6 +64,6 @@ function isValidFullModelName(key: string): boolean {
 }
 
 /** Resolve only by exact fullModelName (pool table + metadata), no short-name fallback. */
-function resolveSameAppModelConstructor(fullName: string): typeof BaseModel | undefined {
+function resolveSameAppModelConstructor(fullName: string): ModelCtor | undefined {
   return lookupModelCtorByFullName(fullName);
 }

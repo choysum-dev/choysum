@@ -3,6 +3,7 @@
 
 import { LRUCache } from 'lru-cache';
 import type BaseModel from '../../orm/model/model';
+import type { ModelCtor } from '../../orm/model/types';
 import { MetadataStorage } from '../../orm/metadata/storage';
 import { LRU_CACHE_SIZE } from './constants';
 import type { UnknownRecord } from '../../../utils/types';
@@ -93,7 +94,7 @@ export class OnchangeCacheManager {
    *
    * @param modelCtor Model constructor.
    */
-  static invalidate(modelCtor: typeof BaseModel): void {
+  static invalidate(modelCtor: ModelCtor): void {
     if (isCacheDisabled()) return;
 
     const meta = MetadataStorage.instance.getModelMetadata(modelCtor);

@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
-import type { ModelClass } from '../model/types';
-import type { FieldSelection } from '../repository/types';
+import type { ModelClass, ModelCtor, RowOf } from '../model/types';
+import type { FieldSelection, Insertable, Updateable, Projected, RowOrProjected } from '../repository/types';
 import { Field, Model } from '../decorator';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { OneToManyProcessor } from './one-to-many';
 
-type ModelCtor<T extends BaseModel> = { new (...args: never[]): T } & typeof BaseModel;
 
 @Model('test.OneToManyProcessorParent')
 class OneToManyProcessorParent extends BaseModel {
@@ -45,23 +44,23 @@ class OneToManyProcessorChild extends BaseModel {
 
   static updateCalls: Array<{ id: string; values: Record<string, any> }> = [];
 
-  static override async Create<T extends BaseModel>(
-    this: ModelClass<T>,
-    value: Record<string, any>,
-    _returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    _returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     OneToManyProcessorChild.createCalls.push({ ...value });
-    return { Id: `CREATED-${OneToManyProcessorChild.createCalls.length}`, ...value } as T;
+    return { Id: `CREATED-${OneToManyProcessorChild.createCalls.length}`, ...value } as RowOrProjected<RowOf<C>, F>;
   }
 
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelClass<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Record<string, any>,
-    _returnFields?: FieldSelection<T>
-  ): Promise<Partial<T>> {
+    values: Partial<Updateable<RowOf<C>>>,
+    _returnFields?: F
+  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     OneToManyProcessorChild.updateCalls.push({ id, values: { ...values } });
-    return { Id: id, ...values } as Partial<T>;
+    return { Id: id, ...values } as unknown as Partial<RowOf<C>> as unknown as F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
   }
 }
 
@@ -125,7 +124,7 @@ function matchesCondition(row: RelationRow, condition: unknown): boolean {
   return false;
 }
 
-function createRelationRepository(childCtor: typeof BaseModel, seedRows: RelationRow[]) {
+function createRelationRepository(childCtor: ModelCtor, seedRows: RelationRow[]) {
   const rows = seedRows.map(row => ({ ...row }));
   const updateCalls: Array<{ values: Record<string, any>; matchedIds: string[] }> = [];
   const deleteCalls: string[][] = [];
@@ -1081,7 +1080,7 @@ test('one-to-many processor applyBatchDeleteStrategy throws for NO ACTION policy
 
 test('one-to-many processor stripChildComputeFields tolerates metadata lookup exceptions', () => {
   const processor = new OneToManyProcessor(parentCtor) as unknown as {
-    stripChildComputeFields: (ctor: typeof BaseModel, row: Record<string, any>) => Record<string, any>;
+    stripChildComputeFields: (ctor: ModelCtor, row: Record<string, any>) => Record<string, any>;
   };
   const originalGetModelMetadata = MetadataStorage.instance.getModelMetadata;
 
@@ -1275,7 +1274,7 @@ test('one-to-many processor batch fallback uses unknown target when operation ta
 
 test('one-to-many processor stripChildComputeFields keeps payload when child has no compute fields', () => {
   const processor = new OneToManyProcessor(parentCtor) as unknown as {
-    stripChildComputeFields: (ctor: typeof BaseModel, row: Record<string, any>) => Record<string, any>;
+    stripChildComputeFields: (ctor: ModelCtor, row: Record<string, any>) => Record<string, any>;
   };
 
   const cleaned = processor.stripChildComputeFields(restrictChildCtor, { Name: 'n1', ComputedFlag: 'keep' });
@@ -1607,7 +1606,7 @@ test('one-to-many processor batch update keeps Error instance when repository se
 
 test('one-to-many processor stripChildComputeFields falls back to empty set when computeGraph is absent', () => {
   const processor = new OneToManyProcessor(parentCtor) as unknown as {
-    stripChildComputeFields: (ctor: typeof BaseModel, row: Record<string, any>) => Record<string, any>;
+    stripChildComputeFields: (ctor: ModelCtor, row: Record<string, any>) => Record<string, any>;
   };
 
   const childMeta = MetadataStorage.instance.getModelMetadata(childCtor) as any;
@@ -2537,7 +2536,7 @@ test('one-to-many processor batch replace at line 319 catches both Error and non
   RepositoryFactory.setRepository(childCtor, store.repo as unknown as Parameters<typeof RepositoryFactory.setRepository>[1]);
 
   const processor = new OneToManyProcessor(parentCtor) as unknown as {
-    stripChildComputeFields: (ctor: typeof BaseModel, row: any) => any;
+    stripChildComputeFields: (ctor: ModelCtor, row: any) => any;
     batchProcessRelationUpdate: OneToManyProcessor['batchProcessRelationUpdate'];
   };
 

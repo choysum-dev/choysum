@@ -1,3 +1,4 @@
+import type { ModelCtor } from '../model/types';
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
@@ -9,7 +10,7 @@ import { MetadataStorage } from './storage';
  * Result of resolving a model identifier to its constructor and display name.
  */
 export type ResolvedEffectiveModel = {
-  ctor: typeof BaseModel;
+  ctor: ModelCtor;
   model: string;
 };
 

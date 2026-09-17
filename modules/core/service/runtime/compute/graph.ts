@@ -4,15 +4,16 @@
 import type { ModelMetadata, ModelComputeGraph, ParsedDep, PathDep, CollectionPathDep } from '../../orm/metadata/model';
 import { MetadataStorage } from '../../orm/metadata/storage';
 import type BaseModel from '../../orm/model/model';
+import type { ModelCtor } from '../../orm/model/types';
 import type { ParentComputeTrigger } from './types';
 import { parseDeps } from './parser';
 import { asObjectRecord } from '@/core/utils/object';
 
-function getRegisteredModelCtors(storage: MetadataStorage): Array<typeof BaseModel> {
+function getRegisteredModelCtors(storage: MetadataStorage): Array<ModelCtor> {
   const models = (storage as unknown as { models?: unknown }).models;
   if (!(models instanceof Map)) return [];
 
-  return Array.from(models.keys()).filter((ctor): ctor is typeof BaseModel => typeof ctor === 'function');
+  return Array.from(models.keys()).filter((ctor): ctor is ModelCtor => typeof ctor === 'function');
 }
 
 type GraphBehaviorSpec = {
@@ -110,13 +111,13 @@ export function buildComputeGraph(meta: ModelMetadata): ModelComputeGraph | unde
    * @param childMeta Current child model metadata.
    * @returns Reverse index keyed by field name or '__lifecycle'.
    */
-  function buildReverseComputeIndex(childCtor: typeof BaseModel, childMeta: ModelMetadata): Map<string, ParentComputeTrigger[]> {
+  function buildReverseComputeIndex(childCtor: ModelCtor, childMeta: ModelMetadata): Map<string, ParentComputeTrigger[]> {
     const index = new Map<string, ParentComputeTrigger[]>();
     const storage = MetadataStorage.instance;
 
     // Scan all registered models for parent computes that depend on the current child model.
     for (const parentCtor of getRegisteredModelCtors(storage)) {
-      const parentMeta = MetadataStorage.instance.getModelMetadata(parentCtor as typeof BaseModel);
+      const parentMeta = MetadataStorage.instance.getModelMetadata(parentCtor as ModelCtor);
       const graph = parentMeta.computeGraph;
       if (!graph?.parsedDeps) continue;
 
@@ -377,7 +378,7 @@ export function buildComputeGraph(meta: ModelMetadata): ModelComputeGraph | unde
   // Build the reverse trigger index.
   let reverseComputeIndex: Map<string, ParentComputeTrigger[]> | undefined;
   try {
-    reverseComputeIndex = buildReverseComputeIndex(meta.type as typeof BaseModel, meta);
+    reverseComputeIndex = buildReverseComputeIndex(meta.type as ModelCtor, meta);
   } catch (error) {
     if (typeof console !== 'undefined') {
       console.warn(`[buildComputeGraph] failed to build reverse index: ${modelLabel}`, error);

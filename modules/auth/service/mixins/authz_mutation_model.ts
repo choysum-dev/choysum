@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, type ModelCtor } from '@/core/service';
+import {  BaseModel, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { DeleteOptions, QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { normalizeRefId, uniqStrings } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from '../models/_request_cache_invalidation';
@@ -61,66 +61,78 @@ export default abstract class AuthzMutationModel extends BaseModel {
   /**
    * Create one row and invalidate every request-scoped authz cache.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Create<T>(value, returnFields));
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    const out = await super.Create(value, returnFields);
+    invalidateAllAuthzCaches();
+    return out;
   }
 
   /**
    * Create many rows and invalidate every request-scoped authz cache.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.CreateMany<T>(values, returnFields));
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    const out = await super.CreateMany(values, returnFields);
+    invalidateAllAuthzCaches();
+    return out;
   }
 
   /**
    * Update matching rows and invalidate every request-scoped authz cache.
    */
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+  static override async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>[]> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Update<T>(condition, values, returnFields, options));
+  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
+    const out = await super.Update(condition, values, returnFields, options);
+    invalidateAllAuthzCaches();
+    return out;
   }
 
   /**
    * Update one row by Id and invalidate every request-scoped authz cache.
    */
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.UpdateById<T>(id, values, returnFields, options));
+  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
+    const out = await super.UpdateById(id, values, returnFields, options);
+    invalidateAllAuthzCaches();
+    return out;
   }
 
   /**
    * Delete matching rows and invalidate every request-scoped authz cache.
    */
-  static override async Delete<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
+  static override async Delete<C extends ModelCtor>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
     options?: DeleteOptions
   ): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Delete<T>(condition, options));
+    const out = await super.Delete(condition, options);
+    invalidateAllAuthzCaches();
+    return out;
   }
 
   /**
    * Delete one row by Id and invalidate every request-scoped authz cache.
    */
-  static override async DeleteById<T extends BaseModel>(this: ModelCtor<T>, id: string, options?: DeleteOptions): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById<T>(id, options));
+  static override async DeleteById<C extends ModelCtor>(this: C, id: string, options?: DeleteOptions): Promise<number> {
+    const out = await super.DeleteById(id, options);
+    invalidateAllAuthzCaches();
+    return out;
   }
 }

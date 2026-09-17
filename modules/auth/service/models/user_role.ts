@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
+import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { _lt } from '../i18n';
 import User from './user/user';
 import Role from './role';
 import AuthzMutationModel, {
-  mutateThenInvalidateAuthzCachesForUsers,
   userIdsFromUserRolePayloads,
 } from '../mixins/authz_mutation_model';
+import { invalidateAuthzCachesForUsers } from './_request_cache_invalidation';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import type Company from '@/base/service/models/company';
 
@@ -67,28 +67,28 @@ export default class UserRole extends AuthzMutationModel {
   /**
    * Create one UserRole row and invalidate request-scoped caches for the affected users.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     // Role assignments can change effective permissions within the same request;
     // invalidate request-scoped authz/field/record caches for the affected users only.
-    return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(value), async () => {
-      return BaseModel.Create.call(this, value, returnFields) as Promise<T>;
-    });
+    const out = await super.Create(value, returnFields);
+    invalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(value));
+    return out;
   }
 
   /**
    * Create multiple UserRole rows and invalidate request-scoped caches for the affected users.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(values), async () => {
-      return BaseModel.CreateMany.call(this, values, returnFields) as Promise<T[]>;
-    });
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    const out = await super.CreateMany(values, returnFields);
+    invalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(values));
+    return out;
   }
 }

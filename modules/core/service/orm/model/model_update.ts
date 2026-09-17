@@ -643,7 +643,7 @@ export class UpdateOperations {
       } = { fields: returnFields };
       if (options?.withDeleted) searchOptions.withDeleted = true;
       if (options?.onlyDeleted) searchOptions.onlyDeleted = true;
-      return (await searchModels(ModelCtor, ['Id', 'in', updatedIds], searchOptions)) as unknown as Partial<T>[];
+      return (await searchModels(ModelCtor, ['Id', 'in', updatedIds] as QueryCondition<T>, searchOptions)) as unknown as Partial<T>[];
     }
 
     return updatedIds.map((id: string) => ({ Id: id }) as unknown as Partial<T>);

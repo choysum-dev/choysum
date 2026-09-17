@@ -5,6 +5,6 @@ import type BaseModel from '../orm/model/model';
 import type { ModelCtor } from '../orm/metadata/field';
 import { RepositoryFactory } from '../orm/repository/repository_factory';
 
-export function getRuntimeRepository<T extends BaseModel>(ModelCtor: ModelCtor<T> & typeof BaseModel) {
+export function getRuntimeRepository<T extends BaseModel>(ModelCtor: ModelCtor<T>) {
   return RepositoryFactory.getRepository(ModelCtor);
 }

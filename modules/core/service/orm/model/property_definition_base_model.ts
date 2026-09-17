@@ -7,8 +7,10 @@ import { MetadataStorage } from '../metadata/storage';
 import BaseModel from './model';
 import { registerLogicalModelName } from './logical_model_registry';
 import { assertValidPropertyDefinitionItems } from './properties_types';
-import type { ModelCtor } from './types';
-import type { Insertable, Updateable, FieldSelection, QueryCondition, UpdateOptions, DeleteOptions } from '../repository/types';
+import type { ModelCtor, RowOf } from './types';
+import type { Insertable, Updateable, FieldSelection,
+  Projected,
+  RowOrProjected, QueryCondition, UpdateOptions, DeleteOptions } from '../repository/types';
 import {
   assertPropertyDefinitionParentWritable,
   collectParentScopesToProbe,
@@ -67,7 +69,7 @@ function storeMeta(ctor: ModelCtor<PropertyDefinitionBaseModel>) {
   return MetadataStorage.instance.getModelMetadata(ctor);
 }
 
-function asDefinitionCtor<T extends BaseModel>(ctor: ModelCtor<T>): ModelCtor<PropertyDefinitionBaseModel> {
+function asDefinitionCtor<C extends ModelCtor>(ctor: C): ModelCtor<PropertyDefinitionBaseModel> {
   return ctor as unknown as ModelCtor<PropertyDefinitionBaseModel>;
 }
 
@@ -106,7 +108,7 @@ async function assertUniqueDefinitionScope(
     And.push(['Id', '!=', excludeId]);
   }
 
-  const rows = await ctor.Search<PropertyDefinitionBaseModel>(
+  const rows = await ctor.Search(
     { And } as QueryCondition<PropertyDefinitionBaseModel>,
     {
     fields: ['Id'],
@@ -198,11 +200,11 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
   @Field({ type: 'jsonobject', notNull: true })
   Definition!: unknown[];
 
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     const self = asDefinitionCtor(this);
     const vals = value as Record<string, unknown>;
     await ensureDefinitionUniqueIndex(self);
@@ -210,14 +212,14 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     normalizeDefinitionOnVals(vals);
     await assertPropertyDefinitionParentWritable(self, vals);
     await assertUniqueDefinitionScope(self, vals);
-    return super.Create<T>(value, returnFields);
+    return super.Create(value, returnFields);
   }
 
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const self = asDefinitionCtor(this);
     await ensureDefinitionUniqueIndex(self);
     const seen = new Set<string>();
@@ -243,23 +245,23 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
       seen.add(key);
       await assertUniqueDefinitionScope(self, rec);
     }
-    return super.CreateMany<T>(values, returnFields);
+    return super.CreateMany(values, returnFields);
   }
 
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+  static override async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>[]> {
+  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     const self = asDefinitionCtor(this);
     const vals = values as Record<string, unknown>;
     await ensureDefinitionUniqueIndex(self);
     normalizeDefinitionContainerScopeOnVals(vals);
     normalizeDefinitionOnVals(vals);
     // Always re-check parent write for matching rows (any field mutation requires parent write).
-    const currentRows = await self.Search<PropertyDefinitionBaseModel>(
+    const currentRows = await self.Search(
       condition as QueryCondition<PropertyDefinitionBaseModel>,
       {
       fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'],
@@ -270,22 +272,22 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     }
     await assertParentsWritableDeduped(self, scopes);
     // Bulk Update cannot cheaply merge per-row scope uniqueness; DB unique index is the backstop.
-    return super.Update<T>(condition, values, returnFields, options);
+    return super.Update(condition, values, returnFields, options);
   }
 
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>> {
+  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     const self = asDefinitionCtor(this);
     const vals = values as Record<string, unknown>;
     await ensureDefinitionUniqueIndex(self);
     normalizeDefinitionContainerScopeOnVals(vals);
     normalizeDefinitionOnVals(vals);
-    const currentRows = await self.Search<PropertyDefinitionBaseModel>(
+    const currentRows = await self.Search(
       { And: [['Id', '=', id]] },
       { fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'], limit: 1 }
     );
@@ -295,37 +297,37 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     if (touchesDefinitionScope(vals)) {
       await assertUniqueDefinitionScope(self, merged, id);
     }
-    return super.UpdateById<T>(id, values, returnFields, options);
+    return super.UpdateById(id, values, returnFields, options);
   }
 
-  static override async Delete<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
+  static override async Delete<C extends ModelCtor>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
     options?: DeleteOptions
   ): Promise<number> {
     const self = asDefinitionCtor(this);
-    const rows = await self.Search<PropertyDefinitionBaseModel>(
+    const rows = await self.Search(
       condition as QueryCondition<PropertyDefinitionBaseModel>,
       {
       fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'],
     });
     await assertParentsWritableDeduped(self, (rows || []) as unknown as Record<string, unknown>[]);
-    return super.Delete<T>(condition, options);
+    return super.Delete(condition, options);
   }
 
-  static override async DeleteById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async DeleteById<C extends ModelCtor>(
+    this: C,
     id: string,
     options?: DeleteOptions
   ): Promise<number> {
     const self = asDefinitionCtor(this);
-    const currentRows = await self.Search<PropertyDefinitionBaseModel>(
+    const currentRows = await self.Search(
       { And: [['Id', '=', id]] },
       { fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'], limit: 1 }
     );
     const current = (currentRows && currentRows[0]) || {};
     await assertPropertyDefinitionParentWritable(self, current as unknown as Record<string, unknown>);
-    return super.DeleteById<T>(id, options);
+    return super.DeleteById(id, options);
   }
 }
 

@@ -44,6 +44,12 @@ export type Projected<T, F extends FieldSelection<T>> = F extends readonly []
     : Selectable<T>;
 
 /**
+ * When `F` is a concrete {@link FieldSelection}, narrow to {@link Projected}; otherwise keep full `T`.
+ * Lets collection APIs use one signature (override-friendly) while literal `fields` still project.
+ */
+export type RowOrProjected<T, F> = F extends FieldSelection<T> ? Projected<T, F> : T;
+
+/**
  * Build a field-selection tuple that preserves literal keys for {@link Projected} inference.
  *
  * @example

@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor } from '@/core/service';
+import {  BaseModel, Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
 import type { ModelConstructor } from '@/core/rpc/types';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
@@ -361,30 +361,30 @@ export default class Message extends PolymorphicRecordModel {
 
     await Notification.FanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
-    return created;
+    return created as Message;
   }
 
   /**
    * Create stamps Type and AuthorUid from trusted identity.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     const payload = prepareCreatePayload(value as MessageInsert);
-    return super.Create<T>(payload as Partial<Insertable<T>>, returnFields);
+    return super.Create(payload as Partial<Insertable<RowOf<C>>>, returnFields);
   }
 
   /**
    * CreateMany stamps Type and AuthorUid on every row.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = (values || []).map(row => prepareCreatePayload(row as MessageInsert));
-    return super.CreateMany<T>(rows as Partial<Insertable<T>>[], returnFields);
+    return super.CreateMany(rows as Partial<Insertable<RowOf<C>>>[], returnFields);
   }
 }

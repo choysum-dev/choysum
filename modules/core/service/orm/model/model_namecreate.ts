@@ -12,9 +12,7 @@ export type NameCreateOptions<T extends BaseModel> = {
   returnFields?: FieldSelection<T>;
 };
 
-type NameCreateModelCtor<T extends BaseModel> = ModelCtor<T> & {
-  Create: (value: Partial<Insertable<T>>, returnFields?: FieldSelection<T>) => Promise<T>;
-};
+type NameCreateModelCtor<T extends BaseModel> = ModelCtor<T>;
 
 /**
  * True when the field exists and is a writable stored column (not SqlCompute / virtual compute / non-stored related).

@@ -9,20 +9,36 @@ export type ModelFactoryArgs = [factoryToken: symbol, entity: Entity, fields?: u
 
 /**
  * Constructable model class (factory constructor only).
- * Collection methods use this as `this` so existing CRUD overrides stay compatible.
+ * Collection methods historically used this as `this`; prefer {@link ModelCtor} + {@link RowOf}.
  */
 export type ModelClass<T extends BaseModel = BaseModel> = new (...args: ModelFactoryArgs) => T;
 
 /**
- * Runtime model constructor: factory construct signature plus BaseModel statics.
- * Metadata, facades, and hydration use this type.
+ * Keys of `typeof BaseModel` that are not construct signatures.
+ * Intersecting the raw `typeof` adds a second `new` that collapses polymorphic `this` / InstanceType to BaseModel.
  */
-export type ModelCtor<T extends BaseModel = BaseModel> = ModelClass<T> & typeof BaseModel;
+type BaseModelStaticKey = {
+  [K in keyof typeof BaseModel]: (typeof BaseModel)[K] extends abstract new (...args: never[]) => unknown ? never : K;
+}[keyof typeof BaseModel];
 
-/** Instance row type for a collection ctor. Prefer over InstanceType — that collapses on ModelCtor's `typeof BaseModel` intersect. */
+/**
+ * Callable / readable static surface of BaseModel without a construct signature.
+ * Private statics (`metadata`, `FACTORY_TOKEN`) remain on the real class value; they are not part of this type.
+ */
+export type BaseModelStatics = Pick<typeof BaseModel, Exclude<BaseModelStaticKey, 'prototype'>>;
+
+/**
+ * Runtime model constructor: single factory construct signature plus BaseModel statics.
+ * Metadata, facades, hydration, and polymorphic collection `this` use this type.
+ */
+export type ModelCtor<T extends BaseModel = BaseModel> = ModelClass<T> & BaseModelStatics;
+
+/**
+ * Instance row type for a collection ctor.
+ * Prefer this over `InstanceType` when the ctor is (or was) intersected with `typeof BaseModel`.
+ */
 export type RowOf<C> = C extends ModelCtor<infer R>
   ? R
   : C extends abstract new (...args: never[]) => infer R
     ? R
     : BaseModel;
-

@@ -20,7 +20,7 @@ export class RepositoryFactory {
    * @param modelClass Model class.
    * @returns Repository instance.
    */
-  static getRepository<T extends BaseModel>(modelClass: ModelCtor<T> & typeof BaseModel): Repository {
+  static getRepository<T extends BaseModel>(modelClass: ModelCtor<T>): Repository {
     if (!this.repositoryMap.has(modelClass)) {
       const meta = MetadataStorage.instance.getModelMetadata(modelClass);
       const repository = new Repository(meta);
@@ -36,7 +36,7 @@ export class RepositoryFactory {
    * @param modelClass Model class.
    * @param repository Custom repository instance.
    */
-  static setRepository<T extends BaseModel>(modelClass: ModelCtor<T> & typeof BaseModel, repository: Repository): void {
+  static setRepository<T extends BaseModel>(modelClass: ModelCtor<T>, repository: Repository): void {
     this.repositoryMap.set(modelClass, repository);
   }
 }

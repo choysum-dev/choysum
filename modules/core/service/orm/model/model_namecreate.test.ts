@@ -4,7 +4,7 @@
 import { Field } from '../decorator/field';
 import { Model } from '../decorator/model';
 import BaseModel from './model';
-import type { ModelCtor } from './types';
+import type { ModelCtor, RowOf } from './types';
 import type { Insertable } from '../repository/types';
 import {
   isWritableStoredField,
@@ -37,14 +37,17 @@ class NameCreateOverrideWidget extends BaseModel {
   @Field({ type: 'varchar', size: 64 })
   Code!: string;
 
-  static override async NameCreate<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async NameCreate<C extends ModelCtor>(
+    this: C,
     name: string,
-    values?: Partial<Insertable<T>>,
-    options?: NameCreateOptions<T>
-  ): Promise<T> {
+    values?: Partial<Insertable<RowOf<C>>>,
+    options?: NameCreateOptions<RowOf<C>>
+  ): Promise<RowOf<C>> {
     const kw = String(name ?? '').trim();
-    return this.Create<T>({ ...(values || {}), Name: kw, Code: `C-${kw}` } as Partial<Insertable<T>>, options?.returnFields);
+    return this.Create(
+      { ...(values || {}), Name: kw, Code: `C-${kw}` } as Partial<Insertable<RowOf<C>>>,
+      options?.returnFields
+    ) as Promise<RowOf<C>>;
   }
 }
 

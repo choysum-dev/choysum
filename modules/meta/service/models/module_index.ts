@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, SqlCompute, type ModelCtor } from '@/core/service';
+import {  BaseModel, Field, Model, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
 import { getModelRepository } from '@/core/service/orm/model';
 import type { QueryCondition, SearchOptions, CountOptions } from '@/core/service/api/query';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { createServiceByModel } from '@/core/service/rpc';
 import { sql } from 'kysely';
 import type JobModel from '@/task/service/models/job';
@@ -181,11 +181,11 @@ export default class MetaModuleIndex extends BaseModel {
       .limit(1);
   }
 
-  static async Search<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<T>,
-    options?: SearchOptions<T>
-  ): Promise<T[]> {
+  static override async Search<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<RowOf<C>>,
+    options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const normalized = assertSearchCondition(condition);
     const rawOptions = { ...(options || {}) } as Record<string, unknown>;
     const requestedFields = normalizeFields(rawOptions.fields);
@@ -245,7 +245,7 @@ export default class MetaModuleIndex extends BaseModel {
       this,
       buildModuleNamesCondition(normalized, groupedModuleNames) as QueryCondition<BaseModel>,
       detailOptions as SearchOptions<BaseModel>
-    )) as T[];
+    )) as RowOf<C>[];
 
     const installedByName = new Map<string, { status?: string; version?: string }>();
     if (groupedModuleNames.length > 0) {
@@ -294,13 +294,13 @@ export default class MetaModuleIndex extends BaseModel {
     }
 
     const projected = projectFields(finalRows, requestedFields);
-    const hydrateFields = requestedFields.length > 0 ? (requestedFields as FieldSelection<T>) : undefined;
-    return projected.map(row => this.hydrate<T>(row as Record<string, unknown>, hydrateFields));
+    const hydrateFields = requestedFields.length > 0 ? (requestedFields as FieldSelection<RowOf<C>>) : undefined;
+    return projected.map(row => this.hydrate(row as Record<string, unknown>, hydrateFields)) as Array<RowOrProjected<RowOf<C>, F>>;
   }
 
-  static async Count<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<T>,
+  static async Count<C extends ModelCtor>(
+    this: C,
+    condition: QueryCondition<RowOf<C>> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<RowOf<C>>,
     options?: CountOptions
   ): Promise<number> {
     const normalized = assertSearchCondition(condition);

@@ -68,7 +68,7 @@ export function Constraint<T extends BaseModel = BaseModel>(...args: Array<Const
 
   return (target, propertyKey) => {
     const isStatic = typeof target === 'function';
-    const ctor = (isStatic ? target : target.constructor) as ModelCtor<T> & typeof BaseModel;
+    const ctor = (isStatic ? target : target.constructor) as ModelCtor<T>;
     const meta = MetadataStorage.instance.getModelMetadata(ctor);
     const list: ConstraintMeta[] = [...(meta.constraintHandlers || [])];
 

@@ -5,7 +5,7 @@ import type { QueryCondition, OrderBy } from '../api/query';
 import type { FieldSelection } from '../api/selection';
 import type { Selectable } from '../orm/repository/types';
 import BaseModel from '../orm/model/model';
-import type { ModelCtor } from '../orm/model/types';
+import type { ModelCtor, RowOf } from '../orm/model/types';
 
 /**
  * Shared SearchByRecord skeleton for models keyed by polymorphic Model + ResId
@@ -40,12 +40,12 @@ export default abstract class PolymorphicRecordModel extends BaseModel {
   /**
    * Searches this model's rows for one target record after a readability probe.
    */
-  public static async SearchByRecord<C extends typeof PolymorphicRecordModel>(
-    this: C,
+  public static async SearchByRecord<C extends ModelCtor>(
+    this: C & typeof PolymorphicRecordModel,
     model: string,
     resId: string,
-    fields?: FieldSelection<InstanceType<C>>
-  ): Promise<Partial<InstanceType<C>>[]> {
+    fields?: FieldSelection<RowOf<C>>
+  ): Promise<Array<Partial<RowOf<C>>>> {
     const m = String(model || '').trim();
     const id = String(resId || '').trim();
     if (!m || !id) {
@@ -57,13 +57,13 @@ export default abstract class PolymorphicRecordModel extends BaseModel {
         ['Model', '=', m],
         ['ResId', '=', id],
       ],
-    } as QueryCondition<InstanceType<C>>;
-    return (this as unknown as ModelCtor<InstanceType<C>>).Search<InstanceType<C>>(condition, {
+    } as QueryCondition<RowOf<C>>;
+    return this.Search(condition, {
       fields,
       orderBy: {
-        field: this.polymorphicOrderByField() as Extract<keyof Selectable<InstanceType<C>>, string>,
+        field: this.polymorphicOrderByField() as Extract<keyof Selectable<RowOf<C>>, string>,
         order: 'asc',
-      } satisfies OrderBy<InstanceType<C>>,
-    });
+      } satisfies OrderBy<RowOf<C>>,
+    }) as unknown as Promise<Array<Partial<RowOf<C>>>>;
   }
 }

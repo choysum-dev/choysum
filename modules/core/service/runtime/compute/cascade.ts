@@ -4,6 +4,7 @@
 import { MetadataStorage } from '../../orm/metadata/storage';
 import { ComputeEngine } from './engine';
 import type { ModelMetadata, CollectionPathDep } from '../../orm/metadata/model';
+import type { ModelCtor } from '../../orm/model/types';
 import type BaseModel from '../../orm/model/model';
 import type { ParentComputeTrigger } from './types';
 import type { BaseQueryCondition, FieldSelection } from '../../api';
@@ -34,7 +35,7 @@ interface CascadeContext {
 }
 
 export interface UpstreamChangeEvent {
-  childCtor: typeof BaseModel;
+  childCtor: ModelCtor;
   operation: 'create' | 'update' | 'delete';
   changedFields: string[];
   beforeEntity?: EntityRecord;
@@ -102,7 +103,7 @@ export class ComputeCascadeEngine {
     const size = models.size;
     if (size >= 0 && size === this.warmedModelCount) return;
 
-    for (const [ctor] of models.entries() as IterableIterator<[typeof BaseModel, ModelMetadata]>) {
+    for (const [ctor] of models.entries() as IterableIterator<[ModelCtor, ModelMetadata]>) {
       const m = MetadataStorage.instance.getModelMetadata(ctor);
       if (!m.computeGraph) {
         m.computeGraph = buildComputeGraph(m);
@@ -112,7 +113,7 @@ export class ComputeCascadeEngine {
     if (size >= 0) this.warmedModelCount = size;
   }
 
-  static collectUpstreamInverseFields(childCtor: typeof BaseModel): string[] {
+  static collectUpstreamInverseFields(childCtor: ModelCtor): string[] {
     // Warm the global computeGraph surface so child reverse indexes do not only see already-built parent graphs.
     this.ensureAllComputeGraphsBuilt();
 
@@ -234,7 +235,7 @@ export class ComputeCascadeEngine {
     }
   }
 
-  static async triggerUpstreamCreateBatch(childCtor: typeof BaseModel, afterEntities: EntityRecord[]): Promise<void> {
+  static async triggerUpstreamCreateBatch(childCtor: ModelCtor, afterEntities: EntityRecord[]): Promise<void> {
     const rows = (afterEntities || []).filter(Boolean);
     if (!rows.length) return;
     this.upstreamStats.upstreamEventCount += 1;
@@ -277,7 +278,7 @@ export class ComputeCascadeEngine {
    * @param mode Trigger mode.
    */
   static async trigger(
-    childCtor: typeof BaseModel,
+    childCtor: ModelCtor,
     changedFields: string[],
     childId: string,
     childEntity?: EntityRecord,
@@ -310,7 +311,7 @@ export class ComputeCascadeEngine {
    * @param changedFields Parent scalar fields changed in the current write, for example ['DiscountRate'].
    * @param parentId Parent record Id.
    */
-  static async triggerDownstream(parentCtor: typeof BaseModel, changedFields: string[], parentId: string): Promise<void> {
+  static async triggerDownstream(parentCtor: ModelCtor, changedFields: string[], parentId: string): Promise<void> {
     if (!changedFields?.length || !parentId) return;
 
     const storage = asObjectRecord(MetadataStorage.instance);
@@ -318,9 +319,9 @@ export class ComputeCascadeEngine {
     const storageModels = storage?.models;
     if (!(storageModels instanceof Map)) return;
 
-    const models = storageModels.entries() as IterableIterator<[typeof BaseModel, ModelMetadata]>;
+    const models = storageModels.entries() as IterableIterator<[ModelCtor, ModelMetadata]>;
 
-    for (const [childCtor /*, childMetaRaw*/] of models as IterableIterator<[typeof BaseModel, ModelMetadata]>) {
+    for (const [childCtor /*, childMetaRaw*/] of models as IterableIterator<[ModelCtor, ModelMetadata]>) {
       // 1) Refresh metadata and ensure computeGraph is built.
       const childMeta = MetadataStorage.instance.getModelMetadata(childCtor);
       if (!childMeta.computeGraph) {
@@ -438,7 +439,7 @@ export class ComputeCascadeEngine {
    * Recursively propagate child changes to parent computes using depth-first traversal.
    */
   private static async triggerRecursive(
-    modelCtor: typeof BaseModel,
+    modelCtor: ModelCtor,
     changedFields: string[],
     recordId: string,
     entity: EntityRecord | undefined,
@@ -495,7 +496,7 @@ export class ComputeCascadeEngine {
     const parentGroups = new Map<
       string,
       {
-        parentCtor: typeof BaseModel;
+        parentCtor: ModelCtor;
         inverseField: string;
         computeFields: Set<string>;
       }
@@ -620,7 +621,7 @@ export class ComputeCascadeEngine {
             const fieldMeta = asObjectRecord(parentMeta.fields.get(coll));
             const rel = asObjectRecord(fieldMeta?.relation);
             const targetModelFn = rel?.targetModel;
-            const childCtor: typeof BaseModel | undefined = typeof targetModelFn === 'function' ? targetModelFn() : undefined;
+            const childCtor: ModelCtor | undefined = typeof targetModelFn === 'function' ? targetModelFn() : undefined;
             const inverseFieldRaw = rel?.inverseField || rel?.fkField || rel?.foreignKey || rel?.refField;
             const inverseField: string | undefined = typeof inverseFieldRaw === 'string' ? inverseFieldRaw : undefined;
 

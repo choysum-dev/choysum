@@ -503,7 +503,7 @@ test('message.Message: Post refuses Bind when Create returns without Id', async 
     __setMessageAttachmentBindForTest(async () => ({ status: 'active' }));
     const origCreate = Message.Create;
     (Message as any).Create = async function (this: any, value: any, fields?: any) {
-      const row = await origCreate.call(this, value, fields);
+      const row = await (origCreate as any).call(this, value, fields);
       (row as any).Id = '';
       return row;
     };
@@ -757,7 +757,7 @@ test('message.Message: Post tip resolves CreatedAt from Date, number, and string
     const ts = Date.UTC(2024, 0, 15, 12, 0, 0);
     try {
       (Message as any).Create = async function (this: any, value: any, fields?: any) {
-        const row = await origCreate.call(this, value, fields);
+        const row = await (origCreate as any).call(this, value, fields);
         (row as any).CreatedAt = new Date(ts);
         return row;
       };
@@ -766,7 +766,7 @@ test('message.Message: Post tip resolves CreatedAt from Date, number, and string
 
       published.length = 0;
       (Message as any).Create = async function (this: any, value: any, fields?: any) {
-        const row = await origCreate.call(this, value, fields);
+        const row = await (origCreate as any).call(this, value, fields);
         (row as any).CreatedAt = ts + 1;
         return row;
       };
@@ -775,7 +775,7 @@ test('message.Message: Post tip resolves CreatedAt from Date, number, and string
 
       published.length = 0;
       (Message as any).Create = async function (this: any, value: any, fields?: any) {
-        const row = await origCreate.call(this, value, fields);
+        const row = await (origCreate as any).call(this, value, fields);
         (row as any).CreatedAt = new Date(ts + 2).toISOString();
         return row;
       };
@@ -797,7 +797,7 @@ test('message.Message: Post tip omits at for invalid CreatedAt and skips incompl
     const origCreate = Message.Create;
     try {
       (Message as any).Create = async function (this: any, value: any, fields?: any) {
-        const row = await origCreate.call(this, value, fields);
+        const row = await (origCreate as any).call(this, value, fields);
         (row as any).CreatedAt = new Date('not-a-date');
         return row;
       };
@@ -806,7 +806,7 @@ test('message.Message: Post tip omits at for invalid CreatedAt and skips incompl
 
       published.length = 0;
       (Message as any).Create = async function (this: any, value: any, fields?: any) {
-        const row = await origCreate.call(this, value, fields);
+        const row = await (origCreate as any).call(this, value, fields);
         (row as any).CreatedAt = '   ';
         return row;
       };
@@ -815,7 +815,7 @@ test('message.Message: Post tip omits at for invalid CreatedAt and skips incompl
 
       published.length = 0;
       (Message as any).Create = async function (this: any, value: any, fields?: any) {
-        const row = await origCreate.call(this, value, fields);
+        const row = await (origCreate as any).call(this, value, fields);
         (row as any).CreatedAt = 'not-parseable';
         return row;
       };
@@ -824,7 +824,7 @@ test('message.Message: Post tip omits at for invalid CreatedAt and skips incompl
 
       published.length = 0;
       (Message as any).Create = async function (this: any, value: any, fields?: any) {
-        const row = await origCreate.call(this, value, fields);
+        const row = await (origCreate as any).call(this, value, fields);
         (row as any).Model = '';
         return row;
       };

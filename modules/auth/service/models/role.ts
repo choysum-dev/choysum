@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, SqlCompute, type ModelCtor } from '@/core/service';
+import {  BaseModel, Model, Field, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions, SoftDeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import AuthzMutationModel from '../mixins/authz_mutation_model';
@@ -220,61 +220,61 @@ export default class Role extends AuthzMutationModel {
   /**
    * Browse one role and hydrate AccessUiResourceIds when requested.
    */
-  static override async Browse<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async Browse<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    fields?: FieldSelection<T>,
+    fields?: F,
     options?: SoftDeleteOptions
-  ): Promise<T> {
-    const row = await super.Browse<T>(id, fields, options);
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    const row = await super.Browse(id, fields, options);
     if (wantsAccessField(fields)) {
       await hydrateAccessUiResourceIds([row]);
     }
-    return row;
+    return row as RowOrProjected<RowOf<C>, F>;
   }
 
   /**
    * Browse multiple roles and hydrate AccessUiResourceIds when requested.
    */
-  static override async BrowseMany<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async BrowseMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     ids: string[],
-    fields?: FieldSelection<T>,
+    fields?: F,
     options?: SoftDeleteOptions
-  ): Promise<T[]> {
-    const rows = await super.BrowseMany<T>(ids, fields, options);
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    const rows = await super.BrowseMany(ids, fields, options);
     if (wantsAccessField(fields)) {
       await hydrateAccessUiResourceIds(rows);
     }
-    return rows;
+    return rows as Array<RowOrProjected<RowOf<C>, F>>;
   }
 
   /**
    * Search roles and hydrate AccessUiResourceIds when requested.
    */
-  static override async Search<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T> | [] = [],
-    options?: SearchOptions<T>
-  ): Promise<T[]> {
-    const rows = await super.Search<T>(condition, options);
+  static override async Search<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>> | [] = [],
+    options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    const rows = await super.Search(condition, options);
     if (wantsAccessField(options?.fields)) {
       await hydrateAccessUiResourceIds(rows);
     }
-    return rows;
+    return rows as Array<RowOrProjected<RowOf<C>, F>>;
   }
 
   /**
    * Create one role while keeping the UI access projection synchronized.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     const payload = { ...(value as Record<string, unknown>) };
     const accessIds = await applyAccessWriteTransformOnCreate(payload);
-    const row = await super.Create<T>(payload as Partial<Insertable<T>>, returnFields);
+    const row = await super.Create(payload as Partial<Insertable<RowOf<C>>>, returnFields);
     const roleId = normalizeRefId((row as { Id?: unknown }).Id);
     if (roleId && accessIds) {
       await syncAllowResourceGrants(roleId, accessIds);
@@ -288,17 +288,17 @@ export default class Role extends AuthzMutationModel {
   /**
    * Create multiple roles while keeping the UI access projection synchronized.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const payloads = [...(values || [])].map(v => ({ ...(v as Record<string, unknown>) }));
     const accessList: Array<string[] | null> = [];
     for (const payload of payloads) {
       accessList.push(await applyAccessWriteTransformOnCreate(payload));
     }
-    const rows = await super.CreateMany<T>(payloads as Array<Partial<Insertable<T>>>, returnFields);
+    const rows = await super.CreateMany(payloads as Array<Partial<Insertable<RowOf<C>>>>, returnFields);
     for (let i = 0; i < rows.length; i++) {
       const roleId = normalizeRefId((rows[i] as { Id?: unknown }).Id);
       const accessIds = accessList[i];
@@ -319,22 +319,19 @@ export default class Role extends AuthzMutationModel {
   /**
    * Update matching roles while keeping the UI access projection synchronized.
    */
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+  static override async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>[]> {
+  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     const payload: Record<string, unknown> = { ...(values as Record<string, unknown>) };
     const shouldHydrateAccess = wantsAccessField(returnFields);
     let roleIdForSync: string | null = null;
     let accessIdsForSync: string[] | null = null;
     if (Object.prototype.hasOwnProperty.call(payload, 'AccessUiResourceIds')) {
-      const targetRows = await (super.Search as (
-        condition: QueryCondition<T> | [],
-        options?: SearchOptions<T>
-      ) => Promise<T[]>)(condition, { fields: ['Id'] as unknown as FieldSelection<T> });
+      const targetRows = await super.Search(condition, { fields: ['Id'] as never });
       const roleIds = targetRows.map(row => normalizeRefId((row as { Id?: unknown }).Id)).filter(Boolean) as string[];
       if (roleIds.length > 1) {
         throw new Error('Role.Update with AccessUiResourceIds only supports single record update');
@@ -345,11 +342,11 @@ export default class Role extends AuthzMutationModel {
       }
     }
 
-    const rows = await super.Update<T>(condition, payload as Partial<Updateable<T>>, returnFields, options);
+    const rows = await super.Update(condition, payload as Partial<Updateable<RowOf<C>>>, returnFields, options);
     if (roleIdForSync && accessIdsForSync) {
       await syncAllowResourceGrants(roleIdForSync, accessIdsForSync);
       if (rows.length && returnFields != null) {
-        rows[0] = await this.Browse<T>(roleIdForSync, returnFields, options);
+        rows[0] = await this.Browse(roleIdForSync, returnFields, options);
       }
       if (rows.length && shouldHydrateAccess) {
         (rows[0] as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIdsForSync];
@@ -363,20 +360,20 @@ export default class Role extends AuthzMutationModel {
   /**
    * Update one role by Id while keeping the UI access projection synchronized.
    */
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>> {
+  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     const payload: Record<string, unknown> = { ...(values as Record<string, unknown>) };
     const accessIds = await applyAccessWriteTransformOnUpdate(payload, id);
-    let row = await super.UpdateById<T>(id, payload as Partial<Updateable<T>>, returnFields, options);
+    let row = await super.UpdateById(id, payload as Partial<Updateable<RowOf<C>>>, returnFields, options);
     if (accessIds) {
       await syncAllowResourceGrants(id, accessIds);
       if (returnFields != null) {
-        row = await this.Browse<T>(id, returnFields, options);
+        row = await this.Browse(id, returnFields, options);
       }
       if (wantsAccessField(returnFields)) {
         (row as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIds];

@@ -10,7 +10,7 @@ import { asObjectRecord } from '../../../utils/object';
 
 export type { RelationFieldType };
 
-export type RelationModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T> & typeof BaseModel;
+export type RelationModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T>;
 
 export type OneToManyRelationConfig = {
   targetModel: () => RelationModelCtor;
@@ -81,7 +81,7 @@ export interface ManyToOneOperation<T extends BaseModel = BaseModel> {
   /** Relation type. */
   type: 'ManyToOne';
   /** Target model class. */
-  targetModel: ModelCtor<T> & typeof BaseModel;
+  targetModel: ModelCtor<T>;
   /** Field value, which may be an Id, a partial object, a model instance, or null to detach the relation. */
   value: RelationItem<T> | null;
 }
@@ -95,7 +95,7 @@ export interface OneToManyOperation<T extends BaseModel = BaseModel> {
   /** Relation type. */
   type: 'OneToMany';
   /** Target model class for the child table. */
-  targetModel: ModelCtor<T> & typeof BaseModel;
+  targetModel: ModelCtor<T>;
   /** Foreign-key field on the child table that points back to the parent table. */
   inverseField: string;
   /** Relation operations. Arrays mean replace; objects mean create, update, and delete patches. */
@@ -111,9 +111,9 @@ export interface ManyToManyOperation<T extends BaseModel = BaseModel, J extends 
   /** Field name, which is the relation property on the parent table. */
   fieldName: string;
   /** Join-table model class. */
-  joinModel: ModelCtor<J> & typeof BaseModel;
+  joinModel: ModelCtor<J>;
   /** Target model class. */
-  targetModel: ModelCtor<T> & typeof BaseModel;
+  targetModel: ModelCtor<T>;
   /** Join-table field that references the parent table. */
   joinField: string;
   /** Join-table field that references the target table. */
@@ -163,7 +163,7 @@ export interface RelationProcessingResult<T extends BaseModel = BaseModel> {
   /** Errors raised while processing. */
   errors: Error[];
   /** Target model class for the relation operation. */
-  targetModel: ModelCtor<T> & typeof BaseModel;
+  targetModel: ModelCtor<T>;
   /** Relation type that was processed. */
   relationType: RelationFieldType;
 }

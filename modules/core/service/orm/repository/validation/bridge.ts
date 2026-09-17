@@ -44,7 +44,7 @@ export async function validateRepositoryWrite(params: {
     await validateRuntimeOrThrow(
       {
         mode,
-        model: meta.type as ModelCtor<BaseModel> & typeof BaseModel,
+        model: meta.type as ModelCtor<BaseModel>,
         metadata: meta,
         current: current as (Partial<BaseModel> & ObjectRecord) | undefined,
         values: input as Partial<BaseModel> & ObjectRecord,
