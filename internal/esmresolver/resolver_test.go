@@ -2059,6 +2059,10 @@ func TestApplyBareImportPin(t *testing.T) {
 	if got := r.applyBareImportPinToURL("https://esm.sh/lodash@4?target=es2020"); got != "https://esm.sh/lodash@4?target=es2020" {
 		t.Fatalf("unpinned url rewritten: %q", got)
 	}
+	otherHost := "https://unpkg.com/vue@3.6.0/dist/x.js"
+	if got := r.applyBareImportPinToURL(otherHost); got != otherHost {
+		t.Fatalf("non-upstream host rewritten: got %q", got)
+	}
 }
 
 func TestSplitBarePackage(t *testing.T) {

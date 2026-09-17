@@ -11,7 +11,7 @@ import {
   Insertable,
   Updateable,
   FieldSelection,
-  Projected,
+  PartialOrProjected,
   RowOrProjected,
   SoftDeleteOptions,
   CountOptions,
@@ -814,10 +814,10 @@ class BaseModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     return asPartialRows<C>(
       await updateModels(asCollectionCtor(this), condition as never, values as never, returnFields as never, options)
-    ) as Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>;
+    ) as Array<PartialOrProjected<RowOf<C>, F>>;
   }
 
   /**
@@ -829,10 +829,10 @@ class BaseModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     return asPartialRow<C>(
       await updateModelById(asCollectionCtor(this), id, values as never, returnFields as never, options)
-    ) as F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
+    ) as PartialOrProjected<RowOf<C>, F>;
   }
 
   /**

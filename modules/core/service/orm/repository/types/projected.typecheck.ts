@@ -5,7 +5,7 @@
  * Compile-only guards for {@link Projected} (not executed at runtime).
  */
 import type BaseModel from '../../model/model';
-import type { FieldSelection, Projected, RowOrProjected } from './selection';
+import type { FieldSelection, Projected, PartialOrProjected, RowOrProjected } from './selection';
 import { fields } from './selection';
 
 type ExpectTrue<T extends true> = T;
@@ -65,6 +65,16 @@ type ExpectUnspecFull = ExpectTrue<[UnspecSel] extends [Probe] ? true : false>;
 type AnySel = RowOrProjected<Probe, any>;
 type ExpectAnyFull = ExpectTrue<[AnySel] extends [Probe] ? true : false>;
 
+// Update return: unspecified/wide → Partial; literal → Projected.
+type UpdateWide = PartialOrProjected<Probe, FieldSelection<Probe>>;
+type ExpectUpdateWidePartial = ExpectTrue<[UpdateWide] extends [Partial<Probe>] ? true : false>;
+type UpdateLiteral = PartialOrProjected<Probe, ['Id']>;
+type ExpectUpdateLiteralId = ExpectTrue<'Id' extends keyof UpdateLiteral ? true : false>;
+// @ts-expect-error Name was not selected in literal PartialOrProjected
+type UpdateLiteralNoName = UpdateLiteral['Name'];
+type UpdateUnspec = PartialOrProjected<Probe, undefined>;
+type ExpectUpdateUnspecPartial = ExpectTrue<[UpdateUnspec] extends [Partial<Probe>] ? true : false>;
+
 const _typecheckHold:
   | [
       ExpectId,
@@ -78,9 +88,13 @@ const _typecheckHold:
       ExpectLiteralHasId,
       ExpectUnspecFull,
       ExpectAnyFull,
+      ExpectUpdateWidePartial,
+      ExpectUpdateLiteralId,
+      ExpectUpdateUnspecPartial,
     ]
   | undefined = undefined;
 void _typecheckHold;
 void 0 as unknown as NoName;
 void 0 as unknown as NoNameMulti;
 void 0 as unknown as LiteralNoName;
+void 0 as unknown as UpdateLiteralNoName;

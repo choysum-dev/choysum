@@ -3,7 +3,7 @@
 
 import BaseModel from '../model/model';
 import type { ModelClass, ModelCtor, RowOf } from '../model/types';
-import type { FieldSelection, Insertable, Updateable, Projected, RowOrProjected } from '../repository/types';
+import type { FieldSelection, Insertable, Updateable, PartialOrProjected, RowOrProjected } from '../repository/types';
 import { Field, Model } from '../decorator';
 import { MetadataStorage } from '../metadata';
 import { Repository } from '../repository/repository';
@@ -113,9 +113,9 @@ class ManyToManyTarget extends BaseModel {
     id: string,
     values: Partial<Updateable<RowOf<C>>>,
     _returnFields?: F
-  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     ManyToManyTarget.updateCalls.push({ id, values: { ...values } });
-    return { Id: id, ...values } as unknown as Partial<RowOf<C>> as unknown as F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
+    return { Id: id, ...values } as unknown as Partial<RowOf<C>> as unknown as PartialOrProjected<RowOf<C>, F>;
   }
 }
 

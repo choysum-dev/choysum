@@ -3,7 +3,7 @@
 
 import { Model, Field, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
+import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions, SoftDeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import AuthzMutationModel from '../mixins/authz_mutation_model';
@@ -336,7 +336,7 @@ export default class Role extends AuthzMutationModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const payload = { ...values };
     const shouldHydrateAccess = wantsAccessField(returnFields);
     let roleIdForSync: string | null = null;
@@ -378,7 +378,7 @@ export default class Role extends AuthzMutationModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const payload = { ...values };
     const accessIds = await applyAccessWriteTransformOnUpdate(payload as Record<string, unknown>, id);
     let row = await super.UpdateById<C, F>(id, payload, returnFields, options);

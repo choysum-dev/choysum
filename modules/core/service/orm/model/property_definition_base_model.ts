@@ -9,8 +9,7 @@ import { registerLogicalModelName } from './logical_model_registry';
 import { assertValidPropertyDefinitionItems } from './properties_types';
 import type { ModelCtor, RowOf } from './types';
 import type { Insertable, Updateable, FieldSelection,
-  Projected,
-  RowOrProjected, QueryCondition, UpdateOptions, DeleteOptions } from '../repository/types';
+  PartialOrProjected, RowOrProjected, QueryCondition, UpdateOptions, DeleteOptions } from '../repository/types';
 import {
   assertPropertyDefinitionParentWritable,
   collectParentScopesToProbe,
@@ -254,7 +253,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const self = asDefinitionCtor(this);
     const vals = values as Record<string, unknown>;
     await ensureDefinitionUniqueIndex(self);
@@ -281,7 +280,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const self = asDefinitionCtor(this);
     const vals = values as Record<string, unknown>;
     await ensureDefinitionUniqueIndex(self);

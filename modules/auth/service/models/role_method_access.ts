@@ -4,7 +4,7 @@
 import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
+import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { _lt } from '../i18n';
@@ -267,7 +267,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     let previousLogicalModelName: string | null | undefined;
     let updateCondition: QueryCondition<RowOf<C>> = condition;
     if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
@@ -313,7 +313,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     let previousLogicalModelName: string | null | undefined;
     if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
       const existing = await this.Search(['Id', '=', id] as never, {

@@ -589,8 +589,9 @@ func (r *Resolver) applyBareImportPinToAbsPath(path string) string {
 	return "/" + r.applyBareImportPin(strings.TrimPrefix(path, "/"))
 }
 
-// applyBareImportPinToURL rewrites the path of an absolute HTTP(S) esm URL when
-// the package is pinned.
+// applyBareImportPinToURL rewrites the path of an absolute HTTP(S) URL when the
+// package is pinned. Only URLs on the configured upstream host are rewritten so
+// third-party hosts (e.g. unpkg) are left unchanged.
 func (r *Resolver) applyBareImportPinToURL(raw string) string {
 	if r == nil || len(r.barePins) == 0 {
 		return raw
@@ -598,6 +599,14 @@ func (r *Resolver) applyBareImportPinToURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil || u.Path == "" {
 		return raw
+	}
+	if upstream := strings.TrimSpace(r.upstream); upstream != "" {
+		up, upErr := url.Parse(upstream)
+		if upErr != nil ||
+			!strings.EqualFold(u.Scheme, up.Scheme) ||
+			!strings.EqualFold(u.Host, up.Host) {
+			return raw
+		}
 	}
 	pinnedPath := r.applyBareImportPinToAbsPath(u.Path)
 	if pinnedPath == u.Path {

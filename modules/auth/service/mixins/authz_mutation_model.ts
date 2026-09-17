@@ -3,7 +3,7 @@
 
 import { BaseModel, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
+import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
 import type { DeleteOptions, QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { normalizeRefId, uniqStrings } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from '../models/_request_cache_invalidation';
@@ -113,7 +113,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const out = await super.Update<C, F>(condition, values, returnFields, options);
     (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('update', { condition, values });
     return out;
@@ -128,7 +128,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const out = await super.UpdateById<C, F>(id, values, returnFields, options);
     (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('updateById', { id, values });
     return out;

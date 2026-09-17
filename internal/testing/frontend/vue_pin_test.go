@@ -6,7 +6,7 @@ package frontend
 import (
 	"os"
 	"path/filepath"
-	"strings"
+	"regexp"
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
@@ -40,10 +40,14 @@ console.log(ref, defineStore, createPinia, createI18n);
 	if err != nil {
 		t.Fatalf("bundle: %v", err)
 	}
-	if !strings.Contains(res.JS, choysummount.VuePackageVersion) {
-		t.Fatalf("expected pinned vue %s in bundle", choysummount.VuePackageVersion)
+	vueVer := regexp.MustCompile(`vue@(\d+\.\d+\.\d+)`)
+	matches := vueVer.FindAllStringSubmatch(res.JS, -1)
+	if len(matches) == 0 {
+		t.Fatal("expected pinned vue version markers in bundle")
 	}
-	if strings.Contains(res.JS, "3.5.43") {
-		t.Fatal("bundle pulled floating vue@3.5.43 despite WithBareImportPins")
+	for _, m := range matches {
+		if m[1] != choysummount.VuePackageVersion {
+			t.Fatalf("bundle contains vue@%s, want only %s", m[1], choysummount.VuePackageVersion)
+		}
 	}
 }

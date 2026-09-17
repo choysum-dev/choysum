@@ -12,7 +12,7 @@ import type {
   Insertable,
   Updateable,
   FieldSelection,
-  Projected,
+  PartialOrProjected,
   RowOrProjected,
   QueryCondition,
   DeleteOptions,
@@ -478,7 +478,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
     const before = await self.Search(condition as QueryCondition<TranslationTermBaseModel>, {
@@ -500,7 +500,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
     options?: UpdateOptions
-  ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
     let module = String((values as Record<string, unknown>).Module ?? '').trim();

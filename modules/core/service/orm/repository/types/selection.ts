@@ -59,15 +59,31 @@ export type RowOrProjected<T, F> = IsAny<F> extends true
     : T;
 
 /**
+ * Update returnFields result: unspecified / wide / `any` → {@link Partial};
+ * concrete selection → {@link Projected}.
+ *
+ * Differs from {@link RowOrProjected}, which keeps full `T` when `F` is not a
+ * selection (Create/Search full-row default). Update without `returnFields`
+ * returns `{ Id }` stubs at runtime, so Partial is the truthful default.
+ */
+export type PartialOrProjected<T, F> = IsAny<F> extends true
+  ? Partial<T>
+  : F extends FieldSelection<T>
+    ? FieldSelection<T> extends F
+      ? Partial<T>
+      : Projected<T, F>
+    : Partial<T>;
+
+/**
  * Narrow a row to the caller's field selection on a shallow copy (same prototype).
  *
  * Empty selection or `'*'` returns the original row (full-row contract).
  * Nested relation entries keep the top-level key; source row is not mutated.
  * Selected keys are read through the prototype chain so accessors are preserved.
  */
-export function projectToSelection<T, F extends FieldSelection<T>>(row: object, selection: F): Projected<T, F> {
+export function projectToSelection<T, F extends FieldSelection<T>>(row: object, selection: F): RowOrProjected<T, F> {
   if (selection == null || selection.length === 0 || (selection as readonly unknown[]).includes('*')) {
-    return row as Projected<T, F>;
+    return row as RowOrProjected<T, F>;
   }
   const keep = new Set<string>();
   for (const entry of selection) {
@@ -88,7 +104,7 @@ export function projectToSelection<T, F extends FieldSelection<T>>(row: object, 
       configurable: true,
     });
   }
-  return projected as Projected<T, F>;
+  return projected as RowOrProjected<T, F>;
 }
 
 /**
