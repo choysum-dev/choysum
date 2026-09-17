@@ -274,7 +274,7 @@ export default class Schedule extends BaseModel {
 
   /** Lists schedules using a raw query condition. */
   static async ListSchedules(condition: QueryCondition<Schedule> | [] = [], options?: SearchOptions<Schedule>): Promise<Schedule[]> {
-    const items = await this.Search(condition, options);
+    const items = (await this.Search(condition, options)) as Schedule[];
     return items.map(item => applyNextRunPreview(item));
   }
 
@@ -284,12 +284,12 @@ export default class Schedule extends BaseModel {
     const limit = clampLimit(params.limit, 50, 500);
     const offset = normalizeOffset(params.offset);
     const orderBy = params.orderBy ?? ({ field: 'CreatedAt', order: 'desc' } as OrderBy<Schedule>);
-    const items = await this.Search(condition, {
+    const items = (await this.Search(condition, {
       limit,
       offset,
       orderBy,
       fields: params.fields,
-    });
+    })) as Schedule[];
     const total = Number(await this.Count(condition as any)) || 0;
     return { items: items.map(item => applyNextRunPreview(item)), total, limit, offset };
   }

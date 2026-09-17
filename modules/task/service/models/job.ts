@@ -270,12 +270,12 @@ export default class Job extends BaseModel {
 
   /** Loads a single job by identifier. */
   static async GetJob(jobId: string, fields?: FieldSelection<Job>): Promise<Job> {
-    return await this.Browse(jobId, fields);
+    return (await this.Browse(jobId, fields)) as Job;
   }
 
   /** Lists jobs using a raw query condition. */
   static async ListJobs(condition: QueryCondition<Job> | [] = [], options?: SearchOptions<Job>): Promise<Job[]> {
-    return await this.Search(condition, options);
+    return (await this.Search(condition, options)) as Job[];
   }
 
   /** Lists jobs with filter, pagination, and total-count metadata. */
@@ -285,12 +285,12 @@ export default class Job extends BaseModel {
     const offset = normalizeOffset(params.offset);
     const orderBy = params.orderBy ?? ({ field: 'CreatedAt', order: 'desc' } as OrderBy<Job>);
 
-    const items = await this.Search(condition, {
+    const items = (await this.Search(condition, {
       limit,
       offset,
       orderBy,
       fields: params.fields,
-    });
+    })) as Job[];
     const total = Number(await this.Count(condition as any)) || 0;
     return { items, total, limit, offset };
   }
