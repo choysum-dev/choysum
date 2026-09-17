@@ -6,6 +6,7 @@ import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
+import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { listLogicalModelSelection } from './_logical_model_registry';
 import { _lt } from '../i18n';
 import Role from './role';
@@ -248,9 +249,9 @@ export default class RoleFieldRule extends AuthzMutationModel {
    */
   @Onchange<RoleFieldRule>('MetaModelId')
   OnchangeMetaModelId() {
-    this.MetaFieldId = null as any;
+    clearExclusive(this, ['MetaFieldId']);
     if (String(this.MetaModelId || '').trim() && String(this.LogicalModelName || '').trim()) {
-      this.LogicalModelName = null as any;
+      clearExclusive(this, ['LogicalModelName']);
     }
 
     const modelId = this.MetaModelId;
@@ -274,9 +275,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
   @Onchange<RoleFieldRule>('LogicalModelName')
   OnchangeLogicalModelName() {
     if (!String(this.LogicalModelName || '').trim()) return;
-    this.MetaFieldId = null as any;
-    this.MetaModelId = null as any;
-    this.MetaApplicationId = null as any;
+    clearExclusive(this, ['MetaFieldId', 'MetaModelId', 'MetaApplicationId']);
   }
 
   /**
@@ -287,7 +286,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
     const hasMeta =
       Boolean(String(this.MetaApplicationId || '').trim()) || Boolean(String(this.MetaFieldId || '').trim());
     if (hasMeta && String(this.LogicalModelName || '').trim()) {
-      this.LogicalModelName = null as any;
+      clearExclusive(this, ['LogicalModelName']);
     }
   }
 }

@@ -156,14 +156,16 @@ async function ensureDefinitionUniqueIndex(ctor: ModelCtor<PropertyDefinitionBas
   // Expression unique index: NULL/empty container dims collide (App-level + parent scopes).
   const ddl = `CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (target_model, properties_field, coalesce(container_model, ''), coalesce(container_id, ''))`;
 
-  const exec = ($choysum as any)?.db?.execute;
-  if (typeof exec !== 'function') {
+  const db = globalThis.$choysum?.db;
+  const exec = db?.execute;
+  // QuickJS bridge callables may not report typeof === 'function'; rely on presence + call.
+  if (exec == null || db == null) {
     // No DDL surface (unit harness): uniqueness still enforced in assertUniqueDefinitionScope.
     return;
   }
 
   try {
-    await exec.call(($choysum as any).db, ddl, '[]');
+    await exec.call(db, ddl, '[]');
     ensuredUniqueIndexTables.add(table);
   } catch (err) {
     fail('PROPERTY_DEFINITION_INDEX', `Failed to ensure PropertyDefinition unique index on ${table}: ${errorMessage(err)}`);

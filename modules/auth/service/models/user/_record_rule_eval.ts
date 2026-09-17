@@ -3,6 +3,8 @@
 
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { condition } from '@/core/service/api/query';
+import type { BaseQueryCondition } from '@/core/service/api/query';
+import type { BaseModel } from '@/core/service';
 import { createServiceByModel } from '@/core/service/rpc';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import type MetaApplicationModel from '@/meta/service/models/application';
@@ -85,12 +87,14 @@ async function computeCompanyGateMode(
     try {
       const hasOwnershipField =
         Number(
-          await MetaField.Count({
-            And: [
-              ['ModelId', '=', modelId],
-              ['Name', '=', ownershipField],
-            ],
-          } as any)
+          await MetaField.Count(
+            condition<BaseModel>({
+              And: [
+                ['ModelId', '=', modelId],
+                ['Name', '=', ownershipField],
+              ],
+            })
+          )
         ) > 0;
       if (!hasOwnershipField) {
         // Isolated model missing its ownership column: do not drop the company boundary.
@@ -108,15 +112,18 @@ async function computeCompanyGateMode(
 export function buildCompanyGateExpr(
   scope: RoleScope,
   companyGate: { enabled: boolean; ownershipField?: string }
-): any {
+): BaseQueryCondition | null {
   if (!companyGate.enabled) return null;
   const ownershipField = String(companyGate.ownershipField ?? '').trim();
   if (!ownershipField) return null;
   if (scope.global) return null;
   const ids = scope.companies || [];
-  const companyIn: any = [ownershipField, 'in', ids] as any;
-  const shared: any = [ownershipField, 'is', null] as any;
-  return { Or: [companyIn, shared] } as any;
+  return condition({
+    Or: [
+      [ownershipField, 'in', ids],
+      [ownershipField, 'is', null],
+    ],
+  });
 }
 
 function assertKind(raw: unknown): RoleRecordRuleKind {
@@ -168,12 +175,12 @@ function buildRuleExpr(
     return gate; // null ⇒ unconstrained TRUE for this rule
   }
   if (!gate) return cond;
-  return { And: [gate, cond] } as any;
+  return condition({ And: [gate, cond] });
 }
 
 function orMerge(exprs: any[]): any {
   if (exprs.length === 1) return exprs[0];
-  return { Or: exprs } as any;
+  return condition({ Or: exprs });
 }
 
 /**
@@ -198,7 +205,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     const permField = PERM_FIELD_BY_OP[input.opValue];
     const roleIds = (input.roleIds || []).map(id => String(id || '').trim()).filter(Boolean);
 
-    const scopeOr: any[] = [
+    const scopeOr: BaseQueryCondition[] = [
       {
         And: [
           ['MetaModelId', '=', modelId],
@@ -212,7 +219,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
                 ['MetaModelId', 'is', null],
                 ['MetaApplicationId', '=', irApplicationId],
               ],
-            } as any,
+            } satisfies BaseQueryCondition,
           ]
         : []),
       {
@@ -224,15 +231,15 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     ];
 
     // Audience: everyone (RoleId null) OR any of the caller's effective roles.
-    const audienceOr: any[] = [['RoleId', 'is', null] as any];
+    const audienceOr: BaseQueryCondition[] = [['RoleId', 'is', null]];
     if (roleIds.length > 0) {
-      audienceOr.push(['RoleId', 'in', roleIds] as any);
+      audienceOr.push(['RoleId', 'in', roleIds]);
     }
 
     const RULE_FETCH_LIMIT = 5000;
     const allRules = await RoleRecordRule.Search(
       condition<RoleRecordRule>({
-        And: [{ Or: audienceOr }, [permField as any, '=', true], { Or: scopeOr }],
+        And: [{ Or: audienceOr }, [String(permField), '=', true], { Or: scopeOr }],
       }),
       { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'MetaModelId', 'MetaApplicationId'] as const, limit: RULE_FETCH_LIMIT + 1 }
     );

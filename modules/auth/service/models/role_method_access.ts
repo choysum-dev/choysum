@@ -6,6 +6,7 @@ import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
+import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
@@ -335,11 +336,9 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   OnchangeLogicalModelName() {
     const name = String(this.LogicalModelName || '').trim();
     if (name) {
-      this.MetaServiceId = null as any;
-      this.MetaModelId = null as any;
-      this.MetaApplicationId = null as any;
+      clearExclusive(this, ['MetaServiceId', 'MetaModelId', 'MetaApplicationId']);
     } else if (this.LogicalMethods != null) {
-      this.LogicalMethods = null as any;
+      clearExclusive(this, ['LogicalMethods']);
     }
   }
 
@@ -353,7 +352,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
       Boolean(String(this.MetaModelId || '').trim()) ||
       Boolean(String(this.MetaApplicationId || '').trim());
     if (!hasMeta) return;
-    if (String(this.LogicalModelName || '').trim()) this.LogicalModelName = null as any;
-    if (this.LogicalMethods != null) this.LogicalMethods = null as any;
+    if (String(this.LogicalModelName || '').trim()) clearExclusive(this, ['LogicalModelName']);
+    if (this.LogicalMethods != null) clearExclusive(this, ['LogicalMethods']);
   }
 }

@@ -3,6 +3,7 @@
 
 export { default as BaseModel } from './model';
 export type { ModelClass, ModelCtor } from './types';
+export { clearExclusive } from './clear_exclusive';
 export { pool, dial } from './model_pool';
 export {
   assertRecordReadable,

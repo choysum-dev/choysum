@@ -5,6 +5,7 @@ import { Decimal } from '@/core/service';
 import {
   normalizeOptionalString,
   normalizeStringArray,
+  isRefLike,
   readRefId,
   normalizeRefId,
   normalizeRefIdList,
@@ -96,6 +97,16 @@ test('normalizeStringArray deduplicates and filters empty strings', () => {
   expect(normalizeStringArray(['a', 'b', 'a'])).toEqual(['a', 'b']);
   expect(normalizeStringArray(['  hello ', '', ' world ', '  hello  '])).toEqual(['hello', 'world']);
   expect(normalizeStringArray([null, undefined, '  valid  '])).toEqual(['valid']);
+});
+
+test('isRefLike accepts plain objects and rejects arrays/primitives', () => {
+  expect(isRefLike({ Id: 'x' })).toBe(true);
+  expect(isRefLike({ id: 'y' })).toBe(true);
+  expect(isRefLike({})).toBe(true);
+  expect(isRefLike(null)).toBe(false);
+  expect(isRefLike(undefined)).toBe(false);
+  expect(isRefLike('id')).toBe(false);
+  expect(isRefLike(['Id'])).toBe(false);
 });
 
 test('readRefId extracts id from string or object', () => {

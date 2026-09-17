@@ -26,13 +26,25 @@ export function normalizeStringArray(value: unknown): string[] {
 }
 
 /**
+ * Loose object that may carry a relation Id under `Id` or `id`.
+ */
+export type RefLike = { Id?: unknown; id?: unknown };
+
+/**
+ * True for non-null plain objects (not arrays) that may expose Id/id.
+ */
+export function isRefLike(value: unknown): value is RefLike {
+  return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
  * Extract the identifier from either a plain string value or an object with
  * an `Id` property (e.g. a FK reference). Returns undefined for empty input.
  */
 export function readRefId(value: unknown): string | undefined {
   if (!value) return undefined;
   if (typeof value === 'string') return normalizeOptionalString(value);
-  if (typeof value === 'object') return normalizeOptionalString((value as any).Id);
+  if (isRefLike(value)) return normalizeOptionalString(value.Id);
   return undefined;
 }
 
@@ -44,7 +56,7 @@ export function readRefId(value: unknown): string | undefined {
  */
 export function normalizeRefId(value: unknown): string | null {
   if (value == null) return null;
-  const raw = typeof value === 'object' ? ((value as any).Id ?? (value as any).id ?? null) : value;
+  const raw = isRefLike(value) ? (value.Id ?? value.id ?? null) : value;
   const s = String(raw ?? '').trim();
   return s ? s : null;
 }
@@ -149,15 +161,14 @@ export function sortStrings(xs: string[]): string[] {
 export function maybeRefId(value: unknown): string | undefined {
   if (!value) return undefined;
   if (typeof value === 'string') return normalizeOptionalString(value);
-  if (typeof value === 'object')
-    return normalizeOptionalString((value as Record<string, unknown>).Id) ?? normalizeOptionalString((value as Record<string, unknown>).id);
+  if (isRefLike(value)) return normalizeOptionalString(value.Id) ?? normalizeOptionalString(value.id);
   return undefined;
 }
 
 function normalizeRefLikeIdString(raw: unknown): string {
   if (raw == null) return '';
-  if (typeof raw === 'object') {
-    return String((raw as Record<string, unknown>).Id ?? (raw as Record<string, unknown>).id ?? '').trim();
+  if (isRefLike(raw)) {
+    return String(raw.Id ?? raw.id ?? '').trim();
   }
   return String(raw ?? '').trim();
 }

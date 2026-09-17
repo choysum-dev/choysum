@@ -279,3 +279,8 @@ declare var $choysum: {
     }>;
   };
 };
+
+/** Optional runtime carrier when `$choysum` is not yet injected (unit harnesses). */
+interface GlobalThis {
+  $choysum?: typeof $choysum;
+}

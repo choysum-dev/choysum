@@ -34,11 +34,9 @@ export function __deepFreezeForTest<T>(obj: T): T {
   return deepFreeze(obj);
 }
 
-// Runtime-injected global $choysum object from QuickJS.
-declare const $choysum: unknown | undefined;
-
 function resolveRuntimeRoot(): ObjectRecord | undefined {
-  const runtimeRoot = typeof $choysum !== 'undefined' ? $choysum : (globalThis as { $choysum?: unknown }).$choysum;
+  // Prefer the ambient `$choysum` binding; fall back to globalThis when unset (unit harnesses).
+  const runtimeRoot = typeof $choysum !== 'undefined' ? $choysum : globalThis.$choysum;
   return asObjectRecord(runtimeRoot);
 }
 

@@ -179,7 +179,7 @@ function normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
 }
 
 async function fieldDefaultStoreTableExists(dialect: string, table: string): Promise<boolean> {
-  const db = ($choysum as any)?.db;
+  const db = globalThis.$choysum?.db;
   // QuickJS bridge callables may not report typeof === 'function'; rely on presence + call.
   if (db == null || db.query == null) {
     // No probe available; allow the CREATE INDEX attempt.
@@ -222,7 +222,7 @@ async function ensureScopeUniqueIndex(ctor: ModelCtor<FieldDefaultBaseModel>): P
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;
 
-  const dialect = String(($choysum as any)?.db?.dialectName || 'sqlite').toLowerCase();
+  const dialect = String(globalThis.$choysum?.db?.dialectName || 'sqlite').toLowerCase();
   const indexName = `uidx_${table}_scope`;
   let ddl = '';
   if (dialect === 'postgres' || dialect === 'postgresql') {
@@ -233,9 +233,10 @@ async function ensureScopeUniqueIndex(ctor: ModelCtor<FieldDefaultBaseModel>): P
   }
 
   try {
-    const exec = ($choysum as any)?.db?.execute;
+    const db = globalThis.$choysum?.db;
+    const exec = db?.execute;
     // QuickJS bridge callables may not report typeof === 'function'.
-    if (exec == null) {
+    if (exec == null || db == null) {
       return;
     }
     // Skip DDL when the store table is not migrated yet (unit-test apps, deferred schema).
@@ -243,12 +244,12 @@ async function ensureScopeUniqueIndex(ctor: ModelCtor<FieldDefaultBaseModel>): P
     if (!(await fieldDefaultStoreTableExists(dialect, table))) {
       return;
     }
-    await exec.call(($choysum as any).db, ddl, '[]');
+    await exec.call(db, ddl, '[]');
     ensuredUniqueIndexTables.add(table);
   } catch (err) {
     // Best-effort: upsert path still enforces uniqueness in application logic.
-    const message = String((err as any)?.message ?? err).toLowerCase();
-    const code = String((err as any)?.code ?? '').toLowerCase();
+    const message = String((err as { message?: unknown } | null | undefined)?.message ?? err).toLowerCase();
+    const code = String((err as { code?: unknown } | null | undefined)?.code ?? '').toLowerCase();
     const transient =
       message.includes('database is locked') ||
       message.includes('database table is locked') ||

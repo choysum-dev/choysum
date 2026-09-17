@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/query';
 import type { FieldSelection } from '@/core/service/api/selection';
+import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { _lt } from '../i18n';
@@ -241,7 +242,7 @@ export default class Schedule extends BaseModel {
     const merged: Schedule = Object.assign(existing, values);
     const now = new Date();
     if (values.Active === false) {
-      values.NextRunAt = null as any;
+      clearExclusive(values, ['NextRunAt']);
     } else if (values.CronExpr || values.Timezone || !existing.NextRunAt) {
       values.NextRunAt = computeNextRunAt(merged, now) as any;
     }
