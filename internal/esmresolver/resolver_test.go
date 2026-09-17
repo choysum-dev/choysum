@@ -2018,6 +2018,64 @@ func TestRewriteProductionSpecifier(t *testing.T) {
 	}
 }
 
+func TestApplyBareImportPin(t *testing.T) {
+	t.Parallel()
+	r := New(WithBareImportPins(map[string]string{
+		"vue":              "3.5.38",
+		"@vue/runtime-dom": "3.5.38",
+		"":                 "ignore",
+		"empty-ver":        "",
+	}))
+	tests := []struct {
+		spec string
+		want string
+	}{
+		{"vue", "vue@3.5.38"},
+		{"vue/dist/vue.esm-bundler.js", "vue@3.5.38/dist/vue.esm-bundler.js"},
+		{"vue@3.5.43", "vue@3.5.43"},
+		{"@vue/runtime-dom", "@vue/runtime-dom@3.5.38"},
+		{"@vue/runtime-dom/dist/x", "@vue/runtime-dom@3.5.38/dist/x"},
+		{"@vue/runtime-core", "@vue/runtime-core"},
+		{"lodash", "lodash"},
+		{"", ""},
+	}
+	for _, tt := range tests {
+		if got := r.applyBareImportPin(tt.spec); got != tt.want {
+			t.Fatalf("applyBareImportPin(%q) = %q, want %q", tt.spec, got, tt.want)
+		}
+	}
+	if got := New().applyBareImportPin("vue"); got != "vue" {
+		t.Fatalf("no pins: got %q", got)
+	}
+}
+
+func TestSplitBarePackage(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		spec      string
+		pkg       string
+		subpath   string
+		versioned bool
+	}{
+		{"vue", "vue", "", false},
+		{"vue@3.5.38", "vue", "", true},
+		{"vue/dist/x", "vue", "dist/x", false},
+		{"vue@3.5.38/dist/x", "vue", "dist/x", true},
+		{"@vue/runtime-dom", "@vue/runtime-dom", "", false},
+		{"@vue/runtime-dom@3.5.38", "@vue/runtime-dom", "", true},
+		{"@vue/runtime-dom/foo", "@vue/runtime-dom", "foo", false},
+		{"@vue/runtime-dom@3.5.38/foo", "@vue/runtime-dom", "foo", true},
+		{"", "", "", false},
+	}
+	for _, tt := range tests {
+		pkg, sub, ver := splitBarePackage(tt.spec)
+		if pkg != tt.pkg || sub != tt.subpath || ver != tt.versioned {
+			t.Fatalf("splitBarePackage(%q) = (%q,%q,%v), want (%q,%q,%v)",
+				tt.spec, pkg, sub, ver, tt.pkg, tt.subpath, tt.versioned)
+		}
+	}
+}
+
 func TestLockedSpecifier_CorruptLockfileReturnsError(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

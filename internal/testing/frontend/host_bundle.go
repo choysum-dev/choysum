@@ -85,12 +85,13 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	}
 
 	modulesDir := filepath.Join(repoRoot, "modules")
-	vueSpec := "vue@" + choysummount.VuePackageVersion
 	stubDir := filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "stubs")
 
+	// Keep path aliases for @; vue version pinning is via WithBareImportPins
+	// because esbuild Alias does not run before the esmresolver OnResolve for
+	// bare imports (unversioned vue would float to whatever esm.sh serves).
 	alias := map[string]string{
-		"@":   modulesDir,
-		"vue": vueSpec,
+		"@": modulesDir,
 	}
 	for k, v := range opts.ExtraStubAliases {
 		k = strings.TrimSpace(k)
@@ -210,6 +211,9 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		esmresolver.WithCacheDir(cacheDir),
 		esmresolver.WithTarget("es2020"),
 		esmresolver.WithModulePath(repoRoot),
+		esmresolver.WithBareImportPins(map[string]string{
+			"vue": choysummount.VuePackageVersion,
+		}),
 	).Plugin())
 	if opts.WithVuePlugin {
 		if opts.JsExecutor == nil {

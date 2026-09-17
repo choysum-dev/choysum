@@ -88,8 +88,13 @@ type Resolver struct {
 	lockfileOnce sync.Once    // protects lockfile loading
 	lockfile     *EsmLockfile // cached parsed lockfile (nil if not loaded)
 	lockfileErr  error        // error from last lockfile load attempt
-	logger       *slog.Logger // logger for structured metrics output (optional)
-	metrics      *Metrics     // resolver metrics (nil if not initialised)
+	// barePins maps unversioned package names ("vue", "@scope/pkg") to exact
+	// versions ("3.5.38"). Applied after lockfile lookup; already-versioned
+	// specifiers are left unchanged. Needed because esbuild Alias does not run
+	// before this plugin's OnResolve for bare imports.
+	barePins map[string]string
+	logger   *slog.Logger // logger for structured metrics output (optional)
+	metrics  *Metrics     // resolver metrics (nil if not initialised)
 	// retryBackoff is the sleep before retry attempt N (1 = first retry).
 	// Production default is 1s, 2s, then 4s (capped at 10s).
 	retryBackoff func(attempt int) time.Duration
@@ -204,6 +209,30 @@ func WithModulePath(path string) Option {
 	return func(r *Resolver) {
 		if path != "" {
 			r.modulePath = path
+		}
+	}
+}
+
+// WithBareImportPins remaps unversioned bare package imports to exact versions
+// before upstream fetch. Keys are package names ("vue", "@scope/pkg"); values
+// are versions ("3.5.38"). Subpaths are preserved (vue/foo → vue@3.5.38/foo).
+// Already-versioned specifiers and unknown packages are left unchanged.
+// Multiple calls merge; later values win for the same key.
+func WithBareImportPins(pins map[string]string) Option {
+	return func(r *Resolver) {
+		if len(pins) == 0 {
+			return
+		}
+		if r.barePins == nil {
+			r.barePins = make(map[string]string, len(pins))
+		}
+		for name, ver := range pins {
+			name = strings.TrimSpace(name)
+			ver = strings.TrimSpace(ver)
+			if name == "" || ver == "" {
+				continue
+			}
+			r.barePins[name] = ver
 		}
 	}
 }
@@ -341,6 +370,7 @@ func (r *Resolver) Plugin() api.Plugin {
 					r.metrics.Errors.Add(1)
 					return api.OnResolveResult{}, r.formatError("lockfile error", args.Path, r.effectiveLockfilePath(), lockErr.Error())
 				}
+				spec = r.applyBareImportPin(spec)
 				spec = rewriteProductionSpecifier(spec)
 
 				// CSS imports from any target are external.
@@ -524,6 +554,69 @@ func (r *Resolver) lockedSpecifier(specifier string) (string, error) {
 		return "", err
 	}
 	return LookupLockedSpec(lock, specifier), nil
+}
+
+// applyBareImportPin rewrites unversioned bare imports using WithBareImportPins.
+func (r *Resolver) applyBareImportPin(specifier string) string {
+	if r == nil || len(r.barePins) == 0 {
+		return specifier
+	}
+	pkg, subpath, versioned := splitBarePackage(specifier)
+	if versioned || pkg == "" {
+		return specifier
+	}
+	ver, ok := r.barePins[pkg]
+	if !ok || ver == "" {
+		return specifier
+	}
+	pinned := pkg + "@" + ver
+	if subpath != "" {
+		return pinned + "/" + subpath
+	}
+	return pinned
+}
+
+// splitBarePackage splits a bare import into package name, optional subpath,
+// and whether the package segment already carries an @version.
+func splitBarePackage(specifier string) (pkg, subpath string, versioned bool) {
+	specifier = strings.TrimSpace(specifier)
+	if specifier == "" {
+		return "", "", false
+	}
+	if i := strings.IndexAny(specifier, "?#"); i >= 0 {
+		specifier = specifier[:i]
+	}
+	if strings.HasPrefix(specifier, "@") {
+		rest := specifier[1:]
+		slash := strings.IndexByte(rest, '/')
+		if slash < 0 {
+			return specifier, "", strings.Contains(rest, "@")
+		}
+		scope := rest[:slash]
+		after := rest[slash+1:]
+		name, rem, hasRem := strings.Cut(after, "/")
+		if at := strings.IndexByte(name, '@'); at > 0 {
+			versioned = true
+			pkg = "@" + scope + "/" + name[:at]
+		} else {
+			pkg = "@" + scope + "/" + name
+		}
+		if hasRem {
+			subpath = rem
+		}
+		return pkg, subpath, versioned
+	}
+	name, rem, hasRem := strings.Cut(specifier, "/")
+	if at := strings.IndexByte(name, '@'); at > 0 {
+		versioned = true
+		pkg = name[:at]
+	} else {
+		pkg = name
+	}
+	if hasRem {
+		subpath = rem
+	}
+	return pkg, subpath, versioned
 }
 
 // rewriteProductionSpecifier rewrites selected package bare specifiers to
