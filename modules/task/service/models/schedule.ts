@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/query';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
@@ -273,23 +273,28 @@ export default class Schedule extends BaseModel {
   }
 
   /** Lists schedules using a raw query condition. */
-  static async ListSchedules(condition: QueryCondition<Schedule> | [] = [], options?: SearchOptions<Schedule>): Promise<Schedule[]> {
-    const items = (await this.Search(condition, options)) as Schedule[];
+  static async ListSchedules<F extends FieldSelection<Schedule> | undefined = undefined>(
+    condition: QueryCondition<Schedule> | [] = [],
+    options?: Omit<SearchOptions<Schedule>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<Schedule, F>>> {
+    const items = await this.Search(condition, options);
     return items.map(item => applyNextRunPreview(item));
   }
 
   /** Lists schedules with filter, pagination, and total-count metadata. */
-  static async ListSchedulesPaged(params: ListSchedulesParams = {}): Promise<{ items: Schedule[]; total: number; limit: number; offset: number }> {
+  static async ListSchedulesPaged<F extends FieldSelection<Schedule> | undefined = undefined>(
+    params: Omit<ListSchedulesParams, 'fields'> & { fields?: F } = {}
+  ): Promise<{ items: Array<RowOrProjected<Schedule, F>>; total: number; limit: number; offset: number }> {
     const condition = buildScheduleCondition(params);
     const limit = clampLimit(params.limit, 50, 500);
     const offset = normalizeOffset(params.offset);
     const orderBy = params.orderBy ?? ({ field: 'CreatedAt', order: 'desc' } as OrderBy<Schedule>);
-    const items = (await this.Search(condition, {
+    const items = await this.Search(condition, {
       limit,
       offset,
       orderBy,
       fields: params.fields,
-    })) as Schedule[];
+    });
     const total = Number(await this.Count(condition as any)) || 0;
     return { items: items.map(item => applyNextRunPreview(item)), total, limit, offset };
   }

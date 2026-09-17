@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import type { SearchOptions, QueryCondition, OrderBy } from '@/core/service/api/query';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/datetime';
@@ -269,28 +269,36 @@ export default class Job extends BaseModel {
   }
 
   /** Loads a single job by identifier. */
-  static async GetJob(jobId: string, fields?: FieldSelection<Job>): Promise<Job> {
-    return (await this.Browse(jobId, fields)) as Job;
+  static async GetJob<F extends FieldSelection<Job> | undefined = undefined>(
+    jobId: string,
+    fields?: F
+  ): Promise<RowOrProjected<Job, F>> {
+    return await this.Browse(jobId, fields);
   }
 
   /** Lists jobs using a raw query condition. */
-  static async ListJobs(condition: QueryCondition<Job> | [] = [], options?: SearchOptions<Job>): Promise<Job[]> {
-    return (await this.Search(condition, options)) as Job[];
+  static async ListJobs<F extends FieldSelection<Job> | undefined = undefined>(
+    condition: QueryCondition<Job> | [] = [],
+    options?: Omit<SearchOptions<Job>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<Job, F>>> {
+    return await this.Search(condition, options);
   }
 
   /** Lists jobs with filter, pagination, and total-count metadata. */
-  static async ListJobsPaged(params: ListJobsParams = {}): Promise<{ items: Job[]; total: number; limit: number; offset: number }> {
+  static async ListJobsPaged<F extends FieldSelection<Job> | undefined = undefined>(
+    params: Omit<ListJobsParams, 'fields'> & { fields?: F } = {}
+  ): Promise<{ items: Array<RowOrProjected<Job, F>>; total: number; limit: number; offset: number }> {
     const condition = buildJobCondition(params);
     const limit = clampLimit(params.limit, 50, 500);
     const offset = normalizeOffset(params.offset);
     const orderBy = params.orderBy ?? ({ field: 'CreatedAt', order: 'desc' } as OrderBy<Job>);
 
-    const items = (await this.Search(condition, {
+    const items = await this.Search(condition, {
       limit,
       offset,
       orderBy,
       fields: params.fields,
-    })) as Job[];
+    });
     const total = Number(await this.Count(condition as any)) || 0;
     return { items, total, limit, offset };
   }

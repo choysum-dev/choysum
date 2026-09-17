@@ -6,7 +6,7 @@ import type { ScopedStore } from '@/web/web/stores/storeScopeManager/types';
 import type { QueryState } from '@/web/web/query/state';
 import type { DataSetSnapshot } from '@/web/web/query/types';
 import type { BaseModel } from '@/core/service';
-import type { ClientModelService, FieldSelection, Insertable, Updateable } from '@/core/rpc';
+import type { ClientModel, ClientModelService, FieldSelection, Insertable, Updateable } from '@/core/rpc';
 import type {
   CountOptions,
   DeleteOptions,
@@ -15,6 +15,7 @@ import type {
   SoftDeleteOptions,
   UpdateOptions,
 } from '@/core/service/api/query';
+import type { Projected } from '@/core/service/api/selection';
 import type { OnchangeResult } from '@/core/service/runtime/onchange/types';
 import type { ResolvePropertiesOptions } from '@/core/service/orm/model/properties_resolve';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
@@ -22,40 +23,74 @@ import type { ReadGroupResult } from '@/core/service/orm/repository/types/groupb
 import type { TermReference } from '@/core/service/i18n';
 
 /**
- * Row-bound BaseModel method shapes for ClientModelService.
- * Collection methods take `C extends ModelCtor`; the store is keyed by row type TModel
- * (pre-HC2 `Create<T extends BaseModel>`), so bind Parameters/ReturnType to the row.
+ * Row-bound BaseModel method shapes for the FE store.
+ * Field-selecting CRUD methods use call-site generics / overloads so literal `fields`
+ * preserve {@link Projected} (wrapping via ClientModelService freezes Parameters/ReturnType).
  */
 type StoreDefaultGet<T extends BaseModel> = (value: Partial<Insertable<T>>) => Promise<Partial<Insertable<T>>>;
-type StoreCreate<T extends BaseModel> = (value: Partial<Insertable<T>>, returnFields?: FieldSelection<T>) => Promise<T>;
-type StoreCreateMany<T extends BaseModel> = (values: Partial<Insertable<T>>[], returnFields?: FieldSelection<T>) => Promise<T[]>;
-type StoreBrowse<T extends BaseModel> = (id: string, fields?: FieldSelection<T>, options?: SoftDeleteOptions) => Promise<T>;
-type StoreBrowseMany<T extends BaseModel> = (ids: string[], fields?: FieldSelection<T>, options?: SoftDeleteOptions) => Promise<T[]>;
-type StoreUpdate<T extends BaseModel> = (
-  condition: QueryCondition<T>,
-  values: Partial<Updateable<T>>,
-  returnFields?: FieldSelection<T>,
-  options?: UpdateOptions
-) => Promise<Partial<T>[]>;
-type StoreUpdateById<T extends BaseModel> = (
-  id: string,
-  values: Partial<Updateable<T>>,
-  returnFields?: FieldSelection<T>,
-  options?: UpdateOptions
-) => Promise<Partial<T>>;
-type StoreCopy<T extends BaseModel> = (id: string, defaults?: Partial<Record<string, unknown>>, options?: unknown) => Promise<T>;
+type StoreCreate<T extends BaseModel> = {
+  <F extends FieldSelection<T>>(value: Partial<Insertable<T>>, returnFields: F): Promise<ClientModel<Projected<T, F>>>;
+  (value: Partial<Insertable<T>>, returnFields?: FieldSelection<T>): Promise<ClientModel<T>>;
+};
+type StoreCreateMany<T extends BaseModel> = {
+  <F extends FieldSelection<T>>(values: Partial<Insertable<T>>[], returnFields: F): Promise<Array<ClientModel<Projected<T, F>>>>;
+  (values: Partial<Insertable<T>>[], returnFields?: FieldSelection<T>): Promise<Array<ClientModel<T>>>;
+};
+type StoreBrowse<T extends BaseModel> = {
+  <F extends FieldSelection<T>>(id: string, fields: F, options?: SoftDeleteOptions): Promise<ClientModel<Projected<T, F>>>;
+  (id: string, fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<ClientModel<T>>;
+};
+type StoreBrowseMany<T extends BaseModel> = {
+  <F extends FieldSelection<T>>(ids: string[], fields: F, options?: SoftDeleteOptions): Promise<Array<ClientModel<Projected<T, F>>>>;
+  (ids: string[], fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<Array<ClientModel<T>>>;
+};
+type StoreUpdate<T extends BaseModel> = {
+  <F extends FieldSelection<T>>(
+    condition: QueryCondition<T>,
+    values: Partial<Updateable<T>>,
+    returnFields: F,
+    options?: UpdateOptions
+  ): Promise<Array<ClientModel<Projected<T, F>>>>;
+  (
+    condition: QueryCondition<T>,
+    values: Partial<Updateable<T>>,
+    returnFields?: FieldSelection<T>,
+    options?: UpdateOptions
+  ): Promise<Array<ClientModel<Partial<T>>>>;
+};
+type StoreUpdateById<T extends BaseModel> = {
+  <F extends FieldSelection<T>>(
+    id: string,
+    values: Partial<Updateable<T>>,
+    returnFields: F,
+    options?: UpdateOptions
+  ): Promise<ClientModel<Projected<T, F>>>;
+  (
+    id: string,
+    values: Partial<Updateable<T>>,
+    returnFields?: FieldSelection<T>,
+    options?: UpdateOptions
+  ): Promise<ClientModel<Partial<T>>>;
+};
+type StoreCopy<T extends BaseModel> = (id: string, defaults?: Partial<Record<string, unknown>>, options?: unknown) => Promise<ClientModel<T>>;
 type StoreNameSearch<T extends BaseModel> = (
   name: string,
   condition?: QueryCondition<T> | [],
   options?: SearchOptions<T>
-) => Promise<T[]>;
+) => Promise<Array<ClientModel<T>>>;
 type StoreNameCreate<T extends BaseModel> = (
   name: string,
   values?: Partial<Insertable<T>>,
   options?: unknown
-) => Promise<T>;
+) => Promise<ClientModel<T>>;
 type StoreCount<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: CountOptions) => Promise<number>;
-type StoreSearch<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: SearchOptions<T>) => Promise<T[]>;
+type StoreSearch<T extends BaseModel> = {
+  <F extends FieldSelection<T>>(
+    condition: QueryCondition<T> | [],
+    options: Omit<SearchOptions<T>, 'fields'> & { fields: F }
+  ): Promise<Array<ClientModel<Projected<T, F>>>>;
+  (condition?: QueryCondition<T> | [], options?: SearchOptions<T>): Promise<Array<ClientModel<T>>>;
+};
 type StoreReadGroup<T extends BaseModel> = (
   groupby: unknown,
   condition?: QueryCondition<T> | [],
@@ -207,17 +242,17 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   // declare it here; webapistore resolves names from BaseModel meta — do not maintain a
   // parallel name list in webapistore.go.
   DefaultGet: ClientModelService<StoreDefaultGet<TModel>>;
-  Create: ClientModelService<StoreCreate<TModel>>;
-  CreateMany: ClientModelService<StoreCreateMany<TModel>>;
-  Browse: ClientModelService<StoreBrowse<TModel>>;
-  BrowseMany: ClientModelService<StoreBrowseMany<TModel>>;
-  Update: ClientModelService<StoreUpdate<TModel>>;
-  UpdateById: ClientModelService<StoreUpdateById<TModel>>;
+  Create: StoreCreate<TModel>;
+  CreateMany: StoreCreateMany<TModel>;
+  Browse: StoreBrowse<TModel>;
+  BrowseMany: StoreBrowseMany<TModel>;
+  Update: StoreUpdate<TModel>;
+  UpdateById: StoreUpdateById<TModel>;
   Copy: ClientModelService<StoreCopy<TModel>>;
   NameSearch: ClientModelService<StoreNameSearch<TModel>>;
   NameCreate: ClientModelService<StoreNameCreate<TModel>>;
   Count: ClientModelService<StoreCount<TModel>>;
-  Search: ClientModelService<StoreSearch<TModel>>;
+  Search: StoreSearch<TModel>;
   ReadGroup: ClientModelService<StoreReadGroup<TModel>>;
   ReadGroupCount: ClientModelService<StoreReadGroupCount<TModel>>;
   Delete: ClientModelService<StoreDelete<TModel>>;

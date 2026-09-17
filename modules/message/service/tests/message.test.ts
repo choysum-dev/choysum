@@ -291,7 +291,10 @@ test('message.Message: Post binds attachment via document Binding dial seam', as
     );
     expect(binds.length).toBe(1);
     expect(String(binds[0].ownerRecordId || '')).not.toBe('');
-    expect(String((slim as any).Id || '')).toBe(String(binds[0].ownerRecordId));
+    // Caller asked for Body/Type only; Id was used internally for Bind but must not leak.
+    expect((slim as any).Id).toBeUndefined();
+    expect(String((slim as any).Body || '')).toBe('slim fields');
+    expect(String((slim as any).Type || '')).toBe('comment');
   });
 });
 
@@ -869,7 +872,11 @@ test('message.Message: Post ensureTipFields keeps explicit Model/ResId/CreatedAt
       ['Model', 'ResId', 'CreatedAt', 'Body']
     );
     expect(published).toHaveLength(1);
-    expect(published[0].payload.messageId).toBe(String((explicit as any).Id));
+    // Tip still carries messageId; returned row must match the caller selection (no Id leak).
+    expect(String(published[0].payload.messageId || '')).not.toBe('');
+    expect((explicit as any).Id).toBeUndefined();
+    expect(String((explicit as any).Model || '')).toBe('partner.Partner');
+    expect(String((explicit as any).Body || '')).toBe('explicit tip fields');
     expect(typeof published[0].at).toBe('number');
   });
 });
@@ -887,7 +894,10 @@ test('message.Message: Post ensureTipFields adds only missing columns for narrow
     );
 
     expect(published).toHaveLength(1);
-    expect(published[0].payload.messageId).toBe(String((created as any).Id));
+    expect(String(published[0].payload.messageId || '')).not.toBe('');
+    expect((created as any).Id).toBeUndefined();
+    expect(String((created as any).Model || '')).toBe('partner.Partner');
+    expect(String((created as any).Body || '')).toBe('partial tip fields');
     expect(published[0].payload.model).toBe('partner.Partner');
     expect(typeof published[0].at).toBe('number');
   });

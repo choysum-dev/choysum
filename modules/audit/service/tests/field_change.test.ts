@@ -473,6 +473,7 @@ test('audit.FieldChange: Append publishes tip even with restricted return fields
       ['Kind'] as any
     );
     expect(String((created as any).Kind)).toBe('field');
+    expect((created as any).Id).toBeUndefined();
     expect(published).toHaveLength(1);
     expect(published[0].topic).toBe(TOPIC_AUDIT_FIELD_CHANGE_APPENDED);
     expect(published[0].payload.model).toBe('base.UoM');
