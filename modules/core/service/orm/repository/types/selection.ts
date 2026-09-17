@@ -66,7 +66,7 @@ export type RowOrProjected<T, F> = IsAny<F> extends true
  * Selected keys are read through the prototype chain so accessors are preserved.
  */
 export function projectToSelection<T, F extends FieldSelection<T>>(row: object, selection: F): Projected<T, F> {
-  if (selection.length === 0 || (selection as readonly unknown[]).includes('*')) {
+  if (selection == null || selection.length === 0 || (selection as readonly unknown[]).includes('*')) {
     return row as Projected<T, F>;
   }
   const keep = new Set<string>();

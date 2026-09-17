@@ -68,6 +68,35 @@ test('AuthzMutationModel: harness Create is defined on the mixin prototype chain
   expect(typeof BaseModel.Create).toBe('function');
 });
 
+test('AuthzMutationModel: writes invalidate only after success', async () => {
+  const ops: string[] = [];
+  const originalInvalidate = AuthzMutationHarness.invalidateAuthzCachesAfterWrite;
+  const originalCreate = BaseModel.Create;
+  AuthzMutationHarness.invalidateAuthzCachesAfterWrite = op => {
+    ops.push(op);
+  };
+  try {
+    BaseModel.Create = (async () => ({ Id: 'h1' })) as typeof BaseModel.Create;
+    await AuthzMutationHarness.Create({} as never);
+    expect(ops).toEqual(['create']);
+
+    BaseModel.Create = (async () => {
+      throw new Error('create failed');
+    }) as typeof BaseModel.Create;
+    let threw = false;
+    try {
+      await AuthzMutationHarness.Create({} as never);
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+    expect(ops).toEqual(['create']);
+  } finally {
+    BaseModel.Create = originalCreate;
+    AuthzMutationHarness.invalidateAuthzCachesAfterWrite = originalInvalidate;
+  }
+});
+
 test('UserRole: targeted clears for create, base behavior otherwise', () => {
   const base = AuthzMutationModel.invalidateAuthzCachesAfterWrite;
   let baseCalls = 0;

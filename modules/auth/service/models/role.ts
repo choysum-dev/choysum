@@ -277,6 +277,9 @@ export default class Role extends AuthzMutationModel {
     // Create/Browse always include Id on the returned row even when returnFields omits it.
     const row = await super.Create<C, F>(payload, returnFields);
     const roleId = normalizeRefId((row as { Id?: unknown }).Id);
+    if (!roleId && accessIds) {
+      throw new Error('Role.Create: created row without Id; UI resource grants were not synced');
+    }
     if (roleId && accessIds) {
       await syncAllowResourceGrants(roleId, accessIds);
       if (wantsAccessField(returnFields)) {
@@ -305,6 +308,9 @@ export default class Role extends AuthzMutationModel {
     for (let i = 0; i < rows.length; i++) {
       const roleId = normalizeRefId((rows[i] as { Id?: unknown }).Id);
       const accessIds = accessList[i];
+      if (!roleId && accessIds) {
+        throw new Error('Role.CreateMany: created row without Id; UI resource grants were not synced');
+      }
       if (roleId && accessIds) {
         await syncAllowResourceGrants(roleId, accessIds);
         if (wantsAccessField(returnFields)) {
