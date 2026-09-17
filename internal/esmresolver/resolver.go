@@ -641,7 +641,11 @@ func splitBarePackage(specifier string) (pkg, subpath string, versioned bool) {
 		rest := specifier[1:]
 		slash := strings.IndexByte(rest, '/')
 		if slash < 0 {
-			return specifier, "", strings.Contains(rest, "@")
+			// Scope-only form (@scope or @scope@1.0.0); strip a trailing @version.
+			if at := strings.IndexByte(rest, '@'); at > 0 {
+				return "@" + rest[:at], "", true
+			}
+			return specifier, "", false
 		}
 		scope := rest[:slash]
 		after := rest[slash+1:]

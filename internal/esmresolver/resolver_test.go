@@ -2101,6 +2101,10 @@ func TestApplyBareImportPin(t *testing.T) {
 	if got := (*Resolver)(nil).applyBareImportPinToURL(raw); got != raw {
 		t.Fatalf("nil URL pin: got %q", got)
 	}
+	scopePin := New(WithBareImportPins(map[string]string{"@scope": "1.2.3"}))
+	if got := scopePin.applyBareImportPin("@scope@9.9.9"); got != "@scope@1.2.3" {
+		t.Fatalf("scope-only versioned pin: got %q", got)
+	}
 }
 
 func TestSplitBarePackage(t *testing.T) {
@@ -2122,7 +2126,7 @@ func TestSplitBarePackage(t *testing.T) {
 		{"@vue/runtime-dom/foo", "@vue/runtime-dom", "foo", false},
 		{"@vue/runtime-dom@3.5.38/foo", "@vue/runtime-dom", "foo", true},
 		{"@scope", "@scope", "", false},
-		{"@scope@1.0.0", "@scope@1.0.0", "", true},
+		{"@scope@1.0.0", "@scope", "", true},
 		{"", "", "", false},
 	}
 	for _, tt := range tests {
@@ -2131,6 +2135,23 @@ func TestSplitBarePackage(t *testing.T) {
 			t.Fatalf("splitBarePackage(%q) = (%q,%q,%v), want (%q,%q,%v)",
 				tt.spec, pkg, sub, ver, tt.pkg, tt.subpath, tt.versioned)
 		}
+	}
+}
+
+func TestBareImportPin_PreservesVueI18nProductionRewrite(t *testing.T) {
+	t.Parallel()
+	r := New(WithBareImportPins(map[string]string{"vue-i18n": "11.4.6"}))
+	// Pin runs before production rewrite; versioned vue-i18n must still rewrite.
+	spec := r.applyBareImportPin("vue-i18n")
+	got := rewriteProductionSpecifier(spec)
+	want := "vue-i18n@11.4.6/dist/vue-i18n.esm-browser.prod.js"
+	if got != want {
+		t.Fatalf("pinned+rewrite = %q, want %q", got, want)
+	}
+	// Already-versioned input (lockfile / peer) follows the same path.
+	got = rewriteProductionSpecifier(r.applyBareImportPin("vue-i18n@9.0.0"))
+	if got != want {
+		t.Fatalf("re-pin+rewrite = %q, want %q", got, want)
 	}
 }
 
