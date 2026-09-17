@@ -88,10 +88,10 @@ type Resolver struct {
 	lockfileOnce sync.Once    // protects lockfile loading
 	lockfile     *EsmLockfile // cached parsed lockfile (nil if not loaded)
 	lockfileErr  error        // error from last lockfile load attempt
-	// barePins maps unversioned package names ("vue", "@scope/pkg") to exact
-	// versions ("3.5.38"). Applied after lockfile lookup; already-versioned
-	// specifiers are left unchanged. Needed because esbuild Alias does not run
-	// before this plugin's OnResolve for bare imports.
+	// barePins maps package names ("vue", "@scope/pkg") to exact versions
+	// ("3.5.38"). Applied after lockfile lookup to bare imports and to esm.sh
+	// absolute peer paths/URLs (including ranges). Needed because esbuild Alias
+	// does not run before this plugin's OnResolve for bare imports.
 	barePins map[string]string
 	logger   *slog.Logger // logger for structured metrics output (optional)
 	metrics  *Metrics     // resolver metrics (nil if not initialised)
@@ -213,11 +213,12 @@ func WithModulePath(path string) Option {
 	}
 }
 
-// WithBareImportPins remaps unversioned bare package imports to exact versions
-// before upstream fetch. Keys are package names ("vue", "@scope/pkg"); values
-// are versions ("3.5.38"). Subpaths are preserved (vue/foo → vue@3.5.38/foo).
-// Already-versioned specifiers and unknown packages are left unchanged.
-// Multiple calls merge; later values win for the same key.
+// WithBareImportPins forces listed packages to exact versions before upstream
+// fetch. Keys are package names ("vue", "@scope/pkg"); values are versions
+// ("3.5.38"). Applies to bare imports and to esm.sh absolute paths / URLs that
+// carry ranges or other versions (e.g. /vue@^3.0.0 → /vue@3.5.38), so peer
+// imports from pinia/vue-i18n share one Vue instance. Subpaths and ?query#hash
+// are preserved. Multiple calls merge; later values win for the same key.
 func WithBareImportPins(pins map[string]string) Option {
 	return func(r *Resolver) {
 		if len(pins) == 0 {
@@ -353,7 +354,8 @@ func (r *Resolver) Plugin() api.Plugin {
 				// Rewrite upstream-internal absolute paths (e.g. "/pkg@ver/deno/...")
 				// back to full esm.sh URLs so esbuild can continue resolving.
 				if isUpstreamInternalPath(args.Path) {
-					esmURL := r.upstream + args.Path
+					pinnedPath := r.applyBareImportPinToAbsPath(args.Path)
+					esmURL := r.upstream + pinnedPath
 					return api.OnResolveResult{
 						Path:      esmURL,
 						Namespace: "choysum-esm",
@@ -556,24 +558,61 @@ func (r *Resolver) lockedSpecifier(specifier string) (string, error) {
 	return LookupLockedSpec(lock, specifier), nil
 }
 
-// applyBareImportPin rewrites unversioned bare imports using WithBareImportPins.
+// applyBareImportPin forces pinned packages to the configured exact version,
+// including semver ranges and mismatched exact versions (vue@^3.0.0 → vue@3.5.38).
 func (r *Resolver) applyBareImportPin(specifier string) string {
 	if r == nil || len(r.barePins) == 0 {
 		return specifier
 	}
-	pkg, subpath, versioned := splitBarePackage(specifier)
-	if versioned || pkg == "" {
-		return specifier
-	}
+	core, suffix := splitQueryHash(strings.TrimSpace(specifier))
+	pkg, subpath, _ := splitBarePackage(core)
 	ver, ok := r.barePins[pkg]
 	if !ok || ver == "" {
 		return specifier
 	}
-	pinned := pkg + "@" + ver
+	out := pkg + "@" + ver
 	if subpath != "" {
-		return pinned + "/" + subpath
+		out += "/" + subpath
 	}
-	return pinned
+	return out + suffix
+}
+
+// applyBareImportPinToAbsPath rewrites esm.sh absolute paths like
+// /vue@^3.0.0?target=es2020 when the package is pinned.
+func (r *Resolver) applyBareImportPinToAbsPath(path string) string {
+	if r == nil || len(r.barePins) == 0 {
+		return path
+	}
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+		return path
+	}
+	return "/" + r.applyBareImportPin(strings.TrimPrefix(path, "/"))
+}
+
+// applyBareImportPinToURL rewrites the path of an absolute HTTP(S) esm URL when
+// the package is pinned.
+func (r *Resolver) applyBareImportPinToURL(raw string) string {
+	if r == nil || len(r.barePins) == 0 {
+		return raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Path == "" {
+		return raw
+	}
+	pinnedPath := r.applyBareImportPinToAbsPath(u.Path)
+	if pinnedPath == u.Path {
+		return raw
+	}
+	u.Path = pinnedPath
+	u.RawPath = ""
+	return u.String()
+}
+
+func splitQueryHash(s string) (core, suffix string) {
+	if i := strings.IndexAny(s, "?#"); i >= 0 {
+		return s[:i], s[i:]
+	}
+	return s, ""
 }
 
 // splitBarePackage splits a bare import into package name, optional subpath,
@@ -670,7 +709,7 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 
 	// Already an absolute HTTP(S) URL: resolve in namespace.
 	if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-		resolvedPath := trimCSSWrapperSuffix(args.Path)
+		resolvedPath := trimCSSWrapperSuffix(r.applyBareImportPinToURL(args.Path))
 		// CSS URL tokens in stylesheet content should remain external.
 		if args.Kind == api.ResolveCSSURLToken {
 			return api.OnResolveResult{Path: resolvedPath, External: true}, nil
@@ -721,7 +760,7 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		}
 	}
 
-	resolvedURL = trimCSSWrapperSuffix(resolvedURL)
+	resolvedURL = trimCSSWrapperSuffix(r.applyBareImportPinToURL(resolvedURL))
 
 	// CSS URL tokens in stylesheet content should remain external.
 	if args.Kind == api.ResolveCSSURLToken {

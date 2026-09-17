@@ -2032,9 +2032,12 @@ func TestApplyBareImportPin(t *testing.T) {
 	}{
 		{"vue", "vue@3.5.38"},
 		{"vue/dist/vue.esm-bundler.js", "vue@3.5.38/dist/vue.esm-bundler.js"},
-		{"vue@3.5.43", "vue@3.5.43"},
+		{"vue@3.5.43", "vue@3.5.38"},
+		{"vue@^3.0.0", "vue@3.5.38"},
+		{"vue@^3.5.11?target=es2020", "vue@3.5.38?target=es2020"},
+		{"vue@3.5.38", "vue@3.5.38"},
 		{"@vue/runtime-dom", "@vue/runtime-dom@3.5.38"},
-		{"@vue/runtime-dom/dist/x", "@vue/runtime-dom@3.5.38/dist/x"},
+		{"@vue/runtime-dom@3.5.43/dist/x", "@vue/runtime-dom@3.5.38/dist/x"},
 		{"@vue/runtime-core", "@vue/runtime-core"},
 		{"lodash", "lodash"},
 		{"", ""},
@@ -2046,6 +2049,15 @@ func TestApplyBareImportPin(t *testing.T) {
 	}
 	if got := New().applyBareImportPin("vue"); got != "vue" {
 		t.Fatalf("no pins: got %q", got)
+	}
+	if got := r.applyBareImportPinToAbsPath("/vue@^3.0.0?target=es2020"); got != "/vue@3.5.38?target=es2020" {
+		t.Fatalf("abs path: got %q", got)
+	}
+	if got := r.applyBareImportPinToURL("https://esm.sh/vue@^3.5.11?target=es2020"); got != "https://esm.sh/vue@3.5.38?target=es2020" {
+		t.Fatalf("url: got %q", got)
+	}
+	if got := r.applyBareImportPinToURL("https://esm.sh/lodash@4?target=es2020"); got != "https://esm.sh/lodash@4?target=es2020" {
+		t.Fatalf("unpinned url rewritten: %q", got)
 	}
 }
 

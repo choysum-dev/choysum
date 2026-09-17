@@ -87,9 +87,8 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	modulesDir := filepath.Join(repoRoot, "modules")
 	stubDir := filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "stubs")
 
-	// Keep path aliases for @; vue version pinning is via WithBareImportPins
-	// because esbuild Alias does not run before the esmresolver OnResolve for
-	// bare imports (unversioned vue would float to whatever esm.sh serves).
+	// Keep path aliases for @; vue is pinned via WithBareImportPins (bare +
+	// esm.sh /vue@^… peer paths from pinia/vue-i18n) so one Vue instance is used.
 	alias := map[string]string{
 		"@": modulesDir,
 	}

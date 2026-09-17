@@ -20,7 +20,13 @@ func TestBuildFrontendVueHostBundlePinsVueVersion(t *testing.T) {
 	dir := t.TempDir()
 	entry := filepath.Join(dir, "entry.js")
 	out := filepath.Join(dir, "out.js")
-	if err := os.WriteFile(entry, []byte("import { ref } from 'vue'; console.log(ref);\n"), 0o644); err != nil {
+	// Import pinia so its peer /vue@^… path is rewritten to the host pin.
+	if err := os.WriteFile(entry, []byte(`
+import { ref } from 'vue';
+import { defineStore, createPinia } from 'pinia';
+import { createI18n } from 'vue-i18n';
+console.log(ref, defineStore, createPinia, createI18n);
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cache := filepath.Join(dir, "cache")
