@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
+import { Model, Field, callParentCollection, type ModelCtor, type RowOf } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
@@ -201,7 +201,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     RoleFieldRule._prepareValues(asWriteBag(value), 'create');
-    return super.Create(value, returnFields);
+    return (await callParentCollection(AuthzMutationModel.Create, this, [value, returnFields])) as RowOrProjected<RowOf<C>, F>;
   }
 
   /**
@@ -214,7 +214,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = values || [];
     for (const v of rows) RoleFieldRule._prepareValues(asWriteBag(v), 'create');
-    return super.CreateMany(rows, returnFields);
+    return (await callParentCollection(AuthzMutationModel.CreateMany, this, [rows, returnFields])) as Array<RowOrProjected<RowOf<C>, F>>;
   }
 
   /**
@@ -228,7 +228,9 @@ export default class RoleFieldRule extends AuthzMutationModel {
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     RoleFieldRule._prepareValues(asWriteBag(values), 'update');
-    return super.Update(condition, values, returnFields, options);
+    return (await callParentCollection(AuthzMutationModel.Update, this, [condition, values, returnFields, options])) as Array<
+      F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
+    >;
   }
 
   /**
@@ -242,7 +244,9 @@ export default class RoleFieldRule extends AuthzMutationModel {
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     RoleFieldRule._prepareValues(asWriteBag(values), 'update');
-    return super.UpdateById(id, values, returnFields, options);
+    return (await callParentCollection(AuthzMutationModel.UpdateById, this, [id, values, returnFields, options])) as (
+      F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
+    );
   }
 
   /**

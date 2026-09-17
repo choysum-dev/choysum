@@ -10,6 +10,7 @@ import './orm/model/property_definition_base_model';
 
 export { default as BaseModel } from './orm/model/model';
 export type { ModelClass, ModelCtor, RowOf } from './orm/model/types';
+export { callParentCollection } from './orm/model/call_parent_collection';
 export { Field } from './orm/decorator/field';
 export { Compute } from './orm/decorator/compute';
 export { SqlCompute } from './orm/decorator/sqlcompute';

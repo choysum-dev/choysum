@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
+import { Model, Field, callParentCollection, type ModelCtor, type RowOf } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
@@ -241,7 +241,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     RoleMethodAccess._prepareValues(asWriteBag(value), 'create');
-    return super.Create(value, returnFields);
+    return (await callParentCollection(AuthzMutationModel.Create, this, [value, returnFields])) as RowOrProjected<RowOf<C>, F>;
   }
 
   /**
@@ -256,7 +256,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     for (const v of rows) {
       RoleMethodAccess._prepareValues(asWriteBag(v), 'create');
     }
-    return super.CreateMany(rows, returnFields);
+    return (await callParentCollection(AuthzMutationModel.CreateMany, this, [rows, returnFields])) as Array<RowOrProjected<RowOf<C>, F>>;
   }
 
   /**
@@ -277,7 +277,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
       const next = String(updateBag.LogicalModelName).trim();
       // Prove every matched row already has LogicalModelName === next (no sampling).
       // Null/empty/other names fail Count equality → fail closed (null whitelist = all methods).
-      // Pass the same options as super.Update so withDeleted/onlyDeleted stay aligned.
+      // Pass the same options as AuthzMutationModel.Update so withDeleted/onlyDeleted stay aligned.
       const matched = Number(await this.Count(condition, options)) || 0;
       if (matched > 0) {
         const alreadyAtNext =
@@ -303,7 +303,9 @@ export default class RoleMethodAccess extends AuthzMutationModel {
       }
     }
     RoleMethodAccess._prepareValues(updateBag, 'update', previousLogicalModelName);
-    return super.Update(updateCondition, values, returnFields, options);
+    return (await callParentCollection(AuthzMutationModel.Update, this, [updateCondition, values, returnFields, options])) as Array<
+      F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
+    >;
   }
 
   /**
@@ -326,7 +328,9 @@ export default class RoleMethodAccess extends AuthzMutationModel {
       previousLogicalModelName = String((existing?.[0] as { LogicalModelName?: string } | undefined)?.LogicalModelName || '').trim() || null;
     }
     RoleMethodAccess._prepareValues(updateBag, 'update', previousLogicalModelName);
-    return super.UpdateById(id, values, returnFields, options);
+    return (await callParentCollection(AuthzMutationModel.UpdateById, this, [id, values, returnFields, options])) as (
+      F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
+    );
   }
 
   /**

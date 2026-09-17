@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
+import { BaseModel, Field, Model, callParentCollection, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import { asWriteBag } from '@/core/service/utils/normalization';
@@ -317,7 +317,10 @@ export default class FieldChange extends PolymorphicRecordModel {
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const bag = { ...asWriteBag(value) };
     prepareCreatePayload(bag);
-    return super.Create(bag as Partial<Insertable<RowOf<C>>>, returnFields);
+    return (await callParentCollection(BaseModel.Create, this, [
+      bag as Partial<Insertable<RowOf<C>>>,
+      returnFields,
+    ])) as RowOrProjected<RowOf<C>, F>;
   }
 
   /**
@@ -333,7 +336,9 @@ export default class FieldChange extends PolymorphicRecordModel {
       prepareCreatePayload(bag);
       return bag as Partial<Insertable<RowOf<C>>>;
     });
-    return super.CreateMany(rows, returnFields);
+    return (await callParentCollection(BaseModel.CreateMany, this, [rows, returnFields])) as Array<
+      RowOrProjected<RowOf<C>, F>
+    >;
   }
 
   /** FieldChange is append-only. */
