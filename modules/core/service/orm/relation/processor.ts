@@ -41,7 +41,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    * Constructor.
    * @param modelClass The model class that owns the relation.
    */
-  constructor(protected readonly modelClass: ModelCtor<T> & typeof BaseModel) {}
+  constructor(protected readonly modelClass: ModelCtor<T>) {}
 
   /**
    * Extract all supported relation payloads from an object.
@@ -547,7 +547,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    * @returns Entity Id.
    * @protected
    */
-  protected async getOrCreateId<R extends BaseModel>(value: unknown, targetClass: ModelCtor<R> & typeof BaseModel): Promise<string> {
+  protected async getOrCreateId<R extends BaseModel>(value: unknown, targetClass: ModelCtor<R>): Promise<string> {
     // Extract the Id from the relation item.
     const id = this.extractId(value);
     if (id) {
@@ -631,7 +631,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    * This is only available on ManyToOne fields.
    */
   protected getOnDeletePolicy(
-    targetClass: ModelCtor<BaseModel> & typeof BaseModel,
+    targetClass: ModelCtor<BaseModel>,
     foreignKeyField: string
   ): 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION' {
     const targetMeta = MetadataStorage.instance.getModelMetadata(targetClass);
@@ -659,7 +659,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
     repository: Repository,
     foreignKeyField: string,
     parentIds: string[],
-    targetClass?: ModelCtor<BaseModel> & typeof BaseModel,
+    targetClass?: ModelCtor<BaseModel>,
     newItemsMap?: Map<string, unknown[]>
   ): Promise<Map<string, { existingIds: string[]; removedIds: string[] }>> {
     // Without parent Ids there is nothing to remove.

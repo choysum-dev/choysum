@@ -447,7 +447,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
    */
   private async removeExistingRelationsWithDiff(
     repository: Repository,
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
+    targetModel: ModelCtor<BaseModel>,
     inverseField: string,
     parentId: string,
     newItems: unknown[]
@@ -486,7 +486,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
    */
   private async batchRemoveAssociationsWithDiff(
     repository: Repository,
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
+    targetModel: ModelCtor<BaseModel>,
     inverseField: string,
     parentIds: string[],
     replacementMap: Map<string, unknown[]>
@@ -545,7 +545,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
    * Keep compatibility by delegating existing-relation removal to the diff-update implementation.
    */
   private async removeExistingRelations(repository: Repository, inverseField: string, parentId: string): Promise<void> {
-    const targetModel = (repository as Repository & { getModelClass?: () => ModelCtor<BaseModel> & typeof BaseModel }).getModelClass?.();
+    const targetModel = (repository as Repository & { getModelClass?: () => ModelCtor<BaseModel> }).getModelClass?.();
     if (!targetModel) return;
     await this.removeExistingRelationsWithDiff(repository, targetModel, inverseField, parentId, []);
   }
@@ -555,7 +555,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
    */
   private async applyDeleteStrategy(
     repository: Repository,
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
+    targetModel: ModelCtor<BaseModel>,
     inverseField: string,
     parentId: string
   ): Promise<void> {
@@ -582,7 +582,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
    */
   private async applySingleItemDeleteStrategy(
     repository: Repository,
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
+    targetModel: ModelCtor<BaseModel>,
     inverseField: string,
     parentId: string,
     itemId: string
@@ -623,7 +623,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
    */
   private async groupItemsByDeleteStrategy(
     repository: Repository,
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
+    targetModel: ModelCtor<BaseModel>,
     inverseField: string,
     items: { id: string; parentId: string }[]
   ): Promise<{
@@ -719,7 +719,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
    */
   private async applyBatchDeleteStrategy(
     repository: Repository,
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
+    targetModel: ModelCtor<BaseModel>,
     inverseField: string,
     parentIds: string[]
   ): Promise<void> {
@@ -748,7 +748,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
   /**
    * Strip compute fields from child-model input so clients cannot override them.
    */
-  private stripChildComputeFields(childCtor: ModelCtor<BaseModel> & typeof BaseModel, row: unknown): ObjectRecord {
+  private stripChildComputeFields(childCtor: ModelCtor<BaseModel>, row: unknown): ObjectRecord {
     const obj = this.ensureObject(row);
     try {
       const childMeta = MetadataStorage.instance.getModelMetadata(childCtor);

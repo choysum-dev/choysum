@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
-import type { ModelClass } from '../model/types';
-import type { FieldSelection } from '../repository/types';
+import type { ModelClass, ModelCtor, RowOf } from '../model/types';
+import type { FieldSelection, Insertable, Updateable, PartialOrProjected, RowOrProjected } from '../repository/types';
 import { Field, Model } from '../decorator';
 import { CreateOperations } from '../model/model_create';
 import { UpdateOperations } from '../model/model_update';
@@ -20,21 +20,21 @@ class RelationFacadeOverrideModel extends BaseModel {
   @Field({ type: 'varchar', size: 64 })
   Name!: string;
 
-  static override async Create<T extends BaseModel>(
-    this: ModelClass<T>,
-    value: Record<string, any>,
-    _returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    return { Id: 'OVERRIDE-CREATE', ...value } as T;
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    _returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    return { Id: 'OVERRIDE-CREATE', ...value } as RowOrProjected<RowOf<C>, F>;
   }
 
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelClass<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Record<string, any>,
-    _returnFields?: FieldSelection<T>
-  ): Promise<Partial<T>> {
-    return { Id: id, ...values } as Partial<T>;
+    values: Partial<Updateable<RowOf<C>>>,
+    _returnFields?: F
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
+    return { Id: id, ...values } as unknown as PartialOrProjected<RowOf<C>, F>;
   }
 }
 

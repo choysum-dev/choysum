@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import type { ModelCtor } from '../model/types';
 import { FieldMetadata } from './field';
 import { ServiceMetadata } from './service';
 import type { ConstraintMeta } from './constraint';
@@ -104,7 +105,7 @@ export type ParsedDep =
  */
 export interface ParentComputeTrigger {
   /** Parent model constructor, stored so the parent model can be accessed directly. */
-  parentModelCtor: typeof BaseModel;
+  parentModelCtor: ModelCtor;
 
   /** Parent compute field that must be recomputed. */
   parentComputeField: string;

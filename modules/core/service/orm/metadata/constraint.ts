@@ -69,7 +69,7 @@ export interface ValidationIssue {
  */
 export interface ConstraintContext<TModel extends BaseModel = BaseModel> {
   mode: ConstraintMode;
-  model: ModelCtor<TModel> & typeof BaseModel;
+  model: ModelCtor<TModel>;
   metadata: ModelMetadata;
   self?: TModel;
   current?: Partial<TModel> & ObjectRecord;

@@ -16,7 +16,7 @@ import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 import type { ObjectRecord } from '../../../utils/types';
 
 type ModelOnchangePrepareParams = {
-  ModelCtor: ModelCtor<BaseModel> & typeof BaseModel;
+  ModelCtor: ModelCtor<BaseModel>;
   draft: OnchangeDraft;
   changed: Array<string | BaseModel>;
 };

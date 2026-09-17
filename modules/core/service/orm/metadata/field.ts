@@ -22,7 +22,7 @@ export type StandardFields = string | number | boolean | bigint | Date | Decimal
  * Metadata for a ManyToOne relation field.
  */
 export type ManyToOneMetadata<T extends BaseModel> = {
-  targetModel: () => ModelCtor<T> & typeof BaseModel;
+  targetModel: () => ModelCtor<T>;
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
 };
@@ -31,7 +31,7 @@ export type ManyToOneMetadata<T extends BaseModel> = {
  * Metadata for a OneToMany relation field.
  */
 export type OneToManyMetadata<T extends BaseModel> = {
-  targetModel: () => ModelCtor<T> & typeof BaseModel;
+  targetModel: () => ModelCtor<T>;
   inverseField: OneToManyInverseFieldKey<T>;
 };
 
@@ -39,8 +39,8 @@ export type OneToManyMetadata<T extends BaseModel> = {
  * Metadata for a ManyToMany relation field.
  */
 export type ManyToManyMetadata<TJoin extends BaseModel, TTarget extends BaseModel> = {
-  joinModel: () => ModelCtor<TJoin> & typeof BaseModel;
-  targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
+  joinModel: () => ModelCtor<TJoin>;
+  targetModel: () => ModelCtor<TTarget>;
   joinField: KeysOfType<TJoin, BaseModel>;
   inverseJoinField: KeysOfType<TJoin, BaseModel>;
 };
@@ -74,11 +74,11 @@ export interface FieldRelatedOption {
  * Relation contract used by flat @Field options.
  */
 export type FieldRelationOption<TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> = {
-  targetModel?: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
+  targetModel?: (() => ModelCtor<TTarget>) | string;
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   inverseField?: string;
-  joinModel?: () => ModelCtor<TJoin> & typeof BaseModel;
+  joinModel?: () => ModelCtor<TJoin>;
   joinField?: string;
   inverseJoinField?: string;
 };
@@ -172,7 +172,7 @@ type FlatRefRelationOption = {
 };
 
 type FlatManyToOneRelationOption<TTarget extends BaseModel> = {
-  targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
+  targetModel: () => ModelCtor<TTarget>;
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   inverseField?: never;
@@ -182,7 +182,7 @@ type FlatManyToOneRelationOption<TTarget extends BaseModel> = {
 };
 
 type FlatOneToManyRelationOption<TTarget extends BaseModel> = {
-  targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
+  targetModel: () => ModelCtor<TTarget>;
   /** FK on the target that points back to the host (ManyToOne or ManyToOneRef). */
   inverseField: OneToManyInverseFieldKey<TTarget>;
   onDelete?: never;
@@ -193,8 +193,8 @@ type FlatOneToManyRelationOption<TTarget extends BaseModel> = {
 };
 
 type FlatManyToManyRelationOption<TJoin extends BaseModel, TTarget extends BaseModel> = {
-  targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
-  joinModel: () => ModelCtor<TJoin> & typeof BaseModel;
+  targetModel: () => ModelCtor<TTarget>;
+  joinModel: () => ModelCtor<TJoin>;
   /** FK on the join row that points to the host (same KeysOfType as ManyToManyMetadata). */
   joinField: KeysOfType<TJoin, BaseModel>;
   /** FK on the join row that points to the relation target. */
@@ -683,11 +683,11 @@ export interface ColumnOptions<TModel extends BaseModel = BaseModel, TValue = un
 }
 
 type RuntimeRelationMetadata = {
-  targetModel?: () => ModelCtor<BaseModel> & typeof BaseModel;
+  targetModel?: () => ModelCtor<BaseModel>;
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   inverseField?: string;
-  joinModel?: () => ModelCtor<BaseModel> & typeof BaseModel;
+  joinModel?: () => ModelCtor<BaseModel>;
   joinField?: string;
   inverseJoinField?: string;
 };

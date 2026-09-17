@@ -35,7 +35,7 @@ const defaultModelOnchangeExecutionDeps: ModelOnchangeExecutionDeps = {
 
 export async function executePreparedModelOnchangePreview(
   params: {
-    ModelCtor: ModelCtor<BaseModel> & typeof BaseModel;
+    ModelCtor: ModelCtor<BaseModel>;
     draft: OnchangeDraft;
     prepared: ModelOnchangePreparation;
     prefetchTimeMs: number;

@@ -3,7 +3,7 @@
 
 import { RelationFactory } from '../relation';
 import type { ExtractedRelations } from '../relation/types';
-import type { Insertable, FieldSelection } from '../repository/types';
+import type { Insertable, FieldSelection, QueryCondition } from '../repository/types';
 import type BaseModel from './model';
 import { getModelRepository } from './model_internal_facade';
 import { browseManyModels, browseModel, searchModels } from './model_read_facade';
@@ -510,7 +510,7 @@ export class CreateOperations {
     }
 
     if (returnFields) {
-      return (await searchModels(ModelCtor, ['Id', 'in', parentIds], { fields: returnFields })) as T[];
+      return (await searchModels(ModelCtor, ['Id', 'in', parentIds] as QueryCondition<T>, { fields: returnFields })) as T[];
     }
     return (await browseManyModels(ModelCtor, parentIds)) as T[];
   }

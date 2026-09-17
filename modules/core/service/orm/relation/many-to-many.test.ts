@@ -2,15 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
-import type { ModelClass } from '../model/types';
-import type { FieldSelection } from '../repository/types';
+import type { ModelClass, ModelCtor, RowOf } from '../model/types';
+import type { FieldSelection, Insertable, Updateable, PartialOrProjected, RowOrProjected } from '../repository/types';
 import { Field, Model } from '../decorator';
 import { MetadataStorage } from '../metadata';
 import { Repository } from '../repository/repository';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { ManyToManyProcessor } from './many-to-many';
 
-type ModelCtor<T extends BaseModel> = { new (...args: never[]): T } & typeof BaseModel;
 
 type JoinRow = {
   Id: string;
@@ -100,23 +99,23 @@ class ManyToManyTarget extends BaseModel {
   static createCalls: Array<Record<string, any>> = [];
   static updateCalls: Array<{ id: string; values: Record<string, any> }> = [];
 
-  static override async Create<T extends BaseModel>(
-    this: ModelClass<T>,
-    value: Record<string, any>,
-    _returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    _returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     ManyToManyTarget.createCalls.push({ ...value });
-    return { Id: `NEW-TARGET-${ManyToManyTarget.createCalls.length}`, ...value } as T;
+    return { Id: `NEW-TARGET-${ManyToManyTarget.createCalls.length}`, ...value } as RowOrProjected<RowOf<C>, F>;
   }
 
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelClass<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Record<string, any>,
-    _returnFields?: FieldSelection<T>
-  ): Promise<Partial<T>> {
+    values: Partial<Updateable<RowOf<C>>>,
+    _returnFields?: F
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     ManyToManyTarget.updateCalls.push({ id, values: { ...values } });
-    return { Id: id, ...values } as Partial<T>;
+    return { Id: id, ...values } as unknown as Partial<RowOf<C>> as unknown as PartialOrProjected<RowOf<C>, F>;
   }
 }
 

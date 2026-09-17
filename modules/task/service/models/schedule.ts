@@ -4,7 +4,8 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/query';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
+import { projectToSelection } from '@/core/service/api/selection';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
@@ -12,6 +13,52 @@ import { _lt } from '../i18n';
 import Job from './job';
 import { clampLimit } from './_limit';
 import { computeNextRunAt, assertTimezone, applyNextRunPreview } from './_cron';
+
+const NEXT_RUN_PREVIEW_DEPS = ['Active', 'CronExpr', 'Timezone', 'NextRunAt'] as const;
+
+function isFullFieldSelection(fields?: FieldSelection<Schedule>): boolean {
+  return fields == null || fields.length === 0 || fields.includes('*');
+}
+
+function wantsNextRunPreview(fields?: FieldSelection<Schedule>): boolean {
+  return isFullFieldSelection(fields) || Boolean(fields?.includes('NextRunAt' as never));
+}
+
+/**
+ * Expand Search fields so NextRunAt preview has Active/CronExpr/Timezone when needed.
+ * Preserves deep-relation entries from the caller selection.
+ */
+function fieldsForScheduleListSearch(fields?: FieldSelection<Schedule>): FieldSelection<Schedule> | undefined {
+  if (!wantsNextRunPreview(fields) || isFullFieldSelection(fields) || !fields) return fields;
+  const present = new Set<string>();
+  for (const entry of fields) {
+    if (typeof entry === 'string') present.add(entry);
+    else if (entry && typeof entry === 'object') {
+      for (const key of Object.keys(entry)) present.add(key);
+    }
+  }
+  const next = [...fields] as Array<string | Record<string, unknown>>;
+  for (const dep of NEXT_RUN_PREVIEW_DEPS) {
+    if (!present.has(dep)) next.push(dep);
+  }
+  return next as FieldSelection<Schedule>;
+}
+
+function mapSchedulesWithNextRunPreview<F extends FieldSelection<Schedule> | undefined>(
+  items: Array<object>,
+  fields?: F
+): Array<RowOrProjected<Schedule, F>> {
+  if (!wantsNextRunPreview(fields)) {
+    return items as Array<RowOrProjected<Schedule, F>>;
+  }
+  return items.map(item => {
+    const previewed = applyNextRunPreview(item as Parameters<typeof applyNextRunPreview>[0]);
+    if (!fields || isFullFieldSelection(fields)) {
+      return previewed as RowOrProjected<Schedule, F>;
+    }
+    return projectToSelection(previewed as object, fields) as RowOrProjected<Schedule, F>;
+  });
+}
 
 /**
  * Filter and pagination options for paged schedule listing.
@@ -273,24 +320,39 @@ export default class Schedule extends BaseModel {
   }
 
   /** Lists schedules using a raw query condition. */
-  static async ListSchedules(condition: QueryCondition<Schedule> | [] = [], options?: SearchOptions<Schedule>): Promise<Schedule[]> {
-    const items = await this.Search(condition, options);
-    return items.map(item => applyNextRunPreview(item));
+  static async ListSchedules<F extends FieldSelection<Schedule> | undefined = undefined>(
+    condition: QueryCondition<Schedule> | [] = [],
+    options?: Omit<SearchOptions<Schedule>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<Schedule, F>>> {
+    const fields = options?.fields;
+    const items = await this.Search(condition, {
+      ...options,
+      fields: fieldsForScheduleListSearch(fields) as F | undefined,
+    });
+    return mapSchedulesWithNextRunPreview(items as Array<object>, fields);
   }
 
   /** Lists schedules with filter, pagination, and total-count metadata. */
-  static async ListSchedulesPaged(params: ListSchedulesParams = {}): Promise<{ items: Schedule[]; total: number; limit: number; offset: number }> {
+  static async ListSchedulesPaged<F extends FieldSelection<Schedule> | undefined = undefined>(
+    params: Omit<ListSchedulesParams, 'fields'> & { fields?: F } = {}
+  ): Promise<{ items: Array<RowOrProjected<Schedule, F>>; total: number; limit: number; offset: number }> {
     const condition = buildScheduleCondition(params);
     const limit = clampLimit(params.limit, 50, 500);
     const offset = normalizeOffset(params.offset);
     const orderBy = params.orderBy ?? ({ field: 'CreatedAt', order: 'desc' } as OrderBy<Schedule>);
+    const fields = params.fields;
     const items = await this.Search(condition, {
       limit,
       offset,
       orderBy,
-      fields: params.fields,
+      fields: fieldsForScheduleListSearch(fields) as F | undefined,
     });
     const total = Number(await this.Count(condition as any)) || 0;
-    return { items: items.map(item => applyNextRunPreview(item)), total, limit, offset };
+    return {
+      items: mapSchedulesWithNextRunPreview(items as Array<object>, fields),
+      total,
+      limit,
+      offset,
+    };
   }
 }

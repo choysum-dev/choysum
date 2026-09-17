@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor } from '@/core/service';
+import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
+import { projectToSelection } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
 import type { ModelConstructor } from '@/core/rpc/types';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
@@ -110,21 +111,15 @@ export function assertMessageType(type: string): MessageTypeLiteral {
   });
 }
 
-type MessageInsert = Partial<Insertable<Message>>;
-
-function prepareCreatePayload(value: MessageInsert): MessageInsert {
+function prepareCreatePayload(payload: Record<string, unknown>): void {
   const uid = getUserId();
-  const payload: MessageInsert = {
-    ...value,
-    AuthorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
-  };
-  if (value.Type == null || String(value.Type).trim() === '') {
+  payload.AuthorUid = uid == null || String(uid).trim() === '' ? null : String(uid).trim();
+  if (payload.Type == null || String(payload.Type).trim() === '') {
     // Omit Type so the field default (`comment`) applies.
     delete payload.Type;
   } else {
-    payload.Type = assertMessageType(String(value.Type));
+    payload.Type = assertMessageType(String(payload.Type));
   }
-  return payload;
 }
 
 /**
@@ -144,15 +139,18 @@ function newMutationId(): string {
   return `m${token}`.slice(0, 20);
 }
 
-function ensureIdInFields(fields: FieldSelection<Message>): FieldSelection<Message> {
-  if (fields.includes('*') || fields.includes('Id')) return fields;
-  return ['Id', ...fields];
-}
-
+/**
+ * Widen Create selection so tip/fan-out can read Model/ResId/CreatedAt/AuthorUid/CompanyId.
+ * Id is always present on Create results even when omitted from the selection.
+ */
 function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Message> {
-  let next = ensureIdInFields(fields);
+  // Empty selection means full row (Projected<T, []> === Selectable<T>); tip fields are included.
+  if (fields.length === 0 || fields.includes('*')) {
+    return ['*'];
+  }
+  let next = fields;
   for (const field of ['Model', 'ResId', 'CreatedAt', 'AuthorUid', 'CompanyId'] as const) {
-    if (!next.includes('*') && !next.includes(field)) {
+    if (!next.includes(field)) {
       next = [field, ...next];
     }
   }
@@ -283,7 +281,10 @@ export default class Message extends PolymorphicRecordModel {
    * Optional AttachmentObjectId dials document.AttachmentBinding.Bind after create.
    * On success, fans out follower Notifications and best-effort Publishes thread/inbox tips.
    */
-  public static async Post(req: PostMessageReq, fields?: FieldSelection<Message>): Promise<Message> {
+  public static async Post<F extends FieldSelection<Message> = typeof DEFAULT_POST_FIELDS>(
+    req: PostMessageReq,
+    fields?: F
+  ): Promise<RowOrProjected<Message, F>> {
     if (!req || typeof req !== 'object') {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Post requires a payload' });
     }
@@ -315,7 +316,7 @@ export default class Message extends PolymorphicRecordModel {
       }
     }
 
-    // Tip needs Id/Model/ResId even when the caller asks for a narrow field set.
+    // Tip/fan-out need Model/ResId/... even when the caller asks for a narrow field set.
     const createFields = ensureTipFields(returnFields);
     const created = await this.Create(
       {
@@ -324,18 +325,20 @@ export default class Message extends PolymorphicRecordModel {
         Model: model,
         ResId: resId,
         CompanyId: companyId,
-      } as MessageInsert,
+      },
       createFields
     );
 
+    // Create must return Id even for narrow selections; Bind, fan-out, and tip all depend on it.
+    const ownerRecordId = String((created as { Id?: unknown }).Id || '').trim();
+    if (!ownerRecordId) {
+      throw newMessageError({
+        code: MessageErrCode.INVALID_ARGUMENT,
+        message: 'Post created row without Id',
+      });
+    }
+
     if (attachmentObjectId && bind) {
-      const ownerRecordId = String((created as Message).Id || '').trim();
-      if (!ownerRecordId) {
-        throw newMessageError({
-          code: MessageErrCode.ATTACHMENT_BIND_FAILED,
-          message: 'Message Id is required to bind an attachment',
-        });
-      }
       const mutationId = String(req.AttachmentMutationId || '').trim() || newMutationId();
       try {
         await bind({
@@ -361,30 +364,36 @@ export default class Message extends PolymorphicRecordModel {
 
     await Notification.FanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
-    return created;
+    // Tip/bind used an augmented Create selection; return only the caller's projection.
+    return projectToSelection(created as object, returnFields) as RowOrProjected<Message, F>;
   }
 
   /**
    * Create stamps Type and AuthorUid from trusted identity.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    const payload = prepareCreatePayload(value as MessageInsert);
-    return super.Create<T>(payload as Partial<Insertable<T>>, returnFields);
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    const payload = { ...value };
+    prepareCreatePayload(payload as Record<string, unknown>);
+    return await super.Create<C, F>(payload, returnFields);
   }
 
   /**
    * CreateMany stamps Type and AuthorUid on every row.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    const rows = (values || []).map(row => prepareCreatePayload(row as MessageInsert));
-    return super.CreateMany<T>(rows as Partial<Insertable<T>>[], returnFields);
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    const rows = (values || []).map(row => {
+      const payload = { ...row };
+      prepareCreatePayload(payload as Record<string, unknown>);
+      return payload;
+    });
+    return await super.CreateMany<C, F>(rows, returnFields);
   }
 }

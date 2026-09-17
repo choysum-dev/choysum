@@ -745,7 +745,7 @@ export function Field(
     if (uploadLimits.maxHeight !== undefined) meta.maxHeight = uploadLimits.maxHeight;
 
     // Write metadata
-    const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;
+    const ctor = target.constructor as ModelCtor<BaseModel>;
     const prev = MetadataStorage.instance.getModelMetadata(ctor);
     const existingCompute = prev?.computeHandlers?.get(name);
     const existingSqlCompute = prev?.sqlComputeHandlers?.get(name);

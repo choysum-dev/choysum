@@ -88,8 +88,13 @@ type Resolver struct {
 	lockfileOnce sync.Once    // protects lockfile loading
 	lockfile     *EsmLockfile // cached parsed lockfile (nil if not loaded)
 	lockfileErr  error        // error from last lockfile load attempt
-	logger       *slog.Logger // logger for structured metrics output (optional)
-	metrics      *Metrics     // resolver metrics (nil if not initialised)
+	// barePins maps package names ("vue", "@scope/pkg") to exact versions
+	// ("3.5.38"). Applied after lockfile lookup to bare imports and to esm.sh
+	// absolute peer paths/URLs (including ranges). Needed because esbuild Alias
+	// does not run before this plugin's OnResolve for bare imports.
+	barePins map[string]string
+	logger   *slog.Logger // logger for structured metrics output (optional)
+	metrics  *Metrics     // resolver metrics (nil if not initialised)
 	// retryBackoff is the sleep before retry attempt N (1 = first retry).
 	// Production default is 1s, 2s, then 4s (capped at 10s).
 	retryBackoff func(attempt int) time.Duration
@@ -208,6 +213,61 @@ func WithModulePath(path string) Option {
 	}
 }
 
+// WithBareImportPins forces listed packages to exact versions before upstream
+// fetch. Keys are package names ("vue", "@scope/pkg"); values are versions
+// ("3.5.38"). Applies to bare imports and to esm.sh absolute paths / URLs that
+// carry ranges or other versions (e.g. /vue@^3.0.0 → /vue@3.5.38), so peer
+// imports from pinia/vue-i18n share one Vue instance. Subpaths and ?query#hash
+// are preserved. Multiple calls merge; later values win for the same key.
+func WithBareImportPins(pins map[string]string) Option {
+	return func(r *Resolver) {
+		if len(pins) == 0 {
+			return
+		}
+		if r.barePins == nil {
+			r.barePins = make(map[string]string, len(pins))
+		}
+		for name, ver := range pins {
+			name = strings.TrimSpace(name)
+			ver = strings.TrimSpace(ver)
+			if name == "" || ver == "" {
+				continue
+			}
+			if !isExactPinVersion(ver) {
+				logger := r.logger
+				if logger == nil {
+					logger = slog.Default()
+				}
+				logger.Warn("ignoring non-exact bare import pin", "package", name, "version", ver)
+				continue
+			}
+			r.barePins[name] = ver
+		}
+	}
+}
+
+// isExactPinVersion reports whether ver is an exact pin (not a range, dist-tag,
+// or wildcard). Accepts forms like "3.5.38", "v3.5.38", and "3.5.38-beta.1".
+func isExactPinVersion(ver string) bool {
+	lower := strings.ToLower(strings.TrimSpace(ver))
+	if lower == "" || lower == "*" || lower == "latest" || lower == "next" {
+		return false
+	}
+	if strings.ContainsAny(lower, "^~*<>=| ") {
+		return false
+	}
+	core := strings.TrimPrefix(lower, "v")
+	if core == "" || core[0] < '0' || core[0] > '9' {
+		return false
+	}
+	for _, part := range strings.Split(core, ".") {
+		if part == "x" {
+			return false
+		}
+	}
+	return true
+}
+
 // WithLogger sets the structured logger for metrics output. When set, the
 // resolver emits cache/download metrics at the end of each build.
 func WithLogger(logger *slog.Logger) Option {
@@ -324,7 +384,8 @@ func (r *Resolver) Plugin() api.Plugin {
 				// Rewrite upstream-internal absolute paths (e.g. "/pkg@ver/deno/...")
 				// back to full esm.sh URLs so esbuild can continue resolving.
 				if isUpstreamInternalPath(args.Path) {
-					esmURL := r.upstream + args.Path
+					pinnedPath := r.applyBareImportPinToAbsPath(args.Path)
+					esmURL := r.upstream + pinnedPath
 					return api.OnResolveResult{
 						Path:      esmURL,
 						Namespace: "choysum-esm",
@@ -341,6 +402,7 @@ func (r *Resolver) Plugin() api.Plugin {
 					r.metrics.Errors.Add(1)
 					return api.OnResolveResult{}, r.formatError("lockfile error", args.Path, r.effectiveLockfilePath(), lockErr.Error())
 				}
+				spec = r.applyBareImportPin(spec)
 				spec = rewriteProductionSpecifier(spec)
 
 				// CSS imports from any target are external.
@@ -526,6 +588,201 @@ func (r *Resolver) lockedSpecifier(specifier string) (string, error) {
 	return LookupLockedSpec(lock, specifier), nil
 }
 
+// applyBareImportPin forces pinned packages to the configured exact version,
+// including semver ranges and mismatched exact versions (vue@^3.0.0 → vue@3.5.38).
+func (r *Resolver) applyBareImportPin(specifier string) string {
+	if r == nil || len(r.barePins) == 0 {
+		return specifier
+	}
+	trimmed := strings.TrimSpace(specifier)
+	// Full URLs can arrive as plain specifiers; splitBarePackage would treat
+	// "https:" as the package name, so pin them through the URL helper instead.
+	if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
+		return r.applyBareImportPinToURL(specifier)
+	}
+	core, suffix := splitQueryHash(trimmed)
+	pkg, subpath, _ := splitBarePackage(core)
+	ver, ok := r.barePins[pkg]
+	if !ok || ver == "" {
+		return specifier
+	}
+	out := pkg + "@" + ver
+	if subpath != "" || strings.HasSuffix(core, "/") {
+		out += "/" + subpath
+	}
+	return out + suffix
+}
+
+// applyBareImportPinToAbsPath rewrites esm.sh absolute paths like
+// /vue@^3.0.0?target=es2020 when the package is pinned. Leading esm.sh
+// routing prefixes (/v135, /stable, /npm) are preserved but skipped when
+// matching the package name so range pins still apply.
+func (r *Resolver) applyBareImportPinToAbsPath(path string) string {
+	if r == nil || len(r.barePins) == 0 {
+		return path
+	}
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+		return path
+	}
+	prefix, rest := peelESMPathPrefixes(strings.TrimPrefix(path, "/"))
+	pinned := r.applyBareImportPin(rest)
+	if pinned == rest {
+		return path
+	}
+	if prefix == "" {
+		return "/" + pinned
+	}
+	return "/" + prefix + "/" + pinned
+}
+
+// peelESMPathPrefixes splits leading esm.sh routing segments (vNNN, stable, npm)
+// from the package path. Unknown first segments are left in rest so unversioned
+// package names are not mistaken for routing prefixes.
+func peelESMPathPrefixes(path string) (prefix, rest string) {
+	rest = path
+	var parts []string
+	for rest != "" {
+		seg, after, found := strings.Cut(rest, "/")
+		if seg == "" || !(isESMVersionPrefix(seg) || seg == "stable" || seg == "npm") {
+			break
+		}
+		parts = append(parts, seg)
+		if !found {
+			rest = ""
+			break
+		}
+		rest = after
+	}
+	return strings.Join(parts, "/"), rest
+}
+
+// applyBareImportPinToURL rewrites the path of an absolute HTTP(S) URL when the
+// package is pinned. Only URLs on the configured upstream host are rewritten so
+// third-party hosts (e.g. unpkg) are left unchanged. When upstream is unset,
+// URLs are left unchanged (fail closed).
+func (r *Resolver) applyBareImportPinToURL(raw string) string {
+	if r == nil || len(r.barePins) == 0 {
+		return raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Path == "" {
+		return raw
+	}
+	upstream := strings.TrimSpace(r.upstream)
+	if upstream == "" {
+		return raw
+	}
+	up, upErr := url.Parse(upstream)
+	if upErr != nil || !sameUpstreamOrigin(u, up) {
+		return raw
+	}
+	// Strip a configured upstream base path (mirror mounts like /esm) before
+	// matching pins, then re-attach it so peer URLs under the mirror still pin.
+	basePath := strings.TrimSuffix(up.Path, "/")
+	relPath := u.Path
+	if basePath != "" {
+		if relPath != basePath && !strings.HasPrefix(relPath, basePath+"/") {
+			return raw
+		}
+		relPath = strings.TrimPrefix(relPath, basePath)
+		if relPath == "" {
+			relPath = "/"
+		}
+	}
+	pinnedPath := r.applyBareImportPinToAbsPath(relPath)
+	if pinnedPath == relPath {
+		return raw
+	}
+	u.Path = basePath + pinnedPath
+	u.RawPath = ""
+	return u.String()
+}
+
+// sameUpstreamOrigin reports whether u is the same origin as the configured
+// upstream. Hostname is compared case-insensitively; default ports (:80/:443)
+// are normalized so https://esm.sh:443 matches https://esm.sh, while distinct
+// explicit ports (e.g. localhost:8080 vs :9090) still fail closed.
+func sameUpstreamOrigin(u, up *url.URL) bool {
+	if u == nil || up == nil {
+		return false
+	}
+	if !strings.EqualFold(u.Scheme, up.Scheme) {
+		return false
+	}
+	if !strings.EqualFold(u.Hostname(), up.Hostname()) {
+		return false
+	}
+	return effectiveURLPort(u) == effectiveURLPort(up)
+}
+
+func effectiveURLPort(u *url.URL) string {
+	if p := u.Port(); p != "" {
+		return p
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "https":
+		return "443"
+	case "http":
+		return "80"
+	default:
+		return ""
+	}
+}
+
+func splitQueryHash(s string) (core, suffix string) {
+	if i := strings.IndexAny(s, "?#"); i >= 0 {
+		return s[:i], s[i:]
+	}
+	return s, ""
+}
+
+// splitBarePackage splits a bare import into package name, optional subpath,
+// and whether the package segment already carries an @version.
+func splitBarePackage(specifier string) (pkg, subpath string, versioned bool) {
+	specifier = strings.TrimSpace(specifier)
+	if specifier == "" {
+		return "", "", false
+	}
+	if i := strings.IndexAny(specifier, "?#"); i >= 0 {
+		specifier = specifier[:i]
+	}
+	if strings.HasPrefix(specifier, "@") {
+		rest := specifier[1:]
+		slash := strings.IndexByte(rest, '/')
+		if slash < 0 {
+			// Scope-only form (@scope or @scope@1.0.0); strip a trailing @version.
+			if at := strings.IndexByte(rest, '@'); at > 0 {
+				return "@" + rest[:at], "", true
+			}
+			return specifier, "", false
+		}
+		scope := rest[:slash]
+		after := rest[slash+1:]
+		name, rem, hasRem := strings.Cut(after, "/")
+		if at := strings.IndexByte(name, '@'); at > 0 {
+			versioned = true
+			pkg = "@" + scope + "/" + name[:at]
+		} else {
+			pkg = "@" + scope + "/" + name
+		}
+		if hasRem {
+			subpath = rem
+		}
+		return pkg, subpath, versioned
+	}
+	name, rem, hasRem := strings.Cut(specifier, "/")
+	if at := strings.IndexByte(name, '@'); at > 0 {
+		versioned = true
+		pkg = name[:at]
+	} else {
+		pkg = name
+	}
+	if hasRem {
+		subpath = rem
+	}
+	return pkg, subpath, versioned
+}
+
 // rewriteProductionSpecifier rewrites selected package bare specifiers to
 // explicit production entry files when upstream defaults are known to resolve
 // to development variants.
@@ -577,7 +834,7 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 
 	// Already an absolute HTTP(S) URL: resolve in namespace.
 	if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-		resolvedPath := trimCSSWrapperSuffix(args.Path)
+		resolvedPath := trimCSSWrapperSuffix(r.applyBareImportPinToURL(args.Path))
 		// CSS URL tokens in stylesheet content should remain external.
 		if args.Kind == api.ResolveCSSURLToken {
 			return api.OnResolveResult{Path: resolvedPath, External: true}, nil
@@ -628,7 +885,7 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		}
 	}
 
-	resolvedURL = trimCSSWrapperSuffix(resolvedURL)
+	resolvedURL = trimCSSWrapperSuffix(r.applyBareImportPinToURL(resolvedURL))
 
 	// CSS URL tokens in stylesheet content should remain external.
 	if args.Kind == api.ResolveCSSURLToken {

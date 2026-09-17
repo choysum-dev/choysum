@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-export type { DeepRelationSelection, FieldSelection, Projected } from '../orm/repository/types';
-export { fields } from '../orm/repository/types';
+export type { DeepRelationSelection, FieldSelection, Projected, PartialOrProjected, RowOrProjected } from '../orm/repository/types';
+export { fields, projectToSelection } from '../orm/repository/types';

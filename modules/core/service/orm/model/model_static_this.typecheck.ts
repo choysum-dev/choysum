@@ -31,6 +31,17 @@ function typecheckStaticThis(): void {
   });
   void searchedProjected;
 
+  // Concrete ctor: literal fields project without FieldSelection cast
+  const searchedLiteral = Probe.Search([], { fields: ['Id'] as const });
+  void searchedLiteral;
+  void searchedLiteral.then(rows => {
+    const id: string | undefined = rows[0]?.Id;
+    void id;
+    // @ts-expect-error Name was not selected in projected Search
+    const leaked: string | undefined = rows[0]?.Name;
+    void leaked;
+  });
+
   const createdProjected: Promise<Projected<Probe, ['Name']>> = Probe.Create({ Name: 'x' }, fields<Probe>()('Name'));
   void createdProjected;
 

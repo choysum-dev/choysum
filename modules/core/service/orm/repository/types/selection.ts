@@ -44,6 +44,77 @@ export type Projected<T, F extends FieldSelection<T>> = F extends readonly []
     : Selectable<T>;
 
 /**
+ * When `F` is a concrete {@link FieldSelection} (literal tuple / `fields()`), narrow to
+ * {@link Projected}. When `F` is the wide `FieldSelection<T>` itself, return `Partial<T>`
+ * (runtime may omit keys; `Projected` would otherwise collapse to full `Selectable` via `'*'`).
+ * When `F` is not a selection (e.g. `undefined`) or `any` (common test casts), keep full `T`.
+ * `never` short-circuits to full `T` so conditional distribution does not collapse the result.
+ */
+type IsAny<T> = 0 extends 1 & T ? true : false;
+type IsNever<T> = [T] extends [never] ? true : false;
+export type RowOrProjected<T, F> = IsAny<F> extends true
+  ? T
+  : IsNever<F> extends true
+    ? T
+    : F extends FieldSelection<T>
+      ? FieldSelection<T> extends F
+        ? Partial<T>
+        : Projected<T, F>
+      : T;
+
+/**
+ * Update returnFields result: unspecified / wide / `any` → {@link Partial};
+ * concrete selection → {@link Projected}.
+ *
+ * Differs from {@link RowOrProjected}, which keeps full `T` when `F` is not a
+ * selection (Create/Search full-row default). Update without `returnFields`
+ * returns `{ Id }` stubs at runtime, so Partial is the truthful default.
+ * `never` short-circuits to `Partial<T>` (same default as unspecified).
+ */
+export type PartialOrProjected<T, F> = IsAny<F> extends true
+  ? Partial<T>
+  : IsNever<F> extends true
+    ? Partial<T>
+    : F extends FieldSelection<T>
+      ? FieldSelection<T> extends F
+        ? Partial<T>
+        : Projected<T, F>
+      : Partial<T>;
+
+/**
+ * Narrow a row to the caller's field selection on a shallow copy (same prototype).
+ *
+ * Empty selection or `'*'` returns the original row (full-row contract).
+ * Nested relation entries keep the top-level key; source row is not mutated.
+ * Selected keys are read through the prototype chain so accessors are preserved.
+ */
+export function projectToSelection<T, F extends FieldSelection<T>>(row: object, selection: F): RowOrProjected<T, F> {
+  if (selection == null || selection.length === 0 || (selection as readonly unknown[]).includes('*')) {
+    return row as RowOrProjected<T, F>;
+  }
+  const keep = new Set<string>();
+  for (const entry of selection) {
+    if (typeof entry === 'string') keep.add(entry);
+    else if (entry && typeof entry === 'object') {
+      for (const key of Object.keys(entry as object)) keep.add(key);
+    }
+  }
+  const src = row as Record<string, unknown>;
+  const projected = Object.create(Object.getPrototypeOf(row)) as Record<string, unknown>;
+  for (const key of keep) {
+    if (!(key in src)) continue;
+    // defineProperty avoids `__proto__` / setter traps on the projected object.
+    Object.defineProperty(projected, key, {
+      value: src[key],
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+  return projected as RowOrProjected<T, F>;
+}
+
+/**
  * Build a field-selection tuple that preserves literal keys for {@link Projected} inference.
  *
  * @example

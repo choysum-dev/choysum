@@ -11,7 +11,8 @@ import {
   Insertable,
   Updateable,
   FieldSelection,
-  Projected,
+  PartialOrProjected,
+  RowOrProjected,
   SoftDeleteOptions,
   CountOptions,
   UpdateOptions,
@@ -23,7 +24,7 @@ import {
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
 import type { OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';
-import type { ModelClass, ModelCtor } from './types';
+import type { ModelCtor, RowOf } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
 import type { ObjectRecord } from '../../../utils/types';
@@ -93,10 +94,27 @@ import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 type ModelLoadFieldSelection = FieldSelection<ObjectRecord>;
 
-/** Bind collection `this` (factory construct only) to the facade ctor that includes BaseModel statics. */
-function asCollectionCtor<T extends BaseModel>(ctor: ModelClass<T>): ModelCtor<T> {
-  return ctor as ModelCtor<T>;
+/** Bind collection `this` to the facade ctor that includes BaseModel statics. */
+function asCollectionCtor<C extends ModelCtor>(ctor: C): ModelCtor<RowOf<C>> {
+  return ctor as unknown as ModelCtor<RowOf<C>>;
 }
+
+function asRow<C extends ModelCtor>(row: BaseModel): RowOf<C> {
+  return row as RowOf<C>;
+}
+
+function asRows<C extends ModelCtor>(rows: BaseModel[]): RowOf<C>[] {
+  return rows as RowOf<C>[];
+}
+
+function asPartialRows<C extends ModelCtor>(rows: Partial<BaseModel>[]): Partial<RowOf<C>>[] {
+  return rows as Partial<RowOf<C>>[];
+}
+
+function asPartialRow<C extends ModelCtor>(row: Partial<BaseModel>): Partial<RowOf<C>> {
+  return row as Partial<RowOf<C>>;
+}
+
 
 export type SqlComputeCtx<TModel extends BaseModel = BaseModel> = {
   field: {
@@ -301,7 +319,7 @@ class BaseModel {
    * Not `globalThis.pool`. Does not cross applications. See {@link pool}.
    */
   static pool<C extends ModelConstructor = never>(
-    this: typeof BaseModel,
+    this: ModelCtor,
     shortName: string
   ): ModelCtorOrMissingSentinel<C> {
     const app = String(MetadataStorage.instance.getModelMetadata(this as any)?.application || '').trim();
@@ -570,15 +588,18 @@ class BaseModel {
    * Resolves default values for a pending create payload via {@link runDefaultGetPipeline}.
    * Overrides should call `super.DefaultGet` to keep platform merge layers.
    */
-  static async DefaultGet<T extends BaseModel>(this: ModelClass<T>, value: Partial<Insertable<T>>): Promise<Partial<Insertable<T>>> {
-    return await runDefaultGetPipeline<T>(asCollectionCtor(this), value);
+  static async DefaultGet<C extends ModelCtor>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>
+  ): Promise<Partial<Insertable<RowOf<C>>>> {
+    return (await runDefaultGetPipeline(asCollectionCtor(this), value as never)) as Partial<Insertable<RowOf<C>>>;
   }
 
   /**
    * Returns readable field presentation metadata for the current request language.
    * Translates field titles and static selection labels; filters deny-read fields.
    */
-  static async FieldsGet<T extends BaseModel>(this: ModelClass<T>, fields?: string[], attributes?: string[]): Promise<Record<string, FieldsGetFieldMeta>> {
+  static async FieldsGet<C extends ModelCtor>(this: C, fields?: string[], attributes?: string[]): Promise<Record<string, FieldsGetFieldMeta>> {
     return await fieldsGetModels(asCollectionCtor(this), fields, attributes);
   }
 
@@ -586,51 +607,51 @@ class BaseModel {
    * Returns the stored language map for a translated field (data i18n).
    * Optional `langs` filters to the requested keys that exist.
    */
-  static async GetFieldTranslations<T extends BaseModel>(this: ModelClass<T>, id: string, fieldName: string, langs?: string[]): Promise<FieldTranslationsMap> {
-    return await getModelFieldTranslations<T>(asCollectionCtor(this), id, fieldName, langs);
+  static async GetFieldTranslations<C extends ModelCtor>(this: C, id: string, fieldName: string, langs?: string[]): Promise<FieldTranslationsMap> {
+    return await getModelFieldTranslations(asCollectionCtor(this), id, fieldName, langs);
   }
 
   /**
    * Patches translated field values by language key.
    * `string` writes the key; `false` deletes it; base `en_US` cannot be deleted.
    */
-  static async UpdateFieldTranslations<T extends BaseModel>(
-    this: ModelClass<T>,
+  static async UpdateFieldTranslations<C extends ModelCtor>(
+    this: C,
     id: string,
     fieldName: string,
     translations: Record<string, string | false>
   ): Promise<boolean> {
-    return await updateModelFieldTranslations<T>(asCollectionCtor(this), id, fieldName, translations);
+    return await updateModelFieldTranslations(asCollectionCtor(this), id, fieldName, translations);
   }
 
   /**
    * Returns the stored company map for a companyDependent field.
    * Optional `companyIds` filters to the requested keys that exist.
    */
-  static async GetFieldCompanyValues<T extends BaseModel>(this: ModelClass<T>, id: string, fieldName: string, companyIds?: string[]): Promise<FieldCompanyValuesMap> {
-    return await getModelFieldCompanyValues<T>(asCollectionCtor(this), id, fieldName, companyIds);
+  static async GetFieldCompanyValues<C extends ModelCtor>(this: C, id: string, fieldName: string, companyIds?: string[]): Promise<FieldCompanyValuesMap> {
+    return await getModelFieldCompanyValues(asCollectionCtor(this), id, fieldName, companyIds);
   }
 
   /**
    * Patches company-dependent field values by company id.
    * Scalar/`unknown` writes the key; `false` deletes it (D5 / D12).
    */
-  static async UpdateFieldCompanyValues<T extends BaseModel>(
-    this: ModelClass<T>,
+  static async UpdateFieldCompanyValues<C extends ModelCtor>(
+    this: C,
     id: string,
     fieldName: string,
     values: Record<string, unknown | false>
   ): Promise<boolean> {
-    return await updateModelFieldCompanyValues<T>(asCollectionCtor(this), id, fieldName, values);
+    return await updateModelFieldCompanyValues(asCollectionCtor(this), id, fieldName, values);
   }
 
   /**
    * Merges the effective PropertyDefinition schema with the record's properties map.
    * Browse/Search keep the field value as a map; Form UIs call this for the item list.
    */
-  static async ResolveProperties<T extends BaseModel>(
-    this: ModelClass<T>,
-    record: Partial<T> | Record<string, unknown> | null | undefined,
+  static async ResolveProperties<C extends ModelCtor>(
+    this: C,
+    record: Partial<RowOf<C>> | Record<string, unknown> | null | undefined,
     fieldName: string,
     opts?: ResolvePropertiesOptions
   ): Promise<ResolvedPropertyItem[]> {
@@ -643,272 +664,217 @@ class BaseModel {
    * Isolated models keep source ownership by default; pass `copyCompany: 'active'`
    * (or defaults) to rewrite the ownership field (company-field-design D10).
    */
-  static async Copy<T extends BaseModel>(this: ModelClass<T>, id: string, defaults?: Partial<Record<string, unknown>>, options?: CopyOptions): Promise<T> {
-    return await copyModel<T>(asCollectionCtor(this), id, defaults, options);
+  static async Copy<C extends ModelCtor>(
+    this: C,
+    id: string,
+    defaults?: Partial<Record<string, unknown>>,
+    options?: CopyOptions
+  ): Promise<RowOf<C>> {
+    return asRow<C>(await copyModel(asCollectionCtor(this), id, defaults, options));
   }
 
   /**
    * Name-match entry for relation typeahead (overridable).
    * Default: DisplayName `like` keyword And domain → Search.
    */
-  static async NameSearch<T extends BaseModel>(
-    this: ModelClass<T>,
+  static async NameSearch<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     name: string,
-    condition: QueryCondition<T> | [] = [],
-    options?: SearchOptions<T>
-  ): Promise<T[]> {
-    return await nameSearchModels<T>(asCollectionCtor(this), name, condition, options);
+    condition: QueryCondition<RowOf<C>> | [] = [],
+    options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    return asRows<C>(await nameSearchModels(asCollectionCtor(this), name, condition as never, options as never)) as Array<
+      RowOrProjected<RowOf<C>, F>
+    >;
   }
 
   /**
    * Quick-create by name for relation typeahead (overridable).
    * Default: write trim(name) into nameField or stored Name → Create.
    */
-  static async NameCreate<T extends BaseModel>(
-    this: ModelClass<T>,
+  static async NameCreate<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     name: string,
-    values?: Partial<Insertable<T>>,
-    options?: NameCreateOptions<T>
-  ): Promise<T> {
-    return await nameCreateModels<T>(asCollectionCtor(this), name, values, options);
+    values?: Partial<Insertable<RowOf<C>>>,
+    options?: Omit<NameCreateOptions<RowOf<C>>, 'returnFields'> & { returnFields?: F }
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    return asRow<C>(await nameCreateModels(asCollectionCtor(this), name, values as never, options as never)) as RowOrProjected<
+      RowOf<C>,
+      F
+    >;
   }
 
   /**
    * Creates one record and optionally returns a selected field projection.
    */
-  static Create<T extends BaseModel, F extends FieldSelection<T>>(
-    this: ModelClass<T>,
-    value: Partial<Insertable<T>>,
-    returnFields: F
-  ): Promise<Projected<T, F>>;
-  static Create<T extends BaseModel>(
-    this: ModelClass<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T>;
-  static async Create<T extends BaseModel>(
-    this: ModelClass<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    return await createModel<T>(asCollectionCtor(this), value, returnFields);
+  static async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    return asRow<C>(await createModel(asCollectionCtor(this), value as never, returnFields as never)) as RowOrProjected<
+      RowOf<C>,
+      F
+    >;
   }
 
   /**
    * Creates multiple records and optionally returns a selected field projection.
    */
-  static CreateMany<T extends BaseModel, F extends FieldSelection<T>>(
-    this: ModelClass<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields: F
-  ): Promise<Array<Projected<T, F>>>;
-  static CreateMany<T extends BaseModel>(
-    this: ModelClass<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]>;
-  static async CreateMany<T extends BaseModel>(
-    this: ModelClass<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    return await createManyModels<T>(asCollectionCtor(this), values, returnFields);
+  static async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    return asRows<C>(await createManyModels(asCollectionCtor(this), values as never, returnFields as never)) as Array<
+      RowOrProjected<RowOf<C>, F>
+    >;
   }
 
   /**
    * Loads a single record by Id.
    */
-  static Browse<T extends BaseModel, F extends FieldSelection<T>>(
-    this: ModelClass<T>,
+  static async Browse<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    fields: F,
+    fields?: F,
     options?: SoftDeleteOptions
-  ): Promise<Projected<T, F>>;
-  static Browse<T extends BaseModel>(
-    this: ModelClass<T>,
-    id: string,
-    fields?: FieldSelection<T>,
-    options?: SoftDeleteOptions
-  ): Promise<T>;
-  static async Browse<T extends BaseModel>(
-    this: ModelClass<T>,
-    id: string,
-    fields?: FieldSelection<T>,
-    options?: SoftDeleteOptions
-  ): Promise<T> {
-    return await browseModel<T>(asCollectionCtor(this), id, fields, options);
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    return asRow<C>(await browseModel(asCollectionCtor(this), id, fields as never, options)) as RowOrProjected<RowOf<C>, F>;
   }
 
   /**
    * Loads multiple records by Id while preserving BrowseMany compatibility.
    */
-  static BrowseMany<T extends BaseModel, F extends FieldSelection<T>>(
-    this: ModelClass<T>,
+  static async BrowseMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     ids: string[],
-    fields: F,
+    fields?: F,
     options?: SoftDeleteOptions
-  ): Promise<Array<Projected<T, F>>>;
-  static BrowseMany<T extends BaseModel>(
-    this: ModelClass<T>,
-    ids: string[],
-    fields?: FieldSelection<T>,
-    options?: SoftDeleteOptions
-  ): Promise<T[]>;
-  static async BrowseMany<T extends BaseModel>(
-    this: ModelClass<T>,
-    ids: string[],
-    fields?: FieldSelection<T>,
-    options?: SoftDeleteOptions
-  ): Promise<T[]> {
-    return await browseManyModels<T>(asCollectionCtor(this), ids, fields, options);
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    return asRows<C>(await browseManyModels(asCollectionCtor(this), ids, fields as never, options)) as Array<
+      RowOrProjected<RowOf<C>, F>
+    >;
   }
 
   /**
    * Searches for records matching a query condition.
    */
-  static Search<T extends BaseModel, F extends FieldSelection<T>>(
-    this: ModelClass<T>,
-    condition: QueryCondition<T> | [],
-    options: SearchOptions<T> & { fields: F }
-  ): Promise<Array<Projected<T, F>>>;
-  static Search<T extends BaseModel>(
-    this: ModelClass<T>,
-    condition?: QueryCondition<T> | [],
-    options?: SearchOptions<T>
-  ): Promise<T[]>;
-  static async Search<T extends BaseModel>(
-    this: ModelClass<T>,
-    condition: QueryCondition<T> | [] = [],
-    options?: SearchOptions<T>
-  ): Promise<T[]> {
-    return await searchModels<T>(asCollectionCtor(this), condition, options);
+  static async Search<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>> | [] = [],
+    options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    return asRows<C>(await searchModels(asCollectionCtor(this), condition as never, options as never)) as Array<
+      RowOrProjected<RowOf<C>, F>
+    >;
   }
 
   /**
    * Counts records matching a query condition.
    */
-  static async Count<T extends BaseModel>(
-    this: ModelClass<T>,
-    condition: QueryCondition<T> | [] = [],
+  static async Count<C extends ModelCtor>(
+    this: C,
+    condition: QueryCondition<RowOf<C>> | [] = [],
     options?: CountOptions
   ): Promise<number> {
-    return await countModels<T>(asCollectionCtor(this), condition, options);
+    return await countModels(asCollectionCtor(this), condition as never, options);
   }
 
   /**
    * Executes a grouped read and returns plain grouped results.
    */
-  static async ReadGroup<T extends BaseModel>(
-    this: ModelClass<T>,
-    groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
-    condition: QueryCondition<T> | [] = [],
-    options: ReadGroupOptions<T> = {}
+  static async ReadGroup<C extends ModelCtor>(
+    this: C,
+    groupby: Array<GroupBySpec<RowOf<C>> | GroupBySpec<RowOf<C>>[]> | [],
+    condition: QueryCondition<RowOf<C>> | [] = [],
+    options: ReadGroupOptions<RowOf<C>> = {}
   ): Promise<ReadGroupResult> {
-    return await readGroupedModels<T>(asCollectionCtor(this), groupby, condition, options);
+    return await readGroupedModels(asCollectionCtor(this), groupby as never, condition as never, options as never);
   }
 
   /**
    * Counts top-level groups for a grouped read query.
    */
-  static async ReadGroupCount<T extends BaseModel>(
-    this: ModelClass<T>,
-    groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
-    condition: QueryCondition<T> | [] = [],
-    options: ReadGroupCountOptions<T> = {}
+  static async ReadGroupCount<C extends ModelCtor>(
+    this: C,
+    groupby: Array<GroupBySpec<RowOf<C>> | GroupBySpec<RowOf<C>>[]> | [],
+    condition: QueryCondition<RowOf<C>> | [] = [],
+    options: ReadGroupCountOptions<RowOf<C>> = {}
   ): Promise<number> {
-    return await countGroupedModels<T>(asCollectionCtor(this), groupby, condition, options);
+    return await countGroupedModels(asCollectionCtor(this), groupby as never, condition as never, options as never);
   }
 
   /**
    * Updates all records matching a condition and optionally returns selected fields.
    */
-  static Update<T extends BaseModel, F extends FieldSelection<T>>(
-    this: ModelClass<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields: F,
+  static async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Array<Projected<T, F>>>;
-  static Update<T extends BaseModel>(
-    this: ModelClass<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
-  ): Promise<Partial<T>[]>;
-  static async Update<T extends BaseModel>(
-    this: ModelClass<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
-  ): Promise<Partial<T>[]> {
-    return await updateModels<T>(asCollectionCtor(this), condition, values, returnFields, options);
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
+    return asPartialRows<C>(
+      await updateModels(asCollectionCtor(this), condition as never, values as never, returnFields as never, options)
+    ) as Array<PartialOrProjected<RowOf<C>, F>>;
   }
 
   /**
    * Updates a single record by Id and optionally returns selected fields.
    */
-  static UpdateById<T extends BaseModel, F extends FieldSelection<T>>(
-    this: ModelClass<T>,
+  static async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Partial<Updateable<T>>,
-    returnFields: F,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Projected<T, F>>;
-  static UpdateById<T extends BaseModel>(
-    this: ModelClass<T>,
-    id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
-  ): Promise<Partial<T>>;
-  static async UpdateById<T extends BaseModel>(
-    this: ModelClass<T>,
-    id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
-  ): Promise<Partial<T>> {
-    return await updateModelById<T>(asCollectionCtor(this), id, values, returnFields, options);
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
+    return asPartialRow<C>(
+      await updateModelById(asCollectionCtor(this), id, values as never, returnFields as never, options)
+    ) as PartialOrProjected<RowOf<C>, F>;
   }
 
   /**
    * Deletes all records matching a condition.
    */
-  static async Delete<T extends BaseModel>(this: ModelClass<T>, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
-    return await deleteModels<T>(asCollectionCtor(this), condition, options);
+  static async Delete<C extends ModelCtor>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
+    options?: DeleteOptions
+  ): Promise<number> {
+    return await deleteModels(asCollectionCtor(this), condition as never, options);
   }
 
   /**
    * Deletes a single record by Id.
    */
-  static async DeleteById<T extends BaseModel>(this: ModelClass<T>, id: string, options?: DeleteOptions): Promise<number> {
-    return await deleteModelById<T>(asCollectionCtor(this), id, options);
+  static async DeleteById<C extends ModelCtor>(this: C, id: string, options?: DeleteOptions): Promise<number> {
+    return await deleteModelById(asCollectionCtor(this), id, options);
   }
 
   /**
    * Runs onchange handlers for a draft payload and returns the accumulated result.
    */
-  static async Onchange<T extends BaseModel>(
-    this: ModelClass<T>,
+  static async Onchange<C extends ModelCtor>(
+    this: C,
     draft: OnchangeDraft,
-    changed: OnchangeTrigger<T>[],
+    changed: OnchangeTrigger<RowOf<C>>[],
     opts?: {
       withCompute?: boolean;
       maxIterations?: number;
       loopThreshold?: number;
     }
   ): Promise<OnchangeResult> {
-    return await runModelOnchange<T>(asCollectionCtor(this), draft, changed, opts);
+    return await runModelOnchange(asCollectionCtor(this), draft, changed as never, opts);
   }
 
   /**
    * Protect an operation with a savepoint. Throwing rolls back to that savepoint.
    * Note: this is a convenience entry point that delegates to Repository.withSavepoint.
    */
-  static async withSavepoint<T extends BaseModel, R>(this: ModelClass<T>, fn: () => Promise<R>, name?: string): Promise<R> {
-    return await withModelSavepoint<T, R>(asCollectionCtor(this), fn, name);
+  static async withSavepoint<C extends ModelCtor, R>(this: C, fn: () => Promise<R>, name?: string): Promise<R> {
+    return await withModelSavepoint(asCollectionCtor(this), fn, name);
   }
 
   /**
@@ -940,8 +906,8 @@ class BaseModel {
   /**
    * Hydrates a model instance from an entity payload.
    */
-  static hydrate<T extends BaseModel>(this: ModelClass<T>, entity: ObjectRecord, fields?: FieldSelection<T>): T {
-    return hydrateModelFacade<T>(asCollectionCtor(this), entity, fields);
+  static hydrate<C extends ModelCtor>(this: C, entity: ObjectRecord, fields?: FieldSelection<RowOf<C>>): RowOf<C> {
+    return asRow<C>(hydrateModelFacade(asCollectionCtor(this), entity, fields as never));
   }
 }
 

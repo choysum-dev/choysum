@@ -21,7 +21,7 @@ import type { UnknownRecord } from '../../../utils/types';
  */
 export type ComputeMode = 'persist' | 'preview';
 
-type RuntimeComputeModelCtor = ModelCtor<BaseModel> & typeof BaseModel;
+type RuntimeComputeModelCtor = ModelCtor<BaseModel>;
 
 function isObject(v: unknown): v is UnknownRecord {
   return v !== null && typeof v === 'object';

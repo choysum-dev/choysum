@@ -124,7 +124,7 @@ export function resolveModelCompanyField(target: Function, optionsCompanyField: 
  * @returns A class decorator that registers the model and installs runtime wrappers.
  */
 export function Model(name: string, options?: ModelOptions) {
-  return function <T extends RegisteredModelCtor<BaseModel>>(target: T & typeof BaseModel): T {
+  return function <T extends RegisteredModelCtor<BaseModel>>(target: T): T {
     const globalPool = asGlobalPoolLike(getRuntimeGlobalPoolValue());
     const modelPool = globalPool || ApplicationModelPool;
     if (!globalPool) {

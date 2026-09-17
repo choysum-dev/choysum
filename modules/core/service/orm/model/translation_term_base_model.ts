@@ -6,12 +6,14 @@ import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
 import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
 import BaseModel from './model';
-import type { ModelCtor } from './types';
+import type { ModelCtor, RowOf } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
 import type {
   Insertable,
   Updateable,
   FieldSelection,
+  PartialOrProjected,
+  RowOrProjected,
   QueryCondition,
   DeleteOptions,
   UpdateOptions,
@@ -71,11 +73,11 @@ function fail(code: string, message: string): never {
   raiseDomainError('core', code, message);
 }
 
-function storeMeta(ctor: ModelCtor<TranslationTermBaseModel>) {
+function storeMeta(ctor: ModelCtor) {
   return MetadataStorage.instance.getModelMetadata(ctor);
 }
 
-function asTermCtor<T extends BaseModel>(ctor: ModelCtor<T>): ModelCtor<TranslationTermBaseModel> {
+function asTermCtor<C extends ModelCtor>(ctor: C): ModelCtor<TranslationTermBaseModel> {
   return ctor as unknown as ModelCtor<TranslationTermBaseModel>;
 }
 
@@ -233,7 +235,7 @@ function computeTermHash(
   return termHashHex8(new TextEncoder().encode(parts.join('')));
 }
 
-async function ensureTermUniqueIndex(ctor: ModelCtor<TranslationTermBaseModel>): Promise<void> {
+async function ensureTermUniqueIndex(ctor: ModelCtor): Promise<void> {
   const meta = storeMeta(ctor);
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;
@@ -331,8 +333,8 @@ export default class TranslationTermBaseModel extends BaseModel {
    * `terms_by_module` only (empty → `{}`, matching TranslationTerm GetTranslations).
    * Shape: terms_by_module module → scope → src → value (literal kind only).
    */
-  static async GetTranslations(
-    this: ModelCtor<TranslationTermBaseModel>,
+  static async GetTranslations<C extends ModelCtor>(
+    this: C,
     req: GetTranslationsReq = {}
   ): Promise<GetTranslationsResp> {
     const lang = String(req?.lang ?? '').trim();
@@ -364,11 +366,12 @@ export default class TranslationTermBaseModel extends BaseModel {
     // terms — same pattern as FieldDefault.GetEffective (§7.3). RecordRule-aware
     // CRUD remains on Search/Create/Write; gateway internal identity without
     // bypass would otherwise get an empty read set on non-meta hosts.
+    const self = asTermCtor(this);
     const rows = (await withRecordRuleAndFieldRuleBypass(async () =>
-      this.Search<TranslationTermBaseModel>(
+      self.Search(
         { And: [['Lang', '=', lang]] },
         {
-          fields: ['Module', 'Scope', 'Src', 'Value', 'Kind', 'Source'],
+          fields: ['Module', 'Scope', 'Src', 'Value', 'Kind', 'Source'] as const,
           limit: 0,
         }
       )
@@ -418,8 +421,8 @@ export default class TranslationTermBaseModel extends BaseModel {
   /**
    * Packaged PO upsert via Go shared helper (not the install default path).
    */
-  static async ImportPackaged(
-    this: ModelCtor<TranslationTermBaseModel>,
+  static async ImportPackaged<C extends ModelCtor>(
+    this: C,
     req: ImportPackagedReq
   ): Promise<ImportPackagedResp> {
     const application = String(storeMeta(this)?.application || '').trim();
@@ -441,13 +444,13 @@ export default class TranslationTermBaseModel extends BaseModel {
     return bridge.upsertPackagedTerms(application, module, lang, req.poText);
   }
 
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     const application = hostApplication(this);
-    const out = await super.Create<T>(value, returnFields);
+    const out = await super.Create<C, F>(value, returnFields);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(value),
       ...modulesFromRows(out),
@@ -455,13 +458,13 @@ export default class TranslationTermBaseModel extends BaseModel {
     return out;
   }
 
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const application = hostApplication(this);
-    const out = await super.CreateMany<T>(values, returnFields);
+    const out = await super.CreateMany<C, F>(values, returnFields);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
       ...modulesFromRows(out),
@@ -469,20 +472,20 @@ export default class TranslationTermBaseModel extends BaseModel {
     return out;
   }
 
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+  static override async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>[]> {
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
-    const before = await self.Search<TranslationTermBaseModel>(condition as QueryCondition<TranslationTermBaseModel>, {
+    const before = await self.Search(condition as QueryCondition<TranslationTermBaseModel>, {
       fields: ['Module'],
       limit: 0,
     });
-    const out = await super.Update<T>(condition, values, returnFields, options);
+    const out = await super.Update<C, F>(condition, values, returnFields, options);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
       ...modulesFromRows(before),
@@ -491,48 +494,48 @@ export default class TranslationTermBaseModel extends BaseModel {
     return out;
   }
 
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
     let module = String((values as Record<string, unknown>).Module ?? '').trim();
     if (!module) {
       try {
-        const existing = await self.Browse<TranslationTermBaseModel>(id, ['Module']);
+        const existing = await self.Browse(id, ['Module']);
         module = String(existing?.Module ?? '').trim();
       } catch {
         /* Browse may fail if row gone; still attempt update */
       }
     }
-    const out = await super.UpdateById<T>(id, values, returnFields, options);
+    const out = await super.UpdateById<C, F>(id, values, returnFields, options);
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
     return out;
   }
 
-  static override async Delete<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
+  static override async Delete<C extends ModelCtor>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
     options?: DeleteOptions
   ): Promise<number> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
-    const before = await self.Search<TranslationTermBaseModel>(condition as QueryCondition<TranslationTermBaseModel>, {
+    const before = await self.Search(condition as QueryCondition<TranslationTermBaseModel>, {
       fields: ['Module'],
       limit: 0,
       ...(options || {}),
     });
-    const count = await super.Delete<T>(condition, options);
+    const count = await super.Delete<C>(condition, options);
     invalidateTerminologyModules(application, modulesFromRows(before));
     return count;
   }
 
-  static override async DeleteById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async DeleteById<C extends ModelCtor>(
+    this: C,
     id: string,
     options?: DeleteOptions
   ): Promise<number> {
@@ -540,12 +543,12 @@ export default class TranslationTermBaseModel extends BaseModel {
     const application = hostApplication(this);
     let module = '';
     try {
-      const existing = await self.Browse<TranslationTermBaseModel>(id, ['Module'], options);
+      const existing = await self.Browse(id, ['Module'], options);
       module = String(existing?.Module ?? '').trim();
     } catch {
       /* missing row */
     }
-    const count = await super.DeleteById<T>(id, options);
+    const count = await super.DeleteById<C>(id, options);
     invalidateTerminologyModules(application, [module]);
     return count;
   }

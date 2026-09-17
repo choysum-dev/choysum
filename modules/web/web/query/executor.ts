@@ -60,8 +60,10 @@ async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[], dep
           const results = await targetStore.Search(cond, { fields: ['Id', 'DisplayName'] });
 
           const map = new Map<string, any>();
-          for (const r of results) {
-            map.set(r.Id, r);
+          for (const r of results as Array<{ Id?: unknown }>) {
+            const key = String(r.Id ?? '');
+            if (!key || key === 'undefined') continue;
+            map.set(key, r);
           }
           lookups.set(model, map);
         } catch (e) {
@@ -131,7 +133,9 @@ async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[], de
 
           const map = new Map<string, any>();
           for (const r of results || []) {
-            const key = String(r?.Id ?? r?.id);
+            const row = r as { Id?: unknown; id?: unknown } | null | undefined;
+            const key = String(row?.Id ?? row?.id ?? '');
+            if (!key || key === 'undefined') continue;
             map.set(key, r);
           }
           lookups.set(model, map);

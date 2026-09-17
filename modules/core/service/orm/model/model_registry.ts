@@ -4,8 +4,9 @@
 import { MetadataStorage } from '../metadata/storage';
 import { getModelCtorFromGlobalPool } from './model_ctor_lookup';
 import type BaseModel from './model';
+import type { ModelCtor } from './types';
 
-type ModelCtorResolver = (identifier: string) => typeof BaseModel | undefined;
+type ModelCtorResolver = (identifier: string) => ModelCtor | undefined;
 
 let testResolver: ModelCtorResolver | undefined;
 
@@ -16,7 +17,7 @@ let testResolver: ModelCtorResolver | undefined;
  * metadata name, or constructor class name. Prefer `pool` for same-app short
  * names and `dial` for cross-app services from author code.
  */
-export function resolveModelConstructor(identifier: string): typeof BaseModel | undefined {
+export function resolveModelConstructor(identifier: string): ModelCtor | undefined {
   const key = String(identifier || '').trim();
   if (!key) return undefined;
   if (testResolver) return testResolver(key);
@@ -26,11 +27,11 @@ export function resolveModelConstructor(identifier: string): typeof BaseModel | 
   const fromPool = getModelCtorFromGlobalPool(key);
   if (fromPool) return fromPool;
 
-  const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, any> | undefined;
+  const models = (MetadataStorage.instance as any)?.models as Map<ModelCtor, any> | undefined;
   if (!models || typeof models.entries !== 'function') return undefined;
 
   // Exact fullModelName wins over earlier alias hits (modelName / name / className).
-  let aliasMatch: typeof BaseModel | undefined;
+  let aliasMatch: ModelCtor | undefined;
   for (const [ctor, meta] of models.entries()) {
     if (!ctor) continue;
     const fullModelName = String(meta?.fullModelName || '').trim();

@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import type { ModelCtor, RowOf } from '../model/types';
 import BaseModel from '../model/model';
 import { Field, Model } from '../decorator';
 import { MetadataStorage } from '../metadata';
 import { RelationFactory } from './factory';
 import { ExtractedRelations, RelationArrayMethod, type RelationChangesCollection, type RelationFieldType } from './types';
 
-type ModelCtor<T extends BaseModel> = { new (...args: never[]): T } & typeof BaseModel;
 
 @Model('test.RelationFactoryTarget')
 class RelationFactoryTarget extends BaseModel {

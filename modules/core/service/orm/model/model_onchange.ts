@@ -16,7 +16,7 @@ export class OnchangeOperations {
    * Runs onchange preview execution for a model draft.
    */
   static async Onchange<T extends BaseModel>(
-    ModelCtor: ModelCtor<T> & typeof BaseModel,
+    ModelCtor: ModelCtor<T>,
     draft: OnchangeDraft,
     changed: OnchangeTrigger<T>[],
     opts?: {

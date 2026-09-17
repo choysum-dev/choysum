@@ -24,16 +24,16 @@ function fail(code: string, message: string): never {
   raiseDomainError('core', code, message);
 }
 
-function storeMeta(ctor: ModelCtor<AppSettingBaseModel>) {
+function storeMeta(ctor: ModelCtor) {
   return MetadataStorage.instance.getModelMetadata(ctor);
 }
 
-function storeApplication(ctor: ModelCtor<AppSettingBaseModel>): string {
+function storeApplication(ctor: ModelCtor): string {
   return String(storeMeta(ctor)?.application || '').trim();
 }
 
 /** Empty/`core` stores are invalid. Hard-delete requires softDelete: false. */
-function resolveWritableApplication(ctor: ModelCtor<AppSettingBaseModel>): string {
+function resolveWritableApplication(ctor: ModelCtor): string {
   const meta = storeMeta(ctor);
   const application = String(meta?.application || '').trim();
   if (!application || application === 'core') {
@@ -84,10 +84,10 @@ function isUniqueConstraintError(err: unknown): boolean {
 }
 
 async function findByKey(
-  ctor: ModelCtor<AppSettingBaseModel>,
+  ctor: ModelCtor,
   key: string
-): Promise<AppSettingBaseModel | undefined> {
-  const rows = await ctor.Search<AppSettingBaseModel>(
+): Promise<{ Id?: string; Key?: string; Value?: string } | undefined> {
+  const rows = await (ctor as ModelCtor<AppSettingBaseModel>).Search(
     { And: [['Key', '=', key]] },
     { fields: ['Id', 'Key', 'Value'], limit: 2 }
   );
@@ -114,8 +114,8 @@ export default class AppSettingBaseModel extends BaseModel {
    * Read setting by key. Missing row → `defaultValue` (default `null`).
    * Memoized per request on `(application, key)`.
    */
-  static async Get(
-    this: ModelCtor<AppSettingBaseModel>,
+  static async Get<C extends ModelCtor>(
+    this: C,
     key: string,
     defaultValue: string | null = null
   ): Promise<string | null> {
@@ -147,8 +147,8 @@ export default class AppSettingBaseModel extends BaseModel {
   /**
    * Upsert setting. `null`/`undefined` → hard-delete row when present; returns previous value or `null`.
    */
-  static async Set(
-    this: ModelCtor<AppSettingBaseModel>,
+  static async Set<C extends ModelCtor>(
+    this: C,
     key: string,
     value: string | null | undefined
   ): Promise<string | null> {
@@ -160,25 +160,26 @@ export default class AppSettingBaseModel extends BaseModel {
 
     if (value === null || value === undefined) {
       if (existing?.Id) {
-        await this.DeleteById<AppSettingBaseModel>(existing.Id);
+        await this.DeleteById(existing.Id);
       }
       invalidateAppSettingMemo(application, k);
       return previous;
     }
 
     const stored = String(value);
+    const store = this as unknown as ModelCtor<AppSettingBaseModel>;
     if (existing?.Id) {
       if (previous === stored) {
         invalidateAppSettingMemo(application, k);
         return previous;
       }
-      await this.UpdateById<AppSettingBaseModel>(existing.Id, { Value: stored });
+      await store.UpdateById(existing.Id, { Value: stored });
       invalidateAppSettingMemo(application, k);
       return previous;
     }
 
     try {
-      await this.Create<AppSettingBaseModel>({ Key: k, Value: stored });
+      await store.Create({ Key: k, Value: stored });
     } catch (err) {
       // Concurrent Create on the same absent key: unique hit → reload and update.
       if (!isUniqueConstraintError(err)) throw err;
@@ -186,7 +187,7 @@ export default class AppSettingBaseModel extends BaseModel {
       if (!raced?.Id) throw err;
       const racedPrevious = String(raced.Value ?? '');
       if (racedPrevious !== stored) {
-        await this.UpdateById<AppSettingBaseModel>(raced.Id, { Value: stored });
+        await store.UpdateById(raced.Id, { Value: stored });
       }
       invalidateAppSettingMemo(application, k);
       return racedPrevious;

@@ -15,7 +15,7 @@ import {
 import BaseModel from './model';
 import { resolveEffectiveFieldDefaults } from './field_default_resolve';
 import { resolveModelConstructor } from './model_registry';
-import type { ModelCtor } from './types';
+import type { ModelCtor, RowOf } from './types';
 import type { Insertable, QueryCondition, Updateable } from '../repository/types';
 import { registerLogicalModelName } from './logical_model_registry';
 import { getChoysumRuntime } from '../../runtime/choysum_root';
@@ -74,7 +74,7 @@ function fieldDefaultReqState(): Record<string, unknown> | undefined {
 
 /** Prefer the FieldDefault store application; fall back to the target model application. */
 function resolveFieldDefaultApplication(
-  ctor: ModelCtor<FieldDefaultBaseModel>,
+  ctor: ModelCtor,
   targetMeta?: ModelMetadata
 ): string {
   const fromStore = String(storeMeta(ctor).application || '').trim();
@@ -110,14 +110,14 @@ function scopeCondition(field: string, value: string | null): [string, string, s
   return value == null ? [field, 'is', null] : [field, '=', value];
 }
 
-function storeMeta(ctor: ModelCtor<FieldDefaultBaseModel>) {
+function storeMeta(ctor: ModelCtor) {
   return MetadataStorage.instance.getModelMetadata(ctor);
 }
 
 function resolveTargetModel(
-  ctor: ModelCtor<FieldDefaultBaseModel>,
+  ctor: ModelCtor,
   modelShortName: string
-): { ctor: typeof BaseModel; targetMeta: ModelMetadata } {
+): { ctor: ModelCtor; targetMeta: ModelMetadata } {
   const short = String(modelShortName || '').trim();
   if (!short) {
     fail('FIELD_DEFAULT_UNKNOWN_FIELD', 'model is required');
@@ -141,7 +141,7 @@ function resolveTargetModel(
     fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} does not belong to application ${application}`);
   }
 
-  return { ctor: Target as typeof BaseModel, targetMeta };
+  return { ctor: Target as ModelCtor, targetMeta };
 }
 
 function resolveTargetField(targetMeta: ModelMetadata, fieldName: string): FieldMetadata {
@@ -218,7 +218,7 @@ async function fieldDefaultStoreTableExists(dialect: string, table: string): Pro
   }
 }
 
-async function ensureScopeUniqueIndex(ctor: ModelCtor<FieldDefaultBaseModel>): Promise<void> {
+async function ensureScopeUniqueIndex(ctor: ModelCtor): Promise<void> {
   const meta = storeMeta(ctor);
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;
@@ -276,20 +276,20 @@ async function ensureScopeUniqueIndex(ctor: ModelCtor<FieldDefaultBaseModel>): P
   }
 }
 
-async function findExactRow(
-  ctor: ModelCtor<FieldDefaultBaseModel>,
+async function findExactRow<C extends ModelCtor>(
+  ctor: C,
   model: string,
   field: string,
   userId: string | null,
   companyId: string | null
-): Promise<FieldDefaultBaseModel | undefined> {
+): Promise<RowOf<C> | undefined> {
   // Store lookup is not RecordRule-scoped (design §6.3); Method ACL gates Get/Set/Unset.
   const rows = await withRecordRuleAndFieldRuleBypass(async () =>
-    ctor.Search<FieldDefaultBaseModel>(
+    ctor.Search(
       {
         And: [['Model', '=', model], ['Field', '=', field], scopeCondition('UserId', userId), scopeCondition('CompanyId', companyId)],
-      } as QueryCondition<FieldDefaultBaseModel>,
-      { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'], limit: 2 }
+      } as never,
+      { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'] as never, limit: 2 }
     )
   );
   return (rows && rows[0]) || undefined;
@@ -318,8 +318,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
   /**
    * Upsert a default for an exact user/company scope (Odoo `ir.default.set`).
    */
-  static async Set(
-    this: ModelCtor<FieldDefaultBaseModel>,
+  static async Set<C extends ModelCtor>(
+    this: C,
     model: string,
     field: string,
     value: unknown,
@@ -341,16 +341,16 @@ export default class FieldDefaultBaseModel extends BaseModel {
         await this.withSavepoint(async () => {
           const existing = await findExactRow(this, modelShort, fieldName, userId, companyId);
           if (existing?.Id) {
-            await this.UpdateById<FieldDefaultBaseModel>(existing.Id, { Value: stored } as Partial<Updateable<FieldDefaultBaseModel>>);
+            await this.UpdateById(existing.Id, { Value: stored } as never);
             return;
           }
-          await this.Create<FieldDefaultBaseModel>({
+          await this.Create({
             Model: modelShort,
             Field: fieldName,
             UserId: userId,
             CompanyId: companyId,
             Value: stored,
-          } as Partial<Insertable<FieldDefaultBaseModel>>);
+          } as never);
         });
       });
     } catch (err) {
@@ -367,8 +367,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
   /**
    * Read the exact-scope default (Odoo `ir.default._get`). Missing → undefined.
    */
-  static async Get(
-    this: ModelCtor<FieldDefaultBaseModel>,
+  static async Get<C extends ModelCtor>(
+    this: C,
     model: string,
     field: string,
     opts?: FieldDefaultScopeOpts
@@ -378,15 +378,15 @@ export default class FieldDefaultBaseModel extends BaseModel {
     const userId = resolveScopeDim(opts?.userId, this.userId, 'userId');
     const companyId = resolveScopeDim(opts?.companyId, this.companyId, 'companyId');
     const row = await findExactRow(this, String(model).trim(), String(field).trim(), userId, companyId);
-    return row ? row.Value : undefined;
+    return row ? (row as FieldDefaultBaseModel).Value : undefined;
   }
 
   /**
    * Effective defaults for the current request identity (Odoo `_get_model_defaults`).
    * Memoized per request (§5.3); candidate Search runs under sudo (§7.3).
    */
-  static async GetEffective(
-    this: ModelCtor<FieldDefaultBaseModel>,
+  static async GetEffective<C extends ModelCtor>(
+    this: C,
     model: string,
     fields?: string[]
   ): Promise<Record<string, unknown>> {
@@ -409,9 +409,9 @@ export default class FieldDefaultBaseModel extends BaseModel {
 
       // Silent RR+FR bypass (no Model.sudo audit); pipeline/internal read channel, §7.3.
       const rows = await withRecordRuleAndFieldRuleBypass(async () =>
-        this.Search<FieldDefaultBaseModel>(
-          { And: and } as QueryCondition<FieldDefaultBaseModel>,
-          { fields: ['Id', 'Field', 'UserId', 'CompanyId', 'Value'] }
+        this.Search(
+          { And: and } as never,
+          { fields: ['Id', 'Field', 'UserId', 'CompanyId', 'Value'] as never }
         )
       );
       return resolveEffectiveFieldDefaults(rows || []);
@@ -433,8 +433,8 @@ export default class FieldDefaultBaseModel extends BaseModel {
   /**
    * Delete the exact-scope default row when present.
    */
-  static async Unset(
-    this: ModelCtor<FieldDefaultBaseModel>,
+  static async Unset<C extends ModelCtor>(
+    this: C,
     model: string,
     field: string,
     opts?: FieldDefaultScopeOpts
@@ -448,7 +448,7 @@ export default class FieldDefaultBaseModel extends BaseModel {
     if (row?.Id) {
       // Method ACL gates Unset when exposed; store delete is not RecordRule-scoped (§6.3).
       await withRecordRuleAndFieldRuleBypass(async () => {
-        await this.DeleteById<FieldDefaultBaseModel>(row.Id);
+        await this.DeleteById(row.Id);
       });
       invalidateFieldDefaultMemo(resolveFieldDefaultApplication(this, targetMeta), modelShort);
     }

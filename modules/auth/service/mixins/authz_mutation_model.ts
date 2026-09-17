@@ -1,12 +1,19 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, type ModelCtor } from '@/core/service';
+import { BaseModel, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
 import type { DeleteOptions, QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { normalizeRefId, uniqStrings } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from '../models/_request_cache_invalidation';
+
+/** Write op that just completed; passed to {@link AuthzMutationModel.invalidateAuthzCachesAfterWrite}. */
+export type AuthzMutationOp = 'create' | 'createMany' | 'update' | 'updateById' | 'delete' | 'deleteById';
+
+type AuthzInvalidateHost = {
+  invalidateAuthzCachesAfterWrite(op: AuthzMutationOp, payload?: unknown): void;
+};
 
 /**
  * Run a permission-graph mutation, then invalidate every request-scoped authz cache.
@@ -23,7 +30,8 @@ export async function mutateThenInvalidateAllAuthzCaches<T>(mutate: () => Promis
 /**
  * Run a mutation, then invalidate request-scoped authz caches for specific users.
  *
- * Prefer for {@link UserRole} Create / CreateMany where UserId is known up front.
+ * Prefer when UserId is known up front (also what {@link UserRole} uses via
+ * {@link AuthzMutationModel.invalidateAuthzCachesAfterWrite}).
  */
 export async function mutateThenInvalidateAuthzCachesForUsers<T>(
   userIds: Array<string | null | undefined>,
@@ -51,76 +59,100 @@ export function userIdsFromUserRolePayloads(
 /**
  * Base for auth models whose writes change the permission graph.
  *
- * Default Create/Update/Delete* invalidate all request-scoped authz caches after
- * the mutation. Subclasses that need domain prep call it before `super.*`;
- * UserRole overrides Create/CreateMany for targeted per-user invalidation.
+ * Default Create/Update/Delete* call {@link invalidateAuthzCachesAfterWrite} after
+ * a successful mutation (clears all request-scoped authz caches). Subclasses that
+ * need domain prep call it before `super.*`; subclasses that need a different
+ * invalidate policy override {@link invalidateAuthzCachesAfterWrite} (e.g. UserRole).
  *
  * Must be the module default export so `@Model` classes can `extends` it.
  */
 export default abstract class AuthzMutationModel extends BaseModel {
   /**
-   * Create one row and invalidate every request-scoped authz cache.
+   * Invalidate request-scoped authz caches after a successful write.
+   *
+   * Default clears every authz cache for the request. Override for targeted
+   * invalidation; IMD subclasses of that override should usually call `super`
+   * unless they replace the policy entirely.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Create<T>(value, returnFields));
+  static invalidateAuthzCachesAfterWrite(_op: AuthzMutationOp, _payload?: unknown): void {
+    invalidateAllAuthzCaches();
   }
 
   /**
-   * Create many rows and invalidate every request-scoped authz cache.
+   * Create one row then run {@link invalidateAuthzCachesAfterWrite}.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.CreateMany<T>(values, returnFields));
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    const out = await super.Create<C, F>(value, returnFields);
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('create', value);
+    return out;
   }
 
   /**
-   * Update matching rows and invalidate every request-scoped authz cache.
+   * Create many rows then run {@link invalidateAuthzCachesAfterWrite}.
    */
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    const out = await super.CreateMany<C, F>(values, returnFields);
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('createMany', values);
+    return out;
+  }
+
+  /**
+   * Update matching rows then run {@link invalidateAuthzCachesAfterWrite}.
+   */
+  static override async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>[]> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Update<T>(condition, values, returnFields, options));
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
+    const out = await super.Update<C, F>(condition, values, returnFields, options);
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('update', { condition, values });
+    return out;
   }
 
   /**
-   * Update one row by Id and invalidate every request-scoped authz cache.
+   * Update one row by Id then run {@link invalidateAuthzCachesAfterWrite}.
    */
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.UpdateById<T>(id, values, returnFields, options));
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
+    const out = await super.UpdateById<C, F>(id, values, returnFields, options);
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('updateById', { id, values });
+    return out;
   }
 
   /**
-   * Delete matching rows and invalidate every request-scoped authz cache.
+   * Delete matching rows then run {@link invalidateAuthzCachesAfterWrite}.
    */
-  static override async Delete<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
+  static override async Delete<C extends ModelCtor>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
     options?: DeleteOptions
   ): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.Delete<T>(condition, options));
+    const out = await super.Delete<C>(condition, options);
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('delete', condition);
+    return out;
   }
 
   /**
-   * Delete one row by Id and invalidate every request-scoped authz cache.
+   * Delete one row by Id then run {@link invalidateAuthzCachesAfterWrite}.
    */
-  static override async DeleteById<T extends BaseModel>(this: ModelCtor<T>, id: string, options?: DeleteOptions): Promise<number> {
-    return mutateThenInvalidateAllAuthzCaches(() => super.DeleteById<T>(id, options));
+  static override async DeleteById<C extends ModelCtor>(this: C, id: string, options?: DeleteOptions): Promise<number> {
+    const out = await super.DeleteById<C>(id, options);
+    (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('deleteById', id);
+    return out;
   }
 }

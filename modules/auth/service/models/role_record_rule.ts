@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, type ModelCtor } from '@/core/service';
+import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
@@ -238,53 +238,53 @@ export default class RoleRecordRule extends AuthzMutationModel {
   /**
    * Create one RoleRecordRule row and invalidate request-scoped auth caches.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     RoleRecordRule._prepareValues(value as Record<string, unknown>, 'create');
-    return super.Create<T>(value, returnFields);
+    return await super.Create<C, F>(value, returnFields);
   }
 
   /**
    * Create multiple RoleRecordRule rows and invalidate request-scoped auth caches.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = values || [];
     for (const v of rows) RoleRecordRule._prepareValues(v as Record<string, unknown>, 'create');
-    return super.CreateMany<T>(rows, returnFields);
+    return await super.CreateMany<C, F>(rows, returnFields);
   }
 
   /**
    * Update RoleRecordRule rows and invalidate request-scoped auth caches.
    */
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    condition: QueryCondition<T>,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+  static override async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    condition: QueryCondition<RowOf<C>>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>[]> {
+  ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     RoleRecordRule._prepareValues(values as Record<string, unknown>, 'update');
-    return super.Update<T>(condition, values, returnFields, options);
+    return await super.Update<C, F>(condition, values, returnFields, options);
   }
 
   /**
    * Update one RoleRecordRule row by Id and invalidate request-scoped auth caches.
    */
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
     id: string,
-    values: Partial<Updateable<T>>,
-    returnFields?: FieldSelection<T>,
+    values: Partial<Updateable<RowOf<C>>>,
+    returnFields?: F,
     options?: UpdateOptions
-  ): Promise<Partial<T>> {
+  ): Promise<PartialOrProjected<RowOf<C>, F>> {
     RoleRecordRule._prepareValues(values as Record<string, unknown>, 'update');
-    return super.UpdateById<T>(id, values, returnFields, options);
+    return await super.UpdateById<C, F>(id, values, returnFields, options);
   }
 }

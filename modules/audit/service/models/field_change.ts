@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor } from '@/core/service';
+import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
+import { projectToSelection } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
@@ -88,18 +89,13 @@ function resolveCorrelation(): { requestId?: string; traceId?: string } {
   return { requestId, traceId };
 }
 
-type FieldChangeInsert = Partial<Insertable<FieldChange>>;
-
 /**
  * Normalize Kind and force ActorUid from trusted request identity for every create path.
  */
-function prepareCreatePayload(value: FieldChangeInsert): FieldChangeInsert {
+function prepareCreatePayload(payload: Record<string, unknown>): void {
   const uid = getUserId();
-  return {
-    ...value,
-    Kind: assertFieldChangeKind(value.Kind == null ? '' : String(value.Kind)),
-    ActorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
-  };
+  payload.Kind = assertFieldChangeKind(payload.Kind == null ? '' : String(payload.Kind));
+  payload.ActorUid = uid == null || String(uid).trim() === '' ? null : String(uid).trim();
 }
 
 const DEFAULT_APPEND_FIELDS = [
@@ -116,11 +112,6 @@ const DEFAULT_APPEND_FIELDS = [
   'RequestId',
   'TraceId',
 ] as const satisfies FieldSelection<FieldChange>;
-
-function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelection<FieldChange> {
-  if (fields.includes('*') || fields.includes('Id')) return fields;
-  return ['Id', ...fields];
-}
 
 /**
  * Append-only compliance field-change history.
@@ -237,10 +228,10 @@ export default class FieldChange extends PolymorphicRecordModel {
    * ActorUid always comes from trusted request identity.
    * Optional `fields` is forwarded to Create (same FieldSelection contract).
    */
-  public static async Append(
+  public static async Append<F extends FieldSelection<FieldChange> = typeof DEFAULT_APPEND_FIELDS>(
     req: AppendFieldChangeReq,
-    fields?: FieldSelection<FieldChange>
-  ): Promise<FieldChange> {
+    fields?: F
+  ): Promise<RowOrProjected<FieldChange, F>> {
     if (!req || typeof req !== 'object') {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append requires a payload' });
     }
@@ -259,7 +250,7 @@ export default class FieldChange extends PolymorphicRecordModel {
     }
 
     const kind = String(req.Kind).trim();
-    const createValue: FieldChangeInsert = {
+    const createValue = {
       Model: model,
       ResId: resId,
       Field: req.Field == null || req.Field === '' ? null : String(req.Field),
@@ -272,77 +263,88 @@ export default class FieldChange extends PolymorphicRecordModel {
       RequestId: req.RequestId ?? correlation.requestId ?? null,
       TraceId: req.TraceId ?? correlation.traceId ?? null,
     };
+    // Empty selection means full row (Projected<T, []> === Selectable<T>).
     const returnFields: FieldSelection<FieldChange> = fields ?? [...DEFAULT_APPEND_FIELDS];
-    // Always request Id so tip publish does not depend on the caller's projection.
-    const createFields = fieldSelectionWithId(returnFields);
+    const createFields: FieldSelection<FieldChange> = returnFields.length === 0 ? ['*'] : returnFields;
+    // Create/Browse always include Id on the returned row even when returnFields omits it.
     const created = await this.Create(createValue, createFields);
+    const createdId = String((created as { Id?: unknown }).Id || '').trim();
+    if (!createdId) {
+      throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append created row without Id' });
+    }
     await publishFieldChangeAppendedTip({
-      Id: created.Id,
+      Id: createdId,
       Model: model,
       ResId: resId,
       At: at,
     });
-    return created;
+    // Strip Create's auto-injected Id (and any other unselected keys) to match the caller's selection.
+    return projectToSelection(created as object, returnFields) as RowOrProjected<FieldChange, F>;
   }
 
   /**
    * Create validates Kind, persists the trimmed Kind, and stamps ActorUid from request identity.
    */
-  static override async Create<T extends BaseModel>(
-    this: ModelCtor<T>,
-    value: Partial<Insertable<T>>,
-    returnFields?: FieldSelection<T>
-  ): Promise<T> {
-    const payload = prepareCreatePayload(value as FieldChangeInsert);
-    return super.Create<T>(payload as Partial<Insertable<T>>, returnFields);
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    const payload = { ...value };
+    prepareCreatePayload(payload as Record<string, unknown>);
+    return await super.Create<C, F>(payload, returnFields);
   }
 
   /**
    * CreateMany validates Kind, persists trimmed Kind, and stamps ActorUid on every row.
    */
-  static override async CreateMany<T extends BaseModel>(
-    this: ModelCtor<T>,
-    values: Partial<Insertable<T>>[],
-    returnFields?: FieldSelection<T>
-  ): Promise<T[]> {
-    const rows = (values || []).map(row => prepareCreatePayload(row as FieldChangeInsert));
-    return super.CreateMany<T>(rows as Partial<Insertable<T>>[], returnFields);
+  static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    values: Partial<Insertable<RowOf<C>>>[],
+    returnFields?: F
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    const rows = (values || []).map(row => {
+      const payload = { ...row };
+      prepareCreatePayload(payload as Record<string, unknown>);
+      return payload;
+    });
+    return await super.CreateMany<C, F>(rows, returnFields);
   }
 
   /** FieldChange is append-only. */
-  static override async Update<T extends BaseModel>(
-    this: ModelCtor<T>,
-    _condition: QueryCondition<T>,
-    _values: Partial<Updateable<T>>,
-    _returnFields?: FieldSelection<T>,
+  static override async Update<C extends ModelCtor>(
+    this: C,
+    _condition: QueryCondition<RowOf<C>>,
+    _values: Partial<Updateable<RowOf<C>>>,
+    _returnFields?: FieldSelection<RowOf<C>>,
     _options?: UpdateOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Update' });
   }
 
   /** FieldChange is append-only. */
-  static override async UpdateById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async UpdateById<C extends ModelCtor>(
+    this: C,
     _id: string,
-    _values: Partial<Updateable<T>>,
-    _returnFields?: FieldSelection<T>,
+    _values: Partial<Updateable<RowOf<C>>>,
+    _returnFields?: FieldSelection<RowOf<C>>,
     _options?: UpdateOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support UpdateById' });
   }
 
   /** FieldChange is append-only. */
-  static override async Delete<T extends BaseModel>(
-    this: ModelCtor<T>,
-    _condition: QueryCondition<T>,
+  static override async Delete<C extends ModelCtor>(
+    this: C,
+    _condition: QueryCondition<RowOf<C>>,
     _options?: DeleteOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Delete' });
   }
 
   /** FieldChange is append-only. */
-  static override async DeleteById<T extends BaseModel>(
-    this: ModelCtor<T>,
+  static override async DeleteById<C extends ModelCtor>(
+    this: C,
     _id: string,
     _options?: DeleteOptions
   ): Promise<never> {

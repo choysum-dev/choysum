@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
-import type { ModelClass } from '../model/types';
-import type { FieldSelection } from '../repository/types';
+import type { ModelClass, ModelCtor, RowOf } from '../model/types';
+import type { FieldSelection, Insertable, Updateable, RowOrProjected } from '../repository/types';
 import { Field, Model } from '../decorator';
 import { RelationProcessor } from './processor';
 import type { RelationFieldType } from './types';
@@ -98,22 +98,26 @@ class RelationProcessorInvalidParent extends BaseModel {
 class RelationProcessorCreateTarget extends BaseModel {
   static calls = 0;
 
-  static override async Create<T extends BaseModel>(
-    this: ModelClass<T>,
-    value: Record<string, any>,
-    _returnFields?: FieldSelection<T>
-  ): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    value: Partial<Insertable<RowOf<C>>>,
+    _returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     RelationProcessorCreateTarget.calls += 1;
     return {
       Id: `crt-${RelationProcessorCreateTarget.calls}`,
       ...value,
-    } as T;
+    } as RowOrProjected<RowOf<C>, F>;
   }
 }
 
 @Model('test.RelationProcessorCreateFailTarget')
 class RelationProcessorCreateFailTarget extends BaseModel {
-  static override async Create<T extends BaseModel>(): Promise<T> {
+  static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    _value?: Partial<Insertable<RowOf<C>>>,
+    _returnFields?: F
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
     throw new Error('create failed');
   }
 }

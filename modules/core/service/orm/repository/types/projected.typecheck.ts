@@ -5,7 +5,7 @@
  * Compile-only guards for {@link Projected} (not executed at runtime).
  */
 import type BaseModel from '../../model/model';
-import type { Projected } from './selection';
+import type { FieldSelection, Projected, PartialOrProjected, RowOrProjected } from './selection';
 import { fields } from './selection';
 
 type ExpectTrue<T extends true> = T;
@@ -53,6 +53,32 @@ type ExpectBothRelationKeys = ExpectTrue<
 const _selected = fields<Probe>()('Id', 'Name');
 type ExpectLiteralKeys = ExpectTrue<typeof _selected extends readonly ['Id', 'Name'] ? true : false>;
 
+// Wide FieldSelection must not collapse Projected to full Selectable (via '*'); use Partial.
+type WideSel = RowOrProjected<Probe, FieldSelection<Probe>>;
+type ExpectWidePartial = ExpectTrue<[WideSel] extends [Partial<Probe>] ? ([Partial<Probe>] extends [WideSel] ? true : false) : false>;
+type LiteralSel = RowOrProjected<Probe, ['Id']>;
+type ExpectLiteralHasId = ExpectTrue<'Id' extends keyof LiteralSel ? true : false>;
+// @ts-expect-error Name was not selected in literal RowOrProjected
+type LiteralNoName = LiteralSel['Name'];
+type UnspecSel = RowOrProjected<Probe, undefined>;
+type ExpectUnspecFull = ExpectTrue<[UnspecSel] extends [Probe] ? true : false>;
+type AnySel = RowOrProjected<Probe, any>;
+type ExpectAnyFull = ExpectTrue<[AnySel] extends [Probe] ? true : false>;
+type NeverSel = RowOrProjected<Probe, never>;
+type ExpectNeverFull = ExpectTrue<[NeverSel] extends [Probe] ? true : false>;
+type NeverUpdate = PartialOrProjected<Probe, never>;
+type ExpectNeverUpdatePartial = ExpectTrue<[NeverUpdate] extends [Partial<Probe>] ? true : false>;
+
+// Update return: unspecified/wide → Partial; literal → Projected.
+type UpdateWide = PartialOrProjected<Probe, FieldSelection<Probe>>;
+type ExpectUpdateWidePartial = ExpectTrue<[UpdateWide] extends [Partial<Probe>] ? true : false>;
+type UpdateLiteral = PartialOrProjected<Probe, ['Id']>;
+type ExpectUpdateLiteralId = ExpectTrue<'Id' extends keyof UpdateLiteral ? true : false>;
+// @ts-expect-error Name was not selected in literal PartialOrProjected
+type UpdateLiteralNoName = UpdateLiteral['Name'];
+type UpdateUnspec = PartialOrProjected<Probe, undefined>;
+type ExpectUpdateUnspecPartial = ExpectTrue<[UpdateUnspec] extends [Partial<Probe>] ? true : false>;
+
 const _typecheckHold:
   | [
       ExpectId,
@@ -62,8 +88,19 @@ const _typecheckHold:
       ExpectPartnerKey,
       ExpectBothRelationKeys,
       ExpectLiteralKeys,
+      ExpectWidePartial,
+      ExpectLiteralHasId,
+      ExpectUnspecFull,
+      ExpectAnyFull,
+      ExpectNeverFull,
+      ExpectNeverUpdatePartial,
+      ExpectUpdateWidePartial,
+      ExpectUpdateLiteralId,
+      ExpectUpdateUnspecPartial,
     ]
   | undefined = undefined;
 void _typecheckHold;
 void 0 as unknown as NoName;
 void 0 as unknown as NoNameMulti;
+void 0 as unknown as LiteralNoName;
+void 0 as unknown as UpdateLiteralNoName;

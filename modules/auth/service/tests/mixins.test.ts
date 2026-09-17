@@ -12,6 +12,7 @@ import RoleInheritance from '../models/role_inheritance';
 import Role from '../models/role';
 import User from '../models/user/user';
 import UserRole from '../models/user_role';
+import { __setInvalidateAuthzCachesForUsersForTest } from '../models/_request_cache_invalidation';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
 
 /**
@@ -65,6 +66,63 @@ test('AuthzMutationModel: harness Create is defined on the mixin prototype chain
   expect(typeof AuthzMutationHarness.Create).toBe('function');
   expect(typeof AuthzMutationHarness.DeleteById).toBe('function');
   expect(typeof BaseModel.Create).toBe('function');
+});
+
+test('AuthzMutationModel: writes invalidate only after success', async () => {
+  const ops: string[] = [];
+  const originalInvalidate = AuthzMutationHarness.invalidateAuthzCachesAfterWrite;
+  const originalCreate = BaseModel.Create;
+  AuthzMutationHarness.invalidateAuthzCachesAfterWrite = op => {
+    ops.push(op);
+  };
+  try {
+    BaseModel.Create = (async () => ({ Id: 'h1' })) as typeof BaseModel.Create;
+    await AuthzMutationHarness.Create({} as never);
+    expect(ops).toEqual(['create']);
+
+    BaseModel.Create = (async () => {
+      throw new Error('create failed');
+    }) as typeof BaseModel.Create;
+    let threw = false;
+    try {
+      await AuthzMutationHarness.Create({} as never);
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+    expect(ops).toEqual(['create']);
+  } finally {
+    BaseModel.Create = originalCreate;
+    AuthzMutationHarness.invalidateAuthzCachesAfterWrite = originalInvalidate;
+  }
+});
+
+test('UserRole: targeted clears for create, base behavior otherwise', () => {
+  const base = AuthzMutationModel.invalidateAuthzCachesAfterWrite;
+  let baseCalls = 0;
+  AuthzMutationModel.invalidateAuthzCachesAfterWrite = () => {
+    baseCalls += 1;
+  };
+  const cleared: string[][] = [];
+  __setInvalidateAuthzCachesForUsersForTest(ids => {
+    cleared.push([...ids]);
+  });
+  try {
+    UserRole.invalidateAuthzCachesAfterWrite('create', { UserId: 'u1' });
+    UserRole.invalidateAuthzCachesAfterWrite('createMany', [{ UserId: 'u1' }, { UserId: 'u2' }]);
+    expect(cleared).toEqual([['u1'], ['u1', 'u2']]);
+    expect(baseCalls).toBe(0);
+    UserRole.invalidateAuthzCachesAfterWrite('create', {});
+    expect(baseCalls).toBe(1);
+    UserRole.invalidateAuthzCachesAfterWrite('delete', ['Id', '=', 'x']);
+    UserRole.invalidateAuthzCachesAfterWrite('update', { condition: [], values: { UserId: 'u1' } });
+    UserRole.invalidateAuthzCachesAfterWrite('updateById', { id: 'ur1', values: { UserId: 'u1' } });
+    UserRole.invalidateAuthzCachesAfterWrite('deleteById', 'ur1');
+    expect(baseCalls).toBe(5);
+  } finally {
+    __setInvalidateAuthzCachesForUsersForTest(null);
+    AuthzMutationModel.invalidateAuthzCachesAfterWrite = base;
+  }
 });
 
 test('User: extends AttachmentOwnerMixin and exposes bind/unbind entry points', () => {

@@ -408,7 +408,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   private async createRelations(
     joinRepo: Repository,
     targetRepo: unknown,
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
+    targetModel: ModelCtor<BaseModel>,
     parentId: string,
     joinField: string,
     inverseJoinField: string,
@@ -591,7 +591,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   private async processReplaceItems(
     joinRepo: Repository,
     targetRepo: unknown,
-    targetModel: ModelCtor<BaseModel> & typeof BaseModel,
+    targetModel: ModelCtor<BaseModel>,
     parentId: string,
     joinField: string,
     inverseJoinField: string,
