@@ -4,7 +4,6 @@
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { condition } from '@/core/service/api/query';
 import type { BaseQueryCondition } from '@/core/service/api/query';
-import type { BaseModel } from '@/core/service';
 import { createServiceByModel } from '@/core/service/rpc';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import type MetaApplicationModel from '@/meta/service/models/application';
@@ -52,7 +51,7 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
     const [appRows, modelRows] = await Promise.all([
       MetaApplication.Search(['Name', '=', appName], { fields: ['Id'] as const, limit: 1 }),
       MetaModel.Search(
-        condition<MetaModelModel>({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
+        condition({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
         { fields: ['Id', 'CompanyField'] as const, limit: 1 }
       ),
     ]);
@@ -88,7 +87,7 @@ async function computeCompanyGateMode(
       const hasOwnershipField =
         Number(
           await MetaField.Count(
-            condition<BaseModel>({
+            condition({
               And: [
                 ['ModelId', '=', modelId],
                 ['Name', '=', ownershipField],
@@ -118,12 +117,12 @@ export function buildCompanyGateExpr(
   if (!ownershipField) return null;
   if (scope.global) return null;
   const ids = scope.companies || [];
-  return condition({
+  return {
     Or: [
       [ownershipField, 'in', ids],
       [ownershipField, 'is', null],
     ],
-  });
+  };
 }
 
 function assertKind(raw: unknown): RoleRecordRuleKind {
@@ -175,12 +174,12 @@ function buildRuleExpr(
     return gate; // null ⇒ unconstrained TRUE for this rule
   }
   if (!gate) return cond;
-  return condition({ And: [gate, cond] });
+  return { And: [gate, cond] };
 }
 
 function orMerge(exprs: any[]): any {
   if (exprs.length === 1) return exprs[0];
-  return condition({ Or: exprs });
+  return { Or: exprs };
 }
 
 /**
@@ -313,6 +312,6 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       };
     }
     // parts.length > 1 ⇒ AND-compose (never call a 1-element helper).
-    return { kind: 'expr', expr: condition({ And: parts }), reason: 'grant_or_and_restricts', hitRuleIds: uniqueHitRuleIds };
+    return { kind: 'expr', expr: { And: parts }, reason: 'grant_or_and_restricts', hitRuleIds: uniqueHitRuleIds };
   });
 }

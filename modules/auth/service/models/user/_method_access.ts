@@ -22,7 +22,7 @@ const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.Me
 
 async function metaModelId(appName: string, modelName: string): Promise<string> {
   const rows = await MetaModel.Search(
-    condition<MetaModelModel>({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
+    condition({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
     { fields: ['Id'] as const, limit: 1 }
   );
   return String(rows?.[0]?.Id || '').trim();
@@ -89,7 +89,7 @@ export async function resolveMethodAccessMeta(
     if (!modelId) return undefined;
 
     const serviceRows = await MetaService.Search(
-      condition<MetaServiceModel>({ And: [['ModelId', '=', modelId]] }),
+      condition({ And: [['ModelId', '=', modelId]] }),
       { fields: ['Id', 'Name'] as const, limit: 5000 }
     );
     const methodLower = String(methodName || '')
@@ -175,7 +175,7 @@ export async function evaluateRoleMethodAccess(
   methodLower?: string
 ): Promise<{ denied: boolean; allowed: boolean; hitRuleIds: string[]; reason: string }> {
   const accessesRaw = await RoleMethodAccess.Search(
-    condition<RoleMethodAccess>({
+    condition({
       And: [['RoleId', 'in', roleIds], { Or: scopeOr }],
     }),
     { fields: ['Id', 'Mode', 'Source', 'LogicalModelName', 'LogicalMethods'] as const, limit: 5000 }
@@ -237,7 +237,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
   }
 
   const grants = await RoleUiResource.Search(
-    condition<RoleUiResource>({
+    condition({
       And: [['RoleId', 'in', ids]],
     }),
     { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'] as const, limit: 100000 }
@@ -314,7 +314,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     if (appIDList.length > 0) {
       promises.push(
         MetaUiResource.Search(
-          condition<MetaUiResourceModel>({ And: [['MetaApplicationId', 'in', appIDList]] }),
+          condition({ And: [['MetaApplicationId', 'in', appIDList]] }),
           { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'] as const, limit: 100000 }
         )
       );
@@ -323,7 +323,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     if (resourceIDList.length > 0) {
       promises.push(
         MetaUiResource.Search(
-          condition<MetaUiResourceModel>({
+          condition({
             Or: [
               ['Id', 'in', resourceIDList],
               ['Name', 'in', resourceIDList],
