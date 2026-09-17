@@ -84,7 +84,7 @@ type StoreCopy<T extends BaseModel> = (
   id: string,
   defaults?: Partial<Record<string, unknown>>,
   options?: CopyOptions
-) => Promise<ClientModel<T>>;
+) => Promise<T>;
 type StoreNameSearch<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
   name: string,
   condition?: QueryCondition<T> | [],

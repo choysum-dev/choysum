@@ -56,17 +56,14 @@ console.log(ref, defineStore, createPinia, createI18n);
 		}
 		t.Fatalf("bundle: %v", err)
 	}
-	vueVer := regexp.MustCompile(`vue@(\d+\.\d+\.\d+)`)
-	if m := regexp.MustCompile(`vue@[\^~><*]`).FindString(res.JS); m != "" {
-		t.Fatalf("bundle contains an unpinned vue range %q", m)
-	}
-	matches := vueVer.FindAllStringSubmatch(res.JS, -1)
-	if len(matches) == 0 {
+	refs := regexp.MustCompile(`vue@[0-9A-Za-z.^~*<>=-]+`).FindAllString(res.JS, -1)
+	if len(refs) == 0 {
 		t.Fatal("expected pinned vue version markers in bundle")
 	}
-	for _, m := range matches {
-		if m[1] != choysummount.VuePackageVersion {
-			t.Fatalf("bundle contains vue@%s, want only %s", m[1], choysummount.VuePackageVersion)
+	want := "vue@" + choysummount.VuePackageVersion
+	for _, ref := range refs {
+		if ref != want {
+			t.Fatalf("bundle references %q, want only %s", ref, want)
 		}
 	}
 }

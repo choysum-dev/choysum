@@ -523,8 +523,8 @@ test('message.Message: Post refuses Bind when Create returns without Id', async 
     } finally {
       (Message as any).Create = origCreate;
     }
-    expect((missingIdErr as any).code).toBe(MessageErrCode.ATTACHMENT_BIND_FAILED);
-    expect(String((missingIdErr as any).message || '')).toMatch(/Id is required/i);
+    expect((missingIdErr as any).code).toBe(MessageErrCode.INVALID_ARGUMENT);
+    expect(String((missingIdErr as any).message || '')).toMatch(/without Id/i);
   });
 });
 

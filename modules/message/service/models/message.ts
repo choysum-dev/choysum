@@ -329,14 +329,16 @@ export default class Message extends PolymorphicRecordModel {
       createFields
     );
 
+    // Create must return Id even for narrow selections; Bind, fan-out, and tip all depend on it.
+    const ownerRecordId = String((created as { Id?: unknown }).Id || '').trim();
+    if (!ownerRecordId) {
+      throw newMessageError({
+        code: MessageErrCode.INVALID_ARGUMENT,
+        message: 'Post created row without Id',
+      });
+    }
+
     if (attachmentObjectId && bind) {
-      const ownerRecordId = String((created as { Id?: unknown }).Id || '').trim();
-      if (!ownerRecordId) {
-        throw newMessageError({
-          code: MessageErrCode.ATTACHMENT_BIND_FAILED,
-          message: 'Message Id is required to bind an attachment',
-        });
-      }
       const mutationId = String(req.AttachmentMutationId || '').trim() || newMutationId();
       try {
         await bind({

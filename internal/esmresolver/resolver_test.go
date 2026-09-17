@@ -2051,6 +2051,9 @@ func TestApplyBareImportPin(t *testing.T) {
 			t.Fatalf("applyBareImportPin(%q) = %q, want %q", tt.spec, got, tt.want)
 		}
 	}
+	if got := r.applyBareImportPin("https://esm.sh/vue@^3.5.11?target=es2020"); got != "https://esm.sh/vue@3.5.38?target=es2020" {
+		t.Fatalf("url-shaped bare pin: got %q", got)
+	}
 	if got := New().applyBareImportPin("vue"); got != "vue" {
 		t.Fatalf("no pins: got %q", got)
 	}

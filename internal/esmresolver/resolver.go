@@ -564,7 +564,13 @@ func (r *Resolver) applyBareImportPin(specifier string) string {
 	if r == nil || len(r.barePins) == 0 {
 		return specifier
 	}
-	core, suffix := splitQueryHash(strings.TrimSpace(specifier))
+	trimmed := strings.TrimSpace(specifier)
+	// Full URLs can arrive as plain specifiers; splitBarePackage would treat
+	// "https:" as the package name, so pin them through the URL helper instead.
+	if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
+		return r.applyBareImportPinToURL(specifier)
+	}
+	core, suffix := splitQueryHash(trimmed)
 	pkg, subpath, _ := splitBarePackage(core)
 	ver, ok := r.barePins[pkg]
 	if !ok || ver == "" {
