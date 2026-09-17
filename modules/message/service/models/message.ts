@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model, type ModelCtor, type RowOf } from '@/core/service';
-import { callParentCollection } from '@/core/service/orm/model/call_parent_collection';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import { asWriteBag } from '@/core/service/utils/normalization';
@@ -395,10 +394,8 @@ export default class Message extends PolymorphicRecordModel {
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const bag = { ...asWriteBag(value) };
     prepareCreatePayload(bag);
-    return (await callParentCollection(BaseModel.Create, this, [
-      bag as Partial<Insertable<RowOf<C>>>,
-      returnFields,
-    ])) as RowOrProjected<RowOf<C>, F>;
+    return (await super.Create<C, F>(bag as Partial<Insertable<RowOf<C>>>,
+      returnFields,)) as RowOrProjected<RowOf<C>, F>;
   }
 
   /**
@@ -414,7 +411,7 @@ export default class Message extends PolymorphicRecordModel {
       prepareCreatePayload(bag);
       return bag as Partial<Insertable<RowOf<C>>>;
     });
-    return (await callParentCollection(BaseModel.CreateMany, this, [rows, returnFields])) as Array<
+    return (await super.CreateMany<C, F>(rows, returnFields)) as Array<
       RowOrProjected<RowOf<C>, F>
     >;
   }

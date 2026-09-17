@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
-import { callParentCollection } from '@/core/service/orm/model/call_parent_collection';
+import { Model, Field, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions, SoftDeleteOptions, UpdateOptions } from '@/core/service/api/query';
@@ -227,7 +226,7 @@ export default class Role extends AuthzMutationModel {
     fields?: F,
     options?: SoftDeleteOptions
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const row = (await callParentCollection(BaseModel.Browse, this, [id, fields, options])) as RowOrProjected<RowOf<C>, F>;
+    const row = await super.Browse<C, F>(id, fields, options);
     if (wantsAccessField(fields)) {
       await hydrateAccessUiResourceIds([row]);
     }
@@ -243,9 +242,7 @@ export default class Role extends AuthzMutationModel {
     fields?: F,
     options?: SoftDeleteOptions
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const rows = (await callParentCollection(BaseModel.BrowseMany, this, [ids, fields, options])) as Array<
-      RowOrProjected<RowOf<C>, F>
-    >;
+    const rows = await super.BrowseMany<C, F>(ids, fields, options);
     if (wantsAccessField(fields)) {
       await hydrateAccessUiResourceIds(rows);
     }
@@ -260,9 +257,7 @@ export default class Role extends AuthzMutationModel {
     condition: QueryCondition<RowOf<C>> | [] = [],
     options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const rows = (await callParentCollection(BaseModel.Search, this, [condition, options])) as Array<
-      RowOrProjected<RowOf<C>, F>
-    >;
+    const rows = await super.Search<C, F>(condition, options);
     if (wantsAccessField(options?.fields)) {
       await hydrateAccessUiResourceIds(rows);
     }
@@ -279,10 +274,8 @@ export default class Role extends AuthzMutationModel {
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const payload = { ...(asWriteBag(value)) };
     const accessIds = await applyAccessWriteTransformOnCreate(payload);
-    const row = (await callParentCollection(AuthzMutationModel.Create, this, [
-      payload as Partial<Insertable<RowOf<C>>>,
-      returnFields,
-    ])) as RowOrProjected<RowOf<C>, F>;
+    const row = (await super.Create<C, F>(payload as Partial<Insertable<RowOf<C>>>,
+      returnFields,)) as RowOrProjected<RowOf<C>, F>;
     const roleId = normalizeRefId((row as { Id?: unknown }).Id);
     if (roleId && accessIds) {
       await syncAllowResourceGrants(roleId, accessIds);
@@ -306,10 +299,8 @@ export default class Role extends AuthzMutationModel {
     for (const payload of payloads) {
       accessList.push(await applyAccessWriteTransformOnCreate(payload));
     }
-    const rows = (await callParentCollection(AuthzMutationModel.CreateMany, this, [
-      payloads as Array<Partial<Insertable<RowOf<C>>>>,
-      returnFields,
-    ])) as Array<RowOrProjected<RowOf<C>, F>>;
+    const rows = (await super.CreateMany<C, F>(payloads as Array<Partial<Insertable<RowOf<C>>>>,
+      returnFields,)) as Array<RowOrProjected<RowOf<C>, F>>;
     for (let i = 0; i < rows.length; i++) {
       const roleId = normalizeRefId((rows[i] as { Id?: unknown }).Id);
       const accessIds = accessList[i];
@@ -343,7 +334,7 @@ export default class Role extends AuthzMutationModel {
     let roleIdForSync: string | null = null;
     let accessIdsForSync: string[] | null = null;
     if (Object.prototype.hasOwnProperty.call(payload, 'AccessUiResourceIds')) {
-      // Prefer this.Search so C stays the Role ctor (parent Search collapses via super).
+      // Prefer this.Search so hydration uses Role.Search (AccessUiResourceIds) if needed later.
       // `['Id']` is always valid on Role rows; `as never` only unlocks the open `RowOf<C>` fields slot.
       const targetRows = await this.Search(condition, { fields: ['Id'] as never });
       const roleIds = targetRows.map(row => normalizeRefId((row as { Id?: unknown }).Id)).filter(Boolean) as string[];
@@ -356,12 +347,10 @@ export default class Role extends AuthzMutationModel {
       }
     }
 
-    const updated = (await callParentCollection(AuthzMutationModel.Update, this, [
-      condition,
+    const updated = (await super.Update<C, F>(condition,
       payload as Partial<Updateable<RowOf<C>>>,
       returnFields,
-      options,
-    ])) as UpdatedRows;
+      options,)) as UpdatedRows;
     if (roleIdForSync && accessIdsForSync) {
       await syncAllowResourceGrants(roleIdForSync, accessIdsForSync);
       if (updated.length && returnFields != null) {
@@ -389,12 +378,10 @@ export default class Role extends AuthzMutationModel {
     type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
     const payload: Record<string, unknown> = { ...(asWriteBag(values)) };
     const accessIds = await applyAccessWriteTransformOnUpdate(payload, id);
-    let row = (await callParentCollection(AuthzMutationModel.UpdateById, this, [
-      id,
+    let row = (await super.UpdateById<C, F>(id,
       payload as Partial<Updateable<RowOf<C>>>,
       returnFields,
-      options,
-    ])) as UpdatedRow;
+      options,)) as UpdatedRow;
     if (accessIds) {
       await syncAllowResourceGrants(id, accessIds);
       if (returnFields != null) {

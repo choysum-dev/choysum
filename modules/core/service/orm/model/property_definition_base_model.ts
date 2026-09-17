@@ -6,7 +6,6 @@ import { raiseDomainError } from '@/core/service/error';
 import { asWriteBag } from '@/core/service/utils/normalization';
 import { MetadataStorage } from '../metadata/storage';
 import BaseModel from './model';
-import { callParentCollection } from './call_parent_collection';
 import { registerLogicalModelName } from './logical_model_registry';
 import { assertValidPropertyDefinitionItems } from './properties_types';
 import type { ModelCtor, RowOf } from './types';
@@ -214,7 +213,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     normalizeDefinitionOnVals(vals);
     await assertPropertyDefinitionParentWritable(self, vals);
     await assertUniqueDefinitionScope(self, vals);
-    return (await callParentCollection(BaseModel.Create, this, [value, returnFields])) as RowOrProjected<RowOf<C>, F>;
+    return (await super.Create<C, F>(value, returnFields)) as RowOrProjected<RowOf<C>, F>;
   }
 
   static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
@@ -247,7 +246,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
       seen.add(key);
       await assertUniqueDefinitionScope(self, rec);
     }
-    return (await callParentCollection(BaseModel.CreateMany, this, [values, returnFields])) as Array<
+    return (await super.CreateMany<C, F>(values, returnFields)) as Array<
       RowOrProjected<RowOf<C>, F>
     >;
   }
@@ -277,7 +276,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     }
     await assertParentsWritableDeduped(self, scopes);
     // Bulk Update cannot cheaply merge per-row scope uniqueness; DB unique index is the backstop.
-    return (await callParentCollection(BaseModel.Update, this, [condition, values, returnFields, options])) as UpdatedRows;
+    return (await super.Update<C, F>(condition, values, returnFields, options)) as UpdatedRows;
   }
 
   static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
@@ -303,7 +302,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     if (touchesDefinitionScope(vals)) {
       await assertUniqueDefinitionScope(self, merged, id);
     }
-    return (await callParentCollection(BaseModel.UpdateById, this, [id, values, returnFields, options])) as UpdatedRow;
+    return (await super.UpdateById<C, F>(id, values, returnFields, options)) as UpdatedRow;
   }
 
   static override async Delete<C extends ModelCtor>(
@@ -318,7 +317,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
       fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'],
     });
     await assertParentsWritableDeduped(self, (rows || []) as unknown as Record<string, unknown>[]);
-    return (await callParentCollection(BaseModel.Delete, this, [condition, options])) as number;
+    return (await super.Delete<C>(condition, options)) as number;
   }
 
   static override async DeleteById<C extends ModelCtor>(
@@ -333,7 +332,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     );
     const current = (currentRows && currentRows[0]) || {};
     await assertPropertyDefinitionParentWritable(self, current as unknown as Record<string, unknown>);
-    return (await callParentCollection(BaseModel.DeleteById, this, [id, options])) as number;
+    return (await super.DeleteById<C>(id, options)) as number;
   }
 }
 

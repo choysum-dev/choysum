@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, type ModelCtor, type RowOf } from '@/core/service';
-import { callParentCollection } from '@/core/service/orm/model/call_parent_collection';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { DeleteOptions, QueryCondition, UpdateOptions } from '@/core/service/api/query';
@@ -67,7 +66,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const out = await callParentCollection(BaseModel.Create, this, [value, returnFields]);
+    const out = await super.Create<C, F>(value, returnFields);
     invalidateAllAuthzCaches();
     return out as RowOrProjected<RowOf<C>, F>;
   }
@@ -80,7 +79,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     values: Partial<Insertable<RowOf<C>>>[],
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const out = await callParentCollection(BaseModel.CreateMany, this, [values, returnFields]);
+    const out = await super.CreateMany<C, F>(values, returnFields);
     invalidateAllAuthzCaches();
     return out as Array<RowOrProjected<RowOf<C>, F>>;
   }
@@ -96,7 +95,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     type UpdatedRows = Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>;
-    const out = await callParentCollection(BaseModel.Update, this, [condition, values, returnFields, options]);
+    const out = await super.Update<C, F>(condition, values, returnFields, options);
     invalidateAllAuthzCaches();
     return out as UpdatedRows;
   }
@@ -112,7 +111,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
-    const out = await callParentCollection(BaseModel.UpdateById, this, [id, values, returnFields, options]);
+    const out = await super.UpdateById<C, F>(id, values, returnFields, options);
     invalidateAllAuthzCaches();
     return out as UpdatedRow;
   }
@@ -125,7 +124,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     condition: QueryCondition<RowOf<C>>,
     options?: DeleteOptions
   ): Promise<number> {
-    const out = await callParentCollection(BaseModel.Delete, this, [condition, options]);
+    const out = await super.Delete<C>(condition, options);
     invalidateAllAuthzCaches();
     return out as number;
   }
@@ -134,7 +133,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
    * Delete one row by Id and invalidate every request-scoped authz cache.
    */
   static override async DeleteById<C extends ModelCtor>(this: C, id: string, options?: DeleteOptions): Promise<number> {
-    const out = await callParentCollection(BaseModel.DeleteById, this, [id, options]);
+    const out = await super.DeleteById<C>(id, options);
     invalidateAllAuthzCaches();
     return out as number;
   }

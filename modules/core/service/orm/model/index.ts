@@ -3,7 +3,6 @@
 
 export { default as BaseModel } from './model';
 export type { ModelClass, ModelCtor, RowOf } from './types';
-export { callParentCollection } from './call_parent_collection';
 export { clearExclusive } from './clear_exclusive';
 export { pool, dial } from './model_pool';
 export {

@@ -7,7 +7,6 @@ import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
 import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
 import BaseModel from './model';
-import { callParentCollection } from './call_parent_collection';
 import type { ModelCtor, RowOf } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
 import type {
@@ -451,7 +450,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const application = hostApplication(this);
-    const out = (await callParentCollection(BaseModel.Create, this, [value, returnFields])) as RowOrProjected<
+    const out = (await super.Create<C, F>(value, returnFields)) as RowOrProjected<
       RowOf<C>,
       F
     >;
@@ -468,7 +467,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const application = hostApplication(this);
-    const out = (await callParentCollection(BaseModel.CreateMany, this, [values, returnFields])) as Array<
+    const out = (await super.CreateMany<C, F>(values, returnFields)) as Array<
       RowOrProjected<RowOf<C>, F>
     >;
     invalidateTerminologyModules(application, [
@@ -492,12 +491,10 @@ export default class TranslationTermBaseModel extends BaseModel {
       fields: ['Module'],
       limit: 0,
     });
-    const out = (await callParentCollection(BaseModel.Update, this, [
-      condition,
+    const out = (await super.Update<C, F>(condition,
       values,
       returnFields,
-      options,
-    ])) as UpdatedRows;
+      options,)) as UpdatedRows;
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
       ...modulesFromRows(before),
@@ -525,12 +522,10 @@ export default class TranslationTermBaseModel extends BaseModel {
         /* Browse may fail if row gone; still attempt update */
       }
     }
-    const out = (await callParentCollection(BaseModel.UpdateById, this, [
-      id,
+    const out = (await super.UpdateById<C, F>(id,
       values,
       returnFields,
-      options,
-    ])) as UpdatedRow;
+      options,)) as UpdatedRow;
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
     return out;
   }
@@ -547,7 +542,7 @@ export default class TranslationTermBaseModel extends BaseModel {
       limit: 0,
       ...(options || {}),
     });
-    const count = (await callParentCollection(BaseModel.Delete, this, [condition, options])) as number;
+    const count = (await super.Delete<C>(condition, options)) as number;
     invalidateTerminologyModules(application, modulesFromRows(before));
     return count;
   }
@@ -566,7 +561,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     } catch {
       /* missing row */
     }
-    const count = (await callParentCollection(BaseModel.DeleteById, this, [id, options])) as number;
+    const count = (await super.DeleteById<C>(id, options)) as number;
     invalidateTerminologyModules(application, [module]);
     return count;
   }
