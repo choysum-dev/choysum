@@ -49,10 +49,10 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
   const key = buildRecordRuleMetaCacheKey(appName, modelName);
   return await memoizeInReqState(state, key, async () => {
     const [appRows, modelRows] = await Promise.all([
-      MetaApplication.Search(['Name', '=', appName], { fields: ['Id'] as const, limit: 1 }),
+      MetaApplication.Search(['Name', '=', appName], { fields: ['Id'], limit: 1 }),
       MetaModel.Search(
         { And: [['Application', '=', appName], ['Name', '=', modelName]] },
-        { fields: ['Id', 'CompanyField'] as const, limit: 1 }
+        { fields: ['Id', 'CompanyField'], limit: 1 }
       ),
     ]);
     const irApplicationId = String(appRows?.[0]?.Id || '').trim();
@@ -238,7 +238,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       condition<RoleRecordRule>({
         And: [{ Or: audienceOr }, [String(permField), '=', true], { Or: scopeOr }],
       }),
-      { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'MetaModelId', 'MetaApplicationId'] as const, limit: RULE_FETCH_LIMIT + 1 }
+      { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'MetaModelId', 'MetaApplicationId'], limit: RULE_FETCH_LIMIT + 1 }
     );
 
     if ((allRules || []).length > RULE_FETCH_LIMIT) {

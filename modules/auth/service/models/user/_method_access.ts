@@ -23,14 +23,14 @@ const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.Me
 async function metaModelId(appName: string, modelName: string): Promise<string> {
   const rows = await MetaModel.Search(
     { And: [['Application', '=', appName], ['Name', '=', modelName]] },
-    { fields: ['Id'] as const, limit: 1 }
+    { fields: ['Id'], limit: 1 }
   );
   return String(rows?.[0]?.Id || '').trim();
 }
 
 async function metaApplicationId(appName: string): Promise<string> {
   const rows = await MetaApplication.Search(['Name', '=', appName], {
-    fields: ['Id'] as const,
+    fields: ['Id'],
     limit: 1,
   });
   return String(rows?.[0]?.Id || '').trim();
@@ -90,7 +90,7 @@ export async function resolveMethodAccessMeta(
 
     const serviceRows = await MetaService.Search(
       { And: [['ModelId', '=', modelId]] },
-      { fields: ['Id', 'Name'] as const, limit: 5000 }
+      { fields: ['Id', 'Name'], limit: 5000 }
     );
     const methodLower = String(methodName || '')
       .trim()
@@ -178,7 +178,7 @@ export async function evaluateRoleMethodAccess(
     condition({
       And: [['RoleId', 'in', roleIds], { Or: scopeOr }],
     }),
-    { fields: ['Id', 'Mode', 'Source', 'LogicalModelName', 'LogicalMethods'] as const, limit: 5000 }
+    { fields: ['Id', 'Mode', 'Source', 'LogicalModelName', 'LogicalMethods'], limit: 5000 }
   );
   // UI-Option-A: Source=ui rows are not manual ACL (runtime ui-derived path owns UI→Method).
   const methodKey = String(methodLower || '')
@@ -238,7 +238,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
 
   const grants = await RoleUiResource.Search(
     { And: [['RoleId', 'in', ids]] },
-    { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'] as const, limit: 100000 }
+    { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'], limit: 100000 }
   );
 
   let hasGlobalAllow = false;
@@ -300,7 +300,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
 
   if (hasGlobalAllow || hasGlobalDeny) {
     const allRows = await MetaUiResource.Search([], {
-      fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'] as const,
+      fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'],
       limit: 100000,
     });
     mergeRows(allRows as any[]);
@@ -313,7 +313,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
       promises.push(
         MetaUiResource.Search(
           { And: [['MetaApplicationId', 'in', appIDList]] },
-          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'] as const, limit: 100000 }
+          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 }
         )
       );
     }
@@ -327,7 +327,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
               ['Name', 'in', resourceIDList],
             ],
           },
-          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'] as const, limit: 100000 }
+          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 }
         )
       );
     }

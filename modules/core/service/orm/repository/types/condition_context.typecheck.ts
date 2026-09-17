@@ -21,7 +21,7 @@ type WidgetService = ModelService<typeof ConditionCtxWidget>;
 declare const widgetSvc: WidgetService;
 
 async function bareLiteralSearchAndCount(): Promise<void> {
-  await widgetSvc.Search({ And: [['Name', '=', 'x']] }, { fields: ['Id', 'Name'] as const, limit: 1 });
+  await widgetSvc.Search({ And: [['Name', '=', 'x']] }, { fields: ['Id', 'Name'], limit: 1 });
   await widgetSvc.Count({ And: [['Name', '=', 'x']] });
   await widgetSvc.Delete(['Id', '=', 'x']);
 }
@@ -29,7 +29,7 @@ async function bareLiteralSearchAndCount(): Promise<void> {
 async function conditionForDynamicTree(scopeOr: QueryCondition<ConditionCtxWidget>[]): Promise<void> {
   await widgetSvc.Search(
     condition({ And: [['Name', '=', 'x'], { Or: scopeOr }] }),
-    { fields: ['Id'] as const, limit: 1 }
+    { fields: ['Id'], limit: 1 }
   );
 }
 

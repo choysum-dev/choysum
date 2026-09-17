@@ -46,7 +46,7 @@ export async function buildAclAggregation(
   roleScopesById: Record<string, { global: boolean; companies: string[] }>
 ): Promise<AclAggregationResult> {
   const accessesRaw = await RoleMethodAccess.Search(['RoleId', 'in', roleIds], {
-    fields: ['RoleId', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName', 'LogicalMethods', 'Mode', 'Source'] as const,
+    fields: ['RoleId', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName', 'LogicalMethods', 'Mode', 'Source'],
     limit: 50000,
   });
   // UI-Option-A: ignore legacy Source=ui rows in PermissionState ACL aggregation.
@@ -81,13 +81,13 @@ export async function buildAclAggregation(
   const [services, apps] = await Promise.all([
     irServiceIds.length > 0
       ? MetaService.Search(['Id', 'in', irServiceIds], {
-          fields: ['Id', 'ModelId', 'Name'] as const,
+          fields: ['Id', 'ModelId', 'Name'],
           limit: 50000,
         })
       : Promise.resolve([]),
     irApplicationIds.length > 0
       ? MetaApplication.Search(['Id', 'in', irApplicationIds], {
-          fields: ['Id', 'Name'] as const,
+          fields: ['Id', 'Name'],
           limit: 50000,
         })
       : Promise.resolve([]),
@@ -115,7 +115,7 @@ export async function buildAclAggregation(
   const needModelIds = Array.from(new Set([...irModelIds, ...Array.from(modelIdsFromServices)]));
   if (needModelIds.length > 0) {
     const models = await MetaModel.Search(['Id', 'in', needModelIds], {
-      fields: ['Id', 'Name', 'Application'] as const,
+      fields: ['Id', 'Name', 'Application'],
       limit: 50000,
     });
     for (const m of models || []) {
@@ -137,7 +137,7 @@ export async function buildAclAggregation(
   const appNames = Array.from(new Set(appNameById.values()));
   if (appNames.length > 0) {
     const rows = await MetaModel.Search(['Application', 'in', appNames], {
-      fields: ['Application', 'Name', 'ModuleId', 'UpdatedAt'] as const,
+      fields: ['Application', 'Name', 'ModuleId', 'UpdatedAt'],
       orderBy: { field: 'UpdatedAt', order: 'desc' },
       limit: 50000,
     });
@@ -165,7 +165,7 @@ export async function buildAclAggregation(
   const getAllModels = async (): Promise<Array<{ app: string; name: string }>> => {
     if (allModels) return allModels;
     const rows = await MetaModel.Search([], {
-      fields: ['Application', 'Name', 'UpdatedAt'] as const,
+      fields: ['Application', 'Name', 'UpdatedAt'],
       orderBy: { field: 'UpdatedAt', order: 'desc' },
       limit: 50000,
     });
