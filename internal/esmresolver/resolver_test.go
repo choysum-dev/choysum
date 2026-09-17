@@ -2164,12 +2164,17 @@ func TestIsExactPinVersion(t *testing.T) {
 		want bool
 	}{
 		{"3.5.38", true},
+		{"v3.5.38", true},
 		{"3.5.38-beta.1", true},
 		{"^3.5.11", false},
 		{"~3.5.0", false},
 		{"*", false},
 		{"latest", false},
 		{"NEXT", false},
+		{"beta", false},
+		{"canary", false},
+		{"1.x", false},
+		{"1.2.X", false},
 		{"1.0.0 || 2.0.0", false},
 		{">=1.0.0", false},
 	}

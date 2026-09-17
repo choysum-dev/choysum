@@ -246,13 +246,26 @@ func WithBareImportPins(pins map[string]string) Option {
 	}
 }
 
-// isExactPinVersion reports whether ver is an exact pin (not a range, tag, or wildcard).
+// isExactPinVersion reports whether ver is an exact pin (not a range, dist-tag,
+// or wildcard). Accepts forms like "3.5.38", "v3.5.38", and "3.5.38-beta.1".
 func isExactPinVersion(ver string) bool {
-	switch strings.ToLower(ver) {
-	case "*", "latest", "next":
+	lower := strings.ToLower(strings.TrimSpace(ver))
+	if lower == "" || lower == "*" || lower == "latest" || lower == "next" {
 		return false
 	}
-	return !strings.ContainsAny(ver, "^~*<>=| ")
+	if strings.ContainsAny(lower, "^~*<>=| ") {
+		return false
+	}
+	core := strings.TrimPrefix(lower, "v")
+	if core == "" || core[0] < '0' || core[0] > '9' {
+		return false
+	}
+	for _, part := range strings.Split(core, ".") {
+		if part == "x" {
+			return false
+		}
+	}
+	return true
 }
 
 // WithLogger sets the structured logger for metrics output. When set, the
