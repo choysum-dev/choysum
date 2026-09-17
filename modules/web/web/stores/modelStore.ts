@@ -257,8 +257,8 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   Update: StoreUpdate<TModel>;
   UpdateById: StoreUpdateById<TModel>;
   Copy: ClientModelService<StoreCopy<TModel>>;
-  NameSearch: ClientModelService<StoreNameSearch<TModel>>;
-  NameCreate: ClientModelService<StoreNameCreate<TModel>>;
+  NameSearch: StoreNameSearch<TModel>;
+  NameCreate: StoreNameCreate<TModel>;
   Count: ClientModelService<StoreCount<TModel>>;
   Search: StoreSearch<TModel>;
   ReadGroup: ClientModelService<StoreReadGroup<TModel>>;

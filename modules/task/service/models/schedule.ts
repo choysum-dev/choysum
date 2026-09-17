@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/query';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
+import { projectToSelection } from '@/core/service/api/selection';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
@@ -25,53 +26,37 @@ function wantsNextRunPreview(fields?: FieldSelection<Schedule>): boolean {
 
 /**
  * Expand Search fields so NextRunAt preview has Active/CronExpr/Timezone when needed.
+ * Preserves deep-relation entries from the caller selection.
  */
 function fieldsForScheduleListSearch(fields?: FieldSelection<Schedule>): FieldSelection<Schedule> | undefined {
   if (!wantsNextRunPreview(fields) || isFullFieldSelection(fields) || !fields) return fields;
-  const keys = new Set<string>();
+  const present = new Set<string>();
   for (const entry of fields) {
-    if (typeof entry === 'string') keys.add(entry);
+    if (typeof entry === 'string') present.add(entry);
     else if (entry && typeof entry === 'object') {
-      for (const key of Object.keys(entry)) keys.add(key);
+      for (const key of Object.keys(entry)) present.add(key);
     }
   }
-  for (const dep of NEXT_RUN_PREVIEW_DEPS) keys.add(dep);
-  return Array.from(keys) as FieldSelection<Schedule>;
-}
-
-/**
- * Drop preview dependency fields that the caller did not request.
- */
-function projectScheduleListRow<F extends FieldSelection<Schedule> | undefined>(
-  row: Record<string, unknown>,
-  fields?: F
-): RowOrProjected<Schedule, F> {
-  if (isFullFieldSelection(fields) || !fields) {
-    return row as RowOrProjected<Schedule, F>;
+  const next = [...fields] as Array<string | Record<string, unknown>>;
+  for (const dep of NEXT_RUN_PREVIEW_DEPS) {
+    if (!present.has(dep)) next.push(dep);
   }
-  const out: Record<string, unknown> = {};
-  for (const entry of fields) {
-    if (typeof entry === 'string') {
-      if (Object.prototype.hasOwnProperty.call(row, entry)) out[entry] = row[entry];
-    } else if (entry && typeof entry === 'object') {
-      for (const key of Object.keys(entry)) {
-        if (Object.prototype.hasOwnProperty.call(row, key)) out[key] = row[key];
-      }
-    }
-  }
-  return out as RowOrProjected<Schedule, F>;
+  return next as FieldSelection<Schedule>;
 }
 
 function mapSchedulesWithNextRunPreview<F extends FieldSelection<Schedule> | undefined>(
-  items: Array<Record<string, unknown>>,
+  items: Array<object>,
   fields?: F
 ): Array<RowOrProjected<Schedule, F>> {
   if (!wantsNextRunPreview(fields)) {
     return items as Array<RowOrProjected<Schedule, F>>;
   }
   return items.map(item => {
-    applyNextRunPreview(item as Parameters<typeof applyNextRunPreview>[0]);
-    return projectScheduleListRow(item, fields);
+    const previewed = applyNextRunPreview(item as Parameters<typeof applyNextRunPreview>[0]);
+    if (!fields || isFullFieldSelection(fields)) {
+      return previewed as RowOrProjected<Schedule, F>;
+    }
+    return projectToSelection(previewed as object, fields) as RowOrProjected<Schedule, F>;
   });
 }
 
@@ -344,7 +329,7 @@ export default class Schedule extends BaseModel {
       ...options,
       fields: fieldsForScheduleListSearch(fields) as F | undefined,
     });
-    return mapSchedulesWithNextRunPreview(items as Array<Record<string, unknown>>, fields);
+    return mapSchedulesWithNextRunPreview(items as Array<object>, fields);
   }
 
   /** Lists schedules with filter, pagination, and total-count metadata. */
@@ -364,7 +349,7 @@ export default class Schedule extends BaseModel {
     });
     const total = Number(await this.Count(condition as any)) || 0;
     return {
-      items: mapSchedulesWithNextRunPreview(items as Array<Record<string, unknown>>, fields),
+      items: mapSchedulesWithNextRunPreview(items as Array<object>, fields),
       total,
       limit,
       offset,

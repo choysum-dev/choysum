@@ -5,6 +5,7 @@ import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
+import { projectToSelection } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
@@ -117,27 +118,6 @@ function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelecti
   if (fields.length === 0) return ['*'];
   if (fields.includes('*') || fields.includes('Id')) return fields;
   return ['Id', ...fields];
-}
-
-/**
- * Narrow a Create row to the caller's field selection (drops internally added keys such as Id).
- */
-function projectToCallerSelection<T, F extends FieldSelection<T>>(row: object, selection: F): Projected<T, F> {
-  const src = row as Record<string, unknown>;
-  if (selection.length === 0 || (selection as readonly unknown[]).includes('*')) {
-    return row as Projected<T, F>;
-  }
-  const out: Record<string, unknown> = {};
-  for (const entry of selection) {
-    if (typeof entry === 'string') {
-      if (Object.prototype.hasOwnProperty.call(src, entry)) out[entry] = src[entry];
-    } else if (entry && typeof entry === 'object') {
-      for (const key of Object.keys(entry as object)) {
-        if (Object.prototype.hasOwnProperty.call(src, key)) out[key] = src[key];
-      }
-    }
-  }
-  return out as Projected<T, F>;
 }
 
 /**
@@ -305,7 +285,7 @@ export default class FieldChange extends PolymorphicRecordModel {
       At: at,
     });
     // Tip used an Id-augmented Create selection; return only the caller's projection.
-    return projectToCallerSelection(created as object, returnFields) as Projected<FieldChange, F>;
+    return projectToSelection(created as object, returnFields) as Projected<FieldChange, F>;
   }
 
   /**

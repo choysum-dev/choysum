@@ -50,6 +50,30 @@ export type Projected<T, F extends FieldSelection<T>> = F extends readonly []
 export type RowOrProjected<T, F> = F extends FieldSelection<T> ? Projected<T, F> : T;
 
 /**
+ * Narrow a row to the caller's field selection in place (keeps object identity/prototype).
+ *
+ * Empty selection or `'*'` leaves the row unchanged (full-row contract).
+ * Unselected own keys are deleted; nested relation entries keep the top-level key.
+ */
+export function projectToSelection<T, F extends FieldSelection<T>>(row: object, selection: F): Projected<T, F> {
+  if (selection.length === 0 || (selection as readonly unknown[]).includes('*')) {
+    return row as Projected<T, F>;
+  }
+  const keep = new Set<string>();
+  for (const entry of selection) {
+    if (typeof entry === 'string') keep.add(entry);
+    else if (entry && typeof entry === 'object') {
+      for (const key of Object.keys(entry as object)) keep.add(key);
+    }
+  }
+  const src = row as Record<string, unknown>;
+  for (const key of Object.keys(src)) {
+    if (!keep.has(key)) delete src[key];
+  }
+  return row as Projected<T, F>;
+}
+
+/**
  * Build a field-selection tuple that preserves literal keys for {@link Projected} inference.
  *
  * @example

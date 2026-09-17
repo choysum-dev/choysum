@@ -67,12 +67,21 @@ test('AuthzMutationModel: harness Create is defined on the mixin prototype chain
   expect(typeof BaseModel.Create).toBe('function');
 });
 
-test('UserRole: overrides invalidateAuthzCachesAfterWrite for targeted clears', () => {
-  expect(typeof UserRole.invalidateAuthzCachesAfterWrite).toBe('function');
-  expect(typeof AuthzMutationModel.invalidateAuthzCachesAfterWrite).toBe('function');
-  expect(UserRole.invalidateAuthzCachesAfterWrite === AuthzMutationModel.invalidateAuthzCachesAfterWrite).toBe(false);
-  expect(typeof UserRole.Create).toBe('function');
-  expect(typeof UserRole.CreateMany).toBe('function');
+test('UserRole: targeted clears for create, base behavior otherwise', () => {
+  const base = AuthzMutationModel.invalidateAuthzCachesAfterWrite;
+  let baseCalls = 0;
+  AuthzMutationModel.invalidateAuthzCachesAfterWrite = () => {
+    baseCalls += 1;
+  };
+  try {
+    UserRole.invalidateAuthzCachesAfterWrite('create', { UserId: 'u1' });
+    UserRole.invalidateAuthzCachesAfterWrite('createMany', [{ UserId: 'u1' }, { UserId: 'u2' }]);
+    expect(baseCalls).toBe(0);
+    UserRole.invalidateAuthzCachesAfterWrite('delete', ['Id', '=', 'x']);
+    expect(baseCalls).toBe(1);
+  } finally {
+    AuthzMutationModel.invalidateAuthzCachesAfterWrite = base;
+  }
 });
 
 test('User: extends AttachmentOwnerMixin and exposes bind/unbind entry points', () => {

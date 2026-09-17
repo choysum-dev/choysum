@@ -366,11 +366,12 @@ export default class TranslationTermBaseModel extends BaseModel {
     // terms — same pattern as FieldDefault.GetEffective (§7.3). RecordRule-aware
     // CRUD remains on Search/Create/Write; gateway internal identity without
     // bypass would otherwise get an empty read set on non-meta hosts.
+    const self = asTermCtor(this);
     const rows = (await withRecordRuleAndFieldRuleBypass(async () =>
-      this.Search(
-        { And: [['Lang', '=', lang]] } as never,
+      self.Search(
+        { And: [['Lang', '=', lang]] },
         {
-          fields: ['Module', 'Scope', 'Src', 'Value', 'Kind', 'Source'] as never,
+          fields: ['Module', 'Scope', 'Src', 'Value', 'Kind', 'Source'] as const,
           limit: 0,
         }
       )

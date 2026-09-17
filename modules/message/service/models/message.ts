@@ -5,6 +5,7 @@ import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
+import { projectToSelection } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
 import type { ModelConstructor } from '@/core/rpc/types';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
@@ -155,27 +156,6 @@ function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Messag
     }
   }
   return next;
-}
-
-/**
- * Narrow a Create row to the caller's field selection (drops tip/bind extras).
- */
-function projectToCallerSelection<T, F extends FieldSelection<T>>(row: object, selection: F): Projected<T, F> {
-  const src = row as Record<string, unknown>;
-  if (selection.length === 0 || (selection as readonly unknown[]).includes('*')) {
-    return row as Projected<T, F>;
-  }
-  const out: Record<string, unknown> = {};
-  for (const entry of selection) {
-    if (typeof entry === 'string') {
-      if (Object.prototype.hasOwnProperty.call(src, entry)) out[entry] = src[entry];
-    } else if (entry && typeof entry === 'object') {
-      for (const key of Object.keys(entry as object)) {
-        if (Object.prototype.hasOwnProperty.call(src, key)) out[key] = src[key];
-      }
-    }
-  }
-  return out as Projected<T, F>;
 }
 
 function resolveBind(): BindAttachmentFn | null {
@@ -384,7 +364,7 @@ export default class Message extends PolymorphicRecordModel {
     await Notification.FanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
     // Tip/bind used an augmented Create selection; return only the caller's projection.
-    return projectToCallerSelection(created as object, returnFields) as Projected<Message, F>;
+    return projectToSelection(created as object, returnFields) as Projected<Message, F>;
   }
 
   /**

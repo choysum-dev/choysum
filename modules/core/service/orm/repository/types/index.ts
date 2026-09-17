@@ -8,7 +8,7 @@ export type { RepositoryQueryLike, RepositoryExecute } from './execution';
 export type { SelectResult, Entity, FilteredQueryProperties, FilteredInputProperties, Selectable, Queryable } from './common';
 export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations, Insertable, Updateable } from './input';
 export type { DeepRelationSelection, FieldSelection, Projected, RowOrProjected } from './selection';
-export { fields } from './selection';
+export { fields, projectToSelection } from './selection';
 export type {
   Operator,
   BaseCondition,
