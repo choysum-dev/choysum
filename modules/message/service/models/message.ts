@@ -139,17 +139,16 @@ function newMutationId(): string {
   return `m${token}`.slice(0, 20);
 }
 
-function ensureIdInFields(fields: FieldSelection<Message>): FieldSelection<Message> {
-  if (fields.includes('*') || fields.includes('Id')) return fields;
-  return ['Id', ...fields];
-}
-
+/**
+ * Widen Create selection so tip/fan-out can read Model/ResId/CreatedAt/AuthorUid/CompanyId.
+ * Id is always present on Create results even when omitted from the selection.
+ */
 function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Message> {
   // Empty selection means full row (Projected<T, []> === Selectable<T>); tip fields are included.
   if (fields.length === 0 || fields.includes('*')) {
     return ['*'];
   }
-  let next = ensureIdInFields(fields);
+  let next = fields;
   for (const field of ['Model', 'ResId', 'CreatedAt', 'AuthorUid', 'CompanyId'] as const) {
     if (!next.includes(field)) {
       next = [field, ...next];
@@ -317,7 +316,7 @@ export default class Message extends PolymorphicRecordModel {
       }
     }
 
-    // Tip needs Id/Model/ResId even when the caller asks for a narrow field set.
+    // Tip/fan-out need Model/ResId/... even when the caller asks for a narrow field set.
     const createFields = ensureTipFields(returnFields);
     const created = await this.Create(
       {

@@ -4,7 +4,6 @@
 import { Model, Field, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
-import { projectToSelection } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions, SoftDeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import AuthzMutationModel from '../mixins/authz_mutation_model';
@@ -24,35 +23,6 @@ import {
   hydrateAccessUiResourceIds,
   wantsAccessField,
 } from './_role_ui_projection';
-
-/**
- * Ensure Create/CreateMany always load Id so AccessUiResourceIds grants can sync.
- * Empty selection means full row (`['*']`); already-full or Id-bearing selections are unchanged.
- */
-function ensureIdInFieldSelection<F extends FieldSelection<any> | undefined>(
-  fields?: F
-): F | FieldSelection<any> {
-  if (fields == null) return fields as F;
-  if (fields.length === 0) return ['*'] as FieldSelection<any>;
-  const sel = fields as readonly unknown[];
-  if (sel.includes('*') || sel.includes('Id')) return fields;
-  return ['Id', ...sel] as FieldSelection<any>;
-}
-
-/**
- * Drop internally-forced Id when the caller did not ask for it.
- */
-function projectRoleWriteResult<F extends FieldSelection<any> | undefined>(
-  row: object,
-  returnFields?: F
-): RowOrProjected<any, F> {
-  if (returnFields == null) return row as RowOrProjected<any, F>;
-  const sel = returnFields as readonly unknown[];
-  if (sel.length === 0 || sel.includes('*') || sel.includes('Id')) {
-    return row as RowOrProjected<any, F>;
-  }
-  return projectToSelection(row, returnFields as FieldSelection<any>) as RowOrProjected<any, F>;
-}
 
 /**
  * Role defines one reusable permission bundle and its derived UI/resource mappings.
@@ -304,9 +274,8 @@ export default class Role extends AuthzMutationModel {
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const payload = { ...value };
     const accessIds = await applyAccessWriteTransformOnCreate(payload as Record<string, unknown>);
-    // Always request Id internally so AccessUiResourceIds sync can run when grants are present.
-    const createFields = ensureIdInFieldSelection(returnFields);
-    const row = await super.Create<C, F>(payload, createFields as F);
+    // Create/Browse always include Id on the returned row even when returnFields omits it.
+    const row = await super.Create<C, F>(payload, returnFields);
     const roleId = normalizeRefId((row as { Id?: unknown }).Id);
     if (roleId && accessIds) {
       await syncAllowResourceGrants(roleId, accessIds);
@@ -316,7 +285,7 @@ export default class Role extends AuthzMutationModel {
     } else if (wantsAccessField(returnFields)) {
       await hydrateAccessUiResourceIds([row]);
     }
-    return projectRoleWriteResult(row, returnFields);
+    return row;
   }
 
   /**
@@ -332,8 +301,7 @@ export default class Role extends AuthzMutationModel {
     for (const payload of payloads) {
       accessList.push(await applyAccessWriteTransformOnCreate(payload as Record<string, unknown>));
     }
-    const createFields = ensureIdInFieldSelection(returnFields);
-    const rows = await super.CreateMany<C, F>(payloads, createFields as F);
+    const rows = await super.CreateMany<C, F>(payloads, returnFields);
     for (let i = 0; i < rows.length; i++) {
       const roleId = normalizeRefId((rows[i] as { Id?: unknown }).Id);
       const accessIds = accessList[i];
@@ -350,7 +318,7 @@ export default class Role extends AuthzMutationModel {
         await hydrateAccessUiResourceIds(rowsToHydrate);
       }
     }
-    return rows.map(row => projectRoleWriteResult(row, returnFields));
+    return rows;
   }
 
   /**

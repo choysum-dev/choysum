@@ -5,7 +5,6 @@ import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
-import { projectToSelection } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
@@ -112,13 +111,6 @@ const DEFAULT_APPEND_FIELDS = [
   'RequestId',
   'TraceId',
 ] as const satisfies FieldSelection<FieldChange>;
-
-function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelection<FieldChange> {
-  // Empty selection means full row (Projected<T, []> === Selectable<T>).
-  if (fields.length === 0) return ['*'];
-  if (fields.includes('*') || fields.includes('Id')) return fields;
-  return ['Id', ...fields];
-}
 
 /**
  * Append-only compliance field-change history.
@@ -270,9 +262,10 @@ export default class FieldChange extends PolymorphicRecordModel {
       RequestId: req.RequestId ?? correlation.requestId ?? null,
       TraceId: req.TraceId ?? correlation.traceId ?? null,
     };
+    // Empty selection means full row (Projected<T, []> === Selectable<T>).
     const returnFields: FieldSelection<FieldChange> = fields ?? [...DEFAULT_APPEND_FIELDS];
-    // Always request Id so tip publish does not depend on the caller's projection.
-    const createFields = fieldSelectionWithId(returnFields);
+    const createFields: FieldSelection<FieldChange> = returnFields.length === 0 ? ['*'] : returnFields;
+    // Create/Browse always include Id on the returned row even when returnFields omits it.
     const created = await this.Create(createValue, createFields);
     const createdId = String((created as { Id?: unknown }).Id || '').trim();
     if (!createdId) {
@@ -284,8 +277,7 @@ export default class FieldChange extends PolymorphicRecordModel {
       ResId: resId,
       At: at,
     });
-    // Tip used an Id-augmented Create selection; return only the caller's projection.
-    return projectToSelection(created as object, returnFields) as Projected<FieldChange, F>;
+    return created as Projected<FieldChange, F>;
   }
 
   /**
