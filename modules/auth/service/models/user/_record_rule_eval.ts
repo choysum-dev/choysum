@@ -51,7 +51,7 @@ async function resolveRecordRuleMetaCached(appName: string, modelName: string): 
     const [appRows, modelRows] = await Promise.all([
       MetaApplication.Search(['Name', '=', appName], { fields: ['Id'] as const, limit: 1 }),
       MetaModel.Search(
-        condition({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
+        { And: [['Application', '=', appName], ['Name', '=', modelName]] },
         { fields: ['Id', 'CompanyField'] as const, limit: 1 }
       ),
     ]);

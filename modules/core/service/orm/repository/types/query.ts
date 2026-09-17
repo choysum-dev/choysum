@@ -90,10 +90,12 @@ export type QueryCondition<T> = SingleCondition<T> | QueryConditionNode<T>;
  * Assert an untyped condition tree as {@link QueryCondition} for one model.
  * Used when And/Or trees are built dynamically and cannot be inferred as typed fields.
  *
- * Prefer call-site context so `T` is inferred, e.g.
- * `createServiceByModel(…).Search(condition({ And: […] }))`.
- * Pass an explicit type argument when there is no fixed target type, or when calling a
- * method-generic `Model.Search<T>` whose `T` would otherwise be poisoned by nesting.
+ * Prefer a bare literal when it already assigns to the Search/Count parameter
+ * (statically known field names on a sound {@link QueryCondition}).
+ * Use this helper for dynamic trees (variable field names, `any[]` Or parts), or when the
+ * target collapses to {@link QueryCondition}<BaseModel> (some Count surfaces) and rejects
+ * model-specific fields. Pass an explicit type argument for method-generic `Model.Search<T>`
+ * when nesting would otherwise poison `T`.
  */
 export function condition<T>(tree: BaseQueryCondition): QueryCondition<T> {
   return tree as QueryCondition<T>;

@@ -22,7 +22,7 @@ const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.Me
 
 async function metaModelId(appName: string, modelName: string): Promise<string> {
   const rows = await MetaModel.Search(
-    condition({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
+    { And: [['Application', '=', appName], ['Name', '=', modelName]] },
     { fields: ['Id'] as const, limit: 1 }
   );
   return String(rows?.[0]?.Id || '').trim();
@@ -89,7 +89,7 @@ export async function resolveMethodAccessMeta(
     if (!modelId) return undefined;
 
     const serviceRows = await MetaService.Search(
-      condition({ And: [['ModelId', '=', modelId]] }),
+      { And: [['ModelId', '=', modelId]] },
       { fields: ['Id', 'Name'] as const, limit: 5000 }
     );
     const methodLower = String(methodName || '')
@@ -237,9 +237,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
   }
 
   const grants = await RoleUiResource.Search(
-    condition({
-      And: [['RoleId', 'in', ids]],
-    }),
+    { And: [['RoleId', 'in', ids]] },
     { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'] as const, limit: 100000 }
   );
 
@@ -314,7 +312,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     if (appIDList.length > 0) {
       promises.push(
         MetaUiResource.Search(
-          condition({ And: [['MetaApplicationId', 'in', appIDList]] }),
+          { And: [['MetaApplicationId', 'in', appIDList]] },
           { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'] as const, limit: 100000 }
         )
       );
@@ -323,12 +321,12 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     if (resourceIDList.length > 0) {
       promises.push(
         MetaUiResource.Search(
-          condition({
+          {
             Or: [
               ['Id', 'in', resourceIDList],
               ['Name', 'in', resourceIDList],
             ],
-          }),
+          },
           { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'] as const, limit: 100000 }
         )
       );
