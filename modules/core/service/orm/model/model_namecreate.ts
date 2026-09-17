@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { FieldSelection, Insertable } from '../repository/types';
+import type { FieldSelection, Insertable, RowOrProjected } from '../repository/types';
 import type { ModelMetadata, FieldMetadata } from '../metadata';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
@@ -51,12 +51,15 @@ export function resolveNameCreateField(meta: ModelMetadata, nameField?: string):
 /**
  * Default NameCreate: trim name → resolve field → Create (D1/D2/D4).
  */
-export async function nameCreateModels<T extends BaseModel>(
+export async function nameCreateModels<
+  T extends BaseModel,
+  F extends FieldSelection<T> | undefined = undefined,
+>(
   ModelCtor: NameCreateModelCtor<T>,
   name: string,
   values?: Partial<Insertable<T>>,
-  options?: NameCreateOptions<T>
-): Promise<T> {
+  options?: Omit<NameCreateOptions<T>, 'returnFields'> & { returnFields?: F }
+): Promise<RowOrProjected<T, F>> {
   const kw = String(name ?? '').trim();
   if (!kw) {
     throw new Error('NameCreate: name is empty');
@@ -67,5 +70,5 @@ export async function nameCreateModels<T extends BaseModel>(
     ...(values || {}),
     [field]: kw,
   } as Partial<Insertable<T>>;
-  return (await ModelCtor.Create(payload, options?.returnFields)) as T;
+  return (await ModelCtor.Create(payload, options?.returnFields)) as RowOrProjected<T, F>;
 }

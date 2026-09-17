@@ -11,6 +11,8 @@ import type {
   CountOptions,
   DeleteOptions,
   QueryCondition,
+  ReadGroupCountOptions,
+  ReadGroupOptions,
   SearchOptions,
   SoftDeleteOptions,
   UpdateOptions,
@@ -19,6 +21,8 @@ import type { Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { OnchangeResult } from '@/core/service/runtime/onchange/types';
 import type { ResolvePropertiesOptions } from '@/core/service/orm/model/properties_resolve';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
+import type { CopyOptions } from '@/core/service/orm/model/model_copy';
+import type { NameCreateOptions } from '@/core/service/orm/model/model_namecreate';
 import type { ReadGroupResult } from '@/core/service/orm/repository/types/groupby';
 import type { TermReference } from '@/core/service/i18n';
 
@@ -75,17 +79,21 @@ type StoreUpdateById<T extends BaseModel> = {
     options?: UpdateOptions
   ): Promise<ClientModel<Partial<T>>>;
 };
-type StoreCopy<T extends BaseModel> = (id: string, defaults?: Partial<Record<string, unknown>>, options?: unknown) => Promise<ClientModel<T>>;
-type StoreNameSearch<T extends BaseModel> = (
+type StoreCopy<T extends BaseModel> = (
+  id: string,
+  defaults?: Partial<Record<string, unknown>>,
+  options?: CopyOptions
+) => Promise<ClientModel<T>>;
+type StoreNameSearch<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
   name: string,
   condition?: QueryCondition<T> | [],
-  options?: SearchOptions<T>
-) => Promise<Array<ClientModel<T>>>;
-type StoreNameCreate<T extends BaseModel> = (
+  options?: Omit<SearchOptions<T>, 'fields'> & { fields?: F }
+) => Promise<Array<ClientModel<RowOrProjected<T, F>>>>;
+type StoreNameCreate<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
   name: string,
   values?: Partial<Insertable<T>>,
-  options?: unknown
-) => Promise<ClientModel<T>>;
+  options?: Omit<NameCreateOptions<T>, 'returnFields'> & { returnFields?: F }
+) => Promise<ClientModel<RowOrProjected<T, F>>>;
 type StoreCount<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: CountOptions) => Promise<number>;
 type StoreSearch<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
   condition?: QueryCondition<T> | [],
@@ -94,12 +102,12 @@ type StoreSearch<T extends BaseModel> = <F extends FieldSelection<T> | undefined
 type StoreReadGroup<T extends BaseModel> = (
   groupby: unknown,
   condition?: QueryCondition<T> | [],
-  options?: unknown
+  options?: ReadGroupOptions<T>
 ) => Promise<ReadGroupResult>;
 type StoreReadGroupCount<T extends BaseModel> = (
   groupby: unknown,
   condition?: QueryCondition<T> | [],
-  options?: unknown
+  options?: ReadGroupCountOptions<T>
 ) => Promise<number>;
 type StoreDelete<T extends BaseModel> = (condition: QueryCondition<T>, options?: DeleteOptions) => Promise<number>;
 type StoreDeleteById<T extends BaseModel> = (id: string, options?: DeleteOptions) => Promise<number>;

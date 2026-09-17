@@ -278,7 +278,9 @@ export default class Role extends AuthzMutationModel {
     const roleId = normalizeRefId((row as { Id?: unknown }).Id);
     if (roleId && accessIds) {
       await syncAllowResourceGrants(roleId, accessIds);
-      (row as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIds];
+      if (wantsAccessField(returnFields)) {
+        (row as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIds];
+      }
     } else if (wantsAccessField(returnFields)) {
       await hydrateAccessUiResourceIds([row]);
     }
@@ -304,7 +306,9 @@ export default class Role extends AuthzMutationModel {
       const accessIds = accessList[i];
       if (roleId && accessIds) {
         await syncAllowResourceGrants(roleId, accessIds);
-        (rows[i] as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIds];
+        if (wantsAccessField(returnFields)) {
+          (rows[i] as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIds];
+        }
       }
     }
     if (wantsAccessField(returnFields)) {

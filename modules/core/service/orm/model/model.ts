@@ -677,26 +677,31 @@ class BaseModel {
    * Name-match entry for relation typeahead (overridable).
    * Default: DisplayName `like` keyword And domain → Search.
    */
-  static async NameSearch<C extends ModelCtor>(
+  static async NameSearch<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
     name: string,
     condition: QueryCondition<RowOf<C>> | [] = [],
-    options?: SearchOptions<RowOf<C>>
-  ): Promise<RowOf<C>[]> {
-    return asRows<C>(await nameSearchModels(asCollectionCtor(this), name, condition as never, options as never));
+    options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
+    return asRows<C>(await nameSearchModels(asCollectionCtor(this), name, condition as never, options as never)) as Array<
+      RowOrProjected<RowOf<C>, F>
+    >;
   }
 
   /**
    * Quick-create by name for relation typeahead (overridable).
    * Default: write trim(name) into nameField or stored Name → Create.
    */
-  static async NameCreate<C extends ModelCtor>(
+  static async NameCreate<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
     name: string,
     values?: Partial<Insertable<RowOf<C>>>,
-    options?: NameCreateOptions<RowOf<C>>
-  ): Promise<RowOf<C>> {
-    return asRow<C>(await nameCreateModels(asCollectionCtor(this), name, values as never, options as never));
+    options?: Omit<NameCreateOptions<RowOf<C>>, 'returnFields'> & { returnFields?: F }
+  ): Promise<RowOrProjected<RowOf<C>, F>> {
+    return asRow<C>(await nameCreateModels(asCollectionCtor(this), name, values as never, options as never)) as RowOrProjected<
+      RowOf<C>,
+      F
+    >;
   }
 
   /**

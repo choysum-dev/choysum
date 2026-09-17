@@ -5,7 +5,7 @@ import { Field } from '../decorator/field';
 import { Model } from '../decorator/model';
 import BaseModel from './model';
 import type { ModelCtor, RowOf } from './types';
-import type { QueryCondition, SearchOptions } from '../repository/types';
+import type { QueryCondition, SearchOptions, FieldSelection, RowOrProjected } from '../repository/types';
 import { buildNameSearchCondition, mergeNameSearchOptions, nameSearchModels } from './model_namesearch';
 
 @Model('NameSearchWidget', { application: 'demo' })
@@ -25,12 +25,12 @@ class NameSearchOverrideWidget extends BaseModel {
   @Field({ type: 'varchar', size: 64 })
   Code!: string;
 
-  static override async NameSearch<C extends ModelCtor>(
+  static override async NameSearch<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
     name: string,
     condition: QueryCondition<RowOf<C>> | [] = [],
-    options?: SearchOptions<RowOf<C>>
-  ): Promise<RowOf<C>[]> {
+    options?: Omit<SearchOptions<RowOf<C>>, 'fields'> & { fields?: F }
+  ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const kw = String(name ?? '').trim();
     const parts: Array<QueryCondition<RowOf<C>>> = [];
     if (kw) parts.push(['Code', 'like', `%${kw}%`] as QueryCondition<RowOf<C>>);
@@ -38,7 +38,7 @@ class NameSearchOverrideWidget extends BaseModel {
       parts.push(condition as QueryCondition<RowOf<C>>);
     }
     const merged: QueryCondition<RowOf<C>> | [] = parts.length === 0 ? [] : parts.length === 1 ? parts[0] : { And: parts };
-    return this.Search(merged, options) as Promise<RowOf<C>[]>;
+    return this.Search(merged, options);
   }
 }
 
