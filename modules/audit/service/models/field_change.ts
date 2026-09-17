@@ -91,10 +91,10 @@ function resolveCorrelation(): { requestId?: string; traceId?: string } {
 /**
  * Normalize Kind and force ActorUid from trusted request identity for every create path.
  */
-function prepareCreatePayload(bag: Record<string, unknown>): void {
+function prepareCreatePayload(payload: Record<string, unknown>): void {
   const uid = getUserId();
-  bag.Kind = assertFieldChangeKind(bag.Kind == null ? '' : String(bag.Kind));
-  bag.ActorUid = uid == null || String(uid).trim() === '' ? null : String(uid).trim();
+  payload.Kind = assertFieldChangeKind(payload.Kind == null ? '' : String(payload.Kind));
+  payload.ActorUid = uid == null || String(uid).trim() === '' ? null : String(uid).trim();
 }
 
 const DEFAULT_APPEND_FIELDS = [
@@ -314,9 +314,9 @@ export default class FieldChange extends PolymorphicRecordModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const bag = { ...(value as Record<string, unknown>) };
-    prepareCreatePayload(bag);
-    return (await super.Create<C, F>(bag as Partial<Insertable<RowOf<C>>>, returnFields)) as RowOrProjected<RowOf<C>, F>;
+    const payload = { ...(value as Record<string, unknown>) };
+    prepareCreatePayload(payload);
+    return (await super.Create<C, F>(payload as Partial<Insertable<RowOf<C>>>, returnFields)) as RowOrProjected<RowOf<C>, F>;
   }
 
   /**
@@ -328,9 +328,9 @@ export default class FieldChange extends PolymorphicRecordModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = (values || []).map(row => {
-      const bag = { ...(row as Record<string, unknown>) };
-      prepareCreatePayload(bag);
-      return bag as Partial<Insertable<RowOf<C>>>;
+      const payload = { ...(row as Record<string, unknown>) };
+      prepareCreatePayload(payload);
+      return payload as Partial<Insertable<RowOf<C>>>;
     });
     return (await super.CreateMany<C, F>(rows, returnFields)) as Array<
       RowOrProjected<RowOf<C>, F>

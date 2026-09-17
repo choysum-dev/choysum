@@ -270,10 +270,9 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     let previousLogicalModelName: string | null | undefined;
     let updateCondition: QueryCondition<RowOf<C>> = condition;
-    const updateBag = values as Record<string, unknown>;
-    if (RoleMethodAccess._needsPreviousLogicalModelName(updateBag)) {
+    if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
       // Guard already proved LogicalModelName is a non-empty string after trim.
-      const next = String(updateBag.LogicalModelName).trim();
+      const next = String((values as Record<string, unknown>).LogicalModelName).trim();
       // Prove every matched row already has LogicalModelName === next (no sampling).
       // Null/empty/other names fail Count equality → fail closed (null whitelist = all methods).
       // Pass the same options as AuthzMutationModel.Update so withDeleted/onlyDeleted stay aligned.
@@ -301,7 +300,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
         previousLogicalModelName = null;
       }
     }
-    RoleMethodAccess._prepareValues(updateBag, 'update', previousLogicalModelName);
+    RoleMethodAccess._prepareValues(values as Record<string, unknown>, 'update', previousLogicalModelName);
     return (await super.Update<C, F>(updateCondition, values, returnFields, options)) as Array<
       F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
     >;
@@ -318,15 +317,14 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     let previousLogicalModelName: string | null | undefined;
-    const updateBag = values as Record<string, unknown>;
-    if (RoleMethodAccess._needsPreviousLogicalModelName(updateBag)) {
+    if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
       const existing = await this.Search(['Id', '=', id] as never, {
         fields: ['LogicalModelName'] as never,
         limit: 1,
       });
       previousLogicalModelName = String((existing?.[0] as { LogicalModelName?: string } | undefined)?.LogicalModelName || '').trim() || null;
     }
-    RoleMethodAccess._prepareValues(updateBag, 'update', previousLogicalModelName);
+    RoleMethodAccess._prepareValues(values as Record<string, unknown>, 'update', previousLogicalModelName);
     return (await super.UpdateById<C, F>(id, values, returnFields, options)) as (
       F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
     );
