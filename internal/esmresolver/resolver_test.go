@@ -2092,6 +2092,10 @@ func TestApplyBareImportPin(t *testing.T) {
 	if got := r.applyBareImportPinToURL("http://esm.sh/vue@^3"); got != "http://esm.sh/vue@^3" {
 		t.Fatalf("scheme mismatch rewritten: got %q", got)
 	}
+	defPort := "https://esm.sh:443/vue@^3.0.0"
+	if got := r.applyBareImportPinToURL(defPort); got != "https://esm.sh:443/vue@3.5.38" {
+		t.Fatalf("default-port upstream pin: got %q", got)
+	}
 	if got := r.applyBareImportPinToURL("https://esm.sh"); got != "https://esm.sh" {
 		t.Fatalf("empty path rewritten: got %q", got)
 	}

@@ -48,15 +48,19 @@ export type Projected<T, F extends FieldSelection<T>> = F extends readonly []
  * {@link Projected}. When `F` is the wide `FieldSelection<T>` itself, return `Partial<T>`
  * (runtime may omit keys; `Projected` would otherwise collapse to full `Selectable` via `'*'`).
  * When `F` is not a selection (e.g. `undefined`) or `any` (common test casts), keep full `T`.
+ * `never` short-circuits to full `T` so conditional distribution does not collapse the result.
  */
 type IsAny<T> = 0 extends 1 & T ? true : false;
+type IsNever<T> = [T] extends [never] ? true : false;
 export type RowOrProjected<T, F> = IsAny<F> extends true
   ? T
-  : F extends FieldSelection<T>
-    ? FieldSelection<T> extends F
-      ? Partial<T>
-      : Projected<T, F>
-    : T;
+  : IsNever<F> extends true
+    ? T
+    : F extends FieldSelection<T>
+      ? FieldSelection<T> extends F
+        ? Partial<T>
+        : Projected<T, F>
+      : T;
 
 /**
  * Update returnFields result: unspecified / wide / `any` → {@link Partial};
@@ -65,14 +69,17 @@ export type RowOrProjected<T, F> = IsAny<F> extends true
  * Differs from {@link RowOrProjected}, which keeps full `T` when `F` is not a
  * selection (Create/Search full-row default). Update without `returnFields`
  * returns `{ Id }` stubs at runtime, so Partial is the truthful default.
+ * `never` short-circuits to `Partial<T>` (same default as unspecified).
  */
 export type PartialOrProjected<T, F> = IsAny<F> extends true
   ? Partial<T>
-  : F extends FieldSelection<T>
-    ? FieldSelection<T> extends F
-      ? Partial<T>
-      : Projected<T, F>
-    : Partial<T>;
+  : IsNever<F> extends true
+    ? Partial<T>
+    : F extends FieldSelection<T>
+      ? FieldSelection<T> extends F
+        ? Partial<T>
+        : Projected<T, F>
+      : Partial<T>;
 
 /**
  * Narrow a row to the caller's field selection on a shallow copy (same prototype).

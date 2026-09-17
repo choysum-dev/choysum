@@ -64,6 +64,10 @@ type UnspecSel = RowOrProjected<Probe, undefined>;
 type ExpectUnspecFull = ExpectTrue<[UnspecSel] extends [Probe] ? true : false>;
 type AnySel = RowOrProjected<Probe, any>;
 type ExpectAnyFull = ExpectTrue<[AnySel] extends [Probe] ? true : false>;
+type NeverSel = RowOrProjected<Probe, never>;
+type ExpectNeverFull = ExpectTrue<[NeverSel] extends [Probe] ? true : false>;
+type NeverUpdate = PartialOrProjected<Probe, never>;
+type ExpectNeverUpdatePartial = ExpectTrue<[NeverUpdate] extends [Partial<Probe>] ? true : false>;
 
 // Update return: unspecified/wide → Partial; literal → Projected.
 type UpdateWide = PartialOrProjected<Probe, FieldSelection<Probe>>;
@@ -88,6 +92,8 @@ const _typecheckHold:
       ExpectLiteralHasId,
       ExpectUnspecFull,
       ExpectAnyFull,
+      ExpectNeverFull,
+      ExpectNeverUpdatePartial,
       ExpectUpdateWidePartial,
       ExpectUpdateLiteralId,
       ExpectUpdateUnspecPartial,

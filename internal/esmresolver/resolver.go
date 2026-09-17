@@ -612,9 +612,7 @@ func (r *Resolver) applyBareImportPinToURL(raw string) string {
 		return raw
 	}
 	up, upErr := url.Parse(upstream)
-	if upErr != nil ||
-		!strings.EqualFold(u.Scheme, up.Scheme) ||
-		!strings.EqualFold(u.Host, up.Host) {
+	if upErr != nil || !sameUpstreamOrigin(u, up) {
 		return raw
 	}
 	pinnedPath := r.applyBareImportPinToAbsPath(u.Path)
@@ -624,6 +622,37 @@ func (r *Resolver) applyBareImportPinToURL(raw string) string {
 	u.Path = pinnedPath
 	u.RawPath = ""
 	return u.String()
+}
+
+// sameUpstreamOrigin reports whether u is the same origin as the configured
+// upstream. Hostname is compared case-insensitively; default ports (:80/:443)
+// are normalized so https://esm.sh:443 matches https://esm.sh, while distinct
+// explicit ports (e.g. localhost:8080 vs :9090) still fail closed.
+func sameUpstreamOrigin(u, up *url.URL) bool {
+	if u == nil || up == nil {
+		return false
+	}
+	if !strings.EqualFold(u.Scheme, up.Scheme) {
+		return false
+	}
+	if !strings.EqualFold(u.Hostname(), up.Hostname()) {
+		return false
+	}
+	return effectiveURLPort(u) == effectiveURLPort(up)
+}
+
+func effectiveURLPort(u *url.URL) string {
+	if p := u.Port(); p != "" {
+		return p
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "https":
+		return "443"
+	case "http":
+		return "80"
+	default:
+		return ""
+	}
 }
 
 func splitQueryHash(s string) (core, suffix string) {

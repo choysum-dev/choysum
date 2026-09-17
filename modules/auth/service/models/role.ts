@@ -305,12 +305,16 @@ export default class Role extends AuthzMutationModel {
       accessList.push(await applyAccessWriteTransformOnCreate(payload as Record<string, unknown>));
     }
     const rows = await super.CreateMany<C, F>(payloads, returnFields);
+    // Validate Ids before syncing grants so a missing Id cannot leave earlier rows half-synced.
+    const roleIds = rows.map(row => normalizeRefId((row as { Id?: unknown }).Id));
     for (let i = 0; i < rows.length; i++) {
-      const roleId = normalizeRefId((rows[i] as { Id?: unknown }).Id);
-      const accessIds = accessList[i];
-      if (!roleId && accessIds) {
+      if (!roleIds[i] && accessList[i]) {
         throw new Error('Role.CreateMany: created row without Id; UI resource grants were not synced');
       }
+    }
+    for (let i = 0; i < rows.length; i++) {
+      const roleId = roleIds[i];
+      const accessIds = accessList[i];
       if (roleId && accessIds) {
         await syncAllowResourceGrants(roleId, accessIds);
         if (wantsAccessField(returnFields)) {
