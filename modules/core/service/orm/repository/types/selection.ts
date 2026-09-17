@@ -44,10 +44,19 @@ export type Projected<T, F extends FieldSelection<T>> = F extends readonly []
     : Selectable<T>;
 
 /**
- * When `F` is a concrete {@link FieldSelection}, narrow to {@link Projected}; otherwise keep full `T`.
- * Lets collection APIs use one signature (override-friendly) while literal `fields` still project.
+ * When `F` is a concrete {@link FieldSelection} (literal tuple / `fields()`), narrow to
+ * {@link Projected}. When `F` is the wide `FieldSelection<T>` itself, return `Partial<T>`
+ * (runtime may omit keys; `Projected` would otherwise collapse to full `Selectable` via `'*'`).
+ * When `F` is not a selection (e.g. `undefined`) or `any` (common test casts), keep full `T`.
  */
-export type RowOrProjected<T, F> = F extends FieldSelection<T> ? Projected<T, F> : T;
+type IsAny<T> = 0 extends 1 & T ? true : false;
+export type RowOrProjected<T, F> = IsAny<F> extends true
+  ? T
+  : F extends FieldSelection<T>
+    ? FieldSelection<T> extends F
+      ? Partial<T>
+      : Projected<T, F>
+    : T;
 
 /**
  * Narrow a row to the caller's field selection on a shallow copy (same prototype).

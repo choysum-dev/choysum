@@ -352,7 +352,7 @@ export default class Role extends AuthzMutationModel {
     if (roleIdForSync && accessIdsForSync) {
       await syncAllowResourceGrants(roleIdForSync, accessIdsForSync);
       if (updated.length && returnFields != null) {
-        updated[0] = await this.Browse(roleIdForSync, returnFields, options);
+        updated[0] = (await this.Browse(roleIdForSync, returnFields, options)) as (typeof updated)[number];
       }
       if (updated.length && shouldHydrateAccess) {
         (updated[0] as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIdsForSync];
@@ -379,7 +379,7 @@ export default class Role extends AuthzMutationModel {
     if (accessIds) {
       await syncAllowResourceGrants(id, accessIds);
       if (returnFields != null) {
-        row = await this.Browse(id, returnFields, options);
+        row = (await this.Browse(id, returnFields, options)) as typeof row;
       }
       if (wantsAccessField(returnFields)) {
         (row as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIds];
