@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor, type RowOf } from '@/core/service';
+import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
@@ -144,9 +144,13 @@ function ensureIdInFields(fields: FieldSelection<Message>): FieldSelection<Messa
 }
 
 function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Message> {
+  // Empty selection means full row (Projected<T, []> === Selectable<T>); tip fields are included.
+  if (fields.length === 0 || fields.includes('*')) {
+    return ['*'];
+  }
   let next = ensureIdInFields(fields);
   for (const field of ['Model', 'ResId', 'CreatedAt', 'AuthorUid', 'CompanyId'] as const) {
-    if (!next.includes('*') && !next.includes(field)) {
+    if (!next.includes(field)) {
       next = [field, ...next];
     }
   }

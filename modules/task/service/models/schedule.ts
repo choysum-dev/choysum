@@ -13,6 +13,68 @@ import Job from './job';
 import { clampLimit } from './_limit';
 import { computeNextRunAt, assertTimezone, applyNextRunPreview } from './_cron';
 
+const NEXT_RUN_PREVIEW_DEPS = ['Active', 'CronExpr', 'Timezone', 'NextRunAt'] as const;
+
+function isFullFieldSelection(fields?: FieldSelection<Schedule>): boolean {
+  return fields == null || fields.length === 0 || fields.includes('*');
+}
+
+function wantsNextRunPreview(fields?: FieldSelection<Schedule>): boolean {
+  return isFullFieldSelection(fields) || Boolean(fields?.includes('NextRunAt' as never));
+}
+
+/**
+ * Expand Search fields so NextRunAt preview has Active/CronExpr/Timezone when needed.
+ */
+function fieldsForScheduleListSearch(fields?: FieldSelection<Schedule>): FieldSelection<Schedule> | undefined {
+  if (!wantsNextRunPreview(fields) || isFullFieldSelection(fields) || !fields) return fields;
+  const keys = new Set<string>();
+  for (const entry of fields) {
+    if (typeof entry === 'string') keys.add(entry);
+    else if (entry && typeof entry === 'object') {
+      for (const key of Object.keys(entry)) keys.add(key);
+    }
+  }
+  for (const dep of NEXT_RUN_PREVIEW_DEPS) keys.add(dep);
+  return Array.from(keys) as FieldSelection<Schedule>;
+}
+
+/**
+ * Drop preview dependency fields that the caller did not request.
+ */
+function projectScheduleListRow<F extends FieldSelection<Schedule> | undefined>(
+  row: Record<string, unknown>,
+  fields?: F
+): RowOrProjected<Schedule, F> {
+  if (isFullFieldSelection(fields) || !fields) {
+    return row as RowOrProjected<Schedule, F>;
+  }
+  const out: Record<string, unknown> = {};
+  for (const entry of fields) {
+    if (typeof entry === 'string') {
+      if (Object.prototype.hasOwnProperty.call(row, entry)) out[entry] = row[entry];
+    } else if (entry && typeof entry === 'object') {
+      for (const key of Object.keys(entry)) {
+        if (Object.prototype.hasOwnProperty.call(row, key)) out[key] = row[key];
+      }
+    }
+  }
+  return out as RowOrProjected<Schedule, F>;
+}
+
+function mapSchedulesWithNextRunPreview<F extends FieldSelection<Schedule> | undefined>(
+  items: Array<Record<string, unknown>>,
+  fields?: F
+): Array<RowOrProjected<Schedule, F>> {
+  if (!wantsNextRunPreview(fields)) {
+    return items as Array<RowOrProjected<Schedule, F>>;
+  }
+  return items.map(item => {
+    applyNextRunPreview(item as Parameters<typeof applyNextRunPreview>[0]);
+    return projectScheduleListRow(item, fields);
+  });
+}
+
 /**
  * Filter and pagination options for paged schedule listing.
  */
@@ -277,8 +339,12 @@ export default class Schedule extends BaseModel {
     condition: QueryCondition<Schedule> | [] = [],
     options?: Omit<SearchOptions<Schedule>, 'fields'> & { fields?: F }
   ): Promise<Array<RowOrProjected<Schedule, F>>> {
-    const items = await this.Search(condition, options);
-    return items.map(item => applyNextRunPreview(item));
+    const fields = options?.fields;
+    const items = await this.Search(condition, {
+      ...options,
+      fields: fieldsForScheduleListSearch(fields) as F | undefined,
+    });
+    return mapSchedulesWithNextRunPreview(items as Array<Record<string, unknown>>, fields);
   }
 
   /** Lists schedules with filter, pagination, and total-count metadata. */
@@ -289,13 +355,19 @@ export default class Schedule extends BaseModel {
     const limit = clampLimit(params.limit, 50, 500);
     const offset = normalizeOffset(params.offset);
     const orderBy = params.orderBy ?? ({ field: 'CreatedAt', order: 'desc' } as OrderBy<Schedule>);
+    const fields = params.fields;
     const items = await this.Search(condition, {
       limit,
       offset,
       orderBy,
-      fields: params.fields,
+      fields: fieldsForScheduleListSearch(fields) as F | undefined,
     });
     const total = Number(await this.Count(condition as any)) || 0;
-    return { items: items.map(item => applyNextRunPreview(item)), total, limit, offset };
+    return {
+      items: mapSchedulesWithNextRunPreview(items as Array<Record<string, unknown>>, fields),
+      total,
+      limit,
+      offset,
+    };
   }
 }

@@ -15,7 +15,7 @@ import type {
   SoftDeleteOptions,
   UpdateOptions,
 } from '@/core/service/api/query';
-import type { Projected } from '@/core/service/api/selection';
+import type { Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { OnchangeResult } from '@/core/service/runtime/onchange/types';
 import type { ResolvePropertiesOptions } from '@/core/service/orm/model/properties_resolve';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
@@ -24,26 +24,29 @@ import type { TermReference } from '@/core/service/i18n';
 
 /**
  * Row-bound BaseModel method shapes for the FE store.
- * Field-selecting CRUD methods use call-site generics / overloads so literal `fields`
- * preserve {@link Projected} (wrapping via ClientModelService freezes Parameters/ReturnType).
+ * Field-selecting CRUD methods use call-site generics so literal `fields`
+ * preserve {@link Projected} / {@link RowOrProjected} (wrapping via ClientModelService
+ * freezes Parameters/ReturnType).
  */
 type StoreDefaultGet<T extends BaseModel> = (value: Partial<Insertable<T>>) => Promise<Partial<Insertable<T>>>;
-type StoreCreate<T extends BaseModel> = {
-  <F extends FieldSelection<T>>(value: Partial<Insertable<T>>, returnFields: F): Promise<ClientModel<Projected<T, F>>>;
-  (value: Partial<Insertable<T>>, returnFields?: FieldSelection<T>): Promise<ClientModel<T>>;
-};
-type StoreCreateMany<T extends BaseModel> = {
-  <F extends FieldSelection<T>>(values: Partial<Insertable<T>>[], returnFields: F): Promise<Array<ClientModel<Projected<T, F>>>>;
-  (values: Partial<Insertable<T>>[], returnFields?: FieldSelection<T>): Promise<Array<ClientModel<T>>>;
-};
-type StoreBrowse<T extends BaseModel> = {
-  <F extends FieldSelection<T>>(id: string, fields: F, options?: SoftDeleteOptions): Promise<ClientModel<Projected<T, F>>>;
-  (id: string, fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<ClientModel<T>>;
-};
-type StoreBrowseMany<T extends BaseModel> = {
-  <F extends FieldSelection<T>>(ids: string[], fields: F, options?: SoftDeleteOptions): Promise<Array<ClientModel<Projected<T, F>>>>;
-  (ids: string[], fields?: FieldSelection<T>, options?: SoftDeleteOptions): Promise<Array<ClientModel<T>>>;
-};
+type StoreCreate<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
+  value: Partial<Insertable<T>>,
+  returnFields?: F
+) => Promise<ClientModel<RowOrProjected<T, F>>>;
+type StoreCreateMany<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
+  values: Partial<Insertable<T>>[],
+  returnFields?: F
+) => Promise<Array<ClientModel<RowOrProjected<T, F>>>>;
+type StoreBrowse<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
+  id: string,
+  fields?: F,
+  options?: SoftDeleteOptions
+) => Promise<ClientModel<RowOrProjected<T, F>>>;
+type StoreBrowseMany<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
+  ids: string[],
+  fields?: F,
+  options?: SoftDeleteOptions
+) => Promise<Array<ClientModel<RowOrProjected<T, F>>>>;
 type StoreUpdate<T extends BaseModel> = {
   <F extends FieldSelection<T>>(
     condition: QueryCondition<T>,
@@ -84,13 +87,10 @@ type StoreNameCreate<T extends BaseModel> = (
   options?: unknown
 ) => Promise<ClientModel<T>>;
 type StoreCount<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: CountOptions) => Promise<number>;
-type StoreSearch<T extends BaseModel> = {
-  <F extends FieldSelection<T>>(
-    condition: QueryCondition<T> | [],
-    options: Omit<SearchOptions<T>, 'fields'> & { fields: F }
-  ): Promise<Array<ClientModel<Projected<T, F>>>>;
-  (condition?: QueryCondition<T> | [], options?: SearchOptions<T>): Promise<Array<ClientModel<T>>>;
-};
+type StoreSearch<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
+  condition?: QueryCondition<T> | [],
+  options?: Omit<SearchOptions<T>, 'fields'> & { fields?: F }
+) => Promise<Array<ClientModel<RowOrProjected<T, F>>>>;
 type StoreReadGroup<T extends BaseModel> = (
   groupby: unknown,
   condition?: QueryCondition<T> | [],

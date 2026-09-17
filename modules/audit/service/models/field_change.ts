@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model, type ModelCtor, type RowOf } from '@/core/service';
+import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
@@ -113,6 +113,8 @@ const DEFAULT_APPEND_FIELDS = [
 ] as const satisfies FieldSelection<FieldChange>;
 
 function fieldSelectionWithId(fields: FieldSelection<FieldChange>): FieldSelection<FieldChange> {
+  // Empty selection means full row (Projected<T, []> === Selectable<T>).
+  if (fields.length === 0) return ['*'];
   if (fields.includes('*') || fields.includes('Id')) return fields;
   return ['Id', ...fields];
 }

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
+import { Model, Field, BaseModel, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { _lt } from '../i18n';
@@ -72,9 +72,9 @@ export default class UserRole extends AuthzMutationModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    // Skip AuthzMutationModel's global invalidate; UserId is known so only those users are cleared.
+    // Skip AuthzMutationModel's global invalidate; call BaseModel so only targeted clears run.
     return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(value), () =>
-      super.Create<C, F>(value, returnFields)
+      Reflect.apply(BaseModel.Create, this, [value, returnFields]) as Promise<RowOrProjected<RowOf<C>, F>>
     );
   }
 
@@ -87,7 +87,7 @@ export default class UserRole extends AuthzMutationModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(values), () =>
-      super.CreateMany<C, F>(values, returnFields)
+      Reflect.apply(BaseModel.CreateMany, this, [values, returnFields]) as Promise<Array<RowOrProjected<RowOf<C>, F>>>
     );
   }
 }
