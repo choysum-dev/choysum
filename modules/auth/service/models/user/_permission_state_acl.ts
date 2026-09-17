@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { condition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
@@ -46,8 +45,8 @@ export async function buildAclAggregation(
   roleIds: string[],
   roleScopesById: Record<string, { global: boolean; companies: string[] }>
 ): Promise<AclAggregationResult> {
-  const accessesRaw = await RoleMethodAccess.Search(condition<RoleMethodAccess>(['RoleId', 'in', roleIds]), {
-    fields: ['RoleId', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName', 'LogicalMethods', 'Mode', 'Source'] as const,
+  const accessesRaw = await RoleMethodAccess.Search(['RoleId', 'in', roleIds], {
+    fields: ['RoleId', 'MetaServiceId', 'MetaModelId', 'MetaApplicationId', 'LogicalModelName', 'LogicalMethods', 'Mode', 'Source'],
     limit: 50000,
   });
   // UI-Option-A: ignore legacy Source=ui rows in PermissionState ACL aggregation.
@@ -81,14 +80,14 @@ export async function buildAclAggregation(
   // 4.1) Resolve service -> model + method & 4.3) Resolve applicationId -> applicationName
   const [services, apps] = await Promise.all([
     irServiceIds.length > 0
-      ? MetaService.Search(condition<MetaServiceModel>(['Id', 'in', irServiceIds]), {
-          fields: ['Id', 'ModelId', 'Name'] as const,
+      ? MetaService.Search(['Id', 'in', irServiceIds], {
+          fields: ['Id', 'ModelId', 'Name'],
           limit: 50000,
         })
       : Promise.resolve([]),
     irApplicationIds.length > 0
-      ? MetaApplication.Search(condition<MetaApplicationModel>(['Id', 'in', irApplicationIds]), {
-          fields: ['Id', 'Name'] as const,
+      ? MetaApplication.Search(['Id', 'in', irApplicationIds], {
+          fields: ['Id', 'Name'],
           limit: 50000,
         })
       : Promise.resolve([]),
@@ -115,8 +114,8 @@ export async function buildAclAggregation(
   // 4.2) Resolve model -> app + name
   const needModelIds = Array.from(new Set([...irModelIds, ...Array.from(modelIdsFromServices)]));
   if (needModelIds.length > 0) {
-    const models = await MetaModel.Search(condition<MetaModelModel>(['Id', 'in', needModelIds]), {
-      fields: ['Id', 'Name', 'Application'] as const,
+    const models = await MetaModel.Search(['Id', 'in', needModelIds], {
+      fields: ['Id', 'Name', 'Application'],
       limit: 50000,
     });
     for (const m of models || []) {
@@ -137,8 +136,8 @@ export async function buildAclAggregation(
   const modelsByApp = new Map<string, Array<{ app: string; name: string }>>();
   const appNames = Array.from(new Set(appNameById.values()));
   if (appNames.length > 0) {
-    const rows = await MetaModel.Search(condition<MetaModelModel>(['Application', 'in', appNames]), {
-      fields: ['Application', 'Name', 'ModuleId', 'UpdatedAt'] as const,
+    const rows = await MetaModel.Search(['Application', 'in', appNames], {
+      fields: ['Application', 'Name', 'ModuleId', 'UpdatedAt'],
       orderBy: { field: 'UpdatedAt', order: 'desc' },
       limit: 50000,
     });
@@ -166,7 +165,7 @@ export async function buildAclAggregation(
   const getAllModels = async (): Promise<Array<{ app: string; name: string }>> => {
     if (allModels) return allModels;
     const rows = await MetaModel.Search([], {
-      fields: ['Application', 'Name', 'UpdatedAt'] as const,
+      fields: ['Application', 'Name', 'UpdatedAt'],
       orderBy: { field: 'UpdatedAt', order: 'desc' },
       limit: 50000,
     });

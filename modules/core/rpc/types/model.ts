@@ -4,7 +4,7 @@
 import type { BaseModel } from '@/core/service/api/model';
 import type { FieldSelection, Projected } from '@/core/service/api/selection';
 import type { Updateable, Insertable } from '@/core/service/api/input';
-import type { QueryCondition, OrderBy, SearchOptions, SoftDeleteOptions, UpdateOptions } from '@/core/service/api/query';
+import type { QueryCondition, OrderBy, SearchOptions, SoftDeleteOptions, UpdateOptions, CountOptions, DeleteOptions } from '@/core/service/api/query';
 import type { FieldPath, FieldPathType } from '@/core/service/api/field';
 
 export type { BaseModel, FieldSelection, Updateable, Insertable, QueryCondition, OrderBy, FieldPath, FieldPathType };
@@ -95,6 +95,7 @@ type CrudService<C extends ModelConstructor> = {
     ): Promise<Array<ClientModel<Projected<Row<C>, F>>>>;
     (condition?: QueryCondition<Row<C>> | [], options?: SearchOptions<Row<C>>): Promise<Array<ClientModel<Row<C>>>>;
   };
+  Count: (condition?: QueryCondition<Row<C>> | [], options?: CountOptions) => Promise<number>;
   Update: {
     <F extends FieldSelection<Row<C>>>(
       condition: QueryCondition<Row<C>>,
@@ -123,6 +124,8 @@ type CrudService<C extends ModelConstructor> = {
       options?: UpdateOptions
     ): Promise<ClientModel<Partial<Row<C>>>>;
   };
+  Delete: (condition: QueryCondition<Row<C>>, options?: DeleteOptions) => Promise<number>;
+  DeleteById: (id: string, options?: DeleteOptions) => Promise<number>;
 };
 
 /**

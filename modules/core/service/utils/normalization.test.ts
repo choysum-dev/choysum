@@ -5,6 +5,7 @@ import { Decimal } from '@/core/service';
 import {
   normalizeOptionalString,
   normalizeStringArray,
+  isRefLike,
   readRefId,
   normalizeRefId,
   normalizeRefIdList,
@@ -98,6 +99,16 @@ test('normalizeStringArray deduplicates and filters empty strings', () => {
   expect(normalizeStringArray([null, undefined, '  valid  '])).toEqual(['valid']);
 });
 
+test('isRefLike accepts plain objects and rejects arrays/primitives', () => {
+  expect(isRefLike({ Id: 'x' })).toBe(true);
+  expect(isRefLike({ id: 'y' })).toBe(true);
+  expect(isRefLike({})).toBe(true);
+  expect(isRefLike(null)).toBe(false);
+  expect(isRefLike(undefined)).toBe(false);
+  expect(isRefLike('id')).toBe(false);
+  expect(isRefLike(['Id'])).toBe(false);
+});
+
 test('readRefId extracts id from string or object', () => {
   expect(readRefId(null)).toBe(undefined);
   expect(readRefId(undefined)).toBe(undefined);
@@ -122,6 +133,15 @@ test('normalizeRefId returns trimmed string or null', () => {
   expect(normalizeRefId({ Id: '', id: 'fallback' })).toBe(null);
   expect(normalizeRefId({ Id: '' })).toBe(null);
   expect(normalizeRefId(true)).toBe('true');
+  expect(normalizeRefId(['a', 'b'])).toBe(null);
+  expect(normalizeRefId([{ Id: 'a' }])).toBe(null);
+});
+
+test('readRefId / maybeRefId / scope refs reject arrays', () => {
+  expect(readRefId(['a'])).toBe(undefined);
+  expect(maybeRefId(['a'])).toBe(undefined);
+  expect(normalizeScopeRefId(['a', 'b'])).toBe('');
+  expect(normalizeUiResourceId([{ Id: 'x' }])).toBe('');
 });
 
 test('normalizeRefIdList wraps singleton, extracts Ids, filters null, and deduplicates', () => {

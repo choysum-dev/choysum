@@ -22,15 +22,15 @@ const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.Me
 
 async function metaModelId(appName: string, modelName: string): Promise<string> {
   const rows = await MetaModel.Search(
-    condition<MetaModelModel>({ And: [['Application', '=', appName], ['Name', '=', modelName]] }),
-    { fields: ['Id'] as const, limit: 1 }
+    { And: [['Application', '=', appName], ['Name', '=', modelName]] },
+    { fields: ['Id'], limit: 1 }
   );
   return String(rows?.[0]?.Id || '').trim();
 }
 
 async function metaApplicationId(appName: string): Promise<string> {
   const rows = await MetaApplication.Search(['Name', '=', appName], {
-    fields: ['Id'] as const,
+    fields: ['Id'],
     limit: 1,
   });
   return String(rows?.[0]?.Id || '').trim();
@@ -88,7 +88,10 @@ export async function resolveMethodAccessMeta(
     const modelId = await metaModelId(appName, modelName);
     if (!modelId) return undefined;
 
-    const serviceRows = await MetaService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
+    const serviceRows = await MetaService.Search(
+      { And: [['ModelId', '=', modelId]] },
+      { fields: ['Id', 'Name'], limit: 5000 }
+    );
     const methodLower = String(methodName || '')
       .trim()
       .toLowerCase();
@@ -172,9 +175,9 @@ export async function evaluateRoleMethodAccess(
   methodLower?: string
 ): Promise<{ denied: boolean; allowed: boolean; hitRuleIds: string[]; reason: string }> {
   const accessesRaw = await RoleMethodAccess.Search(
-    {
-      And: [['RoleId', 'in', roleIds], { Or: scopeOr } as any],
-    } as any,
+    condition({
+      And: [['RoleId', 'in', roleIds], { Or: scopeOr }],
+    }),
     { fields: ['Id', 'Mode', 'Source', 'LogicalModelName', 'LogicalMethods'], limit: 5000 }
   );
   // UI-Option-A: Source=ui rows are not manual ACL (runtime ui-derived path owns UI→Method).
@@ -234,10 +237,8 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
   }
 
   const grants = await RoleUiResource.Search(
-    {
-      And: [['RoleId', 'in', ids]],
-    } as any,
-    { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'], limit: 100000 } as any
+    { And: [['RoleId', 'in', ids]] },
+    { fields: ['MetaApplicationId', 'MetaUiResourceId', 'Mode'], limit: 100000 }
   );
 
   let hasGlobalAllow = false;
@@ -298,7 +299,10 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
   };
 
   if (hasGlobalAllow || hasGlobalDeny) {
-    const allRows = await MetaUiResource.Search([] as any, { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 } as any);
+    const allRows = await MetaUiResource.Search([], {
+      fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'],
+      limit: 100000,
+    });
     mergeRows(allRows as any[]);
   } else {
     const appIDList = uniqStrings(Array.from(appIDs));
@@ -308,8 +312,8 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     if (appIDList.length > 0) {
       promises.push(
         MetaUiResource.Search(
-          { And: [['MetaApplicationId', 'in', appIDList]] } as any,
-          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 } as any
+          { And: [['MetaApplicationId', 'in', appIDList]] },
+          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 }
         )
       );
     }
@@ -322,8 +326,8 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
               ['Id', 'in', resourceIDList],
               ['Name', 'in', resourceIDList],
             ],
-          } as any,
-          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 } as any
+          },
+          { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 }
         )
       );
     }

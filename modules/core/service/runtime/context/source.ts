@@ -8,6 +8,7 @@ export type Context = Readonly<JsBusinessContext & ObjectRecord>;
 
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
+import { getChoysumRuntime } from '../choysum_root';
 
 function deepFreeze<T>(obj: T): T {
   if (!obj || typeof obj !== 'object' || Object.isFrozen(obj)) return obj;
@@ -34,12 +35,8 @@ export function __deepFreezeForTest<T>(obj: T): T {
   return deepFreeze(obj);
 }
 
-// Runtime-injected global $choysum object from QuickJS.
-declare const $choysum: unknown | undefined;
-
 function resolveRuntimeRoot(): ObjectRecord | undefined {
-  const runtimeRoot = typeof $choysum !== 'undefined' ? $choysum : (globalThis as { $choysum?: unknown }).$choysum;
-  return asObjectRecord(runtimeRoot);
+  return asObjectRecord(getChoysumRuntime());
 }
 
 /**
