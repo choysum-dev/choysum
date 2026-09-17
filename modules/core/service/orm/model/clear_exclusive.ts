@@ -6,7 +6,7 @@
  *
  * Prefer this over assigning null through a type assertion when clearing FK / selection scopes.
  */
-export function clearExclusive<T>(row: T, keys: Array<keyof T>): void {
+export function clearExclusive<T extends object>(row: T, keys: Array<keyof T>): void {
   for (const k of keys) {
     (row as Record<keyof T, unknown>)[k] = null;
   }

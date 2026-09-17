@@ -23,6 +23,7 @@ import {
   modulesFromRows,
 } from './_translation_term_cache';
 import type { ModelConstructor } from '../../../rpc/types';
+import { getChoysumRuntime } from '../../runtime/choysum_root';
 
 /** Minimal surface for `pool<TranslationTermModelCtor>('TranslationTerm')` typing. */
 export type TranslationTermModelCtor = ModelConstructor & {
@@ -237,7 +238,7 @@ async function ensureTermUniqueIndex(ctor: ModelCtor<TranslationTermBaseModel>):
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;
 
-  const dialect = String(globalThis.$choysum?.db?.dialectName || 'sqlite').toLowerCase();
+  const dialect = String(getChoysumRuntime()?.db?.dialectName || 'sqlite').toLowerCase();
   const indexName = `uq_${table}_key`;
   let ddl = '';
   if (dialect === 'postgres' || dialect === 'postgresql') {
@@ -249,7 +250,7 @@ async function ensureTermUniqueIndex(ctor: ModelCtor<TranslationTermBaseModel>):
   }
 
   try {
-    const db = globalThis.$choysum?.db;
+    const db = getChoysumRuntime()?.db;
     const exec = db?.execute;
     // QuickJS bridge callables may not report typeof === 'function'; rely on presence + call.
     if (exec != null && db != null) {

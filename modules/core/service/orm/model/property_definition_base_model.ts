@@ -15,6 +15,7 @@ import {
   normalizeDefinitionContainerScopeOnVals,
   parentScopeKey,
 } from './properties_definition_acl';
+import { getChoysumRuntime } from '../../runtime/choysum_root';
 
 function fail(code: string, message: string): never {
   raiseDomainError('core', code, message);
@@ -156,7 +157,7 @@ async function ensureDefinitionUniqueIndex(ctor: ModelCtor<PropertyDefinitionBas
   // Expression unique index: NULL/empty container dims collide (App-level + parent scopes).
   const ddl = `CREATE UNIQUE INDEX IF NOT EXISTS ${indexName} ON ${table} (target_model, properties_field, coalesce(container_model, ''), coalesce(container_id, ''))`;
 
-  const db = globalThis.$choysum?.db;
+  const db = getChoysumRuntime()?.db;
   const exec = db?.execute;
   // QuickJS bridge callables may not report typeof === 'function'; rely on presence + call.
   if (exec == null || db == null) {

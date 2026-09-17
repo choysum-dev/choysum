@@ -133,6 +133,15 @@ test('normalizeRefId returns trimmed string or null', () => {
   expect(normalizeRefId({ Id: '', id: 'fallback' })).toBe(null);
   expect(normalizeRefId({ Id: '' })).toBe(null);
   expect(normalizeRefId(true)).toBe('true');
+  expect(normalizeRefId(['a', 'b'])).toBe(null);
+  expect(normalizeRefId([{ Id: 'a' }])).toBe(null);
+});
+
+test('readRefId / maybeRefId / scope refs reject arrays', () => {
+  expect(readRefId(['a'])).toBe(undefined);
+  expect(maybeRefId(['a'])).toBe(undefined);
+  expect(normalizeScopeRefId(['a', 'b'])).toBe('');
+  expect(normalizeUiResourceId([{ Id: 'x' }])).toBe('');
 });
 
 test('normalizeRefIdList wraps singleton, extracts Ids, filters null, and deduplicates', () => {

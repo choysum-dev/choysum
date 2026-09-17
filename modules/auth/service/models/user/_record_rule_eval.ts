@@ -200,6 +200,9 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       return { kind: 'false', reason: companyGate.reason };
     }
     const permField = PERM_FIELD_BY_OP[input.opValue];
+    if (!permField) {
+      return { kind: 'false', reason: 'unknown_perm_field' };
+    }
     const roleIds = (input.roleIds || []).map(id => String(id || '').trim()).filter(Boolean);
 
     const scopeOr: BaseQueryCondition[] = [
@@ -236,7 +239,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     const RULE_FETCH_LIMIT = 5000;
     const allRules = await RoleRecordRule.Search(
       condition<RoleRecordRule>({
-        And: [{ Or: audienceOr }, [String(permField), '=', true], { Or: scopeOr }],
+        And: [{ Or: audienceOr }, [permField, '=', true], { Or: scopeOr }],
       }),
       { fields: ['Id', 'RoleId', 'Kind', 'Condition', 'MetaModelId', 'MetaApplicationId'], limit: RULE_FETCH_LIMIT + 1 }
     );

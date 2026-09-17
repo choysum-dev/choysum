@@ -18,6 +18,7 @@ import { resolveModelConstructor } from './model_registry';
 import type { ModelCtor } from './types';
 import type { Insertable, QueryCondition, Updateable } from '../repository/types';
 import { registerLogicalModelName } from './logical_model_registry';
+import { getChoysumRuntime } from '../../runtime/choysum_root';
 
 /** Align Odoo: False→global; True→current; id→specific. */
 export type FieldDefaultScopeDim = string | boolean | null | undefined;
@@ -179,7 +180,7 @@ function normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
 }
 
 async function fieldDefaultStoreTableExists(dialect: string, table: string): Promise<boolean> {
-  const db = globalThis.$choysum?.db;
+  const db = getChoysumRuntime()?.db;
   // QuickJS bridge callables may not report typeof === 'function'; rely on presence + call.
   if (db == null || db.query == null) {
     // No probe available; allow the CREATE INDEX attempt.
@@ -222,7 +223,7 @@ async function ensureScopeUniqueIndex(ctor: ModelCtor<FieldDefaultBaseModel>): P
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;
 
-  const dialect = String(globalThis.$choysum?.db?.dialectName || 'sqlite').toLowerCase();
+  const dialect = String(getChoysumRuntime()?.db?.dialectName || 'sqlite').toLowerCase();
   const indexName = `uidx_${table}_scope`;
   let ddl = '';
   if (dialect === 'postgres' || dialect === 'postgresql') {
@@ -233,7 +234,7 @@ async function ensureScopeUniqueIndex(ctor: ModelCtor<FieldDefaultBaseModel>): P
   }
 
   try {
-    const db = globalThis.$choysum?.db;
+    const db = getChoysumRuntime()?.db;
     const exec = db?.execute;
     // QuickJS bridge callables may not report typeof === 'function'.
     if (exec == null || db == null) {

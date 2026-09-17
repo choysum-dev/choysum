@@ -55,7 +55,7 @@ export function readRefId(value: unknown): string | undefined {
  * Returns null when the input cannot be resolved to a non-empty string.
  */
 export function normalizeRefId(value: unknown): string | null {
-  if (value == null) return null;
+  if (value == null || Array.isArray(value)) return null;
   const raw = isRefLike(value) ? (value.Id ?? value.id ?? null) : value;
   const s = String(raw ?? '').trim();
   return s ? s : null;
@@ -166,7 +166,7 @@ export function maybeRefId(value: unknown): string | undefined {
 }
 
 function normalizeRefLikeIdString(raw: unknown): string {
-  if (raw == null) return '';
+  if (raw == null || Array.isArray(raw)) return '';
   if (isRefLike(raw)) {
     return String(raw.Id ?? raw.id ?? '').trim();
   }
