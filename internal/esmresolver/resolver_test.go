@@ -2124,6 +2124,56 @@ func TestApplyBareImportPin(t *testing.T) {
 	if got := scopePin.applyBareImportPin("@scope@9.9.9"); got != "@scope@1.2.3" {
 		t.Fatalf("scope-only versioned pin: got %q", got)
 	}
+	if got := r.applyBareImportPin("vue@^3/"); got != "vue@3.5.38/" {
+		t.Fatalf("trailing-slash pin: got %q", got)
+	}
+}
+
+func TestPeelESMPathPrefixes(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		path, wantPrefix, wantRest string
+	}{
+		{"vue@^3", "", "vue@^3"},
+		{"v135/vue@^3", "v135", "vue@^3"},
+		{"v135", "v135", ""},
+		{"stable", "stable", ""},
+		{"npm", "npm", ""},
+		{"npm/vue@^3", "npm", "vue@^3"},
+		{"v135/stable/vue@1", "v135/stable", "vue@1"},
+		{"", "", ""},
+	}
+	for _, tt := range tests {
+		prefix, rest := peelESMPathPrefixes(tt.path)
+		if prefix != tt.wantPrefix || rest != tt.wantRest {
+			t.Fatalf("peelESMPathPrefixes(%q) = (%q, %q), want (%q, %q)",
+				tt.path, prefix, rest, tt.wantPrefix, tt.wantRest)
+		}
+	}
+}
+
+func TestSameUpstreamOrigin(t *testing.T) {
+	t.Parallel()
+	if sameUpstreamOrigin(nil, &url.URL{Scheme: "https", Host: "esm.sh"}) {
+		t.Fatal("nil u must be false")
+	}
+	if sameUpstreamOrigin(&url.URL{Scheme: "https", Host: "esm.sh"}, nil) {
+		t.Fatal("nil up must be false")
+	}
+	u := &url.URL{Scheme: "http", Host: "esm.sh"}
+	up := &url.URL{Scheme: "http", Host: "esm.sh"}
+	if !sameUpstreamOrigin(u, up) {
+		t.Fatal("http default-port origins should match")
+	}
+	if effectiveURLPort(&url.URL{Scheme: "http", Host: "esm.sh"}) != "80" {
+		t.Fatalf("http default port: got %q", effectiveURLPort(&url.URL{Scheme: "http", Host: "esm.sh"}))
+	}
+	if effectiveURLPort(&url.URL{Scheme: "ftp", Host: "esm.sh"}) != "" {
+		t.Fatalf("unknown scheme port: got %q", effectiveURLPort(&url.URL{Scheme: "ftp", Host: "esm.sh"}))
+	}
+	if effectiveURLPort(&url.URL{Scheme: "https", Host: "esm.sh:8443"}) != "8443" {
+		t.Fatalf("explicit port: got %q", effectiveURLPort(&url.URL{Scheme: "https", Host: "esm.sh:8443"}))
+	}
 }
 
 func TestSplitBarePackage(t *testing.T) {

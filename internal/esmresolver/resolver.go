@@ -577,7 +577,7 @@ func (r *Resolver) applyBareImportPin(specifier string) string {
 		return specifier
 	}
 	out := pkg + "@" + ver
-	if subpath != "" {
+	if subpath != "" || strings.HasSuffix(core, "/") {
 		out += "/" + subpath
 	}
 	return out + suffix
