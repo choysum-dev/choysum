@@ -4,6 +4,7 @@
 import {  BaseModel, Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
+import { asWriteBag } from '@/core/service/utils/normalization';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
 import type { ModelConstructor } from '@/core/rpc/types';
@@ -110,21 +111,15 @@ export function assertMessageType(type: string): MessageTypeLiteral {
   });
 }
 
-type MessageInsert = Partial<Insertable<Message>>;
-
-function prepareCreatePayload(value: MessageInsert): MessageInsert {
+function prepareCreatePayload(bag: Record<string, unknown>): void {
   const uid = getUserId();
-  const payload: MessageInsert = {
-    ...value,
-    AuthorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
-  };
-  if (value.Type == null || String(value.Type).trim() === '') {
+  bag.AuthorUid = uid == null || String(uid).trim() === '' ? null : String(uid).trim();
+  if (bag.Type == null || String(bag.Type).trim() === '') {
     // Omit Type so the field default (`comment`) applies.
-    delete payload.Type;
+    delete bag.Type;
   } else {
-    payload.Type = assertMessageType(String(value.Type));
+    bag.Type = assertMessageType(String(bag.Type));
   }
-  return payload;
 }
 
 /**
@@ -283,7 +278,10 @@ export default class Message extends PolymorphicRecordModel {
    * Optional AttachmentObjectId dials document.AttachmentBinding.Bind after create.
    * On success, fans out follower Notifications and best-effort Publishes thread/inbox tips.
    */
-  public static async Post(req: PostMessageReq, fields?: FieldSelection<Message>): Promise<Message> {
+  public static async Post<F extends FieldSelection<Message> = typeof DEFAULT_POST_FIELDS>(
+    req: PostMessageReq,
+    fields?: F
+  ): Promise<Projected<Message, F>> {
     if (!req || typeof req !== 'object') {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Post requires a payload' });
     }
@@ -300,7 +298,7 @@ export default class Message extends PolymorphicRecordModel {
 
     const type = assertMessageType(req.Type == null || req.Type === '' ? 'comment' : String(req.Type));
     const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
-    const returnFields: FieldSelection<Message> = fields ?? [...DEFAULT_POST_FIELDS];
+    const returnFields: FieldSelection<Message> = fields ?? DEFAULT_POST_FIELDS;
     const attachmentObjectId = String(req.AttachmentObjectId || '').trim();
 
     // Resolve Bind before Create so a missing binder does not leave an unbound Message.
@@ -324,12 +322,12 @@ export default class Message extends PolymorphicRecordModel {
         Model: model,
         ResId: resId,
         CompanyId: companyId,
-      } as MessageInsert,
+      },
       createFields
     );
 
     if (attachmentObjectId && bind) {
-      const ownerRecordId = String((created as Message).Id || '').trim();
+      const ownerRecordId = String((created as { Id?: unknown }).Id || '').trim();
       if (!ownerRecordId) {
         throw newMessageError({
           code: MessageErrCode.ATTACHMENT_BIND_FAILED,
@@ -361,7 +359,7 @@ export default class Message extends PolymorphicRecordModel {
 
     await Notification.FanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
-    return created as Message;
+    return created as Projected<Message, F>;
   }
 
   /**
@@ -372,8 +370,8 @@ export default class Message extends PolymorphicRecordModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const payload = prepareCreatePayload(value as MessageInsert);
-    return super.Create(payload as Partial<Insertable<RowOf<C>>>, returnFields);
+    prepareCreatePayload(asWriteBag(value));
+    return super.Create(value, returnFields);
   }
 
   /**
@@ -384,7 +382,8 @@ export default class Message extends PolymorphicRecordModel {
     values: Partial<Insertable<RowOf<C>>>[],
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const rows = (values || []).map(row => prepareCreatePayload(row as MessageInsert));
-    return super.CreateMany(rows as Partial<Insertable<RowOf<C>>>[], returnFields);
+    const rows = values || [];
+    for (const row of rows) prepareCreatePayload(asWriteBag(row));
+    return super.CreateMany(rows, returnFields);
   }
 }

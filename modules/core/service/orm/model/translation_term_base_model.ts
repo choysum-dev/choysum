@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Field } from '../decorator/field';
+import { asWriteBag } from '@/core/service/utils/normalization';
 import { MetadataStorage } from '../metadata/storage';
 import { raiseDomainError } from '@/core/service/error';
 import { withRecordRuleAndFieldRuleBypass } from '../repository/authz';
@@ -502,7 +503,7 @@ export default class TranslationTermBaseModel extends BaseModel {
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
-    let module = String((values as Record<string, unknown>).Module ?? '').trim();
+    let module = String((asWriteBag(values)).Module ?? '').trim();
     if (!module) {
       try {
         const existing = await self.Browse(id, ['Module']);

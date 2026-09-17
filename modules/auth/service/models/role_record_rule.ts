@@ -9,7 +9,7 @@ import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
 import type MetaModel from '@/meta/service/models/model';
-import { normalizeRefId } from '@/core/service/utils/normalization';
+import { normalizeRefId, asWriteBag } from '@/core/service/utils/normalization';
 import AuthzMutationModel from '../mixins/authz_mutation_model';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
@@ -243,7 +243,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    RoleRecordRule._prepareValues(value as Record<string, unknown>, 'create');
+    RoleRecordRule._prepareValues(asWriteBag(value), 'create');
     return super.Create(value, returnFields);
   }
 
@@ -256,7 +256,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = values || [];
-    for (const v of rows) RoleRecordRule._prepareValues(v as Record<string, unknown>, 'create');
+    for (const v of rows) RoleRecordRule._prepareValues(asWriteBag(v), 'create');
     return super.CreateMany(rows, returnFields);
   }
 
@@ -270,7 +270,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
-    RoleRecordRule._prepareValues(values as Record<string, unknown>, 'update');
+    RoleRecordRule._prepareValues(asWriteBag(values), 'update');
     return super.Update(condition, values, returnFields, options);
   }
 
@@ -284,7 +284,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
-    RoleRecordRule._prepareValues(values as Record<string, unknown>, 'update');
+    RoleRecordRule._prepareValues(asWriteBag(values), 'update');
     return super.UpdateById(id, values, returnFields, options);
   }
 }

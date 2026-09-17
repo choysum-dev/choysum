@@ -14,7 +14,7 @@ import RoleRecordRule from './role_record_rule';
 import RoleMethodAccess from './role_method_access';
 import RoleFieldRule from './role_field_rule';
 import RoleUiResource from './role_ui_resource';
-import { normalizeRefId } from '@/core/service/utils/normalization';
+import { normalizeRefId, asWriteBag } from '@/core/service/utils/normalization';
 import type MetaUiResource from '@/meta/service/models/ui_resource';
 import {
   applyAccessWriteTransformOnCreate,
@@ -272,7 +272,7 @@ export default class Role extends AuthzMutationModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const payload = { ...(value as Record<string, unknown>) };
+    const payload = { ...(asWriteBag(value)) };
     const accessIds = await applyAccessWriteTransformOnCreate(payload);
     const row = await super.Create(payload as Partial<Insertable<RowOf<C>>>, returnFields);
     const roleId = normalizeRefId((row as { Id?: unknown }).Id);
@@ -293,7 +293,7 @@ export default class Role extends AuthzMutationModel {
     values: Partial<Insertable<RowOf<C>>>[],
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const payloads = [...(values || [])].map(v => ({ ...(v as Record<string, unknown>) }));
+    const payloads = [...(values || [])].map(v => ({ ...(asWriteBag(v)) }));
     const accessList: Array<string[] | null> = [];
     for (const payload of payloads) {
       accessList.push(await applyAccessWriteTransformOnCreate(payload));
@@ -326,7 +326,7 @@ export default class Role extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
-    const payload: Record<string, unknown> = { ...(values as Record<string, unknown>) };
+    const payload: Record<string, unknown> = { ...(asWriteBag(values)) };
     const shouldHydrateAccess = wantsAccessField(returnFields);
     let roleIdForSync: string | null = null;
     let accessIdsForSync: string[] | null = null;
@@ -367,7 +367,7 @@ export default class Role extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
-    const payload: Record<string, unknown> = { ...(values as Record<string, unknown>) };
+    const payload: Record<string, unknown> = { ...(asWriteBag(values)) };
     const accessIds = await applyAccessWriteTransformOnUpdate(payload, id);
     let row = await super.UpdateById(id, payload as Partial<Updateable<RowOf<C>>>, returnFields, options);
     if (accessIds) {

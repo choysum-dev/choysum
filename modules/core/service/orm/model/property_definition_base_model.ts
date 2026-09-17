@@ -3,6 +3,7 @@
 
 import { Field } from '../decorator/field';
 import { raiseDomainError } from '@/core/service/error';
+import { asWriteBag } from '@/core/service/utils/normalization';
 import { MetadataStorage } from '../metadata/storage';
 import BaseModel from './model';
 import { registerLogicalModelName } from './logical_model_registry';
@@ -206,7 +207,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const self = asDefinitionCtor(this);
-    const vals = value as Record<string, unknown>;
+    const vals = asWriteBag(value);
     await ensureDefinitionUniqueIndex(self);
     normalizeDefinitionContainerScopeOnVals(vals);
     normalizeDefinitionOnVals(vals);
@@ -225,7 +226,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     const seen = new Set<string>();
     const probed = new Set<string>();
     for (const row of values || []) {
-      const rec = row as Record<string, unknown>;
+      const rec = asWriteBag(row as object);
       normalizeDefinitionContainerScopeOnVals(rec);
       normalizeDefinitionOnVals(rec);
       const scopeKey = parentScopeKey(rec);
@@ -256,7 +257,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     const self = asDefinitionCtor(this);
-    const vals = values as Record<string, unknown>;
+    const vals = asWriteBag(values);
     await ensureDefinitionUniqueIndex(self);
     normalizeDefinitionContainerScopeOnVals(vals);
     normalizeDefinitionOnVals(vals);
@@ -283,7 +284,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     const self = asDefinitionCtor(this);
-    const vals = values as Record<string, unknown>;
+    const vals = asWriteBag(values);
     await ensureDefinitionUniqueIndex(self);
     normalizeDefinitionContainerScopeOnVals(vals);
     normalizeDefinitionOnVals(vals);

@@ -7,6 +7,7 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
+import { asWriteBag } from '@/core/service/utils/normalization';
 import { listLogicalModelSelection } from './_logical_model_registry';
 import { _lt } from '../i18n';
 import Role from './role';
@@ -199,7 +200,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    RoleFieldRule._prepareValues(value as Record<string, unknown>, 'create');
+    RoleFieldRule._prepareValues(asWriteBag(value), 'create');
     return super.Create(value, returnFields);
   }
 
@@ -212,7 +213,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = values || [];
-    for (const v of rows) RoleFieldRule._prepareValues(v as Record<string, unknown>, 'create');
+    for (const v of rows) RoleFieldRule._prepareValues(asWriteBag(v), 'create');
     return super.CreateMany(rows, returnFields);
   }
 
@@ -226,7 +227,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
-    RoleFieldRule._prepareValues(values as Record<string, unknown>, 'update');
+    RoleFieldRule._prepareValues(asWriteBag(values), 'update');
     return super.Update(condition, values, returnFields, options);
   }
 
@@ -240,7 +241,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
-    RoleFieldRule._prepareValues(values as Record<string, unknown>, 'update');
+    RoleFieldRule._prepareValues(asWriteBag(values), 'update');
     return super.UpdateById(id, values, returnFields, options);
   }
 

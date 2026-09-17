@@ -802,6 +802,17 @@ export function asRecord(input: unknown): Record<string, unknown> | null {
 }
 
 /**
+ * HC2 write-override payload → mutable bag for domain prepare.
+ *
+ * Prefer in-place mutation on the bag, then pass the original `value` to `super.*`
+ * so the call site does not need a second Insertable cast. Copy first when the
+ * caller must not see stamped fields (e.g. Role stripping AccessUiResourceIds).
+ */
+export function asWriteBag(value: object): Record<string, unknown> {
+  return value as Record<string, unknown>;
+}
+
+/**
  * Normalize a non-negative finite integer from loose input.
  *
  * Returns undefined for undefined, null, empty string, NaN, Infinity, and

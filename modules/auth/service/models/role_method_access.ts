@@ -7,6 +7,7 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
+import { asWriteBag } from '@/core/service/utils/normalization';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
@@ -239,7 +240,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    RoleMethodAccess._prepareValues(value as Record<string, unknown>, 'create');
+    RoleMethodAccess._prepareValues(asWriteBag(value), 'create');
     return super.Create(value, returnFields);
   }
 
@@ -253,7 +254,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = values || [];
     for (const v of rows) {
-      RoleMethodAccess._prepareValues(v as Record<string, unknown>, 'create');
+      RoleMethodAccess._prepareValues(asWriteBag(v), 'create');
     }
     return super.CreateMany(rows, returnFields);
   }
@@ -270,9 +271,10 @@ export default class RoleMethodAccess extends AuthzMutationModel {
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     let previousLogicalModelName: string | null | undefined;
     let updateCondition: QueryCondition<RowOf<C>> = condition;
-    if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
+    const updateBag = asWriteBag(values);
+    if (RoleMethodAccess._needsPreviousLogicalModelName(updateBag)) {
       // Guard already proved LogicalModelName is a non-empty string after trim.
-      const next = String((values as Record<string, unknown>).LogicalModelName).trim();
+      const next = String(updateBag.LogicalModelName).trim();
       // Prove every matched row already has LogicalModelName === next (no sampling).
       // Null/empty/other names fail Count equality → fail closed (null whitelist = all methods).
       // Pass the same options as super.Update so withDeleted/onlyDeleted stay aligned.
@@ -300,7 +302,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
         previousLogicalModelName = null;
       }
     }
-    RoleMethodAccess._prepareValues(values as Record<string, unknown>, 'update', previousLogicalModelName);
+    RoleMethodAccess._prepareValues(updateBag, 'update', previousLogicalModelName);
     return super.Update(updateCondition, values, returnFields, options);
   }
 
@@ -315,14 +317,15 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     let previousLogicalModelName: string | null | undefined;
-    if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {
+    const updateBag = asWriteBag(values);
+    if (RoleMethodAccess._needsPreviousLogicalModelName(updateBag)) {
       const existing = await this.Search(['Id', '=', id] as never, {
         fields: ['LogicalModelName'] as never,
         limit: 1,
       });
       previousLogicalModelName = String((existing?.[0] as { LogicalModelName?: string } | undefined)?.LogicalModelName || '').trim() || null;
     }
-    RoleMethodAccess._prepareValues(values as Record<string, unknown>, 'update', previousLogicalModelName);
+    RoleMethodAccess._prepareValues(updateBag, 'update', previousLogicalModelName);
     return super.UpdateById(id, values, returnFields, options);
   }
 

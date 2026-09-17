@@ -4,6 +4,7 @@
 import {  BaseModel, Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
+import { asWriteBag } from '@/core/service/utils/normalization';
 import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
@@ -88,18 +89,13 @@ function resolveCorrelation(): { requestId?: string; traceId?: string } {
   return { requestId, traceId };
 }
 
-type FieldChangeInsert = Partial<Insertable<FieldChange>>;
-
 /**
  * Normalize Kind and force ActorUid from trusted request identity for every create path.
  */
-function prepareCreatePayload(value: FieldChangeInsert): FieldChangeInsert {
+function prepareCreatePayload(bag: Record<string, unknown>): void {
   const uid = getUserId();
-  return {
-    ...value,
-    Kind: assertFieldChangeKind(value.Kind == null ? '' : String(value.Kind)),
-    ActorUid: uid == null || String(uid).trim() === '' ? null : String(uid).trim(),
-  };
+  bag.Kind = assertFieldChangeKind(bag.Kind == null ? '' : String(bag.Kind));
+  bag.ActorUid = uid == null || String(uid).trim() === '' ? null : String(uid).trim();
 }
 
 const DEFAULT_APPEND_FIELDS = [
@@ -237,10 +233,10 @@ export default class FieldChange extends PolymorphicRecordModel {
    * ActorUid always comes from trusted request identity.
    * Optional `fields` is forwarded to Create (same FieldSelection contract).
    */
-  public static async Append(
+  public static async Append<F extends FieldSelection<FieldChange> = typeof DEFAULT_APPEND_FIELDS>(
     req: AppendFieldChangeReq,
-    fields?: FieldSelection<FieldChange>
-  ): Promise<FieldChange> {
+    fields?: F
+  ): Promise<Projected<FieldChange, F>> {
     if (!req || typeof req !== 'object') {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append requires a payload' });
     }
@@ -259,7 +255,7 @@ export default class FieldChange extends PolymorphicRecordModel {
     }
 
     const kind = String(req.Kind).trim();
-    const createValue: FieldChangeInsert = {
+    const createValue = {
       Model: model,
       ResId: resId,
       Field: req.Field == null || req.Field === '' ? null : String(req.Field),
@@ -272,17 +268,17 @@ export default class FieldChange extends PolymorphicRecordModel {
       RequestId: req.RequestId ?? correlation.requestId ?? null,
       TraceId: req.TraceId ?? correlation.traceId ?? null,
     };
-    const returnFields: FieldSelection<FieldChange> = fields ?? [...DEFAULT_APPEND_FIELDS];
+    const returnFields: FieldSelection<FieldChange> = fields ?? DEFAULT_APPEND_FIELDS;
     // Always request Id so tip publish does not depend on the caller's projection.
     const createFields = fieldSelectionWithId(returnFields);
     const created = await this.Create(createValue, createFields);
     await publishFieldChangeAppendedTip({
-      Id: created.Id,
+      Id: String((created as { Id?: unknown }).Id || ''),
       Model: model,
       ResId: resId,
       At: at,
     });
-    return created as FieldChange;
+    return created as Projected<FieldChange, F>;
   }
 
   /**
@@ -293,8 +289,8 @@ export default class FieldChange extends PolymorphicRecordModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const payload = prepareCreatePayload(value as FieldChangeInsert);
-    return super.Create(payload as Partial<Insertable<RowOf<C>>>, returnFields);
+    prepareCreatePayload(asWriteBag(value));
+    return super.Create(value, returnFields);
   }
 
   /**
@@ -305,8 +301,9 @@ export default class FieldChange extends PolymorphicRecordModel {
     values: Partial<Insertable<RowOf<C>>>[],
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const rows = (values || []).map(row => prepareCreatePayload(row as FieldChangeInsert));
-    return super.CreateMany(rows as Partial<Insertable<RowOf<C>>>[], returnFields);
+    const rows = values || [];
+    for (const row of rows) prepareCreatePayload(asWriteBag(row));
+    return super.CreateMany(rows, returnFields);
   }
 
   /** FieldChange is append-only. */
