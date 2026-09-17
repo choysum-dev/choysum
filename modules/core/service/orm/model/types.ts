@@ -18,3 +18,11 @@ export type ModelClass<T extends BaseModel = BaseModel> = new (...args: ModelFac
  * Metadata, facades, and hydration use this type.
  */
 export type ModelCtor<T extends BaseModel = BaseModel> = ModelClass<T> & typeof BaseModel;
+
+/** Instance row type for a collection ctor. Prefer over InstanceType — that collapses on ModelCtor's `typeof BaseModel` intersect. */
+export type RowOf<C> = C extends ModelCtor<infer R>
+  ? R
+  : C extends abstract new (...args: never[]) => infer R
+    ? R
+    : BaseModel;
+

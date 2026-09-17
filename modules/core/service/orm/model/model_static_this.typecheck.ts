@@ -31,6 +31,14 @@ function typecheckStaticThis(): void {
   });
   void searchedProjected;
 
+  // Concrete ctor: literal fields project without FieldSelection cast
+  const searchedLiteral = Probe.Search([], { fields: ['Id'] as const });
+  void searchedLiteral;
+  void searchedLiteral.then(rows => {
+    const id: string | undefined = rows[0]?.Id;
+    void id;
+  });
+
   const createdProjected: Promise<Projected<Probe, ['Name']>> = Probe.Create({ Name: 'x' }, fields<Probe>()('Name'));
   void createdProjected;
 
@@ -60,5 +68,9 @@ function typecheckStaticThis(): void {
   // @ts-expect-error unknown field is not a QueryCondition path
   const invalidSearch = Probe.Search(['NoSuch', '=', 1]);
   void invalidSearch;
+
+  // @ts-expect-error Name was not selected in projected Search
+  const noName: string | undefined = undefined as unknown as Projected<Probe, ['Id']>['Name'];
+  void noName;
 }
 void typecheckStaticThis;
