@@ -584,7 +584,9 @@ func (r *Resolver) applyBareImportPin(specifier string) string {
 }
 
 // applyBareImportPinToAbsPath rewrites esm.sh absolute paths like
-// /vue@^3.0.0?target=es2020 when the package is pinned.
+// /vue@^3.0.0?target=es2020 when the package is pinned. Leading esm.sh
+// routing prefixes (/v135, /stable, /npm) are preserved but skipped when
+// matching the package name so range pins still apply.
 func (r *Resolver) applyBareImportPinToAbsPath(path string) string {
 	if r == nil || len(r.barePins) == 0 {
 		return path
@@ -592,7 +594,36 @@ func (r *Resolver) applyBareImportPinToAbsPath(path string) string {
 	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 		return path
 	}
-	return "/" + r.applyBareImportPin(strings.TrimPrefix(path, "/"))
+	prefix, rest := peelESMPathPrefixes(strings.TrimPrefix(path, "/"))
+	pinned := r.applyBareImportPin(rest)
+	if pinned == rest {
+		return path
+	}
+	if prefix == "" {
+		return "/" + pinned
+	}
+	return "/" + prefix + "/" + pinned
+}
+
+// peelESMPathPrefixes splits leading esm.sh routing segments (vNNN, stable, npm)
+// from the package path. Unknown first segments are left in rest so unversioned
+// package names are not mistaken for routing prefixes.
+func peelESMPathPrefixes(path string) (prefix, rest string) {
+	rest = path
+	var parts []string
+	for rest != "" {
+		seg, after, found := strings.Cut(rest, "/")
+		if seg == "" || !(isESMVersionPrefix(seg) || seg == "stable" || seg == "npm") {
+			break
+		}
+		parts = append(parts, seg)
+		if !found {
+			rest = ""
+			break
+		}
+		rest = after
+	}
+	return strings.Join(parts, "/"), rest
 }
 
 // applyBareImportPinToURL rewrites the path of an absolute HTTP(S) URL when the

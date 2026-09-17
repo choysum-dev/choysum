@@ -2063,6 +2063,18 @@ func TestApplyBareImportPin(t *testing.T) {
 	if got := r.applyBareImportPinToAbsPath("/vue@^3.0.0?target=es2020"); got != "/vue@3.5.38?target=es2020" {
 		t.Fatalf("abs path: got %q", got)
 	}
+	if got := r.applyBareImportPinToAbsPath("/v135/vue@^3.0.0/es2020/vue.mjs"); got != "/v135/vue@3.5.38/es2020/vue.mjs" {
+		t.Fatalf("version-prefix abs path: got %q", got)
+	}
+	if got := r.applyBareImportPinToAbsPath("/stable/vue@^3.0.0"); got != "/stable/vue@3.5.38" {
+		t.Fatalf("stable-prefix abs path: got %q", got)
+	}
+	if got := r.applyBareImportPinToURL("https://esm.sh/v135/vue@^3.5.11?target=es2020"); got != "https://esm.sh/v135/vue@3.5.38?target=es2020" {
+		t.Fatalf("version-prefix url: got %q", got)
+	}
+	if got := r.applyBareImportPinToAbsPath("/v135/react@18.0.0"); got != "/v135/react@18.0.0" {
+		t.Fatalf("unpinned prefixed path rewritten: got %q", got)
+	}
 	if got := (*Resolver)(nil).applyBareImportPinToAbsPath("/vue@1"); got != "/vue@1" {
 		t.Fatalf("nil abs: got %q", got)
 	}
