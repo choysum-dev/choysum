@@ -272,9 +272,9 @@ export default class Role extends AuthzMutationModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const payload = { ...(value as Record<string, unknown>) };
-    const accessIds = await applyAccessWriteTransformOnCreate(payload);
-    const row = await super.Create<C, F>(payload as Partial<Insertable<RowOf<C>>>, returnFields);
+    const payload = { ...value };
+    const accessIds = await applyAccessWriteTransformOnCreate(payload as Record<string, unknown>);
+    const row = await super.Create<C, F>(payload, returnFields);
     const roleId = normalizeRefId((row as { Id?: unknown }).Id);
     if (roleId && accessIds) {
       await syncAllowResourceGrants(roleId, accessIds);
@@ -293,15 +293,12 @@ export default class Role extends AuthzMutationModel {
     values: Partial<Insertable<RowOf<C>>>[],
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
-    const payloads = [...(values || [])].map(v => ({ ...(v as Record<string, unknown>) }));
+    const payloads = [...(values || [])].map(v => ({ ...v }));
     const accessList: Array<string[] | null> = [];
     for (const payload of payloads) {
-      accessList.push(await applyAccessWriteTransformOnCreate(payload));
+      accessList.push(await applyAccessWriteTransformOnCreate(payload as Record<string, unknown>));
     }
-    const rows = await super.CreateMany<C, F>(
-      payloads as Array<Partial<Insertable<RowOf<C>>>>,
-      returnFields
-    );
+    const rows = await super.CreateMany<C, F>(payloads, returnFields);
     for (let i = 0; i < rows.length; i++) {
       const roleId = normalizeRefId((rows[i] as { Id?: unknown }).Id);
       const accessIds = accessList[i];
@@ -330,7 +327,7 @@ export default class Role extends AuthzMutationModel {
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
     type UpdatedRows = Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>;
-    const payload: Record<string, unknown> = { ...(values as Record<string, unknown>) };
+    const payload = { ...values };
     const shouldHydrateAccess = wantsAccessField(returnFields);
     let roleIdForSync: string | null = null;
     let accessIdsForSync: string[] | null = null;
@@ -344,16 +341,11 @@ export default class Role extends AuthzMutationModel {
       }
       if (roleIds.length === 1) {
         roleIdForSync = roleIds[0];
-        accessIdsForSync = await applyAccessWriteTransformOnUpdate(payload, roleIds[0]);
+        accessIdsForSync = await applyAccessWriteTransformOnUpdate(payload as Record<string, unknown>, roleIds[0]);
       }
     }
 
-    const updated = (await super.Update<C, F>(
-      condition,
-      payload as Partial<Updateable<RowOf<C>>>,
-      returnFields,
-      options
-    )) as UpdatedRows;
+    const updated = (await super.Update<C, F>(condition, payload, returnFields, options)) as UpdatedRows;
     if (roleIdForSync && accessIdsForSync) {
       await syncAllowResourceGrants(roleIdForSync, accessIdsForSync);
       if (updated.length && returnFields != null) {
@@ -379,14 +371,9 @@ export default class Role extends AuthzMutationModel {
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
     type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
-    const payload: Record<string, unknown> = { ...(values as Record<string, unknown>) };
-    const accessIds = await applyAccessWriteTransformOnUpdate(payload, id);
-    let row = (await super.UpdateById<C, F>(
-      id,
-      payload as Partial<Updateable<RowOf<C>>>,
-      returnFields,
-      options
-    )) as UpdatedRow;
+    const payload = { ...values };
+    const accessIds = await applyAccessWriteTransformOnUpdate(payload as Record<string, unknown>, id);
+    let row = (await super.UpdateById<C, F>(id, payload, returnFields, options)) as UpdatedRow;
     if (accessIds) {
       await syncAllowResourceGrants(id, accessIds);
       if (returnFields != null) {

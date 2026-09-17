@@ -391,9 +391,9 @@ export default class Message extends PolymorphicRecordModel {
     value: Partial<Insertable<RowOf<C>>>,
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
-    const payload = { ...(value as Record<string, unknown>) };
-    prepareCreatePayload(payload);
-    return (await super.Create<C, F>(payload as Partial<Insertable<RowOf<C>>>, returnFields)) as RowOrProjected<RowOf<C>, F>;
+    const payload = { ...value };
+    prepareCreatePayload(payload as Record<string, unknown>);
+    return await super.Create<C, F>(payload, returnFields);
   }
 
   /**
@@ -405,12 +405,10 @@ export default class Message extends PolymorphicRecordModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = (values || []).map(row => {
-      const payload = { ...(row as Record<string, unknown>) };
-      prepareCreatePayload(payload);
-      return payload as Partial<Insertable<RowOf<C>>>;
+      const payload = { ...row };
+      prepareCreatePayload(payload as Record<string, unknown>);
+      return payload;
     });
-    return (await super.CreateMany<C, F>(rows, returnFields)) as Array<
-      RowOrProjected<RowOf<C>, F>
-    >;
+    return await super.CreateMany<C, F>(rows, returnFields);
   }
 }
