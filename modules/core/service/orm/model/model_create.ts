@@ -19,6 +19,7 @@ import { recordFieldTrackingEvents } from './field_tracking';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { createServiceByModel } from '../../rpc';
+import type { ModelConstructor, ModelService } from '../../../rpc/types';
 import { assertOptionalDownloadDisposition, type DownloadDispositionValue } from '../../utils/normalization';
 
 type AttachmentDownloadDisposition = DownloadDispositionValue;
@@ -47,7 +48,8 @@ type AttachmentBindingBindResp = {
   attachmentBindingId?: string;
 };
 
-type AttachmentBindingServiceLike = {
+/** Typing stub for cross-app dial; core must not import the document model. */
+type AttachmentBindingModelStub = ModelConstructor & {
   Bind(req: AttachmentBindingBindReq): Promise<AttachmentBindingBindResp>;
 };
 
@@ -163,9 +165,9 @@ function rewriteCreateInputForAttachments(input: UnknownRecord, actions: Map<str
   return rewritten;
 }
 
-function resolveAttachmentBindingService(): AttachmentBindingServiceLike {
-  const service = createServiceByModel('document.AttachmentBinding') as unknown as AttachmentBindingServiceLike;
-  if (!service || typeof service.Bind !== 'function') {
+function resolveAttachmentBindingService(): Pick<ModelService<AttachmentBindingModelStub>, 'Bind'> {
+  const service = createServiceByModel<AttachmentBindingModelStub>('document.AttachmentBinding');
+  if (typeof service.Bind !== 'function') {
     throw new Error('[Create] document.AttachmentBinding service is unavailable.');
   }
   return service;

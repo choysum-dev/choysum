@@ -22,6 +22,7 @@ import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { getCurrencyFieldName } from '../metadata/decimal_like';
 import { createServiceByModel } from '../../rpc';
+import type { ModelConstructor, ModelService } from '../../../rpc/types';
 import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
 import { _t } from '@/core/service/i18n_binder';
 import { assertOptionalDownloadDisposition, type DownloadDispositionValue } from '../../utils/normalization';
@@ -58,9 +59,13 @@ type AttachmentBindingBindResp = {
   attachmentBindingId?: string;
 };
 
-type AttachmentBindingServiceLike = {
+/** Typing stub for cross-app dial; core must not import the document model. */
+type AttachmentBindingModelStub = ModelConstructor & {
   Bind(req: AttachmentBindingBindReq): Promise<AttachmentBindingBindResp>;
   Unbind(req: AttachmentBindingUnbindReq): Promise<unknown>;
+};
+
+type AttachmentBindingServiceLike = Pick<ModelService<AttachmentBindingModelStub>, 'Bind' | 'Unbind'> & {
   Search(condition: unknown, options?: unknown): Promise<unknown>;
 };
 
@@ -176,8 +181,10 @@ function rewriteUpdateInputForAttachments(input: UnknownRecord, actions: Map<str
 }
 
 function resolveAttachmentBindingService(): AttachmentBindingServiceLike {
-  const service = createServiceByModel('document.AttachmentBinding') as unknown as AttachmentBindingServiceLike;
-  if (!service || typeof service.Bind !== 'function' || typeof service.Unbind !== 'function' || typeof service.Search !== 'function') {
+  const service = createServiceByModel<AttachmentBindingModelStub>(
+    'document.AttachmentBinding'
+  ) as AttachmentBindingServiceLike;
+  if (typeof service.Bind !== 'function' || typeof service.Unbind !== 'function' || typeof service.Search !== 'function') {
     throw new Error('[Update] document.AttachmentBinding service is unavailable.');
   }
   return service;

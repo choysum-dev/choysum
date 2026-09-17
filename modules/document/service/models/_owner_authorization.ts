@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { dial } from '@/core/service';
+import type { ModelConstructor } from '@/core/rpc/types';
 import { assertRecordReadable } from '@/core/service/orm/model';
 import { parseConditionEnvelopeFromUnknown, parseFieldRuleSpecFromUnknown, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
@@ -50,6 +51,8 @@ type AuthUserServiceLike = {
   GetRecordRuleCondition(model: string, op: RecordRuleOp): Promise<unknown>;
   GetFieldRuleSpec(model: string): Promise<unknown>;
 };
+
+type AuthUserModelStub = ModelConstructor & AuthUserServiceLike;
 
 type OwnerModelServiceLike = {
   Search(condition: unknown, options?: unknown): Promise<unknown>;
@@ -196,7 +199,7 @@ async function fetchFieldRuleSpec(ownerModel: string, stage: OwnerPermissionStag
 
 function getAuthUserService(stage: OwnerPermissionStage): AuthUserServiceLike {
   try {
-    return dial<AuthUserServiceLike>(AUTH_USER_MODEL);
+    return dial<AuthUserModelStub>(AUTH_USER_MODEL);
   } catch (err) {
     throw permissionDenied(stage, _t('auth service is unavailable for owner authorization check', { scope: 'service/models/_owner_authorization' }), {
       model: AUTH_USER_MODEL,
@@ -224,7 +227,8 @@ async function probeOwnerRecord(
 
   let ownerService: OwnerModelServiceLike;
   try {
-    ownerService = dial<OwnerModelServiceLike>(ownerModel);
+    // Search is CrudService-bound on ModelService; cast keeps the loose owner probe contract.
+    ownerService = dial<ModelConstructor>(ownerModel) as unknown as OwnerModelServiceLike;
   } catch {
     return false;
   }

@@ -3,6 +3,7 @@
 
 import BaseModel from '../orm/model/model';
 import { dial } from '../orm/model/model_pool';
+import type { ModelConstructor } from '../../rpc/types';
 import type {
   AttachmentOwnerBindReq,
   AttachmentOwnerBindResp,
@@ -10,7 +11,8 @@ import type {
   AttachmentOwnerUnbindResp,
 } from './attachment_owner_contracts';
 
-type AttachmentBindingService = {
+/** Typing stub: core must not import document.AttachmentBinding. */
+type DocumentAttachmentBindingStub = ModelConstructor & {
   Bind(req: AttachmentOwnerBindReq): Promise<AttachmentOwnerBindResp>;
   Unbind(req: AttachmentOwnerUnbindReq): Promise<AttachmentOwnerUnbindResp>;
 };
@@ -31,11 +33,11 @@ type AttachmentBindingService = {
 export default abstract class AttachmentOwnerMixin extends BaseModel {
   /** Bind finalized attachment content to an owner record field. */
   public static async AttachmentBind(req: AttachmentOwnerBindReq): Promise<AttachmentOwnerBindResp> {
-    return dial<AttachmentBindingService>('document.AttachmentBinding').Bind(req);
+    return dial<DocumentAttachmentBindingStub>('document.AttachmentBinding').Bind(req);
   }
 
   /** Unbind an attachment from an owner record field. */
   public static async AttachmentUnbind(req: AttachmentOwnerUnbindReq): Promise<AttachmentOwnerUnbindResp> {
-    return dial<AttachmentBindingService>('document.AttachmentBinding').Unbind(req);
+    return dial<DocumentAttachmentBindingStub>('document.AttachmentBinding').Unbind(req);
   }
 }

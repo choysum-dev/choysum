@@ -6,6 +6,7 @@ import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
+import type { ModelConstructor } from '@/core/rpc/types';
 import { MessageErrCode, newMessageError, wrapMessageError } from '../error';
 import { _lt } from '../i18n';
 import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
@@ -39,15 +40,24 @@ export type PostMessageReq = {
   AttachmentMutationId?: string | null;
 };
 
-type BindAttachmentFn = (req: {
+type BindAttachmentReq = {
   attachmentObjectId: string;
   ownerModel: string;
   ownerRecordId: string;
   fieldName: string;
   mutationId: string;
-}) => Promise<unknown>;
+};
 
-type DialFn = <T = Record<string, (...args: unknown[]) => unknown>>(fullModelName: string) => T;
+type BindAttachmentFn = (req: BindAttachmentReq) => Promise<unknown>;
+
+type AttachmentBindingServiceLike = { Bind?: BindAttachmentFn };
+
+/** Typing stub: message must not import document.AttachmentBinding. */
+type AttachmentBindingStub = ModelConstructor & {
+  Bind: BindAttachmentFn;
+};
+
+type DialFn = (fullModelName: string) => AttachmentBindingServiceLike;
 type XidNewFn = () => string | null | undefined;
 
 let bindAttachmentOverride: BindAttachmentFn | null | undefined;
@@ -152,8 +162,9 @@ function ensureTipFields(fields: FieldSelection<Message>): FieldSelection<Messag
 function resolveBind(): BindAttachmentFn | null {
   if (bindAttachmentOverride !== undefined) return bindAttachmentOverride;
   try {
-    const dialFn = dialOverride || dial;
-    const svc = dialFn<{ Bind?: BindAttachmentFn }>('document.AttachmentBinding');
+    const svc: AttachmentBindingServiceLike = dialOverride
+      ? dialOverride('document.AttachmentBinding')
+      : dial<AttachmentBindingStub>('document.AttachmentBinding');
     if (typeof svc?.Bind !== 'function') return null;
     return svc.Bind.bind(svc);
   } catch {

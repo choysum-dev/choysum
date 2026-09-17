@@ -19,6 +19,8 @@ export type {
   ClientModelService,
   ModelConstructor,
   ModelService,
+  MissingModelCtorTypeArgument,
+  ModelCtorOrMissingSentinel,
 } from './model';
 
 export type { ParamDescriptor, ResultDescriptor, TokenProvider, CSRFProvider, RpcRequestContext, RequestContext, RequestLifecycleProvider } from './request';

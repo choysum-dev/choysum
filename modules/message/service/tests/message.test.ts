@@ -359,7 +359,7 @@ test('message.Message: Post fails closed when attachment Bind is unavailable or 
 
 test('message.Message: dial message.Message exposes Post for cross-app callers', async () => {
   await withMessageScope(async () => {
-    const svc = dial<{ Post?: typeof Message.Post }>('message.Message');
+    const svc = dial<typeof Message>('message.Message') as unknown as { Post?: typeof Message.Post };
     expect(typeof svc?.Post).toBe('function');
     const row = await svc.Post!({
       Model: 'partner.Partner',

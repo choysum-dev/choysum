@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import type BaseModel from '../orm/model/model';
 import {
   createServiceByModel,
   getServiceFactory,
@@ -13,7 +14,8 @@ test('registerServiceFactory + createServiceByModel should create service instan
   const serviceInstance = { Ping: () => 'pong' };
 
   registerServiceFactory(modelName, () => serviceInstance);
-  const created = createServiceByModel(modelName);
+  // Ping is sync; ModelService only maps async Capitalized statics.
+  const created = createServiceByModel<typeof BaseModel>(modelName) as unknown as { Ping: () => string };
 
   expect(created).toBe(serviceInstance);
   expect(created.Ping()).toBe('pong');
@@ -24,5 +26,31 @@ test('registerServiceFactory + createServiceByModel should create service instan
 test('createServiceByModel should throw when service factory missing', () => {
   const modelName = `missing.Model.${Date.now()}`;
 
-  expect(() => createServiceByModel(modelName)).toThrow(`Service factory for model '${modelName}' not found.`);
+  expect(() => createServiceByModel<typeof BaseModel>(modelName)).toThrow(
+    `Service factory for model '${modelName}' not found.`
+  );
+});
+
+test('createServiceByModel should throw when factory returns a non-instance value', () => {
+  const modelName = `null.Model.${Date.now()}`;
+  try {
+    for (const value of [undefined, null, 0, 'service'] as const) {
+      registerServiceFactory(modelName, () => value as any);
+      expect(() => createServiceByModel<typeof BaseModel>(modelName)).toThrow(
+        `Service factory for model '${modelName}' returned no service instance.`
+      );
+    }
+  } finally {
+    unregisterServiceFactory(modelName);
+  }
+});
+
+test('createServiceByModel should accept callable function service instances', () => {
+  const modelName = `fn.Model.${Date.now()}`;
+  const serviceInstance = Object.assign(function service() {}, { Ping: () => 'pong' });
+  registerServiceFactory(modelName, () => serviceInstance);
+  const created = createServiceByModel<typeof BaseModel>(modelName) as unknown as { Ping: () => string };
+  expect(created).toBe(serviceInstance);
+  expect(created.Ping()).toBe('pong');
+  unregisterServiceFactory(modelName);
 });

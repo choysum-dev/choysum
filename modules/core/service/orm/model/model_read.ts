@@ -37,9 +37,14 @@ import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 import type { ObjectRecord } from '../../../utils/types';
 import type { ModelCtor } from './types';
 import { createServiceByModel } from '../../rpc';
+import type { ModelConstructor } from '../../../rpc/types';
 import { _t } from '@/core/service/i18n_binder';
 import { mergeCallerConditionWithForField } from './model_for_field_condition';
 import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/datetime';
+
+type AttachmentBindingSearchService = {
+  Search(condition: unknown, options?: unknown): Promise<ObjectRecord[]>;
+};
 
 /**
  * Read-related delegated operations.
@@ -199,12 +204,12 @@ export class ReadOperations {
     return allAttachmentFields.filter(fieldName => requested.names.has(fieldName));
   }
 
-  private static resolveAttachmentBindingService(): { Search: (condition: unknown, options?: unknown) => Promise<ObjectRecord[]> } | undefined {
+  private static resolveAttachmentBindingService(): AttachmentBindingSearchService | undefined {
     try {
-      const service = createServiceByModel('document.AttachmentBinding') as unknown as {
-        Search?: (condition: unknown, options?: unknown) => Promise<ObjectRecord[]>;
-      };
-      if (!service || typeof service.Search !== 'function') {
+      const service = createServiceByModel<ModelConstructor>(
+        'document.AttachmentBinding'
+      ) as unknown as Partial<AttachmentBindingSearchService>;
+      if (typeof service.Search !== 'function') {
         return undefined;
       }
       return {

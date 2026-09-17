@@ -12,9 +12,10 @@ import {
 import BaseModel from './model';
 import type { ModelCtor } from './types';
 import { registerLogicalModelName } from './logical_model_registry';
+import type { ModelConstructor } from '../../../rpc/types';
 
 /** Minimal surface for `pool<AppSettingModelCtor>('AppSetting')` typing. */
-export type AppSettingModelCtor = {
+export type AppSettingModelCtor = ModelConstructor & {
   Get(key: string, defaultValue?: string | null): Promise<string | null>;
   Set(key: string, value: string | null | undefined): Promise<string | null>;
 };

@@ -125,6 +125,22 @@ type CrudService<C extends ModelConstructor> = {
   };
 };
 
-export type ModelService<TCtor extends ModelConstructor = ModelConstructor> = CrudService<TCtor> & {
-  [K in Exclude<ModelServiceMethodKey<TCtor>, keyof CrudService<TCtor>>]: TCtor[K] extends RpcServiceFn ? ClientModelService<TCtor[K]> : never;
+/**
+ * Sentinel returned by {@link ModelService} / {@link pool} when the model ctor
+ * type argument is omitted. Unlike bare `never`, this is not assignable to
+ * ordinary service or ctor shapes, so untyped call sites fail closed.
+ */
+export type MissingModelCtorTypeArgument = {
+  readonly __modelCtorTypeArgumentRequired: never;
 };
+
+/** Result of pool when the ctor type argument is provided, else the omit sentinel. */
+export type ModelCtorOrMissingSentinel<C extends ModelConstructor> = [C] extends [never]
+  ? MissingModelCtorTypeArgument
+  : C;
+
+export type ModelService<TCtor extends ModelConstructor> = [TCtor] extends [never]
+  ? MissingModelCtorTypeArgument
+  : CrudService<TCtor> & {
+      [K in Exclude<ModelServiceMethodKey<TCtor>, keyof CrudService<TCtor>>]: TCtor[K] extends RpcServiceFn ? ClientModelService<TCtor[K]> : never;
+    };
