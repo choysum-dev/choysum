@@ -212,7 +212,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     normalizeDefinitionOnVals(vals);
     await assertPropertyDefinitionParentWritable(self, vals);
     await assertUniqueDefinitionScope(self, vals);
-    return (await super.Create<C, F>(value, returnFields)) as RowOrProjected<RowOf<C>, F>;
+    return await super.Create<C, F>(value, returnFields);
   }
 
   static override async CreateMany<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
@@ -245,9 +245,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
       seen.add(key);
       await assertUniqueDefinitionScope(self, rec);
     }
-    return (await super.CreateMany<C, F>(values, returnFields)) as Array<
-      RowOrProjected<RowOf<C>, F>
-    >;
+    return await super.CreateMany<C, F>(values, returnFields);
   }
 
   static override async Update<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
@@ -257,7 +255,6 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
-    type UpdatedRows = Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>;
     const self = asDefinitionCtor(this);
     const vals = values as Record<string, unknown>;
     await ensureDefinitionUniqueIndex(self);
@@ -275,7 +272,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     }
     await assertParentsWritableDeduped(self, scopes);
     // Bulk Update cannot cheaply merge per-row scope uniqueness; DB unique index is the backstop.
-    return (await super.Update<C, F>(condition, values, returnFields, options)) as UpdatedRows;
+    return await super.Update<C, F>(condition, values, returnFields, options);
   }
 
   static override async UpdateById<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
@@ -285,7 +282,6 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
-    type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
     const self = asDefinitionCtor(this);
     const vals = values as Record<string, unknown>;
     await ensureDefinitionUniqueIndex(self);
@@ -301,7 +297,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     if (touchesDefinitionScope(vals)) {
       await assertUniqueDefinitionScope(self, merged, id);
     }
-    return (await super.UpdateById<C, F>(id, values, returnFields, options)) as UpdatedRow;
+    return await super.UpdateById<C, F>(id, values, returnFields, options);
   }
 
   static override async Delete<C extends ModelCtor>(
@@ -316,7 +312,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
       fields: ['Id', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'],
     });
     await assertParentsWritableDeduped(self, (rows || []) as unknown as Record<string, unknown>[]);
-    return (await super.Delete<C>(condition, options)) as number;
+    return await super.Delete<C>(condition, options);
   }
 
   static override async DeleteById<C extends ModelCtor>(
@@ -331,7 +327,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     );
     const current = (currentRows && currentRows[0]) || {};
     await assertPropertyDefinitionParentWritable(self, current as unknown as Record<string, unknown>);
-    return (await super.DeleteById<C>(id, options)) as number;
+    return await super.DeleteById<C>(id, options);
   }
 }
 

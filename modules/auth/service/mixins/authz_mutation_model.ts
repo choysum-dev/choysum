@@ -68,7 +68,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const out = await super.Create<C, F>(value, returnFields);
     invalidateAllAuthzCaches();
-    return out as RowOrProjected<RowOf<C>, F>;
+    return out;
   }
 
   /**
@@ -81,7 +81,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const out = await super.CreateMany<C, F>(values, returnFields);
     invalidateAllAuthzCaches();
-    return out as Array<RowOrProjected<RowOf<C>, F>>;
+    return out;
   }
 
   /**
@@ -94,10 +94,9 @@ export default abstract class AuthzMutationModel extends BaseModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
-    type UpdatedRows = Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>;
     const out = await super.Update<C, F>(condition, values, returnFields, options);
     invalidateAllAuthzCaches();
-    return out as UpdatedRows;
+    return out;
   }
 
   /**
@@ -110,10 +109,9 @@ export default abstract class AuthzMutationModel extends BaseModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
-    type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
     const out = await super.UpdateById<C, F>(id, values, returnFields, options);
     invalidateAllAuthzCaches();
-    return out as UpdatedRow;
+    return out;
   }
 
   /**
@@ -126,7 +124,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
   ): Promise<number> {
     const out = await super.Delete<C>(condition, options);
     invalidateAllAuthzCaches();
-    return out as number;
+    return out;
   }
 
   /**
@@ -135,6 +133,6 @@ export default abstract class AuthzMutationModel extends BaseModel {
   static override async DeleteById<C extends ModelCtor>(this: C, id: string, options?: DeleteOptions): Promise<number> {
     const out = await super.DeleteById<C>(id, options);
     invalidateAllAuthzCaches();
-    return out as number;
+    return out;
   }
 }

@@ -240,7 +240,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     RoleMethodAccess._prepareValues(value as Record<string, unknown>, 'create');
-    return (await super.Create<C, F>(value, returnFields)) as RowOrProjected<RowOf<C>, F>;
+    return await super.Create<C, F>(value, returnFields);
   }
 
   /**
@@ -255,7 +255,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     for (const v of rows) {
       RoleMethodAccess._prepareValues(v as Record<string, unknown>, 'create');
     }
-    return (await super.CreateMany<C, F>(rows, returnFields)) as Array<RowOrProjected<RowOf<C>, F>>;
+    return await super.CreateMany<C, F>(rows, returnFields);
   }
 
   /**
@@ -301,9 +301,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
       }
     }
     RoleMethodAccess._prepareValues(values as Record<string, unknown>, 'update', previousLogicalModelName);
-    return (await super.Update<C, F>(updateCondition, values, returnFields, options)) as Array<
-      F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
-    >;
+    return await super.Update<C, F>(updateCondition, values, returnFields, options);
   }
 
   /**
@@ -325,9 +323,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
       previousLogicalModelName = String((existing?.[0] as { LogicalModelName?: string } | undefined)?.LogicalModelName || '').trim() || null;
     }
     RoleMethodAccess._prepareValues(values as Record<string, unknown>, 'update', previousLogicalModelName);
-    return (await super.UpdateById<C, F>(id, values, returnFields, options)) as (
-      F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>
-    );
+    return await super.UpdateById<C, F>(id, values, returnFields, options);
   }
 
   /**

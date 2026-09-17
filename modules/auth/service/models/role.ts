@@ -326,14 +326,12 @@ export default class Role extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
-    type UpdatedRows = Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>;
     const payload = { ...values };
     const shouldHydrateAccess = wantsAccessField(returnFields);
     let roleIdForSync: string | null = null;
     let accessIdsForSync: string[] | null = null;
     if (Object.prototype.hasOwnProperty.call(payload, 'AccessUiResourceIds')) {
-      // Prefer this.Search so hydration uses Role.Search (AccessUiResourceIds) if needed later.
-      // `['Id']` is always valid on Role rows; `as never` only unlocks the open `RowOf<C>` fields slot.
+      // Use Role.Search; fields: ['Id'] needs `as never` for the open RowOf<C> slot.
       const targetRows = await this.Search(condition, { fields: ['Id'] as never });
       const roleIds = targetRows.map(row => normalizeRefId((row as { Id?: unknown }).Id)).filter(Boolean) as string[];
       if (roleIds.length > 1) {
@@ -345,11 +343,11 @@ export default class Role extends AuthzMutationModel {
       }
     }
 
-    const updated = (await super.Update<C, F>(condition, payload, returnFields, options)) as UpdatedRows;
+    const updated = await super.Update<C, F>(condition, payload, returnFields, options);
     if (roleIdForSync && accessIdsForSync) {
       await syncAllowResourceGrants(roleIdForSync, accessIdsForSync);
       if (updated.length && returnFields != null) {
-        updated[0] = (await this.Browse(roleIdForSync, returnFields, options)) as UpdatedRows[number];
+        updated[0] = await this.Browse(roleIdForSync, returnFields, options);
       }
       if (updated.length && shouldHydrateAccess) {
         (updated[0] as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIdsForSync];
@@ -370,14 +368,13 @@ export default class Role extends AuthzMutationModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
-    type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
     const payload = { ...values };
     const accessIds = await applyAccessWriteTransformOnUpdate(payload as Record<string, unknown>, id);
-    let row = (await super.UpdateById<C, F>(id, payload, returnFields, options)) as UpdatedRow;
+    let row = await super.UpdateById<C, F>(id, payload, returnFields, options);
     if (accessIds) {
       await syncAllowResourceGrants(id, accessIds);
       if (returnFields != null) {
-        row = (await this.Browse(id, returnFields, options)) as UpdatedRow;
+        row = await this.Browse(id, returnFields, options);
       }
       if (wantsAccessField(returnFields)) {
         (row as { AccessUiResourceIds?: string[] }).AccessUiResourceIds = [...accessIds];

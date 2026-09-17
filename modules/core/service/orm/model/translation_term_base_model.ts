@@ -449,10 +449,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     const application = hostApplication(this);
-    const out = (await super.Create<C, F>(value, returnFields)) as RowOrProjected<
-      RowOf<C>,
-      F
-    >;
+    const out = await super.Create<C, F>(value, returnFields);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(value),
       ...modulesFromRows(out),
@@ -466,9 +463,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const application = hostApplication(this);
-    const out = (await super.CreateMany<C, F>(values, returnFields)) as Array<
-      RowOrProjected<RowOf<C>, F>
-    >;
+    const out = await super.CreateMany<C, F>(values, returnFields);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
       ...modulesFromRows(out),
@@ -483,14 +478,13 @@ export default class TranslationTermBaseModel extends BaseModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>> {
-    type UpdatedRows = Array<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>>;
     const self = asTermCtor(this);
     const application = hostApplication(this);
     const before = await self.Search(condition as QueryCondition<TranslationTermBaseModel>, {
       fields: ['Module'],
       limit: 0,
     });
-    const out = (await super.Update<C, F>(condition, values, returnFields, options)) as UpdatedRows;
+    const out = await super.Update<C, F>(condition, values, returnFields, options);
     invalidateTerminologyModules(application, [
       ...modulesFromPayloads(values),
       ...modulesFromRows(before),
@@ -506,7 +500,6 @@ export default class TranslationTermBaseModel extends BaseModel {
     returnFields?: F,
     options?: UpdateOptions
   ): Promise<F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>> {
-    type UpdatedRow = F extends FieldSelection<RowOf<C>> ? Projected<RowOf<C>, F> : Partial<RowOf<C>>;
     const self = asTermCtor(this);
     const application = hostApplication(this);
     let module = String((values as Record<string, unknown>).Module ?? '').trim();
@@ -518,7 +511,7 @@ export default class TranslationTermBaseModel extends BaseModel {
         /* Browse may fail if row gone; still attempt update */
       }
     }
-    const out = (await super.UpdateById<C, F>(id, values, returnFields, options)) as UpdatedRow;
+    const out = await super.UpdateById<C, F>(id, values, returnFields, options);
     invalidateTerminologyModules(application, [module, ...modulesFromRows(out)]);
     return out;
   }
@@ -535,7 +528,7 @@ export default class TranslationTermBaseModel extends BaseModel {
       limit: 0,
       ...(options || {}),
     });
-    const count = (await super.Delete<C>(condition, options)) as number;
+    const count = await super.Delete<C>(condition, options);
     invalidateTerminologyModules(application, modulesFromRows(before));
     return count;
   }
@@ -554,7 +547,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     } catch {
       /* missing row */
     }
-    const count = (await super.DeleteById<C>(id, options)) as number;
+    const count = await super.DeleteById<C>(id, options);
     invalidateTerminologyModules(application, [module]);
     return count;
   }

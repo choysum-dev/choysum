@@ -74,7 +74,7 @@ export default class UserRole extends AuthzMutationModel {
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     // Skip AuthzMutationModel's global invalidate; UserId is known so only those users are cleared.
     return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(value), () =>
-      super.Create<C, F>(value, returnFields) as Promise<RowOrProjected<RowOf<C>, F>>
+      super.Create<C, F>(value, returnFields)
     );
   }
 
@@ -87,7 +87,7 @@ export default class UserRole extends AuthzMutationModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     return mutateThenInvalidateAuthzCachesForUsers(userIdsFromUserRolePayloads(values), () =>
-      super.CreateMany<C, F>(values, returnFields) as Promise<Array<RowOrProjected<RowOf<C>, F>>>
+      super.CreateMany<C, F>(values, returnFields)
     );
   }
 }
