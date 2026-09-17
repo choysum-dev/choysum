@@ -4,7 +4,7 @@
 import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
-import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { projectToSelection } from '@/core/service/api/selection';
 import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
@@ -231,7 +231,7 @@ export default class FieldChange extends PolymorphicRecordModel {
   public static async Append<F extends FieldSelection<FieldChange> = typeof DEFAULT_APPEND_FIELDS>(
     req: AppendFieldChangeReq,
     fields?: F
-  ): Promise<Projected<FieldChange, F>> {
+  ): Promise<RowOrProjected<FieldChange, F>> {
     if (!req || typeof req !== 'object') {
       throw newAuditError({ code: AuditErrCode.INVALID_ARGUMENT, message: 'Append requires a payload' });
     }
@@ -278,8 +278,8 @@ export default class FieldChange extends PolymorphicRecordModel {
       ResId: resId,
       At: at,
     });
-    // Strip Create's auto-injected Id (and any other unselected keys) to match Projected<F>.
-    return projectToSelection(created as object, returnFields) as Projected<FieldChange, F>;
+    // Strip Create's auto-injected Id (and any other unselected keys) to match the caller's selection.
+    return projectToSelection(created as object, returnFields) as RowOrProjected<FieldChange, F>;
   }
 
   /**

@@ -12,6 +12,7 @@ import RoleInheritance from '../models/role_inheritance';
 import Role from '../models/role';
 import User from '../models/user/user';
 import UserRole from '../models/user_role';
+import { __setInvalidateAuthzCachesForUsersForTest } from '../models/_request_cache_invalidation';
 import { getServiceFactory, registerServiceFactory, unregisterServiceFactory } from '@/core/service/rpc';
 
 /**
@@ -73,15 +74,24 @@ test('UserRole: targeted clears for create, base behavior otherwise', () => {
   AuthzMutationModel.invalidateAuthzCachesAfterWrite = () => {
     baseCalls += 1;
   };
+  const cleared: string[][] = [];
+  __setInvalidateAuthzCachesForUsersForTest(ids => {
+    cleared.push([...ids]);
+  });
   try {
     UserRole.invalidateAuthzCachesAfterWrite('create', { UserId: 'u1' });
     UserRole.invalidateAuthzCachesAfterWrite('createMany', [{ UserId: 'u1' }, { UserId: 'u2' }]);
+    expect(cleared).toEqual([['u1'], ['u1', 'u2']]);
     expect(baseCalls).toBe(0);
     UserRole.invalidateAuthzCachesAfterWrite('create', {});
     expect(baseCalls).toBe(1);
     UserRole.invalidateAuthzCachesAfterWrite('delete', ['Id', '=', 'x']);
-    expect(baseCalls).toBe(2);
+    UserRole.invalidateAuthzCachesAfterWrite('update', { condition: [], values: { UserId: 'u1' } });
+    UserRole.invalidateAuthzCachesAfterWrite('updateById', { id: 'ur1', values: { UserId: 'u1' } });
+    UserRole.invalidateAuthzCachesAfterWrite('deleteById', 'ur1');
+    expect(baseCalls).toBe(5);
   } finally {
+    __setInvalidateAuthzCachesForUsersForTest(null);
     AuthzMutationModel.invalidateAuthzCachesAfterWrite = base;
   }
 });

@@ -79,7 +79,14 @@ export function projectToSelection<T, F extends FieldSelection<T>>(row: object, 
   const src = row as Record<string, unknown>;
   const projected = Object.create(Object.getPrototypeOf(row)) as Record<string, unknown>;
   for (const key of keep) {
-    if (key in src) projected[key] = src[key];
+    if (!(key in src)) continue;
+    // defineProperty avoids `__proto__` / setter traps on the projected object.
+    Object.defineProperty(projected, key, {
+      value: src[key],
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return projected as Projected<T, F>;
 }

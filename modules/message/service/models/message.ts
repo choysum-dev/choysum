@@ -4,7 +4,7 @@
 import { Field, Model, type ModelCtor, type RowOf } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
-import type { FieldSelection, Projected, RowOrProjected } from '@/core/service/api/selection';
+import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { projectToSelection } from '@/core/service/api/selection';
 import { dial } from '@/core/service/orm/model/model_pool';
 import type { ModelConstructor } from '@/core/rpc/types';
@@ -284,7 +284,7 @@ export default class Message extends PolymorphicRecordModel {
   public static async Post<F extends FieldSelection<Message> = typeof DEFAULT_POST_FIELDS>(
     req: PostMessageReq,
     fields?: F
-  ): Promise<Projected<Message, F>> {
+  ): Promise<RowOrProjected<Message, F>> {
     if (!req || typeof req !== 'object') {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Post requires a payload' });
     }
@@ -363,7 +363,7 @@ export default class Message extends PolymorphicRecordModel {
     await Notification.FanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
     // Tip/bind used an augmented Create selection; return only the caller's projection.
-    return projectToSelection(created as object, returnFields) as Projected<Message, F>;
+    return projectToSelection(created as object, returnFields) as RowOrProjected<Message, F>;
   }
 
   /**
