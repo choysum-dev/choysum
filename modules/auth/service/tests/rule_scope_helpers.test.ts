@@ -158,7 +158,7 @@ test('rule scope helpers: normalizes object/string refs and blank strings', () =
   expect(values.MetaApplicationId).toBe(null);
 
   const method: Record<string, any> = {
-    MetaServiceId: { id: 'svc-x' },
+    MetaServiceId: { Id: 'svc-x' },
     MetaModelId: null,
     MetaApplicationId: undefined,
     LogicalModelName: null,

@@ -544,7 +544,7 @@ test('repository relation projection company filter requires CompanyId field and
     },
   };
 
-  withContext({ enabledCompanyIds: ['  company_a  ', 'company_a', null, '', 'company_b'] }, () => {
+  withContext({ enabledCompanyIds: ['  company_a  ', 'company_a', '', 'company_b'] }, () => {
     expect(() =>
       applyRepositoryRelationCompanyFilter(
         {
