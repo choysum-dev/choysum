@@ -869,7 +869,7 @@ test('PermissionState: explicit RoleUiResource grant materializes UI whitelist w
         } as any,
         { fields: ['Id', 'Name', 'Type', 'ParentId', 'MetaApplicationId', 'Requires'], limit: 1 } as any
       );
-      expect(parseJsonStringArray(((actionRows as any)?.[0] as any)?.Requires ?? ((actionRows as any)?.[0] as any)?.requires)).toEqual([
+      expect(parseJsonStringArray(((actionRows as any)?.[0] as any)?.Requires)).toEqual([
         'rpc:/auth.User/DefinitelyMissingMethod',
       ]);
       const ps = await User.GetPermissionState();

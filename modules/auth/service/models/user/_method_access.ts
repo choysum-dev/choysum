@@ -21,14 +21,12 @@ const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
 
+/** MetaUiResource.Search projection (PascalCase field names only). */
 type UiResourceRow = {
   Id?: unknown;
-  id?: unknown;
   Name?: unknown;
-  name?: unknown;
   MetaApplicationId?: unknown;
   Requires?: unknown;
-  requires?: unknown;
 };
 
 async function metaModelId(appName: string, modelName: string): Promise<string> {
@@ -303,7 +301,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
   const byId = new Map<string, UiResourceRow>();
   const mergeRows = (rows: UiResourceRow[]) => {
     for (const row of rows || []) {
-      const id = normalizeUiResourceId(row?.Id ?? row?.id);
+      const id = normalizeUiResourceId(row?.Id);
       if (!id) continue;
       if (!byId.has(id)) byId.set(id, row);
     }
@@ -399,7 +397,7 @@ export async function evaluateUiDerivedMethodDecision(
   const denyHitRuleIds: string[] = [];
 
   for (const row of resources) {
-    const requires = parseJsonStringArray(row?.Requires ?? row?.requires);
+    const requires = parseJsonStringArray(row?.Requires);
     if (requires.length === 0) continue;
 
     let matchesMethod = false;
@@ -419,15 +417,15 @@ export async function evaluateUiDerivedMethodDecision(
     for (const mode of expansion.appModesById?.[appId || ''] || []) matchedModes.add(mode);
 
     const resourceKeys = uniqStrings([
-      normalizeUiResourceId(row?.Id ?? row?.id),
-      String(row?.Name ?? row?.name ?? '').trim(),
+      normalizeUiResourceId(row?.Id),
+      String(row?.Name ?? '').trim(),
     ]);
     for (const key of resourceKeys) {
       for (const mode of expansion.resourceModesByKey?.[key] || []) matchedModes.add(mode);
     }
 
-    // Rows without Id/id are dropped by loadUiGrantExpansionForRoles; Id or id is enough here.
-    const resourceId = normalizeUiResourceId(row?.Id ?? row?.id);
+    // Rows without Id are dropped by loadUiGrantExpansionForRoles.
+    const resourceId = normalizeUiResourceId(row?.Id);
     if (matchedModes.has('deny')) {
       denied = true;
       if (resourceId) denyHitRuleIds.push(resourceId);

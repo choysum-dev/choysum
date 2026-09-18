@@ -23,17 +23,14 @@ type UiResourceMeta = {
   requires: string[];
 };
 
+/** MetaUiResource.Search projection (PascalCase field names only). */
 type UiResourceRow = {
   Id?: unknown;
-  id?: unknown;
   Name?: unknown;
-  name?: unknown;
   Type?: unknown;
   ParentId?: unknown;
-  parentId?: unknown;
   MetaApplicationId?: unknown;
   Requires?: unknown;
-  requires?: unknown;
 };
 
 type MenuRouteRow = {
@@ -163,25 +160,25 @@ export async function buildUiPermissionProjection(
 
   const resourceNameById = new Map<string, string>();
   for (const row of (resources || []) as UiResourceRow[]) {
-    const id = String(row?.Id ?? row?.id ?? '').trim();
-    const name = String(row?.Name ?? row?.name ?? '').trim();
+    const id = String(row?.Id ?? '').trim();
+    const name = String(row?.Name ?? '').trim();
     if (!id || !name) continue;
     resourceNameById.set(id, name);
   }
 
   const allResources: UiResourceMeta[] = ((resources || []) as UiResourceRow[])
     .map(row => ({
-      dbId: String(row?.Id ?? row?.id ?? '').trim(),
-      resourceId: String(row?.Name ?? row?.name ?? '').trim(),
+      dbId: String(row?.Id ?? '').trim(),
+      resourceId: String(row?.Name ?? '').trim(),
       type: String(row?.Type || '')
         .trim()
         .toUpperCase(),
       parentId: (() => {
-        const pid = normalizeUiResourceId(row?.ParentId ?? row?.parentId);
+        const pid = normalizeUiResourceId(row?.ParentId);
         return pid ? String(resourceNameById.get(pid) || '').trim() : '';
       })(),
       appId: normalizeScopeRefId(row?.MetaApplicationId),
-      requires: parseJsonStringArray(row?.Requires ?? row?.requires),
+      requires: parseJsonStringArray(row?.Requires),
     }))
     .filter(r => !!r.resourceId && (r.type === 'ROUTE' || r.type === 'MENU' || r.type === 'ACTION'));
 
