@@ -284,7 +284,7 @@ test('repository relation projection supports scalar ActiveCompanyId fallback an
     },
   };
 
-  withContext({ ActiveCompanyId: 'company_one' }, () => {
+  withContext({ activeCompanyId: 'company_one' }, () => {
     applyRepositoryRelationCompanyFilter(
       {
         companyField: 'CompanyId',
@@ -544,7 +544,7 @@ test('repository relation projection company filter requires CompanyId field and
     },
   };
 
-  withContext({ EnabledCompanyIds: ['  company_a  ', 'company_a', null, '', 'company_b'] }, () => {
+  withContext({ enabledCompanyIds: ['  company_a  ', 'company_a', null, '', 'company_b'] }, () => {
     expect(() =>
       applyRepositoryRelationCompanyFilter(
         {

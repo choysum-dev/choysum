@@ -31,9 +31,8 @@ export function getCompanyScopeFromRequestContext(): { activeCompanyId: string; 
   const ctx = getReadonlyCtx();
   const identity = getIdentity() as unknown as {
     metadata?: CompanyScopeMeta;
-    Metadata?: CompanyScopeMeta;
   };
-  const meta = identity.metadata ?? identity.Metadata ?? {};
+  const meta = identity.metadata ?? {};
 
   const activeCompanyId = String(ctx.activeCompanyId ?? meta.activeCompanyId ?? '').trim();
   const enabledCompanyIds = uniqStrings(ctx.enabledCompanyIds ?? meta.enabledCompanyIds ?? []);

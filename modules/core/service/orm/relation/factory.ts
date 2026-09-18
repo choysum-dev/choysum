@@ -30,7 +30,7 @@ function extractRelationItemId(value: unknown): string | undefined {
   }
   const record = asObjectRecord(value);
   if (!record) return undefined;
-  const rawId = record.Id ?? record.id;
+  const rawId = record.Id;
   if (typeof rawId === 'string' || typeof rawId === 'number' || typeof rawId === 'bigint') {
     return String(rawId);
   }

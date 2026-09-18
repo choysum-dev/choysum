@@ -89,7 +89,7 @@ export function normalizeCurrencyRefId(value: unknown): string | undefined {
   }
   const record = asObjectRecord(value);
   if (!record) return undefined;
-  const id = record.Id ?? record.id;
+  const id = record.Id;
   if (typeof id === 'string' && id.trim()) return id.trim();
   return undefined;
 }
@@ -97,7 +97,7 @@ export function normalizeCurrencyRefId(value: unknown): string | undefined {
 export function readDecimalDigitsFromCurrencyValue(value: unknown): number | undefined {
   const record = asObjectRecord(value);
   if (!record) return undefined;
-  const raw = record.DecimalDigits ?? record.decimalDigits;
+  const raw = record.DecimalDigits;
   const n = Number(raw);
   if (!Number.isInteger(n) || n < 0 || n > 18) return undefined;
   return n;

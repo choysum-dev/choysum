@@ -31,24 +31,6 @@ function assertFieldPerm(v: unknown): 'allow' | 'deny' | null {
   throw new Error("invalid field rule permission: must be 'allow' or 'deny'");
 }
 
-function pickField(obj: object, keys: string[]): unknown {
-  const record = obj as Record<string, unknown>;
-  for (const k of keys) {
-    if (k in record) return record[k];
-  }
-
-  const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const normalizedWants = keys.map(norm);
-
-  for (const k of Object.keys(record)) {
-    if (normalizedWants.includes(norm(k))) {
-      return record[k];
-    }
-  }
-
-  return undefined;
-}
-
 const SYSTEM_FIELDS = new Set(['Id', 'CreatedAt', 'UpdatedAt', 'DeletedAt', 'DisplayName']);
 
 export type FieldRuleEvalInput = {
@@ -239,12 +221,13 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
 
   for (const r of rules || []) {
     const rid = String(r?.Id ?? '').trim();
-    const irApp = normalizeRefId(pickField(r, ['MetaApplicationId', 'meta_application_id', 'irApplicationId']));
-    const irModel = normalizeRefId(pickField(r, ['MetaModelId', 'meta_model_id', 'irModelId']));
-    const irField = normalizeRefId(pickField(r, ['MetaFieldId', 'meta_field_id', 'irFieldId']));
-    const logicalName = String(pickField(r, ['LogicalModelName', 'logical_model_name']) ?? '').trim() || null;
-    const permRead = assertFieldPerm(pickField(r, ['PermRead', 'perm_read', 'permRead']));
-    const permWrite = assertFieldPerm(pickField(r, ['PermWrite', 'perm_write', 'permWrite']));
+    // RoleFieldRule.Search projects PascalCase ClientModel keys only.
+    const irApp = normalizeRefId(r.MetaApplicationId);
+    const irModel = normalizeRefId(r.MetaModelId);
+    const irField = normalizeRefId(r.MetaFieldId);
+    const logicalName = String(r.LogicalModelName ?? '').trim() || null;
+    const permRead = assertFieldPerm(r.PermRead);
+    const permWrite = assertFieldPerm(r.PermWrite);
 
     const rule: FieldRuleDecision = { irApp, irModel, irField, logicalName, permRead, permWrite };
     if (rid) rule.__rid = rid;

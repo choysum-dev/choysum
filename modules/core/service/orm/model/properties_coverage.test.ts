@@ -281,9 +281,10 @@ test('properties_resolve: missing ctor, empty rows, relation ids, opts, ref cont
     expect(
       await resolveProperties(PpCovTask as any, { ProjectId: { Id: 'p1' }, TaskProperties: { a: '1' } }, 'TaskProperties')
     ).toEqual([{ name: 'a', type: 'char', value: '1' }]);
+    // Parent ref bags use PascalCase Id only.
     expect(
       await resolveProperties(PpCovTask as any, { ProjectId: { id: 'p1' } }, 'TaskProperties')
-    ).toHaveLength(1);
+    ).toEqual([]);
     expect(await resolveProperties(PpCovTask as any, { ProjectId: { Id: '  ' } }, 'TaskProperties')).toEqual([]);
     expect(await resolveProperties(PpCovTask as any, { ProjectId: 12 as any }, 'TaskProperties')).toEqual([]);
 

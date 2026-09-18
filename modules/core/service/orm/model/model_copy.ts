@@ -52,7 +52,7 @@ function extractRelationId(value: unknown): string | null {
   }
   const record = asObjectRecord(value);
   if (!record) return null;
-  const id = record.Id ?? record.id;
+  const id = record.Id;
   if (typeof id === 'string' && id.trim()) return id.trim();
   if (typeof id === 'number' || typeof id === 'bigint') return String(id);
   return null;
@@ -210,7 +210,8 @@ export function buildCopyValues(
     depth: 0,
   };
 
-  const sourceId = extractRelationId(sourceRecord.Id ?? sourceRecord.id);
+  const sourceId = extractRelationId(sourceRecord.Id);
+
   if (sourceId) walk.ancestorIds.add(sourceId);
 
   const out: UnknownRecord = {};
@@ -236,7 +237,7 @@ export function buildCopyValues(
       for (const child of raw) {
         const childRow = asObjectRecord(child);
         if (!childRow) continue;
-        const childId = extractRelationId(childRow.Id ?? childRow.id);
+        const childId = extractRelationId(childRow.Id);
         if (childId && walk.ancestorIds.has(childId)) {
           throw new Error(`[Copy] cyclic OneToMany detected at ${fieldName} (source Id ${childId})`);
         }

@@ -72,8 +72,8 @@ function extractReferenceId(value: unknown): unknown {
     return value;
   }
 
-  const obj = value as { Id?: unknown; id?: unknown };
-  return obj.Id ?? obj.id ?? null;
+  const obj = value as { Id?: unknown };
+  return obj.Id ?? null;
 }
 
 export class OnchangeEngine {

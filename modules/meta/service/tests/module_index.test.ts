@@ -253,8 +253,8 @@ describe('extractGroupedModuleNames', () => {
   it('extracts ModuleName from rows', () => {
     expect(extractGroupedModuleNames([{ ModuleName: 'auth' }, { ModuleName: 'base' }])).toEqual(['auth', 'base']);
   });
-  it('handles module_name fallback', () => {
-    expect(extractGroupedModuleNames([{ module_name: 'core' }])).toEqual(['core']);
+  it('ignores snake_case module_name (ReadGroup projects ModuleName)', () => {
+    expect(extractGroupedModuleNames([{ module_name: 'core' }])).toEqual([]);
   });
   it('skips empty names', () => {
     expect(extractGroupedModuleNames([{ ModuleName: '' }, { ModuleName: '  ' }])).toEqual([]);
@@ -263,7 +263,7 @@ describe('extractGroupedModuleNames', () => {
     expect(extractGroupedModuleNames(null as any)).toEqual([]);
     expect(extractGroupedModuleNames(undefined as any)).toEqual([]);
   });
-  it('prefers ModuleName over module_name when both exist', () => {
+  it('reads ModuleName only when both casings exist', () => {
     expect(extractGroupedModuleNames([{ ModuleName: 'auth', module_name: 'ignored' }])).toEqual(['auth']);
   });
   it('skips null rows and nullish names', () => {

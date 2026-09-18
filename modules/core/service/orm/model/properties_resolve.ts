@@ -28,7 +28,7 @@ function relationIdFromValue(value: unknown): string | null {
   }
   const rec = asObjectRecord(value);
   if (!rec) return null;
-  const id = rec.Id ?? rec.id;
+  const id = rec.Id;
   if (typeof id === 'string' && id.trim()) return id.trim();
   return null;
 }

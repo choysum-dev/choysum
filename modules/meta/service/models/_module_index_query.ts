@@ -180,7 +180,7 @@ export function extractGroupedModuleNames(rows: unknown[]): string[] {
   const out: string[] = [];
   for (const row of rows || []) {
     const rec = row && typeof row === 'object' ? (row as Record<string, unknown>) : {};
-    const moduleName = String(rec.ModuleName ?? rec.module_name ?? '').trim();
+    const moduleName = String(rec.ModuleName ?? '').trim();
     if (!moduleName) continue;
     out.push(moduleName);
   }
