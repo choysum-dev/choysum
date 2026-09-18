@@ -7,11 +7,6 @@ import type MetaUiResourceMenuRouteModel from '@/meta/service/models/ui_resource
 import type MetaUiResourceRouteActionModel from '@/meta/service/models/ui_resource_route_action';
 import RoleUiResource from '../role_ui_resource';
 import { isUiResourceAllowed, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, sortStrings } from './_authz_shared';
-import type {
-  MetaUiResourceAuthzRow,
-  MetaUiResourceMenuRouteRow,
-  MetaUiResourceRouteActionRow,
-} from '../_authz_rows';
 import { normalizeRpcRequireKey } from '@/core/service/utils/normalization';
 import { applyToScope, type AclAggregationResult } from './_permission_state_acl';
 
@@ -144,14 +139,14 @@ export async function buildUiPermissionProjection(
   });
 
   const resourceNameById = new Map<string, string>();
-  for (const row of (resources || []) as MetaUiResourceAuthzRow[]) {
+  for (const row of (resources || []) as Array<Partial<MetaUiResourceModel>>) {
     const id = String(row?.Id ?? '').trim();
     const name = String(row?.Name ?? '').trim();
     if (!id || !name) continue;
     resourceNameById.set(id, name);
   }
 
-  const allResources: UiResourceMeta[] = ((resources || []) as MetaUiResourceAuthzRow[])
+  const allResources: UiResourceMeta[] = ((resources || []) as Array<Partial<MetaUiResourceModel>>)
     .map(row => ({
       dbId: String(row?.Id ?? '').trim(),
       resourceId: String(row?.Name ?? '').trim(),
@@ -183,7 +178,7 @@ export async function buildUiPermissionProjection(
   }
 
   const menuIdsByRouteId = new Map<string, Set<string>>();
-  for (const row of (menuRouteRows || []) as MetaUiResourceMenuRouteRow[]) {
+  for (const row of (menuRouteRows || []) as Array<Partial<MetaUiResourceMenuRouteModel>>) {
     const menuDbId = normalizeUiResourceId(row?.MenuUiResourceId);
     const routeDbId = normalizeUiResourceId(row?.RouteUiResourceId);
     const menuId = menuDbId ? String(resourceNameById.get(menuDbId) || '').trim() : '';
@@ -198,7 +193,7 @@ export async function buildUiPermissionProjection(
   }
 
   const routeIdsByActionId = new Map<string, Set<string>>();
-  for (const row of (routeActionRows || []) as MetaUiResourceRouteActionRow[]) {
+  for (const row of (routeActionRows || []) as Array<Partial<MetaUiResourceRouteActionModel>>) {
     const routeDbId = normalizeUiResourceId(row?.RouteUiResourceId);
     const actionDbId = normalizeUiResourceId(row?.ActionUiResourceId);
     const routeId = routeDbId ? String(resourceNameById.get(routeDbId) || '').trim() : '';

@@ -3,8 +3,16 @@
 
 import { normalizeRefId, normalizeRefIdList } from '@/core/service/utils/normalization';
 import type { Insertable } from '@/core/service/api/input';
-import type { RoleAccessUiIdsRow, RoleUiResourceGrantRow } from './_authz_rows';
 import RoleUiResource, { type RoleUiResourceMode } from './role_ui_resource';
+
+/**
+ * Role rows passed into AccessUiResourceIds hydration.
+ * Kept structural: callers pass generic `RowOrProjected` which is not assignable to `Pick<Role, …>`.
+ */
+export type RoleAccessUiIdsRow = {
+  Id?: unknown;
+  AccessUiResourceIds?: string[];
+};
 
 const hasOwn = (obj: Record<string, unknown>, key: string): boolean => Object.prototype.hasOwnProperty.call(obj, key);
 
@@ -18,7 +26,7 @@ function isAllowResourceScope(row: unknown): boolean {
   return mode === 'allow' && !!uiResourceId && appId == null;
 }
 
-function makeAllowResourceEntries(ids: string[]): RoleUiResourceGrantRow[] {
+function makeAllowResourceEntries(ids: string[]): Array<Partial<RoleUiResource>> {
   return ids.map(id => ({
     Mode: 'allow',
     MetaApplicationId: null,
@@ -34,7 +42,7 @@ function extractUiResourcesArray(v: unknown): unknown[] | null {
   return null;
 }
 
-async function loadUiResourcesForRole(roleId: string): Promise<RoleUiResourceGrantRow[]> {
+async function loadUiResourcesForRole(roleId: string): Promise<Array<Partial<RoleUiResource>>> {
   const rows = await RoleUiResource.Search(
     {
       And: [['RoleId', '=', roleId]],
@@ -57,7 +65,7 @@ async function loadUiResourcesForRole(roleId: string): Promise<RoleUiResourceGra
   });
 }
 
-function mergeAccessIntoUiResources(baseRows: RoleUiResourceGrantRow[], accessIds: string[]): RoleUiResourceGrantRow[] {
+function mergeAccessIntoUiResources(baseRows: Array<Partial<RoleUiResource>>, accessIds: string[]): Array<Partial<RoleUiResource>> {
   const preserved = (baseRows || []).filter(row => !isAllowResourceScope(row));
   const allowRows = makeAllowResourceEntries(accessIds);
   return [...preserved, ...allowRows];
@@ -71,7 +79,7 @@ export async function applyAccessWriteTransformOnCreate(values: Record<string, u
 
   const accessIds = normalizeRefIdList(values.AccessUiResourceIds);
   const incomingUiRows = extractUiResourcesArray(values.UiResources);
-  const baseRows = Array.isArray(incomingUiRows) ? (incomingUiRows as RoleUiResourceGrantRow[]) : [];
+  const baseRows = Array.isArray(incomingUiRows) ? (incomingUiRows as Array<Partial<RoleUiResource>>) : [];
 
   values.UiResources = mergeAccessIntoUiResources(baseRows, accessIds);
   delete values.AccessUiResourceIds;
@@ -86,7 +94,7 @@ export async function applyAccessWriteTransformOnUpdate(values: Record<string, u
 
   const accessIds = normalizeRefIdList(values.AccessUiResourceIds);
   const incomingUiRows = extractUiResourcesArray(values.UiResources);
-  const baseRows = Array.isArray(incomingUiRows) ? (incomingUiRows as RoleUiResourceGrantRow[]) : await loadUiResourcesForRole(roleId);
+  const baseRows = Array.isArray(incomingUiRows) ? (incomingUiRows as Array<Partial<RoleUiResource>>) : await loadUiResourcesForRole(roleId);
 
   values.UiResources = mergeAccessIntoUiResources(baseRows, accessIds);
   delete values.AccessUiResourceIds;
