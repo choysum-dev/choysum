@@ -31,7 +31,6 @@ function readSequenceCompanyId(seq: Sequence): unknown {
 export function buildSequencePublicSnapshot(seq: Sequence): SequenceNextPublic {
   return {
     Id: seq.Id,
-    CompanyId: (readSequenceCompanyId(seq) as string | null | undefined) || undefined,
     Code: seq.Code,
     Prefix: seq.Prefix,
     Suffix: seq.Suffix,
