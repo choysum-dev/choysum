@@ -93,14 +93,14 @@ export default class Currency extends BaseModel {
   @Constraint<Currency>(['Code', 'DecimalDigits', 'Rounding'])
   validateCurrencyConstraint(): void {
     this.Code = assertCodeRequired(this.Code as string);
-    (this as any).DecimalDigits = mapNormalizationToBase(
+    this.DecimalDigits = mapNormalizationToBase(
       () => assertDecimalDigits(this.DecimalDigits),
       err =>
         err.code === 'required'
           ? _t('DecimalDigits is required', { scope: 'service/models/currency' })
           : _t('DecimalDigits must be a non-negative integer', { scope: 'service/models/currency' })
     );
-    (this as any).Rounding = mapNormalizationToBase(
+    this.Rounding = mapNormalizationToBase(
       () => assertPositiveDecimalString(this.Rounding),
       err =>
         err.code === 'non_positive_decimal'
@@ -110,6 +110,6 @@ export default class Currency extends BaseModel {
   }
 
   static async Convert(params: CurrencyConvertParams): Promise<CurrencyConvertResult> {
-    return convertCurrency(this, params);
+    return convertCurrency(this as unknown as Parameters<typeof convertCurrency>[0], params);
   }
 }

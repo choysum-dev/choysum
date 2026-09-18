@@ -86,7 +86,10 @@ export class ChoysumDatabase<DB> extends Kysely<DB> implements QueryExecutorProv
   async execute<R>(query: Compilable<R>): Promise<SimplifyResult<R>[]> {
     const compiledQuery = query.compile();
     const xid = $choysum.xid.New() as unknown as string;
-    const result = await (this.getExecutor() as ChoysumQueryExecutor).executeQuery<R>(compiledQuery, xid as any);
+    const result = await (this.getExecutor() as ChoysumQueryExecutor).executeQuery<R>(
+      compiledQuery,
+      xid as unknown as import('kysely').AbortableQueryOptions
+    );
     const rows = result.rows as unknown as SimplifyResult<R>[];
 
     if (compiledQuery.query.kind === 'SelectQueryNode') {

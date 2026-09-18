@@ -3,6 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { condition } from '@/core/service/api/query';
 import { raiseDomainError } from '@/core/service/error';
 import { _t, _lt } from '../i18n';
 import { assertCurrencySymbolPosition, assertCurrencySymbolSpacing, assertDirection } from './_normalizers';
@@ -38,6 +39,31 @@ export type LanguageActiveRow = {
   CurrencySymbolPosition?: 'before' | 'after';
   CurrencySymbolSpacing?: boolean;
 };
+
+const ACTIVE_LANGUAGE_FIELDS = [
+  'Code',
+  'Name',
+  'Direction',
+  'DecimalSeparator',
+  'ThousandSeparator',
+  'Grouping',
+  'DateFormat',
+  'TimeFormat',
+  'FirstDayOfWeek',
+  'CurrencySymbolPosition',
+  'CurrencySymbolSpacing',
+] as const;
+
+const FORMAT_LANGUAGE_FIELDS = [
+  'DecimalSeparator',
+  'ThousandSeparator',
+  'Grouping',
+  'DateFormat',
+  'TimeFormat',
+  'FirstDayOfWeek',
+  'CurrencySymbolPosition',
+  'CurrencySymbolSpacing',
+] as const;
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -156,23 +182,11 @@ export default class Language extends BaseModel {
    * gRPC: base.Language/GetActiveLanguages
    */
   public static async GetActiveLanguages(): Promise<LanguageActiveRow[]> {
-    const rows = await this.Search(['IsActive', '=', true] as any, {
-      fields: [
-        'Code',
-        'Name',
-        'Direction',
-        'DecimalSeparator',
-        'ThousandSeparator',
-        'Grouping',
-        'DateFormat',
-        'TimeFormat',
-        'FirstDayOfWeek',
-        'CurrencySymbolPosition',
-        'CurrencySymbolSpacing',
-      ] as any,
-      order: 'Name ASC',
-    } as any);
-    return (rows || []).map((row: any) => ({
+    const rows = await this.Search(['IsActive', '=', true], {
+      fields: [...ACTIVE_LANGUAGE_FIELDS],
+      orderBy: { field: 'Name', order: 'asc' },
+    });
+    return (rows || []).map(row => ({
       Code: String(row.Code || ''),
       Name: String(row.Name || ''),
       Direction: row.Direction === 'rtl' ? 'rtl' : row.Direction === 'ltr' ? 'ltr' : undefined,
@@ -199,22 +213,13 @@ export default class Language extends BaseModel {
       raiseDomainError('base', 'InvalidArgument', _t('Code or LanguageId is required', { scope: 'service/models/language' }));
     }
 
-    const condition = languageId
-      ? (['Id', '=', languageId] as any)
-      : (['Code', '=', code] as any);
-    const rows = await this.Search(condition, {
-      fields: [
-        'DecimalSeparator',
-        'ThousandSeparator',
-        'Grouping',
-        'DateFormat',
-        'TimeFormat',
-        'FirstDayOfWeek',
-        'CurrencySymbolPosition',
-        'CurrencySymbolSpacing',
-      ] as any,
+    const lookup = languageId
+      ? condition<Language>(['Id', '=', languageId])
+      : condition<Language>(['Code', '=', code]);
+    const rows = await this.Search(lookup, {
+      fields: [...FORMAT_LANGUAGE_FIELDS],
       limit: 1,
-    } as any);
+    });
     const row = (rows || [])[0] as LanguageFormatFields | undefined;
     if (!row) {
       raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
@@ -224,33 +229,38 @@ export default class Language extends BaseModel {
       const num = typeof params.Value === 'number' ? params.Value : Number(params.Value);
       return formatNumberWithLanguage(num, row!, { digits: params.Digits });
     }
-    return formatDateWithLanguage(params.Value as any, row!, kind);
+    return formatDateWithLanguage(params.Value, row!, kind);
   }
 
   @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'IsActive', 'Code'])
   async validateLanguageConstraint(): Promise<void> {
     if (this.Direction != null) {
-      this.Direction = assertDirection(this.Direction) as any;
+      const direction = assertDirection(this.Direction);
+      if (direction != null) this.Direction = direction;
     }
     if (this.CurrencySymbolPosition !== undefined) {
-      (this as any).CurrencySymbolPosition = assertCurrencySymbolPosition(this.CurrencySymbolPosition);
+      const position = assertCurrencySymbolPosition(this.CurrencySymbolPosition);
+      if (position != null) this.CurrencySymbolPosition = position;
+      else if (position === null) this.CurrencySymbolPosition = undefined;
     }
     if (this.CurrencySymbolSpacing !== undefined) {
-      (this as any).CurrencySymbolSpacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
+      const spacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
+      if (typeof spacing === 'boolean') this.CurrencySymbolSpacing = spacing;
+      else if (spacing === null) this.CurrencySymbolSpacing = undefined;
     }
 
     // Refuse deactivating the last active language (update path only).
     if (this.IsActive === false && this.Id) {
-      const existingRows = await Language.Search(['Id', '=', this.Id] as any, { fields: ['Id'], limit: 1 } as any);
+      const existingRows = await Language.Search(['Id', '=', this.Id], { fields: ['Id'], limit: 1 });
       if (existingRows?.length) {
         const others = await Language.Search(
-          {
+          condition<Language>({
             And: [
               ['IsActive', '=', true],
               ['Id', '!=', this.Id],
             ],
-          } as any,
-          { fields: ['Id'], limit: 1 } as any
+          }),
+          { fields: ['Id'], limit: 1 }
         );
         if (!others?.length) {
           raiseDomainError('base', 'InvalidArgument', _t('At least one language must stay active', { scope: 'service/models/language' }));
@@ -261,11 +271,11 @@ export default class Language extends BaseModel {
     // Language.Code is immutable after create; root en_US cannot be deactivated.
     // Load prev Code from DB so partial updates (IsActive-only) still enforce en_US.
     if (this.Id) {
-      const existingRows = await Language.Search(['Id', '=', this.Id] as any, { fields: ['Code'], limit: 1 } as any);
+      const existingRows = await Language.Search(['Id', '=', this.Id], { fields: ['Code'], limit: 1 });
       if (!existingRows?.length) {
         return;
       }
-      const prev = String((existingRows[0] as any)?.Code || '');
+      const prev = String(existingRows[0]?.Code || '');
       if (this.Code != null && prev && prev !== String(this.Code)) {
         raiseDomainError('base', 'InvalidArgument', _t('Language code cannot be changed', { scope: 'service/models/language' }));
       }

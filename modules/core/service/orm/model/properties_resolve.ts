@@ -71,13 +71,13 @@ async function loadDefinitionItems(
   // Propagate Search failures (do not mask as empty schema → PROPERTIES_WRITE_NO_SCHEMA).
   // Stable orderBy keeps limit:1 deterministic when duplicates exist before uniqueness DDL lands.
   const rows = await Ctor.Search(buildDefinitionSearchCondition(targetModel, propertiesField, mode, containerModel, containerId), {
-    fields: ['Id', 'Definition', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'] as any,
+    fields: ['Id', 'Definition', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'],
     orderBy: [{ field: 'Id', order: 'asc' }],
     limit: 1,
-  } as any);
+  });
   const row = rows && rows[0];
   if (!row) return [];
-  return filterReadablePropertyDefinitionItems(row.Definition, item => {
+  return filterReadablePropertyDefinitionItems(row.Definition as unknown, item => {
     console.warn(
       `PROPERTY_DEFINITION_UNKNOWN_TYPE skipped name=${item.name} type=${item.type} app=${application}`
     );
@@ -91,7 +91,7 @@ function resolveContainerModelName(containerFieldMeta: FieldMetadata | undefined
   if (typeof targetModel === 'function') {
     try {
       const ctor = targetModel();
-      const meta = MetadataStorage.instance.getModelMetadata(ctor as any);
+      const meta = MetadataStorage.instance.getModelMetadata(ctor as ModelCtor);
       return String(meta?.modelName || '').trim() || undefined;
     } catch {
       return undefined;

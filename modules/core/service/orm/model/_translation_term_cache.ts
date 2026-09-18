@@ -58,7 +58,7 @@ export function modulesFromRows(rows: unknown): string[] {
   const list = Array.isArray(rows) ? rows : rows != null ? [rows] : [];
   const out: string[] = [];
   for (const row of list) {
-    const mod = String((row as any)?.Module ?? '').trim();
+    const mod = String((row as { Module?: unknown } | null | undefined)?.Module ?? '').trim();
     if (mod) out.push(mod);
   }
   return out;

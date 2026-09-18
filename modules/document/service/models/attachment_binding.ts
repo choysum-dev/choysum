@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
 import {
   AttachmentBindingStatus,
   DownloadDisposition,
@@ -247,8 +248,8 @@ async function mustLoadActiveAttachmentContent(attachmentContentId: string, comp
         ['CompanyId', '=', companyId],
         ['Status', '=', 'active'],
       ],
-    } as any,
-    { limit: 1 } as any
+    },
+    { limit: 1 }
   );
 
   const record = rows[0] as AttachmentContent | undefined;
@@ -275,8 +276,8 @@ async function mustLoadActiveAttachmentContentById(attachmentContentId: string):
         ['Id', '=', attachmentContentId],
         ['Status', '=', 'active'],
       ],
-    } as any,
-    { limit: 1 } as any
+    },
+    { limit: 1 }
   );
 
   const record = rows[0] as AttachmentContent | undefined;
@@ -299,8 +300,8 @@ async function mustLoadActiveStoredContentById(storedContentId: string): Promise
         ['Id', '=', storedContentId],
         ['Status', '=', 'active'],
       ],
-    } as any,
-    { limit: 1 } as any
+    },
+    { limit: 1 }
   );
 
   const record = rows[0] as StoredContent | undefined;
@@ -329,14 +330,14 @@ async function findActiveBinding(ownerModel: string,
         ['CompanyId', '=', companyId],
         ['Status', '=', 'active'],
       ],
-    } as any,
-    { limit: 1 } as any
+    },
+    { limit: 1 }
   );
   return (rows[0] as AttachmentBinding) ?? null;
 }
 
 async function hardDeleteBindingById(bindingId: string, companyId: string): Promise<void> {
-  const db = (globalThis as any)?.$choysum?.db;
+  const db = getChoysumRuntime()?.db;
   const execute = typeof db?.execute === 'function' ? db.execute.bind(db) : undefined;
   if (!execute) {
     throwDocumentError(
@@ -367,12 +368,12 @@ async function purgeConflictingUnboundBindings(ownerModel: string,
         ['CompanyId', '=', companyId],
         ['Status', '=', 'unbound'],
       ],
-    } as any,
-    { limit: 100 } as any
+    },
+    { limit: 100 }
   );
 
   for (const row of rows) {
-    const staleBindingId = normalizeOptionalString((row as any)?.Id);
+    const staleBindingId = normalizeOptionalString((row as { Id?: unknown })?.Id);
     if (!staleBindingId || staleBindingId === keepBindingId) {
       continue;
     }
@@ -387,8 +388,8 @@ async function mustLoadBinding(bindingId: string, companyId: string): Promise<At
         ['Id', '=', bindingId],
         ['CompanyId', '=', companyId],
       ],
-    } as any,
-    { limit: 1 } as any
+    },
+    { limit: 1 }
   );
 
   const record = rows[0];
@@ -411,8 +412,8 @@ async function mustLoadActiveBindingById(bindingId: string): Promise<AttachmentB
         ['Id', '=', bindingId],
         ['Status', '=', 'active'],
       ],
-    } as any,
-    { limit: 1 } as any
+    },
+    { limit: 1 }
   );
 
   const record = rows[0];
@@ -444,8 +445,8 @@ async function patchBindingPresentation(binding: AttachmentBinding,
     {
       DisplayFileName: displayFileName,
       DownloadDisposition: downloadDisposition,
-    } as any,
-    ['Id', 'DisplayFileName', 'DownloadDisposition'] as any
+    },
+    ['Id', 'DisplayFileName', 'DownloadDisposition'] as const
   );
 
   return mustLoadBinding(bindingId, requireText(binding.CompanyId, 'companyId'));
@@ -464,8 +465,8 @@ async function findLedgerRow(action: 'bind' | 'unbind', mutationId: string, comp
         ['MutationId', '=', mutationId],
         ['CompanyId', '=', companyId],
       ],
-    } as any,
-    { limit: 1 } as any
+    },
+    { limit: 1 }
   );
   return (rows[0] as AttachmentMutationLedger) ?? null;
 }
@@ -548,8 +549,8 @@ async function recordMutationSuccess(
         ResponseJson: responseJson,
         Status: 'succeeded',
         CompanyId: companyId,
-      } as any,
-      ['Id'] as any
+      },
+      ['Id'] as const
     );
   } catch (_err) {
     const replayed = action === 'bind' ? await tryReplayBindMutation(mutationId, companyId) : await tryReplayUnbindMutation(mutationId, companyId);
@@ -604,8 +605,8 @@ async function bindAttachment(req: BindReq): Promise<BindResp> {
         {
           Status: 'unbound',
           UnboundAt: new Date(),
-        } as any,
-        ['Id', 'Status', 'UnboundAt'] as any
+        },
+        ['Id', 'Status', 'UnboundAt'] as const
       );
     }
 
@@ -619,8 +620,8 @@ async function bindAttachment(req: BindReq): Promise<BindResp> {
         DownloadDisposition: normalized.downloadDisposition,
         Status: 'active',
         CompanyId: companyId,
-      } as any,
-      ['Id', 'AttachmentContentId', 'DisplayFileName', 'DownloadDisposition', 'Status'] as any
+      },
+      ['Id', 'AttachmentContentId', 'DisplayFileName', 'DownloadDisposition', 'Status'] as const
     )) as AttachmentBinding;
   }
 
@@ -678,8 +679,8 @@ async function unbindAttachment(req: UnbindReq): Promise<UnbindResp> {
       {
         Status: 'unbound',
         UnboundAt: unboundAt,
-      } as any,
-      ['Id', 'UnboundAt', 'Status'] as any
+      },
+      ['Id', 'UnboundAt', 'Status'] as const
     );
   }
 
@@ -702,7 +703,7 @@ async function unbindAttachment(req: UnbindReq): Promise<UnbindResp> {
 function indexAttachmentContentsById(attachmentContents: unknown[]): Map<string, AttachmentContent> {
   const attachmentContentById = new Map<string, AttachmentContent>();
   for (const attachmentContent of attachmentContents) {
-    const attachmentContentId = normalizeOptionalString((attachmentContent as any)?.Id);
+    const attachmentContentId = normalizeOptionalString((attachmentContent as { Id?: unknown })?.Id);
     if (!attachmentContentId) {
       continue;
     }
@@ -718,8 +719,8 @@ function collectBindingsForDescribe(bindings: unknown[]): {
   const bindingById = new Map<string, AttachmentBinding>();
   const attachmentContentIds: string[] = [];
   for (const binding of bindings) {
-    const bindingId = normalizeOptionalString((binding as any)?.Id);
-    const attachmentContentId = normalizeOptionalString((binding as any)?.AttachmentContentId);
+    const bindingId = normalizeOptionalString((binding as { Id?: unknown })?.Id);
+    const attachmentContentId = normalizeOptionalString((binding as { AttachmentContentId?: unknown })?.AttachmentContentId);
     if (!bindingId || !attachmentContentId) {
       continue;
     }
@@ -747,8 +748,8 @@ async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDes
         ['CompanyId', '=', companyId],
         ['Status', '=', 'active'],
       ],
-    } as any,
-    { limit: normalized.attachmentBindingIds.length } as any
+    },
+    { limit: normalized.attachmentBindingIds.length }
   );
 
   const { bindingById, attachmentContentIds } = collectBindingsForDescribe(bindings);
@@ -765,8 +766,8 @@ async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDes
         ['CompanyId', '=', companyId],
         ['Status', '=', 'active'],
       ],
-    } as any,
-    { limit: dedupedAttachmentContentIds.length } as any
+    },
+    { limit: dedupedAttachmentContentIds.length }
   );
 
   const attachmentContentById = indexAttachmentContentsById(attachmentContents);
@@ -838,9 +839,9 @@ async function resolveDownloadContent(req: ResolveDownloadContentReq): Promise<R
     userId: normalized.principal.userId,
   });
 
-  const storedContentId = requireText((attachmentContent as any)?.StoredContentId, 'storedContentId');
+  const storedContentId = requireText(attachmentContent.StoredContentId, 'storedContentId');
   const storedContent = await mustLoadActiveStoredContentById(storedContentId);
-  assertCompanyMatch(requireText((storedContent as any)?.CompanyId, 'companyId'), normalized.principal.activeCompanyId, 'resolve_download_content', {
+  assertCompanyMatch(requireText(storedContent.CompanyId, 'companyId'), normalized.principal.activeCompanyId, 'resolve_download_content', {
     resource: 'storedContent',
     storedContentId,
   });

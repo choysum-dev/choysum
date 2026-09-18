@@ -10,6 +10,7 @@ import type { ExpressionBuilder } from '../types';
 import { hasRepositorySqlComputeExpression, isRepositorySelectableScalarField, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
 import { buildTranslatedFieldUnwrapExpr } from './translated_field_sql';
 import { buildCompanyDependentFieldUnwrapExpr } from './company_dependent_field_sql';
+import type { RepositoryPredicateBuilder } from './predicate_builder_adapter';
 import type { ObjectRecord } from '../../../../utils/types';
 
 export interface DbLike {
@@ -116,11 +117,11 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
       // Translate fields store lang maps; path expressions must unwrap to text for LIKE/order/display.
       if (finalFieldMeta.translate) {
         subquery = subquery.select((subBuilder: unknown) =>
-          buildTranslatedFieldUnwrapExpr(getDialect() as DialectName, subBuilder as any, `${finalTable}.${finalField}`)
+          buildTranslatedFieldUnwrapExpr(getDialect() as DialectName, subBuilder as RepositoryPredicateBuilder, `${finalTable}.${finalField}`)
         );
       } else if (finalFieldMeta.companyDependent) {
         subquery = subquery.select((subBuilder: unknown) =>
-          buildCompanyDependentFieldUnwrapExpr(getDialect() as DialectName, subBuilder as any, `${finalTable}.${finalField}`)
+          buildCompanyDependentFieldUnwrapExpr(getDialect() as DialectName, subBuilder as RepositoryPredicateBuilder, `${finalTable}.${finalField}`)
         );
       } else {
         subquery = subquery.select(`${finalTable}.${finalField}`);
@@ -160,12 +161,12 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
         // Data-i18n: `$sql.field('Name')` (e.g. DisplayName SqlCompute) must unwrap jsonb lang maps
         // so keyword `like`/`ilike` predicates do not become `jsonb ~~ text`.
         if (fieldMeta.translate) {
-          return buildTranslatedFieldUnwrapExpr(getDialect() as DialectName, expressionBuilder as any, `${table}.${fieldName}`) as SelectExpressionValue;
+          return buildTranslatedFieldUnwrapExpr(getDialect() as DialectName, expressionBuilder as RepositoryPredicateBuilder, `${table}.${fieldName}`) as SelectExpressionValue;
         }
         if (fieldMeta.companyDependent) {
           return buildCompanyDependentFieldUnwrapExpr(
             getDialect() as DialectName,
-            expressionBuilder as any,
+            expressionBuilder as RepositoryPredicateBuilder,
             `${table}.${fieldName}`
           ) as SelectExpressionValue;
         }

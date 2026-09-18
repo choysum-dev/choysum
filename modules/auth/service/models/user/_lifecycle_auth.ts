@@ -5,6 +5,7 @@ import { withContext, getContextClientTimezone } from '@/core/service/api/contex
 import { createServiceByModel } from '@/core/service/rpc';
 import { pool, type AppSettingModelCtor } from '@/core/service';
 import { isIanaTimezone } from '@/core/service/utils/datetime';
+import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
 import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
 import { _t } from '../../i18n';
 import type Company from '@/base/service/models/company';
@@ -27,6 +28,8 @@ export type LoginUserLike = {
   PasswordHash: string;
   IsActive: boolean;
   Timezone?: string | null;
+  UpdatedAt?: Date | string | number;
+  Language?: string | null;
   load: (fields: string[]) => Promise<void>;
 };
 
@@ -99,7 +102,7 @@ export async function persistBrowserTimezoneIfEmpty<T extends { Id: string; Time
   if (deps.reloadUser) {
     return await deps.reloadUser(userId);
   }
-  (user as any).Timezone = next;
+  user.Timezone = next;
   return user;
 }
 
@@ -122,8 +125,8 @@ export function validateAndHashRegistrationInput(userData: { Username?: string }
 export async function ensureRegistrationIdentityUnique(
   userData: { Username?: string; Email?: string } | null | undefined,
   deps: {
-    searchByUsername: (username: string) => Promise<any[]>;
-    searchByEmail: (email: string) => Promise<any[]>;
+    searchByUsername: (username: string) => Promise<unknown[]>;
+    searchByEmail: (email: string) => Promise<unknown[]>;
   }
 ): Promise<void> {
   const username = String(userData?.Username || '').trim();
@@ -160,7 +163,7 @@ export async function ensureRegistrationIdentityUnique(
 /**
  * Validate a created user id and raise an internal registration error when missing.
  */
-export function ensureCreatedUserIdOrThrow(createdUserId: any): string {
+export function ensureCreatedUserIdOrThrow(createdUserId: unknown): string {
   const userId = String(createdUserId || '').trim();
   if (!userId) {
     throw newAuthError({
@@ -176,14 +179,18 @@ export function ensureCreatedUserIdOrThrow(createdUserId: any): string {
  */
 export async function provisionRegisteredUserBaseline(
   userId: string,
-  rawPreferences: any,
+  rawPreferences: unknown,
   deps: {
-    updateUserCompanyContext: (values: { CompanyId: string; CompanyIds: string[]; Preferences: Record<string, any> }) => Promise<void>;
+    updateUserCompanyContext: (values: {
+      CompanyId: string;
+      CompanyIds: string[];
+      Preferences: Record<string, unknown>;
+    }) => Promise<void>;
   }
 ): Promise<void> {
   await withPermissionGraphBypass(async () => {
-    const main = await CompanyService.Search(['Code', '=', 'MAIN'] as any, { fields: ['Id'], limit: 1 } as any);
-    const mainCompanyId = String((main as any)?.[0]?.Id || '').trim();
+    const main = await CompanyService.Search(['Code', '=', 'MAIN'], { fields: ['Id'], limit: 1 });
+    const mainCompanyId = String(main?.[0]?.Id || '').trim();
     if (!mainCompanyId) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
@@ -192,7 +199,10 @@ export async function provisionRegisteredUserBaseline(
     }
 
     await withContext({ activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] }, async () => {
-      const basePrefs: Record<string, any> = rawPreferences && typeof rawPreferences === 'object' && !Array.isArray(rawPreferences) ? rawPreferences : {};
+      const basePrefs: Record<string, unknown> =
+        rawPreferences && typeof rawPreferences === 'object' && !Array.isArray(rawPreferences)
+          ? (rawPreferences as Record<string, unknown>)
+          : {};
       const nextPrefs = buildScopePreferences(basePrefs, mainCompanyId, [mainCompanyId]);
 
       await deps.updateUserCompanyContext({
@@ -201,18 +211,17 @@ export async function provisionRegisteredUserBaseline(
         Preferences: nextPrefs,
       });
 
-      const baseRole = await Role.Search(
-        ['Code', '=', 'base.user'] as any,
-        {
-          fields: ['Id'],
-          limit: 1,
-        } as any
-      );
-      const baseUserRoleId = String((baseRole as any)?.[0]?.Id || '').trim();
+      const baseRole = await Role.Search(['Code', '=', 'base.user'], {
+        fields: ['Id'],
+        limit: 1,
+      });
+      const baseUserRoleId = String(baseRole?.[0]?.Id || '').trim();
       if (!baseUserRoleId) {
         throw newAuthError({
           code: AuthErrCode.ROLE_NOT_FOUND,
-          message: _t('Registration failed: base.user role is not initialized; load auth bootstrap data first', { scope: 'service/models/user/_lifecycle_auth' }),
+          message: _t('Registration failed: base.user role is not initialized; load auth bootstrap data first', {
+            scope: 'service/models/user/_lifecycle_auth',
+          }),
         })
           .withGrpcCode(GrpcCode.FailedPrecondition)
           .withMetadata({ roleCode: 'base.user', externalId: 'auth.role_base_user' });
@@ -225,18 +234,18 @@ export async function provisionRegisteredUserBaseline(
             ['RoleId', '=', baseUserRoleId],
             ['CompanyId', '=', mainCompanyId],
           ],
-        } as any,
-        { fields: ['Id'], limit: 1 } as any
+        },
+        { fields: ['Id'], limit: 1 }
       );
 
       if (!existingUserRole || existingUserRole.length === 0) {
         await UserRole.Create(
           {
-            UserId: { Id: userId } as any,
-            RoleId: { Id: baseUserRoleId } as any,
+            UserId: { Id: userId },
+            RoleId: { Id: baseUserRoleId },
             CompanyId: mainCompanyId,
-          } as any,
-          ['Id'] as any
+          },
+          ['Id']
         );
       }
     });
@@ -281,7 +290,7 @@ export function validateLoginCandidateOrThrow(user: LoginUserLike | undefined, u
 export async function issueLoginTokensAndSession(
   user: LoginUserLike,
   deps: {
-    extractUserMetadata: (user: LoginUserLike) => Promise<any>;
+    extractUserMetadata: (user: LoginUserLike) => Promise<TokenMetadata>;
     updateLastLogin: (userId: string, timestamp: Date) => Promise<void>;
   },
   opts: {
@@ -289,7 +298,7 @@ export async function issueLoginTokensAndSession(
     deviceInfo?: string;
     rememberMe?: boolean;
   } = {}
-): Promise<any> {
+): Promise<TokenPair> {
   await user.load(['CompanyIds']);
   const metadata = await deps.extractUserMetadata(user);
   const tokens = await Token.CreateTokenPair(user.Id, metadata);
@@ -300,7 +309,7 @@ export async function issueLoginTokensAndSession(
   await deps.updateLastLogin(user.Id, new Date());
 
   if (opts.ipAddress || opts.deviceInfo) {
-    const auth = (globalThis as any)?.$choysum?.auth;
+    const auth = getChoysumRuntime()?.auth;
     if (!auth) {
       throw new Error('Choysum auth subsystem is not initialized');
     }
@@ -333,12 +342,12 @@ export async function issueLoginTokensAndSession(
 export async function refreshTokensWithLatestMetadata(
   refreshToken: string,
   deps: {
-    browseUser: (userId: string) => Promise<any>;
-    extractUserMetadata: (user: any) => Promise<any>;
+    browseUser: (userId: string) => Promise<LoginUserLike | null | undefined>;
+    extractUserMetadata: (user: LoginUserLike) => Promise<TokenMetadata>;
   }
-): Promise<any> {
+): Promise<TokenPair> {
   const identity = await Token.ValidateToken(refreshToken, 'refresh');
-  const userId = String((identity as any)?.userId || '').trim();
+  const userId = String(identity.userId || '').trim();
   if (!userId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
@@ -372,7 +381,7 @@ export async function refreshTokensWithLatestMetadata(
  */
 export async function revokeLogoutArtifacts(token: string, allDevices: boolean): Promise<void> {
   const identity = await Token.ValidateToken(token, 'access');
-  const userId = String((identity as any)?.userId || '').trim();
+  const userId = String(identity.userId || '').trim();
   if (!userId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
@@ -389,8 +398,8 @@ export async function revokeLogoutArtifacts(token: string, allDevices: boolean):
   await Token.RevokeToken(token, 'User initiated logout');
 
   try {
-    const tokenId = String((identity as any)?.tokenId || '').trim();
-    const sessions = tokenId ? await Session.Search(['AccessTokenId', '=', tokenId] as any) : [];
+    const tokenId = String(identity.tokenId || '').trim();
+    const sessions = tokenId ? await Session.Search(['AccessTokenId', '=', tokenId]) : [];
     if (sessions.length > 0) {
       await Session.RevokeSession(sessions[0].Id);
     }

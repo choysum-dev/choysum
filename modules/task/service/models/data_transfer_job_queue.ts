@@ -27,22 +27,22 @@ export async function getQueueStatus(dataTransferJobId: string): Promise<DataTra
     'ProgressTotal',
     'ReportJson',
     'ReportRef',
-  ] as any);
+  ]);
   if (!row) {
     throw new Error(`data transfer job ${id} not found`);
   }
-  const taskJobId = String((row as any)?.TaskJobId || '').trim();
+  const taskJobId = String(row.TaskJobId || '').trim();
   if (!taskJobId) {
     throw new Error('data transfer job is missing task job link');
   }
-  const taskJob = await Job.GetJob(taskJobId, ['Id', 'Status'] as any);
+  const taskJob = await Job.GetJob(taskJobId, ['Id', 'Status']);
   return {
     dataTransferJobId: id,
     taskJobId,
-    queueStatus: String((taskJob as any)?.Status || ''),
-    progressDone: Number((row as any)?.ProgressDone ?? 0),
-    progressTotal: Number((row as any)?.ProgressTotal ?? 0),
-    reportJson: ((row as any)?.ReportJson as Record<string, any>) || undefined,
-    reportRef: String((row as any)?.ReportRef || '').trim() || undefined,
+    queueStatus: String(taskJob?.Status || ''),
+    progressDone: Number(row.ProgressDone ?? 0),
+    progressTotal: Number(row.ProgressTotal ?? 0),
+    reportJson: (row.ReportJson as Record<string, any>) || undefined,
+    reportRef: String(row.ReportRef || '').trim() || undefined,
   };
 }

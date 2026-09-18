@@ -3,7 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/query';
+import type { QueryCondition, SearchOptions, OrderBy, BaseQueryCondition } from '@/core/service/api/query';
+import { condition } from '@/core/service/api/query';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { projectToSelection } from '@/core/service/api/selection';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
@@ -82,7 +83,7 @@ type ListSchedulesParams = {
  * Builds a search condition from paged schedule list parameters.
  */
 function buildScheduleCondition(params: ListSchedulesParams): QueryCondition<Schedule> | [] {
-  const and: any[] = [];
+  const and: BaseQueryCondition[] = [];
   if (typeof params.active === 'boolean') and.push(['Active', '=', params.active]);
   if (params.name) and.push(['Name', 'ilike', `%${params.name}%`]);
   if (params.targetApp) and.push(['TargetApp', '=', params.targetApp]);
@@ -96,7 +97,7 @@ function buildScheduleCondition(params: ListSchedulesParams): QueryCondition<Sch
   if (createdAtLt) and.push(['CreatedAt', '<', createdAtLt]);
 
   if (and.length === 0) return [];
-  return { And: and } as any;
+  return condition<Schedule>({ And: and });
 }
 
 /**
@@ -291,10 +292,10 @@ export default class Schedule extends BaseModel {
     if (values.Active === false) {
       clearExclusive(values, ['NextRunAt']);
     } else if (values.CronExpr || values.Timezone || !existing.NextRunAt) {
-      values.NextRunAt = computeNextRunAt(merged, now) as any;
+      values.NextRunAt = computeNextRunAt(merged, now);
     }
-    const updated = await (this as any).UpdateById(scheduleId as any, values as any);
-    return applyNextRunPreview(updated, now);
+    const updated = await this.UpdateById(scheduleId, values);
+    return applyNextRunPreview(updated as Schedule, now);
   }
 
   /** Deletes a schedule by identifier. */
@@ -315,7 +316,7 @@ export default class Schedule extends BaseModel {
     const triggeredBy = triggeredByUserId ?? schedule.TriggeredByUserId;
     const timeoutMs = typeof schedule.TimeoutMs === 'number' && schedule.TimeoutMs > 0 ? schedule.TimeoutMs : 0;
     const job = await Job.EnqueueJob(schedule.TargetApp, schedule.FullMethod, payload, schedulerUserId, triggeredBy, new Date(), 0, timeoutMs);
-    await (this as any).UpdateById(scheduleId as any, { LastTriggeredAt: new Date(), LastRunAt: new Date() } as any);
+    await this.UpdateById(scheduleId, { LastTriggeredAt: new Date(), LastRunAt: new Date() });
     return { jobId: job.Id };
   }
 
@@ -347,7 +348,7 @@ export default class Schedule extends BaseModel {
       orderBy,
       fields: fieldsForScheduleListSearch(fields) as F | undefined,
     });
-    const total = Number(await this.Count(condition as any)) || 0;
+    const total = Number(await this.Count(condition)) || 0;
     return {
       items: mapSchedulesWithNextRunPreview(items as Array<object>, fields),
       total,

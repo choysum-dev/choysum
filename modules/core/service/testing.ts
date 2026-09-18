@@ -21,3 +21,5 @@ export {
   invalidateAuthzCachesForUsers,
   withPermissionGraphBypass,
 } from './testing/authz';
+
+export { fakeRow, asChoysumError, fakeCtx } from './testing/fixtures';

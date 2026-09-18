@@ -317,9 +317,12 @@ export function buildScopePreferences(basePrefs: Record<string, unknown>, active
  */
 export function asBigInt(v: unknown): bigint {
   if (typeof v === 'bigint') return v;
-  if (v && typeof v === 'object' && typeof (v as any).$bigint === 'string') return BigInt((v as any).$bigint);
+  if (v && typeof v === 'object') {
+    const tagged = v as { $bigint?: unknown };
+    if (typeof tagged.$bigint === 'string') return BigInt(tagged.$bigint);
+  }
   if (typeof v === 'number' && Number.isFinite(v)) return BigInt(Math.trunc(v));
-  const s = String((v as any) ?? '').trim();
+  const s = String(v ?? '').trim();
   if (!s) return 0n;
   return BigInt(s);
 }
@@ -416,8 +419,11 @@ export function parseDecimalInput(value: unknown, opts?: { allowNumber?: boolean
       return new Decimal(value);
     }
 
-    if (typeof value === 'object' && value && typeof (value as any).$bigdecimal === 'string') {
-      return new Decimal(String((value as any).$bigdecimal));
+    if (typeof value === 'object' && value) {
+      const tagged = value as { $bigdecimal?: unknown };
+      if (typeof tagged.$bigdecimal === 'string') {
+        return new Decimal(String(tagged.$bigdecimal));
+      }
     }
 
     if (typeof value === 'string') {
@@ -536,7 +542,7 @@ export function assertOptionalNonEmptyString(value: unknown, opts?: { maxLength?
  */
 export function isExpiredAt(value: unknown, nowMs: number = Date.now()): boolean {
   if (!value) return true;
-  const ms = new Date(value as any).getTime();
+  const ms = new Date(value as string | number | Date).getTime();
   if (!Number.isFinite(ms)) return true;
   return ms <= nowMs;
 }
@@ -550,14 +556,23 @@ export type CurrencyRoundingSpec = {
  * Round an amount according to currency digits and optional rounding step.
  */
 export function roundToCurrencyAmount(amount: Decimal, currency?: CurrencyRoundingSpec | null, overrideDigits?: number): Decimal {
-  const digits = Number.isFinite(overrideDigits as any)
-    ? Math.max(0, Math.floor(overrideDigits as any))
-    : Math.max(0, Math.floor(Number(currency?.DecimalDigits) || 0));
+  const digits =
+    overrideDigits != null && Number.isFinite(overrideDigits)
+      ? Math.max(0, Math.floor(overrideDigits))
+      : Math.max(0, Math.floor(Number(currency?.DecimalDigits) || 0));
 
   try {
     const step = currency?.Rounding;
     if (step != null) {
-      const decimalStep = step instanceof Decimal ? step : new Decimal((step as any).$bigdecimal ?? step);
+      const stepBag = step as { $bigdecimal?: unknown } | Decimal | string | number;
+      const decimalStep =
+        stepBag instanceof Decimal
+          ? stepBag
+          : new Decimal(
+              stepBag && typeof stepBag === 'object' && typeof stepBag.$bigdecimal === 'string'
+                ? stepBag.$bigdecimal
+                : (stepBag as string | number)
+            );
       if (decimalStep.gt(0)) {
         const q = amount.div(decimalStep);
         const qRounded = q.toDecimalPlaces(0, Decimal.ROUND_HALF_UP);
@@ -738,7 +753,10 @@ export function parseBigInt(value: unknown): bigint {
   try {
     if (typeof value === 'bigint') return value;
     if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value));
-    if (value && typeof value === 'object' && typeof (value as any).$bigint === 'string') return BigInt((value as any).$bigint);
+    if (value && typeof value === 'object') {
+      const tagged = value as { $bigint?: unknown };
+      if (typeof tagged.$bigint === 'string') return BigInt(tagged.$bigint);
+    }
     const text = String(value ?? '').trim();
     if (!text) {
       raiseNormalizationError('required');

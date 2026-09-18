@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
 import DataTransferJob from './data_transfer_job';
 
 type ImportBridge = {
@@ -11,14 +12,22 @@ type ExportBridge = {
   run?: (spec: Record<string, unknown> | string) => Promise<Record<string, any>>;
 };
 
+type ChoysumWithExport = NonNullable<ReturnType<typeof getChoysumRuntime>> & {
+  export?: ExportBridge;
+};
+
 function importBridge(): ImportBridge {
-  const root: any = (globalThis as any)?.$choysum;
-  return (root?.import ?? {}) as ImportBridge;
+  return getChoysumRuntime()?.import ?? {};
 }
 
 function exportBridge(): ExportBridge {
-  const root: any = (globalThis as any)?.$choysum;
-  return (root?.export ?? {}) as ExportBridge;
+  return (getChoysumRuntime() as ChoysumWithExport | undefined)?.export ?? {};
+}
+
+function asSpecSnapshot(value: unknown): Record<string, unknown> | string | undefined {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object') return value as Record<string, unknown>;
+  return undefined;
 }
 
 /** Task worker entry: replays SpecSnapshotJson via $choysum.import.run and writes report. */
@@ -27,12 +36,12 @@ export async function executeImport(dataTransferJobId: string): Promise<Record<s
   if (!id) {
     throw new Error('dataTransferJobId is required');
   }
-  const row = await DataTransferJob.Browse(id, ['Id', 'SpecSnapshotJson', 'Direction'] as any);
-  const direction = String((row as any)?.Direction || '').trim();
+  const row = await DataTransferJob.Browse(id, ['Id', 'SpecSnapshotJson', 'Direction']);
+  const direction = String(row?.Direction || '').trim();
   if (direction && direction !== 'import') {
     throw new Error(`ExecuteImport requires Direction=import (got ${JSON.stringify(direction)})`);
   }
-  const spec = (row as any)?.SpecSnapshotJson;
+  const spec = asSpecSnapshot(row?.SpecSnapshotJson);
   if (!spec || typeof spec !== 'object') {
     throw new Error('data transfer job is missing spec snapshot');
   }
@@ -51,12 +60,12 @@ export async function executeExport(dataTransferJobId: string): Promise<Record<s
   if (!id) {
     throw new Error('dataTransferJobId is required');
   }
-  const row = await DataTransferJob.Browse(id, ['Id', 'SpecSnapshotJson', 'Direction'] as any);
-  const direction = String((row as any)?.Direction || '').trim();
+  const row = await DataTransferJob.Browse(id, ['Id', 'SpecSnapshotJson', 'Direction']);
+  const direction = String(row?.Direction || '').trim();
   if (direction && direction !== 'export') {
     throw new Error(`ExecuteExport requires Direction=export (got ${JSON.stringify(direction)})`);
   }
-  const spec = (row as any)?.SpecSnapshotJson;
+  const spec = asSpecSnapshot(row?.SpecSnapshotJson);
   if (!spec || typeof spec !== 'object') {
     throw new Error('data transfer job is missing spec snapshot');
   }

@@ -7,6 +7,12 @@ import { normalizeScopeId, uniqScopeIds, normalizePreferences as normalizeScopeP
 // Re-export core utilities for backward compat — other auth helpers import these from this module.
 export { normalizeScopeId, uniqScopeIds, normalizeScopePreferences, buildScopePreferences };
 
+export type UserCompanyScopeSource = {
+  CompanyId?: unknown;
+  CompanyIds?: unknown;
+  Preferences?: unknown;
+};
+
 export type TokenCompanyScope = {
   allowedCompanyIds: string[];
   activeCompanyId?: string;
@@ -21,7 +27,7 @@ export type SwitchScopeValidationResult =
       active: string;
       enabled: string[];
       allowed: string[];
-      prefs: Record<string, any>;
+      prefs: Record<string, unknown>;
     }
   | {
       ok: false;
@@ -29,31 +35,36 @@ export type SwitchScopeValidationResult =
       active: string;
       enabled: string[] | null;
       allowed: string[];
-      prefs: Record<string, any>;
+      prefs: Record<string, unknown>;
       companyId?: string;
     };
 
 /**
  * Compute allowed company ids from User.CompanyId and User.CompanyIds.
  */
-export function buildAllowedCompanyIds(user: any): string[] {
-  return uniqScopeIds([normalizeScopeId((user as any)?.CompanyId), ...(Array.isArray((user as any)?.CompanyIds) ? (user as any).CompanyIds : [])]);
+export function buildAllowedCompanyIds(user: UserCompanyScopeSource): string[] {
+  return uniqScopeIds([
+    normalizeScopeId(user?.CompanyId),
+    ...(Array.isArray(user?.CompanyIds) ? user.CompanyIds : []),
+  ]);
 }
 
 /**
  * Build token metadata company scope from user state and preferences.
  */
-export function computeTokenCompanyScope(user: any): TokenCompanyScope {
+export function computeTokenCompanyScope(user: UserCompanyScopeSource): TokenCompanyScope {
   const allowedCompanyIds = buildAllowedCompanyIds(user);
-  const prefs: any = normalizeScopePreferences((user as any)?.Preferences);
-  const prefActive = typeof prefs?.activeCompanyId === 'string' ? normalizeScopeId(prefs.activeCompanyId) : '';
-  const prefEnabled = Array.isArray(prefs?.enabledCompanyIds) ? prefs.enabledCompanyIds.map(normalizeScopeId).filter(Boolean) : [];
+  const prefs = normalizeScopePreferences(user?.Preferences);
+  const prefActive = typeof prefs.activeCompanyId === 'string' ? normalizeScopeId(prefs.activeCompanyId) : '';
+  const prefEnabled = Array.isArray(prefs.enabledCompanyIds)
+    ? prefs.enabledCompanyIds.map(normalizeScopeId).filter(Boolean)
+    : [];
 
   let activeCompanyId = '';
   if (prefActive && allowedCompanyIds.includes(prefActive)) {
     activeCompanyId = prefActive;
   } else {
-    const fallback = normalizeScopeId((user as any)?.CompanyId);
+    const fallback = normalizeScopeId(user?.CompanyId);
     if (fallback && allowedCompanyIds.includes(fallback)) activeCompanyId = fallback;
     else if (allowedCompanyIds.length) activeCompanyId = allowedCompanyIds[0];
   }
@@ -73,7 +84,7 @@ export function computeTokenCompanyScope(user: any): TokenCompanyScope {
 /**
  * Normalize the optional enabled-company request payload for audit fallback paths.
  */
-export function normalizeRequestedEnabledCompanyIds(enabledCompanyIds: any): string[] | null {
+export function normalizeRequestedEnabledCompanyIds(enabledCompanyIds: unknown): string[] | null {
   if (!Array.isArray(enabledCompanyIds)) return null;
   return enabledCompanyIds.map(normalizeScopeId).filter(Boolean);
 }
@@ -81,9 +92,13 @@ export function normalizeRequestedEnabledCompanyIds(enabledCompanyIds: any): str
 /**
  * Validate switch-company inputs against allowed company scope.
  */
-export function validateSwitchCompanyScopeInput(user: any, activeCompanyId: string, enabledCompanyIds: any): SwitchScopeValidationResult {
+export function validateSwitchCompanyScopeInput(
+  user: UserCompanyScopeSource,
+  activeCompanyId: string,
+  enabledCompanyIds: unknown
+): SwitchScopeValidationResult {
   const active = normalizeScopeId(activeCompanyId);
-  const prefs = normalizeScopePreferences((user as any)?.Preferences);
+  const prefs = normalizeScopePreferences(user?.Preferences);
   const allowed = buildAllowedCompanyIds(user);
 
   if (!active) {
@@ -97,7 +112,9 @@ export function validateSwitchCompanyScopeInput(user: any, activeCompanyId: stri
     };
   }
 
-  const prefEnabled = Array.isArray(prefs?.enabledCompanyIds) ? prefs.enabledCompanyIds.map(normalizeScopeId).filter(Boolean) : [];
+  const prefEnabled = Array.isArray(prefs.enabledCompanyIds)
+    ? prefs.enabledCompanyIds.map(normalizeScopeId).filter(Boolean)
+    : [];
   let enabled: string[];
 
   if (enabledCompanyIds === undefined || enabledCompanyIds === null) {
@@ -166,12 +183,12 @@ export function validateSwitchCompanyScopeInput(user: any, activeCompanyId: stri
  * Create an audit emitter that enforces at-most-once output for one switch flow.
  */
 export function createSwitchCompanyScopeAuditEmitter(eventName: string): {
-  emitOnce: (payload: Record<string, any>) => void;
+  emitOnce: (payload: Record<string, unknown>) => void;
   wasEmitted: () => boolean;
 } {
   let emitted = false;
 
-  const emit = (payload: Record<string, any>): void => {
+  const emit = (payload: Record<string, unknown>): void => {
     try {
       const { req } = getJsCtxAndReq();
       const traceId = typeof req?.traceId === 'string' ? req.traceId : '';
@@ -199,7 +216,7 @@ export function createSwitchCompanyScopeAuditEmitter(eventName: string): {
   };
 
   return {
-    emitOnce(payload: Record<string, any>) {
+    emitOnce(payload: Record<string, unknown>) {
       if (emitted) return;
       emitted = true;
       emit(payload);

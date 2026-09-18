@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Decimal, Field, Model } from '@/core/service';
+import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { condition } from '@/core/service/api/query';
 import { normalizeRefId, assertDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
 import { businessToday } from '@/core/service/utils/datetime';
 import { _t, _lt } from '../i18n';
@@ -88,7 +89,7 @@ export default class ExchangeRate extends BaseModel {
     return this.coerceDateKey(value);
   }
 
-  private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async ensureUniqueTuple(values: ExchangeRate, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
     const dateKey = this.dateKey(values.Date);
     await this.assertUniqueScopeCurrencyDate(scopeKey, dateKey, values.CurrencyId, currentId);
@@ -109,23 +110,23 @@ export default class ExchangeRate extends BaseModel {
       fail(_t('%s is required', { scope: 'service/models/exchange_rate' }, 'CurrencyId'));
     }
     const conflicts = await this.Search(
-      {
+      condition<ExchangeRate>({
         And: [
           ['CompanyScopeKey', '=', scopeKey],
           ['CurrencyId', '=', currencyId],
           ['Date', '=', dateKey],
         ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
+      }),
+      { fields: ['Id'], limit: 2 }
     );
 
-    const hasConflict = (conflicts || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const hasConflict = (conflicts || []).some(item => String(item?.Id || '') !== String(currentId || ''));
     if (hasConflict) {
       fail(_t('ExchangeRate must be unique for CompanyId + CurrencyId + Date', { scope: 'service/models/exchange_rate' }));
     }
   }
 
-  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async validateEntity(values: ExchangeRate, currentId?: string): Promise<void> {
     values.Rate = mapNormalizationToBase(
       () => toPositiveDecimal(values.Rate).toString(),
       err =>
@@ -144,7 +145,7 @@ export default class ExchangeRate extends BaseModel {
 
   @Constraint<ExchangeRate>(['CompanyId', 'CurrencyId', 'Date', 'Rate'])
   async validateExchangeRateConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
-    await ExchangeRate.validateEntity(this as any, currentId);
+    const currentId = String(this.Id || '').trim() || undefined;
+    await ExchangeRate.validateEntity(this, currentId);
   }
 }

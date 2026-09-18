@@ -3,6 +3,7 @@
 
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { condition } from '@/core/service/api/query';
+import type { BaseQueryCondition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
@@ -19,6 +20,16 @@ const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
+
+type UiResourceRow = {
+  Id?: unknown;
+  id?: unknown;
+  Name?: unknown;
+  name?: unknown;
+  MetaApplicationId?: unknown;
+  Requires?: unknown;
+  requires?: unknown;
+};
 
 async function metaModelId(appName: string, modelName: string): Promise<string> {
   const rows = await MetaModel.Search(
@@ -37,7 +48,7 @@ async function metaApplicationId(appName: string): Promise<string> {
 }
 
 export type UiGrantExpansion = {
-  resources: any[];
+  resources: UiResourceRow[];
   hasGlobalAllow: boolean;
   hasGlobalDeny: boolean;
   appModesById: Record<string, Array<'allow' | 'deny'>>;
@@ -45,7 +56,7 @@ export type UiGrantExpansion = {
 };
 
 /**
- * Method ACL decision envelope shared by CheckMethodAccess and UI-derived eval (PR-E-5 / W10).
+ * Method ACL decision envelope shared by CheckMethodAccess and UI-derived eval.
  */
 export type MethodAccessDecision = {
   allowed: boolean;
@@ -76,7 +87,7 @@ export async function resolveMethodAccessMeta(
       modelId: string;
       irServiceId: string;
       irApplicationId: string;
-      scopeOr: any[];
+      scopeOr: BaseQueryCondition[];
       modelKey: string;
       methodLower: string;
     }
@@ -96,16 +107,16 @@ export async function resolveMethodAccessMeta(
       .trim()
       .toLowerCase();
     const matched = (serviceRows || []).find(
-      (r: any) =>
-        String((r as any).Name || '')
+      r =>
+        String(r.Name || '')
           .trim()
           .toLowerCase() === methodLower
-    ) as any;
+    );
     const irServiceId = String(matched?.Id || '').trim();
     if (!irServiceId) return undefined;
 
     const irApplicationId = await metaApplicationId(appName);
-    const scopeOr: any[] = [
+    const scopeOr: BaseQueryCondition[] = [
       {
         And: [
           ['MetaServiceId', '=', irServiceId],
@@ -171,7 +182,7 @@ export async function resolveMethodAccessMeta(
  */
 export async function evaluateRoleMethodAccess(
   roleIds: string[],
-  scopeOr: any[],
+  scopeOr: BaseQueryCondition[],
   methodLower?: string
 ): Promise<{ denied: boolean; allowed: boolean; hitRuleIds: string[]; reason: string }> {
   const accessesRaw = await RoleMethodAccess.Search(
@@ -185,23 +196,23 @@ export async function evaluateRoleMethodAccess(
     .trim()
     .toLowerCase();
   const accesses = (accessesRaw || []).filter(a => {
-    if (String((a as any).Source || 'manual').toLowerCase() === 'ui') return false;
-    const logicalName = String((a as any).LogicalModelName || '').trim();
+    if (String(a.Source || 'manual').toLowerCase() === 'ui') return false;
+    const logicalName = String(a.LogicalModelName || '').trim();
     if (!logicalName) return true;
     if (!methodKey) return false;
     try {
-      return logicalMethodsAllow((a as any).LogicalMethods, methodKey);
+      return logicalMethodsAllow(a.LogicalMethods, methodKey);
     } catch {
       // Malformed LogicalMethods: keep deny (fail closed), drop broken allow.
-      return String((a as any).Mode || '').toLowerCase() === 'deny';
+      return String(a.Mode || '').toLowerCase() === 'deny';
     }
   });
 
   let allowed = false;
   const allowHitRuleIds: string[] = [];
   for (const a of accesses || []) {
-    const mode = String((a as any).Mode || '').toLowerCase();
-    const ruleId = String((a as any)?.Id ?? '').trim();
+    const mode = String(a.Mode || '').toLowerCase();
+    const ruleId = String(a?.Id ?? '').trim();
     if (mode === 'deny') {
       // Deny wins: only the deciding deny rule participates in diagnostics.
       const hitRuleIds = ruleId ? [ruleId] : [];
@@ -232,7 +243,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
   const roleSig = ids.join(',');
   const cacheKey = buildUiGrantCacheKey(roleSig);
   const cached = state?.[cacheKey];
-  if (cached && Array.isArray((cached as any).resources)) {
+  if (cached && typeof cached === 'object' && Array.isArray((cached as UiGrantExpansion).resources)) {
     return cached as UiGrantExpansion;
   }
 
@@ -252,13 +263,13 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
 
   for (const g of grants || []) {
     const mode =
-      String((g as any).Mode ?? 'allow')
+      String(g.Mode ?? 'allow')
         .trim()
         .toLowerCase() === 'deny'
         ? 'deny'
         : 'allow';
-    const appID = normalizeScopeRefId((g as any).MetaApplicationId);
-    const uiID = normalizeUiResourceId((g as any).MetaUiResourceId);
+    const appID = normalizeScopeRefId(g.MetaApplicationId);
+    const uiID = normalizeUiResourceId(g.MetaUiResourceId);
     if (!appID && !uiID) {
       if (mode === 'deny') hasGlobalDeny = true;
       else hasGlobalAllow = true;
@@ -289,10 +300,10 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     return empty;
   }
 
-  const byId = new Map<string, any>();
-  const mergeRows = (rows: any[]) => {
+  const byId = new Map<string, UiResourceRow>();
+  const mergeRows = (rows: UiResourceRow[]) => {
     for (const row of rows || []) {
-      const id = normalizeUiResourceId((row as any)?.Id ?? (row as any)?.id);
+      const id = normalizeUiResourceId(row?.Id ?? row?.id);
       if (!id) continue;
       if (!byId.has(id)) byId.set(id, row);
     }
@@ -303,18 +314,18 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
       fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'],
       limit: 100000,
     });
-    mergeRows(allRows as any[]);
+    mergeRows((allRows || []) as UiResourceRow[]);
   } else {
     const appIDList = uniqStrings(Array.from(appIDs));
     const resourceIDList = uniqStrings(Array.from(resourceIDs));
-    const promises: Array<Promise<any[]>> = [];
+    const promises: Array<Promise<UiResourceRow[]>> = [];
 
     if (appIDList.length > 0) {
       promises.push(
         MetaUiResource.Search(
           { And: [['MetaApplicationId', 'in', appIDList]] },
           { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 }
-        )
+        ) as Promise<UiResourceRow[]>
       );
     }
 
@@ -328,13 +339,13 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
             ],
           },
           { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 }
-        )
+        ) as Promise<UiResourceRow[]>
       );
     }
 
     const results = await Promise.all(promises);
     for (const rows of results) {
-      mergeRows(rows as any[]);
+      mergeRows(rows);
     }
   }
 
@@ -388,7 +399,7 @@ export async function evaluateUiDerivedMethodDecision(
   const denyHitRuleIds: string[] = [];
 
   for (const row of resources) {
-    const requires = parseJsonStringArray((row as any)?.Requires ?? (row as any)?.requires);
+    const requires = parseJsonStringArray(row?.Requires ?? row?.requires);
     if (requires.length === 0) continue;
 
     let matchesMethod = false;
@@ -404,19 +415,19 @@ export async function evaluateUiDerivedMethodDecision(
     if (expansion.hasGlobalAllow) matchedModes.add('allow');
     if (expansion.hasGlobalDeny) matchedModes.add('deny');
 
-    const appId = normalizeScopeRefId((row as any)?.MetaApplicationId);
+    const appId = normalizeScopeRefId(row?.MetaApplicationId);
     for (const mode of expansion.appModesById?.[appId || ''] || []) matchedModes.add(mode);
 
     const resourceKeys = uniqStrings([
-      normalizeUiResourceId((row as any)?.Id ?? (row as any)?.id),
-      String((row as any)?.Name ?? (row as any)?.name ?? '').trim(),
+      normalizeUiResourceId(row?.Id ?? row?.id),
+      String(row?.Name ?? row?.name ?? '').trim(),
     ]);
     for (const key of resourceKeys) {
       for (const mode of expansion.resourceModesByKey?.[key] || []) matchedModes.add(mode);
     }
 
     // Rows without Id/id are dropped by loadUiGrantExpansionForRoles; Id or id is enough here.
-    const resourceId = normalizeUiResourceId((row as any)?.Id ?? (row as any)?.id);
+    const resourceId = normalizeUiResourceId(row?.Id ?? row?.id);
     if (matchedModes.has('deny')) {
       denied = true;
       if (resourceId) denyHitRuleIds.push(resourceId);

@@ -135,7 +135,7 @@ function resolveTargetModel(
     fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} is not registered`);
   }
 
-  const targetMeta = MetadataStorage.instance.getModelMetadata(Target as any) as ModelMetadata;
+  const targetMeta = MetadataStorage.instance.getModelMetadata(Target) as ModelMetadata;
   const targetApp = String(targetMeta.application || '').trim();
   if (targetApp !== application) {
     fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} does not belong to application ${application}`);

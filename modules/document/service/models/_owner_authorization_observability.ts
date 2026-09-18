@@ -50,7 +50,7 @@ export function observePermissionDenied(stage: OwnerPermissionStage, message: st
   }
 
   try {
-    const root = globalThis as any;
+    const root = globalThis as typeof globalThis & { [STORAGE_PERMISSION_DENIED_COUNTER_KEY]?: Record<string, number> };
     const store: Record<string, number> = root[STORAGE_PERMISSION_DENIED_COUNTER_KEY] ?? {};
     root[STORAGE_PERMISSION_DENIED_COUNTER_KEY] = store;
 

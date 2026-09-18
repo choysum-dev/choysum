@@ -315,7 +315,7 @@ export default class Partner extends PartnerCollaborationModel {
   }
 
   /** Ensures the company-scoped partner code remains unique. */
-  private static async ensureUniqueCode(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async ensureUniqueCode(values: Record<string, unknown>, currentId?: string): Promise<void> {
     const companyId = normalizeRefId(values.CompanyId);
     const code = assertRequiredText(values.Code, 'Code').toUpperCase();
     if (!companyId) fail(_t('CompanyId is required', { scope: 'service/models/partner' }));
@@ -326,10 +326,10 @@ export default class Partner extends PartnerCollaborationModel {
           ['CompanyId', '=', companyId],
           ['Code', '=', code],
         ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
+      },
+      { fields: ['Id'], limit: 2 }
     );
-    const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const conflict = (rows || []).some(item => String(item?.Id || '') !== String(currentId || ''));
     if (conflict) fail(_t('Partner Code must be unique within the company', { scope: 'service/models/partner' }));
 
     values.CompanyId = companyId;
@@ -337,7 +337,7 @@ export default class Partner extends PartnerCollaborationModel {
   }
 
   /** Normalizes and validates partner values before persistence. */
-  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async validateEntity(values: Record<string, unknown>, currentId?: string): Promise<void> {
     values.Name = assertRequiredTranslatedText(values.Name, 'Name');
     values.Code = assertRequiredText(values.Code, 'Code').toUpperCase();
     values.CompanyId = normalizeRefId(values.CompanyId);
@@ -358,8 +358,8 @@ export default class Partner extends PartnerCollaborationModel {
   /** Applies partner normalization and validation during model constraints. */
   @Constraint<Partner>(['Name', 'Code', 'CompanyId', 'CustomerRank', 'SupplierRank', 'Reference', 'Email', 'Phone', 'Mobile'])
   async validatePartnerConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
+    const currentId = String(this.Id || '').trim() || undefined;
 
-    await Partner.validateEntity(this as any, currentId);
+    await Partner.validateEntity(this as unknown as Record<string, unknown>, currentId);
   }
 }

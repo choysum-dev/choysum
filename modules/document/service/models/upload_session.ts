@@ -8,6 +8,8 @@ import { UploadOperation, UploadSessionStatus, UploadedPayloadRef } from '../con
 import { _lt } from '../i18n';
 import { resolveGcBatchSize } from './_gc_config';
 import { paginateBatch } from '@/core/service/utils/pagination';
+import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS } from './_upload';
 import type Company from '@/base/service/models/company';
 import type AttachmentContent from './attachment_object';
@@ -281,34 +283,42 @@ export default class AttachmentUploadSession extends BaseModel {
 
     const self = this;
     const expiredCount = await paginateBatch(
-      (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
+      (cond, opts) =>
+        self.Search(
+          cond as QueryCondition<AttachmentUploadSession>,
+          opts as SearchOptions<AttachmentUploadSession>
+        ) as Promise<Array<{ Id?: unknown }>>,
       {
         And: [
-          ['Status', 'in', ['prepared', 'uploaded'] as any],
+          ['Status', 'in', ['prepared', 'uploaded']],
           ['ExpiresAt', '<', now],
         ],
       },
       async session => {
-        const sessionId = String((session as any)?.Id || '').trim();
+        const sessionId = normalizeRefId((session as { Id?: unknown }).Id) ?? '';
         if (!sessionId) return;
-        await self.UpdateById(sessionId, { Status: 'expired' } as any, ['Id', 'Status'] as any);
+        await self.UpdateById(sessionId, { Status: 'expired' }, ['Id', 'Status'] as const);
       },
       { batch, fields: ['Id'] }
     );
 
     const cutoff = new Date(now.getTime() - uploadSessionTTLSeconds * 1000);
     const purgedCount = await paginateBatch(
-      (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
+      (cond, opts) =>
+        self.Search(
+          cond as QueryCondition<AttachmentUploadSession>,
+          opts as SearchOptions<AttachmentUploadSession>
+        ) as Promise<Array<{ Id?: unknown }>>,
       {
         And: [
-          ['Status', 'in', ['finalized', 'expired'] as any],
+          ['Status', 'in', ['finalized', 'expired']],
           ['UpdatedAt', '<', cutoff],
         ],
       },
       async row => {
-        const sessionId = String((row as any)?.Id || '').trim();
+        const sessionId = normalizeRefId((row as { Id?: unknown }).Id) ?? '';
         if (!sessionId) return;
-        await self.DeleteById(sessionId as any);
+        await self.DeleteById(sessionId);
       },
       { batch, fields: ['Id'] }
     );

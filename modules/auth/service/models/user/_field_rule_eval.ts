@@ -3,6 +3,8 @@
 
 import { createServiceByModel } from '@/core/service/rpc';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
+import { condition } from '@/core/service/api/query';
+import type { BaseQueryCondition } from '@/core/service/api/query';
 import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
 import { _t } from '../../i18n';
 import RoleFieldRule from '../role_field_rule';
@@ -15,10 +17,13 @@ const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 
-function assertFieldPerm(v: any): 'allow' | 'deny' | null {
+type FieldPermBag = { value?: unknown; Value?: unknown; id?: unknown; Id?: unknown };
+
+function assertFieldPerm(v: unknown): 'allow' | 'deny' | null {
   if (v == null) return null;
   if (typeof v === 'object') {
-    const raw = (v as any)?.value ?? (v as any)?.Value ?? (v as any)?.id ?? (v as any)?.Id;
+    const bag = v as FieldPermBag;
+    const raw = bag.value ?? bag.Value ?? bag.id ?? bag.Id;
     if (raw != null && raw !== v) return assertFieldPerm(raw);
   }
   const s = String(v ?? '')
@@ -29,19 +34,18 @@ function assertFieldPerm(v: any): 'allow' | 'deny' | null {
   throw new Error("invalid field rule permission: must be 'allow' or 'deny'");
 }
 
-function pickField(obj: any, keys: string[]): any {
-  if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) return undefined;
-
+function pickField(obj: object, keys: string[]): unknown {
+  const record = obj as Record<string, unknown>;
   for (const k of keys) {
-    if (k in obj) return obj[k];
+    if (k in record) return record[k];
   }
 
   const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const normalizedWants = keys.map(norm);
 
-  for (const k of Object.keys(obj)) {
+  for (const k of Object.keys(record)) {
     if (normalizedWants.includes(norm(k))) {
-      return obj[k];
+      return record[k];
     }
   }
 
@@ -64,6 +68,16 @@ export type FieldRuleEvalResult = {
   hitRuleIds?: string[];
 };
 
+type FieldRuleDecision = {
+  __rid?: string;
+  irApp: string | null;
+  irModel: string | null;
+  irField: string | null;
+  logicalName: string | null;
+  permRead: 'allow' | 'deny' | null;
+  permWrite: 'allow' | 'deny' | null;
+};
+
 function getFieldRuleReqState(): Record<string, unknown> | undefined {
   const req = getCurrentReq();
   return req ? getOrInitReqServiceState(req) : undefined;
@@ -80,10 +94,10 @@ async function resolveApplicationId(appName: string): Promise<string> {
   const state = getFieldRuleReqState();
   const key = buildFieldRuleMetaCacheKey('app', appName);
   return await memoizeInReqState(state, key, async () => {
-    const rows = await MetaApplication.Search(['Name', '=', appName] as any, {
+    const rows = await MetaApplication.Search(['Name', '=', appName], {
       fields: ['Id'],
       limit: 1,
-    } as any);
+    });
     return String(rows?.[0]?.Id || '').trim();
   });
 }
@@ -96,8 +110,8 @@ async function resolveModelId(appName: string, modelName: string): Promise<strin
   const key = buildFieldRuleMetaCacheKey('model', appName, modelName);
   return await memoizeInReqState(state, key, async () => {
     const rows = await MetaModel.Search(
-      { And: [['Application', '=', appName], ['Name', '=', modelName]] } as any,
-      { fields: ['Id'], limit: 1 } as any
+      { And: [['Application', '=', appName], ['Name', '=', modelName]] },
+      { fields: ['Id'], limit: 1 }
     );
     return String(rows?.[0]?.Id || '').trim();
   });
@@ -111,7 +125,7 @@ function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds
 /**
  * Core FieldRule evaluation: resolve meta, load rules, partition by scope, and decide per-field.
  *
- * Deny-by-default (§5.5 / PR-C-1): no matching allow ⇒ field enters deny lists.
+ * Deny-by-default: no matching allow ⇒ field enters deny lists.
  * More-specific scope wins; same-scope deny-wins; read-deny ⇒ write-deny.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
@@ -130,13 +144,13 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   }
 
   // Load meta fields (needed for deny-all early exits and per-field decisions).
-  const fields = await MetaField.Search(['ModelId', '=', modelId] as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
+  const fields = await MetaField.Search(['ModelId', '=', modelId], { fields: ['Id', 'Name'], limit: 5000 });
   const fieldNameById = new Map<string, string>();
   const fieldIdsByName = new Map<string, string[]>();
   const fieldIdSet = new Set<string>();
   for (const f of fields || []) {
-    const id = String((f as any)?.Id || '').trim();
-    const name = String((f as any)?.Name || '').trim();
+    const id = String(f?.Id || '').trim();
+    const name = String(f?.Name || '').trim();
     if (!id || !name) continue;
     if (SYSTEM_FIELDS.has(name)) continue;
     fieldNameById.set(id, name);
@@ -158,64 +172,61 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   }
 
   // Load rules
-  const rules = await RoleFieldRule.Search(
+  const scopeOr: BaseQueryCondition[] = [
     {
       And: [
-        ['RoleId', 'in', input.roleIds],
-        {
-          Or: [
-            {
-              And: [
-                ['MetaModelId', '=', modelId],
-                ['MetaFieldId', 'in', Array.from(fieldIdSet)],
-                ['MetaApplicationId', 'is', null],
-                ['LogicalModelName', 'is', null],
-              ],
-            },
-            {
-              And: [
-                ['MetaModelId', '=', modelId],
-                ['MetaFieldId', 'is', null],
-                ['MetaApplicationId', 'is', null],
-                ['LogicalModelName', 'is', null],
-              ],
-            },
-            ...(applicationId
-              ? [
-                  {
-                    And: [
-                      ['MetaApplicationId', '=', applicationId],
-                      ['MetaModelId', 'is', null],
-                      ['MetaFieldId', 'is', null],
-                      ['LogicalModelName', 'is', null],
-                    ],
-                  },
-                ]
-              : []),
-            {
-              And: [
-                ['MetaApplicationId', 'is', null],
-                ['MetaModelId', 'is', null],
-                ['MetaFieldId', 'is', null],
-                ['LogicalModelName', '=', modelNameWant],
-              ],
-            },
-            {
-              And: [
-                ['MetaApplicationId', 'is', null],
-                ['MetaModelId', 'is', null],
-                ['MetaFieldId', 'is', null],
-                ['LogicalModelName', 'is', null],
-              ],
-            },
-          ],
-        },
+        ['MetaModelId', '=', modelId],
+        ['MetaFieldId', 'in', Array.from(fieldIdSet)],
+        ['MetaApplicationId', 'is', null],
+        ['LogicalModelName', 'is', null],
       ],
-    } as any,
+    },
+    {
+      And: [
+        ['MetaModelId', '=', modelId],
+        ['MetaFieldId', 'is', null],
+        ['MetaApplicationId', 'is', null],
+        ['LogicalModelName', 'is', null],
+      ],
+    },
+  ];
+  if (applicationId) {
+    scopeOr.push({
+      And: [
+        ['MetaApplicationId', '=', applicationId],
+        ['MetaModelId', 'is', null],
+        ['MetaFieldId', 'is', null],
+        ['LogicalModelName', 'is', null],
+      ],
+    });
+  }
+  scopeOr.push(
+    {
+      And: [
+        ['MetaApplicationId', 'is', null],
+        ['MetaModelId', 'is', null],
+        ['MetaFieldId', 'is', null],
+        ['LogicalModelName', '=', modelNameWant],
+      ],
+    },
+    {
+      And: [
+        ['MetaApplicationId', 'is', null],
+        ['MetaModelId', 'is', null],
+        ['MetaFieldId', 'is', null],
+        ['LogicalModelName', 'is', null],
+      ],
+    }
+  );
+
+  const rules = await RoleFieldRule.Search(
+    condition({
+      And: [['RoleId', 'in', input.roleIds], { Or: scopeOr }],
+    }),
     {
       fields: ['Id', 'MetaApplicationId', 'MetaModelId', 'MetaFieldId', 'LogicalModelName', 'PermRead', 'PermWrite'],
       limit: 5000,
-    } as any
+    }
   );
 
   if (!rules || rules.length === 0) {
@@ -223,14 +234,14 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   }
 
   // Partition by scope
-  const fieldRulesByFieldName = new Map<string, any[]>();
-  const modelRules: any[] = [];
-  const appRules: any[] = [];
-  const logicalRules: any[] = [];
-  const globalRules: any[] = [];
+  const fieldRulesByFieldName = new Map<string, FieldRuleDecision[]>();
+  const modelRules: FieldRuleDecision[] = [];
+  const appRules: FieldRuleDecision[] = [];
+  const logicalRules: FieldRuleDecision[] = [];
+  const globalRules: FieldRuleDecision[] = [];
 
   for (const r of rules || []) {
-    const rid = String((r as any)?.Id ?? '').trim();
+    const rid = String(r?.Id ?? '').trim();
     const irApp = normalizeRefId(pickField(r, ['MetaApplicationId', 'meta_application_id', 'irApplicationId']));
     const irModel = normalizeRefId(pickField(r, ['MetaModelId', 'meta_model_id', 'irModelId']));
     const irField = normalizeRefId(pickField(r, ['MetaFieldId', 'meta_field_id', 'irFieldId']));
@@ -238,7 +249,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
     const permRead = assertFieldPerm(pickField(r, ['PermRead', 'perm_read', 'permRead']));
     const permWrite = assertFieldPerm(pickField(r, ['PermWrite', 'perm_write', 'permWrite']));
 
-    const rule: Record<string, unknown> = { irApp, irModel, irField, logicalName, permRead, permWrite };
+    const rule: FieldRuleDecision = { irApp, irModel, irField, logicalName, permRead, permWrite };
     if (rid) rule.__rid = rid;
 
     const isField = irField != null && irModel != null && irApp == null && logicalName == null;
@@ -269,10 +280,10 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
     }
   }
 
-  function decideInScope(xs: any[], dim: 'read' | 'write'): 'allow' | 'deny' | undefined {
+  function decideInScope(xs: FieldRuleDecision[], dim: 'read' | 'write'): 'allow' | 'deny' | undefined {
     let hasAllow = false;
     for (const r of xs || []) {
-      const v = dim === 'read' ? (r as any)?.permRead : (r as any)?.permWrite;
+      const v = dim === 'read' ? r.permRead : r.permWrite;
       if (v === 'deny') return 'deny';
       if (v === 'allow') hasAllow = true;
     }
@@ -281,7 +292,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
 
   function decideEffective(fieldName: string, dim: 'read' | 'write'): 'allow' | 'deny' {
     // Field > MetaModel > Application > LogicalModel > Global
-    const buckets: any[][] = [
+    const buckets: FieldRuleDecision[][] = [
       fieldRulesByFieldName.get(fieldName) || [],
       modelRules,
       appRules,
@@ -318,7 +329,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
         ...logicalRules,
         ...globalRules,
       ]
-        .map(r => String((r as any)?.__rid ?? '').trim())
+        .map(r => String(r.__rid ?? '').trim())
         .filter(Boolean)
     )
   ).sort();

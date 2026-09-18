@@ -173,7 +173,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
   private static _validateKind(values: Record<string, unknown>, mode: 'create' | 'update'): void {
     const touchesKind = Object.prototype.hasOwnProperty.call(values, 'Kind');
     if (!touchesKind) return;
-    (values as any).Kind = this._assertKind((values as any).Kind);
+    values.Kind = this._assertKind(values.Kind);
   }
 
   /**
@@ -183,19 +183,19 @@ export default class RoleRecordRule extends AuthzMutationModel {
     const touchesRole = Object.prototype.hasOwnProperty.call(values, 'RoleId');
     if (!touchesRole) return;
 
-    const raw = (values as any).RoleId;
+    const raw = values.RoleId;
     if (raw == null || raw === '') {
-      (values as any).RoleId = null;
+      values.RoleId = null;
       return;
     }
     if (typeof raw === 'object') {
       const id = normalizeRefId(raw);
-      (values as any).RoleId = id ? { Id: id } : null;
+      values.RoleId = id ? { Id: id } : null;
       return;
     }
     // normalizeRefId trims whitespace; blank strings become null (everyone).
     const id = normalizeRefId(raw);
-    (values as any).RoleId = id;
+    values.RoleId = id;
   }
 
   /**
@@ -207,7 +207,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
    * not warn. Full create paths and updates that send both fields are covered.
    */
   private static _warnGrantForEveryone(values: Record<string, unknown>, mode: 'create' | 'update'): void {
-    const kind = String((values as any).Kind ?? (mode === 'create' ? 'grant' : ''))
+    const kind = String(values.Kind ?? (mode === 'create' ? 'grant' : ''))
       .trim()
       .toLowerCase();
     if (kind !== 'grant') return;
@@ -215,7 +215,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
     const touchesRole = Object.prototype.hasOwnProperty.call(values, 'RoleId');
     if (mode === 'update' && !touchesRole) return;
 
-    const roleId = normalizeRefId((values as any).RoleId);
+    const roleId = normalizeRefId(values.RoleId);
     // Create without RoleId (or explicit null) ⇒ everyone; update clearing RoleId ⇒ everyone.
     const isEveryone = !roleId;
     if (!isEveryone) return;

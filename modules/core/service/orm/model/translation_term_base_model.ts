@@ -380,12 +380,12 @@ export default class TranslationTermBaseModel extends BaseModel {
     const list = Array.isArray(rows) ? rows : [];
     const hash = computeTermHash(
       list.map(row => ({
-        Module: String((row as any).Module || ''),
-        Scope: String((row as any).Scope || ''),
-        Src: String((row as any).Src || ''),
-        Kind: String((row as any).Kind || ''),
-        Value: (row as any).Value,
-        Source: String((row as any).Source || ''),
+        Module: String(row.Module || ''),
+        Scope: String(row.Scope || ''),
+        Src: String(row.Src || ''),
+        Kind: String(row.Kind || ''),
+        Value: row.Value,
+        Source: String(row.Source || ''),
       }))
     );
     const clientHash = String(req?.hash ?? '').trim();
@@ -399,14 +399,14 @@ export default class TranslationTermBaseModel extends BaseModel {
     if (moduleNames.length > 0) {
       const wanted = new Set(moduleNames);
       for (const row of list) {
-        if (normalizeKind((row as any).Kind) !== KIND_LITERAL) continue;
-        const mod = String((row as any).Module || '').trim();
-        const scope = String((row as any).Scope || '');
-        const src = String((row as any).Src || '');
+        if (normalizeKind(row.Kind) !== KIND_LITERAL) continue;
+        const mod = String(row.Module || '').trim();
+        const scope = String(row.Scope || '');
+        const src = String(row.Src || '');
         if (!mod || !src || !wanted.has(mod)) continue;
         if (!termsByModule[mod]) termsByModule[mod] = {};
         if (!termsByModule[mod][scope]) termsByModule[mod][scope] = {};
-        termsByModule[mod][scope][src] = (row as any).Value == null ? '' : String((row as any).Value);
+        termsByModule[mod][scope][src] = row.Value == null ? '' : String(row.Value);
       }
     }
 

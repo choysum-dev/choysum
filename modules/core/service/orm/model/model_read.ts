@@ -184,7 +184,7 @@ export class ReadOperations {
 
   private static resolveAttachmentReadFieldNames<T extends BaseModel>(ModelCtor: ModelCtor<T>, fields?: FieldSelection<BaseModel>): string[] {
     const runtimeMeta = getModelRuntimeMetadata(ModelCtor);
-    if (ReadOperations.isStorageBlobCarrierModel(runtimeMeta as any)) {
+    if (ReadOperations.isStorageBlobCarrierModel(runtimeMeta)) {
       return [];
     }
 
@@ -252,11 +252,11 @@ export class ReadOperations {
               ['FieldName', 'in', attachmentFields],
               ['Status', '=', 'active'],
             ],
-          } as any,
+          },
           {
-            fields: ['Id', 'OwnerRecordId', 'FieldName'] as any,
+            fields: ['Id', 'OwnerRecordId', 'FieldName'],
             limit: Math.max(1, ownerRecordIds.length * attachmentFields.length),
-          } as any
+          }
         )) as Array<{ Id?: unknown; OwnerRecordId?: unknown; FieldName?: unknown }>) || [];
     } catch {
       return;

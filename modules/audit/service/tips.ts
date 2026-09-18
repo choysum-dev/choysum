@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+
 /** Frozen tip topic for Form / Chatter field-change refresh (matches pkg/bus). */
 export const TOPIC_AUDIT_FIELD_CHANGE_APPENDED = 'audit.field_change.appended';
 
@@ -26,8 +28,9 @@ export function __setAuditPublishTipForTest(fn: PublishTipFn | null | undefined)
 
 export function resolvePublishTip(): PublishTipFn | null {
   if (publishTipOverride !== undefined) return publishTipOverride;
-  const publish = (globalThis as { $choysum?: { bus?: { publish?: PublishTipFn } } }).$choysum?.bus?.publish;
-  return typeof publish === 'function' ? publish.bind((globalThis as any).$choysum.bus) : null;
+  const bus = getChoysumRuntime()?.bus;
+  const publish = bus?.publish;
+  return typeof publish === 'function' ? publish.bind(bus) : null;
 }
 
 function parseAtMillis(at: Date | string | number | null | undefined): number | undefined {

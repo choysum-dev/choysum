@@ -68,7 +68,7 @@ export default class Bank extends BaseModel {
   @Constraint<Bank>(['Code'])
   validateBankConstraint(): void {
     if (this.Code != null) {
-      (this as any).Code = normalizeCodeOptional(this.Code as string);
+      this.Code = normalizeCodeOptional(this.Code as string) ?? undefined;
     }
   }
 }

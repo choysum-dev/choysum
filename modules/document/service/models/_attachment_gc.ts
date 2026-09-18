@@ -4,8 +4,10 @@
 import { normalizeOptionalString, normalizeOptionalNonNegativeInt, asRecord } from '@/core/service/utils/normalization';
 import { parseISODate, toDate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
+import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
 import { computeRetryBackoffSeconds } from '@/core/service/utils/backoff';
 import { resolveGcBatchSize } from './_gc_config';
+import type { BaseQueryCondition } from '@/core/service/api/query';
 
 const DEFAULT_UNBOUND_OBJECT_GRACE_SECONDS = 24 * 60 * 60;
 const DEFAULT_CLEANUP_MAX_ATTEMPTS = 8;
@@ -78,7 +80,7 @@ export async function garbageCollectUnboundObjects(
   let lastId: string | null = null;
 
   for (;;) {
-    const baseConditions: any[] = [
+    const baseConditions: BaseQueryCondition[] = [
       ['Status', '=', 'active'],
       ['UpdatedAt', '<', graceCutoff],
     ];
@@ -86,10 +88,10 @@ export async function garbageCollectUnboundObjects(
       baseConditions.push(['Id', '>', lastId]);
     }
 
-    const candidates = await modelOps.Search({ And: baseConditions } as any, { limit: batch, orderBy: { field: 'Id', order: 'asc' } as any } as any);
+    const candidates = await modelOps.Search({ And: baseConditions }, { limit: batch, orderBy: { field: 'Id', order: 'asc' } });
     if (!candidates.length) break;
 
-    const candidateIds = candidates.map(c => normalizeOptionalString((c as any)?.Id)).filter((id): id is string => Boolean(id));
+    const candidateIds = candidates.map(c => normalizeOptionalString((c as { Id?: unknown })?.Id)).filter((id): id is string => Boolean(id));
     const activeBindings =
       candidateIds.length > 0
         ? await AttachmentBinding.Search(
@@ -98,15 +100,15 @@ export async function garbageCollectUnboundObjects(
                 ['AttachmentContentId', 'in', candidateIds],
                 ['Status', '=', 'active'],
               ],
-            } as any,
-            { fields: ['AttachmentContentId'] as any } as any
+            },
+            { fields: ['AttachmentContentId'] as const }
           )
         : [];
-    const activeContentIds = new Set(activeBindings.map(b => normalizeOptionalString((b as any)?.AttachmentContentId)).filter(Boolean));
+    const activeContentIds = new Set(activeBindings.map(b => normalizeOptionalString(b.AttachmentContentId)).filter(Boolean));
 
     for (const candidate of candidates) {
       scannedCount += 1;
-      const contentId = normalizeOptionalString((candidate as any)?.Id);
+      const contentId = normalizeOptionalString((candidate as { Id?: unknown })?.Id);
       if (!contentId) {
         skippedCount += 1;
         continue;
@@ -117,7 +119,7 @@ export async function garbageCollectUnboundObjects(
         continue;
       }
 
-      const metadata = asRecord((candidate as any)?.MetadataJson) ?? undefined;
+      const metadata = asRecord((candidate as { MetadataJson?: unknown })?.MetadataJson) ?? undefined;
       const cleanup = readCleanupState(metadata);
       const attempts = Math.max(0, Math.trunc(Number(cleanup.attempts || 0)));
       const state = normalizeOptionalString(cleanup.state)?.toLowerCase();
@@ -134,18 +136,19 @@ export async function garbageCollectUnboundObjects(
 
       const nextAttempt = attempts + 1;
       try {
-        const storedContentId = normalizeOptionalString((candidate as any)?.StoredContentId);
+        const storedContentId = normalizeOptionalString((candidate as { StoredContentId?: unknown })?.StoredContentId);
         if (!storedContentId) throw new Error('attachment content missing storedContentId');
 
-        const documentBridge = (globalThis as any)?.$choysum?.document;
+        const documentBridge = getChoysumRuntime()?.document;
         const deleteStoredContent =
           typeof documentBridge?.deleteStoredContent === 'function' ? documentBridge.deleteStoredContent.bind(documentBridge) : undefined;
         if (!deleteStoredContent) throw new Error('document.deleteStoredContent bridge is unavailable');
         try {
           await deleteStoredContent({ storedContentId });
-        } catch (err: any) {
-          const errMsg = String(err?.message || err).toLowerCase();
-          const isNotFound = errMsg.includes('not found') || errMsg.includes('nosuchkey') || err?.code === 'NoSuchKey' || err?.status === 404;
+        } catch (err: unknown) {
+          const errBag = err as { message?: unknown; code?: unknown; status?: unknown };
+          const errMsg = String(errBag.message || err).toLowerCase();
+          const isNotFound = errMsg.includes('not found') || errMsg.includes('nosuchkey') || errBag.code === 'NoSuchKey' || errBag.status === 404;
           if (!isNotFound) throw err;
         }
 
@@ -154,12 +157,12 @@ export async function garbageCollectUnboundObjects(
           {
             Status: 'deleted',
             MetadataJson: writeCleanupState(metadata, { state: 'deleted', attempts: nextAttempt, at: nowAt }),
-          } as any,
-          ['Id', 'Status', 'MetadataJson'] as any
+          },
+          ['Id', 'Status', 'MetadataJson']
         );
         deletedCount += 1;
       } catch (error) {
-        const message = String((error as any)?.message || error || 'attachment cleanup failed');
+        const message = String((error as { message?: unknown })?.message || error || 'attachment cleanup failed');
         const terminal = nextAttempt >= maxAttempts;
         const nextRetryAtISO = terminal ? undefined : new Date(now.getTime() + computeRetryBackoffSeconds(nextAttempt, retryBaseSeconds) * 1000).toISOString();
         try {
@@ -177,7 +180,7 @@ export async function garbageCollectUnboundObjects(
             errorStateValues.UpdatedAt = now;
             errorStateFields.push('UpdatedAt');
           }
-          await modelOps.UpdateById(contentId, errorStateValues as any, errorStateFields as any);
+          await modelOps.UpdateById(contentId, errorStateValues, errorStateFields);
         } catch {
           // Metadata update is best-effort; don't abort the entire GC run.
         }
@@ -186,7 +189,7 @@ export async function garbageCollectUnboundObjects(
       }
     }
     const lastCandidate = candidates[candidates.length - 1];
-    const nextLastId = normalizeOptionalString((lastCandidate as any)?.Id);
+    const nextLastId = normalizeOptionalString((lastCandidate as { Id?: unknown })?.Id);
     if (!nextLastId) {
       throw new Error('Garbage collection aborted: candidate is missing a valid Id');
     }

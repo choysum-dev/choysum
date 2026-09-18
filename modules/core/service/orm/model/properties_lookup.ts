@@ -8,7 +8,9 @@ import { resolveModelConstructor } from './model_registry';
  * Resolved from the application model pool as `{app}.PropertyDefinition`.
  */
 export type PropertyDefinitionModelCtor = {
-  Search: (...args: any[]) => Promise<any[]>;
+  Search: (condition: unknown, options?: unknown) => Promise<Array<Record<string, unknown>>>;
+  Delete?: (condition: unknown) => Promise<number>;
+  DeleteById?: (id: string) => Promise<unknown>;
 };
 
 const testOverrides = new Map<string, PropertyDefinitionModelCtor | undefined>();
@@ -51,7 +53,7 @@ export function lookupPropertyDefinitionModel(
 
   const fullName = `${app}.PropertyDefinition`;
   const ctor = resolveModelConstructor(fullName);
-  if (!ctor || typeof (ctor as any).Search !== 'function') {
+  if (!ctor || typeof ctor.Search !== 'function') {
     return undefined;
   }
   return ctor as unknown as PropertyDefinitionModelCtor;

@@ -279,7 +279,7 @@ async function assertUploadSessionOwnerWriteAuthorization(
 async function markUploadSessionExpired(uploadId: string, session: AttachmentUploadSession): Promise<void> {
   if (session.Status === 'expired') return;
   const AttachmentUploadSessionModel = getAttachmentUploadSessionModel();
-  await AttachmentUploadSessionModel.UpdateById(uploadId, { Status: 'expired' } as any, ['Id'] as any);
+  await AttachmentUploadSessionModel.UpdateById(uploadId, { Status: 'expired' }, ['Id'] as const);
 }
 
 async function resolveStoredContentIdForFinalize(uploadedPayloadRef: UploadedPayloadRef | undefined, uploadId: string, companyId: string): Promise<string> {
@@ -298,7 +298,7 @@ async function resolveStoredContentIdForFinalize(uploadedPayloadRef: UploadedPay
   const storedContentId = requireText(uploadedPayloadRef.storedContentId, 'storedContentId');
   const StoredContentModel = getStoredContentModel();
   const stored = await StoredContentModel.mustLoadByID(storedContentId);
-  const normalizedCompanyID = requireText((stored as any)?.CompanyId, 'storedContent.companyId');
+  const normalizedCompanyID = requireText(stored.CompanyId, 'storedContent.companyId');
   if (normalizedCompanyID !== companyId) {
     throwDocumentError(
       DocumentErrCode.PERMISSION_DENIED,
@@ -312,7 +312,7 @@ async function resolveStoredContentIdForFinalize(uploadedPayloadRef: UploadedPay
     );
   }
 
-  const storedStatus = normalizeOptionalString((stored as any)?.Status);
+  const storedStatus = normalizeOptionalString(stored.Status);
   if (storedStatus !== 'active') {
     throwDocumentError(
       DocumentErrCode.FAILED_PRECONDITION,
@@ -332,7 +332,11 @@ async function resolveStoredContentIdForFinalize(uploadedPayloadRef: UploadedPay
 
 async function mustLoadAttachmentContent(attachmentContentId: string): Promise<AttachmentContent> {
   return mustLoadOne<AttachmentContent>(
-    (condition, opts) => AttachmentContent.Search(condition, opts as any) as Promise<AttachmentContent[]>,
+    (cond, opts) =>
+      AttachmentContent.Search(
+        cond as QueryCondition<AttachmentContent>,
+        opts as SearchOptions<AttachmentContent> | undefined
+      ) as Promise<AttachmentContent[]>,
     ['Id', '=', attachmentContentId],
     _t('Attachment content not found', { scope: 'service/models/attachment_object' }),
     { attachmentContentId }
@@ -546,8 +550,8 @@ async function commitUploadPut(req: CommitUploadPutReq): Promise<CommitUploadPut
       UploadedChecksumSha256: normalized.payloadReceipt.checksumSha256,
       UploadedContentType: contentType,
       UploadedPayloadRef: buildUploadedPayloadRefFromPayloadId(normalized.payloadReceipt.payloadId),
-    } as any,
-    ['Id', 'Status', 'UploadedSizeBytes', 'UploadedChecksumSha256', 'UploadedContentType', 'UploadedPayloadRef'] as any
+    },
+    ['Id', 'Status', 'UploadedSizeBytes', 'UploadedChecksumSha256', 'UploadedContentType', 'UploadedPayloadRef'] as const
   );
 
   return {
@@ -600,11 +604,11 @@ async function createUploadSessionInternal(req: PrepareUploadReq): Promise<strin
       ExpiresAt: expiresAt,
       Status: 'prepared',
       CompanyId: companyId,
-    } as any,
-    ['Id'] as any
+    },
+    ['Id'] as const
   );
 
-  return requireText((created as any)?.Id, 'uploadId');
+  return requireText((created as { Id?: unknown }).Id, 'uploadId');
 }
 
 async function finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadResp> {
@@ -653,8 +657,8 @@ async function finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadR
         ['SizeBytes', '=', sizeBytes],
         ['ChecksumSha256', '=', checksumSha256],
       ],
-    } as any,
-    { limit: 1 } as any
+    },
+    { limit: 1 }
   );
   const reusableContent = (existingContentRows[0] as AttachmentContent | undefined) ?? null;
 
@@ -668,19 +672,19 @@ async function finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadR
         ChecksumSha256: checksumSha256,
         Status: 'active',
         CompanyId: companyId,
-      } as any,
-      ['Id', 'StoredContentId', 'SizeBytes', 'MimeType', 'ChecksumSha256', 'Status', 'ImageWidth', 'ImageHeight', 'ImageFormat'] as any
+      },
+      ['Id', 'StoredContentId', 'SizeBytes', 'MimeType', 'ChecksumSha256', 'Status', 'ImageWidth', 'ImageHeight', 'ImageFormat'] as const
     )) as AttachmentContent);
 
-  const attachmentContentId = requireText((created as any)?.Id, 'attachmentContentId');
+  const attachmentContentId = requireText((created as { Id?: unknown }).Id, 'attachmentContentId');
   const AttachmentUploadSessionModel = getAttachmentUploadSessionModel();
   await AttachmentUploadSessionModel.UpdateById(
     normalizedUploadId,
     {
       Status: 'finalized',
       AttachmentContentId: attachmentContentId,
-    } as any,
-    ['Id', 'Status', 'AttachmentContentId'] as any
+    },
+    ['Id', 'Status', 'AttachmentContentId'] as const
   );
 
   return buildFinalizeResp(created as AttachmentContent);

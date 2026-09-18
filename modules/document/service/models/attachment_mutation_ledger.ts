@@ -8,6 +8,8 @@ import { MutationAction, MutationLedgerStatus } from '../contracts';
 import { _lt } from '../i18n';
 import { resolveGcBatchSize } from './_gc_config';
 import { paginateBatch } from '@/core/service/utils/pagination';
+import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import type Company from '@/base/service/models/company';
 
 const DEFAULT_MUTATION_LEDGER_RETENTION_DAYS = 30;
@@ -120,12 +122,16 @@ export default class AttachmentMutationLedger extends BaseModel {
 
     const self = this;
     const purgedCount = await paginateBatch(
-      (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
+      (cond, opts) =>
+        self.Search(
+          cond as QueryCondition<AttachmentMutationLedger>,
+          opts as SearchOptions<AttachmentMutationLedger>
+        ) as Promise<Array<{ Id?: unknown }>>,
       { And: [['UpdatedAt', '<', cutoff]] },
       async ledger => {
-        const ledgerId = String((ledger as any)?.Id || '').trim();
+        const ledgerId = normalizeRefId((ledger as { Id?: unknown }).Id) ?? '';
         if (!ledgerId) return;
-        await self.DeleteById(ledgerId as any);
+        await self.DeleteById(ledgerId);
       },
       { batch, fields: ['Id'] }
     );

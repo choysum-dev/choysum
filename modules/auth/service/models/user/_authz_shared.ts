@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getIdentity, getReadonlyCtx } from '@/core/service/api/context';
+import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
 import {
   uniqStrings,
   normalizeRpcRequireKey,
@@ -18,16 +19,24 @@ export { sortStrings, maybeId, normalizeScopeRefId, normalizeUiResourceId, parse
 
 export { withPermissionGraphBypass } from '@/core/service/api/authz_bypass';
 
+type CompanyScopeMeta = {
+  activeCompanyId?: unknown;
+  enabledCompanyIds?: unknown;
+};
+
 /**
  * Read active and enabled company scope from request overrides or identity metadata.
  */
 export function getCompanyScopeFromRequestContext(): { activeCompanyId: string; enabledCompanyIds: string[] } {
-  const ctx: any = (getReadonlyCtx() ?? {}) as any;
-  const identity: any = (getIdentity() ?? {}) as any;
-  const meta: any = (identity?.metadata ?? identity?.Metadata ?? {}) as any;
+  const ctx = getReadonlyCtx();
+  const identity = getIdentity() as unknown as {
+    metadata?: CompanyScopeMeta;
+    Metadata?: CompanyScopeMeta;
+  };
+  const meta = identity.metadata ?? identity.Metadata ?? {};
 
-  const activeCompanyId = String(ctx?.activeCompanyId ?? meta?.activeCompanyId ?? '').trim();
-  const enabledCompanyIds = uniqStrings(ctx?.enabledCompanyIds ?? meta?.enabledCompanyIds ?? []);
+  const activeCompanyId = String(ctx.activeCompanyId ?? meta.activeCompanyId ?? '').trim();
+  const enabledCompanyIds = uniqStrings(ctx.enabledCompanyIds ?? meta.enabledCompanyIds ?? []);
 
   if (activeCompanyId && !enabledCompanyIds.includes(activeCompanyId)) {
     return { activeCompanyId, enabledCompanyIds: [activeCompanyId, ...enabledCompanyIds] };
@@ -96,7 +105,7 @@ export function hashPassword(password: string): string {
     throw new TypeError('Password must be a string');
   }
   const prefixMarker = '$CH$';
-  const crypto = (globalThis as any)?.$choysum?.crypto;
+  const crypto = getChoysumRuntime()?.crypto;
   if (!crypto) {
     throw new Error('Choysum crypto subsystem is not initialized');
   }
@@ -115,7 +124,7 @@ export function verifyPassword(password: string, hashedPassword: string): boolea
     return false;
   }
   const prefixMarker = '$CH$';
-  const crypto = (globalThis as any)?.$choysum?.crypto;
+  const crypto = getChoysumRuntime()?.crypto;
   if (!crypto) {
     throw new Error('Choysum crypto subsystem is not initialized');
   }

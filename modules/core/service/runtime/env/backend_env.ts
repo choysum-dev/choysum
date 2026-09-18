@@ -5,7 +5,9 @@
  * Resolve backend environment variables from runtime global or import.meta fallback.
  */
 export function getBackendEnv(): Record<string, unknown> {
-  return (((globalThis as any)?.__choysumBackendEnv || (import.meta as any)?.env || {}) as Record<string, unknown>) || {};
+  const g = globalThis as { __choysumBackendEnv?: Record<string, unknown> };
+  const meta = import.meta as { env?: Record<string, unknown> };
+  return g.__choysumBackendEnv || meta.env || {};
 }
 
 /**
@@ -14,7 +16,7 @@ export function getBackendEnv(): Record<string, unknown> {
 export function getBackendEnvText(...keys: string[]): string {
   const env = getBackendEnv();
   for (const key of keys) {
-    const value = String((env as any)?.[key] ?? '').trim();
+    const value = String(env[key] ?? '').trim();
     if (value) return value;
   }
   return '';
@@ -40,7 +42,7 @@ export function getBackendEnvPositiveInt(keyOrKeys: string | readonly string[], 
   const keys = typeof keyOrKeys === 'string' ? [keyOrKeys] : keyOrKeys;
   const env = getBackendEnv();
   for (const k of keys) {
-    const raw = (env as any)?.[k];
+    const raw = env[k];
     const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
     if (Number.isFinite(parsed) && parsed > 0) {
       return Math.floor(parsed);

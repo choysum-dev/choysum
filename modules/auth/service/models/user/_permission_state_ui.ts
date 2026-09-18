@@ -23,6 +23,29 @@ type UiResourceMeta = {
   requires: string[];
 };
 
+type UiResourceRow = {
+  Id?: unknown;
+  id?: unknown;
+  Name?: unknown;
+  name?: unknown;
+  Type?: unknown;
+  ParentId?: unknown;
+  parentId?: unknown;
+  MetaApplicationId?: unknown;
+  Requires?: unknown;
+  requires?: unknown;
+};
+
+type MenuRouteRow = {
+  MenuUiResourceId?: unknown;
+  RouteUiResourceId?: unknown;
+};
+
+type RouteActionRow = {
+  RouteUiResourceId?: unknown;
+  ActionUiResourceId?: unknown;
+};
+
 export type PermissionStateUiOutput = Record<string, { ui?: { routes?: string[]; menus?: string[]; actions?: string[] } }>;
 
 function ensureBucket(byCompany: PermissionStateUiOutput, k: string): Required<NonNullable<PermissionStateUiOutput[string]>> {
@@ -53,7 +76,7 @@ export async function buildUiPermissionProjection(
   const scope = (rid: string) => applyToScope.bind(null, rid, roleScopesById);
 
   // 3) Generate ui.routes, ui.menus, and ui.actions from UI grants and RPC requires.
-  const uiGrants = await RoleUiResource.Search(['RoleId', 'in', roleIds] as any, {
+  const uiGrants = await RoleUiResource.Search(['RoleId', 'in', roleIds], {
     fields: ['RoleId', 'MetaApplicationId', 'MetaUiResourceId', 'Mode'],
     limit: 50000,
   });
@@ -99,10 +122,10 @@ export async function buildUiPermissionProjection(
   };
 
   for (const g of uiGrants || []) {
-    const roleId = maybeId((g as any).RoleId);
-    const appId = normalizeScopeRefId((g as any).MetaApplicationId);
-    const resourceId = normalizeUiResourceId((g as any).MetaUiResourceId);
-    const mode = String((g as any).Mode ?? 'allow')
+    const roleId = maybeId(g.RoleId);
+    const appId = normalizeScopeRefId(g.MetaApplicationId);
+    const resourceId = normalizeUiResourceId(g.MetaUiResourceId);
+    const mode = String(g.Mode ?? 'allow')
       .trim()
       .toLowerCase();
     if (!roleId) continue;
@@ -133,24 +156,21 @@ export async function buildUiPermissionProjection(
     }
   }
 
-  const resources = await MetaUiResource.Search(
-    [] as any,
-    {
-      fields: ['Id', 'Name', 'Type', 'ParentId', 'MetaApplicationId', 'Requires'],
-      limit: 100000,
-    } as any
-  );
+  const resources = await MetaUiResource.Search([], {
+    fields: ['Id', 'Name', 'Type', 'ParentId', 'MetaApplicationId', 'Requires'],
+    limit: 100000,
+  });
 
   const resourceNameById = new Map<string, string>();
-  for (const row of resources || []) {
-    const id = String((row as any)?.Id ?? (row as any)?.id ?? '').trim();
-    const name = String((row as any)?.Name ?? (row as any)?.name ?? '').trim();
+  for (const row of (resources || []) as UiResourceRow[]) {
+    const id = String(row?.Id ?? row?.id ?? '').trim();
+    const name = String(row?.Name ?? row?.name ?? '').trim();
     if (!id || !name) continue;
     resourceNameById.set(id, name);
   }
 
-  const allResources: UiResourceMeta[] = (resources || [])
-    .map((row: any) => ({
+  const allResources: UiResourceMeta[] = ((resources || []) as UiResourceRow[])
+    .map(row => ({
       dbId: String(row?.Id ?? row?.id ?? '').trim(),
       resourceId: String(row?.Name ?? row?.name ?? '').trim(),
       type: String(row?.Type || '')
@@ -161,13 +181,13 @@ export async function buildUiPermissionProjection(
         return pid ? String(resourceNameById.get(pid) || '').trim() : '';
       })(),
       appId: normalizeScopeRefId(row?.MetaApplicationId),
-      requires: parseJsonStringArray((row as any)?.Requires ?? (row as any)?.requires),
+      requires: parseJsonStringArray(row?.Requires ?? row?.requires),
     }))
     .filter(r => !!r.resourceId && (r.type === 'ROUTE' || r.type === 'MENU' || r.type === 'ACTION'));
 
   const [menuRouteRows, routeActionRows] = await Promise.all([
-    MetaUiResourceMenuRoute.Search([] as any, { fields: ['MenuUiResourceId', 'RouteUiResourceId'], limit: 100000 } as any),
-    MetaUiResourceRouteAction.Search([] as any, { fields: ['RouteUiResourceId', 'ActionUiResourceId'], limit: 100000 } as any),
+    MetaUiResourceMenuRoute.Search([], { fields: ['MenuUiResourceId', 'RouteUiResourceId'], limit: 100000 }),
+    MetaUiResourceRouteAction.Search([], { fields: ['RouteUiResourceId', 'ActionUiResourceId'], limit: 100000 }),
   ]);
 
   const resourceMetaById = new Map<string, UiResourceMeta>();
@@ -181,9 +201,9 @@ export async function buildUiPermissionProjection(
   }
 
   const menuIdsByRouteId = new Map<string, Set<string>>();
-  for (const row of menuRouteRows || []) {
-    const menuDbId = normalizeUiResourceId((row as any)?.MenuUiResourceId);
-    const routeDbId = normalizeUiResourceId((row as any)?.RouteUiResourceId);
+  for (const row of (menuRouteRows || []) as MenuRouteRow[]) {
+    const menuDbId = normalizeUiResourceId(row?.MenuUiResourceId);
+    const routeDbId = normalizeUiResourceId(row?.RouteUiResourceId);
     const menuId = menuDbId ? String(resourceNameById.get(menuDbId) || '').trim() : '';
     const routeId = routeDbId ? String(resourceNameById.get(routeDbId) || '').trim() : '';
     if (!menuId || !routeId) continue;
@@ -196,9 +216,9 @@ export async function buildUiPermissionProjection(
   }
 
   const routeIdsByActionId = new Map<string, Set<string>>();
-  for (const row of routeActionRows || []) {
-    const routeDbId = normalizeUiResourceId((row as any)?.RouteUiResourceId);
-    const actionDbId = normalizeUiResourceId((row as any)?.ActionUiResourceId);
+  for (const row of (routeActionRows || []) as RouteActionRow[]) {
+    const routeDbId = normalizeUiResourceId(row?.RouteUiResourceId);
+    const actionDbId = normalizeUiResourceId(row?.ActionUiResourceId);
     const routeId = routeDbId ? String(resourceNameById.get(routeDbId) || '').trim() : '';
     const actionId = actionDbId ? String(resourceNameById.get(actionDbId) || '').trim() : '';
     if (!routeId || !actionId) continue;

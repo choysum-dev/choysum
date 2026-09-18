@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Decimal, Field, Model } from '@/core/service';
+import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { condition } from '@/core/service/api/query';
 import { toPositiveDecimal } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import UoMCategory from './uom_category';
@@ -87,15 +88,15 @@ export default class UoM extends BaseModel {
 
   private static async ensureCategoryReferenceInvariant(categoryId: string, isReference: boolean, currentId?: string): Promise<void> {
     const refs = await this.Search(
-      {
+      condition<UoM>({
         And: [
           ['CategoryId', '=', categoryId],
           ['IsReference', '=', true],
         ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
+      }),
+      { fields: ['Id'], limit: 2 }
     );
-    const refsExcludingCurrent = (refs || []).filter((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const refsExcludingCurrent = (refs || []).filter(item => String(item?.Id || '') !== String(currentId || ''));
 
     if (isReference) {
       if (refsExcludingCurrent.length > 0) {
@@ -109,7 +110,14 @@ export default class UoM extends BaseModel {
     }
   }
 
-  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async validateEntity(values: {
+    Name?: unknown;
+    CategoryId?: unknown;
+    IsReference?: unknown;
+    Factor?: unknown;
+    Rounding?: unknown;
+    ReferenceSlotKey?: unknown;
+  }, currentId?: string): Promise<void> {
     const name = assertRequiredTranslatedText(values.Name, 'Name');
     const categoryId = assertRefId(values.CategoryId, 'CategoryId');
 
@@ -150,7 +158,7 @@ export default class UoM extends BaseModel {
 
   @Constraint<UoM>(['Name', 'CategoryId', 'IsReference', 'Factor', 'Rounding', 'ReferenceSlotKey'])
   async validateUoMConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
-    await UoM.validateEntity(this as any, currentId);
+    const currentId = String(this.Id || '').trim() || undefined;
+    await UoM.validateEntity(this, currentId);
   }
 }

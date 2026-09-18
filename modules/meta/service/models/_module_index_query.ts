@@ -210,18 +210,20 @@ export function projectFields(rows: ModuleIndexRecord[], requestedFields: string
 
   return rows.map(row => {
     const projected = {} as ModuleIndexRecord;
+    const source = row as Record<string, unknown>;
     for (const field of fields) {
-      (projected as any)[field] = (row as any)?.[field];
+      (projected as Record<string, unknown>)[field] = source[field];
     }
     return projected;
   });
 }
 
-export function toPlainRecord(input: any): ModuleIndexRecord {
+export function toPlainRecord(input: unknown): ModuleIndexRecord {
   if (!input || typeof input !== 'object') return {};
-  if (typeof input.toPlainObject === 'function') {
+  const candidate = input as { toPlainObject?: () => unknown };
+  if (typeof candidate.toPlainObject === 'function') {
     try {
-      return { ...(input.toPlainObject() as Record<string, unknown>) } as ModuleIndexRecord;
+      return { ...(candidate.toPlainObject() as Record<string, unknown>) } as ModuleIndexRecord;
     } catch {
       // fall back to enumerable keys
     }
@@ -230,7 +232,7 @@ export function toPlainRecord(input: any): ModuleIndexRecord {
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(input)) {
     if (blockedKeys.has(key)) continue;
-    out[key] = input[key];
+    out[key] = (input as Record<string, unknown>)[key];
   }
   return out as ModuleIndexRecord;
 }

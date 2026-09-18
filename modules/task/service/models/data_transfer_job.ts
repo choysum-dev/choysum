@@ -210,7 +210,7 @@ export default class DataTransferJob extends BaseModel {
       userId
     );
 
-    await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
+    await this.UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
 
     return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
   }
@@ -256,14 +256,14 @@ export default class DataTransferJob extends BaseModel {
       );
     } catch (err) {
       try {
-        await (this as any).DeleteById(row.Id);
+        await this.DeleteById(row.Id);
       } catch {
         // best-effort cleanup when enqueue fails after row creation
       }
       throw err;
     }
 
-    await (this as any).UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
+    await this.UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
 
     return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
   }
@@ -295,6 +295,6 @@ export default class DataTransferJob extends BaseModel {
     if (artifactRef) {
       values.ReportRef = artifactRef;
     }
-    await (this as any).UpdateById(id, values as Partial<DataTransferJob>);
+    await this.UpdateById(id, values as Partial<DataTransferJob>);
   }
 }

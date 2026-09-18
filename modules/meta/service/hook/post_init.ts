@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { HookPostInit } from '@/core/service/api/model';
+import { condition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type Schedule from '@/task/service/models/schedule';
 
@@ -15,7 +16,7 @@ type ScheduleRecord = {
   Timezone?: string;
   TargetApp?: string;
   FullMethod?: string;
-  PayloadTemplateJson?: Record<string, any> | null;
+  PayloadTemplateJson?: Record<string, unknown> | null;
 };
 
 const scheduleName = 'meta.module_index.daily_sync';
@@ -25,9 +26,9 @@ const cronExpr = '0 0 * * *';
 const timezone = 'UTC';
 const payloadTemplate = { originType: 'local', force: true };
 
-function normalizePayload(value: unknown): Record<string, any> {
+function normalizePayload(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object') return {};
-  return value as Record<string, any>;
+  return value as Record<string, unknown>;
 }
 
 function payloadEquals(left: unknown, right: unknown): boolean {
@@ -47,7 +48,7 @@ function needsUpdate(existing: ScheduleRecord): boolean {
 }
 
 async function listScheduleByName(name: string): Promise<ScheduleRecord[]> {
-  const items = await ScheduleService.ListSchedules({ And: [['Name', '=', name]] } as any, { limit: 1 } as any);
+  const items = await ScheduleService.ListSchedules(condition({ And: [['Name', '=', name]] }), { limit: 1 });
   return Array.isArray(items) ? (items as ScheduleRecord[]) : [];
 }
 
@@ -63,7 +64,7 @@ async function updateSchedule(scheduleId: string): Promise<void> {
     TargetApp: targetApp,
     FullMethod: fullMethod,
     PayloadTemplateJson: payloadTemplate,
-  } as any);
+  });
 }
 
 /**

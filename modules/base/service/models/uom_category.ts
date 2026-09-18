@@ -39,7 +39,7 @@ export default class UoMCategory extends BaseModel {
   @Constraint<UoMCategory>(['Code'])
   validateUoMCategoryConstraint(): void {
     if (this.Code != null) {
-      (this as any).Code = normalizeCodeOptional(this.Code as string);
+      this.Code = normalizeCodeOptional(this.Code as string) ?? undefined;
     }
   }
 }

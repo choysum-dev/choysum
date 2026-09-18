@@ -3,19 +3,80 @@
 
 import { ChoysumError, GrpcCode, raiseDomainError } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
+import { condition } from '@/core/service/api/query';
 import { asBigInt, isExpiredAt, assertOptionalNonEmptyString, parsePositiveInt } from '@/core/service/utils/normalization';
 import { buildPaddedNumberItems, resolvePaddedNumberFormat } from '@/core/service/utils/format';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { mapNormalizationToBase, assertCodeRequired } from './_normalizers';
 import { buildSequenceIdempotencyPayload, buildSequenceNextResult } from './_sequence_next_payload';
 import type Sequence from './sequence';
+import type SequenceIdempotency from './sequence_idempotency';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
+import type { SequenceIdempotencyPayload } from './_sequence_next_payload';
 
 const { _t } = createTranslate('base');
 
 const IDEMPOTENCY_TTL_ENV_KEY = 'CHOYSUM_BASE_SEQUENCE_IDEMPOTENCY_TTL_DAYS';
 const DEFAULT_IDEMPOTENCY_TTL_DAYS = 7;
 const IDEMPOTENCY_KEY_MAX_LENGTH = 200;
+
+const SEQUENCE_LOOKUP_FIELDS = [
+  'Id',
+  'CompanyId',
+  'CompanyScopeKey',
+  'Code',
+  'Prefix',
+  'Suffix',
+  'Padding',
+  'NextNumber',
+  'IsActive',
+  'UpdatedAt',
+] as const;
+
+const IDEMPOTENCY_HIT_FIELDS = [
+  'Id',
+  'SequenceId',
+  'CodeSnapshot',
+  'FormatSnapshot',
+  'IdempotencyKey',
+  'Count',
+  'DryRun',
+  'RangeStart',
+  'RangeEnd',
+  'ExpiresAt',
+] as const;
+
+type IdempotencyHit = {
+  Id?: string;
+  SequenceId?: unknown;
+  CodeSnapshot?: unknown;
+  FormatSnapshot?: unknown;
+  IdempotencyKey?: unknown;
+  Count?: unknown;
+  DryRun?: unknown;
+  RangeStart?: unknown;
+  RangeEnd?: unknown;
+  ExpiresAt?: unknown;
+};
+
+type SequenceRow = {
+  Id: string;
+  CompanyId?: unknown;
+  CompanyScopeKey?: string;
+  Code?: string;
+  Prefix?: string;
+  Suffix?: string;
+  Padding?: number;
+  NextNumber?: unknown;
+  IsActive?: boolean;
+  UpdatedAt?: unknown;
+};
+
+type SequenceOps = {
+  Search: (condition: unknown, options?: unknown) => Promise<SequenceRow[]>;
+  Browse: (id: string, fields?: unknown) => Promise<SequenceRow | null | undefined>;
+  Update: (condition: unknown, values: unknown, fields?: unknown) => Promise<unknown>;
+};
 
 function assertCount(count: unknown): number {
   const n = mapNormalizationToBase(
@@ -39,24 +100,24 @@ function assertIdempotencyKey(key: unknown): string | undefined {
   );
 }
 
-async function findIdempotencyHit(sequenceId: string, idempotencyKey: string): Promise<any | undefined> {
-  const { default: SequenceIdempotency } = await import('./sequence_idempotency');
-  const existing = await SequenceIdempotency.Search(
-    {
+async function findIdempotencyHit(sequenceId: string, idempotencyKey: string): Promise<IdempotencyHit | undefined> {
+  const { default: SequenceIdempotencyModel } = await import('./sequence_idempotency');
+  const existing = await SequenceIdempotencyModel.Search(
+    condition<SequenceIdempotency>({
       And: [
         ['SequenceId', '=', sequenceId],
         ['IdempotencyKey', '=', idempotencyKey],
       ],
-    } as any,
+    }),
     {
       limit: 1,
-      fields: ['Id', 'SequenceId', 'CodeSnapshot', 'FormatSnapshot', 'IdempotencyKey', 'Count', 'DryRun', 'RangeStart', 'RangeEnd', 'ExpiresAt'] as any,
-    } as any
+      fields: [...IDEMPOTENCY_HIT_FIELDS],
+    }
   );
-  return existing?.[0] as any;
+  return existing?.[0] as IdempotencyHit | undefined;
 }
 
-function buildItemsFromIdempotencyHit(seq: Sequence, hit: any, count: number): SequenceNextItem[] {
+function buildItemsFromIdempotencyHit(seq: Sequence, hit: IdempotencyHit, count: number): SequenceNextItem[] {
   const { prefix, suffix, padding } = resolvePaddedNumberFormat(hit?.FormatSnapshot, {
     prefix: seq.Prefix,
     suffix: seq.Suffix,
@@ -66,7 +127,7 @@ function buildItemsFromIdempotencyHit(seq: Sequence, hit: any, count: number): S
   return buildPaddedNumberItems(start, count, prefix, suffix, padding);
 }
 
-function assertIdempotencyRequestMatch(hit: any, count: number, dryRun: boolean): void {
+function assertIdempotencyRequestMatch(hit: IdempotencyHit, count: number, dryRun: boolean): void {
   if (Number(hit?.Count) !== count || Boolean(hit?.DryRun) !== dryRun) {
     throw new ChoysumError({
       domain: 'base',
@@ -76,41 +137,37 @@ function assertIdempotencyRequestMatch(hit: any, count: number, dryRun: boolean)
   }
 }
 
-async function resolveSequence(
-  model: { Search: (condition: any, options: any) => Promise<any[]> },
-  companyId: string | undefined,
-  code: string
-): Promise<Sequence> {
+async function resolveSequence(model: SequenceOps, companyId: string | undefined, code: string): Promise<Sequence> {
   const company = String(companyId ?? '').trim();
   if (company) {
     const list = await model.Search(
-      {
+      condition<Sequence>({
         And: [
           ['CompanyScopeKey', '=', company],
           ['Code', '=', code],
         ],
-      } as any,
+      }),
       {
         limit: 1,
-        fields: ['Id', 'CompanyId', 'CompanyScopeKey', 'Code', 'Prefix', 'Suffix', 'Padding', 'NextNumber', 'IsActive', 'UpdatedAt'] as any,
-      } as any
+        fields: [...SEQUENCE_LOOKUP_FIELDS],
+      }
     );
-    if (list?.[0]) return list[0] as any;
+    if (list?.[0]) return list[0] as Sequence;
   }
 
   const global = await model.Search(
-    {
+    condition<Sequence>({
       And: [
         ['CompanyScopeKey', '=', '__GLOBAL__'],
         ['Code', '=', code],
       ],
-    } as any,
+    }),
     {
       limit: 1,
-      fields: ['Id', 'CompanyId', 'CompanyScopeKey', 'Code', 'Prefix', 'Suffix', 'Padding', 'NextNumber', 'IsActive', 'UpdatedAt'] as any,
-    } as any
+      fields: [...SEQUENCE_LOOKUP_FIELDS],
+    }
   );
-  if (global?.[0]) return global[0] as any;
+  if (global?.[0]) return global[0] as Sequence;
 
   throw new ChoysumError({
     domain: 'base',
@@ -120,27 +177,29 @@ async function resolveSequence(
 }
 
 async function allocateRangeAtomic(
-  model: { Browse: (id: string, fields: any) => Promise<any>; Update: (condition: any, values: any, fields: any) => Promise<any> },
+  model: SequenceOps,
   seq: Sequence,
   count: number
 ): Promise<{ rangeStart: bigint; rangeEnd: bigint }> {
   for (let attempt = 0; attempt < 20; attempt++) {
-    const current = attempt === 0 ? seq : ((await model.Browse(seq.Id, ['Id', 'NextNumber'] as any)) as any);
+    const current = attempt === 0 ? (seq as SequenceRow) : await model.Browse(seq.Id, ['Id', 'NextNumber']);
     if (!current) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Sequence not found', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(GrpcCode.NotFound);
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Sequence not found', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(
+        GrpcCode.NotFound
+      );
     }
-    const currentNext = asBigInt((current as any).NextNumber);
+    const currentNext = asBigInt(current.NextNumber);
     const rangeStart = currentNext;
     const rangeEnd = currentNext + BigInt(count) - 1n;
     const nextNumber = rangeEnd + 1n;
-    const cond = {
+    const cond = condition<Sequence>({
       And: [
         ['Id', '=', seq.Id],
         ['NextNumber', '=', currentNext.toString()],
       ],
-    } as any;
+    });
 
-    const res = await model.Update(cond, { NextNumber: nextNumber.toString() } as any, ['Id', 'UpdatedAt', 'NextNumber'] as any);
+    const res = await model.Update(cond, { NextNumber: nextNumber.toString() }, ['Id', 'UpdatedAt', 'NextNumber']);
     if (Array.isArray(res) && res.length > 0) {
       return { rangeStart, rangeEnd };
     }
@@ -153,14 +212,7 @@ async function allocateRangeAtomic(
   }).withGrpcCode(GrpcCode.Aborted);
 }
 
-export async function nextSequence(
-  model: {
-    Search: (condition: any, options: any) => Promise<any[]>;
-    Browse: (id: string, fields: any) => Promise<any>;
-    Update: (condition: any, values: any, fields: any) => Promise<any>;
-  },
-  params: SequenceNextParams
-): Promise<SequenceNextResult> {
+export async function nextSequence(model: SequenceOps, params: SequenceNextParams): Promise<SequenceNextResult> {
   const code = assertCodeRequired(params?.Code, { uppercase: false });
   const countRaw = params?.Count;
   const count = assertCount(countRaw === undefined || countRaw === null ? 1 : countRaw);
@@ -169,9 +221,11 @@ export async function nextSequence(
 
   const seq = await resolveSequence(model, params?.CompanyId, code);
   if (seq.IsActive !== true) {
-    throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: _t('Sequence is inactive', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(
-      GrpcCode.FailedPrecondition
-    );
+    throw new ChoysumError({
+      domain: 'base',
+      code: 'FailedPrecondition',
+      message: _t('Sequence is inactive', { scope: 'service/models/_sequence_next' }),
+    }).withGrpcCode(GrpcCode.FailedPrecondition);
   }
 
   const generatedAt = new Date().toISOString();
@@ -181,20 +235,22 @@ export async function nextSequence(
   if (idemKey) {
     const hit = await findIdempotencyHit(seq.Id, idemKey);
     if (hit?.Id) {
-      if (!isExpiredAt((hit as any)?.ExpiresAt)) {
+      if (!isExpiredAt(hit.ExpiresAt)) {
         assertIdempotencyRequestMatch(hit, count, dryRun);
         const items = buildItemsFromIdempotencyHit(seq, hit, count);
         return buildSequenceNextResult(seq, items, generatedAt);
       }
-      expiredIdempotencyHitId = String((hit as any).Id || '');
+      expiredIdempotencyHitId = String(hit.Id || '');
     }
   }
 
   // Dry-run path: preview only
   if (dryRun) {
-    const cur = (await model.Browse(seq.Id, ['Id', 'NextNumber'] as any)) as any;
+    const cur = await model.Browse(seq.Id, ['Id', 'NextNumber']);
     if (!cur) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Sequence not found', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(GrpcCode.NotFound);
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Sequence not found', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(
+        GrpcCode.NotFound
+      );
     }
     const start = asBigInt(cur.NextNumber);
     const items = buildPaddedNumberItems(start, count, seq.Prefix, seq.Suffix, seq.Padding);
@@ -207,10 +263,10 @@ export async function nextSequence(
 
   // Persist idempotency record (strong consistency)
   if (idemKey) {
-    const { default: SequenceIdempotency } = await import('./sequence_idempotency');
+    const { default: SequenceIdempotencyModel } = await import('./sequence_idempotency');
     const ttlDays = getBackendEnvPositiveInt(IDEMPOTENCY_TTL_ENV_KEY, DEFAULT_IDEMPOTENCY_TTL_DAYS);
     const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
-    const payload = buildSequenceIdempotencyPayload(seq, {
+    const payload: SequenceIdempotencyPayload = buildSequenceIdempotencyPayload(seq, {
       idempotencyKey: idemKey,
       count,
       dryRun,
@@ -218,10 +274,11 @@ export async function nextSequence(
       rangeEnd,
       expiresAt,
     });
+    const writePayload = payload as unknown as Partial<SequenceIdempotency>;
 
     if (expiredIdempotencyHitId) {
       try {
-        await SequenceIdempotency.UpdateById(expiredIdempotencyHitId, payload as any, ['Id'] as any);
+        await SequenceIdempotencyModel.UpdateById(expiredIdempotencyHitId, writePayload, ['Id']);
         return buildSequenceNextResult(seq, items, generatedAt);
       } catch {
         expiredIdempotencyHitId = undefined;
@@ -229,21 +286,21 @@ export async function nextSequence(
     }
 
     try {
-      await SequenceIdempotency.Create(payload as any);
+      await SequenceIdempotencyModel.Create(writePayload);
     } catch (err) {
       const hit = await findIdempotencyHit(seq.Id, idemKey);
       if (hit?.Id) {
-        if (!isExpiredAt((hit as any)?.ExpiresAt)) {
+        if (!isExpiredAt(hit.ExpiresAt)) {
           assertIdempotencyRequestMatch(hit, count, dryRun);
           const replayItems = buildItemsFromIdempotencyHit(seq, hit, count);
           return buildSequenceNextResult(seq, replayItems, generatedAt);
         }
 
         try {
-          await SequenceIdempotency.UpdateById(String((hit as any).Id || ''), payload as any, ['Id'] as any);
+          await SequenceIdempotencyModel.UpdateById(String(hit.Id || ''), writePayload, ['Id']);
         } catch (replaceErr) {
           const replayHit = await findIdempotencyHit(seq.Id, idemKey);
-          if (replayHit?.Id && !isExpiredAt((replayHit as any)?.ExpiresAt)) {
+          if (replayHit?.Id && !isExpiredAt(replayHit.ExpiresAt)) {
             assertIdempotencyRequestMatch(replayHit, count, dryRun);
             const replayItems = buildItemsFromIdempotencyHit(seq, replayHit, count);
             return buildSequenceNextResult(seq, replayItems, generatedAt);

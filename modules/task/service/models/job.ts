@@ -3,7 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
-import type { SearchOptions, QueryCondition, OrderBy } from '@/core/service/api/query';
+import type { SearchOptions, QueryCondition, OrderBy, BaseQueryCondition } from '@/core/service/api/query';
+import { condition } from '@/core/service/api/query';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
@@ -37,7 +38,7 @@ type ListJobsParams = {
 
 /** Builds a search condition from paged job list parameters. */
 function buildJobCondition(params: ListJobsParams): QueryCondition<Job> | [] {
-  const and: any[] = [];
+  const and: BaseQueryCondition[] = [];
   if (params.targetApp) and.push(['TargetApp', '=', params.targetApp]);
   if (params.fullMethod) and.push(['FullMethod', '=', params.fullMethod]);
   if (params.statuses && params.statuses.length > 0) and.push(['Status', 'in', params.statuses]);
@@ -55,7 +56,7 @@ function buildJobCondition(params: ListJobsParams): QueryCondition<Job> | [] {
   if (runAfterLt) and.push(['RunAfter', '<', runAfterLt]);
 
   if (and.length === 0) return [];
-  return { And: and } as any;
+  return condition<Job>({ And: and });
 }
 
 /**
@@ -299,14 +300,14 @@ export default class Job extends BaseModel {
       orderBy,
       fields: params.fields,
     });
-    const total = Number(await this.Count(condition as any)) || 0;
+    const total = Number(await this.Count(condition)) || 0;
     return { items, total, limit, offset };
   }
 
   /** Cancels a queued job or requests cancellation for a running one. */
   static async CancelJob(jobId: string, reason?: string): Promise<Job> {
     const now = new Date();
-    const existing = await this.Browse(jobId, ['Id', 'Status'] as any);
+    const existing = await this.Browse(jobId, ['Id', 'Status']);
     const values: Partial<Job> = {};
     if (existing?.Status === 'queued') {
       values.Status = 'cancelled';
@@ -318,6 +319,6 @@ export default class Job extends BaseModel {
     if (reason) {
       values.LastErrorJson = { reason };
     }
-    return await (this as any).UpdateById(jobId as any, values as any);
+    return await this.UpdateById(jobId, values) as Job;
   }
 }

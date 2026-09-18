@@ -234,20 +234,20 @@ export default class BankAccount extends MessageThreadModel {
   AccountNoLast4?: string;
 
   /** Loads the linked bank name into the cached snapshot field. */
-  private static async fillBankSnapshot(values: Record<string, any>): Promise<void> {
+  private static async fillBankSnapshot(values: Record<string, unknown>): Promise<void> {
     const bankId = normalizeRefId(values.BankId);
     values.BankId = bankId;
     if (!bankId) {
       values.BankNameSnapshot = null;
       return;
     }
-    const bank = await Bank.Browse(bankId, { fields: ['Id', 'Name'] as any } as any);
-    values.BankNameSnapshot = String((bank as any)?.Name || '').trim() || null;
+    const bank = await Bank.Browse(bankId, ['Id', 'Name']);
+    values.BankNameSnapshot = String(bank?.Name || '').trim() || null;
   }
 
   /** Ensures the partner has at most one default account per direction. */
   private static async ensureSingleDefault(
-    values: Record<string, any>,
+    values: Record<string, unknown>,
     currentId: string | undefined,
     fieldName: 'IsDefaultInbound' | 'IsDefaultOutbound'
   ): Promise<void> {
@@ -261,10 +261,10 @@ export default class BankAccount extends MessageThreadModel {
           ['PartnerId', '=', partnerId],
           [fieldName, '=', true],
         ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
+      },
+      { fields: ['Id'], limit: 2 }
     );
-    const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const conflict = (rows || []).some(item => String(item?.Id || '') !== String(currentId || ''));
     if (conflict) {
       fail(
         fieldName === 'IsDefaultInbound'
@@ -275,12 +275,13 @@ export default class BankAccount extends MessageThreadModel {
   }
 
   /** Normalizes and validates bank account values before persistence. */
-  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async validateEntity(values: Record<string, unknown>, currentId?: string): Promise<void> {
     values.PartnerId = normalizeRefId(values.PartnerId);
     values.CompanyId = normalizeRefId(values.CompanyId);
     values.BankId = normalizeRefId(values.BankId);
     values.AccountName = assertRequiredText(values.AccountName, 'AccountName');
-    values.AccountNo = assertRequiredText(values.AccountNo, 'AccountNo');
+    const accountNo = assertRequiredText(values.AccountNo, 'AccountNo');
+    values.AccountNo = accountNo;
     values.AccountType = assertAccountType(values.AccountType);
     values.IBAN = normalizeOptionalText(values.IBAN, { upper: true });
     values.RoutingCode = normalizeOptionalText(values.RoutingCode, { upper: true });
@@ -301,7 +302,7 @@ export default class BankAccount extends MessageThreadModel {
       fail(_t('Default outbound account must allow outbound usage', { scope: 'service/models/bank_account' }));
     }
 
-    const { last4, masked } = maskAccountNo(values.AccountNo);
+    const { last4, masked } = maskAccountNo(accountNo);
     values.AccountNoLast4 = last4;
     values.AccountNoMasked = masked;
     await this.fillBankSnapshot(values);
@@ -328,8 +329,8 @@ export default class BankAccount extends MessageThreadModel {
     'IsDefaultOutbound',
   ])
   async validateBankAccountConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
+    const currentId = String(this.Id || '').trim() || undefined;
 
-    await BankAccount.validateEntity(this as any, currentId);
+    await BankAccount.validateEntity(this as unknown as Record<string, unknown>, currentId);
   }
 }

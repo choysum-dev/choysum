@@ -91,14 +91,14 @@ export default class MetaModelData extends BaseModel {
   }
 
   private static async lookupResId(module: string, name: string): Promise<string | null> {
-    const rows = await (this as any).Search(
+    const rows = await this.Search(
       {
         And: [
           ['Module', '=', module],
           ['Name', '=', name],
         ],
-      } as any,
-      { limit: 1, fields: ['ResId'] } as any
+      },
+      { limit: 1, fields: ['ResId'] }
     );
     const resId = String(rows?.[0]?.ResId ?? '').trim();
     return resId || null;
