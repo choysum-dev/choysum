@@ -8,20 +8,6 @@
 
 import type Language from './language';
 
-export type LanguageFormatFields = Partial<
-  Pick<
-    Language,
-    | 'DecimalSeparator'
-    | 'ThousandSeparator'
-    | 'Grouping'
-    | 'DateFormat'
-    | 'TimeFormat'
-    | 'FirstDayOfWeek'
-    | 'CurrencySymbolPosition'
-    | 'CurrencySymbolSpacing'
-  >
->;
-
 export function parseGrouping(raw: unknown): number[] {
   if (Array.isArray(raw)) {
     return raw.map(n => Number(n)).filter(n => Number.isFinite(n) && n >= 0);
@@ -97,7 +83,7 @@ export function applyGrouping(integerDigits: string, grouping: number[], thousan
 
 export function formatNumberWithLanguage(
   value: number,
-  fields: LanguageFormatFields,
+  fields: Partial<Language>,
   options?: { digits?: number }
 ): string {
   if (!Number.isFinite(value)) {
@@ -145,7 +131,11 @@ export function parseLanguageDateInput(value: Date | string | number): Date | nu
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function formatDateWithLanguage(value: Date | string | number, fields: LanguageFormatFields, kind: 'date' | 'time' | 'datetime' = 'date'): string {
+export function formatDateWithLanguage(
+  value: Date | string | number,
+  fields: Partial<Language>,
+  kind: 'date' | 'time' | 'datetime' = 'date'
+): string {
   const d = parseLanguageDateInput(value);
   if (!d) {
     return String(value);
