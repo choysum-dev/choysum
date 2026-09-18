@@ -25,45 +25,6 @@ export type LanguageFormatParams = {
   Digits?: number;
 };
 
-export type LanguageActiveRow = {
-  Code: string;
-  Name: string;
-  Direction?: 'ltr' | 'rtl';
-  DecimalSeparator?: string;
-  ThousandSeparator?: string;
-  Grouping?: string;
-  DateFormat?: string;
-  TimeFormat?: string;
-  FirstDayOfWeek?: number;
-  CurrencySymbolPosition?: 'before' | 'after';
-  CurrencySymbolSpacing?: boolean;
-};
-
-const ACTIVE_LANGUAGE_FIELDS = [
-  'Code',
-  'Name',
-  'Direction',
-  'DecimalSeparator',
-  'ThousandSeparator',
-  'Grouping',
-  'DateFormat',
-  'TimeFormat',
-  'FirstDayOfWeek',
-  'CurrencySymbolPosition',
-  'CurrencySymbolSpacing',
-] as const;
-
-const FORMAT_LANGUAGE_FIELDS = [
-  'DecimalSeparator',
-  'ThousandSeparator',
-  'Grouping',
-  'DateFormat',
-  'TimeFormat',
-  'FirstDayOfWeek',
-  'CurrencySymbolPosition',
-  'CurrencySymbolSpacing',
-] as const;
-
 @Model('Language')
 export default class Language extends BaseModel {
   @Field({
@@ -180,9 +141,21 @@ export default class Language extends BaseModel {
    * Active languages for Preferences / guest switcher (POSIX Code + format projection).
    * gRPC: base.Language/GetActiveLanguages
    */
-  public static async GetActiveLanguages(): Promise<LanguageActiveRow[]> {
+  public static async GetActiveLanguages(): Promise<Array<Partial<Language>>> {
     const rows = await this.Search(['IsActive', '=', true], {
-      fields: [...ACTIVE_LANGUAGE_FIELDS],
+      fields: [
+        'Code',
+        'Name',
+        'Direction',
+        'DecimalSeparator',
+        'ThousandSeparator',
+        'Grouping',
+        'DateFormat',
+        'TimeFormat',
+        'FirstDayOfWeek',
+        'CurrencySymbolPosition',
+        'CurrencySymbolSpacing',
+      ],
       orderBy: { field: 'Name', order: 'asc' },
     });
     return (rows || []).map(row => ({
@@ -216,7 +189,16 @@ export default class Language extends BaseModel {
       ? condition<Language>(['Id', '=', languageId])
       : condition<Language>(['Code', '=', code]);
     const rows = await this.Search(lookup, {
-      fields: FORMAT_LANGUAGE_FIELDS,
+      fields: [
+        'DecimalSeparator',
+        'ThousandSeparator',
+        'Grouping',
+        'DateFormat',
+        'TimeFormat',
+        'FirstDayOfWeek',
+        'CurrencySymbolPosition',
+        'CurrencySymbolSpacing',
+      ],
       limit: 1,
     });
     const row = (rows || [])[0];
