@@ -4,7 +4,7 @@
 import { normalizeOptionalString, normalizeOptionalNonNegativeInt, asRecord } from '@/core/service/utils/normalization';
 import { parseISODate, toDate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
-import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { computeRetryBackoffSeconds } from '@/core/service/utils/backoff';
 import { resolveGcBatchSize } from './_gc_config';
 import type { BaseQueryCondition } from '@/core/service/api/query';
@@ -139,7 +139,7 @@ export async function garbageCollectUnboundObjects(
         const storedContentId = normalizeOptionalString((candidate as { StoredContentId?: unknown })?.StoredContentId);
         if (!storedContentId) throw new Error('attachment content missing storedContentId');
 
-        const documentBridge = getChoysumRuntime()?.document;
+        const documentBridge = resolveChoysum()?.document;
         const deleteStoredContent =
           typeof documentBridge?.deleteStoredContent === 'function' ? documentBridge.deleteStoredContent.bind(documentBridge) : undefined;
         if (!deleteStoredContent) throw new Error('document.deleteStoredContent bridge is unavailable');

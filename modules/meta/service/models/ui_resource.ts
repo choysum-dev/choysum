@@ -8,8 +8,8 @@ import MetaModule from './module';
 import MetaUiResourceRouteAction from './ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
-import { condition, type BaseQueryCondition } from '@/core/service/api/query';
-import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+import { condition, type BaseQueryCondition, type QueryCondition } from '@/core/service/api/query';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { type TermReference } from '@/core/service/i18n';
 import { _t, _lt } from '../i18n';
 
@@ -151,7 +151,7 @@ export default class MetaUiResource extends BaseModel {
     const selfTypeRef = this.$sql.col('meta_ui_resource', 'Type');
     const selfIdRef = this.$sql.col('meta_ui_resource', 'Id');
 
-    const dialect = String(getChoysumRuntime()?.db?.dialectName || 'postgres').toLowerCase();
+    const dialect = String(resolveChoysum()?.db?.dialectName || 'postgres').toLowerCase();
 
     if (dialect === 'sqlite') {
       return sql<any>`
@@ -404,9 +404,9 @@ export default class MetaUiResource extends BaseModel {
     if (applicationFilter) conditionParts.push(['MetaApplicationId', '=', applicationFilter]);
     if (kindFilter) conditionParts.push(['Type', '=', kindFilter]);
     if (idsFilter.length > 0) conditionParts.push(['Name', 'in', idsFilter]);
-    const searchCondition =
+    const searchCondition: QueryCondition<MetaUiResource> | [] =
       conditionParts.length === 0
-        ? ([] as const)
+        ? []
         : conditionParts.length === 1
           ? condition<MetaUiResource>(conditionParts[0]!)
           : condition<MetaUiResource>({ And: conditionParts });

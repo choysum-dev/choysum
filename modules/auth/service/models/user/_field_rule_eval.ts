@@ -17,16 +17,13 @@ const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 
-type FieldPermBag = { value?: unknown; Value?: unknown; id?: unknown; Id?: unknown };
-
 function assertFieldPerm(v: unknown): 'allow' | 'deny' | null {
   if (v == null) return null;
+  // RoleFieldRule.Search returns plain selection scalars ('allow' | 'deny'), not bags.
   if (typeof v === 'object') {
-    const bag = v as FieldPermBag;
-    const raw = bag.value ?? bag.Value ?? bag.id ?? bag.Id;
-    if (raw != null && raw !== v) return assertFieldPerm(raw);
+    throw new Error("invalid field rule permission: must be 'allow' or 'deny'");
   }
-  const s = String(v ?? '')
+  const s = String(v)
     .trim()
     .toLowerCase();
   if (!s) return null;

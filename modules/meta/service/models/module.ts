@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
-import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import type JobModel from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { _t, _lt } from '../i18n';
@@ -106,7 +106,7 @@ function resolveOpFailureKind(status: string, resultStatus: string | undefined, 
 
 async function loadExecutionTimes(jobId: string): Promise<{ startedAt?: Date; finishedAt?: Date }> {
   if (!jobId) return {};
-  const root = getChoysumRuntime();
+  const root = resolveChoysum();
   if (!root?.db?.query) return {};
   const raw = await root.db.query(
     'SELECT started_at, finished_at FROM task_job_execution WHERE job_id = ? ORDER BY created_at DESC LIMIT 1',
@@ -425,7 +425,7 @@ export default class MetaModule extends BaseModel {
   }
 
   private static getModuleManagementBridge() {
-    const root = getChoysumRuntime();
+    const root = resolveChoysum();
     if (!root?.moduleManagement) {
       throw new Error('moduleManagement bridge is not injected');
     }

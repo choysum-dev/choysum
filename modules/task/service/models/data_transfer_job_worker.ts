@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import DataTransferJob from './data_transfer_job';
 
 type ImportBridge = {
@@ -12,16 +12,16 @@ type ExportBridge = {
   run?: (spec: Record<string, unknown> | string) => Promise<Record<string, any>>;
 };
 
-type ChoysumWithExport = NonNullable<ReturnType<typeof getChoysumRuntime>> & {
+type ChoysumWithExport = NonNullable<ReturnType<typeof resolveChoysum>> & {
   export?: ExportBridge;
 };
 
 function importBridge(): ImportBridge {
-  return getChoysumRuntime()?.import ?? {};
+  return resolveChoysum()?.import ?? {};
 }
 
 function exportBridge(): ExportBridge {
-  return (getChoysumRuntime() as ChoysumWithExport | undefined)?.export ?? {};
+  return (resolveChoysum() as ChoysumWithExport | undefined)?.export ?? {};
 }
 
 function asSpecSnapshot(value: unknown): Record<string, unknown> | string | undefined {

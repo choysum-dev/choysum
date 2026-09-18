@@ -4,10 +4,9 @@
 function assertFieldPerm(v: any): 'allow' | 'deny' | null {
   if (v == null) return null;
   if (typeof v === 'object') {
-    const raw = (v as any)?.value ?? (v as any)?.Value ?? (v as any)?.id ?? (v as any)?.Id;
-    if (raw != null && raw !== v) return assertFieldPerm(raw);
+    throw new Error("invalid field rule permission: must be 'allow' or 'deny'");
   }
-  const s = String(v ?? '')
+  const s = String(v)
     .trim()
     .toLowerCase();
   if (!s) return null;
@@ -50,10 +49,10 @@ test('assertFieldPerm: throws for unrecognized string; blank stays null', () => 
   expect(assertFieldPerm('')).toBeNull();
 });
 
-test('assertFieldPerm: unwraps objects with value/Value/id/Id', () => {
-  expect(assertFieldPerm({ value: 'allow' })).toBe('allow');
-  expect(assertFieldPerm({ Value: 'deny' })).toBe('deny');
-  expect(assertFieldPerm({ id: 'allow' })).toBe('allow');
+test('assertFieldPerm: rejects object bags (Search returns plain strings)', () => {
+  expect(() => assertFieldPerm({ value: 'allow' })).toThrow(/allow|deny/);
+  expect(() => assertFieldPerm({ Value: 'deny' })).toThrow(/allow|deny/);
+  expect(() => assertFieldPerm({ id: 'allow' })).toThrow(/allow|deny/);
 });
 
 test('assertFieldPerm: throws for unrecognized object', () => {

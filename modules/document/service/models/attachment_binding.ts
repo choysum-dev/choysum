@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import {
   AttachmentBindingStatus,
   DownloadDisposition,
@@ -337,7 +337,7 @@ async function findActiveBinding(ownerModel: string,
 }
 
 async function hardDeleteBindingById(bindingId: string, companyId: string): Promise<void> {
-  const db = getChoysumRuntime()?.db;
+  const db = resolveChoysum()?.db;
   const execute = typeof db?.execute === 'function' ? db.execute.bind(db) : undefined;
   if (!execute) {
     throwDocumentError(

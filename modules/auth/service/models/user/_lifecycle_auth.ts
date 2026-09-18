@@ -5,7 +5,7 @@ import { withContext, getContextClientTimezone } from '@/core/service/api/contex
 import { createServiceByModel } from '@/core/service/rpc';
 import { pool, type AppSettingModelCtor } from '@/core/service';
 import { isIanaTimezone } from '@/core/service/utils/datetime';
-import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
 import { _t } from '../../i18n';
 import type Company from '@/base/service/models/company';
@@ -309,7 +309,7 @@ export async function issueLoginTokensAndSession(
   await deps.updateLastLogin(user.Id, new Date());
 
   if (opts.ipAddress || opts.deviceInfo) {
-    const auth = getChoysumRuntime()?.auth;
+    const auth = resolveChoysum()?.auth;
     if (!auth) {
       throw new Error('Choysum auth subsystem is not initialized');
     }

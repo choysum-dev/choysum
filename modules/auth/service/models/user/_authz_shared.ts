@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getIdentity, getReadonlyCtx } from '@/core/service/api/context';
-import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import {
   uniqStrings,
   normalizeRpcRequireKey,
@@ -105,7 +105,7 @@ export function hashPassword(password: string): string {
     throw new TypeError('Password must be a string');
   }
   const prefixMarker = '$CH$';
-  const crypto = getChoysumRuntime()?.crypto;
+  const crypto = resolveChoysum()?.crypto;
   if (!crypto) {
     throw new Error('Choysum crypto subsystem is not initialized');
   }
@@ -124,7 +124,7 @@ export function verifyPassword(password: string, hashedPassword: string): boolea
     return false;
   }
   const prefixMarker = '$CH$';
-  const crypto = getChoysumRuntime()?.crypto;
+  const crypto = resolveChoysum()?.crypto;
   if (!crypto) {
     throw new Error('Choysum crypto subsystem is not initialized');
   }

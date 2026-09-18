@@ -10,7 +10,7 @@ import { createServiceByModel } from '@/core/service/rpc';
 import { sql } from 'kysely';
 import type JobModel from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
-import { getChoysumRuntime } from '@/core/service/runtime/choysum_root';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import MetaModule from './module';
@@ -378,7 +378,7 @@ export default class MetaModuleIndex extends BaseModel {
   }
 
   private static getModuleManagementBridge() {
-    const root = getChoysumRuntime();
+    const root = resolveChoysum();
     if (!root?.moduleManagement) {
       throw new Error('moduleManagement bridge is not injected');
     }
