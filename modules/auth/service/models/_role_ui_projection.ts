@@ -55,7 +55,8 @@ async function loadUiResourcesForRole(roleId: string): Promise<Array<Partial<Rol
     const modeRaw = String(rec.Mode ?? 'allow')
       .trim()
       .toLowerCase();
-    const mode: RoleUiResourceMode = modeRaw === 'deny' ? 'deny' : 'allow';
+    // Only 'allow' is an allow grant; deny and unsupported values stay non-allow so sync can recreate.
+    const mode: RoleUiResourceMode = modeRaw === 'allow' ? 'allow' : 'deny';
     return {
       Id: normalizeRefId(rec.Id) ?? undefined,
       Mode: mode,

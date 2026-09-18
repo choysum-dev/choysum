@@ -50,9 +50,12 @@ export function observePermissionDenied(stage: OwnerPermissionStage, message: st
   }
 
   try {
-    const root = globalThis as typeof globalThis & { [STORAGE_PERMISSION_DENIED_COUNTER_KEY]?: Record<string, number> };
-    const store: Record<string, number> = root[STORAGE_PERMISSION_DENIED_COUNTER_KEY] ?? {};
-    root[STORAGE_PERMISSION_DENIED_COUNTER_KEY] = store;
+    // Symbol.for() is typed as `symbol`, not `unique symbol`; use Reflect to avoid TS1170.
+    let store = Reflect.get(globalThis, STORAGE_PERMISSION_DENIED_COUNTER_KEY) as Record<string, number> | undefined;
+    if (!store) {
+      store = {};
+      Reflect.set(globalThis, STORAGE_PERMISSION_DENIED_COUNTER_KEY, store);
+    }
 
     const key = `${stage}|${reason}`;
     store[key] = (store[key] ?? 0) + 1;

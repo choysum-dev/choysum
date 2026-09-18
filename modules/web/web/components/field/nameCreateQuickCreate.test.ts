@@ -20,7 +20,7 @@ describe('trimSearchKeyword', () => {
 });
 
 describe('extractNameCreateRecordId', () => {
-  test('reads Id or id and rejects empty', () => {
+  test('reads Id and rejects lowercase id or empty', () => {
     expect(extractNameCreateRecordId({ Id: 'a1' })).toBe('a1');
     expect(extractNameCreateRecordId({ id: 'b2' })).toBeUndefined();
     expect(extractNameCreateRecordId({ Id: '  c3  ' })).toBe('c3');

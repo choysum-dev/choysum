@@ -103,9 +103,8 @@ export async function computeEffectiveRoleScopes(
   for (const ur of userRoles || []) {
     const roleId = maybeId(ur.RoleId);
     if (!roleId) continue;
-    // CompanyId is ManyToOneRef (string id) or empty for a global assignment.
-    const companyRaw = ur.CompanyId;
-    mergeScope(roleId, companyRaw == null || String(companyRaw).trim() === '' ? null : String(companyRaw).trim());
+    // CompanyId is ManyToOneRef (string id or {Id}) or empty for a global assignment.
+    mergeScope(roleId, maybeId(ur.CompanyId) || null);
   }
 
   const directRoleIds = Array.from(new Set((userRoles || []).map(ur => maybeId(ur.RoleId)).filter(Boolean) as string[]));
