@@ -4,7 +4,9 @@
  * Flat ESLint config for modules/*/service (BT-8d / HC10).
  *
  * Production TypeScript under modules/<app>/service forbids explicit `any`.
- * Test files keep `any` allowed (no zero-KPI for tests).
+ * Test files keep `any` allowed (no zero-KPI for tests). Remaining `: any`
+ * parameters are separate cleanup debt; the CI DoD for assertions is
+ * count_as_any.py (not this ESLint config — typecheck jobs do not run ESLint).
  *
  * Local run (Node 22+; installs eslint + typescript-eslint packages ephemerally):
  *   npx --yes -p eslint@9 -p @typescript-eslint/parser -p @typescript-eslint/eslint-plugin \\

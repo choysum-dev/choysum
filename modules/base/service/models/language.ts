@@ -68,7 +68,7 @@ export default class Language extends BaseModel {
     size: 8,
     string: _lt('Direction', { scope: 'base.model.Language.fields' }),
   })
-  Direction?: 'ltr' | 'rtl';
+  Direction?: 'ltr' | 'rtl' | null;
 
   @Field({
     type: 'varchar',
@@ -128,7 +128,7 @@ export default class Language extends BaseModel {
     default: () => 'before',
     string: _lt('Currency Symbol Position', { scope: 'base.model.Language.fields' }),
   })
-  CurrencySymbolPosition?: 'before' | 'after';
+  CurrencySymbolPosition?: 'before' | 'after' | null;
 
   @Field({
     type: 'boolean',
@@ -216,10 +216,11 @@ export default class Language extends BaseModel {
   @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'IsActive', 'Code'])
   async validateLanguageConstraint(): Promise<void> {
     if (this.Direction !== undefined) {
-      this.Direction = assertDirection(this.Direction) ?? undefined;
+      // Preserve null clears from assertDirection (do not wash to undefined).
+      this.Direction = assertDirection(this.Direction);
     }
     if (this.CurrencySymbolPosition !== undefined) {
-      this.CurrencySymbolPosition = assertCurrencySymbolPosition(this.CurrencySymbolPosition) ?? undefined;
+      this.CurrencySymbolPosition = assertCurrencySymbolPosition(this.CurrencySymbolPosition);
     }
     if (this.CurrencySymbolSpacing !== undefined) {
       const spacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);

@@ -26,7 +26,7 @@ export default class Bank extends BaseModel {
     index: true,
     string: _lt('Code', { scope: 'base.model.Bank.fields' }),
   })
-  Code?: string;
+  Code?: string | null;
 
   @Field({
     type: 'ManyToOne',
@@ -68,7 +68,8 @@ export default class Bank extends BaseModel {
   @Constraint<Bank>(['Code'])
   validateBankConstraint(): void {
     if (this.Code != null) {
-      this.Code = normalizeCodeOptional(this.Code as string) ?? undefined;
+      // Preserve null from normalizeCodeOptional so update can persist SQL NULL.
+      this.Code = normalizeCodeOptional(this.Code);
     }
   }
 }

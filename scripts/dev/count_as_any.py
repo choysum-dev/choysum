@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Count production `as any` under modules/*/service (BT-8a / hardcut §3).
 
-Scope: modules/<app>/service/**/*.ts
-Production excludes: *.test.ts and **/tests/**
+Scope: modules/<app>/service/**/*.{ts,tsx}
+Production excludes: *.test.ts / *.test.tsx and **/tests/**
 
 Buckets (overlapping labels for diagnostics; total is unique match count):
   super.     — match line contains "super."
@@ -47,7 +47,7 @@ def iter_service_ts(modules_root: Path) -> list[Path]:
         service = app_dir / "service"
         if not service.is_dir():
             continue
-        out.extend(sorted(service.rglob("*.ts")))
+        out.extend(sorted(p for p in service.rglob("*") if p.suffix in (".ts", ".tsx")))
     return out
 
 
