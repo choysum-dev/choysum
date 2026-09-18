@@ -16,6 +16,7 @@ import UserRole from '../user_role';
 import { hashPassword, verifyPassword, withPermissionGraphBypass } from './_authz_shared';
 import { withRecordRuleAndFieldRuleBypass } from '@/core/service/orm/repository/authz';
 import { buildScopePreferences } from './_lifecycle_scope';
+import type User from './user';
 
 const CompanyService = createServiceByModel<typeof Company>('base.Company');
 
@@ -23,33 +24,24 @@ const CompanyService = createServiceByModel<typeof Company>('base.Company');
 export const PERSIST_BROWSER_TIMEZONE_KEY = 'persist_browser_timezone';
 
 /**
- * Narrow login/refresh surface structurally satisfied by auth.User rows from
- * Search/Browse (no cast). Includes company-scope fields used after load(['CompanyIds']).
+ * Login/refresh surface derived from {@link User}.
+ * Search/Browse rows assign without cast; UpdatedAt stays wire-loose for metadata.
  */
-export type LoginUserLike = {
-  Id: string;
-  Username: string;
-  PasswordHash: string;
-  IsActive: boolean;
-  Timezone?: string | null;
+export type LoginUserLike = Pick<
+  User,
+  'Id' | 'Username' | 'PasswordHash' | 'IsActive' | 'Timezone' | 'Language' | 'CompanyId' | 'CompanyIds' | 'Preferences' | 'load'
+> & {
   UpdatedAt?: Date | string | number;
-  Language?: string | null;
-  CompanyId?: unknown;
-  CompanyIds?: unknown;
-  Preferences?: unknown;
-  /** Compatible with BaseModel.load; method form keeps User assignable. */
-  load(fields?: string[], options?: unknown): Promise<unknown>;
 };
 
-/** Fields read when building token metadata; LoginUserLike and User rows both assign. */
-export type TokenMetadataUserSource = {
-  Id?: string;
+/**
+ * Fields read when building token metadata.
+ * Derived from {@link User}; UpdatedAt stays wire-loose.
+ */
+export type TokenMetadataUserSource = Partial<
+  Pick<User, 'Id' | 'Language' | 'Timezone' | 'CompanyId' | 'CompanyIds' | 'Preferences'>
+> & {
   UpdatedAt?: Date | string | number;
-  Language?: string | null;
-  Timezone?: string | null;
-  CompanyId?: unknown;
-  CompanyIds?: unknown;
-  Preferences?: unknown;
 };
 
 /**
