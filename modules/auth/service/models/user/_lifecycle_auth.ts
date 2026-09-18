@@ -23,11 +23,6 @@ const CompanyService = createServiceByModel<typeof Company>('base.Company');
 /** Auth AppSetting key: gate D20 silent browser-timezone persist (table-local; no `auth.` prefix). */
 export const PERSIST_BROWSER_TIMEZONE_KEY = 'persist_browser_timezone';
 
-/** Fields read when building token metadata; derived from {@link User}. */
-export type TokenMetadataUserSource = Partial<
-  Pick<User, 'Id' | 'Language' | 'Timezone' | 'CompanyId' | 'CompanyIds' | 'Preferences' | 'UpdatedAt'>
->;
-
 /**
  * D20: when User.Timezone is empty, return a valid baggage client IANA to persist.
  * Never returns a value when the user already has a timezone or clientTz is missing/invalid.

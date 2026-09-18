@@ -10,6 +10,19 @@ function hostWithTimezone(timezone: string | null | undefined): User {
   return Object.assign(Object.create(User.prototype), { Timezone: timezone }) as User;
 }
 
+function metadataStub(overrides: Record<string, unknown>): User {
+  return Object.assign(Object.create(User.prototype), {
+    Id: '',
+    Language: null,
+    Timezone: null,
+    CompanyId: '',
+    CompanyIds: [],
+    Preferences: {},
+    UpdatedAt: new Date(0),
+    ...overrides,
+  }) as User;
+}
+
 test('auth.User Timezone FieldsGet exposes dynamic IANA selection', async () => {
   const meta = await User.FieldsGet(['Timezone'], ['type', 'selectionKind', 'selection']);
   expect(meta.Timezone?.type).toBe('selection');
@@ -49,10 +62,12 @@ test('auth.User validateTimezoneConstraint rejects invalid IANA ids', () => {
 });
 
 test('auth.User extractUserMetadata omits null timezone', async () => {
-  const metadata = await User.extractUserMetadata({
-    Language: 'en_US',
-    Timezone: null,
-  });
+  const metadata = await User.extractUserMetadata(
+    metadataStub({
+      Language: 'en_US',
+      Timezone: null,
+    })
+  );
   expect(metadata.language).toBe('en_US');
   expect(metadata.timezone).toBe(undefined);
 });
@@ -164,13 +179,15 @@ test('persistBrowserTimezoneIfEmpty no-ops when user id missing', async () => {
 });
 
 test('auth.User extractUserMetadata includes timezone and tolerates missing company', async () => {
-  const metadata = await User.extractUserMetadata({
-    Id: '',
-    Language: 'en_US',
-    Timezone: 'America/New_York',
-    CompanyId: 'missing-company-id',
-    CompanyIds: ['missing-company-id'],
-  });
+  const metadata = await User.extractUserMetadata(
+    metadataStub({
+      Id: '',
+      Language: 'en_US',
+      Timezone: 'America/New_York',
+      CompanyId: 'missing-company-id',
+      CompanyIds: ['missing-company-id'],
+    })
+  );
 
   expect(metadata.timezone).toBe('America/New_York');
   // Browse fails for missing company → leave companyTimezone unset (catch path).
@@ -209,13 +226,15 @@ test('auth.User extractUserMetadata reads companyTimezone from MAIN company', as
   const main = rows?.[0];
   expect(main?.Id).toBeTruthy();
 
-  const metadata = await User.extractUserMetadata({
-    Id: '',
-    Language: 'en_US',
-    Timezone: 'UTC',
-    CompanyId: main.Id,
-    CompanyIds: [main.Id],
-  });
+  const metadata = await User.extractUserMetadata(
+    metadataStub({
+      Id: '',
+      Language: 'en_US',
+      Timezone: 'UTC',
+      CompanyId: main.Id,
+      CompanyIds: [main.Id],
+    })
+  );
 
   expect(metadata.timezone).toBe('UTC');
   expect(metadata.companyTimezone).toBe(String(main.Timezone || '').trim() || 'Asia/Shanghai');

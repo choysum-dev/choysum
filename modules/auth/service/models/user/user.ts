@@ -44,7 +44,6 @@ import {
   revokeLogoutArtifacts,
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
-  type TokenMetadataUserSource,
 } from './_lifecycle_auth';
 
 import { buildAclAggregation } from './_permission_state_acl';
@@ -443,7 +442,7 @@ export default class User extends AttachmentOwnerMixin {
   /**
    * Build token metadata from the current user record and company scope.
    */
-  static async extractUserMetadata(user: TokenMetadataUserSource): Promise<TokenMetadata> {
+  static async extractUserMetadata(user: User): Promise<TokenMetadata> {
     const userId = String(user?.Id || '').trim();
     const userVersion = Number(new Date(user?.UpdatedAt || Date.now()));
     const permStateVersion = userId ? await computePermStateVersion(userId) : 0;
