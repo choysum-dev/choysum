@@ -56,6 +56,8 @@ function resolveDatetimeFieldNames(source: DatetimeFieldSource): Set<string> {
       }
       return out;
     }
+    // `fields` present but not iterable (e.g. plain object) — treat as no datetime keys.
+    return new Set();
   }
   return new Set(source as Iterable<string>);
 }

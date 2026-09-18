@@ -467,7 +467,7 @@ export default class MetaUiResource extends BaseModel {
         limit: 50000,
       });
       const actionIds = Array.from(
-        new Set(relationRows.map(row => readRefId(row?.ActionUiResourceId)).filter((value): value is string => Boolean(value)))
+        new Set((relationRows || []).map(row => readRefId(row?.ActionUiResourceId)).filter((value): value is string => Boolean(value)))
       );
       const actionNameById = new Map<string, string>();
       if (actionIds.length > 0) {
