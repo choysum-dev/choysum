@@ -52,7 +52,7 @@ test('auth.User extractUserMetadata omits null timezone', async () => {
   const metadata = await User.extractUserMetadata({
     Language: 'en_US',
     Timezone: null,
-  } as User);
+  });
   expect(metadata.language).toBe('en_US');
   expect(metadata.timezone).toBe(undefined);
 });
@@ -170,7 +170,7 @@ test('auth.User extractUserMetadata includes timezone and tolerates missing comp
     Timezone: 'America/New_York',
     CompanyId: 'missing-company-id',
     CompanyIds: ['missing-company-id'],
-  } as any);
+  });
 
   expect(metadata.timezone).toBe('America/New_York');
   // Browse fails for missing company → leave companyTimezone unset (catch path).
@@ -215,7 +215,7 @@ test('auth.User extractUserMetadata reads companyTimezone from MAIN company', as
     Timezone: 'UTC',
     CompanyId: main.Id,
     CompanyIds: [main.Id],
-  } as any);
+  });
 
   expect(metadata.timezone).toBe('UTC');
   expect(metadata.companyTimezone).toBe(String(main.Timezone || '').trim() || 'Asia/Shanghai');

@@ -22,6 +22,10 @@ const CompanyService = createServiceByModel<typeof Company>('base.Company');
 /** Auth AppSetting key: gate D20 silent browser-timezone persist (table-local; no `auth.` prefix). */
 export const PERSIST_BROWSER_TIMEZONE_KEY = 'persist_browser_timezone';
 
+/**
+ * Narrow login/refresh surface structurally satisfied by auth.User rows from
+ * Search/Browse (no cast). Includes company-scope fields used after load(['CompanyIds']).
+ */
 export type LoginUserLike = {
   Id: string;
   Username: string;
@@ -30,7 +34,22 @@ export type LoginUserLike = {
   Timezone?: string | null;
   UpdatedAt?: Date | string | number;
   Language?: string | null;
-  load: (fields: string[]) => Promise<void>;
+  CompanyId?: unknown;
+  CompanyIds?: unknown;
+  Preferences?: unknown;
+  /** Compatible with BaseModel.load; method form keeps User assignable. */
+  load(fields?: string[], options?: unknown): Promise<unknown>;
+};
+
+/** Fields read when building token metadata; LoginUserLike and User rows both assign. */
+export type TokenMetadataUserSource = {
+  Id?: string;
+  UpdatedAt?: Date | string | number;
+  Language?: string | null;
+  Timezone?: string | null;
+  CompanyId?: unknown;
+  CompanyIds?: unknown;
+  Preferences?: unknown;
 };
 
 /**

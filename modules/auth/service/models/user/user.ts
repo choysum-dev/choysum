@@ -44,7 +44,7 @@ import {
   revokeLogoutArtifacts,
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
-  type LoginUserLike,
+  type TokenMetadataUserSource,
 } from './_lifecycle_auth';
 
 import { buildAclAggregation } from './_permission_state_acl';
@@ -411,7 +411,7 @@ export default class User extends AttachmentOwnerMixin {
         ['Email', '=', usernameOrEmail],
       ],
     });
-    const user = validateLoginCandidateOrThrow((users || [])[0] as unknown as LoginUserLike | undefined, usernameOrEmail, password);
+    const user = validateLoginCandidateOrThrow((users || [])[0], usernameOrEmail, password);
 
     try {
       // D20: first login with empty User.Timezone + baggage clientTz → persist and refresh metadata.
@@ -419,13 +419,13 @@ export default class User extends AttachmentOwnerMixin {
         updateTimezone: async (uid, timezone) => {
           await this.UpdateById(uid, { Timezone: timezone });
         },
-        reloadUser: async uid => (await this.Browse(uid)) as unknown as LoginUserLike,
+        reloadUser: async uid => await this.Browse(uid),
       });
 
       return await issueLoginTokensAndSession(
         loginUser,
         {
-          extractUserMetadata: async u => await this.extractUserMetadata(u as unknown as User),
+          extractUserMetadata: async u => await this.extractUserMetadata(u),
           updateLastLogin: async (uid: string, timestamp: Date) => {
             await this.UpdateById(uid, { LastLogin: timestamp });
           },
@@ -443,7 +443,7 @@ export default class User extends AttachmentOwnerMixin {
   /**
    * Build token metadata from the current user record and company scope.
    */
-  static async extractUserMetadata(user: User): Promise<TokenMetadata> {
+  static async extractUserMetadata(user: TokenMetadataUserSource): Promise<TokenMetadata> {
     const userId = String(user?.Id || '').trim();
     const userVersion = Number(new Date(user?.UpdatedAt || Date.now()));
     const permStateVersion = userId ? await computePermStateVersion(userId) : 0;
@@ -480,8 +480,8 @@ export default class User extends AttachmentOwnerMixin {
   static async RefreshTokens(refreshToken: string): Promise<TokenPair> {
     try {
       return await refreshTokensWithLatestMetadata(refreshToken, {
-        browseUser: async (userId: string) => (await this.Browse(userId)) as unknown as LoginUserLike,
-        extractUserMetadata: async (user: LoginUserLike) => await this.extractUserMetadata(user as unknown as User),
+        browseUser: async (userId: string) => await this.Browse(userId),
+        extractUserMetadata: async user => await this.extractUserMetadata(user),
       });
     } catch (error) {
       throw wrapAuthError(error, {
