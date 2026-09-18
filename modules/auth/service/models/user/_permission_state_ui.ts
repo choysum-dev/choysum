@@ -7,6 +7,11 @@ import type MetaUiResourceMenuRouteModel from '@/meta/service/models/ui_resource
 import type MetaUiResourceRouteActionModel from '@/meta/service/models/ui_resource_route_action';
 import RoleUiResource from '../role_ui_resource';
 import { isUiResourceAllowed, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, sortStrings } from './_authz_shared';
+import type {
+  MetaUiResourceAuthzRow,
+  MetaUiResourceMenuRouteRow,
+  MetaUiResourceRouteActionRow,
+} from '../_authz_rows';
 import { normalizeRpcRequireKey } from '@/core/service/utils/normalization';
 import { applyToScope, type AclAggregationResult } from './_permission_state_acl';
 
@@ -21,26 +26,6 @@ type UiResourceMeta = {
   parentId: string;
   appId: string;
   requires: string[];
-};
-
-/** MetaUiResource.Search projection (PascalCase field names only). */
-type UiResourceRow = {
-  Id?: unknown;
-  Name?: unknown;
-  Type?: unknown;
-  ParentId?: unknown;
-  MetaApplicationId?: unknown;
-  Requires?: unknown;
-};
-
-type MenuRouteRow = {
-  MenuUiResourceId?: unknown;
-  RouteUiResourceId?: unknown;
-};
-
-type RouteActionRow = {
-  RouteUiResourceId?: unknown;
-  ActionUiResourceId?: unknown;
 };
 
 export type PermissionStateUiOutput = Record<string, { ui?: { routes?: string[]; menus?: string[]; actions?: string[] } }>;
@@ -159,14 +144,14 @@ export async function buildUiPermissionProjection(
   });
 
   const resourceNameById = new Map<string, string>();
-  for (const row of (resources || []) as UiResourceRow[]) {
+  for (const row of (resources || []) as MetaUiResourceAuthzRow[]) {
     const id = String(row?.Id ?? '').trim();
     const name = String(row?.Name ?? '').trim();
     if (!id || !name) continue;
     resourceNameById.set(id, name);
   }
 
-  const allResources: UiResourceMeta[] = ((resources || []) as UiResourceRow[])
+  const allResources: UiResourceMeta[] = ((resources || []) as MetaUiResourceAuthzRow[])
     .map(row => ({
       dbId: String(row?.Id ?? '').trim(),
       resourceId: String(row?.Name ?? '').trim(),
@@ -198,7 +183,7 @@ export async function buildUiPermissionProjection(
   }
 
   const menuIdsByRouteId = new Map<string, Set<string>>();
-  for (const row of (menuRouteRows || []) as MenuRouteRow[]) {
+  for (const row of (menuRouteRows || []) as MetaUiResourceMenuRouteRow[]) {
     const menuDbId = normalizeUiResourceId(row?.MenuUiResourceId);
     const routeDbId = normalizeUiResourceId(row?.RouteUiResourceId);
     const menuId = menuDbId ? String(resourceNameById.get(menuDbId) || '').trim() : '';
@@ -213,7 +198,7 @@ export async function buildUiPermissionProjection(
   }
 
   const routeIdsByActionId = new Map<string, Set<string>>();
-  for (const row of (routeActionRows || []) as RouteActionRow[]) {
+  for (const row of (routeActionRows || []) as MetaUiResourceRouteActionRow[]) {
     const routeDbId = normalizeUiResourceId(row?.RouteUiResourceId);
     const actionDbId = normalizeUiResourceId(row?.ActionUiResourceId);
     const routeId = routeDbId ? String(resourceNameById.get(routeDbId) || '').trim() : '';

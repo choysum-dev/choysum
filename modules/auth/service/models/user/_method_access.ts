@@ -14,20 +14,13 @@ import { buildUiGrantCacheKey } from '../_request_cache_invalidation';
 import RoleMethodAccess from '../role_method_access';
 import RoleUiResource from '../role_ui_resource';
 import { normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, requireMatchesMethod, sortStrings } from './_authz_shared';
+import type { MetaUiResourceAuthzRow } from '../_authz_rows';
 import { logicalMethodsAllow } from '../_logical_model_registry';
 
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
-
-/** MetaUiResource.Search projection (PascalCase field names only). */
-type UiResourceRow = {
-  Id?: unknown;
-  Name?: unknown;
-  MetaApplicationId?: unknown;
-  Requires?: unknown;
-};
 
 async function metaModelId(appName: string, modelName: string): Promise<string> {
   const rows = await MetaModel.Search(
@@ -46,7 +39,7 @@ async function metaApplicationId(appName: string): Promise<string> {
 }
 
 export type UiGrantExpansion = {
-  resources: UiResourceRow[];
+  resources: MetaUiResourceAuthzRow[];
   hasGlobalAllow: boolean;
   hasGlobalDeny: boolean;
   appModesById: Record<string, Array<'allow' | 'deny'>>;
@@ -298,8 +291,8 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     return empty;
   }
 
-  const byId = new Map<string, UiResourceRow>();
-  const mergeRows = (rows: UiResourceRow[]) => {
+  const byId = new Map<string, MetaUiResourceAuthzRow>();
+  const mergeRows = (rows: MetaUiResourceAuthzRow[]) => {
     for (const row of rows || []) {
       const id = normalizeUiResourceId(row?.Id);
       if (!id) continue;
@@ -312,18 +305,18 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
       fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'],
       limit: 100000,
     });
-    mergeRows((allRows || []) as UiResourceRow[]);
+    mergeRows((allRows || []) as MetaUiResourceAuthzRow[]);
   } else {
     const appIDList = uniqStrings(Array.from(appIDs));
     const resourceIDList = uniqStrings(Array.from(resourceIDs));
-    const promises: Array<Promise<UiResourceRow[]>> = [];
+    const promises: Array<Promise<MetaUiResourceAuthzRow[]>> = [];
 
     if (appIDList.length > 0) {
       promises.push(
         MetaUiResource.Search(
           { And: [['MetaApplicationId', 'in', appIDList]] },
           { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 }
-        ) as Promise<UiResourceRow[]>
+        ) as Promise<MetaUiResourceAuthzRow[]>
       );
     }
 
@@ -337,7 +330,7 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
             ],
           },
           { fields: ['Id', 'Name', 'MetaApplicationId', 'Requires'], limit: 100000 }
-        ) as Promise<UiResourceRow[]>
+        ) as Promise<MetaUiResourceAuthzRow[]>
       );
     }
 
