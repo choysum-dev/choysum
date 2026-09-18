@@ -6,8 +6,9 @@
  * Production TypeScript under modules/<app>/service forbids explicit `any`.
  * Test files keep `any` allowed (no zero-KPI for tests).
  *
- * Local run (Node 22+):
- *   npx --yes eslint@9 --config eslint.config.mjs 'modules/*/service/**/*.ts'
+ * Local run (Node 22+; installs eslint + typescript-eslint packages ephemerally):
+ *   npx --yes -p eslint@9 -p @typescript-eslint/parser -p @typescript-eslint/eslint-plugin \\
+ *     eslint --config eslint.config.mjs 'modules/*/service/**/*.{ts,tsx}'
  *
  * CI typecheck jobs do not run ESLint (no Node on that path). Production
  * as-any DoD is gated by: python3 scripts/dev/count_as_any.py --max 324

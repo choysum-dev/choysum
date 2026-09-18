@@ -216,9 +216,7 @@ export default class Language extends BaseModel {
   @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'IsActive', 'Code'])
   async validateLanguageConstraint(): Promise<void> {
     if (this.Direction !== undefined) {
-      const direction = assertDirection(this.Direction);
-      if (direction != null) this.Direction = direction;
-      else if (direction === null) this.Direction = undefined;
+      this.Direction = assertDirection(this.Direction) ?? undefined;
     }
     if (this.CurrencySymbolPosition !== undefined) {
       const position = assertCurrencySymbolPosition(this.CurrencySymbolPosition);

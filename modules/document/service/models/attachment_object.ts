@@ -608,7 +608,7 @@ async function createUploadSessionInternal(req: PrepareUploadReq): Promise<strin
     ['Id'] as const
   );
 
-  return requireText((created as { Id?: unknown }).Id, 'uploadId');
+  return requireText((created as { Id?: unknown } | null | undefined)?.Id, 'uploadId');
 }
 
 async function finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadResp> {
@@ -676,7 +676,7 @@ async function finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadR
       ['Id', 'StoredContentId', 'SizeBytes', 'MimeType', 'ChecksumSha256', 'Status', 'ImageWidth', 'ImageHeight', 'ImageFormat'] as const
     )) as AttachmentContent);
 
-  const attachmentContentId = requireText((created as { Id?: unknown }).Id, 'attachmentContentId');
+  const attachmentContentId = requireText((created as { Id?: unknown } | null | undefined)?.Id, 'attachmentContentId');
   const AttachmentUploadSessionModel = getAttachmentUploadSessionModel();
   await AttachmentUploadSessionModel.UpdateById(
     normalizedUploadId,

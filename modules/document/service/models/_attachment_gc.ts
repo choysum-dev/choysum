@@ -146,9 +146,10 @@ export async function garbageCollectUnboundObjects(
         try {
           await deleteStoredContent({ storedContentId });
         } catch (err: unknown) {
-          const errBag = err as { message?: unknown; code?: unknown; status?: unknown };
-          const errMsg = String(errBag.message || err).toLowerCase();
-          const isNotFound = errMsg.includes('not found') || errMsg.includes('nosuchkey') || errBag.code === 'NoSuchKey' || errBag.status === 404;
+          const errBag = err as { message?: unknown; code?: unknown; status?: unknown } | null | undefined;
+          const errMsg = String(errBag?.message || err).toLowerCase();
+          const isNotFound =
+            errMsg.includes('not found') || errMsg.includes('nosuchkey') || errBag?.code === 'NoSuchKey' || errBag?.status === 404;
           if (!isNotFound) throw err;
         }
 

@@ -27,12 +27,14 @@ AS_ANY = re.compile(r"\bas any\b")
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def is_production(path: Path) -> bool:
-    name = path.name
-    if name.endswith(".test.ts"):
+def is_production(path: Path, modules_root: Path) -> bool:
+    if path.name.endswith((".test.ts", ".test.tsx")):
         return False
-    parts = path.parts
-    if "tests" in parts:
+    try:
+        rel_parts = path.relative_to(modules_root).parts
+    except ValueError:
+        rel_parts = path.parts
+    if "tests" in rel_parts:
         return False
     return True
 
@@ -116,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         rel = path.relative_to(modules_root.parent) if modules_root.parent in path.parents else path
         rel_s = str(rel).replace("\\", "/")
         app = path.relative_to(modules_root).parts[0] if path.is_relative_to(modules_root) else "?"
-        if is_production(path):
+        if is_production(path, modules_root):
             prod_total += n
             prod_files += 1
             by_module[app] += n

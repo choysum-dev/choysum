@@ -337,7 +337,7 @@ export async function refreshTokensWithLatestMetadata(
   }
 ): Promise<TokenPair> {
   const identity = await Token.ValidateToken(refreshToken, 'refresh');
-  const userId = String(identity.userId || '').trim();
+  const userId = String(identity?.userId || '').trim();
   if (!userId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
@@ -371,7 +371,7 @@ export async function refreshTokensWithLatestMetadata(
  */
 export async function revokeLogoutArtifacts(token: string, allDevices: boolean): Promise<void> {
   const identity = await Token.ValidateToken(token, 'access');
-  const userId = String(identity.userId || '').trim();
+  const userId = String(identity?.userId || '').trim();
   if (!userId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
@@ -388,7 +388,7 @@ export async function revokeLogoutArtifacts(token: string, allDevices: boolean):
   await Token.RevokeToken(token, 'User initiated logout');
 
   try {
-    const tokenId = String(identity.tokenId || '').trim();
+    const tokenId = String(identity?.tokenId || '').trim();
     const sessions = tokenId ? await Session.Search(['AccessTokenId', '=', tokenId]) : [];
     if (sessions.length > 0) {
       await Session.RevokeSession(sessions[0].Id);

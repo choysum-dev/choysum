@@ -42,7 +42,7 @@ export async function purgePropertyDefinitionsForContainers(
       if (canBulkDelete && Ctor.Delete) {
         return Number(await Ctor.Delete(condition)) || 0;
       }
-      const rows = await Ctor.Search(condition, { fields: ['Id'], limit: 0 });
+      const rows = await Ctor.Search(condition, { fields: ['Id'] });
       let n = 0;
       for (const row of rows || []) {
         const id = String(row?.Id || '').trim();
