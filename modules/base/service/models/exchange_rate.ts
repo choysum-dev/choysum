@@ -3,7 +3,6 @@
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { condition } from '@/core/service/api/query';
 import { normalizeRefId, assertDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
 import { businessToday } from '@/core/service/utils/datetime';
 import { _t, _lt } from '../i18n';
@@ -110,13 +109,13 @@ export default class ExchangeRate extends BaseModel {
       fail(_t('%s is required', { scope: 'service/models/exchange_rate' }, 'CurrencyId'));
     }
     const conflicts = await this.Search(
-      condition<ExchangeRate>({
+      {
         And: [
           ['CompanyScopeKey', '=', scopeKey],
           ['CurrencyId', '=', currencyId],
           ['Date', '=', dateKey],
         ],
-      }),
+      },
       { fields: ['Id'], limit: 2 }
     );
 
