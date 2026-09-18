@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type Sequence from './sequence';
-import type { SequenceNextItem, SequenceNextResult } from './sequence';
+import type { SequenceNextItem, SequenceNextPublic, SequenceNextResult } from './sequence';
 import { resolveModelRefId } from '@/core/service/utils/normalization';
 
 export type SequenceFormatSnapshot = {
@@ -28,10 +28,10 @@ function readSequenceCompanyId(seq: Sequence): unknown {
   return resolveModelRefId(seq, 'CompanyId');
 }
 
-export function buildSequencePublicSnapshot(seq: Sequence): SequenceNextResult['Sequence'] {
+export function buildSequencePublicSnapshot(seq: Sequence): SequenceNextPublic {
   return {
     Id: seq.Id,
-    CompanyId: readSequenceCompanyId(seq) as SequenceNextResult['Sequence']['CompanyId'],
+    CompanyId: (readSequenceCompanyId(seq) as string | null | undefined) || undefined,
     Code: seq.Code,
     Prefix: seq.Prefix,
     Suffix: seq.Suffix,

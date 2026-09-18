@@ -20,9 +20,14 @@ export type SequenceNextParams = {
 
 export type SequenceNextItem = { Value: string; Number: number };
 
+/** Public Sequence.Next snapshot: model fields plus wire CompanyId (string id, not ManyToOne). */
+export type SequenceNextPublic = Pick<Sequence, 'Id' | 'Code' | 'Prefix' | 'Suffix' | 'Padding'> & {
+  CompanyId?: string;
+};
+
 export type SequenceNextResult = {
   Items: SequenceNextItem[];
-  Sequence: { Id: string; CompanyId?: string; Code: string; Prefix?: string; Suffix?: string; Padding: number };
+  Sequence: SequenceNextPublic;
   GeneratedAt: string;
 };
 
