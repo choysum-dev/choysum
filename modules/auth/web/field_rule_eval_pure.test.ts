@@ -4,14 +4,14 @@
 function assertFieldPerm(v: any): 'allow' | 'deny' | null {
   if (v == null) return null;
   if (typeof v === 'object') {
-    throw new Error("invalid field rule permission: must be 'allow' or 'deny'");
+    throw new Error(`invalid field rule permission: expected 'allow'|'deny', got ${JSON.stringify(v)}`);
   }
   const s = String(v)
     .trim()
     .toLowerCase();
   if (!s) return null;
   if (s === 'allow' || s === 'deny') return s;
-  throw new Error("invalid field rule permission: must be 'allow' or 'deny'");
+  throw new Error(`invalid field rule permission: expected 'allow'|'deny', got ${JSON.stringify(v)}`);
 }
 
 test('assertFieldPerm: returns null for null/undefined', () => {
