@@ -411,22 +411,20 @@ export default class MetaUiResource extends BaseModel {
           ? condition<MetaUiResource>(conditionParts[0]!)
           : condition<MetaUiResource>({ And: conditionParts });
 
-    const declarationFields = [
-      'Id',
-      'Name',
-      'Type',
-      'Title',
-      'Sequence',
-      'Requires',
-      'Module',
-      'UiPath',
-      'DefaultRoles',
-      'MetaApplicationId',
-      'ParentId',
-    ] as const;
-
     const rows = await this.Search(searchCondition, {
-      fields: [...declarationFields],
+      fields: [
+        'Id',
+        'Name',
+        'Type',
+        'Title',
+        'Sequence',
+        'Requires',
+        'Module',
+        'UiPath',
+        'DefaultRoles',
+        'MetaApplicationId',
+        'ParentId',
+      ],
       limit: 50000,
     });
 

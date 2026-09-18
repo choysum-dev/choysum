@@ -4,7 +4,6 @@
 import {  BaseModel, Field, Model, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
 import { getModelRepository } from '@/core/service/orm/model';
 import type { QueryCondition, SearchOptions, CountOptions } from '@/core/service/api/query';
-import { condition } from '@/core/service/api/query';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { createServiceByModel } from '@/core/service/rpc';
 import { sql } from 'kysely';
@@ -39,13 +38,13 @@ const Job = createServiceByModel<typeof JobModel>('task.Job');
 
 async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncOriginType): Promise<string> {
   const running = await Job.Search(
-    condition<JobModel>({
+    {
       And: [
         ['TargetApp', '=', 'meta'],
         ['FullMethod', '=', fullMethod],
         ['Status', 'in', ['queued', 'dispatching']],
       ],
-    }),
+    },
     { limit: 20, orderBy: { field: 'CreatedAt', order: 'desc' }, fields: ['Id', 'PayloadJson'] }
   );
   for (const row of running || []) {

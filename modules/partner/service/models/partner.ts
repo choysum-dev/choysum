@@ -14,11 +14,6 @@ import type Language from '@/base/service/models/language';
 import PartnerContact from './partner_contact';
 
 /**
- * Minimal contact shape used while deriving computed partner defaults.
- */
-type PartnerContactLike = Pick<PartnerContact, 'Id' | 'Name' | 'AddressType' | 'IsDefault' | 'IsActive' | 'Sequence' | 'AddressId'>;
-
-/**
  * Company-scoped business partner master record with derived default contacts and addresses.
  *
  * Extends {@link PartnerCollaborationModel} for message-thread and attachment-owner
@@ -267,7 +262,7 @@ export default class Partner extends PartnerCollaborationModel {
   Notes?: string;
 
   /** Sorts active contacts by default flag, sequence, and identifier. */
-  private static sortContacts(contacts: PartnerContactLike[] | undefined | null): PartnerContactLike[] {
+  private static sortContacts(contacts: PartnerContact[] | undefined | null): PartnerContact[] {
     return [...(contacts || [])]
       .filter(item => !!item?.Id)
       .filter(item => item?.IsActive !== false)
@@ -283,12 +278,12 @@ export default class Partner extends PartnerCollaborationModel {
   }
 
   /** Reports whether a contact points at an address record. */
-  private static hasAddress(contact?: PartnerContactLike): boolean {
+  private static hasAddress(contact?: PartnerContact): boolean {
     return !!normalizeRefId(contact?.AddressId);
   }
 
   /** Picks the derived default contact id from related contacts. */
-  private static pickDefaultContactId(contacts: PartnerContactLike[] | undefined | null): string | null {
+  private static pickDefaultContactId(contacts: PartnerContact[] | undefined | null): string | null {
     const sorted = this.sortContacts(contacts);
     const preferred = sorted.find(item => item?.IsDefault === true && !item?.AddressType && !!String(item?.Name || '').trim());
     if (preferred?.Id) return preferred.Id;
@@ -300,7 +295,7 @@ export default class Partner extends PartnerCollaborationModel {
   }
 
   /** Picks the derived default address contact id for a given address type. */
-  private static pickDefaultAddressId(contacts: PartnerContactLike[] | undefined | null, addressType: string): string | null {
+  private static pickDefaultAddressId(contacts: PartnerContact[] | undefined | null, addressType: string): string | null {
     const sorted = this.sortContacts(contacts);
     const matched = sorted.find(item => item?.AddressType === addressType && item?.IsDefault === true && this.hasAddress(item));
     return matched?.Id || null;
