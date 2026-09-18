@@ -5,11 +5,8 @@ import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextPublic, SequenceNextResult } from './sequence';
 import { resolveModelRefId } from '@/core/service/utils/normalization';
 
-export type SequenceFormatSnapshot = {
-  Prefix: string;
-  Suffix: string;
-  Padding: number;
-};
+/** Normalized format fields for idempotency / next payloads (empty Prefix/Suffix become ''). */
+export type SequenceFormatSnapshot = Required<Pick<Sequence, 'Prefix' | 'Suffix' | 'Padding'>>;
 
 export type SequenceIdempotencyPayload = {
   CompanyId: unknown;
