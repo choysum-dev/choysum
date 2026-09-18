@@ -5,7 +5,7 @@ import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
 import { condition, type BaseQueryCondition, type OrderBy } from '@/core/service/api/query';
-import type { FieldSelection } from '@/core/service/api/selection';
+import type { FieldSelection, Projected } from '@/core/service/api/selection';
 import {
   assertDateString,
   parseDecimalInput,
@@ -23,8 +23,7 @@ import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
 const { _t } = createTranslate('base');
 
 const RATE_FIELDS = ['Id', 'CurrencyId', 'CompanyId', 'Date', 'Rate'] as const;
-/** Pick (not Projected): ExchangeRate.Date/Rate are typed `any` and filtered out of Selectable. */
-type RateRecord = Pick<ExchangeRate, (typeof RATE_FIELDS)[number]>;
+type RateRecord = Projected<ExchangeRate, typeof RATE_FIELDS>;
 
 async function getRateRecord(opts: {
   companyId: string;
@@ -35,27 +34,26 @@ async function getRateRecord(opts: {
 }): Promise<{ rec?: RateRecord; usedGlobal: boolean; usedFallbackDate: boolean }> {
   const { default: ExchangeRateModel } = await import('./exchange_rate');
   const { companyId, currencyId, date, mode } = opts;
-  const rateFields = RATE_FIELDS as unknown as FieldSelection<ExchangeRate>;
   const searchOne = async (companyCond: BaseQueryCondition): Promise<RateRecord | undefined> => {
     if (mode === 'exact') {
       const rows = await ExchangeRateModel.Search(
         condition<ExchangeRate>({ And: [companyCond, ['CurrencyId', '=', currencyId], ['Date', '=', date]] }),
         {
           limit: 1,
-          fields: rateFields,
+          fields: RATE_FIELDS,
         }
       );
-      return rows?.[0] as RateRecord | undefined;
+      return rows?.[0];
     }
     const rows = await ExchangeRateModel.Search(
       condition<ExchangeRate>({ And: [companyCond, ['CurrencyId', '=', currencyId], ['Date', '<=', date]] }),
       {
         limit: 1,
-        orderBy: { field: 'Date', order: 'desc' } as unknown as OrderBy<ExchangeRate>,
-        fields: rateFields,
+        orderBy: { field: 'Date', order: 'desc' } as OrderBy<ExchangeRate>,
+        fields: RATE_FIELDS,
       }
     );
-    return rows?.[0] as RateRecord | undefined;
+    return rows?.[0];
   };
 
   // company scoped
@@ -161,7 +159,7 @@ export async function convertCurrency(model: CurrencyOps, params: CurrencyConver
         message: _t('ExchangeRate not found for currency %s', { scope: 'service/models/_currency_convert' }, fromCurrencyId),
       }).withGrpcCode(GrpcCode.NotFound);
     }
-    rateFrom = rec.Rate as Decimal;
+    rateFrom = parseDecimalInput(rec.Rate, { allowNumber: false });
     rateUsed.From = { CurrencyId: fromCurrencyId, Date: toDateOnlyString(rec.Date), Rate: rateFrom };
     if (usedFallbackDate) warnings.push('rate.latest_before.fallback');
     if (usedGlobal) warnings.push('rate.global.fallback');
@@ -182,7 +180,7 @@ export async function convertCurrency(model: CurrencyOps, params: CurrencyConver
         message: _t('ExchangeRate not found for currency %s', { scope: 'service/models/_currency_convert' }, toCurrencyId),
       }).withGrpcCode(GrpcCode.NotFound);
     }
-    rateTo = rec.Rate as Decimal;
+    rateTo = parseDecimalInput(rec.Rate, { allowNumber: false });
     rateUsed.To = { CurrencyId: toCurrencyId, Date: toDateOnlyString(rec.Date), Rate: rateTo };
     if (usedFallbackDate) warnings.push('rate.latest_before.fallback');
     if (usedGlobal) warnings.push('rate.global.fallback');
@@ -207,8 +205,8 @@ export async function convertCurrency(model: CurrencyOps, params: CurrencyConver
       }).withGrpcCode(GrpcCode.NotFound);
     }
     const roundingSpec: CurrencyRoundingSpec = {
-      DecimalDigits: (toCurrency as { DecimalDigits?: unknown }).DecimalDigits,
-      Rounding: (toCurrency as { Rounding?: unknown }).Rounding,
+      DecimalDigits: toCurrency.DecimalDigits,
+      Rounding: toCurrency.Rounding,
     };
     out = roundToCurrencyAmount(out, roundingSpec, overrideDigits);
   }

@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { assertDecimalDigits, assertPositiveDecimalString } from '@/core/service/utils/normalization';
+import { assertDecimalDigits, toPositiveDecimal } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import { mapNormalizationToBase, assertCodeRequired } from './_normalizers';
 import { convertCurrency } from './_currency_convert';
@@ -18,17 +18,27 @@ export type CurrencyConvertRounding = {
   ToDecimalDigitsOverride?: number;
 };
 
+export type CurrencyConvertRateUsedSide = {
+  CurrencyId: string;
+  Date: string;
+  Rate: Decimal;
+};
+
 export type CurrencyConvertParams = {
   CompanyId: string;
   Date: string;
-  Amount: any;
+  Amount: Decimal | string;
   FromCurrencyId: string;
   ToCurrencyId: string;
   RatePolicy?: CurrencyConvertRatePolicy;
   Rounding?: CurrencyConvertRounding;
 };
 
-export type CurrencyConvertResult = { Amount: any; RateUsed?: any; Warnings?: string[] };
+export type CurrencyConvertResult = {
+  Amount: Decimal;
+  RateUsed?: { From?: CurrencyConvertRateUsedSide; To?: CurrencyConvertRateUsedSide };
+  Warnings?: string[];
+};
 
 @Model('Currency')
 export default class Currency extends BaseModel {
@@ -79,7 +89,7 @@ export default class Currency extends BaseModel {
       scope: 'base.model.Currency.fields',
     }),
   })
-  Rounding: any;
+  Rounding: Decimal;
 
   @Field({
     type: 'boolean',
@@ -101,7 +111,7 @@ export default class Currency extends BaseModel {
           : _t('DecimalDigits must be a non-negative integer', { scope: 'service/models/currency' })
     );
     this.Rounding = mapNormalizationToBase(
-      () => assertPositiveDecimalString(this.Rounding),
+      () => toPositiveDecimal(this.Rounding),
       err =>
         err.code === 'non_positive_decimal'
           ? _t('Rounding must be greater than 0', { scope: 'service/models/currency' })

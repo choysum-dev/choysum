@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { condition } from '@/core/service/api/query';
 import { toPositiveDecimal } from '@/core/service/utils/normalization';
@@ -69,13 +69,13 @@ export default class UoM extends BaseModel {
       scope: 'base.model.UoM.fields',
     }),
   })
-  Factor: any;
+  Factor: Decimal;
 
   @Field({
     type: 'decimal',
     string: _lt('Rounding', { scope: 'base.model.UoM.fields' }),
   })
-  Rounding?: any;
+  Rounding?: Decimal | null;
 
   @Field({
     type: 'boolean',
@@ -134,14 +134,13 @@ export default class UoM extends BaseModel {
     }
 
     if (values.Rounding !== undefined && values.Rounding !== null && values.Rounding !== '') {
-      const rounding = mapNormalizationToBase(
+      values.Rounding = mapNormalizationToBase(
         () => toPositiveDecimal(values.Rounding),
         err =>
           err.code === 'non_positive_decimal'
             ? _t('Rounding must be greater than 0', { scope: 'service/models/uom' })
             : _t('Rounding must be a valid decimal', { scope: 'service/models/uom' })
       );
-      values.Rounding = rounding.toString();
     } else {
       values.Rounding = null;
     }
@@ -149,7 +148,7 @@ export default class UoM extends BaseModel {
     values.CategoryId = categoryId;
     values.Name = name;
     values.IsReference = isRef;
-    values.Factor = factor.toString();
+    values.Factor = factor;
     // DB unique (CategoryId, ReferenceSlotKey) makes concurrent reference creates fail atomically.
     values.ReferenceSlotKey = isRef ? '__REF__' : null;
 

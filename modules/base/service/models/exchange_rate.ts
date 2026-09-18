@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { condition } from '@/core/service/api/query';
 import { normalizeRefId, assertDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
@@ -60,7 +60,7 @@ export default class ExchangeRate extends BaseModel {
       scope: 'base.model.ExchangeRate.fields',
     }),
   })
-  Date: any;
+  Date: string;
 
   @Field({
     type: 'decimal',
@@ -70,7 +70,7 @@ export default class ExchangeRate extends BaseModel {
       scope: 'base.model.ExchangeRate.fields',
     }),
   })
-  Rate: any;
+  Rate: Decimal;
 
   private static coerceDateKey(value: any): string {
     // Date-only business keys must be YYYY-MM-DD strings. Reject Date objects:
@@ -128,7 +128,7 @@ export default class ExchangeRate extends BaseModel {
 
   private static async validateEntity(values: ExchangeRate, currentId?: string): Promise<void> {
     values.Rate = mapNormalizationToBase(
-      () => toPositiveDecimal(values.Rate).toString(),
+      () => toPositiveDecimal(values.Rate),
       err =>
         err.code === 'non_positive_decimal'
           ? _t('Rate must be greater than 0', { scope: 'service/models/exchange_rate' })
