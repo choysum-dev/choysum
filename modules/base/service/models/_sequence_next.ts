@@ -13,6 +13,7 @@ import type Sequence from './sequence';
 import type SequenceIdempotency from './sequence_idempotency';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
 import type { SequenceIdempotencyPayload } from './_sequence_next_payload';
+import type { Projected } from '@/core/service/api/selection';
 
 const { _t } = createTranslate('base');
 
@@ -46,31 +47,8 @@ const IDEMPOTENCY_HIT_FIELDS = [
   'ExpiresAt',
 ] as const;
 
-type IdempotencyHit = {
-  Id?: string;
-  SequenceId?: unknown;
-  CodeSnapshot?: unknown;
-  FormatSnapshot?: unknown;
-  IdempotencyKey?: unknown;
-  Count?: unknown;
-  DryRun?: unknown;
-  RangeStart?: unknown;
-  RangeEnd?: unknown;
-  ExpiresAt?: unknown;
-};
-
-type SequenceRow = {
-  Id: string;
-  CompanyId?: unknown;
-  CompanyScopeKey?: string;
-  Code?: string;
-  Prefix?: string;
-  Suffix?: string;
-  Padding?: number;
-  NextNumber?: unknown;
-  IsActive?: boolean;
-  UpdatedAt?: unknown;
-};
+type IdempotencyHit = Projected<SequenceIdempotency, typeof IDEMPOTENCY_HIT_FIELDS>;
+type SequenceRow = Projected<Sequence, typeof SEQUENCE_LOOKUP_FIELDS>;
 
 type SequenceOps = {
   Search: (condition: unknown, options?: unknown) => Promise<SequenceRow[]>;

@@ -16,15 +16,7 @@ import PartnerContact from './partner_contact';
 /**
  * Minimal contact shape used while deriving computed partner defaults.
  */
-type PartnerContactLike = {
-  Id?: string;
-  Name?: string;
-  AddressType?: string | null;
-  IsDefault?: boolean;
-  IsActive?: boolean;
-  Sequence?: number | null;
-  AddressId?: string | { Id?: string } | null;
-};
+type PartnerContactLike = Pick<PartnerContact, 'Id' | 'Name' | 'AddressType' | 'IsDefault' | 'IsActive' | 'Sequence' | 'AddressId'>;
 
 /**
  * Company-scoped business partner master record with derived default contacts and addresses.

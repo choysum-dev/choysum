@@ -29,9 +29,7 @@ type CompanyScopeMeta = {
  */
 export function getCompanyScopeFromRequestContext(): { activeCompanyId: string; enabledCompanyIds: string[] } {
   const ctx = getReadonlyCtx();
-  const identity = getIdentity() as unknown as {
-    metadata?: CompanyScopeMeta;
-  };
+  const identity = getIdentity() as Readonly<{ metadata?: CompanyScopeMeta }>;
   const meta = identity.metadata ?? {};
 
   const activeCompanyId = String(ctx.activeCompanyId ?? meta.activeCompanyId ?? '').trim();

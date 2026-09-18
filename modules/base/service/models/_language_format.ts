@@ -6,16 +6,21 @@
  * Grouping follows Odoo/POSIX style lists such as "[3,0]" or [3, 0].
  */
 
-export type LanguageFormatFields = {
-  DecimalSeparator?: string | null;
-  ThousandSeparator?: string | null;
-  Grouping?: string | number[] | null;
-  DateFormat?: string | null;
-  TimeFormat?: string | null;
-  FirstDayOfWeek?: number | null;
-  CurrencySymbolPosition?: 'before' | 'after' | null;
-  CurrencySymbolSpacing?: boolean | null;
-};
+import type Language from './language';
+
+export type LanguageFormatFields = Partial<
+  Pick<
+    Language,
+    | 'DecimalSeparator'
+    | 'ThousandSeparator'
+    | 'Grouping'
+    | 'DateFormat'
+    | 'TimeFormat'
+    | 'FirstDayOfWeek'
+    | 'CurrencySymbolPosition'
+    | 'CurrencySymbolSpacing'
+  >
+>;
 
 export function parseGrouping(raw: unknown): number[] {
   if (Array.isArray(raw)) {

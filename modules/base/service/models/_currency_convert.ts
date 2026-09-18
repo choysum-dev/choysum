@@ -15,21 +15,16 @@ import {
   type CurrencyRoundingSpec,
 } from '@/core/service/utils/normalization';
 import { mapNormalizationToBase, assertRatePolicyMode, assertRoundingMode } from './_normalizers';
+import type Company from './company';
 import type Currency from './currency';
 import type ExchangeRate from './exchange_rate';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
 
 const { _t } = createTranslate('base');
 
-type RateRecord = {
-  Id?: string;
-  CurrencyId?: unknown;
-  CompanyId?: unknown;
-  Date?: unknown;
-  Rate?: unknown;
-};
-
 const RATE_FIELDS = ['Id', 'CurrencyId', 'CompanyId', 'Date', 'Rate'] as const;
+/** Pick (not Projected): ExchangeRate.Date/Rate are typed `any` and filtered out of Selectable. */
+type RateRecord = Pick<ExchangeRate, (typeof RATE_FIELDS)[number]>;
 
 async function getRateRecord(opts: {
   companyId: string;
@@ -82,7 +77,7 @@ async function getRateRecord(opts: {
 }
 
 type CurrencyOps = {
-  Browse: (id: string, fields?: FieldSelection<Currency>) => Promise<RateRecord | Currency | null | undefined>;
+  Browse: (id: string, fields?: FieldSelection<Currency>) => Promise<Currency | null | undefined>;
 };
 
 export async function convertCurrency(model: CurrencyOps, params: CurrencyConvertParams): Promise<CurrencyConvertResult> {
@@ -120,7 +115,7 @@ export async function convertCurrency(model: CurrencyOps, params: CurrencyConver
   }
 
   const { default: Company } = await import('./company');
-  let company: RateRecord | null | undefined;
+  let company: Pick<Company, 'Id' | 'CurrencyId'> | null | undefined;
   try {
     company = await Company.Browse(companyId, ['Id', 'CurrencyId']);
   } catch {

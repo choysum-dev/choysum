@@ -12,6 +12,11 @@ export type RequestSyncParams = {
   ifStale?: boolean;
 };
 
+/**
+ * Sort/project bag for module-index helpers.
+ * Wider than {@link MetaModuleIndex} on purpose: OriginType is compared as text,
+ * and sync timestamps may arrive as ISO strings from JSON.
+ */
 export type ModuleIndexRecord = {
   Id?: string;
   ModuleName?: string;

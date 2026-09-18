@@ -5,19 +5,9 @@ import { HookPostInit } from '@/core/service/api/model';
 import { condition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type Schedule from '@/task/service/models/schedule';
+import type { ScheduleHookRow } from '@/task/service/models/schedule';
 
 const ScheduleService = createServiceByModel<typeof Schedule>('task.Schedule');
-
-type ScheduleRecord = {
-  Id?: string;
-  Name?: string;
-  Active?: boolean;
-  CronExpr?: string;
-  Timezone?: string;
-  TargetApp?: string;
-  FullMethod?: string;
-  PayloadTemplateJson?: Record<string, unknown> | null;
-};
 
 const scheduleName = 'meta.module_index.daily_sync';
 const targetApp = 'meta';
@@ -37,7 +27,7 @@ function payloadEquals(left: unknown, right: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function needsUpdate(existing: ScheduleRecord): boolean {
+function needsUpdate(existing: ScheduleHookRow): boolean {
   if (existing.Active !== true) return true;
   if ((existing.CronExpr || '').trim() !== cronExpr) return true;
   if ((existing.Timezone || '').trim() !== timezone) return true;
@@ -47,9 +37,9 @@ function needsUpdate(existing: ScheduleRecord): boolean {
   return false;
 }
 
-async function listScheduleByName(name: string): Promise<ScheduleRecord[]> {
+async function listScheduleByName(name: string): Promise<ScheduleHookRow[]> {
   const items = await ScheduleService.ListSchedules(condition({ And: [['Name', '=', name]] }), { limit: 1 });
-  return Array.isArray(items) ? (items as ScheduleRecord[]) : [];
+  return Array.isArray(items) ? items : [];
 }
 
 async function createSchedule(): Promise<void> {

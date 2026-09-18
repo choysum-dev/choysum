@@ -10,7 +10,6 @@ import { assertCurrencySymbolPosition, assertCurrencySymbolSpacing, assertDirect
 import {
   formatDateWithLanguage,
   formatNumberWithLanguage,
-  type LanguageFormatFields,
 } from './_language_format';
 
 export type LanguageFormatKind = 'number' | 'date' | 'time' | 'datetime';
@@ -217,19 +216,19 @@ export default class Language extends BaseModel {
       ? condition<Language>(['Id', '=', languageId])
       : condition<Language>(['Code', '=', code]);
     const rows = await this.Search(lookup, {
-      fields: [...FORMAT_LANGUAGE_FIELDS],
+      fields: FORMAT_LANGUAGE_FIELDS,
       limit: 1,
     });
-    const row = (rows || [])[0] as LanguageFormatFields | undefined;
+    const row = (rows || [])[0];
     if (!row) {
       raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
     }
 
     if (kind === 'number') {
       const num = typeof params.Value === 'number' ? params.Value : Number(params.Value);
-      return formatNumberWithLanguage(num, row!, { digits: params.Digits });
+      return formatNumberWithLanguage(num, row, { digits: params.Digits });
     }
-    return formatDateWithLanguage(params.Value, row!, kind);
+    return formatDateWithLanguage(params.Value, row, kind);
   }
 
   @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'IsActive', 'Code'])

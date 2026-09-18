@@ -4,7 +4,7 @@
 import { normalizeRefId, normalizeRefIdList } from '@/core/service/utils/normalization';
 import type { Insertable } from '@/core/service/api/input';
 import type { RoleAccessUiIdsRow, RoleUiResourceGrantRow } from './_authz_rows';
-import RoleUiResource from './role_ui_resource';
+import RoleUiResource, { type RoleUiResourceMode } from './role_ui_resource';
 
 const hasOwn = (obj: Record<string, unknown>, key: string): boolean => Object.prototype.hasOwnProperty.call(obj, key);
 
@@ -44,14 +44,15 @@ async function loadUiResourcesForRole(roleId: string): Promise<RoleUiResourceGra
 
   return (rows || []).map(row => {
     const rec = row as unknown as Record<string, unknown>;
+    const modeRaw = String(rec.Mode ?? 'allow')
+      .trim()
+      .toLowerCase();
+    const mode: RoleUiResourceMode = modeRaw === 'deny' ? 'deny' : 'allow';
     return {
-      ...rec,
       Id: normalizeRefId(rec.Id) ?? undefined,
-      Mode: String(rec.Mode ?? 'allow')
-        .trim()
-        .toLowerCase(),
-      MetaApplicationId: normalizeRefId(rec.MetaApplicationId),
-      MetaUiResourceId: normalizeRefId(rec.MetaUiResourceId),
+      Mode: mode,
+      MetaApplicationId: normalizeRefId(rec.MetaApplicationId) ?? null,
+      MetaUiResourceId: normalizeRefId(rec.MetaUiResourceId) ?? null,
     };
   });
 }

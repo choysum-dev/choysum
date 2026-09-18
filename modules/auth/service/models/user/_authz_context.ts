@@ -4,6 +4,7 @@
 import { memoizeInReqState } from '@/core/service/api/context';
 import { condition } from '@/core/service/api/query';
 import type { BaseQueryCondition } from '@/core/service/api/query';
+import type { Projected } from '@/core/service/api/selection';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { sortStrings, maybeId, withPermissionGraphBypass } from './_authz_shared';
 import Role from '../role';
@@ -14,16 +15,9 @@ import RoleRecordRule from '../role_record_rule';
 import RoleUiResource from '../role_ui_resource';
 import UserRole from '../user_role';
 
-type UpdatedAtRow = { UpdatedAt?: unknown };
+/** Multi-model Search surface for {@link maxUpdatedAt} (UserRole / Role / inheritance / ACL tables). */
 type SearchableForMaxUpdatedAt = {
-  Search: (cond: BaseQueryCondition | [], opts: object) => Promise<UpdatedAtRow[]>;
-};
-
-type RoleRefRow = {
-  RoleId?: unknown;
-  CompanyId?: unknown;
-  ParentRoleId?: unknown;
-  ChildRoleId?: unknown;
+  Search: (cond: BaseQueryCondition | [], opts: object) => Promise<Array<{ UpdatedAt?: unknown }>>;
 };
 
 /**
@@ -77,7 +71,9 @@ export async function expandRoleClosure(directRoleIds: string[]): Promise<string
 /**
  * Compute effective global and company-scoped role coverage from user-role assignments.
  */
-export async function computeEffectiveRoleScopes(userRoles: RoleRefRow[]): Promise<Map<string, { global: boolean; companies: Set<string> }>> {
+export async function computeEffectiveRoleScopes(
+  userRoles: Array<Projected<UserRole, ['RoleId', 'CompanyId']>>
+): Promise<Map<string, { global: boolean; companies: Set<string> }>> {
   type RoleScope = { global: boolean; companies: Set<string> };
   const roleScopes = new Map<string, RoleScope>();
 
