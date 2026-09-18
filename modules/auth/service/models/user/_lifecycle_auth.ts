@@ -23,25 +23,6 @@ const CompanyService = createServiceByModel<typeof Company>('base.Company');
 /** Auth AppSetting key: gate D20 silent browser-timezone persist (table-local; no `auth.` prefix). */
 export const PERSIST_BROWSER_TIMEZONE_KEY = 'persist_browser_timezone';
 
-/**
- * Login/refresh surface derived from {@link User}.
- * Search/Browse rows assign without cast.
- */
-export type LoginUserLike = Pick<
-  User,
-  | 'Id'
-  | 'Username'
-  | 'PasswordHash'
-  | 'IsActive'
-  | 'Timezone'
-  | 'Language'
-  | 'CompanyId'
-  | 'CompanyIds'
-  | 'Preferences'
-  | 'UpdatedAt'
-  | 'load'
->;
-
 /** Fields read when building token metadata; derived from {@link User}. */
 export type TokenMetadataUserSource = Partial<
   Pick<User, 'Id' | 'Language' | 'Timezone' | 'CompanyId' | 'CompanyIds' | 'Preferences' | 'UpdatedAt'>
@@ -269,7 +250,7 @@ export async function provisionRegisteredUserBaseline(
 /**
  * Validate login candidate and enforce password/account checks.
  */
-export function validateLoginCandidateOrThrow(user: LoginUserLike | undefined, usernameOrEmail: string, password: string): LoginUserLike {
+export function validateLoginCandidateOrThrow(user: User | undefined, usernameOrEmail: string, password: string): User {
   if (!user) {
     throw newAuthError({
       code: AuthErrCode.USER_NOT_FOUND,
@@ -302,9 +283,9 @@ export function validateLoginCandidateOrThrow(user: LoginUserLike | undefined, u
  * Issue a login token pair using the freshest metadata and persist session when needed.
  */
 export async function issueLoginTokensAndSession(
-  user: LoginUserLike,
+  user: User,
   deps: {
-    extractUserMetadata: (user: LoginUserLike) => Promise<TokenMetadata>;
+    extractUserMetadata: (user: User) => Promise<TokenMetadata>;
     updateLastLogin: (userId: string, timestamp: Date) => Promise<void>;
   },
   opts: {
@@ -356,8 +337,8 @@ export async function issueLoginTokensAndSession(
 export async function refreshTokensWithLatestMetadata(
   refreshToken: string,
   deps: {
-    browseUser: (userId: string) => Promise<LoginUserLike | null | undefined>;
-    extractUserMetadata: (user: LoginUserLike) => Promise<TokenMetadata>;
+    browseUser: (userId: string) => Promise<User | null | undefined>;
+    extractUserMetadata: (user: User) => Promise<TokenMetadata>;
   }
 ): Promise<TokenPair> {
   const identity = await Token.ValidateToken(refreshToken, 'refresh');

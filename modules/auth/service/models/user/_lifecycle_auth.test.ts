@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { AuthErrCode, GrpcCode } from '../../error';
+import User from './user';
 import { hashPassword } from './_authz_shared';
 import {
   ensureCreatedUserIdOrThrow,
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
-  type LoginUserLike,
 } from './_lifecycle_auth';
 
 function loginStub(overrides: {
@@ -15,8 +15,8 @@ function loginStub(overrides: {
   Username: string;
   PasswordHash: string;
   IsActive: boolean;
-}): LoginUserLike {
-  const stub = {
+}): User {
+  const stub = Object.assign(Object.create(User.prototype), {
     Timezone: null,
     Language: null,
     CompanyId: '',
@@ -25,10 +25,10 @@ function loginStub(overrides: {
     UpdatedAt: new Date(0),
     ...overrides,
     async load() {
-      return stub as unknown as LoginUserLike;
+      return stub as User;
     },
-  };
-  return stub as unknown as LoginUserLike;
+  });
+  return stub as User;
 }
 
 test('validateAndHashRegistrationInput: throws when username is missing', () => {
@@ -54,7 +54,7 @@ test('validateLoginCandidateOrThrow: throws USER_NOT_FOUND when user is undefine
     validateLoginCandidateOrThrow(undefined, 'u', 'pw');
     expect.unreachable();
   } catch (e: unknown) {
-    const err = e as { code?: string; grpcCode?: string };
+    const err = e as { code?: string; grpcCode?: unknown };
     expect(err.code).toBe(AuthErrCode.USER_NOT_FOUND);
     expect(String(err.grpcCode)).toBe(String(GrpcCode.NotFound));
   }
