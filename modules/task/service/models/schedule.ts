@@ -15,11 +15,6 @@ import Job from './job';
 import { clampLimit } from './_limit';
 import { computeNextRunAt, assertTimezone, applyNextRunPreview } from './_cron';
 
-/** Fields read by module post_init schedule ensure hooks (meta/document). */
-export type ScheduleHookRow = Partial<
-  Pick<Schedule, 'Id' | 'Name' | 'Active' | 'CronExpr' | 'Timezone' | 'TargetApp' | 'FullMethod' | 'PayloadTemplateJson'>
->;
-
 const NEXT_RUN_PREVIEW_DEPS = ['Active', 'CronExpr', 'Timezone', 'NextRunAt'] as const;
 
 function isFullFieldSelection(fields?: FieldSelection<Schedule>): boolean {
