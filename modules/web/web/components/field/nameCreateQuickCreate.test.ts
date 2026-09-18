@@ -22,7 +22,7 @@ describe('trimSearchKeyword', () => {
 describe('extractNameCreateRecordId', () => {
   test('reads Id or id and rejects empty', () => {
     expect(extractNameCreateRecordId({ Id: 'a1' })).toBe('a1');
-    expect(extractNameCreateRecordId({ id: 'b2' })).toBe('b2');
+    expect(extractNameCreateRecordId({ id: 'b2' })).toBeUndefined();
     expect(extractNameCreateRecordId({ Id: '  c3  ' })).toBe('c3');
     expect(extractNameCreateRecordId({ Id: '' })).toBeUndefined();
     expect(extractNameCreateRecordId({ Id: '   ' })).toBeUndefined();
@@ -135,7 +135,7 @@ describe('runNameCreateQuickCreate', () => {
   });
 
   test('omits options when nameField is unset', async () => {
-    const NameCreate = asyncFnRecorder(async () => ({ id: 'legacy' }));
+    const NameCreate = asyncFnRecorder(async () => ({ Id: 'legacy' }));
     await runNameCreateQuickCreate({
       busy: { value: false },
       store: { NameCreate } as any,

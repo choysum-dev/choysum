@@ -253,7 +253,7 @@ test('task: create schedule and trigger job via gRPC-web', async () => {
   );
 
   const schedule = fromValue(createResp.result);
-  const scheduleId = String(schedule?.Id || schedule?.id || '');
+  const scheduleId = String(schedule?.Id || '');
   expect(scheduleId).not.toBe('');
 
   const triggerResp: any = await (scheduleClient as any).triggerSchedule(

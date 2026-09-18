@@ -239,18 +239,15 @@ export function slimRelationRefsForChanged(draft: any, changed: string[], fields
   const isRefLike = (v: any) => {
     if (!v || typeof v !== 'object') return false;
     const keys = Object.keys(v);
-    const hasId = 'Id' in v || 'id' in v;
+    const hasId = 'Id' in v;
     if (!hasId) return false;
     // Only convert values that already look like compact reference payloads.
-    return keys.every(k => k === 'Id' || k === 'id' || k === 'DisplayName' || k === '__rowKey');
+    return keys.every(k => k === 'Id' || k === 'DisplayName' || k === '__rowKey');
   };
 
   const refId = (v: any) => {
     if (v == null) return v;
-    if (typeof v === 'object') {
-      if ('Id' in v) return (v as any).Id;
-      if ('id' in v) return (v as any).id;
-    }
+    if (typeof v === 'object' && 'Id' in v) return (v as any).Id;
     return v;
   };
 
@@ -342,7 +339,7 @@ export function findIndexById(arr: any[], id: any): number {
   if (!Array.isArray(arr)) return -1;
   const sid = String(id);
   for (let i = 0; i < arr.length; i++) {
-    const rid = arr[i]?.Id ?? arr[i]?.id;
+    const rid = arr[i]?.Id;
     if (rid != null && String(rid) === sid) return i;
   }
   return -1;
@@ -406,7 +403,7 @@ export function toSelectorPath(rootObj: any, leafPath: string): string | null {
       if (Array.isArray(arr)) {
         const row = arr[idx];
         if (row != null) {
-          const id = row?.Id ?? row?.id;
+          const id = row?.Id;
           out[out.length - 1] = id != null ? `${arrKey}(id=${id})` : `${arrKey}[${idx}]`;
           obj = row;
           resolved = true;
@@ -458,8 +455,8 @@ export function detectStructuralChangedRelations(collapsed: Set<string>, baselin
 
     // Compare row Id sequences.
     const changedSeq = a.some((row, i) => {
-      const idA = row?.Id ?? row?.id ?? null;
-      const idB = b[i]?.Id ?? b[i]?.id ?? null;
+      const idA = row?.Id ?? null;
+      const idB = b[i]?.Id ?? null;
       return idA !== idB;
     });
     if (changedSeq) {
@@ -652,12 +649,12 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
 
               const idIndex = new Map<string, number>();
               for (let i = 0; i < arr.length; i++) {
-                const id = arr[i]?.Id ?? arr[i]?.id;
+                const id = arr[i]?.Id;
                 if (id != null) idIndex.set(String(id), i);
               }
 
               for (const rp of rows) {
-                const Id = rp?.Id ?? rp?.id;
+                const Id = rp?.Id;
                 if (Id != null && idIndex.has(String(Id))) {
                   applyRowPatchToArray(arr, idIndex.get(String(Id))!, rp);
                 } else if (typeof rp?.pos === 'number') {
@@ -668,7 +665,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
             }
 
             for (const rp of rows) {
-              const Id = rp?.Id ?? rp?.id;
+              const Id = rp?.Id;
               if (Id != null) {
                 const found = deepFindById(draft, segs, Id);
                 if (found) {

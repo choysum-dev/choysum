@@ -39,9 +39,10 @@ describe('listRowEdit helpers', () => {
     expect(isListRecordRow({ Name: 'no-id' })).toBe(false);
   });
 
-  test('listRecordId reads Id/id and returns empty when missing', () => {
+  test('listRecordId reads Id and returns empty when missing', () => {
     expect(listRecordId({ Id: 7 })).toBe('7');
-    expect(listRecordId({ kind: 'record', payload: { id: 'x' } })).toBe('x');
+    expect(listRecordId({ kind: 'record', payload: { Id: 'x' } })).toBe('x');
+    expect(listRecordId({ kind: 'record', payload: { id: 'x' } })).toBe('');
     expect(listRecordId({ Name: 'n' })).toBe('');
     expect(listRecordId(null)).toBe('');
   });

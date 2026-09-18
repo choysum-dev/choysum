@@ -312,7 +312,7 @@ const labelFields = computed<string[]>(() => {
 
 function extractId(v: any): string | undefined {
   if (v == null || typeof v !== 'object') return undefined;
-  return (v as any).Id ?? (v as any).id;
+  return (v as any).Id;
 }
 
 function resolveTagLabel(row: any, fallback?: string): string {
@@ -321,13 +321,13 @@ function resolveTagLabel(row: any, fallback?: string): string {
     const value = (row as any)?.[key];
     if (value != null && String(value).trim()) return String(value);
   }
-  return fallback || String((row as any)?.Id ?? (row as any)?.id ?? '');
+  return fallback || String((row as any)?.Id ?? '');
 }
 
 function readRowKeySeed(row: unknown): string | number | undefined {
   if (!row || typeof row !== 'object') return undefined;
   const r = row as Record<string, any>;
-  return r.__rowKey ?? r.Id ?? r.id;
+  return r.__rowKey ?? r.Id;
 }
 
 function defineHiddenRowKey(obj: any, key: string, val?: any) {

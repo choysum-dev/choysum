@@ -129,7 +129,7 @@ test('normalizeRefId returns trimmed string or null', () => {
   expect(normalizeRefId(0)).toBe('0');
   expect(normalizeRefId('  id123  ')).toBe('id123');
   expect(normalizeRefId({ Id: '  obj456  ' })).toBe('obj456');
-  expect(normalizeRefId({ id: 'lowercase' })).toBe('lowercase');
+  expect(normalizeRefId({ id: 'lowercase' })).toBe(null);
   expect(normalizeRefId({ Id: '', id: 'fallback' })).toBe(null);
   expect(normalizeRefId({ Id: '' })).toBe(null);
   expect(normalizeRefId(true)).toBe('true');
@@ -210,15 +210,15 @@ test('sortStrings returns stable sorted copy', () => {
   expect(sortStrings(['a', 'a', 'b'])).toEqual(['a', 'a', 'b']);
 });
 
-test('maybeRefId extracts id from string or object with Id/id', () => {
+test('maybeRefId extracts id from string or object with Id', () => {
   expect(maybeRefId(null)).toBe(undefined);
   expect(maybeRefId(undefined)).toBe(undefined);
   expect(maybeRefId('')).toBe(undefined);
   expect(maybeRefId(0)).toBe(undefined);
   expect(maybeRefId('  id123  ')).toBe('id123');
   expect(maybeRefId({ Id: '  obj456  ' })).toBe('obj456');
-  expect(maybeRefId({ id: 'lowercase' })).toBe('lowercase');
-  expect(maybeRefId({ Id: '', id: 'fallback' })).toBe('fallback');
+  expect(maybeRefId({ id: 'lowercase' })).toBe(undefined);
+  expect(maybeRefId({ Id: '', id: 'fallback' })).toBe(undefined);
   expect(maybeRefId(true)).toBe(undefined);
 });
 
@@ -228,7 +228,7 @@ test('normalizeScopeRefId returns trimmed string or empty', () => {
   expect(normalizeScopeRefId('')).toBe('');
   expect(normalizeScopeRefId('  app123  ')).toBe('app123');
   expect(normalizeScopeRefId({ Id: '  obj456  ' })).toBe('obj456');
-  expect(normalizeScopeRefId({ id: 'lowercase' })).toBe('lowercase');
+  expect(normalizeScopeRefId({ id: 'lowercase' })).toBe('');
   expect(normalizeScopeRefId(0)).toBe('0');
 });
 
@@ -238,7 +238,7 @@ test('normalizeUiResourceId returns trimmed string or empty', () => {
   expect(normalizeUiResourceId('')).toBe('');
   expect(normalizeUiResourceId('  res123  ')).toBe('res123');
   expect(normalizeUiResourceId({ Id: '  res456  ' })).toBe('res456');
-  expect(normalizeUiResourceId({ id: 'res789' })).toBe('res789');
+  expect(normalizeUiResourceId({ id: 'res789' })).toBe('');
 });
 
 test('parseJsonStringArray handles various input shapes', () => {
@@ -261,7 +261,7 @@ test('normalizeScopeId normalizes company id-like values', () => {
   expect(normalizeScopeId(undefined)).toBe('');
   expect(normalizeScopeId('  C1  ')).toBe('C1');
   expect(normalizeScopeId({ Id: 'C2' })).toBe('C2');
-  expect(normalizeScopeId({ id: 'C3' })).toBe('C3');
+  expect(normalizeScopeId({ id: 'C3' })).toBe('');
   expect(normalizeScopeId(123)).toBe('123');
 });
 

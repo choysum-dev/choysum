@@ -111,7 +111,7 @@ async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[], de
         const val = item[fieldName];
         if (!Array.isArray(val)) continue;
         for (const entry of val) {
-          const id = typeof entry === 'string' ? entry : (entry?.Id ?? entry?.id);
+          const id = typeof entry === 'string' ? entry : (entry?.Id);
           if (!id) continue;
           const target = f.relationModel!;
           if (!batch.has(target)) batch.set(target, new Set());
@@ -134,7 +134,7 @@ async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[], de
           const map = new Map<string, any>();
           for (const r of results || []) {
             const row = r as { Id?: unknown; id?: unknown } | null | undefined;
-            const key = String(row?.Id ?? row?.id ?? '');
+            const key = String(row?.Id ?? '');
             if (!key || key === 'undefined') continue;
             map.set(key, r);
           }
@@ -154,7 +154,7 @@ async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[], de
         const map = lookups.get(target);
         if (!map) continue;
         item[fieldName] = val.map((entry: any) => {
-          const id = typeof entry === 'string' ? entry : (entry?.Id ?? entry?.id);
+          const id = typeof entry === 'string' ? entry : (entry?.Id);
           if (!id) return entry;
           return map.get(String(id)) ?? entry;
         });
@@ -296,7 +296,7 @@ function decodeBinaryImageFields(store: WebModelStore<any>, items: any[]) {
   for (const item of items) {
     if (!item || typeof item !== 'object') continue;
 
-    const ownerRecordId = normalizeIdText((item as any).Id ?? (item as any).id);
+    const ownerRecordId = normalizeIdText((item as any).Id);
 
     for (const [fieldName, meta] of descriptorFields) {
       const raw = (item as any)[fieldName];
@@ -313,7 +313,7 @@ function decodeBinaryImageFields(store: WebModelStore<any>, items: any[]) {
         attachmentBindingId = normalizeIdText(raw);
       } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
         const r = raw as Record<string, unknown>;
-        attachmentBindingId = normalizeIdText(r.attachmentBindingId ?? r.bindingId ?? r.Id ?? r.id);
+        attachmentBindingId = normalizeIdText(r.attachmentBindingId ?? r.bindingId ?? r.Id);
         fileName = normalizeIdText(r.fileName ?? r.displayFileName ?? r.originalFileName);
         displayName = normalizeIdText(r.displayName ?? r.name ?? r.fileName ?? r.displayFileName);
         previewUrl = normalizeIdText(r.previewUrl ?? r.url ?? r.downloadUrl);
@@ -526,7 +526,7 @@ async function call(plan: QueryPlan, store: WebModelStore<any>): Promise<any> {
 }
 
 function toRecordRows(items: any[]): RecordRow[] {
-  return (items || []).map(rec => ({ kind: 'record', key: String(rec?.Id ?? rec?.id ?? Math.random()), payload: rec }));
+  return (items || []).map(rec => ({ kind: 'record', key: String(rec?.Id ?? Math.random()), payload: rec }));
 }
 
 function toGroupRows(groups: any[]): GroupRow[] {

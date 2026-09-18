@@ -26,12 +26,12 @@ export function normalizeStringArray(value: unknown): string[] {
 }
 
 /**
- * Loose object that may carry a relation Id under `Id` or `id`.
+ * Loose object that may carry a relation Id under `Id`.
  */
-export type RefLike = { Id?: unknown; id?: unknown };
+export type RefLike = { Id?: unknown };
 
 /**
- * True for non-null plain objects (not arrays) that may expose Id/id.
+ * True for non-null plain objects (not arrays) that may expose Id.
  */
 export function isRefLike(value: unknown): value is RefLike {
   return value != null && typeof value === 'object' && !Array.isArray(value);
@@ -51,12 +51,12 @@ export function readRefId(value: unknown): string | undefined {
 /**
  * Normalize a relation reference into a trimmed Id string.
  *
- * Accepts a plain string id, an object with an Id (or id) property, or null/undefined.
+ * Accepts a plain string id, an object with an Id property, or null/undefined.
  * Returns null when the input cannot be resolved to a non-empty string.
  */
 export function normalizeRefId(value: unknown): string | null {
   if (value == null || Array.isArray(value)) return null;
-  const raw = isRefLike(value) ? (value.Id ?? value.id ?? null) : value;
+  const raw = isRefLike(value) ? (value.Id ?? null) : value;
   const s = String(raw ?? '').trim();
   return s ? s : null;
 }
@@ -154,21 +154,19 @@ export function sortStrings(xs: string[]): string[] {
 
 /**
  * Extract the identifier from either a plain string value or an object with
- * an `Id` (or `id`) property. Returns undefined for empty input.
- *
- * This is a relaxed variant of {@link readRefId} that also checks lowercase `id`.
+ * an `Id` property. Returns undefined for empty input.
  */
 export function maybeRefId(value: unknown): string | undefined {
   if (!value) return undefined;
   if (typeof value === 'string') return normalizeOptionalString(value);
-  if (isRefLike(value)) return normalizeOptionalString(value.Id) ?? normalizeOptionalString(value.id);
+  if (isRefLike(value)) return normalizeOptionalString(value.Id);
   return undefined;
 }
 
 function normalizeRefLikeIdString(raw: unknown): string {
   if (raw == null || Array.isArray(raw)) return '';
   if (isRefLike(raw)) {
-    return String(raw.Id ?? raw.id ?? '').trim();
+    return String(raw.Id ?? '').trim();
   }
   return String(raw ?? '').trim();
 }
@@ -259,6 +257,7 @@ export function parseJsonStringArray(raw: unknown): string[] {
 export function normalizeScopeId(value: unknown): string {
   const id = maybeRefId(value);
   if (id) return String(id).trim();
+  if (value != null && typeof value === 'object') return '';
   return String(value ?? '').trim();
 }
 
@@ -364,7 +363,7 @@ export function resolveModelRefId(obj: unknown, fieldName: string): unknown {
   if (!obj || typeof obj !== 'object') return undefined;
   const field = (obj as Record<string, unknown>)[fieldName];
   if (!field || typeof field !== 'object') return field;
-  return (field as Record<string, unknown>).Id ?? (field as Record<string, unknown>).id ?? field;
+  return (field as Record<string, unknown>).Id ?? field;
 }
 
 /**

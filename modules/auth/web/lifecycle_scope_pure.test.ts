@@ -4,7 +4,7 @@
 // Inline helpers under test to avoid backend import dependencies.
 function normalizeScopeId(value: unknown): string {
   if (value == null) return '';
-  if (typeof value === 'object') return String((value as any)?.Id ?? (value as any)?.id ?? '').trim();
+  if (typeof value === 'object') return String((value as any)?.Id ?? '').trim();
   return String(value ?? '').trim();
 }
 

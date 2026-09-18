@@ -39,7 +39,7 @@ function toIdList(v: unknown): string[] {
       if (it == null) return null;
       if (typeof it === 'string') return it;
       const record = asObjectRecord(it);
-      if (record) return record.Id ?? record.id ?? null;
+      if (record) return record.Id ?? null;
       return null;
     })
     .filter((x): x is string => !!x)

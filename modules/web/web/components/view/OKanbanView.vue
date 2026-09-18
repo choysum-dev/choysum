@@ -386,7 +386,7 @@ async function onDragEnd(evt: any) {
       // Even without the full payload, move can still run before both sides are refreshed locally
       moved = { payload: { Id: domId } } as any;
     }
-    const id = String(moved.payload?.Id ?? moved.payload?.id);
+    const id = String(moved.payload?.Id);
     const toLane = lanes.value.find(l => l.key === toLaneKey);
     const fromLane = lanes.value.find(l => l.key === fromLaneKey);
 
