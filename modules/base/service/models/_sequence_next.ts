@@ -13,7 +13,6 @@ import type Sequence from './sequence';
 import type SequenceIdempotency from './sequence_idempotency';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
 import type { SequenceIdempotencyPayload } from './_sequence_next_payload';
-import type { Projected } from '@/core/service/api/selection';
 
 const { _t } = createTranslate('base');
 
@@ -21,38 +20,9 @@ const IDEMPOTENCY_TTL_ENV_KEY = 'CHOYSUM_BASE_SEQUENCE_IDEMPOTENCY_TTL_DAYS';
 const DEFAULT_IDEMPOTENCY_TTL_DAYS = 7;
 const IDEMPOTENCY_KEY_MAX_LENGTH = 200;
 
-const SEQUENCE_LOOKUP_FIELDS = [
-  'Id',
-  'CompanyId',
-  'CompanyScopeKey',
-  'Code',
-  'Prefix',
-  'Suffix',
-  'Padding',
-  'NextNumber',
-  'IsActive',
-  'UpdatedAt',
-] as const;
-
-const IDEMPOTENCY_HIT_FIELDS = [
-  'Id',
-  'SequenceId',
-  'CodeSnapshot',
-  'FormatSnapshot',
-  'IdempotencyKey',
-  'Count',
-  'DryRun',
-  'RangeStart',
-  'RangeEnd',
-  'ExpiresAt',
-] as const;
-
-type IdempotencyHit = Projected<SequenceIdempotency, typeof IDEMPOTENCY_HIT_FIELDS>;
-type SequenceRow = Projected<Sequence, typeof SEQUENCE_LOOKUP_FIELDS>;
-
 type SequenceOps = {
-  Search: (condition: unknown, options?: unknown) => Promise<SequenceRow[]>;
-  Browse: (id: string, fields?: unknown) => Promise<SequenceRow | null | undefined>;
+  Search: (condition: unknown, options?: unknown) => Promise<Sequence[]>;
+  Browse: (id: string, fields?: unknown) => Promise<Sequence | null | undefined>;
   Update: (condition: unknown, values: unknown, fields?: unknown) => Promise<unknown>;
 };
 
@@ -78,7 +48,7 @@ function assertIdempotencyKey(key: unknown): string | undefined {
   );
 }
 
-async function findIdempotencyHit(sequenceId: string, idempotencyKey: string): Promise<IdempotencyHit | undefined> {
+async function findIdempotencyHit(sequenceId: string, idempotencyKey: string): Promise<SequenceIdempotency | undefined> {
   const { default: SequenceIdempotencyModel } = await import('./sequence_idempotency');
   const existing = await SequenceIdempotencyModel.Search(
     condition<SequenceIdempotency>({
@@ -89,13 +59,24 @@ async function findIdempotencyHit(sequenceId: string, idempotencyKey: string): P
     }),
     {
       limit: 1,
-      fields: [...IDEMPOTENCY_HIT_FIELDS],
+      fields: [
+        'Id',
+        'SequenceId',
+        'CodeSnapshot',
+        'FormatSnapshot',
+        'IdempotencyKey',
+        'Count',
+        'DryRun',
+        'RangeStart',
+        'RangeEnd',
+        'ExpiresAt',
+      ],
     }
   );
-  return existing?.[0] as IdempotencyHit | undefined;
+  return existing?.[0] as SequenceIdempotency | undefined;
 }
 
-function buildItemsFromIdempotencyHit(seq: Sequence, hit: IdempotencyHit, count: number): SequenceNextItem[] {
+function buildItemsFromIdempotencyHit(seq: Sequence, hit: SequenceIdempotency, count: number): SequenceNextItem[] {
   const { prefix, suffix, padding } = resolvePaddedNumberFormat(hit?.FormatSnapshot, {
     prefix: seq.Prefix,
     suffix: seq.Suffix,
@@ -105,7 +86,7 @@ function buildItemsFromIdempotencyHit(seq: Sequence, hit: IdempotencyHit, count:
   return buildPaddedNumberItems(start, count, prefix, suffix, padding);
 }
 
-function assertIdempotencyRequestMatch(hit: IdempotencyHit, count: number, dryRun: boolean): void {
+function assertIdempotencyRequestMatch(hit: SequenceIdempotency, count: number, dryRun: boolean): void {
   if (Number(hit?.Count) !== count || Boolean(hit?.DryRun) !== dryRun) {
     throw new ChoysumError({
       domain: 'base',
@@ -127,10 +108,21 @@ async function resolveSequence(model: SequenceOps, companyId: string | undefined
       }),
       {
         limit: 1,
-        fields: [...SEQUENCE_LOOKUP_FIELDS],
+        fields: [
+          'Id',
+          'CompanyId',
+          'CompanyScopeKey',
+          'Code',
+          'Prefix',
+          'Suffix',
+          'Padding',
+          'NextNumber',
+          'IsActive',
+          'UpdatedAt',
+        ],
       }
     );
-    if (list?.[0]) return list[0] as Sequence;
+    if (list?.[0]) return list[0];
   }
 
   const global = await model.Search(
@@ -142,10 +134,21 @@ async function resolveSequence(model: SequenceOps, companyId: string | undefined
     }),
     {
       limit: 1,
-      fields: [...SEQUENCE_LOOKUP_FIELDS],
+      fields: [
+        'Id',
+        'CompanyId',
+        'CompanyScopeKey',
+        'Code',
+        'Prefix',
+        'Suffix',
+        'Padding',
+        'NextNumber',
+        'IsActive',
+        'UpdatedAt',
+      ],
     }
   );
-  if (global?.[0]) return global[0] as Sequence;
+  if (global?.[0]) return global[0];
 
   throw new ChoysumError({
     domain: 'base',
@@ -160,7 +163,7 @@ async function allocateRangeAtomic(
   count: number
 ): Promise<{ rangeStart: bigint; rangeEnd: bigint }> {
   for (let attempt = 0; attempt < 20; attempt++) {
-    const current = attempt === 0 ? (seq as SequenceRow) : await model.Browse(seq.Id, ['Id', 'NextNumber']);
+    const current = attempt === 0 ? seq : await model.Browse(seq.Id, ['Id', 'NextNumber']);
     if (!current) {
       throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Sequence not found', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(
         GrpcCode.NotFound
