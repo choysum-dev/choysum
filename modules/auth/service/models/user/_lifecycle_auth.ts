@@ -25,24 +25,27 @@ export const PERSIST_BROWSER_TIMEZONE_KEY = 'persist_browser_timezone';
 
 /**
  * Login/refresh surface derived from {@link User}.
- * Search/Browse rows assign without cast; UpdatedAt stays wire-loose for metadata.
+ * Search/Browse rows assign without cast.
  */
 export type LoginUserLike = Pick<
   User,
-  'Id' | 'Username' | 'PasswordHash' | 'IsActive' | 'Timezone' | 'Language' | 'CompanyId' | 'CompanyIds' | 'Preferences' | 'load'
-> & {
-  UpdatedAt?: Date | string | number;
-};
+  | 'Id'
+  | 'Username'
+  | 'PasswordHash'
+  | 'IsActive'
+  | 'Timezone'
+  | 'Language'
+  | 'CompanyId'
+  | 'CompanyIds'
+  | 'Preferences'
+  | 'UpdatedAt'
+  | 'load'
+>;
 
-/**
- * Fields read when building token metadata.
- * Derived from {@link User}; UpdatedAt stays wire-loose.
- */
+/** Fields read when building token metadata; derived from {@link User}. */
 export type TokenMetadataUserSource = Partial<
-  Pick<User, 'Id' | 'Language' | 'Timezone' | 'CompanyId' | 'CompanyIds' | 'Preferences'>
-> & {
-  UpdatedAt?: Date | string | number;
-};
+  Pick<User, 'Id' | 'Language' | 'Timezone' | 'CompanyId' | 'CompanyIds' | 'Preferences' | 'UpdatedAt'>
+>;
 
 /**
  * D20: when User.Timezone is empty, return a valid baggage client IANA to persist.
