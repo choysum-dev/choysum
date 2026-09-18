@@ -564,14 +564,14 @@ export function roundToCurrencyAmount(amount: Decimal, currency?: CurrencyRoundi
     const step = currency?.Rounding;
     if (step != null) {
       const stepBag = step as { $bigdecimal?: unknown } | Decimal | string | number;
+      const taggedStep =
+        stepBag && typeof stepBag === 'object' && !(stepBag instanceof Decimal)
+          ? (stepBag as { $bigdecimal?: unknown }).$bigdecimal
+          : undefined;
       const decimalStep =
         stepBag instanceof Decimal
           ? stepBag
-          : new Decimal(
-              stepBag && typeof stepBag === 'object' && typeof stepBag.$bigdecimal === 'string'
-                ? stepBag.$bigdecimal
-                : (stepBag as string | number)
-            );
+          : new Decimal(taggedStep != null ? String(taggedStep) : (stepBag as string | number));
       if (decimalStep.gt(0)) {
         const q = amount.div(decimalStep);
         const qRounded = q.toDecimalPlaces(0, Decimal.ROUND_HALF_UP);

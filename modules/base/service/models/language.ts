@@ -219,9 +219,7 @@ export default class Language extends BaseModel {
       this.Direction = assertDirection(this.Direction) ?? undefined;
     }
     if (this.CurrencySymbolPosition !== undefined) {
-      const position = assertCurrencySymbolPosition(this.CurrencySymbolPosition);
-      if (position != null) this.CurrencySymbolPosition = position;
-      else if (position === null) this.CurrencySymbolPosition = undefined;
+      this.CurrencySymbolPosition = assertCurrencySymbolPosition(this.CurrencySymbolPosition) ?? undefined;
     }
     if (this.CurrencySymbolSpacing !== undefined) {
       const spacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
