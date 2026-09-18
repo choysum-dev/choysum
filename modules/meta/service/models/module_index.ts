@@ -85,7 +85,7 @@ export default class MetaModuleIndex extends BaseModel {
   ModuleName!: string;
 
   @Field({ type: 'varchar', size: 32, notNull: true, string: _lt('Origin Type', { scope: 'meta.model.MetaModuleIndex.fields' }) })
-  OriginType!: ModuleOriginType;
+  OriginType!: string;
 
   @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Origin Ref', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   OriginRef!: string;
@@ -103,10 +103,10 @@ export default class MetaModuleIndex extends BaseModel {
   LocalPath?: string;
 
   @Field({ type: 'datetime', string: _lt('Last Synced At', { scope: 'meta.model.MetaModuleIndex.fields' }) })
-  LastSyncAt!: Date;
+  LastSyncAt?: Date | null;
 
   @Field({ type: 'datetime', string: _lt('Batch Synced At', { scope: 'meta.model.MetaModuleIndex.fields' }) })
-  LastBatchSyncAt!: Date;
+  LastBatchSyncAt?: Date | null;
 
   @Field({ type: 'varchar', size: 255, string: _lt('Sync Revision', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   SyncRevision?: string;

@@ -40,6 +40,49 @@ export function toDate(value: unknown): Date | undefined {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
+/**
+ * Source of datetime field names: an explicit key list, or model metadata with a `fields` map
+ * (e.g. {@link ModelMetadata}) where `type` is `datetime` or `date`.
+ */
+export type DatetimeFieldSource = Iterable<string> | { fields: ReadonlyMap<string, { type?: string | null }> };
+
+function resolveDatetimeFieldNames(source: DatetimeFieldSource): Set<string> {
+  if (source && typeof source === 'object' && 'fields' in source) {
+    const fields = (source as { fields?: ReadonlyMap<string, { type?: string | null }> }).fields;
+    if (fields && typeof fields[Symbol.iterator] === 'function') {
+      const out = new Set<string>();
+      for (const [name, fm] of fields) {
+        if (fm?.type === 'datetime' || fm?.type === 'date') out.add(name);
+      }
+      return out;
+    }
+  }
+  return new Set(source as Iterable<string>);
+}
+
+/**
+ * Coerce declared datetime/date fields on a plain row to `Date | null`.
+ *
+ * Only keys listed by {@link DatetimeFieldSource} are touched. Empty string and
+ * values that fail {@link toDate} become `null`. Other keys are left unchanged.
+ * Mutates and returns `row`.
+ */
+export function coerceDatetimeFields<T extends Record<string, unknown>>(row: T, source: DatetimeFieldSource): T {
+  if (!row || typeof row !== 'object') return row;
+  const names = resolveDatetimeFieldNames(source);
+  for (const key of names) {
+    if (!Object.prototype.hasOwnProperty.call(row, key)) continue;
+    const raw = (row as Record<string, unknown>)[key];
+    if (raw === undefined) continue;
+    if (raw === null || raw === '') {
+      (row as Record<string, unknown>)[key] = null;
+      continue;
+    }
+    (row as Record<string, unknown>)[key] = toDate(raw) ?? null;
+  }
+  return row;
+}
+
 // ---------------------------------------------------------------------------
 // Timezone helpers
 // ---------------------------------------------------------------------------

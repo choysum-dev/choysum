@@ -3,6 +3,9 @@
 
 /** Pure query/sort helpers for MetaModuleIndex Search/Count. */
 
+import { coerceDatetimeFields } from '@/core/service/utils/datetime';
+import type MetaModuleIndex from './module_index';
+
 export type ModuleOriginType = 'local' | 'registry';
 export type ModuleSyncOriginType = ModuleOriginType | 'all';
 
@@ -13,29 +16,17 @@ export type RequestSyncParams = {
 };
 
 /**
- * Sort/project bag for module-index helpers.
- * Wider than {@link MetaModuleIndex} on purpose: OriginType is compared as text,
- * and sync timestamps may arrive as ISO strings from JSON.
+ * Plain/partial MetaModuleIndex row used by sort/aggregate helpers.
+ * Datetime columns are normalized to Date | null at {@link toPlainRecord}.
  */
-export type ModuleIndexRecord = {
-  Id?: string;
-  ModuleName?: string;
-  OriginType?: string;
-  OriginRef?: string;
-  Available?: boolean;
-  Version?: string;
-  ManifestJson?: Record<string, unknown> | null;
-  LocalPath?: string;
-  LastSyncAt?: Date | string | null;
-  LastBatchSyncAt?: Date | string | null;
-  SyncRevision?: string;
-  LastErrorMessage?: string;
-  InstalledStatus?: string;
-  InstalledVersion?: string;
-  OriginTypes?: string;
-  LocalVersion?: string;
-  RegistryVersion?: string;
-};
+export type ModuleIndexRecord = Partial<MetaModuleIndex>;
+
+/**
+ * Datetime columns on MetaModuleIndex.
+ * Kept as an explicit key list so this helper stays registry-free; keys match
+ * `@Field({ type: 'datetime' })` on the model (same set MetadataStorage would yield).
+ */
+const MODULE_INDEX_DATETIME_FIELDS = ['LastSyncAt', 'LastBatchSyncAt'] as const;
 
 /** Default search when the caller omits a filter (not applied to empty/invalid payloads). */
 export const DEFAULT_MODULE_INDEX_SEARCH = ['Available', '=', true] as const;
@@ -226,32 +217,31 @@ export function projectFields(rows: ModuleIndexRecord[], requestedFields: string
 export function toPlainRecord(input: unknown): ModuleIndexRecord {
   if (!input || typeof input !== 'object') return {};
   const candidate = input as { toPlainObject?: () => unknown };
+  let out: Record<string, unknown> = {};
   if (typeof candidate.toPlainObject === 'function') {
     try {
-      return { ...(candidate.toPlainObject() as Record<string, unknown>) } as ModuleIndexRecord;
+      out = { ...(candidate.toPlainObject() as Record<string, unknown>) };
+      return coerceDatetimeFields(out, MODULE_INDEX_DATETIME_FIELDS) as ModuleIndexRecord;
     } catch {
       // fall back to enumerable keys
     }
   }
   const blockedKeys = new Set(['__proto__', 'constructor', 'prototype']);
-  const out: Record<string, unknown> = {};
+  out = {};
   for (const key of Object.keys(input)) {
     if (blockedKeys.has(key)) continue;
     out[key] = (input as Record<string, unknown>)[key];
   }
-  return out as ModuleIndexRecord;
+  return coerceDatetimeFields(out, MODULE_INDEX_DATETIME_FIELDS) as ModuleIndexRecord;
 }
 
-export function pickNewestTimestamp(values: Array<Date | string | null | undefined>): Date | string | null | undefined {
-  let picked: Date | string | null | undefined;
+export function pickNewestTimestamp(values: Array<Date | null | undefined>): Date | null | undefined {
+  let picked: Date | null | undefined;
   let pickedTs = -Infinity;
   for (const value of values) {
-    if (!value) continue;
-    const ts = value instanceof Date ? value.getTime() : Date.parse(String(value));
-    if (isNaN(ts)) {
-      if (picked == null) picked = value;
-      continue;
-    }
+    if (value == null) continue;
+    if (!(value instanceof Date) || Number.isNaN(value.getTime())) continue;
+    const ts = value.getTime();
     if (ts > pickedTs) {
       pickedTs = ts;
       picked = value;
