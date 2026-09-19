@@ -25,7 +25,10 @@ function exportBridge(): ExportBridge {
 }
 
 function asSpecSnapshot(value: unknown): Record<string, unknown> | string | undefined {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
   if (value && typeof value === 'object') return value as Record<string, unknown>;
   return undefined;
 }
