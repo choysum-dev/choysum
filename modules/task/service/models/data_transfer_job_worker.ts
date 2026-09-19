@@ -42,7 +42,8 @@ export async function executeImport(dataTransferJobId: string): Promise<Record<s
     throw new Error(`ExecuteImport requires Direction=import (got ${JSON.stringify(direction)})`);
   }
   const spec = asSpecSnapshot(row?.SpecSnapshotJson);
-  if (!spec || typeof spec !== 'object') {
+  // asSpecSnapshot already dropped empty/non-string/non-object values; strings are valid snapshots.
+  if (!spec) {
     throw new Error('data transfer job is missing spec snapshot');
   }
   const bridge = importBridge();
@@ -66,7 +67,8 @@ export async function executeExport(dataTransferJobId: string): Promise<Record<s
     throw new Error(`ExecuteExport requires Direction=export (got ${JSON.stringify(direction)})`);
   }
   const spec = asSpecSnapshot(row?.SpecSnapshotJson);
-  if (!spec || typeof spec !== 'object') {
+  // asSpecSnapshot already dropped empty/non-string/non-object values; strings are valid snapshots.
+  if (!spec) {
     throw new Error('data transfer job is missing spec snapshot');
   }
   const bridge = exportBridge();
