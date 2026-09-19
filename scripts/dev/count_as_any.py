@@ -66,7 +66,9 @@ def count_file(path: Path) -> tuple[int, dict[str, int]]:
     buckets: dict[str, int] = defaultdict(int)
     total = 0
     for line in text.splitlines():
-        n = len(AS_ANY.findall(line))
+        # Ignore `as any` mentioned in line comments; string literals are out of scope.
+        code_only = line.split("//", 1)[0]
+        n = len(AS_ANY.findall(code_only))
         if n == 0:
             continue
         total += n

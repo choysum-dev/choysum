@@ -26,7 +26,7 @@ export type ModuleIndexRecord = Partial<MetaModuleIndex>;
  * Kept as an explicit key list so this helper stays registry-free; keys match
  * `@Field({ type: 'datetime' })` on the model (same set MetadataStorage would yield).
  */
-const MODULE_INDEX_DATETIME_FIELDS = ['LastSyncAt', 'LastBatchSyncAt'] as const;
+const MODULE_INDEX_DATETIME_FIELDS = ['LastSyncAt', 'LastBatchSyncAt'] as const satisfies ReadonlyArray<keyof MetaModuleIndex>;
 
 /** Default search when the caller omits a filter (not applied to empty/invalid payloads). */
 export const DEFAULT_MODULE_INDEX_SEARCH = ['Available', '=', true] as const;

@@ -384,7 +384,13 @@ export default class MetaModule extends BaseModel {
     const retryAfterMs = errDetails?.retry_after_ms ? Number(errDetails.retry_after_ms) : undefined;
     const nextRetryAt = retryAfterMs && job?.RunAfter ? new Date(job.RunAfter) : undefined;
 
-    const resultStatus = (result.resultStatus as 'SUCCEEDED' | 'FAILED' | undefined) || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
+    const rawResultStatus = result.resultStatus;
+    const resultStatus =
+      rawResultStatus === 'SUCCEEDED' || rawResultStatus === 'FAILED'
+        ? rawResultStatus
+        : status === 'failed' || status === 'cancelled'
+          ? 'FAILED'
+          : undefined;
     const summary = result.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
     const failureKind = resolveOpFailureKind(status, resultStatus, err, result);
 
