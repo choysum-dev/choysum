@@ -56,7 +56,7 @@ function buildRepositoryRecordRuleCacheKey(
   const userId = String(params.userId || '').trim();
   const companyIds = params.normalizeCompanyIds().slice().sort().join(',');
   const ctx = asObjectRecord(params.requestContext);
-  const activeCompanyId = String(ctx?.activeCompanyId ?? ctx?.ActiveCompanyId ?? '').trim();
+  const activeCompanyId = String(ctx?.activeCompanyId ?? '').trim();
   const req = getRepositoryCurrentReq();
   const method = typeof req?.method === 'string' ? req.method : '';
   const mode = typeof req?.recordRuleMode === 'string' ? req.recordRuleMode : '';

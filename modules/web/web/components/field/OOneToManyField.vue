@@ -198,7 +198,7 @@ const ovTableRef = ref<InstanceType<typeof OVTable> | null>(null);
 function readRowKeySeed(row: unknown): string | number | undefined {
   if (!row || typeof row !== 'object') return undefined;
   const r = row as Record<string, any>;
-  return r.__rowKey ?? r.Id ?? r.id;
+  return r.__rowKey ?? r.Id;
 }
 
 // Define a non-enumerable __rowKey.

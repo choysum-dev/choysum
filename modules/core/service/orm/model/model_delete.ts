@@ -31,9 +31,9 @@ export class DeleteOperations {
   static async Delete<T extends BaseModel>(ModelCtor: ModelCtor<T>, condition: QueryCondition<T>, options?: DeleteOptions): Promise<number> {
     const repository = DeleteOperations.resolveRepository(ModelCtor, options);
     const upstreamInverseFields = collectModelUpstreamInverseFields(ModelCtor);
-    const companyField = resolveTrackingCompanyField(MetadataStorage.instance.getModelMetadata(ModelCtor as any));
+    const companyField = resolveTrackingCompanyField(MetadataStorage.instance.getModelMetadata(ModelCtor));
     const snapshotFields = Array.from(new Set<string>(['Id', ...upstreamInverseFields]));
-    const metaFields = MetadataStorage.instance.getModelMetadata(ModelCtor as any)?.fields;
+    const metaFields = MetadataStorage.instance.getModelMetadata(ModelCtor)?.fields;
     if (metaFields?.has(companyField)) {
       snapshotFields.push(companyField);
     }
@@ -44,7 +44,7 @@ export class DeleteOperations {
     const result = await repository.delete(condition as unknown);
 
     // DeleteResult reports affected counts, not IDs — purge uses the pre-delete Id snapshot.
-    const deletedIds = (oldRows || []).map(row => String((row as any)?.Id || '').trim()).filter(Boolean);
+    const deletedIds = (oldRows || []).map(row => String((row as Record<string, unknown>)?.Id || '').trim()).filter(Boolean);
     if (deletedIds.length) {
       try {
         await purgePropertyDefinitionsAfterParentDelete(ModelCtor, deletedIds);

@@ -255,7 +255,7 @@ const ovTableRef = ref<InstanceType<typeof OVTable> | null>(null);
 function readRowKeySeed(row: unknown): string | number | undefined {
   if (!row || typeof row !== 'object') return undefined;
   const r = row as Record<string, any>;
-  return r.__rowKey ?? r.Id ?? r.id;
+  return r.__rowKey ?? r.Id;
 }
 
 // Define a non-enumerable __rowKey.
@@ -368,7 +368,7 @@ async function confirmAdd() {
     const toRecord = (x: any) =>
       x && typeof x === 'object' && x.kind === 'record' && x.payload ? x.payload : x && typeof x === 'object' && x.type === 'record' && x.record ? x.record : x;
     const selected: any[] = Array.isArray(picked) ? picked.map(toRecord) : [];
-    const ids = selected.map(x => x?.Id ?? x?.id).filter(Boolean);
+    const ids = selected.map(x => x?.Id).filter(Boolean);
     if (!ids.length) {
       dialogVisible.value = false;
       return;
@@ -379,7 +379,7 @@ async function confirmAdd() {
       dialogVisible.value = false;
       return;
     }
-    const records = selected.filter(x => newIds.includes(String(x?.Id ?? x?.id)));
+    const records = selected.filter(x => newIds.includes(String(x?.Id)));
     for (const rec of records) insertItem(createRowKey({ ...(rec || {}) }) as any);
   } finally {
     dialogVisible.value = false;

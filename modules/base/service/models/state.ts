@@ -3,6 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { condition } from '@/core/service/api/query';
 import { _t, _lt } from '../i18n';
 import Country from './country';
 import { fail, normalizeCodeOptional, assertRequiredTranslatedText, assertRefId } from './_normalizers';
@@ -48,22 +49,26 @@ export default class State extends BaseModel {
   })
   IsActive: boolean;
 
-  private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async ensureUniqueness(values: {
+    Name?: unknown;
+    Code?: unknown;
+    CountryId?: unknown;
+  }, currentId?: string): Promise<void> {
     const countryId = assertRefId(values.CountryId, 'CountryId');
     const name = assertRequiredTranslatedText(values.Name, 'Name');
     const code = normalizeCodeOptional(values.Code);
 
     if (code) {
       const byCode = await this.Search(
-        {
+        condition<State>({
           And: [
             ['CountryId', '=', countryId],
             ['Code', '=', code],
           ],
-        } as any,
-        { fields: ['Id'] as any, limit: 2 } as any
+        }),
+        { fields: ['Id'], limit: 2 }
       );
-      const codeConflict = (byCode || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+      const codeConflict = (byCode || []).some(item => String(item?.Id || '') !== String(currentId || ''));
       if (codeConflict) fail(_t('State Code must be unique within Country', { scope: 'service/models/state' }));
     }
 
@@ -73,8 +78,8 @@ export default class State extends BaseModel {
 
   @Constraint<State>(['Name', 'Code', 'CountryId'])
   async validateStateConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
+    const currentId = String(this.Id || '').trim() || undefined;
 
-    await State.ensureUniqueness(this as any, currentId);
+    await State.ensureUniqueness(this, currentId);
   }
 }

@@ -105,7 +105,7 @@ export default class SequenceIdempotency extends BaseModel {
   })
   ExpiresAt: Date;
 
-  private static async validateWriteEntity(values: Record<string, any>): Promise<void> {
+  private static async validateWriteEntity(values: SequenceIdempotency): Promise<void> {
     const sequenceId = normalizeRefId(values.SequenceId);
     if (!sequenceId) {
       raiseDomainError('base', 'InvalidArgument', _t('SequenceId is required', { scope: 'service/models/sequence_idempotency' }));
@@ -128,8 +128,8 @@ export default class SequenceIdempotency extends BaseModel {
       raiseDomainError('base', 'InvalidArgument', _t('RangeEnd must equal RangeStart + Count - 1', { scope: 'service/models/sequence_idempotency' }));
     }
 
-    const sequence = await Sequence.Browse(sequenceId, ['Id', 'CompanyId'] as any);
-    const sequenceCompanyId = normalizeRefId((sequence as any)?.CompanyId);
+    const sequence = await Sequence.Browse(sequenceId, ['Id', 'CompanyId']);
+    const sequenceCompanyId = normalizeRefId(sequence?.CompanyId);
     const companyId = normalizeRefId(values.CompanyId) ?? null;
     if (companyId !== sequenceCompanyId) {
       raiseDomainError('base', 'InvalidArgument', _t('CompanyId must match Sequence.CompanyId', { scope: 'service/models/sequence_idempotency' }));
@@ -138,6 +138,6 @@ export default class SequenceIdempotency extends BaseModel {
 
   @Constraint<SequenceIdempotency>(['SequenceId', 'CompanyId', 'Count', 'RangeStart', 'RangeEnd'])
   async validateSequenceIdempotencyConstraint(): Promise<void> {
-    await SequenceIdempotency.validateWriteEntity(this as any);
+    await SequenceIdempotency.validateWriteEntity(this);
   }
 }

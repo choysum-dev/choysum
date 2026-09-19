@@ -194,7 +194,7 @@ export default class PartnerContact extends MessageThreadModel {
   }
 
   /** Ensures each partner has only one default contact per address category. */
-  private static async ensureDefaultAddressUnique(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async ensureDefaultAddressUnique(values: Record<string, unknown>, currentId?: string): Promise<void> {
     const partnerId = normalizeRefId(values.PartnerId);
     const addressType = this.assertAddressType(values.AddressType);
     const isDefault = values.IsDefault === true;
@@ -211,17 +211,17 @@ export default class PartnerContact extends MessageThreadModel {
           ['AddressType', '=', addressType],
           ['IsDefault', '=', true],
         ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
+      },
+      { fields: ['Id'], limit: 2 }
     );
-    const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const conflict = (rows || []).some(item => String(item?.Id || '') !== String(currentId || ''));
     if (conflict) {
       fail(_t('Only one default %s contact is allowed for the same partner', { scope: 'service/models/partner_contact' }, addressType));
     }
   }
 
   /** Ensures a contact row carries at least one identifying or reachable value. */
-  private static ensureRowHasValue(values: Record<string, any>): void {
+  private static ensureRowHasValue(values: Record<string, unknown>): void {
     const hasName = translatedTextHasValue(values.Name);
     const hasAddress = !!normalizeRefId(values.AddressId);
     const hasEmail = !!String(values.Email || '').trim();
@@ -233,7 +233,7 @@ export default class PartnerContact extends MessageThreadModel {
   }
 
   /** Normalizes and validates partner-contact values before persistence. */
-  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async validateEntity(values: Record<string, unknown>, currentId?: string): Promise<void> {
     // Capture whether fields were explicitly provided before normalization
     // so we know whether to fall back to persisted values.
     const addressTypeProvided = values.AddressType !== undefined;
@@ -262,19 +262,22 @@ export default class PartnerContact extends MessageThreadModel {
         (values.AddressId == null && !addressIdProvided)) &&
       currentId
     ) {
-      let persisted: any;
+      let persisted: Record<string, unknown> | null;
       try {
-        persisted = await this.Browse(currentId, ['CompanyId', 'AddressId', 'AddressType', { PartnerId: ['Id'] }] as any);
+        persisted = (await this.Browse(currentId, ['CompanyId', 'AddressId', 'AddressType', { PartnerId: ['Id'] }])) as unknown as Record<
+          string,
+          unknown
+        >;
       } catch {
         persisted = null;
       }
       if (persisted) {
         if (values.PartnerId == null) {
-          values.PartnerId = normalizeRefId((persisted as any)?.PartnerId);
+          values.PartnerId = normalizeRefId(persisted.PartnerId);
         }
-        if (values.CompanyId == null) values.CompanyId = normalizeRefId((persisted as any)?.CompanyId);
-        if (values.AddressId == null && !addressIdProvided) values.AddressId = normalizeRefId((persisted as any)?.AddressId);
-        if (values.AddressType == null && !addressTypeProvided) values.AddressType = this.assertAddressType((persisted as any)?.AddressType);
+        if (values.CompanyId == null) values.CompanyId = normalizeRefId(persisted.CompanyId);
+        if (values.AddressId == null && !addressIdProvided) values.AddressId = normalizeRefId(persisted.AddressId);
+        if (values.AddressType == null && !addressTypeProvided) values.AddressType = this.assertAddressType(persisted.AddressType);
       }
     }
 
@@ -305,8 +308,8 @@ export default class PartnerContact extends MessageThreadModel {
     'Sequence',
   ])
   async validatePartnerContactConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
+    const currentId = String(this.Id || '').trim() || undefined;
 
-    await PartnerContact.validateEntity(this as any, currentId);
+    await PartnerContact.validateEntity(this as unknown as Record<string, unknown>, currentId);
   }
 }

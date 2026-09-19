@@ -593,7 +593,7 @@ function serverErrorForRow(row: any, rowIndex?: number): string | undefined {
 
   // Read Id from the real record
   const rec = unwrapRecord(row);
-  const rowId = rec?.Id ?? rec?.id ?? null;
+  const rowId = rec?.Id ?? null;
   const tryKeys: string[] = [];
 
   // Use an Id selector for the last segment
@@ -680,7 +680,7 @@ const inputName = computed(() => String(binding.prop));
 let __autoRowKey = 0;
 function guessRowKey(row: any): string {
   const rec = unwrapRecord(row);
-  return String(row?.__rowKey ?? row?.key ?? rec?.Id ?? rec?.id ?? ++__autoRowKey);
+  return String(row?.__rowKey ?? row?.key ?? rec?.Id ?? ++__autoRowKey);
 }
 const inputIdForm = computed(() => `fld-${inputName.value}`);
 const inputIdForRow = (row: T) => `fld-${inputName.value}-${guessRowKey(row)}`;
@@ -775,7 +775,7 @@ const effectiveEditForRow = (row: T) => {
   // Top-level list S2 only: nested relation tables (field-prefix / O2M lines) keep their own row ids.
   if (listEditingRowId.value != null && !binding.env.fieldPrefix) {
     const rec = unwrapRecord(row);
-    const id = rec?.Id ?? rec?.id;
+    const id = rec?.Id;
     if (id == null || String(id) !== String(listEditingRowId.value)) return false;
   }
   return true;

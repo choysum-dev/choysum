@@ -172,7 +172,7 @@ export default class User extends AttachmentOwnerMixin {
       scope: 'auth.model.User.fields',
     }),
   })
-  Language: string;
+  Language: string | null;
 
   /**
    * Preferred IANA timezone for localization and display.
@@ -333,9 +333,9 @@ export default class User extends AttachmentOwnerMixin {
    */
   @Constraint<User>(['Language'])
   async validateLanguageConstraint(): Promise<void> {
-    const raw = this.Language as any;
+    const raw = this.Language;
     if (raw == null || !String(raw).trim()) {
-      (this as any).Language = null;
+      this.Language = null;
       return;
     }
     const code = String(raw).trim();
@@ -345,8 +345,8 @@ export default class User extends AttachmentOwnerMixin {
           ['Code', '=', code],
           ['IsActive', '=', true],
         ],
-      } as any,
-      { fields: ['Code'], limit: 1 } as any
+      },
+      { fields: ['Code'], limit: 1 }
     );
     if (!active?.length) {
       throw newAuthError({
@@ -354,17 +354,17 @@ export default class User extends AttachmentOwnerMixin {
         message: _t('Invalid or inactive language: %s', { scope: 'service/models/user' }, code),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    (this as any).Language = code;
+    this.Language = code;
   }
 
   /**
    * Register a new local user and provision the default auth baseline.
    */
   static async Register(userData: Partial<Insertable<User>>, password: string): Promise<string> {
-    const passwordHash = validateAndHashRegistrationInput(userData as any, password);
-    await ensureRegistrationIdentityUnique(userData as any, {
-      searchByUsername: async (username: string) => await this.Search(['Username', '=', username] as any),
-      searchByEmail: async (email: string) => await this.Search(['Email', '=', email] as any),
+    const passwordHash = validateAndHashRegistrationInput(userData, password);
+    await ensureRegistrationIdentityUnique(userData, {
+      searchByUsername: async (username: string) => await this.Search(['Username', '=', username]),
+      searchByEmail: async (email: string) => await this.Search(['Email', '=', email]),
     });
 
     try {
@@ -374,19 +374,19 @@ export default class User extends AttachmentOwnerMixin {
         PasswordHash: passwordHash,
       });
 
-      const userId = ensureCreatedUserIdOrThrow((created as any)?.Id);
-      await provisionRegisteredUserBaseline(userId, (userData as any)?.Preferences, {
+      const userId = ensureCreatedUserIdOrThrow(created?.Id);
+      await provisionRegisteredUserBaseline(userId, userData?.Preferences, {
         updateUserCompanyContext: async values => {
-          await this.UpdateById(userId, values as any, ['Id'] as any);
+          await this.UpdateById(userId, values as Partial<Insertable<User>>, ['Id']);
         },
       });
 
       // D20: persist browser IANA when registration left Timezone empty.
       await persistBrowserTimezoneIfEmpty(
-        { Id: userId, Timezone: (created as any)?.Timezone ?? (userData as any)?.Timezone } as any,
+        { Id: userId, Timezone: created?.Timezone ?? userData?.Timezone },
         {
           updateTimezone: async (uid, timezone) => {
-            await this.UpdateById(uid, { Timezone: timezone } as any, ['Id'] as any);
+            await this.UpdateById(uid, { Timezone: timezone }, ['Id']);
           },
         }
       );
@@ -410,23 +410,23 @@ export default class User extends AttachmentOwnerMixin {
         ['Email', '=', usernameOrEmail],
       ],
     });
-    const user = validateLoginCandidateOrThrow((users || [])[0] as any, usernameOrEmail, password) as any;
+    const user = validateLoginCandidateOrThrow((users || [])[0], usernameOrEmail, password);
 
     try {
       // D20: first login with empty User.Timezone + baggage clientTz → persist and refresh metadata.
-      const loginUser = await persistBrowserTimezoneIfEmpty(user as any, {
+      const loginUser = await persistBrowserTimezoneIfEmpty(user, {
         updateTimezone: async (uid, timezone) => {
-          await this.UpdateById(uid, { Timezone: timezone } as any);
+          await this.UpdateById(uid, { Timezone: timezone });
         },
-        reloadUser: async uid => (await this.Browse(uid)) as any,
+        reloadUser: async uid => await this.Browse(uid),
       });
 
       return await issueLoginTokensAndSession(
-        loginUser as any,
+        loginUser,
         {
-          extractUserMetadata: async u => await this.extractUserMetadata(u as any),
+          extractUserMetadata: async u => await this.extractUserMetadata(u),
           updateLastLogin: async (uid: string, timestamp: Date) => {
-            await this.UpdateById(uid, { LastLogin: timestamp } as any);
+            await this.UpdateById(uid, { LastLogin: timestamp });
           },
         },
         { ipAddress, deviceInfo, rememberMe }
@@ -443,17 +443,17 @@ export default class User extends AttachmentOwnerMixin {
    * Build token metadata from the current user record and company scope.
    */
   static async extractUserMetadata(user: User): Promise<TokenMetadata> {
-    const userId = String((user as any)?.Id || '').trim();
-    const userVersion = Number(new Date((user as any)?.UpdatedAt || Date.now()));
+    const userId = String(user?.Id || '').trim();
+    const userVersion = Number(new Date(user?.UpdatedAt || Date.now()));
     const permStateVersion = userId ? await computePermStateVersion(userId) : 0;
-    const companyScope = computeTokenCompanyScope(user as any);
+    const companyScope = computeTokenCompanyScope(user);
 
     let companyTimezone: string | undefined;
     const activeCompanyId = String(companyScope.activeCompanyId || '').trim();
     if (activeCompanyId) {
       try {
         const CompanyService = createServiceByModel<typeof Company>('base.Company');
-        const company = await (CompanyService as any).Browse(activeCompanyId, ['Timezone']);
+        const company = await CompanyService.Browse(activeCompanyId, ['Timezone']);
         const tz = String(company?.Timezone || '').trim();
         if (tz && isIanaTimezone(tz)) companyTimezone = tz;
       } catch {
@@ -462,7 +462,7 @@ export default class User extends AttachmentOwnerMixin {
     }
 
     return {
-      language: user.Language,
+      language: user.Language ?? undefined,
       timezone: user.Timezone || undefined,
       companyTimezone,
       allowedCompanyIds: companyScope.allowedCompanyIds,
@@ -480,7 +480,7 @@ export default class User extends AttachmentOwnerMixin {
     try {
       return await refreshTokensWithLatestMetadata(refreshToken, {
         browseUser: async (userId: string) => await this.Browse(userId),
-        extractUserMetadata: async (user: any) => await this.extractUserMetadata(user),
+        extractUserMetadata: async user => await this.extractUserMetadata(user),
       });
     } catch (error) {
       throw wrapAuthError(error, {
@@ -499,7 +499,7 @@ export default class User extends AttachmentOwnerMixin {
    * - enabled ⊆ allowed
    * - active ∈ enabled
    */
-  static async SwitchCompanyScope(activeCompanyId: string, enabledCompanyIds?: any): Promise<TokenPair> {
+  static async SwitchCompanyScope(activeCompanyId: string, enabledCompanyIds?: unknown): Promise<TokenPair> {
     const userId = String(this.userId || '').trim();
     if (!userId) {
       throw newAuthError({
@@ -528,7 +528,7 @@ export default class User extends AttachmentOwnerMixin {
     try {
       const user = await this.Browse(userId);
       await user.load(['CompanyIds']);
-      const validated = validateSwitchCompanyScopeInput(user as any, active, enabledCompanyIds);
+      const validated = validateSwitchCompanyScopeInput(user, active, enabledCompanyIds);
       if (!validated.ok) {
         if (validated.code === 'enabled_type') {
           audit.emitOnce({
@@ -592,13 +592,13 @@ export default class User extends AttachmentOwnerMixin {
       }
 
       const enabled = validated.enabled;
-      const nextPrefs: any = buildScopePreferences(validated.prefs, active, enabled);
+      const nextPrefs = buildScopePreferences(validated.prefs, active, enabled);
 
       // NOTE: Switching company scope is a self-service auth operation.
       // Users may legitimately have zero roles at this stage; record rules are deny-by-default for write.
       // We bypass RecordRule/FieldRule for this internal preference update (still guarded by strict validation above).
       await withPermissionGraphBypass(async () => {
-        await this.UpdateById(userId, { Preferences: nextPrefs } as any);
+        await this.UpdateById(userId, { Preferences: nextPrefs as User['Preferences'] });
       });
 
       // Reload the record so UpdatedAt and metadata reflect the persisted preferences.
@@ -618,8 +618,9 @@ export default class User extends AttachmentOwnerMixin {
       // Emit an audit failure record without changing error semantics.
       if (!audit.wasEmitted()) {
         try {
-          const msg = typeof (error as any)?.message === 'string' ? (error as any).message : String(error);
-          const code = (error as any)?.code ? String((error as any).code) : undefined;
+          const errBag = error && typeof error === 'object' ? (error as { message?: unknown; code?: unknown }) : undefined;
+          const msg = typeof errBag?.message === 'string' ? errBag.message : String(error);
+          const code = errBag?.code != null ? String(errBag.code) : undefined;
           audit.emitOnce({
             ok: false,
             userId,
@@ -730,7 +731,7 @@ export default class User extends AttachmentOwnerMixin {
     const req = getCurrentReq();
     const state = getOrInitReqServiceState(req);
 
-    const userId = String((this.userId as any) || '').trim();
+    const userId = String(this.userId || '').trim();
     const companyScope = getCompanyScopeFromRequestContext();
     const enabledCompanyIdsKey = sortStrings(uniqStrings(companyScope.enabledCompanyIds));
     const companyScopeKey = `${companyScope.activeCompanyId}::${enabledCompanyIdsKey.join(',')}`;

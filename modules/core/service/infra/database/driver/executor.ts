@@ -60,13 +60,14 @@ export class ChoysumQueryExecutor extends DefaultQueryExecutor implements QueryE
     return new ChoysumQueryExecutor(this.#compiler, this.#adapter, this.#connectionProvider, []);
   }
 
-  async executeQuery<R>(compiledQuery: CompiledQuery<unknown>, options?: AbortableQueryOptions): Promise<QueryResult<R>> {
-    const legacyQueryId = typeof (options as unknown) === 'string' ? (options as unknown as string) : undefined;
+  async executeQuery<R>(compiledQuery: CompiledQuery<unknown>, options?: AbortableQueryOptions | string): Promise<QueryResult<R>> {
+    const legacyQueryId = typeof options === 'string' ? options : undefined;
+    const abortOptions = typeof options === 'string' ? undefined : options;
     const qId = compiledQuery.queryId ?? legacyQueryId ?? ({ queryId: $choysum.xid.New() } as unknown as QueryId);
     return this.provideConnection(async connection => {
-      const result = await connection.executeQuery<R>(compiledQuery, options);
+      const result = await connection.executeQuery<R>(compiledQuery);
       return this.#transformResult(result, qId);
-    }, options);
+    }, abortOptions);
   }
 
   async #transformResult<T>(result: QueryResult<T>, queryId: QueryId): Promise<QueryResult<T>> {

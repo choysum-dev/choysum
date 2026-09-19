@@ -231,13 +231,13 @@ describe('getArrayAtPath', () => {
 // --------------- findIndexById ---------------
 
 describe('findIndexById', () => {
-  const arr = [{ Id: 10 }, { Id: 20 }, { id: 30 }];
+  const arr = [{ Id: 10 }, { Id: 20 }, { Id: 30 }];
 
   test('finds by Id', () => {
     expect(findIndexById(arr, 10)).toBe(0);
   });
-  test('finds by id (lowercase)', () => {
-    expect(findIndexById(arr, 30)).toBe(2);
+  test('ignores lowercase id', () => {
+    expect(findIndexById([{ id: 30 }], 30)).toBe(-1);
   });
   test('returns -1 when not found', () => {
     expect(findIndexById(arr, 99)).toBe(-1);
@@ -333,7 +333,7 @@ describe('toSelectorPath', () => {
       { Id: 100, UnitPrice: 5 },
       { Id: 200, UnitPrice: 8 },
     ],
-    Lines2: [{ id: 'abc', Qty: 3 }],
+    Lines2: [{ Id: 'abc', Qty: 3 }],
   };
 
   test('converts index segment to id-based selector', () => {
@@ -344,7 +344,7 @@ describe('toSelectorPath', () => {
     expect(toSelectorPath(root, 'Lines.99.UnitPrice')).toBe('Lines[99].UnitPrice');
   });
 
-  test('uses lowercase id', () => {
+  test('uses PascalCase Id', () => {
     expect(toSelectorPath(root, 'Lines2.0.Qty')).toBe('Lines2(id=abc).Qty');
   });
 

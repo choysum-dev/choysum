@@ -26,12 +26,12 @@ export function normalizeStringArray(value: unknown): string[] {
 }
 
 /**
- * Loose object that may carry a relation Id under `Id` or `id`.
+ * Loose object that may carry a relation Id under `Id`.
  */
-export type RefLike = { Id?: unknown; id?: unknown };
+export type RefLike = { Id?: unknown };
 
 /**
- * True for non-null plain objects (not arrays) that may expose Id/id.
+ * True for non-null plain objects (not arrays) that may expose Id.
  */
 export function isRefLike(value: unknown): value is RefLike {
   return value != null && typeof value === 'object' && !Array.isArray(value);
@@ -51,12 +51,12 @@ export function readRefId(value: unknown): string | undefined {
 /**
  * Normalize a relation reference into a trimmed Id string.
  *
- * Accepts a plain string id, an object with an Id (or id) property, or null/undefined.
+ * Accepts a plain string id, an object with an Id property, or null/undefined.
  * Returns null when the input cannot be resolved to a non-empty string.
  */
 export function normalizeRefId(value: unknown): string | null {
   if (value == null || Array.isArray(value)) return null;
-  const raw = isRefLike(value) ? (value.Id ?? value.id ?? null) : value;
+  const raw = isRefLike(value) ? (value.Id ?? null) : value;
   const s = String(raw ?? '').trim();
   return s ? s : null;
 }
@@ -154,21 +154,19 @@ export function sortStrings(xs: string[]): string[] {
 
 /**
  * Extract the identifier from either a plain string value or an object with
- * an `Id` (or `id`) property. Returns undefined for empty input.
- *
- * This is a relaxed variant of {@link readRefId} that also checks lowercase `id`.
+ * an `Id` property. Returns undefined for empty input.
  */
 export function maybeRefId(value: unknown): string | undefined {
   if (!value) return undefined;
   if (typeof value === 'string') return normalizeOptionalString(value);
-  if (isRefLike(value)) return normalizeOptionalString(value.Id) ?? normalizeOptionalString(value.id);
+  if (isRefLike(value)) return normalizeOptionalString(value.Id);
   return undefined;
 }
 
 function normalizeRefLikeIdString(raw: unknown): string {
   if (raw == null || Array.isArray(raw)) return '';
   if (isRefLike(raw)) {
-    return String(raw.Id ?? raw.id ?? '').trim();
+    return String(raw.Id ?? '').trim();
   }
   return String(raw ?? '').trim();
 }
@@ -259,6 +257,7 @@ export function parseJsonStringArray(raw: unknown): string[] {
 export function normalizeScopeId(value: unknown): string {
   const id = maybeRefId(value);
   if (id) return String(id).trim();
+  if (value != null && typeof value === 'object') return '';
   return String(value ?? '').trim();
 }
 
@@ -317,9 +316,12 @@ export function buildScopePreferences(basePrefs: Record<string, unknown>, active
  */
 export function asBigInt(v: unknown): bigint {
   if (typeof v === 'bigint') return v;
-  if (v && typeof v === 'object' && typeof (v as any).$bigint === 'string') return BigInt((v as any).$bigint);
+  if (v && typeof v === 'object') {
+    const tagged = v as { $bigint?: unknown };
+    if (typeof tagged.$bigint === 'string') return BigInt(tagged.$bigint);
+  }
   if (typeof v === 'number' && Number.isFinite(v)) return BigInt(Math.trunc(v));
-  const s = String((v as any) ?? '').trim();
+  const s = String(v ?? '').trim();
   if (!s) return 0n;
   return BigInt(s);
 }
@@ -361,7 +363,7 @@ export function resolveModelRefId(obj: unknown, fieldName: string): unknown {
   if (!obj || typeof obj !== 'object') return undefined;
   const field = (obj as Record<string, unknown>)[fieldName];
   if (!field || typeof field !== 'object') return field;
-  return (field as Record<string, unknown>).Id ?? (field as Record<string, unknown>).id ?? field;
+  return (field as Record<string, unknown>).Id ?? field;
 }
 
 /**
@@ -416,8 +418,11 @@ export function parseDecimalInput(value: unknown, opts?: { allowNumber?: boolean
       return new Decimal(value);
     }
 
-    if (typeof value === 'object' && value && typeof (value as any).$bigdecimal === 'string') {
-      return new Decimal(String((value as any).$bigdecimal));
+    if (typeof value === 'object' && value) {
+      const tagged = value as { $bigdecimal?: unknown };
+      if (typeof tagged.$bigdecimal === 'string') {
+        return new Decimal(String(tagged.$bigdecimal));
+      }
     }
 
     if (typeof value === 'string') {
@@ -536,7 +541,7 @@ export function assertOptionalNonEmptyString(value: unknown, opts?: { maxLength?
  */
 export function isExpiredAt(value: unknown, nowMs: number = Date.now()): boolean {
   if (!value) return true;
-  const ms = new Date(value as any).getTime();
+  const ms = new Date(value as string | number | Date).getTime();
   if (!Number.isFinite(ms)) return true;
   return ms <= nowMs;
 }
@@ -550,14 +555,23 @@ export type CurrencyRoundingSpec = {
  * Round an amount according to currency digits and optional rounding step.
  */
 export function roundToCurrencyAmount(amount: Decimal, currency?: CurrencyRoundingSpec | null, overrideDigits?: number): Decimal {
-  const digits = Number.isFinite(overrideDigits as any)
-    ? Math.max(0, Math.floor(overrideDigits as any))
-    : Math.max(0, Math.floor(Number(currency?.DecimalDigits) || 0));
+  const digits =
+    overrideDigits != null && Number.isFinite(overrideDigits)
+      ? Math.max(0, Math.floor(overrideDigits))
+      : Math.max(0, Math.floor(Number(currency?.DecimalDigits) || 0));
 
   try {
     const step = currency?.Rounding;
     if (step != null) {
-      const decimalStep = step instanceof Decimal ? step : new Decimal((step as any).$bigdecimal ?? step);
+      const stepBag = step as { $bigdecimal?: unknown } | Decimal | string | number;
+      const taggedStep =
+        stepBag && typeof stepBag === 'object' && !(stepBag instanceof Decimal)
+          ? (stepBag as { $bigdecimal?: unknown }).$bigdecimal
+          : undefined;
+      const decimalStep =
+        stepBag instanceof Decimal
+          ? stepBag
+          : new Decimal(taggedStep != null ? String(taggedStep) : (stepBag as string | number));
       if (decimalStep.gt(0)) {
         const q = amount.div(decimalStep);
         const qRounded = q.toDecimalPlaces(0, Decimal.ROUND_HALF_UP);
@@ -738,7 +752,10 @@ export function parseBigInt(value: unknown): bigint {
   try {
     if (typeof value === 'bigint') return value;
     if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value));
-    if (value && typeof value === 'object' && typeof (value as any).$bigint === 'string') return BigInt((value as any).$bigint);
+    if (value && typeof value === 'object') {
+      const tagged = value as { $bigint?: unknown };
+      if (typeof tagged.$bigint === 'string') return BigInt(tagged.$bigint);
+    }
     const text = String(value ?? '').trim();
     if (!text) {
       raiseNormalizationError('required');

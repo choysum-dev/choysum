@@ -407,8 +407,8 @@ export class ValidationEngine {
       return id || undefined;
     }
     if (typeof raw === 'object') {
-      const record = raw as { Id?: unknown; id?: unknown };
-      const id = record.Id ?? record.id;
+      const record = raw as { Id?: unknown };
+      const id = record.Id;
       if (id === null || id === undefined) return undefined;
       const normalized = String(id).trim();
       return normalized || undefined;
@@ -485,7 +485,7 @@ export class ValidationEngine {
 
   private static extractEnabledCompanyIds(requestContext: unknown): string[] {
     const ctx = (requestContext && typeof requestContext === 'object' ? requestContext : {}) as ObjectRecord;
-    const raw = ctx.enabledCompanyIds ?? ctx.EnabledCompanyIds ?? ctx.activeCompanyId ?? ctx.ActiveCompanyId;
+    const raw = ctx.enabledCompanyIds ?? ctx.activeCompanyId;
     const values = Array.isArray(raw) ? raw : raw == null ? [] : [raw];
     return Array.from(new Set(values.map(v => String(v ?? '').trim()).filter(Boolean)));
   }
@@ -512,7 +512,7 @@ export class ValidationEngine {
       return this.resolveReferenceId(current[ownershipField]) ?? '';
     }
     const req = (ctx.requestContext && typeof ctx.requestContext === 'object' ? ctx.requestContext : {}) as ObjectRecord;
-    return String(req.activeCompanyId ?? req.ActiveCompanyId ?? '').trim();
+    return String(req.activeCompanyId ?? '').trim();
   }
 
   /**

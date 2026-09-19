@@ -147,8 +147,9 @@ async function defaultParentWritableProbe(parentCtor: ModelCtor, containerId: st
   await repo.assertRecordRuleTargetsAllowed('write', [containerId]);
 }
 
-function remapParentProbeError(err: any, containerModel: string, containerId: string): never {
-  const code = String(err?.code || err?.errorCode || '');
+function remapParentProbeError(err: unknown, containerModel: string, containerId: string): never {
+  const bag = err as { code?: unknown; errorCode?: unknown; message?: unknown } | null | undefined;
+  const code = String(bag?.code || bag?.errorCode || '');
   if (code.startsWith('PROPERTY_DEFINITION_PARENT_')) throw err;
   const msg = err instanceof Error ? err.message : String(err);
   if (
@@ -196,17 +197,17 @@ export async function assertPropertyDefinitionParentWritable(
   if (parentWritableProbeOverride) {
     try {
       await parentWritableProbeOverride(
-        { Search: async () => [{ Id: containerId }] } as any,
+        { Search: async () => [{ Id: containerId }] } as unknown as ModelCtor,
         containerId
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       remapParentProbeError(err, containerModel!, containerId);
     }
     return;
   }
 
   const meta = MetadataStorage.instance.getModelMetadata(defCtor);
-  const application = String((meta as any)?.application || '').trim();
+  const application = String(meta?.application || '').trim();
   const parentCtor =
     (application ? resolveModelConstructor(`${application}.${containerModel}`) : undefined) ||
     resolveModelConstructor(containerModel!);
@@ -220,7 +221,7 @@ export async function assertPropertyDefinitionParentWritable(
 
   try {
     await defaultParentWritableProbe(parentCtor, containerId);
-  } catch (err: any) {
+  } catch (err: unknown) {
     remapParentProbeError(err, containerModel!, containerId);
   }
 }

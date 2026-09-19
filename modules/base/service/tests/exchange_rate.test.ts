@@ -194,16 +194,6 @@ test('base.exchange_rate: validates DateString and positive Rate', async () => {
         undefined
       );
 
-      await (ExchangeRate as any).ensureUniqueTuple(
-        {
-          CompanyId: (company as any).Id,
-          CompanyScopeKey: String((company as any).Id),
-          CurrencyId: { id: (rateCurrency as any).Id },
-          Date: '2026-01-12',
-        },
-        undefined
-      );
-
       const created = await ExchangeRate.Create(
         {
           CompanyId: (company as any).Id,

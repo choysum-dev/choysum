@@ -70,7 +70,7 @@ test('query executor binary/image descriptor decode > normalizes object payload 
 
   const rows = [
     {
-      id: 'rid-obj',
+      Id: 'rid-obj',
       Avatar: {
         attachmentBindingId: 'bind-obj',
         fileName: 'avatar.png',

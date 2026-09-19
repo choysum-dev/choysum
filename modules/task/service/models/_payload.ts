@@ -53,7 +53,7 @@ export function maskSensitive(value: any): any {
 
 /** Computes the byte length of a string payload. */
 export function byteLength(value: string): number {
-  const Encoder = (globalThis as any).TextEncoder;
+  const Encoder = globalThis.TextEncoder;
   if (typeof Encoder === 'function') {
     return new Encoder().encode(value).length;
   }
@@ -62,8 +62,8 @@ export function byteLength(value: string): number {
 
 /** Truncates a string payload to a byte budget for preview storage. */
 export function truncatePreview(value: string, maxBytes: number): string {
-  const Encoder = (globalThis as any).TextEncoder;
-  const Decoder = (globalThis as any).TextDecoder;
+  const Encoder = globalThis.TextEncoder;
+  const Decoder = globalThis.TextDecoder;
   if (typeof Encoder === 'function' && typeof Decoder === 'function') {
     const encoder = new Encoder();
     const decoder = new Decoder();

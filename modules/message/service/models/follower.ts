@@ -4,6 +4,7 @@
 import { Field, Model } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
 import type { FieldSelection } from '@/core/service/api/selection';
+import type { Updateable } from '@/core/service/api/input';
 import { MessageErrCode, newMessageError } from '../error';
 import { _lt } from '../i18n';
 import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
@@ -124,9 +125,14 @@ async function syncFollowRow(
   if (!restoreDeleted && currentSubtype === subtypeId && currentCompany === companyId) {
     return projectFollowRow(row, fields);
   }
-  const values: Record<string, unknown> = { SubtypeId: subtypeId, CompanyId: companyId };
-  if (restoreDeleted) values.DeletedAt = null;
-  const updated = await Follower.UpdateById(id, values as any, fields, restoreDeleted ? { withDeleted: true } : undefined);
+  const values: Partial<Updateable<Follower>> = { SubtypeId: subtypeId, CompanyId: companyId };
+  if (restoreDeleted) (values as { DeletedAt?: Date | null }).DeletedAt = null;
+  const updated = await Follower.UpdateById(
+    id,
+    values as Partial<Updateable<Follower>>,
+    fields,
+    restoreDeleted ? { withDeleted: true } : undefined
+  );
   return projectFollowRow(updated as Follower, fields);
 }
 

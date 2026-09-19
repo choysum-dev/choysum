@@ -160,7 +160,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     // Only coerce when Source is present in the payload (ui → manual). Create without Source
     // keeps the Field default factory (`manual`) so defaults stay reachable.
     if (!Object.prototype.hasOwnProperty.call(values, 'Source')) return;
-    (values as any).Source = 'manual';
+    values.Source = 'manual';
   }
 
   /**
@@ -183,20 +183,20 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     if (mode === 'update' && !touchesMethods && !touchesLogicalName) return;
 
     if (touchesMethods) {
-      (values as any).LogicalMethods = assertLogicalMethods((values as any).LogicalMethods);
+      values.LogicalMethods = assertLogicalMethods(values.LogicalMethods);
     } else if (mode === 'create') {
-      (values as any).LogicalMethods = assertLogicalMethods((values as any).LogicalMethods);
+      values.LogicalMethods = assertLogicalMethods(values.LogicalMethods);
     }
 
     // When LogicalModelName is present in the payload (create always after assert, or update touching scope),
     // clear methods unless this row is logical scope.
     if (mode === 'create' || touchesLogicalName) {
-      const name = String((values as any).LogicalModelName || '').trim();
+      const name = String(values.LogicalModelName || '').trim();
       if (!name) {
-        if ((values as any).LogicalMethods != null) {
+        if (values.LogicalMethods != null) {
           throw new Error('invalid RoleMethodAccess: LogicalMethods requires LogicalModel scope');
         }
-        (values as any).LogicalMethods = null;
+        values.LogicalMethods = null;
       } else if (mode === 'update' && !touchesMethods) {
         const previous = String(previousLogicalModelName ?? '').trim();
         // Re-echoing the same logical name (e.g. Mode toggle with full scope payload) is fine.
@@ -228,7 +228,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     const touchesMethods = Object.prototype.hasOwnProperty.call(values, 'LogicalMethods');
     const touchesLogicalName = Object.prototype.hasOwnProperty.call(values, 'LogicalModelName');
     if (!touchesLogicalName || touchesMethods) return false;
-    return Boolean(String((values as any).LogicalModelName || '').trim());
+    return Boolean(String(values.LogicalModelName || '').trim());
   }
 
   /**

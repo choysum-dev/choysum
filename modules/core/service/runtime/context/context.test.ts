@@ -184,7 +184,7 @@ test('runtime context scope falls back to process-level stack and restores empty
     expect(empty).toEqual({});
     expect(Object.isFrozen(empty)).toBe(true);
 
-    const outer = withContext({ ActiveCompanyId: ' OUTER ', tz: ' UTC ' }, () => {
+    const outer = withContext({ activeCompanyId: ' OUTER ', tz: ' UTC ' }, () => {
       expect(getActiveCompanyId()).toBe('OUTER');
       expect(getContextTimezone()).toBe('UTC');
 
@@ -195,7 +195,7 @@ test('runtime context scope falls back to process-level stack and restores empty
       });
     }) as any;
 
-    expect(outer.ActiveCompanyId).toBe(' OUTER ');
+    expect(outer.activeCompanyId).toBe(' OUTER ');
     expect(getReadonlyCtx()).toEqual({});
 
     await withContext({ lang: 'de' }, async () => {

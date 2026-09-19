@@ -4,6 +4,8 @@
 import {
   parseISODate,
   toDate,
+  coerceDatetimeFields,
+  type DatetimeFieldSource,
   isIanaTimezone,
   listIanaTimezoneSelection,
   parseTimezoneOffsetMinutes,
@@ -77,6 +79,60 @@ test('toDate returns undefined for null', () => {
 
 test('toDate returns undefined for undefined', () => {
   expect(toDate(undefined)).toBe(undefined);
+});
+
+// ---------------------------------------------------------------------------
+// coerceDatetimeFields
+// ---------------------------------------------------------------------------
+
+test('coerceDatetimeFields converts listed ISO strings via explicit keys', () => {
+  const row: Record<string, unknown> = {
+    Name: 'x',
+    LastSyncAt: '2024-06-15T12:00:00.000Z',
+    Other: '2024-01-01T00:00:00.000Z',
+  };
+  coerceDatetimeFields(row, ['LastSyncAt']);
+  expect(row.LastSyncAt).toEqual(new Date('2024-06-15T12:00:00.000Z'));
+  expect(row.Other).toBe('2024-01-01T00:00:00.000Z');
+});
+
+test('coerceDatetimeFields maps empty and invalid listed values to null', () => {
+  const row: Record<string, unknown> = { LastSyncAt: '', LastBatchSyncAt: 'not-a-date', Keep: 1 };
+  coerceDatetimeFields(row, ['LastSyncAt', 'LastBatchSyncAt']);
+  expect(row.LastSyncAt).toBe(null);
+  expect(row.LastBatchSyncAt).toBe(null);
+  expect(row.Keep).toBe(1);
+});
+
+test('coerceDatetimeFields uses metadata fields map for datetime/date types', () => {
+  const fields = new Map<string, { type?: string }>([
+    ['LastSyncAt', { type: 'datetime' }],
+    ['BornOn', { type: 'date' }],
+    ['Version', { type: 'varchar' }],
+  ]);
+  const row: Record<string, unknown> = {
+    LastSyncAt: '2025-01-02T03:04:05.000Z',
+    BornOn: '2020-01-01T00:00:00.000Z',
+    Version: '2024-01-01T00:00:00.000Z',
+  };
+  coerceDatetimeFields(row, { fields });
+  expect(row.LastSyncAt).toEqual(new Date('2025-01-02T03:04:05.000Z'));
+  expect(row.BornOn).toEqual(new Date('2020-01-01T00:00:00.000Z'));
+  expect(row.Version).toBe('2024-01-01T00:00:00.000Z');
+});
+
+test('coerceDatetimeFields treats non-iterable fields bag as no datetime keys', () => {
+  const row: Record<string, unknown> = { LastSyncAt: '2024-06-15T12:00:00.000Z' };
+  const source = { fields: { LastSyncAt: { type: 'datetime' } } } as unknown as DatetimeFieldSource;
+  coerceDatetimeFields(row, source);
+  expect(row.LastSyncAt).toBe('2024-06-15T12:00:00.000Z');
+});
+
+test('coerceDatetimeFields leaves missing keys and undefined values alone', () => {
+  const row: Record<string, unknown> = { LastSyncAt: undefined };
+  coerceDatetimeFields(row, ['LastSyncAt', 'LastBatchSyncAt']);
+  expect(row.LastSyncAt).toBe(undefined);
+  expect(Object.prototype.hasOwnProperty.call(row, 'LastBatchSyncAt')).toBe(false);
 });
 
 // ---------------------------------------------------------------------------

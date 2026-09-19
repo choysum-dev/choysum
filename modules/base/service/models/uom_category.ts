@@ -25,7 +25,7 @@ export default class UoMCategory extends BaseModel {
     index: true,
     string: _lt('Code', { scope: 'base.model.UoMCategory.fields' }),
   })
-  Code?: string;
+  Code?: string | null;
 
   @Field({
     type: 'boolean',
@@ -39,7 +39,8 @@ export default class UoMCategory extends BaseModel {
   @Constraint<UoMCategory>(['Code'])
   validateUoMCategoryConstraint(): void {
     if (this.Code != null) {
-      (this as any).Code = normalizeCodeOptional(this.Code as string);
+      // Preserve null from normalizeCodeOptional so update can persist SQL NULL.
+      this.Code = normalizeCodeOptional(this.Code);
     }
   }
 }

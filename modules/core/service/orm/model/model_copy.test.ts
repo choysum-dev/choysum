@@ -425,11 +425,12 @@ test('coverage: buildCopyValues handles M2M edge shapes and extractRelationId va
   expect(numericScalar.Tags).toEqual(['99']);
 
   const numericIds = buildCopyValues(CopyOrderWidget as any, {
-    id: 42,
+    Id: 42,
     Name: 'Order',
     Tags: [{ Id: 7 }, { id: 8 }, '', null, { Id: '  ' }, 'tag-a', 'tag-a'],
   });
-  expect(numericIds.Tags).toEqual(['7', '8', 'tag-a']);
+  // Relation bags use PascalCase Id only; lowercase `id` is ignored.
+  expect(numericIds.Tags).toEqual(['7', 'tag-a']);
 
   const emptyM2M = buildCopyValues(CopyOrderWidget as any, {
     Id: 'ord-2',
@@ -561,7 +562,7 @@ test('coverage: remaining branch partials in helpers', async () => {
   expect(undefName.Name).toBeUndefined();
   expect(undefName.Code).toBe('C');
 
-  // child lowercase id + depth error fallbacks when fullModelName empty
+  // depth overflow still detected when fullModelName empty
   const orderMeta = getModelRuntimeMetadata(CopyOrderWidget as any);
   const prevFull = orderMeta.fullModelName;
   const prevModel = orderMeta.modelName;
@@ -575,7 +576,7 @@ test('coverage: remaining branch partials in helpers', async () => {
         {
           Id: 'ord-d2',
           Name: 'Order',
-          Lines: [{ id: 'line-lower', Name: 'L', OrderId: 'ord-d2' }],
+          Lines: [{ Id: 'line-d2', Name: 'L', OrderId: 'ord-d2' }],
         },
         undefined,
         { ancestorIds: new Set(['ord-d2']), depth: COPY_MAX_RELATION_DEPTH }
@@ -589,11 +590,11 @@ test('coverage: remaining branch partials in helpers', async () => {
     (orderMeta as any).modelName = prevModel;
   }
 
-  // lowercase child id copies when depth allows
+  // child rows without Id still copy scalar fields when depth allows
   const lower = buildCopyValues(CopyOrderWidget as any, {
     Id: 'ord-lower',
     Name: 'Order',
-    Lines: [{ id: 'line-lower-2', Name: 'L2', OrderId: 'ord-lower' }],
+    Lines: [{ Name: 'L2', OrderId: 'ord-lower' }],
   });
   expect(lower.Lines).toEqual({ create: [{ Name: 'L2' }] });
 

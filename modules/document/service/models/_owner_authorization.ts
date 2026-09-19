@@ -234,13 +234,13 @@ async function probeOwnerRecord(
   }
 
   const query = recordRuleExpr
-    ? ({
+    ? {
         And: [['Id', '=', ownerRecordId], recordRuleExpr],
-      } as any)
-    : (['Id', '=', ownerRecordId] as any);
+      }
+    : (['Id', '=', ownerRecordId] as const);
 
   try {
-    const rows = await ownerService.Search(query, { limit: 1, fields: ['Id'] } as any);
+    const rows = await ownerService.Search(query, { limit: 1, fields: ['Id'] });
     return Array.isArray(rows) && rows.length > 0;
   } catch {
     return false;

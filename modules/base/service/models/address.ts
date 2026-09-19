@@ -68,22 +68,22 @@ export default class Address extends BaseModel {
   })
   CityId?: City;
 
-  private static async getCountry(countryId: string): Promise<any> {
+  private static async getCountry(countryId: string) {
     const { default: CountryModel } = await import('./country');
-    return await CountryModel.Browse(countryId, ['Id', 'ZipRequired', 'StateRequired'] as any);
+    return await CountryModel.Browse(countryId, ['Id', 'ZipRequired', 'StateRequired']);
   }
 
-  private static async getState(stateId: string): Promise<any> {
+  private static async getState(stateId: string) {
     const { default: StateModel } = await import('./state');
-    return await StateModel.Browse(stateId, ['Id', 'CountryId'] as any);
+    return await StateModel.Browse(stateId, ['Id', 'CountryId']);
   }
 
-  private static async getCity(cityId: string): Promise<any> {
+  private static async getCity(cityId: string) {
     const { default: CityModel } = await import('./city');
-    return await CityModel.Browse(cityId, ['Id', 'CountryId', 'StateId'] as any);
+    return await CityModel.Browse(cityId, ['Id', 'CountryId', 'StateId']);
   }
 
-  private static async validateEntity(values: Record<string, any>): Promise<void> {
+  private static async validateEntity(values: Address): Promise<void> {
     const countryId = assertRefId(values.CountryId, 'CountryId');
     const stateId = normalizeRefId(values.StateId);
     const cityId = normalizeRefId(values.CityId);
@@ -124,6 +124,6 @@ export default class Address extends BaseModel {
 
   @Constraint<Address>(['CountryId', 'StateId', 'CityId', 'Zip'])
   async validateAddressConstraint(): Promise<void> {
-    await Address.validateEntity(this as any);
+    await Address.validateEntity(this);
   }
 }

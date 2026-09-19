@@ -1,13 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-export type FieldDefaultScopeRow = {
-  Id?: string | null;
-  Field?: string | null;
-  UserId?: string | null;
-  CompanyId?: string | null;
-  Value?: unknown;
-};
+import type FieldDefaultBaseModel from './field_default_base_model';
+
+/** Pick (not Projected): Value is `unknown` and filtered out of Selectable. */
+export type FieldDefaultScopeRow = Pick<FieldDefaultBaseModel, 'Id' | 'Field' | 'UserId' | 'CompanyId' | 'Value'>;
 
 function scopeRank(userId: unknown, companyId: unknown): number {
   const hasUser = userId != null && String(userId).trim() !== '';
@@ -23,7 +20,7 @@ function scopeRank(userId: unknown, companyId: unknown): number {
  * Priority: user+company > user > company > global. Same-rank ties pick smallest Id and warn.
  */
 export function resolveEffectiveFieldDefaults(
-  rows: FieldDefaultScopeRow[],
+  rows: ReadonlyArray<Partial<FieldDefaultScopeRow>>,
   fieldNames?: string[]
 ): Record<string, unknown> {
   const allow = fieldNames && fieldNames.length ? new Set(fieldNames.map(String)) : undefined;

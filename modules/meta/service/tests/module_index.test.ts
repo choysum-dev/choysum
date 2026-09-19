@@ -253,8 +253,8 @@ describe('extractGroupedModuleNames', () => {
   it('extracts ModuleName from rows', () => {
     expect(extractGroupedModuleNames([{ ModuleName: 'auth' }, { ModuleName: 'base' }])).toEqual(['auth', 'base']);
   });
-  it('handles module_name fallback', () => {
-    expect(extractGroupedModuleNames([{ module_name: 'core' }])).toEqual(['core']);
+  it('ignores snake_case module_name (ReadGroup projects ModuleName)', () => {
+    expect(extractGroupedModuleNames([{ module_name: 'core' }])).toEqual([]);
   });
   it('skips empty names', () => {
     expect(extractGroupedModuleNames([{ ModuleName: '' }, { ModuleName: '  ' }])).toEqual([]);
@@ -263,7 +263,7 @@ describe('extractGroupedModuleNames', () => {
     expect(extractGroupedModuleNames(null as any)).toEqual([]);
     expect(extractGroupedModuleNames(undefined as any)).toEqual([]);
   });
-  it('prefers ModuleName over module_name when both exist', () => {
+  it('reads ModuleName only when both casings exist', () => {
     expect(extractGroupedModuleNames([{ ModuleName: 'auth', module_name: 'ignored' }])).toEqual(['auth']);
   });
   it('skips null rows and nullish names', () => {
@@ -353,6 +353,22 @@ describe('toPlainRecord', () => {
     expect(toPlainRecord('x')).toEqual({});
     expect(toPlainRecord(42)).toEqual({});
   });
+  it('coerces declared datetime fields from ISO strings to Date', () => {
+    const result = toPlainRecord({
+      ModuleName: 'm',
+      LastSyncAt: '2024-06-15T12:00:00.000Z',
+      LastBatchSyncAt: '2025-01-01T00:00:00.000Z',
+      Version: '2024-01-01T00:00:00.000Z',
+    });
+    expect(result.LastSyncAt).toEqual(new Date('2024-06-15T12:00:00.000Z'));
+    expect(result.LastBatchSyncAt).toEqual(new Date('2025-01-01T00:00:00.000Z'));
+    expect(result.Version).toBe('2024-01-01T00:00:00.000Z');
+  });
+  it('maps invalid datetime field values to null', () => {
+    const result = toPlainRecord({ LastSyncAt: '', LastBatchSyncAt: 'nope' });
+    expect(result.LastSyncAt).toBe(null);
+    expect(result.LastBatchSyncAt).toBe(null);
+  });
 });
 
 // --------------- pickNewestTimestamp ---------------
@@ -362,19 +378,11 @@ describe('pickNewestTimestamp', () => {
     const result = pickNewestTimestamp([new Date('2024-01-01'), new Date('2025-06-15')]);
     expect(result).toEqual(new Date('2025-06-15'));
   });
-  it('handles string dates', () => {
-    const result = pickNewestTimestamp(['2024-01-01', '2025-06-15']);
-    expect(result).toBe('2025-06-15');
-  });
   it('skips null/undefined', () => {
     expect(pickNewestTimestamp([null, undefined])).toBeUndefined();
   });
-  it('returns first value when all are unparseable', () => {
-    const result = pickNewestTimestamp(['not-a-date', 'also-not']);
-    expect(result).toBe('not-a-date');
-  });
-  it('keeps prior pick when later value is unparseable', () => {
-    const result = pickNewestTimestamp([new Date('2024-01-01'), 'not-a-date']);
+  it('skips invalid Date instances', () => {
+    const result = pickNewestTimestamp([new Date('invalid'), new Date('2024-01-01')]);
     expect(result).toEqual(new Date('2024-01-01'));
   });
 });

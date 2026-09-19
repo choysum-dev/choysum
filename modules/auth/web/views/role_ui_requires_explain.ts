@@ -57,10 +57,10 @@ export function getInspectedUiResourceId(row: Record<string, any> | null | undef
 }
 
 /**
- * Requires list for the inspected UI resource (Supports Requires / requires).
+ * Requires list for the inspected UI resource (PascalCase `Requires` from ClientModel).
  */
 export function getInspectedUiResourceRequires(row: Record<string, any> | null | undefined): string[] {
-  return normalizeUiResourceRequires(row?.Requires ?? row?.requires);
+  return normalizeUiResourceRequires(row?.Requires);
 }
 
 /**

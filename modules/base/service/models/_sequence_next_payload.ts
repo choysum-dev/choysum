@@ -2,14 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type Sequence from './sequence';
-import type { SequenceNextItem, SequenceNextResult } from './sequence';
+import type { SequenceNextItem, SequenceNextPublic, SequenceNextResult } from './sequence';
 import { resolveModelRefId } from '@/core/service/utils/normalization';
 
-export type SequenceFormatSnapshot = {
-  Prefix: string;
-  Suffix: string;
-  Padding: number;
-};
+/** Normalized format fields for idempotency / next payloads (empty Prefix/Suffix become ''). */
+export type SequenceFormatSnapshot = Required<Pick<Sequence, 'Prefix' | 'Suffix' | 'Padding'>>;
 
 export type SequenceIdempotencyPayload = {
   CompanyId: unknown;
@@ -28,10 +25,9 @@ function readSequenceCompanyId(seq: Sequence): unknown {
   return resolveModelRefId(seq, 'CompanyId');
 }
 
-export function buildSequencePublicSnapshot(seq: Sequence): SequenceNextResult['Sequence'] {
+export function buildSequencePublicSnapshot(seq: Sequence): SequenceNextPublic {
   return {
     Id: seq.Id,
-    CompanyId: readSequenceCompanyId(seq) as SequenceNextResult['Sequence']['CompanyId'],
     Code: seq.Code,
     Prefix: seq.Prefix,
     Suffix: seq.Suffix,

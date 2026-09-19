@@ -88,16 +88,14 @@ function normalizeContextStringArray(value: unknown): string[] {
  * Returns the active company Id from context.
  */
 export function getActiveCompanyId(): string | undefined {
-  return normalizeContextString(getCtxValue('activeCompanyId') ?? getCtxValue('ActiveCompanyId'));
+  return normalizeContextString(getCtxValue('activeCompanyId'));
 }
 
 /**
  * Returns the enabled company Id set from context.
  */
 export function getEnabledCompanyIds(): string[] {
-  return normalizeContextStringArray(
-    getCtxValue('enabledCompanyIds') ?? getCtxValue('EnabledCompanyIds') ?? getCtxValue('activeCompanyId') ?? getCtxValue('ActiveCompanyId')
-  );
+  return normalizeContextStringArray(getCtxValue('enabledCompanyIds') ?? getCtxValue('activeCompanyId'));
 }
 
 /**

@@ -322,7 +322,7 @@ class BaseModel {
     this: ModelCtor,
     shortName: string
   ): ModelCtorOrMissingSentinel<C> {
-    const app = String(MetadataStorage.instance.getModelMetadata(this as any)?.application || '').trim();
+    const app = String(MetadataStorage.instance.getModelMetadata(this)?.application || '').trim();
     return poolModel<C>(app, shortName);
   }
 

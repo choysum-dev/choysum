@@ -106,7 +106,7 @@ function resolveRelationOwnershipField(targetMeta: ModelMetadata): string | unde
 
 function normalizeRepositoryRelationCompanyIds(): string[] {
   const ctx = asObjectRecord(getRepositoryReadonlyCtx());
-  const raw = ctx?.enabledCompanyIds ?? ctx?.EnabledCompanyIds ?? ctx?.activeCompanyId ?? ctx?.ActiveCompanyId;
+  const raw = ctx?.enabledCompanyIds ?? ctx?.activeCompanyId;
 
   const ids: string[] = [];
   if (Array.isArray(raw)) {

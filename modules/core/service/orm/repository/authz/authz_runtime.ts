@@ -155,7 +155,7 @@ export function getRepositoryReqMethodMeta(): RepositoryReqMethodMeta {
 export function getRepositoryCompanyScopeFacts(requestContext: unknown, enabledCompanyIds: string[]): RepositoryCompanyScopeFacts {
   const ctx = asObjectRecord(requestContext);
   return {
-    activeCompanyId: String(ctx?.activeCompanyId ?? ctx?.ActiveCompanyId ?? '').trim(),
+    activeCompanyId: String(ctx?.activeCompanyId ?? '').trim(),
     enabledCompanyIds,
   };
 }

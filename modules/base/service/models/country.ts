@@ -52,7 +52,7 @@ export default class Country extends BaseModel {
       scope: 'base.model.Country.fields',
     }),
   })
-  AddressFormat?: string;
+  AddressFormat?: string | null;
 
   @Field({
     type: 'boolean',
@@ -106,7 +106,8 @@ export default class Country extends BaseModel {
   validateCountryConstraint(): void {
     this.Code = assertCodeRequired(this.Code as string);
     if (this.AddressFormat != null) {
-      this.AddressFormat = this.validateAddressFormat(this.AddressFormat) as any;
+      // Preserve null so clearing AddressFormat on update persists SQL NULL.
+      this.AddressFormat = this.validateAddressFormat(this.AddressFormat);
     }
   }
 }

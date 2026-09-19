@@ -3,18 +3,15 @@
 
 import { normalizeRefId, normalizeRefIdList } from '@/core/service/utils/normalization';
 import type { Insertable } from '@/core/service/api/input';
-import RoleUiResource from './role_ui_resource';
+import RoleUiResource, { type RoleUiResourceMode } from './role_ui_resource';
 
-type RoleAccessRow = {
+/**
+ * Role rows passed into AccessUiResourceIds hydration.
+ * Kept structural: callers pass generic `RowOrProjected` which is not assignable to `Pick<Role, …>`.
+ */
+export type RoleAccessUiIdsRow = {
   Id?: unknown;
   AccessUiResourceIds?: string[];
-};
-
-type UiResourceRow = Record<string, unknown> & {
-  Id?: string;
-  Mode?: string;
-  MetaApplicationId?: string | null;
-  MetaUiResourceId?: string | null;
 };
 
 const hasOwn = (obj: Record<string, unknown>, key: string): boolean => Object.prototype.hasOwnProperty.call(obj, key);
@@ -29,7 +26,7 @@ function isAllowResourceScope(row: unknown): boolean {
   return mode === 'allow' && !!uiResourceId && appId == null;
 }
 
-function makeAllowResourceEntries(ids: string[]): UiResourceRow[] {
+function makeAllowResourceEntries(ids: string[]): Array<Partial<RoleUiResource>> {
   return ids.map(id => ({
     Mode: 'allow',
     MetaApplicationId: null,
@@ -45,7 +42,7 @@ function extractUiResourcesArray(v: unknown): unknown[] | null {
   return null;
 }
 
-async function loadUiResourcesForRole(roleId: string): Promise<UiResourceRow[]> {
+async function loadUiResourcesForRole(roleId: string): Promise<Array<Partial<RoleUiResource>>> {
   const rows = await RoleUiResource.Search(
     {
       And: [['RoleId', '=', roleId]],
@@ -55,19 +52,21 @@ async function loadUiResourcesForRole(roleId: string): Promise<UiResourceRow[]> 
 
   return (rows || []).map(row => {
     const rec = row as unknown as Record<string, unknown>;
+    const modeRaw = String(rec.Mode ?? 'allow')
+      .trim()
+      .toLowerCase();
+    // Only 'allow' is an allow grant; deny and unsupported values stay non-allow so sync can recreate.
+    const mode: RoleUiResourceMode = modeRaw === 'allow' ? 'allow' : 'deny';
     return {
-      ...rec,
       Id: normalizeRefId(rec.Id) ?? undefined,
-      Mode: String(rec.Mode ?? 'allow')
-        .trim()
-        .toLowerCase(),
-      MetaApplicationId: normalizeRefId(rec.MetaApplicationId),
-      MetaUiResourceId: normalizeRefId(rec.MetaUiResourceId),
+      Mode: mode,
+      MetaApplicationId: normalizeRefId(rec.MetaApplicationId) ?? null,
+      MetaUiResourceId: normalizeRefId(rec.MetaUiResourceId) ?? null,
     };
   });
 }
 
-function mergeAccessIntoUiResources(baseRows: UiResourceRow[], accessIds: string[]): UiResourceRow[] {
+function mergeAccessIntoUiResources(baseRows: Array<Partial<RoleUiResource>>, accessIds: string[]): Array<Partial<RoleUiResource>> {
   const preserved = (baseRows || []).filter(row => !isAllowResourceScope(row));
   const allowRows = makeAllowResourceEntries(accessIds);
   return [...preserved, ...allowRows];
@@ -81,7 +80,7 @@ export async function applyAccessWriteTransformOnCreate(values: Record<string, u
 
   const accessIds = normalizeRefIdList(values.AccessUiResourceIds);
   const incomingUiRows = extractUiResourcesArray(values.UiResources);
-  const baseRows = Array.isArray(incomingUiRows) ? (incomingUiRows as UiResourceRow[]) : [];
+  const baseRows = Array.isArray(incomingUiRows) ? (incomingUiRows as Array<Partial<RoleUiResource>>) : [];
 
   values.UiResources = mergeAccessIntoUiResources(baseRows, accessIds);
   delete values.AccessUiResourceIds;
@@ -96,7 +95,7 @@ export async function applyAccessWriteTransformOnUpdate(values: Record<string, u
 
   const accessIds = normalizeRefIdList(values.AccessUiResourceIds);
   const incomingUiRows = extractUiResourcesArray(values.UiResources);
-  const baseRows = Array.isArray(incomingUiRows) ? (incomingUiRows as UiResourceRow[]) : await loadUiResourcesForRole(roleId);
+  const baseRows = Array.isArray(incomingUiRows) ? (incomingUiRows as Array<Partial<RoleUiResource>>) : await loadUiResourcesForRole(roleId);
 
   values.UiResources = mergeAccessIntoUiResources(baseRows, accessIds);
   delete values.AccessUiResourceIds;
@@ -177,7 +176,7 @@ async function buildAccessMap(roleIds: string[]): Promise<Map<string, string[]>>
 /**
  * Hydrate AccessUiResourceIds onto result rows when callers request the field.
  */
-export async function hydrateAccessUiResourceIds(records: RoleAccessRow[]): Promise<void> {
+export async function hydrateAccessUiResourceIds(records: RoleAccessUiIdsRow[]): Promise<void> {
   if (!Array.isArray(records) || records.length === 0) return;
   const roleIds = Array.from(
     new Set(

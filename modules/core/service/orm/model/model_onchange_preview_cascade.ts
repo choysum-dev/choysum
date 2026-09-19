@@ -31,7 +31,7 @@ function matchesSelection(sel: RowSelector | undefined, row: ObjectRecord | unde
   if (!sel || sel.kind === 'all') return true;
   if (sel.kind === 'pos') return sel.positions.has(idx);
   if (sel.kind === 'id') {
-    const id = row?.Id ?? row?.id;
+    const id = row?.Id;
     return id != null && sel.ids.has(String(id));
   }
   return true;
@@ -41,7 +41,7 @@ function formatSelector(sel: RowSelector | undefined, row: ObjectRecord | undefi
   if (!sel || sel.kind === 'all') return '';
   if (sel.kind === 'pos') return `[${idx}]`;
   if (sel.kind === 'id') {
-    const id = row?.Id ?? row?.id;
+    const id = row?.Id;
     return id != null ? `(id=${String(id)})` : '';
   }
   return '';

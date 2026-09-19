@@ -129,14 +129,13 @@ const emit = defineEmits<{
 const tableRef = ref<InstanceType<typeof ElTableV2> | null>(null);
 
 // Compute selection keys across both current and legacy row shapes.
-// Prefer row.key, then __rowKey, then top-level Id/id, and finally payload.Id/id.
+// Prefer row.key, then __rowKey, then top-level Id, and finally payload.Id.
 const keyOf = (row: any) =>
   row?.key ??
   row?.__rowKey ??
   row?.[props.rowKey!] ??
   row?.Id ??
-  row?.id ??
-  (typeof row === 'object' ? ((row as any)?.payload?.Id ?? (row as any)?.payload?.id) : undefined);
+  (typeof row === 'object' ? ((row as any)?.payload?.Id) : undefined);
 
 const selectedItems = computed(() => {
   const set = props.selectionApi?.selected.value ?? new Set<string | number>();

@@ -101,7 +101,7 @@ export default class RoleUiResource extends AuthzMutationModel {
     const touchesMode = Object.prototype.hasOwnProperty.call(values, 'Mode');
     if (!touchesMode && mode !== 'create') return;
 
-    (values as any).Mode = this._normalizeMode((values as any).Mode);
+    values.Mode = this._normalizeMode(values.Mode);
   }
 
   /**

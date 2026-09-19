@@ -792,7 +792,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
         if (createRes && typeof createRes === 'object') {
           // Reuse the returned record directly instead of querying again.
           const record = createRes as any;
-          newId = record.Id ?? record.id;
+          newId = record.Id;
           if (newId) {
             vm.original = clone(record);
             vm.draft = clone(record);
@@ -809,7 +809,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
           }
         }
       } else {
-        const id = vm.original?.Id ?? vm.original?.id;
+        const id = vm.original?.Id;
         const ownerRecordId = normalizeOptionalString(id);
         if (!ownerRecordId) {
           throw new Error('Update failed: record id is empty.');
@@ -852,7 +852,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
           vm.original = clone(updated);
           vm.draft = clone(updated);
           vm.mode = 'display';
-          const recordId = updated.Id ?? updated.id;
+          const recordId = updated.Id;
           if (recordId) {
             if (touchedAttachmentFields) {
               try {
@@ -889,7 +889,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
     vm.loading = true;
     vm.error = null;
     try {
-      const id = vm.original?.Id ?? vm.original?.id;
+      const id = vm.original?.Id;
       if (id == null) return null;
       const res = await store.DeleteById(id);
       vm.original = null;

@@ -55,11 +55,15 @@ type NestedFilteredProp<T, Path, D extends number = 3> = D extends 0
 
 /**
  * Nested field paths that remain queryable after property filtering.
+ *
+ * `-?` is required: mapping over optional keys without it makes
+ * `{ [K in keyof T]: K }[keyof T]` include `undefined`, which collapses
+ * {@link QueryCondition} so that arbitrary strings (and typos) assign.
  */
 export type NestedPath<T, D extends number = 3> = D extends 0
   ? never
   : {
-      [K in keyof FilteredQueryProperties<T>]: T[K] extends BaseModel ? K | `${K & string}.${NestedPath<T[K], Depth[D]> & string}` : K;
+      [K in keyof FilteredQueryProperties<T>]-?: T[K] extends BaseModel ? K | `${K & string}.${NestedPath<T[K], Depth[D]> & string}` : K;
     }[keyof FilteredQueryProperties<T>];
 
 type ConditionPathValue<T, K extends NestedPath<T, D>, D extends number = 3> =

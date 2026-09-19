@@ -231,7 +231,7 @@ function resolveDescriptor(raw: unknown): AttachmentLike | undefined {
 function resolveBindingId(raw: unknown): string | undefined {
   if (!isAttachmentObject(raw)) return undefined;
   const descriptor = resolveDescriptor(raw);
-  return normalizeOptionalString(raw.attachmentBindingId ?? raw.bindingId ?? raw.Id ?? raw.id ?? descriptor?.id);
+  return normalizeOptionalString(raw.attachmentBindingId ?? raw.bindingId ?? raw.Id ?? descriptor?.id);
 }
 
 function resolveObjectId(raw: unknown): string | undefined {

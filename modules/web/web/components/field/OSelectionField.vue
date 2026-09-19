@@ -254,7 +254,7 @@ function buildFullChainKeys(row: any): string[] {
   const chain = parentChain.value;
   if (!rootRecord.value || !chain.length) return out;
 
-  const rowId = row?.Id ?? row?.id ?? null;
+  const rowId = row?.Id ?? null;
   const selChain = findSelectorsChain(rootRecord.value, chain, rowId);
   if (!selChain) return out;
 
@@ -278,7 +278,7 @@ function buildLastLevelKeys(row: any): string[] {
   const head = chain.slice(0, lastIdx).join('.');
   const headDot = head ? head + '.' : '';
 
-  const rowId = row?.Id ?? row?.id ?? null;
+  const rowId = row?.Id ?? null;
   if (rowId != null) out.push(`${headDot}${lastKey}(id=${String(rowId)}).${leaf}`);
 
   let idx: number | null = null;

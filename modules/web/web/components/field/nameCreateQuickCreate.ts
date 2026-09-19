@@ -11,10 +11,10 @@ export function trimSearchKeyword(keyword: unknown): string {
   return String(keyword ?? '').trim();
 }
 
-/** Extract a non-empty Id / id from a NameCreate row. */
+/** Extract a non-empty Id from a NameCreate row. */
 export function extractNameCreateRecordId(row: unknown): string | undefined {
   if (row == null || typeof row !== 'object') return undefined;
-  const id = (row as { Id?: unknown; id?: unknown }).Id ?? (row as { id?: unknown }).id;
+  const id = (row as { Id?: unknown }).Id;
   if (id == null) return undefined;
   const s = String(id).trim();
   return s === '' ? undefined : s;
