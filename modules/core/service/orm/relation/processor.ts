@@ -11,9 +11,9 @@ import { createRelationModel } from './relation_model_service_facade';
 import {
   ExtractedRelations,
   type ManyToManyRelationConfig,
-  ManyToOneOperation,
-  OneToManyOperation,
-  ManyToManyOperation,
+  PreparedOneToManyOp,
+  PreparedManyToManyOp,
+  PreparedRelationOp,
   type OneToManyRelationConfig,
   PrepareResult,
   RelationProcessingResult,
@@ -78,7 +78,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
               fieldName,
               targetModel: rel.targetModel(),
               inverseField: rel.inverseField,
-              operations: fieldValue as OneToManyOperation['operations'],
+              operations: fieldValue as PreparedOneToManyOp['operations'],
             });
             result.touchedCollections!.add(fieldName);
           }
@@ -95,7 +95,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
                 targetModel: rel.targetModel(),
                 joinField: rel.joinField,
                 inverseJoinField: rel.inverseJoinField,
-                operations: fieldValue as ManyToManyOperation['operations'],
+                operations: fieldValue as PreparedManyToManyOp['operations'],
               });
               result.touchedCollections!.add(fieldName);
             }
@@ -135,7 +135,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    * @param operation Relation operation payload.
    * @returns Processing result.
    */
-  abstract processRelationUpdate(parentId: string, operation: ManyToOneOperation | OneToManyOperation | ManyToManyOperation): Promise<RelationProcessingResult>;
+  abstract processRelationUpdate(parentId: string, operation: PreparedRelationOp): Promise<RelationProcessingResult>;
 
   /**
    * Batch-process relation updates.
@@ -145,10 +145,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    * @param operations Relation operations paired with parentIds.
    * @returns Batch processing result.
    */
-  abstract batchProcessRelationUpdate(
-    parentIds: string[],
-    operations: (ManyToOneOperation | OneToManyOperation | ManyToManyOperation)[]
-  ): Promise<BatchProcessingResult>;
+  abstract batchProcessRelationUpdate(parentIds: string[], operations: PreparedRelationOp[]): Promise<BatchProcessingResult>;
 
   /**
    * Group relation operations by target type and parent entity.
@@ -159,7 +156,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    * @returns Operation map grouped by target.
    * @protected
    */
-  protected groupOperationsByTarget<OpType extends OneToManyOperation | ManyToManyOperation>(
+  protected groupOperationsByTarget<OpType extends PreparedOneToManyOp | PreparedManyToManyOp>(
     parentIds: string[],
     operations: OpType[]
   ): Map<

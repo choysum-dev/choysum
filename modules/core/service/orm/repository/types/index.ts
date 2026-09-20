@@ -6,7 +6,7 @@
 // orm/repository/** only; do not re-export them here (SF-1 / TS2).
 
 export type { SelectResult, FilteredQueryProperties, FilteredInputProperties, Selectable } from './common';
-export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations, Insertable, Updateable } from './input';
+export type { IdRelationItem, ModelRelationItem, RelationItem, RelationPatch, Insertable, Updateable } from './input';
 export type { DeepRelationSelection, FieldSelection, Projected, PartialOrProjected, RowOrProjected } from './selection';
 export { fields, projectToSelection } from './selection';
 export type {

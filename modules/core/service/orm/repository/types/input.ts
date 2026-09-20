@@ -8,7 +8,7 @@ export type IdRelationItem = string | { Id: string };
 export type ModelRelationItem<T extends BaseModel> = T | Partial<Insertable<T>>;
 export type RelationItem<T extends BaseModel> = IdRelationItem | ModelRelationItem<T>;
 
-export interface RelationOperations<T extends BaseModel> {
+export interface RelationPatch<T extends BaseModel> {
   create?: Array<ModelRelationItem<T>>;
   update?: Array<{ Id: string } & Partial<Omit<Updateable<T>, 'Id'>>>;
   delete?: Array<IdRelationItem>;
@@ -27,7 +27,7 @@ type UpdateModelInput<T> = T extends BaseModel
   ? Partial<Insertable<T>> | T | null
   : T extends Array<infer E>
     ? E extends BaseModel
-      ? RelationOperations<E> | Array<E | Partial<Insertable<E>>>
+      ? RelationPatch<E> | Array<E | Partial<Insertable<E>>>
       : T
     : T;
 

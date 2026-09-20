@@ -5,7 +5,7 @@
  * Frontend change-tracking proxy utilities.
  *
  * Tracks model object changes and produces update data in Updateable format.
- * Supports automatic conversion of relation array mutations into RelationOperations payloads.
+ * Supports automatic conversion of relation array mutations into RelationPatch payloads.
  */
 
 import type { Tracked, TrackedAPI } from './types';

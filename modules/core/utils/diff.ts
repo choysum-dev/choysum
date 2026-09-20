@@ -6,6 +6,8 @@ import equal from 'fast-deep-equal';
 import { isDecimalLike, decimalEqual } from './decimal';
 import { asObjectRecord, hasOwnKey } from './object';
 import type { ObjectRecord } from './types';
+import type BaseModel from '../service/orm/model/model';
+import type { RelationPatch } from '../service/orm/repository/types';
 
 type Plain = ObjectRecord;
 
@@ -16,15 +18,9 @@ type DiffChange = {
 
 export type RelationType = 'OneToMany' | 'ManyToMany' | 'ManyToOne';
 export type FieldsMeta = Record<string, { relation?: RelationType; type?: string }>;
-export type RelationArrayOps = Partial<{
-  create: ObjectRecord[];
-  update: ObjectRecord[];
-  delete: Array<{ Id: unknown }>;
-  replace: ObjectRecord[];
-}>;
 
-// Explicit relation operation kinds.
-export type RelationOpsKind = 'create' | 'update' | 'delete' | 'replace';
+/** Keys of a {@link RelationPatch} object payload. */
+export type RelationPatchKind = keyof RelationPatch<BaseModel>;
 
 const toId = (x: unknown): unknown => {
   const record = asObjectRecord(x);
@@ -151,18 +147,26 @@ function normalizePatchForRelationUpdate(a: Plain, b: Plain, patch: Plain): Plai
 /* ------------------------------------------------
  * Computes diffs for relation arrays.
  * kind: 'o2m' | 'm2m'
- * Output: RelationArrayOps (create/delete/update)
+ * Output: RelationPatch (create/delete/update)
  * ------------------------------------------------ */
-function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr: unknown[] = []): RelationArrayOps | undefined {
-  const oById = new Map<unknown, unknown>();
+function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr: unknown[] = []): RelationPatch<BaseModel> | undefined {
+  // Key maps by string Id so numeric `1` and string `'1'` compare as the same link.
+  // Duplicate link ids (same key): keep the first entry instead of silently overwriting.
+  const oById = new Map<string, unknown>();
   for (const it of origArr) {
     const id = toId(it);
-    if (id != null) oById.set(id, it);
+    if (id == null) continue;
+    const key = String(id);
+    if (oById.has(key)) continue;
+    oById.set(key, it);
   }
-  const cById = new Map<unknown, unknown>();
+  const cById = new Map<string, unknown>();
   for (const it of currArr) {
     const id = toId(it);
-    if (id != null) cById.set(id, it);
+    if (id == null) continue;
+    const key = String(id);
+    if (cById.has(key)) continue;
+    cById.set(key, it);
   }
 
   // create: rows without Id.
@@ -184,22 +188,24 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
   const update: ObjectRecord[] = [];
   for (const id of cById.keys()) {
     if (!oById.has(id)) continue;
-    const a = (oById.get(id) ?? {}) as Plain;
-    const b = (cById.get(id) ?? {}) as Plain;
+    // Plain string/number RelationItems must become { Id } objects before spread/equal/patch.
+    const a = { ...(asObjectRecord(oById.get(id)) ?? { Id: id }), Id: id } as Plain;
+    const b = { ...(asObjectRecord(cById.get(id)) ?? { Id: id }), Id: id } as Plain;
     if (equal(a, b)) continue;
     const rawPatch = objectPatch(a, b);
     const patch = normalizePatchForRelationUpdate(a, b, rawPatch);
     if (Object.keys(patch).length) {
       const sanitized = asObjectRecord(stripClientKeys(patch)) ?? {};
-      update.push({ Id: id, ...sanitized });
+      // RelationPatch.update requires string Id (map key wins over any diffed Id).
+      update.push({ ...sanitized, Id: id });
     }
   }
 
-  const ops: RelationArrayOps = {};
+  const ops: RelationPatch<BaseModel> = {};
   const create = [...createNoId, ...addIdsAsCreate];
-  if (create.length) ops.create = create;
+  if (create.length) ops.create = create as RelationPatch<BaseModel>['create'];
   if (del.length) ops.delete = del;
-  if (update.length) ops.update = update;
+  if (update.length) ops.update = update as RelationPatch<BaseModel>['update'];
 
   return Object.keys(ops).length ? ops : undefined;
 }

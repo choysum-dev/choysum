@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
-import type { RelationOperations, RelationItem } from '../repository/types';
+import type { RelationPatch, RelationItem } from '../repository/types';
 import type { RelationFieldType } from '../metadata';
 import type { ModelCtor } from '../metadata/field';
 import type { ObjectRecord } from '../../../utils/types';
@@ -75,7 +75,7 @@ export function resolveManyToManyRelationJoinConfig(value: unknown): ManyToManyR
 /**
  * ManyToOne relation operation.
  */
-export interface ManyToOneOperation<T extends BaseModel = BaseModel> {
+export interface PreparedManyToOneOp<T extends BaseModel = BaseModel> {
   /** Relation field name, which is also the foreign-key field on the parent table. */
   fieldName: string;
   /** Relation type. */
@@ -89,7 +89,7 @@ export interface ManyToOneOperation<T extends BaseModel = BaseModel> {
 /**
  * OneToMany relation operation.
  */
-export interface OneToManyOperation<T extends BaseModel = BaseModel> {
+export interface PreparedOneToManyOp<T extends BaseModel = BaseModel> {
   /** Field name, which is the relation property on the parent table. */
   fieldName: string;
   /** Relation type. */
@@ -99,13 +99,13 @@ export interface OneToManyOperation<T extends BaseModel = BaseModel> {
   /** Foreign-key field on the child table that points back to the parent table. */
   inverseField: string;
   /** Relation operations. Arrays mean replace; objects mean create, update, and delete patches. */
-  operations: RelationOperations<T> | RelationItem<T>[];
+  operations: RelationPatch<T> | RelationItem<T>[];
 }
 
 /**
  * ManyToMany relation operation.
  */
-export interface ManyToManyOperation<T extends BaseModel = BaseModel, J extends BaseModel = BaseModel> {
+export interface PreparedManyToManyOp<T extends BaseModel = BaseModel, J extends BaseModel = BaseModel> {
   /** Relation type. */
   type: 'ManyToMany';
   /** Field name, which is the relation property on the parent table. */
@@ -119,22 +119,22 @@ export interface ManyToManyOperation<T extends BaseModel = BaseModel, J extends 
   /** Join-table field that references the target table. */
   inverseJoinField: string;
   /** Relation operations. Arrays mean replace; objects mean create, update, and delete patches. */
-  operations: RelationOperations<T> | RelationItem<T>[];
+  operations: RelationPatch<T> | RelationItem<T>[];
 }
 
 /**
  * Union of supported relation operations.
  */
-export type RelationOperation<T extends BaseModel = BaseModel> = ManyToOneOperation<T> | OneToManyOperation<T> | ManyToManyOperation<T>;
+export type PreparedRelationOp<T extends BaseModel = BaseModel> = PreparedManyToOneOp<T> | PreparedOneToManyOp<T> | PreparedManyToManyOp<T>;
 
 /**
  * Extracted ToMany relation payloads.
  */
 export interface ExtractedRelations {
   /** OneToMany relation operations. */
-  oneToManyRelations: OneToManyOperation[];
+  oneToManyRelations: PreparedOneToManyOp[];
   /** ManyToMany relation operations. */
-  manyToManyRelations: ManyToManyOperation[];
+  manyToManyRelations: PreparedManyToManyOp[];
   /**
    * Collection relation field names that were explicitly present in the input object.
    * Used to trigger collection-based compute flows for OneToMany and ManyToMany relations.
@@ -201,7 +201,7 @@ export interface BatchProcessingResult {
 /**
  * Supported relation-array mutation methods.
  */
-export enum RelationArrayMethod {
+export enum RelationMutationLogMethod {
   PUSH = 'push',
   POP = 'pop',
   SHIFT = 'shift',
@@ -215,8 +215,8 @@ export enum RelationArrayMethod {
 /**
  * Relation-array change operation.
  */
-export interface RelationChangeOperation {
-  method: RelationArrayMethod;
+export interface RelationMutationLogOp {
+  method: RelationMutationLogMethod;
   args: unknown[];
   timestamp: number;
   snapshot?: unknown[];
@@ -226,5 +226,5 @@ export interface RelationChangeOperation {
  * Relation change collection.
  */
 export interface RelationChangesCollection {
-  [fieldName: string]: RelationChangeOperation[];
+  [fieldName: string]: RelationMutationLogOp[];
 }

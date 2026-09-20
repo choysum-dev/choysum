@@ -12,7 +12,7 @@ import { MODEL_SYMBOLS } from './symbols';
 import { markProxyKind } from './brand';
 
 // Track relation-array mutations.
-import { RelationArrayMethod, RelationChangeOperation, RelationChangesCollection } from '../../orm/relation/types';
+import { RelationMutationLogMethod, RelationMutationLogOp, RelationChangesCollection } from '../../orm/relation/types';
 
 // Unified Decimal normalization entrypoint.
 import { normalizeDecimalByMeta } from '@/core/utils/decimal';
@@ -90,8 +90,8 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
   private fieldCache: Map<string, FieldMetadata> = new Map();
   private relationCache: Map<string, unknown> = new Map();
 
-  private readonly relationArrayMethods = new Set<string>(Object.values(RelationArrayMethod) as string[]);
-  private relationChanges: WeakMap<T, Map<string, RelationChangeOperation[]>> = new WeakMap();
+  private readonly relationArrayMethods = new Set<string>(Object.values(RelationMutationLogMethod) as string[]);
+  private relationChanges: WeakMap<T, Map<string, RelationMutationLogOp[]>> = new WeakMap();
   private symbolHandlers?: Map<symbol, unknown>;
   private summary: { relationKeys: Set<string>; computedKeys: Set<string> };
   private proxyRef?: T;
@@ -313,7 +313,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
             snapshot = [...arr];
           }
 
-          this.trackRelationChange(target, relationKey, prop as RelationArrayMethod, args, snapshot);
+          this.trackRelationChange(target, relationKey, prop as RelationMutationLogMethod, args, snapshot);
           const ret = (value as (...innerArgs: unknown[]) => unknown).apply(arr, args);
           // Notify dependencies after relation-array mutations so local computes invalidate and collectRelationChanges stays up to date.
           this.notifyChange(relationKey);
@@ -324,7 +324,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
         if (prop === '__isRelationProxy') return true;
 
         if (typeof prop === 'string' && !isNaN(parseInt(prop, 10))) {
-          this.trackRelationChange(target, relationKey, RelationArrayMethod.SET, [parseInt(prop, 10), value]);
+          this.trackRelationChange(target, relationKey, RelationMutationLogMethod.SET, [parseInt(prop, 10), value]);
           // Indexed assignment should also notify dependents.
           this.notifyChange(relationKey);
         }
@@ -337,7 +337,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
     return proxy;
   }
 
-  private trackRelationChange(target: T, relationKey: string, method: RelationArrayMethod, args: unknown[], snapshot?: unknown[]): void {
+  private trackRelationChange(target: T, relationKey: string, method: RelationMutationLogMethod, args: unknown[], snapshot?: unknown[]): void {
     if (!this.relationChanges.has(target)) {
       this.relationChanges.set(target, new Map());
     }
@@ -348,7 +348,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
     }
     const operations = changes.get(relationKey)!;
 
-    const operation: RelationChangeOperation = {
+    const operation: RelationMutationLogOp = {
       method,
       args,
       timestamp: Date.now(),

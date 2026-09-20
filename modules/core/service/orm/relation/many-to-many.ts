@@ -7,8 +7,8 @@ import type { ModelCtor } from '../metadata/field';
 import { Repository } from '../repository/repository';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { RelationProcessor } from './processor';
-import { ManyToManyOperation, PrepareResult, RelationProcessingResult, ExtractedRelations, BatchProcessingResult } from './types';
-import { UntypedQueryCondition, RelationOperations } from '../repository/types';
+import { PreparedManyToManyOp, PrepareResult, RelationProcessingResult, ExtractedRelations, BatchProcessingResult } from './types';
+import { UntypedQueryCondition, RelationPatch } from '../repository/types';
 import { createRelationModel, updateRelationModelById } from './relation_model_service_facade';
 import type { ObjectRecord } from '../../../utils/types';
 
@@ -72,7 +72,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
           targetModel: rel.targetModel(),
           joinField: rel.joinField,
           inverseJoinField: rel.inverseJoinField,
-          operations: fieldValue as ManyToManyOperation['operations'],
+          operations: fieldValue as PreparedManyToManyOp['operations'],
         });
         relations.touchedCollections!.add(fieldName);
       }
@@ -84,7 +84,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   /**
    * Process a ManyToMany relation update.
    */
-  public async processRelationUpdate(parentId: string, operation: ManyToManyOperation): Promise<RelationProcessingResult> {
+  public async processRelationUpdate(parentId: string, operation: PreparedManyToManyOp): Promise<RelationProcessingResult> {
     if (operation.type !== 'ManyToMany') {
       throw new Error(`Expected a ManyToMany operation, but received ${operation.type}`);
     }
@@ -130,7 +130,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
       }
 
       // Object mode: replace/delete/create/update.
-      const relationOps = operations as RelationOperations<BaseModel>;
+      const relationOps = operations as RelationPatch<BaseModel>;
 
       // replace
       if (relationOps.replace) {
@@ -230,7 +230,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   /**
    * Batch-process ManyToMany relation updates.
    */
-  public async batchProcessRelationUpdate(parentIds: string[], operations: ManyToManyOperation[]): Promise<BatchProcessingResult> {
+  public async batchProcessRelationUpdate(parentIds: string[], operations: PreparedManyToManyOp[]): Promise<BatchProcessingResult> {
     if (parentIds.length !== operations.length) {
       throw new Error('Parent entity Id array length must match relation operation array length');
     }

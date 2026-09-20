@@ -19,15 +19,15 @@ export { RelationFactory } from './factory';
 
 // Export all relation type definitions.
 export type {
-  ManyToOneOperation,
-  OneToManyOperation,
-  ManyToManyOperation,
-  RelationOperation,
+  PreparedManyToOneOp,
+  PreparedOneToManyOp,
+  PreparedManyToManyOp,
+  PreparedRelationOp,
   ExtractedRelations,
   PrepareResult,
   RelationProcessingResult,
   BatchProcessingResult,
-  RelationChangeOperation,
+  RelationMutationLogOp,
   RelationChangesCollection,
 } from './types';
-export { RelationArrayMethod } from './types';
+export { RelationMutationLogMethod } from './types';

@@ -69,7 +69,7 @@ export { condition } from './query';
 
 export type { RecordRuleOp, ConditionEnvelope, FieldRuleSpec } from './authz';
 
-export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations } from './relation';
+export type { IdRelationItem, ModelRelationItem, RelationItem, RelationPatch } from './relation';
 
 export { Onchange } from './onchange';
 export type { OnchangeContext, OnchangeResult, PreviewModel } from './onchange';
