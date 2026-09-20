@@ -181,10 +181,10 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
   const update: ObjectRecord[] = [];
   for (const id of cById.keys()) {
     if (!oById.has(id)) continue;
-    const a = (oById.get(id) ?? {}) as Plain;
-    const b = (cById.get(id) ?? {}) as Plain;
-    // Compare with Id normalized to the map key so `1` vs `'1'` is not a field change.
-    if (equal({ ...a, Id: id }, { ...b, Id: id })) continue;
+    // Plain string/number RelationItems must become { Id } objects before spread/equal/patch.
+    const a = { ...(asObjectRecord(oById.get(id)) ?? { Id: id }), Id: id } as Plain;
+    const b = { ...(asObjectRecord(cById.get(id)) ?? { Id: id }), Id: id } as Plain;
+    if (equal(a, b)) continue;
     const rawPatch = objectPatch(a, b);
     const patch = normalizePatchForRelationUpdate(a, b, rawPatch);
     if (Object.keys(patch).length) {

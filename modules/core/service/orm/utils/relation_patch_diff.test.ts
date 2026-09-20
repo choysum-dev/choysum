@@ -65,3 +65,23 @@ test('buildUpdatePayload keeps the string id when the matched row also changed',
 
   expect(payload.Lines).toEqual({ update: [{ Id: '10', Name: 'b' }] });
 });
+
+test('buildUpdatePayload stringifies numeric relation ids in o2m delete patches', () => {
+  const payload = buildUpdatePayload(
+    { Lines: [{ Id: 10, Name: 'a' }, { Id: 20, Name: 'b' }] },
+    { Lines: [{ Id: 10, Name: 'a' }] },
+    { Lines: { relation: 'OneToMany' } }
+  );
+
+  expect(payload.Lines).toEqual({ delete: [{ Id: '20' }] });
+});
+
+test('buildUpdatePayload treats plain string ids and object ids of the same link as equal', () => {
+  const payload = buildUpdatePayload(
+    { Tags: ['1'] },
+    { Tags: [{ Id: 1 }] },
+    { Tags: { relation: 'ManyToMany' } }
+  );
+
+  expect(payload.Tags).toBeUndefined();
+});
