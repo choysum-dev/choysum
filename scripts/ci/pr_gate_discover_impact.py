@@ -68,6 +68,8 @@ GO_TEST_EXACT = {
     "scripts/ci/go_test_shards_test.py",
     "scripts/ci/pr_gate_discover_impact.py",
     "scripts/ci/pr_gate_discover_impact_test.py",
+    "scripts/ci/forbid_core_engine_imports.py",
+    "scripts/ci/forbid_core_engine_imports_test.py",
     "scripts/ci/record_cmd_wall.sh",
     "scripts/ci/install_chromium.py",
 }

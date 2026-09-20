@@ -27,11 +27,13 @@ class ForbidCoreEngineImportsTest(unittest.TestCase):
         mod = load_mod()
         self.assertTrue(mod.is_forbidden("@/core/service/orm/repository/types"))
         self.assertTrue(mod.is_forbidden("@/core/service/orm/repository/types/groupby"))
-        self.assertTrue(mod.is_forbidden("@/core/service/orm/repository/authz"))
+        self.assertTrue(mod.is_forbidden("@/core/service/orm/repository/types.ts"))
+        self.assertTrue(mod.is_forbidden("@/core/service/orm/repository/authz.js"))
         self.assertTrue(mod.is_forbidden("@/core/service/orm/relation/processor"))
         self.assertTrue(mod.is_forbidden("@choysum-dev/core/service/orm/repository/query"))
         # Exact repository barrel stays allowed (SF-D).
         self.assertFalse(mod.is_forbidden("@/core/service/orm/repository"))
+        self.assertFalse(mod.is_forbidden("@/core/service/orm/repository.ts"))
         self.assertFalse(mod.is_forbidden("@/core/service/api/query"))
         self.assertFalse(mod.is_forbidden("@/core/service/orm/model"))
 
@@ -65,6 +67,51 @@ class ForbidCoreEngineImportsTest(unittest.TestCase):
             self.assertEqual(len(violations), 1)
             self.assertEqual(violations[0][0], bad)
             self.assertEqual(violations[0][2], "@/core/service/orm/repository/authz")
+
+    def test_dynamic_import_require_extension_and_block_comment(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            app = root / "auth" / "service"
+            app.mkdir(parents=True)
+            (app / "forms.ts").write_text(
+                "const a = await import('@/core/service/orm/relation');\n"
+                "const b = require('@/core/service/orm/repository/query');\n"
+                "import type { T } from '@/core/service/orm/repository/types.ts';\n"
+                "/* import '@/core/service/orm/repository/read'; */\n"
+                "// import '@/core/service/orm/repository/write';\n",
+                encoding="utf-8",
+            )
+            specs = sorted(spec for _, _, spec in mod.scan(root))
+            self.assertEqual(
+                specs,
+                [
+                    "@/core/service/orm/relation",
+                    "@/core/service/orm/repository/query",
+                    "@/core/service/orm/repository/types.ts",
+                ],
+            )
+
+    def test_relative_traversal_into_core_engine(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            # modules/auth/service/models -> ../../core/service/orm/repository/authz
+            app = root / "auth" / "service" / "models"
+            app.mkdir(parents=True)
+            (root / "core" / "service" / "orm" / "repository" / "authz").mkdir(parents=True)
+            bad = app / "rel.ts"
+            bad.write_text(
+                "import { x } from '../../../core/service/orm/repository/authz';\n",
+                encoding="utf-8",
+            )
+            violations = mod.scan(root)
+            self.assertEqual(len(violations), 1)
+            self.assertEqual(violations[0][2], "../../../core/service/orm/repository/authz")
+
+    def test_missing_modules_root_fails(self):
+        mod = load_mod()
+        self.assertEqual(mod.main(["--modules", "/no/such/modules/root"]), 2)
 
     def test_repo_modules_are_clean(self):
         mod = load_mod()

@@ -72,6 +72,28 @@ jobs:
       retention_days: 1
       docs_only: ${{ needs.discover-impact.outputs.docs_only }}
 
+  # SF-7: must not depend on run_go_test — TypeScript-only modules/** PRs still need this gate.
+  forbid-core-engine-imports:
+    name: pr / forbid-core-engine-imports
+    needs:
+      - discover-impact
+    if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Forbid non-core deep imports into core engine paths
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/forbid_core_engine_imports_test.py
+          python3 scripts/ci/forbid_core_engine_imports.py
+
   build-choysum-cli:
     name: pr / build-choysum-cli
     if: >-
@@ -139,8 +161,6 @@ jobs:
           set -euo pipefail
           python3 scripts/ci/go_test_shards_test.py
           python3 scripts/ci/go_test_shards.py check
-          python3 scripts/ci/forbid_core_engine_imports_test.py
-          python3 scripts/ci/forbid_core_engine_imports.py
 
       - name: Install Chromium for e2e unit coverage
         if: ${{ matrix.chromium == 'true' }}
