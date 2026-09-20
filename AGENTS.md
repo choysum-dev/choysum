@@ -10,6 +10,10 @@ On-demand procedures and repository policies live under [`.agents/skills/`](.age
 | [`git-commit`](.agents/skills/git-commit/SKILL.md) | Creating commits with conventional message format |
 | [`code-comment`](.agents/skills/code-comment/SKILL.md) | Reviewing or cleaning up source comments |
 | [`module-initdata`](.agents/skills/module-initdata/SKILL.md) | Adding or moving module bootstrap/demo init data |
+| [`service-api-guidelines`](.agents/skills/service-api-guidelines/SKILL.md) | Writing or reviewing `modules/*/service/**` public APIs |
+
+Optional maintainer long-form (principles / review / hardcut / related) may exist under
+gitignored `.dev/docs/…` — see the `service-api-guidelines` skill’s local-only table; skip on clean clones.
 
 ## Cloud and local agent setup
 
