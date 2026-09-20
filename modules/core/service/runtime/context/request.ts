@@ -33,7 +33,11 @@ export function getCurrentReq(): ObjectRecord | undefined {
 export function getOrInitReqServiceState(req: unknown): Record<string, unknown> | undefined {
   const reqRecord = asObjectRecord(req);
   if (!reqRecord) return undefined;
-  if (!reqRecord.__choysumServiceState || typeof reqRecord.__choysumServiceState !== 'object') {
+  if (
+    !reqRecord.__choysumServiceState ||
+    typeof reqRecord.__choysumServiceState !== 'object' ||
+    Array.isArray(reqRecord.__choysumServiceState)
+  ) {
     reqRecord.__choysumServiceState = {};
   }
   return reqRecord.__choysumServiceState as Record<string, unknown>;

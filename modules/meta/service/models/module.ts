@@ -538,7 +538,7 @@ export default class MetaModule extends BaseModel {
       reload_web = false;
     }
 
-    let job: { CreatedAt?: Date; FinishedAt?: Date; Attempt?: number; MaxAttempts?: number } | undefined;
+    let job: Partial<Pick<JobModel, 'CreatedAt' | 'FinishedAt' | 'Attempt' | 'MaxAttempts'>> | undefined;
     if (jobId) {
       try {
         job = await Job.GetJob(jobId, ['Id', 'CreatedAt', 'FinishedAt', 'Attempt', 'MaxAttempts']);

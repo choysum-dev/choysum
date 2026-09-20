@@ -100,3 +100,17 @@ test('task._payload sanitizePayload handles empty payload', () => {
   const result = sanitizePayload({} as any);
   expect(result).toEqual({});
 });
+
+test('task._payload sanitizePayload fails closed when encoding throws', () => {
+  const payload: Record<string, unknown> = {
+    password: 'secret',
+    bad: {
+      toJSON() {
+        throw new Error('encode boom');
+      },
+    },
+  };
+  const result = sanitizePayload(payload);
+  expect(result).toEqual({ _sanitize_error: true });
+  expect(result.password).toBeUndefined();
+});

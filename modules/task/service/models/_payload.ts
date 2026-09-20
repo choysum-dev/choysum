@@ -87,6 +87,8 @@ export function sanitizePayload(payload: Record<string, unknown>): Record<string
       _preview: truncatePreview(encoded, PAYLOAD_MAX_BYTES),
     };
   } catch {
-    return payload ?? {};
+    // Fail closed: never persist the raw payload when masking/encoding throws
+    // (circular refs, BigInt, throwing getters) — that would leak secrets.
+    return { _sanitize_error: true };
   }
 }

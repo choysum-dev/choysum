@@ -22,5 +22,6 @@ export function sortForEncoding(value: unknown): unknown {
  * Serializes a value to deterministic JSON with sorted object keys.
  */
 export function encodeStableJson(value: unknown): string {
-  return JSON.stringify(sortForEncoding(value));
+  // JSON.stringify returns undefined for undefined/function/symbol; keep the string contract.
+  return JSON.stringify(sortForEncoding(value)) ?? 'null';
 }

@@ -29,4 +29,5 @@ test('core.serialization encodeStableJson produces deterministic output', () => 
 test('core.serialization encodeStableJson handles primitives', () => {
   expect(encodeStableJson(1)).toBe('1');
   expect(encodeStableJson('hello')).toBe('"hello"');
+  expect(encodeStableJson(undefined)).toBe('null');
 });
