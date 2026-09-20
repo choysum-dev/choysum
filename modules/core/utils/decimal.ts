@@ -115,7 +115,7 @@ export function isDecimalLike(v: unknown): boolean {
 
 /**
  * Detects whether a value is a leaked Decimal internal structure.
- * Decimal instances may serialize to a {s, e, d } shape in some QuickJS paths.
+ * Decimal instances may serialize to a {s, e, d} shape in some QuickJS paths.
  */
 export function isDecimalLeak(v: unknown): v is { s: number; e: number; d: number[] } {
   const record = asObjectRecord(v);
