@@ -14,6 +14,7 @@ import {
   PreparedManyToOneOp,
   PreparedOneToManyOp,
   PreparedManyToManyOp,
+  PreparedRelationOp,
   type OneToManyRelationConfig,
   PrepareResult,
   RelationProcessingResult,
@@ -135,7 +136,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    * @param operation Relation operation payload.
    * @returns Processing result.
    */
-  abstract processRelationUpdate(parentId: string, operation: PreparedManyToOneOp | PreparedOneToManyOp | PreparedManyToManyOp): Promise<RelationProcessingResult>;
+  abstract processRelationUpdate(parentId: string, operation: PreparedRelationOp): Promise<RelationProcessingResult>;
 
   /**
    * Batch-process relation updates.
@@ -145,10 +146,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    * @param operations Relation operations paired with parentIds.
    * @returns Batch processing result.
    */
-  abstract batchProcessRelationUpdate(
-    parentIds: string[],
-    operations: (PreparedManyToOneOp | PreparedOneToManyOp | PreparedManyToManyOp)[]
-  ): Promise<BatchProcessingResult>;
+  abstract batchProcessRelationUpdate(parentIds: string[], operations: PreparedRelationOp[]): Promise<BatchProcessingResult>;
 
   /**
    * Group relation operations by target type and parent entity.

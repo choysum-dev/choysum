@@ -183,7 +183,8 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
     if (!oById.has(id)) continue;
     const a = (oById.get(id) ?? {}) as Plain;
     const b = (cById.get(id) ?? {}) as Plain;
-    if (equal(a, b)) continue;
+    // Compare with Id normalized to the map key so `1` vs `'1'` is not a field change.
+    if (equal({ ...a, Id: id }, { ...b, Id: id })) continue;
     const rawPatch = objectPatch(a, b);
     const patch = normalizePatchForRelationUpdate(a, b, rawPatch);
     if (Object.keys(patch).length) {
