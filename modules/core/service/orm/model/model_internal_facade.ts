@@ -3,8 +3,7 @@
 
 import { RepositoryFactory } from '../repository/repository_factory';
 import type { Repository } from '../repository';
-import type { SelectResult } from '../repository/types';
-import type { FieldSelection } from '../repository/types';
+import type { FieldSelection, SelectResult } from '../repository/types';
 import { hydrateModel } from './model_hydration';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
