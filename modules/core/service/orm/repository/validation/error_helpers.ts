@@ -86,9 +86,8 @@ export function wrapRepositoryValidationError(meta: ModelMetadata, error: Valida
     const summary = fieldIssueSummary[field];
     const count = Number(summary.issueCount);
     summary.issueCount = String(count + 1);
-    if (!summary.kernelCode && item.scope === 'kernel' && item.code) {
+    if (!summary.firstKernelCode && item.scope === 'kernel' && item.code) {
       summary.firstKernelCode = item.code;
-      summary.kernelCode = item.code;
     }
   }
 

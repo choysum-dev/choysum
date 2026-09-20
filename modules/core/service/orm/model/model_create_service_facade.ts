@@ -6,14 +6,13 @@ import type { ModelCtor } from './types';
 import type { FieldSelection, Insertable } from '../repository/types';
 import { CreateOperations } from './model_create';
 
-type ModelCreateServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 /**
  * Create one record. Runtime may return a field subset when `returnFields` is set;
  * callers see {@link Projected} via BaseModel overloads.
  */
 export async function createModel<T extends BaseModel>(
-  ModelCtor: ModelCreateServiceFacadeCtor<T>,
+  ModelCtor: ModelCtor<T>,
   value: Partial<Insertable<T>>,
   returnFields?: FieldSelection<T>
 ): Promise<T> {
@@ -25,7 +24,7 @@ export async function createModel<T extends BaseModel>(
  * callers see {@link Projected} via BaseModel overloads.
  */
 export async function createManyModels<T extends BaseModel>(
-  ModelCtor: ModelCreateServiceFacadeCtor<T>,
+  ModelCtor: ModelCtor<T>,
   values: Partial<Insertable<T>>[],
   returnFields?: FieldSelection<T>
 ): Promise<T[]> {

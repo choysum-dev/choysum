@@ -75,6 +75,6 @@ export { Onchange } from './onchange';
 export type { OnchangeContext, OnchangeResult, PreviewModel } from './onchange';
 
 export { ValidationEngine, resolveValidationSummary } from './validation';
-export type { ValidationIssueLite, ValidationFieldIssueSummary, ResolvedValidationSummary } from './validation';
+export type { ParsedValidationIssue, ValidationFieldIssueSummary, ResolvedValidationSummary } from './validation';
 
 export { default as Decimal } from '../../utils/decimal';

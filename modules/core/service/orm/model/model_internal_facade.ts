@@ -8,12 +8,11 @@ import { hydrateModel } from './model_hydration';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
 
-type ModelInternalFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
-export function getModelRepository<T extends BaseModel>(ModelCtor: ModelInternalFacadeCtor<T>): Repository {
+export function getModelRepository<T extends BaseModel>(ModelCtor: ModelCtor<T>): Repository {
   return RepositoryFactory.getRepository(ModelCtor);
 }
 
-export function createModelProxy<T extends BaseModel>(ModelCtor: ModelInternalFacadeCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
+export function createModelProxy<T extends BaseModel>(ModelCtor: ModelCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
   return hydrateModel<T>(ModelCtor, entity, fields);
 }

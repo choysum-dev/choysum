@@ -30,7 +30,7 @@ export type {
   ValidationIssue,
   ConstraintContext,
   ConstraintMethod,
-  LegacyConstraintMethod,
+  ConstraintMethodFn,
   InstanceConstraintMethod,
   PathDep,
   CollectionPathDep,

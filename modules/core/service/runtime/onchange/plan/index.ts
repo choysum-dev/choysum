@@ -11,7 +11,7 @@ import {
   mergeOnchangeReadsExIntoPlan,
   mergeOnchangeReadsIntoPlan,
 } from './builder';
-import { computePlanDepth, getCachedOrBuildPlanV2 } from './cache';
+import { computePlanDepth, getCachedOrBuildPlan as getCachedOrBuildPlanImpl } from './cache';
 import { extractComputeCollectionPathDeps, extractComputePathDeps } from './compute_deps';
 import { PathPlanExecutor } from './executor';
 import type { ModelCtor } from './shared';
@@ -70,18 +70,18 @@ export class PathPlanBuilder {
   }
 
   /**
-   * Get a prefetch plan from cache or build a new V2 plan.
+   * Get a prefetch plan from cache or build a new plan.
    * Strategy A uses a conservative approach for computeCollectionPathDeps by loading only the first segment after the
    * collection, which means child-row Id plus the direct foreign key without drilling deeper.
    */
-  static getCachedOrBuildV2(
+  static getCachedOrBuildPlan(
     modelCtor: ModelCtor,
     m2oReads: Map<string, string[][]>,
     collectionReads: Map<string, string[][]>,
     computeM2oPaths: Map<string, string[][]>,
     computeCollectionPaths: Map<string, string[][]>
   ): { plan: PathPrefetchPlan; fromCache: boolean; signature: string; pathDepthMax: number } {
-    return getCachedOrBuildPlanV2(modelCtor, m2oReads, collectionReads, computeM2oPaths, computeCollectionPaths, (m2oChains, collections) => {
+    return getCachedOrBuildPlanImpl(modelCtor, m2oReads, collectionReads, computeM2oPaths, computeCollectionPaths, (m2oChains, collections) => {
       const builder = PathPlanBuilder.builder().mergeM2OChains(m2oChains).mergeCollections(collections).finalize();
       return { plan: builder.getPlan(), pathDepthMax: builder.getPathDepthMax() };
     });

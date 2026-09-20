@@ -10,16 +10,14 @@ import { asObjectRecord } from '../../../utils/object';
 
 export type { RelationFieldType };
 
-export type RelationModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T>;
-
 export type OneToManyRelationConfig = {
-  targetModel: () => RelationModelCtor;
+  targetModel: () => ModelCtor;
   inverseField: string;
 };
 
 export type ManyToManyRelationConfig = {
-  joinModel: () => RelationModelCtor;
-  targetModel: () => RelationModelCtor;
+  joinModel: () => ModelCtor;
+  targetModel: () => ModelCtor;
   joinField: string;
   inverseJoinField: string;
 };

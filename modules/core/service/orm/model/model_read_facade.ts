@@ -19,11 +19,7 @@ import type {
   SelectResult,
 } from '../repository/types';
 
-type ModelReadFacadeCtor<T extends BaseModel> = ModelCtor<T> & {
-  ctx: Context;
-};
-
-function createProxyModel<T extends BaseModel>(ModelCtor: ModelReadFacadeCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
+function createProxyModel<T extends BaseModel>(ModelCtor: ModelCtor<T> & { ctx: Context }, entity: SelectResult, fields?: FieldSelection<T>): T {
   return createModelProxy<T>(ModelCtor, entity, fields);
 }
 
@@ -34,7 +30,7 @@ function createProxyModel<T extends BaseModel>(ModelCtor: ModelReadFacadeCtor<T>
  * report day buckets). Drill-down should keep UTC interval bounds, not re-bucket.
  * Does not convert Search/Browse datetime wire values.
  */
-function resolveReadGroupTimezone<T extends BaseModel>(ModelCtor: ModelReadFacadeCtor<T>, options: { timezone?: string }) {
+function resolveReadGroupTimezone<T extends BaseModel>(ModelCtor: ModelCtor<T> & { ctx: Context }, options: { timezone?: string }) {
   const ctx = ModelCtor.ctx as Context & { timezone?: string; tz?: string };
   return options?.timezone ?? ctx?.timezone ?? ctx?.tz;
 }
@@ -44,7 +40,7 @@ function resolveReadGroupTimezone<T extends BaseModel>(ModelCtor: ModelReadFacad
  * callers see {@link Projected} via BaseModel overloads.
  */
 export async function browseModel<T extends BaseModel>(
-  ModelCtor: ModelReadFacadeCtor<T>,
+  ModelCtor: ModelCtor<T> & { ctx: Context },
   id: string,
   fields?: FieldSelection<T>,
   options?: SoftDeleteOptions
@@ -58,7 +54,7 @@ export async function browseModel<T extends BaseModel>(
  * callers see {@link Projected} via BaseModel overloads.
  */
 export async function browseManyModels<T extends BaseModel>(
-  ModelCtor: ModelReadFacadeCtor<T>,
+  ModelCtor: ModelCtor<T> & { ctx: Context },
   ids: string[],
   fields?: FieldSelection<T>,
   options?: SoftDeleteOptions
@@ -77,7 +73,7 @@ export async function browseManyModels<T extends BaseModel>(
  * callers see {@link Projected} via BaseModel overloads.
  */
 export async function searchModels<T extends BaseModel>(
-  ModelCtor: ModelReadFacadeCtor<T>,
+  ModelCtor: ModelCtor<T> & { ctx: Context },
   condition: QueryCondition<T> | [] = [],
   options?: SearchOptions<T>
 ): Promise<T[]> {
@@ -86,7 +82,7 @@ export async function searchModels<T extends BaseModel>(
 }
 
 export async function countModels<T extends BaseModel>(
-  ModelCtor: ModelReadFacadeCtor<T>,
+  ModelCtor: ModelCtor<T> & { ctx: Context },
   condition: QueryCondition<T> | [] = [],
   options?: SoftDeleteOptions
 ): Promise<number> {
@@ -94,7 +90,7 @@ export async function countModels<T extends BaseModel>(
 }
 
 export async function readGroupedModels<T extends BaseModel>(
-  ModelCtor: ModelReadFacadeCtor<T>,
+  ModelCtor: ModelCtor<T> & { ctx: Context },
   groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
   condition: QueryCondition<T> | [] = [],
   options: ReadGroupOptions<T> = {}
@@ -106,7 +102,7 @@ export async function readGroupedModels<T extends BaseModel>(
 }
 
 export async function countGroupedModels<T extends BaseModel>(
-  ModelCtor: ModelReadFacadeCtor<T>,
+  ModelCtor: ModelCtor<T> & { ctx: Context },
   groupby: Array<GroupBySpec<T> | GroupBySpec<T>[]> | [],
   condition: QueryCondition<T> | [] = [],
   options: ReadGroupCountOptions<T> = {}

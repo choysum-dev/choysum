@@ -3,7 +3,7 @@
 
 import { BaseModel } from '@/core/service';
 import type { PathPrefetchPlan } from '../types';
-import { computePlanDepth, getCachedOrBuildPlanV2 } from './cache';
+import { computePlanDepth, getCachedOrBuildPlan } from './cache';
 
 class PlanCacheModel extends BaseModel {}
 
@@ -15,7 +15,7 @@ function makePlan(): PathPrefetchPlan {
   };
 }
 
-test('getCachedOrBuildPlanV2 normalizes merged chains and returns cloned cached plans', () => {
+test('getCachedOrBuildPlan normalizes merged chains and returns cloned cached plans', () => {
   const buildCalls: Array<{
     m2oChains: Array<[string, string[][]]>;
     collections: Array<[string, string[][]]>;
@@ -37,7 +37,7 @@ test('getCachedOrBuildPlanV2 normalizes merged chains and returns cloned cached 
     };
   };
 
-  const first = getCachedOrBuildPlanV2(
+  const first = getCachedOrBuildPlan(
     PlanCacheModel as any,
     new Map([['PartnerId', [['Name'], ['Name'], ['Email', 'Code'], ['Ignored', 'Too', 'Deep']]]]),
     new Map([['Lines', [['Product'], ['Product']]]]),
@@ -60,7 +60,7 @@ test('getCachedOrBuildPlanV2 normalizes merged chains and returns cloned cached 
   first.plan.m2oChains.get('PartnerId')?.[0].push('Mutated');
   first.plan.collections.get('Lines')?.chains[0].push('Mutated');
 
-  const second = getCachedOrBuildPlanV2(
+  const second = getCachedOrBuildPlan(
     PlanCacheModel as any,
     new Map([['PartnerId', [['Name'], ['Name'], ['Email', 'Code'], ['Ignored', 'Too', 'Deep']]]]),
     new Map([['Lines', [['Product'], ['Product']]]]),
@@ -99,7 +99,7 @@ test('plan cache runtime overrides cover disabled preview filtering and cache by
   const calls: Array<{ m2oChains: Array<[string, string[][]]>; collections: Array<[string, string[][]]> }> = [];
 
   try {
-    const result = getCachedOrBuildPlanV2(
+    const result = getCachedOrBuildPlan(
       PlanCacheModel as any,
       new Map(),
       new Map(),

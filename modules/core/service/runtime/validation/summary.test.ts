@@ -23,7 +23,7 @@ test('resolveValidationSummary prefers metadata kernelCode/sqlCode over issues f
   expect(summary.sqlCode).toBe('sql_unique_violation');
 });
 
-test('resolveValidationSummary supports fieldIssueSummary firstKernelCode and kernelCode fallback', () => {
+test('resolveValidationSummary supports fieldIssueSummary firstKernelCode fallback', () => {
   const summary = resolveValidationSummary({
     fieldIssueSummary: JSON.stringify({
       Code: {
@@ -155,7 +155,7 @@ test('resolveValidationSummary handles empty input and missing metadata payloads
   expect(withoutMetadata.issues).toEqual([]);
 });
 
-test('resolveValidationSummary backfills kernelCode from firstKernelCode and trims blank field lookups', () => {
+test('resolveValidationSummary resolves firstKernelCode without field alias and trims blank field lookups', () => {
   const summary = resolveValidationSummary({
     kernelCode: '   ',
     sqlCode: '',
@@ -177,7 +177,10 @@ test('resolveValidationSummary backfills kernelCode from firstKernelCode and tri
   expect(summary.sqlCode).toBe('sql_unique_violation');
   expect(summary.getFieldFirstCode('Name')).toBe(undefined);
   expect(summary.getFieldKernelCode('Name')).toBe('kernel_from_first');
-  expect(summary.fieldIssueSummary.Name?.kernelCode).toBe('kernel_from_first');
+  expect(summary.fieldIssueSummary.Name?.firstKernelCode).toBe('kernel_from_first');
+  expect(
+    resolveValidationSummary({ fieldIssueSummary: JSON.stringify({ Name: { kernelCode: 'kernel_legacy' } }) }).getFieldKernelCode('Name')
+  ).toBe('kernel_legacy');
   expect(summary.getFieldFirstCode('   ')).toBe(undefined);
   expect(summary.getFieldKernelCode('   ')).toBe(undefined);
 });

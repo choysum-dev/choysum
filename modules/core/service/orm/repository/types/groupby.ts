@@ -32,7 +32,7 @@ export type FieldAggregation<T = ObjectRecord> =
       distinct?: boolean;
     };
 
-export interface RepoReadGroupOptions<T = ObjectRecord> {
+export interface RepositoryReadGroupOptions<T = ObjectRecord> {
   groupby: GroupBySpec<T> | GroupBySpec<T>[];
   fields?: Array<FieldAggregation<T>>;
   condition?: QueryCondition<T> | [] | UntypedQueryCondition;
@@ -43,17 +43,17 @@ export interface RepoReadGroupOptions<T = ObjectRecord> {
   timezone?: string;
 }
 
-export type RepoReadGroupRow = ObjectRecord & { __count: number };
+export type RepositoryReadGroupRow = ObjectRecord & { __count: number };
 
-export interface RepoReadTotalsOptions<T = ObjectRecord> {
+export interface RepositoryReadTotalsOptions<T = ObjectRecord> {
   fields?: Array<FieldAggregation<T>>;
   condition?: QueryCondition<T> | [] | UntypedQueryCondition;
   timezone?: string;
 }
 
-export type RepoReadTotalsRow = ObjectRecord & { __count: number };
+export type RepositoryReadTotalsRow = ObjectRecord & { __count: number };
 
-export interface RepoReadGroupCountOptions<T = ObjectRecord> {
+export interface RepositoryReadGroupCountOptions<T = ObjectRecord> {
   groupby: GroupBySpec<T> | GroupBySpec<T>[];
   fields?: Array<FieldAggregation<T>>;
   condition?: QueryCondition<T> | [] | UntypedQueryCondition;

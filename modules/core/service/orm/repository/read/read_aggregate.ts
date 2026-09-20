@@ -14,11 +14,11 @@ import type {
   UntypedQueryCondition,
   FieldAggregation,
   GroupBySpec,
-  RepoReadGroupCountOptions,
-  RepoReadGroupOptions,
-  RepoReadGroupRow,
-  RepoReadTotalsOptions,
-  RepoReadTotalsRow,
+  RepositoryReadGroupCountOptions,
+  RepositoryReadGroupOptions,
+  RepositoryReadGroupRow,
+  RepositoryReadTotalsOptions,
+  RepositoryReadTotalsRow,
   RepositoryCountAllDbLike,
   RepositoryExecuteUnknownQueryLike,
   RepositoryRecordRuleConditionPipelineDepsLike,
@@ -71,7 +71,7 @@ type RepositoryReadAggregateDeps = {
   execute: RepositoryExecuteUnknownQueryLike;
 } & RepositoryRecordRuleConditionPipelineDepsLike<'read', UntypedQueryCondition>;
 
-export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggregateDeps, options: RepoReadGroupOptions<T>): Promise<RepoReadGroupRow[]> {
+export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggregateDeps, options: RepositoryReadGroupOptions<T>): Promise<RepositoryReadGroupRow[]> {
   if (!options || !options.groupby) {
     throw new Error('readGroup requires options.groupby');
   }
@@ -106,13 +106,13 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
   if (typeof options.limit === 'number') qb = qb.limit(options.limit);
   if (typeof options.offset === 'number') qb = qb.offset(options.offset);
 
-  const rows = ((await params.execute<RepoReadGroupRow>(qb)) || []) as RepoReadGroupRow[];
+  const rows = ((await params.execute<RepositoryReadGroupRow>(qb)) || []) as RepositoryReadGroupRow[];
   normalizeRepositoryAggregateDecimals(params.meta, rows as ObjectRecord[], aggs);
   for (const row of rows) row.__count = Number(row.__count ?? 0);
   return rows;
 }
 
-export async function executeRepositoryReadTotals<T>(params: RepositoryReadAggregateDeps, options: RepoReadTotalsOptions<T>): Promise<RepoReadTotalsRow> {
+export async function executeRepositoryReadTotals<T>(params: RepositoryReadAggregateDeps, options: RepositoryReadTotalsOptions<T>): Promise<RepositoryReadTotalsRow> {
   const aggs: NormalizedAgg[] = (options.fields ?? []).map(field => normalizeFieldAggregationShared(field as FieldAggregation<ObjectRecord>));
 
   const db = params.db as AggregateDbLike;
@@ -124,14 +124,14 @@ export async function executeRepositoryReadTotals<T>(params: RepositoryReadAggre
   const filtered = params.applyDefaultLayers(condWithRR);
   qb = applyRepositoryReadAggregateCondition(qb, params, filtered);
 
-  const rows = (await params.execute<RepoReadTotalsRow>(qb)) as RepoReadTotalsRow[] | undefined;
-  const row = (rows && rows[0]) || ({} as RepoReadTotalsRow);
+  const rows = (await params.execute<RepositoryReadTotalsRow>(qb)) as RepositoryReadTotalsRow[] | undefined;
+  const row = (rows && rows[0]) || ({} as RepositoryReadTotalsRow);
   normalizeRepositoryAggregateDecimals(params.meta, [row] as ObjectRecord[], aggs);
   row.__count = Number(row.__count ?? 0);
   return row;
 }
 
-export async function executeRepositoryReadGroupCount<T>(params: RepositoryReadAggregateDeps, options: RepoReadGroupCountOptions<T>): Promise<number> {
+export async function executeRepositoryReadGroupCount<T>(params: RepositoryReadAggregateDeps, options: RepositoryReadGroupCountOptions<T>): Promise<number> {
   if (!options || !options.groupby) {
     throw new Error('readGroupCount requires options.groupby');
   }

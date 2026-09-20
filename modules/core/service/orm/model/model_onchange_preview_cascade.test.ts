@@ -128,14 +128,14 @@ test('model onchange preview cascade respects row selector and prefixes child ou
   const { orderMeta, lineMeta } = preparePreviewCascadeMetadata();
   const originalRun = OnchangeEngine.run;
   const originalRecompute = ComputeEngine.recompute;
-  const originalGetCachedOrBuildV2 = PathPlanBuilder.getCachedOrBuildV2;
+  const originalGetCachedOrBuildPlan = PathPlanBuilder.getCachedOrBuildPlan;
   const originalExecuteWithPlan = PathPlanBuilder.executeWithPlan;
 
   const planCalls: any[] = [];
   const childRuns: string[] = [];
 
   try {
-    PathPlanBuilder.getCachedOrBuildV2 = ((ModelCtor: any, m2oReads: any, collectionReads: any, computeM2oPaths: any, computeCollectionPaths: any) => {
+    PathPlanBuilder.getCachedOrBuildPlan = ((ModelCtor: any, m2oReads: any, collectionReads: any, computeM2oPaths: any, computeCollectionPaths: any) => {
       planCalls.push({ ModelCtor, m2oReads, collectionReads, computeM2oPaths, computeCollectionPaths });
       return { plan: { marker: 'cascade-plan' } };
     }) as any;
@@ -207,7 +207,7 @@ test('model onchange preview cascade respects row selector and prefixes child ou
   } finally {
     OnchangeEngine.run = originalRun;
     ComputeEngine.recompute = originalRecompute;
-    PathPlanBuilder.getCachedOrBuildV2 = originalGetCachedOrBuildV2;
+    PathPlanBuilder.getCachedOrBuildPlan = originalGetCachedOrBuildPlan;
     PathPlanBuilder.executeWithPlan = originalExecuteWithPlan;
   }
 });
@@ -402,11 +402,11 @@ test('model onchange preview cascade skips unknown collection roots and keeps co
   const { orderMeta, lineMeta } = preparePreviewCascadeMetadata();
   const originalRun = OnchangeEngine.run;
   const originalRecompute = ComputeEngine.recompute;
-  const originalGetCachedOrBuildV2 = PathPlanBuilder.getCachedOrBuildV2;
+  const originalGetCachedOrBuildPlan = PathPlanBuilder.getCachedOrBuildPlan;
   const originalExecuteWithPlan = PathPlanBuilder.executeWithPlan;
 
   try {
-    PathPlanBuilder.getCachedOrBuildV2 = (() => ({ plan: { marker: 'failing-plan' } })) as any;
+    PathPlanBuilder.getCachedOrBuildPlan = (() => ({ plan: { marker: 'failing-plan' } })) as any;
     PathPlanBuilder.executeWithPlan = (() => {
       throw new Error('plan-failed');
     }) as any;
@@ -445,7 +445,7 @@ test('model onchange preview cascade skips unknown collection roots and keeps co
   } finally {
     OnchangeEngine.run = originalRun;
     ComputeEngine.recompute = originalRecompute;
-    PathPlanBuilder.getCachedOrBuildV2 = originalGetCachedOrBuildV2;
+    PathPlanBuilder.getCachedOrBuildPlan = originalGetCachedOrBuildPlan;
     PathPlanBuilder.executeWithPlan = originalExecuteWithPlan;
   }
 });

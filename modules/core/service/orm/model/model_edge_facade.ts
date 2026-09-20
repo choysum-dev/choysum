@@ -7,19 +7,18 @@ import type BaseModel from './model';
 import type { ModelCtor } from './types';
 import { createModelProxy, getModelRepository } from './model_internal_facade';
 
-type ModelEdgeFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 type ModelEdgeFacadeInstance = {
   entity: SelectResult;
   fields?: FieldSelection<BaseModel>;
 };
 
-export async function withModelSavepoint<T extends BaseModel, R>(ModelCtor: ModelEdgeFacadeCtor<T>, fn: () => Promise<R>, name?: string): Promise<R> {
+export async function withModelSavepoint<T extends BaseModel, R>(ModelCtor: ModelCtor<T>, fn: () => Promise<R>, name?: string): Promise<R> {
   const repo = getModelRepository(ModelCtor);
   return await repo.withSavepoint(fn, name);
 }
 
-export function hydrateModelFacade<T extends BaseModel>(ModelCtor: ModelEdgeFacadeCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
+export function hydrateModelFacade<T extends BaseModel>(ModelCtor: ModelCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
   return createModelProxy<T>(ModelCtor, entity, fields);
 }
 

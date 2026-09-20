@@ -7,7 +7,7 @@ import type { ObjectRecord } from '../../../utils/types';
 /**
  * Lightweight validation issue payload used by validation summaries.
  */
-export interface ValidationIssueLite {
+export interface ParsedValidationIssue {
   scope?: string;
   field?: string;
   code?: string;
@@ -23,8 +23,6 @@ export interface ValidationFieldIssueSummary {
   firstCode?: string;
   issueCount?: number;
   firstKernelCode?: string;
-  // Backward-compatible alias kept for existing consumers.
-  kernelCode?: string;
 }
 
 /**
@@ -33,7 +31,7 @@ export interface ValidationFieldIssueSummary {
 export interface ResolvedValidationSummary {
   kernelCode?: string;
   sqlCode?: string;
-  issues: ValidationIssueLite[];
+  issues: ParsedValidationIssue[];
   fieldIssueSummary: Record<string, ValidationFieldIssueSummary>;
   getFieldFirstCode: (field: string) => string | undefined;
   getFieldKernelCode: (field: string) => string | undefined;
@@ -70,13 +68,12 @@ function parseFieldIssueSummary(raw: string | undefined): Record<string, Validat
     const out: Record<string, ValidationFieldIssueSummary> = {};
     for (const [field, item] of Object.entries(parsed || {})) {
       const firstCode = String(item?.firstCode || '').trim();
-      const firstKernelCode = String(item?.firstKernelCode || '').trim();
-      const kernelCode = String(item?.kernelCode || '').trim();
+      // Accept legacy serialized `kernelCode` as firstKernelCode input only.
+      const firstKernelCode = String(item?.firstKernelCode || '').trim() || String(item?.kernelCode || '').trim();
       const issueCountRaw = Number(item?.issueCount || 0);
       out[field] = {
         firstCode: firstCode || undefined,
         firstKernelCode: firstKernelCode || undefined,
-        kernelCode: kernelCode || undefined,
         issueCount: Number.isFinite(issueCountRaw) ? issueCountRaw : 0,
       };
     }
@@ -86,7 +83,7 @@ function parseFieldIssueSummary(raw: string | undefined): Record<string, Validat
   }
 }
 
-function buildSummaryFromIssues(issues: ValidationIssueLite[]): Record<string, ValidationFieldIssueSummary> {
+function buildSummaryFromIssues(issues: ParsedValidationIssue[]): Record<string, ValidationFieldIssueSummary> {
   const fieldSummary: Record<string, ValidationFieldIssueSummary> = {};
   for (const issue of issues) {
     const field = String(issue?.field || '').trim();
@@ -105,7 +102,6 @@ function buildSummaryFromIssues(issues: ValidationIssueLite[]): Record<string, V
     const code = String(issue?.code || '').trim();
     if (!row.firstKernelCode && String(issue?.scope || '').trim() === 'kernel' && code) {
       row.firstKernelCode = code;
-      row.kernelCode = code;
     }
   }
   return fieldSummary;
@@ -116,19 +112,10 @@ function buildSummaryFromIssues(issues: ValidationIssueLite[]): Record<string, V
  */
 export function resolveValidationSummary(input?: MetadataMap | ChoysumError | { metadata?: MetadataMap }): ResolvedValidationSummary {
   const metadata = asMetadata(input);
-  const issues = parseJsonArray<ValidationIssueLite>(metadata.issues);
+  const issues = parseJsonArray<ParsedValidationIssue>(metadata.issues);
 
   const parsedSummary = parseFieldIssueSummary(metadata.fieldIssueSummary);
   const fieldIssueSummary = Object.keys(parsedSummary).length > 0 ? parsedSummary : buildSummaryFromIssues(issues);
-
-  for (const row of Object.values(fieldIssueSummary)) {
-    if (!row.firstKernelCode && row.kernelCode) {
-      row.firstKernelCode = row.kernelCode;
-    }
-    if (!row.kernelCode && row.firstKernelCode) {
-      row.kernelCode = row.firstKernelCode;
-    }
-  }
 
   const kernelCodeFromMetadata = String(metadata.kernelCode || '').trim();
   const sqlCodeFromMetadata = String(metadata.sqlCode || '').trim();
@@ -150,8 +137,6 @@ export function resolveValidationSummary(input?: MetadataMap | ChoysumError | { 
     const row = fieldIssueSummary[key];
     const firstKernelCode = String(row?.firstKernelCode || '').trim();
     if (firstKernelCode) return firstKernelCode;
-    const kernelCodeAlias = String(row?.kernelCode || '').trim();
-    if (kernelCodeAlias) return kernelCodeAlias;
 
     const fallback = issues.find(item => String(item?.field || '').trim() === key && String(item?.scope || '').trim() === 'kernel');
     const fallbackCode = String(fallback?.code || '').trim();
