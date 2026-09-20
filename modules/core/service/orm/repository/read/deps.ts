@@ -13,7 +13,7 @@ import type {
   RepositoryExecuteUnknownQueryLike,
   RepositorySelectionAliaserLike,
   RepositorySelectCtxFactoryLike,
-} from '../types';
+} from '../types/engine';
 import type { SelectionRelationEntry } from '../projection';
 import type { RepositoryOrderSpec } from '../query/ordering';
 

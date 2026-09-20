@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RepositoryFactory } from '../repository/repository_factory';
-import type { Repository, Entity } from '../repository';
+import type { Repository } from '../repository';
+import type { Entity } from '../repository/types';
 import type { FieldSelection } from '../repository/types';
 import { hydrateModel } from './model_hydration';
 import type BaseModel from './model';

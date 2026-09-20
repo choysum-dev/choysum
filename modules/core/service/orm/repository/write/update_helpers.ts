@@ -15,7 +15,7 @@ import type {
   RepositorySelectCtxFactoryLike,
   RepositorySelectFromDbLike,
   RepositoryWhereCapableLike,
-} from '../types';
+} from '../types/engine';
 import { hasRepositorySqlComputeExpression, resolveRepositorySqlComputeExpression } from '../query';
 import {
   applyRepositoryMutationWriteCondition,

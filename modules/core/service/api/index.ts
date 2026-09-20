@@ -31,7 +31,8 @@ export {
 export type { SelectResult, Entity, Selectable, Queryable } from './common';
 export type { Insertable, Updateable } from './input';
 export type { FieldPath, FieldPathType } from './field';
-export type { DeepRelationSelection, FieldSelection } from './selection';
+export type { DeepRelationSelection, FieldSelection, Projected, PartialOrProjected, RowOrProjected } from './selection';
+export { fields, projectToSelection } from './selection';
 
 export { Constraint, getEffectiveConstraints, ValidationPipelineError } from './constraint';
 export type {
@@ -51,6 +52,7 @@ export type {
   BaseQueryCondition,
   QueryCondition,
   SearchOptions,
+  SoftDeleteOptions,
   CountOptions,
   UpdateOptions,
   DeleteOptions,
@@ -63,8 +65,9 @@ export type {
   ReadGroupCountOptions,
   ReadGroupResult,
 } from './query';
+export { condition } from './query';
 
-export type { RecordRuleOp, ConditionExpr, ConditionEnvelope } from './authz';
+export type { RecordRuleOp, ConditionExpr, ConditionEnvelope, FieldRuleSpec } from './authz';
 
 export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations } from './relation';
 

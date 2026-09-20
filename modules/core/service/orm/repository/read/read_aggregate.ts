@@ -23,7 +23,7 @@ import type {
   RepositoryExecuteUnknownQueryLike,
   RepositoryRecordRuleConditionPipelineDepsLike,
   RepositorySelectCtxFactoryLike,
-} from '../types';
+} from '../types/engine';
 import {
   applyRepositoryReadAggregateCondition,
   buildRepositoryReadAggregateGroupExprs,

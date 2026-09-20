@@ -19,7 +19,7 @@ import type {
   RepositoryLimitCapableLike,
   RepositoryOffsetCapableLike,
   RepositoryForUpdateCapableLike,
-} from '../types';
+} from '../types/engine';
 import type { DialectName } from '../repository_dialect';
 import { buildHiddenScaleAlias } from '../hidden_scale_alias';
 import type { SelectionNode, SelectionRelationEntry } from '../projection';

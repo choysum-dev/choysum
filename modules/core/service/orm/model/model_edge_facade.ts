@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { EntityConverter } from '../utils/converter';
-import type { Entity } from '../repository';
+import type { Entity } from '../repository/types';
 import type { FieldSelection } from '../repository/types';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';

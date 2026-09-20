@@ -6,7 +6,7 @@ import { getStringHelpers } from './string_helpers';
 import { FieldMetadata, ManyToOneMetadata, MetadataStorage, ModelCtor, ModelMetadata } from '../../metadata';
 import type { SelectCtx, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../../metadata';
 import type { DialectName } from '../repository_dialect';
-import type { ExpressionBuilder } from '../types';
+import type { ExpressionBuilder } from '../types/engine';
 import { hasRepositorySqlComputeExpression, isRepositorySelectableScalarField, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
 import { buildTranslatedFieldUnwrapExpr } from './translated_field_sql';
 import { buildCompanyDependentFieldUnwrapExpr } from './company_dependent_field_sql';

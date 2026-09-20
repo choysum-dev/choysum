@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ModelMetadata } from '../../metadata';
-import type { BaseQueryCondition, RepositoryRecordRuleConditionPipelineDepsLike } from '../types';
+import type { BaseQueryCondition, RepositoryRecordRuleConditionPipelineDepsLike } from '../types/engine';
 import { repositoryHasCompanyField } from '../authz/company_scope';
 
 export type RepositoryMutationWriteOp = 'delete' | 'write';

@@ -18,7 +18,7 @@ import {
   RepoReadTotalsRow,
   RepoReadGroupCountOptions,
   RecordRuleOp,
-} from './types';
+} from './types/engine';
 import { ChoysumDialect, ChoysumDatabase, ChoysumCamelCasePlugin, ChoysumDeduplicateJoinsPlugin, ChoysumParseJSONResultsPlugin } from '../../infra/database';
 import type { DialectName } from './repository_dialect';
 import { FieldMetadata } from '../metadata';

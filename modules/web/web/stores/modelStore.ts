@@ -24,7 +24,7 @@ import type { ResolvePropertiesOptions } from '@/core/service/orm/model/properti
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
 import type { CopyOptions } from '@/core/service/orm/model/model_copy';
 import type { NameCreateOptions } from '@/core/service/orm/model/model_namecreate';
-import type { GroupBySpec, ReadGroupResult } from '@/core/service/orm/repository/types/groupby';
+import type { GroupBySpec, ReadGroupResult } from '@/core/service/api/query';
 import type { TermReference } from '@/core/service/i18n';
 
 /**

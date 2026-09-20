@@ -4,7 +4,7 @@
 import type { ModelMetadata } from '../../metadata';
 import type { RepositoryCompanyScopeFacts, RepositoryReqMethodMeta } from './authz_runtime';
 import type { RepositoryEmitAuthzDecisionSummary, RepositoryPermissionDeniedFn } from './types';
-import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp, RepositoryExecute, RepositoryTableSoftConditionPipelineDepsLike } from '../types';
+import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp, RepositoryExecute, RepositoryTableSoftConditionPipelineDepsLike } from '../types/engine';
 
 export type RepositoryAuthzContextDepsParams = {
   meta: ModelMetadata;

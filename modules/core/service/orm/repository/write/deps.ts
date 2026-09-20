@@ -15,7 +15,7 @@ import type {
   RepositorySelectionAliaserLike,
   RepositorySelectCtxFactoryLike,
   RepositorySoftConditionPipelineDepsLike,
-} from '../types';
+} from '../types/engine';
 import type { RepositoryDeleteChild } from './delete_child_factory';
 import type { ObjectRecord } from '../../../../utils/types';
 

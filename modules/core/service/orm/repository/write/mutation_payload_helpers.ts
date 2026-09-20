@@ -7,7 +7,7 @@ import type {
   RepositoryMutationPayloadEncodeDepsLike,
   RepositoryMutationPayloadGuardDepsLike,
   RepositoryMutationPayloadValidateDepsLike,
-} from '../types';
+} from '../types/engine';
 import type { ObjectRecord } from '../../../../utils/types';
 
 export type RepositoryMutationPayloadMode = 'create' | 'update';

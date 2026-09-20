@@ -18,7 +18,9 @@ test('core/service/api entrypoint export surface stays limited to stable cross-m
     'Onchange',
     'ValidationEngine',
     'ValidationPipelineError',
+    'condition',
     'createTranslate',
+    'fields',
     'formatScope',
     'getActiveCompanyId',
     'getContextClientTimezone',
@@ -32,6 +34,7 @@ test('core/service/api entrypoint export surface stays limited to stable cross-m
     'getReadonlyCtx',
     'getReqMeta',
     'getUserId',
+    'projectToSelection',
     'resolveI18nScope',
     'resolveRequestLang',
     'resolveValidationSummary',
@@ -51,6 +54,9 @@ test('core/service/api entrypoint exports are live runtime bindings', () => {
   expect(typeof serviceApi.resolveValidationSummary).toBe('function');
   expect(typeof serviceApi.getReadonlyCtx).toBe('function');
   expect(typeof serviceApi.withContext).toBe('function');
+  expect(typeof serviceApi.condition).toBe('function');
+  expect(typeof serviceApi.fields).toBe('function');
+  expect(typeof serviceApi.projectToSelection).toBe('function');
   expect(serviceApi.Decimal).toBeDefined();
 });
 

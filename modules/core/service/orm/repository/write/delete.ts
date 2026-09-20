@@ -13,7 +13,7 @@ import type {
   RepositoryTableSoftConditionPipelineDepsLike,
   RepositoryUpdateTableDbLike,
   RepositoryWhereCapableLike,
-} from '../types';
+} from '../types/engine';
 import type { RepositoryDeleteChild } from './delete_child_factory';
 import {
   applyRepositoryDeleteCondition,

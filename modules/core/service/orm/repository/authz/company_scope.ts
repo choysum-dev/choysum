@@ -10,7 +10,7 @@ import type {
   RepositorySelectFromDbLike,
   RepositoryTableSoftConditionPipelineDepsLike,
   RepositoryWhereCapableLike,
-} from '../types';
+} from '../types/engine';
 import type { RepositoryCompanyScopeFacts, RepositoryReqMethodMeta } from './authz_runtime';
 import type { RepositoryEmitAuthzDecisionSummary, RepositoryPermissionDeniedFn } from './types';
 import { getRuntimeEnvFlag } from '@/core/utils/env';

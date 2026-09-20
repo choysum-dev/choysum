@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Operator, BaseQueryCondition, ExpressionWrapper } from '../repository/types';
+import type { Operator, BaseQueryCondition } from '../repository/types';
+import type { ExpressionWrapper } from '../repository/types/engine';
 import type { DialectName } from '../repository/repository_dialect';
 import type { ObjectRecord } from '../../../utils/types';
 
