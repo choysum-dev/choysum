@@ -6,7 +6,7 @@ import type { DialectName } from '../repository_dialect';
 import { convertRepositoryHavingCondition } from '../query';
 import type {
   UntypedQueryCondition,
-  Entity,
+  SelectResult,
   RepositoryGetScalarFieldsDepsLike,
   RepositoryRecordRuleConditionPipelineDepsLike,
   RepositoryTableConditionConvertDepsLike,
@@ -51,7 +51,7 @@ type RepositorySearchFacadeDepsParams = RepositoryReadQueryFacadeDepsParams & {
     metaOrder: RepositoryOrderSpec[] | undefined | null,
     meta: unknown
   ) => RepositoryOrderSpec[] | null | undefined;
-  decodeRowWithTree: (meta: ModelMetadata, node: unknown, row: Entity) => Entity;
+  decodeRowWithTree: (meta: ModelMetadata, node: unknown, row: SelectResult) => SelectResult;
 };
 
 type RepositoryReadAggregateDepsParams = RepositoryReadConditionDepsParams &

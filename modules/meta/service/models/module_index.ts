@@ -3,7 +3,7 @@
 
 import {  BaseModel, Field, Model, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
 import { getModelRepository } from '@/core/service/orm/model';
-import type { QueryCondition, SearchOptions, CountOptions } from '@/core/service/api/query';
+import type { QueryCondition, SearchOptions, SoftDeleteOptions } from '@/core/service/api/query';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { createServiceByModel } from '@/core/service/rpc';
 import { sql } from 'kysely';
@@ -300,7 +300,7 @@ export default class MetaModuleIndex extends BaseModel {
   static async Count<C extends ModelCtor>(
     this: C,
     condition: QueryCondition<RowOf<C>> | [] = DEFAULT_MODULE_INDEX_SEARCH as QueryCondition<RowOf<C>>,
-    options?: CountOptions
+    options?: SoftDeleteOptions
   ): Promise<number> {
     const normalized = assertSearchCondition(condition);
     const readGroupCountOptions: Record<string, unknown> = {

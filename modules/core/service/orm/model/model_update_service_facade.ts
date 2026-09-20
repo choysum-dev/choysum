@@ -3,7 +3,7 @@
 
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
-import type { FieldSelection, QueryCondition, Updateable, UpdateOptions } from '../repository/types';
+import type { FieldSelection, QueryCondition, Updateable, SoftDeleteOptions } from '../repository/types';
 import { UpdateOperations } from './model_update';
 
 type ModelUpdateServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
@@ -17,7 +17,7 @@ export async function updateModels<T extends BaseModel>(
   condition: QueryCondition<T>,
   values: Partial<Updateable<T>>,
   returnFields?: FieldSelection<T>,
-  options?: UpdateOptions
+  options?: SoftDeleteOptions
 ): Promise<Partial<T>[]> {
   return await UpdateOperations.Update<T>(ModelCtor, condition, values, returnFields, options);
 }
@@ -31,7 +31,7 @@ export async function updateModelById<T extends BaseModel>(
   id: string,
   values: Partial<Updateable<T>>,
   returnFields?: FieldSelection<T>,
-  options?: UpdateOptions
+  options?: SoftDeleteOptions
 ): Promise<Partial<T>> {
   return await UpdateOperations.UpdateById<T>(ModelCtor, id, values, returnFields, options);
 }

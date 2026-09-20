@@ -7,8 +7,6 @@ import type { ObjectRecord } from '../../../../utils/types';
 export type TemporalGranularity = 'year' | 'quarter' | 'month' | 'week' | 'day';
 export type AggregateFunction = 'count' | 'count_distinct' | 'sum' | 'avg' | 'min' | 'max';
 export type QueryPath = string;
-/** @deprecated Prefer QueryPath. Kept for compatibility. */
-export type QueryablePath<T = ObjectRecord> = QueryPath;
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type FieldKeyOf<T> = Extract<keyof T, string>;

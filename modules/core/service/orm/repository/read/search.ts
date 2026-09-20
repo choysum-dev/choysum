@@ -5,7 +5,7 @@ import type { ModelMetadata } from '../../metadata';
 import { REL_ALIAS_PREFIX } from '../../relation/relation_alias';
 import type {
   UntypedQueryCondition,
-  Entity,
+  SelectResult,
   RepositoryGetScalarFieldsDepsLike,
   RepositoryRecordRuleConditionPipelineDepsLike,
   SearchOptions,
@@ -62,7 +62,7 @@ type RepositorySearchReadDeps = {
   ) => RepositoryOrderSpec[] | null | undefined;
   applyOrderByToQuery: (query: unknown, targetMeta: unknown, targetTable: string, orderList: RepositoryOrderSpec[]) => unknown;
   execute: RepositoryExecute;
-  decodeRowWithTree: (meta: ModelMetadata, node: unknown, row: Entity) => Entity;
+  decodeRowWithTree: (meta: ModelMetadata, node: unknown, row: SelectResult) => SelectResult;
 } & RepositoryGetScalarFieldsDepsLike<ModelMetadata> &
   RepositoryRecordRuleConditionPipelineDepsLike<'read', UntypedQueryCondition>;
 
@@ -80,7 +80,7 @@ export async function executeRepositorySearch(
   params: RepositorySearchReadDeps,
   condition: UntypedQueryCondition,
   options?: SearchOptions<ObjectRecord>
-): Promise<Entity[]> {
+): Promise<SelectResult[]> {
   const requestedList = Array.isArray(options?.fields) ? ([...options.fields] as unknown[]) : undefined;
   const requestedFields = requestedList ? (requestedList.includes('Id') ? requestedList : [...requestedList, 'Id']) : undefined;
 
@@ -180,5 +180,5 @@ export async function executeRepositorySearch(
 
   const results = await params.execute(selectQuery as never);
   if (!results?.length) return [];
-  return results.map(row => params.decodeRowWithTree(params.meta, selectionTree, row as Entity));
+  return results.map(row => params.decodeRowWithTree(params.meta, selectionTree, row as SelectResult));
 }

@@ -6,7 +6,7 @@ import type BaseModel from '../../model/model';
 import type { ModelCtor } from '../../metadata/field';
 import type { ModelMetadata } from '../../metadata';
 import { ValidationPipelineError, type ConstraintMode } from '../../metadata';
-import type { Entity } from '../types';
+import type { SelectResult } from '../types';
 import type { Repository } from '../repository';
 import { wrapRepositoryValidationError } from './error_helpers';
 import { throwRepositorySqlWriteError } from './sql_helpers';
@@ -30,7 +30,7 @@ export async function validateRepositoryWrite(params: {
   repository: Repository;
   requestContext: unknown;
   getValidationBypassDepth: () => number;
-  input: Entity;
+  input: SelectResult;
   mode: ConstraintMode;
   current?: ObjectRecord;
 }): Promise<void> {

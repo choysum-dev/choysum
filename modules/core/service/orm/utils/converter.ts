@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Entity } from '../repository/types';
+import { SelectResult } from '../repository/types';
 import { MetadataStorage } from '../metadata/storage';
 import { FieldMetadata, ManyToOneMetadata, OneToManyMetadata, ManyToManyMetadata } from '../metadata';
 import BaseModel from '../model/model';
@@ -85,7 +85,7 @@ export class EntityConverter {
 
   private static hydrateRelationTarget<T extends BaseModel>(targetCtor: ModelCtor<T> | undefined, value: unknown): T | undefined {
     if (!targetCtor) return undefined;
-    return hydrateModel<T>(targetCtor, value as Entity);
+    return hydrateModel<T>(targetCtor, value as SelectResult);
   }
 
   private static parseJsonRelationValue(value: unknown): unknown {
@@ -116,7 +116,7 @@ export class EntityConverter {
     return list;
   }
 
-  static entityToModel<T extends BaseModel>(instance: T, entity: Entity): void {
+  static entityToModel<T extends BaseModel>(instance: T, entity: SelectResult): void {
     const meta = MetadataStorage.instance.getModelMetadata(instance.constructor as ModelCtor<BaseModel>);
 
     // 1. Walk entity keys and handle directly matching fields, including relations.

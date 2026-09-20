@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { UntypedQueryCondition, DeleteResult, Entity } from '../types/engine';
+import type { UntypedQueryCondition, DeleteResult, SelectResult } from '../types/engine';
 
 export type RepositoryDeleteChild = {
   softDeleteEnabled: () => boolean;
@@ -9,7 +9,7 @@ export type RepositoryDeleteChild = {
   hardDelete: (condition: UntypedQueryCondition) => Promise<DeleteResult[]>;
   count: (condition: UntypedQueryCondition) => Promise<number>;
   withFieldRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
-  update: (vals: Entity, condition: UntypedQueryCondition) => Promise<unknown>;
+  update: (vals: SelectResult, condition: UntypedQueryCondition) => Promise<unknown>;
 };
 
 type RepositoryDeleteChildSource = {
@@ -18,7 +18,7 @@ type RepositoryDeleteChildSource = {
   hardDelete: (condition: UntypedQueryCondition) => Promise<DeleteResult[]>;
   count: (condition: UntypedQueryCondition) => Promise<number>;
   withFieldRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
-  update: (vals: Entity, condition: UntypedQueryCondition) => Promise<unknown>;
+  update: (vals: SelectResult, condition: UntypedQueryCondition) => Promise<unknown>;
 };
 
 export function createRepositoryDeleteChild(source: RepositoryDeleteChildSource): RepositoryDeleteChild {

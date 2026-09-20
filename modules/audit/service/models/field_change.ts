@@ -6,7 +6,7 @@ import { getCurrentReq, getUserId } from '@/core/service/api/context';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { projectToSelection } from '@/core/service/api/selection';
-import type { QueryCondition, DeleteOptions, UpdateOptions } from '@/core/service/api/query';
+import type { QueryCondition, SoftDeleteOptions } from '@/core/service/api/query';
 import { AuditErrCode, newAuditError } from '../error';
 import { _lt } from '../i18n';
 import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
@@ -317,7 +317,7 @@ export default class FieldChange extends PolymorphicRecordModel {
     _condition: QueryCondition<RowOf<C>>,
     _values: Partial<Updateable<RowOf<C>>>,
     _returnFields?: FieldSelection<RowOf<C>>,
-    _options?: UpdateOptions
+    _options?: SoftDeleteOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Update' });
   }
@@ -328,7 +328,7 @@ export default class FieldChange extends PolymorphicRecordModel {
     _id: string,
     _values: Partial<Updateable<RowOf<C>>>,
     _returnFields?: FieldSelection<RowOf<C>>,
-    _options?: UpdateOptions
+    _options?: SoftDeleteOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support UpdateById' });
   }
@@ -337,7 +337,7 @@ export default class FieldChange extends PolymorphicRecordModel {
   static override async Delete<C extends ModelCtor>(
     this: C,
     _condition: QueryCondition<RowOf<C>>,
-    _options?: DeleteOptions
+    _options?: SoftDeleteOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support Delete' });
   }
@@ -346,7 +346,7 @@ export default class FieldChange extends PolymorphicRecordModel {
   static override async DeleteById<C extends ModelCtor>(
     this: C,
     _id: string,
-    _options?: DeleteOptions
+    _options?: SoftDeleteOptions
   ): Promise<never> {
     throw newAuditError({ code: AuditErrCode.APPEND_ONLY, message: 'FieldChange does not support DeleteById' });
   }

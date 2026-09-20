@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { Entity } from '../repository/types/common';
+import type { SelectResult } from '../repository/types/common';
 
 /** Arguments used by the BaseModel factory constructor. */
-export type ModelFactoryArgs = [factoryToken: symbol, entity: Entity, fields?: unknown];
+export type ModelFactoryArgs = [factoryToken: symbol, entity: SelectResult, fields?: unknown];
 
 /**
  * Constructable model class (factory constructor only).

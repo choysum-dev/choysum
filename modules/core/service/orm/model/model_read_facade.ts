@@ -8,7 +8,7 @@ import { markPlainShallow } from './model_runtime';
 import { createModelProxy } from './model_internal_facade';
 import type { Context } from '../../runtime/context';
 import type {
-  CountOptions,
+  SoftDeleteOptions,
   FieldSelection,
   GroupBySpec,
   QueryCondition,
@@ -16,15 +16,14 @@ import type {
   ReadGroupOptions,
   ReadGroupResult,
   SearchOptions,
-  SoftDeleteOptions,
 } from '../repository/types';
-import type { Entity } from '../repository/types';
+import type { SelectResult } from '../repository/types';
 
 type ModelReadFacadeCtor<T extends BaseModel> = ModelCtor<T> & {
   ctx: Context;
 };
 
-function createProxyModel<T extends BaseModel>(ModelCtor: ModelReadFacadeCtor<T>, entity: Entity, fields?: FieldSelection<T>): T {
+function createProxyModel<T extends BaseModel>(ModelCtor: ModelReadFacadeCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
   return createModelProxy<T>(ModelCtor, entity, fields);
 }
 
@@ -89,7 +88,7 @@ export async function searchModels<T extends BaseModel>(
 export async function countModels<T extends BaseModel>(
   ModelCtor: ModelReadFacadeCtor<T>,
   condition: QueryCondition<T> | [] = [],
-  options?: CountOptions
+  options?: SoftDeleteOptions
 ): Promise<number> {
   return await ReadOperations.Count<T>(ModelCtor, condition, options);
 }

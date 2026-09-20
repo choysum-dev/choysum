@@ -4,7 +4,7 @@
 import type { ModelMetadata } from '../../metadata';
 import type {
   UntypedQueryCondition,
-  Entity,
+  SelectResult,
   RepositoryExecute,
   RepositoryGetScalarFieldsDepsLike,
   RepositoryQueryLike,
@@ -46,7 +46,7 @@ export type RepositoryUpdateWriteCurrentRowsDeps = {
   makeSelectCtx: RepositorySelectCtxFactoryLike<ModelMetadata>;
   aliasSelection: RepositorySelectionAliaserLike;
   execute: RepositoryExecute;
-  decodeFromDb: (row: Entity) => Entity;
+  decodeFromDb: (row: SelectResult) => SelectResult;
 } & RepositoryGetScalarFieldsDepsLike<ModelMetadata> &
   RepositorySoftConditionPipelineDepsLike<UntypedQueryCondition>;
 
@@ -92,7 +92,7 @@ export async function loadRepositoryUpdateValidationCurrentRows(
     query = query.where(({ eb }) => params.convertCondition(eb, filtered, params.table));
   }
 
-  const rows = (await params.execute<Entity>(query as unknown as RepositoryQueryLike<Entity>)) || [];
+  const rows = (await params.execute<SelectResult>(query as unknown as RepositoryQueryLike<SelectResult>)) || [];
   const result = new Map<string, ObjectRecord>();
   for (const row of rows) {
     // Prefetch lang / company maps so field updates can merge without wiping sibling keys.

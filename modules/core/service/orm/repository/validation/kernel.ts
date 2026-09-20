@@ -3,7 +3,7 @@
 
 import type { FieldMetadata, ModelMetadata } from '../../metadata';
 import { assertSafeInt } from '../../utils/int-guard';
-import type { Entity } from '../types';
+import type { SelectResult } from '../types';
 import { normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
@@ -36,7 +36,7 @@ export class KernelValidationError extends Error {
   }
 }
 
-export function validateIntFields(meta: ModelMetadata, vals: Entity) {
+export function validateIntFields(meta: ModelMetadata, vals: SelectResult) {
   const values = asObjectRecord(vals);
   if (!values) return;
 
@@ -55,7 +55,7 @@ export function validateIntFields(meta: ModelMetadata, vals: Entity) {
   });
 }
 
-export function validateSelectionFields(meta: ModelMetadata, input: Entity): void {
+export function validateSelectionFields(meta: ModelMetadata, input: SelectResult): void {
   const inputRecord = asObjectRecord(input);
   if (!inputRecord) return;
 
@@ -101,7 +101,7 @@ function isPrimaryKeyField(fieldMeta: FieldMetadata | undefined): boolean {
   return fieldMeta?.column?.primaryKey === true;
 }
 
-export function validateRequiredFields(meta: ModelMetadata, input: Entity, mode: ValidationMode): void {
+export function validateRequiredFields(meta: ModelMetadata, input: SelectResult, mode: ValidationMode): void {
   const inputRecord = asObjectRecord(input);
   if (!inputRecord) return;
 
@@ -168,7 +168,7 @@ function isValidReferenceScalar(value: unknown): boolean {
   return typeof value === 'number' || typeof value === 'bigint';
 }
 
-export function validateRelationShapeFields(meta: ModelMetadata, input: Entity): void {
+export function validateRelationShapeFields(meta: ModelMetadata, input: SelectResult): void {
   const inputRecord = asObjectRecord(input);
   if (!inputRecord) return;
 
@@ -198,7 +198,7 @@ export function validateRelationShapeFields(meta: ModelMetadata, input: Entity):
   });
 }
 
-export function validateDecimalFields(meta: ModelMetadata, input: Entity): void {
+export function validateDecimalFields(meta: ModelMetadata, input: SelectResult): void {
   const inputRecord = asObjectRecord(input);
   if (!inputRecord) return;
 
@@ -237,7 +237,7 @@ export function validateDecimalFields(meta: ModelMetadata, input: Entity): void 
 
 export function validateFields(
   meta: ModelMetadata,
-  input: Entity,
+  input: SelectResult,
   options?: {
     mode?: ValidationMode;
     rules?: KernelValidationRule[];

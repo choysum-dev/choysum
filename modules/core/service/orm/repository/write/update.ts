@@ -4,7 +4,7 @@
 import type { ModelMetadata } from '../../metadata';
 import type {
   UntypedQueryCondition,
-  Entity,
+  SelectResult,
   RepositoryExecute,
   RepositoryGetScalarFieldsDepsLike,
   RepositoryMutationPayloadGuardEncodeDepsLike,
@@ -47,7 +47,7 @@ export type RepositoryUpdateWriteRuntimeDeps = {
 
 export type RepositoryUpdateWritePostWriteDeps = {
   invalidateCache: () => void;
-  recomputePersistForUpdate?: (payload: { targetIds: string[]; sanitized: Entity; condition: UntypedQueryCondition; rows: UpdateResult[] }) => Promise<void>;
+  recomputePersistForUpdate?: (payload: { targetIds: string[]; sanitized: SelectResult; condition: UntypedQueryCondition; rows: UpdateResult[] }) => Promise<void>;
 };
 
 type RepositoryUpdateWriteDeps = RepositoryUpdateWriteTargetDeps &
@@ -58,15 +58,15 @@ type RepositoryUpdateWriteDeps = RepositoryUpdateWriteTargetDeps &
     db: unknown;
     makeSelectCtx: RepositorySelectCtxFactoryLike<ModelMetadata>;
     aliasSelection: RepositorySelectionAliaserLike;
-    decodeFromDb: (row: Entity) => Entity;
-    applyDefaultCompanyIdOnUpdate: (vals: Entity) => Entity;
+    decodeFromDb: (row: SelectResult) => SelectResult;
+    applyDefaultCompanyIdOnUpdate: (vals: SelectResult) => SelectResult;
   } & RepositoryGetScalarFieldsDepsLike<ModelMetadata> &
   RepositorySoftConditionPipelineDepsLike<UntypedQueryCondition> &
-  RepositoryMutationPayloadGuardEncodeDepsLike<Entity> &
-  RepositoryMutationPayloadValidateDepsLike<Entity, 'update', ObjectRecord>;
+  RepositoryMutationPayloadGuardEncodeDepsLike<SelectResult> &
+  RepositoryMutationPayloadValidateDepsLike<SelectResult, 'update', ObjectRecord>;
 
 type RepositoryPreparedUpdateWrite = {
-  sanitized: Entity;
+  sanitized: SelectResult;
   targetIds: string[];
 };
 
@@ -82,9 +82,9 @@ type RepositoryPreparedUpdateQuery = {
 export type RepositoryUpdateWriteTargetResolveDeps = RepositoryUpdateWriteTargetDeps;
 
 export type RepositoryUpdateWriteSanitizedPayloadDeps = RepositoryUpdateWriteCurrentRowsDeps &
-  RepositoryMutationPayloadGuardEncodeDepsLike<Entity> &
-  RepositoryMutationPayloadValidateDepsLike<Entity, 'update', ObjectRecord> & {
-    applyDefaultCompanyIdOnUpdate: (vals: Entity) => Entity;
+  RepositoryMutationPayloadGuardEncodeDepsLike<SelectResult> &
+  RepositoryMutationPayloadValidateDepsLike<SelectResult, 'update', ObjectRecord> & {
+    applyDefaultCompanyIdOnUpdate: (vals: SelectResult) => SelectResult;
   };
 
 export async function resolveRepositoryUpdatePayloadTargets(
@@ -100,9 +100,9 @@ export async function resolveRepositoryUpdatePayloadTargets(
 
 export async function prepareRepositoryUpdateSanitizedPayload(
   params: RepositoryUpdateWriteSanitizedPayloadDeps,
-  vals: Entity,
+  vals: SelectResult,
   targetIds: string[]
-): Promise<Entity> {
+): Promise<SelectResult> {
   await assertRepositoryMutationPayloadsAllowed(params, [vals]);
 
   const preparedVals = applyRepositoryMutationDefaultValues(
@@ -110,31 +110,31 @@ export async function prepareRepositoryUpdateSanitizedPayload(
       applyDefaultMutationValues: payload => params.applyDefaultCompanyIdOnUpdate(payload),
     },
     [vals]
-  )[0] as Entity;
+  )[0] as SelectResult;
   // System UpdatedAt / *Uid: stamp before validate (strip CreatedUid; restore clears DeletedUid).
   const auditStamped = { ...(preparedVals as ObjectRecord), UpdatedAt: new Date() };
   AuditUidUtils.applyOnUpdate(auditStamped);
-  const preparedWithAudit = auditStamped as Entity;
+  const preparedWithAudit = auditStamped as SelectResult;
 
   const currentRows = await loadRepositoryUpdateValidationCurrentRows(params, targetIds);
   // Stamp monetary scales per target (one batched Currency browse across all targets).
   const stampedList = await stampMonetaryScalesForWriteMany(
     params.meta,
     targetIds.map(id => ({
-      input: { ...preparedWithAudit } as Entity,
+      input: { ...preparedWithAudit } as SelectResult,
       current: currentRows.get(id) ?? null,
     }))
   );
-  const stampedByTarget = new Map<string, Entity>();
+  const stampedByTarget = new Map<string, SelectResult>();
   targetIds.forEach((id, index) => {
-    stampedByTarget.set(id, stampedList[index] as Entity);
+    stampedByTarget.set(id, stampedList[index] as SelectResult);
   });
   for (const id of targetIds) {
     await validateRepositoryMutationPayload(
       {
         validateFields: (input, mode, current) => params.validateFields(input, mode, current),
       },
-      stampedByTarget.get(id) as Entity,
+      stampedByTarget.get(id) as SelectResult,
       'update',
       [currentRows.get(id)]
     );
@@ -152,7 +152,7 @@ export async function prepareRepositoryUpdateSanitizedPayload(
   }
 
   // Encode uses a single payload; require identical stamped monetary scales across targets.
-  const encodeSource = stampedByTarget.get(targetIds[0]) as Entity;
+  const encodeSource = stampedByTarget.get(targetIds[0]) as SelectResult;
   if (targetIds.length > 1) {
     const firstJson = JSON.stringify(encodeSource);
     for (let i = 1; i < targetIds.length; i++) {
@@ -174,12 +174,12 @@ export async function prepareRepositoryUpdateSanitizedPayload(
     current: current ?? null,
   });
 
-  return encodeRepositoryMutationPayloads(params, [valsForEncode])[0] as Entity;
+  return encodeRepositoryMutationPayloads(params, [valsForEncode])[0] as SelectResult;
 }
 
 export async function prepareRepositoryUpdatePayload(
   params: Omit<RepositoryUpdateWriteDeps, keyof RepositoryUpdateWritePostWriteDeps>,
-  vals: Entity,
+  vals: SelectResult,
   condition: UntypedQueryCondition
 ): Promise<RepositoryPreparedUpdateWrite | undefined> {
   const targetIds = await resolveRepositoryUpdatePayloadTargets(params, condition);
@@ -193,7 +193,7 @@ export async function prepareRepositoryUpdatePayload(
 
 export async function prepareRepositoryUpdateQuery(
   params: RepositoryUpdateWriteQueryPrepareDeps,
-  sanitized: Entity,
+  sanitized: SelectResult,
   condition: UntypedQueryCondition
 ): Promise<RepositoryPreparedUpdateQuery> {
   const db = params.db as RepositoryUpdateDbLike;
@@ -217,7 +217,7 @@ export function applyRepositoryUpdatePostWrite(params: RepositoryUpdateWritePost
   return rows || [];
 }
 
-export async function executeRepositoryUpdate(params: RepositoryUpdateWriteDeps, vals: Entity, condition: UntypedQueryCondition): Promise<UpdateResult[]> {
+export async function executeRepositoryUpdate(params: RepositoryUpdateWriteDeps, vals: SelectResult, condition: UntypedQueryCondition): Promise<UpdateResult[]> {
   const preparedPayload = await prepareRepositoryUpdatePayload(params, vals, condition);
   if (!preparedPayload) {
     return [];

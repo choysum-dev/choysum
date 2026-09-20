@@ -4,7 +4,7 @@
 import type { ModelMetadata } from '../../metadata';
 import type {
   UntypedQueryCondition,
-  Entity,
+  SelectResult,
   RepositoryExecute,
   RepositorySelectColumnsCapableLike,
   RepositorySelectFromDbLike,
@@ -222,7 +222,7 @@ export function applyRepositoryCompanyLayer(params: RepositoryCompanyScopeDeps, 
   return Array.isArray(condition) && condition.length === 0 ? companyCondition : { And: [condition, companyCondition] };
 }
 
-export function applyRepositoryDefaultCompanyIdOnCreate(params: RepositoryCompanyScopeDeps, entity: Entity): Entity {
+export function applyRepositoryDefaultCompanyIdOnCreate(params: RepositoryCompanyScopeDeps, entity: SelectResult): SelectResult {
   if (!repositoryHasCompanyField(params.meta)) return entity;
 
   repositoryCompanyFieldEnabled(params);
@@ -250,7 +250,7 @@ export function applyRepositoryDefaultCompanyIdOnCreate(params: RepositoryCompan
   return { ...entity, [ownershipField]: companyId };
 }
 
-export function applyRepositoryDefaultCompanyIdOnUpdate(params: RepositoryCompanyScopeDeps, vals: Entity): Entity {
+export function applyRepositoryDefaultCompanyIdOnUpdate(params: RepositoryCompanyScopeDeps, vals: SelectResult): SelectResult {
   if (!repositoryHasCompanyField(params.meta)) return vals;
 
   repositoryCompanyFieldEnabled(params);

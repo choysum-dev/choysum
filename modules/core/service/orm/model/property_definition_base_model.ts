@@ -9,7 +9,7 @@ import { registerLogicalModelName } from './logical_model_registry';
 import { assertValidPropertyDefinitionItems } from './properties_types';
 import type { ModelCtor, RowOf } from './types';
 import type { Insertable, Updateable, FieldSelection,
-  PartialOrProjected, RowOrProjected, QueryCondition, UpdateOptions, DeleteOptions } from '../repository/types';
+  PartialOrProjected, RowOrProjected, QueryCondition, SoftDeleteOptions } from '../repository/types';
 import {
   assertPropertyDefinitionParentWritable,
   collectParentScopesToProbe,
@@ -252,7 +252,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     condition: QueryCondition<RowOf<C>>,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const self = asDefinitionCtor(this);
     const vals = values as Record<string, unknown>;
@@ -279,7 +279,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
     id: string,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const self = asDefinitionCtor(this);
     const vals = values as Record<string, unknown>;
@@ -302,7 +302,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
   static override async Delete<C extends ModelCtor>(
     this: C,
     condition: QueryCondition<RowOf<C>>,
-    options?: DeleteOptions
+    options?: SoftDeleteOptions
   ): Promise<number> {
     const self = asDefinitionCtor(this);
     const rows = await self.Search(
@@ -317,7 +317,7 @@ export default class PropertyDefinitionBaseModel extends BaseModel {
   static override async DeleteById<C extends ModelCtor>(
     this: C,
     id: string,
-    options?: DeleteOptions
+    options?: SoftDeleteOptions
   ): Promise<number> {
     const self = asDefinitionCtor(this);
     const currentRows = await self.Search(

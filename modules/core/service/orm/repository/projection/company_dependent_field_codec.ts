@@ -6,7 +6,7 @@ import { isDecimalLikeField } from '../../metadata/decimal_like';
 import { getActiveCompanyId, getCtxValue } from '../../../runtime/context/scope';
 import { isBigdecimalEnvelope, isDecimal, normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
-import type { Entity } from '../types';
+import type { SelectResult } from '../types';
 import type { ObjectRecord, UnknownRecord } from '../../../../utils/types';
 import { sanitizeHtmlForWrite } from '../../utils/html_sanitize';
 
@@ -299,9 +299,9 @@ export function encodeCompanyDependentMapForDb(map: CompanyValueMap | null, fm?:
  */
 export function applyCompanyDependentFieldsForWrite(
   meta: ModelMetadata,
-  input: Entity,
+  input: SelectResult,
   opts: { mode: CompanyDependentWriteMode; companyId?: string; current?: ObjectRecord | null; replace?: boolean }
-): Entity {
+): SelectResult {
   if (!input || typeof input !== 'object') return input;
   const companyId = opts.companyId ?? resolveCompanyDependentCompanyId();
   const replace = opts.replace === true || getCompanyDependentWriteReplace();
@@ -335,10 +335,10 @@ export function applyCompanyDependentFieldsForWrite(
     changed = true;
   });
 
-  return (changed ? out : input) as Entity;
+  return (changed ? out : input) as SelectResult;
 }
 
-export function payloadHasCompanyDependentFieldWrite(meta: ModelMetadata, input: Entity): boolean {
+export function payloadHasCompanyDependentFieldWrite(meta: ModelMetadata, input: SelectResult): boolean {
   if (!input || typeof input !== 'object') return false;
   for (const [name, fm] of meta.fields) {
     if (!fm?.companyDependent) continue;

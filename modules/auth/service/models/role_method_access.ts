@@ -5,7 +5,7 @@ import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
-import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
+import type { QueryCondition, SoftDeleteOptions } from '@/core/service/api/query';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { _lt } from '../i18n';
 import Role from './role';
@@ -266,7 +266,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     condition: QueryCondition<RowOf<C>>,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     let previousLogicalModelName: string | null | undefined;
     let updateCondition: QueryCondition<RowOf<C>> = condition;
@@ -312,7 +312,7 @@ export default class RoleMethodAccess extends AuthzMutationModel {
     id: string,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     let previousLogicalModelName: string | null | undefined;
     if (RoleMethodAccess._needsPreviousLogicalModelName(values as Record<string, unknown>)) {

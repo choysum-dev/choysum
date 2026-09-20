@@ -4,7 +4,7 @@
 import { Model, Field, SqlCompute, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
-import type { QueryCondition, SearchOptions, SoftDeleteOptions, UpdateOptions } from '@/core/service/api/query';
+import type { QueryCondition, SearchOptions, SoftDeleteOptions } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import AuthzMutationModel from '../mixins/authz_mutation_model';
 import User from './user/user';
@@ -339,7 +339,7 @@ export default class Role extends AuthzMutationModel {
     condition: QueryCondition<RowOf<C>>,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const payload = { ...values };
     const shouldHydrateAccess = wantsAccessField(returnFields);
@@ -381,7 +381,7 @@ export default class Role extends AuthzMutationModel {
     id: string,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const payload = { ...values };
     const accessIds = await applyAccessWriteTransformOnUpdate(payload as Record<string, unknown>, id);

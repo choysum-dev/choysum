@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Entity } from '../types';
+import type { SelectResult } from '../types';
 import type { FieldMetadata, ModelMetadata } from '../../metadata';
 import { isDecimalLikeField } from '../../metadata/decimal_like';
 import { DEC_SCALE_ALIAS_PREFIX, buildHiddenScaleAlias } from '../hidden_scale_alias';
@@ -98,7 +98,7 @@ export function parseJsonObjectFieldValue(v: unknown): unknown {
   return v;
 }
 
-export function resolveDecimalScaleForWrite(fm: FieldMetadata | undefined, input: Entity): number | undefined {
+export function resolveDecimalScaleForWrite(fm: FieldMetadata | undefined, input: SelectResult): number | undefined {
   if (!fm) return undefined;
   if (fm.type === 'monetary') {
     return resolveMonetaryScaleForWrite(fm, input);
@@ -151,7 +151,7 @@ export function cleanupHiddenScaleKeys(row: unknown) {
   }
 }
 
-export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
+export function encodeForDb(meta: ModelMetadata, input: SelectResult): SelectResult {
   if (!input || typeof input !== 'object') return input;
 
   const allowed = new Set<string>();
@@ -284,7 +284,7 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
   return out;
 }
 
-export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
+export function decodeFromDb(meta: ModelMetadata, row: SelectResult): SelectResult {
   if (!row || typeof row !== 'object') return row;
   const out: UnknownRecord = { ...row };
 
@@ -394,5 +394,5 @@ export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
 
   cleanupHiddenScaleKeys(out);
 
-  return out as Entity;
+  return out as SelectResult;
 }

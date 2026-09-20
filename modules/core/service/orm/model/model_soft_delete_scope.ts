@@ -5,22 +5,16 @@ import { MetadataStorage } from '../metadata/storage';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import { getModelRepository } from './model_internal_facade';
 import type { Repository } from '../repository';
+import type { SoftDeleteOptions } from '../repository/types';
 import type { ModelCtor } from './types';
 import { _t } from '@/core/service/i18n_binder';
-
-type SoftDeleteOptionLike =
-  | {
-      withDeleted?: boolean;
-      onlyDeleted?: boolean;
-    }
-  | undefined;
 
 function resolveErrorDomain(ModelCtor: unknown): string {
   const meta = MetadataStorage.instance.getModelMetadata(ModelCtor as Parameters<typeof MetadataStorage.instance.getModelMetadata>[0]);
   return typeof meta?.application === 'string' && meta.application.trim() ? meta.application.trim() : 'core';
 }
 
-function assertSoftDeleteOptionsValid(ModelCtor: unknown, options?: SoftDeleteOptionLike): void {
+function assertSoftDeleteOptionsValid(ModelCtor: unknown, options?: SoftDeleteOptions): void {
   if (!options) return;
   if (options.withDeleted && options.onlyDeleted) {
     throw new ChoysumError({
@@ -31,7 +25,7 @@ function assertSoftDeleteOptionsValid(ModelCtor: unknown, options?: SoftDeleteOp
   }
 }
 
-export function resolveRepositoryWithSoftDeleteOptions(ModelCtor: unknown, options?: SoftDeleteOptionLike): Repository {
+export function resolveRepositoryWithSoftDeleteOptions(ModelCtor: unknown, options?: SoftDeleteOptions): Repository {
   const repository = getModelRepository(ModelCtor as ModelCtor);
   assertSoftDeleteOptionsValid(ModelCtor, options);
   if (options?.onlyDeleted) return repository.onlyDeleted();

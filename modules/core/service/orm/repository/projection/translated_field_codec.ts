@@ -4,7 +4,7 @@
 import type { FieldMetadata, ModelMetadata } from '../../metadata';
 import { resolveRequestLang } from '../../../i18n/request_lang';
 import { getContextLang, getCtxValue } from '../../../runtime/context/scope';
-import type { Entity } from '../types';
+import type { SelectResult } from '../types';
 import type { ObjectRecord, UnknownRecord } from '../../../../utils/types';
 
 /** Base / fallback language for translated field values (data-i18n-design.md D3). */
@@ -262,9 +262,9 @@ export function fieldTranslateSize(fm: FieldMetadata | undefined): number | unde
  */
 export function applyTranslatedFieldsForWrite(
   meta: ModelMetadata,
-  input: Entity,
+  input: SelectResult,
   opts: { mode: TranslatedWriteMode; lang?: string; current?: ObjectRecord | null; replace?: boolean }
-): Entity {
+): SelectResult {
   if (!input || typeof input !== 'object') return input;
   const lang = opts.lang ?? resolveTranslatedFieldLang();
   const replace = opts.replace === true || getTranslatedWriteReplace();
@@ -292,10 +292,10 @@ export function applyTranslatedFieldsForWrite(
     changed = true;
   });
 
-  return (changed ? out : input) as Entity;
+  return (changed ? out : input) as SelectResult;
 }
 
-export function payloadHasTranslatedFieldWrite(meta: ModelMetadata, input: Entity): boolean {
+export function payloadHasTranslatedFieldWrite(meta: ModelMetadata, input: SelectResult): boolean {
   if (!input || typeof input !== 'object') return false;
   for (const [name, fm] of meta.fields) {
     if (!fm?.translate) continue;

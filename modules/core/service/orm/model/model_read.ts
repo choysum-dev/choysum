@@ -7,7 +7,6 @@ import {
   SearchOptions,
   FieldSelection,
   SoftDeleteOptions,
-  CountOptions,
   ReadGroupOptions,
   ReadGroupResult,
   UntypedQueryCondition,
@@ -347,7 +346,7 @@ export class ReadOperations {
     return rows;
   }
 
-  static async Count<T extends BaseModel>(ModelCtor: ModelCtor<T>, condition: QueryCondition<T> | [] = [], options?: CountOptions): Promise<number> {
+  static async Count<T extends BaseModel>(ModelCtor: ModelCtor<T>, condition: QueryCondition<T> | [] = [], options?: SoftDeleteOptions): Promise<number> {
     const repository = ReadOperations.resolveRepository(ModelCtor, options);
     return await repository.count(condition as QueryCondition<T>);
   }

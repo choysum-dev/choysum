@@ -4,7 +4,7 @@
 import { BaseModel, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
-import type { DeleteOptions, QueryCondition, UpdateOptions } from '@/core/service/api/query';
+import type { SoftDeleteOptions, QueryCondition } from '@/core/service/api/query';
 import { normalizeRefId, uniqStrings } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from '../models/_request_cache_invalidation';
 
@@ -114,7 +114,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     condition: QueryCondition<RowOf<C>>,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const out = await super.Update<C, F>(condition, values, returnFields, options);
     (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('update', { condition, values });
@@ -129,7 +129,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
     id: string,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const out = await super.UpdateById<C, F>(id, values, returnFields, options);
     (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('updateById', { id, values });
@@ -142,7 +142,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
   static override async Delete<C extends ModelCtor>(
     this: C,
     condition: QueryCondition<RowOf<C>>,
-    options?: DeleteOptions
+    options?: SoftDeleteOptions
   ): Promise<number> {
     const out = await super.Delete<C>(condition, options);
     (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('delete', condition);
@@ -152,7 +152,7 @@ export default abstract class AuthzMutationModel extends BaseModel {
   /**
    * Delete one row by Id then run {@link invalidateAuthzCachesAfterWrite}.
    */
-  static override async DeleteById<C extends ModelCtor>(this: C, id: string, options?: DeleteOptions): Promise<number> {
+  static override async DeleteById<C extends ModelCtor>(this: C, id: string, options?: SoftDeleteOptions): Promise<number> {
     const out = await super.DeleteById<C>(id, options);
     (this as unknown as AuthzInvalidateHost).invalidateAuthzCachesAfterWrite('deleteById', id);
     return out;

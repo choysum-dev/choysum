@@ -3,7 +3,7 @@
 
 import { Watcher } from './watcher';
 import { Dep } from './dep';
-import { Entity } from '../../orm/repository/types';
+import { SelectResult } from '../../orm/repository/types';
 import BaseModel from '../../orm/model/model';
 import type { ModelCtor } from '../../orm/model/types';
 import { MetadataStorage, ModelMetadata, FieldMetadata, ManyToOneMetadata, OneToManyMetadata, ManyToManyMetadata } from '../../orm/metadata';
@@ -76,8 +76,8 @@ function hydrateRelatedModel<T extends BaseModel>(
 ): T | undefined {
   if (!ModelCtor) return undefined;
   const factoryToken = (ModelCtor as unknown as { FACTORY_TOKEN?: symbol }).FACTORY_TOKEN as symbol;
-  const instance = new ModelCtor(factoryToken, entity as Entity, fields) as T;
-  return new ModelProxyFactory<T>(instance, entity as Entity, fields).create();
+  const instance = new ModelCtor(factoryToken, entity as SelectResult, fields) as T;
+  return new ModelProxyFactory<T>(instance, entity as SelectResult, fields).create();
 }
 
 /**
@@ -98,11 +98,11 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
   private proxyRef?: T;
 
   private target: T;
-  private entity: Entity;
+  private entity: SelectResult;
   private meta: ModelMetadata;
   private fields: FieldSelection<T> | undefined;
 
-  constructor(target: T, entity: Entity, fields?: FieldSelection<T>) {
+  constructor(target: T, entity: SelectResult, fields?: FieldSelection<T>) {
     this.target = target;
     this.entity = entity;
     this.meta = MetadataStorage.instance.getModelMetadata(target.constructor as ModelCtor<BaseModel>);

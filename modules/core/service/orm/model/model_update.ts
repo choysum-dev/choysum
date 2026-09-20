@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RelationFactory } from '../relation';
-import type { QueryCondition, Updateable, FieldSelection, UpdateOptions } from '../repository/types';
+import type { QueryCondition, Updateable, FieldSelection, SoftDeleteOptions } from '../repository/types';
 import type BaseModel from './model';
 import { normalizePrefetchedRows } from './model_update_prefetch';
 import { getModelRepository } from './model_internal_facade';
@@ -296,7 +296,7 @@ export const __isUpdateAttachmentWritePipelineEnabledForTest = isAttachmentWrite
  * UpdateOperations owns model update flows, including attachments, relation writes, and compute propagation.
  */
 export class UpdateOperations {
-  private static resolveRepository<T extends BaseModel>(ModelCtor: ModelCtor<T>, options?: UpdateOptions) {
+  private static resolveRepository<T extends BaseModel>(ModelCtor: ModelCtor<T>, options?: SoftDeleteOptions) {
     return resolveRepositoryWithSoftDeleteOptions(ModelCtor, options);
   }
 
@@ -308,7 +308,7 @@ export class UpdateOperations {
     condition: QueryCondition<T>,
     values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Partial<T>[]> {
     const meta = getModelRuntimeMetadata(ModelCtor);
     const ownerModel = resolveOwnerModelName(meta);
@@ -657,7 +657,7 @@ export class UpdateOperations {
     id: string,
     values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Partial<T>> {
     const results = await UpdateOperations.Update<T>(ModelCtor, ['Id', '=', id] as QueryCondition<T>, values, returnFields, options);
     if (results.length === 0) {

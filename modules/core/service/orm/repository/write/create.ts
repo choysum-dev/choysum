@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { ConditionEnvelope, Entity, RepositoryExecute, RepositoryInsertIntoDbLike, RepositoryQueryLike } from '../types/engine';
+import type { ConditionEnvelope, SelectResult, RepositoryExecute, RepositoryInsertIntoDbLike, RepositoryQueryLike } from '../types/engine';
 import {
   ensureRepositoryCreateAllowed,
   prepareRepositoryCreateEntities,
@@ -17,7 +17,7 @@ export type RepositoryCreateWriteRuntimeDeps = {
 };
 
 type RepositoryCreateInsertBuilder = {
-  values(rows: ReadonlyArray<Entity>): {
+  values(rows: ReadonlyArray<SelectResult>): {
     returning(column: string): RepositoryQueryLike<{ Id: string }>;
   };
 };
@@ -35,7 +35,7 @@ function asRepositoryCreateDbLike(input: unknown): RepositoryCreateDbLike {
 
 export type RepositoryCreateWritePostWriteDeps = {
   assertRecordRuleAllCreatedAllowed: (createdIds: string[], env: ConditionEnvelope) => Promise<void>;
-  recomputePersistForCreate?: (createdIds: string[], sanitizedEntities: Entity[]) => Promise<void>;
+  recomputePersistForCreate?: (createdIds: string[], sanitizedEntities: SelectResult[]) => Promise<void>;
 };
 
 type RepositoryCreateWriteDeps = RepositoryCreateWriteAuthzDeps &
@@ -43,7 +43,7 @@ type RepositoryCreateWriteDeps = RepositoryCreateWriteAuthzDeps &
   RepositoryCreateWriteRuntimeDeps &
   RepositoryCreateWritePostWriteDeps;
 
-export async function insertRepositoryCreateEntities(params: RepositoryCreateWriteRuntimeDeps, entities: Entity[]): Promise<string[]> {
+export async function insertRepositoryCreateEntities(params: RepositoryCreateWriteRuntimeDeps, entities: SelectResult[]): Promise<string[]> {
   const insertQuery = asRepositoryCreateDbLike(params.db).insertInto(params.table).values(entities).returning('Id');
 
   let result: Array<{ Id: string }> = [];
@@ -73,7 +73,7 @@ export async function applyRepositoryCreatePostWrite(
   return ids;
 }
 
-export async function executeRepositoryCreate(params: RepositoryCreateWriteDeps, value: Entity[]): Promise<string[]> {
+export async function executeRepositoryCreate(params: RepositoryCreateWriteDeps, value: SelectResult[]): Promise<string[]> {
   const recordRuleEnvelope = await ensureRepositoryCreateAllowed(params);
   const sanitizedEntities = await prepareRepositoryCreateEntities(params, value);
   const ids = await insertRepositoryCreateEntities(params, sanitizedEntities);

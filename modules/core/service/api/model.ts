@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export { BaseModel } from '../orm/model';
-export type { ModelOptions, modelOptions, HookPhase, MigrationPhase, MigrationOptions } from '../orm/decorator';
+export type { ModelOptions, HookPhase, MigrationPhase, MigrationOptions } from '../orm/decorator';
 export {
   Model,
   defineModelOptions,
