@@ -151,15 +151,22 @@ function normalizePatchForRelationUpdate(a: Plain, b: Plain, patch: Plain): Plai
  * ------------------------------------------------ */
 function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr: unknown[] = []): RelationPatch<BaseModel> | undefined {
   // Key maps by string Id so numeric `1` and string `'1'` compare as the same link.
+  // Duplicate link ids (same key): keep the first entry instead of silently overwriting.
   const oById = new Map<string, unknown>();
   for (const it of origArr) {
     const id = toId(it);
-    if (id != null) oById.set(String(id), it);
+    if (id == null) continue;
+    const key = String(id);
+    if (oById.has(key)) continue;
+    oById.set(key, it);
   }
   const cById = new Map<string, unknown>();
   for (const it of currArr) {
     const id = toId(it);
-    if (id != null) cById.set(String(id), it);
+    if (id == null) continue;
+    const key = String(id);
+    if (cById.has(key)) continue;
+    cById.set(key, it);
   }
 
   // create: rows without Id.

@@ -85,3 +85,28 @@ test('buildUpdatePayload treats plain string ids and object ids of the same link
 
   expect(payload.Tags).toBeUndefined();
 });
+
+test('buildUpdatePayload combines create, update and delete in one o2m diff', () => {
+  const payload = buildUpdatePayload(
+    { Lines: [{ Id: 10, Name: 'a' }, { Id: 20, Name: 'b' }] },
+    { Lines: [{ Id: 10, Name: 'a2' }, { Name: 'c' }] },
+    { Lines: { relation: 'OneToMany' } }
+  );
+
+  expect(payload.Lines).toEqual({
+    create: [{ Name: 'c' }],
+    update: [{ Id: '10', Name: 'a2' }],
+    delete: [{ Id: '20' }],
+  });
+});
+
+test('buildUpdatePayload keeps the first entry when duplicate link ids collide', () => {
+  const payload = buildUpdatePayload(
+    { Lines: [{ Id: 10, Name: 'first' }, { Id: '10', Name: 'second' }] },
+    { Lines: [{ Id: 10, Name: 'first' }] },
+    { Lines: { relation: 'OneToMany' } }
+  );
+
+  // Duplicate original keys collapse to the first row; no update/delete for the collision alone.
+  expect(payload.Lines).toBeUndefined();
+});
