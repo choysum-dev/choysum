@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-export type { ModelOptions} from './model';
+export type { ModelOptions } from './model';
 export { Model, defineModelOptions } from './model';
 export { Constraint } from './constraint';
 export { Field } from './field';

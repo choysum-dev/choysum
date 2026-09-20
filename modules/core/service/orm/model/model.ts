@@ -1,9 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { SelectResult } from '../repository/types';
 import { Field, SqlCompute } from '../decorator';
-import {
+import type {
   QueryCondition,
   UntypedQueryCondition,
   Operator,
@@ -18,6 +17,7 @@ import {
   ReadGroupResult,
   ReadGroupCountOptions,
   GroupBySpec,
+  SelectResult,
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
 import type { OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';

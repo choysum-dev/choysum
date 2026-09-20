@@ -544,7 +544,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
    *
    * @param value Relation item value.
    * @param targetClass Target model class.
-   * @returns SelectResult Id.
+   * @returns Id of the resolved or created target record.
    * @protected
    */
   protected async getOrCreateId<R extends BaseModel>(value: unknown, targetClass: ModelCtor<R>): Promise<string> {

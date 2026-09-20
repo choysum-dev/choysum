@@ -16,8 +16,8 @@ import type {
   ReadGroupOptions,
   ReadGroupResult,
   SearchOptions,
+  SelectResult,
 } from '../repository/types';
-import type { SelectResult } from '../repository/types';
 
 type ModelReadFacadeCtor<T extends BaseModel> = ModelCtor<T> & {
   ctx: Context;
