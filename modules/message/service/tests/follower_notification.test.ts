@@ -401,9 +401,18 @@ test('message.Follower: Follow and Unfollow validate payload and identity', asyn
     await expectInvalid(() => Follower.Follow(null as any));
     await expectInvalid(() => Follower.Follow({ Model: '', ResId: uid('res') }));
     await expectInvalid(() => Follower.Follow({ Model: 'partner.Partner', ResId: '' }));
+    await expectInvalid(() =>
+      Follower.Follow({ Model: 'partner.Partner', ResId: uid('res'), UserId: AUTHOR_USER_ID } as any)
+    );
+    await expectInvalid(() =>
+      Follower.Follow({ Model: 'partner.Partner', ResId: uid('res'), CompanyId: 'cmp_x' } as any)
+    );
     await expectInvalid(() => Follower.Unfollow(null as any));
     await expectInvalid(() => Follower.Unfollow({ Model: '', ResId: uid('res') }));
     await expectInvalid(() => Follower.Unfollow({ Model: 'partner.Partner', ResId: '' }));
+    await expectInvalid(() =>
+      Follower.Unfollow({ Model: 'partner.Partner', ResId: uid('res'), UserId: AUTHOR_USER_ID } as any)
+    );
     await expectInvalid(() => Follower.SearchByRecord('', ''));
     await expectInvalid(() => Follower.SearchByRecord('partner.Partner', '   '));
 
@@ -413,7 +422,7 @@ test('message.Follower: Follow and Unfollow validate payload and identity', asyn
   });
 });
 
-test('message.Follower: Follow uses live target Search and explicit user/company fields', async () => {
+test('message.Follower: Follow uses live target Search and session user/company', async () => {
   await withMessageScope(AUTHOR_USER_ID, async () => {
     const companyId = 'cmp_message_fixture_';
     const jsCtx = ensureRequestContext();

@@ -27,16 +27,26 @@ export type UnfollowRecordReq = {
   ResId: string;
 };
 
+function normalizeActorId(value: unknown): string | null {
+  const text = value == null ? '' : String(value).trim();
+  return text === '' ? null : text;
+}
+
 function resolveActorUserId(): string | null {
-  const uid = getUserId();
-  if (uid == null || String(uid).trim() === '') return null;
-  return String(uid).trim();
+  return normalizeActorId(getUserId());
 }
 
 function resolveActorCompanyId(): string | null {
-  const companyId = getActiveCompanyId();
-  if (companyId == null || String(companyId).trim() === '') return null;
-  return String(companyId).trim();
+  return normalizeActorId(getActiveCompanyId());
+}
+
+function rejectLegacyIdentityFields(req: object, verb: string): void {
+  if (Object.prototype.hasOwnProperty.call(req, 'UserId') || Object.prototype.hasOwnProperty.call(req, 'CompanyId')) {
+    throw newMessageError({
+      code: MessageErrCode.INVALID_ARGUMENT,
+      message: `${verb} identity is derived from the session; UserId/CompanyId must not be supplied`,
+    });
+  }
 }
 
 function isUniqueConstraintError(err: unknown): boolean {
@@ -221,6 +231,7 @@ export default class Follower extends PolymorphicRecordModel {
     if (!req || typeof req !== 'object') {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Follow requires a payload' });
     }
+    rejectLegacyIdentityFields(req, 'Follow');
     const model = String(req.Model || '').trim();
     const resId = String(req.ResId || '').trim();
     const userId = resolveActorUserId();
@@ -267,6 +278,7 @@ export default class Follower extends PolymorphicRecordModel {
     if (!req || typeof req !== 'object') {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Unfollow requires a payload' });
     }
+    rejectLegacyIdentityFields(req, 'Unfollow');
     const model = String(req.Model || '').trim();
     const resId = String(req.ResId || '').trim();
     const userId = resolveActorUserId();

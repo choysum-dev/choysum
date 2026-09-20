@@ -677,6 +677,21 @@ test('document.attachment_binding: ResolveDownloadContent returns read ticket an
     const attachmentBindingId = String((created as any)?.Id || '').trim();
     expect(attachmentBindingId).toBeTruthy();
 
+    const jsCtx = ensureRequestContext();
+    const savedIdentity = jsCtx.identity;
+    jsCtx.identity = {};
+    try {
+      await AttachmentBinding.ResolveDownloadContent({ attachmentBindingId });
+      throw new Error('expected missing session identity to be rejected');
+    } catch (err) {
+      expect(err instanceof ChoysumError).toBe(true);
+      const oe = err as ChoysumError;
+      expect(oe.domain).toBe('document');
+      expect(oe.code).toBe('UNAUTHENTICATED');
+    } finally {
+      jsCtx.identity = savedIdentity;
+    }
+
     const resolved = await AttachmentBinding.ResolveDownloadContent({
       attachmentBindingId
     });

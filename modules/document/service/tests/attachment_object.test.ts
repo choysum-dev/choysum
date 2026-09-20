@@ -340,6 +340,56 @@ test('document.attachment_object: AuthorizeUploadPut rejects caller mismatch', a
   });
 });
 
+test('document.attachment_object: AuthorizeUploadPut / CommitUploadPut reject missing session identity', async () => {
+  resetRequestContext();
+  const prepared = await withDocumentScope(async () => {
+    return AttachmentObject.PrepareUpload({
+      ownerModel: 'auth.User',
+      ownerRecordId: uid('owner_authorize_no_identity'),
+      fieldName: 'Avatar',
+      operation: 'update',
+      businessRequestId: uid('biz_authorize_no_identity'),
+    });
+  });
+
+  await withDocumentScope(async () => {
+    const jsCtx = ensureRequestContext();
+    const savedIdentity = jsCtx.identity;
+    jsCtx.identity = {};
+    try {
+      try {
+        await AttachmentObject.AuthorizeUploadPut({ uploadId: prepared.uploadId });
+        throw new Error('expected missing session identity to be rejected on authorize');
+      } catch (err) {
+        expect(err instanceof ChoysumError).toBe(true);
+        const oe = err as ChoysumError;
+        expect(oe.domain).toBe('document');
+        expect(oe.code).toBe('UNAUTHENTICATED');
+      }
+
+      try {
+        await AttachmentObject.CommitUploadPut({
+          uploadId: prepared.uploadId,
+          payloadReceipt: {
+            payloadId: `sc:${uid('sc_missing')}`,
+            sizeBytes: 1,
+            checksumSha256: EMPTY_SHA256,
+            contentType: 'text/plain',
+          },
+        });
+        throw new Error('expected missing session identity to be rejected on commit');
+      } catch (err) {
+        expect(err instanceof ChoysumError).toBe(true);
+        const oe = err as ChoysumError;
+        expect(oe.domain).toBe('document');
+        expect(oe.code).toBe('UNAUTHENTICATED');
+      }
+    } finally {
+      jsCtx.identity = savedIdentity;
+    }
+  });
+});
+
 test('document.attachment_object: AuthorizeUploadPut enforces max upload size', async () => {
   resetRequestContext();
   await withDocumentScope(async () => {
