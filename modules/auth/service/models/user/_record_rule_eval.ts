@@ -3,7 +3,7 @@
 
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { condition } from '@/core/service/api/query';
-import type { BaseQueryCondition } from '@/core/service/api/query';
+import type { UntypedQueryCondition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import type MetaApplicationModel from '@/meta/service/models/application';
@@ -112,7 +112,7 @@ async function computeCompanyGateMode(
 export function buildCompanyGateExpr(
   scope: RoleScope,
   companyGate: { enabled: boolean; ownershipField?: string }
-): BaseQueryCondition | null {
+): UntypedQueryCondition | null {
   if (!companyGate.enabled) return null;
   const ownershipField = String(companyGate.ownershipField ?? '').trim();
   if (!ownershipField) return null;
@@ -168,7 +168,7 @@ function buildRuleExpr(
   rule: Partial<RecordRuleEvalRow>,
   companyGate: { enabled: boolean; ownershipField?: string },
   roleScopesById: Record<string, RoleScope>
-): BaseQueryCondition | null {
+): UntypedQueryCondition | null {
   const roleId = maybeId(rule?.RoleId) || '';
   const scope = ruleAudienceScope(roleId, roleScopesById);
   const gate = buildCompanyGateExpr(scope, companyGate);
@@ -181,7 +181,7 @@ function buildRuleExpr(
   return { And: [gate, cond] };
 }
 
-function orMerge(exprs: BaseQueryCondition[]): BaseQueryCondition {
+function orMerge(exprs: UntypedQueryCondition[]): UntypedQueryCondition {
   if (exprs.length === 1) return exprs[0];
   return { Or: exprs };
 }
@@ -211,7 +211,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     }
     const roleIds = (input.roleIds || []).map(id => String(id || '').trim()).filter(Boolean);
 
-    const scopeOr: BaseQueryCondition[] = [
+    const scopeOr: UntypedQueryCondition[] = [
       {
         And: [
           ['MetaModelId', '=', modelId],
@@ -225,7 +225,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
                 ['MetaModelId', 'is', null],
                 ['MetaApplicationId', '=', irApplicationId],
               ],
-            } satisfies BaseQueryCondition,
+            } satisfies UntypedQueryCondition,
           ]
         : []),
       {
@@ -237,7 +237,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     ];
 
     // Audience: everyone (RoleId null) OR any of the caller's effective roles.
-    const audienceOr: BaseQueryCondition[] = [['RoleId', 'is', null]];
+    const audienceOr: UntypedQueryCondition[] = [['RoleId', 'is', null]];
     if (roleIds.length > 0) {
       audienceOr.push(['RoleId', 'in', roleIds]);
     }
@@ -258,8 +258,8 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       return { kind: 'false', reason: `record_rule_truncated_${input.opValue}_deny` };
     }
 
-    const grantExprs: BaseQueryCondition[] = [];
-    const restrictExprs: BaseQueryCondition[] = [];
+    const grantExprs: UntypedQueryCondition[] = [];
+    const restrictExprs: UntypedQueryCondition[] = [];
     const hitRuleIds: string[] = [];
     let hasUnconstrainedGrant = false;
 
@@ -298,7 +298,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       return { kind: 'false', reason: `no_grant_${input.opValue}_deny`, hitRuleIds: uniqueHitRuleIds };
     }
 
-    const parts: BaseQueryCondition[] = [];
+    const parts: UntypedQueryCondition[] = [];
     if (!hasUnconstrainedGrant) {
       parts.push(orMerge(grantExprs));
     }

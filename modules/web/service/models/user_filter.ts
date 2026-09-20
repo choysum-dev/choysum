@@ -3,7 +3,7 @@
 
 import { BaseModel, Model, Field } from '@/core/service';
 import { Constraint, type ConstraintContext } from '@/core/service/api/constraint';
-import type { BaseQueryCondition } from '@/core/service/api/query';
+import type { UntypedQueryCondition } from '@/core/service/api/query';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
 
@@ -80,7 +80,7 @@ export default class UserFilter extends BaseModel {
     default: () => ({}),
     string: _lt('Condition'),
   })
-  Condition: BaseQueryCondition;
+  Condition: UntypedQueryCondition;
 
   /**
    * Owner user; null means shared with all logged-in users.

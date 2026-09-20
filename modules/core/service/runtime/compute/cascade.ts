@@ -7,7 +7,7 @@ import type { ModelMetadata, CollectionPathDep } from '../../orm/metadata/model'
 import type { ModelCtor } from '../../orm/model/types';
 import type BaseModel from '../../orm/model/model';
 import type { ParentComputeTrigger } from './types';
-import type { BaseQueryCondition, FieldSelection } from '../../api';
+import type { UntypedQueryCondition, FieldSelection } from '../../api';
 import { buildComputeGraph } from './graph';
 import { getRuntimeRepository } from '../runtime_repository_facade';
 import { asObjectRecord } from '../../../utils/object';
@@ -384,7 +384,7 @@ export class ComputeCascadeEngine {
         });
 
         // Filter child rows by inverseField, which is the root here.
-        const condition: BaseQueryCondition = [root, '=', parentId];
+        const condition: UntypedQueryCondition = [root, '=', parentId];
         const rows = await childRepo.search(condition, {
           fields: Array.from(needed) as FieldSelection<EntityRecord>,
         });
@@ -598,7 +598,7 @@ export class ComputeCascadeEngine {
         });
 
         const parentRepo = getRuntimeRepository(group.parentCtor);
-        const parentCondition: BaseQueryCondition = parentIds.length === 1 ? ['Id', '=', parentIds[0]] : ['Id', 'in', parentIds];
+        const parentCondition: UntypedQueryCondition = parentIds.length === 1 ? ['Id', '=', parentIds[0]] : ['Id', 'in', parentIds];
         if (parentIds.length > 1) {
           this.upstreamStats.parentBatchQueryCount += 1;
         }
@@ -631,7 +631,7 @@ export class ComputeCascadeEngine {
             const select = new Set<string>(['Id', inverseField]);
             chains.forEach(p => p && select.add(p));
 
-            const collCondition: BaseQueryCondition = parentIds.length === 1 ? [inverseField, '=', parentIds[0]] : [inverseField, 'in', parentIds];
+            const collCondition: UntypedQueryCondition = parentIds.length === 1 ? [inverseField, '=', parentIds[0]] : [inverseField, 'in', parentIds];
             if (parentIds.length > 1) {
               this.upstreamStats.collectionBatchQueryCount += 1;
             }

@@ -4,7 +4,7 @@
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
-import { condition, type BaseQueryCondition, type OrderBy } from '@/core/service/api/query';
+import { condition, type UntypedQueryCondition, type OrderBy } from '@/core/service/api/query';
 import type { FieldSelection, Projected } from '@/core/service/api/selection';
 import {
   assertDateString,
@@ -34,7 +34,7 @@ async function getRateRecord(opts: {
 }): Promise<{ rec?: RateRecord; usedGlobal: boolean; usedFallbackDate: boolean }> {
   const { default: ExchangeRateModel } = await import('./exchange_rate');
   const { companyId, currencyId, date, mode } = opts;
-  const searchOne = async (companyCond: BaseQueryCondition): Promise<RateRecord | undefined> => {
+  const searchOne = async (companyCond: UntypedQueryCondition): Promise<RateRecord | undefined> => {
     if (mode === 'exact') {
       const rows = await ExchangeRateModel.Search(
         condition<ExchangeRate>({ And: [companyCond, ['CurrencyId', '=', currencyId], ['Date', '=', date]] }),

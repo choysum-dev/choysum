@@ -10,7 +10,7 @@ import {
   CountOptions,
   ReadGroupOptions,
   ReadGroupResult,
-  BaseQueryCondition,
+  UntypedQueryCondition,
   ReadGroupCountOptions,
   TemporalGranularity,
   GroupBySpec,
@@ -39,7 +39,7 @@ import type { ModelCtor } from './types';
 import { createServiceByModel } from '../../rpc';
 import type { ModelConstructor } from '../../../rpc/types';
 import { _t } from '@/core/service/i18n_binder';
-import { mergeCallerConditionWithForField } from './model_for_field_condition';
+import { mergeCallerConditionWithRelationConditionSource } from './model_for_field_condition';
 import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/datetime';
 
 type AttachmentBindingSearchService = {
@@ -64,7 +64,7 @@ export class ReadOperations {
       groupby: GroupBySpec<T> | GroupBySpec<T>[];
       fields: unknown[];
       condition: unknown;
-      having?: BaseQueryCondition;
+      having?: UntypedQueryCondition;
       orderBy?: unknown;
       limit?: number;
       offset?: number;
@@ -74,7 +74,7 @@ export class ReadOperations {
       groupby: GroupBySpec<T> | GroupBySpec<T>[];
       fields: unknown[];
       condition: unknown;
-      having?: BaseQueryCondition;
+      having?: UntypedQueryCondition;
       timezone?: string;
     }) => Promise<number>;
   } {
@@ -86,7 +86,7 @@ export class ReadOperations {
         groupby: GroupBySpec<T> | GroupBySpec<T>[];
         fields: unknown[];
         condition: unknown;
-        having?: BaseQueryCondition;
+        having?: UntypedQueryCondition;
         orderBy?: unknown;
         limit?: number;
         offset?: number;
@@ -96,7 +96,7 @@ export class ReadOperations {
         groupby: GroupBySpec<T> | GroupBySpec<T>[];
         fields: unknown[];
         condition: unknown;
-        having?: BaseQueryCondition;
+        having?: UntypedQueryCondition;
         timezone?: string;
       }) => Promise<number>;
     };
@@ -335,10 +335,10 @@ export class ReadOperations {
     options?: SearchOptions<T>
   ): Promise<ObjectRecord[]> {
     const cond: QueryCondition<T> | [] = condition === undefined || condition === null ? [] : condition;
-    const merged = mergeCallerConditionWithForField(
+    const merged = mergeCallerConditionWithRelationConditionSource(
       ModelCtor as never,
       cond as never,
-      options?.forField
+      options?.relationConditionSource
     ) as QueryCondition<T> | [];
     const repository = ReadOperations.resolveRepository(ModelCtor, options);
     const rows = (await repository.search(merged as QueryCondition<T>, options)) as ObjectRecord[];
@@ -366,7 +366,7 @@ export class ReadOperations {
     const repo = ReadOperations.resolveRepository(ModelCtor, options);
     const timezone = options.timezone;
     // Use the explicitly supplied condition directly.
-    const baseCondition = (condition ?? []) as BaseQueryCondition | [];
+    const baseCondition = (condition ?? []) as UntypedQueryCondition | [];
 
     // Handle empty groupby (Totals)
     if (!groupby || groupby.length === 0) {
@@ -411,7 +411,7 @@ export class ReadOperations {
     // New semantics: always expand all levels. Lazy expansion can be added later if needed.
     const expandLevels = groupLevels.length;
 
-    const getHavingForLevel = (level: number): BaseQueryCondition | undefined => {
+    const getHavingForLevel = (level: number): UntypedQueryCondition | undefined => {
       if (Array.isArray(options.having)) return options.having[level];
       return level === 0 ? options.having : undefined;
     };
@@ -431,7 +431,7 @@ export class ReadOperations {
     const getOffsetForLevel = (level: number): number | undefined => (level === 0 && typeof options.offset === 'number' ? options.offset : undefined);
 
     // Recursively fetch nodes for the requested level.
-    const fetchLevel = async (level: number, parentCondition: BaseQueryCondition | [] | undefined): Promise<TreeNodeInternal[]> => {
+    const fetchLevel = async (level: number, parentCondition: UntypedQueryCondition | [] | undefined): Promise<TreeNodeInternal[]> => {
       const specsArr = groupLevels[level]; // array of one or more specs
       const specs: NormalizedGroupSpec[] = Array.isArray(specsArr) ? specsArr : [specsArr as NormalizedGroupSpec];
       const where = andAll(baseCondition, parentCondition);
@@ -461,7 +461,7 @@ export class ReadOperations {
           metrics[a.alias] = pickAliasedValue(rowRecord, a.alias);
         }
         // Composite-level condition: merge each field condition with AND.
-        let thisGroupCondition: BaseQueryCondition | [] | undefined = undefined;
+        let thisGroupCondition: UntypedQueryCondition | [] | undefined = undefined;
         for (const s of specs) {
           const val = key[s.alias];
           const condSingle = buildGroupCondition(s, val, timezone);
@@ -489,7 +489,7 @@ export class ReadOperations {
       if (level + 1 < expandLevels) {
         for (const n of nodes) {
           // The child parentCondition must include every condition contributed by the current level.
-          let layerCond: BaseQueryCondition | [] | undefined = undefined;
+          let layerCond: UntypedQueryCondition | [] | undefined = undefined;
           for (const s of specs) {
             const val = n.key[s.alias];
             const condSingle = buildGroupCondition(s, val, timezone);
@@ -611,7 +611,7 @@ export class ReadOperations {
   ): Promise<number> {
     const repo = ReadOperations.resolveRepository(ModelCtor, options);
     const timezone = options.timezone;
-    const baseCondition = (condition ?? []) as BaseQueryCondition | [];
+    const baseCondition = (condition ?? []) as UntypedQueryCondition | [];
 
     if (!groupby || groupby.length === 0) {
       return 1;
@@ -650,7 +650,7 @@ type TreeNodeInternal = {
   key: ObjectRecord; // alias -> value
   metrics: ObjectRecord; // aggregation alias -> value
   count: number; // __count
-  condition: BaseQueryCondition | [] | undefined; // Condition for the current group, including parent-chain filters.
+  condition: UntypedQueryCondition | [] | undefined; // Condition for the current group, including parent-chain filters.
   children?: TreeNodeInternal[];
 };
 
@@ -664,7 +664,7 @@ function fillTemporalGapsForLevel(
   spec: NormalizedGroupSpec,
   aggs: NormalizedAgg[],
   timezone: string | undefined,
-  whereForLevel: BaseQueryCondition | [] | undefined
+  whereForLevel: UntypedQueryCondition | [] | undefined
 ): TreeNodeInternal[] {
   if (!spec.isTime || !spec.granularity) return nodes;
 
@@ -742,7 +742,7 @@ function fillTemporalGapsForLevel(
 // encodings from coerceToBucketStart; convert via wallClockRangeToUtc with timezone.
 // Downstream Search uses this condition as parentCondition; do not call
 // businessYesterday / re-resolve "yesterday" in another TZ.
-function buildGroupCondition(spec: NormalizedGroupSpec, value: unknown, timezone?: string): BaseQueryCondition {
+function buildGroupCondition(spec: NormalizedGroupSpec, value: unknown, timezone?: string): UntypedQueryCondition {
   if (!spec.isTime || !spec.granularity) {
     return [spec.field, '=', value];
   }
@@ -806,7 +806,7 @@ function rangeFromGroupedValue(value: unknown, granularity: TemporalGranularity)
 }
 
 // Convert calendar-label bucketStart (UTC-midnight YMD) to real UTC Search [start, end) in timezone.
-function buildTemporalCondition(field: string, granularity: TemporalGranularity, bucketStart: Date, timezone?: string): BaseQueryCondition {
+function buildTemporalCondition(field: string, granularity: TemporalGranularity, bucketStart: Date, timezone?: string): UntypedQueryCondition {
   const endLabel = nextBucket(bucketStart, granularity);
   const tz = String(timezone || '').trim();
   if (tz && isIanaTimezone(tz)) {
@@ -832,7 +832,7 @@ type TreeResultNode = {
   key: ObjectRecord;
   metrics: ObjectRecord;
   count: number;
-  condition?: BaseQueryCondition;
+  condition?: UntypedQueryCondition;
   total?: true;
   children: TreeResultNode[];
 };
@@ -849,10 +849,10 @@ function toTreeResult(nodes: TreeNodeInternal[]): TreeResultNode[] {
   return nodes.map(convert);
 }
 
-function normalizeGroupCondition(condition: BaseQueryCondition | [] | undefined): BaseQueryCondition | undefined {
+function normalizeGroupCondition(condition: UntypedQueryCondition | [] | undefined): UntypedQueryCondition | undefined {
   if (!condition) return undefined;
   if (Array.isArray(condition) && condition.length === 0) return undefined;
-  return condition as BaseQueryCondition;
+  return condition as UntypedQueryCondition;
 }
 
 function toPascal(parts: string[]): string {

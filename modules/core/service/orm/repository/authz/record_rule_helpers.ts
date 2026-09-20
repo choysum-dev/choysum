@@ -5,7 +5,7 @@ import type { ModelMetadata } from '../../metadata';
 import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from './auth_user_service';
 import { getRepositoryCurrentReq } from './authz_runtime';
 import type { RepositoryPermissionDeniedFn } from './types';
-import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
+import type { UntypedQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
 import { formatAuthzParseFailureDetail, parseConditionEnvelopeFromUnknown } from '@/core/service/api/authz_helpers';
 import { asObjectRecord, isObjectRecord } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
@@ -182,7 +182,7 @@ function getCompanyIdsForRepositoryRecordRuleToken(params: RepositoryRecordRuleD
   );
 }
 
-export function replaceRepositoryRecordRuleConditionTokens(params: RepositoryRecordRuleDeps, condition: BaseQueryCondition): BaseQueryCondition {
+export function replaceRepositoryRecordRuleConditionTokens(params: RepositoryRecordRuleDeps, condition: UntypedQueryCondition): UntypedQueryCondition {
   const userId = String(params.userId || '').trim();
   const companyId = () => getActiveCompanyIdForRepositoryRecordRuleToken(params);
   const companyIds = () => getCompanyIdsForRepositoryRecordRuleToken(params);
@@ -293,14 +293,14 @@ export function replaceRepositoryRecordRuleConditionTokens(params: RepositoryRec
     return value;
   };
 
-  const walk = (input: unknown): BaseQueryCondition => {
+  const walk = (input: unknown): UntypedQueryCondition => {
     const value = normalizeConditionInput(input);
 
     if (Array.isArray(value)) {
-      if (value.length === 0) return value as unknown as BaseQueryCondition;
+      if (value.length === 0) return value as unknown as UntypedQueryCondition;
       if (value.length >= 3) {
         const [field, op, leaf] = value;
-        return [String(field), op as BaseQueryCondition extends readonly [string, infer TOp, unknown] ? TOp : never, replaceInAny(leaf)] as BaseQueryCondition;
+        return [String(field), op as UntypedQueryCondition extends readonly [string, infer TOp, unknown] ? TOp : never, replaceInAny(leaf)] as UntypedQueryCondition;
       }
       return invalidCondition(value);
     }

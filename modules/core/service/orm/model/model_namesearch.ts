@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition, FieldSelection, QueryCondition, SearchOptions } from '../repository/types';
+import type { UntypedQueryCondition, FieldSelection, QueryCondition, SearchOptions } from '../repository/types';
 import { andRepositoryConditions, isEmptyRepositoryCondition } from '../repository/query/condition_layer';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
@@ -15,14 +15,14 @@ export function buildNameSearchCondition<T extends BaseModel>(
   condition?: QueryCondition<T> | []
 ): QueryCondition<T> | [] {
   const kw = String(name ?? '').trim();
-  const parts: Array<BaseQueryCondition | []> = [];
+  const parts: Array<UntypedQueryCondition | []> = [];
 
   if (kw) {
-    parts.push(['DisplayName', 'like', `%${kw}%`] as BaseQueryCondition);
+    parts.push(['DisplayName', 'like', `%${kw}%`] as UntypedQueryCondition);
   }
 
-  if (!isEmptyRepositoryCondition(condition as BaseQueryCondition | [] | undefined)) {
-    parts.push(condition as BaseQueryCondition | []);
+  if (!isEmptyRepositoryCondition(condition as UntypedQueryCondition | [] | undefined)) {
+    parts.push(condition as UntypedQueryCondition | []);
   }
 
   return andRepositoryConditions(...parts) as QueryCondition<T> | [];

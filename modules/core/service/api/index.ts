@@ -48,9 +48,11 @@ export type {
 
 export type {
   Operator,
-  BaseCondition,
-  BaseQueryCondition,
+  UntypedCondition,
+  UntypedQueryCondition,
   QueryCondition,
+  QueryConditionLeaf,
+  QueryConditionNode,
   SearchOptions,
   SoftDeleteOptions,
   CountOptions,
@@ -64,10 +66,11 @@ export type {
   ReadGroupOptions,
   ReadGroupCountOptions,
   ReadGroupResult,
+  RelationConditionSource,
 } from './query';
 export { condition } from './query';
 
-export type { RecordRuleOp, ConditionExpr, ConditionEnvelope, FieldRuleSpec } from './authz';
+export type { RecordRuleOp, ConditionEnvelope, FieldRuleSpec } from './authz';
 
 export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations } from './relation';
 

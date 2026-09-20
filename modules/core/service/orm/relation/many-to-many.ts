@@ -8,7 +8,7 @@ import { Repository } from '../repository/repository';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { RelationProcessor } from './processor';
 import { ManyToManyOperation, PrepareResult, RelationProcessingResult, ExtractedRelations, BatchProcessingResult } from './types';
-import { BaseQueryCondition, RelationOperations } from '../repository/types';
+import { UntypedQueryCondition, RelationOperations } from '../repository/types';
 import { createRelationModel, updateRelationModelById } from './relation_model_service_facade';
 import type { ObjectRecord } from '../../../utils/types';
 
@@ -289,13 +289,13 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
 
             if (ids.length > 0) {
               try {
-                const orConditions: BaseQueryCondition =
+                const orConditions: UntypedQueryCondition =
                   ids.length === 1
                     ? {
-                        And: [[joinField, '=', parentId] as BaseQueryCondition, [inverseJoinField, '=', ids[0]] as BaseQueryCondition],
+                        And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, '=', ids[0]] as UntypedQueryCondition],
                       }
                     : {
-                        And: [[joinField, '=', parentId] as BaseQueryCondition, [inverseJoinField, 'in', ids] as BaseQueryCondition],
+                        And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, 'in', ids] as UntypedQueryCondition],
                       };
                 await joinRepo.delete(orConditions);
                 allSuccessIds.push(...ids);
@@ -316,13 +316,13 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
             const idsWithId = items.map(it => this.extractId(it)).filter(Boolean) as string[];
             let existingSet = new Set<string>();
             if (idsWithId.length > 0) {
-              const condition: BaseQueryCondition =
+              const condition: UntypedQueryCondition =
                 idsWithId.length === 1
                   ? {
-                      And: [[joinField, '=', parentId] as BaseQueryCondition, [inverseJoinField, '=', idsWithId[0]] as BaseQueryCondition],
+                      And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, '=', idsWithId[0]] as UntypedQueryCondition],
                     }
                   : {
-                      And: [[joinField, '=', parentId] as BaseQueryCondition, [inverseJoinField, 'in', idsWithId] as BaseQueryCondition],
+                      And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, 'in', idsWithId] as UntypedQueryCondition],
                     };
               const existing = await joinRepo.search(condition);
               existingSet = new Set(existing.map(r => this.toStringId(r[inverseJoinField])).filter((id): id is string => id !== null));
@@ -520,7 +520,7 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
   ): Promise<Map<string, { existingIds: Set<string>; removedIds: string[] }>> {
     if (parentIds.length === 0) return new Map();
 
-    const condition: BaseQueryCondition = parentIds.length === 1 ? [joinField, '=', parentIds[0]] : [joinField, 'in', parentIds];
+    const condition: UntypedQueryCondition = parentIds.length === 1 ? [joinField, '=', parentIds[0]] : [joinField, 'in', parentIds];
     const existingRecords = await joinRepo.search(condition);
 
     const resultMap = new Map<string, { existingIds: Set<string>; removedIds: string[] }>();
@@ -556,8 +556,8 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
         const batchSize = 20;
         for (let i = 0; i < allPairsToRemove.length; i += batchSize) {
           const batch = allPairsToRemove.slice(i, i + batchSize);
-          const orConditions: BaseQueryCondition[] = batch.map(([pId, tId]) => ({
-            And: [[joinField, '=', pId] as BaseQueryCondition, [inverseJoinField, '=', tId] as BaseQueryCondition],
+          const orConditions: UntypedQueryCondition[] = batch.map(([pId, tId]) => ({
+            And: [[joinField, '=', pId] as UntypedQueryCondition, [inverseJoinField, '=', tId] as UntypedQueryCondition],
           }));
 
           if (orConditions.length === 1) {
@@ -572,8 +572,8 @@ export class ManyToManyProcessor<T extends BaseModel = BaseModel> extends Relati
         for (const parentId of parentIdsToProcess) {
           const targetIds = allPairsToRemove.filter(p => p[0] === parentId).map(p => p[1]);
           if (targetIds.length > 0) {
-            const deleteCondition: BaseQueryCondition = {
-              And: [[joinField, '=', parentId] as BaseQueryCondition, [inverseJoinField, 'in', targetIds] as BaseQueryCondition],
+            const deleteCondition: UntypedQueryCondition = {
+              And: [[joinField, '=', parentId] as UntypedQueryCondition, [inverseJoinField, 'in', targetIds] as UntypedQueryCondition],
             };
             await joinRepo.delete(deleteCondition);
           }

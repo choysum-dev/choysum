@@ -4,7 +4,7 @@
 import type { ModelMetadata } from '../../metadata';
 import type { RepositoryPermissionDeniedFn } from '../authz/types';
 import type {
-  BaseQueryCondition,
+  UntypedQueryCondition,
   ConditionEnvelope,
   Entity,
   RepositoryExecute,
@@ -35,14 +35,14 @@ type RepositoryUpdateMutationPayloadDepsParams = RepositoryMutationPayloadGuardE
 
 type RepositoryMutationWriteTargetDepsParams<TOp extends 'delete' | 'write'> = {
   meta: ModelMetadata;
-  locateIdsForCondition: (condition: BaseQueryCondition) => Promise<string[]>;
-  assertCompanyWriteAccessForCondition: (condition: BaseQueryCondition) => Promise<string[]>;
+  locateIdsForCondition: (condition: UntypedQueryCondition) => Promise<string[]>;
+  assertCompanyWriteAccessForCondition: (condition: UntypedQueryCondition) => Promise<string[]>;
   assertRecordRuleAllTargetsAllowed: (op: TOp, targetIds: string[]) => Promise<void>;
 };
 
 type RepositoryMutationWriteConditionDepsParams<TOp extends 'delete' | 'write'> = {
   table: string;
-} & RepositoryRecordRuleConditionPipelineDepsLike<TOp, BaseQueryCondition>;
+} & RepositoryRecordRuleConditionPipelineDepsLike<TOp, UntypedQueryCondition>;
 
 type RepositoryMutationWriteFacadeDepsParams<TOp extends 'delete' | 'write'> = RepositoryMutationWriteTargetDepsParams<TOp> &
   RepositoryMutationWriteConditionDepsParams<TOp>;
@@ -65,7 +65,7 @@ type RepositoryCreateWriteDepsParams = {
 } & RepositoryCreateMutationPayloadDepsParams;
 
 type RepositoryDeleteWriteDepsParams = RepositoryMutationWriteFacadeDepsParams<'delete'> &
-  RepositorySoftConditionPipelineDepsLike<BaseQueryCondition> & {
+  RepositorySoftConditionPipelineDepsLike<UntypedQueryCondition> & {
     db: RepositoryDbLike;
     softField: string;
     softDeleteEnabled: () => boolean;
@@ -78,14 +78,14 @@ type RepositoryDeleteWriteDepsParams = RepositoryMutationWriteFacadeDepsParams<'
 type RepositoryUpdateWriteDepsParams = RepositoryMutationWriteFacadeDepsParams<'write'> &
   RepositoryUpdateMutationPayloadDepsParams &
   RepositoryGetScalarFieldsDepsLike<ModelMetadata> &
-  RepositorySoftConditionPipelineDepsLike<BaseQueryCondition> & {
+  RepositorySoftConditionPipelineDepsLike<UntypedQueryCondition> & {
     db: RepositoryDbLike;
     makeSelectCtx: RepositorySelectCtxFactory;
     aliasSelection: RepositorySelectionAliaser;
     execute: RepositoryExecute;
     decodeFromDb: (row: Entity) => Entity;
     invalidateCache: () => void;
-    recomputePersistForUpdate?: (payload: { targetIds: string[]; sanitized: Entity; condition: BaseQueryCondition; rows: unknown[] }) => Promise<void>;
+    recomputePersistForUpdate?: (payload: { targetIds: string[]; sanitized: Entity; condition: UntypedQueryCondition; rows: unknown[] }) => Promise<void>;
   };
 
 export function createRepositoryCreateMutationPayloadDeps(params: RepositoryCreateMutationPayloadDepsParams) {

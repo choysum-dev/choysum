@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString } from '../utils/normalization';
-import type { ConditionExpr, ConditionEnvelope } from './authz';
+import type { UntypedQueryCondition, ConditionEnvelope } from './authz';
 
 function asPlainRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
@@ -32,7 +32,7 @@ export function normalizeHitRuleIds(value: unknown): string[] | undefined {
 /**
  * True when value matches the repository condition-tree shape (tuple / And / Or).
  */
-function isConditionExprShape(value: unknown, depth = 0): value is ConditionExpr {
+function isUntypedQueryConditionShape(value: unknown, depth = 0): value is UntypedQueryCondition {
   if (depth > 32) return false;
 
   if (Array.isArray(value)) {
@@ -60,7 +60,7 @@ function isConditionExprShape(value: unknown, depth = 0): value is ConditionExpr
 
   const children = record[key];
   if (!Array.isArray(children) || children.length === 0) return false;
-  return children.every(child => isConditionExprShape(child, depth + 1));
+  return children.every(child => isUntypedQueryConditionShape(child, depth + 1));
 }
 
 /**
@@ -77,7 +77,7 @@ export function parseConditionEnvelopeFromUnknown(value: unknown): ConditionEnve
   if (kind === 'true') return { kind: 'true', ...diagnostics };
   if (kind === 'false') return { kind: 'false', ...diagnostics };
   if (kind === 'expr') {
-    if (!isConditionExprShape(record.expr)) {
+    if (!isUntypedQueryConditionShape(record.expr)) {
       throw new Error('invalid_record_rule_envelope');
     }
     return { kind: 'expr', expr: record.expr, ...diagnostics };
@@ -147,7 +147,7 @@ export type ConditionTokenValues = {
 /**
  * Replace well-known condition tokens recursively in a condition expression.
  */
-export function replaceConditionExprTokens(expr: ConditionExpr, values: ConditionTokenValues): ConditionExpr {
+export function replaceConditionExprTokens(expr: UntypedQueryCondition, values: ConditionTokenValues): UntypedQueryCondition {
   const replace = (value: unknown): unknown => {
     if (value === null || value === undefined) return value;
 
@@ -184,5 +184,5 @@ export function replaceConditionExprTokens(expr: ConditionExpr, values: Conditio
     return out;
   };
 
-  return replace(expr) as ConditionExpr;
+  return replace(expr) as UntypedQueryCondition;
 }

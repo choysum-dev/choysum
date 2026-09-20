@@ -4,7 +4,7 @@
 import { getStringHelpers } from './string_helpers';
 import { FieldMetadata, ManyToOneMetadata, MetadataStorage, ModelCtor, ModelMetadata, SelectSubqueryBuilder } from '../../metadata';
 import type BaseModel from '../../model/model';
-import { BaseQueryCondition } from '../types';
+import { UntypedQueryCondition } from '../types';
 import type { DialectName } from '../repository_dialect';
 import { asBigdecimal } from '@/core/utils/decimal';
 import { buildContainsExpression } from './json_contains';
@@ -86,7 +86,7 @@ export function convertCondition(
   getDialect: () => string,
   meta: ModelMetadata,
   eb: RepositoryPredicateBuilder,
-  condition: BaseQueryCondition,
+  condition: UntypedQueryCondition,
   selfTable?: string
 ): RepositoryPredicate {
   const modelLabel = String(meta.fullModelName || meta.modelName || meta.className || meta.type?.name || 'Unknown');
@@ -141,7 +141,7 @@ export function convertCondition(
     return asBigdecimal(rhs);
   };
 
-  const asPredicate = (current: BaseQueryCondition): RepositoryPredicate => {
+  const asPredicate = (current: UntypedQueryCondition): RepositoryPredicate => {
     if (Array.isArray(current)) {
       if (current.length === 0) return repositoryPredicateAnd(eb, []);
       if (current.length !== 3) {
@@ -427,11 +427,11 @@ export function convertCondition(
     if (typeof current === 'object' && current) {
       const currentNode = current as { And?: unknown; Or?: unknown };
       if (Array.isArray(currentNode.And)) {
-        const parts = (currentNode.And as BaseQueryCondition[]).map(value => asPredicate(value));
+        const parts = (currentNode.And as UntypedQueryCondition[]).map(value => asPredicate(value));
         return repositoryPredicateAnd(eb, parts);
       }
       if (Array.isArray(currentNode.Or)) {
-        const parts = (currentNode.Or as BaseQueryCondition[]).map(value => asPredicate(value));
+        const parts = (currentNode.Or as UntypedQueryCondition[]).map(value => asPredicate(value));
         return repositoryPredicateOr(eb, parts);
       }
     }

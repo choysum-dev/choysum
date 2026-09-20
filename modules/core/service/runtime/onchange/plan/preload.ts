@@ -3,7 +3,7 @@
 
 import type { ModelMetadata } from '../../../orm/metadata/model';
 import { MetadataStorage } from '../../../orm/metadata/storage';
-import type { BaseQueryCondition, FieldSelection } from '../../../api';
+import type { UntypedQueryCondition, FieldSelection } from '../../../api';
 import type { PathPrefetchPlan, PrefetchBatchStat, PrefetchExecStats } from '../types';
 import { ENABLE_MULTI_HOP_PREVIEW, MAX_MULTI_HOP_DEPTH, PREFETCH_BATCH_SIZE } from '../constants';
 import { getRuntimeRepository } from '../../runtime_repository_facade';
@@ -222,7 +222,7 @@ export async function executeCollectionsPrefetch(context: PathPlanPreloadContext
     const fields = ['Id', ...firsts];
     try {
       const repo = getRuntimeRepository(childCtor);
-      const condition: BaseQueryCondition = [inverseField, '=', String(parentId)];
+      const condition: UntypedQueryCondition = [inverseField, '=', String(parentId)];
       const rows = await repo.search(condition, { fields: fields as FieldSelection<UnknownRecord> });
 
       context.recordStat(stats, {

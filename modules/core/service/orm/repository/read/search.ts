@@ -4,7 +4,7 @@
 import type { ModelMetadata } from '../../metadata';
 import { REL_ALIAS_PREFIX } from '../../relation/relation_alias';
 import type {
-  BaseQueryCondition,
+  UntypedQueryCondition,
   Entity,
   RepositoryGetScalarFieldsDepsLike,
   RepositoryRecordRuleConditionPipelineDepsLike,
@@ -64,7 +64,7 @@ type RepositorySearchReadDeps = {
   execute: RepositoryExecute;
   decodeRowWithTree: (meta: ModelMetadata, node: unknown, row: Entity) => Entity;
 } & RepositoryGetScalarFieldsDepsLike<ModelMetadata> &
-  RepositoryRecordRuleConditionPipelineDepsLike<'read', BaseQueryCondition>;
+  RepositoryRecordRuleConditionPipelineDepsLike<'read', UntypedQueryCondition>;
 
 function toSelectionNode(input: unknown): SelectionNode {
   const record = asObjectRecord(input);
@@ -78,7 +78,7 @@ function toSelectionNode(input: unknown): SelectionNode {
 
 export async function executeRepositorySearch(
   params: RepositorySearchReadDeps,
-  condition: BaseQueryCondition,
+  condition: UntypedQueryCondition,
   options?: SearchOptions<ObjectRecord>
 ): Promise<Entity[]> {
   const requestedList = Array.isArray(options?.fields) ? ([...options.fields] as unknown[]) : undefined;

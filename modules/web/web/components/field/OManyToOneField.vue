@@ -114,7 +114,7 @@ import type { WritableComputedRef, Component } from 'vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
-import { buildRelationalForField } from '@/web/web/composables/relationalForField';
+import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
 // Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
@@ -500,7 +500,7 @@ async function handleRemoteSearch(query: string, recordRef?: any) {
     const result = (await relationStore?.NameSearch(String(query ?? '').trim(), final as any, {
       fields: ['Id', 'DisplayName'],
       limit: props.pageSize ?? 20,
-      ...buildRelationalForField(props.store as any, binding.prop),
+      ...buildRelationConditionSource(props.store as any, binding.prop),
     })) as V[] | undefined;
 
     options.value = (result ?? [])

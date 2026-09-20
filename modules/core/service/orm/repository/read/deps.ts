@@ -5,7 +5,7 @@ import type { ModelMetadata } from '../../metadata';
 import type { DialectName } from '../repository_dialect';
 import { convertRepositoryHavingCondition } from '../query';
 import type {
-  BaseQueryCondition,
+  UntypedQueryCondition,
   Entity,
   RepositoryGetScalarFieldsDepsLike,
   RepositoryRecordRuleConditionPipelineDepsLike,
@@ -19,11 +19,11 @@ import type { RepositoryOrderSpec } from '../query/ordering';
 
 type RepositoryConditionQueryDepsParams = {
   db: unknown;
-  applyConditionLayers: (condition: BaseQueryCondition) => BaseQueryCondition;
+  applyConditionLayers: (condition: UntypedQueryCondition) => UntypedQueryCondition;
   execute: RepositoryExecuteUnknownQueryLike;
-} & RepositoryTableConditionConvertDepsLike<BaseQueryCondition>;
+} & RepositoryTableConditionConvertDepsLike<UntypedQueryCondition>;
 
-type RepositoryReadConditionDepsParams = RepositoryRecordRuleConditionPipelineDepsLike<'read', BaseQueryCondition> & {
+type RepositoryReadConditionDepsParams = RepositoryRecordRuleConditionPipelineDepsLike<'read', UntypedQueryCondition> & {
   execute: RepositoryExecuteUnknownQueryLike;
 };
 
@@ -127,7 +127,7 @@ export function createRepositoryReadAggregateDeps(params: RepositoryReadAggregat
     getDialect: params.getDialect,
     makeSelectCtx: params.makeSelectCtx,
     convertCondition: params.convertCondition,
-    convertHaving: (eb: unknown, condition: BaseQueryCondition, knownAliases: Set<string>) =>
+    convertHaving: (eb: unknown, condition: UntypedQueryCondition, knownAliases: Set<string>) =>
       convertRepositoryHavingCondition(
         {
           convertCondition: (builder, conditionValue, selfTable) => params.convertCondition(builder, conditionValue, selfTable),

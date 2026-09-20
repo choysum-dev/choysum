@@ -9,7 +9,7 @@ import {
   DeleteResult,
   UpdateResult,
   SearchOptions,
-  BaseQueryCondition,
+  UntypedQueryCondition,
   ConditionEnvelope,
   SimplifyResult,
   RepoReadGroupOptions,
@@ -233,31 +233,31 @@ export class Repository {
     return await getRepositoryRecordRuleEnvelope(this.createRecordRuleDeps(), op);
   }
 
-  private replaceRecordRuleTokens(condition: BaseQueryCondition): BaseQueryCondition {
+  private replaceRecordRuleTokens(condition: UntypedQueryCondition): UntypedQueryCondition {
     return replaceRepositoryRecordRuleTokens(this.createRecordRuleDeps(), condition);
   }
 
-  private async applyRecordRuleToCondition(condition: BaseQueryCondition, op: RecordRuleOp): Promise<BaseQueryCondition> {
+  private async applyRecordRuleToCondition(condition: UntypedQueryCondition, op: RecordRuleOp): Promise<UntypedQueryCondition> {
     if (this.isControlPlaneMetaModel()) return condition;
 
     return await applyRepositoryRecordRuleToCondition(this.createRecordRuleCoordinatorDeps(), condition, op);
   }
 
-  private async locateIdsForCondition(condition: BaseQueryCondition): Promise<string[]> {
+  private async locateIdsForCondition(condition: UntypedQueryCondition): Promise<string[]> {
     return await locateRepositoryIdsForCondition(
       this.createConditionQueryDeps(queryCondition => this.applySoftLayer(queryCondition)),
       condition
     );
   }
 
-  private async countConditionMatches(condition: BaseQueryCondition): Promise<number> {
+  private async countConditionMatches(condition: UntypedQueryCondition): Promise<number> {
     return await countRepositoryConditionMatches(
       this.createConditionQueryDeps(queryCondition => this.applySoftLayer(this.applyCompanyLayer(queryCondition))),
       condition
     );
   }
 
-  private createConditionQueryDeps(applyConditionLayers: (condition: BaseQueryCondition) => BaseQueryCondition) {
+  private createConditionQueryDeps(applyConditionLayers: (condition: UntypedQueryCondition) => UntypedQueryCondition) {
     return createRepositoryConditionQueryDeps({
       db: this.db,
       table: this.table,
@@ -366,8 +366,8 @@ export class Repository {
     return {
       db: this.db,
       table: this.table,
-      isEmptyCondition: (condition: BaseQueryCondition) => this.isEmptyCondition(condition),
-      convertCondition: (eb: unknown, condition: BaseQueryCondition, selfTable?: string) =>
+      isEmptyCondition: (condition: UntypedQueryCondition) => this.isEmptyCondition(condition),
+      convertCondition: (eb: unknown, condition: UntypedQueryCondition, selfTable?: string) =>
         this.convertCondition(eb as RepositoryPredicateBuilder, condition, selfTable),
       execute: async <T = unknown>(query: unknown) => (await this.execute(query as Compilable<T>)) as unknown as T[],
     };
@@ -468,8 +468,8 @@ export class Repository {
   private createDeleteWriteTargetDeps() {
     return {
       meta: this.meta,
-      locateIdsForCondition: (condition: BaseQueryCondition) => this.locateIdsForCondition(condition),
-      assertCompanyWriteAccessForCondition: (condition: BaseQueryCondition) => this.assertCompanyWriteAccessForCondition(condition),
+      locateIdsForCondition: (condition: UntypedQueryCondition) => this.locateIdsForCondition(condition),
+      assertCompanyWriteAccessForCondition: (condition: UntypedQueryCondition) => this.assertCompanyWriteAccessForCondition(condition),
       assertRecordRuleAllTargetsAllowed: (op: 'delete', targetIds: string[]) => this.assertRecordRuleAllTargetsAllowed(op, targetIds),
     };
   }
@@ -483,7 +483,7 @@ export class Repository {
       softField: this.softField,
       softDeleteEnabled: () => this.softDeleteEnabled(),
       createRepository: (meta: ModelMetadata) => this.createDeleteChildRepository(meta),
-      applySoftLayer: (condition: BaseQueryCondition) => this.applySoftLayer(condition),
+      applySoftLayer: (condition: UntypedQueryCondition) => this.applySoftLayer(condition),
       isEmptyCondition: queryBridge.isEmptyCondition,
       convertCondition: queryBridge.convertCondition,
     };
@@ -494,8 +494,8 @@ export class Repository {
     return {
       db: this.db,
       table: queryBridge.table,
-      applyRecordRuleToCondition: (condition: BaseQueryCondition, op: 'delete') => this.applyRecordRuleToCondition(condition, op),
-      applyDefaultLayers: (condition: BaseQueryCondition) => this.applyDefaultLayers(condition),
+      applyRecordRuleToCondition: (condition: UntypedQueryCondition, op: 'delete') => this.applyRecordRuleToCondition(condition, op),
+      applyDefaultLayers: (condition: UntypedQueryCondition) => this.applyDefaultLayers(condition),
       isEmptyCondition: queryBridge.isEmptyCondition,
       convertCondition: queryBridge.convertCondition,
     };
@@ -534,7 +534,7 @@ export class Repository {
 
   private createUpdateWriteSoftFilterDeps() {
     return {
-      applySoftLayer: (condition: BaseQueryCondition) => this.applySoftLayer(condition),
+      applySoftLayer: (condition: UntypedQueryCondition) => this.applySoftLayer(condition),
     };
   }
 
@@ -650,11 +650,11 @@ export class Repository {
 
   // Build the company filter layer shared by search, count, update, delete, and readGroup.
   // Semantics: ownership field != NULL means company-owned rows; NULL means shared rows.
-  private applyCompanyLayer(condition: BaseQueryCondition): BaseQueryCondition {
+  private applyCompanyLayer(condition: UntypedQueryCondition): UntypedQueryCondition {
     return applyRepositoryCompanyLayer(this.createCompanyScopeDeps(), condition);
   }
 
-  private applyDefaultLayers(condition: BaseQueryCondition): BaseQueryCondition {
+  private applyDefaultLayers(condition: UntypedQueryCondition): UntypedQueryCondition {
     return applyRepositoryDefaultLayers(
       {
         meta: this.meta,
@@ -684,7 +684,7 @@ export class Repository {
     validateRepositoryCompanyIdInScope(this.createCompanyScopeDeps(), companyId, companyIds);
   }
 
-  private async assertCompanyWriteAccessForCondition(condition: BaseQueryCondition): Promise<string[]> {
+  private async assertCompanyWriteAccessForCondition(condition: UntypedQueryCondition): Promise<string[]> {
     return await assertRepositoryCompanyWriteAccessForCondition(this.createCompanyScopeQueryDeps(), condition);
   }
 
@@ -695,7 +695,7 @@ export class Repository {
   public async assertCompanyWriteAccessForIds(targetIds: string[]): Promise<void> {
     const ids = (targetIds || []).map(id => String(id || '').trim()).filter(Boolean);
     if (!ids.length) return;
-    await this.assertCompanyWriteAccessForCondition({ And: [['Id', 'in', ids]] } as BaseQueryCondition);
+    await this.assertCompanyWriteAccessForCondition({ And: [['Id', 'in', ids]] } as UntypedQueryCondition);
   }
 
   /**
@@ -707,7 +707,7 @@ export class Repository {
   }
 
   // Build the soft-delete filter layer shared by search, count, and update.
-  private applySoftLayer(condition: BaseQueryCondition): BaseQueryCondition {
+  private applySoftLayer(condition: UntypedQueryCondition): UntypedQueryCondition {
     return applyRepositorySoftDeleteLayer(
       {
         meta: this.meta,
@@ -746,7 +746,7 @@ export class Repository {
     return getRepositoryUserId();
   }
 
-  private isEmptyCondition(condition: BaseQueryCondition): boolean {
+  private isEmptyCondition(condition: UntypedQueryCondition): boolean {
     return isEmptyRepositoryCondition(condition);
   }
 
@@ -769,7 +769,7 @@ export class Repository {
   }
 
   /* ----------------------------- Condition conversion ----------------------------- */
-  public convertCondition(eb: RepositoryPredicateBuilder, condition: BaseQueryCondition, selfTable?: string): RepositoryPredicate {
+  public convertCondition(eb: RepositoryPredicateBuilder, condition: UntypedQueryCondition, selfTable?: string): RepositoryPredicate {
     return convertConditionExternal(this.db, () => this.getDialect(), this.meta, eb, condition, selfTable);
   }
 
@@ -923,7 +923,7 @@ export class Repository {
     }
 
     const fields = this.resolvePersistComputeSelection(seedFields);
-    const condition: BaseQueryCondition = ['Id', 'in', normalizedIds];
+    const condition: UntypedQueryCondition = ['Id', 'in', normalizedIds];
     const searchFields = fields as unknown as SearchOptions<ObjectRecord>['fields'];
     const rows = await this.withRecordRuleBypass(async () => {
       return await this.withFieldRuleBypass(async () => {
@@ -951,7 +951,7 @@ export class Repository {
         const values = (item?.values || {}) as Entity;
         if (!id || !Object.keys(values).length) continue;
 
-        const idCondition: BaseQueryCondition = ['Id', '=', id];
+        const idCondition: UntypedQueryCondition = ['Id', '=', id];
 
         const query = this.db
           .updateTable(this.table)
@@ -1075,18 +1075,18 @@ export class Repository {
   /**
    * Delete records.
    */
-  public async delete(condition: BaseQueryCondition): Promise<DeleteResult[]> {
+  public async delete(condition: UntypedQueryCondition): Promise<DeleteResult[]> {
     return await executeRepositoryDelete(this.createDeleteWriteDeps(), condition);
   }
 
   /**
    * Update records.
    */
-  public async update(vals: Entity, condition: BaseQueryCondition): Promise<UpdateResult[]> {
+  public async update(vals: Entity, condition: UntypedQueryCondition): Promise<UpdateResult[]> {
     return await executeRepositoryUpdate(this.createUpdateWriteDeps(), vals, condition);
   }
 
-  public async count(condition: BaseQueryCondition): Promise<number> {
+  public async count(condition: UntypedQueryCondition): Promise<number> {
     const condWithRR = await this.applyRecordRuleToCondition(condition, 'read');
     return await countRepositoryConditionMatches(
       this.createConditionQueryDeps(queryCondition => this.applyDefaultLayers(queryCondition)),
@@ -1135,7 +1135,7 @@ export class Repository {
 
   /* ----------------------------- Search ----------------------------- */
 
-  public async search(condition: BaseQueryCondition, options?: SearchOptions<ObjectRecord>): Promise<Entity[]> {
+  public async search(condition: UntypedQueryCondition, options?: SearchOptions<ObjectRecord>): Promise<Entity[]> {
     return await executeRepositorySearch(this.createSearchDeps(), condition, options);
   }
 
@@ -1209,7 +1209,7 @@ export class Repository {
   }
 
   // Optional physical delete that bypasses soft-delete logic.
-  private async hardDelete(condition: BaseQueryCondition): Promise<DeleteResult[]> {
+  private async hardDelete(condition: UntypedQueryCondition): Promise<DeleteResult[]> {
     return await executeRepositoryHardDelete(this.createDeleteWriteDeps(), condition);
   }
 

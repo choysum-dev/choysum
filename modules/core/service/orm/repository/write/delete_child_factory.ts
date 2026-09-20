@@ -1,24 +1,24 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition, DeleteResult, Entity } from '../types/engine';
+import type { UntypedQueryCondition, DeleteResult, Entity } from '../types/engine';
 
 export type RepositoryDeleteChild = {
   softDeleteEnabled: () => boolean;
-  delete: (condition: BaseQueryCondition) => Promise<DeleteResult[]>;
-  hardDelete: (condition: BaseQueryCondition) => Promise<DeleteResult[]>;
-  count: (condition: BaseQueryCondition) => Promise<number>;
+  delete: (condition: UntypedQueryCondition) => Promise<DeleteResult[]>;
+  hardDelete: (condition: UntypedQueryCondition) => Promise<DeleteResult[]>;
+  count: (condition: UntypedQueryCondition) => Promise<number>;
   withFieldRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
-  update: (vals: Entity, condition: BaseQueryCondition) => Promise<unknown>;
+  update: (vals: Entity, condition: UntypedQueryCondition) => Promise<unknown>;
 };
 
 type RepositoryDeleteChildSource = {
   softDeleteEnabled: () => boolean;
-  delete: (condition: BaseQueryCondition) => Promise<DeleteResult[]>;
-  hardDelete: (condition: BaseQueryCondition) => Promise<DeleteResult[]>;
-  count: (condition: BaseQueryCondition) => Promise<number>;
+  delete: (condition: UntypedQueryCondition) => Promise<DeleteResult[]>;
+  hardDelete: (condition: UntypedQueryCondition) => Promise<DeleteResult[]>;
+  count: (condition: UntypedQueryCondition) => Promise<number>;
   withFieldRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
-  update: (vals: Entity, condition: BaseQueryCondition) => Promise<unknown>;
+  update: (vals: Entity, condition: UntypedQueryCondition) => Promise<unknown>;
 };
 
 export function createRepositoryDeleteChild(source: RepositoryDeleteChildSource): RepositoryDeleteChild {

@@ -6,7 +6,7 @@ import type { ModelCtor } from '../model/types';
 import type { ExpressionWrapper, ExpressionBuilder, Expression } from 'kysely';
 import Decimal, { DecimalRound } from '@/core/utils/decimal';
 import type { TermReference } from '../../i18n';
-import type { BaseQueryCondition, Operator } from '../repository/types/query';
+import type { UntypedQueryCondition, Operator } from '../repository/types/query';
 import type { Selectable } from '../repository/types/common';
 
 export type { ModelCtor };
@@ -355,8 +355,8 @@ export type RelationalConditionDeclaration<TTarget extends BaseModel = BaseModel
  * Untyped: cannot infer target fields without value-importing the target model into the host app bundle.
  */
 export type RefRelationalConditionDeclaration =
-  | BaseQueryCondition
-  | ((this: typeof BaseModel) => BaseQueryCondition);
+  | UntypedQueryCondition
+  | ((this: typeof BaseModel) => UntypedQueryCondition);
 
 export type RelationalConditionKind = 'static' | 'dynamic';
 
@@ -375,7 +375,7 @@ export type FlatManyToOneRefFieldOptions<TTarget extends BaseModel | undefined =
   /**
    * Default filter on the Ref target (candidate search + M2MRef load).
    * Pass Field<TTarget>({...}) with import type to type-check against the target;
-   * omit the type argument to keep untyped BaseQueryCondition.
+   * omit the type argument to keep untyped UntypedQueryCondition.
    */
   condition?: [TTarget] extends [BaseModel]
     ? RelationalConditionDeclaration<TTarget>
@@ -392,7 +392,7 @@ export type FlatManyToManyRefFieldOptions<TTarget extends BaseModel | undefined 
   /**
    * Default filter on the Ref target (candidate search + M2MRef load).
    * Pass Field<TTarget>({...}) with import type to type-check against the target;
-   * omit the type argument to keep untyped BaseQueryCondition.
+   * omit the type argument to keep untyped UntypedQueryCondition.
    */
   condition?: [TTarget] extends [BaseModel]
     ? RelationalConditionDeclaration<TTarget>
@@ -538,7 +538,7 @@ export type RelationalConditionFieldType = Extract<
   'ManyToOne' | 'ManyToOneRef' | 'OneToMany' | 'ManyToMany' | 'ManyToManyRef'
 >;
 
-/** Shared allowlist for decorator validation and Search/forField / relation-load enforcement. */
+/** Shared allowlist for decorator validation and Search/relationConditionSource / relation-load enforcement. */
 export const RELATIONAL_CONDITION_TYPES = new Set<FieldType>([
   'ManyToOne',
   'ManyToOneRef',
@@ -721,16 +721,16 @@ export interface FieldMetadata {
   selectionCallable?: (this: unknown) => SelectionItem[];
   /**
    * Static relational default condition tree (PR-P1-F4).
-   * Not emitted on FieldsGet wire — applied via `forField` / relation load.
+   * Not emitted on FieldsGet wire — applied via `relationConditionSource` / relation load.
    */
-  condition?: BaseQueryCondition;
+  condition?: UntypedQueryCondition;
   /** `dynamic` when condition is a callable; omitted/static for literal trees. */
   conditionKind?: RelationalConditionKind;
   /**
    * Runtime-only callable for dynamic relational condition.
-   * Invoked with `this = ModelCtor` (no draft) on Search/`forField` and relation load.
+   * Invoked with `this = ModelCtor` (no draft) on Search/`relationConditionSource` and relation load.
    */
-  conditionCallable?: (this: typeof BaseModel) => BaseQueryCondition;
+  conditionCallable?: (this: typeof BaseModel) => UntypedQueryCondition;
   related?: FieldRelatedOption;
   storageHints?: FieldStorageHints;
   /**

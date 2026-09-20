@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import type { QueryCondition, SearchOptions, OrderBy, BaseQueryCondition } from '@/core/service/api/query';
+import type { QueryCondition, SearchOptions, OrderBy, UntypedQueryCondition } from '@/core/service/api/query';
 import { condition } from '@/core/service/api/query';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
 import { projectToSelection } from '@/core/service/api/selection';
@@ -83,7 +83,7 @@ type ListSchedulesParams = {
  * Builds a search condition from paged schedule list parameters.
  */
 function buildScheduleCondition(params: ListSchedulesParams): QueryCondition<Schedule> | [] {
-  const and: BaseQueryCondition[] = [];
+  const and: UntypedQueryCondition[] = [];
   if (typeof params.active === 'boolean') and.push(['Active', '=', params.active]);
   if (params.name) and.push(['Name', 'ilike', `%${params.name}%`]);
   if (params.targetApp) and.push(['TargetApp', '=', params.targetApp]);

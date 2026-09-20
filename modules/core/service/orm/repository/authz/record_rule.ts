@@ -4,7 +4,7 @@
 import type { ModelMetadata } from '../../metadata';
 import { andAll } from '../query';
 import { fetchRepositoryRecordRuleEnvelope, replaceRepositoryRecordRuleConditionTokens, type RepositoryRecordRuleDeps } from './record_rule_helpers';
-import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
+import type { UntypedQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
 import type { RepositoryCompanyScopeFacts, RepositoryReqMethodMeta } from './authz_runtime';
 import type { RepositoryEmitAuthzDecisionSummary, RepositoryPermissionDeniedFn } from './types';
 import { _t } from '@/core/service/i18n_binder';
@@ -13,7 +13,7 @@ export async function getRepositoryRecordRuleEnvelope(params: RepositoryRecordRu
   return await fetchRepositoryRecordRuleEnvelope(params, op);
 }
 
-export function replaceRepositoryRecordRuleTokens(params: RepositoryRecordRuleDeps, condition: BaseQueryCondition): BaseQueryCondition {
+export function replaceRepositoryRecordRuleTokens(params: RepositoryRecordRuleDeps, condition: UntypedQueryCondition): UntypedQueryCondition {
   return replaceRepositoryRecordRuleConditionTokens(params, condition);
 }
 
@@ -22,12 +22,12 @@ type RepositoryRecordRuleCoordinatorDeps = {
   userId?: string;
   recordRuleEnabled: () => boolean;
   getRecordRuleEnvelope: (op: RecordRuleOp) => Promise<ConditionEnvelope>;
-  replaceRecordRuleTokens: (condition: BaseQueryCondition) => BaseQueryCondition;
+  replaceRecordRuleTokens: (condition: UntypedQueryCondition) => UntypedQueryCondition;
   getReqMethodMeta: () => RepositoryReqMethodMeta;
   getCompanyScopeFacts: () => RepositoryCompanyScopeFacts;
   emitAuthzDecisionSummary: RepositoryEmitAuthzDecisionSummary;
   permissionDenied: RepositoryPermissionDeniedFn;
-  countConditionMatches: (condition: BaseQueryCondition) => Promise<number>;
+  countConditionMatches: (condition: UntypedQueryCondition) => Promise<number>;
 };
 
 function encodeHitRuleIds(ids: string[] | undefined): string | undefined {
@@ -37,9 +37,9 @@ function encodeHitRuleIds(ids: string[] | undefined): string | undefined {
 
 export async function applyRepositoryRecordRuleToCondition(
   params: RepositoryRecordRuleCoordinatorDeps,
-  condition: BaseQueryCondition,
+  condition: UntypedQueryCondition,
   op: RecordRuleOp
-): Promise<BaseQueryCondition> {
+): Promise<UntypedQueryCondition> {
   if (!params.recordRuleEnabled()) return condition;
 
   const env = await params.getRecordRuleEnvelope(op);
@@ -63,8 +63,8 @@ export async function applyRepositoryRecordRuleToCondition(
         reason: env.reason || 'denied',
         hitRuleIds: env.hitRuleIds,
       });
-      const never: BaseQueryCondition = ['Id', '=', '__choysum_never__'];
-      return andAll(condition, never) as BaseQueryCondition;
+      const never: UntypedQueryCondition = ['Id', '=', '__choysum_never__'];
+      return andAll(condition, never) as UntypedQueryCondition;
     }
     const metadata: Record<string, string> = {
       model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
@@ -95,7 +95,7 @@ export async function applyRepositoryRecordRuleToCondition(
     hitRuleIds: env.hitRuleIds,
   });
 
-  return andAll(condition, expr) as BaseQueryCondition;
+  return andAll(condition, expr) as UntypedQueryCondition;
 }
 
 export async function assertRepositoryRecordRuleAllTargetsAllowed(
@@ -120,7 +120,7 @@ export async function assertRepositoryRecordRuleAllTargetsAllowed(
   }
 
   const rrExpr = params.replaceRecordRuleTokens(env.expr);
-  const checkCondition: BaseQueryCondition = { And: [['Id', 'in', targetIds], rrExpr] };
+  const checkCondition: UntypedQueryCondition = { And: [['Id', 'in', targetIds], rrExpr] };
   const allowed = await params.countConditionMatches(checkCondition);
   if (allowed !== targetIds.length) {
     const metadata: Record<string, string> = {
@@ -165,7 +165,7 @@ export async function assertRepositoryRecordRuleAllCreatedAllowed(
   if (env.kind !== 'expr') return;
 
   const rrExpr = params.replaceRecordRuleTokens(env.expr);
-  const checkCondition: BaseQueryCondition = { And: [['Id', 'in', createdIds], rrExpr] };
+  const checkCondition: UntypedQueryCondition = { And: [['Id', 'in', createdIds], rrExpr] };
   const allowed = await params.countConditionMatches(checkCondition);
   if (allowed !== createdIds.length) {
     const metadata: Record<string, string> = {

@@ -6,14 +6,14 @@ import { Model } from '../decorator/model';
 import BaseModel from './model';
 import {
   evaluateFieldRelationalCondition,
-  mergeCallerConditionWithForField,
-  resolveForFieldCondition,
+  mergeCallerConditionWithRelationConditionSource,
+  resolveRelationConditionSourceCondition,
   resolveParentFieldRelationalCondition,
 } from './model_for_field_condition';
 import { MetadataStorage } from '../metadata/storage';
 
-@Model('ForFieldBank', { application: 'demo' })
-class ForFieldBank extends BaseModel {
+@Model('RelationConditionSourceBank', { application: 'demo' })
+class RelationConditionSourceBank extends BaseModel {
   @Field({ type: 'boolean' })
   Active!: boolean;
 
@@ -21,18 +21,18 @@ class ForFieldBank extends BaseModel {
   CompanyId!: string;
 }
 
-@Model('ForFieldOrder', { application: 'demo' })
-class ForFieldOrder extends BaseModel {
+@Model('RelationConditionSourceOrder', { application: 'demo' })
+class RelationConditionSourceOrder extends BaseModel {
   @Field({
     type: 'ManyToOne',
-    relation: { targetModel: () => ForFieldBank },
+    relation: { targetModel: () => RelationConditionSourceBank },
     condition: ['Active', '=', true],
   } as any)
-  BankAccountId!: ForFieldBank | null;
+  BankAccountId!: RelationConditionSourceBank | null;
 
   @Field({
     type: 'ManyToOne',
-    relation: { targetModel: () => ForFieldBank },
+    relation: { targetModel: () => RelationConditionSourceBank },
     condition: () => ({
       And: [
         ['Active', '=', true],
@@ -40,49 +40,49 @@ class ForFieldOrder extends BaseModel {
       ],
     }),
   } as any)
-  DynamicBankId!: ForFieldBank | null;
+  DynamicBankId!: RelationConditionSourceBank | null;
 
   @Field({
     type: 'ManyToOne',
     // Must not throw: MetadataStorage is global and triggerDownstream invokes every ManyToOne targetModel().
-    relation: { targetModel: () => undefined as unknown as typeof ForFieldBank },
+    relation: { targetModel: () => undefined as unknown as typeof RelationConditionSourceBank },
     condition: ['Active', '=', true],
   } as any)
-  BrokenTargetId!: ForFieldBank | null;
+  BrokenTargetId!: RelationConditionSourceBank | null;
 
   @Field({
     type: 'ManyToOne',
-    relation: { targetModel: 'demo.ForFieldBank' },
+    relation: { targetModel: 'demo.RelationConditionSourceBank' },
     condition: ['Active', '=', true],
   } as any)
-  StringTargetId!: ForFieldBank | null;
+  StringTargetId!: RelationConditionSourceBank | null;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: '   ' },
     condition: ['Active', '=', true],
   } as any)
-  BlankStringTargetId!: ForFieldBank | null;
+  BlankStringTargetId!: RelationConditionSourceBank | null;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: 42 as any },
     condition: ['Active', '=', true],
   } as any)
-  NonCallableTargetId!: ForFieldBank | null;
+  NonCallableTargetId!: RelationConditionSourceBank | null;
 
   @Field({
     type: 'ManyToOne',
-    relation: { targetModel: () => ForFieldBank },
+    relation: { targetModel: () => RelationConditionSourceBank },
   } as any)
-  NoConditionId!: ForFieldBank | null;
+  NoConditionId!: RelationConditionSourceBank | null;
 
   @Field({ type: 'varchar', size: 32 })
   Name!: string;
 }
 
-@Model('ForFieldAliasReceiver', { application: 'demo' })
-class ForFieldAliasReceiver extends BaseModel {}
+@Model('RelationConditionSourceAliasReceiver', { application: 'demo' })
+class RelationConditionSourceAliasReceiver extends BaseModel {}
 
 function withPatchedGetModelMetadata<T>(
   patch: (original: Function, model: Function) => unknown,
@@ -100,17 +100,17 @@ function withPatchedGetModelMetadata<T>(
   }
 }
 
-test('resolveForFieldCondition returns static meta condition', () => {
-  const cond = resolveForFieldCondition(ForFieldBank as any, {
-    model: 'demo.ForFieldOrder',
+test('resolveRelationConditionSourceCondition returns static meta condition', () => {
+  const cond = resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, {
+    model: 'demo.RelationConditionSourceOrder',
     field: 'BankAccountId',
   });
   expect(cond).toEqual(['Active', '=', true]);
 });
 
-test('resolveForFieldCondition evaluates callable', () => {
-  const cond = resolveForFieldCondition(ForFieldBank as any, {
-    model: 'demo.ForFieldOrder',
+test('resolveRelationConditionSourceCondition evaluates callable', () => {
+  const cond = resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, {
+    model: 'demo.RelationConditionSourceOrder',
     field: 'DynamicBankId',
   });
   expect(cond).toEqual({
@@ -121,80 +121,80 @@ test('resolveForFieldCondition evaluates callable', () => {
   });
 });
 
-test('resolveForFieldCondition returns empty when forField is nullish', () => {
-  expect(resolveForFieldCondition(ForFieldBank as any, null)).toEqual([]);
-  expect(resolveForFieldCondition(ForFieldBank as any, undefined)).toEqual([]);
+test('resolveRelationConditionSourceCondition returns empty when relationConditionSource is nullish', () => {
+  expect(resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, null)).toEqual([]);
+  expect(resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, undefined)).toEqual([]);
 });
 
-test('resolveForFieldCondition returns empty when field has no condition', () => {
+test('resolveRelationConditionSourceCondition returns empty when field has no condition', () => {
   expect(() =>
-    resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'Name' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'Name' })
   ).toThrow('must be a relational field');
 });
 
-test('resolveForFieldCondition rejects blank / unknown model or field', () => {
-  expect(() => resolveForFieldCondition(ForFieldBank as any, { model: '', field: 'BankAccountId' })).toThrow(
-    'forField.model'
+test('resolveRelationConditionSourceCondition rejects blank / unknown model or field', () => {
+  expect(() => resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: '', field: 'BankAccountId' })).toThrow(
+    'relationConditionSource.model'
   );
-  expect(() => resolveForFieldCondition(ForFieldBank as any, { model: null as any, field: 'BankAccountId' })).toThrow(
-    'forField.model'
+  expect(() => resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: null as any, field: 'BankAccountId' })).toThrow(
+    'relationConditionSource.model'
   );
-  expect(() => resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: '' })).toThrow(
-    'forField.field'
+  expect(() => resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: '' })).toThrow(
+    'relationConditionSource.field'
   );
   expect(() =>
-    resolveForFieldCondition(ForFieldBank as any, { model: 'demo.NoSuchModel', field: 'BankAccountId' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.NoSuchModel', field: 'BankAccountId' })
   ).toThrow('not a registered model');
   expect(() =>
-    resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'MissingField' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'MissingField' })
   ).toThrow('does not exist');
 });
 
-test('resolveForFieldCondition coerces non-string forField identifiers', () => {
+test('resolveRelationConditionSourceCondition coerces non-string relationConditionSource identifiers', () => {
   expect(() =>
-    resolveForFieldCondition(ForFieldBank as any, { model: 0 as any, field: 'BankAccountId' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 0 as any, field: 'BankAccountId' })
   ).toThrow('not a registered model');
 });
 
-test('resolveForFieldCondition rejects target mismatch', () => {
+test('resolveRelationConditionSourceCondition rejects target mismatch', () => {
   expect(() =>
-    resolveForFieldCondition(ForFieldOrder as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceOrder as any, { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' })
   ).toThrow('does not match the searched model');
 });
 
-test('resolveForFieldCondition rejects unresolvable relation target', () => {
+test('resolveRelationConditionSourceCondition rejects unresolvable relation target', () => {
   expect(() =>
-    resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BrokenTargetId' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'BrokenTargetId' })
   ).toThrow('unresolvable relation target');
   expect(() =>
-    resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BlankStringTargetId' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'BlankStringTargetId' })
   ).toThrow('unresolvable relation target');
   expect(() =>
-    resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'NonCallableTargetId' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'NonCallableTargetId' })
   ).toThrow('unresolvable relation target');
 });
 
-test('resolveForFieldCondition accepts string targetModel', () => {
+test('resolveRelationConditionSourceCondition accepts string targetModel', () => {
   expect(
-    resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'StringTargetId' })
+    resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'StringTargetId' })
   ).toEqual(['Active', '=', true]);
 });
 
-test('resolveForFieldCondition rejects when source model metadata lookup fails', () => {
+test('resolveRelationConditionSourceCondition rejects when source model metadata lookup fails', () => {
   withPatchedGetModelMetadata((original, model) => {
-    if (model === ForFieldOrder) throw new Error('meta missing');
+    if (model === RelationConditionSourceOrder) throw new Error('meta missing');
     return original(model);
   }, () => {
     expect(() =>
-      resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+      resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' })
     ).toThrow('has no metadata');
   });
 });
 
-test('resolveForFieldCondition matches via receiver meta short-name endsWith when keys miss', () => {
+test('resolveRelationConditionSourceCondition matches via receiver meta short-name endsWith when keys miss', () => {
   let receiverLookups = 0;
   withPatchedGetModelMetadata((original, model) => {
-    if (model === ForFieldAliasReceiver) {
+    if (model === RelationConditionSourceAliasReceiver) {
       receiverLookups += 1;
       if (receiverLookups === 1) {
         // receiverModelKeys: unrelated labels only (class name still added separately)
@@ -209,31 +209,31 @@ test('resolveForFieldCondition matches via receiver meta short-name endsWith whe
       // overlap fallback: short name aligns with target via endsWith
       return {
         fullModelName: '',
-        modelName: 'ForFieldBank',
-        name: 'ForFieldBank',
-        className: 'ForFieldAliasReceiver',
+        modelName: 'RelationConditionSourceBank',
+        name: 'RelationConditionSourceBank',
+        className: 'RelationConditionSourceAliasReceiver',
         fields: new Map(),
       };
     }
     return original(model);
   }, () => {
     expect(
-      resolveForFieldCondition(ForFieldAliasReceiver as any, {
-        model: 'demo.ForFieldOrder',
+      resolveRelationConditionSourceCondition(RelationConditionSourceAliasReceiver as any, {
+        model: 'demo.RelationConditionSourceOrder',
         field: 'BankAccountId',
       })
     ).toEqual(['Active', '=', true]);
   });
 });
 
-test('resolveForFieldCondition receiverModelKeys falls back when metadata throws', () => {
+test('resolveRelationConditionSourceCondition receiverModelKeys falls back when metadata throws', () => {
   const anonymous = (() => function () {})() as any;
   withPatchedGetModelMetadata((original, model) => {
     if (model === anonymous) throw new Error('no meta');
     return original(model);
   }, () => {
     expect(() =>
-      resolveForFieldCondition(anonymous, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+      resolveRelationConditionSourceCondition(anonymous, { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' })
     ).toThrow('does not match the searched model');
   });
 
@@ -243,33 +243,33 @@ test('resolveForFieldCondition receiverModelKeys falls back when metadata throws
     return original(model);
   }, () => {
     expect(() =>
-      resolveForFieldCondition(NamedFallbackReceiver as any, {
-        model: 'demo.ForFieldOrder',
+      resolveRelationConditionSourceCondition(NamedFallbackReceiver as any, {
+        model: 'demo.RelationConditionSourceOrder',
         field: 'BankAccountId',
       })
     ).toThrow('does not match the searched model');
   });
 });
 
-test('resolveForFieldCondition skips empty receiver meta labels and matches undotted target', () => {
+test('resolveRelationConditionSourceCondition skips empty receiver meta labels and matches undotted target', () => {
   withPatchedGetModelMetadata((original, model) => {
-    if (model === ForFieldBank) {
+    if (model === RelationConditionSourceBank) {
       return {
         fullModelName: null,
         modelName: undefined,
         name: '',
-        className: 'ForFieldBank',
+        className: 'RelationConditionSourceBank',
         fields: new Map(),
       };
     }
     return original(model);
   }, () => {
-    const fieldMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;
+    const fieldMeta = MetadataStorage.instance.getModelMetadata(RelationConditionSourceOrder as any).fields.get('BankAccountId')!;
     const originalRelation = fieldMeta.relation;
     try {
-      (fieldMeta as any).relation = { targetModel: 'ForFieldBank' };
+      (fieldMeta as any).relation = { targetModel: 'RelationConditionSourceBank' };
       expect(
-        resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+        resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' })
       ).toEqual(['Active', '=', true]);
     } finally {
       fieldMeta.relation = originalRelation;
@@ -277,10 +277,10 @@ test('resolveForFieldCondition skips empty receiver meta labels and matches undo
   });
 });
 
-test('resolveForFieldCondition matches via receiver fullModelName when keys miss', () => {
+test('resolveRelationConditionSourceCondition matches via receiver fullModelName when keys miss', () => {
   let receiverLookups = 0;
   withPatchedGetModelMetadata((original, model) => {
-    if (model === ForFieldAliasReceiver) {
+    if (model === RelationConditionSourceAliasReceiver) {
       receiverLookups += 1;
       if (receiverLookups === 1) {
         return {
@@ -292,28 +292,28 @@ test('resolveForFieldCondition matches via receiver fullModelName when keys miss
         };
       }
       return {
-        fullModelName: 'demo.ForFieldBank',
+        fullModelName: 'demo.RelationConditionSourceBank',
         modelName: '',
         name: '',
-        className: 'ForFieldAliasReceiver',
+        className: 'RelationConditionSourceAliasReceiver',
         fields: new Map(),
       };
     }
     return original(model);
   }, () => {
     expect(
-      resolveForFieldCondition(ForFieldAliasReceiver as any, {
-        model: 'demo.ForFieldOrder',
+      resolveRelationConditionSourceCondition(RelationConditionSourceAliasReceiver as any, {
+        model: 'demo.RelationConditionSourceOrder',
         field: 'BankAccountId',
       })
     ).toEqual(['Active', '=', true]);
   });
 });
 
-test('resolveForFieldCondition matches via receiver name when modelName empty', () => {
+test('resolveRelationConditionSourceCondition matches via receiver name when modelName empty', () => {
   let receiverLookups = 0;
   withPatchedGetModelMetadata((original, model) => {
-    if (model === ForFieldAliasReceiver) {
+    if (model === RelationConditionSourceAliasReceiver) {
       receiverLookups += 1;
       if (receiverLookups === 1) {
         return {
@@ -327,24 +327,24 @@ test('resolveForFieldCondition matches via receiver name when modelName empty', 
       return {
         fullModelName: '',
         modelName: '',
-        name: 'ForFieldBank',
-        className: 'ForFieldAliasReceiver',
+        name: 'RelationConditionSourceBank',
+        className: 'RelationConditionSourceAliasReceiver',
         fields: new Map(),
       };
     }
     return original(model);
   }, () => {
     expect(
-      resolveForFieldCondition(ForFieldAliasReceiver as any, {
-        model: 'demo.ForFieldOrder',
+      resolveRelationConditionSourceCondition(RelationConditionSourceAliasReceiver as any, {
+        model: 'demo.RelationConditionSourceOrder',
         field: 'BankAccountId',
       })
     ).toEqual(['Active', '=', true]);
   });
 });
 
-test('resolveForFieldCondition treats throwing targetModel resolver as unresolvable', () => {
-  const fieldMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;
+test('resolveRelationConditionSourceCondition treats throwing targetModel resolver as unresolvable', () => {
+  const fieldMeta = MetadataStorage.instance.getModelMetadata(RelationConditionSourceOrder as any).fields.get('BankAccountId')!;
   const originalRelation = fieldMeta.relation;
   try {
     (fieldMeta as any).relation = {
@@ -353,39 +353,39 @@ test('resolveForFieldCondition treats throwing targetModel resolver as unresolva
       },
     };
     expect(() =>
-      resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+      resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' })
     ).toThrow('unresolvable relation target');
   } finally {
     fieldMeta.relation = originalRelation;
   }
 });
 
-test('resolveForFieldCondition accepts bare class targetModel (not only thunk)', () => {
-  const fieldMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;
+test('resolveRelationConditionSourceCondition accepts bare class targetModel (not only thunk)', () => {
+  const fieldMeta = MetadataStorage.instance.getModelMetadata(RelationConditionSourceOrder as any).fields.get('BankAccountId')!;
   const originalRelation = fieldMeta.relation;
   try {
-    (fieldMeta as any).relation = { targetModel: ForFieldBank };
+    (fieldMeta as any).relation = { targetModel: RelationConditionSourceBank };
     expect(
-      resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+      resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' })
     ).toEqual(['Active', '=', true]);
   } finally {
     fieldMeta.relation = originalRelation;
   }
 });
 
-test('resolveForFieldCondition resolves via meta.name / className when fullModelName empty', () => {
-  const fieldMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;
+test('resolveRelationConditionSourceCondition resolves via meta.name / className when fullModelName empty', () => {
+  const fieldMeta = MetadataStorage.instance.getModelMetadata(RelationConditionSourceOrder as any).fields.get('BankAccountId')!;
   const originalRelation = fieldMeta.relation;
   try {
-    (fieldMeta as any).relation = { targetModel: () => ForFieldBank };
+    (fieldMeta as any).relation = { targetModel: () => RelationConditionSourceBank };
     withPatchedGetModelMetadata((original, model) => {
-      if (model === ForFieldBank) {
-        return { fullModelName: '', modelName: '', name: 'ForFieldBank', className: 'ForFieldBank', fields: new Map() };
+      if (model === RelationConditionSourceBank) {
+        return { fullModelName: '', modelName: '', name: 'RelationConditionSourceBank', className: 'RelationConditionSourceBank', fields: new Map() };
       }
       return original(model);
     }, () => {
       expect(
-        resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+        resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' })
       ).toEqual(['Active', '=', true]);
     });
   } finally {
@@ -393,9 +393,9 @@ test('resolveForFieldCondition resolves via meta.name / className when fullModel
   }
 });
 
-test('resolveForFieldCondition treats empty resolved target meta name as unresolvable', () => {
+test('resolveRelationConditionSourceCondition treats empty resolved target meta name as unresolvable', () => {
   class NamelessTarget {}
-  const fieldMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;
+  const fieldMeta = MetadataStorage.instance.getModelMetadata(RelationConditionSourceOrder as any).fields.get('BankAccountId')!;
   const originalRelation = fieldMeta.relation;
   try {
     (fieldMeta as any).relation = { targetModel: () => NamelessTarget };
@@ -406,7 +406,7 @@ test('resolveForFieldCondition treats empty resolved target meta name as unresol
       return original(model);
     }, () => {
       expect(() =>
-        resolveForFieldCondition(ForFieldBank as any, { model: 'demo.ForFieldOrder', field: 'BankAccountId' })
+        resolveRelationConditionSourceCondition(RelationConditionSourceBank as any, { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' })
       ).toThrow('unresolvable relation target');
     });
   } finally {
@@ -414,11 +414,11 @@ test('resolveForFieldCondition treats empty resolved target meta name as unresol
   }
 });
 
-test('mergeCallerConditionWithForField Ands meta and caller', () => {
-  const merged = mergeCallerConditionWithForField(
-    ForFieldBank as any,
+test('mergeCallerConditionWithRelationConditionSource Ands meta and caller', () => {
+  const merged = mergeCallerConditionWithRelationConditionSource(
+    RelationConditionSourceBank as any,
     ['CompanyId', '=', 'X'] as any,
-    { model: 'demo.ForFieldOrder', field: 'BankAccountId' }
+    { model: 'demo.RelationConditionSourceOrder', field: 'BankAccountId' }
   );
   expect(merged).toEqual({
     And: [
@@ -428,28 +428,28 @@ test('mergeCallerConditionWithForField Ands meta and caller', () => {
   });
 });
 
-test('mergeCallerConditionWithForField without forField is identity', () => {
-  expect(mergeCallerConditionWithForField(ForFieldBank as any, ['Active', '=', true] as any, undefined)).toEqual([
+test('mergeCallerConditionWithRelationConditionSource without relationConditionSource is identity', () => {
+  expect(mergeCallerConditionWithRelationConditionSource(RelationConditionSourceBank as any, ['Active', '=', true] as any, undefined)).toEqual([
     'Active',
     '=',
     true,
   ]);
-  expect(mergeCallerConditionWithForField(ForFieldBank as any, undefined, undefined)).toEqual([]);
+  expect(mergeCallerConditionWithRelationConditionSource(RelationConditionSourceBank as any, undefined, undefined)).toEqual([]);
 });
 
 test('evaluateFieldRelationalCondition reads static from metadata', () => {
-  const meta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('BankAccountId')!;
-  expect(evaluateFieldRelationalCondition(ForFieldOrder as any, meta)).toEqual(['Active', '=', true]);
+  const meta = MetadataStorage.instance.getModelMetadata(RelationConditionSourceOrder as any).fields.get('BankAccountId')!;
+  expect(evaluateFieldRelationalCondition(RelationConditionSourceOrder as any, meta)).toEqual(['Active', '=', true]);
 });
 
 test('evaluateFieldRelationalCondition returns empty when unset', () => {
-  const meta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any).fields.get('NoConditionId')!;
-  expect(evaluateFieldRelationalCondition(ForFieldOrder as any, meta)).toEqual([]);
+  const meta = MetadataStorage.instance.getModelMetadata(RelationConditionSourceOrder as any).fields.get('NoConditionId')!;
+  expect(evaluateFieldRelationalCondition(RelationConditionSourceOrder as any, meta)).toEqual([]);
 });
 
 test('evaluateFieldRelationalCondition rejects non-object callable results', () => {
   expect(() =>
-    evaluateFieldRelationalCondition(ForFieldOrder as any, {
+    evaluateFieldRelationalCondition(RelationConditionSourceOrder as any, {
       name: 'Bad',
       conditionCallable: () => 'nope',
     } as any)
@@ -465,7 +465,7 @@ test('evaluateFieldRelationalCondition rejects non-object callable results', () 
 });
 
 test('resolveParentFieldRelationalCondition covers missing / non-relational / success paths', () => {
-  const parentMeta = MetadataStorage.instance.getModelMetadata(ForFieldOrder as any);
+  const parentMeta = MetadataStorage.instance.getModelMetadata(RelationConditionSourceOrder as any);
   expect(resolveParentFieldRelationalCondition(parentMeta, 'Missing')).toEqual([]);
   expect(resolveParentFieldRelationalCondition(parentMeta, 'Name')).toEqual([]);
   expect(resolveParentFieldRelationalCondition(parentMeta, 'BankAccountId')).toEqual(['Active', '=', true]);

@@ -3,7 +3,7 @@
 
 import type { ModelMetadata } from '../../metadata';
 import type {
-  BaseQueryCondition,
+  UntypedQueryCondition,
   Entity,
   RepositoryExecute,
   RepositoryGetScalarFieldsDepsLike,
@@ -48,13 +48,13 @@ export type RepositoryUpdateWriteCurrentRowsDeps = {
   execute: RepositoryExecute;
   decodeFromDb: (row: Entity) => Entity;
 } & RepositoryGetScalarFieldsDepsLike<ModelMetadata> &
-  RepositorySoftConditionPipelineDepsLike<BaseQueryCondition>;
+  RepositorySoftConditionPipelineDepsLike<UntypedQueryCondition>;
 
-export async function resolveRepositoryUpdateTargetIds(params: RepositoryUpdateWriteTargetDeps, condition: BaseQueryCondition): Promise<string[]> {
+export async function resolveRepositoryUpdateTargetIds(params: RepositoryUpdateWriteTargetDeps, condition: UntypedQueryCondition): Promise<string[]> {
   return await resolveRepositoryMutationWriteTargetIds(params, 'write', condition);
 }
 
-export async function applyRepositoryUpdateCondition<T>(query: T, params: RepositoryUpdateWriteConditionDeps, condition: BaseQueryCondition): Promise<T> {
+export async function applyRepositoryUpdateCondition<T>(query: T, params: RepositoryUpdateWriteConditionDeps, condition: UntypedQueryCondition): Promise<T> {
   return await applyRepositoryMutationWriteCondition(query, params, 'write', condition);
 }
 
@@ -87,7 +87,7 @@ export async function loadRepositoryUpdateValidationCurrentRows(
     return selections;
   });
 
-  const filtered: BaseQueryCondition = params.applySoftLayer(['Id', 'in', normalizedIds]);
+  const filtered: UntypedQueryCondition = params.applySoftLayer(['Id', 'in', normalizedIds]);
   if (!params.isEmptyCondition(filtered)) {
     query = query.where(({ eb }) => params.convertCondition(eb, filtered, params.table));
   }

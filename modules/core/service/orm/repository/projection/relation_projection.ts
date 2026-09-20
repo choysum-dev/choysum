@@ -25,7 +25,7 @@ import type { UnknownRecord } from '../../../../utils/types';
 import { convertCondition } from '../query/condition_compiler';
 import { isEmptyRepositoryCondition } from '../query/condition_layer';
 import { resolveParentFieldRelationalCondition } from '../../model/model_for_field_condition';
-import type { BaseQueryCondition } from '../types';
+import type { UntypedQueryCondition } from '../types';
 
 type RelationWhereBuilder = {
   (left: string, op: string, right: unknown): unknown;
@@ -89,7 +89,7 @@ export function applyRepositoryRelationFieldConditionFilter<
     return subQuery;
   }
   return subQuery.where(({ eb }: { eb: unknown }) =>
-    convertCondition(db, getDialect, targetMeta, eb as never, condition as BaseQueryCondition, targetTable)
+    convertCondition(db, getDialect, targetMeta, eb as never, condition as UntypedQueryCondition, targetTable)
   );
 }
 

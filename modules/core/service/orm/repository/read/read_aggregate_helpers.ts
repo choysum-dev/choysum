@@ -8,7 +8,7 @@ import { buildTimeBucketExpr } from './time_bucket_sql';
 import type { DialectName } from '../repository_dialect';
 import type {
   AggregateFunction,
-  BaseQueryCondition,
+  UntypedQueryCondition,
   RepositoryAliasableLike,
   RepositorySelectCtxFactoryLike,
   RepositoryTableConditionConvertDepsLike,
@@ -56,7 +56,7 @@ type RepositoryReadAggregateExpressionDeps = {
   meta: ModelMetadata;
 };
 
-type RepositoryReadAggregateConditionDeps = RepositoryTableConditionConvertDepsLike<BaseQueryCondition>;
+type RepositoryReadAggregateConditionDeps = RepositoryTableConditionConvertDepsLike<UntypedQueryCondition>;
 
 function buildRepositoryTimeGroupExpression(params: RepositoryReadAggregateExpressionDeps, builder: unknown, group: NormalizedGroupSpec, timezone?: string) {
   const ctx = params.makeSelectCtx(builder, params.table, params.meta);
@@ -175,7 +175,7 @@ export function buildRepositoryReadAggregateTotalSelections(
   return selections;
 }
 
-export function applyRepositoryReadAggregateCondition<T>(query: T, params: RepositoryReadAggregateConditionDeps, filtered: BaseQueryCondition): T {
+export function applyRepositoryReadAggregateCondition<T>(query: T, params: RepositoryReadAggregateConditionDeps, filtered: UntypedQueryCondition): T {
   if (params.isEmptyCondition(filtered)) {
     return query;
   }

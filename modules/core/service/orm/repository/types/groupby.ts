@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition, QueryCondition, SoftDeleteOptions } from './query';
+import type { UntypedQueryCondition, QueryCondition, SoftDeleteOptions } from './query';
 import type { ObjectRecord } from '../../../../utils/types';
 
 export type TemporalGranularity = 'year' | 'quarter' | 'month' | 'week' | 'day';
@@ -37,8 +37,8 @@ export type FieldAggregation<T = ObjectRecord> =
 export interface RepoReadGroupOptions<T = ObjectRecord> {
   groupby: GroupBySpec<T> | GroupBySpec<T>[];
   fields?: Array<FieldAggregation<T>>;
-  condition?: QueryCondition<T> | [] | BaseQueryCondition;
-  having?: BaseQueryCondition;
+  condition?: QueryCondition<T> | [] | UntypedQueryCondition;
+  having?: UntypedQueryCondition;
   orderBy?: GroupOrderBy<T>;
   limit?: number;
   offset?: number;
@@ -49,7 +49,7 @@ export type RepoReadGroupRow = ObjectRecord & { __count: number };
 
 export interface RepoReadTotalsOptions<T = ObjectRecord> {
   fields?: Array<FieldAggregation<T>>;
-  condition?: QueryCondition<T> | [] | BaseQueryCondition;
+  condition?: QueryCondition<T> | [] | UntypedQueryCondition;
   timezone?: string;
 }
 
@@ -58,8 +58,8 @@ export type RepoReadTotalsRow = ObjectRecord & { __count: number };
 export interface RepoReadGroupCountOptions<T = ObjectRecord> {
   groupby: GroupBySpec<T> | GroupBySpec<T>[];
   fields?: Array<FieldAggregation<T>>;
-  condition?: QueryCondition<T> | [] | BaseQueryCondition;
-  having?: BaseQueryCondition;
+  condition?: QueryCondition<T> | [] | UntypedQueryCondition;
+  having?: UntypedQueryCondition;
   timezone?: string;
 }
 
@@ -67,7 +67,7 @@ export type ReadGroupShape = 'flat' | 'tree';
 
 export interface ReadGroupOptions<T = ObjectRecord> extends SoftDeleteOptions {
   fields?: Array<FieldAggregation<T>>;
-  having?: BaseQueryCondition | BaseQueryCondition[];
+  having?: UntypedQueryCondition | UntypedQueryCondition[];
   orderBy?: GroupOrderBy<T>;
   limit?: number | { perLevel?: number[] };
   offset?: number;
@@ -77,7 +77,7 @@ export interface ReadGroupOptions<T = ObjectRecord> extends SoftDeleteOptions {
 
 export interface ReadGroupCountOptions<T = ObjectRecord> extends SoftDeleteOptions {
   fields?: Array<FieldAggregation<T>>;
-  having?: BaseQueryCondition | BaseQueryCondition[];
+  having?: UntypedQueryCondition | UntypedQueryCondition[];
   timezone?: string;
 }
 
@@ -87,7 +87,7 @@ export interface GroupRow {
   labels: Record<string, string>;
   metrics: ObjectRecord;
   count: number;
-  condition?: BaseQueryCondition;
+  condition?: UntypedQueryCondition;
   remainingGroupby?: Array<GroupBySpec<ObjectRecord> | GroupBySpec<ObjectRecord>[]>;
   children?: GroupRow[];
 }

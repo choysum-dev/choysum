@@ -5,7 +5,7 @@ import BaseModel from '../model/model';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { RelationProcessor } from './processor';
 import { ManyToOneOperation, PrepareResult, RelationProcessingResult, BatchProcessingResult } from './types';
-import type { BaseQueryCondition } from '../repository/types';
+import type { UntypedQueryCondition } from '../repository/types';
 import type { ModelCtor } from '../model/types';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
@@ -219,7 +219,7 @@ export class ManyToOneProcessor<T extends BaseModel = BaseModel> extends Relatio
         for (const [value, ids] of updatesByValue.entries()) {
           if (!ids.length) continue;
           try {
-            const condition: BaseQueryCondition = ids.length === 1 ? ['Id', '=', ids[0]] : ['Id', 'in', ids];
+            const condition: UntypedQueryCondition = ids.length === 1 ? ['Id', '=', ids[0]] : ['Id', 'in', ids];
             await repository.update({ [fieldName]: value }, condition as never);
             allSuccessIds.push(...ids);
           } catch (e) {

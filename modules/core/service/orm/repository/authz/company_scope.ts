@@ -3,7 +3,7 @@
 
 import type { ModelMetadata } from '../../metadata';
 import type {
-  BaseQueryCondition,
+  UntypedQueryCondition,
   Entity,
   RepositoryExecute,
   RepositorySelectColumnsCapableLike,
@@ -29,7 +29,7 @@ type RepositoryCompanyScopeDeps = {
 };
 
 type RepositoryCompanyScopeQueryDeps = RepositoryCompanyScopeDeps &
-  RepositoryTableSoftConditionPipelineDepsLike<BaseQueryCondition> & {
+  RepositoryTableSoftConditionPipelineDepsLike<UntypedQueryCondition> & {
     db: unknown;
     execute: RepositoryExecute;
   };
@@ -190,13 +190,13 @@ export function repositoryCompanyFieldEnabled(params: RepositoryCompanyScopeDeps
   return true;
 }
 
-export function applyRepositoryCompanyLayer(params: RepositoryCompanyScopeDeps, condition: BaseQueryCondition): BaseQueryCondition {
+export function applyRepositoryCompanyLayer(params: RepositoryCompanyScopeDeps, condition: UntypedQueryCondition): UntypedQueryCondition {
   if (params.companyLayerSkipped()) return condition;
   if (!repositoryCompanyFieldEnabled(params)) return condition;
 
   const ownershipField = requireRepositoryOwnershipField(params.meta, params.permissionDenied);
   const companyIds = normalizeRepositoryCompanyIds(params.ctx);
-  const companyCondition: BaseQueryCondition = {
+  const companyCondition: UntypedQueryCondition = {
     Or: [
       [ownershipField, 'in', companyIds],
       [ownershipField, 'is', null],
@@ -265,7 +265,7 @@ export function applyRepositoryDefaultCompanyIdOnUpdate(params: RepositoryCompan
 
 export async function assertRepositoryCompanyWriteAccessForCondition(
   params: RepositoryCompanyScopeQueryDeps,
-  condition: BaseQueryCondition
+  condition: UntypedQueryCondition
 ): Promise<string[]> {
   if (!repositoryHasCompanyField(params.meta)) return [];
 
