@@ -9,7 +9,7 @@ import type {
   RepositoryMutationPayloadEncodeDepsLike,
   RepositoryMutationPayloadGuardDepsLike,
   RepositoryMutationPayloadValidateDepsLike,
-} from '../types';
+} from '../types/engine';
 import { asObjectRecord } from '@/core/utils/object';
 import {
   applyRepositoryMutationDefaultValues,

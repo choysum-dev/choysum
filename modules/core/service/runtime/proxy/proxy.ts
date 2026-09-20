@@ -3,14 +3,14 @@
 
 import { Watcher } from './watcher';
 import { Dep } from './dep';
-import { Entity } from '../../orm/repository';
+import { Entity } from '../../orm/repository/types';
 import BaseModel from '../../orm/model/model';
 import type { ModelCtor } from '../../orm/model/types';
 import { MetadataStorage, ModelMetadata, FieldMetadata, ManyToOneMetadata, OneToManyMetadata, ManyToManyMetadata } from '../../orm/metadata';
 import { buildRelationAliasCandidates, REL_ALIAS_PREFIX } from '../../orm/relation/relation_alias';
 import { MODEL_SYMBOLS } from './symbols';
 import { markProxyKind } from './brand';
-import { FieldSelection } from '../../orm/repository';
+import { FieldSelection } from '../../orm/repository/types';
 
 // Track relation-array mutations.
 import { RelationArrayMethod, RelationChangeOperation, RelationChangesCollection } from '../../orm/relation/types';

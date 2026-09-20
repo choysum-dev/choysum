@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition, DeleteResult, Entity } from '../types';
+import type { BaseQueryCondition, DeleteResult, Entity } from '../types/engine';
 
 export type RepositoryDeleteChild = {
   softDeleteEnabled: () => boolean;

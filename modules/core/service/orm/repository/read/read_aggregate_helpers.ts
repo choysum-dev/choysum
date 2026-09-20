@@ -13,7 +13,7 @@ import type {
   RepositorySelectCtxFactoryLike,
   RepositoryTableConditionConvertDepsLike,
   RepositoryWhereCapableLike,
-} from '../types';
+} from '../types/engine';
 import type { GroupSpecLike, NormalizedAgg, NormalizedCompositeGroupSpec, NormalizedGroupSpec } from './group_spec';
 import type { UnknownRecord } from '../../../../utils/types';
 import { asObjectRecord } from '../../../../utils/object';

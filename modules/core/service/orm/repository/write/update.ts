@@ -15,7 +15,7 @@ import type {
   RepositorySelectCtxFactoryLike,
   RepositoryUpdateTableDbLike,
   UpdateResult,
-} from '../types';
+} from '../types/engine';
 import {
   applyRepositoryMutationDefaultValues,
   assertRepositoryMutationPayloadsAllowed,

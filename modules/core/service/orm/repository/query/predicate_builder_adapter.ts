@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ModelMetadata } from '../../metadata';
-import type { ExpressionBuilder, ExpressionWrapper } from '../types';
+import type { ExpressionBuilder, ExpressionWrapper } from '../types/engine';
 import type { SqlBool } from 'kysely';
 import { makeSelectCtx, type DbLike } from './select_context';
 import type { ObjectRecord } from '../../../../utils/types';

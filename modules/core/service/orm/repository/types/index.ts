@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-export { DeleteResult, UpdateResult, InsertResult, ExpressionBuilder, ExpressionWrapper, SelectQueryBuilder, Compilable } from './common';
-export { SimplifyResult } from './common';
+// Author / SSOT type surface. Engine ducks (*Like / *DepsLike) and Kysely
+// builders live in ./shared, ./common, ./execution — import those paths inside
+// orm/repository/** only; do not re-export them here (SF-1 / TS2).
 
-export type { RepositoryQueryLike, RepositoryExecute } from './execution';
 export type { SelectResult, Entity, FilteredQueryProperties, FilteredInputProperties, Selectable, Queryable } from './common';
 export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations, Insertable, Updateable } from './input';
 export type { DeepRelationSelection, FieldSelection, Projected, PartialOrProjected, RowOrProjected } from './selection';
@@ -44,41 +44,3 @@ export type {
   ReadGroupResult,
 } from './groupby';
 export type { RecordRuleOp, ConditionExpr, ConditionEnvelope } from './authz';
-export type {
-  NonNil,
-  RepositoryAliasableLike,
-  RepositoryRefBuilderLike,
-  RepositoryCountAllFnLike,
-  RepositorySelectFromDbLike,
-  RepositoryCountAllDbLike,
-  RepositoryWherePredicateLike,
-  RepositoryWhereCapableLike,
-  RepositorySelectCallbackLike,
-  RepositorySelectCallbackCapableLike,
-  RepositorySelectColumnsCapableLike,
-  RepositoryLimitCapableLike,
-  RepositoryOffsetCapableLike,
-  RepositoryForUpdateCapableLike,
-  RepositoryInsertIntoDbLike,
-  RepositoryUpdateTableDbLike,
-  RepositoryDeleteFromDbLike,
-  RepositoryConditionConverterLike,
-  RepositoryConditionLayerFnLike,
-  RepositoryConditionEmptyCheckFnLike,
-  RepositoryConditionConvertDepsLike,
-  RepositoryDefaultConditionPipelineDepsLike,
-  RepositorySoftConditionPipelineDepsLike,
-  RepositoryRecordRuleConditionPipelineDepsLike,
-  RepositoryTableConditionConvertDepsLike,
-  RepositoryTableDefaultConditionPipelineDepsLike,
-  RepositoryTableSoftConditionPipelineDepsLike,
-  RepositoryMutationPayloadGuardDepsLike,
-  RepositoryMutationPayloadDefaultsDepsLike,
-  RepositoryMutationPayloadValidateDepsLike,
-  RepositoryMutationPayloadEncodeDepsLike,
-  RepositoryMutationPayloadGuardEncodeDepsLike,
-  RepositoryGetScalarFieldsDepsLike,
-  RepositorySelectCtxFactoryLike,
-  RepositorySelectionAliaserLike,
-  RepositoryExecuteUnknownQueryLike,
-} from './shared';

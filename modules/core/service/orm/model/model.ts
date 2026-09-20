@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Entity } from '../repository';
+import { Entity } from '../repository/types';
 import { Field, SqlCompute } from '../decorator';
 import {
   QueryCondition,

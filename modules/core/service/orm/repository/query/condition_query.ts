@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition, RepositoryConditionConverterLike, RepositoryCountAllDbLike, RepositoryExecuteUnknownQueryLike } from '../types';
+import type { BaseQueryCondition, RepositoryConditionConverterLike, RepositoryCountAllDbLike, RepositoryExecuteUnknownQueryLike } from '../types/engine';
 import { asObjectRecord, asRuntimeCarrier } from '@/core/utils/object';
 
 type RepositoryConditionQueryBuilder = {

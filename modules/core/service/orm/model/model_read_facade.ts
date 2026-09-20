@@ -18,7 +18,7 @@ import type {
   SearchOptions,
   SoftDeleteOptions,
 } from '../repository/types';
-import type { Entity } from '../repository';
+import type { Entity } from '../repository/types';
 
 type ModelReadFacadeCtor<T extends BaseModel> = ModelCtor<T> & {
   ctx: Context;

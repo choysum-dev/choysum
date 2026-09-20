@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+// Author-facing metadata surface (SF-1). Engine-only SelectCtx / Flat* /
+// ComputeGraph / ComputeDeps stay on orm/metadata deep imports.
+
 export type {
   ModelCtor,
   StandardFields,
@@ -13,13 +16,6 @@ export type {
   RelationFieldType,
   ToManyRelationFieldType,
   M2OScalarPath,
-  SelectExpressionAtom,
-  SelectExpressionValue,
-  SelectSubqueryBuilder,
-  SelectFieldResolver,
-  SelectFieldExistResolver,
-  SelectCtx,
-  SelectExpressionFn,
   FieldMetadata,
   FieldPathType,
   FieldPath,
@@ -40,9 +36,6 @@ export type {
   CollectionPathDep,
   OnchangeHandlerMeta,
   EffectiveOnchangeMeta,
-  ParsedDep,
-  ParentComputeTrigger,
-  ModelComputeGraph,
   ModelMetadata,
   ValueType,
   ParamMetadata,
