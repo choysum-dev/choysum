@@ -2,4 +2,4 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export { ValidationEngine, resolveValidationSummary } from '../runtime/validation';
-export type { ResolvedValidationSummary, ValidationFieldIssueSummary, ValidationIssueLite } from '../runtime/validation';
+export type { ResolvedValidationSummary, ValidationFieldIssueSummary, ParsedValidationIssue } from '../runtime/validation';

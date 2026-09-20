@@ -11,7 +11,7 @@ import {
   mergeOnchangeReadsExIntoPlan,
   mergeOnchangeReadsIntoPlan,
 } from './builder';
-import { computePlanDepth, getCachedOrBuildPlanV2 } from './cache';
+import { computePlanDepth, getCachedOrBuildPlan } from './cache';
 import { extractComputeCollectionPathDeps, extractComputePathDeps } from './compute_deps';
 import { PathPlanExecutor } from './executor';
 import type { ModelCtor } from './shared';
@@ -81,7 +81,7 @@ export class PathPlanBuilder {
     computeM2oPaths: Map<string, string[][]>,
     computeCollectionPaths: Map<string, string[][]>
   ): { plan: PathPrefetchPlan; fromCache: boolean; signature: string; pathDepthMax: number } {
-    return getCachedOrBuildPlanV2(modelCtor, m2oReads, collectionReads, computeM2oPaths, computeCollectionPaths, (m2oChains, collections) => {
+    return getCachedOrBuildPlan(modelCtor, m2oReads, collectionReads, computeM2oPaths, computeCollectionPaths, (m2oChains, collections) => {
       const builder = PathPlanBuilder.builder().mergeM2OChains(m2oChains).mergeCollections(collections).finalize();
       return { plan: builder.getPlan(), pathDepthMax: builder.getPathDepthMax() };
     });

@@ -89,7 +89,7 @@ export interface ConstraintContext<TModel extends BaseModel = BaseModel> {
  *
  * @deprecated Prefer {@link InstanceConstraintMethod} for new code.
  */
-export type LegacyConstraintMethod<TModel extends BaseModel = BaseModel> = (self: TModel, ctx: ConstraintContext<TModel>) => void | Promise<void>;
+export type ConstraintMethodFn<TModel extends BaseModel = BaseModel> = (self: TModel, ctx: ConstraintContext<TModel>) => void | Promise<void>;
 
 /**
  * Instance constraint handler signature (non-static methods).
@@ -106,10 +106,10 @@ export type InstanceConstraintMethod<TModel extends BaseModel = BaseModel> = (th
 /**
  * Constraint handler signature (compatibility union).
  *
- * Accepts both {@link LegacyConstraintMethod} and {@link InstanceConstraintMethod}.
+ * Accepts both {@link ConstraintMethodFn} and {@link InstanceConstraintMethod}.
  * The runtime engine dispatches by {@link ConstraintMeta.isStatic}.
  */
-export type ConstraintMethod<TModel extends BaseModel = BaseModel> = LegacyConstraintMethod<TModel> | InstanceConstraintMethod<TModel>;
+export type ConstraintMethod<TModel extends BaseModel = BaseModel> = ConstraintMethodFn<TModel> | InstanceConstraintMethod<TModel>;
 
 /**
  * Aggregates validation issues that should be surfaced as a single pipeline failure.

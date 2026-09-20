@@ -6,15 +6,15 @@ import { getOnchangeRuntimeFlags } from '../constants';
 import type { ModelCtor } from './shared';
 
 /**
- * Serializable V2 snapshot of a path prefetch plan.
+ * Serializable snapshot of a path prefetch plan.
  */
-export type PlanSkeletonV2 = {
+export type PlanSkeleton = {
   rootManyToOne: Record<string, string[]>;
   m2oChains: Record<string, string[][]>;
   collections: Record<string, string[][]>;
 };
 
-const cacheV2 = new WeakMap<ModelCtor, Map<string, PlanSkeletonV2>>();
+const cacheV2 = new WeakMap<ModelCtor, Map<string, PlanSkeleton>>();
 
 /**
  * Appends source chains into a destination chain map.
@@ -62,7 +62,7 @@ export function normalizePlanChains(m: Map<string, string[][]>) {
 /**
  * Builds the cache signature for a V2 path plan.
  */
-export function makePlanSignatureV2(m2oChains: Map<string, string[][]>, collections: Map<string, string[][]>): string {
+export function makePlanSignature(m2oChains: Map<string, string[][]>, collections: Map<string, string[][]>): string {
   const runtimeFlags = getOnchangeRuntimeFlags();
   const parts: string[] = [`V=${runtimeFlags.PLAN_SIGNATURE_VERSION}`, `D=${runtimeFlags.MAX_MULTI_HOP_DEPTH}`];
 
@@ -98,7 +98,7 @@ export function makePlanSignatureV2(m2oChains: Map<string, string[][]>, collecti
 /**
  * Converts a runtime plan into its serializable V2 skeleton.
  */
-export function planToSkeletonV2(plan: PathPrefetchPlan): PlanSkeletonV2 {
+export function planToSkeleton(plan: PathPrefetchPlan): PlanSkeleton {
   const r: Record<string, string[]> = {};
   const m: Record<string, string[][]> = {};
   const c: Record<string, string[][]> = {};
@@ -113,7 +113,7 @@ export function planToSkeletonV2(plan: PathPrefetchPlan): PlanSkeletonV2 {
 /**
  * Reconstructs a runtime plan from a V2 skeleton.
  */
-export function planFromSkeletonV2(s: PlanSkeletonV2): PathPrefetchPlan {
+export function planFromSkeleton(s: PlanSkeleton): PathPrefetchPlan {
   const p: PathPrefetchPlan = {
     rootManyToOne: new Map(),
     m2oChains: new Map(),
@@ -144,7 +144,7 @@ export function computePlanDepth(plan: PathPrefetchPlan): number {
 /**
  * Returns a cached V2 plan when available or builds and stores a new one.
  */
-export function getCachedOrBuildPlanV2(
+export function getCachedOrBuildPlan(
   modelCtor: ModelCtor,
   m2oReads: Map<string, string[][]>,
   collectionReads: Map<string, string[][]>,
@@ -164,7 +164,7 @@ export function getCachedOrBuildPlanV2(
   normalizePlanChains(m2oChains);
   normalizePlanChains(collections);
 
-  const signature = makePlanSignatureV2(m2oChains, collections);
+  const signature = makePlanSignature(m2oChains, collections);
 
   if (!runtimeFlags.PLAN_CACHE_ENABLED) {
     const built = buildPlan(m2oChains, collections);
@@ -173,17 +173,17 @@ export function getCachedOrBuildPlanV2(
 
   let store = cacheV2.get(modelCtor);
   if (!store) {
-    store = new Map<string, PlanSkeletonV2>();
+    store = new Map<string, PlanSkeleton>();
     cacheV2.set(modelCtor, store);
   }
 
   const hit = store.get(signature);
   if (hit) {
-    const plan = planFromSkeletonV2(hit);
+    const plan = planFromSkeleton(hit);
     return { plan, fromCache: true, signature, pathDepthMax: computePlanDepth(plan) };
   }
 
   const built = buildPlan(m2oChains, collections);
-  store.set(signature, planToSkeletonV2(built.plan));
+  store.set(signature, planToSkeleton(built.plan));
   return { plan: built.plan, fromCache: false, signature, pathDepthMax: built.pathDepthMax };
 }

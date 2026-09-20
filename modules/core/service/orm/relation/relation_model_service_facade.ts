@@ -8,13 +8,11 @@ import type { ModelCtor } from '../model/types';
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 
-type RelationModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T>;
-
-function hasStaticOverride(ModelCtor: RelationModelCtor, methodName: 'Create' | 'UpdateById'): boolean {
+function hasStaticOverride(ModelCtor: ModelCtor, methodName: 'Create' | 'UpdateById'): boolean {
   return ModelCtor[methodName] !== BaseModel[methodName];
 }
 
-function normalizeCreatedId(ModelCtor: RelationModelCtor, created: unknown): string {
+function normalizeCreatedId(ModelCtor: ModelCtor, created: unknown): string {
   if (typeof created === 'string') return created;
   if (typeof created === 'number' || typeof created === 'bigint') return String(created);
   const createdRecord = asObjectRecord(created);
@@ -27,8 +25,8 @@ function normalizeCreatedId(ModelCtor: RelationModelCtor, created: unknown): str
   throw new Error(`Relation create did not return a valid Id for ${ModelCtor.name}`);
 }
 
-export async function createRelationModel<T extends BaseModel>(ModelCtor: RelationModelCtor<T>, value: UnknownRecord): Promise<string> {
-  const staticCreate = (ModelCtor as RelationModelCtor<T> & { Create?: (value: UnknownRecord) => Promise<unknown> }).Create;
+export async function createRelationModel<T extends BaseModel>(ModelCtor: ModelCtor<T>, value: UnknownRecord): Promise<string> {
+  const staticCreate = (ModelCtor as ModelCtor<T> & { Create?: (value: UnknownRecord) => Promise<unknown> }).Create;
   if (hasStaticOverride(ModelCtor, 'Create')) {
     if (typeof staticCreate !== 'function') {
       throw new Error(`Relation create override is missing for ${ModelCtor.name}`);
@@ -38,8 +36,8 @@ export async function createRelationModel<T extends BaseModel>(ModelCtor: Relati
   return normalizeCreatedId(ModelCtor, await createModel(ModelCtor, value as never));
 }
 
-export async function updateRelationModelById<T extends BaseModel>(ModelCtor: RelationModelCtor<T>, id: string, values: UnknownRecord): Promise<boolean> {
-  const staticUpdate = (ModelCtor as RelationModelCtor<T> & { UpdateById?: (id: string, values: UnknownRecord) => Promise<unknown> }).UpdateById;
+export async function updateRelationModelById<T extends BaseModel>(ModelCtor: ModelCtor<T>, id: string, values: UnknownRecord): Promise<boolean> {
+  const staticUpdate = (ModelCtor as ModelCtor<T> & { UpdateById?: (id: string, values: UnknownRecord) => Promise<unknown> }).UpdateById;
   const result = hasStaticOverride(ModelCtor, 'UpdateById')
     ? typeof staticUpdate === 'function'
       ? await staticUpdate.call(ModelCtor, id, values)

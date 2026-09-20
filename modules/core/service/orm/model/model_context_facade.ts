@@ -17,7 +17,7 @@ import {
 import type { Context } from '../../runtime/context';
 import { withModelSudo } from './model_sudo';
 
-type ModelContextFacadeCtor = {
+type ModelContextAccessor = {
   ctx: Context;
   companyId: string | undefined;
   companyIds: string[];
@@ -35,8 +35,8 @@ type ModelInstanceLike = {
   constructor: Function;
 };
 
-function getModelContextFacadeCtor(instance: ModelInstanceLike): ModelContextFacadeCtor {
-  return instance.constructor as unknown as ModelContextFacadeCtor;
+function getModelContextAccessor(instance: ModelInstanceLike): ModelContextAccessor {
+  return instance.constructor as unknown as ModelContextAccessor;
 }
 
 export function getModelContext(): Context {
@@ -84,31 +84,31 @@ export function withModelElevate<R>(fn: () => R, opts?: { hint?: string }): R {
 }
 
 export function getInstanceModelContext(instance: ModelInstanceLike): Context {
-  return getModelContextFacadeCtor(instance).ctx;
+  return getModelContextAccessor(instance).ctx;
 }
 
 export function getInstanceModelCompanyId(instance: ModelInstanceLike): string | undefined {
-  return getModelContextFacadeCtor(instance).companyId;
+  return getModelContextAccessor(instance).companyId;
 }
 
 export function getInstanceModelCompanyIds(instance: ModelInstanceLike): string[] {
-  return getModelContextFacadeCtor(instance).companyIds;
+  return getModelContextAccessor(instance).companyIds;
 }
 
 export function getInstanceModelLang(instance: ModelInstanceLike): string | undefined {
-  return getModelContextFacadeCtor(instance).lang;
+  return getModelContextAccessor(instance).lang;
 }
 
 export function getInstanceModelTimezone(instance: ModelInstanceLike): string | undefined {
-  return getModelContextFacadeCtor(instance).tz;
+  return getModelContextAccessor(instance).tz;
 }
 
 export function getInstanceModelCompanyTimezone(instance: ModelInstanceLike): string | undefined {
-  return getModelContextFacadeCtor(instance).companyTz;
+  return getModelContextAccessor(instance).companyTz;
 }
 
 export function getInstanceModelUserId(instance: ModelInstanceLike): string | undefined {
-  return getModelContextFacadeCtor(instance).userId;
+  return getModelContextAccessor(instance).userId;
 }
 
 export function withInstanceModelContext<R>(
@@ -117,17 +117,17 @@ export function withInstanceModelContext<R>(
   fn: () => R,
   opts?: { merge?: boolean }
 ): R {
-  return getModelContextFacadeCtor(instance).withContext(ctx, fn, opts);
+  return getModelContextAccessor(instance).withContext(ctx, fn, opts);
 }
 
 export function withInstanceModelUser<R>(instance: ModelInstanceLike, userId: string, fn: () => R): R {
-  return getModelContextFacadeCtor(instance).withUser(userId, fn);
+  return getModelContextAccessor(instance).withUser(userId, fn);
 }
 
 export function withInstanceModelCompany<R>(instance: ModelInstanceLike, company: WithCompanyTarget, fn: () => R): R {
-  return getModelContextFacadeCtor(instance).withCompany(company, fn);
+  return getModelContextAccessor(instance).withCompany(company, fn);
 }
 
 export function withInstanceModelElevate<R>(instance: ModelInstanceLike, fn: () => R, opts?: { hint?: string }): R {
-  return getModelContextFacadeCtor(instance).sudo(fn, opts);
+  return getModelContextAccessor(instance).sudo(fn, opts);
 }

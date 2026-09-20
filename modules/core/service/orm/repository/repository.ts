@@ -12,11 +12,11 @@ import {
   UntypedQueryCondition,
   ConditionEnvelope,
   SimplifyResult,
-  RepoReadGroupOptions,
-  RepoReadGroupRow,
-  RepoReadTotalsOptions,
-  RepoReadTotalsRow,
-  RepoReadGroupCountOptions,
+  RepositoryReadGroupOptions,
+  RepositoryReadGroupRow,
+  RepositoryReadTotalsOptions,
+  RepositoryReadTotalsRow,
+  RepositoryReadGroupCountOptions,
   RecordRuleOp,
 } from './types/engine';
 import { ChoysumDialect, ChoysumDatabase, ChoysumCamelCasePlugin, ChoysumDeduplicateJoinsPlugin, ChoysumParseJSONResultsPlugin } from '../../infra/database';
@@ -1223,7 +1223,7 @@ export class Repository {
    * - limit and offset only apply to the current layer.
    * - Always returns __count.
    */
-  public async readGroup<T>(options: RepoReadGroupOptions<T>): Promise<RepoReadGroupRow[]> {
+  public async readGroup<T>(options: RepositoryReadGroupOptions<T>): Promise<RepositoryReadGroupRow[]> {
     return await executeRepositoryReadGroup(this.createReadAggregateDeps(), options);
   }
 
@@ -1233,7 +1233,7 @@ export class Repository {
    * - where = applySoftLayer + convertCondition
    * - having, orderBy, limit, and offset are not supported.
    */
-  public async readTotals<T>(options: RepoReadTotalsOptions<T>): Promise<RepoReadTotalsRow> {
+  public async readTotals<T>(options: RepositoryReadTotalsOptions<T>): Promise<RepositoryReadTotalsRow> {
     return await executeRepositoryReadTotals(this.createReadAggregateDeps(), options);
   }
 
@@ -1243,7 +1243,7 @@ export class Repository {
    * - With having, build a subquery such as select groupExpr, [aggs...], COUNT(*) as "__count" group by groupExpr having ... and count(*) outside it.
    * - where = applySoftLayer + convertCondition
    */
-  public async readGroupCount<T>(options: RepoReadGroupCountOptions<T>): Promise<number> {
+  public async readGroupCount<T>(options: RepositoryReadGroupCountOptions<T>): Promise<number> {
     return await executeRepositoryReadGroupCount(this.createReadAggregateDeps(), options);
   }
 }

@@ -12,7 +12,7 @@ export type {
   ValidationIssue,
   ConstraintContext,
   ConstraintMethod,
-  LegacyConstraintMethod,
+  ConstraintMethodFn,
   InstanceConstraintMethod,
 } from '../orm/metadata/constraint';
 export { ValidationPipelineError } from '../orm/metadata/constraint';

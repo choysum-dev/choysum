@@ -19,7 +19,6 @@ import type { ModelCtor } from './types';
 import { asObjectRecord } from '../../../utils/object';
 import type { UnknownRecord } from '../../../utils/types';
 
-type ModelRuntimeServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 type ModelOnchangeOptions = {
   withCompute?: boolean;
@@ -37,14 +36,14 @@ type RuntimeEntityInput = UnknownRecord | BaseModel;
  * Do not call `ModelCtor.DefaultGet` from here — that would recurse through the base hook.
  */
 export async function defaultModelValues<T extends BaseModel>(
-  ModelCtor: ModelRuntimeServiceFacadeCtor<T>,
+  ModelCtor: ModelCtor<T>,
   value: Partial<Insertable<T>>
 ): Promise<Partial<Insertable<T>>> {
   return await DefaultOperations.DefaultGet(ModelCtor, value);
 }
 
 export async function runModelOnchange<T extends BaseModel>(
-  ModelCtor: ModelRuntimeServiceFacadeCtor<T>,
+  ModelCtor: ModelCtor<T>,
   draft: OnchangeDraft,
   changed: OnchangeTrigger<T>[],
   opts?: ModelOnchangeOptions
@@ -52,7 +51,7 @@ export async function runModelOnchange<T extends BaseModel>(
   return await OnchangeOperations.Onchange<T>(ModelCtor, draft, changed, opts);
 }
 
-export function getModelRuntimeMetadata<T extends BaseModel>(ModelCtor: ModelRuntimeServiceFacadeCtor<T>): ModelMetadata {
+export function getModelRuntimeMetadata<T extends BaseModel>(ModelCtor: ModelCtor<T>): ModelMetadata {
   return getCachedModelMetadata(ModelCtor);
 }
 
@@ -86,7 +85,7 @@ export async function recomputeModelMetadata(meta: ModelMetadata, entity: Runtim
   await ComputeEngine.recompute(meta, entityRecord, baseChanged, mode);
 }
 
-export function collectModelUpstreamInverseFields<T extends BaseModel>(ModelCtor: ModelRuntimeServiceFacadeCtor<T>): string[] {
+export function collectModelUpstreamInverseFields<T extends BaseModel>(ModelCtor: ModelCtor<T>): string[] {
   return ComputeCascadeEngine.collectUpstreamInverseFields(ModelCtor);
 }
 
@@ -94,12 +93,12 @@ export async function triggerModelUpstream(event: UpstreamChangeEvent): Promise<
   await ComputeCascadeEngine.triggerUpstream(event);
 }
 
-export async function triggerModelUpstreamCreateBatch<T extends BaseModel>(ModelCtor: ModelRuntimeServiceFacadeCtor<T>, rows: UnknownRecord[]): Promise<void> {
+export async function triggerModelUpstreamCreateBatch<T extends BaseModel>(ModelCtor: ModelCtor<T>, rows: UnknownRecord[]): Promise<void> {
   await ComputeCascadeEngine.triggerUpstreamCreateBatch(ModelCtor, rows);
 }
 
 export async function triggerModelDownstream<T extends BaseModel>(
-  ModelCtor: ModelRuntimeServiceFacadeCtor<T>,
+  ModelCtor: ModelCtor<T>,
   changedFields: string[],
   recordId: string
 ): Promise<void> {

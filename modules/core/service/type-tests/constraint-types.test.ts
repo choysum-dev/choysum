@@ -3,7 +3,7 @@
 
 import { BaseModel } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import type { LegacyConstraintMethod, InstanceConstraintMethod } from '@/core/service/api/constraint';
+import type { ConstraintMethodFn, InstanceConstraintMethod } from '@/core/service/api/constraint';
 
 class ConstraintTypeParent extends BaseModel {
   Name?: string;
@@ -79,7 +79,7 @@ class ConstraintTypeInstanceCases extends BaseModel {
 }
 
 // -- type-level contract verification --
-const _legacy: LegacyConstraintMethod<ConstraintTypeCases> = (_self: ConstraintTypeCases, _ctx: any): void => {};
+const _legacy: ConstraintMethodFn<ConstraintTypeCases> = (_self: ConstraintTypeCases, _ctx: any): void => {};
 const _instance: InstanceConstraintMethod<ConstraintTypeInstanceCases> = function (this: ConstraintTypeInstanceCases): void {
   void this.Name;
 };

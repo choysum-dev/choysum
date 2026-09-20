@@ -52,7 +52,7 @@ export type {
   ValidationIssue,
   ConstraintContext,
   ConstraintMethod,
-  LegacyConstraintMethod,
+  ConstraintMethodFn,
   InstanceConstraintMethod,
 } from './constraint';
 export { ValidationPipelineError } from './constraint';

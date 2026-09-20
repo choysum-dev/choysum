@@ -6,14 +6,13 @@ import type { ModelCtor } from './types';
 import type { FieldSelection, QueryCondition, Updateable, SoftDeleteOptions } from '../repository/types';
 import { UpdateOperations } from './model_update';
 
-type ModelUpdateServiceFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 /**
  * Update matching records. Runtime may return a field subset when `returnFields` is set;
  * callers see {@link Projected} via BaseModel overloads.
  */
 export async function updateModels<T extends BaseModel>(
-  ModelCtor: ModelUpdateServiceFacadeCtor<T>,
+  ModelCtor: ModelCtor<T>,
   condition: QueryCondition<T>,
   values: Partial<Updateable<T>>,
   returnFields?: FieldSelection<T>,
@@ -27,7 +26,7 @@ export async function updateModels<T extends BaseModel>(
  * callers see {@link Projected} via BaseModel overloads.
  */
 export async function updateModelById<T extends BaseModel>(
-  ModelCtor: ModelUpdateServiceFacadeCtor<T>,
+  ModelCtor: ModelCtor<T>,
   id: string,
   values: Partial<Updateable<T>>,
   returnFields?: FieldSelection<T>,
