@@ -100,7 +100,12 @@ export async function loginAsE2EAdmin(page: Page, baseURL: string): Promise<void
     const deadline = Date.now() + loginTimeoutMs;
     while (!(loginSucceeded || urlSucceeded) && Date.now() < deadline) {
       if (loginSettled && urlSettled) break;
-      await Promise.race([loginWait, urlWait, page.waitForTimeout(4_000)]);
+      // Omit already-settled waiters so a failed Login does not spin the loop
+      // at microtask speed instead of waiting on the 4s re-click backoff.
+      const pendingWaiters: Promise<unknown>[] = [page.waitForTimeout(4_000)];
+      if (!loginSettled) pendingWaiters.push(loginWait);
+      if (!urlSettled) pendingWaiters.push(urlWait);
+      await Promise.race(pendingWaiters);
       if (loginSucceeded || urlSucceeded) break;
 
       const href = String(await page.url());
