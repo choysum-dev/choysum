@@ -135,7 +135,7 @@ export default class Language extends BaseModel {
     default: () => false,
     string: _lt('Symbol Spacing', { scope: 'base.model.Language.fields' }),
   })
-  CurrencySymbolSpacing?: boolean;
+  CurrencySymbolSpacing?: boolean | null;
 
   /**
    * Active languages for Preferences / guest switcher (POSIX Code + format projection).
@@ -223,9 +223,8 @@ export default class Language extends BaseModel {
       this.CurrencySymbolPosition = assertCurrencySymbolPosition(this.CurrencySymbolPosition);
     }
     if (this.CurrencySymbolSpacing !== undefined) {
-      const spacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
-      if (typeof spacing === 'boolean') this.CurrencySymbolSpacing = spacing;
-      else if (spacing === null) this.CurrencySymbolSpacing = undefined;
+      // Preserve null clears from assertCurrencySymbolSpacing (do not wash to undefined).
+      this.CurrencySymbolSpacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
     }
 
     // Refuse deactivating the last active language (update path only).
