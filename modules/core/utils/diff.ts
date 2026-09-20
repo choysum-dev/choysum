@@ -6,6 +6,8 @@ import equal from 'fast-deep-equal';
 import { isDecimalLike, decimalEqual } from './decimal';
 import { asObjectRecord, hasOwnKey } from './object';
 import type { ObjectRecord } from './types';
+import type BaseModel from '../service/orm/model/model';
+import type { RelationPatch } from '../service/orm/repository/types';
 
 type Plain = ObjectRecord;
 
@@ -16,15 +18,9 @@ type DiffChange = {
 
 export type RelationType = 'OneToMany' | 'ManyToMany' | 'ManyToOne';
 export type FieldsMeta = Record<string, { relation?: RelationType; type?: string }>;
-export type RelationArrayOps = Partial<{
-  create: ObjectRecord[];
-  update: ObjectRecord[];
-  delete: Array<{ Id: unknown }>;
-  replace: ObjectRecord[];
-}>;
 
-// Explicit relation operation kinds.
-export type RelationOpsKind = 'create' | 'update' | 'delete' | 'replace';
+/** Keys of a {@link RelationPatch} object payload. */
+export type RelationPatchKind = keyof RelationPatch<BaseModel>;
 
 const toId = (x: unknown): unknown => {
   const record = asObjectRecord(x);
@@ -151,9 +147,9 @@ function normalizePatchForRelationUpdate(a: Plain, b: Plain, patch: Plain): Plai
 /* ------------------------------------------------
  * Computes diffs for relation arrays.
  * kind: 'o2m' | 'm2m'
- * Output: RelationArrayOps (create/delete/update)
+ * Output: RelationPatch (create/delete/update)
  * ------------------------------------------------ */
-function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr: unknown[] = []): RelationArrayOps | undefined {
+function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr: unknown[] = []): RelationPatch<BaseModel> | undefined {
   const oById = new Map<unknown, unknown>();
   for (const it of origArr) {
     const id = toId(it);
@@ -175,7 +171,7 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
   // delete: rows that existed before but are now missing.
   const oIds = new Set(oById.keys());
   const cIds = new Set(cById.keys());
-  const del = [...oIds].filter(x => !cIds.has(x)).map(Id => ({ Id }));
+  const del = [...oIds].filter(x => !cIds.has(x)).map(Id => ({ Id: String(Id) }));
 
   // m2m additions are represented as Id-only links.
   const addIdsAsCreate: ObjectRecord[] = kind === 'm2m' ? [...cIds].filter(x => !oIds.has(x)).map(Id => ({ Id })) : [];
@@ -195,11 +191,11 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
     }
   }
 
-  const ops: RelationArrayOps = {};
+  const ops: RelationPatch<BaseModel> = {};
   const create = [...createNoId, ...addIdsAsCreate];
-  if (create.length) ops.create = create;
+  if (create.length) ops.create = create as RelationPatch<BaseModel>['create'];
   if (del.length) ops.delete = del;
-  if (update.length) ops.update = update;
+  if (update.length) ops.update = update as RelationPatch<BaseModel>['update'];
 
   return Object.keys(ops).length ? ops : undefined;
 }

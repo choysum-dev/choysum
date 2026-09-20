@@ -4,8 +4,8 @@
 import BaseModel from '../model/model';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { RelationProcessor } from './processor';
-import { OneToManyOperation, PrepareResult, RelationProcessingResult, ExtractedRelations, BatchProcessingResult } from './types';
-import { UntypedQueryCondition, RelationOperations } from '../repository/types';
+import { PreparedOneToManyOp, PrepareResult, RelationProcessingResult, ExtractedRelations, BatchProcessingResult } from './types';
+import { UntypedQueryCondition, RelationPatch } from '../repository/types';
 import { MetadataStorage } from '../metadata';
 import { Repository } from '../repository/repository';
 import type { ModelCtor } from '../metadata/field';
@@ -73,7 +73,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
           fieldName,
           targetModel: rel.targetModel(),
           inverseField: rel.inverseField,
-          operations: fieldValue as OneToManyOperation['operations'],
+          operations: fieldValue as PreparedOneToManyOp['operations'],
         });
         relations.touchedCollections!.add(fieldName); // Mark the collection field as touched.
       }
@@ -90,7 +90,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
    * Process a OneToMany relation update.
    * Supports creating, updating, deleting child entities, and replacing the entire collection.
    */
-  public async processRelationUpdate(parentId: string, operation: OneToManyOperation): Promise<RelationProcessingResult> {
+  public async processRelationUpdate(parentId: string, operation: PreparedOneToManyOp): Promise<RelationProcessingResult> {
     if (operation.type !== 'OneToMany') {
       throw new Error(`Expected a OneToMany operation, but received ${operation.type}`);
     }
@@ -140,7 +140,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
       }
 
       // Object mode: replace/delete/create/update.
-      const relationOps = operations as RelationOperations<BaseModel>;
+      const relationOps = operations as RelationPatch<BaseModel>;
 
       // replace
       if (relationOps.replace) {
@@ -263,7 +263,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
   /**
    * Batch-process OneToMany relation updates.
    */
-  public async batchProcessRelationUpdate(parentIds: string[], operations: OneToManyOperation[]): Promise<BatchProcessingResult> {
+  public async batchProcessRelationUpdate(parentIds: string[], operations: PreparedOneToManyOp[]): Promise<BatchProcessingResult> {
     if (parentIds.length !== operations.length) {
       throw new Error('Parent entity Id array length must match relation operation array length');
     }

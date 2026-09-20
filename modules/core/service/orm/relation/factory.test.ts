@@ -6,7 +6,7 @@ import BaseModel from '../model/model';
 import { Field, Model } from '../decorator';
 import { MetadataStorage } from '../metadata';
 import { RelationFactory } from './factory';
-import { ExtractedRelations, RelationArrayMethod, type RelationChangesCollection, type RelationFieldType } from './types';
+import { ExtractedRelations, RelationMutationLogMethod, type RelationChangesCollection, type RelationFieldType } from './types';
 
 
 @Model('test.RelationFactoryTarget')
@@ -238,8 +238,8 @@ test('relation factory prepareRelationChanges updates existing one-to-many and a
   } as unknown as BaseModel;
 
   const relationChanges: RelationChangesCollection = {
-    Lines: [{ method: RelationArrayMethod.PUSH, args: [], timestamp: 1 }],
-    Tags: [{ method: RelationArrayMethod.PUSH, args: [], timestamp: 2 }],
+    Lines: [{ method: RelationMutationLogMethod.PUSH, args: [], timestamp: 1 }],
+    Tags: [{ method: RelationMutationLogMethod.PUSH, args: [], timestamp: 2 }],
   };
 
   const relations: ExtractedRelations = {
@@ -275,7 +275,7 @@ test('relation factory prepareRelationChanges updates existing many-to-many oper
   } as unknown as BaseModel;
 
   const relationChanges: RelationChangesCollection = {
-    Tags: [{ method: RelationArrayMethod.PUSH, args: [], timestamp: 3 }],
+    Tags: [{ method: RelationMutationLogMethod.PUSH, args: [], timestamp: 3 }],
   };
 
   const relations: ExtractedRelations = {
@@ -681,10 +681,10 @@ test('relation factory prepareRelationChanges skips non-array/default many2one a
       edgeCtor as any,
       modelInstance,
       {
-        NonArrayOneToMany: [{ method: RelationArrayMethod.PUSH, args: [], timestamp: 1 }],
-        DefaultManyToOne: [{ method: RelationArrayMethod.PUSH, args: [], timestamp: 2 }],
-        BrokenOneToMany: [{ method: RelationArrayMethod.PUSH, args: [], timestamp: 3 }],
-        BrokenManyToMany: [{ method: RelationArrayMethod.PUSH, args: [], timestamp: 4 }],
+        NonArrayOneToMany: [{ method: RelationMutationLogMethod.PUSH, args: [], timestamp: 1 }],
+        DefaultManyToOne: [{ method: RelationMutationLogMethod.PUSH, args: [], timestamp: 2 }],
+        BrokenOneToMany: [{ method: RelationMutationLogMethod.PUSH, args: [], timestamp: 3 }],
+        BrokenManyToMany: [{ method: RelationMutationLogMethod.PUSH, args: [], timestamp: 4 }],
       },
       relations
     );
@@ -724,7 +724,7 @@ test('relation factory prepareRelationChanges creates one-to-many entry when no 
     RelationFactory.prepareRelationChanges(
       edgeCtor as any,
       { Lines: [{ Id: 'l-new' }] } as any,
-      { Lines: [{ method: RelationArrayMethod.PUSH, args: [], timestamp: 1 }] },
+      { Lines: [{ method: RelationMutationLogMethod.PUSH, args: [], timestamp: 1 }] },
       relations
     );
 

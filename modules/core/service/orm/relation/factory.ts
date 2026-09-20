@@ -11,8 +11,8 @@ import { ManyToManyProcessor } from './many-to-many';
 import {
   ExtractedRelations,
   type ManyToManyRelationConfig,
-  OneToManyOperation,
-  ManyToManyOperation,
+  PreparedOneToManyOp,
+  PreparedManyToManyOp,
   type OneToManyRelationConfig,
   RelationChangesCollection,
   resolveManyToManyRelationConfig,
@@ -246,11 +246,11 @@ export class RelationFactory {
     const results: BatchProcessingResult[] = [];
 
     // Collect O2M operations.
-    const oneToManyOperations: OneToManyOperation[] = [];
+    const oneToManyOperations: PreparedOneToManyOp[] = [];
     const oneToManyParentIds: string[] = [];
 
     // Collect M2M operations.
-    const manyToManyOperations: ManyToManyOperation[] = [];
+    const manyToManyOperations: PreparedManyToManyOp[] = [];
     const manyToManyParentIds: string[] = [];
 
     for (let i = 0; i < parentIds.length; i++) {

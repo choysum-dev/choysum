@@ -4,7 +4,7 @@
 import BaseModel from '../model/model';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { RelationProcessor } from './processor';
-import { ManyToOneOperation, PrepareResult, RelationProcessingResult, BatchProcessingResult } from './types';
+import { PreparedManyToOneOp, PrepareResult, RelationProcessingResult, BatchProcessingResult } from './types';
 import type { UntypedQueryCondition } from '../repository/types';
 import type { ModelCtor } from '../model/types';
 import { asObjectRecord } from '../../../utils/object';
@@ -115,7 +115,7 @@ export class ManyToOneProcessor<T extends BaseModel = BaseModel> extends Relatio
   /**
    * Process a ManyToOne relation update.
    */
-  public async processRelationUpdate(parentId: string, operation: ManyToOneOperation): Promise<RelationProcessingResult> {
+  public async processRelationUpdate(parentId: string, operation: PreparedManyToOneOp): Promise<RelationProcessingResult> {
     if (operation.type !== 'ManyToOne') {
       throw new Error(`Expected a ManyToOne operation, but received ${operation.type}`);
     }
@@ -162,7 +162,7 @@ export class ManyToOneProcessor<T extends BaseModel = BaseModel> extends Relatio
   /**
    * Batch-process ManyToOne relation updates.
    */
-  public async batchProcessRelationUpdate(parentIds: string[], operations: ManyToOneOperation[]): Promise<BatchProcessingResult> {
+  public async batchProcessRelationUpdate(parentIds: string[], operations: PreparedManyToOneOp[]): Promise<BatchProcessingResult> {
     if (parentIds.length !== operations.length) {
       throw new Error('Parent entity Id array length must match relation operation array length');
     }
