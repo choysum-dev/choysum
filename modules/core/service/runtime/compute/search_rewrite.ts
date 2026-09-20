@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { DialectName } from '../../orm/repository/repository_dialect';
-import type { BaseQueryCondition } from '../../orm/repository/types';
+import type { UntypedQueryCondition } from '../../orm/repository/types';
 import type { ModelMetadata } from '../../orm/metadata/model';
 import { withBridgeFrame } from './bridge';
 import { createEntityBackedModelInstance, resolveInstanceHandler } from './handler_runtime';
@@ -15,7 +15,7 @@ function isPromiseLike<T = unknown>(value: unknown): value is Promise<T> {
 type SearchRewriteResolved =
   | {
       kind: 'domain';
-      domain: BaseQueryCondition;
+      domain: UntypedQueryCondition;
     }
   | {
       kind: 'sql';
@@ -53,7 +53,7 @@ export function rewriteSearchCondition(
     if (isVirtualRelatedWithoutCompute && relatedPath) {
       return {
         kind: 'domain',
-        domain: [relatedPath, op, value] as BaseQueryCondition,
+        domain: [relatedPath, op, value] as UntypedQueryCondition,
       };
     }
 
@@ -80,14 +80,14 @@ export function rewriteSearchCondition(
         value<T = unknown>() {
           return value as T;
         },
-        and(clauses: BaseQueryCondition[]) {
-          return { And: clauses } as BaseQueryCondition;
+        and(clauses: UntypedQueryCondition[]) {
+          return { And: clauses } as UntypedQueryCondition;
         },
-        or(clauses: BaseQueryCondition[]) {
-          return { Or: clauses } as BaseQueryCondition;
+        or(clauses: UntypedQueryCondition[]) {
+          return { Or: clauses } as UntypedQueryCondition;
         },
         cmp(left: unknown, operator: unknown, right: unknown) {
-          return [String(left || ''), operator, right] as BaseQueryCondition;
+          return [String(left || ''), operator, right] as UntypedQueryCondition;
         },
         dialect,
       };
@@ -131,7 +131,7 @@ function normalizeSearchHandlerResult(raw: unknown): SearchRewriteResolved | und
   if (hasDomain && !hasSql) {
     return {
       kind: 'domain',
-      domain: record!.domain as BaseQueryCondition,
+      domain: record!.domain as UntypedQueryCondition,
     };
   }
 
@@ -152,7 +152,7 @@ function normalizeSearchHandlerResult(raw: unknown): SearchRewriteResolved | und
 
   return {
     kind: 'domain',
-    domain: raw as BaseQueryCondition,
+    domain: raw as UntypedQueryCondition,
   };
 }
 

@@ -5,7 +5,7 @@ import BaseModel from '../model/model';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { RelationProcessor } from './processor';
 import { OneToManyOperation, PrepareResult, RelationProcessingResult, ExtractedRelations, BatchProcessingResult } from './types';
-import { BaseQueryCondition, RelationOperations } from '../repository/types';
+import { UntypedQueryCondition, RelationOperations } from '../repository/types';
 import { MetadataStorage } from '../metadata';
 import { Repository } from '../repository/repository';
 import type { ModelCtor } from '../metadata/field';
@@ -493,7 +493,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
   ): Promise<Map<string, { existingIds: Set<string>; removedIds: string[] }>> {
     if (parentIds.length === 0) return new Map();
 
-    const condition: BaseQueryCondition = parentIds.length === 1 ? [inverseField, '=', parentIds[0]] : [inverseField, 'in', parentIds];
+    const condition: UntypedQueryCondition = parentIds.length === 1 ? [inverseField, '=', parentIds[0]] : [inverseField, 'in', parentIds];
     const existingRecords = await repository.search(condition);
 
     const resultMap = new Map<string, { existingIds: Set<string>; removedIds: string[] }>();
@@ -726,7 +726,7 @@ export class OneToManyProcessor<T extends BaseModel = BaseModel> extends Relatio
     if (parentIds.length === 0) return;
 
     const onDelete = this.getOnDeletePolicy(targetModel, inverseField);
-    const condition: BaseQueryCondition = parentIds.length === 1 ? [inverseField, '=', parentIds[0]] : [inverseField, 'in', parentIds];
+    const condition: UntypedQueryCondition = parentIds.length === 1 ? [inverseField, '=', parentIds[0]] : [inverseField, 'in', parentIds];
     const affectedRecords = await repository.search(condition);
     if (affectedRecords.length === 0) return;
 

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition, RepositoryConditionConverterLike, RepositoryCountAllDbLike, RepositoryExecuteUnknownQueryLike } from '../types/engine';
+import type { UntypedQueryCondition, RepositoryConditionConverterLike, RepositoryCountAllDbLike, RepositoryExecuteUnknownQueryLike } from '../types/engine';
 import { asObjectRecord, asRuntimeCarrier } from '@/core/utils/object';
 
 type RepositoryConditionQueryBuilder = {
@@ -27,13 +27,13 @@ function asRepositoryConditionQueryDbLike(input: unknown): RepositoryConditionQu
 type RepositoryConditionQueryDeps = {
   db: unknown;
   table: string;
-  applyConditionLayers: (condition: BaseQueryCondition) => BaseQueryCondition;
-  isEmptyCondition: (condition: BaseQueryCondition) => boolean;
-  convertCondition: RepositoryConditionConverterLike<BaseQueryCondition>;
+  applyConditionLayers: (condition: UntypedQueryCondition) => UntypedQueryCondition;
+  isEmptyCondition: (condition: UntypedQueryCondition) => boolean;
+  convertCondition: RepositoryConditionConverterLike<UntypedQueryCondition>;
   execute: RepositoryExecuteUnknownQueryLike;
 };
 
-export async function locateRepositoryIdsForCondition(params: RepositoryConditionQueryDeps, condition: BaseQueryCondition): Promise<string[]> {
+export async function locateRepositoryIdsForCondition(params: RepositoryConditionQueryDeps, condition: UntypedQueryCondition): Promise<string[]> {
   const db = asRepositoryConditionQueryDbLike(params.db);
   let query = db.selectFrom(params.table).select('Id');
   const filtered = params.applyConditionLayers(condition);
@@ -45,7 +45,7 @@ export async function locateRepositoryIdsForCondition(params: RepositoryConditio
   return rows.map(row => String(row?.Id || '')).filter(Boolean);
 }
 
-export async function countRepositoryConditionMatches(params: RepositoryConditionQueryDeps, condition: BaseQueryCondition): Promise<number> {
+export async function countRepositoryConditionMatches(params: RepositoryConditionQueryDeps, condition: UntypedQueryCondition): Promise<number> {
   const db = asRepositoryConditionQueryDbLike(params.db);
   let query = db.selectFrom(params.table).select(db.fn.countAll().as('Total'));
   const filtered = params.applyConditionLayers(condition);

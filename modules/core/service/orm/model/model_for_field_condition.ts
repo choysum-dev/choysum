@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Resolve `@Field({ condition })` for Search/`forField` and relation load (PR-P1-F4).
+ * Resolve `@Field({ condition })` for Search/`relationConditionSource` and relation load (PR-P1-F4).
  */
 
 import { MetadataStorage } from '../metadata';
@@ -11,13 +11,13 @@ import { resolveModelConstructor } from './model_registry';
 import type { FieldMetadata, ModelCtor } from '../metadata/field';
 import { RELATIONAL_CONDITION_TYPES } from '../metadata/field';
 import type { ModelMetadata } from '../metadata/model';
-import type { BaseQueryCondition, ForField } from '../repository/types/query';
+import type { UntypedQueryCondition, RelationConditionSource } from '../repository/types/query';
 import { andRepositoryConditions, isEmptyRepositoryCondition } from '../repository/query/condition_layer';
 
 function trimRequired(label: string, value: unknown): string {
   const trimmed = typeof value === 'string' ? value.trim() : String(value ?? '').trim();
   if (!trimmed) {
-    throw new Error(`forField.${label} must be a non-empty string`);
+    throw new Error(`relationConditionSource.${label} must be a non-empty string`);
   }
   return trimmed;
 }
@@ -79,14 +79,14 @@ function receiverModelKeys(ModelCtor: ModelCtor): Set<string> {
 export function evaluateFieldRelationalCondition(
   SourceCtor: ModelCtor,
   fieldMeta: FieldMetadata
-): BaseQueryCondition | [] {
+): UntypedQueryCondition | [] {
   if (typeof fieldMeta.conditionCallable === 'function') {
     try {
       const evaluated = fieldMeta.conditionCallable.call(SourceCtor as typeof BaseModel);
       if (!evaluated || typeof evaluated !== 'object') {
         throw new Error('condition callable must return a QueryCondition');
       }
-      return evaluated as BaseQueryCondition;
+      return evaluated as UntypedQueryCondition;
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       throw new Error(
@@ -106,7 +106,7 @@ export function evaluateFieldRelationalCondition(
 export function resolveParentFieldRelationalCondition(
   parentMeta: ModelMetadata,
   fieldName: string
-): BaseQueryCondition | [] {
+): UntypedQueryCondition | [] {
   const fieldMeta = parentMeta.fields?.get(fieldName) as FieldMetadata | undefined;
   if (!fieldMeta) return [];
   if (!RELATIONAL_CONDITION_TYPES.has(fieldMeta.type)) return [];
@@ -115,43 +115,43 @@ export function resolveParentFieldRelationalCondition(
 }
 
 /**
- * Resolve and validate `forField`, returning the meta condition to And (or []).
+ * Resolve and validate `relationConditionSource`, returning the meta condition to And (or []).
  */
-export function resolveForFieldCondition(
+export function resolveRelationConditionSourceCondition(
   ReceiverCtor: ModelCtor,
-  forField: ForField | undefined | null
-): BaseQueryCondition | [] {
-  if (forField == null) return [];
+  relationConditionSource: RelationConditionSource | undefined | null
+): UntypedQueryCondition | [] {
+  if (relationConditionSource == null) return [];
 
-  const model = trimRequired('model', (forField as ForField).model);
-  const field = trimRequired('field', (forField as ForField).field);
+  const model = trimRequired('model', (relationConditionSource as RelationConditionSource).model);
+  const field = trimRequired('field', (relationConditionSource as RelationConditionSource).field);
 
   const SourceCtor = resolveModelConstructor(model) as ModelCtor | undefined;
   if (!SourceCtor) {
-    throw new Error(`forField.model "${model}" is not a registered model`);
+    throw new Error(`relationConditionSource.model "${model}" is not a registered model`);
   }
 
   let sourceMeta: ModelMetadata;
   try {
     sourceMeta = MetadataStorage.instance.getModelMetadata(SourceCtor as never);
   } catch {
-    throw new Error(`forField.model "${model}" has no metadata`);
+    throw new Error(`relationConditionSource.model "${model}" has no metadata`);
   }
 
   const fieldMeta = sourceMeta.fields?.get(field) as FieldMetadata | undefined;
   if (!fieldMeta) {
-    throw new Error(`forField.field "${field}" does not exist on model "${model}"`);
+    throw new Error(`relationConditionSource.field "${field}" does not exist on model "${model}"`);
   }
   if (!RELATIONAL_CONDITION_TYPES.has(fieldMeta.type)) {
     throw new Error(
-      `forField.field "${field}" on "${model}" must be a relational field (ManyToOne/Ref, OneToMany, ManyToMany/Ref)`
+      `relationConditionSource.field "${field}" on "${model}" must be a relational field (ManyToOne/Ref, OneToMany, ManyToMany/Ref)`
     );
   }
 
   const targetFullName = resolveRelationTargetFullName(fieldMeta);
   if (!targetFullName) {
     throw new Error(
-      `forField { model: "${model}", field: "${field}" } has an unresolvable relation target; cannot verify it matches the searched model`
+      `relationConditionSource { model: "${model}", field: "${field}" } has an unresolvable relation target; cannot verify it matches the searched model`
     );
   }
   const receiverKeys = receiverModelKeys(ReceiverCtor);
@@ -182,7 +182,7 @@ export function resolveForFieldCondition(
   }
   if (!overlap) {
     throw new Error(
-      `forField { model: "${model}", field: "${field}" } targets "${targetFullName}", which does not match the searched model`
+      `relationConditionSource { model: "${model}", field: "${field}" } targets "${targetFullName}", which does not match the searched model`
     );
   }
 
@@ -190,16 +190,16 @@ export function resolveForFieldCondition(
 }
 
 /**
- * And caller condition with forField meta condition.
+ * And caller condition with relationConditionSource meta condition.
  */
-export function mergeCallerConditionWithForField<T>(
+export function mergeCallerConditionWithRelationConditionSource<T>(
   ReceiverCtor: ModelCtor,
-  condition: BaseQueryCondition | [] | undefined,
-  forField: ForField | undefined | null
-): BaseQueryCondition | [] {
-  const metaCondition = resolveForFieldCondition(ReceiverCtor, forField);
+  condition: UntypedQueryCondition | [] | undefined,
+  relationConditionSource: RelationConditionSource | undefined | null
+): UntypedQueryCondition | [] {
+  const metaCondition = resolveRelationConditionSourceCondition(ReceiverCtor, relationConditionSource);
   if (isEmptyRepositoryCondition(metaCondition)) {
-    return (condition ?? []) as BaseQueryCondition | [];
+    return (condition ?? []) as UntypedQueryCondition | [];
   }
   return andRepositoryConditions(metaCondition, condition);
 }

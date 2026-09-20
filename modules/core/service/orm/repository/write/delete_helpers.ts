@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition } from '../types';
+import type { UntypedQueryCondition } from '../types';
 import {
   applyRepositoryMutationWriteCondition,
   resolveRepositoryMutationWriteTargetIds,
@@ -13,10 +13,10 @@ export type RepositoryDeleteWriteTargetDeps = RepositoryMutationWriteTargetDeps<
 
 export type RepositoryDeleteWriteConditionDeps = RepositoryMutationWriteConditionDeps<'delete'>;
 
-export async function resolveRepositoryDeleteTargetIds(params: RepositoryDeleteWriteTargetDeps, condition: BaseQueryCondition): Promise<string[]> {
+export async function resolveRepositoryDeleteTargetIds(params: RepositoryDeleteWriteTargetDeps, condition: UntypedQueryCondition): Promise<string[]> {
   return await resolveRepositoryMutationWriteTargetIds(params, 'delete', condition);
 }
 
-export async function applyRepositoryDeleteCondition<T>(query: T, params: RepositoryDeleteWriteConditionDeps, condition: BaseQueryCondition): Promise<T> {
+export async function applyRepositoryDeleteCondition<T>(query: T, params: RepositoryDeleteWriteConditionDeps, condition: UntypedQueryCondition): Promise<T> {
   return await applyRepositoryMutationWriteCondition(query, params, 'delete', condition);
 }

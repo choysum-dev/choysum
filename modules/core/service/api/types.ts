@@ -7,9 +7,11 @@ export type { FieldPath, FieldPathType } from './field';
 export type { DeepRelationSelection, FieldSelection, Projected, PartialOrProjected, RowOrProjected } from './selection';
 export type {
   Operator,
-  BaseCondition,
-  BaseQueryCondition,
+  UntypedCondition,
+  UntypedQueryCondition,
   QueryCondition,
+  QueryConditionLeaf,
+  QueryConditionNode,
   SearchOptions,
   SoftDeleteOptions,
   CountOptions,
@@ -23,8 +25,9 @@ export type {
   ReadGroupOptions,
   ReadGroupCountOptions,
   ReadGroupResult,
+  RelationConditionSource,
 } from './query';
-export type { RecordRuleOp, ConditionExpr, ConditionEnvelope, FieldRuleSpec } from './authz';
+export type { RecordRuleOp, ConditionEnvelope, FieldRuleSpec } from './authz';
 export type { IdRelationItem, ModelRelationItem, RelationItem, RelationOperations } from './relation';
 export type { Context } from './context';
 export type { OnchangeContext, OnchangeResult, PreviewModel } from './onchange';

@@ -2,21 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ModelMetadata } from '../../metadata';
-import type { BaseQueryCondition, RepositoryRecordRuleConditionPipelineDepsLike } from '../types/engine';
+import type { UntypedQueryCondition, RepositoryRecordRuleConditionPipelineDepsLike } from '../types/engine';
 import { repositoryHasCompanyField } from '../authz/company_scope';
 
 export type RepositoryMutationWriteOp = 'delete' | 'write';
 
 export type RepositoryMutationWriteTargetDeps<TOp extends RepositoryMutationWriteOp> = {
   meta: ModelMetadata;
-  locateIdsForCondition: (condition: BaseQueryCondition) => Promise<string[]>;
-  assertCompanyWriteAccessForCondition: (condition: BaseQueryCondition) => Promise<string[]>;
+  locateIdsForCondition: (condition: UntypedQueryCondition) => Promise<string[]>;
+  assertCompanyWriteAccessForCondition: (condition: UntypedQueryCondition) => Promise<string[]>;
   assertRecordRuleAllTargetsAllowed: (op: TOp, targetIds: string[]) => Promise<void>;
 };
 
 export type RepositoryMutationWriteConditionDeps<TOp extends RepositoryMutationWriteOp> = {
   table: string;
-} & RepositoryRecordRuleConditionPipelineDepsLike<TOp, BaseQueryCondition>;
+} & RepositoryRecordRuleConditionPipelineDepsLike<TOp, UntypedQueryCondition>;
 
 type RepositoryWhereQueryLike<TQuery = unknown> = TQuery & {
   where: (predicate: (args: { eb: unknown }) => unknown) => TQuery;
@@ -25,7 +25,7 @@ type RepositoryWhereQueryLike<TQuery = unknown> = TQuery & {
 export async function resolveRepositoryMutationWriteTargetIds<TOp extends RepositoryMutationWriteOp>(
   params: RepositoryMutationWriteTargetDeps<TOp>,
   op: TOp,
-  condition: BaseQueryCondition
+  condition: UntypedQueryCondition
 ): Promise<string[]> {
   const targetIds = repositoryHasCompanyField(params.meta)
     ? await params.assertCompanyWriteAccessForCondition(condition)
@@ -43,7 +43,7 @@ export async function applyRepositoryMutationWriteCondition<T, TOp extends Repos
   query: T,
   params: RepositoryMutationWriteConditionDeps<TOp>,
   op: TOp,
-  condition: BaseQueryCondition
+  condition: UntypedQueryCondition
 ): Promise<T> {
   const condWithRR = await params.applyRecordRuleToCondition(condition, op);
   const filtered = params.applyDefaultLayers(condWithRR);

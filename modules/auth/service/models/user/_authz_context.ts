@@ -3,7 +3,7 @@
 
 import { memoizeInReqState } from '@/core/service/api/context';
 import { condition } from '@/core/service/api/query';
-import type { BaseQueryCondition } from '@/core/service/api/query';
+import type { UntypedQueryCondition } from '@/core/service/api/query';
 import type { Projected } from '@/core/service/api/selection';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { sortStrings, maybeId, withPermissionGraphBypass } from './_authz_shared';
@@ -17,13 +17,13 @@ import UserRole from '../user_role';
 
 /** Multi-model Search surface for {@link maxUpdatedAt} (UserRole / Role / inheritance / ACL tables). */
 type SearchableForMaxUpdatedAt = {
-  Search: (cond: BaseQueryCondition | [], opts: object) => Promise<Array<{ UpdatedAt?: unknown }>>;
+  Search: (cond: UntypedQueryCondition | [], opts: object) => Promise<Array<{ UpdatedAt?: unknown }>>;
 };
 
 /**
  * Return the latest UpdatedAt timestamp matching a condition.
  */
-export async function maxUpdatedAt(model: SearchableForMaxUpdatedAt, cond: BaseQueryCondition | []): Promise<number> {
+export async function maxUpdatedAt(model: SearchableForMaxUpdatedAt, cond: UntypedQueryCondition | []): Promise<number> {
   try {
     const rows = await model.Search(cond, { fields: ['UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 1 });
     const v = rows?.[0]?.UpdatedAt;

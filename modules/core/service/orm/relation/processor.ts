@@ -5,7 +5,7 @@ import BaseModel from '../model/model';
 import { MetadataStorage, ModelMetadata, FieldMetadata, ManyToOneMetadata } from '../metadata';
 import type { ModelCtor } from '../metadata/field';
 import { Repository } from '../repository/repository';
-import { BaseQueryCondition } from '../repository/types';
+import { UntypedQueryCondition } from '../repository/types';
 import { RelationItem, IdRelationItem, ModelRelationItem } from '../repository/types';
 import { createRelationModel } from './relation_model_service_facade';
 import {
@@ -314,7 +314,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
     if (!idsToDelete.length) return;
 
     // Pick the most suitable condition based on the number of Ids.
-    const condition: BaseQueryCondition = idsToDelete.length === 1 ? ['Id', '=', idsToDelete[0]] : ['Id', 'in', idsToDelete];
+    const condition: UntypedQueryCondition = idsToDelete.length === 1 ? ['Id', '=', idsToDelete[0]] : ['Id', 'in', idsToDelete];
 
     // Delete the records in batch.
     await repository.delete(condition);
@@ -674,7 +674,7 @@ export abstract class RelationProcessor<T extends BaseModel = BaseModel> {
     }
 
     // Build the search condition.
-    const condition: BaseQueryCondition = parentIds.length === 1 ? [foreignKeyField, '=', parentIds[0]] : [foreignKeyField, 'in', parentIds];
+    const condition: UntypedQueryCondition = parentIds.length === 1 ? [foreignKeyField, '=', parentIds[0]] : [foreignKeyField, 'in', parentIds];
 
     // Load existing relations.
     const existingRecords = await repository.search(condition);

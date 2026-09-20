@@ -3,9 +3,11 @@
 
 export type {
   Operator,
-  BaseCondition,
-  BaseQueryCondition,
+  UntypedCondition,
+  UntypedQueryCondition,
   QueryCondition,
+  QueryConditionLeaf,
+  QueryConditionNode,
   SearchOptions,
   CountOptions,
   UpdateOptions,
@@ -19,6 +21,7 @@ export type {
   ReadGroupOptions,
   ReadGroupCountOptions,
   ReadGroupResult,
+  RelationConditionSource,
 } from '../orm/repository/types';
 
 export { condition } from '../orm/repository/types';

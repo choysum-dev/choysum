@@ -8,7 +8,7 @@ import MetaModule from './module';
 import MetaUiResourceRouteAction from './ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
-import { condition, type BaseQueryCondition, type QueryCondition } from '@/core/service/api/query';
+import { condition, type UntypedQueryCondition, type QueryCondition } from '@/core/service/api/query';
 import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { type TermReference } from '@/core/service/i18n';
 import { _t, _lt } from '../i18n';
@@ -399,7 +399,7 @@ export default class MetaUiResource extends BaseModel {
     const idsFilter = normalizeStringArray(options?.ids);
     const pagination = normalizePagination(options);
 
-    const conditionParts: BaseQueryCondition[] = [];
+    const conditionParts: UntypedQueryCondition[] = [];
     if (moduleFilter) conditionParts.push(['Module', '=', moduleFilter]);
     if (applicationFilter) conditionParts.push(['MetaApplicationId', '=', applicationFilter]);
     if (kindFilter) conditionParts.push(['Type', '=', kindFilter]);

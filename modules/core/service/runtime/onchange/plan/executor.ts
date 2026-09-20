@@ -3,7 +3,7 @@
 
 import type { ModelMetadata } from '../../../orm/metadata/model';
 import { MetadataStorage } from '../../../orm/metadata/storage';
-import type { BaseQueryCondition, FieldSelection } from '../../../api';
+import type { UntypedQueryCondition, FieldSelection } from '../../../api';
 import type { PathPrefetchPlan, PrefetchBatchStat, PrefetchExecStats } from '../types';
 import { DIAG_BATCH_STATS_ENABLED, ENABLE_MULTI_HOP_PREVIEW, LRU_CACHE_SIZE, MAX_MULTI_HOP_DEPTH, REQUEST_CACHE_ENABLED } from '../constants';
 import { OnchangeCacheManager } from '../cache';
@@ -166,7 +166,7 @@ export class PathPlanExecutor {
     if (remaining.size) {
       const repo = getRuntimeRepository(ctor);
       const missIds = Array.from(remaining);
-      const condition: BaseQueryCondition = missIds.length === 1 ? ['Id', '=', missIds[0]] : ['Id', 'in', missIds];
+      const condition: UntypedQueryCondition = missIds.length === 1 ? ['Id', '=', missIds[0]] : ['Id', 'in', missIds];
       const rows = (await repo.search(condition, { fields: fieldsNormalized as FieldSelection<UnknownRecord> })) || [];
       missRows = rows.filter(isObject);
     }

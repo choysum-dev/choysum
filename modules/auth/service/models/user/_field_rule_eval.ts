@@ -4,7 +4,7 @@
 import { createServiceByModel } from '@/core/service/rpc';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { condition } from '@/core/service/api/query';
-import type { BaseQueryCondition } from '@/core/service/api/query';
+import type { UntypedQueryCondition } from '@/core/service/api/query';
 import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
 import { _t } from '../../i18n';
 import RoleFieldRule from '../role_field_rule';
@@ -151,7 +151,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   }
 
   // Load rules
-  const scopeOr: BaseQueryCondition[] = [
+  const scopeOr: UntypedQueryCondition[] = [
     {
       And: [
         ['MetaModelId', '=', modelId],

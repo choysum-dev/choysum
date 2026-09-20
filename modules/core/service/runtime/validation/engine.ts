@@ -16,7 +16,7 @@ import { ValidationPipelineError } from '../../orm/metadata/constraint';
 import { MetadataStorage } from '../../orm/metadata';
 import type { FieldMetadata, ModelCtor } from '../../orm/metadata/field';
 import type { ModelMetadata } from '../../orm/metadata/model';
-import type { BaseQueryCondition, SearchOptions } from '../../orm/repository/types';
+import type { UntypedQueryCondition, SearchOptions } from '../../orm/repository/types';
 import { getRuntimeRepository } from '../runtime_repository_facade';
 import { markProxyKind } from '../proxy/brand';
 import { createForbiddenPersistenceMethodStub, isDraftForbiddenPersistenceMethod } from '../proxy/draftPersistenceGuards';
@@ -326,7 +326,7 @@ export class ValidationEngine {
       }
 
       const targetRepo = getRuntimeRepository(targetCtor);
-      const condition: BaseQueryCondition = ['Id', '=', refId];
+      const condition: UntypedQueryCondition = ['Id', '=', refId];
       const searchOptions: SearchOptions<ObjectRecord> = {
         fields: ['Id', targetOwnershipField],
       };

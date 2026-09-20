@@ -7,7 +7,7 @@ import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env
 import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { computeRetryBackoffSeconds } from '@/core/service/utils/backoff';
 import { resolveGcBatchSize } from './_gc_config';
-import type { BaseQueryCondition } from '@/core/service/api/query';
+import type { UntypedQueryCondition } from '@/core/service/api/query';
 
 const DEFAULT_UNBOUND_OBJECT_GRACE_SECONDS = 24 * 60 * 60;
 const DEFAULT_CLEANUP_MAX_ATTEMPTS = 8;
@@ -80,7 +80,7 @@ export async function garbageCollectUnboundObjects(
   let lastId: string | null = null;
 
   for (;;) {
-    const baseConditions: BaseQueryCondition[] = [
+    const baseConditions: UntypedQueryCondition[] = [
       ['Status', '=', 'active'],
       ['UpdatedAt', '<', graceCutoff],
     ];

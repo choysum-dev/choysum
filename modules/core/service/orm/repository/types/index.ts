@@ -11,14 +11,16 @@ export type { DeepRelationSelection, FieldSelection, Projected, PartialOrProject
 export { fields, projectToSelection } from './selection';
 export type {
   Operator,
-  BaseCondition,
-  BaseQueryCondition,
+  UntypedCondition,
+  UntypedQueryCondition,
   NestedPath,
   QueryCondition,
+  QueryConditionLeaf,
+  QueryConditionNode,
   OrderBy,
   SoftDeleteMode,
   SoftDeleteOptions,
-  ForField,
+  RelationConditionSource,
   SearchOptions,
   CountOptions,
   UpdateOptions,
@@ -43,4 +45,4 @@ export type {
   GroupRow,
   ReadGroupResult,
 } from './groupby';
-export type { RecordRuleOp, ConditionExpr, ConditionEnvelope } from './authz';
+export type { RecordRuleOp, ConditionEnvelope } from './authz';

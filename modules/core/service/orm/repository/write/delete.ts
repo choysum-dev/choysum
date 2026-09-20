@@ -4,7 +4,7 @@
 import { MetadataStorage, type ModelMetadata } from '../../metadata';
 import { resolveManyToManyRelationJoinConfig, resolveOneToManyRelationConfig } from '../../relation/types';
 import type {
-  BaseQueryCondition,
+  UntypedQueryCondition,
   DeleteResult,
   RepositoryDeleteFromDbLike,
   RepositoryExecute,
@@ -36,7 +36,7 @@ function resolveDeletePolicy(value: unknown): 'CASCADE' | 'SET NULL' | 'RESTRICT
 
 type RepositoryDeleteWriteDeps = RepositoryDeleteWriteTargetDeps &
   RepositoryDeleteWriteConditionDeps &
-  RepositorySoftConditionPipelineDepsLike<BaseQueryCondition> & {
+  RepositorySoftConditionPipelineDepsLike<UntypedQueryCondition> & {
     db: unknown;
     softField: string;
     softDeleteEnabled: () => boolean;
@@ -60,7 +60,7 @@ export type RepositoryDeleteSoftDeletePreWriteDeps = {
   db: unknown;
   softField: string;
   createRepository: (meta: ModelMetadata) => RepositoryDeleteChild;
-} & RepositoryTableSoftConditionPipelineDepsLike<BaseQueryCondition>;
+} & RepositoryTableSoftConditionPipelineDepsLike<UntypedQueryCondition>;
 
 export type RepositoryDeleteQueryPrepareDeps = RepositoryDeleteWriteConditionDeps & {
   db: unknown;
@@ -75,14 +75,14 @@ export async function prepareRepositorySoftDeleteWrite(params: RepositoryDeleteS
   const softSet: ObjectRecord = { [params.softField]: now, UpdatedAt: now };
   AuditUidUtils.applyOnSoftDelete(softSet);
   let query = db.updateTable(params.table).set(softSet);
-  const softCond: BaseQueryCondition = params.applySoftLayer(['Id', 'in', ids]);
+  const softCond: UntypedQueryCondition = params.applySoftLayer(['Id', 'in', ids]);
   if (!params.isEmptyCondition(softCond)) {
     query = query.where(({ eb }) => params.convertCondition(eb, softCond, params.table));
   }
   return query as unknown as RepositoryQueryLike;
 }
 
-export async function prepareRepositoryDeleteQuery(params: RepositoryDeleteQueryPrepareDeps, condition: BaseQueryCondition): Promise<RepositoryQueryLike> {
+export async function prepareRepositoryDeleteQuery(params: RepositoryDeleteQueryPrepareDeps, condition: UntypedQueryCondition): Promise<RepositoryQueryLike> {
   const db = params.db as RepositoryDeleteDbLike;
   return await applyRepositoryDeleteCondition(db.deleteFrom(params.table), params, condition);
 }
@@ -113,7 +113,7 @@ export function applyRepositoryDeletePostWrite(params: RepositoryDeleteWritePost
   return rows || [];
 }
 
-export async function executeRepositoryDelete(params: RepositoryDeleteWriteDeps, condition: BaseQueryCondition): Promise<DeleteResult[]> {
+export async function executeRepositoryDelete(params: RepositoryDeleteWriteDeps, condition: UntypedQueryCondition): Promise<DeleteResult[]> {
   const targetIds = await resolveRepositoryDeleteTargetIds(params, condition);
   if (!targetIds.length) return [];
 
@@ -128,7 +128,7 @@ export async function executeRepositoryDelete(params: RepositoryDeleteWriteDeps,
   return applyRepositoryDeletePostWrite(params, rows);
 }
 
-export async function executeRepositoryHardDelete(params: RepositoryDeleteWriteDeps, condition: BaseQueryCondition): Promise<DeleteResult[]> {
+export async function executeRepositoryHardDelete(params: RepositoryDeleteWriteDeps, condition: UntypedQueryCondition): Promise<DeleteResult[]> {
   const targetIds = await resolveRepositoryDeleteTargetIds(params, condition);
   if (!targetIds.length) return [];
 
@@ -151,7 +151,7 @@ async function handleRepositorySoftDeleteCascade(params: RepositoryDeleteSoftDel
     const policy = resolveDeletePolicy(manyToOneRelation?.onDelete);
 
     const childRepository = params.createRepository(childMeta);
-    const foreignKeyCondition: BaseQueryCondition = [foreignKeyField, 'in', parentIds];
+    const foreignKeyCondition: UntypedQueryCondition = [foreignKeyField, 'in', parentIds];
 
     switch (policy) {
       case 'CASCADE': {
@@ -188,7 +188,7 @@ async function handleRepositorySoftDeleteCascade(params: RepositoryDeleteSoftDel
 
     const joinMeta = MetadataStorage.instance.getModelMetadata(relation.joinModel());
     const joinRepository = params.createRepository(joinMeta);
-    const joinCondition: BaseQueryCondition = [relation.joinField, 'in', parentIds];
+    const joinCondition: UntypedQueryCondition = [relation.joinField, 'in', parentIds];
 
     if (joinRepository.softDeleteEnabled()) {
       await joinRepository.delete(joinCondition);

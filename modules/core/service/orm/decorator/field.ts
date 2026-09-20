@@ -197,7 +197,7 @@ function validateUploadLimitOptions(
  * Declares model field metadata for persistence, relations, selections, and compute behavior.
  *
  * Overloads infer condition target fields from ctor `targetModel` for object relations.
- * For string Ref, pass Field<TTarget> (import type) to tighten condition; omit to keep BaseQueryCondition.
+ * For string Ref, pass Field<TTarget> (import type) to tighten condition; omit to keep UntypedQueryCondition.
  *
  * @param options Field metadata to register on the decorated property.
  * @returns A property decorator that records the field definition in metadata storage.

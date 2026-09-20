@@ -4,7 +4,7 @@
 import type { ModelMetadata } from '../../metadata';
 import type { RepositoryCompanyScopeFacts, RepositoryReqMethodMeta } from './authz_runtime';
 import type { RepositoryEmitAuthzDecisionSummary, RepositoryPermissionDeniedFn } from './types';
-import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp, RepositoryExecute, RepositoryTableSoftConditionPipelineDepsLike } from '../types/engine';
+import type { UntypedQueryCondition, ConditionEnvelope, RecordRuleOp, RepositoryExecute, RepositoryTableSoftConditionPipelineDepsLike } from '../types/engine';
 
 export type RepositoryAuthzContextDepsParams = {
   meta: ModelMetadata;
@@ -33,9 +33,9 @@ type RepositoryRecordRuleDepsParams = RepositoryAuthPolicyCommonDepsParams & {
 type RepositoryRecordRuleCoordinatorDepsParams = RepositoryAuthzContextDepsParams & {
   recordRuleEnabled: () => boolean;
   getRecordRuleEnvelope: (op: RecordRuleOp) => Promise<ConditionEnvelope>;
-  replaceRecordRuleTokens: (condition: BaseQueryCondition) => BaseQueryCondition;
+  replaceRecordRuleTokens: (condition: UntypedQueryCondition) => UntypedQueryCondition;
   permissionDenied: RepositoryPermissionDeniedFn;
-  countConditionMatches: (condition: BaseQueryCondition) => Promise<number>;
+  countConditionMatches: (condition: UntypedQueryCondition) => Promise<number>;
 };
 
 type RepositoryFieldRuleDepsParams = RepositoryAuthPolicyCommonDepsParams & {
@@ -52,7 +52,7 @@ type RepositoryCompanyScopeDepsParams = RepositoryAuthzContextDepsParams & {
 };
 
 type RepositoryCompanyScopeQueryDepsParams = RepositoryCompanyScopeDepsParams &
-  RepositoryTableSoftConditionPipelineDepsLike<BaseQueryCondition> & {
+  RepositoryTableSoftConditionPipelineDepsLike<UntypedQueryCondition> & {
     db: unknown;
     execute: RepositoryExecute;
   };

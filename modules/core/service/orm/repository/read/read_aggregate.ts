@@ -11,7 +11,7 @@ import {
 } from './group_spec';
 import type { GroupSpecLike, NormalizedAgg, NormalizedCompositeGroupSpec } from './group_spec';
 import type {
-  BaseQueryCondition,
+  UntypedQueryCondition,
   FieldAggregation,
   GroupBySpec,
   RepoReadGroupCountOptions,
@@ -65,11 +65,11 @@ type RepositoryReadAggregateDeps = {
   ctx: unknown;
   getDialect: () => DialectName;
   makeSelectCtx: RepositorySelectCtxFactoryLike<ModelMetadata, SelectCtx>;
-  convertHaving: (eb: unknown, condition: BaseQueryCondition, knownAliases: Set<string>) => unknown;
+  convertHaving: (eb: unknown, condition: UntypedQueryCondition, knownAliases: Set<string>) => unknown;
   normalizeOrderBy: (orderBy: unknown) => unknown;
   applyOrderByToQuery: (query: unknown, meta: unknown, table: string, orderBy: unknown) => unknown;
   execute: RepositoryExecuteUnknownQueryLike;
-} & RepositoryRecordRuleConditionPipelineDepsLike<'read', BaseQueryCondition>;
+} & RepositoryRecordRuleConditionPipelineDepsLike<'read', UntypedQueryCondition>;
 
 export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggregateDeps, options: RepoReadGroupOptions<T>): Promise<RepoReadGroupRow[]> {
   if (!options || !options.groupby) {
@@ -87,7 +87,7 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
   let qb: AggregateQueryLike = db.selectFrom(params.table);
   qb = qb.select((selBuilder: unknown) => buildRepositoryReadAggregateSelections(params, selBuilder, group, aggs, () => db.fn.countAll(), timezone));
 
-  const condWithRR = await params.applyRecordRuleToCondition((options.condition ?? []) as BaseQueryCondition, 'read');
+  const condWithRR = await params.applyRecordRuleToCondition((options.condition ?? []) as UntypedQueryCondition, 'read');
   const filtered = params.applyDefaultLayers(condWithRR);
   qb = applyRepositoryReadAggregateCondition(qb, params, filtered);
 
@@ -95,7 +95,7 @@ export async function executeRepositoryReadGroup<T>(params: RepositoryReadAggreg
 
   if (options.having) {
     const knownAliases = resolveRepositoryReadAggregateKnownAliases(group, aggs);
-    qb = qb.having(({ eb }: { eb: unknown }) => params.convertHaving(eb, options.having as BaseQueryCondition, knownAliases));
+    qb = qb.having(({ eb }: { eb: unknown }) => params.convertHaving(eb, options.having as UntypedQueryCondition, knownAliases));
   }
 
   const optOrder = params.normalizeOrderBy(options.orderBy);
@@ -120,7 +120,7 @@ export async function executeRepositoryReadTotals<T>(params: RepositoryReadAggre
     .selectFrom(params.table)
     .select((selBuilder: unknown) => buildRepositoryReadAggregateTotalSelections(params, selBuilder, aggs, () => db.fn.countAll()));
 
-  const condWithRR = await params.applyRecordRuleToCondition((options.condition ?? []) as BaseQueryCondition, 'read');
+  const condWithRR = await params.applyRecordRuleToCondition((options.condition ?? []) as UntypedQueryCondition, 'read');
   const filtered = params.applyDefaultLayers(condWithRR);
   qb = applyRepositoryReadAggregateCondition(qb, params, filtered);
 
@@ -143,7 +143,7 @@ export async function executeRepositoryReadGroupCount<T>(params: RepositoryReadA
     : normalizeGroupBySpecShared(options.groupby as GroupBySpec<ObjectRecord>);
   const aggs: NormalizedAgg[] = (options.fields ?? []).map(field => normalizeFieldAggregationShared(field as FieldAggregation<ObjectRecord>));
 
-  const condWithRR = await params.applyRecordRuleToCondition((options.condition ?? []) as BaseQueryCondition, 'read');
+  const condWithRR = await params.applyRecordRuleToCondition((options.condition ?? []) as UntypedQueryCondition, 'read');
   const filtered = params.applyDefaultLayers(condWithRR);
 
   if (!options.having) {
@@ -170,7 +170,7 @@ export async function executeRepositoryReadGroupCount<T>(params: RepositoryReadA
   sub = sub.groupBy((gb: unknown) => buildRepositoryReadAggregateGroupExprs(params, gb, group, timezone));
 
   const knownAliases = resolveRepositoryReadAggregateKnownAliases(group, aggs);
-  sub = sub.having(({ eb }: { eb: unknown }) => params.convertHaving(eb, options.having as BaseQueryCondition, knownAliases));
+  sub = sub.having(({ eb }: { eb: unknown }) => params.convertHaving(eb, options.having as UntypedQueryCondition, knownAliases));
 
   const subAliased = sub.as('t');
   const outer = db.selectFrom(subAliased).select(db.fn.countAll().as('Total'));

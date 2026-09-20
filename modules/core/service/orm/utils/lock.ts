@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseQueryCondition } from '../repository/types';
+import { UntypedQueryCondition } from '../repository/types';
 
 /**
  * Optimistic-lock utilities for concurrency-control helpers.
@@ -16,7 +16,7 @@ export class LockUtils {
    * @param currentUpdatedAt Current update timestamp, when available.
    * @returns Query condition.
    */
-  static buildOptimisticLockCondition(id: string, currentUpdatedAt?: Date): BaseQueryCondition {
+  static buildOptimisticLockCondition(id: string, currentUpdatedAt?: Date): UntypedQueryCondition {
     if (!currentUpdatedAt) {
       return ['Id', '=', id];
     }

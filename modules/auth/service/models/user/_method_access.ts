@@ -3,7 +3,7 @@
 
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { condition } from '@/core/service/api/query';
-import type { BaseQueryCondition } from '@/core/service/api/query';
+import type { UntypedQueryCondition } from '@/core/service/api/query';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
@@ -77,7 +77,7 @@ export async function resolveMethodAccessMeta(
       modelId: string;
       irServiceId: string;
       irApplicationId: string;
-      scopeOr: BaseQueryCondition[];
+      scopeOr: UntypedQueryCondition[];
       modelKey: string;
       methodLower: string;
     }
@@ -106,7 +106,7 @@ export async function resolveMethodAccessMeta(
     if (!irServiceId) return undefined;
 
     const irApplicationId = await metaApplicationId(appName);
-    const scopeOr: BaseQueryCondition[] = [
+    const scopeOr: UntypedQueryCondition[] = [
       {
         And: [
           ['MetaServiceId', '=', irServiceId],
@@ -172,7 +172,7 @@ export async function resolveMethodAccessMeta(
  */
 export async function evaluateRoleMethodAccess(
   roleIds: string[],
-  scopeOr: BaseQueryCondition[],
+  scopeOr: UntypedQueryCondition[],
   methodLower?: string
 ): Promise<{ denied: boolean; allowed: boolean; hitRuleIds: string[]; reason: string }> {
   const accessesRaw = await RoleMethodAccess.Search(

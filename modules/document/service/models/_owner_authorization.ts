@@ -5,7 +5,7 @@ import { dial } from '@/core/service';
 import type { ModelConstructor } from '@/core/rpc/types';
 import { assertRecordReadable } from '@/core/service/orm/model';
 import { parseConditionEnvelopeFromUnknown, parseFieldRuleSpecFromUnknown, replaceConditionExprTokens } from '@/core/service/api/authz';
-import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
+import type { ConditionEnvelope, UntypedQueryCondition, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
@@ -212,7 +212,7 @@ async function probeOwnerRecord(
   stage: OwnerPermissionStage,
   ownerModel: string,
   ownerRecordId: string,
-  recordRuleExpr?: ConditionExpr
+  recordRuleExpr?: UntypedQueryCondition
 ): Promise<boolean> {
   if (!recordRuleExpr) {
     try {
@@ -248,12 +248,12 @@ async function probeOwnerRecord(
 }
 
 function replaceTokensForOwnerRecordRule(
-  expr: ConditionExpr,
+  expr: UntypedQueryCondition,
   stage: OwnerPermissionStage,
   userId: string,
   companyId: string,
   companyIds: string[]
-): ConditionExpr {
+): UntypedQueryCondition {
   try {
     return replaceConditionExprTokens(expr, {
       userId,
@@ -317,7 +317,7 @@ export async function documentProbeOwnerRecordForTest(
   stage: OwnerPermissionStage,
   ownerModel: string,
   ownerRecordId: string,
-  recordRuleExpr?: ConditionExpr
+  recordRuleExpr?: UntypedQueryCondition
 ): Promise<boolean> {
   return probeOwnerRecord(stage, ownerModel, ownerRecordId, recordRuleExpr);
 }

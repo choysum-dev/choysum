@@ -3,7 +3,7 @@
 
 import type { ModelMetadata } from '../../metadata';
 import type {
-  BaseQueryCondition,
+  UntypedQueryCondition,
   Entity,
   RepositoryExecute,
   RepositoryGetScalarFieldsDepsLike,
@@ -47,7 +47,7 @@ export type RepositoryUpdateWriteRuntimeDeps = {
 
 export type RepositoryUpdateWritePostWriteDeps = {
   invalidateCache: () => void;
-  recomputePersistForUpdate?: (payload: { targetIds: string[]; sanitized: Entity; condition: BaseQueryCondition; rows: UpdateResult[] }) => Promise<void>;
+  recomputePersistForUpdate?: (payload: { targetIds: string[]; sanitized: Entity; condition: UntypedQueryCondition; rows: UpdateResult[] }) => Promise<void>;
 };
 
 type RepositoryUpdateWriteDeps = RepositoryUpdateWriteTargetDeps &
@@ -61,7 +61,7 @@ type RepositoryUpdateWriteDeps = RepositoryUpdateWriteTargetDeps &
     decodeFromDb: (row: Entity) => Entity;
     applyDefaultCompanyIdOnUpdate: (vals: Entity) => Entity;
   } & RepositoryGetScalarFieldsDepsLike<ModelMetadata> &
-  RepositorySoftConditionPipelineDepsLike<BaseQueryCondition> &
+  RepositorySoftConditionPipelineDepsLike<UntypedQueryCondition> &
   RepositoryMutationPayloadGuardEncodeDepsLike<Entity> &
   RepositoryMutationPayloadValidateDepsLike<Entity, 'update', ObjectRecord>;
 
@@ -89,7 +89,7 @@ export type RepositoryUpdateWriteSanitizedPayloadDeps = RepositoryUpdateWriteCur
 
 export async function resolveRepositoryUpdatePayloadTargets(
   params: RepositoryUpdateWriteTargetResolveDeps,
-  condition: BaseQueryCondition
+  condition: UntypedQueryCondition
 ): Promise<string[] | undefined> {
   const targetIds = await resolveRepositoryUpdateTargetIds(params, condition);
   if (!targetIds.length) {
@@ -180,7 +180,7 @@ export async function prepareRepositoryUpdateSanitizedPayload(
 export async function prepareRepositoryUpdatePayload(
   params: Omit<RepositoryUpdateWriteDeps, keyof RepositoryUpdateWritePostWriteDeps>,
   vals: Entity,
-  condition: BaseQueryCondition
+  condition: UntypedQueryCondition
 ): Promise<RepositoryPreparedUpdateWrite | undefined> {
   const targetIds = await resolveRepositoryUpdatePayloadTargets(params, condition);
   if (!targetIds) {
@@ -194,7 +194,7 @@ export async function prepareRepositoryUpdatePayload(
 export async function prepareRepositoryUpdateQuery(
   params: RepositoryUpdateWriteQueryPrepareDeps,
   sanitized: Entity,
-  condition: BaseQueryCondition
+  condition: UntypedQueryCondition
 ): Promise<RepositoryPreparedUpdateQuery> {
   const db = params.db as RepositoryUpdateDbLike;
   const updateQuery = db.updateTable(params.table).set(sanitized as ObjectRecord);
@@ -217,7 +217,7 @@ export function applyRepositoryUpdatePostWrite(params: RepositoryUpdateWritePost
   return rows || [];
 }
 
-export async function executeRepositoryUpdate(params: RepositoryUpdateWriteDeps, vals: Entity, condition: BaseQueryCondition): Promise<UpdateResult[]> {
+export async function executeRepositoryUpdate(params: RepositoryUpdateWriteDeps, vals: Entity, condition: UntypedQueryCondition): Promise<UpdateResult[]> {
   const preparedPayload = await prepareRepositoryUpdatePayload(params, vals, condition);
   if (!preparedPayload) {
     return [];

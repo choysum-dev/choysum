@@ -5,7 +5,7 @@ import { Entity } from '../repository/types';
 import { Field, SqlCompute } from '../decorator';
 import {
   QueryCondition,
-  BaseQueryCondition,
+  UntypedQueryCondition,
   Operator,
   SearchOptions,
   Insertable,
@@ -139,9 +139,9 @@ export type SearchCtx<TModel extends BaseModel = BaseModel> = {
   field: <K extends Extract<keyof TModel, string>>(name: K) => string;
   op: () => Operator;
   value: <V = unknown>() => V;
-  and: (clauses: BaseQueryCondition[]) => BaseQueryCondition;
-  or: (clauses: BaseQueryCondition[]) => BaseQueryCondition;
-  cmp: (left: unknown, op: Operator, right: unknown) => BaseQueryCondition;
+  and: (clauses: UntypedQueryCondition[]) => UntypedQueryCondition;
+  or: (clauses: UntypedQueryCondition[]) => UntypedQueryCondition;
+  cmp: (left: unknown, op: Operator, right: unknown) => UntypedQueryCondition;
   readonly dialect: string;
 };
 

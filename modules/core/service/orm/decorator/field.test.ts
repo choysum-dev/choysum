@@ -1349,7 +1349,7 @@ test('Field decorator accepts OneToMany condition (PR-P1-F4)', () => {
   expect(meta?.condition).toEqual(['State', '!=', 'cancel']);
 });
 
-test('Field condition typing: ctor target infers QueryCondition; string Ref stays BaseQueryCondition', () => {
+test('Field condition typing: ctor target infers QueryCondition; string Ref stays UntypedQueryCondition', () => {
   class TypedConditionTarget extends BaseModel {
     IsActive!: boolean;
     Code!: string;
@@ -1373,7 +1373,7 @@ test('Field condition typing: ctor target infers QueryCondition; string Ref stay
   } satisfies FlatManyToOneFieldOptions<TypedConditionTarget>;
   expect(invalidManyToOneField).toBeDefined();
 
-  // ManyToOneRef: string targetModel keeps untyped BaseQueryCondition without a type argument.
+  // ManyToOneRef: string targetModel keeps untyped UntypedQueryCondition without a type argument.
   const validManyToOneRef = {
     type: 'ManyToOneRef' as const,
     relation: { targetModel: 'base.Currency' },

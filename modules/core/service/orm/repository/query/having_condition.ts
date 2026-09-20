@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BaseQueryCondition, RepositoryConditionConverterLike } from '../types/engine';
+import type { UntypedQueryCondition, RepositoryConditionConverterLike } from '../types/engine';
 import { asObjectRecord } from '../../../../utils/object';
 
 type RepositoryHavingExpressionBuilder = {
@@ -12,19 +12,19 @@ type RepositoryHavingExpressionBuilder = {
 };
 
 type RepositoryHavingConditionDeps = {
-  convertCondition: RepositoryConditionConverterLike<BaseQueryCondition>;
+  convertCondition: RepositoryConditionConverterLike<UntypedQueryCondition>;
   selfTable?: string;
 };
 
 export function convertRepositoryHavingCondition(
   deps: RepositoryHavingConditionDeps,
   eb: unknown,
-  condition: BaseQueryCondition,
+  condition: UntypedQueryCondition,
   knownAliases: Set<string>
 ): unknown {
   const builder = eb as RepositoryHavingExpressionBuilder;
 
-  const asPredicate = (current: BaseQueryCondition): unknown => {
+  const asPredicate = (current: UntypedQueryCondition): unknown => {
     if (Array.isArray(current)) {
       if (current.length === 0) return builder.and([]);
       if (current.length !== 3) {
@@ -49,13 +49,13 @@ export function convertRepositoryHavingCondition(
     const envelope = asObjectRecord(current);
     const andConditions = envelope?.And;
     if (Array.isArray(andConditions)) {
-      const parts = andConditions as BaseQueryCondition[];
+      const parts = andConditions as UntypedQueryCondition[];
       return builder.and(parts.map(part => asPredicate(part)));
     }
 
     const orConditions = envelope?.Or;
     if (Array.isArray(orConditions)) {
-      const parts = orConditions as BaseQueryCondition[];
+      const parts = orConditions as UntypedQueryCondition[];
       return builder.or(parts.map(part => asPredicate(part)));
     }
 

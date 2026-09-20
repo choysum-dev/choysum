@@ -13,29 +13,29 @@ import type { NonNil } from './shared';
 export type Operator = ComparisonOperatorExpression | 'contains' | 'child_of' | 'parent_of';
 
 /**
- * Primitive tuple condition used by repository query expressions.
+ * Untyped leaf tuple condition used by repository query expressions.
  */
-export type BaseCondition = readonly [field: string, op: Operator, value: unknown];
+export type UntypedCondition = readonly [field: string, op: Operator, value: unknown];
 
 /**
- * Conjunction node for base query conditions.
+ * Conjunction node for untyped query conditions.
  */
-export type BaseConditionAnd = { And: Array<BaseQueryCondition> };
+export type UntypedConditionAnd = { And: Array<UntypedQueryCondition> };
 
 /**
- * Disjunction node for base query conditions.
+ * Disjunction node for untyped query conditions.
  */
-export type BaseConditionOr = { Or: Array<BaseQueryCondition> };
+export type UntypedConditionOr = { Or: Array<UntypedQueryCondition> };
 
 /**
- * Logical node used by base query conditions.
+ * Logical node used by untyped query conditions.
  */
-export type BaseQueryConditionNode = BaseConditionAnd | BaseConditionOr;
+export type UntypedQueryConditionNode = UntypedConditionAnd | UntypedConditionOr;
 
 /**
- * Untyped repository condition tree.
+ * Untyped repository condition tree (dynamic / authz / engine).
  */
-export type BaseQueryCondition = BaseCondition | BaseQueryConditionNode;
+export type UntypedQueryCondition = UntypedCondition | UntypedQueryConditionNode;
 
 type Depth = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -82,13 +82,20 @@ type Condition<T, D extends number = 3> = {
   [K in NestedPath<T, D>]: [field: K, op: Operator, value: ConditionValue<ConditionPathValue<T, K, D>>];
 }[NestedPath<T, D>];
 
-type SingleCondition<T> = Condition<Selectable<T>, 3>;
-type QueryConditionNode<T> = { And: Array<QueryCondition<T>> } | { Or: Array<QueryCondition<T>> };
+/**
+ * Typed leaf condition for one model.
+ */
+export type QueryConditionLeaf<T> = Condition<Selectable<T>, 3>;
+
+/**
+ * Typed And/Or node for one model.
+ */
+export type QueryConditionNode<T> = { And: Array<QueryCondition<T>> } | { Or: Array<QueryCondition<T>> };
 
 /**
  * Typed repository condition tree.
  */
-export type QueryCondition<T> = SingleCondition<T> | QueryConditionNode<T>;
+export type QueryCondition<T> = QueryConditionLeaf<T> | QueryConditionNode<T>;
 
 /**
  * Assert an untyped condition tree as {@link QueryCondition} for one model.
@@ -100,7 +107,7 @@ export type QueryCondition<T> = SingleCondition<T> | QueryConditionNode<T>;
  * Pass an explicit type argument for method-generic `Model.Search<T>` when nesting
  * would otherwise poison `T`.
  */
-export function condition<T>(tree: BaseQueryCondition): QueryCondition<T> {
+export function condition<T>(tree: UntypedQueryCondition): QueryCondition<T> {
   return tree as QueryCondition<T>;
 }
 
@@ -126,10 +133,10 @@ export interface SoftDeleteOptions {
 }
 
 /**
- * Source relational field pointer for candidate Search / NameSearch (PR-P1-F4).
+ * Source relational field pointer for candidate Search / NameSearch.
  * BE resolves `@Field({ condition })` on that field and Ands it into the query.
  */
-export type ForField = {
+export type RelationConditionSource = {
   /** Source model technical name (`@Model` / MetadataStorage key). */
   model: string;
   /** Source relation field property name on that model. */
@@ -149,7 +156,7 @@ export interface SearchOptions<T> extends SoftDeleteOptions {
    * When set, BE Ands the source field's meta `condition` (static or callable)
    * into this search. Used by relational typeahead / Search-more.
    */
-  forField?: ForField;
+  relationConditionSource?: RelationConditionSource;
 }
 
 /**

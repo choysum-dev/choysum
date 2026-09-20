@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
-import type { SearchOptions, QueryCondition, OrderBy, BaseQueryCondition } from '@/core/service/api/query';
+import type { SearchOptions, QueryCondition, OrderBy, UntypedQueryCondition } from '@/core/service/api/query';
 import { condition } from '@/core/service/api/query';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/datetime';
@@ -38,7 +38,7 @@ type ListJobsParams = {
 
 /** Builds a search condition from paged job list parameters. */
 function buildJobCondition(params: ListJobsParams): QueryCondition<Job> | [] {
-  const and: BaseQueryCondition[] = [];
+  const and: UntypedQueryCondition[] = [];
   if (params.targetApp) and.push(['TargetApp', '=', params.targetApp]);
   if (params.fullMethod) and.push(['FullMethod', '=', params.fullMethod]);
   if (params.statuses && params.statuses.length > 0) and.push(['Status', 'in', params.statuses]);
