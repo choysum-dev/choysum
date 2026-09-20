@@ -73,7 +73,7 @@ test('repository validation error helper builds rich metadata for sql/kernel/glo
   expect(fieldSummary.Name.firstCode).toBe('sql_unique');
   expect(fieldSummary.Age.firstCode).toBe('kernel_int_invalid');
   expect(fieldSummary.Age.firstKernelCode).toBe('kernel_int_invalid');
-  expect(fieldSummary.Age.firstKernelCode).toBe('kernel_int_invalid');
+  expect((fieldSummary.Age as unknown as Record<string, unknown>).kernelCode).toBe(undefined);
 
   const globalIssues = JSON.parse(wrapped.metadata.globalIssues || '[]');
   expect(globalIssues.length).toBe(1);

@@ -69,7 +69,7 @@ function parseFieldIssueSummary(raw: string | undefined): Record<string, Validat
     for (const [field, item] of Object.entries(parsed || {})) {
       const firstCode = String(item?.firstCode || '').trim();
       // Accept legacy serialized `kernelCode` as firstKernelCode input only.
-      const firstKernelCode = String(item?.firstKernelCode || item?.kernelCode || '').trim();
+      const firstKernelCode = String(item?.firstKernelCode || '').trim() || String(item?.kernelCode || '').trim();
       const issueCountRaw = Number(item?.issueCount || 0);
       out[field] = {
         firstCode: firstCode || undefined,

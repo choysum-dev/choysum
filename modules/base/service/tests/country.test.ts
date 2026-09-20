@@ -113,7 +113,7 @@ test('base.country: repository exposes stable kernelCode metadata for kernel fai
   expect(String(summary.getFieldFirstCode('Code') || '').startsWith('kernel_')).toBe(true);
   expect(summary.getFieldKernelCode('Code')).toBe(kernelCode);
   expect(summary.fieldIssueSummary.Code?.firstKernelCode).toBe(kernelCode);
-  expect(summary.fieldIssueSummary.Code?.firstKernelCode).toBe(kernelCode);
+  expect((summary.fieldIssueSummary.Code as unknown as Record<string, unknown> | undefined)?.kernelCode).toBe(undefined);
   expect(String(summary.fieldIssueSummary.Code?.issueCount || 0)).toBe('1');
 });
 
@@ -142,7 +142,7 @@ test('base.country: fieldIssueSummary keeps firstCode and firstKernelCode stable
   expect(summary.getFieldFirstCode('Code')).toBe('platform_unknown_field');
   expect(summary.getFieldKernelCode('Code')).toBe('kernel_required_missing');
   expect(summary.fieldIssueSummary.Code?.firstKernelCode).toBe('kernel_required_missing');
-  expect(summary.fieldIssueSummary.Code?.firstKernelCode).toBe('kernel_required_missing');
+  expect((summary.fieldIssueSummary.Code as unknown as Record<string, unknown> | undefined)?.kernelCode).toBe(undefined);
   expect(String(summary.fieldIssueSummary.Code?.issueCount || 0)).toBe('2');
 });
 

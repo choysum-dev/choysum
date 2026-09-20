@@ -142,7 +142,7 @@ export async function prepareModelOnchangePreview(params: ModelOnchangePreparePa
   const reads = parseOnchangeReadsEx(meta, activeHandlers);
   const computeM2oPaths = extractComputePathDeps(meta, computeSubset);
   const computeCollectionPaths = extractComputeCollectionPathDeps(meta, computeSubset);
-  const cached = PathPlanBuilder.getCachedOrBuildV2(ModelCtor, reads.m2o, reads.collections, computeM2oPaths, computeCollectionPaths);
+  const cached = PathPlanBuilder.getCachedOrBuildPlan(ModelCtor, reads.m2o, reads.collections, computeM2oPaths, computeCollectionPaths);
   usedCache = cached.fromCache;
   pathDepthMax = cached.pathDepthMax;
   cachedSignature = cached.signature;

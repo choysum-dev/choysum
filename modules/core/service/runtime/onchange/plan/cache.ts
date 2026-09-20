@@ -14,7 +14,7 @@ export type PlanSkeleton = {
   collections: Record<string, string[][]>;
 };
 
-const cacheV2 = new WeakMap<ModelCtor, Map<string, PlanSkeleton>>();
+const planCache = new WeakMap<ModelCtor, Map<string, PlanSkeleton>>();
 
 /**
  * Appends source chains into a destination chain map.
@@ -171,10 +171,10 @@ export function getCachedOrBuildPlan(
     return { plan: built.plan, fromCache: false, signature, pathDepthMax: built.pathDepthMax };
   }
 
-  let store = cacheV2.get(modelCtor);
+  let store = planCache.get(modelCtor);
   if (!store) {
     store = new Map<string, PlanSkeleton>();
-    cacheV2.set(modelCtor, store);
+    planCache.set(modelCtor, store);
   }
 
   const hit = store.get(signature);

@@ -69,7 +69,7 @@ function prepareModelMetadata() {
 }
 
 test('model onchange prepare reloads missing edit fields and forwards normalized prefetch context', async () => {
-  const originalGetCachedOrBuildV2 = PathPlanBuilder.getCachedOrBuildV2;
+  const originalGetCachedOrBuildPlan = PathPlanBuilder.getCachedOrBuildPlan;
   const originalExecuteWithPlan = PathPlanBuilder.executeWithPlan;
 
   const searchCalls: any[] = [];
@@ -95,7 +95,7 @@ test('model onchange prepare reloads missing edit fields and forwards normalized
   );
 
   try {
-    PathPlanBuilder.getCachedOrBuildV2 = ((ModelCtor: any, m2oReads: any, collectionReads: any, computeM2oPaths: any, computeCollectionPaths: any) => {
+    PathPlanBuilder.getCachedOrBuildPlan = ((ModelCtor: any, m2oReads: any, collectionReads: any, computeM2oPaths: any, computeCollectionPaths: any) => {
       prefetchCalls.push({ ModelCtor, m2oReads, collectionReads, computeM2oPaths, computeCollectionPaths });
       return {
         plan: { marker: 'plan' },
@@ -157,20 +157,20 @@ test('model onchange prepare reloads missing edit fields and forwards normalized
     });
     expect(prefetchCalls[1]?.plan).toEqual({ marker: 'plan' });
   } finally {
-    PathPlanBuilder.getCachedOrBuildV2 = originalGetCachedOrBuildV2;
+    PathPlanBuilder.getCachedOrBuildPlan = originalGetCachedOrBuildPlan;
     PathPlanBuilder.executeWithPlan = originalExecuteWithPlan;
   }
 });
 
 test('model onchange prepare normalizes selector changes and creates collection-safe preview proxy', async () => {
-  const originalGetCachedOrBuildV2 = PathPlanBuilder.getCachedOrBuildV2;
+  const originalGetCachedOrBuildPlan = PathPlanBuilder.getCachedOrBuildPlan;
   const originalExecuteWithPlan = PathPlanBuilder.executeWithPlan;
 
   const prefetchCalls: any[] = [];
   prepareModelMetadata();
 
   try {
-    PathPlanBuilder.getCachedOrBuildV2 = ((ModelCtor: any, m2oReads: any, collectionReads: any, computeM2oPaths: any, computeCollectionPaths: any) => {
+    PathPlanBuilder.getCachedOrBuildPlan = ((ModelCtor: any, m2oReads: any, collectionReads: any, computeM2oPaths: any, computeCollectionPaths: any) => {
       prefetchCalls.push({ ModelCtor, m2oReads, collectionReads, computeM2oPaths, computeCollectionPaths });
       return {
         plan: { marker: 'selector-plan' },
@@ -209,7 +209,7 @@ test('model onchange prepare normalizes selector changes and creates collection-
     expect(prefetchCalls[1]?.mergedDraft).toEqual({ Name: 'draft-only' });
     expect(prefetchCalls[1]?.plan).toEqual({ marker: 'selector-plan' });
   } finally {
-    PathPlanBuilder.getCachedOrBuildV2 = originalGetCachedOrBuildV2;
+    PathPlanBuilder.getCachedOrBuildPlan = originalGetCachedOrBuildPlan;
     PathPlanBuilder.executeWithPlan = originalExecuteWithPlan;
   }
 });

@@ -198,7 +198,7 @@ export async function applyModelOnchangePreviewCascade(params: {
           childActive = (childMeta.onchangeHandlers || []).filter(h => h.triggers.some(t => childSignalSet.has(t)));
           try {
             const parsed = parseOnchangeReadsEx(childMeta, childActive);
-            const cached = PathPlanBuilder.getCachedOrBuildV2(childCtor, parsed.m2o, new Map(), new Map(), new Map());
+            const cached = PathPlanBuilder.getCachedOrBuildPlan(childCtor, parsed.m2o, new Map(), new Map(), new Map());
             PathPlanBuilder.executeWithPlan(childCtor, childMeta, childDraft, cached.plan);
           } catch {
             // ignore
