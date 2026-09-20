@@ -3,6 +3,8 @@
 
 import { getJsCtxAndReq, getOrInitReqServiceState, withBypassDepths } from './context';
 
+export { withRecordRuleAndFieldRuleBypass } from '../orm/repository/authz';
+
 /**
  * Execute fn with RecordRule and FieldRule bypass.
  */
