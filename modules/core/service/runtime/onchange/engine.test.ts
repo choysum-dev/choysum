@@ -36,7 +36,7 @@ test('onchange engine normalizes relation ref payloads and accepts returned sele
     Status: 'draft',
     onTargetRef() {
       expect(this.TargetRef).toBe('partner-1');
-      expect(this.TagRefs).toEqual(['tag-1', 'tag-2', 'tag-3']);
+      expect(this.TagRefs).toEqual(['tag-1', 'tag-3']);
       this.Status = 'active';
       return {
         selection: [
@@ -582,7 +582,7 @@ test('onchange engine quantizedTopLevel keeps original value when decimal normal
   expect((result.value as any).Price).toEqual({ bad: true });
 });
 
-test('onchange engine normalizes ManyToOneRef using lowercase id field', async () => {
+test('onchange engine ignores ManyToOneRef lowercase id field', async () => {
   const meta = createMeta({
     fields: [['PartnerRef', { type: 'ManyToOneRef' }]],
     onchangeHandlers: [],
@@ -593,7 +593,8 @@ test('onchange engine normalizes ManyToOneRef using lowercase id field', async (
   };
 
   await OnchangeEngine.run(meta, draft, ['PartnerRef'], { withCompute: false });
-  expect(draft.PartnerRef).toBe('P-lower');
+  // Only PascalCase Id is normalized; lowercase bags stay untouched.
+  expect(draft.PartnerRef).toEqual({ id: 'P-lower' });
 });
 
 test('onchange engine collects error from ctx.emit message via pushMessages callback', async () => {
@@ -686,7 +687,7 @@ test('onchange engine keeps ManyToOneRef primitive and filters nullish ManyToMan
   const result = await OnchangeEngine.run(meta, draft, ['PartnerRef', 'TagRefs'], { withCompute: false });
   expect(result.touchedHandlers).toEqual([]);
   expect(draft.PartnerRef).toBe('raw-partner');
-  expect(draft.TagRefs).toEqual(['T-1', 'T-2', 'T-3']);
+  expect(draft.TagRefs).toEqual(['T-1', 'T-3']);
 });
 
 test('onchange engine stops next handler when ret.message raises error under stopOnError=true', async () => {
@@ -955,7 +956,7 @@ test('onchange engine keeps many2many ref items without id keys out of normalize
   };
 
   await OnchangeEngine.run(meta, draft, ['TagRefs'], { withCompute: false });
-  expect(draft.TagRefs).toEqual(['T-1', 'T-2']);
+  expect(draft.TagRefs).toEqual(['T-1']);
 });
 
 test('onchange engine routes ctx condition and selection emit payloads through context callbacks', async () => {

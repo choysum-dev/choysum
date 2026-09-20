@@ -432,10 +432,10 @@ async function handleInlineDiscard() {
 // =============================
 // Section 8: Selection management
 // =============================
-// Prefer the new wrapped key first while remaining compatible with legacy __rowKey/Id/id
+// Prefer the new wrapped key first, then __rowKey / Id.
 const selection = useVTableSelection(
   (row: any) =>
-    row?.key ?? row?.__rowKey ?? row?.Id ?? row?.id ?? (typeof row === 'object' ? ((row as any)?.payload?.Id ?? (row as any)?.payload?.id) : undefined),
+    row?.key ?? row?.__rowKey ?? row?.Id ?? (typeof row === 'object' ? ((row as any)?.payload?.Id) : undefined),
   props.selectionMode
 );
 
@@ -445,10 +445,10 @@ function onSelectionChange(rows: any[]) {
   // In group-tree mode, keep only the actual record Ids of detail rows
   const ids = (rows || [])
     .map((r: any) => {
-      if (r?.type === 'record') return r?.record?.Id ?? r?.record?.id;
-      if (r?.kind === 'record') return r?.payload?.Id ?? r?.payload?.id;
+      if (r?.type === 'record') return r?.record?.Id;
+      if (r?.kind === 'record') return r?.payload?.Id;
       const rec = r?.payload ?? r?.record ?? r;
-      return rec?.Id ?? rec?.id;
+      return rec?.Id;
     })
     .filter((x: any) => x != null) as string[];
   selectedItems.value = rows as ClientModel<T[]>;
@@ -702,10 +702,10 @@ async function handleDelete() {
     // Prefer reading Id from record rows
     const ids = (selectedItems.value as any[])
       .map((r: any) => {
-        if (r?.type === 'record') return r?.record?.Id ?? r?.record?.id;
-        if (r?.kind === 'record') return r?.payload?.Id ?? r?.payload?.id;
+        if (r?.type === 'record') return r?.record?.Id;
+        if (r?.kind === 'record') return r?.payload?.Id;
         const rec = r?.payload ?? r?.record ?? r;
-        return rec?.Id ?? rec?.id;
+        return rec?.Id;
       })
       .filter((id: any) => id != null) as string[];
 

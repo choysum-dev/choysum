@@ -386,20 +386,20 @@ test('PR-E-5 evaluateUiDerivedMethodDecision covers empty inputs and empty requi
   }
 });
 
-test('PR-E-5 evaluateUiDerivedMethodDecision covers id fallback and no-match resources', async () => {
+test('PR-E-5 evaluateUiDerivedMethodDecision covers Id allow and no-match resources', async () => {
   resetRequestContext();
   const originalRoleUiSearch = (RoleUiResource as any).Search;
   const originalIrUiSearch = (MetaUiResource as any).Search;
 
-  // Resource keyed only by lowercase `id` (no `Id`) still participates in allow diagnostics.
-  (RoleUiResource as any).Search = async () => [{ MetaApplicationId: null, MetaUiResourceId: 'res-lower-id', Mode: 'allow' }];
-  (MetaUiResource as any).Search = async () => [{ id: 'res-lower-id', Name: 'lower', Requires: ['rpc:/auth.User/browse'] }];
+  // Search rows use PascalCase Id (production ClientModel shape).
+  (RoleUiResource as any).Search = async () => [{ MetaApplicationId: null, MetaUiResourceId: 'res-1', Mode: 'allow' }];
+  (MetaUiResource as any).Search = async () => [{ Id: 'res-1', Name: 'lower', Requires: ['rpc:/auth.User/browse'] }];
   try {
     const allowed = await evaluateUiDerivedMethodDecision(['ROLE-E5-ID'], 'auth.User', 'browse');
     expect(allowed).toEqual({
       allowed: true,
       denied: false,
-      hitRuleIds: ['res-lower-id'],
+      hitRuleIds: ['res-1'],
       reason: 'method_access_ui_allow',
     });
   } finally {

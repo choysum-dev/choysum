@@ -39,13 +39,13 @@ test('normalizeCurrencyRefId and readDecimalDigitsFromCurrencyValue cover shapes
   expect(normalizeCurrencyRefId('  ')).toBeUndefined();
   expect(normalizeCurrencyRefId(' CUR-1 ')).toBe('CUR-1');
   expect(normalizeCurrencyRefId({ Id: 'A' })).toBe('A');
-  expect(normalizeCurrencyRefId({ id: 'b' })).toBe('b');
+  expect(normalizeCurrencyRefId({ id: 'b' })).toBeUndefined();
   expect(normalizeCurrencyRefId({ Id: 1 })).toBeUndefined();
   expect(normalizeCurrencyRefId(12)).toBeUndefined();
 
   expect(readDecimalDigitsFromCurrencyValue(null)).toBeUndefined();
   expect(readDecimalDigitsFromCurrencyValue({ DecimalDigits: 2 })).toBe(2);
-  expect(readDecimalDigitsFromCurrencyValue({ decimalDigits: 0 })).toBe(0);
+  expect(readDecimalDigitsFromCurrencyValue({ decimalDigits: 0 })).toBeUndefined();
   expect(readDecimalDigitsFromCurrencyValue({ DecimalDigits: 19 })).toBeUndefined();
   expect(readDecimalDigitsFromCurrencyValue({ DecimalDigits: 1.5 })).toBeUndefined();
 });

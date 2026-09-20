@@ -202,9 +202,9 @@ export function assertCommitUploadPutReq(req: CommitUploadPutReq | undefined | n
 // ---------------------------------------------------------------------------
 
 export function assertUploadSessionPrincipal(session: AttachmentUploadSession, principal: PrincipalContext, stage: string): void {
-  const sessionCompanyId = requireText((session as any).CompanyId, 'companyId');
-  const sessionUserId = requireText((session as any).IssuerUserId, 'issuerUserId');
-  const sessionId = requireText((session as any).Id, 'uploadId');
+  const sessionCompanyId = requireText(session.CompanyId, 'companyId');
+  const sessionUserId = requireText(session.IssuerUserId, 'issuerUserId');
+  const sessionId = requireText(session.Id, 'uploadId');
 
   if (principal.activeCompanyId !== sessionCompanyId) {
     throwDocumentError(
@@ -254,12 +254,12 @@ export function assertPrepareReplayConsistency(
 ): void {
   const mismatches: string[] = [];
 
-  if (requireText((existing as any).CompanyId, 'companyId') !== companyId) mismatches.push('companyId');
-  if (requireText((existing as any).IssuerUserId, 'issuerUserId') !== issuerUserId) mismatches.push('issuerUserId');
-  if (requireText((existing as any).OwnerModel, 'ownerModel') !== req.ownerModel) mismatches.push('ownerModel');
-  if ((normalizeOptionalString((existing as any).OwnerRecordId) ?? '') !== (req.ownerRecordId ?? '')) mismatches.push('ownerRecordId');
-  if (requireText((existing as any).FieldName, 'fieldName') !== req.fieldName) mismatches.push('fieldName');
-  if (requireText((existing as any).Operation, 'operation') !== req.operation) mismatches.push('operation');
+  if (requireText(existing.CompanyId, 'companyId') !== companyId) mismatches.push('companyId');
+  if (requireText(existing.IssuerUserId, 'issuerUserId') !== issuerUserId) mismatches.push('issuerUserId');
+  if (requireText(existing.OwnerModel, 'ownerModel') !== req.ownerModel) mismatches.push('ownerModel');
+  if ((normalizeOptionalString(existing.OwnerRecordId) ?? '') !== (req.ownerRecordId ?? '')) mismatches.push('ownerRecordId');
+  if (requireText(existing.FieldName, 'fieldName') !== req.fieldName) mismatches.push('fieldName');
+  if (requireText(existing.Operation, 'operation') !== req.operation) mismatches.push('operation');
 
   if (mismatches.length > 0) {
     throwDocumentError(

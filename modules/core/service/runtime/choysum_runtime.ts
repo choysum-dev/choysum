@@ -5,6 +5,6 @@
  * Resolve the injected `$choysum` runtime carrier.
  * Prefer the ambient binding; fall back to `globalThis` for unit harnesses.
  */
-export function getChoysumRuntime(): typeof $choysum | undefined {
+export function resolveChoysum(): typeof $choysum | undefined {
   return typeof $choysum !== 'undefined' ? $choysum : globalThis.$choysum;
 }

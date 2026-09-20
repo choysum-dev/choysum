@@ -292,7 +292,7 @@ test('record rule helper uses process cache when request context is absent and m
       const { deps } = createDeps({
         meta: { fullModelName: '', modelName: '', name: '' },
         userId: '',
-        requestContext: { ActiveCompanyId: 'company_b' },
+        requestContext: { activeCompanyId: 'company_b' },
         normalizeCompanyIds: () => [],
       });
       const first = await fetchRepositoryRecordRuleEnvelope(deps, 'read');

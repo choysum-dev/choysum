@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
+
 /** Frozen tip topic for Form / Chatter thread refresh (matches pkg/bus). */
 export const TOPIC_MESSAGE_THREAD_CHANGED = 'message.thread.changed';
 
@@ -32,8 +34,9 @@ export function __setMessagePublishTipForTest(fn: PublishTipFn | null | undefine
 
 export function resolvePublishTip(): PublishTipFn | null {
   if (publishTipOverride !== undefined) return publishTipOverride;
-  const publish = (globalThis as { $choysum?: { bus?: { publish?: PublishTipFn } } }).$choysum?.bus?.publish;
-  return typeof publish === 'function' ? publish.bind((globalThis as any).$choysum.bus) : null;
+  const bus = resolveChoysum()?.bus;
+  const publish = bus?.publish;
+  return typeof publish === 'function' ? publish.bind(bus) : null;
 }
 
 function parseCreatedAtMillis(createdAt: Date | string | number | null | undefined): number | undefined {

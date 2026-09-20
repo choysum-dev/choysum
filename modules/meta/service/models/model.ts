@@ -128,7 +128,10 @@ export default class MetaModel extends BaseModel {
       return true;
     });
 
-    return paginateAndWrap(filtered, 'constraints', pagination, effective.length, { model }) as any;
+    return {
+      ...paginateAndWrap(filtered, 'constraints', pagination, effective.length),
+      model,
+    };
   }
 
   static async GetEffectiveOnchange(
@@ -159,6 +162,9 @@ export default class MetaModel extends BaseModel {
       return true;
     });
 
-    return paginateAndWrap(filtered, 'onchanges', pagination, effective.length, { model }) as any;
+    return {
+      ...paginateAndWrap(filtered, 'onchanges', pagination, effective.length),
+      model,
+    };
   }
 }

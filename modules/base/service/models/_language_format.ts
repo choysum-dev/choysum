@@ -6,16 +6,7 @@
  * Grouping follows Odoo/POSIX style lists such as "[3,0]" or [3, 0].
  */
 
-export type LanguageFormatFields = {
-  DecimalSeparator?: string | null;
-  ThousandSeparator?: string | null;
-  Grouping?: string | number[] | null;
-  DateFormat?: string | null;
-  TimeFormat?: string | null;
-  FirstDayOfWeek?: number | null;
-  CurrencySymbolPosition?: 'before' | 'after' | null;
-  CurrencySymbolSpacing?: boolean | null;
-};
+import type Language from './language';
 
 export function parseGrouping(raw: unknown): number[] {
   if (Array.isArray(raw)) {
@@ -92,7 +83,7 @@ export function applyGrouping(integerDigits: string, grouping: number[], thousan
 
 export function formatNumberWithLanguage(
   value: number,
-  fields: LanguageFormatFields,
+  fields: Partial<Language>,
   options?: { digits?: number }
 ): string {
   if (!Number.isFinite(value)) {
@@ -140,7 +131,11 @@ export function parseLanguageDateInput(value: Date | string | number): Date | nu
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function formatDateWithLanguage(value: Date | string | number, fields: LanguageFormatFields, kind: 'date' | 'time' | 'datetime' = 'date'): string {
+export function formatDateWithLanguage(
+  value: Date | string | number,
+  fields: Partial<Language>,
+  kind: 'date' | 'time' | 'datetime' = 'date'
+): string {
   const d = parseLanguageDateInput(value);
   if (!d) {
     return String(value);

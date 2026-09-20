@@ -20,9 +20,12 @@ export type SequenceNextParams = {
 
 export type SequenceNextItem = { Value: string; Number: number };
 
+/** Public Sequence.Next snapshot: format fields used to interpret Items[].Value. */
+export type SequenceNextPublic = Pick<Sequence, 'Id' | 'Code' | 'Prefix' | 'Suffix' | 'Padding'>;
+
 export type SequenceNextResult = {
   Items: SequenceNextItem[];
-  Sequence: { Id: string; CompanyId?: string; Code: string; Prefix?: string; Suffix?: string; Padding: number };
+  Sequence: SequenceNextPublic;
   GeneratedAt: string;
 };
 
@@ -130,13 +133,13 @@ export default class Sequence extends BaseModel {
 
   @Constraint<Sequence>(['Code', 'CompanyId'])
   validateSequenceConstraint(): void {
-    (this as any).Code = assertCodeRequired(this.Code, { uppercase: false });
+    this.Code = assertCodeRequired(this.Code, { uppercase: false });
     // CompanyScopeKey is always derived from CompanyId.
-    (this as any).CompanyScopeKey = normalizeRefId(this.CompanyId) || '__GLOBAL__';
+    this.CompanyScopeKey = normalizeRefId(this.CompanyId) || '__GLOBAL__';
   }
 
   static async Next(params: SequenceNextParams): Promise<SequenceNextResult> {
-    return nextSequence(this, params);
+    return nextSequence(this as unknown as Parameters<typeof nextSequence>[0], params);
   }
 
   static async CleanupIdempotency(params?: SequenceCleanupIdempotencyParams): Promise<SequenceCleanupIdempotencyResult> {

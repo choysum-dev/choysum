@@ -18,7 +18,7 @@ import { resolveModelConstructor } from './model_registry';
 import type { ModelCtor, RowOf } from './types';
 import type { Insertable, QueryCondition, Updateable } from '../repository/types';
 import { registerLogicalModelName } from './logical_model_registry';
-import { getChoysumRuntime } from '../../runtime/choysum_root';
+import { resolveChoysum } from '../../runtime/choysum_runtime';
 
 /** Align Odoo: False→global; True→current; id→specific. */
 export type FieldDefaultScopeDim = string | boolean | null | undefined;
@@ -106,8 +106,11 @@ function resolveScopeDim(dim: FieldDefaultScopeDim, current: string | undefined,
   return id;
 }
 
-function scopeCondition(field: string, value: string | null): [string, string, string | null] {
-  return value == null ? [field, 'is', null] : [field, '=', value];
+function scopeCondition(
+  field: 'UserId' | 'CompanyId',
+  value: string | null
+): QueryCondition<FieldDefaultBaseModel> {
+  return (value == null ? [field, 'is', null] : [field, '=', value]) as QueryCondition<FieldDefaultBaseModel>;
 }
 
 function storeMeta(ctor: ModelCtor) {
@@ -135,7 +138,7 @@ function resolveTargetModel(
     fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} is not registered`);
   }
 
-  const targetMeta = MetadataStorage.instance.getModelMetadata(Target as any) as ModelMetadata;
+  const targetMeta = MetadataStorage.instance.getModelMetadata(Target) as ModelMetadata;
   const targetApp = String(targetMeta.application || '').trim();
   if (targetApp !== application) {
     fail('FIELD_DEFAULT_CROSS_APP_MODEL', `Model ${short} does not belong to application ${application}`);
@@ -180,7 +183,7 @@ function normalizeStoredValue(field: FieldMetadata, value: unknown): unknown {
 }
 
 async function fieldDefaultStoreTableExists(dialect: string, table: string): Promise<boolean> {
-  const db = getChoysumRuntime()?.db;
+  const db = resolveChoysum()?.db;
   // QuickJS bridge callables may not report typeof === 'function'; rely on presence + call.
   if (db == null || db.query == null) {
     // No probe available; allow the CREATE INDEX attempt.
@@ -223,7 +226,7 @@ async function ensureScopeUniqueIndex(ctor: ModelCtor): Promise<void> {
   const table = typeof meta.tableName === 'function' ? String(meta.tableName()) : String(meta.tableName || '');
   if (!table || ensuredUniqueIndexTables.has(table)) return;
 
-  const dialect = String(getChoysumRuntime()?.db?.dialectName || 'sqlite').toLowerCase();
+  const dialect = String(resolveChoysum()?.db?.dialectName || 'sqlite').toLowerCase();
   const indexName = `uidx_${table}_scope`;
   let ddl = '';
   if (dialect === 'postgres' || dialect === 'postgresql') {
@@ -234,7 +237,7 @@ async function ensureScopeUniqueIndex(ctor: ModelCtor): Promise<void> {
   }
 
   try {
-    const db = getChoysumRuntime()?.db;
+    const db = resolveChoysum()?.db;
     const exec = db?.execute;
     // QuickJS bridge callables may not report typeof === 'function'.
     if (exec == null || db == null) {
@@ -400,7 +403,9 @@ export default class FieldDefaultBaseModel extends BaseModel {
     const fullRaw = await memoizeInReqState(fieldDefaultReqState(), memoKey, async () => {
       // Load all candidate rows for this model+identity (field filter applied after memo).
       const and: QueryCondition<FieldDefaultBaseModel>[] = [['Model', '=', modelShort]];
-      and.push({ Or: [scopeCondition('UserId', null), ...(uid ? [['UserId', '=', uid]] : [])] });
+      and.push({
+        Or: [scopeCondition('UserId', null), ...(uid ? ([['UserId', '=', uid]] as QueryCondition<FieldDefaultBaseModel>[]) : [])],
+      });
       if (companyId) {
         and.push({ Or: [scopeCondition('CompanyId', null), ['CompanyId', '=', companyId]] });
       } else {

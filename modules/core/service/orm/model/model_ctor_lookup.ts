@@ -29,7 +29,7 @@ export function lookupModelCtorByFullName(fullName: string): typeof BaseModel | 
   const fromPool = getModelCtorFromGlobalPool(key);
   if (fromPool) return fromPool;
 
-  const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, { fullModelName?: string }> | undefined;
+  const models = (MetadataStorage.instance as unknown as { models?: Map<typeof BaseModel, { fullModelName?: string }> }).models;
   if (!models || typeof models.entries !== 'function') return undefined;
 
   for (const [ctor, meta] of models.entries()) {

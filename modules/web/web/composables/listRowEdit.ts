@@ -30,7 +30,7 @@ export function isListRecordRow(row: any): boolean {
   if (row.kind === 'group' || row.kind === 'more') return false;
   if (row.kind === 'record' || row.type === 'record') return true;
   const rec = unwrapListRecord(row);
-  return rec != null && (rec.Id != null || rec.id != null);
+  return rec != null && rec.Id != null;
 }
 
 /** Deep-enough clone for a row editing draft. */
@@ -41,7 +41,7 @@ export function cloneRowDraft<T extends Record<string, any>>(record: T): T {
 /** Record id as string, or empty when missing. */
 export function listRecordId(rowOrRecord: any): string {
   const rec = unwrapListRecord(rowOrRecord);
-  const id = rec?.Id ?? rec?.id;
+  const id = rec?.Id;
   return id == null ? '' : String(id);
 }
 

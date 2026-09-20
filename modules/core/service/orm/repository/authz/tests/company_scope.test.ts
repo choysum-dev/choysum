@@ -363,10 +363,10 @@ test('company scope create/update keep in-scope CompanyId and bypass update chec
 test('company scope normalizers ignore blank and nullable raw values across branches', () => {
   expect(normalizeRepositoryCompanyIds({ enabledCompanyIds: [null, '', '  ', 'company_a'] })).toEqual(['company_a']);
   expect(normalizeRepositoryCompanyIds({ enabledCompanyIds: '   ' })).toEqual([]);
-  expect(normalizeRepositoryCompanyIds({ ActiveCompanyId: ' company_x ' })).toEqual(['company_x']);
+  expect(normalizeRepositoryCompanyIds({ activeCompanyId: ' company_x ' })).toEqual(['company_x']);
 
   expect(normalizeRepositoryCompanyIdForWrite({ activeCompanyId: '   ', enabledCompanyIds: ['  '] })).toBe(undefined);
-  expect(normalizeRepositoryCompanyIdForWrite({ ActiveCompanyId: 'company_b' })).toBe('company_b');
+  expect(normalizeRepositoryCompanyIdForWrite({ activeCompanyId: 'company_b' })).toBe('company_b');
 });
 
 test('company scope validate helper returns early for null or blank company id', () => {
@@ -532,10 +532,10 @@ test('company scope create/write-access fallback paths cover model-name chain an
 });
 
 test('company scope normalizer fallback keys and write-id selection cover remaining normalize branches', () => {
-  expect(normalizeRepositoryCompanyIds({ EnabledCompanyIds: 'company_upper' })).toEqual(['company_upper']);
-  expect(normalizeRepositoryCompanyIdForWrite({ ActiveCompanyId: null, enabledCompanyIds: ['a', 'b'] })).toBe(undefined);
-  expect(normalizeRepositoryCompanyIdForWrite({ ActiveCompanyId: null, enabledCompanyIds: 'company_x' })).toBe(undefined);
-  expect(normalizeRepositoryCompanyIdForWrite({ ActiveCompanyId: null, enabledCompanyIds: new Array(1) as any })).toBe(undefined);
+  expect(normalizeRepositoryCompanyIds({ enabledCompanyIds: 'company_upper' })).toEqual(['company_upper']);
+  expect(normalizeRepositoryCompanyIdForWrite({ activeCompanyId: null, enabledCompanyIds: ['a', 'b'] })).toBe(undefined);
+  expect(normalizeRepositoryCompanyIdForWrite({ activeCompanyId: null, enabledCompanyIds: 'company_x' })).toBe(undefined);
+  expect(normalizeRepositoryCompanyIdForWrite({ activeCompanyId: null, enabledCompanyIds: new Array(1) as any })).toBe(undefined);
 });
 
 test('company scope layer and enabled checks cover env default path and fallback metadata chains', () => {

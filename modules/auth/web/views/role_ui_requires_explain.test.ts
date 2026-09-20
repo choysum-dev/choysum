@@ -42,7 +42,7 @@ test('selectInspectedUiResource: keeps objects and clears invalid rows', () => {
   expect(selectInspectedUiResource(0)).toBeNull();
 });
 
-test('inspected row helpers: reads id and Requires/requires', () => {
+test('inspected row helpers: reads Id and Requires', () => {
   expect(getInspectedUiResourceId(null)).toBe('');
   expect(getInspectedUiResourceId(undefined)).toBe('');
   expect(getInspectedUiResourceId({})).toBe('');
@@ -51,9 +51,9 @@ test('inspected row helpers: reads id and Requires/requires', () => {
   expect(getInspectedUiResourceId({ Id: '  abc  ' })).toBe('abc');
   expect(getInspectedUiResourceRequires(null)).toEqual([]);
   expect(getInspectedUiResourceRequires({})).toEqual([]);
-  expect(getInspectedUiResourceRequires({ Requires: null, requires: ['rpc:/a/b'] })).toEqual(['rpc:/a/b']);
+  expect(getInspectedUiResourceRequires({ Requires: null })).toEqual([]);
   expect(getInspectedUiResourceRequires({ Requires: ['rpc:/a/b'] })).toEqual(['rpc:/a/b']);
-  expect(getInspectedUiResourceRequires({ requires: '["rpc:/c/d"]' })).toEqual(['rpc:/c/d']);
+  expect(getInspectedUiResourceRequires({ Requires: '["rpc:/c/d"]' })).toEqual(['rpc:/c/d']);
 });
 
 test('isInspectedUiResourceRow: matches only when both sides have the same non-empty id', () => {

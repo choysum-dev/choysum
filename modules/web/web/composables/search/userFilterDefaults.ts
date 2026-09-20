@@ -2,16 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { NamedFilter } from '@/web/web/query/types';
+import type UserFilter from '@/web/service/models/user_filter';
 
-export type UserFilterRow = {
-  Id?: string;
-  Name?: string;
-  Condition?: any;
-  IsDefault?: boolean;
+/**
+ * UserFilter Search projection for Favorites / OSearch.
+ * Field names follow {@link UserFilter}; timestamps/Condition/UserId stay wire-loose
+ * (JSON may send ISO strings or nested `{ Id }`).
+ */
+export type UserFilterRow = Partial<Pick<UserFilter, 'Id' | 'Name' | 'IsDefault' | 'CreatedUid'>> & {
+  Condition?: unknown;
   UserId?: string | null | { Id?: string | null };
-  CreatedUid?: string | null;
-  UpdatedAt?: string | Date | null;
-  CreatedAt?: string | Date | null;
+  UpdatedAt?: Date | string | null;
+  CreatedAt?: Date | string | null;
 };
 
 /** Normalize ManyToOneRef nested `{ Id }` or bare id to a trimmed string (empty if shared/missing). */

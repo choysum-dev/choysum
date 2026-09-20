@@ -332,7 +332,7 @@ function getDisplayLabel(val: any): string {
 function getDisplayId(val: any): string {
   if (!val) return '';
   if (typeof val === 'object') {
-    const id = val.Id ?? val.id;
+    const id = val.Id;
     return id == null ? '' : String(id).trim();
   }
   if (typeof val === 'string') return val.trim();
@@ -458,7 +458,7 @@ function buildFullChainKeys(row: any): string[] {
   const chain = chainBeforeLeaf.value;
   if (!rootRecord.value || !chain.length) return out;
 
-  const rowId = row?.Id ?? row?.id ?? null;
+  const rowId = row?.Id ?? null;
   const selChain = findSelectorsChain(rootRecord.value, chain, rowId);
   if (!selChain) return out;
 
@@ -482,7 +482,7 @@ function buildLastLevelKeys(row: any): string[] {
   const head = chain.slice(0, lastIdx).join('.');
   const headDot = head ? head + '.' : '';
 
-  const rowId = row?.Id ?? row?.id ?? null;
+  const rowId = row?.Id ?? null;
   if (rowId != null) out.push(`${headDot}${lastKey}(id=${String(rowId)}).${leaf}`);
 
   let idx: number | null = null;

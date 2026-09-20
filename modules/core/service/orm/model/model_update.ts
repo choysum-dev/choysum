@@ -223,11 +223,11 @@ async function findActiveBindingId(
         ['FieldName', '=', fieldName],
         ['Status', '=', 'active'],
       ],
-    } as any,
+    },
     {
       limit: 1,
       fields: ['Id'],
-    } as any
+    }
   );
 
   const first = Array.isArray(rows) ? rows[0] : undefined;

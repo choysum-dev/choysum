@@ -127,7 +127,7 @@ test('partner_commercial._partner_commercial_bridge: normalizeOptionalRefId retu
 
 test('partner_commercial._partner_commercial_bridge: normalizeOptionalRefId resolves object Id', () => {
   expect(normalizeOptionalRefId({ Id: '123' })).toBe('123');
-  expect(normalizeOptionalRefId({ id: '456' })).toBe('456');
+  expect(normalizeOptionalRefId({ id: '456' })).toBe(null);
 });
 
 test('partner_commercial._partner_commercial_bridge: normalizeOptionalRefId trims string', () => {

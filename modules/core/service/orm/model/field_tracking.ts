@@ -69,7 +69,7 @@ export type FieldTrackingWriteEvent = {
 };
 
 function fullModelName(ModelCtor: ModelCtor): string {
-  const meta = MetadataStorage.instance.getModelMetadata(ModelCtor as any);
+  const meta = MetadataStorage.instance.getModelMetadata(ModelCtor);
   const app = String(meta?.application || '').trim();
   const name = String(meta?.name || ModelCtor?.name || '').trim();
   return app && name ? `${app}.${name}` : name;
@@ -139,7 +139,7 @@ export async function recordFieldTrackingEvents(event: FieldTrackingWriteEvent):
   const trackedModel = fullModelName(ModelCtor);
   if (!trackedModel || trackedModel === AUDIT_FIELD_CHANGE) return;
 
-  const meta = MetadataStorage.instance.getModelMetadata(ModelCtor as any);
+  const meta = MetadataStorage.instance.getModelMetadata(ModelCtor);
   const fields = meta?.fields;
   if (!fields?.size) return;
 

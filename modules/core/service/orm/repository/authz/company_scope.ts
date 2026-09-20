@@ -116,7 +116,7 @@ export function validateRepositoryOwnershipNullability(
 
 export function normalizeRepositoryCompanyIds(ctx: unknown): string[] {
   const requestContext = asObjectRecord(ctx);
-  const raw = requestContext?.enabledCompanyIds ?? requestContext?.EnabledCompanyIds ?? requestContext?.activeCompanyId ?? requestContext?.ActiveCompanyId;
+  const raw = requestContext?.enabledCompanyIds ?? requestContext?.activeCompanyId;
 
   const ids: string[] = [];
   if (Array.isArray(raw)) {
@@ -134,7 +134,7 @@ export function normalizeRepositoryCompanyIds(ctx: unknown): string[] {
 
 export function normalizeRepositoryCompanyIdForWrite(ctx: unknown): string | undefined {
   const requestContext = asObjectRecord(ctx);
-  const raw = requestContext?.activeCompanyId ?? requestContext?.ActiveCompanyId;
+  const raw = requestContext?.activeCompanyId;
   if (raw != null) {
     const value = String(raw).trim();
     if (value) return value;

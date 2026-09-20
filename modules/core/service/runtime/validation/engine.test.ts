@@ -1264,7 +1264,7 @@ test('validation engine covers check_company parent resolution edge branches', a
 
   const metadata = MetadataStorage.instance.getModelMetadata(PlatformCheckCompanySourceModel as any);
 
-  // Parent company from ActiveCompanyId when activeCompanyId is absent.
+  // Parent company from activeCompanyId.
   const fromActivePascal = await ValidationEngine.validate(
     {
       mode: 'create',
@@ -1275,7 +1275,7 @@ test('validation engine covers check_company parent resolution edge branches', a
       repository: {} as any,
       requestContext: {
         enabledCompanyIds: ['company_a'],
-        ActiveCompanyId: 'company_a',
+        activeCompanyId: 'company_a',
       },
     } as any,
     { includeKernel: false, includeConstraints: false }
@@ -2011,9 +2011,7 @@ test('validation engine private helpers normalize reference ids and enabled comp
   expect(resolveReferenceId({ Id: 'ID-1' })).toBe('ID-1');
 
   expect(extractEnabledCompanyIds({ enabledCompanyIds: [' c1 ', 'c2', 'c1'] })).toEqual(['c1', 'c2']);
-  expect(extractEnabledCompanyIds({ EnabledCompanyIds: ['X'] })).toEqual(['X']);
   expect(extractEnabledCompanyIds({ activeCompanyId: 'A1' })).toEqual(['A1']);
-  expect(extractEnabledCompanyIds({ ActiveCompanyId: 'A2' })).toEqual(['A2']);
   expect(extractEnabledCompanyIds(undefined)).toEqual([]);
 });
 

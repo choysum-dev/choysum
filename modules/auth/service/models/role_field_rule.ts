@@ -168,16 +168,16 @@ export default class RoleFieldRule extends AuthzMutationModel {
     if (!hasRead && !hasWrite && mode !== 'create') return;
 
     if (hasRead || mode === 'create') {
-      (values as any).PermRead = this._normalizePerm((values as any).PermRead);
+      values.PermRead = this._normalizePerm(values.PermRead);
     }
     if (hasWrite || mode === 'create') {
-      (values as any).PermWrite = this._normalizePerm((values as any).PermWrite);
+      values.PermWrite = this._normalizePerm(values.PermWrite);
     }
 
     // Create always materializes both keys; reject empty. Update only rejects when
     // the caller explicitly clears both in the same payload.
     if (mode === 'create' || (hasRead && hasWrite)) {
-      if ((values as any).PermRead == null && (values as any).PermWrite == null) {
+      if (values.PermRead == null && values.PermWrite == null) {
         throw new Error('invalid RoleFieldRule: must provide at least one of PermRead/PermWrite');
       }
     }

@@ -143,7 +143,7 @@ export function createKanbanController(store: WebModelStore<any>): IKanbanContro
     const updatedRecord = await store.UpdateById?.(String(cardId), { [field]: toValue } as any, returnFields);
 
     if (updatedRecord && typeof updatedRecord === 'object') {
-      const id = (updatedRecord as any).Id || (updatedRecord as any).id || cardId;
+      const id = (updatedRecord as any).Id || cardId;
       handoffCache.set(String(id), updatedRecord);
     }
 

@@ -59,7 +59,7 @@ export default class ExchangeRate extends BaseModel {
       scope: 'base.model.ExchangeRate.fields',
     }),
   })
-  Date: any;
+  Date: string;
 
   @Field({
     type: 'decimal',
@@ -69,7 +69,7 @@ export default class ExchangeRate extends BaseModel {
       scope: 'base.model.ExchangeRate.fields',
     }),
   })
-  Rate: any;
+  Rate: Decimal;
 
   private static coerceDateKey(value: any): string {
     // Date-only business keys must be YYYY-MM-DD strings. Reject Date objects:
@@ -88,7 +88,7 @@ export default class ExchangeRate extends BaseModel {
     return this.coerceDateKey(value);
   }
 
-  private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async ensureUniqueTuple(values: ExchangeRate, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
     const dateKey = this.dateKey(values.Date);
     await this.assertUniqueScopeCurrencyDate(scopeKey, dateKey, values.CurrencyId, currentId);
@@ -115,19 +115,19 @@ export default class ExchangeRate extends BaseModel {
           ['CurrencyId', '=', currencyId],
           ['Date', '=', dateKey],
         ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
+      },
+      { fields: ['Id'], limit: 2 }
     );
 
-    const hasConflict = (conflicts || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const hasConflict = (conflicts || []).some(item => String(item?.Id || '') !== String(currentId || ''));
     if (hasConflict) {
       fail(_t('ExchangeRate must be unique for CompanyId + CurrencyId + Date', { scope: 'service/models/exchange_rate' }));
     }
   }
 
-  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async validateEntity(values: ExchangeRate, currentId?: string): Promise<void> {
     values.Rate = mapNormalizationToBase(
-      () => toPositiveDecimal(values.Rate).toString(),
+      () => toPositiveDecimal(values.Rate),
       err =>
         err.code === 'non_positive_decimal'
           ? _t('Rate must be greater than 0', { scope: 'service/models/exchange_rate' })
@@ -144,7 +144,7 @@ export default class ExchangeRate extends BaseModel {
 
   @Constraint<ExchangeRate>(['CompanyId', 'CurrencyId', 'Date', 'Rate'])
   async validateExchangeRateConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
-    await ExchangeRate.validateEntity(this as any, currentId);
+    const currentId = String(this.Id || '').trim() || undefined;
+    await ExchangeRate.validateEntity(this, currentId);
   }
 }

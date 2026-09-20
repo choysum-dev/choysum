@@ -72,8 +72,8 @@ function extractReferenceId(value: unknown): unknown {
     return value;
   }
 
-  const obj = value as { Id?: unknown; id?: unknown };
-  return obj.Id ?? obj.id ?? null;
+  const obj = value as { Id?: unknown };
+  return obj.Id ?? null;
 }
 
 export class OnchangeEngine {
@@ -154,7 +154,10 @@ export class OnchangeEngine {
           // where await on a non-Promise always yields to the event loop.
           // Use a thenable check instead of instanceof Promise to also handle
           // cross-realm promises and custom thenables.
-          const result = typeof (rawResult as any)?.then === 'function' ? await rawResult : rawResult;
+          const result =
+            rawResult != null && typeof (rawResult as { then?: unknown }).then === 'function'
+              ? await rawResult
+              : rawResult;
           const ret = (result ?? {}) as OnchangeHandlerReturn;
 
           // Process returned payloads while keeping compatibility with legacy object returns.

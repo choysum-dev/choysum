@@ -278,6 +278,33 @@ declare var $choysum: {
       messages?: Array<{ type?: string; row?: number; field?: string; code?: string; text?: string; record_ref?: string }>;
     }>;
   };
+
+  /**
+   * Tip / event bus (Go bus.Publish). Optional in unit harnesses.
+   */
+  bus?: {
+    publish: (event: {
+      topic: string;
+      source: string;
+      at?: number;
+      payload?: Record<string, string>;
+    }) => void | Promise<void>;
+  };
+
+  /**
+   * Document storage bridge (Go document driver). Optional until document module loads.
+   */
+  document?: {
+    deleteStoredContent?: (payload: { storedContentId?: string }) => void | Promise<void>;
+    [key: string]: unknown;
+  };
+
+  /**
+   * Unified export bridge (Go export.Run). Optional until export is wired.
+   */
+  export?: {
+    run: (spec: Record<string, unknown> | string) => Promise<Record<string, unknown>>;
+  };
 };
 
 /** Optional runtime carrier when `$choysum` is not yet injected (unit harnesses). */

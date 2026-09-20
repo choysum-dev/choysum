@@ -4,12 +4,26 @@
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
-import { assertDateString, parseDecimalInput, resolveModelRefId, roundToCurrencyAmount, toDateOnlyString } from '@/core/service/utils/normalization';
+import { condition, type BaseQueryCondition, type OrderBy } from '@/core/service/api/query';
+import type { FieldSelection, Projected } from '@/core/service/api/selection';
+import {
+  assertDateString,
+  parseDecimalInput,
+  resolveModelRefId,
+  roundToCurrencyAmount,
+  toDateOnlyString,
+  type CurrencyRoundingSpec,
+} from '@/core/service/utils/normalization';
 import { mapNormalizationToBase, assertRatePolicyMode, assertRoundingMode } from './_normalizers';
+import type Company from './company';
 import type Currency from './currency';
+import type ExchangeRate from './exchange_rate';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
 
 const { _t } = createTranslate('base');
+
+const RATE_FIELDS = ['Id', 'CurrencyId', 'CompanyId', 'Date', 'Rate'] as const;
+type RateRecord = Projected<ExchangeRate, typeof RATE_FIELDS>;
 
 async function getRateRecord(opts: {
   companyId: string;
@@ -17,42 +31,42 @@ async function getRateRecord(opts: {
   date: string;
   mode: 'exact' | 'latest_before';
   allowFallbackToGlobal: boolean;
-}): Promise<{ rec?: any; usedGlobal: boolean; usedFallbackDate: boolean }> {
-  const { default: ExchangeRate } = await import('./exchange_rate');
+}): Promise<{ rec?: RateRecord; usedGlobal: boolean; usedFallbackDate: boolean }> {
+  const { default: ExchangeRateModel } = await import('./exchange_rate');
   const { companyId, currencyId, date, mode } = opts;
-  const searchOne = async (companyCond: any): Promise<any | undefined> => {
+  const searchOne = async (companyCond: BaseQueryCondition): Promise<RateRecord | undefined> => {
     if (mode === 'exact') {
-      const rows = await ExchangeRate.Search(
-        { And: [companyCond, ['CurrencyId', '=', currencyId], ['Date', '=', date]] } as any,
+      const rows = await ExchangeRateModel.Search(
+        condition<ExchangeRate>({ And: [companyCond, ['CurrencyId', '=', currencyId], ['Date', '=', date]] }),
         {
           limit: 1,
-          fields: ['Id', 'CurrencyId', 'CompanyId', 'Date', 'Rate'] as any,
-        } as any
+          fields: RATE_FIELDS,
+        }
       );
-      return rows?.[0] as any;
+      return rows?.[0];
     }
-    const rows = await ExchangeRate.Search(
-      { And: [companyCond, ['CurrencyId', '=', currencyId], ['Date', '<=', date]] } as any,
+    const rows = await ExchangeRateModel.Search(
+      condition<ExchangeRate>({ And: [companyCond, ['CurrencyId', '=', currencyId], ['Date', '<=', date]] }),
       {
         limit: 1,
-        orderBy: { field: 'Date', order: 'desc' } as any,
-        fields: ['Id', 'CurrencyId', 'CompanyId', 'Date', 'Rate'] as any,
-      } as any
+        orderBy: { field: 'Date', order: 'desc' } as OrderBy<ExchangeRate>,
+        fields: RATE_FIELDS,
+      }
     );
-    return rows?.[0] as any;
+    return rows?.[0];
   };
 
   // company scoped
   const recCompany = await searchOne(['CompanyId', '=', companyId]);
   if (recCompany) {
-    const usedFallbackDate = mode === 'latest_before' && toDateOnlyString((recCompany as any).Date) !== date;
+    const usedFallbackDate = mode === 'latest_before' && toDateOnlyString(recCompany.Date) !== date;
     return { rec: recCompany, usedGlobal: false, usedFallbackDate };
   }
 
   if (opts.allowFallbackToGlobal) {
     const recGlobal = await searchOne(['CompanyId', 'is', null]);
     if (recGlobal) {
-      const usedFallbackDate = mode === 'latest_before' && toDateOnlyString((recGlobal as any).Date) !== date;
+      const usedFallbackDate = mode === 'latest_before' && toDateOnlyString(recGlobal.Date) !== date;
       return { rec: recGlobal, usedGlobal: true, usedFallbackDate };
     }
   }
@@ -60,17 +74,20 @@ async function getRateRecord(opts: {
   return { rec: undefined, usedGlobal: false, usedFallbackDate: false };
 }
 
-export async function convertCurrency(
-  model: { Browse: (id: string, fields: any) => Promise<any> },
-  params: CurrencyConvertParams
-): Promise<CurrencyConvertResult> {
+type CurrencyOps = {
+  Browse: (id: string, fields?: FieldSelection<Currency>) => Promise<Currency | null | undefined>;
+};
+
+export async function convertCurrency(model: CurrencyOps, params: CurrencyConvertParams): Promise<CurrencyConvertResult> {
   const companyId = String(params?.CompanyId ?? '').trim();
   const fromCurrencyId = String(params?.FromCurrencyId ?? '').trim();
   const toCurrencyId = String(params?.ToCurrencyId ?? '').trim();
   if (!companyId || !fromCurrencyId || !toCurrencyId) {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: _t('CompanyId/FromCurrencyId/ToCurrencyId are required', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(
-      GrpcCode.InvalidArgument
-    );
+    throw new ChoysumError({
+      domain: 'base',
+      code: 'InvalidArgument',
+      message: _t('CompanyId/FromCurrencyId/ToCurrencyId are required', { scope: 'service/models/_currency_convert' }),
+    }).withGrpcCode(GrpcCode.InvalidArgument);
   }
 
   const date = mapNormalizationToBase(
@@ -96,24 +113,30 @@ export async function convertCurrency(
   }
 
   const { default: Company } = await import('./company');
-  let company: any;
+  let company: Pick<Company, 'Id' | 'CurrencyId'> | null | undefined;
   try {
-    company = (await Company.Browse(companyId, ['Id', 'CurrencyId'] as any)) as any;
+    company = await Company.Browse(companyId, ['Id', 'CurrencyId']);
   } catch {
-    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Company not found', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(GrpcCode.NotFound);
+    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Company not found', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(
+      GrpcCode.NotFound
+    );
   }
   if (!company) {
-    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Company not found', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(GrpcCode.NotFound);
+    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Company not found', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(
+      GrpcCode.NotFound
+    );
   }
   const companyCurrencyId = String(resolveModelRefId(company, 'CurrencyId') ?? '').trim();
   if (!companyCurrencyId) {
-    throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: _t('Company.CurrencyId is required', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(
-      GrpcCode.FailedPrecondition
-    );
+    throw new ChoysumError({
+      domain: 'base',
+      code: 'FailedPrecondition',
+      message: _t('Company.CurrencyId is required', { scope: 'service/models/_currency_convert' }),
+    }).withGrpcCode(GrpcCode.FailedPrecondition);
   }
 
   const warnings: string[] = [];
-  const rateUsed: any = {};
+  const rateUsed: NonNullable<CurrencyConvertResult['RateUsed']> = {};
 
   const needFromRate = fromCurrencyId !== companyCurrencyId;
   const needToRate = toCurrencyId !== companyCurrencyId;
@@ -130,12 +153,14 @@ export async function convertCurrency(
       allowFallbackToGlobal,
     });
     if (!rec) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('ExchangeRate not found for currency %s', { scope: 'service/models/_currency_convert' }, fromCurrencyId) }).withGrpcCode(
-        GrpcCode.NotFound
-      );
+      throw new ChoysumError({
+        domain: 'base',
+        code: 'NotFound',
+        message: _t('ExchangeRate not found for currency %s', { scope: 'service/models/_currency_convert' }, fromCurrencyId),
+      }).withGrpcCode(GrpcCode.NotFound);
     }
-    rateFrom = (rec as any).Rate as Decimal;
-    rateUsed.From = { CurrencyId: fromCurrencyId, Date: toDateOnlyString((rec as any).Date), Rate: rateFrom };
+    rateFrom = parseDecimalInput(rec.Rate, { allowNumber: false });
+    rateUsed.From = { CurrencyId: fromCurrencyId, Date: toDateOnlyString(rec.Date), Rate: rateFrom };
     if (usedFallbackDate) warnings.push('rate.latest_before.fallback');
     if (usedGlobal) warnings.push('rate.global.fallback');
   }
@@ -149,12 +174,14 @@ export async function convertCurrency(
       allowFallbackToGlobal,
     });
     if (!rec) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('ExchangeRate not found for currency %s', { scope: 'service/models/_currency_convert' }, toCurrencyId) }).withGrpcCode(
-        GrpcCode.NotFound
-      );
+      throw new ChoysumError({
+        domain: 'base',
+        code: 'NotFound',
+        message: _t('ExchangeRate not found for currency %s', { scope: 'service/models/_currency_convert' }, toCurrencyId),
+      }).withGrpcCode(GrpcCode.NotFound);
     }
-    rateTo = (rec as any).Rate as Decimal;
-    rateUsed.To = { CurrencyId: toCurrencyId, Date: toDateOnlyString((rec as any).Date), Rate: rateTo };
+    rateTo = parseDecimalInput(rec.Rate, { allowNumber: false });
+    rateUsed.To = { CurrencyId: toCurrencyId, Date: toDateOnlyString(rec.Date), Rate: rateTo };
     if (usedFallbackDate) warnings.push('rate.latest_before.fallback');
     if (usedGlobal) warnings.push('rate.global.fallback');
   }
@@ -169,16 +196,22 @@ export async function convertCurrency(
   else out = amountCompany.div(rateTo!);
 
   if (roundingMode === 'currency') {
-    const toCurrency = (await model.Browse(toCurrencyId, ['Id', 'DecimalDigits', 'Rounding'] as any)) as any;
+    const toCurrency = await model.Browse(toCurrencyId, ['Id', 'DecimalDigits', 'Rounding']);
     if (!toCurrency) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Target currency %s not found', { scope: 'service/models/_currency_convert' }, toCurrencyId) }).withGrpcCode(
-        GrpcCode.NotFound
-      );
+      throw new ChoysumError({
+        domain: 'base',
+        code: 'NotFound',
+        message: _t('Target currency %s not found', { scope: 'service/models/_currency_convert' }, toCurrencyId),
+      }).withGrpcCode(GrpcCode.NotFound);
     }
-    out = roundToCurrencyAmount(out, toCurrency as any, overrideDigits);
+    const roundingSpec: CurrencyRoundingSpec = {
+      DecimalDigits: toCurrency.DecimalDigits,
+      Rounding: toCurrency.Rounding,
+    };
+    out = roundToCurrencyAmount(out, roundingSpec, overrideDigits);
   }
 
-  const result: any = { Amount: out };
+  const result: CurrencyConvertResult = { Amount: out };
   if (Object.keys(rateUsed).length > 0) result.RateUsed = rateUsed;
   if (warnings.length > 0) result.Warnings = Array.from(new Set(warnings));
   return result;

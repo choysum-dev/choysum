@@ -25,6 +25,6 @@ export async function cleanupSequenceIdempotency(params?: SequenceCleanupIdempot
     );
     cutoff = new Date(`${normalizedOlderThan}T00:00:00.000Z`);
   }
-  const deleted = await SequenceIdempotency.Delete(['ExpiresAt', '<', cutoff] as any);
+  const deleted = await SequenceIdempotency.Delete(['ExpiresAt', '<', cutoff]);
   return { Deleted: Number(deleted) || 0 };
 }

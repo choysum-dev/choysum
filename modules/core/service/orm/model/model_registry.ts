@@ -27,7 +27,7 @@ export function resolveModelConstructor(identifier: string): ModelCtor | undefin
   const fromPool = getModelCtorFromGlobalPool(key);
   if (fromPool) return fromPool;
 
-  const models = (MetadataStorage.instance as any)?.models as Map<ModelCtor, any> | undefined;
+  const models = (MetadataStorage.instance as unknown as { models?: Map<ModelCtor, { fullModelName?: string; modelName?: string; name?: string; className?: string }> }).models;
   if (!models || typeof models.entries !== 'function') return undefined;
 
   // Exact fullModelName wins over earlier alias hits (modelName / name / className).

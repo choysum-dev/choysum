@@ -22,7 +22,7 @@ test('base.sequence_payload: buildSequenceFormatSnapshot normalizes nullable pre
   });
 });
 
-test('base.sequence_payload: buildSequencePublicSnapshot resolves company id from relation object', () => {
+test('base.sequence_payload: buildSequencePublicSnapshot keeps format fields only', () => {
   const seq = {
     Id: 'seq_1',
     CompanyId: { Id: 'cmp_1' },
@@ -34,7 +34,6 @@ test('base.sequence_payload: buildSequencePublicSnapshot resolves company id fro
 
   expect(buildSequencePublicSnapshot(seq)).toEqual({
     Id: 'seq_1',
-    CompanyId: 'cmp_1',
     Code: 'sale.order',
     Prefix: 'SO/',
     Suffix: '',
@@ -106,7 +105,6 @@ test('base.sequence_payload: buildSequenceNextResult wraps sequence snapshot wit
     ],
     Sequence: {
       Id: 'seq_3',
-      CompanyId: undefined,
       Code: 'invoice',
       Prefix: 'INV/',
       Suffix: '',

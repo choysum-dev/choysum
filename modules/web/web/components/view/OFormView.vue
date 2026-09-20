@@ -649,7 +649,7 @@ async function handleCopy() {
 }
 
 function handleDelete() {
-  const currId = (controller.vm.original as any)?.Id ?? (controller.vm.original as any)?.id;
+  const currId = (controller.vm.original as any)?.Id;
   if (!currId) return;
   ElMessageBox.confirm(_t('Are you sure you want to delete the current record? This action cannot be undone.'), _t('Confirm delete'), {
     confirmButtonText: _t('Delete'),

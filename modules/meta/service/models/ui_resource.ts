@@ -8,6 +8,8 @@ import MetaModule from './module';
 import MetaUiResourceRouteAction from './ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
+import { condition, type BaseQueryCondition, type QueryCondition } from '@/core/service/api/query';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { type TermReference } from '@/core/service/i18n';
 import { _t, _lt } from '../i18n';
 
@@ -149,7 +151,7 @@ export default class MetaUiResource extends BaseModel {
     const selfTypeRef = this.$sql.col('meta_ui_resource', 'Type');
     const selfIdRef = this.$sql.col('meta_ui_resource', 'Id');
 
-    const dialect = String((globalThis as any)?.$choysum?.db?.dialectName || 'postgres').toLowerCase();
+    const dialect = String(resolveChoysum()?.db?.dialectName || 'postgres').toLowerCase();
 
     if (dialect === 'sqlite') {
       return sql<any>`
@@ -397,22 +399,37 @@ export default class MetaUiResource extends BaseModel {
     const idsFilter = normalizeStringArray(options?.ids);
     const pagination = normalizePagination(options);
 
-    const conditionParts: any[] = [];
+    const conditionParts: BaseQueryCondition[] = [];
     if (moduleFilter) conditionParts.push(['Module', '=', moduleFilter]);
     if (applicationFilter) conditionParts.push(['MetaApplicationId', '=', applicationFilter]);
     if (kindFilter) conditionParts.push(['Type', '=', kindFilter]);
     if (idsFilter.length > 0) conditionParts.push(['Name', 'in', idsFilter]);
-    const condition: any = conditionParts.length <= 1 ? (conditionParts[0] ?? []) : { And: conditionParts };
+    const searchCondition: QueryCondition<MetaUiResource> | [] =
+      conditionParts.length === 0
+        ? []
+        : conditionParts.length === 1
+          ? condition<MetaUiResource>(conditionParts[0]!)
+          : condition<MetaUiResource>({ And: conditionParts });
 
-    const rows = await this.Search(
-      condition as any,
-      {
-        fields: ['Id', 'Name', 'Type', 'Title', 'Sequence', 'Requires', 'Module', 'UiPath', 'DefaultRoles', 'MetaApplicationId', 'ParentId'] as any,
-        limit: 50000,
-      } as any
-    );
+    const rows = await this.Search(searchCondition, {
+      fields: [
+        'Id',
+        'Name',
+        'Type',
+        'Title',
+        'Sequence',
+        'Requires',
+        'Module',
+        'UiPath',
+        'DefaultRoles',
+        'MetaApplicationId',
+        'ParentId',
+      ],
+      limit: 50000,
+    });
 
-    const sortedRows = [...(rows || [])].sort((a: any, b: any) => {
+    type DeclarationRow = (typeof rows)[number];
+    const sortedRows = [...(rows || [])].sort((a, b) => {
       const kindA = String(a?.Type || '');
       const kindB = String(b?.Type || '');
       if (kindA !== kindB) return kindA.localeCompare(kindB);
@@ -422,48 +439,48 @@ export default class MetaUiResource extends BaseModel {
     const parentIdToName = new Map<string, string>();
     const missingParentIds = new Set<string>();
     for (const row of sortedRows) {
-      const id = normalizeOptionalString((row as any)?.Id);
-      const name = normalizeOptionalString((row as any)?.Name);
+      const id = normalizeOptionalString(row?.Id);
+      const name = normalizeOptionalString(row?.Name);
       if (id && name) parentIdToName.set(id, name);
     }
     for (const row of sortedRows) {
-      const parentId = readRefId((row as any)?.ParentId);
+      const parentId = readRefId(row?.ParentId);
       if (parentId && !parentIdToName.has(parentId)) {
         missingParentIds.add(parentId);
       }
     }
     if (missingParentIds.size > 0) {
-      const parentRows = await this.Search(['Id', 'in', Array.from(missingParentIds)] as any, { fields: ['Id', 'Name'] as any, limit: 5000 } as any);
+      const parentRows = await this.Search(['Id', 'in', Array.from(missingParentIds)], { fields: ['Id', 'Name'], limit: 5000 });
       for (const row of parentRows || []) {
-        const id = normalizeOptionalString((row as any)?.Id);
-        const name = normalizeOptionalString((row as any)?.Name);
+        const id = normalizeOptionalString(row?.Id);
+        const name = normalizeOptionalString(row?.Name);
         if (id && name) parentIdToName.set(id, name);
       }
     }
 
-    const routeRows = sortedRows.filter((row: any) => String((row as any)?.Type || '').trim() === 'ROUTE');
-    const routeIds = routeRows.map((row: any) => normalizeOptionalString((row as any)?.Id)).filter((value): value is string => Boolean(value));
+    const routeRows = sortedRows.filter((row: DeclarationRow) => String(row?.Type || '').trim() === 'ROUTE');
+    const routeIds = routeRows.map(row => normalizeOptionalString(row?.Id)).filter((value): value is string => Boolean(value));
     const routeActionsByRouteId = new Map<string, string[]>();
     if (routeIds.length > 0) {
-      const relationRows = await MetaUiResourceRouteAction.Search(
-        ['RouteUiResourceId', 'in', routeIds] as any,
-        { fields: ['RouteUiResourceId', 'ActionUiResourceId'] as any, limit: 50000 } as any
-      );
+      const relationRows = await MetaUiResourceRouteAction.Search(['RouteUiResourceId', 'in', routeIds], {
+        fields: ['RouteUiResourceId', 'ActionUiResourceId'],
+        limit: 50000,
+      });
       const actionIds = Array.from(
-        new Set((relationRows || []).map((row: any) => readRefId((row as any)?.ActionUiResourceId)).filter((value): value is string => Boolean(value)))
+        new Set((relationRows || []).map(row => readRefId(row?.ActionUiResourceId)).filter((value): value is string => Boolean(value)))
       );
       const actionNameById = new Map<string, string>();
       if (actionIds.length > 0) {
-        const actionRows = await this.Search(['Id', 'in', actionIds] as any, { fields: ['Id', 'Name'] as any, limit: 50000 } as any);
+        const actionRows = await this.Search(['Id', 'in', actionIds], { fields: ['Id', 'Name'], limit: 50000 });
         for (const row of actionRows || []) {
-          const id = normalizeOptionalString((row as any)?.Id);
-          const name = normalizeOptionalString((row as any)?.Name);
+          const id = normalizeOptionalString(row?.Id);
+          const name = normalizeOptionalString(row?.Name);
           if (id && name) actionNameById.set(id, name);
         }
       }
       for (const row of relationRows || []) {
-        const routeId = readRefId((row as any)?.RouteUiResourceId);
-        const actionId = readRefId((row as any)?.ActionUiResourceId);
+        const routeId = readRefId(row?.RouteUiResourceId);
+        const actionId = readRefId(row?.ActionUiResourceId);
         const actionName = actionId ? actionNameById.get(actionId) : undefined;
         if (!routeId || !actionName) continue;
         const existing = routeActionsByRouteId.get(routeId) ?? [];
@@ -475,24 +492,24 @@ export default class MetaUiResource extends BaseModel {
       }
     }
 
-    const declarations = sortedRows.map((row: any) => {
-      const id = normalizeOptionalString((row as any)?.Id);
-      const name = normalizeOptionalString((row as any)?.Name) || '';
-      const kind = this.normalizeKind((row as any)?.Type) || 'action';
+    const declarations = sortedRows.map(row => {
+      const id = normalizeOptionalString(row?.Id);
+      const name = normalizeOptionalString(row?.Name) || '';
+      const kind = this.normalizeKind(row?.Type) || 'action';
       const declaration: EffectiveUiResourceDeclaration = {
         id: name,
         kind,
-        title: normalizeOptionalString((row as any)?.Title),
-        sequence: this.normalizeSequence((row as any)?.Sequence),
-        path: normalizeOptionalString((row as any)?.UiPath),
-        requires: this.normalizeRequires((row as any)?.Requires),
-        defaultRoles: normalizeStringArray((row as any)?.DefaultRoles),
+        title: normalizeOptionalString(row?.Title),
+        sequence: this.normalizeSequence(row?.Sequence),
+        path: normalizeOptionalString(row?.UiPath),
+        requires: this.normalizeRequires(row?.Requires),
+        defaultRoles: normalizeStringArray(row?.DefaultRoles),
         override: false,
-        module: normalizeOptionalString((row as any)?.Module),
-        application: readRefId((row as any)?.MetaApplicationId),
+        module: normalizeOptionalString(row?.Module),
+        application: readRefId(row?.MetaApplicationId),
       };
       if (kind === 'menu') {
-        const parentId = readRefId((row as any)?.ParentId);
+        const parentId = readRefId(row?.ParentId);
         declaration.parentMenu = parentId ? parentIdToName.get(parentId) : undefined;
       }
       if (kind === 'route' && id) {

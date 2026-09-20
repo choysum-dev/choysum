@@ -313,7 +313,7 @@ const labelFields = computed<string[]>(() => {
 
 function extractId(v: any): string | undefined {
   if (v == null) return undefined;
-  if (typeof v === 'object') return (v as any).Id ?? (v as any).id;
+  if (typeof v === 'object') return (v as any).Id;
   return String(v);
 }
 
@@ -323,12 +323,12 @@ function resolveTagLabel(row: any, fallback?: string): string {
     const value = (row as any)?.[key];
     if (value != null && String(value).trim()) return String(value);
   }
-  return fallback || String((row as any)?.Id ?? (row as any)?.id ?? '');
+  return fallback || String((row as any)?.Id ?? '');
 }
 
 function upsertHydrated(row: any) {
   if (!row || typeof row !== 'object') return;
-  const id = String(row.Id ?? row.id ?? '');
+  const id = String(row.Id ?? '');
   if (!id) return;
   hydratedCache.value[id] = { ...(row as any) };
 }

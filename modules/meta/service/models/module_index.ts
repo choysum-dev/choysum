@@ -9,6 +9,7 @@ import { createServiceByModel } from '@/core/service/rpc';
 import { sql } from 'kysely';
 import type JobModel from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import MetaModule from './module';
@@ -41,16 +42,16 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
       And: [
         ['TargetApp', '=', 'meta'],
         ['FullMethod', '=', fullMethod],
-        ['Status', 'in', ['queued', 'dispatching'] as any],
+        ['Status', 'in', ['queued', 'dispatching']],
       ],
-    } as any,
-    { limit: 20, orderBy: { field: 'CreatedAt', order: 'desc' } as any, fields: ['Id', 'PayloadJson'] as any } as any
+    },
+    { limit: 20, orderBy: { field: 'CreatedAt', order: 'desc' }, fields: ['Id', 'PayloadJson'] }
   );
   for (const row of running || []) {
-    const jobId = String((row as any)?.Id || '').trim();
+    const jobId = String(row?.Id || '').trim();
     if (!jobId) continue;
 
-    let payload = (row as any)?.PayloadJson;
+    let payload: unknown = row?.PayloadJson;
     if (typeof payload === 'string') {
       try {
         payload = JSON.parse(payload);
@@ -58,7 +59,8 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
         payload = undefined;
       }
     }
-    const originValue = (payload as any)?.originType;
+    const originValue =
+      payload && typeof payload === 'object' ? (payload as { originType?: unknown }).originType : undefined;
     if (!String(originValue || '').trim()) continue;
 
     let runningOrigin: ModuleSyncOriginType;
@@ -83,7 +85,7 @@ export default class MetaModuleIndex extends BaseModel {
   ModuleName!: string;
 
   @Field({ type: 'varchar', size: 32, notNull: true, string: _lt('Origin Type', { scope: 'meta.model.MetaModuleIndex.fields' }) })
-  OriginType!: ModuleOriginType;
+  OriginType!: string;
 
   @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Origin Ref', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   OriginRef!: string;
@@ -101,10 +103,10 @@ export default class MetaModuleIndex extends BaseModel {
   LocalPath?: string;
 
   @Field({ type: 'datetime', string: _lt('Last Synced At', { scope: 'meta.model.MetaModuleIndex.fields' }) })
-  LastSyncAt!: Date;
+  LastSyncAt?: Date | null;
 
   @Field({ type: 'datetime', string: _lt('Batch Synced At', { scope: 'meta.model.MetaModuleIndex.fields' }) })
-  LastBatchSyncAt!: Date;
+  LastBatchSyncAt?: Date | null;
 
   @Field({ type: 'varchar', size: 255, string: _lt('Sync Revision', { scope: 'meta.model.MetaModuleIndex.fields' }) })
   SyncRevision?: string;
@@ -249,19 +251,16 @@ export default class MetaModuleIndex extends BaseModel {
 
     const installedByName = new Map<string, { status?: string; version?: string }>();
     if (groupedModuleNames.length > 0) {
-      const installedRows = await MetaModule.Search(
-        ['Name', 'in', groupedModuleNames] as any,
-        {
-          fields: ['Name', 'Status', 'Version'] as any,
-          limit: groupedModuleNames.length * 2,
-        } as any
-      );
+      const installedRows = await MetaModule.Search(['Name', 'in', groupedModuleNames], {
+        fields: ['Name', 'Status', 'Version'],
+        limit: groupedModuleNames.length * 2,
+      });
       for (const module of installedRows || []) {
-        const moduleName = String((module as any)?.Name || '').trim();
+        const moduleName = String(module?.Name || '').trim();
         if (!moduleName) continue;
         installedByName.set(moduleName, {
-          status: String((module as any)?.Status || '').trim() || undefined,
-          version: String((module as any)?.Version || '').trim() || undefined,
+          status: String(module?.Status || '').trim() || undefined,
+          version: String(module?.Version || '').trim() || undefined,
         });
       }
     }
@@ -333,16 +332,19 @@ export default class MetaModuleIndex extends BaseModel {
     if (ifStale && !force) {
       const repo = getModelRepository(this);
       const isOriginStale = async (target: ModuleOriginType): Promise<boolean> => {
+        // Qualified column names are not in the Kysely table schema; cast for the raw index query.
+        const originTypeCol = 'meta_module_index.origin_type' as never;
+        const originRefCol = 'meta_module_index.origin_ref' as never;
         let query = repo
           .selectQueryBuilder()
-          .select((eb: any) => eb.fn.max('last_batch_sync_at').as('last_batch_sync_at'))
-          .where('meta_module_index.origin_type' as any, '=', target as any);
+          .select(eb => eb.fn.max('last_batch_sync_at' as never).as('last_batch_sync_at'))
+          .where(originTypeCol, '=', target as never);
         if (target === 'local') {
-          query = query.where('meta_module_index.origin_ref' as any, '=', 'local');
+          query = query.where(originRefCol, '=', 'local' as never);
         }
         const rows = await repo.execute(query);
-        const row = rows?.[0] as any;
-        const lastBatchSyncAt = row?.lastBatchSyncAt ?? row?.last_batch_sync_at ?? null;
+        const row = (rows?.[0] ?? {}) as { lastBatchSyncAt?: unknown; last_batch_sync_at?: unknown };
+        const lastBatchSyncAt = row.lastBatchSyncAt ?? row.last_batch_sync_at ?? null;
         if (!lastBatchSyncAt) {
           return true;
         }
@@ -371,20 +373,23 @@ export default class MetaModuleIndex extends BaseModel {
 
     const userId = BaseModel.ensureUserId();
     const job = await Job.EnqueueJob('meta', fullMethod, { originType, force }, userId, userId, undefined, 0, 0);
-    return String((job as any)?.Id || '').trim();
+    return String((job as { Id?: unknown })?.Id || '').trim();
   }
 
-  private static getModuleManagementBridge(): any {
-    const root: any = (globalThis as any)?.$choysum;
+  private static getModuleManagementBridge() {
+    const root = resolveChoysum();
     if (!root?.moduleManagement) {
       throw new Error('moduleManagement bridge is not injected');
     }
     return root.moduleManagement;
   }
 
-  static async Sync(originType?: ModuleSyncOriginType, force?: boolean): Promise<any> {
+  static async Sync(originType?: ModuleSyncOriginType, force?: boolean): Promise<unknown> {
     const bridge = this.getModuleManagementBridge();
-    const syncIndex = (bridge as any)?.syncIndex;
+    const syncIndex = bridge.syncIndex as (params: {
+      originType?: ModuleSyncOriginType;
+      force?: boolean;
+    }) => Promise<unknown>;
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }

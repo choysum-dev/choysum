@@ -152,7 +152,7 @@ test('evaluateFieldRules rejects unrecognized field permissions', async () => {
 
     (RoleFieldRule as any).Search = async () => [
       {
-        Id: 'rule-unwrap-perm',
+        Id: 'rule-bag-perm',
         MetaModelId: 'model-1',
         MetaFieldId: 'f1',
         MetaApplicationId: null,
@@ -160,13 +160,18 @@ test('evaluateFieldRules rejects unrecognized field permissions', async () => {
         PermWrite: { Value: 'allow' },
       },
     ];
-    const unwrapped = await evaluateFieldRules({
-      appName: 'auth',
-      modelName: 'User',
-      modelFullName: 'auth.User',
-      roleIds: ['r1'],
-    });
-    expect(unwrapped.denyReadFields).toContain('Login');
+    let bagErr: unknown;
+    try {
+      await evaluateFieldRules({
+        appName: 'auth',
+        modelName: 'User',
+        modelFullName: 'auth.User',
+        roleIds: ['r1'],
+      });
+    } catch (e) {
+      bagErr = e;
+    }
+    expect(String((bagErr as any)?.message || bagErr)).toMatch(/allow|deny/);
 
     (RoleFieldRule as any).Search = async () => [
       {
@@ -175,7 +180,7 @@ test('evaluateFieldRules rejects unrecognized field permissions', async () => {
         MetaFieldId: null,
         MetaApplicationId: null,
         PermRead: 'maybe',
-        PermWrite: { value: 'nope' },
+        PermWrite: 'nope',
       },
     ];
 

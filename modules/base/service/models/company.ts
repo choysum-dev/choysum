@@ -3,6 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { condition } from '@/core/service/api/query';
 import { normalizeRefId, assertRequiredText as assertRequiredTextCore } from '@/core/service/utils/normalization';
 import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { raiseDomainError } from '@/core/service/error';
@@ -115,17 +116,15 @@ export default class Company extends BaseModel {
     );
   }
 
-  private static async ensureUnique(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async ensureUnique(values: {
+    Name?: unknown;
+    Code?: unknown;
+  }, currentId?: string): Promise<void> {
     const name = assertRequiredTranslatedText(values.Name, 'Name');
     const code = this.assertRequiredText(values.Code, 'Code');
 
-    const byCode = await this.Search(
-      {
-        And: [['Code', '=', code]],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
-    );
-    const codeConflict = (byCode || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const byCode = await this.Search(condition<Company>({ And: [['Code', '=', code]] }), { fields: ['Id'], limit: 2 });
+    const codeConflict = (byCode || []).some(item => String(item?.Id || '') !== String(currentId || ''));
     if (codeConflict) fail(_t('Company Code must be unique', { scope: 'service/models/company' }));
 
     values.Name = name;
@@ -151,7 +150,7 @@ export default class Company extends BaseModel {
     return timezone;
   }
 
-  private static async validateParentUpdate(targetId: string, parentIdRaw: any): Promise<void> {
+  private static async validateParentUpdate(targetId: string, parentIdRaw: unknown): Promise<void> {
     const parentId = normalizeRefId(parentIdRaw);
     if (!parentId) return;
 
@@ -160,13 +159,13 @@ export default class Company extends BaseModel {
     }
 
     const found = await this.Search(
-      {
+      condition<Company>({
         And: [
           ['Id', 'child_of', targetId],
           ['Id', '=', parentId],
         ],
-      } as any,
-      { limit: 1, fields: ['Id'] as any } as any
+      }),
+      { limit: 1, fields: ['Id'] }
     );
     if (found?.[0]) {
       raiseDomainError('base', 'InvalidArgument', _t('ParentId cannot be a descendant of the company', { scope: 'service/models/company' }));
@@ -175,18 +174,18 @@ export default class Company extends BaseModel {
 
   @Constraint<Company>(['Name', 'Code', 'Timezone', 'CurrencyId', 'ParentId'])
   async validateCompanyConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
+    const currentId = String(this.Id || '').trim() || undefined;
     const isCreate = !currentId;
 
     // Timezone and CurrencyId are always required; normalize on `this`
     // so the draft proxy auto-collects the writeback.
-    (this as any).Timezone = Company.assertTimezone(this.Timezone);
-    (this as any).CurrencyId = Company.assertCurrencyId(this.CurrencyId);
+    this.Timezone = Company.assertTimezone(this.Timezone);
+    this.CurrencyId = Company.assertCurrencyId(this.CurrencyId) as unknown as Currency;
 
-    await Company.ensureUnique(this as any, currentId);
+    await Company.ensureUnique(this, currentId);
 
     if (!isCreate && currentId) {
-      await Company.validateParentUpdate(currentId, (this as any).ParentId);
+      await Company.validateParentUpdate(currentId, this.ParentId);
     }
   }
 }

@@ -135,7 +135,7 @@ export default class PartnerIdentifier extends BaseModel {
   Notes?: string;
 
   /** Ensures the partner does not duplicate an identifier type and value pair. */
-  private static async ensureUniqueIdentifier(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async ensureUniqueIdentifier(values: Record<string, unknown>, currentId?: string): Promise<void> {
     const partnerId = normalizeOptionalRefId(values.PartnerId);
     const identifierType = assertRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
     const identifierValue = assertRequiredText(values.Value, 'Value', { upper: true });
@@ -149,10 +149,10 @@ export default class PartnerIdentifier extends BaseModel {
           ['IdentifierType', '=', identifierType],
           ['Value', '=', identifierValue],
         ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
+      },
+      { fields: ['Id'], limit: 2 }
     );
-    const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const conflict = (rows || []).some(item => String(item?.Id || '') !== String(currentId || ''));
     if (conflict) fail(_t('PartnerId + IdentifierType + Value must be unique', { scope: 'service/models/partner_identifier' }));
 
     values.PartnerId = partnerId;
@@ -161,7 +161,7 @@ export default class PartnerIdentifier extends BaseModel {
   }
 
   /** Ensures each identifier type has at most one primary row per partner. */
-  private static async ensureSinglePrimary(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async ensureSinglePrimary(values: Record<string, unknown>, currentId?: string): Promise<void> {
     if (values.IsPrimary !== true) return;
 
     const partnerId = normalizeOptionalRefId(values.PartnerId);
@@ -175,15 +175,15 @@ export default class PartnerIdentifier extends BaseModel {
           ['IdentifierType', '=', identifierType],
           ['IsPrimary', '=', true],
         ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
+      },
+      { fields: ['Id'], limit: 2 }
     );
-    const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+    const conflict = (rows || []).some(item => String(item?.Id || '') !== String(currentId || ''));
     if (conflict) fail(_t('Only one primary identifier is allowed per PartnerId + IdentifierType', { scope: 'service/models/partner_identifier' }));
   }
 
   /** Normalizes and validates identifier values before persistence. */
-  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+  private static async validateEntity(values: Record<string, unknown>, currentId?: string): Promise<void> {
     // Capture whether fields were explicitly provided before normalization
     // so we know whether to fall back to persisted values.
     const identifierTypeProvided = values.IdentifierType !== undefined;
@@ -211,20 +211,23 @@ export default class PartnerIdentifier extends BaseModel {
         (values.Value == null && !valueProvided)) &&
       currentId
     ) {
-      let persisted: any;
+      let persisted: Record<string, unknown> | null;
       try {
-        persisted = await this.Browse(currentId, ['PartnerId', 'CompanyId', 'IdentifierType', 'Value'] as any);
+        persisted = (await this.Browse(currentId, ['PartnerId', 'CompanyId', 'IdentifierType', 'Value'])) as unknown as Record<
+          string,
+          unknown
+        >;
       } catch {
         persisted = null;
       }
       if (persisted) {
-        if (values.PartnerId == null) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
-        if (values.CompanyId == null) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
+        if (values.PartnerId == null) values.PartnerId = normalizeOptionalRefId(persisted.PartnerId);
+        if (values.CompanyId == null) values.CompanyId = normalizeOptionalRefId(persisted.CompanyId);
         if (values.IdentifierType == null && !identifierTypeProvided) {
-          values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
+          values.IdentifierType = normalizeOptionalText(persisted.IdentifierType, { lower: true });
         }
         if (values.Value == null && !valueProvided) {
-          values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
+          values.Value = normalizeOptionalText(persisted.Value, { upper: true });
         }
       }
     }
@@ -235,7 +238,9 @@ export default class PartnerIdentifier extends BaseModel {
     await this.ensureUniqueIdentifier(values, currentId);
     await this.ensureSinglePrimary(values, currentId);
 
-    if (values.ValidFrom && values.ValidTo && values.ValidFrom.getTime() > values.ValidTo.getTime()) {
+    const validFrom = values.ValidFrom instanceof Date ? values.ValidFrom : undefined;
+    const validTo = values.ValidTo instanceof Date ? values.ValidTo : undefined;
+    if (validFrom && validTo && validFrom.getTime() > validTo.getTime()) {
       fail(_t('ValidFrom must be less than or equal to ValidTo', { scope: 'service/models/partner_identifier' }));
     }
   }
@@ -255,8 +260,8 @@ export default class PartnerIdentifier extends BaseModel {
     'Notes',
   ])
   async validatePartnerIdentifierConstraint(): Promise<void> {
-    const currentId = String((this as any).Id || '').trim() || undefined;
+    const currentId = String(this.Id || '').trim() || undefined;
 
-    await PartnerIdentifier.validateEntity(this as any, currentId);
+    await PartnerIdentifier.validateEntity(this as unknown as Record<string, unknown>, currentId);
   }
 }

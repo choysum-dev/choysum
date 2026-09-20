@@ -4,6 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
+import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import type JobModel from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { _t, _lt } from '../i18n';
@@ -19,6 +20,12 @@ const Job = createServiceByModel<typeof JobModel>('task.Job');
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 type FailureKind = 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
+
+type JsonRecord = Record<string, unknown>;
+
+function asJsonRecord(value: unknown): JsonRecord | undefined {
+  return value && typeof value === 'object' ? (value as JsonRecord) : undefined;
+}
 
 type PlanOperationReq = {
   action: ModuleAction;
@@ -99,7 +106,7 @@ function resolveOpFailureKind(status: string, resultStatus: string | undefined, 
 
 async function loadExecutionTimes(jobId: string): Promise<{ startedAt?: Date; finishedAt?: Date }> {
   if (!jobId) return {};
-  const root: any = (globalThis as any)?.$choysum;
+  const root = resolveChoysum();
   if (!root?.db?.query) return {};
   const raw = await root.db.query(
     'SELECT started_at, finished_at FROM task_job_execution WHERE job_id = ? ORDER BY created_at DESC LIMIT 1',
@@ -113,9 +120,9 @@ async function loadExecutionTimes(jobId: string): Promise<{ startedAt?: Date; fi
   };
 }
 
-async function findModuleLogByJobId(jobId: string): Promise<any> {
+async function findModuleLogByJobId(jobId: string): Promise<ModuleManagementLog | undefined> {
   if (!jobId) return undefined;
-  const existing = await ModuleManagementLog.Search(['JobId', '=', jobId] as any, { limit: 1 } as any);
+  const existing = await ModuleManagementLog.Search(['JobId', '=', jobId], { limit: 1 });
   return existing?.[0];
 }
 
@@ -123,15 +130,15 @@ async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<vo
   if (!values.JobId) return;
   const existing = await findModuleLogByJobId(values.JobId);
   if (existing?.Id) {
-    await (ModuleManagementLog as any).UpdateById(existing.Id, values as any);
+    await ModuleManagementLog.UpdateById(existing.Id, values);
     return;
   }
   try {
-    await ModuleManagementLog.Create(values as any);
+    await ModuleManagementLog.Create(values);
   } catch (err) {
     const record = await findModuleLogByJobId(values.JobId);
     if (record?.Id) {
-      await (ModuleManagementLog as any).UpdateById(record.Id, values as any);
+      await ModuleManagementLog.UpdateById(record.Id, values);
       return;
     }
     throw err;
@@ -255,10 +262,10 @@ export default class MetaModule extends BaseModel {
     const blockers: PlanOperationResp['blockers'] = [];
     const affectedModules: PlanOperationResp['affectedModules'] = [];
 
-    const latest = await this.Search([] as any, {
+    const latest = await this.Search([], {
       limit: 1,
-      orderBy: { field: 'UpdatedAt', order: 'desc' } as any,
-      fields: ['UpdatedAt', 'Version', 'Status', 'Name'] as any,
+      orderBy: { field: 'UpdatedAt', order: 'desc' },
+      fields: ['UpdatedAt', 'Version', 'Status', 'Name'],
     });
     const baseRevision = latest?.[0]?.UpdatedAt ? String(new Date(latest[0].UpdatedAt).getTime()) : '0';
 
@@ -271,7 +278,7 @@ export default class MetaModule extends BaseModel {
       });
     }
 
-    const existing = await this.Search(['Name', '=', moduleName] as any, { limit: 1, fields: ['Version', 'Status'] as any });
+    const existing = await this.Search(['Name', '=', moduleName], { limit: 1, fields: ['Version', 'Status'] });
     const current = existing?.[0];
 
     if ((action === 'uninstall' || action === 'upgrade') && !current) {
@@ -318,11 +325,11 @@ export default class MetaModule extends BaseModel {
 
     const payload: Record<string, unknown> = { moduleName: name, operatorUserId: userId, ...(extraPayload || {}) };
     const job = await Job.EnqueueJob('meta', method, payload, userId, userId, undefined, 0, 0);
-    const jobId = String((job as any)?.Id || '').trim();
+    const jobId = String((job as { Id?: unknown })?.Id || '').trim();
 
     if (forceLockConflict && jobId) {
       const retryAfterMs = 2500;
-      await (Job as any).UpdateById(jobId, {
+      await Job.UpdateById(jobId, {
         Status: 'failed',
         RunAfter: new Date(Date.now() + retryAfterMs),
         LastErrorJson: {
@@ -356,27 +363,35 @@ export default class MetaModule extends BaseModel {
       'MaxAttempts',
       'PayloadJson',
       'FullMethod',
-    ] as any);
+    ]);
     const exec = await loadExecutionTimes(id);
-    const rawResult = (job as any)?.ResultJson && typeof (job as any).ResultJson === 'object' ? (job as any).ResultJson : {};
-    const result = rawResult?.result && typeof rawResult.result === 'object' ? rawResult.result : rawResult;
-    const err = (job as any)?.LastErrorJson && typeof (job as any).LastErrorJson === 'object' ? (job as any).LastErrorJson : undefined;
-    const payload = (job as any)?.PayloadJson && typeof (job as any).PayloadJson === 'object' ? (job as any).PayloadJson : {};
+    const rawResult = asJsonRecord(job?.ResultJson) ?? {};
+    const nestedResult = asJsonRecord(rawResult.result);
+    const result = nestedResult ?? rawResult;
+    const err = asJsonRecord(job?.LastErrorJson);
+    const payload = asJsonRecord(job?.PayloadJson) ?? {};
 
-    const status = String((job as any)?.Status || '').toLowerCase();
-    const method = String((job as any)?.FullMethod || '');
-    let action: ModuleAction | undefined = result?.action || payload?.action;
+    const status = String(job?.Status || '').toLowerCase();
+    const method = String(job?.FullMethod || '');
+    let action: ModuleAction | undefined = (result.action || payload.action) as ModuleAction | undefined;
     if (!action) {
       if (method.endsWith('ExecuteInstall')) action = 'install';
       else if (method.endsWith('ExecuteUninstall')) action = 'uninstall';
       else if (method.endsWith('ExecuteUpgrade')) action = 'upgrade';
     }
 
-    const retryAfterMs = err?.details?.retry_after_ms ? Number(err.details.retry_after_ms) : undefined;
-    const nextRetryAt = retryAfterMs && (job as any)?.RunAfter ? new Date((job as any).RunAfter) : undefined;
+    const errDetails = asJsonRecord(err?.details);
+    const retryAfterMs = errDetails?.retry_after_ms ? Number(errDetails.retry_after_ms) : undefined;
+    const nextRetryAt = retryAfterMs && job?.RunAfter ? new Date(job.RunAfter) : undefined;
 
-    const resultStatus = result?.resultStatus || (status === 'failed' || status === 'cancelled' ? 'FAILED' : undefined);
-    const summary = result?.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
+    const rawResultStatus = result.resultStatus;
+    const resultStatus =
+      rawResultStatus === 'SUCCEEDED' || rawResultStatus === 'FAILED'
+        ? rawResultStatus
+        : status === 'failed' || status === 'cancelled'
+          ? 'FAILED'
+          : undefined;
+    const summary = result.summary || (resultStatus === 'FAILED' ? { code: 'MODULE_OPERATION_FAILED', message: err?.message } : undefined);
     const failureKind = resolveOpFailureKind(status, resultStatus, err, result);
 
     return {
@@ -384,22 +399,22 @@ export default class MetaModule extends BaseModel {
       summary,
       resultStatus,
       failureKind,
-      createdAt: (job as any)?.CreatedAt,
+      createdAt: job?.CreatedAt,
       startedAt: exec?.startedAt,
-      finishedAt: (job as any)?.FinishedAt || exec?.finishedAt,
-      reload_web: result?.reload_web,
-      reload_triggered: result?.reload_triggered,
-      reload_failed: result?.reload_failed,
-      moduleName: result?.moduleName || payload?.moduleName,
+      finishedAt: job?.FinishedAt || exec?.finishedAt,
+      reload_web: result.reload_web as boolean | undefined,
+      reload_triggered: result.reload_triggered as boolean | undefined,
+      reload_failed: result.reload_failed as boolean | undefined,
+      moduleName: (result.moduleName || payload.moduleName) as string | undefined,
       action,
-      operatorUserId: result?.operatorUserId || payload?.operatorUserId,
-      attempt: (job as any)?.Attempt,
-      maxAttempts: (job as any)?.MaxAttempts,
+      operatorUserId: (result.operatorUserId || payload.operatorUserId) as string | undefined,
+      attempt: job?.Attempt,
+      maxAttempts: job?.MaxAttempts,
       nextRetryAt,
       retryAfterMs,
-      errorDomain: err?.domain || result?.errorDomain,
-      errorCode: err?.code || result?.errorCode,
-      errorMessage: err?.message || result?.errorMessage,
+      errorDomain: (err?.domain || result.errorDomain) as string | undefined,
+      errorCode: (err?.code || result.errorCode) as string | undefined,
+      errorMessage: (err?.message || result.errorMessage) as string | undefined,
     } as OpStatusResp;
   }
 
@@ -415,8 +430,8 @@ export default class MetaModule extends BaseModel {
     return await this.executeModuleOp('upgrade', moduleName, { operatorUserId });
   }
 
-  private static getModuleManagementBridge(): any {
-    const root: any = (globalThis as any)?.$choysum;
+  private static getModuleManagementBridge() {
+    const root = resolveChoysum();
     if (!root?.moduleManagement) {
       throw new Error('moduleManagement bridge is not injected');
     }
@@ -503,7 +518,7 @@ export default class MetaModule extends BaseModel {
     let job: any;
     if (jobId) {
       try {
-        job = await Job.GetJob(jobId, ['Id', 'CreatedAt', 'FinishedAt', 'Attempt', 'MaxAttempts'] as any);
+        job = await Job.GetJob(jobId, ['Id', 'CreatedAt', 'FinishedAt', 'Attempt', 'MaxAttempts']);
       } catch {
         job = undefined;
       }

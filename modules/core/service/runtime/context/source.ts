@@ -8,7 +8,7 @@ export type Context = Readonly<JsBusinessContext & ObjectRecord>;
 
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
-import { getChoysumRuntime } from '../choysum_root';
+import { resolveChoysum } from '../choysum_runtime';
 
 function deepFreeze<T>(obj: T): T {
   if (!obj || typeof obj !== 'object' || Object.isFrozen(obj)) return obj;
@@ -36,7 +36,7 @@ export function __deepFreezeForTest<T>(obj: T): T {
 }
 
 function resolveRuntimeRoot(): ObjectRecord | undefined {
-  return asObjectRecord(getChoysumRuntime());
+  return asObjectRecord(resolveChoysum());
 }
 
 /**

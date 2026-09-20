@@ -5,16 +5,16 @@ import { computed, ref } from 'vue';
 import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
 import { actorUserId as defaultActorUserId } from '@/web/web/composables/search/actorUserId';
 import { resolveUserFilterUserId } from '@/web/web/composables/search/userFilterDefaults';
+import type ExportTemplate from '@/web/service/models/export_template';
 
-export type ExportTemplateRow = {
-  Id?: string;
-  Name?: string;
-  Application?: string;
-  ModelName?: string;
-  Fields?: string[];
-  ImportCompatible?: boolean;
+/**
+ * ExportTemplate Search projection for the fused Export panel.
+ * UserId stays wire-loose for nested `{ Id }` from store bags.
+ */
+export type ExportTemplateRow = Partial<
+  Pick<ExportTemplate, 'Id' | 'Name' | 'Application' | 'ModelName' | 'Fields' | 'ImportCompatible' | 'CreatedUid'>
+> & {
   UserId?: string | null | { Id?: string | null };
-  CreatedUid?: string | null;
 };
 
 export type ExportTemplateItem = ExportTemplateRow & {
