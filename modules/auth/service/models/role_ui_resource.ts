@@ -86,7 +86,7 @@ export default class RoleUiResource extends AuthzMutationModel {
   /**
    * Normalize the permission mode and reject unsupported values.
    */
-  private static _normalizeMode(v: any): RoleUiResourceMode {
+  private static _normalizeMode(v: unknown): RoleUiResourceMode {
     const mode = String(v ?? 'allow')
       .trim()
       .toLowerCase();

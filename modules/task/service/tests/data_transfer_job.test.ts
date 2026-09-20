@@ -531,7 +531,7 @@ test('executeImport writes report via import bridge', async () => {
       specSnapshot: sampleSnapshot('doc-ref-3'),
     });
 
-    const report = await DataTransferJob.ExecuteImport(enqueued.dataTransferJobId);
+    const report = (await DataTransferJob.ExecuteImport(enqueued.dataTransferJobId)) as Record<string, any>;
     expect(report?.stats?.ok).toBe(2);
 
     const row = await DataTransferJob.Browse(enqueued.dataTransferJobId, [
@@ -547,7 +547,7 @@ test('executeImport writes report via import bridge', async () => {
 
     const status = await getQueueStatus(enqueued.dataTransferJobId);
     expect(status.reportRef).toBe('art-1');
-    expect(status.reportJson?.stats?.ok).toBe(2);
+    expect((status.reportJson as Record<string, any> | undefined)?.stats?.ok).toBe(2);
   } finally {
     if (previousImport === undefined) {
       delete root.import;
@@ -577,7 +577,7 @@ test('executeExport writes report via export bridge', async () => {
       specSnapshot: sampleExportSnapshot('base.Country'),
     });
 
-    const report = await DataTransferJob.ExecuteExport(enqueued.dataTransferJobId);
+    const report = (await DataTransferJob.ExecuteExport(enqueued.dataTransferJobId)) as Record<string, any>;
     expect(report?.stats?.ok).toBe(2);
 
     const row = await DataTransferJob.Browse(enqueued.dataTransferJobId, [
@@ -666,7 +666,7 @@ test('executeImport and FinalizeReport error paths', async () => {
       run: async () => ({ stats: { total: 0, ok: 0, error: 0, skip: 0 } }),
     };
     try {
-      const report = await executeImport(missingDirection.Id);
+      const report = (await executeImport(missingDirection.Id)) as Record<string, any>;
       expect(report?.stats?.total).toBe(0);
     } finally {
       (DataTransferJob as any).Browse = browse;
@@ -690,7 +690,7 @@ test('executeImport and FinalizeReport error paths', async () => {
       run: async () => ({ stats: { total: 0, ok: 0, error: 0, skip: 0 } }),
     };
     try {
-      const exportReport = await executeExport(missingExportDirection.Id);
+      const exportReport = (await executeExport(missingExportDirection.Id)) as Record<string, any>;
       expect(exportReport?.stats?.total).toBe(0);
     } finally {
       (DataTransferJob as any).Browse = browse;

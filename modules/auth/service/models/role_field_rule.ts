@@ -146,7 +146,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
   /**
    * Normalize a field-rule permission override.
    */
-  private static _normalizePerm(v: any): 'allow' | 'deny' | null {
+  private static _normalizePerm(v: unknown): 'allow' | 'deny' | null {
     if (v == null) return null;
     const s = String(v ?? '')
       .trim()

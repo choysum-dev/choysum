@@ -154,7 +154,7 @@ export default class MetaUiResource extends BaseModel {
     const dialect = String(resolveChoysum()?.db?.dialectName || 'postgres').toLowerCase();
 
     if (dialect === 'sqlite') {
-      return sql<any>`
+      return sql<unknown>`
         (
           select coalesce(
             json_group_array(json(child_row.payload)),
@@ -236,7 +236,7 @@ export default class MetaUiResource extends BaseModel {
       `;
     }
 
-    return sql<any>`
+    return sql<unknown>`
       (
         select coalesce(
           json_agg(child_row.payload order by child_row.seq asc, child_row.name asc),

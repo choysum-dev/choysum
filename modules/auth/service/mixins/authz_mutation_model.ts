@@ -49,10 +49,12 @@ type UserRoleUserIdPayload = {
 /**
  * Collect UserId refs from a UserRole create payload (single row or many).
  */
-export function userIdsFromUserRolePayloads(
-  values: Partial<UserRoleUserIdPayload> | Array<Partial<UserRoleUserIdPayload>> | null | undefined
-): string[] {
-  const rows = Array.isArray(values) ? values : values != null ? [values] : [];
+export function userIdsFromUserRolePayloads(values: unknown): string[] {
+  const rows = Array.isArray(values)
+    ? (values as Array<Partial<UserRoleUserIdPayload>>)
+    : values != null && typeof values === 'object'
+      ? [values as Partial<UserRoleUserIdPayload>]
+      : [];
   return uniqStrings(rows.map(v => normalizeRefId(v?.UserId)));
 }
 

@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { asObjectRecord } from '../../../utils/object';
+import type { ObjectRecord } from '../../../utils/types';
 import { getJsCtxRoot } from './source';
 
 /**
  * Resolve the current request context and backing request object.
  */
-export function getJsCtxAndReq(): { jsCtx: any; req: any } {
+export function getJsCtxAndReq(): { jsCtx: ObjectRecord | undefined; req: ObjectRecord | undefined } {
   const jsCtx = asObjectRecord(getJsCtxRoot());
   if (!jsCtx) return { jsCtx: undefined, req: undefined };
 
@@ -22,18 +23,24 @@ export function getJsCtxAndReq(): { jsCtx: any; req: any } {
 /**
  * Resolve the current request object from the active Choysum runtime context.
  */
-export function getCurrentReq(): any {
+export function getCurrentReq(): ObjectRecord | undefined {
   return getJsCtxAndReq().req;
 }
 
 /**
  * Return the request-scoped service cache, creating it when needed.
  */
-export function getOrInitReqServiceState(req: any): any {
+export function getOrInitReqServiceState(req: unknown): Record<string, unknown> | undefined {
   const reqRecord = asObjectRecord(req);
   if (!reqRecord) return undefined;
-  if (!reqRecord.__choysumServiceState) reqRecord.__choysumServiceState = {};
-  return reqRecord.__choysumServiceState;
+  if (
+    !reqRecord.__choysumServiceState ||
+    typeof reqRecord.__choysumServiceState !== 'object' ||
+    Array.isArray(reqRecord.__choysumServiceState)
+  ) {
+    reqRecord.__choysumServiceState = {};
+  }
+  return reqRecord.__choysumServiceState as Record<string, unknown>;
 }
 
 /**

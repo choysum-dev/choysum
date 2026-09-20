@@ -799,7 +799,7 @@ export default class User extends AttachmentOwnerMixin {
           return cached as MethodAccessDecision;
         }
         // Legacy boolean cache entries (pre-E-5) — recompute with diagnostics.
-        if (typeof cached === 'boolean') {
+        if (state && typeof cached === 'boolean') {
           delete state[cacheKey];
         }
 

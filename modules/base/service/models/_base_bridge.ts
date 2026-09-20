@@ -31,7 +31,7 @@ export const normalizeNullableString = normalizeNullableStringCore;
 /**
  * Validate a required code field: trim, optionally uppercase, fail if empty.
  */
-export function assertCodeRequired(value: any, opts?: { uppercase?: boolean }): string {
+export function assertCodeRequired(value: unknown, opts?: { uppercase?: boolean }): string {
   return mapNormalizationToBase(
     () => assertCodeRequiredCore(value, opts),
     () => _t('Code is required', { scope: 'service/models/_base_bridge' })
@@ -41,7 +41,7 @@ export function assertCodeRequired(value: any, opts?: { uppercase?: boolean }): 
 /**
  * Validate a required name field: trim, fail if empty.
  */
-export function assertName(value: any): string {
+export function assertName(value: unknown): string {
   return mapNormalizationToBase(
     () => assertNameCore(value),
     () => _t('Name is required', { scope: 'service/models/_base_bridge' })

@@ -44,7 +44,7 @@ export default class SequenceIdempotency extends BaseModel {
     notNull: true,
     string: _lt('Format Snapshot', { scope: 'base.model.SequenceIdempotency.fields' }),
   })
-  FormatSnapshot: Record<string, any>;
+  FormatSnapshot: Record<string, unknown>;
 
   @Field({
     type: 'varchar',

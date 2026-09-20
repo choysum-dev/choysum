@@ -4,14 +4,14 @@
 /**
  * Recursively sorts object keys before deterministic JSON encoding.
  */
-export function sortForEncoding(value: any): any {
+export function sortForEncoding(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(item => sortForEncoding(item));
   }
   if (value && typeof value === 'object' && Object.prototype.toString.call(value) === '[object Object]') {
-    const out: Record<string, any> = {};
-    for (const key of Object.keys(value).sort()) {
-      out[key] = sortForEncoding((value as Record<string, any>)[key]);
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      out[key] = sortForEncoding((value as Record<string, unknown>)[key]);
     }
     return out;
   }
@@ -21,6 +21,7 @@ export function sortForEncoding(value: any): any {
 /**
  * Serializes a value to deterministic JSON with sorted object keys.
  */
-export function encodeStableJson(value: any): string {
-  return JSON.stringify(sortForEncoding(value));
+export function encodeStableJson(value: unknown): string {
+  // JSON.stringify returns undefined for undefined/function/symbol; keep the string contract.
+  return JSON.stringify(sortForEncoding(value)) ?? 'null';
 }

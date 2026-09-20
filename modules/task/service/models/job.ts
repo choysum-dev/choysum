@@ -92,7 +92,7 @@ export default class Job extends BaseModel {
     type: 'jsonobject',
     string: _lt('Payload', { scope: 'task.model.Job.fields' }),
   })
-  PayloadJson: Record<string, any>;
+  PayloadJson: Record<string, unknown>;
 
   /** User who scheduled the job. */
   @Field({
@@ -200,7 +200,7 @@ export default class Job extends BaseModel {
     type: 'jsonobject',
     string: _lt('Last Error', { scope: 'task.model.Job.fields' }),
   })
-  LastErrorJson: Record<string, any>;
+  LastErrorJson: Record<string, unknown>;
 
   /** Hash of the last execution error payload. */
   @Field({
@@ -223,7 +223,7 @@ export default class Job extends BaseModel {
     type: 'jsonobject',
     string: _lt('Result', { scope: 'task.model.Job.fields' }),
   })
-  ResultJson: Record<string, any>;
+  ResultJson: Record<string, unknown>;
 
   /** Hash of the last execution result payload. */
   @Field({
@@ -245,7 +245,7 @@ export default class Job extends BaseModel {
   static async EnqueueJob(
     targetApp: string,
     fullMethod: string,
-    payload: Record<string, any> = {},
+    payload: Record<string, unknown> = {},
     schedulerUserId: string,
     triggeredByUserId: string,
     runAfter?: string | number | Date,

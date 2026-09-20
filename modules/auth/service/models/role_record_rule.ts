@@ -4,7 +4,7 @@
 import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
-import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
+import type { QueryCondition, UpdateOptions, BaseQueryCondition } from '@/core/service/api/query';
 import { _lt } from '../i18n';
 import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
@@ -108,7 +108,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
     notNull: false,
     string: _lt('Filter Condition', { scope: 'auth.model.RoleRecordRule.fields' }),
   })
-  Condition: QueryCondition<any>;
+  Condition: BaseQueryCondition;
 
   /**
    * Whether reads are allowed when this rule matches.
@@ -153,7 +153,7 @@ export default class RoleRecordRule extends AuthzMutationModel {
   /**
    * Assert Kind is grant or restrict; omit the field so the schema default applies.
    */
-  private static _assertKind(v: any): RoleRecordRuleKind {
+  private static _assertKind(v: unknown): RoleRecordRuleKind {
     if (v == null || v === '') {
       throw new Error("invalid RoleRecordRule Kind: must be 'grant' or 'restrict'");
     }

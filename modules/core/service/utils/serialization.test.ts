@@ -5,7 +5,7 @@ import { sortForEncoding, encodeStableJson } from '@/core/service/utils/serializ
 
 test('core.serialization sortForEncoding sorts object keys', () => {
   const input = { zebra: 1, apple: 2, mango: { cherry: 3, banana: 4 } };
-  const result = sortForEncoding(input);
+  const result = sortForEncoding(input) as { mango: Record<string, unknown> };
   const keys = Object.keys(result);
   expect(keys).toEqual(['apple', 'mango', 'zebra']);
   const innerKeys = Object.keys(result.mango);
@@ -29,4 +29,5 @@ test('core.serialization encodeStableJson produces deterministic output', () => 
 test('core.serialization encodeStableJson handles primitives', () => {
   expect(encodeStableJson(1)).toBe('1');
   expect(encodeStableJson('hello')).toBe('"hello"');
+  expect(encodeStableJson(undefined)).toBe('null');
 });

@@ -118,7 +118,7 @@ export default class Token extends BaseModel {
     copy: false,
     string: _lt('Metadata', { scope: 'auth.model.Token.fields' }),
   })
-  Metadata: Record<string, any>;
+  Metadata: Record<string, unknown>;
 
   /**
    * Create and persist a new access and refresh token pair.
