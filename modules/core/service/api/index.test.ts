@@ -8,6 +8,21 @@ import * as modelApi from './model';
 import * as onchangeApi from './onchange';
 import * as validationApi from './validation';
 
+/** Runtime keys that must never reappear on the author api root (SF-6 / §3.2). */
+const API_ROOT_ENGINE_RUNTIME_DENY = [
+  'ExpressionBuilder',
+  'SelectQueryBuilder',
+  'RepositoryAliasableLike',
+  'createRepositorySearchDeps',
+  'executeRepositorySearch',
+  'convertCondition',
+  'makeSelectCtx',
+  'MetadataStorage',
+  'PathPlanBuilder',
+  'getCachedOrBuildPlan',
+  'getCachedOrBuildV2',
+] as const;
+
 test('core/service/api entrypoint export surface stays limited to stable cross-module contracts', () => {
   expect(Object.keys(serviceApi).sort()).toEqual([
     'BaseModel',
@@ -42,6 +57,13 @@ test('core/service/api entrypoint export surface stays limited to stable cross-m
     'withI18nScope',
     'withUser',
   ]);
+});
+
+test('core/service/api entrypoint rejects engine runtime symbols (SF-6 deny list)', () => {
+  const keys = new Set(Object.keys(serviceApi));
+  for (const name of API_ROOT_ENGINE_RUNTIME_DENY) {
+    expect(keys.has(name)).toBe(false);
+  }
 });
 
 test('core/service/api entrypoint exports are live runtime bindings', () => {
