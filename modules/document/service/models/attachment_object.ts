@@ -408,7 +408,6 @@ async function finalizeUpload(req: FinalizeUploadReq): Promise<FinalizeUploadRes
 
 async function authorizeUploadPut(req: AuthorizeUploadPutReq): Promise<AuthorizeUploadPutResp> {
   const normalized = assertAuthorizeUploadPutReq(req);
-  const session = await mustLoadUploadSession(normalized.uploadId);
   const principal = principalFromRuntime(
     {
       userId: AttachmentContent.userId,
@@ -417,6 +416,7 @@ async function authorizeUploadPut(req: AuthorizeUploadPutReq): Promise<Authorize
     },
     'authorize_upload_put'
   );
+  const session = await mustLoadUploadSession(normalized.uploadId);
 
   assertUploadSessionPrincipal(session, principal, 'authorize_upload_put');
   await assertUploadSessionOwnerWriteAuthorization(session, principal, 'authorize_upload_put');
@@ -479,7 +479,6 @@ async function authorizeUploadPut(req: AuthorizeUploadPutReq): Promise<Authorize
 
 async function commitUploadPut(req: CommitUploadPutReq): Promise<CommitUploadPutResp> {
   const normalized = assertCommitUploadPutReq(req);
-  const session = await mustLoadUploadSession(normalized.uploadId);
   const principal = principalFromRuntime(
     {
       userId: AttachmentContent.userId,
@@ -488,6 +487,7 @@ async function commitUploadPut(req: CommitUploadPutReq): Promise<CommitUploadPut
     },
     'commit_upload_put'
   );
+  const session = await mustLoadUploadSession(normalized.uploadId);
 
   assertUploadSessionPrincipal(session, principal, 'commit_upload_put');
   await assertUploadSessionOwnerWriteAuthorization(session, principal, 'commit_upload_put');
