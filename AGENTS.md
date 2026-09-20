@@ -12,9 +12,8 @@ On-demand procedures and repository policies live under [`.agents/skills/`](.age
 | [`module-initdata`](.agents/skills/module-initdata/SKILL.md) | Adding or moving module bootstrap/demo init data |
 | [`service-api-guidelines`](.agents/skills/service-api-guidelines/SKILL.md) | Writing or reviewing `modules/*/service/**` public APIs |
 
-Committed house rules: [`service-api-guidelines`](.agents/skills/service-api-guidelines/SKILL.md).
 Optional maintainer long-form (principles / review / hardcut / related) may exist under
-gitignored `.dev/docs/…` — see that skill’s local-only table; skip on clean clones.
+gitignored `.dev/docs/…` — see the `service-api-guidelines` skill’s local-only table; skip on clean clones.
 
 ## Cloud and local agent setup
 

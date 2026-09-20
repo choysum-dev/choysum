@@ -20,13 +20,13 @@ docs (see below).
 
 Optional long-form under gitignored `.dev/` (skip if absent; not in git):
 
-| Document | Read when (local only) |
+| Path | Read when (local only) |
 | --- | --- |
-| [Principles](../../../.dev/docs/core/service/business_module_service_api_principles.md) | Extra author norms beyond this skill |
-| [Review archive 2026-09-20](../../../.dev/docs/core/service/business_module_service_api_review20260920.md) | Context on current gaps vs Odoo |
-| [Hardcut plan 2026-09-20](../../../.dev/docs/core/service/business_module_service_api_hardcut_plan20260920.md) | No-compat migration waves (`PR-W1`…`PR-W5`) |
-| [Cross-app import boundary](../../../.dev/docs/infra/cross_app_service_import_boundary_plan20260901.md) | Dial vs value-import across applications |
-| [BaseModel author API](../../../.dev/docs/core/service/orm/basemodel-author-api-design.md) | CRUD / env axes on BaseModel |
+| `.dev/docs/core/service/business_module_service_api_principles.md` | Extra author norms beyond this skill |
+| `.dev/docs/core/service/business_module_service_api_review20260920.md` | Context on current gaps vs Odoo |
+| `.dev/docs/core/service/business_module_service_api_hardcut_plan20260920.md` | No-compat migration waves (`PR-W1`…`PR-W5`) |
+| `.dev/docs/infra/cross_app_service_import_boundary_plan20260901.md` | Dial vs value-import across applications |
+| `.dev/docs/core/service/orm/basemodel-author-api-design.md` | CRUD / env axes on BaseModel |
 
 Related skills: [`module-initdata`](../module-initdata/SKILL.md) for authz seed placement; do not confuse init-data ownership with Service RPC shape.
 
@@ -67,7 +67,13 @@ When reviewing a change, report:
 
 - Which hard rules apply and any violations (with method / type names).
 - Whether new public verbs should be envelopes, CRUD-only, or worker-private.
-- Pointers to a hardcut wave (`PR-W1`…`PR-W5`) if a migration is required and local hardcut docs are present.
+- If a migration is required, name the hardcut wave below (or describe the step
+  in prose when local hardcut docs are absent):
+  - `PR-W1` — workers off public RPC; identity from session; `auth.Token` not client-facing
+  - `PR-W2` — `auth.User` session verbs → single Req envelopes (+ Register result shape)
+  - `PR-W3` — task/meta/document/message envelopes, Schedule single write path, naming
+  - `PR-W4` — docs + core boundary helpers (`Normalized*` not exported)
+  - `PR-W5` — domain additions (UoM.Convert, Partner FindOrCreate/Lookup, LanguageId)
 
 ## Scope guardrails
 
