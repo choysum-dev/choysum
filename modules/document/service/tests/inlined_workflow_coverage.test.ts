@@ -73,10 +73,6 @@ async function withDocumentScope<T>(fn: () => Promise<T>): Promise<T> {
   );
 }
 
-function buildPrincipal(userId = TEST_USER_ID, companyId = TEST_COMPANY_ID) {
-  return { userId, activeCompanyId: companyId, enabledCompanyIds: [companyId] };
-}
-
 async function createStoredContent(companyId: string, status: 'active' | 'deleted' = 'active'): Promise<string> {
   const row = await StoredContent.Create(
     { Provider: 'db', Status: status, CompanyId: companyId, BlobData: 'x' } as any,

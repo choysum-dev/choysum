@@ -785,9 +785,11 @@ async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDes
 async function resolveDownloadContent(req: ResolveDownloadContentReq): Promise<ResolveDownloadContentResp> {
   const normalized = assertResolveDownloadContentReq(req);
   const principal = principalFromRuntime(
-    AttachmentBinding.userId,
-    AttachmentBinding.companyId,
-    AttachmentBinding.companyIds,
+    {
+      userId: AttachmentBinding.userId,
+      companyId: AttachmentBinding.companyId,
+      companyIds: AttachmentBinding.companyIds,
+    },
     'resolve_download_content'
   );
 

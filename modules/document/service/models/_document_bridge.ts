@@ -122,11 +122,14 @@ export function assertPrincipal(raw: unknown): PrincipalContext {
 /**
  * Build PrincipalContext from the trusted request/session runtime axes.
  */
-export function principalFromRuntime(rawUserId: unknown, rawCompanyId: unknown, rawCompanyIds: unknown, stage: string): PrincipalContext {
-  const activeCompanyId = requireCompanyId(rawCompanyId, stage);
+export function principalFromRuntime(
+  runtime: { userId?: unknown; companyId?: unknown; companyIds?: unknown },
+  stage: string
+): PrincipalContext {
+  const activeCompanyId = requireCompanyId(runtime.companyId, stage);
   return {
-    userId: requireUserId(rawUserId),
+    userId: requireUserId(runtime.userId),
     activeCompanyId,
-    enabledCompanyIds: normalizeCompanyIdList(rawCompanyIds, activeCompanyId),
+    enabledCompanyIds: normalizeCompanyIdList(runtime.companyIds, activeCompanyId),
   };
 }

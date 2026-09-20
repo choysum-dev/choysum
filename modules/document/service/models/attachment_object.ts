@@ -410,9 +410,11 @@ async function authorizeUploadPut(req: AuthorizeUploadPutReq): Promise<Authorize
   const normalized = assertAuthorizeUploadPutReq(req);
   const session = await mustLoadUploadSession(normalized.uploadId);
   const principal = principalFromRuntime(
-    AttachmentContent.userId,
-    AttachmentContent.companyId,
-    AttachmentContent.companyIds,
+    {
+      userId: AttachmentContent.userId,
+      companyId: AttachmentContent.companyId,
+      companyIds: AttachmentContent.companyIds,
+    },
     'authorize_upload_put'
   );
 
@@ -479,9 +481,11 @@ async function commitUploadPut(req: CommitUploadPutReq): Promise<CommitUploadPut
   const normalized = assertCommitUploadPutReq(req);
   const session = await mustLoadUploadSession(normalized.uploadId);
   const principal = principalFromRuntime(
-    AttachmentContent.userId,
-    AttachmentContent.companyId,
-    AttachmentContent.companyIds,
+    {
+      userId: AttachmentContent.userId,
+      companyId: AttachmentContent.companyId,
+      companyIds: AttachmentContent.companyIds,
+    },
     'commit_upload_put'
   );
 

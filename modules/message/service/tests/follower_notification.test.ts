@@ -434,9 +434,7 @@ test('message.Follower: Follow uses live target Search and explicit user/company
       {
         Model: 'message.Message',
         ResId: messageId,
-        UserId: AUTHOR_USER_ID,
         SubtypeId: '',
-        CompanyId: companyId,
       },
       ['Id', 'UserId', 'CompanyId']
     );

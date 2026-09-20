@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Field, Model } from '@/core/service';
-import { getUserId } from '@/core/service/api/context';
+import { getActiveCompanyId, getUserId } from '@/core/service/api/context';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { Updateable } from '@/core/service/api/input';
 import { MessageErrCode, newMessageError } from '../error';
@@ -20,7 +20,6 @@ export type FollowRecordReq = {
   Model: string;
   ResId: string;
   SubtypeId?: string | null;
-  CompanyId?: string | null;
 };
 
 export type UnfollowRecordReq = {
@@ -32,6 +31,12 @@ function resolveActorUserId(): string | null {
   const uid = getUserId();
   if (uid == null || String(uid).trim() === '') return null;
   return String(uid).trim();
+}
+
+function resolveActorCompanyId(): string | null {
+  const companyId = getActiveCompanyId();
+  if (companyId == null || String(companyId).trim() === '') return null;
+  return String(companyId).trim();
 }
 
 function isUniqueConstraintError(err: unknown): boolean {
@@ -208,7 +213,7 @@ export default class Follower extends PolymorphicRecordModel {
   CompanyId: string | null;
 
   /**
-   * Subscribe the current (or explicit) user to one business record thread.
+   * Subscribe the session user to one business record thread.
    * Idempotent when the same (Model, ResId, UserId) row already exists, including
    * restoring a soft-deleted follower when the unique index is still occupied.
    */
@@ -229,7 +234,7 @@ export default class Follower extends PolymorphicRecordModel {
 
     const returnFields = followReturnFields(fields);
     const subtypeId = req.SubtypeId == null || req.SubtypeId === '' ? null : String(req.SubtypeId);
-    const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
+    const companyId = resolveActorCompanyId();
 
     const existing = await findFollowRow(model, resId, userId, returnFields);
     if (existing) {
@@ -256,7 +261,7 @@ export default class Follower extends PolymorphicRecordModel {
   }
 
   /**
-   * Remove one follower row for the current (or explicit) user on a record.
+   * Remove one follower row for the session user on a record.
    */
   public static async Unfollow(req: UnfollowRecordReq): Promise<number> {
     if (!req || typeof req !== 'object') {

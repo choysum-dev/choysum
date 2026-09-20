@@ -20,7 +20,6 @@ export type MessageThreadFollowReq = {
   Model: string;
   ResId: string;
   SubtypeId?: string | null;
-  CompanyId?: string | null;
 };
 
 export type MessageThreadUnfollowReq = {

@@ -89,20 +89,6 @@ async function withScope<T>(companyId: string, userId: string, fn: () => Promise
   );
 }
 
-function buildPrincipalContext(
-  companyId = TEST_COMPANY_ID,
-  userId = TEST_USER_ID
-): {
-  userId: string;
-  activeCompanyId: string;
-  enabledCompanyIds: string[];
-} {
-  return {
-    userId,
-    activeCompanyId: companyId,
-    enabledCompanyIds: [companyId]};
-}
-
 async function markSessionUploaded(uploadId: string, contentType = 'text/plain', companyId = TEST_COMPANY_ID): Promise<void> {
   const storedContentId = await createStoredContentRecord({
     companyId,
