@@ -11,7 +11,6 @@ import { createRelationModel } from './relation_model_service_facade';
 import {
   ExtractedRelations,
   type ManyToManyRelationConfig,
-  PreparedManyToOneOp,
   PreparedOneToManyOp,
   PreparedManyToManyOp,
   PreparedRelationOp,
