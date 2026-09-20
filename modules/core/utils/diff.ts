@@ -174,7 +174,7 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
   const del = [...oIds].filter(x => !cIds.has(x)).map(Id => ({ Id: String(Id) }));
 
   // m2m additions are represented as Id-only links.
-  const addIdsAsCreate: ObjectRecord[] = kind === 'm2m' ? [...cIds].filter(x => !oIds.has(x)).map(Id => ({ Id })) : [];
+  const addIdsAsCreate: ObjectRecord[] = kind === 'm2m' ? [...cIds].filter(x => !oIds.has(x)).map(Id => ({ Id: String(Id) })) : [];
 
   // update: same Id, different content.
   const update: ObjectRecord[] = [];
@@ -187,7 +187,8 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
     const patch = normalizePatchForRelationUpdate(a, b, rawPatch);
     if (Object.keys(patch).length) {
       const sanitized = asObjectRecord(stripClientKeys(patch)) ?? {};
-      update.push({ Id: id, ...sanitized });
+      // RelationPatch.update requires string Id (numeric ids from toId must be coerced).
+      update.push({ Id: String(id), ...sanitized });
     }
   }
 
