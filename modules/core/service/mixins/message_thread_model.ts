@@ -11,16 +11,19 @@ import type {
   MessageThreadUnfollowReq,
 } from './message_thread_contracts';
 
+/** Minimal stub row for cross-app dial (core must not import message models). */
+type MessageThreadStubRow = Record<string, unknown>;
+
 /** Typing stubs: core must not import message.Message / message.Follower. */
 type MessageModelStub = ModelConstructor & {
-  Post(req: MessageThreadPostReq, fields?: FieldSelection<any>): Promise<any>;
-  SearchByRecord(model: string, resId: string, fields?: FieldSelection<any>): Promise<Partial<any>[]>;
+  Post(req: MessageThreadPostReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<unknown>;
+  SearchByRecord(model: string, resId: string, fields?: FieldSelection<MessageThreadStubRow>): Promise<Partial<MessageThreadStubRow>[]>;
 };
 
 type FollowerModelStub = ModelConstructor & {
-  Follow(req: MessageThreadFollowReq, fields?: FieldSelection<any>): Promise<any>;
+  Follow(req: MessageThreadFollowReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<unknown>;
   Unfollow(req: MessageThreadUnfollowReq): Promise<number>;
-  SearchByRecord(model: string, resId: string, fields?: FieldSelection<any>): Promise<Partial<any>[]>;
+  SearchByRecord(model: string, resId: string, fields?: FieldSelection<MessageThreadStubRow>): Promise<Partial<MessageThreadStubRow>[]>;
 };
 
 /**
@@ -40,7 +43,7 @@ type FollowerModelStub = ModelConstructor & {
  */
 export default abstract class MessageThreadModel extends BaseModel {
   /** Post a collaboration message on a business record (Unary). */
-  public static async MessagePost(req: MessageThreadPostReq, fields?: FieldSelection<any>): Promise<any> {
+  public static async MessagePost(req: MessageThreadPostReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<unknown> {
     return dial<MessageModelStub>('message.Message').Post(req, fields);
   }
 
@@ -48,13 +51,13 @@ export default abstract class MessageThreadModel extends BaseModel {
   public static async MessageSearchByRecord(
     model: string,
     resId: string,
-    fields?: FieldSelection<any>
-  ): Promise<Partial<any>[]> {
+    fields?: FieldSelection<MessageThreadStubRow>
+  ): Promise<Partial<MessageThreadStubRow>[]> {
     return dial<MessageModelStub>('message.Message').SearchByRecord(model, resId, fields);
   }
 
   /** Subscribe a user to a business record thread. */
-  public static async MessageFollow(req: MessageThreadFollowReq, fields?: FieldSelection<any>): Promise<any> {
+  public static async MessageFollow(req: MessageThreadFollowReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<unknown> {
     return dial<FollowerModelStub>('message.Follower').Follow(req, fields);
   }
 
@@ -67,8 +70,8 @@ export default abstract class MessageThreadModel extends BaseModel {
   public static async MessageSearchFollowersByRecord(
     model: string,
     resId: string,
-    fields?: FieldSelection<any>
-  ): Promise<Partial<any>[]> {
+    fields?: FieldSelection<MessageThreadStubRow>
+  ): Promise<Partial<MessageThreadStubRow>[]> {
     return dial<FollowerModelStub>('message.Follower').SearchByRecord(model, resId, fields);
   }
 }

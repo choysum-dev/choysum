@@ -85,7 +85,7 @@ export default class Country extends BaseModel {
   })
   IsActive: boolean;
 
-  private validateAddressFormat(value: any): string | null {
+  private validateAddressFormat(value: unknown): string | null {
     if (value === undefined || value === null) return null;
     const format = String(value).trim();
     if (!format) return null;

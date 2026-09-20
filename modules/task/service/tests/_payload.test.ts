@@ -29,7 +29,7 @@ test('task._payload maskSensitive recursively masks values', () => {
     profile: { access_token: 'abc', name: 'x' },
     tokens: [{ token: 't1' }, { token: 't2' }],
   };
-  const result = maskSensitive(input);
+  const result = maskSensitive(input) as Record<string, any>;
   expect(result.email).toBe('a@b.com');
   expect(result.password).toBe(MASK_VALUE);
   expect(result.profile.access_token).toBe(MASK_VALUE);
@@ -51,7 +51,7 @@ test('task._payload maskSensitive handles empty objects', () => {
 
 test('task._payload sortForEncoding sorts object keys', () => {
   const input = { zebra: 1, apple: 2, mango: { cherry: 3, banana: 4 } };
-  const result = sortForEncoding(input);
+  const result = sortForEncoding(input) as { mango: Record<string, unknown> };
   const keys = Object.keys(result);
   expect(keys).toEqual(['apple', 'mango', 'zebra']);
   const innerKeys = Object.keys(result.mango);

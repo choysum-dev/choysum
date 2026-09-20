@@ -142,7 +142,7 @@ export default class DataTransferJob extends BaseModel {
     type: 'jsonobject',
     string: _lt('Report', { scope: 'task.model.DataTransferJob.fields' }),
   })
-  ReportJson: Record<string, any>;
+  ReportJson: Record<string, unknown>;
 
   @Field({
     type: 'varchar',
@@ -156,7 +156,7 @@ export default class DataTransferJob extends BaseModel {
     notNull: true,
     string: _lt('Spec Snapshot', { scope: 'task.model.DataTransferJob.fields' }),
   })
-  SpecSnapshotJson: Record<string, any>;
+  SpecSnapshotJson: Record<string, unknown>;
 
   @Field({
     type: 'selection',
@@ -269,22 +269,22 @@ export default class DataTransferJob extends BaseModel {
   }
 
   /** Task worker target for queued record imports. */
-  static async ExecuteImport(dataTransferJobId: string): Promise<Record<string, any>> {
+  static async ExecuteImport(dataTransferJobId: string): Promise<Record<string, unknown>> {
     return await executeImport(dataTransferJobId);
   }
 
   /** Task worker target for queued record exports. */
-  static async ExecuteExport(dataTransferJobId: string): Promise<Record<string, any>> {
+  static async ExecuteExport(dataTransferJobId: string): Promise<Record<string, unknown>> {
     return await executeExport(dataTransferJobId);
   }
 
   /** Persists transfer report and progress on the domain row. */
-  static async FinalizeReport(dataTransferJobId: string, report: Record<string, any>): Promise<void> {
+  static async FinalizeReport(dataTransferJobId: string, report: Record<string, unknown>): Promise<void> {
     const id = String(dataTransferJobId || '').trim();
     if (!id) {
       throw new Error('dataTransferJobId is required');
     }
-    const stats = (report?.stats ?? report?.Stats ?? {}) as Record<string, any>;
+    const stats = (report?.stats ?? report?.Stats ?? {}) as Record<string, unknown>;
     const total = Number(stats.total ?? stats.Total ?? 0) || 0;
     const artifactRef = String(report?.artifact_ref ?? report?.artifactRef ?? '').trim();
     const values: Partial<DataTransferJob> = {

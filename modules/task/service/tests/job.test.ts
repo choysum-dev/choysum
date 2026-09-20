@@ -159,19 +159,21 @@ test('task.Job enqueue payload sanitize/truncate', async () => {
 
   const job = await Job.EnqueueJob('auth', 'auth.User/Login', payload, 'admin', 'admin');
   const reloaded = await Job.GetJob(job.Id as any, ['Id', 'PayloadJson'] as any);
+  const payloadJson = reloaded.PayloadJson as Record<string, any> | undefined;
 
-  expect(reloaded.PayloadJson?.password).toBe('***');
-  expect(reloaded.PayloadJson?.profile?.access_token).toBe('***');
-  expect(reloaded.PayloadJson?.profile?.nested?.refresh_token).toBe('***');
-  expect(reloaded.PayloadJson?.tokens).toBe('***');
+  expect(payloadJson?.password).toBe('***');
+  expect(payloadJson?.profile?.access_token).toBe('***');
+  expect(payloadJson?.profile?.nested?.refresh_token).toBe('***');
+  expect(payloadJson?.tokens).toBe('***');
 
   const bigPayload = { blob: 'x'.repeat(20000) };
   const bigJob = await Job.EnqueueJob('auth', 'auth.User/Login', bigPayload, 'admin', 'admin');
   const bigReloaded = await Job.GetJob(bigJob.Id as any, ['Id', 'PayloadJson'] as any);
+  const bigPayloadJson = bigReloaded.PayloadJson as Record<string, any> | undefined;
 
-  expect(bigReloaded.PayloadJson?._truncated).toBe(true);
-  expect(typeof bigReloaded.PayloadJson?._preview).toBe('string');
-  const previewLen = (bigReloaded.PayloadJson?._preview || '').length;
+  expect(bigPayloadJson?._truncated).toBe(true);
+  expect(typeof bigPayloadJson?._preview).toBe('string');
+  const previewLen = (bigPayloadJson?._preview || '').length;
   expect(previewLen > 0).toBe(true);
   expect(previewLen <= 16 * 1024).toBe(true);
 });

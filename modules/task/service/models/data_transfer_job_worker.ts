@@ -5,11 +5,11 @@ import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import DataTransferJob from './data_transfer_job';
 
 type ImportBridge = {
-  run?: (spec: Record<string, unknown> | string) => Promise<Record<string, any>>;
+  run?: (spec: Record<string, unknown> | string) => Promise<Record<string, unknown>>;
 };
 
 type ExportBridge = {
-  run?: (spec: Record<string, unknown> | string) => Promise<Record<string, any>>;
+  run?: (spec: Record<string, unknown> | string) => Promise<Record<string, unknown>>;
 };
 
 type ChoysumWithExport = NonNullable<ReturnType<typeof resolveChoysum>> & {
@@ -34,7 +34,7 @@ function asSpecSnapshot(value: unknown): Record<string, unknown> | string | unde
 }
 
 /** Task worker entry: replays SpecSnapshotJson via $choysum.import.run and writes report. */
-export async function executeImport(dataTransferJobId: string): Promise<Record<string, any>> {
+export async function executeImport(dataTransferJobId: string): Promise<Record<string, unknown>> {
   const id = String(dataTransferJobId || '').trim();
   if (!id) {
     throw new Error('dataTransferJobId is required');
@@ -59,7 +59,7 @@ export async function executeImport(dataTransferJobId: string): Promise<Record<s
 }
 
 /** Task worker entry: replays SpecSnapshotJson via $choysum.export.run and writes report. */
-export async function executeExport(dataTransferJobId: string): Promise<Record<string, any>> {
+export async function executeExport(dataTransferJobId: string): Promise<Record<string, unknown>> {
   const id = String(dataTransferJobId || '').trim();
   if (!id) {
     throw new Error('dataTransferJobId is required');

@@ -62,7 +62,7 @@ export default class UserRole extends AuthzMutationModel {
    */
   static override invalidateAuthzCachesAfterWrite(op: AuthzMutationOp, payload?: unknown): void {
     if (op === 'create' || op === 'createMany') {
-      const userIds = userIdsFromUserRolePayloads(payload as never);
+      const userIds = userIdsFromUserRolePayloads(payload);
       if (userIds.length > 0) {
         invalidateAuthzCachesForUsers(userIds);
         return;

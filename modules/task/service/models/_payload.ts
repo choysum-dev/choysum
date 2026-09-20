@@ -33,13 +33,13 @@ export function isSensitiveKey(key: string): boolean {
 }
 
 /** Recursively masks sensitive values inside a payload tree. */
-export function maskSensitive(value: any): any {
+export function maskSensitive(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(item => maskSensitive(item));
   }
   if (value && typeof value === 'object' && Object.prototype.toString.call(value) === '[object Object]') {
-    const out: Record<string, any> = {};
-    for (const [k, v] of Object.entries(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
       if (isSensitiveKey(k)) {
         out[k] = MASK_VALUE;
         continue;
@@ -75,9 +75,9 @@ export function truncatePreview(value: string, maxBytes: number): string {
 }
 
 /** Masks and truncates a job payload before persistence. */
-export function sanitizePayload(payload: Record<string, any>): Record<string, any> {
+export function sanitizePayload(payload: Record<string, unknown>): Record<string, unknown> {
   try {
-    const masked = maskSensitive(payload ?? {});
+    const masked = maskSensitive(payload ?? {}) as Record<string, unknown>;
     const encoded = encodeStableJson(masked);
     if (PAYLOAD_MAX_BYTES <= 0 || byteLength(encoded) <= PAYLOAD_MAX_BYTES) {
       return masked;
@@ -85,7 +85,7 @@ export function sanitizePayload(payload: Record<string, any>): Record<string, an
     return {
       _truncated: true,
       _preview: truncatePreview(encoded, PAYLOAD_MAX_BYTES),
-    } as Record<string, any>;
+    };
   } catch {
     return payload ?? {};
   }

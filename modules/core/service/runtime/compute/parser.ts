@@ -116,20 +116,20 @@ function resolveRelationTargetMeta(meta: ModelMetadata, computeField: string, pa
   if (!targetCtor) {
     throw new Error(`Compute ${computeField}: field "${seg}" on model "${modelLabel(meta)}" is missing relation.targetModel for path "${pathExpr}"`);
   }
-  return MetadataStorage.instance.getModelMetadata(targetCtor);
+  return MetadataStorage.instance.getModelMetadata(targetCtor as never);
 }
 
-function resolveRelationTargetCtor(targetModelResolver: unknown): any {
+function resolveRelationTargetCtor(targetModelResolver: unknown): (new (...args: never[]) => object) | undefined {
   if (typeof targetModelResolver !== 'function') {
     return undefined;
   }
 
-  const targetCtor = targetModelResolver();
+  const targetCtor = (targetModelResolver as () => unknown)();
   if (!targetCtor || typeof targetCtor !== 'function') {
     return undefined;
   }
 
-  return targetCtor;
+  return targetCtor as new (...args: never[]) => object;
 }
 
 function modelLabel(meta: ModelMetadata): string {
@@ -190,7 +190,7 @@ export function validateAutoInverseRelatedPath(meta: ModelMetadata, fieldName: s
     throw new Error(`Field ${fieldName}: related.path root "${root}" is missing relation.targetModel`);
   }
 
-  const targetMeta = MetadataStorage.instance.getModelMetadata(targetCtor);
+  const targetMeta = MetadataStorage.instance.getModelMetadata(targetCtor as never);
   const leafMeta = targetMeta.fields.get(leaf);
   if (!leafMeta) {
     throw new Error(`Field ${fieldName}: related.path leaf "${leaf}" does not exist on model "${modelLabel(targetMeta)}"`);

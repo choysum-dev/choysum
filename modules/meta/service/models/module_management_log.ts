@@ -38,10 +38,10 @@ export default class ModuleManagementLog extends BaseModel {
   ErrorCode: string;
 
   @Field({ type: 'jsonobject', string: _lt('Summary', { scope: 'meta.model.ModuleManagementLog.fields' }) })
-  SummaryJson: Record<string, any>;
+  SummaryJson: Record<string, unknown>;
 
   @Field({ type: 'jsonobject', string: _lt('Error Detail', { scope: 'meta.model.ModuleManagementLog.fields' }) })
-  LastErrorJson: Record<string, any>;
+  LastErrorJson: Record<string, unknown>;
 
   @Field({ type: 'varchar', size: 128, string: _lt('Server Instance', { scope: 'meta.model.ModuleManagementLog.fields' }) })
   ServerInstanceId: string;

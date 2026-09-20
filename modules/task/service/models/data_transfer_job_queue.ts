@@ -10,7 +10,7 @@ export type DataTransferJobQueueStatus = {
   queueStatus: string;
   progressDone: number;
   progressTotal: number;
-  reportJson?: Record<string, any>;
+  reportJson?: Record<string, unknown>;
   reportRef?: string;
 };
 
@@ -42,7 +42,7 @@ export async function getQueueStatus(dataTransferJobId: string): Promise<DataTra
     queueStatus: String(taskJob?.Status || ''),
     progressDone: Number(row.ProgressDone ?? 0),
     progressTotal: Number(row.ProgressTotal ?? 0),
-    reportJson: (row.ReportJson as Record<string, any>) || undefined,
+    reportJson: (row.ReportJson as Record<string, unknown>) || undefined,
     reportRef: String(row.ReportRef || '').trim() || undefined,
   };
 }

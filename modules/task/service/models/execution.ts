@@ -86,21 +86,21 @@ export default class JobExecution extends BaseModel {
     type: 'jsonobject',
     string: _lt('Payload', { scope: 'task.model.JobExecution.fields' }),
   })
-  PayloadJson: Record<string, any>;
+  PayloadJson: Record<string, unknown>;
 
   /** Stored job result payload. */
   @Field({
     type: 'jsonobject',
     string: _lt('Result', { scope: 'task.model.JobExecution.fields' }),
   })
-  ResultJson: Record<string, any>;
+  ResultJson: Record<string, unknown>;
 
   /** Stored execution error payload. */
   @Field({
     type: 'jsonobject',
     string: _lt('Error', { scope: 'task.model.JobExecution.fields' }),
   })
-  ErrorJson: Record<string, any>;
+  ErrorJson: Record<string, unknown>;
 
   /** Time when the execution was cancelled. */
   @Field({

@@ -71,7 +71,7 @@ export default class ExchangeRate extends BaseModel {
   })
   Rate: Decimal;
 
-  private static coerceDateKey(value: any): string {
+  private static coerceDateKey(value: unknown): string {
     // Date-only business keys must be YYYY-MM-DD strings. Reject Date objects:
     // toISOString().slice(0, 10) reinterprets local midnights as UTC calendar days.
     return mapNormalizationToBase(
@@ -84,7 +84,7 @@ export default class ExchangeRate extends BaseModel {
     );
   }
 
-  private static dateKey(value: any): string {
+  private static dateKey(value: unknown): string {
     return this.coerceDateKey(value);
   }
 

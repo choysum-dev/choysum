@@ -37,13 +37,13 @@ type PlanOperationReq = {
 type PlanOperationResp = {
   baseRevision: string;
   affectedModules: Array<{ moduleName: string; reason?: string; currentVersion?: string; targetVersion?: string }>;
-  risks: Array<{ code: string; level: string; message?: string; params?: Record<string, any> }>;
-  blockers: Array<{ code: string; level: string; message?: string; params?: Record<string, any> }>;
+  risks: Array<{ code: string; level: string; message?: string; params?: Record<string, unknown> }>;
+  blockers: Array<{ code: string; level: string; message?: string; params?: Record<string, unknown> }>;
 };
 
 type OpStatusResp = {
   status: string;
-  summary?: any;
+  summary?: JsonRecord;
   resultStatus?: 'SUCCEEDED' | 'FAILED';
   failureKind?: FailureKind;
   createdAt?: Date;
@@ -71,16 +71,35 @@ type ModuleOpBridgeResult = {
   errorMessage?: string;
 };
 
-function pickErrString(err: any, primary: string, secondary: string): string {
-  if (err == null) return '';
-  const primaryValue = err[primary];
+type ModuleOpResult = {
+  resultStatus: 'SUCCEEDED' | 'FAILED';
+  summary?: JsonRecord;
+  errorDomain?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  reload_triggered: boolean;
+  reload_failed: boolean;
+  reload_web: boolean;
+  moduleName: string;
+  action: ModuleAction;
+  operatorUserId: string;
+};
+
+function asErrRecord(err: unknown): Record<string, unknown> | undefined {
+  return err && typeof err === 'object' ? (err as Record<string, unknown>) : undefined;
+}
+
+function pickErrString(err: unknown, primary: string, secondary: string): string {
+  const rec = asErrRecord(err);
+  if (!rec) return '';
+  const primaryValue = rec[primary];
   if (primaryValue != null && String(primaryValue) !== '') return String(primaryValue);
-  const secondaryValue = err[secondary];
+  const secondaryValue = rec[secondary];
   if (secondaryValue != null && String(secondaryValue) !== '') return String(secondaryValue);
   return '';
 }
 
-function classifyRetryability(err?: any): FailureKind {
+function classifyRetryability(err?: unknown): FailureKind {
   const domain = pickErrString(err, 'domain', 'errorDomain').toLowerCase();
   const code = pickErrString(err, 'code', 'errorCode').toUpperCase();
   if (domain === 'meta.lock' && code === 'LEASE_CONFLICT') return 'RETRYABLE';
@@ -88,7 +107,7 @@ function classifyRetryability(err?: any): FailureKind {
   return 'NON_RETRYABLE';
 }
 
-function resolveFailureSource(err: any, result: any): any {
+function resolveFailureSource(err: unknown, result: unknown): unknown {
   if (pickErrString(err, 'domain', 'errorDomain')) return err;
   if (pickErrString(err, 'code', 'errorCode')) return err;
   if (pickErrString(result, 'domain', 'errorDomain')) return result;
@@ -97,7 +116,7 @@ function resolveFailureSource(err: any, result: any): any {
   return result;
 }
 
-function resolveOpFailureKind(status: string, resultStatus: string | undefined, err: any, result: any): FailureKind {
+function resolveOpFailureKind(status: string, resultStatus: string | undefined, err: unknown, result: unknown): FailureKind {
   if (status === 'cancelled') return 'NON_RETRYABLE';
   if (status === 'failed') return classifyRetryability(resolveFailureSource(err, result));
   if (resultStatus === 'FAILED') return classifyRetryability(resolveFailureSource(err, result));
@@ -418,15 +437,15 @@ export default class MetaModule extends BaseModel {
     } as OpStatusResp;
   }
 
-  static async ExecuteInstall(moduleName: string, withDemo?: boolean, operatorUserId?: string): Promise<any> {
+  static async ExecuteInstall(moduleName: string, withDemo?: boolean, operatorUserId?: string): Promise<ModuleOpResult> {
     return await this.executeModuleOp('install', moduleName, { withDemo, operatorUserId });
   }
 
-  static async ExecuteUninstall(moduleName: string, operatorUserId?: string): Promise<any> {
+  static async ExecuteUninstall(moduleName: string, operatorUserId?: string): Promise<ModuleOpResult> {
     return await this.executeModuleOp('uninstall', moduleName, { operatorUserId });
   }
 
-  static async ExecuteUpgrade(moduleName: string, operatorUserId?: string): Promise<any> {
+  static async ExecuteUpgrade(moduleName: string, operatorUserId?: string): Promise<ModuleOpResult> {
     return await this.executeModuleOp('upgrade', moduleName, { operatorUserId });
   }
 
@@ -438,7 +457,11 @@ export default class MetaModule extends BaseModel {
     return root.moduleManagement;
   }
 
-  private static async executeModuleOp(action: ModuleAction, moduleName: string, opts: { withDemo?: boolean; operatorUserId?: string }): Promise<any> {
+  private static async executeModuleOp(
+    action: ModuleAction,
+    moduleName: string,
+    opts: { withDemo?: boolean; operatorUserId?: string }
+  ): Promise<ModuleOpResult> {
     const name = this.ensureModuleName(moduleName);
     const operatorUserId = String(opts?.operatorUserId || getUserId() || '').trim();
     const jobId = String(getCtxValue('jobId') || '').trim();
@@ -461,7 +484,7 @@ export default class MetaModule extends BaseModel {
     }
 
     let resultStatus: 'SUCCEEDED' | 'FAILED' = bridgeResult.ok ? 'SUCCEEDED' : 'FAILED';
-    let summary: any;
+    let summary: JsonRecord | undefined;
     let errorDomain = bridgeResult.errorDomain;
     let errorCode = bridgeResult.errorCode;
     let errorMessage = bridgeResult.errorMessage;
@@ -503,7 +526,7 @@ export default class MetaModule extends BaseModel {
         reload_triggered = !!reloadResult?.triggered;
         reload_failed = !!reloadResult?.failed;
         reload_web = reload_triggered && !reload_failed;
-      } catch (err) {
+      } catch {
         reload_triggered = true;
         reload_failed = true;
         reload_web = false;
@@ -515,7 +538,7 @@ export default class MetaModule extends BaseModel {
       reload_web = false;
     }
 
-    let job: any;
+    let job: { CreatedAt?: Date; FinishedAt?: Date; Attempt?: number; MaxAttempts?: number } | undefined;
     if (jobId) {
       try {
         job = await Job.GetJob(jobId, ['Id', 'CreatedAt', 'FinishedAt', 'Attempt', 'MaxAttempts']);

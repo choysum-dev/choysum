@@ -295,7 +295,7 @@ async function findExactRow<C extends ModelCtor>(
       { fields: ['Id', 'Model', 'Field', 'UserId', 'CompanyId', 'Value'] as never, limit: 2 }
     )
   );
-  return (rows && rows[0]) || undefined;
+  return ((rows && rows[0]) || undefined) as RowOf<C> | undefined;
 }
 
 /**

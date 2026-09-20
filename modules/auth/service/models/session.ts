@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Model, Field } from '@/core/service';
+import type { QueryCondition } from '@/core/service/api/query';
 import { wrapAuthError, AuthErrCode } from '../error';
 import { _t, _lt } from '../i18n';
 import User from './user/user';
@@ -99,7 +100,7 @@ export default class Session extends BaseModel {
     copy: false,
     string: _lt('Metadata', { scope: 'auth.model.Session.fields' }),
   })
-  Metadata: Record<string, any>;
+  Metadata: Record<string, unknown>;
 
   /**
    * Revoke one session by Id.
@@ -124,16 +125,16 @@ export default class Session extends BaseModel {
    */
   static async RevokeAllForUser(userId: string, exceptSessionId?: string): Promise<number> {
     try {
-      const condition: any = {
-        And: [
-          ['UserId', '=', userId],
-          ['Status', '=', 'active'],
-        ],
-      };
+      const andParts: QueryCondition<Session>[] = [
+        ['UserId', '=', userId],
+        ['Status', '=', 'active'],
+      ];
 
       if (exceptSessionId) {
-        condition.And.push(['Id', '!=', exceptSessionId]);
+        andParts.push(['Id', '!=', exceptSessionId]);
       }
+
+      const condition: QueryCondition<Session> = { And: andParts };
 
       const result = await this.Update(condition, {
         Status: 'revoked',

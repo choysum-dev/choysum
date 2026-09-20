@@ -153,7 +153,7 @@ export default class Schedule extends BaseModel {
     type: 'jsonobject',
     string: _lt('Payload Template', { scope: 'task.model.Schedule.fields' }),
   })
-  PayloadTemplateJson: Record<string, any>;
+  PayloadTemplateJson: Record<string, unknown>;
 
   /** User who owns the schedule configuration. */
   @Field({
@@ -247,7 +247,7 @@ export default class Schedule extends BaseModel {
     name: string,
     targetApp: string,
     fullMethod: string,
-    payloadTemplate: Record<string, any>,
+    payloadTemplate: Record<string, unknown>,
     schedulerUserId: string,
     triggeredByUserId: string,
     cronExpr: string,
@@ -306,7 +306,7 @@ export default class Schedule extends BaseModel {
   /** Triggers a schedule immediately and returns the created job id. */
   static async TriggerSchedule(
     scheduleId: string,
-    payloadOverride?: Record<string, any>,
+    payloadOverride?: Record<string, unknown>,
     schedulerUserIdOverride?: string,
     triggeredByUserId?: string
   ): Promise<{ jobId: string }> {

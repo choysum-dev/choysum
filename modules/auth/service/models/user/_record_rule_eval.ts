@@ -44,7 +44,10 @@ function buildRecordRuleMetaCacheKey(appName: string, modelName: string): string
   return `recordRuleMeta::${String(appName || '').trim()}::${String(modelName || '').trim()}`;
 }
 
-async function resolveRecordRuleMetaCached(appName: string, modelName: string): Promise<{ irApplicationId: string; modelHit: any; modelId: string }> {
+async function resolveRecordRuleMetaCached(
+  appName: string,
+  modelName: string
+): Promise<{ irApplicationId: string; modelHit: { Id?: string; CompanyField?: string } | undefined; modelId: string }> {
   const state = getRecordRuleReqState();
   const key = buildRecordRuleMetaCacheKey(appName, modelName);
   return await memoizeInReqState(state, key, async () => {
@@ -159,11 +162,13 @@ function ruleAudienceScope(roleId: string, roleScopesById: Record<string, RoleSc
   return { global: false, companies: [] };
 }
 
+type RecordRuleEvalRow = Pick<RoleRecordRule, 'Id' | 'RoleId' | 'Kind' | 'Condition' | 'MetaModelId' | 'MetaApplicationId'>;
+
 function buildRuleExpr(
-  rule: any,
+  rule: Partial<RecordRuleEvalRow>,
   companyGate: { enabled: boolean; ownershipField?: string },
   roleScopesById: Record<string, RoleScope>
-): any {
+): BaseQueryCondition | null {
   const roleId = maybeId(rule?.RoleId) || '';
   const scope = ruleAudienceScope(roleId, roleScopesById);
   const gate = buildCompanyGateExpr(scope, companyGate);
@@ -171,11 +176,12 @@ function buildRuleExpr(
   if (isTrueCondition(cond)) {
     return gate; // null ⇒ unconstrained TRUE for this rule
   }
-  if (!gate) return cond;
+  if (!gate) return cond ?? null;
+  if (!cond) return gate;
   return { And: [gate, cond] };
 }
 
-function orMerge(exprs: any[]): any {
+function orMerge(exprs: BaseQueryCondition[]): BaseQueryCondition {
   if (exprs.length === 1) return exprs[0];
   return { Or: exprs };
 }
@@ -252,8 +258,8 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       return { kind: 'false', reason: `record_rule_truncated_${input.opValue}_deny` };
     }
 
-    const grantExprs: any[] = [];
-    const restrictExprs: any[] = [];
+    const grantExprs: BaseQueryCondition[] = [];
+    const restrictExprs: BaseQueryCondition[] = [];
     const hitRuleIds: string[] = [];
     let hasUnconstrainedGrant = false;
 
@@ -292,7 +298,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       return { kind: 'false', reason: `no_grant_${input.opValue}_deny`, hitRuleIds: uniqueHitRuleIds };
     }
 
-    const parts: any[] = [];
+    const parts: BaseQueryCondition[] = [];
     if (!hasUnconstrainedGrant) {
       parts.push(orMerge(grantExprs));
     }
