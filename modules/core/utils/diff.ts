@@ -150,15 +150,16 @@ function normalizePatchForRelationUpdate(a: Plain, b: Plain, patch: Plain): Plai
  * Output: RelationPatch (create/delete/update)
  * ------------------------------------------------ */
 function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr: unknown[] = []): RelationPatch<BaseModel> | undefined {
-  const oById = new Map<unknown, unknown>();
+  // Key maps by string Id so numeric `1` and string `'1'` compare as the same link.
+  const oById = new Map<string, unknown>();
   for (const it of origArr) {
     const id = toId(it);
-    if (id != null) oById.set(id, it);
+    if (id != null) oById.set(String(id), it);
   }
-  const cById = new Map<unknown, unknown>();
+  const cById = new Map<string, unknown>();
   for (const it of currArr) {
     const id = toId(it);
-    if (id != null) cById.set(id, it);
+    if (id != null) cById.set(String(id), it);
   }
 
   // create: rows without Id.
@@ -171,10 +172,10 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
   // delete: rows that existed before but are now missing.
   const oIds = new Set(oById.keys());
   const cIds = new Set(cById.keys());
-  const del = [...oIds].filter(x => !cIds.has(x)).map(Id => ({ Id: String(Id) }));
+  const del = [...oIds].filter(x => !cIds.has(x)).map(Id => ({ Id }));
 
   // m2m additions are represented as Id-only links.
-  const addIdsAsCreate: ObjectRecord[] = kind === 'm2m' ? [...cIds].filter(x => !oIds.has(x)).map(Id => ({ Id: String(Id) })) : [];
+  const addIdsAsCreate: ObjectRecord[] = kind === 'm2m' ? [...cIds].filter(x => !oIds.has(x)).map(Id => ({ Id })) : [];
 
   // update: same Id, different content.
   const update: ObjectRecord[] = [];
@@ -187,8 +188,8 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
     const patch = normalizePatchForRelationUpdate(a, b, rawPatch);
     if (Object.keys(patch).length) {
       const sanitized = asObjectRecord(stripClientKeys(patch)) ?? {};
-      // RelationPatch.update requires string Id (numeric ids from toId must be coerced).
-      update.push({ Id: String(id), ...sanitized });
+      // RelationPatch.update requires string Id.
+      update.push({ Id: id, ...sanitized });
     }
   }
 

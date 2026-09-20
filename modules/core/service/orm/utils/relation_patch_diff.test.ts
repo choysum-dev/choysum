@@ -35,3 +35,23 @@ test('buildUpdatePayload stringifies numeric relation ids in o2m update patches'
     update: [{ Id: '10', Name: 'b' }],
   });
 });
+
+test('buildUpdatePayload creates new o2m children without an Id', () => {
+  const original = { Lines: [{ Id: 10, Name: 'a' }] };
+  const current = { Lines: [{ Id: 10, Name: 'a' }, { Name: 'b' }] };
+  const payload = buildUpdatePayload(original, current, {
+    Lines: { relation: 'OneToMany' },
+  });
+
+  expect(payload.Lines).toEqual({ create: [{ Name: 'b' }] });
+});
+
+test('buildUpdatePayload treats numeric and string ids of the same link as equal', () => {
+  const original = { Tags: [{ Id: 1 }] };
+  const current = { Tags: [{ Id: '1' }] };
+  const payload = buildUpdatePayload(original, current, {
+    Tags: { relation: 'ManyToMany' },
+  });
+
+  expect(payload.Tags).toBeUndefined();
+});
