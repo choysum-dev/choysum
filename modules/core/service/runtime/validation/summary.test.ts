@@ -178,6 +178,9 @@ test('resolveValidationSummary resolves firstKernelCode without field alias and 
   expect(summary.getFieldFirstCode('Name')).toBe(undefined);
   expect(summary.getFieldKernelCode('Name')).toBe('kernel_from_first');
   expect(summary.fieldIssueSummary.Name?.firstKernelCode).toBe('kernel_from_first');
+  expect(
+    resolveValidationSummary({ fieldIssueSummary: JSON.stringify({ Name: { kernelCode: 'kernel_legacy' } }) }).getFieldKernelCode('Name')
+  ).toBe('kernel_legacy');
   expect(summary.getFieldFirstCode('   ')).toBe(undefined);
   expect(summary.getFieldKernelCode('   ')).toBe(undefined);
 });
