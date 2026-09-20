@@ -188,8 +188,8 @@ function diffArrayRelation(kind: 'o2m' | 'm2m', origArr: unknown[] = [], currArr
     const patch = normalizePatchForRelationUpdate(a, b, rawPatch);
     if (Object.keys(patch).length) {
       const sanitized = asObjectRecord(stripClientKeys(patch)) ?? {};
-      // RelationPatch.update requires string Id.
-      update.push({ Id: id, ...sanitized });
+      // RelationPatch.update requires string Id (map key wins over any diffed Id).
+      update.push({ ...sanitized, Id: id });
     }
   }
 

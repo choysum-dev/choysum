@@ -55,3 +55,13 @@ test('buildUpdatePayload treats numeric and string ids of the same link as equal
 
   expect(payload.Tags).toBeUndefined();
 });
+
+test('buildUpdatePayload keeps the string id when the matched row also changed', () => {
+  const original = { Lines: [{ Id: '10', Name: 'a' }] };
+  const current = { Lines: [{ Id: 10, Name: 'b' }] };
+  const payload = buildUpdatePayload(original, current, {
+    Lines: { relation: 'OneToMany' },
+  });
+
+  expect(payload.Lines).toEqual({ update: [{ Id: '10', Name: 'b' }] });
+});
