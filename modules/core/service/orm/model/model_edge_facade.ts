@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { EntityConverter } from '../utils/converter';
-import type { Entity } from '../repository/types';
-import type { FieldSelection } from '../repository/types';
+import type { FieldSelection, SelectResult } from '../repository/types';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
 import { createModelProxy, getModelRepository } from './model_internal_facade';
@@ -11,7 +10,7 @@ import { createModelProxy, getModelRepository } from './model_internal_facade';
 type ModelEdgeFacadeCtor<T extends BaseModel> = ModelCtor<T>;
 
 type ModelEdgeFacadeInstance = {
-  entity: Entity;
+  entity: SelectResult;
   fields?: FieldSelection<BaseModel>;
 };
 
@@ -20,16 +19,16 @@ export async function withModelSavepoint<T extends BaseModel, R>(ModelCtor: Mode
   return await repo.withSavepoint(fn, name);
 }
 
-export function hydrateModelFacade<T extends BaseModel>(ModelCtor: ModelEdgeFacadeCtor<T>, entity: Entity, fields?: FieldSelection<T>): T {
+export function hydrateModelFacade<T extends BaseModel>(ModelCtor: ModelEdgeFacadeCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
   return createModelProxy<T>(ModelCtor, entity, fields);
 }
 
-export function toPlainObject(instance: BaseModel): Entity {
+export function toPlainObject(instance: BaseModel): SelectResult {
   const model = instance as unknown as ModelEdgeFacadeInstance;
   return EntityConverter.modelToPlainObject(instance, model.fields);
 }
 
-export function toEntity(instance: BaseModel): Entity {
+export function toEntity(instance: BaseModel): SelectResult {
   const model = instance as unknown as ModelEdgeFacadeInstance;
   return { ...model.entity };
 }

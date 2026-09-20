@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Entity } from '../types';
+import type { SelectResult } from '../types';
 import type { FieldMetadata, ModelMetadata } from '../../metadata';
 import { getCurrencyFieldName } from '../../metadata/decimal_like';
 import { normalizeCurrencyRefId, readDecimalDigitsFromCurrencyValue } from '../../metadata/monetary_currency';
@@ -55,10 +55,10 @@ export async function browseCurrencyDecimalDigits(currencyIds: string[]): Promis
  */
 export async function stampMonetaryScalesForWrite(
   meta: ModelMetadata,
-  input: Entity,
-  current?: Entity | null,
+  input: SelectResult,
+  current?: SelectResult | null,
   browseDigits: MonetaryDigitsBrowser = browseCurrencyDecimalDigits
-): Promise<Entity> {
+): Promise<SelectResult> {
   const inputRecord = asObjectRecord(input);
   if (!inputRecord || !meta.fields) return input;
 
@@ -99,7 +99,7 @@ export async function stampMonetaryScalesForWrite(
   return input;
 }
 
-function collectPendingCurrencyIdsForStamp(meta: ModelMetadata, input: Entity, current?: Entity | null): string[] {
+function collectPendingCurrencyIdsForStamp(meta: ModelMetadata, input: SelectResult, current?: SelectResult | null): string[] {
   const inputRecord = asObjectRecord(input);
   if (!inputRecord || !meta.fields) return [];
   const ids: string[] = [];
@@ -124,9 +124,9 @@ function collectPendingCurrencyIdsForStamp(meta: ModelMetadata, input: Entity, c
  */
 export async function stampMonetaryScalesForWriteMany(
   meta: ModelMetadata,
-  items: Array<{ input: Entity; current?: Entity | null }>,
+  items: Array<{ input: SelectResult; current?: SelectResult | null }>,
   browseDigits: MonetaryDigitsBrowser = browseCurrencyDecimalDigits
-): Promise<Entity[]> {
+): Promise<SelectResult[]> {
   if (!items.length) return [];
 
   const pendingIds: string[] = [];
@@ -143,7 +143,7 @@ export async function stampMonetaryScalesForWriteMany(
     return out;
   };
 
-  const out: Entity[] = [];
+  const out: SelectResult[] = [];
   for (const item of items) {
     out.push(await stampMonetaryScalesForWrite(meta, item.input, item.current, cachedBrowse));
   }

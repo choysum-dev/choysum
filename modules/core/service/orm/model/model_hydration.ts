@@ -3,7 +3,7 @@
 
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
-import type { Entity, FieldSelection } from '../repository/types';
+import type { SelectResult, FieldSelection } from '../repository/types';
 import { ModelProxyFactory } from '../../runtime/proxy';
 import { asRuntimeCarrier } from '../../../utils/object';
 
@@ -12,7 +12,7 @@ type HydrationModelCtor<T extends BaseModel = BaseModel> = ModelCtor<T>;
 /**
  * Hydrates a proxy-wrapped model instance from an entity payload.
  */
-export function hydrateModel<T extends BaseModel>(ModelCtor: HydrationModelCtor<T>, entity: Entity, fields?: FieldSelection<T>): T {
+export function hydrateModel<T extends BaseModel>(ModelCtor: HydrationModelCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
   const factoryToken = asRuntimeCarrier(ModelCtor)?.FACTORY_TOKEN as symbol;
   const instance = new ModelCtor(factoryToken, entity, fields) as T;
   return new ModelProxyFactory<T>(instance, entity, fields).create();

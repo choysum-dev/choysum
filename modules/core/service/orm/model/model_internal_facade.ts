@@ -3,8 +3,7 @@
 
 import { RepositoryFactory } from '../repository/repository_factory';
 import type { Repository } from '../repository';
-import type { Entity } from '../repository/types';
-import type { FieldSelection } from '../repository/types';
+import type { FieldSelection, SelectResult } from '../repository/types';
 import { hydrateModel } from './model_hydration';
 import type BaseModel from './model';
 import type { ModelCtor } from './types';
@@ -15,6 +14,6 @@ export function getModelRepository<T extends BaseModel>(ModelCtor: ModelInternal
   return RepositoryFactory.getRepository(ModelCtor);
 }
 
-export function createModelProxy<T extends BaseModel>(ModelCtor: ModelInternalFacadeCtor<T>, entity: Entity, fields?: FieldSelection<T>): T {
+export function createModelProxy<T extends BaseModel>(ModelCtor: ModelInternalFacadeCtor<T>, entity: SelectResult, fields?: FieldSelection<T>): T {
   return hydrateModel<T>(ModelCtor, entity, fields);
 }

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type BaseModel from './model';
-import type { Entity, FieldSelection, SoftDeleteOptions, UpdateOptions, DeleteOptions } from '../repository/types';
+import type { SelectResult, FieldSelection, SoftDeleteOptions } from '../repository/types';
 import { MODEL_SYMBOLS } from '../../runtime/proxy';
 import { LockUtils } from '../utils/lock';
 import { EntityConverter } from '../utils/converter';
@@ -58,7 +58,7 @@ function mergeFields(instance: BaseModel, newFields: InstanceLoadFieldSelection)
   state.fields = [...currentFields, ...newFields];
 }
 
-export async function updateModelInstance<T extends BaseModel>(instance: T, options?: UpdateOptions): Promise<T> {
+export async function updateModelInstance<T extends BaseModel>(instance: T, options?: SoftDeleteOptions): Promise<T> {
   if (!instance.Id) {
     throw new Error('Cannot update an instance without Id');
   }
@@ -175,7 +175,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
   }
 }
 
-export async function deleteModelInstance(instance: BaseModel, options?: DeleteOptions): Promise<void> {
+export async function deleteModelInstance(instance: BaseModel, options?: SoftDeleteOptions): Promise<void> {
   if (!instance.Id) {
     throw new Error('Cannot delete an instance without Id');
   }

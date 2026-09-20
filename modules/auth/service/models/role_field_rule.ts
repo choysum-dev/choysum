@@ -5,7 +5,7 @@ import { Model, Field, type ModelCtor, type RowOf } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection, PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
-import type { QueryCondition, UpdateOptions } from '@/core/service/api/query';
+import type { QueryCondition, SoftDeleteOptions } from '@/core/service/api/query';
 import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
 import { listLogicalModelSelection } from './_logical_model_registry';
 import { _lt } from '../i18n';
@@ -224,7 +224,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
     condition: QueryCondition<RowOf<C>>,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     RoleFieldRule._prepareValues(values as Record<string, unknown>, 'update');
     return await super.Update<C, F>(condition, values, returnFields, options);
@@ -238,7 +238,7 @@ export default class RoleFieldRule extends AuthzMutationModel {
     id: string,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     RoleFieldRule._prepareValues(values as Record<string, unknown>, 'update');
     return await super.UpdateById<C, F>(id, values, returnFields, options);

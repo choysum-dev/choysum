@@ -120,11 +120,6 @@ export type OrderBy<T> = {
 };
 
 /**
- * Soft-delete visibility mode.
- */
-export type SoftDeleteMode = 'default' | 'withDeleted' | 'onlyDeleted';
-
-/**
  * Options that control soft-delete visibility.
  */
 export interface SoftDeleteOptions {
@@ -158,18 +153,3 @@ export interface SearchOptions<T> extends SoftDeleteOptions {
    */
   relationConditionSource?: RelationConditionSource;
 }
-
-/**
- * Count options accepted by repository counts.
- */
-export interface CountOptions extends SoftDeleteOptions {}
-
-/**
- * Update options accepted by repository writes.
- */
-export interface UpdateOptions extends SoftDeleteOptions {}
-
-/**
- * Delete options accepted by repository deletes.
- */
-export interface DeleteOptions extends SoftDeleteOptions {}

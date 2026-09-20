@@ -28,7 +28,7 @@ export {
   resolveRequestLang,
 } from '../i18n';
 
-export type { SelectResult, Entity, Selectable, Queryable } from './common';
+export type { SelectResult, Selectable } from './common';
 export type { Insertable, Updateable } from './input';
 export type { FieldPath, FieldPathType } from './field';
 export type { DeepRelationSelection, FieldSelection, Projected, PartialOrProjected, RowOrProjected } from './selection';
@@ -55,9 +55,6 @@ export type {
   QueryConditionNode,
   SearchOptions,
   SoftDeleteOptions,
-  CountOptions,
-  UpdateOptions,
-  DeleteOptions,
   OrderBy,
   AggregateFunction,
   GroupBySpec,

@@ -5,7 +5,7 @@ import { sql } from 'kysely';
 import BaseModel from '../model/model';
 import {
   Compilable,
-  Entity,
+  SelectResult,
   DeleteResult,
   UpdateResult,
   SearchOptions,
@@ -313,7 +313,7 @@ export class Repository {
     return { denyWriteFields: spec.denyWriteFields, reason: spec.reason };
   }
 
-  private async assertFieldRuleWriteAllowed(payload: Entity): Promise<void> {
+  private async assertFieldRuleWriteAllowed(payload: SelectResult): Promise<void> {
     await assertRepositoryFieldRuleWriteAllowed({
       ...this.createFieldRuleDeps(),
       payload,
@@ -519,16 +519,16 @@ export class Repository {
       getScalarFields: (meta: ModelMetadata) => this.getScalarFields(meta),
       makeSelectCtx: (builder: unknown, selfTable: string, curMeta?: ModelMetadata) => this.makeSelectCtx(builder, selfTable, curMeta),
       aliasSelection: (selection: unknown, alias: string) => this.aliasSelection(selection, alias),
-      decodeFromDb: (row: Entity) => this.decodeFromDb(row),
+      decodeFromDb: (row: SelectResult) => this.decodeFromDb(row),
     };
   }
 
   private createUpdateWritePayloadDeps() {
     return {
-      assertFieldRuleWriteAllowed: (payload: Entity) => this.assertFieldRuleWriteAllowed(payload),
-      applyDefaultCompanyIdOnUpdate: (payload: Entity) => this.applyDefaultCompanyIdOnUpdate(payload),
-      validateFields: (input: Entity, mode: ConstraintMode, current?: ObjectRecord) => this.validateFields(input, mode, current),
-      encodeForDb: (input: Entity) => this.encodeForDb(input),
+      assertFieldRuleWriteAllowed: (payload: SelectResult) => this.assertFieldRuleWriteAllowed(payload),
+      applyDefaultCompanyIdOnUpdate: (payload: SelectResult) => this.applyDefaultCompanyIdOnUpdate(payload),
+      validateFields: (input: SelectResult, mode: ConstraintMode, current?: ObjectRecord) => this.validateFields(input, mode, current),
+      encodeForDb: (input: SelectResult) => this.encodeForDb(input),
     };
   }
 
@@ -547,7 +547,7 @@ export class Repository {
   private createUpdateWritePostWriteDeps() {
     return {
       invalidateCache: () => this.invalidateCache(),
-      recomputePersistForUpdate: async (payload: { targetIds: string[]; sanitized: Entity }) => {
+      recomputePersistForUpdate: async (payload: { targetIds: string[]; sanitized: SelectResult }) => {
         await this.recomputePersistForUpdate(payload);
       },
     };
@@ -601,7 +601,7 @@ export class Repository {
   private createCreateWritePostWriteDeps() {
     return {
       assertRecordRuleAllCreatedAllowed: (createdIds: string[], env: ConditionEnvelope) => this.assertRecordRuleAllCreatedAllowed(createdIds, env),
-      recomputePersistForCreate: async (createdIds: string[], sanitizedEntities: Entity[]) => {
+      recomputePersistForCreate: async (createdIds: string[], sanitizedEntities: SelectResult[]) => {
         await this.recomputePersistForCreate(createdIds, sanitizedEntities);
       },
     };
@@ -609,10 +609,10 @@ export class Repository {
 
   private createCreateWritePayloadDeps() {
     return {
-      assertFieldRuleWriteAllowed: (payload: Entity) => this.assertFieldRuleWriteAllowed(payload),
-      applyDefaultCompanyIdOnCreate: (entity: Entity) => this.applyDefaultCompanyIdOnCreate(entity),
-      validateFields: (input: Entity, mode: 'create') => this.validateFields(input, mode),
-      encodeForDb: (input: Entity) => this.encodeForDb(input),
+      assertFieldRuleWriteAllowed: (payload: SelectResult) => this.assertFieldRuleWriteAllowed(payload),
+      applyDefaultCompanyIdOnCreate: (entity: SelectResult) => this.applyDefaultCompanyIdOnCreate(entity),
+      validateFields: (input: SelectResult, mode: 'create') => this.validateFields(input, mode),
+      encodeForDb: (input: SelectResult) => this.encodeForDb(input),
     };
   }
 
@@ -672,11 +672,11 @@ export class Repository {
     return normalizeRepositoryCompanyIdForWrite(this.ctx);
   }
 
-  private applyDefaultCompanyIdOnCreate(entity: Entity): Entity {
+  private applyDefaultCompanyIdOnCreate(entity: SelectResult): SelectResult {
     return applyRepositoryDefaultCompanyIdOnCreate(this.createCompanyScopeDeps(), entity);
   }
 
-  private applyDefaultCompanyIdOnUpdate(vals: Entity): Entity {
+  private applyDefaultCompanyIdOnUpdate(vals: SelectResult): SelectResult {
     return applyRepositoryDefaultCompanyIdOnUpdate(this.createCompanyScopeDeps(), vals);
   }
 
@@ -774,12 +774,12 @@ export class Repository {
   }
 
   /* ----------------------------- Pre-write encoding ----------------------------- */
-  private encodeForDb(input: Entity): Entity {
+  private encodeForDb(input: SelectResult): SelectResult {
     return encodeForDbExternal(this.meta, input);
   }
 
   /* ----------------------------- Top-level post-read decoding ----------------------------- */
-  private decodeFromDb(row: Entity): Entity {
+  private decodeFromDb(row: SelectResult): SelectResult {
     return decodeFromDbExternal(this.meta, row);
   }
 
@@ -791,8 +791,8 @@ export class Repository {
    * - __relationsArr: flattened relation entries in [key, entry][] form.
    * - __keyMap: Pascal column name to the first-row concrete key that exists in Pascal, camel, or snake form.
    */
-  private decodeRowWithTree(meta: ModelMetadata, node: SelectionNode, row: unknown): Entity {
-    return decodeRowWithTreeExternal(meta, node, row) as Entity;
+  private decodeRowWithTree(meta: ModelMetadata, node: SelectionNode, row: unknown): SelectResult {
+    return decodeRowWithTreeExternal(meta, node, row) as SelectResult;
   }
 
   /* ----------------------------- CRUD primitives ----------------------------- */
@@ -820,7 +820,7 @@ export class Repository {
   /**
    * Unified field-validation entry point.
    */
-  private async validateFields(input: Entity, mode: ConstraintMode, current?: ObjectRecord): Promise<void> {
+  private async validateFields(input: SelectResult, mode: ConstraintMode, current?: ObjectRecord): Promise<void> {
     await validateRepositoryWrite({
       meta: this.meta,
       repository: this,
@@ -916,7 +916,7 @@ export class Repository {
     return Array.from(fields);
   }
 
-  private async loadRowsForPersistRecompute(ids: string[], seedFields: Iterable<string>): Promise<Map<string, Entity>> {
+  private async loadRowsForPersistRecompute(ids: string[], seedFields: Iterable<string>): Promise<Map<string, SelectResult>> {
     const normalizedIds = Array.from(new Set((ids || []).map(id => String(id || '').trim()).filter(Boolean)));
     if (!normalizedIds.length) {
       return new Map();
@@ -933,7 +933,7 @@ export class Repository {
       });
     });
 
-    const byId = new Map<string, Entity>();
+    const byId = new Map<string, SelectResult>();
     for (const row of rows || []) {
       const id = this.getEntityId(row);
       if (!id) continue;
@@ -942,13 +942,13 @@ export class Repository {
     return byId;
   }
 
-  private async applyPersistComputeFollowUps(followUps: Array<{ id: string; values: Entity }>): Promise<void> {
+  private async applyPersistComputeFollowUps(followUps: Array<{ id: string; values: SelectResult }>): Promise<void> {
     if (!followUps.length) return;
 
     await this.withValidationBypass(async () => {
       for (const item of followUps) {
         const id = String(item?.id || '').trim();
-        const values = (item?.values || {}) as Entity;
+        const values = (item?.values || {}) as SelectResult;
         if (!id || !Object.keys(values).length) continue;
 
         const idCondition: UntypedQueryCondition = ['Id', '=', id];
@@ -967,7 +967,7 @@ export class Repository {
     });
   }
 
-  private async recomputePersistForCreate(createdIds: string[], sanitizedEntities: Entity[]): Promise<void> {
+  private async recomputePersistForCreate(createdIds: string[], sanitizedEntities: SelectResult[]): Promise<void> {
     const graph = this.meta.computeGraph;
     if (!graph || !graph.persistedComputeFields?.size) return;
 
@@ -987,7 +987,7 @@ export class Repository {
     if (!mergedSeed.size) return;
 
     const rowsById = await this.loadRowsForPersistRecompute(normalizedIds, mergedSeed);
-    const followUps: Array<{ id: string; values: Entity }> = [];
+    const followUps: Array<{ id: string; values: SelectResult }> = [];
 
     for (const id of normalizedIds) {
       const entity = rowsById.get(id);
@@ -999,7 +999,7 @@ export class Repository {
       const changed = new Set<string>(baseSeed);
       await ComputeEngine.recompute(this.meta, entity, changed, 'persist');
 
-      const followUp: Entity = {};
+      const followUp: SelectResult = {};
       changed.forEach(field => {
         if (baseSeed.has(field)) return;
         if (Object.prototype.hasOwnProperty.call(entity, field)) {
@@ -1015,18 +1015,18 @@ export class Repository {
     await this.applyPersistComputeFollowUps(followUps);
   }
 
-  private async recomputePersistForUpdate(payload: { targetIds: string[]; sanitized: Entity }): Promise<void> {
+  private async recomputePersistForUpdate(payload: { targetIds: string[]; sanitized: SelectResult }): Promise<void> {
     const graph = this.meta.computeGraph;
     if (!graph || !graph.persistedComputeFields?.size) return;
 
     const normalizedIds = Array.from(new Set((payload?.targetIds || []).map(id => String(id || '').trim()).filter(Boolean)));
     if (!normalizedIds.length) return;
 
-    const baseSeed = new Set<string>(Object.keys((payload?.sanitized || {}) as Entity));
+    const baseSeed = new Set<string>(Object.keys((payload?.sanitized || {}) as SelectResult));
     if (!baseSeed.size) return;
 
     const rowsById = await this.loadRowsForPersistRecompute(normalizedIds, baseSeed);
-    const followUps: Array<{ id: string; values: Entity }> = [];
+    const followUps: Array<{ id: string; values: SelectResult }> = [];
 
     for (const id of normalizedIds) {
       const entity = rowsById.get(id);
@@ -1035,7 +1035,7 @@ export class Repository {
       const changed = new Set<string>(baseSeed);
       await ComputeEngine.recompute(this.meta, entity, changed, 'persist');
 
-      const followUp: Entity = {};
+      const followUp: SelectResult = {};
       changed.forEach(field => {
         if (baseSeed.has(field)) return;
         if (Object.prototype.hasOwnProperty.call(entity, field)) {
@@ -1054,7 +1054,7 @@ export class Repository {
   /**
    * Create records.
    */
-  public async create(value: Entity[]): Promise<string[]> {
+  public async create(value: SelectResult[]): Promise<string[]> {
     return await executeRepositoryCreate(this.createCreateWriteDeps(), value);
   }
 
@@ -1082,7 +1082,7 @@ export class Repository {
   /**
    * Update records.
    */
-  public async update(vals: Entity, condition: UntypedQueryCondition): Promise<UpdateResult[]> {
+  public async update(vals: SelectResult, condition: UntypedQueryCondition): Promise<UpdateResult[]> {
     return await executeRepositoryUpdate(this.createUpdateWriteDeps(), vals, condition);
   }
 
@@ -1135,7 +1135,7 @@ export class Repository {
 
   /* ----------------------------- Search ----------------------------- */
 
-  public async search(condition: UntypedQueryCondition, options?: SearchOptions<ObjectRecord>): Promise<Entity[]> {
+  public async search(condition: UntypedQueryCondition, options?: SearchOptions<ObjectRecord>): Promise<SelectResult[]> {
     return await executeRepositorySearch(this.createSearchDeps(), condition, options);
   }
 

@@ -15,8 +15,7 @@ import type {
   PartialOrProjected,
   RowOrProjected,
   QueryCondition,
-  DeleteOptions,
-  UpdateOptions,
+  SoftDeleteOptions,
 } from '../repository/types';
 import {
   getChoysumI18nBridge,
@@ -477,7 +476,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     condition: QueryCondition<RowOf<C>>,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
@@ -499,7 +498,7 @@ export default class TranslationTermBaseModel extends BaseModel {
     id: string,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
@@ -520,7 +519,7 @@ export default class TranslationTermBaseModel extends BaseModel {
   static override async Delete<C extends ModelCtor>(
     this: C,
     condition: QueryCondition<RowOf<C>>,
-    options?: DeleteOptions
+    options?: SoftDeleteOptions
   ): Promise<number> {
     const self = asTermCtor(this);
     const application = hostApplication(this);
@@ -537,7 +536,7 @@ export default class TranslationTermBaseModel extends BaseModel {
   static override async DeleteById<C extends ModelCtor>(
     this: C,
     id: string,
-    options?: DeleteOptions
+    options?: SoftDeleteOptions
   ): Promise<number> {
     const self = asTermCtor(this);
     const application = hostApplication(this);

@@ -8,14 +8,11 @@ import type { DataSetSnapshot } from '@/web/web/query/types';
 import type { BaseModel } from '@/core/service';
 import type { ClientModel, ClientModelService, FieldSelection, Insertable, Updateable } from '@/core/rpc';
 import type {
-  CountOptions,
-  DeleteOptions,
+  SoftDeleteOptions,
   QueryCondition,
   ReadGroupCountOptions,
   ReadGroupOptions,
   SearchOptions,
-  SoftDeleteOptions,
-  UpdateOptions,
 } from '@/core/service/api/query';
 import type { PartialOrProjected, RowOrProjected } from '@/core/service/api/selection';
 import type { OnchangeDraft, OnchangeResult } from '@/core/service/runtime/onchange/types';
@@ -57,13 +54,13 @@ type StoreUpdate<T extends BaseModel> = {
     condition: QueryCondition<T>,
     values: Partial<Updateable<T>>,
     returnFields: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<ClientModel<PartialOrProjected<T, F>>>>;
   (
     condition: QueryCondition<T>,
     values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<ClientModel<Partial<T>>>>;
 };
 type StoreUpdateById<T extends BaseModel> = {
@@ -71,13 +68,13 @@ type StoreUpdateById<T extends BaseModel> = {
     id: string,
     values: Partial<Updateable<T>>,
     returnFields: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<ClientModel<PartialOrProjected<T, F>>>;
   (
     id: string,
     values: Partial<Updateable<T>>,
     returnFields?: FieldSelection<T>,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<ClientModel<Partial<T>>>;
 };
 type StoreCopy<T extends BaseModel> = (
@@ -95,7 +92,7 @@ type StoreNameCreate<T extends BaseModel> = <F extends FieldSelection<T> | undef
   values?: Partial<Insertable<T>>,
   options?: Omit<NameCreateOptions<T>, 'returnFields'> & { returnFields?: F }
 ) => Promise<ClientModel<RowOrProjected<T, F>>>;
-type StoreCount<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: CountOptions) => Promise<number>;
+type StoreCount<T extends BaseModel> = (condition?: QueryCondition<T> | [], options?: SoftDeleteOptions) => Promise<number>;
 type StoreSearch<T extends BaseModel> = <F extends FieldSelection<T> | undefined = undefined>(
   condition?: QueryCondition<T> | [],
   options?: Omit<SearchOptions<T>, 'fields'> & { fields?: F }
@@ -110,8 +107,8 @@ type StoreReadGroupCount<T extends BaseModel> = (
   condition?: QueryCondition<T> | [],
   options?: ReadGroupCountOptions<T>
 ) => Promise<number>;
-type StoreDelete<T extends BaseModel> = (condition: QueryCondition<T>, options?: DeleteOptions) => Promise<number>;
-type StoreDeleteById<T extends BaseModel> = (id: string, options?: DeleteOptions) => Promise<number>;
+type StoreDelete<T extends BaseModel> = (condition: QueryCondition<T>, options?: SoftDeleteOptions) => Promise<number>;
+type StoreDeleteById<T extends BaseModel> = (id: string, options?: SoftDeleteOptions) => Promise<number>;
 type StoreOnchange<T extends BaseModel> = (
   draft: OnchangeDraft,
   changed: OnchangeTrigger<T>[],

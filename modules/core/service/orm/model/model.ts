@@ -1,9 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Entity } from '../repository/types';
 import { Field, SqlCompute } from '../decorator';
-import {
+import type {
   QueryCondition,
   UntypedQueryCondition,
   Operator,
@@ -14,13 +13,11 @@ import {
   PartialOrProjected,
   RowOrProjected,
   SoftDeleteOptions,
-  CountOptions,
-  UpdateOptions,
-  DeleteOptions,
   ReadGroupOptions,
   ReadGroupResult,
   ReadGroupCountOptions,
   GroupBySpec,
+  SelectResult,
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
 import type { OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';
@@ -536,7 +533,7 @@ class BaseModel {
    */
   constructor(
     factoryToken: symbol,
-    private readonly entity: Entity,
+    private readonly entity: SelectResult,
     private fields?: unknown
   ) {
     if (factoryToken !== BaseModel.FACTORY_TOKEN) {
@@ -559,14 +556,14 @@ class BaseModel {
   /**
    * Updates this model instance in place and returns the refreshed instance.
    */
-  async update(options?: UpdateOptions): Promise<this> {
+  async update(options?: SoftDeleteOptions): Promise<this> {
     return await updateModelInstance(this, options);
   }
 
   /**
    * Deletes this model instance.
    */
-  async delete(options?: DeleteOptions): Promise<void> {
+  async delete(options?: SoftDeleteOptions): Promise<void> {
     await deleteModelInstance(this, options);
   }
 
@@ -776,7 +773,7 @@ class BaseModel {
   static async Count<C extends ModelCtor>(
     this: C,
     condition: QueryCondition<RowOf<C>> | [] = [],
-    options?: CountOptions
+    options?: SoftDeleteOptions
   ): Promise<number> {
     return await countModels(asCollectionCtor(this), condition as never, options);
   }
@@ -813,7 +810,7 @@ class BaseModel {
     condition: QueryCondition<RowOf<C>>,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<Array<PartialOrProjected<RowOf<C>, F>>> {
     return asPartialRows<C>(
       await updateModels(asCollectionCtor(this), condition as never, values as never, returnFields as never, options)
@@ -828,7 +825,7 @@ class BaseModel {
     id: string,
     values: Partial<Updateable<RowOf<C>>>,
     returnFields?: F,
-    options?: UpdateOptions
+    options?: SoftDeleteOptions
   ): Promise<PartialOrProjected<RowOf<C>, F>> {
     return asPartialRow<C>(
       await updateModelById(asCollectionCtor(this), id, values as never, returnFields as never, options)
@@ -841,7 +838,7 @@ class BaseModel {
   static async Delete<C extends ModelCtor>(
     this: C,
     condition: QueryCondition<RowOf<C>>,
-    options?: DeleteOptions
+    options?: SoftDeleteOptions
   ): Promise<number> {
     return await deleteModels(asCollectionCtor(this), condition as never, options);
   }
@@ -849,7 +846,7 @@ class BaseModel {
   /**
    * Deletes a single record by Id.
    */
-  static async DeleteById<C extends ModelCtor>(this: C, id: string, options?: DeleteOptions): Promise<number> {
+  static async DeleteById<C extends ModelCtor>(this: C, id: string, options?: SoftDeleteOptions): Promise<number> {
     return await deleteModelById(asCollectionCtor(this), id, options);
   }
 

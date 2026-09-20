@@ -10,8 +10,6 @@ import type { ObjectRecord } from '../../../../utils/types';
 import type { NonNil } from './shared';
 
 export type SelectResult = ObjectRecord;
-/** @deprecated Prefer SelectResult. Kept for compatibility. */
-export type Entity = SelectResult;
 
 type IsExactlyAny<T> = 0 extends 1 & T ? true : false;
 
@@ -63,5 +61,3 @@ export type FilteredInputProperties<T> = {
 };
 
 export type Selectable<T> = FilteredQueryProperties<T>;
-/** @deprecated Prefer Selectable<T>. Kept for compatibility. */
-export type Queryable<T> = Selectable<T>;

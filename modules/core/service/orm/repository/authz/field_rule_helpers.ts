@@ -4,7 +4,7 @@
 import { MetadataStorage, type ModelMetadata } from '../../metadata';
 import type BaseModel from '../../model/model';
 import type { ModelCtor } from '../../metadata/field';
-import type { Entity } from '../types';
+import type { SelectResult } from '../types';
 import { RepositoryFactory } from '../repository_factory';
 import { AuthUserService, isAuthServiceNotPresent, isAuthServiceUnavailable } from './auth_user_service';
 import { getRepositoryCurrentReq, getFieldRuleBypassDepth } from './authz_runtime';
@@ -182,7 +182,7 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
   return spec;
 }
 
-export async function assertRepositoryFieldRuleWriteAllowed(params: RepositoryFieldRuleDeps & { payload: Entity }): Promise<void> {
+export async function assertRepositoryFieldRuleWriteAllowed(params: RepositoryFieldRuleDeps & { payload: SelectResult }): Promise<void> {
   if (!repositoryFieldRuleEnabled()) return;
   if (params.isControlPlaneMetaModel()) return;
   if (params.isFieldRuleControlPlaneModel()) return;

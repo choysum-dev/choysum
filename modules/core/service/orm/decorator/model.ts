@@ -64,9 +64,6 @@ export interface ModelOptions {
   companyField?: string;
 }
 
-/** @deprecated Prefer ModelOptions. Kept for compatibility. */
-export type modelOptions = ModelOptions;
-
 function toSnakeCase(str: string): string {
   return (
     str

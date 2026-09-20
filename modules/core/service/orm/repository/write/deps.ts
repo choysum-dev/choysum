@@ -6,7 +6,7 @@ import type { RepositoryPermissionDeniedFn } from '../authz/types';
 import type {
   UntypedQueryCondition,
   ConditionEnvelope,
-  Entity,
+  SelectResult,
   RepositoryExecute,
   RepositoryGetScalarFieldsDepsLike,
   RepositoryMutationPayloadGuardEncodeDepsLike,
@@ -23,14 +23,14 @@ type RepositoryDbLike = unknown;
 type RepositorySelectCtxFactory = RepositorySelectCtxFactoryLike<ModelMetadata>;
 type RepositorySelectionAliaser = RepositorySelectionAliaserLike;
 
-type RepositoryCreateMutationPayloadDepsParams = RepositoryMutationPayloadGuardEncodeDepsLike<Entity> &
-  RepositoryMutationPayloadValidateDepsLike<Entity, 'create'> & {
-    applyDefaultCompanyIdOnCreate: (entity: Entity) => Entity;
+type RepositoryCreateMutationPayloadDepsParams = RepositoryMutationPayloadGuardEncodeDepsLike<SelectResult> &
+  RepositoryMutationPayloadValidateDepsLike<SelectResult, 'create'> & {
+    applyDefaultCompanyIdOnCreate: (entity: SelectResult) => SelectResult;
   };
 
-type RepositoryUpdateMutationPayloadDepsParams = RepositoryMutationPayloadGuardEncodeDepsLike<Entity> &
-  RepositoryMutationPayloadValidateDepsLike<Entity, 'update', ObjectRecord> & {
-    applyDefaultCompanyIdOnUpdate: (vals: Entity) => Entity;
+type RepositoryUpdateMutationPayloadDepsParams = RepositoryMutationPayloadGuardEncodeDepsLike<SelectResult> &
+  RepositoryMutationPayloadValidateDepsLike<SelectResult, 'update', ObjectRecord> & {
+    applyDefaultCompanyIdOnUpdate: (vals: SelectResult) => SelectResult;
   };
 
 type RepositoryMutationWriteTargetDepsParams<TOp extends 'delete' | 'write'> = {
@@ -61,7 +61,7 @@ type RepositoryCreateWriteDepsParams = {
   execute: RepositoryExecute;
   wrapSqlWriteError: (error: unknown, mode: 'create') => never;
   assertRecordRuleAllCreatedAllowed: (createdIds: string[], env: ConditionEnvelope) => Promise<void>;
-  recomputePersistForCreate?: (createdIds: string[], sanitizedEntities: Entity[]) => Promise<void>;
+  recomputePersistForCreate?: (createdIds: string[], sanitizedEntities: SelectResult[]) => Promise<void>;
 } & RepositoryCreateMutationPayloadDepsParams;
 
 type RepositoryDeleteWriteDepsParams = RepositoryMutationWriteFacadeDepsParams<'delete'> &
@@ -83,9 +83,9 @@ type RepositoryUpdateWriteDepsParams = RepositoryMutationWriteFacadeDepsParams<'
     makeSelectCtx: RepositorySelectCtxFactory;
     aliasSelection: RepositorySelectionAliaser;
     execute: RepositoryExecute;
-    decodeFromDb: (row: Entity) => Entity;
+    decodeFromDb: (row: SelectResult) => SelectResult;
     invalidateCache: () => void;
-    recomputePersistForUpdate?: (payload: { targetIds: string[]; sanitized: Entity; condition: UntypedQueryCondition; rows: unknown[] }) => Promise<void>;
+    recomputePersistForUpdate?: (payload: { targetIds: string[]; sanitized: SelectResult; condition: UntypedQueryCondition; rows: unknown[] }) => Promise<void>;
   };
 
 export function createRepositoryCreateMutationPayloadDeps(params: RepositoryCreateMutationPayloadDepsParams) {

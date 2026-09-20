@@ -5,7 +5,7 @@ import type { ModelMetadata } from '../../metadata';
 import type { RepositoryPermissionDeniedFn } from '../authz/types';
 import type {
   ConditionEnvelope,
-  Entity,
+  SelectResult,
   RepositoryMutationPayloadEncodeDepsLike,
   RepositoryMutationPayloadGuardDepsLike,
   RepositoryMutationPayloadValidateDepsLike,
@@ -34,10 +34,10 @@ export type RepositoryCreateWriteAuthzDeps = {
 export type RepositoryCreateWritePrepareDeps = {
   meta: ModelMetadata;
   generateId: () => string;
-  applyDefaultCompanyIdOnCreate: (entity: Entity) => Entity;
-} & RepositoryMutationPayloadGuardDepsLike<Entity> &
-  RepositoryMutationPayloadValidateDepsLike<Entity, 'create'> &
-  RepositoryMutationPayloadEncodeDepsLike<Entity>;
+  applyDefaultCompanyIdOnCreate: (entity: SelectResult) => SelectResult;
+} & RepositoryMutationPayloadGuardDepsLike<SelectResult> &
+  RepositoryMutationPayloadValidateDepsLike<SelectResult, 'create'> &
+  RepositoryMutationPayloadEncodeDepsLike<SelectResult>;
 
 export async function ensureRepositoryCreateAllowed(params: RepositoryCreateWriteAuthzDeps): Promise<ConditionEnvelope> {
   const recordRuleEnvelope = await params.getRecordRuleEnvelope('create');
@@ -56,7 +56,7 @@ export async function ensureRepositoryCreateAllowed(params: RepositoryCreateWrit
   );
 }
 
-export async function prepareRepositoryCreateEntities(params: RepositoryCreateWritePrepareDeps, value: Entity[]): Promise<Entity[]> {
+export async function prepareRepositoryCreateEntities(params: RepositoryCreateWritePrepareDeps, value: SelectResult[]): Promise<SelectResult[]> {
   await assertRepositoryMutationPayloadsAllowed(params, value || []);
 
   const entitiesWithId = (value || []).map(entity => {
@@ -76,8 +76,8 @@ export async function prepareRepositoryCreateEntities(params: RepositoryCreateWr
   );
   // System *At / *Uid columns: stamp before validate so constraints see CreatedUid.
   const entitiesWithAudit = stampedEntities.map(entity => {
-    const withAt = TimestampUtils.addTimestamps(entity as ObjectRecord) as Entity;
-    return AuditUidUtils.addCreateUids(withAt as ObjectRecord) as Entity;
+    const withAt = TimestampUtils.addTimestamps(entity as ObjectRecord) as SelectResult;
+    return AuditUidUtils.addCreateUids(withAt as ObjectRecord) as SelectResult;
   });
   for (const entity of entitiesWithAudit) {
     await validateRepositoryMutationPayload(
