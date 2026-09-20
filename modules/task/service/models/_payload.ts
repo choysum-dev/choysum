@@ -86,9 +86,13 @@ export function sanitizePayload(payload: Record<string, unknown>): Record<string
       _truncated: true,
       _preview: truncatePreview(encoded, PAYLOAD_MAX_BYTES),
     };
-  } catch {
+  } catch (err) {
     // Fail closed: never persist the raw payload when masking/encoding throws
     // (circular refs, BigInt, throwing getters) — that would leak secrets.
+    console.error(
+      'sanitizePayload failed; storing redacted marker instead:',
+      err instanceof Error ? err.message : String(err)
+    );
     return { _sanitize_error: true };
   }
 }

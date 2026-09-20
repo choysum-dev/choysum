@@ -16,12 +16,12 @@ type MessageThreadStubRow = Record<string, unknown>;
 
 /** Typing stubs: core must not import message.Message / message.Follower. */
 type MessageModelStub = ModelConstructor & {
-  Post(req: MessageThreadPostReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<unknown>;
+  Post(req: MessageThreadPostReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<Partial<MessageThreadStubRow>>;
   SearchByRecord(model: string, resId: string, fields?: FieldSelection<MessageThreadStubRow>): Promise<Partial<MessageThreadStubRow>[]>;
 };
 
 type FollowerModelStub = ModelConstructor & {
-  Follow(req: MessageThreadFollowReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<unknown>;
+  Follow(req: MessageThreadFollowReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<Partial<MessageThreadStubRow>>;
   Unfollow(req: MessageThreadUnfollowReq): Promise<number>;
   SearchByRecord(model: string, resId: string, fields?: FieldSelection<MessageThreadStubRow>): Promise<Partial<MessageThreadStubRow>[]>;
 };
@@ -43,7 +43,7 @@ type FollowerModelStub = ModelConstructor & {
  */
 export default abstract class MessageThreadModel extends BaseModel {
   /** Post a collaboration message on a business record (Unary). */
-  public static async MessagePost(req: MessageThreadPostReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<unknown> {
+  public static async MessagePost(req: MessageThreadPostReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<Partial<MessageThreadStubRow>> {
     return dial<MessageModelStub>('message.Message').Post(req, fields);
   }
 
@@ -57,7 +57,7 @@ export default abstract class MessageThreadModel extends BaseModel {
   }
 
   /** Subscribe a user to a business record thread. */
-  public static async MessageFollow(req: MessageThreadFollowReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<unknown> {
+  public static async MessageFollow(req: MessageThreadFollowReq, fields?: FieldSelection<MessageThreadStubRow>): Promise<Partial<MessageThreadStubRow>> {
     return dial<FollowerModelStub>('message.Follower').Follow(req, fields);
   }
 

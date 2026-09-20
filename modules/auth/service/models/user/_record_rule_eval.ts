@@ -177,7 +177,7 @@ function buildRuleExpr(
     return gate; // null ⇒ unconstrained TRUE for this rule
   }
   if (!gate) return cond ?? null;
-  if (!cond) return gate;
+  if (cond == null) return gate;
   return { And: [gate, cond] };
 }
 
