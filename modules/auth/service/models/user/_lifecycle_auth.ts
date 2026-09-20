@@ -14,7 +14,7 @@ import Session from '../session';
 import Token from '../token';
 import UserRole from '../user_role';
 import { hashPassword, verifyPassword, withPermissionGraphBypass } from './_authz_shared';
-import { withRecordRuleAndFieldRuleBypass } from '@/core/service/orm/repository/authz';
+import { withRecordRuleAndFieldRuleBypass } from '@/core/service/api/authz_bypass';
 import { buildScopePreferences } from './_lifecycle_scope';
 import type User from './user';
 

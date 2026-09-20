@@ -10,6 +10,18 @@
   "author": "Choysum Team",
   "type": "module",
   "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./service": "./service/index.ts",
+    "./service/api": "./service/api/index.ts",
+    "./service/api/*": "./service/api/*",
+    "./rpc": "./rpc/index.ts",
+    "./rpc/*": "./rpc/*",
+    "./web": "./web/index.ts",
+    "./web/*": "./web/*",
+    "./utils/*": "./utils/*",
+    "./service/orm/repository": "./service/orm/repository/index.ts"
+  },
   "peerDependencies": {
     "@bufbuild/protobuf": "^2.12.0",
     "@connectrpc/connect": "^2.1.1",
