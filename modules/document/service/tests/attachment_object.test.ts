@@ -10,8 +10,7 @@ import {
   ensureDocumentAuthUserStub,
   disableRepositoryRecordRuleForDocumentTests,
   disableRepositoryFieldRuleForDocumentTests,
-  restoreDocumentOwnerAuthFixtures,
-} from './_owner_auth_test_fixtures';
+  restoreDocumentOwnerAuthFixtures} from './_owner_auth_test_fixtures';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -45,11 +44,9 @@ function resetRequestContext(): void {
   jsCtx.ctx = {};
   jsCtx.req = {
     depth: 0,
-    fieldRuleMode: 'skip',
-  };
+    fieldRuleMode: 'skip'};
   jsCtx.identity = {
-    userId: TEST_USER_ID,
-  };
+    userId: TEST_USER_ID};
 
   delete (jsCtx as any)[Symbol.for('choysum.ctx.override')];
   delete (jsCtx as any)[Symbol.for('choysum.ctx.frozen')];
@@ -63,8 +60,7 @@ async function withDocumentScope<T>(fn: () => Promise<T>): Promise<T> {
   return withContext(
     {
       activeCompanyId: TEST_COMPANY_ID,
-      enabledCompanyIds: [TEST_COMPANY_ID],
-    } as any,
+      enabledCompanyIds: [TEST_COMPANY_ID]} as any,
     async () => {
       ensureDocumentAuthUserStub();
       return fn();
@@ -77,18 +73,15 @@ async function withScope<T>(companyId: string, userId: string, fn: () => Promise
   return withContext(
     {
       activeCompanyId: companyId,
-      enabledCompanyIds: [companyId],
-    } as any,
+      enabledCompanyIds: [companyId]} as any,
     async () => {
       const jsCtx = ensureRequestContext();
       jsCtx.ctx = {};
       jsCtx.req = {
         depth: 0,
-        fieldRuleMode: 'skip',
-      };
+        fieldRuleMode: 'skip'};
       jsCtx.identity = {
-        userId,
-      };
+        userId};
       ensureDocumentAuthUserStub();
       return fn();
     },
@@ -107,16 +100,14 @@ function buildPrincipalContext(
   return {
     userId,
     activeCompanyId: companyId,
-    enabledCompanyIds: [companyId],
-  };
+    enabledCompanyIds: [companyId]};
 }
 
 async function markSessionUploaded(uploadId: string, contentType = 'text/plain', companyId = TEST_COMPANY_ID): Promise<void> {
   const storedContentId = await createStoredContentRecord({
     companyId,
     backend: 'db',
-    dbPayload: '',
-  });
+    dbPayload: ''});
 
   await UploadSession.UpdateById(
     uploadId,
@@ -127,9 +118,7 @@ async function markSessionUploaded(uploadId: string, contentType = 'text/plain',
       UploadedContentType: contentType,
       UploadedPayloadRef: {
         kind: 'stored_content',
-        storedContentId,
-      },
-    } as any,
+        storedContentId}} as any,
     ['Id'] as any
   );
 }
@@ -155,8 +144,7 @@ async function createActiveAttachmentObjectRecord(input: {
     backend: input.backend,
     dbPayload: input.dbPayload,
     bucket: input.bucket,
-    documentKey: input.documentKey,
-  });
+    documentKey: input.documentKey});
 
   const created = await AttachmentObject.Create(
     {
@@ -165,8 +153,7 @@ async function createActiveAttachmentObjectRecord(input: {
       MimeType: input.mimeType,
       ChecksumSha256: checksumSha256,
       Status: 'active',
-      CompanyId: input.companyId,
-    } as any,
+      CompanyId: input.companyId} as any,
     ['Id'] as any
   );
 
@@ -188,13 +175,11 @@ async function createStoredContentRecord(input: {
   const storedPayload: Record<string, unknown> = {
     Provider: input.backend,
     Status: 'active',
-    CompanyId: input.companyId,
-  };
+    CompanyId: input.companyId};
   if (input.backend === 's3') {
     storedPayload.LocatorJson = {
       bucket: input.bucket ?? 'choysum-attachments-test',
-      key: input.documentKey ?? `s3/test/${uid('obj')}`,
-    };
+      key: input.documentKey ?? `s3/test/${uid('obj')}`};
   } else if (input.dbPayload !== undefined && input.dbPayload !== '') {
     storedPayload.BlobData = input.dbPayload;
   }
@@ -213,8 +198,7 @@ async function loadAttachmentObjectById(objectId: string): Promise<any> {
     ['Id', '=', objectId] as any,
     {
       limit: 1,
-      fields: ['Id', 'Status', 'StoredContentId', 'MetadataJson'] as any,
-    } as any
+      fields: ['Id', 'Status', 'StoredContentId', 'MetadataJson'] as any} as any
   );
   expect(rows.length).toBe(1);
 
@@ -226,8 +210,7 @@ async function loadAttachmentObjectById(objectId: string): Promise<any> {
     ['Id', '=', storedContentId] as any,
     {
       limit: 1,
-      fields: ['Id', 'Provider', 'BlobData', 'LocatorJson', 'Status'] as any,
-    } as any
+      fields: ['Id', 'Provider', 'BlobData', 'LocatorJson', 'Status'] as any} as any
   );
   expect(storedRows.length).toBe(1);
 
@@ -237,8 +220,7 @@ async function loadAttachmentObjectById(objectId: string): Promise<any> {
     Backend: stored?.Provider,
     BlobData: stored?.BlobData,
     LocatorJson: stored?.LocatorJson,
-    StoredContentStatus: stored?.Status,
-  };
+    StoredContentStatus: stored?.Status};
 }
 
 function cleanupStateOf(record: any): Record<string, any> {
@@ -263,8 +245,7 @@ test('document.attachment_object: PrepareUpload rejects unauthenticated and crea
         ownerRecordId: uid('owner_no_auth'),
         fieldName: 'Avatar',
         operation: 'update',
-        businessRequestId,
-      });
+        businessRequestId});
       throw new Error('expected unauthenticated error');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -288,8 +269,7 @@ test('document.attachment_object: PrepareUpload rejects when owner write authori
         ownerRecordId: uid('owner_unknown_model'),
         fieldName: 'Avatar',
         operation: 'update',
-        businessRequestId,
-      });
+        businessRequestId});
       throw new Error('expected owner authorization denied error');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -315,8 +295,7 @@ test('document.attachment_object: PrepareUpload replays same uploadId for same b
       businessRequestId: uid('biz_prepare_replay'),
       proposedFileName: 'avatar.png',
       proposedContentType: 'image/png',
-      proposedSizeBytes: 12,
-    };
+      proposedSizeBytes: 12};
 
     const first = await AttachmentObject.PrepareUpload(req);
     const replay = await AttachmentObject.PrepareUpload(req);
@@ -337,8 +316,7 @@ test('document.attachment_object: PrepareUpload idempotency key is isolated by c
     ownerRecordId: uid('owner_scope'),
     fieldName: 'Avatar',
     operation: 'update' as const,
-    businessRequestId,
-  };
+    businessRequestId};
 
   const first = await withScope('cmp_scope_a', 'usr_scope_a', async () => AttachmentObject.PrepareUpload(req));
   const second = await withScope('cmp_scope_b', 'usr_scope_b', async () => AttachmentObject.PrepareUpload(req));
@@ -350,19 +328,20 @@ test('document.attachment_object: PrepareUpload idempotency key is isolated by c
 
 test('document.attachment_object: AuthorizeUploadPut rejects caller mismatch', async () => {
   resetRequestContext();
-  await withDocumentScope(async () => {
-    const prepared = await AttachmentObject.PrepareUpload({
+  const prepared = await withDocumentScope(async () => {
+    return AttachmentObject.PrepareUpload({
       ownerModel: 'auth.User',
       ownerRecordId: uid('owner_authorize_mismatch'),
       fieldName: 'Avatar',
       operation: 'update',
       businessRequestId: uid('biz_authorize_mismatch'),
     });
+  });
 
+  await withScope(TEST_COMPANY_ID, uid('usr_mismatch'), async () => {
     try {
       await AttachmentObject.AuthorizeUploadPut({
         uploadId: prepared.uploadId,
-        principal: buildPrincipalContext(TEST_COMPANY_ID, uid('usr_mismatch')),
       });
       throw new Error('expected principal mismatch error');
     } catch (err) {
@@ -384,26 +363,21 @@ test('document.attachment_object: AuthorizeUploadPut enforces max upload size', 
       fieldName: 'IdentityDocument',
       operation: 'update',
       businessRequestId: uid('biz_authorize_size'),
-      proposedContentType: 'text/plain',
-    });
+      proposedContentType: 'text/plain'});
 
     await UploadSession.UpdateById(
       prepared.uploadId,
       {
-        MaxUploadBytes: 4,
-      } as any,
+        MaxUploadBytes: 4} as any,
       ['Id'] as any
     );
 
     try {
       await AttachmentObject.AuthorizeUploadPut({
         uploadId: prepared.uploadId,
-        principal: buildPrincipalContext(),
         requestMeta: {
           contentType: 'text/plain',
-          contentLength: 8,
-        },
-      });
+          contentLength: 8}});
       throw new Error('expected max upload size error');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -425,27 +399,22 @@ test('document.attachment_object: AuthorizeUploadPut validates mime and checksum
       operation: 'update',
       businessRequestId: uid('biz_authorize_constraints'),
       checksumSha256: expectedChecksum,
-      proposedContentType: 'image/png',
-    });
+      proposedContentType: 'image/png'});
 
     await UploadSession.UpdateById(
       prepared.uploadId,
       {
-        AllowedMimeTypes: ['image/png'],
-      } as any,
+        AllowedMimeTypes: ['image/png']} as any,
       ['Id'] as any
     );
 
     try {
       await AttachmentObject.AuthorizeUploadPut({
         uploadId: prepared.uploadId,
-        principal: buildPrincipalContext(),
         requestMeta: {
           contentType: 'text/plain',
           contentLength: 1,
-          checksumSha256: expectedChecksum,
-        },
-      });
+          checksumSha256: expectedChecksum}});
       throw new Error('expected mime type deny error');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -457,13 +426,10 @@ test('document.attachment_object: AuthorizeUploadPut validates mime and checksum
     try {
       await AttachmentObject.AuthorizeUploadPut({
         uploadId: prepared.uploadId,
-        principal: buildPrincipalContext(),
         requestMeta: {
           contentType: 'image/png',
           contentLength: 1,
-          checksumSha256: 'b'.repeat(64),
-        },
-      });
+          checksumSha256: 'b'.repeat(64)}});
       throw new Error('expected checksum mismatch error');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -483,25 +449,20 @@ test('document.attachment_object: AuthorizeUploadPut treats object AllowedMimeTy
       fieldName: 'Avatar',
       operation: 'update',
       businessRequestId: uid('biz_authorize_object_allowlist'),
-      proposedContentType: 'image/jpeg',
-    });
+      proposedContentType: 'image/jpeg'});
 
     await UploadSession.UpdateById(
       prepared.uploadId,
       {
-        AllowedMimeTypes: {} as any,
-      } as any,
+        AllowedMimeTypes: {} as any} as any,
       ['Id'] as any
     );
 
     const authorized = await AttachmentObject.AuthorizeUploadPut({
       uploadId: prepared.uploadId,
-      principal: buildPrincipalContext(),
       requestMeta: {
         contentType: 'image/jpeg',
-        contentLength: 1,
-      },
-    });
+        contentLength: 1}});
 
     expect(authorized.uploadId).toBe(prepared.uploadId);
     expect(typeof authorized.payloadWriteTicket).toBe('string');
@@ -520,34 +481,28 @@ test('document.attachment_object: CommitUploadPut persists uploaded state and su
       operation: 'update',
       businessRequestId: uid('biz_commit_ok'),
       checksumSha256: expectedChecksum,
-      proposedContentType: 'text/plain',
-    });
+      proposedContentType: 'text/plain'});
 
     await UploadSession.UpdateById(
       prepared.uploadId,
       {
-        AllowedMimeTypes: ['text/plain'],
-      } as any,
+        AllowedMimeTypes: ['text/plain']} as any,
       ['Id'] as any
     );
 
     const first = await AttachmentObject.CommitUploadPut({
       uploadId: prepared.uploadId,
-      principal: buildPrincipalContext(),
       payloadReceipt: {
         payloadId: `sc:${await createStoredContentRecord({ companyId: TEST_COMPANY_ID, backend: 'db', dbPayload: 'abc' })}`,
         sizeBytes: 3,
         checksumSha256: expectedChecksum,
-        contentType: 'text/plain',
-      },
-    });
+        contentType: 'text/plain'}});
 
     expect(first.uploadId).toBe(prepared.uploadId);
     expect(first.attachmentUploadSessionStatus).toBe('uploaded');
 
     const replay = await AttachmentObject.CommitUploadPut({
       uploadId: prepared.uploadId,
-      principal: buildPrincipalContext(),
       payloadReceipt: {
         payloadId: String(
           (await UploadSession.Search(['Id', '=', prepared.uploadId] as any, { limit: 1 } as any))[0]?.UploadedPayloadRef?.storedContentId
@@ -556,9 +511,7 @@ test('document.attachment_object: CommitUploadPut persists uploaded state and su
         ),
         sizeBytes: 3,
         checksumSha256: expectedChecksum,
-        contentType: 'text/plain',
-      },
-    });
+        contentType: 'text/plain'}});
 
     expect(replay.uploadId).toBe(prepared.uploadId);
     expect(replay.attachmentUploadSessionStatus).toBe('uploaded');
@@ -572,8 +525,7 @@ test('document.attachment_object: CommitUploadPut persists uploaded state and su
     expect(String(saved.UploadedContentType || '')).toBe('text/plain');
     expect(saved.UploadedPayloadRef).toEqual({
       kind: 'stored_content',
-      storedContentId: String(saved.UploadedPayloadRef?.storedContentId || ''),
-    });
+      storedContentId: String(saved.UploadedPayloadRef?.storedContentId || '')});
   });
 });
 
@@ -586,14 +538,12 @@ test('document.attachment_object: CommitUploadPut rejects expired upload session
       fieldName: 'IdentityDocument',
       operation: 'update',
       businessRequestId: uid('biz_commit_expired'),
-      proposedContentType: 'text/plain',
-    });
+      proposedContentType: 'text/plain'});
 
     await UploadSession.UpdateById(
       prepared.uploadId,
       {
-        ExpiresAt: new Date(Date.now() - 60 * 1000),
-      } as any,
+        ExpiresAt: new Date(Date.now() - 60 * 1000)} as any,
       ['Id'] as any
     );
 
@@ -601,14 +551,11 @@ test('document.attachment_object: CommitUploadPut rejects expired upload session
       const storedContentId = await createStoredContentRecord({ companyId: TEST_COMPANY_ID, backend: 'db', dbPayload: 'abc' });
       await AttachmentObject.CommitUploadPut({
         uploadId: prepared.uploadId,
-        principal: buildPrincipalContext(),
         payloadReceipt: {
           payloadId: `sc:${storedContentId}`,
           sizeBytes: 3,
           checksumSha256: EMPTY_SHA256,
-          contentType: 'text/plain',
-        },
-      });
+          contentType: 'text/plain'}});
       throw new Error('expected expired session error');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -628,20 +575,16 @@ test('document.attachment_object: CommitUploadPut rejects inline byte payload id
       fieldName: 'IdentityDocument',
       operation: 'update',
       businessRequestId: uid('biz_commit_inline_payload'),
-      proposedContentType: 'application/octet-stream',
-    });
+      proposedContentType: 'application/octet-stream'});
 
     try {
       await AttachmentObject.CommitUploadPut({
         uploadId: prepared.uploadId,
-        principal: buildPrincipalContext(),
         payloadReceipt: {
           payloadId: 'inline_base64:AAECAw==',
           sizeBytes: 3,
           checksumSha256: EMPTY_SHA256,
-          contentType: 'application/octet-stream',
-        },
-      });
+          contentType: 'application/octet-stream'}});
       throw new Error('expected inline payload id rejection');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -662,20 +605,16 @@ test('document.attachment_object: CommitUploadPut rejects data-url payload ids',
       fieldName: 'IdentityDocument',
       operation: 'update',
       businessRequestId: uid('biz_commit_data_url_payload'),
-      proposedContentType: 'application/octet-stream',
-    });
+      proposedContentType: 'application/octet-stream'});
 
     try {
       await AttachmentObject.CommitUploadPut({
         uploadId: prepared.uploadId,
-        principal: buildPrincipalContext(),
         payloadReceipt: {
           payloadId: 'data:application/octet-stream;base64,AAECAw==',
           sizeBytes: 3,
           checksumSha256: EMPTY_SHA256,
-          contentType: 'application/octet-stream',
-        },
-      });
+          contentType: 'application/octet-stream'}});
       throw new Error('expected data-url payload id rejection');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -699,15 +638,13 @@ test('document.attachment_object: FinalizeUpload creates active object and suppo
       businessRequestId,
       proposedFileName: 'doc.txt',
       proposedContentType: 'text/plain',
-      proposedSizeBytes: 0,
-    });
+      proposedSizeBytes: 0});
 
     await markSessionUploaded(prepared.uploadId, 'text/plain');
 
     const finalized = await AttachmentObject.FinalizeUpload({
       uploadId: prepared.uploadId,
-      businessRequestId,
-    });
+      businessRequestId});
 
     expect(finalized.status).toBe('active');
     expect(finalized.attachmentObjectId).toBeTruthy();
@@ -715,8 +652,7 @@ test('document.attachment_object: FinalizeUpload creates active object and suppo
 
     const replay = await AttachmentObject.FinalizeUpload({
       uploadId: prepared.uploadId,
-      businessRequestId,
-    });
+      businessRequestId});
     expect(replay.attachmentObjectId).toBe(finalized.attachmentObjectId);
   });
 });
@@ -733,16 +669,14 @@ test('document.attachment_object: FinalizeUpload accepts stored_content payload 
       businessRequestId,
       proposedFileName: 'doc.bin',
       proposedContentType: 'application/octet-stream',
-      proposedSizeBytes: 5,
-    });
+      proposedSizeBytes: 5});
 
     const precreatedStoredContent = await StoredContent.Create(
       {
         Provider: 'db',
         BlobData: 'hello',
         Status: 'active',
-        CompanyId: TEST_COMPANY_ID,
-      } as any,
+        CompanyId: TEST_COMPANY_ID} as any,
       ['Id'] as any
     );
     const storedContentId = String((precreatedStoredContent as any)?.Id || '').trim();
@@ -757,16 +691,13 @@ test('document.attachment_object: FinalizeUpload accepts stored_content payload 
         UploadedContentType: 'application/octet-stream',
         UploadedPayloadRef: {
           kind: 'stored_content',
-          storedContentId,
-        },
-      } as any,
+          storedContentId}} as any,
       ['Id'] as any
     );
 
     const finalized = await AttachmentObject.FinalizeUpload({
       uploadId: prepared.uploadId,
-      businessRequestId,
-    });
+      businessRequestId});
 
     const reloaded = await loadAttachmentObjectById(finalized.attachmentObjectId);
     expect(String(reloaded.StoredContentId || '')).toBe(storedContentId);
@@ -786,8 +717,7 @@ test('document.attachment_object: FinalizeUpload rejects uploaded session withou
       businessRequestId,
       proposedFileName: 'doc.bin',
       proposedContentType: 'application/octet-stream',
-      proposedSizeBytes: 5,
-    });
+      proposedSizeBytes: 5});
 
     await UploadSession.UpdateById(
       prepared.uploadId,
@@ -795,16 +725,14 @@ test('document.attachment_object: FinalizeUpload rejects uploaded session withou
         Status: 'uploaded',
         UploadedSizeBytes: 5,
         UploadedChecksumSha256: EMPTY_SHA256,
-        UploadedContentType: 'application/octet-stream',
-      } as any,
+        UploadedContentType: 'application/octet-stream'} as any,
       ['Id'] as any
     );
 
     try {
       await AttachmentObject.FinalizeUpload({
         uploadId: prepared.uploadId,
-        businessRequestId,
-      });
+        businessRequestId});
       throw new Error('expected missing uploaded payload reference rejection');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -824,20 +752,16 @@ test('document.attachment_object: CommitUploadPut rejects legacy s3 payload ids'
       fieldName: 'IdentityDocument',
       operation: 'update',
       businessRequestId: uid('biz_commit_legacy_s3_payload'),
-      proposedContentType: 'application/octet-stream',
-    });
+      proposedContentType: 'application/octet-stream'});
 
     try {
       await AttachmentObject.CommitUploadPut({
         uploadId: prepared.uploadId,
-        principal: buildPrincipalContext(),
         payloadReceipt: {
           payloadId: `s3://choysum-attachments-test/staging/${prepared.uploadId}/payload`,
           sizeBytes: 3,
           checksumSha256: EMPTY_SHA256,
-          contentType: 'application/octet-stream',
-        },
-      });
+          contentType: 'application/octet-stream'}});
       throw new Error('expected legacy s3 payload id rejection');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -857,8 +781,7 @@ test('document.attachment_object: FinalizeUpload reuses stored_content payload r
   const previousEnv = root[envKey];
   root[envKey] = {
     ...(previousEnv && typeof previousEnv === 'object' ? previousEnv : {}),
-    CHOYSUM_DOCUMENT_ATTACHMENT_BACKEND: 's3',
-  };
+    CHOYSUM_DOCUMENT_ATTACHMENT_BACKEND: 's3'};
 
   try {
     await withDocumentScope(async () => {
@@ -871,20 +794,17 @@ test('document.attachment_object: FinalizeUpload reuses stored_content payload r
         businessRequestId,
         proposedFileName: 'doc.txt',
         proposedContentType: 'text/plain',
-        proposedSizeBytes: 0,
-      });
+        proposedSizeBytes: 0});
 
       const stagingRef = {
         backend: 's3',
         bucket: 'choysum-attachments-test',
-        key: `staging/${prepared.uploadId}/manual`,
-      };
+        key: `staging/${prepared.uploadId}/manual`};
       const storedContentId = await createStoredContentRecord({
         companyId: TEST_COMPANY_ID,
         backend: 's3',
         bucket: stagingRef.bucket,
-        documentKey: stagingRef.key,
-      });
+        documentKey: stagingRef.key});
       await UploadSession.UpdateById(
         prepared.uploadId,
         {
@@ -894,16 +814,13 @@ test('document.attachment_object: FinalizeUpload reuses stored_content payload r
           UploadedContentType: 'text/plain',
           UploadedPayloadRef: {
             kind: 'stored_content',
-            storedContentId,
-          },
-        } as any,
+            storedContentId}} as any,
         ['Id'] as any
       );
 
       const finalized = await AttachmentObject.FinalizeUpload({
         uploadId: prepared.uploadId,
-        businessRequestId,
-      });
+        businessRequestId});
 
       const reloaded = await loadAttachmentObjectById(finalized.attachmentObjectId);
       expect(String(reloaded.Backend || '')).toBe('s3');
@@ -928,14 +845,12 @@ test('document.attachment_object: FinalizeUpload rejects when upload session has
       ownerRecordId: uid('owner_finalize_without_upload'),
       fieldName: 'Avatar',
       operation: 'update',
-      businessRequestId,
-    });
+      businessRequestId});
 
     try {
       await AttachmentObject.FinalizeUpload({
         uploadId: prepared.uploadId,
-        businessRequestId,
-      });
+        businessRequestId});
       throw new Error('expected finalize precondition error');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -956,8 +871,7 @@ test('document.attachment_object: FinalizeUpload rejects when company context dr
       ownerRecordId: uid('owner_finalize_company_mismatch'),
       fieldName: 'Avatar',
       operation: 'update',
-      businessRequestId,
-    });
+      businessRequestId});
     await markSessionUploaded(result.uploadId, 'application/octet-stream', 'cmp_finalize_a');
     return result;
   });
@@ -965,24 +879,20 @@ test('document.attachment_object: FinalizeUpload rejects when company context dr
   await withContext(
     {
       activeCompanyId: 'cmp_finalize_b',
-      enabledCompanyIds: ['cmp_finalize_a', 'cmp_finalize_b'],
-    } as any,
+      enabledCompanyIds: ['cmp_finalize_a', 'cmp_finalize_b']} as any,
     async () => {
       const jsCtx = ensureRequestContext();
       jsCtx.ctx = {};
       jsCtx.req = {
         depth: 0,
-        fieldRuleMode: 'skip',
-      };
+        fieldRuleMode: 'skip'};
       jsCtx.identity = {
-        userId: 'usr_finalize_a',
-      };
+        userId: 'usr_finalize_a'};
 
       try {
         await AttachmentObject.FinalizeUpload({
           uploadId: prepared.uploadId,
-          businessRequestId,
-        });
+          businessRequestId});
         throw new Error('expected finalize company mismatch error');
       } catch (err) {
         expect(err instanceof ChoysumError).toBe(true);
@@ -1004,16 +914,14 @@ test('document.attachment_object: FinalizeUpload rejects mismatched businessRequ
       ownerRecordId: uid('owner_finalize_mismatch'),
       fieldName: 'Avatar',
       operation: 'update',
-      businessRequestId: uid('biz_finalize_match'),
-    });
+      businessRequestId: uid('biz_finalize_match')});
 
     await markSessionUploaded(prepared.uploadId, 'application/octet-stream');
 
     try {
       await AttachmentObject.FinalizeUpload({
         uploadId: prepared.uploadId,
-        businessRequestId: uid('biz_finalize_mismatch'),
-      });
+        businessRequestId: uid('biz_finalize_mismatch')});
       throw new Error('expected finalize mismatch error');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -1045,10 +953,8 @@ test('document.attachment_object: FinalizeUpload rejects when owner write author
         UploadedContentType: 'application/octet-stream',
         UploadedPayloadRef: {
           kind: 'stored_content',
-          storedContentId: await createStoredContentRecord({ companyId: TEST_COMPANY_ID, backend: 'db', dbPayload: '' }),
-        },
-        CompanyId: TEST_COMPANY_ID,
-      } as any,
+          storedContentId: await createStoredContentRecord({ companyId: TEST_COMPANY_ID, backend: 'db', dbPayload: '' })},
+        CompanyId: TEST_COMPANY_ID} as any,
       ['Id'] as any
     );
 
@@ -1058,8 +964,7 @@ test('document.attachment_object: FinalizeUpload rejects when owner write author
     try {
       await AttachmentObject.FinalizeUpload({
         uploadId,
-        businessRequestId,
-      });
+        businessRequestId});
       throw new Error('expected owner authorization denied on finalize');
     } catch (err) {
       expect(err instanceof ChoysumError).toBe(true);
@@ -1083,8 +988,7 @@ test('document.attachment_object: RunGarbageCollection deletes unbound db object
       sizeBytes: 5,
       mimeType: 'text/plain',
       checksumSha256: EMPTY_SHA256,
-      dbPayload: 'hello',
-    });
+      dbPayload: 'hello'});
     expect(objectId).toBeTruthy();
 
     const gcResult = await AttachmentObject.RunGarbageCollection(futureNowISO());
@@ -1114,10 +1018,8 @@ test('document.attachment_object: RunGarbageCollection deletes unbound s3 stored
     ...baseStorage,
     deleteStoredContent: async (payload: { storedContentId?: string }) => {
       deleteCalls.push({
-        storedContentId: String(payload?.storedContentId || ''),
-      });
-    },
-  };
+        storedContentId: String(payload?.storedContentId || '')});
+    }};
   (globalThis as any).$choysum = root;
 
   try {
@@ -1134,8 +1036,7 @@ test('document.attachment_object: RunGarbageCollection deletes unbound s3 stored
         mimeType: 'application/octet-stream',
         checksumSha256: EMPTY_SHA256,
         bucket,
-        documentKey,
-      });
+        documentKey});
       expect(objectId).toBeTruthy();
 
       const gcResult = await AttachmentObject.RunGarbageCollection(futureNowISO());

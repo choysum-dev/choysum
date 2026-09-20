@@ -15,7 +15,6 @@ import {
   BatchDescribeResp,
   ResolveDownloadContentReq,
   ResolveDownloadContentResp,
-  PrincipalContext,
 } from '../contracts';
 import { _lt } from '../i18n';
 import type Company from '@/base/service/models/company';
@@ -26,7 +25,7 @@ import { toDate } from '@/core/service/utils/datetime';
 import { GrpcCode, DocumentErrCode, throwDocumentError } from '../error';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
-import { requireText, requireUserId, requireCompanyId } from './_document_bridge';
+import { requireText, requireUserId, requireCompanyId, principalFromRuntime } from './_document_bridge';
 import { assertOwnerReadAuthorization, assertOwnerWriteAuthorization } from './_owner_authorization';
 import { assertBindReq, assertUnbindReq, assertBatchDescribeReq, assertResolveDownloadContentReq, normalizePrincipalCompanyIds, assertDownloadDisposition, resolveDownloadSemantics, buildDescriptor, buildPayloadReadTicket, parseBindResp, parseUnbindResp, assertCompanyMatch } from './_attachment_binding_codec';
 import { validateAttachmentContentFieldLimits } from './_binding_field_limits';
@@ -210,34 +209,6 @@ function getStoredContentModel(): typeof StoredContent {
 // ---------------------------------------------------------------------------
 // Data-access helpers — some need the model ops, others hit external models
 // ---------------------------------------------------------------------------
-
-function assertPrincipalParityWithRuntimeContext(principal: PrincipalContext, stage: 'resolve_download_content'): void {
-  const runtimeUserId = requireUserId(AttachmentBinding.userId);
-  if (runtimeUserId !== principal.userId) {
-    throwDocumentError(
-      DocumentErrCode.PERMISSION_DENIED,
-      _t('principal userId does not match runtime identity', { scope: 'service/models/attachment_binding' }),
-      GrpcCode.PermissionDenied,
-      {
-        stage,
-        reason: 'issuer_mismatch',
-      }
-    );
-  }
-
-  const runtimeCompanyId = requireCompanyId(AttachmentBinding.companyId, stage);
-  if (runtimeCompanyId !== principal.activeCompanyId) {
-    throwDocumentError(
-      DocumentErrCode.PERMISSION_DENIED,
-      _t('principal activeCompanyId does not match runtime context', { scope: 'service/models/attachment_binding' }),
-      GrpcCode.PermissionDenied,
-      {
-        stage,
-        reason: 'company_mismatch',
-      }
-    );
-  }
-}
 
 async function mustLoadActiveAttachmentContent(attachmentContentId: string, companyId: string): Promise<AttachmentContent> {
   const AttachmentContentModel = getAttachmentContentModel();
@@ -813,18 +784,23 @@ async function batchDescribeAttachments(req: BatchDescribeReq): Promise<BatchDes
 
 async function resolveDownloadContent(req: ResolveDownloadContentReq): Promise<ResolveDownloadContentResp> {
   const normalized = assertResolveDownloadContentReq(req);
-  assertPrincipalParityWithRuntimeContext(normalized.principal, 'resolve_download_content');
+  const principal = principalFromRuntime(
+    AttachmentBinding.userId,
+    AttachmentBinding.companyId,
+    AttachmentBinding.companyIds,
+    'resolve_download_content'
+  );
 
   const binding = await mustLoadActiveBindingById(normalized.attachmentBindingId);
   const bindingCompanyId = requireText(binding.CompanyId, 'companyId');
-  assertCompanyMatch(bindingCompanyId, normalized.principal.activeCompanyId, 'resolve_download_content', {
+  assertCompanyMatch(bindingCompanyId, principal.activeCompanyId, 'resolve_download_content', {
     resource: 'attachmentBinding',
     attachmentBindingId: normalized.attachmentBindingId,
   });
 
   const attachmentContentId = requireText(binding.AttachmentContentId, 'attachmentContentId');
   const attachmentContent = await mustLoadActiveAttachmentContentById(attachmentContentId);
-  assertCompanyMatch(requireText(attachmentContent.CompanyId, 'companyId'), normalized.principal.activeCompanyId, 'resolve_download_content', {
+  assertCompanyMatch(requireText(attachmentContent.CompanyId, 'companyId'), principal.activeCompanyId, 'resolve_download_content', {
     resource: 'attachmentContent',
     attachmentContentId,
   });
@@ -835,13 +811,13 @@ async function resolveDownloadContent(req: ResolveDownloadContentReq): Promise<R
     ownerRecordId: requireText(binding.OwnerRecordId, 'ownerRecordId'),
     fieldName: requireText(binding.FieldName, 'fieldName'),
     companyId: bindingCompanyId,
-    companyIds: normalizePrincipalCompanyIds(normalized.principal, bindingCompanyId),
-    userId: normalized.principal.userId,
+    companyIds: normalizePrincipalCompanyIds(principal, bindingCompanyId),
+    userId: principal.userId,
   });
 
   const storedContentId = requireText(attachmentContent.StoredContentId, 'storedContentId');
   const storedContent = await mustLoadActiveStoredContentById(storedContentId);
-  assertCompanyMatch(requireText(storedContent.CompanyId, 'companyId'), normalized.principal.activeCompanyId, 'resolve_download_content', {
+  assertCompanyMatch(requireText(storedContent.CompanyId, 'companyId'), principal.activeCompanyId, 'resolve_download_content', {
     resource: 'storedContent',
     storedContentId,
   });

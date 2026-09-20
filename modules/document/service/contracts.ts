@@ -248,7 +248,6 @@ export interface FinalizeUploadResp {
  */
 export interface AuthorizeUploadPutReq {
   uploadId: AttachmentUploadSessionId;
-  principal: PrincipalContext;
   requestMeta?: {
     contentType?: string;
     contentLength?: number;
@@ -273,7 +272,6 @@ export interface AuthorizeUploadPutResp {
  */
 export interface CommitUploadPutReq {
   uploadId: AttachmentUploadSessionId;
-  principal: PrincipalContext;
   payloadReceipt: {
     payloadId: string;
     sizeBytes: number;
@@ -301,7 +299,6 @@ export interface CommitUploadPutResp {
  */
 export interface ResolveDownloadContentReq {
   attachmentBindingId: AttachmentBindingId;
-  principal: PrincipalContext;
 }
 
 /**

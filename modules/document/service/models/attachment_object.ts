@@ -25,7 +25,7 @@ import { GrpcCode, DocumentErrCode, throwDocumentError } from '../error';
 import type AttachmentUploadSession from './upload_session';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
-import { requireText, requireUserId, requireCompanyId } from './_document_bridge';
+import { requireText, requireUserId, requireCompanyId, principalFromRuntime } from './_document_bridge';
 import { mustLoadOne } from './_query_loaders';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import { isMimeTypeAllowed } from '@/core/service/utils/mime';
@@ -183,7 +183,7 @@ export default class AttachmentContent extends BaseModel {
     return commitUploadPut(req);
   }
 
-  /** Performs retention cleanup for upload sessions, mutation ledgers, and unbound content. */
+  /** Task-worker FullMethod target for unbound content GC (not interactive client API). */
   public static async RunGarbageCollection(nowISO?: string): Promise<Record<string, unknown>> {
     return runGarbageCollection(nowISO);
   }
@@ -409,9 +409,15 @@ async function finalizeUpload(req: FinalizeUploadReq): Promise<FinalizeUploadRes
 async function authorizeUploadPut(req: AuthorizeUploadPutReq): Promise<AuthorizeUploadPutResp> {
   const normalized = assertAuthorizeUploadPutReq(req);
   const session = await mustLoadUploadSession(normalized.uploadId);
+  const principal = principalFromRuntime(
+    AttachmentContent.userId,
+    AttachmentContent.companyId,
+    AttachmentContent.companyIds,
+    'authorize_upload_put'
+  );
 
-  assertUploadSessionPrincipal(session, normalized.principal, 'authorize_upload_put');
-  await assertUploadSessionOwnerWriteAuthorization(session, normalized.principal, 'authorize_upload_put');
+  assertUploadSessionPrincipal(session, principal, 'authorize_upload_put');
+  await assertUploadSessionOwnerWriteAuthorization(session, principal, 'authorize_upload_put');
 
   if (session.Status === 'finalized') {
     throwUploadSessionFinalized(normalized.uploadId);
@@ -465,16 +471,22 @@ async function authorizeUploadPut(req: AuthorizeUploadPutReq): Promise<Authorize
     requiredChecksumAlgorithm: 'sha256',
     expectedChecksumSha256,
     allowedMimeTypes: allowedMimeTypes.length > 0 ? allowedMimeTypes : undefined,
-    payloadWriteTicket: buildPayloadWriteTicket(session, normalized.principal),
+    payloadWriteTicket: buildPayloadWriteTicket(session, principal),
   };
 }
 
 async function commitUploadPut(req: CommitUploadPutReq): Promise<CommitUploadPutResp> {
   const normalized = assertCommitUploadPutReq(req);
   const session = await mustLoadUploadSession(normalized.uploadId);
+  const principal = principalFromRuntime(
+    AttachmentContent.userId,
+    AttachmentContent.companyId,
+    AttachmentContent.companyIds,
+    'commit_upload_put'
+  );
 
-  assertUploadSessionPrincipal(session, normalized.principal, 'commit_upload_put');
-  await assertUploadSessionOwnerWriteAuthorization(session, normalized.principal, 'commit_upload_put');
+  assertUploadSessionPrincipal(session, principal, 'commit_upload_put');
+  await assertUploadSessionOwnerWriteAuthorization(session, principal, 'commit_upload_put');
 
   if (session.Status === 'finalized') {
     throwUploadSessionFinalized(normalized.uploadId);

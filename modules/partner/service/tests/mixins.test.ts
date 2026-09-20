@@ -78,10 +78,9 @@ test('Partner: MessagePost / MessageFollow dial message services', async () => {
           const row = await Partner.MessageFollow({
             Model: 'partner.Partner',
             ResId: 'p1',
-            UserId: 'u1',
           });
           expect((row as any).Id).toBe('f_partner');
-          expect(followed).toEqual({ Model: 'partner.Partner', ResId: 'p1', UserId: 'u1' });
+          expect(followed).toEqual({ Model: 'partner.Partner', ResId: 'p1' });
         }
       );
     }

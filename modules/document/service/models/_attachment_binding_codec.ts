@@ -23,7 +23,7 @@ import {
 import { DocumentErrCode, GrpcCode, throwDocumentError } from '../error';
 import type AttachmentBinding from './attachment_binding';
 import type AttachmentContent from './attachment_object';
-import { requireText, assertPrincipal, normalizeCompanyIdList } from './_document_bridge';
+import { requireText, normalizeCompanyIdList } from './_document_bridge';
 import { inlineMimeAllowed, mimeSuffix } from '@/core/service/utils/mime';
 
 const { _t } = createTranslate('document');
@@ -53,7 +53,6 @@ export type NormalizedBatchDescribeReq = {
 
 export type NormalizedResolveDownloadContentReq = {
   attachmentBindingId: string;
-  principal: PrincipalContext;
 };
 
 export type ResolvedDownloadSemantics = {
@@ -132,7 +131,6 @@ export function assertBatchDescribeReq(req: BatchDescribeReq | undefined | null)
 export function assertResolveDownloadContentReq(req: ResolveDownloadContentReq | undefined | null): NormalizedResolveDownloadContentReq {
   return {
     attachmentBindingId: requireText(req?.attachmentBindingId, 'attachmentBindingId'),
-    principal: assertPrincipal(req?.principal),
   };
 }
 

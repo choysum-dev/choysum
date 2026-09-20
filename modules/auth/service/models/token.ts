@@ -123,7 +123,7 @@ export default class Token extends BaseModel {
   /**
    * Create and persist a new access and refresh token pair.
    */
-  static async CreateTokenPair(userId: string, metadata: TokenMetadata = {}): Promise<TokenPair> {
+  static async createTokenPair(userId: string, metadata: TokenMetadata = {}): Promise<TokenPair> {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
@@ -170,7 +170,7 @@ export default class Token extends BaseModel {
   /**
    * Refresh a token pair and persist the replacement identities.
    */
-  static async RefreshTokens(refreshToken: string, metadata?: TokenMetadata): Promise<TokenPair> {
+  static async refreshTokens(refreshToken: string, metadata?: TokenMetadata): Promise<TokenPair> {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
@@ -219,7 +219,7 @@ export default class Token extends BaseModel {
   /**
    * Revoke one token through the auth runtime.
    */
-  static async RevokeToken(token: string, reason: string = ''): Promise<boolean> {
+  static async revokeToken(token: string, reason: string = ''): Promise<boolean> {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
@@ -241,7 +241,7 @@ export default class Token extends BaseModel {
   /**
    * Revoke all tokens for a user, optionally excluding one token Id.
    */
-  static async RevokeAllUserTokens(userId: string, exceptTokenId?: string, reason: string = ''): Promise<number> {
+  static async revokeAllUserTokens(userId: string, exceptTokenId?: string, reason: string = ''): Promise<number> {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
@@ -267,7 +267,7 @@ export default class Token extends BaseModel {
   /**
    * Revoke all access tokens for a user without touching refresh tokens.
    */
-  static async RevokeUserAccessTokens(userId: string, reason: string = ''): Promise<number> {
+  static async revokeUserAccessTokens(userId: string, reason: string = ''): Promise<number> {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
@@ -313,7 +313,7 @@ export default class Token extends BaseModel {
   /**
    * Validate a token and enforce revocation checks.
    */
-  static async ValidateToken(token: string, tokenType: string): Promise<TokenIdentity> {
+  static async validateToken(token: string, tokenType: string): Promise<TokenIdentity> {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
@@ -335,7 +335,7 @@ export default class Token extends BaseModel {
   /**
    * Mark expired non-revoked tokens as revoked.
    */
-  static async CleanExpiredTokens(): Promise<number> {
+  static async cleanExpiredTokens(): Promise<number> {
     // Expired tokens stay queryable, but should no longer be considered active.
     const expiredTokens = await this.Search({
       And: [

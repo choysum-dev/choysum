@@ -19,7 +19,6 @@ export {
 export type FollowRecordReq = {
   Model: string;
   ResId: string;
-  UserId?: string | null;
   SubtypeId?: string | null;
   CompanyId?: string | null;
 };
@@ -27,12 +26,9 @@ export type FollowRecordReq = {
 export type UnfollowRecordReq = {
   Model: string;
   ResId: string;
-  UserId?: string | null;
 };
 
-function resolveActorUserId(explicit?: string | null): string | null {
-  const fromReq = explicit == null || explicit === '' ? null : String(explicit).trim();
-  if (fromReq) return fromReq;
+function resolveActorUserId(): string | null {
   const uid = getUserId();
   if (uid == null || String(uid).trim() === '') return null;
   return String(uid).trim();
@@ -222,7 +218,7 @@ export default class Follower extends PolymorphicRecordModel {
     }
     const model = String(req.Model || '').trim();
     const resId = String(req.ResId || '').trim();
-    const userId = resolveActorUserId(req.UserId);
+    const userId = resolveActorUserId();
     if (!model || !resId) {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Follow requires Model and ResId' });
     }
@@ -268,7 +264,7 @@ export default class Follower extends PolymorphicRecordModel {
     }
     const model = String(req.Model || '').trim();
     const resId = String(req.ResId || '').trim();
-    const userId = resolveActorUserId(req.UserId);
+    const userId = resolveActorUserId();
     if (!model || !resId) {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Unfollow requires Model and ResId' });
     }

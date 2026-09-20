@@ -291,7 +291,7 @@ export async function issueLoginTokensAndSession(
 ): Promise<TokenPair> {
   await user.load(['CompanyIds']);
   const metadata = await deps.extractUserMetadata(user);
-  const tokens = await Token.CreateTokenPair(user.Id, metadata);
+  const tokens = await Token.createTokenPair(user.Id, metadata);
   if (!tokens || !tokens.accessToken) {
     throw new Error('Token creation failed: missing access token');
   }
@@ -336,7 +336,7 @@ export async function refreshTokensWithLatestMetadata(
     extractUserMetadata: (user: User) => Promise<TokenMetadata>;
   }
 ): Promise<TokenPair> {
-  const identity = await Token.ValidateToken(refreshToken, 'refresh');
+  const identity = await Token.validateToken(refreshToken, 'refresh');
   const userId = String(identity?.userId || '').trim();
   if (!userId) {
     throw newAuthError({
@@ -363,14 +363,14 @@ export async function refreshTokensWithLatestMetadata(
   await user.load(['CompanyIds']);
   const metadata = await deps.extractUserMetadata(user);
 
-  return await Token.RefreshTokens(refreshToken, metadata);
+  return await Token.refreshTokens(refreshToken, metadata);
 }
 
 /**
  * Revoke token/session artifacts for one-device or all-device logout.
  */
 export async function revokeLogoutArtifacts(token: string, allDevices: boolean): Promise<void> {
-  const identity = await Token.ValidateToken(token, 'access');
+  const identity = await Token.validateToken(token, 'access');
   const userId = String(identity?.userId || '').trim();
   if (!userId) {
     throw newAuthError({
@@ -380,12 +380,12 @@ export async function revokeLogoutArtifacts(token: string, allDevices: boolean):
   }
 
   if (allDevices) {
-    await Token.RevokeAllUserTokens(userId, undefined, 'User initiated logout on all devices');
+    await Token.revokeAllUserTokens(userId, undefined, 'User initiated logout on all devices');
     await Session.RevokeAllForUser(userId);
     return;
   }
 
-  await Token.RevokeToken(token, 'User initiated logout');
+  await Token.revokeToken(token, 'User initiated logout');
 
   try {
     const tokenId = String(identity?.tokenId || '').trim();

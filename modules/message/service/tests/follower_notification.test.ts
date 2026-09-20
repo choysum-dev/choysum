@@ -725,9 +725,9 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
 test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches', async () => {
   __setMessagePublishTipForTest(() => undefined);
   try {
-    await Notification.FanOutForMessage({});
-    await Notification.FanOutForMessage({ Id: 'm1', Model: '', ResId: 'r1' } as any);
-    await Notification.FanOutForMessage({ Id: 'm1', Model: 'partner.Partner', ResId: '' } as any);
+    await Notification.fanOutForMessage({});
+    await Notification.fanOutForMessage({ Id: 'm1', Model: '', ResId: 'r1' } as any);
+    await Notification.fanOutForMessage({ Id: 'm1', Model: 'partner.Partner', ResId: '' } as any);
 
     const model = 'partner.Partner';
     const resId = uid('res');
@@ -853,7 +853,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
 
     await withMessageScope(AUTHOR_USER_ID, async () => {
       ensureRequestContext().identity = { userId: '   ' };
-      await Notification.FanOutForMessage({
+      await Notification.fanOutForMessage({
         Id: uid('msg'),
         Model: model,
         ResId: resId,
@@ -864,7 +864,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       const origFollowSearch = Follower.SearchByRecord;
       (Follower as any).SearchByRecord = async () => [{ UserId: '' }, { UserId: '  ', SubtypeId: 'x' }];
       try {
-        await Notification.FanOutForMessage({
+        await Notification.fanOutForMessage({
           Id: uid('msg'),
           Model: model,
           ResId: resId,
@@ -882,7 +882,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       delete (jsCtx as any)[Symbol.for('choysum.ctx.frozen')];
       delete (jsCtx as any)[Symbol.for('choysum.ctx.override')];
       try {
-        await Notification.FanOutForMessage({
+        await Notification.fanOutForMessage({
           Id: uid('msg'),
           Model: model,
           ResId: resId,
@@ -897,7 +897,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       (MessageSubtype as any).Search = async () => [];
       (Follower as any).SearchByRecord = async () => [{ UserId: FOLLOWER_USER_ID, SubtypeId: 'st_missing_________' }];
       try {
-        await Notification.FanOutForMessage({
+        await Notification.fanOutForMessage({
           Id: uid('msg'),
           Model: model,
           ResId: resId,
@@ -912,7 +912,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       (MessageSubtype as any).Search = async () => [{ Id: '   ' }];
       (Follower as any).SearchByRecord = async () => [{ UserId: FOLLOWER_USER_ID, SubtypeId: 'st_blankid_________' }];
       try {
-        await Notification.FanOutForMessage({
+        await Notification.fanOutForMessage({
           Id: uid('msg'),
           Model: model,
           ResId: resId,
