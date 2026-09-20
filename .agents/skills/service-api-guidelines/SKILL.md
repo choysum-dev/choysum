@@ -12,16 +12,19 @@ description: >-
 # Business module Service API guidelines
 
 House rules for `modules/*/service/**` (business modules; not core platform
-internals). Canonical long-form norms live under `.dev/docs/core/service/`.
+internals). **This skill is authoritative on clean checkouts.**
 
 **Before changing public static methods or request/response envelopes, read this
-skill and the linked principles.** Hard-cut execution is separate.
+skill.** Hard-cut execution is separate and may live only in local maintainer
+docs (see below).
 
-| Document | Read when |
+Optional long-form under gitignored `.dev/` (skip if absent; not in git):
+
+| Document | Read when (local only) |
 | --- | --- |
-| [Principles](../../../.dev/docs/core/service/business_module_service_api_principles.md) | Authoring or reviewing any Service API change |
+| [Principles](../../../.dev/docs/core/service/business_module_service_api_principles.md) | Extra author norms beyond this skill |
 | [Review archive 2026-09-20](../../../.dev/docs/core/service/business_module_service_api_review20260920.md) | Context on current gaps vs Odoo |
-| [Hardcut plan 2026-09-20](../../../.dev/docs/core/service/business_module_service_api_hardcut_plan20260920.md) | Implementing the no-compat migration waves |
+| [Hardcut plan 2026-09-20](../../../.dev/docs/core/service/business_module_service_api_hardcut_plan20260920.md) | No-compat migration waves (`PR-W1`…`PR-W5`) |
 | [Cross-app import boundary](../../../.dev/docs/infra/cross_app_service_import_boundary_plan20260901.md) | Dial vs value-import across applications |
 | [BaseModel author API](../../../.dev/docs/core/service/orm/basemodel-author-api-design.md) | CRUD / env axes on BaseModel |
 
@@ -53,7 +56,7 @@ Related skills: [`module-initdata`](../module-initdata/SKILL.md) for authz seed 
 
 ## Do not
 
-- Copy `document/contracts.ts` patterns into domain modules (partner/sale/…).
+- Copy `modules/document/service/contracts.ts` patterns into other domain modules (partner/sale/…).
 - Dual auth façades: clients use `auth.User` only; not `auth.Token.*` as a public session API.
 - ≥3 business positional parameters on a public method.
 - Entity DTO packages or CreateXxxDto + Mapper layers.
@@ -64,7 +67,7 @@ When reviewing a change, report:
 
 - Which hard rules apply and any violations (with method / type names).
 - Whether new public verbs should be envelopes, CRUD-only, or worker-private.
-- Pointers to the principles section or hardcut wave if a migration is required.
+- Pointers to a hardcut wave (`PR-W1`…`PR-W5`) if a migration is required and local hardcut docs are present.
 
 ## Scope guardrails
 
