@@ -20,15 +20,18 @@ export function normalizeOptionalString(value: unknown, opts?: { upper?: boolean
 /**
  * Trim optional text, coercing finite numbers to strings.
  *
- * Non-finite numbers (NaN / ±Infinity) are treated as absent — unlike
- * {@link normalizeOptionalString}, which would stringify them to `"NaN"` /
- * `"Infinity"`. Prefer this at service boundaries that accept id-like scalars.
+ * Accepts only `string` and finite `number`. Non-finite numbers, booleans,
+ * objects, and other types are treated as absent — unlike
+ * {@link normalizeOptionalString}, which would stringify them (e.g. `"NaN"`,
+ * `"[object Object]"`). Prefer this at service boundaries that accept id-like
+ * scalars.
  */
 export function normalizeLooseOptionalText(value: unknown, opts?: { upper?: boolean; lower?: boolean }): string | undefined {
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return undefined;
     return normalizeOptionalString(String(value), opts);
   }
+  if (typeof value !== 'string') return undefined;
   return normalizeOptionalString(value, opts);
 }
 

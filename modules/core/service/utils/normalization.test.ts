@@ -94,8 +94,14 @@ test('normalizeLooseOptionalText coerces finite numbers and rejects non-finite',
   expect(normalizeLooseOptionalText(0)).toBe('0');
   expect(normalizeLooseOptionalText(Number.NaN)).toBe(undefined);
   expect(normalizeLooseOptionalText(Number.POSITIVE_INFINITY)).toBe(undefined);
+  expect(normalizeLooseOptionalText(Number.NEGATIVE_INFINITY)).toBe(undefined);
+  expect(normalizeLooseOptionalText(42, { upper: true })).toBe('42');
+  expect(normalizeLooseOptionalText('  Ab  ', { lower: true })).toBe('ab');
   expect(normalizeLooseOptionalText('  text  ')).toBe('text');
+  expect(normalizeLooseOptionalText(null)).toBe(undefined);
   expect(normalizeLooseOptionalText(undefined)).toBe(undefined);
+  expect(normalizeLooseOptionalText(true)).toBe(undefined);
+  expect(normalizeLooseOptionalText({})).toBe(undefined);
 });
 
 test('normalizeStringArray deduplicates and filters empty strings', () => {
