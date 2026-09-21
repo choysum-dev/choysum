@@ -22,6 +22,24 @@ test('terminologyCodeFromLanguageId: returns trimmed Code from Browse', async ()
   expect(code).toBe('en_US');
 });
 
+test('terminologyCodeFromLanguageId: unwraps a ManyToOne Id reference', async () => {
+  const code = await terminologyCodeFromLanguageId({ Id: ' lang_2 ' }, async id => {
+    expect(id).toBe('lang_2');
+    return { Code: 'zh_CN' };
+  });
+  expect(code).toBe('zh_CN');
+});
+
+test('terminologyCodeFromLanguageId: empty object skips Browse', async () => {
+  let browsed = false;
+  const code = await terminologyCodeFromLanguageId({}, async () => {
+    browsed = true;
+    return { Code: 'zh_CN' };
+  });
+  expect(code).toBe('');
+  expect(browsed).toBe(false);
+});
+
 test('applyUserLanguagePreference: sets display overrides before language resolution', async () => {
   const order: string[] = [];
   await applyUserLanguagePreference({

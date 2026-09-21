@@ -538,7 +538,7 @@ export default class User extends AttachmentOwnerMixin {
     }
 
     let language: string | undefined;
-    const languageId = String(user?.LanguageId || '').trim();
+    const languageId = normalizeRefId(user?.LanguageId) || '';
     if (languageId) {
       try {
         const row = await Language.Browse(languageId, ['Code', 'IsActive']);

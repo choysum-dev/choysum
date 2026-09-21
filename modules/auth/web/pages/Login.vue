@@ -129,13 +129,6 @@ async function handleLogin() {
 
     await authStore.login(form.username, form.password, '', '', form.rememberMe);
 
-    // User.LanguageId → UI locale is applied inside loadUser.
-    try {
-      await authStore.loadUser(true);
-    } catch {
-      // Preference apply is best-effort; login already succeeded.
-    }
-
     handleRedirect();
   } catch (err) {
     if (err instanceof ChoysumError) {

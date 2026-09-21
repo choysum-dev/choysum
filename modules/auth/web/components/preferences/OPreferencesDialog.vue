@@ -124,8 +124,7 @@ async function loadTimezoneOptions() {
 }
 
 async function syncLanguageFromUser() {
-  const languageId = String(currentUser.value?.LanguageId || '').trim();
-  const code = await resolveLanguageCodeFromId(languageId, (id, fields) =>
+  const code = await resolveLanguageCodeFromId(currentUser.value?.LanguageId, (id, fields) =>
     (languageStore as any).Browse(id, fields)
   );
   savedLanguageCode.value = code;
