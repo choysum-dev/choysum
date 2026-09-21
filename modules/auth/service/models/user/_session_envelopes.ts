@@ -69,8 +69,8 @@ export function pickRegisterUserInput(raw: Record<string, unknown>): RegisterUse
   const out: Record<string, unknown> = {};
   for (const key of REGISTER_USER_KEYS) {
     const value = raw[key];
-    if (Object.prototype.hasOwnProperty.call(raw, key) && typeof value === 'string') {
-      out[key] = value;
+    if (Object.prototype.hasOwnProperty.call(raw, key) && typeof value === 'string' && value.trim() !== '') {
+      out[key] = value.trim();
     }
   }
   return out as RegisterUserInput;

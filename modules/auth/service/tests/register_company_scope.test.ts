@@ -201,8 +201,8 @@ test('Register: strips server-managed fields from User payload', async () => {
         User: {
           Username: username,
           Email: email,
-          FirstName: 'Strip',
-          LastName: 'Test',
+          FirstName: '  Strip  ',
+          LastName: '  Test  ',
           // Over-posted server-managed columns must be ignored.
           CompanyId: 'cmp_spoof___________',
           CompanyIds: ['cmp_spoof___________'],
@@ -233,10 +233,12 @@ test('Register: strips server-managed fields from User payload', async () => {
   const user = await withModelContext(
     { activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] } as any,
     async () =>
-      User.Browse(userId, ['Id', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'Language'] as any),
+      User.Browse(userId, ['Id', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'Language', 'FirstName', 'LastName'] as any),
     { merge: false }
   );
   expect((user as any).CompanyId).toBe(mainCompanyId);
+  expect((user as any).FirstName).toBe('Strip');
+  expect((user as any).LastName).toBe('Test');
   expect((user as any).Preferences?.activeCompanyId).toBe(mainCompanyId);
   const companyIds = Array.isArray((user as any).CompanyIds) ? (user as any).CompanyIds.map(String) : [];
   expect(companyIds.includes('cmp_spoof___________')).toBe(false);

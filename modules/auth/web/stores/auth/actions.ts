@@ -155,9 +155,10 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
       // Build the payload expected by the Register RPC.
       const userData: Record<string, unknown> = {
+        ...additionalData,
+        // Identity arguments stay authoritative over additionalData.
         Username: username,
         Email: email,
-        ...additionalData,
       };
       // Register.vue historically passed camelCase fullName; map to FirstName when present.
       if (typeof userData.fullName === 'string' && userData.fullName.trim() && !userData.FirstName) {
@@ -170,7 +171,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         User: userData as any,
         Password: hashedPassword,
       });
-      if (!result || !(result as any).UserId) {
+      if (!result || typeof (result as any).UserId !== 'string' || (result as any).UserId === '') {
         throw newAuthError({
           code: AuthErrCode.REGISTRATION_FAILED,
           message: _t('Register returned an invalid response'),
