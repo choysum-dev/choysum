@@ -5,6 +5,14 @@
 // and extend with `@Model('User') export default class User extends UserBase` (like partner_bank Partner).
 export { default as User } from './user/user';
 export { default as UserBase } from './user/user';
+export type {
+  LoginReq,
+  LogoutReq,
+  RefreshTokensReq,
+  RegisterReq,
+  RegisterResp,
+  SwitchCompanyScopeReq,
+} from './user/user';
 export { default as Session } from './session';
 export { default as Token } from './token';
 export { default as Role } from './role';

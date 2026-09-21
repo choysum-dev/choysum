@@ -45,6 +45,23 @@ import {
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
 } from './_lifecycle_auth';
+import type {
+  LoginReq,
+  LogoutReq,
+  RefreshTokensReq,
+  RegisterReq,
+  RegisterResp,
+  SwitchCompanyScopeReq,
+} from './_session_envelopes';
+
+export type {
+  LoginReq,
+  LogoutReq,
+  RefreshTokensReq,
+  RegisterReq,
+  RegisterResp,
+  SwitchCompanyScopeReq,
+} from './_session_envelopes';
 
 import { buildAclAggregation } from './_permission_state_acl';
 import { buildUiPermissionProjection } from './_permission_state_ui';
@@ -359,8 +376,17 @@ export default class User extends AttachmentOwnerMixin {
 
   /**
    * Register a new local user and provision the default auth baseline.
+   * Returns UserId only (Register result shape B); callers Login for a session.
    */
-  static async Register(userData: Partial<Insertable<User>>, password: string): Promise<string> {
+  static async Register(req: RegisterReq): Promise<RegisterResp> {
+    if (!req || typeof req !== 'object') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Register requires a payload', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const userData = (req.User || {}) as Partial<Insertable<User>>;
+    const password = String(req.Password || '');
     const passwordHash = validateAndHashRegistrationInput(userData, password);
     await ensureRegistrationIdentityUnique(userData, {
       searchByUsername: async (username: string) => await this.Search(['Username', '=', username]),
@@ -391,7 +417,7 @@ export default class User extends AttachmentOwnerMixin {
         }
       );
 
-      return userId;
+      return { UserId: userId };
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.USER_CREATION_FAILED,
@@ -403,7 +429,15 @@ export default class User extends AttachmentOwnerMixin {
   /**
    * Authenticate a local user and create a token pair.
    */
-  static async Login(usernameOrEmail: string, password: string, ipAddress?: string, deviceInfo?: string, rememberMe?: boolean): Promise<TokenPair> {
+  static async Login(req: LoginReq): Promise<TokenPair> {
+    if (!req || typeof req !== 'object') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Login requires a payload', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const usernameOrEmail = String(req.UsernameOrEmail || '').trim();
+    const password = String(req.Password || '');
     const users = await this.Search({
       Or: [
         ['Username', '=', usernameOrEmail],
@@ -429,7 +463,11 @@ export default class User extends AttachmentOwnerMixin {
             await this.UpdateById(uid, { LastLogin: timestamp });
           },
         },
-        { ipAddress, deviceInfo, rememberMe }
+        {
+          ipAddress: req.IpAddress,
+          deviceInfo: req.DeviceInfo,
+          rememberMe: req.RememberMe,
+        }
       );
     } catch (error) {
       throw wrapAuthError(error, {
@@ -476,7 +514,14 @@ export default class User extends AttachmentOwnerMixin {
   /**
    * Refresh a token pair using the latest user metadata snapshot.
    */
-  static async RefreshTokens(refreshToken: string): Promise<TokenPair> {
+  static async RefreshTokens(req: RefreshTokensReq): Promise<TokenPair> {
+    if (!req || typeof req !== 'object') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('RefreshTokens requires a payload', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const refreshToken = String(req.RefreshToken || '');
     try {
       return await refreshTokensWithLatestMetadata(refreshToken, {
         browseUser: async (userId: string) => await this.Browse(userId),
@@ -492,14 +537,22 @@ export default class User extends AttachmentOwnerMixin {
 
   /**
    * Switch the current company scope for the authenticated user.
-   * - activeCompanyId: company used for current write operations.
-   * - enabledCompanyIds: readable company scope; defaults to Preferences or [activeCompanyId].
+   * - ActiveCompanyId: company used for current write operations.
+   * - EnabledCompanyIds: readable company scope; defaults to Preferences or [ActiveCompanyId].
    *
    * Strict fail-closed validation:
    * - enabled ⊆ allowed
    * - active ∈ enabled
    */
-  static async SwitchCompanyScope(activeCompanyId: string, enabledCompanyIds?: unknown): Promise<TokenPair> {
+  static async SwitchCompanyScope(req: SwitchCompanyScopeReq): Promise<TokenPair> {
+    if (!req || typeof req !== 'object') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('SwitchCompanyScope requires a payload', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const activeCompanyId = String(req.ActiveCompanyId || '');
+    const enabledCompanyIds = req.EnabledCompanyIds;
     const userId = String(this.userId || '').trim();
     if (!userId) {
       throw newAuthError({
@@ -645,13 +698,17 @@ export default class User extends AttachmentOwnerMixin {
 
   /**
    * Revoke the current token or every token owned by the current user.
-   *
-   * @param token - Access token to revoke.
-   * @param allDevices - Whether to revoke every token owned by the user.
-   * @param deviceInfo - Device information used for audit metadata.
-   * @returns True when logout succeeds.
    */
-  static async Logout(token: string, allDevices: boolean = false, deviceInfo?: string): Promise<boolean> {
+  static async Logout(req: LogoutReq): Promise<boolean> {
+    if (!req || typeof req !== 'object') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Logout requires a payload', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const token = String(req.Token || '');
+    const allDevices = req.AllDevices === true;
+    const deviceInfo = req.DeviceInfo;
     if (!token) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,

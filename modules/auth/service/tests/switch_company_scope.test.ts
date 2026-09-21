@@ -188,7 +188,7 @@ test('SwitchCompanyScope: enabled omitted defaults to [active] when prefs empty;
 
         // omit enabledCompanyIds
         try {
-          return await User.SwitchCompanyScope(c1.Id);
+          return await User.SwitchCompanyScope({ ActiveCompanyId: c1.Id });
         } catch (err) {
           if (err instanceof ChoysumError) throw new Error(err.toString());
           throw err;
@@ -244,7 +244,7 @@ test('SwitchCompanyScope: preserves other Preferences fields', async () => {
     async () => {
       setIdentity(userId);
       try {
-        return await User.SwitchCompanyScope(c1.Id, [c1.Id]);
+        return await User.SwitchCompanyScope({ ActiveCompanyId: c1.Id, EnabledCompanyIds: [c1.Id] });
       } catch (err) {
         if (err instanceof ChoysumError) throw new Error(err.toString());
         throw err;
@@ -285,7 +285,7 @@ test('SwitchCompanyScope: enabledCompanyIds must be string[] or omitted (fail-cl
         const userId = await createUser({ companyId: c1.Id, companyIds: [c1.Id] });
         setIdentity(userId);
         // invalid type
-        await User.SwitchCompanyScope(c1.Id, 'bad' as any);
+        await User.SwitchCompanyScope({ ActiveCompanyId: c1.Id, EnabledCompanyIds: 'bad' as any });
       },
       { merge: false }
     );
@@ -316,7 +316,7 @@ test('SwitchCompanyScope: enabled ⊆ allowed (fail-closed)', async () => {
       async () => {
         const userId = await createUser({ companyId: c1.Id, companyIds: [c1.Id] });
         setIdentity(userId);
-        await User.SwitchCompanyScope(c1.Id, [c1.Id, bad]);
+        await User.SwitchCompanyScope({ ActiveCompanyId: c1.Id, EnabledCompanyIds: [c1.Id, bad] });
       },
       { merge: false }
     );
@@ -356,7 +356,7 @@ test('SwitchCompanyScope: activeCompanyId must be in allowed (fail-closed)', asy
       async () => {
         const userId = await createUser({ companyId: c1.Id, companyIds: [c1.Id] });
         setIdentity(userId);
-        await User.SwitchCompanyScope(badActive, [c1.Id]);
+        await User.SwitchCompanyScope({ ActiveCompanyId: badActive, EnabledCompanyIds: [c1.Id] });
       },
       { merge: false }
     );
@@ -379,7 +379,7 @@ test('SwitchCompanyScope: activeCompanyId must be in enabledCompanyIds (fail-clo
       async () => {
         const userId = await createUser({ companyId: c1.Id, companyIds: [c1.Id] });
         setIdentity(userId);
-        await User.SwitchCompanyScope(c1.Id, []);
+        await User.SwitchCompanyScope({ ActiveCompanyId: c1.Id, EnabledCompanyIds: [] });
       },
       { merge: false }
     );
@@ -404,7 +404,7 @@ test('RefreshTokens: preserves active/enabled company scope after SwitchCompanyS
       setIdentity(userId);
 
       // Switch to c2 as active, with [c1, c2] enabled (both must be allowed).
-      return await User.SwitchCompanyScope(c2.Id, [c1.Id, c2.Id]);
+      return await User.SwitchCompanyScope({ ActiveCompanyId: c2.Id, EnabledCompanyIds: [c1.Id, c2.Id] });
     },
     { merge: false }
   );
@@ -421,7 +421,7 @@ test('RefreshTokens: preserves active/enabled company scope after SwitchCompanyS
   const refreshed = await withModelContext(
     { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
     async () => {
-      return await User.RefreshTokens(tokens.refreshToken);
+      return await User.RefreshTokens({ RefreshToken: tokens.refreshToken });
     },
     { merge: false }
   );

@@ -108,7 +108,10 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         });
       }
 
-      const resp = (await state.userStore.SwitchCompanyScope(activeCompanyId, enabledCompanyIds)) as any;
+      const resp = (await state.userStore.SwitchCompanyScope({
+        ActiveCompanyId: activeCompanyId,
+        EnabledCompanyIds: enabledCompanyIds ?? undefined,
+      })) as any;
       if (!resp || !resp.accessToken) {
         throw newAuthError({
           code: AuthErrCode.UNKNOWN,
@@ -151,14 +154,22 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       const hashedPassword = await hashPasswordClient(password, username);
 
       // Build the payload expected by the Register RPC.
-      const userData = {
+      const userData: Record<string, unknown> = {
         Username: username,
         Email: email,
         ...additionalData,
       };
+      // Register.vue historically passed camelCase fullName; map to FirstName when present.
+      if (typeof userData.fullName === 'string' && userData.fullName.trim() && userData.FirstName == null) {
+        userData.FirstName = String(userData.fullName).trim();
+        delete userData.fullName;
+      }
 
       // Forward the hashed password to the backend Register RPC.
-      const result = await state.userStore.Register(userData, hashedPassword);
+      const result = await state.userStore.Register({
+        User: userData as any,
+        Password: hashedPassword,
+      });
       return result;
     } catch (error) {
       throw wrapAuthError(error, {
@@ -198,7 +209,13 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       const actualDeviceInfo = getDefaultDeviceInfo(deviceInfo);
 
       // Call the Login RPC with the hashed password.
-      const response = await state.userStore.Login(username, hashedPassword, ipAddress, actualDeviceInfo, shouldRemember);
+      const response = await state.userStore.Login({
+        UsernameOrEmail: username,
+        Password: hashedPassword,
+        IpAddress: ipAddress,
+        DeviceInfo: actualDeviceInfo,
+        RememberMe: shouldRemember,
+      });
 
       if (!response || !response.accessToken) {
         throw newAuthError({
@@ -249,7 +266,11 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       // Ask the backend to revoke the current session when a token is available.
       if (actualToken) {
         try {
-          await state.userStore.Logout(actualToken, allDevices, actualDeviceInfo);
+          await state.userStore.Logout({
+            Token: actualToken,
+            AllDevices: allDevices,
+            DeviceInfo: actualDeviceInfo,
+          });
         } catch (error) {
           clearAuth();
           throw wrapAuthError(error, {
@@ -299,7 +320,9 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       try {
         const prevIdentity = state.identity.value || null;
 
-        const response = await state.userStore.RefreshTokens(state.tokens.value!.refreshToken);
+        const response = await state.userStore.RefreshTokens({
+          RefreshToken: state.tokens.value!.refreshToken,
+        });
         if (!response || !response.accessToken) {
           throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: _t('RefreshTokens returned an invalid response') });
         }

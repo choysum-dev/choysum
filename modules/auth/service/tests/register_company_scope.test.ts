@@ -97,21 +97,23 @@ test('Register: anonymous signup assigns base.user inside main company scope', a
   const username = uid('register_user');
   const email = `${uid('register_mail')}@example.com`;
 
-  const userId = await withModelContext(
+  const registered = await withModelContext(
     {} as any,
     async () => {
-      return await User.Register(
-        {
+      return await User.Register({
+        User: {
           Username: username,
           Email: email,
           FirstName: 'Register',
           LastName: 'User',
         } as any,
-        'password-123'
-      );
+        Password: 'password-123',
+      });
     },
     { merge: false }
   );
+  const userId = String(registered.UserId || '').trim();
+  expect(userId === '').toBe(false);
 
   const mainCompanyId = await withModelContext(
     {} as any,
