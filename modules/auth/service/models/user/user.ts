@@ -552,13 +552,13 @@ export default class User extends AttachmentOwnerMixin {
    */
   static async RefreshTokens(req: RefreshTokensReq): Promise<TokenPair> {
     requireSessionEnvelope(req, 'RefreshTokens');
-    if (typeof req.RefreshToken !== 'string' || req.RefreshToken.length === 0) {
+    if (typeof req.RefreshToken !== 'string' || req.RefreshToken.trim() === '') {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
         message: _t('RefreshTokens requires a refresh token', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    const refreshToken = req.RefreshToken;
+    const refreshToken = req.RefreshToken.trim();
     try {
       return await refreshTokensWithLatestMetadata(refreshToken, {
         browseUser: async (userId: string) => await this.Browse(userId),
@@ -739,13 +739,13 @@ export default class User extends AttachmentOwnerMixin {
    */
   static async Logout(req: LogoutReq): Promise<boolean> {
     requireSessionEnvelope(req, 'Logout');
-    if (typeof req.Token !== 'string' || req.Token.length === 0) {
+    if (typeof req.Token !== 'string' || req.Token.trim() === '') {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
         message: _t('Logout requires a token string', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    const token = req.Token;
+    const token = req.Token.trim();
     if (req.AllDevices != null && typeof req.AllDevices !== 'boolean') {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,

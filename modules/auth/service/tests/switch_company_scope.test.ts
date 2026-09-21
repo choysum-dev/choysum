@@ -505,6 +505,7 @@ test('User session envelopes: reject non-object payloads', async () => {
   await expectValidationFailed(() => User.RefreshTokens([] as any));
   await expectValidationFailed(() => User.RefreshTokens({ RefreshToken: 123 as any }));
   await expectValidationFailed(() => User.RefreshTokens({ RefreshToken: '' } as any));
+  await expectValidationFailed(() => User.RefreshTokens({ RefreshToken: '   ' }));
   await expectValidationFailed(() => User.SwitchCompanyScope(null as any));
   await expectValidationFailed(() => User.SwitchCompanyScope([] as any));
   await expectValidationFailed(() => User.SwitchCompanyScope({ ActiveCompanyId: 123 as any }));
@@ -514,6 +515,33 @@ test('User session envelopes: reject non-object payloads', async () => {
   await expectValidationFailed(() => User.Logout([] as any));
   await expectValidationFailed(() => User.Logout({ Token: 123 as any }));
   await expectValidationFailed(() => User.Logout({ Token: '' }));
+  await expectValidationFailed(() => User.Logout({ Token: '   ' }));
   await expectValidationFailed(() => User.Logout({ Token: 't', AllDevices: 'true' as any }));
   await expectValidationFailed(() => User.Logout({ Token: 't', DeviceInfo: 1 as any }));
+});
+
+test('User session envelopes: well-formed payloads pass field checks', async () => {
+  resetRequestContext();
+
+  async function expectNotValidationFailed(fn: () => Promise<unknown>): Promise<void> {
+    let caught: any;
+    try {
+      await fn();
+    } catch (err) {
+      caught = err;
+    }
+    expect(!!caught).toBe(true);
+    expect(String(caught?.code || '')).not.toBe('VALIDATION_FAILED');
+  }
+
+  await expectNotValidationFailed(() =>
+    User.Login({
+      UsernameOrEmail: 'envelope-no-such-user',
+      Password: 'x',
+      RememberMe: false,
+      IpAddress: '127.0.0.1',
+      DeviceInfo: 'test',
+    })
+  );
+  await expectNotValidationFailed(() => User.RefreshTokens({ RefreshToken: 'not-a-real-token' }));
 });

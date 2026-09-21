@@ -164,6 +164,27 @@ test('loginImpl: still logs in successfully when stale tokens exist', async () =
   expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
 });
 
+test('loginImpl: sends the trimmed identifier in the login envelope', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState._recorders.Login.resolve({
+    accessToken: 'new-access',
+    refreshToken: 'new-refresh',
+    expiresAt: Date.now() + 3600_000,
+  });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+
+  await actions.login('  admin  ', 'secret');
+
+  const payload = mockState._recorders.Login.calls[0].args[0] as { UsernameOrEmail: string; Password: string };
+  expect(payload.UsernameOrEmail).toBe('admin');
+  expect(payload.Password).toBe(await hashPasswordClient('secret', 'admin'));
+});
+
 test('loginImpl: awaits active initInFlight before clearing auth and logging in', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

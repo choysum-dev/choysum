@@ -211,14 +211,15 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       clearAuth();
 
       // Same trim as Register so a padded identifier still matches the stored hash.
-      const hashedPassword = await hashPasswordClient(password, username.trim());
+      const normalizedUsername = username.trim();
+      const hashedPassword = await hashPasswordClient(password, normalizedUsername);
 
       // Resolve the device info payload that should accompany the login.
       const actualDeviceInfo = getDefaultDeviceInfo(deviceInfo);
 
       // Call the Login RPC with the hashed password.
       const response = await state.userStore.Login({
-        UsernameOrEmail: username,
+        UsernameOrEmail: normalizedUsername,
         Password: hashedPassword,
         IpAddress: ipAddress,
         DeviceInfo: actualDeviceInfo,
