@@ -487,7 +487,14 @@ test('User session envelopes: reject non-object payloads', async () => {
   }
 
   await expectValidationFailed(() => User.Login(null as any));
+  await expectValidationFailed(() => User.Login([] as any));
+  await expectValidationFailed(() => User.Login({ UsernameOrEmail: '', Password: 'x' } as any));
+  await expectValidationFailed(() => User.Login({ UsernameOrEmail: 'admin', Password: 123 as any }));
   await expectValidationFailed(() => User.RefreshTokens(null as any));
+  await expectValidationFailed(() => User.RefreshTokens([] as any));
   await expectValidationFailed(() => User.SwitchCompanyScope(null as any));
+  await expectValidationFailed(() => User.SwitchCompanyScope([] as any));
   await expectValidationFailed(() => User.Logout(null as any));
+  await expectValidationFailed(() => User.Logout([] as any));
+  await expectValidationFailed(() => User.Logout({ Token: 't', AllDevices: 'true' as any }));
 });

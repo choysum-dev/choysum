@@ -63,6 +63,15 @@ export type {
   SwitchCompanyScopeReq,
 } from './_session_envelopes';
 
+function requireSessionEnvelope(req: unknown, verb: string): asserts req is Record<string, unknown> {
+  if (!req || typeof req !== 'object' || Array.isArray(req)) {
+    throw newAuthError({
+      code: AuthErrCode.VALIDATION_FAILED,
+      message: _t('%s requires a payload', { scope: 'service/models/user' }, verb),
+    }).withGrpcCode(GrpcCode.InvalidArgument);
+  }
+}
+
 import { buildAclAggregation } from './_permission_state_acl';
 import { buildUiPermissionProjection } from './_permission_state_ui';
 import { evaluateFieldRules } from './_field_rule_eval';
@@ -379,20 +388,21 @@ export default class User extends AttachmentOwnerMixin {
    * Returns UserId only (Register result shape B); callers Login for a session.
    */
   static async Register(req: RegisterReq): Promise<RegisterResp> {
-    if (!req || typeof req !== 'object') {
-      throw newAuthError({
-        code: AuthErrCode.VALIDATION_FAILED,
-        message: _t('Register requires a payload', { scope: 'service/models/user' }),
-      }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
+    requireSessionEnvelope(req, 'Register');
     if (req.User != null && (typeof req.User !== 'object' || Array.isArray(req.User))) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
         message: _t('Register requires a User object', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
+    if (typeof req.Password !== 'string' || req.Password.length === 0) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Register requires a password string', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
     const userData = (req.User || {}) as Partial<Insertable<User>>;
-    const password = String(req.Password || '');
+    const password = req.Password;
     const passwordHash = validateAndHashRegistrationInput(userData, password);
     await ensureRegistrationIdentityUnique(userData, {
       searchByUsername: async (username: string) => await this.Search(['Username', '=', username]),
@@ -436,14 +446,15 @@ export default class User extends AttachmentOwnerMixin {
    * Authenticate a local user and create a token pair.
    */
   static async Login(req: LoginReq): Promise<TokenPair> {
-    if (!req || typeof req !== 'object') {
+    requireSessionEnvelope(req, 'Login');
+    const usernameOrEmail = typeof req.UsernameOrEmail === 'string' ? req.UsernameOrEmail.trim() : '';
+    const password = typeof req.Password === 'string' ? req.Password : '';
+    if (!usernameOrEmail || !password) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: _t('Login requires a payload', { scope: 'service/models/user' }),
+        message: _t('Login requires username and password', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    const usernameOrEmail = String(req.UsernameOrEmail || '').trim();
-    const password = String(req.Password || '');
     const users = await this.Search({
       Or: [
         ['Username', '=', usernameOrEmail],
@@ -521,12 +532,7 @@ export default class User extends AttachmentOwnerMixin {
    * Refresh a token pair using the latest user metadata snapshot.
    */
   static async RefreshTokens(req: RefreshTokensReq): Promise<TokenPair> {
-    if (!req || typeof req !== 'object') {
-      throw newAuthError({
-        code: AuthErrCode.VALIDATION_FAILED,
-        message: _t('RefreshTokens requires a payload', { scope: 'service/models/user' }),
-      }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
+    requireSessionEnvelope(req, 'RefreshTokens');
     const refreshToken = String(req.RefreshToken || '');
     try {
       return await refreshTokensWithLatestMetadata(refreshToken, {
@@ -551,12 +557,7 @@ export default class User extends AttachmentOwnerMixin {
    * - active ∈ enabled
    */
   static async SwitchCompanyScope(req: SwitchCompanyScopeReq): Promise<TokenPair> {
-    if (!req || typeof req !== 'object') {
-      throw newAuthError({
-        code: AuthErrCode.VALIDATION_FAILED,
-        message: _t('SwitchCompanyScope requires a payload', { scope: 'service/models/user' }),
-      }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
+    requireSessionEnvelope(req, 'SwitchCompanyScope');
     const activeCompanyId = String(req.ActiveCompanyId || '');
     const enabledCompanyIds = req.EnabledCompanyIds;
     const userId = String(this.userId || '').trim();
@@ -706,13 +707,14 @@ export default class User extends AttachmentOwnerMixin {
    * Revoke the current token or every token owned by the current user.
    */
   static async Logout(req: LogoutReq): Promise<boolean> {
-    if (!req || typeof req !== 'object') {
+    requireSessionEnvelope(req, 'Logout');
+    const token = String(req.Token || '');
+    if (req.AllDevices != null && typeof req.AllDevices !== 'boolean') {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: _t('Logout requires a payload', { scope: 'service/models/user' }),
+        message: _t('Logout requires a boolean AllDevices', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    const token = String(req.Token || '');
     const allDevices = req.AllDevices === true;
     const deviceInfo = req.DeviceInfo;
     if (!token) {

@@ -162,8 +162,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       // Register.vue historically passed camelCase fullName; map to FirstName when present.
       if (typeof userData.fullName === 'string' && userData.fullName.trim() && userData.FirstName == null) {
         userData.FirstName = String(userData.fullName).trim();
-        delete userData.fullName;
       }
+      delete userData.fullName;
 
       // Forward the hashed password to the backend Register RPC (shape B: { UserId }).
       return await state.userStore.Register({
