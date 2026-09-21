@@ -210,7 +210,7 @@ test('Register: strips server-managed fields from User payload', async () => {
           Id: 'usr_spoof_____________',
           PasswordHash: 'over-posted-hash',
           // Non-string allowlisted keys must also be dropped.
-          Language: { spoof: true },
+          LanguageId: { spoof: true },
         } as any,
         Password: 'password-123',
       });
@@ -233,7 +233,7 @@ test('Register: strips server-managed fields from User payload', async () => {
   const user = await withModelContext(
     { activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] } as any,
     async () =>
-      User.Browse(userId, ['Id', 'Username', 'Email', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'Language', 'FirstName', 'LastName'] as any),
+      User.Browse(userId, ['Id', 'Username', 'Email', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'LanguageId', 'FirstName', 'LastName'] as any),
     { merge: false }
   );
   expect((user as any).CompanyId).toBe(mainCompanyId);
@@ -246,7 +246,7 @@ test('Register: strips server-managed fields from User payload', async () => {
   expect(companyIds.includes('cmp_spoof___________')).toBe(false);
   expect(String((user as any).PasswordHash || '')).not.toBe('over-posted-hash');
   expect(String((user as any).PasswordHash || '') === '').toBe(false);
-  expect((user as any).Language).not.toEqual({ spoof: true });
+  expect((user as any).LanguageId).not.toEqual({ spoof: true });
 });
 
 test('Register: ignores prototype-inherited allowlisted fields', async () => {

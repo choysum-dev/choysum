@@ -17,157 +17,157 @@ msgctxt "auth.model.CompanyScopedResource.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/role.ts:117
+#: service/models/role.ts:122
 msgctxt "auth.model.Role.fields"
 msgid "Accessible UI Resources"
 msgstr ""
 
-#: service/models/role.ts:93
+#: service/models/role.ts:98
 msgctxt "auth.model.Role.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/role.ts:104
+#: service/models/role.ts:109
 msgctxt "auth.model.Role.fields"
 msgid "Built-in"
 msgstr ""
 
-#: service/models/role.ts:67
+#: service/models/role.ts:72
 msgctxt "auth.model.Role.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/role.ts:82
+#: service/models/role.ts:87
 msgctxt "auth.model.Role.fields"
 msgid "Description"
 msgstr ""
 
-#: service/models/role.ts:37
+#: service/models/role.ts:42
 msgctxt "auth.model.Role.fields"
 msgid "Display Name"
 msgstr ""
 
-#: service/models/role.ts:201
+#: service/models/role.ts:206
 msgctxt "auth.model.Role.fields"
 msgid "Field Rules"
 msgstr ""
 
-#: service/models/role.ts:171
+#: service/models/role.ts:176
 msgctxt "auth.model.Role.fields"
 msgid "Implied By Roles"
 msgstr ""
 
-#: service/models/role.ts:152
+#: service/models/role.ts:157
 msgctxt "auth.model.Role.fields"
 msgid "Included Roles"
 msgstr ""
 
-#: service/models/role.ts:191
+#: service/models/role.ts:196
 msgctxt "auth.model.Role.fields"
 msgid "Method Accesses"
 msgstr ""
 
-#: service/models/role.ts:55
+#: service/models/role.ts:60
 msgctxt "auth.model.Role.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/role.ts:153
+#: service/models/role.ts:158
 msgctxt "auth.model.Role.fields"
 msgid "Permissions from included roles are merged into this role."
 msgstr ""
 
-#: service/models/role.ts:181
+#: service/models/role.ts:186
 msgctxt "auth.model.Role.fields"
 msgid "Record Rules"
 msgstr ""
 
-#: service/models/role.ts:68
+#: service/models/role.ts:73
 msgctxt "auth.model.Role.fields"
 msgid "Stable programmatic id; also used as the display name."
 msgstr ""
 
-#: service/models/role.ts:105
+#: service/models/role.ts:110
 msgctxt "auth.model.Role.fields"
 msgid "System roles are seeded and should not be deleted casually."
 msgstr ""
 
-#: service/models/role.ts:211
+#: service/models/role.ts:216
 msgctxt "auth.model.Role.fields"
 msgid "UI Resources"
 msgstr ""
 
-#: service/models/role.ts:118
+#: service/models/role.ts:123
 msgctxt "auth.model.Role.fields"
 msgid "UI tree selection; drives menu and action visibility for this role."
 msgstr ""
 
-#: service/models/role.ts:136
+#: service/models/role.ts:141
 msgctxt "auth.model.Role.fields"
 msgid "Users"
-msgstr ""
-
-#: service/models/role_field_rule.ts:117
-#: service/models/role_field_rule.ts:134
-msgctxt "auth.model.RoleFieldRule.fields"
-msgid "Allow"
-msgstr ""
-
-#: service/models/role_field_rule.ts:43
-msgctxt "auth.model.RoleFieldRule.fields"
-msgid "Application"
 msgstr ""
 
 #: service/models/role_field_rule.ts:118
 #: service/models/role_field_rule.ts:135
 msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Allow"
+msgstr ""
+
+#: service/models/role_field_rule.ts:44
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/role_field_rule.ts:119
+#: service/models/role_field_rule.ts:136
+msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Deny"
 msgstr ""
 
-#: service/models/role_field_rule.ts:85
+#: service/models/role_field_rule.ts:86
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Field"
 msgstr ""
 
-#: service/models/role_field_rule.ts:44
-#: service/models/role_field_rule.ts:60
-#: service/models/role_field_rule.ts:86
+#: service/models/role_field_rule.ts:45
+#: service/models/role_field_rule.ts:61
+#: service/models/role_field_rule.ts:87
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Leave all scopes empty for global; otherwise pick one level (field scope also needs a model)."
 msgstr ""
 
-#: service/models/role_field_rule.ts:103
+#: service/models/role_field_rule.ts:104
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Logical Model"
 msgstr ""
 
-#: service/models/role_field_rule.ts:59
+#: service/models/role_field_rule.ts:60
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/role_field_rule.ts:122
-#: service/models/role_field_rule.ts:139
+#: service/models/role_field_rule.ts:123
+#: service/models/role_field_rule.ts:140
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Override field visibility or editability; at least one of Read/Write must be set."
 msgstr ""
 
-#: service/models/role_field_rule.ts:121
+#: service/models/role_field_rule.ts:122
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Read"
 msgstr ""
 
-#: service/models/role_field_rule.ts:104
+#: service/models/role_field_rule.ts:105
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Registered short name covering all installed host applications that inject the same model. Applies to all business fields on that logical model. Mutually exclusive with Application / Model / Field."
 msgstr ""
 
-#: service/models/role_field_rule.ts:30
+#: service/models/role_field_rule.ts:31
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_field_rule.ts:138
+#: service/models/role_field_rule.ts:139
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr ""
@@ -182,82 +182,82 @@ msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr ""
 
-#: service/models/role_method_access.ts:123
+#: service/models/role_method_access.ts:124
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Allow"
 msgstr ""
 
-#: service/models/role_method_access.ts:128
+#: service/models/role_method_access.ts:129
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Any matching deny overrides allow across scopes; default is deny."
 msgstr ""
 
-#: service/models/role_method_access.ts:43
+#: service/models/role_method_access.ts:44
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/role_method_access.ts:124
+#: service/models/role_method_access.ts:125
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Deny"
 msgstr ""
 
-#: service/models/role_method_access.ts:77
+#: service/models/role_method_access.ts:78
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Leave all scopes empty for a global rule; matching scopes are OR-ed and any deny wins."
 msgstr ""
 
-#: service/models/role_method_access.ts:109
+#: service/models/role_method_access.ts:110
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Logical Methods"
 msgstr ""
 
-#: service/models/role_method_access.ts:94
+#: service/models/role_method_access.ts:95
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Logical Model"
 msgstr ""
 
-#: service/models/role_method_access.ts:144
+#: service/models/role_method_access.ts:145
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Manual"
 msgstr ""
 
-#: service/models/role_method_access.ts:127
+#: service/models/role_method_access.ts:128
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Mode"
 msgstr ""
 
-#: service/models/role_method_access.ts:56
+#: service/models/role_method_access.ts:57
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Model"
 msgstr ""
 
-#: service/models/role_method_access.ts:110
+#: service/models/role_method_access.ts:111
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Optional method names for logical-model scope (JSON string array). Leave empty to allow or deny all methods on that logical model."
 msgstr ""
 
-#: service/models/role_method_access.ts:95
+#: service/models/role_method_access.ts:96
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Registered short name covering all installed host applications that inject the same model (e.g. TranslationTerm). Mutually exclusive with Application / Model / Service."
 msgstr ""
 
-#: service/models/role_method_access.ts:30
+#: service/models/role_method_access.ts:31
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/role_method_access.ts:76
+#: service/models/role_method_access.ts:77
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Service"
 msgstr ""
 
-#: service/models/role_method_access.ts:150
+#: service/models/role_method_access.ts:151
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Source"
 msgstr ""
 
-#: service/models/role_method_access.ts:145
+#: service/models/role_method_access.ts:146
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "UI (legacy)"
 msgstr ""
@@ -362,47 +362,47 @@ msgctxt "auth.model.RoleUiResource.fields"
 msgid "UI Resource"
 msgstr ""
 
-#: service/models/session.ts:32
+#: service/models/session.ts:33
 msgctxt "auth.model.Session.fields"
 msgid "Access Token ID"
 msgstr ""
 
-#: service/models/session.ts:44
+#: service/models/session.ts:45
 msgctxt "auth.model.Session.fields"
 msgid "Device Info"
 msgstr ""
 
-#: service/models/session.ts:66
+#: service/models/session.ts:67
 msgctxt "auth.model.Session.fields"
 msgid "Expires At"
 msgstr ""
 
-#: service/models/session.ts:54
+#: service/models/session.ts:55
 msgctxt "auth.model.Session.fields"
 msgid "IP Address"
 msgstr ""
 
-#: service/models/session.ts:77
+#: service/models/session.ts:78
 msgctxt "auth.model.Session.fields"
 msgid "Last Activity"
 msgstr ""
 
-#: service/models/session.ts:100
+#: service/models/session.ts:101
 msgctxt "auth.model.Session.fields"
 msgid "Metadata"
 msgstr ""
 
-#: service/models/session.ts:90
+#: service/models/session.ts:91
 msgctxt "auth.model.Session.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/session.ts:33
+#: service/models/session.ts:34
 msgctxt "auth.model.Session.fields"
 msgid "Token JTI identifier, not the bearer secret."
 msgstr ""
 
-#: service/models/session.ts:20
+#: service/models/session.ts:21
 msgctxt "auth.model.Session.fields"
 msgid "User"
 msgstr ""
@@ -457,137 +457,137 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/user/user.ts:232
+#: service/models/user/user.ts:274
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr ""
 
-#: service/models/user/user.ts:246
+#: service/models/user/user.ts:288
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/user/user.ts:148
+#: service/models/user/user.ts:201
+msgctxt "auth.model.User.fields"
+msgid "Active base.Language row used for terminology."
+msgstr ""
+
+#: service/models/user/user.ts:187
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr ""
 
-#: service/models/user/user.ts:233
+#: service/models/user/user.ts:275
 msgctxt "auth.model.User.fields"
 msgid "Companies the user may switch to; must stay within role assignments."
 msgstr ""
 
-#: service/models/user/user.ts:221
+#: service/models/user/user.ts:263
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user/user.ts:173
+#: service/models/user/user.ts:215
 msgctxt "auth.model.User.fields"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr ""
 
-#: service/models/user/user.ts:76
+#: service/models/user/user.ts:115
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr ""
 
-#: service/models/user/user.ts:110
+#: service/models/user/user.ts:149
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr ""
 
-#: service/models/user/user.ts:131
+#: service/models/user/user.ts:170
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr ""
 
-#: service/models/user/user.ts:158
+#: service/models/user/user.ts:200
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/user/user.ts:257
+#: service/models/user/user.ts:299
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr ""
 
-#: service/models/user/user.ts:121
+#: service/models/user/user.ts:160
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr ""
 
-#: service/models/user/user.ts:99
+#: service/models/user/user.ts:138
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr ""
 
-#: service/models/user/user.ts:87
+#: service/models/user/user.ts:126
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr ""
 
-#: service/models/user/user.ts:185
+#: service/models/user/user.ts:227
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr ""
 
-#: service/models/user/user.ts:295
+#: service/models/user/user.ts:337
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr ""
 
-#: service/models/user/user.ts:268
+#: service/models/user/user.ts:310
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr ""
 
-#: service/models/user/user.ts:172
+#: service/models/user/user.ts:214
 msgctxt "auth.model.User.fields"
 msgid "Time Zone"
 msgstr ""
 
-#: service/models/user/user.ts:279
+#: service/models/user/user.ts:321
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr ""
 
-#: service/models/user/user.ts:65
+#: service/models/user/user.ts:104
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr ""
 
-#: service/models/user/user.ts:159
-msgctxt "auth.model.User.fields"
-msgid "When set, must match an active base.Language POSIX terminology code."
-msgstr ""
-
-#: service/models/user_role.ts:53
+#: service/models/user_role.ts:51
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user_role.ts:54
+#: service/models/user_role.ts:52
 msgctxt "auth.model.UserRole.fields"
 msgid "Leave empty to grant the role in every company the user can access."
 msgstr ""
 
-#: service/models/user_role.ts:40
+#: service/models/user_role.ts:38
 msgctxt "auth.model.UserRole.fields"
 msgid "Role"
 msgstr ""
 
-#: service/models/user_role.ts:29
+#: service/models/user_role.ts:27
 msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/session.ts:117
+#: service/models/session.ts:118
 msgctxt "service/models/session"
 msgid "Failed to revoke session"
 msgstr ""
 
-#: service/models/session.ts:146
+#: service/models/session.ts:147
 msgctxt "service/models/session"
 msgid "Failed to revoke user sessions"
 msgstr ""
@@ -637,155 +637,210 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr ""
 
-#: service/models/user/user.ts:930
+#: service/models/user/user.ts:77
+msgctxt "service/models/user"
+msgid "%s requires a payload"
+msgstr ""
+
+#: service/models/user/user.ts:1054
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
 
-#: service/models/user/user.ts:313
+#: service/models/user/user.ts:355
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/user/user.ts:911
+#: service/models/user/user.ts:1035
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
 
-#: service/models/user/user.ts:342
+#: service/models/user/user.ts:383
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr ""
 
-#: service/models/user/user.ts:656
+#: service/models/user/user.ts:464
 msgctxt "service/models/user"
-msgid "Logout failed"
-msgstr ""
-
-#: service/models/user/user.ts:895
-msgctxt "service/models/user"
-msgid "Missing identity information (userId)"
-msgstr ""
-
-#: service/models/user/user.ts:903
-msgctxt "service/models/user"
-msgid "Missing model name (model)"
-msgstr ""
-
-#: service/models/user/user.ts:628
-msgctxt "service/models/user"
-msgid "Switch company scope failed"
-msgstr ""
-
-#: service/models/user/user.ts:645
-msgctxt "service/models/user"
-msgid "Token is required"
+msgid "Login requires a boolean RememberMe"
 msgstr ""
 
 #: service/models/user/user.ts:476
 msgctxt "service/models/user"
+msgid "Login requires a string DeviceInfo"
+msgstr ""
+
+#: service/models/user/user.ts:470
+msgctxt "service/models/user"
+msgid "Login requires a string IpAddress"
+msgstr ""
+
+#: service/models/user/user.ts:458
+msgctxt "service/models/user"
+msgid "Login requires username and password"
+msgstr ""
+
+#: service/models/user/user.ts:785
+msgctxt "service/models/user"
+msgid "Logout failed"
+msgstr ""
+
+#: service/models/user/user.ts:766
+msgctxt "service/models/user"
+msgid "Logout requires a boolean AllDevices"
+msgstr ""
+
+#: service/models/user/user.ts:773
+msgctxt "service/models/user"
+msgid "Logout requires a string DeviceInfo"
+msgstr ""
+
+#: service/models/user/user.ts:759
+msgctxt "service/models/user"
+msgid "Logout requires a token string"
+msgstr ""
+
+#: service/models/user/user.ts:1019
+msgctxt "service/models/user"
+msgid "Missing identity information (userId)"
+msgstr ""
+
+#: service/models/user/user.ts:1027
+msgctxt "service/models/user"
+msgid "Missing model name (model)"
+msgstr ""
+
+#: service/models/user/user.ts:572
+msgctxt "service/models/user"
+msgid "RefreshTokens requires a refresh token"
+msgstr ""
+
+#: service/models/user/user.ts:398
+msgctxt "service/models/user"
+msgid "Register requires a User object"
+msgstr ""
+
+#: service/models/user/user.ts:404
+msgctxt "service/models/user"
+msgid "Register requires a password string"
+msgstr ""
+
+#: service/models/user/user.ts:746
+msgctxt "service/models/user"
+msgid "Switch company scope failed"
+msgstr ""
+
+#: service/models/user/user.ts:603
+msgctxt "service/models/user"
+msgid "SwitchCompanyScope requires an ActiveCompanyId"
+msgstr ""
+
+#: service/models/user/user.ts:584
+msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user/user.ts:495
+#: service/models/user/user.ts:612
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user/user.ts:512
+#: service/models/user/user.ts:629
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user/user.ts:563
+#: service/models/user/user.ts:680
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user/user.ts:578
+#: service/models/user/user.ts:695
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user/user.ts:547
+#: service/models/user/user.ts:664
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user/user.ts:531
+#: service/models/user/user.ts:648
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
 
-#: service/models/user/_field_rule_eval.ts:126
+#: service/models/user/_field_rule_eval.ts:119
 msgctxt "service/models/user/_field_rule_eval"
 msgid "Model does not exist"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:269
-#: service/models/user/_lifecycle_auth.ts:359
+#: service/models/user/_lifecycle_auth.ts:268
+#: service/models/user/_lifecycle_auth.ts:358
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Account is disabled"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:152
+#: service/models/user/_lifecycle_auth.ts:145
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Email is already registered"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:345
-#: service/models/user/_lifecycle_auth.ts:379
+#: service/models/user/_lifecycle_auth.ts:344
+#: service/models/user/_lifecycle_auth.ts:378
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:190
+#: service/models/user/_lifecycle_auth.ts:187
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:215
+#: service/models/user/_lifecycle_auth.ts:212
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:353
+#: service/models/user/_lifecycle_auth.ts:352
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:253
-#: service/models/user/_lifecycle_auth.ts:260
+#: service/models/user/_lifecycle_auth.ts:252
+#: service/models/user/_lifecycle_auth.ts:259
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:168
+#: service/models/user/_lifecycle_auth.ts:161
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:113
+#: service/models/user/_lifecycle_auth.ts:106
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username and password are required"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:140
+#: service/models/user/_lifecycle_auth.ts:133
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is already in use"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:133
+#: service/models/user/_lifecycle_auth.ts:126
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
 
-#: service/models/user/user.ts:425
+#: service/models/user/user.ts:513
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user/user.ts:386
+#: service/models/user/user.ts:443
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
@@ -835,13 +890,13 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:282
+#: web/components/layout/OSwitchCompany.vue:289
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available companies must include the current company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:247
-#: web/components/layout/OSwitchCompany.vue:252
+#: web/components/layout/OSwitchCompany.vue:254
+#: web/components/layout/OSwitchCompany.vue:259
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Company"
 msgstr ""
@@ -851,17 +906,17 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Current Company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:287
+#: web/components/layout/OSwitchCompany.vue:294
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "No changes to apply"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:285
+#: web/components/layout/OSwitchCompany.vue:292
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:280
+#: web/components/layout/OSwitchCompany.vue:287
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Select a current company"
 msgstr ""
@@ -886,8 +941,8 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:144
-#: web/components/preferences/OPreferencesDialog.vue:153
+#: web/components/preferences/OPreferencesDialog.vue:156
+#: web/components/preferences/OPreferencesDialog.vue:165
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr ""
@@ -897,9 +952,14 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Edit Profile"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:176
+#: web/components/preferences/OPreferencesDialog.vue:200
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Failed to update preferences"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:178
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Invalid or inactive language"
 msgstr ""
 
 #: web/components/preferences/OPreferencesDialog.vue:11
@@ -907,7 +967,7 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Language"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:173
+#: web/components/preferences/OPreferencesDialog.vue:197
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
@@ -993,13 +1053,13 @@ msgid "Don't have an account?"
 msgstr ""
 
 #: web/pages/Login.vue:20
-#: web/pages/Login.vue:48
+#: web/pages/Login.vue:50
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr ""
 
 #: web/pages/Login.vue:16
-#: web/pages/Login.vue:41
+#: web/pages/Login.vue:43
 msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr ""
@@ -1009,7 +1069,7 @@ msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr ""
 
-#: web/pages/Login.vue:116
+#: web/pages/Login.vue:114
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr ""
@@ -1445,77 +1505,82 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""
 
-#: web/stores/auth/actions.ts:344
+#: web/stores/auth/actions.ts:402
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr ""
 
-#: web/stores/auth/actions.ts:424
+#: web/stores/auth/actions.ts:487
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr ""
 
-#: web/stores/auth/actions.ts:82
+#: web/stores/auth/actions.ts:108
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr ""
 
-#: web/stores/auth/actions.ts:369
+#: web/stores/auth/actions.ts:432
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr ""
 
-#: web/stores/auth/actions.ts:324
+#: web/stores/auth/actions.ts:382
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr ""
 
-#: web/stores/auth/actions.ts:128
+#: web/stores/auth/actions.ts:157
 msgctxt "web/stores/auth/actions"
 msgid "Failed to switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:194
+#: web/stores/auth/actions.ts:246
 msgctxt "web/stores/auth/actions"
 msgid "Invalid login response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:223
+#: web/stores/auth/actions.ts:275
 msgctxt "web/stores/auth/actions"
 msgid "Login failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:256
+#: web/stores/auth/actions.ts:312
 msgctxt "web/stores/auth/actions"
 msgid "Logout failed, but local state was cleared"
 msgstr ""
 
-#: web/stores/auth/actions.ts:280
+#: web/stores/auth/actions.ts:336
 msgctxt "web/stores/auth/actions"
 msgid "No refresh token is available"
 msgstr ""
 
-#: web/stores/auth/actions.ts:95
+#: web/stores/auth/actions.ts:121
 msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:292
+#: web/stores/auth/actions.ts:350
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:154
+#: web/stores/auth/actions.ts:192
+msgctxt "web/stores/auth/actions"
+msgid "Register returned an invalid response"
+msgstr ""
+
+#: web/stores/auth/actions.ts:199
 msgctxt "web/stores/auth/actions"
 msgid "Registration failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:245
+#: web/stores/auth/actions.ts:301
 msgctxt "web/stores/auth/actions"
 msgid "Server-side logout failed, but local state was cleared"
 msgstr ""
 
-#: web/stores/auth/actions.ts:103
+#: web/stores/auth/actions.ts:132
 msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr ""

@@ -36,6 +36,7 @@ function buildMockState() {
   const Register = makeFn();
   const RefreshTokens = makeFn();
   const Browse = makeFn();
+  const UpdateById = makeFn();
   const GetPermissionState = makeFn();
   const SwitchCompanyScope = makeFn();
   return {
@@ -68,10 +69,11 @@ function buildMockState() {
       Register: Register.fn,
       RefreshTokens: RefreshTokens.fn,
       Browse: Browse.fn,
+      UpdateById: UpdateById.fn,
       GetPermissionState: GetPermissionState.fn,
       SwitchCompanyScope: SwitchCompanyScope.fn,
     },
-    _recorders: { Login, Logout, Register, RefreshTokens, Browse, GetPermissionState, SwitchCompanyScope },
+    _recorders: { Login, Logout, Register, RefreshTokens, Browse, UpdateById, GetPermissionState, SwitchCompanyScope },
   };
 }
 
@@ -384,4 +386,206 @@ test('logout: sends the logout envelope', async () => {
     AllDevices: true,
     DeviceInfo: 'device-1',
   });
+});
+
+test('loadUser: applies LanguageId via injected language store', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.identity.value = { userId: 'usr_1' } as any;
+  mockState._recorders.Browse.resolve({
+    Id: 'usr_1',
+    Username: 'ada',
+    Email: 'ada@example.com',
+    LanguageId: 'lang_zh',
+    Preferences: { display: { dateFormat: 'YYYY-MM-DD' } },
+  });
+  const langBrowse = makeFn();
+  langBrowse.resolve({ Code: 'zh_CN' });
+  const setUiKey = makeFn();
+  setUiKey.resolve(undefined);
+  const setDisplayOverrides = makeFn();
+  setDisplayOverrides.returnValue(undefined);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: langBrowse.fn,
+      Search: async () => [],
+    }),
+    importI18nStore: async () => ({
+      useI18nStore: () => ({
+        setUiKey: setUiKey.fn,
+        setDisplayOverrides: setDisplayOverrides.fn,
+      }),
+      langToUiKey: (lang: string) => `ui:${lang}`,
+    }),
+  });
+
+  const ok = await actions.loadUser(true);
+  expect(ok).toBe(true);
+  expect(mockState._recorders.Browse.calls[0].args[1]).toEqual([
+    'Id',
+    'Username',
+    'Email',
+    'LanguageId',
+    'Timezone',
+    'Preferences',
+  ]);
+  expect((mockState.currentUser.value as any)?.LanguageId).toBe('lang_zh');
+  expect(langBrowse.calls.length).toBe(1);
+  expect(setUiKey.calls[0].args[0]).toBe('ui:zh_CN');
+  expect(setDisplayOverrides.calls[0].args[0]).toEqual({ dateFormat: 'YYYY-MM-DD' });
+});
+
+test('loadUser: swallows i18n apply failures', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.identity.value = { userId: 'usr_1' } as any;
+  mockState._recorders.Browse.resolve({ Id: 'usr_1', LanguageId: 'lang_zh' });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: async () => {
+        throw new Error('browse down');
+      },
+      Search: async () => [],
+    }),
+    importI18nStore: async () => ({
+      useI18nStore: () => ({
+        setUiKey: async () => undefined,
+        setDisplayOverrides: () => undefined,
+      }),
+      langToUiKey: (lang: string) => lang,
+    }),
+  });
+
+  const ok = await actions.loadUser(true);
+  expect(ok).toBe(true);
+  expect((mockState.currentUser.value as any)?.Id).toBe('usr_1');
+});
+
+test('loadUser: still applies display overrides when the language store is missing', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.identity.value = { userId: 'usr_1' } as any;
+  mockState._recorders.Browse.resolve({
+    Id: 'usr_1',
+    LanguageId: 'lang_zh',
+    Preferences: { display: { dateFormat: 'YYYY-MM-DD' } },
+  });
+  const setDisplayOverrides = makeFn();
+  setDisplayOverrides.returnValue(undefined);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => {
+      throw new Error('registry down');
+    },
+    importI18nStore: async () => ({
+      useI18nStore: () => ({
+        setUiKey: async () => undefined,
+        setDisplayOverrides: setDisplayOverrides.fn,
+      }),
+      langToUiKey: (lang: string) => lang,
+    }),
+  });
+
+  const ok = await actions.loadUser(true);
+  expect(ok).toBe(true);
+  expect(setDisplayOverrides.calls[0].args[0]).toEqual({ dateFormat: 'YYYY-MM-DD' });
+});
+
+test('loadUser: exercises default i18nStore and Language registry imports', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.identity.value = { userId: 'usr_1' } as any;
+  mockState._recorders.Browse.resolve({
+    Id: 'usr_1',
+    Username: 'ada',
+    LanguageId: 'lang_zh',
+    Preferences: { display: null },
+  });
+
+  // No createLanguageStore / importI18nStore — hit the production dynamic-import branches.
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const ok = await actions.loadUser(true);
+  expect(ok).toBe(true);
+  expect((mockState.currentUser.value as any)?.Id).toBe('usr_1');
+});
+
+test('persistLanguagePreference: writes LanguageId and refreshes tokens', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.isAuthenticated.value = true;
+  mockState.currentUser.value = { Id: 'usr_1', LanguageId: null } as any;
+  mockState.tokens.value = { accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 3600_000 };
+  mockState._recorders.UpdateById.resolve({ Id: 'usr_1', LanguageId: 'lang_en' });
+  mockState._recorders.RefreshTokens.resolve({
+    accessToken: 'a2',
+    refreshToken: 'r2',
+    expiresAt: Date.now() + 3600_000,
+  });
+  const langSearch = makeFn();
+  langSearch.resolve([{ Id: 'lang_en' }]);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: async () => null,
+      Search: langSearch.fn,
+    }),
+  });
+
+  await actions.persistLanguagePreference('en_US');
+  expect(langSearch.calls.length).toBe(1);
+  expect(mockState._recorders.UpdateById.calls[0].args[1]).toEqual({ LanguageId: 'lang_en' });
+  expect((mockState.currentUser.value as any).LanguageId).toBe('lang_en');
+  expect(mockState._recorders.RefreshTokens.calls.length).toBe(1);
+});
+
+test('persistLanguagePreference: no-ops when anonymous or language missing', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: async () => null,
+      Search: async () => {
+        throw new Error('should not search');
+      },
+    }),
+  });
+  await actions.persistLanguagePreference('en_US');
+  expect(mockState._recorders.UpdateById.calls.length).toBe(0);
+
+  mockState.isAuthenticated.value = true;
+  mockState.currentUser.value = { Id: 'usr_1' } as any;
+  const actions2 = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: async () => null,
+      Search: async () => [],
+    }),
+  });
+  await actions2.persistLanguagePreference('en_US');
+  expect(mockState._recorders.UpdateById.calls.length).toBe(0);
+});
+
+test('persistLanguagePreference: no-ops when language lookup throws', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.isAuthenticated.value = true;
+  mockState.currentUser.value = { Id: 'usr_1' } as any;
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: async () => null,
+      Search: async () => {
+        throw new Error('registry down');
+      },
+    }),
+  });
+  await actions.persistLanguagePreference('en_US');
+  expect(mockState._recorders.UpdateById.calls.length).toBe(0);
 });

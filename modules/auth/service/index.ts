@@ -4,3 +4,5 @@
 export * from './models';
 export * from './mixins';
 export * from './error';
+
+import './hook/post_upgrade';

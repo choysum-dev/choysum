@@ -8,6 +8,17 @@ import { toPositiveDecimal } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import UoMCategory from './uom_category';
 import { fail, mapNormalizationToBase, assertRequiredTranslatedText, assertRefId } from './_normalizers';
+import { convertUoM } from './_uom_convert';
+
+export type UoMConvertParams = {
+  Amount: Decimal | string;
+  FromUoMId: string;
+  ToUoMId: string;
+};
+
+export type UoMConvertResult = {
+  Amount: Decimal;
+};
 
 @Model('UoM')
 export default class UoM extends BaseModel {
@@ -159,5 +170,10 @@ export default class UoM extends BaseModel {
   async validateUoMConstraint(): Promise<void> {
     const currentId = String(this.Id || '').trim() || undefined;
     await UoM.validateEntity(this, currentId);
+  }
+
+  /** Convert an amount between two units in the same category. */
+  static async Convert(params: UoMConvertParams): Promise<UoMConvertResult> {
+    return convertUoM(this as unknown as Parameters<typeof convertUoM>[0], params);
   }
 }

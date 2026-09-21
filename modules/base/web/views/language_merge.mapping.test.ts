@@ -45,10 +45,11 @@ test('bootstrap.json has POSIX languages and no Locale entity', () => {
   expect(byId.company_main?.values).not.toHaveProperty('LocaleId');
 });
 
-test('auth smoke and company child fixtures use Language without LocaleId', () => {
+test('auth smoke and company child fixtures use LanguageId without LocaleId', () => {
   const smokeRaw = JSON.stringify(smoke);
   expect(smokeRaw).not.toMatch(/LocaleId|language_zh[^_]|locale_default/);
-  expect(smokeRaw).toMatch(/"Language":\s*"zh_CN"/);
+  expect(smokeRaw).toMatch(/base\.language_zh_cn/);
+  expect(smokeRaw).not.toMatch(/"Language":\s*"zh_CN"/);
 
   const companyChildRaw = JSON.stringify(companyChild);
   expect(companyChildRaw).not.toMatch(/LocaleId|locale_default/);

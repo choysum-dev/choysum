@@ -402,7 +402,7 @@ test('PR-C-2 gift pack: base.user can read Company columns but not write them', 
 
   // Profile writes are field-allowlisted; sensitive auth.User fields stay deny-write.
   // PR-D-2: PasswordHash also has an explicit field-scope deny overlay (deny-read + deny-write).
-  expect(((out.frUser as any)?.denyWriteFields || []).includes('Language')).toBe(false);
+  expect(((out.frUser as any)?.denyWriteFields || []).includes('LanguageId')).toBe(false);
   expect(((out.frUser as any)?.denyWriteFields || []).includes('Timezone')).toBe(false);
   expect(((out.frUser as any)?.denyReadFields || []).includes('PasswordHash')).toBe(true);
   expect(((out.frUser as any)?.denyWriteFields || []).includes('PasswordHash')).toBe(true);
