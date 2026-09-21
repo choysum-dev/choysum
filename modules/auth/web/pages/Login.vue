@@ -130,13 +130,19 @@ async function handleLogin() {
 
     await authStore.login(form.username, form.password, '', '', form.rememberMe);
 
-    // Apply persisted User.Language when present (terminology lang → UI locale).
+    // Apply persisted User.LanguageId when present (terminology lang → UI locale).
     try {
       await authStore.loadUser(true);
-      const preferredLang = String((authStore.currentUser as any)?.Language || '').trim();
+      const languageId = String((authStore.currentUser as any)?.LanguageId || '').trim();
       const i18nStore = useI18nStore();
-      if (preferredLang) {
-        await i18nStore.setUiKey(langToUiKey(preferredLang));
+      if (languageId) {
+        const { createStoreByModel } = await import('@/web/web/stores/registry');
+        const languageStore = createStoreByModel('base.Language');
+        const row = await (languageStore as any).Browse(languageId, ['Code']);
+        const preferredLang = String(row?.Code || '').trim();
+        if (preferredLang) {
+          await i18nStore.setUiKey(langToUiKey(preferredLang));
+        }
       }
       i18nStore.setDisplayOverrides((authStore.currentUser as any)?.Preferences?.display ?? null);
     } catch {

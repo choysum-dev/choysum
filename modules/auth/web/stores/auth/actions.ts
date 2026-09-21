@@ -392,13 +392,13 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       if (!forceRefresh && state.currentUser.value) return true;
 
       // Fetch the current user profile from the backend store.
-      const user = await state.userStore.Browse(userId, ['Id', 'Username', 'Email', 'Language', 'Timezone', 'Preferences']);
+      const user = await state.userStore.Browse(userId, ['Id', 'Username', 'Email', 'LanguageId', 'Timezone', 'Preferences']);
       state.currentUser.value = user;
-      // Align FE UI key with User.Language (covers initAuth refresh paths; Login also applies this).
+      // Align FE UI key with the user's LanguageId (covers initAuth refresh paths; Login also applies this).
       try {
         const { useI18nStore, langToUiKey } = await import('@/web/web/stores/i18nStore');
         const i18nStore = useI18nStore();
-        const preferredLang = String((user as any)?.Language || '').trim();
+        const preferredLang = await terminologyCodeFromLanguageId((user as any)?.LanguageId);
         if (preferredLang) {
           await i18nStore.setUiKey(langToUiKey(preferredLang));
         }
@@ -496,7 +496,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   }
 
   /**
-   * Persist terminology language preference for the logged-in user (User.Language).
+   * Persist terminology language preference for the logged-in user (User.LanguageId).
    * Anonymous callers no-op; FE still keeps locale in i18nStore localStorage.
    */
   async function persistLanguagePreference(lang: string): Promise<void> {
@@ -511,12 +511,29 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     if (!userId) {
       return;
     }
-    await state.userStore.UpdateById(userId, { Language: terminologyLang } as any, ['Id', 'Language'] as any);
+    const { createStoreByModel } = await import('@/web/web/stores/registry');
+    const languageStore = createStoreByModel('base.Language');
+    const rows = (await (languageStore as any).Search(
+      { And: [['Code', '=', terminologyLang], ['IsActive', '=', true]] } as any,
+      { fields: ['Id'], limit: 1 } as any
+    )) as Array<{ Id?: string }>;
+    const languageId = String(rows?.[0]?.Id || '').trim();
+    if (!languageId) return;
+    await state.userStore.UpdateById(userId, { LanguageId: languageId } as any, ['Id', 'LanguageId'] as any);
     if (state.currentUser.value) {
-      (state.currentUser.value as any).Language = terminologyLang;
+      (state.currentUser.value as any).LanguageId = languageId;
     }
     // Sync JWT metadata.language after preference write.
     await refreshTokenImpl(true);
+  }
+
+  async function terminologyCodeFromLanguageId(languageId: unknown): Promise<string> {
+    const id = String(languageId || '').trim();
+    if (!id) return '';
+    const { createStoreByModel } = await import('@/web/web/stores/registry');
+    const languageStore = createStoreByModel('base.Language');
+    const row = await (languageStore as any).Browse(id, ['Code']);
+    return String(row?.Code || '').trim();
   }
 
   // Wrap public async actions with shared loading-state bookkeeping.

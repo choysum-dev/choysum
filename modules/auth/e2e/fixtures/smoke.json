@@ -19,7 +19,9 @@
             "ref": "base.e2e_company_child"
           }
         ],
-        "Language": "zh_CN",
+        "LanguageId": {
+          "ref": "base.language_zh_cn"
+        },
         "Timezone": "UTC"
       }
     },

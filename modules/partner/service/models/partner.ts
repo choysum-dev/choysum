@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Compute, Field, Model } from '@/core/service';
+import type { ModelCtor, RowOf } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { getActiveCompanyId } from '@/core/service/api/context';
+import type { FieldSelection, Insertable } from '@/core/service/api';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import PartnerCollaborationModel from '../mixins/partner_collaboration_model';
 import { _t, _lt } from '../i18n';
@@ -12,6 +15,28 @@ import type Country from '@/base/service/models/country';
 import type Currency from '@/base/service/models/currency';
 import type Language from '@/base/service/models/language';
 import PartnerContact from './partner_contact';
+
+export type PartnerFindOrCreateReq = {
+  Code: string;
+  /** Display name used only when a new partner is created. Defaults to Code. */
+  Name?: string;
+};
+
+export type PartnerFindOrCreateResp = {
+  PartnerId: string;
+  Created: boolean;
+};
+
+function requireSessionCompanyId(): string {
+  const companyId = String(getActiveCompanyId() || '').trim();
+  if (!companyId) fail(_t('CompanyId is required', { scope: 'service/models/partner' }));
+  return companyId;
+}
+
+function codeSeedFromName(name: string): string {
+  const seed = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 32);
+  return seed || 'P';
+}
 
 /**
  * Company-scoped business partner master record with derived default contacts and addresses.
@@ -348,5 +373,63 @@ export default class Partner extends PartnerCollaborationModel {
     const currentId = String(this.Id || '').trim() || undefined;
 
     await Partner.validateEntity(this as unknown as Record<string, unknown>, currentId);
+  }
+
+  /** Return the company partner with this code, creating it when missing. */
+  static async FindOrCreate(req: PartnerFindOrCreateReq): Promise<PartnerFindOrCreateResp> {
+    const companyId = requireSessionCompanyId();
+    const code = assertRequiredText(req?.Code, 'Code').toUpperCase();
+    const existing = await this.Search(
+      { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+      { fields: ['Id'], limit: 1 }
+    );
+    const existingId = String(existing?.[0]?.Id || '').trim();
+    if (existingId) return { PartnerId: existingId, Created: false };
+
+    const name = req?.Name != null && String(req.Name).trim() ? assertRequiredText(req.Name, 'Name') : code;
+    try {
+      const created = await this.Create({ Name: name, Code: code, CompanyId: companyId } as Partial<Partner>, ['Id'] as any);
+      return { PartnerId: String((created as { Id?: unknown }).Id || ''), Created: true };
+    } catch (err) {
+      const again = await this.Search(
+        { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+        { fields: ['Id'], limit: 1 }
+      );
+      const racedId = String(again?.[0]?.Id || '').trim();
+      if (racedId) return { PartnerId: racedId, Created: false };
+      throw err;
+    }
+  }
+
+  /**
+   * Create a partner from a display name (relation typeahead).
+   * Code is derived from the name and disambiguated within the session company.
+   */
+  static async NameCreate<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    name: string,
+    values?: Partial<Insertable<RowOf<C>>>,
+    options?: { returnFields?: F }
+  ): Promise<any> {
+    const partnerValues = (values || {}) as Partial<Insertable<Partner>>;
+    const companyId = String(normalizeRefId(partnerValues.CompanyId) || requireSessionCompanyId());
+    const display = assertRequiredText(name, 'Name');
+    const seed = codeSeedFromName(display);
+    let code = String(partnerValues.Code || '').trim().toUpperCase() || seed.slice(0, 40);
+    if (!partnerValues.Code) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const taken = await (this as unknown as typeof Partner).Search(
+          { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+          { fields: ['Id'], limit: 1 }
+        );
+        if (!taken?.[0]?.Id) break;
+        const suffix = String(attempt + 1);
+        code = `${seed.slice(0, Math.max(1, 40 - suffix.length))}${suffix}`;
+      }
+    }
+    return (this as unknown as typeof Partner).Create(
+      { ...partnerValues, Name: display, Code: code, CompanyId: companyId } as Partial<Insertable<Partner>>,
+      (options?.returnFields as string[] | undefined) as any
+    );
   }
 }

@@ -14,7 +14,7 @@ import Role from '../role';
 import Token from '../token';
 import UserRole from '../user_role';
 import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/model_parsing';
-import { uniqStrings } from '@/core/service/utils/normalization';
+import { uniqStrings, normalizeRefId } from '@/core/service/utils/normalization';
 import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { Constraint } from '@/core/service/api/constraint';
 import type LanguageModel from '@/base/service/models/language';
@@ -189,17 +189,20 @@ export default class User extends AttachmentOwnerMixin {
   Avatar?: string;
 
   /**
-   * Preferred terminology language (e.g. zh_CN). Written by FE language switch when logged in.
+   * Preferred terminology language. Empty uses the session default.
    */
-  @Field({
-    type: 'varchar',
+  @Field<LanguageModel>({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Language' },
+    condition: ['IsActive', '=', true],
     size: 20,
+    index: true,
     string: _lt('Language', { scope: 'auth.model.User.fields' }),
-    help: _lt('When set, must match an active base.Language POSIX terminology code.', {
+    help: _lt('Active base.Language row used for terminology.', {
       scope: 'auth.model.User.fields',
     }),
   })
-  Language: string | null;
+  LanguageId?: string | null;
 
   /**
    * Preferred IANA timezone for localization and display.
@@ -356,32 +359,31 @@ export default class User extends AttachmentOwnerMixin {
   }
 
   /**
-   * User.Language is a POSIX terminology code that must reference an active base.Language row.
+   * LanguageId must reference an active base.Language row.
    */
-  @Constraint<User>(['Language'])
+  @Constraint<User>(['LanguageId'])
   async validateLanguageConstraint(): Promise<void> {
-    const raw = this.Language;
-    if (raw == null || !String(raw).trim()) {
-      this.Language = null;
+    const languageId = normalizeRefId(this.LanguageId);
+    if (!languageId) {
+      this.LanguageId = null;
       return;
     }
-    const code = String(raw).trim();
     const active = await Language.Search(
       {
         And: [
-          ['Code', '=', code],
+          ['Id', '=', languageId],
           ['IsActive', '=', true],
         ],
       },
-      { fields: ['Code'], limit: 1 }
+      { fields: ['Id'], limit: 1 }
     );
     if (!active?.length) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: _t('Invalid or inactive language: %s', { scope: 'service/models/user' }, code),
+        message: _t('Invalid or inactive language: %s', { scope: 'service/models/user' }, languageId),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    this.Language = code;
+    this.LanguageId = languageId;
   }
 
   /**
@@ -535,8 +537,20 @@ export default class User extends AttachmentOwnerMixin {
       }
     }
 
+    let language: string | undefined;
+    const languageId = String(user?.LanguageId || '').trim();
+    if (languageId) {
+      try {
+        const row = await Language.Browse(languageId, ['Code', 'IsActive']);
+        const code = String(row?.Code || '').trim();
+        if (row && row.IsActive !== false && code) language = code;
+      } catch {
+        // Missing language row leaves terminology language unset.
+      }
+    }
+
     return {
-      language: user.Language ?? undefined,
+      language,
       timezone: user.Timezone || undefined,
       companyTimezone,
       allowedCompanyIds: companyScope.allowedCompanyIds,

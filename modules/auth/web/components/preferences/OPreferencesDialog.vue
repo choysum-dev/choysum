@@ -83,6 +83,7 @@ const displayName = computed(() => {
 });
 
 const languageCode = ref('');
+const savedLanguageCode = ref('');
 const timezone = ref<string | null>(null);
 const languageFromSession = ref(false);
 const timezoneFromBrowser = ref(false);
@@ -121,8 +122,19 @@ async function loadTimezoneOptions() {
   timezoneOptions.value = [];
 }
 
-function syncLanguageFromUser() {
-  const resolved = resolvePreferenceLanguage(currentUser.value?.Language, i18nStore.terminologyLang);
+async function syncLanguageFromUser() {
+  const languageId = String(currentUser.value?.LanguageId || '').trim();
+  let code = '';
+  if (languageId) {
+    try {
+      const row = await (languageStore as any).Browse(languageId, ['Code']);
+      code = String(row?.Code || '').trim();
+    } catch {
+      code = '';
+    }
+  }
+  savedLanguageCode.value = code;
+  const resolved = resolvePreferenceLanguage(code || null, i18nStore.terminologyLang);
   languageCode.value = resolved.code;
   languageFromSession.value = resolved.fromSession;
 }
@@ -162,7 +174,7 @@ watch(
 
 watch(languageCode, code => {
   if (!languageFromSession.value) return;
-  const saved = String(currentUser.value?.Language || '').trim();
+  const saved = savedLanguageCode.value;
   if (code !== saved && code !== String(i18nStore.terminologyLang || '').trim()) {
     languageFromSession.value = false;
   }
@@ -203,15 +215,27 @@ async function handleSave() {
     }
     const nextLang = String(languageCode.value || '').trim();
     const nextTz = timezone.value ? String(timezone.value).trim() : null;
+    let languageId: string | null = null;
+    if (nextLang) {
+      const rows = (await (languageStore as any).Search(
+        { And: [['Code', '=', nextLang], ['IsActive', '=', true]] } as any,
+        { fields: ['Id'], limit: 1 } as any
+      )) as Array<{ Id?: string }>;
+      languageId = String(rows?.[0]?.Id || '').trim() || null;
+      if (!languageId) {
+        throw new Error(_t('Invalid or inactive language'));
+      }
+    }
     await userStore.UpdateById(
       userId,
-      { Language: nextLang || null, Timezone: nextTz } as any,
-      ['Id', 'Language', 'Timezone'] as any
+      { LanguageId: languageId, Timezone: nextTz } as any,
+      ['Id', 'LanguageId', 'Timezone'] as any
     );
     if (authStore.currentUser) {
-      (authStore.currentUser as any).Language = nextLang || null;
+      (authStore.currentUser as any).LanguageId = languageId;
       (authStore.currentUser as any).Timezone = nextTz;
     }
+    savedLanguageCode.value = nextLang;
     if (nextLang) {
       await i18nStore.setUiKey(langToUiKey(nextLang));
     }

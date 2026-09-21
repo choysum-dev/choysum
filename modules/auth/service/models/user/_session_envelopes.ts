@@ -27,7 +27,7 @@ const REGISTER_USER_KEYS = [
   'Email',
   'FirstName',
   'LastName',
-  'Language',
+  'LanguageId',
   'Timezone',
 ] as const satisfies readonly (keyof Insertable<User>)[];
 
