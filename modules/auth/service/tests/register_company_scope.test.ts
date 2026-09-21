@@ -246,3 +246,21 @@ test('Register: strips server-managed fields from User payload', async () => {
   expect(String((user as any).PasswordHash || '') === '').toBe(false);
   expect((user as any).Language).not.toEqual({ spoof: true });
 });
+
+test('Register: ignores prototype-inherited allowlisted fields', async () => {
+  resetRequestContext();
+  setupAllowlistForRegister();
+
+  const inherited = Object.create({
+    Username: uid('register_proto'),
+    Email: `${uid('register_proto_mail')}@example.com`,
+  });
+
+  let caught: any;
+  try {
+    await User.Register({ User: inherited, Password: 'password-123' } as any);
+  } catch (err) {
+    caught = err;
+  }
+  expect(String(caught?.code || '')).toBe('VALIDATION_FAILED');
+});

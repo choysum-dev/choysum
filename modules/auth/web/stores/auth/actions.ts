@@ -150,15 +150,16 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
    */
   async function registerImpl(username: string, email: string, password: string, additionalData: Record<string, unknown> = {}): Promise<any> {
     try {
-      // Hash the password client-side when the feature is enabled.
-      const hashedPassword = await hashPasswordClient(password, username);
+      // Salt must match the trimmed Username the backend stores.
+      const normalizedUsername = username.trim();
+      const hashedPassword = await hashPasswordClient(password, normalizedUsername);
 
       // Build the payload expected by the Register RPC.
       const userData: Record<string, unknown> = {
         ...additionalData,
         // Identity arguments stay authoritative over additionalData.
-        Username: username,
-        Email: email,
+        Username: normalizedUsername,
+        Email: email.trim(),
       };
       // Register.vue historically passed camelCase fullName; map to FirstName when present.
       if (typeof userData.fullName === 'string' && userData.fullName.trim() && !userData.FirstName) {
@@ -209,8 +210,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       // during the Login RPC.
       clearAuth();
 
-      // Hash the password client-side when the feature is enabled.
-      const hashedPassword = await hashPasswordClient(password, username);
+      // Same trim as Register so a padded identifier still matches the stored hash.
+      const hashedPassword = await hashPasswordClient(password, username.trim());
 
       // Resolve the device info payload that should accompany the login.
       const actualDeviceInfo = getDefaultDeviceInfo(deviceInfo);
