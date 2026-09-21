@@ -49,14 +49,14 @@ test('AttachmentOwnerMixin: harness exposes bind/unbind and dials document.Attac
     }),
     async () => {
       const bound = await AttachmentOwnerHarness.AttachmentBind({
-        attachmentObjectId: 'c1',
+        AttachmentContentId: 'c1',
         ownerModel: 'partner.Partner',
         ownerRecordId: 'p1',
         fieldName: 'Logo',
         mutationId: 'mut1',
       });
       expect(bound).toEqual({ attachmentBindingId: 'b1', status: 'active' });
-      expect(bindReq).toMatchObject({ attachmentObjectId: 'c1', fieldName: 'Logo' });
+      expect(bindReq).toMatchObject({ AttachmentContentId: 'c1', fieldName: 'Logo' });
 
       const unbound = await AttachmentOwnerHarness.AttachmentUnbind({
         attachmentBindingId: 'b1',

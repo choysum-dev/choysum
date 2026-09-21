@@ -183,7 +183,7 @@ async function createActiveObject(ownerRecordId: string, fieldName: string, comp
   const finalized = await AttachmentObject.FinalizeUpload({
     uploadId: prepared.uploadId,
     businessRequestId});
-  return finalized.attachmentObjectId;
+  return finalized.AttachmentContentId;
 }
 
 async function createActiveObjectForBackend(ownerRecordId: string, fieldName: string, backend: 'db' | 's3'): Promise<string> {
@@ -205,7 +205,7 @@ test('document.attachment_binding: Bind replays first success snapshot by mutati
     const mutationId = uid('mutation_bind');
 
     const first = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -214,7 +214,7 @@ test('document.attachment_binding: Bind replays first success snapshot by mutati
       mutationId});
 
     const replay = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -241,7 +241,7 @@ test('document.attachment_binding: Bind rejects unauthenticated and does not cre
 
     try {
       await AttachmentBinding.Bind({
-        attachmentObjectId,
+        AttachmentContentId: attachmentObjectId,
         ownerModel: 'auth.User',
         ownerRecordId,
         fieldName,
@@ -277,7 +277,7 @@ test('document.attachment_binding: Bind rejects when owner write authorization d
 
     try {
       await AttachmentBinding.Bind({
-        attachmentObjectId,
+        AttachmentContentId: attachmentObjectId,
         ownerModel: 'unknown.Model',
         ownerRecordId,
         fieldName,
@@ -301,7 +301,7 @@ test('document.attachment_binding: Unbind replays first success snapshot by muta
     const attachmentObjectId = await createActiveObject(ownerRecordId, fieldName);
 
     const bound = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -332,7 +332,7 @@ test('document.attachment_binding: Unbind handles stale unbound row for same own
 
     const firstObjectId = await createActiveObject(ownerRecordId, fieldName);
     const firstBind = await AttachmentBinding.Bind({
-      attachmentObjectId: firstObjectId,
+      AttachmentContentId: firstObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -344,7 +344,7 @@ test('document.attachment_binding: Unbind handles stale unbound row for same own
 
     const secondObjectId = await createActiveObject(ownerRecordId, fieldName);
     const secondBind = await AttachmentBinding.Bind({
-      attachmentObjectId: secondObjectId,
+      AttachmentContentId: secondObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -380,7 +380,7 @@ test('document.attachment_binding: Bind handles stale unbound row when replacing
 
     const firstObjectId = await createActiveObject(ownerRecordId, fieldName);
     const firstBind = await AttachmentBinding.Bind({
-      attachmentObjectId: firstObjectId,
+      AttachmentContentId: firstObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -392,7 +392,7 @@ test('document.attachment_binding: Bind handles stale unbound row when replacing
 
     const secondObjectId = await createActiveObject(ownerRecordId, fieldName);
     const secondBind = await AttachmentBinding.Bind({
-      attachmentObjectId: secondObjectId,
+      AttachmentContentId: secondObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -400,7 +400,7 @@ test('document.attachment_binding: Bind handles stale unbound row when replacing
 
     const thirdObjectId = await createActiveObject(ownerRecordId, fieldName);
     const thirdBind = await AttachmentBinding.Bind({
-      attachmentObjectId: thirdObjectId,
+      AttachmentContentId: thirdObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -487,7 +487,7 @@ test('document.attachment_binding: descriptor read interface allows same-company
       const attachmentObjectId = await createActiveObjectForBackend(ownerRecordId, fieldName, backend);
 
       const bound = await AttachmentBinding.Bind({
-        attachmentObjectId,
+        AttachmentContentId: attachmentObjectId,
         ownerModel: 'auth.User',
         ownerRecordId,
         fieldName,
@@ -510,7 +510,7 @@ test('document.attachment_binding: descriptor read interface denies unauthentica
     const attachmentObjectId = await createActiveObject(ownerRecordId, fieldName);
 
     const bound = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -542,7 +542,7 @@ test('document.attachment_binding: descriptor read interface denies activeCompan
 
   const bound = await withScope('cmp_desc_a', ['cmp_desc_a'], 'usr_desc_a', async () => {
     return AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -761,7 +761,7 @@ test('document.attachment_binding: ResolveDownloadContent rejects activeCompany 
 
   const bound = await withScope('cmp_resolve_a', ['cmp_resolve_a'], 'usr_resolve_a', async () => {
     return AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -993,7 +993,7 @@ test('document.attachment_binding: Bind patches presentation when rebinding same
     const attachmentObjectId = await createActiveObject(ownerRecordId, fieldName);
 
     const first = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -1001,7 +1001,7 @@ test('document.attachment_binding: Bind patches presentation when rebinding same
       downloadDisposition: 'attachment',
       mutationId: uid('mutation_bind_presentation_1')});
     const second = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -1032,7 +1032,7 @@ test('document.attachment_binding: Bind rejects failed and invalid succeeded mut
     );
     try {
       await AttachmentBinding.Bind({
-        attachmentObjectId,
+        AttachmentContentId: attachmentObjectId,
         ownerModel: 'auth.User',
         ownerRecordId: uid('owner_bind_ledger_failed'),
         fieldName: 'Doc',
@@ -1056,7 +1056,7 @@ test('document.attachment_binding: Bind rejects failed and invalid succeeded mut
     );
     try {
       await AttachmentBinding.Bind({
-        attachmentObjectId,
+        AttachmentContentId: attachmentObjectId,
         ownerModel: 'auth.User',
         ownerRecordId: uid('owner_bind_ledger_bad_snapshot'),
         fieldName: 'Doc2',
@@ -1076,7 +1076,7 @@ test('document.attachment_binding: Unbind is idempotent for already unbound rows
     const fieldName = 'AttachmentField';
     const attachmentObjectId = await createActiveObject(ownerRecordId, fieldName);
     const bound = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -1142,7 +1142,7 @@ test('document.attachment_binding: replay reports empty ledger status when statu
     );
     try {
       await AttachmentBinding.Bind({
-        attachmentObjectId: await createActiveObject(uid('owner_blank_status'), 'AttachmentField'),
+        AttachmentContentId: await createActiveObject(uid('owner_blank_status'), 'AttachmentField'),
         ownerModel: 'auth.User',
         ownerRecordId: uid('owner_blank_status'),
         fieldName: 'AttachmentField',
@@ -1169,7 +1169,7 @@ test('document.attachment_binding: replay reports empty ledger status when statu
     );
     const ownerRecordId = uid('owner_unbind_blank_status');
     const bound = await AttachmentBinding.Bind({
-      attachmentObjectId: await createActiveObject(ownerRecordId, 'AttachmentField'),
+      AttachmentContentId: await createActiveObject(ownerRecordId, 'AttachmentField'),
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName: 'AttachmentField',
@@ -1259,7 +1259,7 @@ test('document.attachment_binding: Bind no-ops presentation patch when values ar
     const fieldName = 'AttachmentField';
     const attachmentObjectId = await createActiveObject(ownerRecordId, fieldName);
     const first = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -1267,7 +1267,7 @@ test('document.attachment_binding: Bind no-ops presentation patch when values ar
       downloadDisposition: 'attachment',
       mutationId: uid('mutation_bind_noop_1')});
     const second = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -1329,7 +1329,7 @@ test('document.attachment_binding: Bind rejects missing active content in compan
   await withDocumentScope(async () => {
     try {
       await AttachmentBinding.Bind({
-        attachmentObjectId: uid('missing_bind_content'),
+        AttachmentContentId: uid('missing_bind_content'),
         ownerModel: 'auth.User',
         ownerRecordId: uid('owner_bind_missing_content'),
         fieldName: 'AttachmentField',
@@ -1348,7 +1348,7 @@ test('document.attachment_binding: purge keeps the requested unbound row and rem
     const fieldName = 'AttachmentField';
     const firstObjectId = await createActiveObject(ownerRecordId, fieldName);
     const first = await AttachmentBinding.Bind({
-      attachmentObjectId: firstObjectId,
+      AttachmentContentId: firstObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -1360,7 +1360,7 @@ test('document.attachment_binding: purge keeps the requested unbound row and rem
 
     const secondObjectId = await createActiveObject(ownerRecordId, fieldName);
     const second = await AttachmentBinding.Bind({
-      attachmentObjectId: secondObjectId,
+      AttachmentContentId: secondObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,
@@ -1493,7 +1493,7 @@ test('document.attachment_binding: Unbind rejects failed and invalid succeeded m
     const fieldName = 'AttachmentField';
     const attachmentObjectId = await createActiveObject(ownerRecordId, fieldName);
     const bound = await AttachmentBinding.Bind({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
       ownerModel: 'auth.User',
       ownerRecordId,
       fieldName,

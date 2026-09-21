@@ -99,7 +99,7 @@ async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
-    const jobId = await (store as any).RequestSync({ force: true, ifStale: false });
+    const jobId = await (store as any).RequestSync({ Force: true, IfStale: false });
     ElMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
   } catch (error: any) {
     ElMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));

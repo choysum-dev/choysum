@@ -215,7 +215,7 @@ export function buildFinalizeResp(obj: AttachmentContent): FinalizeUploadResp {
   const imageFormat = normalizeOptionalString(obj.ImageFormat);
 
   return {
-    attachmentObjectId: requireText(obj.Id, 'attachmentObjectId'),
+    AttachmentContentId: requireText(obj.Id, 'AttachmentContentId'),
     status: 'active',
     mimeType: normalizeOptionalString(obj.MimeType) ?? 'application/octet-stream',
     sizeBytes: normalizeOptionalNonNegativeInt(obj.SizeBytes) ?? 0,

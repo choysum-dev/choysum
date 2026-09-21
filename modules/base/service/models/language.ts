@@ -25,6 +25,21 @@ export type LanguageFormatParams = {
   Digits?: number;
 };
 
+/** Fixed projection returned by GetActiveLanguages. Callers cannot request extra fields. */
+export type ActiveLanguage = {
+  Code: string;
+  Name: string;
+  Direction?: 'ltr' | 'rtl';
+  DecimalSeparator?: string;
+  ThousandSeparator?: string;
+  Grouping?: string;
+  DateFormat?: string;
+  TimeFormat?: string;
+  FirstDayOfWeek?: number;
+  CurrencySymbolPosition?: 'before' | 'after';
+  CurrencySymbolSpacing?: boolean;
+};
+
 @Model('Language')
 export default class Language extends BaseModel {
   @Field({
@@ -141,7 +156,7 @@ export default class Language extends BaseModel {
    * Active languages for Preferences / guest switcher (POSIX Code + format projection).
    * gRPC: base.Language/GetActiveLanguages
    */
-  public static async GetActiveLanguages(): Promise<Array<Partial<Language>>> {
+  public static async GetActiveLanguages(): Promise<ActiveLanguage[]> {
     const rows = await this.Search(['IsActive', '=', true], {
       fields: [
         'Code',

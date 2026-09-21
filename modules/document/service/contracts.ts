@@ -235,7 +235,7 @@ export interface FinalizeUploadReq {
  * Finalized attachment content metadata returned to callers.
  */
 export interface FinalizeUploadResp {
-  attachmentObjectId: AttachmentContentId;
+  AttachmentContentId: AttachmentContentId;
   status: 'active';
   mimeType: string;
   sizeBytes: number;
@@ -332,7 +332,7 @@ export interface AttachmentDescriptor {
  * Request payload for binding content to an owner field.
  */
 export interface BindReq {
-  attachmentObjectId: AttachmentContentId;
+  AttachmentContentId: AttachmentContentId;
   ownerModel: string;
   ownerRecordId: string;
   fieldName: string;

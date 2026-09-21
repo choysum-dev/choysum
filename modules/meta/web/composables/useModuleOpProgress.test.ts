@@ -55,7 +55,7 @@ function createFakeClock(): {
 test('createModuleOpProgressSession: skips tip when boot status is terminal', async () => {
   const onTips = fnRecorder(async () => undefined);
   const subscribeModuleOp = fnRecorder(() => emptyAsyncIterable());
-  const fetchStatus = fnRecorder(async () => snapshot({ status: 'succeeded', reload_web: false }));
+  const fetchStatus = fnRecorder(async () => snapshot({ status: 'succeeded', ReloadWeb: false }));
   const onTerminal = fnRecorder();
   const session = createModuleOpProgressSession(
     {
@@ -76,11 +76,11 @@ test('createModuleOpProgressSession: skips tip when boot status is terminal', as
   expect(subscribeModuleOp.calls.length).toBe(0);
 });
 
-test('createModuleOpProgressSession: reloads when terminal boot requests reload_web', async () => {
+test('createModuleOpProgressSession: reloads when terminal boot requests ReloadWeb', async () => {
   const reloadWeb = fnRecorder();
   const session = createModuleOpProgressSession(
     {
-      fetchStatus: async () => snapshot({ status: 'succeeded', reload_web: true }),
+      fetchStatus: async () => snapshot({ status: 'succeeded', ReloadWeb: true }),
       isActive: () => true,
       onStatus: () => undefined,
       onTerminal: () => undefined,
