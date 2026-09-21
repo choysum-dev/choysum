@@ -59,3 +59,15 @@ test('partner.Partner NameCreate derives a company-unique code', async () => {
   expect(String((second as any).Id || '')).not.toBe('');
   expect(String((second as any).Id)).not.toBe(String((first as any).Id));
 });
+
+test('partner.Partner NameCreate allocates beyond five collisions', async () => {
+  const companyId = await ensureCompanyId();
+  const ids: string[] = [];
+  await withCompany(companyId, async () => {
+    for (let i = 0; i < 7; i++) {
+      const row = await Partner.NameCreate('Acme', undefined, { returnFields: ['Id', 'Code'] });
+      ids.push(String((row as any).Id));
+    }
+  });
+  expect(new Set(ids).size).toBe(7);
+});

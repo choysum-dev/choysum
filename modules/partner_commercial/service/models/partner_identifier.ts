@@ -295,8 +295,11 @@ export default class PartnerIdentifier extends BaseModel {
           ['Value', '=', value],
         ],
       },
-      { fields: ['Id', 'PartnerId'], limit: 1 }
+      { fields: ['Id', 'PartnerId'], limit: 2 }
     );
+    if ((rows?.length || 0) > 1) {
+      fail(_t('Ambiguous partner identifier match', { scope: 'service/models/partner_identifier' }));
+    }
     const row = rows?.[0];
     const identifierId = String(row?.Id || '').trim();
     if (!identifierId) return { Found: false };

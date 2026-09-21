@@ -6,6 +6,7 @@ import type { ModelCtor, RowOf } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { getActiveCompanyId } from '@/core/service/api/context';
 import type { FieldSelection, Insertable } from '@/core/service/api';
+import { resolveValidationSummary } from '@/core/service/api/validation';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import PartnerCollaborationModel from '../mixins/partner_collaboration_model';
 import { _t, _lt } from '../i18n';
@@ -15,6 +16,15 @@ import type Country from '@/base/service/models/country';
 import type Currency from '@/base/service/models/currency';
 import type Language from '@/base/service/models/language';
 import PartnerContact from './partner_contact';
+
+function isCodeConflict(err: unknown): boolean {
+  if (resolveValidationSummary(err as { metadata?: Record<string, unknown> }).sqlCode === 'sql_unique_violation') {
+    return true;
+  }
+  // Application constraint runs before SQL and uses the same uniqueness rule.
+  const message = String((err as { message?: unknown })?.message || '');
+  return message.includes('Partner Code must be unique');
+}
 
 export type PartnerFindOrCreateReq = {
   Code: string;
@@ -391,6 +401,7 @@ export default class Partner extends PartnerCollaborationModel {
       const created = await this.Create({ Name: name, Code: code, CompanyId: companyId } as Partial<Partner>, ['Id'] as any);
       return { PartnerId: String((created as { Id?: unknown }).Id || ''), Created: true };
     } catch (err) {
+      if (!isCodeConflict(err)) throw err;
       const again = await this.Search(
         { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
         { fields: ['Id'], limit: 1 }
@@ -404,6 +415,7 @@ export default class Partner extends PartnerCollaborationModel {
   /**
    * Create a partner from a display name (relation typeahead).
    * Code is derived from the name and disambiguated within the session company.
+   * Allocation retries on unique Code conflict rather than a pre-check Search loop.
    */
   static async NameCreate<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
@@ -412,24 +424,32 @@ export default class Partner extends PartnerCollaborationModel {
     options?: { returnFields?: F }
   ): Promise<any> {
     const partnerValues = (values || {}) as Partial<Insertable<Partner>>;
-    const companyId = String(normalizeRefId(partnerValues.CompanyId) || requireSessionCompanyId());
+    const companyId = requireSessionCompanyId();
+    const requestedCompanyId = normalizeRefId(partnerValues.CompanyId);
+    if (requestedCompanyId && requestedCompanyId !== companyId) {
+      fail(_t('CompanyId must match the active company', { scope: 'service/models/partner' }));
+    }
     const display = assertRequiredText(name, 'Name');
     const seed = codeSeedFromName(display);
-    let code = String(partnerValues.Code || '').trim().toUpperCase() || seed.slice(0, 40);
-    if (!partnerValues.Code) {
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const taken = await (this as unknown as typeof Partner).Search(
-          { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
-          { fields: ['Id'], limit: 1 }
-        );
-        if (!taken?.[0]?.Id) break;
-        const suffix = String(attempt + 1);
+    const explicitCode = String(partnerValues.Code || '').trim().toUpperCase();
+    let code = explicitCode || seed.slice(0, 40);
+    const maxAttempts = explicitCode ? 1 : 32;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (!explicitCode && attempt > 0) {
+        const suffix = String(attempt);
         code = `${seed.slice(0, Math.max(1, 40 - suffix.length))}${suffix}`;
       }
+      try {
+        return await (this as unknown as typeof Partner).Create(
+          { ...partnerValues, Name: display, Code: code, CompanyId: companyId } as Partial<Insertable<Partner>>,
+          (options?.returnFields as string[] | undefined) as any
+        );
+      } catch (err) {
+        lastErr = err;
+        if (explicitCode || !isCodeConflict(err)) throw err;
+      }
     }
-    return (this as unknown as typeof Partner).Create(
-      { ...partnerValues, Name: display, Code: code, CompanyId: companyId } as Partial<Insertable<Partner>>,
-      (options?.returnFields as string[] | undefined) as any
-    );
+    throw lastErr;
   }
 }

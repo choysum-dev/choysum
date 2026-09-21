@@ -58,6 +58,7 @@ import {
   resolvePreferenceLanguage,
   resolvePreferenceTimezone,
 } from './preferences_defaults';
+import { resolveLanguageCodeFromId } from './preferences_language';
 
 defineOptions({ name: 'OPreferencesDialog' });
 
@@ -124,15 +125,9 @@ async function loadTimezoneOptions() {
 
 async function syncLanguageFromUser() {
   const languageId = String(currentUser.value?.LanguageId || '').trim();
-  let code = '';
-  if (languageId) {
-    try {
-      const row = await (languageStore as any).Browse(languageId, ['Code']);
-      code = String(row?.Code || '').trim();
-    } catch {
-      code = '';
-    }
-  }
+  const code = await resolveLanguageCodeFromId(languageId, (id, fields) =>
+    (languageStore as any).Browse(id, fields)
+  );
   savedLanguageCode.value = code;
   const resolved = resolvePreferenceLanguage(code || null, i18nStore.terminologyLang);
   languageCode.value = resolved.code;
@@ -159,7 +154,7 @@ async function openAndLoad() {
       // Fall back to whatever is already in auth state / identity.
     }
   }
-  syncLanguageFromUser();
+  await syncLanguageFromUser();
   await Promise.all([loadLanguageOptions(), loadTimezoneOptions()]);
   applyTimezoneFromUserOrBrowser();
 }

@@ -52,12 +52,7 @@ export async function convertUoM(UoMModel: UoMOps, params: UoMConvertParams | un
   );
 
   const load = async (id: string, label: string): Promise<UoMRow> => {
-    let row: UoM | null | undefined;
-    try {
-      row = await UoMModel.Browse(id, UOM_FIELDS);
-    } catch {
-      notFound(_t('%s not found', { scope: 'service/models/_uom_convert' }, label));
-    }
+    const row = await UoMModel.Browse(id, UOM_FIELDS);
     if (!row) notFound(_t('%s not found', { scope: 'service/models/_uom_convert' }, label));
     return row as UoMRow;
   };

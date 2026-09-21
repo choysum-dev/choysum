@@ -17,7 +17,9 @@ export class AuthUserLanguageHooks {
     if (dialect === 'sqlite') {
       sql = `UPDATE auth_user
         SET language_id = (
-          SELECT id FROM base_language WHERE code = auth_user.language LIMIT 1
+          SELECT id FROM base_language
+          WHERE code = trim(auth_user.language) AND is_active = 1
+          LIMIT 1
         )
         WHERE (language_id IS NULL OR language_id = '')
           AND language IS NOT NULL
@@ -25,10 +27,12 @@ export class AuthUserLanguageHooks {
     } else if (dialect === 'postgres' || dialect === 'mysql') {
       sql = `UPDATE auth_user
         SET language_id = (
-          SELECT id FROM base_language WHERE code = auth_user.language LIMIT 1
+          SELECT id FROM base_language
+          WHERE code = trim(auth_user.language) AND is_active = true
+          LIMIT 1
         )
         WHERE COALESCE(language_id, '') = ''
-          AND COALESCE(language, '') <> ''`;
+          AND COALESCE(trim(language), '') <> ''`;
     }
     if (!sql) return;
     try {

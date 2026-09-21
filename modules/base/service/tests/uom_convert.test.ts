@@ -54,6 +54,19 @@ test('base.UoM Convert scales by factor within one category and rounds to the ta
   expect(back.Amount.eq(new Decimal('0.02'))).toBe(true);
 });
 
+test('base.UoM Convert reports NotFound when a UoM id is missing', async () => {
+  const categoryId = await createCategory();
+  const gramId = await createUnit(categoryId, '1', true);
+  let error: unknown;
+  try {
+    await UoM.Convert({ Amount: '1', FromUoMId: gramId, ToUoMId: 'missing_uom_id' });
+  } catch (err) {
+    error = err;
+  }
+  expect(error instanceof ChoysumError).toBe(true);
+  expect((error as ChoysumError).code).toBe('NotFound');
+});
+
 test('base.UoM Convert rejects units from different categories', async () => {
   const weightId = await createCategory();
   const lengthId = await createCategory();

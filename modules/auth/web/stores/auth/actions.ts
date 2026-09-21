@@ -13,10 +13,15 @@ import type { PermissionState } from '@/auth/web/permission';
 
 const { _t } = createTranslate('auth', { scope: 'web/stores/auth/actions' });
 
-/** Optional client/storage injection for FE unit tests. */
+/** Optional client/storage/language-store injection for FE unit tests. */
 export type AuthActionDeps = {
   isClient?: boolean;
   clearAuthStorage?: () => void;
+  /** When set, skips dynamic registry lookup for base.Language. */
+  createLanguageStore?: () => {
+    Browse: (id: string, fields?: string[]) => Promise<{ Code?: string } | null | undefined>;
+    Search: (domain: unknown, opts?: unknown) => Promise<Array<{ Id?: string }>>;
+  };
 };
 
 /**
@@ -29,6 +34,15 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   let initInFlight: Promise<void> | null = null;
   const clientSide = deps?.isClient ?? isClient;
   const clearStoredAuth = deps?.clearAuthStorage ?? (() => authStorage.clearAuthStorage());
+
+  async function getLanguageStore() {
+    if (deps?.createLanguageStore) return deps.createLanguageStore();
+    const { createStoreByModel } = await import('@/web/web/stores/registry');
+    return createStoreByModel('base.Language') as {
+      Browse: (id: string, fields?: string[]) => Promise<{ Code?: string } | null | undefined>;
+      Search: (domain: unknown, opts?: unknown) => Promise<Array<{ Id?: string }>>;
+    };
+  }
 
   /**
    * Resolve the device info payload that should be sent with auth RPCs.
@@ -397,12 +411,17 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       // Align FE UI key with the user's LanguageId (covers initAuth refresh paths; Login also applies this).
       try {
         const { useI18nStore, langToUiKey } = await import('@/web/web/stores/i18nStore');
+        const { applyUserLanguagePreference } = await import('./language_preference');
         const i18nStore = useI18nStore();
-        const preferredLang = await terminologyCodeFromLanguageId((user as any)?.LanguageId);
-        if (preferredLang) {
-          await i18nStore.setUiKey(langToUiKey(preferredLang));
-        }
-        i18nStore.setDisplayOverrides((user as any)?.Preferences?.display ?? null);
+        const languageStore = await getLanguageStore();
+        await applyUserLanguagePreference({
+          languageId: (user as any)?.LanguageId,
+          displayOverrides: (user as any)?.Preferences?.display ?? null,
+          browseLanguage: (id, fields) => languageStore.Browse(id, fields),
+          setUiKey: key => i18nStore.setUiKey(key),
+          setDisplayOverrides: overrides => i18nStore.setDisplayOverrides(overrides as any),
+          langToUiKey,
+        });
       } catch {
         // Best-effort; auth must not fail because of i18n wiring.
       }
@@ -511,9 +530,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     if (!userId) {
       return;
     }
-    const { createStoreByModel } = await import('@/web/web/stores/registry');
-    const languageStore = createStoreByModel('base.Language');
-    const rows = (await (languageStore as any).Search(
+    const languageStore = await getLanguageStore();
+    const rows = (await languageStore.Search(
       { And: [['Code', '=', terminologyLang], ['IsActive', '=', true]] } as any,
       { fields: ['Id'], limit: 1 } as any
     )) as Array<{ Id?: string }>;
@@ -525,15 +543,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     }
     // Sync JWT metadata.language after preference write.
     await refreshTokenImpl(true);
-  }
-
-  async function terminologyCodeFromLanguageId(languageId: unknown): Promise<string> {
-    const id = String(languageId || '').trim();
-    if (!id) return '';
-    const { createStoreByModel } = await import('@/web/web/stores/registry');
-    const languageStore = createStoreByModel('base.Language');
-    const row = await (languageStore as any).Browse(id, ['Code']);
-    return String(row?.Code || '').trim();
   }
 
   // Wrap public async actions with shared loading-state bookkeeping.
