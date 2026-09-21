@@ -238,6 +238,38 @@ test('DataTransferJob.EnqueueRecordExport rejects non-record profiles', async ()
   );
 });
 
+test('DataTransferJob.EnqueueRecordImport rolls back row when EnqueueJob fails', async () => {
+  resetRequestContext();
+  const enqueueJob = (Job as any).EnqueueJob.bind(Job);
+  const deleteById = (DataTransferJob as any).DeleteById.bind(DataTransferJob);
+  let createdId = '';
+  const create = (DataTransferJob as any).Create.bind(DataTransferJob);
+  (Job as any).EnqueueJob = async () => {
+    throw new Error('enqueue boom');
+  };
+  (DataTransferJob as any).Create = async (values: Partial<DataTransferJob>) => {
+    const row = await create(values);
+    createdId = row.Id;
+    return row;
+  };
+  try {
+    await expectAsyncError(
+      () =>
+        DataTransferJob.EnqueueRecordImport({
+          TargetModel: 'base.Country',
+          SourceRef: 'doc-enqueue-fail',
+          SpecSnapshot: sampleSnapshot('doc-enqueue-fail'),
+        }),
+      /enqueue boom/
+    );
+    await expectAsyncError(() => DataTransferJob.Browse(createdId, ['Id'] as any), /not found/i);
+  } finally {
+    (Job as any).EnqueueJob = enqueueJob;
+    (DataTransferJob as any).Create = create;
+    (DataTransferJob as any).DeleteById = deleteById;
+  }
+});
+
 test('DataTransferJob.EnqueueRecordExport rolls back row when EnqueueJob fails', async () => {
   resetRequestContext();
   const enqueueJob = (Job as any).EnqueueJob.bind(Job);

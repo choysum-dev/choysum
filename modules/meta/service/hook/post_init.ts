@@ -13,7 +13,7 @@ const targetApp = 'meta';
 const fullMethod = 'meta.MetaModuleIndex/Sync';
 const cronExpr = '0 0 * * *';
 const timezone = 'UTC';
-const payloadTemplate = { originType: 'local', force: true };
+const payloadTemplate = { req: { OriginType: 'local', Force: true } };
 
 function normalizePayload(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object') return {};

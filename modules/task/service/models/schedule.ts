@@ -3,15 +3,15 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { getUserId, withUser } from '@/core/service/api/context';
+import { getUserId } from '@/core/service/api/context';
 import { listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { _lt } from '../i18n';
 import Job from './job';
 import { computeNextRunAt, assertTimezone } from './_cron';
 
 /**
- * Immediate trigger command. Actor ids are the session user, not request fields.
- * With no session, the stored schedule SchedulerUserId is used via withUser.
+ * Immediate trigger command. The job actor is the session user, not request fields
+ * and not the stored SchedulerUserId.
  */
 export type TriggerScheduleReq = {
   ScheduleId: string;
@@ -167,7 +167,8 @@ export default class Schedule extends BaseModel {
 
   /**
    * Persists NextRunAt from CronExpr and Timezone on Create / UpdateById.
-   * Inactive schedules clear NextRunAt.
+   * Inactive schedules and expressions with no upcoming run clear NextRunAt.
+   * Field reads see the merged draft (patch, then the stored row).
    */
   @Constraint<Schedule>(['Active', 'CronExpr', 'Timezone'])
   assignNextRunAt(): void {
@@ -175,37 +176,30 @@ export default class Schedule extends BaseModel {
       this.NextRunAt = null as unknown as Date;
       return;
     }
-    const next = computeNextRunAt(this, new Date());
-    if (next) this.NextRunAt = next;
+    this.NextRunAt = (computeNextRunAt(this, new Date()) ?? null) as unknown as Date;
   }
 
   /**
    * Triggers a schedule immediately and returns the created job id.
-   * A session user wins. With no session, the stored SchedulerUserId is applied via withUser.
-   * Client actor overrides are ignored.
+   * Requires a session. Stored SchedulerUserId is not used as the job actor.
    */
   static async TriggerSchedule(req: TriggerScheduleReq): Promise<TriggerScheduleResp> {
     const scheduleId = String(req?.ScheduleId || '').trim();
     if (!scheduleId) throw new Error('ScheduleId is required');
+    const sessionUserId = String(getUserId() || '').trim();
+    if (!sessionUserId) throw new Error('authenticated user is required to trigger schedule');
     const schedule = await this.Browse(scheduleId);
     const payload = (req?.PayloadOverride ?? schedule.PayloadTemplateJson ?? {}) as Record<string, unknown>;
     const timeoutMs = typeof schedule.TimeoutMs === 'number' && schedule.TimeoutMs > 0 ? schedule.TimeoutMs : 0;
-    const sessionUserId = String(getUserId() || '').trim();
-    const storedUserId = String(schedule.SchedulerUserId || '').trim();
-    const enqueue = async (): Promise<TriggerScheduleResp> => {
-      const job = await Job.EnqueueJob({
-        TargetApp: schedule.TargetApp,
-        FullMethod: schedule.FullMethod,
-        Payload: payload,
-        RunAfter: new Date(),
-        MaxAttempts: 0,
-        TimeoutMs: timeoutMs,
-      });
-      await this.UpdateById(scheduleId, { LastTriggeredAt: new Date(), LastRunAt: new Date() });
-      return { JobId: job.Id };
-    };
-    if (sessionUserId) return enqueue();
-    if (!storedUserId) throw new Error('authenticated user is required to trigger schedule');
-    return withUser(storedUserId, enqueue);
+    const job = await Job.EnqueueJob({
+      TargetApp: schedule.TargetApp,
+      FullMethod: schedule.FullMethod,
+      Payload: payload,
+      RunAfter: new Date(),
+      MaxAttempts: 0,
+      TimeoutMs: timeoutMs,
+    });
+    await this.UpdateById(scheduleId, { LastTriggeredAt: new Date(), LastRunAt: new Date() });
+    return { JobId: job.Id };
   }
 }

@@ -1063,15 +1063,20 @@ test('meta.MetaModuleIndex Sync defaults omitted originType to all', async () =>
     return { ok: true };
   };
 
-  await MetaModuleIndex.Sync({});
+  const first = await MetaModuleIndex.Sync({});
   await MetaModuleIndex.Sync({ OriginType: null as any, Force: true });
   await MetaModuleIndex.Sync({ OriginType: 'local', Force: false });
 
+  expect(first.Ok).toBe(true);
   expect(seen).toEqual([
     { originType: 'all', force: false },
     { originType: 'all', force: true },
     { originType: 'local', force: false },
   ]);
+
+  root.moduleManagement.syncIndex = async () => ({ ok: false });
+  const failed = await MetaModuleIndex.Sync({ OriginType: 'local', Force: true });
+  expect(failed.Ok).toBe(false);
 });
 
 test('meta.MetaModuleIndex Sync rejects invalid originType before bridge call', async () => {

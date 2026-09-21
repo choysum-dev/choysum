@@ -127,6 +127,49 @@ test('task.Schedule create/update/trigger basics', async () => {
   expect(Boolean(reloaded.LastRunAt)).toBe(true);
 });
 
+test('task.Schedule TriggerSchedule requires a session even when SchedulerUserId is stored', async () => {
+  resetRequestContext();
+  const schedule = await Schedule.Create({
+    Active: true,
+    Name: 'sessionless_trigger',
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    PayloadTemplateJson: {},
+    SchedulerUserId: 'other-user',
+    TriggeredByUserId: 'other-user',
+    CronExpr: '* * * * *',
+    Timezone: 'UTC',
+  });
+  const jsCtx = ensureRequestContext();
+  jsCtx.identity.userId = '';
+  let error: unknown;
+  try {
+    await Schedule.TriggerSchedule({ ScheduleId: schedule.Id as any });
+  } catch (err) {
+    error = err;
+  }
+  expect(String((error as Error)?.message || error)).toContain('authenticated user');
+});
+
+test('task.Schedule assignNextRunAt clears NextRunAt when the cron expression has no upcoming run', async () => {
+  resetRequestContext();
+  const schedule = await Schedule.Create({
+    Active: true,
+    Name: 'bad_cron_schedule',
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    PayloadTemplateJson: {},
+    SchedulerUserId: 'admin',
+    TriggeredByUserId: 'admin',
+    CronExpr: '* * * * *',
+    Timezone: 'UTC',
+  });
+  expect(Boolean(schedule.NextRunAt)).toBe(true);
+
+  const updated = await Schedule.UpdateById(schedule.Id as any, { CronExpr: 'not valid' }, ['Id', 'NextRunAt'] as any);
+  expect(Boolean(updated.NextRunAt)).toBe(false);
+});
+
 test('task.Schedule Timezone FieldsGet exposes dynamic IANA selection', async () => {
   resetRequestContext();
   const meta = await Schedule.FieldsGet(['Timezone'], ['type', 'selectionKind', 'selection']);

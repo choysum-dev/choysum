@@ -410,7 +410,8 @@ export default class MetaModuleIndex extends BaseModel {
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }
-    await syncIndex({ originType: originTypeOrAll(req.OriginType), force: !!req.Force });
-    return { Ok: true };
+    const result = await syncIndex({ originType: originTypeOrAll(req.OriginType), force: !!req.Force });
+    const ok = !!result && typeof result === 'object' && (result as { ok?: unknown }).ok === true;
+    return { Ok: ok };
   }
 }

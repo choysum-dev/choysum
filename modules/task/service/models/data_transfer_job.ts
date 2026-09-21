@@ -213,11 +213,21 @@ export default class DataTransferJob extends BaseModel {
       ProgressTotal: 0,
     } as Partial<DataTransferJob>);
 
-    const taskJob = await Job.EnqueueJob({
-      TargetApp: 'task',
-      FullMethod: DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD,
-      Payload: { dataTransferJobId: row.Id },
-    });
+    let taskJob;
+    try {
+      taskJob = await Job.EnqueueJob({
+        TargetApp: 'task',
+        FullMethod: DATA_TRANSFER_JOB_EXECUTE_IMPORT_FULL_METHOD,
+        Payload: { dataTransferJobId: row.Id },
+      });
+    } catch (err) {
+      try {
+        await this.DeleteById(row.Id);
+      } catch {
+        // best-effort cleanup when enqueue fails after row creation
+      }
+      throw err;
+    }
 
     await this.UpdateById(row.Id, { TaskJobId: taskJob.Id } as Partial<DataTransferJob>);
 
