@@ -78,10 +78,9 @@ test('Partner: MessagePost / MessageFollow dial message services', async () => {
           const row = await Partner.MessageFollow({
             Model: 'partner.Partner',
             ResId: 'p1',
-            UserId: 'u1',
           });
           expect((row as any).Id).toBe('f_partner');
-          expect(followed).toEqual({ Model: 'partner.Partner', ResId: 'p1', UserId: 'u1' });
+          expect(followed).toEqual({ Model: 'partner.Partner', ResId: 'p1' });
         }
       );
     }
@@ -105,7 +104,7 @@ test('Partner: AttachmentBind / AttachmentUnbind dial document.AttachmentBinding
     }),
     async () => {
       const bound = await Partner.AttachmentBind({
-        attachmentObjectId: 'c1',
+        AttachmentContentId: 'c1',
         ownerModel: 'partner.Partner',
         ownerRecordId: 'p1',
         fieldName: 'Logo',
@@ -113,7 +112,7 @@ test('Partner: AttachmentBind / AttachmentUnbind dial document.AttachmentBinding
       });
       expect(bound).toEqual({ attachmentBindingId: 'b1', status: 'active' });
       expect(bindReq).toEqual({
-        attachmentObjectId: 'c1',
+        AttachmentContentId: 'c1',
         ownerModel: 'partner.Partner',
         ownerRecordId: 'p1',
         fieldName: 'Logo',

@@ -12,7 +12,7 @@ import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';
-import { requireText, requireUserId, requireCompanyId, assertPrincipal } from './_document_bridge';
+import { requireText, requireUserId, requireCompanyId, rejectLegacyPrincipalField } from './_document_bridge';
 import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
 import type AttachmentUploadSession from './upload_session';
 
@@ -32,7 +32,7 @@ export const EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca49
 // Normalized request types
 // ---------------------------------------------------------------------------
 
-export type NormalizedPrepareUploadReq = {
+type NormalizedPrepareUploadReq = {
   ownerModel: string;
   fieldName: string;
   operation: 'create' | 'update';
@@ -44,9 +44,8 @@ export type NormalizedPrepareUploadReq = {
   checksumSha256?: string;
 };
 
-export type NormalizedAuthorizeUploadPutReq = {
+type NormalizedAuthorizeUploadPutReq = {
   uploadId: string;
-  principal: PrincipalContext;
   requestMeta: {
     contentType?: string;
     contentLength?: number;
@@ -54,9 +53,8 @@ export type NormalizedAuthorizeUploadPutReq = {
   };
 };
 
-export type NormalizedCommitUploadPutReq = {
+type NormalizedCommitUploadPutReq = {
   uploadId: string;
-  principal: PrincipalContext;
   payloadReceipt: {
     payloadId: string;
     sizeBytes: number;
@@ -70,26 +68,16 @@ export type NormalizedCommitUploadPutReq = {
 // ---------------------------------------------------------------------------
 
 function parseRequiredNonNegativeInt(value: unknown, fieldName: string): number {
-  if (value === undefined || value === null) {
-    throwDocumentError(
-      DocumentErrCode.INVALID_ARGUMENT,
-      _t('%s is required', { scope: 'service/models/_upload' }, fieldName),
-      GrpcCode.InvalidArgument,
-      { field: fieldName }
-    );
-  }
-  const trimmed = typeof value === 'string' ? value.trim() : value;
-  if (trimmed === '') {
-    throwDocumentError(
-      DocumentErrCode.INVALID_ARGUMENT,
-      _t('%s is required', { scope: 'service/models/_upload' }, fieldName),
-      GrpcCode.InvalidArgument,
-      { field: fieldName }
-    );
-  }
-
-  const num = Number(trimmed);
-  if (!Number.isFinite(num) || num < 0) {
+  const num = normalizeOptionalNonNegativeInt(value);
+  if (num === undefined) {
+    if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+      throwDocumentError(
+        DocumentErrCode.INVALID_ARGUMENT,
+        _t('%s is required', { scope: 'service/models/_upload' }, fieldName),
+        GrpcCode.InvalidArgument,
+        { field: fieldName }
+      );
+    }
     throwDocumentError(
       DocumentErrCode.INVALID_ARGUMENT,
       _t('%s must be a non-negative integer', { scope: 'service/models/_upload' }, fieldName),
@@ -97,8 +85,7 @@ function parseRequiredNonNegativeInt(value: unknown, fieldName: string): number 
       { field: fieldName }
     );
   }
-
-  return Math.trunc(num);
+  return num;
 }
 
 export function isDisallowedInlinePayloadID(payloadId: string): boolean {
@@ -162,13 +149,12 @@ export function assertPrepareUploadReq(req: PrepareUploadReq | undefined | null)
 }
 
 export function assertAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefined | null): NormalizedAuthorizeUploadPutReq {
+  rejectLegacyPrincipalField(req, 'authorize_upload_put');
   const uploadId = requireText(req?.uploadId, 'uploadId');
-  const principal = assertPrincipal(req?.principal);
   const requestMeta = asRecord(req?.requestMeta);
 
   return {
     uploadId,
-    principal,
     requestMeta: {
       contentType: normalizeContentType(requestMeta?.contentType),
       contentLength:
@@ -181,13 +167,12 @@ export function assertAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefin
 }
 
 export function assertCommitUploadPutReq(req: CommitUploadPutReq | undefined | null): NormalizedCommitUploadPutReq {
+  rejectLegacyPrincipalField(req, 'commit_upload_put');
   const uploadId = requireText(req?.uploadId, 'uploadId');
-  const principal = assertPrincipal(req?.principal);
   const payloadReceipt = asRecord(req?.payloadReceipt);
 
   return {
     uploadId,
-    principal,
     payloadReceipt: {
       payloadId: assertPayloadReceiptID(payloadReceipt?.payloadId),
       sizeBytes: parseRequiredNonNegativeInt(payloadReceipt?.sizeBytes, 'payloadReceipt.sizeBytes'),

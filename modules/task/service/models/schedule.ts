@@ -3,102 +3,25 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import type { QueryCondition, SearchOptions, OrderBy, UntypedQueryCondition } from '@/core/service/api/query';
-import { condition } from '@/core/service/api/query';
-import type { FieldSelection, RowOrProjected } from '@/core/service/api/selection';
-import { projectToSelection } from '@/core/service/api/selection';
-import { clearExclusive } from '@/core/service/orm/model/clear_exclusive';
-import { normalizeOffset } from '@/core/service/utils/normalization';
-import { toDate, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
+import { getUserId } from '@/core/service/api/context';
+import { listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { _lt } from '../i18n';
 import Job from './job';
-import { clampLimit } from './_limit';
-import { computeNextRunAt, assertTimezone, applyNextRunPreview } from './_cron';
-
-const NEXT_RUN_PREVIEW_DEPS = ['Active', 'CronExpr', 'Timezone', 'NextRunAt'] as const;
-
-function isFullFieldSelection(fields?: FieldSelection<Schedule>): boolean {
-  return fields == null || fields.length === 0 || fields.includes('*');
-}
-
-function wantsNextRunPreview(fields?: FieldSelection<Schedule>): boolean {
-  return isFullFieldSelection(fields) || Boolean(fields?.includes('NextRunAt' as never));
-}
+import { computeNextRunAt, assertTimezone } from './_cron';
 
 /**
- * Expand Search fields so NextRunAt preview has Active/CronExpr/Timezone when needed.
- * Preserves deep-relation entries from the caller selection.
+ * Immediate trigger command. The job actor is the session user, not request fields
+ * and not the stored SchedulerUserId.
  */
-function fieldsForScheduleListSearch(fields?: FieldSelection<Schedule>): FieldSelection<Schedule> | undefined {
-  if (!wantsNextRunPreview(fields) || isFullFieldSelection(fields) || !fields) return fields;
-  const present = new Set<string>();
-  for (const entry of fields) {
-    if (typeof entry === 'string') present.add(entry);
-    else if (entry && typeof entry === 'object') {
-      for (const key of Object.keys(entry)) present.add(key);
-    }
-  }
-  const next = [...fields] as Array<string | Record<string, unknown>>;
-  for (const dep of NEXT_RUN_PREVIEW_DEPS) {
-    if (!present.has(dep)) next.push(dep);
-  }
-  return next as FieldSelection<Schedule>;
-}
-
-function mapSchedulesWithNextRunPreview<F extends FieldSelection<Schedule> | undefined>(
-  items: Array<object>,
-  fields?: F
-): Array<RowOrProjected<Schedule, F>> {
-  if (!wantsNextRunPreview(fields)) {
-    return items as Array<RowOrProjected<Schedule, F>>;
-  }
-  return items.map(item => {
-    const previewed = applyNextRunPreview(item as Parameters<typeof applyNextRunPreview>[0]);
-    if (!fields || isFullFieldSelection(fields)) {
-      return previewed as RowOrProjected<Schedule, F>;
-    }
-    return projectToSelection(previewed as object, fields) as RowOrProjected<Schedule, F>;
-  });
-}
-
-/**
- * Filter and pagination options for paged schedule listing.
- */
-type ListSchedulesParams = {
-  active?: boolean;
-  name?: string;
-  targetApp?: string;
-  fullMethod?: string;
-  cronExpr?: string;
-  timezone?: string;
-  createdAtGte?: string | number | Date;
-  createdAtLt?: string | number | Date;
-  limit?: number;
-  offset?: number;
-  orderBy?: OrderBy<Schedule> | OrderBy<Schedule>[];
-  fields?: FieldSelection<Schedule>;
+export type TriggerScheduleReq = {
+  ScheduleId: string;
+  PayloadOverride?: Record<string, unknown>;
 };
 
-/**
- * Builds a search condition from paged schedule list parameters.
- */
-function buildScheduleCondition(params: ListSchedulesParams): QueryCondition<Schedule> | [] {
-  const and: UntypedQueryCondition[] = [];
-  if (typeof params.active === 'boolean') and.push(['Active', '=', params.active]);
-  if (params.name) and.push(['Name', 'ilike', `%${params.name}%`]);
-  if (params.targetApp) and.push(['TargetApp', '=', params.targetApp]);
-  if (params.fullMethod) and.push(['FullMethod', '=', params.fullMethod]);
-  if (params.cronExpr) and.push(['CronExpr', '=', params.cronExpr]);
-  if (params.timezone) and.push(['Timezone', '=', params.timezone]);
-
-  const createdAtGte = toDate(params.createdAtGte);
-  const createdAtLt = toDate(params.createdAtLt);
-  if (createdAtGte) and.push(['CreatedAt', '>=', createdAtGte]);
-  if (createdAtLt) and.push(['CreatedAt', '<', createdAtLt]);
-
-  if (and.length === 0) return [];
-  return condition<Schedule>({ And: and });
-}
+/** Job created by an immediate schedule trigger. */
+export type TriggerScheduleResp = {
+  JobId: string;
+};
 
 /**
  * Persistent schedule definition for creating task jobs on a cron cadence.
@@ -212,13 +135,13 @@ export default class Schedule extends BaseModel {
   })
   TimeoutMs: number;
 
-  /** Next computed run time preview. */
+  /** Next computed run time; null when inactive or the cron has no upcoming run. */
   @Field({
     type: 'datetime',
     index: true,
     string: _lt('Next Run At', { scope: 'task.model.Schedule.fields' }),
   })
-  NextRunAt: Date;
+  NextRunAt: Date | null;
 
   /** Time when the schedule last ran. */
   @Field({
@@ -242,118 +165,41 @@ export default class Schedule extends BaseModel {
     this.Timezone = assertTimezone(this.Timezone);
   }
 
-  /** Creates a persisted schedule with an initial next-run preview. */
-  static async CreateSchedule(
-    name: string,
-    targetApp: string,
-    fullMethod: string,
-    payloadTemplate: Record<string, unknown>,
-    schedulerUserId: string,
-    triggeredByUserId: string,
-    cronExpr: string,
-    timezone: string,
-    timeoutMs: number = 0
-  ): Promise<Schedule> {
-    const tz = assertTimezone(timezone);
-    const timeoutValue = Number.isFinite(timeoutMs) && timeoutMs > 0 ? Math.floor(timeoutMs) : 0;
-    const now = new Date();
-    const nextRunAt = computeNextRunAt(
-      {
-        CronExpr: cronExpr,
-        Timezone: tz,
-      } as Schedule,
-      now
-    );
-    const created = await this.Create({
-      Active: true,
-      Name: name,
-      TargetApp: targetApp,
-      FullMethod: fullMethod,
-      PayloadTemplateJson: payloadTemplate ?? {},
-      SchedulerUserId: schedulerUserId,
-      TriggeredByUserId: triggeredByUserId,
-      CronExpr: cronExpr,
-      Timezone: tz,
-      TimeoutMs: timeoutValue,
-      NextRunAt: nextRunAt,
-    });
-    return applyNextRunPreview(created, now);
-  }
-
-  /** Updates a schedule and recomputes its next-run preview when needed. */
-  static async UpdateSchedule(scheduleId: string, values: Partial<Schedule>): Promise<Schedule> {
-    const existing = await this.Browse(scheduleId);
-    assertTimezone(values.Timezone ?? existing.Timezone);
-    if (typeof values.TimeoutMs === 'number') {
-      values.TimeoutMs = Number.isFinite(values.TimeoutMs) && values.TimeoutMs > 0 ? Math.floor(values.TimeoutMs) : 0;
+  /**
+   * Persists NextRunAt from CronExpr and Timezone on Create / UpdateById.
+   * Inactive schedules and expressions with no upcoming run clear NextRunAt.
+   * Field reads see the merged draft (patch, then the stored row).
+   */
+  @Constraint<Schedule>(['Active', 'CronExpr', 'Timezone'])
+  assignNextRunAt(): void {
+    if (this.Active === false) {
+      this.NextRunAt = null;
+      return;
     }
-    const merged: Schedule = Object.assign(existing, values);
-    const now = new Date();
-    if (values.Active === false) {
-      clearExclusive(values, ['NextRunAt']);
-    } else if (values.CronExpr || values.Timezone || !existing.NextRunAt) {
-      values.NextRunAt = computeNextRunAt(merged, now);
-    }
-    const updated = await this.UpdateById(scheduleId, values);
-    return applyNextRunPreview(updated as Schedule, now);
+    this.NextRunAt = computeNextRunAt(this, new Date()) ?? null;
   }
 
-  /** Deletes a schedule by identifier. */
-  static async DeleteSchedule(scheduleId: string): Promise<number> {
-    return await this.DeleteById(scheduleId);
-  }
-
-  /** Triggers a schedule immediately and returns the created job id. */
-  static async TriggerSchedule(
-    scheduleId: string,
-    payloadOverride?: Record<string, unknown>,
-    schedulerUserIdOverride?: string,
-    triggeredByUserId?: string
-  ): Promise<{ jobId: string }> {
+  /**
+   * Triggers a schedule immediately and returns the created job id.
+   * Requires a session. Stored SchedulerUserId is not used as the job actor.
+   */
+  static async TriggerSchedule(req: TriggerScheduleReq): Promise<TriggerScheduleResp> {
+    const scheduleId = String(req?.ScheduleId || '').trim();
+    if (!scheduleId) throw new Error('ScheduleId is required');
+    const sessionUserId = String(getUserId() || '').trim();
+    if (!sessionUserId) throw new Error('authenticated user is required to trigger schedule');
     const schedule = await this.Browse(scheduleId);
-    const payload = payloadOverride ?? schedule.PayloadTemplateJson ?? {};
-    const schedulerUserId = schedulerUserIdOverride ?? schedule.SchedulerUserId;
-    const triggeredBy = triggeredByUserId ?? schedule.TriggeredByUserId;
+    const payload = (req?.PayloadOverride ?? schedule.PayloadTemplateJson ?? {}) as Record<string, unknown>;
     const timeoutMs = typeof schedule.TimeoutMs === 'number' && schedule.TimeoutMs > 0 ? schedule.TimeoutMs : 0;
-    const job = await Job.EnqueueJob(schedule.TargetApp, schedule.FullMethod, payload, schedulerUserId, triggeredBy, new Date(), 0, timeoutMs);
+    const job = await Job.EnqueueJob({
+      TargetApp: schedule.TargetApp,
+      FullMethod: schedule.FullMethod,
+      Payload: payload,
+      RunAfter: new Date(),
+      MaxAttempts: 0,
+      TimeoutMs: timeoutMs,
+    });
     await this.UpdateById(scheduleId, { LastTriggeredAt: new Date(), LastRunAt: new Date() });
-    return { jobId: job.Id };
-  }
-
-  /** Lists schedules using a raw query condition. */
-  static async ListSchedules<F extends FieldSelection<Schedule> | undefined = undefined>(
-    condition: QueryCondition<Schedule> | [] = [],
-    options?: Omit<SearchOptions<Schedule>, 'fields'> & { fields?: F }
-  ): Promise<Array<RowOrProjected<Schedule, F>>> {
-    const fields = options?.fields;
-    const items = await this.Search(condition, {
-      ...options,
-      fields: fieldsForScheduleListSearch(fields) as F | undefined,
-    });
-    return mapSchedulesWithNextRunPreview(items as Array<object>, fields);
-  }
-
-  /** Lists schedules with filter, pagination, and total-count metadata. */
-  static async ListSchedulesPaged<F extends FieldSelection<Schedule> | undefined = undefined>(
-    params: Omit<ListSchedulesParams, 'fields'> & { fields?: F } = {}
-  ): Promise<{ items: Array<RowOrProjected<Schedule, F>>; total: number; limit: number; offset: number }> {
-    const condition = buildScheduleCondition(params);
-    const limit = clampLimit(params.limit, 50, 500);
-    const offset = normalizeOffset(params.offset);
-    const orderBy = params.orderBy ?? ({ field: 'CreatedAt', order: 'desc' } as OrderBy<Schedule>);
-    const fields = params.fields;
-    const items = await this.Search(condition, {
-      limit,
-      offset,
-      orderBy,
-      fields: fieldsForScheduleListSearch(fields) as F | undefined,
-    });
-    const total = Number(await this.Count(condition)) || 0;
-    return {
-      items: mapSchedulesWithNextRunPreview(items as Array<object>, fields),
-      total,
-      limit,
-      offset,
-    };
+    return { JobId: job.Id };
   }
 }

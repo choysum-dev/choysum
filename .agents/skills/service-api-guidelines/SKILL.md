@@ -38,6 +38,30 @@ Related skills: [`module-initdata`](../module-initdata/SKILL.md) for authz seed 
 4. **Internals stay off RPC** — workers/helpers must not be `public static` PascalCase async.
 5. **Outbound via wrapper, inbound via assert** — platform representation-normalize only.
 
+## Hard predicates (P1–P8)
+
+Use these when writing or reviewing `modules/*/service/models/**/*.ts`. A public
+method that fails any applicable predicate is out of policy.
+
+| ID | Rule | Fail when |
+| --- | --- | --- |
+| **P1** | Public RPC = `public` + `static` + PascalCase + `async` | Client depends on a non-discoverable shape |
+| **P2** | Custom public methods take ≤1 business object arg (`fields?: FieldSelection` OK) | ≥2 business positional parameters |
+| **P3** | No public `unknown` / `Record<string, unknown>` as primary in/out type | Weak bag as the contract |
+| **P4** | Request envelopes must not carry forgeable identity (`principal`, client-trusted `UserId` / `schedulerUserId` / `triggeredByUserId`) | Identity taken from the wire |
+| **P5** | Worker verbs (`Execute*` / `FanOut*` / `RunGarbageCollection` / `CleanExpired*`) must not be open to interactive roles | Ordinary session can call them |
+| **P6** | Auth clients use `auth.User` session verbs only | `auth.Token.*` as a public session API |
+| **P7** | New envelope fields PascalCase; compute = Params/Result, command = Req/Resp | New Input/mixed naming without meaning |
+| **P8** | Same logical model keeps the same `choysum.application` | Cross-app value-import of another app’s model |
+
+**Quick rg checks (post hard-cut):**
+
+```bash
+rg -n 'static async (FanOutForMessage|RunGarbageCollection|ExecuteImport|ExecuteExport|ExecuteInstall|CleanExpiredTokens|CreateTokenPair)\b' modules/*/service/models
+rg -n 'principal:' modules/document/service/contracts.ts modules/document/service/models/_upload.ts
+rg -n 'static async (Login|Register|EnqueueJob|CreateSchedule|RequestInstall)\(' modules/*/service/models
+```
+
 ## Hard rules
 
 1. **Model is the API** — public contract is `{application}.{Model}` methods.
@@ -47,6 +71,29 @@ Related skills: [`module-initdata`](../module-initdata/SKILL.md) for authz seed 
 5. **Async ops** — `Request*` for interactive users; `Execute*` / `FanOut*` / `RunGarbageCollection` for workers only (or non-discoverable shape).
 6. **Codec honesty** — authors `assert*` / `parseDecimalInput` / `toDate` at the boundary; do not assume inbound `Date`/`Decimal`/`BaseModel`.
 7. **Same-app model merge** — re-`@Model('Name')` with the same `choysum.application`; cross-app use `dial` / `createServiceByModel`, never value-import.
+
+## Boundary helpers (representation vs domain)
+
+Platform **does** normalize representation (outbound Model→plain, Date→ISO,
+Decimal/BigInt envelopes; inbound Timestamp→ISO string, Value/Struct,
+`$bigdecimal`/`$bigint`). Platform **does not** hydrate ISO→`Date`,
+string/number amounts→`Decimal`, or plain objects→`BaseModel`.
+
+Prefer shared helpers over module-local copies:
+
+| Need | Prefer |
+| --- | --- |
+| Optional trimmed text | `normalizeOptionalString` / `normalizeLooseOptionalText` (`@/core/service/utils/normalization`) |
+| Required text (pure) | `assertRequiredText` (same module); domain bridges wrap into domain errors |
+| Decimal / money | `parseDecimalInput` / `toPositiveDecimal` |
+| Datetime coerce | `toDate` (`datetime` or re-exported from `normalization`) |
+| Domain field messages | `createDomainNormalizationBridge(domain, _t)` |
+
+`Normalized*` types are assert post-conditions only — keep them file-local; do
+**not** re-export from `modules/*/service/index.ts` or package entrypoints.
+
+Do **not** add inbound auto-hydration of `Date` / `Decimal` / `BaseModel` on
+public Req types.
 
 ## Naming
 
@@ -65,7 +112,7 @@ Related skills: [`module-initdata`](../module-initdata/SKILL.md) for authz seed 
 
 When reviewing a change, report:
 
-- Which hard rules apply and any violations (with method / type names).
+- Which hard rules / P1–P8 apply and any violations (with method / type names).
 - Whether new public verbs should be envelopes, CRUD-only, or worker-private.
 - If a migration is required, name the hardcut wave below (or describe the step
   in prose when local hardcut docs are absent):

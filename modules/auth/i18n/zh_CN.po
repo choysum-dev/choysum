@@ -11,152 +11,152 @@ msgctxt "auth.model.CompanyScopedResource.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/role.ts:117
+#: service/models/role.ts:122
 msgctxt "auth.model.Role.fields"
 msgid "Accessible UI Resources"
 msgstr "可访问的界面资源"
 
-#: service/models/role.ts:93
+#: service/models/role.ts:98
 msgctxt "auth.model.Role.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/role.ts:104
+#: service/models/role.ts:109
 msgctxt "auth.model.Role.fields"
 msgid "Built-in"
 msgstr "内置"
 
-#: service/models/role.ts:67
+#: service/models/role.ts:72
 msgctxt "auth.model.Role.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/role.ts:82
+#: service/models/role.ts:87
 msgctxt "auth.model.Role.fields"
 msgid "Description"
 msgstr "描述"
 
-#: service/models/role.ts:37
+#: service/models/role.ts:42
 msgctxt "auth.model.Role.fields"
 msgid "Display Name"
 msgstr "显示名称"
 
-#: service/models/role.ts:201
+#: service/models/role.ts:206
 msgctxt "auth.model.Role.fields"
 msgid "Field Rules"
 msgstr "字段规则"
 
-#: service/models/role.ts:171
+#: service/models/role.ts:176
 msgctxt "auth.model.Role.fields"
 msgid "Implied By Roles"
 msgstr "被以下角色隐含"
 
-#: service/models/role.ts:152
+#: service/models/role.ts:157
 msgctxt "auth.model.Role.fields"
 msgid "Included Roles"
 msgstr "包含的角色"
 
-#: service/models/role.ts:191
+#: service/models/role.ts:196
 msgctxt "auth.model.Role.fields"
 msgid "Method Accesses"
 msgstr "方法访问"
 
-#: service/models/role.ts:55
+#: service/models/role.ts:60
 msgctxt "auth.model.Role.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/role.ts:153
+#: service/models/role.ts:158
 msgctxt "auth.model.Role.fields"
 msgid "Permissions from included roles are merged into this role."
 msgstr "所含角色的权限会合并进本角色。"
 
-#: service/models/role.ts:181
+#: service/models/role.ts:186
 msgctxt "auth.model.Role.fields"
 msgid "Record Rules"
 msgstr "记录规则"
 
-#: service/models/role.ts:68
+#: service/models/role.ts:73
 msgctxt "auth.model.Role.fields"
 msgid "Stable programmatic id; also used as the display name."
 msgstr "稳定的程序化标识；也用作显示名。"
 
-#: service/models/role.ts:105
+#: service/models/role.ts:110
 msgctxt "auth.model.Role.fields"
 msgid "System roles are seeded and should not be deleted casually."
 msgstr "系统角色由种子数据生成，请勿随意删除。"
 
-#: service/models/role.ts:211
+#: service/models/role.ts:216
 msgctxt "auth.model.Role.fields"
 msgid "UI Resources"
 msgstr "界面资源"
 
-#: service/models/role.ts:118
+#: service/models/role.ts:123
 msgctxt "auth.model.Role.fields"
 msgid "UI tree selection; drives menu and action visibility for this role."
 msgstr "UI 树选择；决定该角色的菜单与动作可见性。"
 
-#: service/models/role.ts:136
+#: service/models/role.ts:141
 msgctxt "auth.model.Role.fields"
 msgid "Users"
 msgstr "用户"
 
-#: service/models/role_field_rule.ts:117 service/models/role_field_rule.ts:134
+#: service/models/role_field_rule.ts:118 service/models/role_field_rule.ts:135
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Allow"
 msgstr "允许"
 
-#: service/models/role_field_rule.ts:43
+#: service/models/role_field_rule.ts:44
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/role_field_rule.ts:118 service/models/role_field_rule.ts:135
+#: service/models/role_field_rule.ts:119 service/models/role_field_rule.ts:136
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Deny"
 msgstr "拒绝"
 
-#: service/models/role_field_rule.ts:85
+#: service/models/role_field_rule.ts:86
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Field"
 msgstr "字段"
 
-#: service/models/role_field_rule.ts:44 service/models/role_field_rule.ts:60 service/models/role_field_rule.ts:86
+#: service/models/role_field_rule.ts:45 service/models/role_field_rule.ts:61 service/models/role_field_rule.ts:87
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Leave all scopes empty for global; otherwise pick one level (field scope also needs a model)."
 msgstr "全部留空表示全局作用域；否则只选一级（字段级还需指定模型）。"
 
-#: service/models/role_field_rule.ts:103
+#: service/models/role_field_rule.ts:104
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Logical Model"
 msgstr "逻辑模型"
 
-#: service/models/role_field_rule.ts:59
+#: service/models/role_field_rule.ts:60
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/role_field_rule.ts:122 service/models/role_field_rule.ts:139
+#: service/models/role_field_rule.ts:123 service/models/role_field_rule.ts:140
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Override field visibility or editability; at least one of Read/Write must be set."
 msgstr "覆盖字段可见性或可编辑性；读/写至少设置一项。"
 
-#: service/models/role_field_rule.ts:121
+#: service/models/role_field_rule.ts:122
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Read"
 msgstr "读"
 
-#: service/models/role_field_rule.ts:104
+#: service/models/role_field_rule.ts:105
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Registered short name covering all installed host applications that inject the same model. Applies to all business fields on that logical model. Mutually exclusive with Application / Model / Field."
 msgstr "已注册的短名，覆盖所有注入同一模型的已安装宿主应用；作用于该逻辑模型上的全部业务字段。与应用 / 模型 / 字段互斥。"
 
-#: service/models/role_field_rule.ts:30
+#: service/models/role_field_rule.ts:31
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_field_rule.ts:138
+#: service/models/role_field_rule.ts:139
 msgctxt "auth.model.RoleFieldRule.fields"
 msgid "Write"
 msgstr "写"
@@ -171,82 +171,82 @@ msgctxt "auth.model.RoleInheritance.fields"
 msgid "Parent Role"
 msgstr "父角色"
 
-#: service/models/role_method_access.ts:123
+#: service/models/role_method_access.ts:124
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Allow"
 msgstr "允许"
 
-#: service/models/role_method_access.ts:128
+#: service/models/role_method_access.ts:129
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Any matching deny overrides allow across scopes; default is deny."
 msgstr "任一匹配的拒绝都会覆盖允许（跨作用域）；未设置时默认为拒绝。"
 
-#: service/models/role_method_access.ts:43
+#: service/models/role_method_access.ts:44
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Application"
 msgstr "应用"
 
-#: service/models/role_method_access.ts:124
+#: service/models/role_method_access.ts:125
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Deny"
 msgstr "拒绝"
 
-#: service/models/role_method_access.ts:77
+#: service/models/role_method_access.ts:78
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Leave all scopes empty for a global rule; matching scopes are OR-ed and any deny wins."
 msgstr "全部留空为全局规则；匹配的作用域按或运算，任一拒绝优先。"
 
-#: service/models/role_method_access.ts:109
+#: service/models/role_method_access.ts:110
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Logical Methods"
 msgstr "逻辑方法"
 
-#: service/models/role_method_access.ts:94
+#: service/models/role_method_access.ts:95
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Logical Model"
 msgstr "逻辑模型"
 
-#: service/models/role_method_access.ts:144
+#: service/models/role_method_access.ts:145
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Manual"
 msgstr "手动"
 
-#: service/models/role_method_access.ts:127
+#: service/models/role_method_access.ts:128
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Mode"
 msgstr "模式"
 
-#: service/models/role_method_access.ts:56
+#: service/models/role_method_access.ts:57
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Model"
 msgstr "模型"
 
-#: service/models/role_method_access.ts:110
+#: service/models/role_method_access.ts:111
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Optional method names for logical-model scope (JSON string array). Leave empty to allow or deny all methods on that logical model."
 msgstr "逻辑模型作用域下的可选方法名（JSON 字符串数组）。留空表示对该逻辑模型的全部方法允许或拒绝。"
 
-#: service/models/role_method_access.ts:95
+#: service/models/role_method_access.ts:96
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Registered short name covering all installed host applications that inject the same model (e.g. TranslationTerm). Mutually exclusive with Application / Model / Service."
 msgstr "已注册的短名，覆盖所有注入同一模型的已安装宿主应用（例如 TranslationTerm）。与应用 / 模型 / 服务互斥。"
 
-#: service/models/role_method_access.ts:30
+#: service/models/role_method_access.ts:31
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/role_method_access.ts:76
+#: service/models/role_method_access.ts:77
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Service"
 msgstr "服务"
 
-#: service/models/role_method_access.ts:150
+#: service/models/role_method_access.ts:151
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "Source"
 msgstr "来源"
 
-#: service/models/role_method_access.ts:145
+#: service/models/role_method_access.ts:146
 msgctxt "auth.model.RoleMethodAccess.fields"
 msgid "UI (legacy)"
 msgstr "界面（遗留）"
@@ -351,47 +351,47 @@ msgctxt "auth.model.RoleUiResource.fields"
 msgid "UI Resource"
 msgstr "界面资源"
 
-#: service/models/session.ts:32
+#: service/models/session.ts:33
 msgctxt "auth.model.Session.fields"
 msgid "Access Token ID"
 msgstr "访问令牌 ID"
 
-#: service/models/session.ts:44
+#: service/models/session.ts:45
 msgctxt "auth.model.Session.fields"
 msgid "Device Info"
 msgstr "设备信息"
 
-#: service/models/session.ts:66
+#: service/models/session.ts:67
 msgctxt "auth.model.Session.fields"
 msgid "Expires At"
 msgstr "过期时间"
 
-#: service/models/session.ts:54
+#: service/models/session.ts:55
 msgctxt "auth.model.Session.fields"
 msgid "IP Address"
 msgstr "IP 地址"
 
-#: service/models/session.ts:77
+#: service/models/session.ts:78
 msgctxt "auth.model.Session.fields"
 msgid "Last Activity"
 msgstr "最近活动"
 
-#: service/models/session.ts:100
+#: service/models/session.ts:101
 msgctxt "auth.model.Session.fields"
 msgid "Metadata"
 msgstr "元数据"
 
-#: service/models/session.ts:90
+#: service/models/session.ts:91
 msgctxt "auth.model.Session.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/session.ts:33
+#: service/models/session.ts:34
 msgctxt "auth.model.Session.fields"
 msgid "Token JTI identifier, not the bearer secret."
 msgstr "令牌 JTI 标识，不是 bearer 密钥本身。"
 
-#: service/models/session.ts:20
+#: service/models/session.ts:21
 msgctxt "auth.model.Session.fields"
 msgid "User"
 msgstr "用户"
@@ -446,137 +446,137 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr "用户"
 
-#: service/models/user/user.ts:232
+#: service/models/user/user.ts:274
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr "可访问公司"
 
-#: service/models/user/user.ts:246
+#: service/models/user/user.ts:288
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/user/user.ts:148
+#: service/models/user/user.ts:201
+msgctxt "auth.model.User.fields"
+msgid "Active base.Language row used for terminology."
+msgstr "用于术语的有效 base.Language 记录。"
+
+#: service/models/user/user.ts:187
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr "头像"
 
-#: service/models/user/user.ts:233
+#: service/models/user/user.ts:275
 msgctxt "auth.model.User.fields"
 msgid "Companies the user may switch to; must stay within role assignments."
 msgstr "用户可切换到的公司；须落在角色授权范围内。"
 
-#: service/models/user/user.ts:221
+#: service/models/user/user.ts:263
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/user/user.ts:173
+#: service/models/user/user.ts:215
 msgctxt "auth.model.User.fields"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr "显示时区；留空则首次登录时使用浏览器时区。"
 
-#: service/models/user/user.ts:76
+#: service/models/user/user.ts:115
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr "邮箱"
 
-#: service/models/user/user.ts:110
+#: service/models/user/user.ts:149
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr "名"
 
-#: service/models/user/user.ts:131
+#: service/models/user/user.ts:170
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr "全名"
 
-#: service/models/user/user.ts:158
+#: service/models/user/user.ts:200
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr "语言"
 
-#: service/models/user/user.ts:257
+#: service/models/user/user.ts:299
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr "最近登录"
 
-#: service/models/user/user.ts:121
+#: service/models/user/user.ts:160
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr "姓"
 
-#: service/models/user/user.ts:99
+#: service/models/user/user.ts:138
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr "密码哈希"
 
-#: service/models/user/user.ts:87
+#: service/models/user/user.ts:126
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/user/user.ts:185
+#: service/models/user/user.ts:227
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: service/models/user/user.ts:295
+#: service/models/user/user.ts:337
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr "角色"
 
-#: service/models/user/user.ts:268
+#: service/models/user/user.ts:310
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr "会话"
 
-#: service/models/user/user.ts:172
+#: service/models/user/user.ts:214
 msgctxt "auth.model.User.fields"
 msgid "Time Zone"
 msgstr "时区"
 
-#: service/models/user/user.ts:279
+#: service/models/user/user.ts:321
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr "令牌"
 
-#: service/models/user/user.ts:65
+#: service/models/user/user.ts:104
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr "用户名"
 
-#: service/models/user/user.ts:159
-msgctxt "auth.model.User.fields"
-msgid "When set, must match an active base.Language POSIX terminology code."
-msgstr "若填写，须匹配已启用的 base.Language POSIX 术语代码。"
-
-#: service/models/user_role.ts:53
+#: service/models/user_role.ts:51
 msgctxt "auth.model.UserRole.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/user_role.ts:54
+#: service/models/user_role.ts:52
 msgctxt "auth.model.UserRole.fields"
 msgid "Leave empty to grant the role in every company the user can access."
 msgstr "留空表示在用户可访问的每个公司中授予该角色。"
 
-#: service/models/user_role.ts:40
+#: service/models/user_role.ts:38
 msgctxt "auth.model.UserRole.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/user_role.ts:29
+#: service/models/user_role.ts:27
 msgctxt "auth.model.UserRole.fields"
 msgid "User"
 msgstr "用户"
 
-#: service/models/session.ts:117
+#: service/models/session.ts:118
 msgctxt "service/models/session"
 msgid "Failed to revoke session"
 msgstr "撤销会话失败"
 
-#: service/models/session.ts:146
+#: service/models/session.ts:147
 msgctxt "service/models/session"
 msgid "Failed to revoke user sessions"
 msgstr "撤销用户会话失败"
@@ -621,152 +621,207 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr "userId 不能为空"
 
-#: service/models/user/user.ts:930
+#: service/models/user/user.ts:77
+msgctxt "service/models/user"
+msgid "%s requires a payload"
+msgstr "%s 需要请求体"
+
+#: service/models/user/user.ts:1054
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr "计算字段规则规格失败"
 
-#: service/models/user/user.ts:313
+#: service/models/user/user.ts:355
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/user/user.ts:911
+#: service/models/user/user.ts:1035
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr "无效的模型全名；期望 \"<app>.<Model>\""
 
-#: service/models/user/user.ts:342
+#: service/models/user/user.ts:383
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr "无效或未启用的语言：%s"
 
-#: service/models/user/user.ts:656
+#: service/models/user/user.ts:464
+msgctxt "service/models/user"
+msgid "Login requires a boolean RememberMe"
+msgstr "登录需要布尔型 RememberMe"
+
+#: service/models/user/user.ts:476
+msgctxt "service/models/user"
+msgid "Login requires a string DeviceInfo"
+msgstr "登录需要字符串 DeviceInfo"
+
+#: service/models/user/user.ts:470
+msgctxt "service/models/user"
+msgid "Login requires a string IpAddress"
+msgstr "登录需要字符串 IpAddress"
+
+#: service/models/user/user.ts:458
+msgctxt "service/models/user"
+msgid "Login requires username and password"
+msgstr "登录需要用户名和密码"
+
+#: service/models/user/user.ts:785
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr "退出失败"
 
-#: service/models/user/user.ts:895
+#: service/models/user/user.ts:766
+msgctxt "service/models/user"
+msgid "Logout requires a boolean AllDevices"
+msgstr "登出需要布尔型 AllDevices"
+
+#: service/models/user/user.ts:773
+msgctxt "service/models/user"
+msgid "Logout requires a string DeviceInfo"
+msgstr "登出需要字符串 DeviceInfo"
+
+#: service/models/user/user.ts:759
+msgctxt "service/models/user"
+msgid "Logout requires a token string"
+msgstr "登出需要令牌字符串"
+
+#: service/models/user/user.ts:1019
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr "缺少身份信息（userId）"
 
-#: service/models/user/user.ts:903
+#: service/models/user/user.ts:1027
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr "缺少模型名称（model）"
 
-#: service/models/user/user.ts:628
+#: service/models/user/user.ts:572
+msgctxt "service/models/user"
+msgid "RefreshTokens requires a refresh token"
+msgstr "刷新令牌需要 refresh token"
+
+#: service/models/user/user.ts:398
+msgctxt "service/models/user"
+msgid "Register requires a User object"
+msgstr "注册需要 User 对象"
+
+#: service/models/user/user.ts:404
+msgctxt "service/models/user"
+msgid "Register requires a password string"
+msgstr "注册需要密码字符串"
+
+#: service/models/user/user.ts:746
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr "切换公司范围失败"
 
-#: service/models/user/user.ts:645
+#: service/models/user/user.ts:603
 msgctxt "service/models/user"
-msgid "Token is required"
-msgstr "令牌不能为空"
+msgid "SwitchCompanyScope requires an ActiveCompanyId"
+msgstr "切换公司范围需要 ActiveCompanyId"
 
-#: service/models/user/user.ts:476
+#: service/models/user/user.ts:584
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr "令牌刷新失败"
 
-#: service/models/user/user.ts:495
+#: service/models/user/user.ts:612
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr "用户未登录"
 
-#: service/models/user/user.ts:512
+#: service/models/user/user.ts:629
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr "activeCompanyId 不能为空"
 
-#: service/models/user/user.ts:563
+#: service/models/user/user.ts:680
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr "activeCompanyId 不在允许的公司范围内"
 
-#: service/models/user/user.ts:578
+#: service/models/user/user.ts:695
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr "activeCompanyId 必须包含在 enabledCompanyIds 中"
 
-#: service/models/user/user.ts:547
+#: service/models/user/user.ts:664
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr "enabledCompanyIds 包含未授权的公司"
 
-#: service/models/user/user.ts:531
+#: service/models/user/user.ts:648
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr "enabledCompanyIds 必须是 string[] 或省略"
 
-#: service/models/user/_field_rule_eval.ts:126
+#: service/models/user/_field_rule_eval.ts:119
 msgctxt "service/models/user/_field_rule_eval"
 msgid "Model does not exist"
 msgstr "模型不存在"
 
-#: service/models/user/_lifecycle_auth.ts:269 service/models/user/_lifecycle_auth.ts:359
+#: service/models/user/_lifecycle_auth.ts:268 service/models/user/_lifecycle_auth.ts:358
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Account is disabled"
 msgstr "账户已禁用"
 
-#: service/models/user/_lifecycle_auth.ts:152
+#: service/models/user/_lifecycle_auth.ts:145
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Email is already registered"
 msgstr "邮箱已被注册"
 
-#: service/models/user/_lifecycle_auth.ts:345 service/models/user/_lifecycle_auth.ts:379
+#: service/models/user/_lifecycle_auth.ts:344 service/models/user/_lifecycle_auth.ts:378
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr "无效的令牌载荷：缺少用户 ID"
 
-#: service/models/user/_lifecycle_auth.ts:190
+#: service/models/user/_lifecycle_auth.ts:187
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr "注册失败：未找到主公司（Code=MAIN）"
 
-#: service/models/user/_lifecycle_auth.ts:215
+#: service/models/user/_lifecycle_auth.ts:212
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr "注册失败：base.user 角色未初始化，请先加载 auth 引导数据"
 
-#: service/models/user/_lifecycle_auth.ts:353
+#: service/models/user/_lifecycle_auth.ts:352
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found"
 msgstr "用户不存在"
 
-#: service/models/user/_lifecycle_auth.ts:253 service/models/user/_lifecycle_auth.ts:260
+#: service/models/user/_lifecycle_auth.ts:252 service/models/user/_lifecycle_auth.ts:259
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr "用户不存在或密码错误"
 
-#: service/models/user/_lifecycle_auth.ts:168
+#: service/models/user/_lifecycle_auth.ts:161
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr "用户注册失败：缺少用户 ID"
 
-#: service/models/user/_lifecycle_auth.ts:113
+#: service/models/user/_lifecycle_auth.ts:106
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username and password are required"
 msgstr "用户名和密码不能为空"
 
-#: service/models/user/_lifecycle_auth.ts:140
+#: service/models/user/_lifecycle_auth.ts:133
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is already in use"
 msgstr "用户名已被占用"
 
-#: service/models/user/_lifecycle_auth.ts:133
+#: service/models/user/_lifecycle_auth.ts:126
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is required"
 msgstr "用户名不能为空"
 
-#: service/models/user/user.ts:425
+#: service/models/user/user.ts:513
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr "登录失败：无法创建令牌对"
 
-#: service/models/user/user.ts:386
+#: service/models/user/user.ts:443
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
@@ -816,12 +871,12 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available Companies"
 msgstr "可用公司"
 
-#: web/components/layout/OSwitchCompany.vue:282
+#: web/components/layout/OSwitchCompany.vue:289
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available companies must include the current company"
 msgstr "可选公司必须包含当前公司"
 
-#: web/components/layout/OSwitchCompany.vue:247 web/components/layout/OSwitchCompany.vue:252
+#: web/components/layout/OSwitchCompany.vue:254 web/components/layout/OSwitchCompany.vue:259
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Company"
 msgstr "公司"
@@ -831,17 +886,17 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Current Company"
 msgstr "当前公司"
 
-#: web/components/layout/OSwitchCompany.vue:287
+#: web/components/layout/OSwitchCompany.vue:294
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "No changes to apply"
 msgstr "没有可应用的更改"
 
-#: web/components/layout/OSwitchCompany.vue:285
+#: web/components/layout/OSwitchCompany.vue:292
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr "仅有一家可选公司，无需应用"
 
-#: web/components/layout/OSwitchCompany.vue:280
+#: web/components/layout/OSwitchCompany.vue:287
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Select a current company"
 msgstr "请选择当前公司"
@@ -866,7 +921,7 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/preferences/OPreferencesDialog.vue:144 web/components/preferences/OPreferencesDialog.vue:153
+#: web/components/preferences/OPreferencesDialog.vue:156 web/components/preferences/OPreferencesDialog.vue:165
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr "无法更新偏好设置：缺少用户 ID"
@@ -876,17 +931,22 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Edit Profile"
 msgstr "编辑个人资料"
 
-#: web/components/preferences/OPreferencesDialog.vue:176
+#: web/components/preferences/OPreferencesDialog.vue:200
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
+
+#: web/components/preferences/OPreferencesDialog.vue:178
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Invalid or inactive language"
+msgstr "无效或未启用的语言"
 
 #: web/components/preferences/OPreferencesDialog.vue:11
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Language"
 msgstr "语言"
 
-#: web/components/preferences/OPreferencesDialog.vue:173
+#: web/components/preferences/OPreferencesDialog.vue:197
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
@@ -971,12 +1031,12 @@ msgctxt "web/pages/Login"
 msgid "Don't have an account?"
 msgstr "还没有账号？"
 
-#: web/pages/Login.vue:20 web/pages/Login.vue:48
+#: web/pages/Login.vue:20 web/pages/Login.vue:50
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Login.vue:16 web/pages/Login.vue:41
+#: web/pages/Login.vue:16 web/pages/Login.vue:43
 msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr "请输入用户名"
@@ -986,7 +1046,7 @@ msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr "登录"
 
-#: web/pages/Login.vue:116
+#: web/pages/Login.vue:114
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr "登录失败，请稍后重试。"
@@ -1416,77 +1476,82 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/stores/auth/actions.ts:344
+#: web/stores/auth/actions.ts:402
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr "无法加载用户详情：缺少 userId"
 
-#: web/stores/auth/actions.ts:424
+#: web/stores/auth/actions.ts:487
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr "初始化认证失败"
 
-#: web/stores/auth/actions.ts:82
+#: web/stores/auth/actions.ts:108
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr "加载权限状态失败"
 
-#: web/stores/auth/actions.ts:369
+#: web/stores/auth/actions.ts:432
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr "加载用户详情失败"
 
-#: web/stores/auth/actions.ts:324
+#: web/stores/auth/actions.ts:382
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr "刷新令牌失败"
 
-#: web/stores/auth/actions.ts:128
+#: web/stores/auth/actions.ts:157
 msgctxt "web/stores/auth/actions"
 msgid "Failed to switch company scope"
 msgstr "切换公司范围失败"
 
-#: web/stores/auth/actions.ts:194
+#: web/stores/auth/actions.ts:246
 msgctxt "web/stores/auth/actions"
 msgid "Invalid login response"
 msgstr "登录响应无效"
 
-#: web/stores/auth/actions.ts:223
+#: web/stores/auth/actions.ts:275
 msgctxt "web/stores/auth/actions"
 msgid "Login failed"
 msgstr "登录失败"
 
-#: web/stores/auth/actions.ts:256
+#: web/stores/auth/actions.ts:312
 msgctxt "web/stores/auth/actions"
 msgid "Logout failed, but local state was cleared"
 msgstr "退出失败，但本地状态已清除"
 
-#: web/stores/auth/actions.ts:280
+#: web/stores/auth/actions.ts:336
 msgctxt "web/stores/auth/actions"
 msgid "No refresh token is available"
 msgstr "没有可用的刷新令牌"
 
-#: web/stores/auth/actions.ts:95
+#: web/stores/auth/actions.ts:121
 msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr "未登录，无法切换公司范围"
 
-#: web/stores/auth/actions.ts:292
+#: web/stores/auth/actions.ts:350
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr "刷新令牌返回了无效响应"
 
-#: web/stores/auth/actions.ts:154
+#: web/stores/auth/actions.ts:192
+msgctxt "web/stores/auth/actions"
+msgid "Register returned an invalid response"
+msgstr "注册返回了无效响应"
+
+#: web/stores/auth/actions.ts:199
 msgctxt "web/stores/auth/actions"
 msgid "Registration failed"
 msgstr "注册失败"
 
-#: web/stores/auth/actions.ts:245
+#: web/stores/auth/actions.ts:301
 msgctxt "web/stores/auth/actions"
 msgid "Server-side logout failed, but local state was cleared"
 msgstr "服务端退出失败，但本地状态已清除"
 
-#: web/stores/auth/actions.ts:103
+#: web/stores/auth/actions.ts:132
 msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr "切换公司范围返回了无效响应"
@@ -2251,6 +2316,10 @@ msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
 
+#~ msgctxt "auth.model.User.fields"
+#~ msgid "When set, must match an active base.Language POSIX terminology code."
+#~ msgstr "若填写，须匹配已启用的 base.Language POSIX 术语代码。"
+
 #~ msgctxt "service/models/_user_field_rule_eval"
 #~ msgid "Model does not exist"
 #~ msgstr "模型不存在"
@@ -2298,6 +2367,10 @@ msgstr "启用"
 #~ msgctxt "service/models/_user_lifecycle_auth"
 #~ msgid "Username is required"
 #~ msgstr "用户名不能为空"
+
+#~ msgctxt "service/models/user"
+#~ msgid "Token is required"
+#~ msgstr "令牌不能为空"
 
 #~ msgctxt "web/views/RoleFieldRuleFormView"
 #~ msgid "Role is required. Leave Application/Model/Field empty for wider scopes (global / app / model)."

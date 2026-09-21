@@ -12,20 +12,17 @@ export type MessageThreadPostReq = {
   Body: string;
   Type?: string | null;
   CompanyId?: string | null;
-  AttachmentObjectId?: string | null;
+  AttachmentContentId?: string | null;
   AttachmentMutationId?: string | null;
 };
 
 export type MessageThreadFollowReq = {
   Model: string;
   ResId: string;
-  UserId?: string | null;
   SubtypeId?: string | null;
-  CompanyId?: string | null;
 };
 
 export type MessageThreadUnfollowReq = {
   Model: string;
   ResId: string;
-  UserId?: string | null;
 };

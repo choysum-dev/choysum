@@ -401,9 +401,18 @@ test('message.Follower: Follow and Unfollow validate payload and identity', asyn
     await expectInvalid(() => Follower.Follow(null as any));
     await expectInvalid(() => Follower.Follow({ Model: '', ResId: uid('res') }));
     await expectInvalid(() => Follower.Follow({ Model: 'partner.Partner', ResId: '' }));
+    await expectInvalid(() =>
+      Follower.Follow({ Model: 'partner.Partner', ResId: uid('res'), UserId: AUTHOR_USER_ID } as any)
+    );
+    await expectInvalid(() =>
+      Follower.Follow({ Model: 'partner.Partner', ResId: uid('res'), CompanyId: 'cmp_x' } as any)
+    );
     await expectInvalid(() => Follower.Unfollow(null as any));
     await expectInvalid(() => Follower.Unfollow({ Model: '', ResId: uid('res') }));
     await expectInvalid(() => Follower.Unfollow({ Model: 'partner.Partner', ResId: '' }));
+    await expectInvalid(() =>
+      Follower.Unfollow({ Model: 'partner.Partner', ResId: uid('res'), UserId: AUTHOR_USER_ID } as any)
+    );
     await expectInvalid(() => Follower.SearchByRecord('', ''));
     await expectInvalid(() => Follower.SearchByRecord('partner.Partner', '   '));
 
@@ -413,7 +422,7 @@ test('message.Follower: Follow and Unfollow validate payload and identity', asyn
   });
 });
 
-test('message.Follower: Follow uses live target Search and explicit user/company fields', async () => {
+test('message.Follower: Follow uses live target Search and session user/company', async () => {
   await withMessageScope(AUTHOR_USER_ID, async () => {
     const companyId = 'cmp_message_fixture_';
     const jsCtx = ensureRequestContext();
@@ -434,9 +443,7 @@ test('message.Follower: Follow uses live target Search and explicit user/company
       {
         Model: 'message.Message',
         ResId: messageId,
-        UserId: AUTHOR_USER_ID,
         SubtypeId: '',
-        CompanyId: companyId,
       },
       ['Id', 'UserId', 'CompanyId']
     );
@@ -725,9 +732,9 @@ test('message.Follower: Follow recovers unique conflicts and skips blank Unfollo
 test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches', async () => {
   __setMessagePublishTipForTest(() => undefined);
   try {
-    await Notification.FanOutForMessage({});
-    await Notification.FanOutForMessage({ Id: 'm1', Model: '', ResId: 'r1' } as any);
-    await Notification.FanOutForMessage({ Id: 'm1', Model: 'partner.Partner', ResId: '' } as any);
+    await Notification.fanOutForMessage({});
+    await Notification.fanOutForMessage({ Id: 'm1', Model: '', ResId: 'r1' } as any);
+    await Notification.fanOutForMessage({ Id: 'm1', Model: 'partner.Partner', ResId: '' } as any);
 
     const model = 'partner.Partner';
     const resId = uid('res');
@@ -853,7 +860,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
 
     await withMessageScope(AUTHOR_USER_ID, async () => {
       ensureRequestContext().identity = { userId: '   ' };
-      await Notification.FanOutForMessage({
+      await Notification.fanOutForMessage({
         Id: uid('msg'),
         Model: model,
         ResId: resId,
@@ -864,7 +871,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       const origFollowSearch = Follower.SearchByRecord;
       (Follower as any).SearchByRecord = async () => [{ UserId: '' }, { UserId: '  ', SubtypeId: 'x' }];
       try {
-        await Notification.FanOutForMessage({
+        await Notification.fanOutForMessage({
           Id: uid('msg'),
           Model: model,
           ResId: resId,
@@ -882,7 +889,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       delete (jsCtx as any)[Symbol.for('choysum.ctx.frozen')];
       delete (jsCtx as any)[Symbol.for('choysum.ctx.override')];
       try {
-        await Notification.FanOutForMessage({
+        await Notification.fanOutForMessage({
           Id: uid('msg'),
           Model: model,
           ResId: resId,
@@ -897,7 +904,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       (MessageSubtype as any).Search = async () => [];
       (Follower as any).SearchByRecord = async () => [{ UserId: FOLLOWER_USER_ID, SubtypeId: 'st_missing_________' }];
       try {
-        await Notification.FanOutForMessage({
+        await Notification.fanOutForMessage({
           Id: uid('msg'),
           Model: model,
           ResId: resId,
@@ -912,7 +919,7 @@ test('message.Notification: MarkRead/SearchInbox/FanOut cover remaining branches
       (MessageSubtype as any).Search = async () => [{ Id: '   ' }];
       (Follower as any).SearchByRecord = async () => [{ UserId: FOLLOWER_USER_ID, SubtypeId: 'st_blankid_________' }];
       try {
-        await Notification.FanOutForMessage({
+        await Notification.fanOutForMessage({
           Id: uid('msg'),
           Model: model,
           ResId: resId,

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, asRecord } from '@/core/service/utils/normalization';
+import { normalizeLooseOptionalText, asRecord } from '@/core/service/utils/normalization';
 import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
@@ -13,7 +13,7 @@ const { _t } = createTranslate('document');
  * Require a non-empty trimmed string value; throws INVALID_ARGUMENT otherwise.
  */
 export function requireText(value: unknown, fieldName: string): string {
-  const text = normalizeOptionalString(value);
+  const text = normalizeLooseOptionalText(value);
   if (!text) {
     throw throwDocumentError(
       DocumentErrCode.INVALID_ARGUMENT,
@@ -29,7 +29,7 @@ export function requireText(value: unknown, fieldName: string): string {
  * Resolve and require the current user identity; throws UNAUTHENTICATED otherwise.
  */
 export function requireUserId(rawUserId: unknown): string {
-  const userId = normalizeOptionalString(rawUserId);
+  const userId = normalizeLooseOptionalText(rawUserId);
   if (!userId) {
     throw throwDocumentError(
       DocumentErrCode.UNAUTHENTICATED,
@@ -44,7 +44,7 @@ export function requireUserId(rawUserId: unknown): string {
  * Resolve and require the current company identity; throws PERMISSION_DENIED otherwise.
  */
 export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
-  const companyId = normalizeOptionalString(rawCompanyId);
+  const companyId = normalizeLooseOptionalText(rawCompanyId);
   if (!companyId) {
     throw throwDocumentError(
       DocumentErrCode.PERMISSION_DENIED,
@@ -54,18 +54,6 @@ export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
     );
   }
   return companyId;
-}
-
-/**
- * Trim optional text, coercing finite numbers to strings.
- * Non-finite numbers (NaN / ±Infinity) are treated as absent.
- */
-export function normalizeLooseOptionalText(value: unknown): string | undefined {
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) return undefined;
-    return String(value);
-  }
-  return normalizeOptionalString(value);
 }
 
 /**
@@ -117,4 +105,34 @@ export function assertPrincipal(raw: unknown): PrincipalContext {
     activeCompanyId: requireText(principal?.activeCompanyId, 'principal.activeCompanyId'),
     enabledCompanyIds,
   };
+}
+
+/**
+ * Build PrincipalContext from the trusted request/session runtime axes.
+ */
+export function principalFromRuntime(
+  runtime: { userId?: unknown; companyId?: unknown; companyIds?: unknown },
+  stage: string
+): PrincipalContext {
+  const userId = requireUserId(runtime.userId);
+  const activeCompanyId = requireCompanyId(runtime.companyId, stage);
+  return {
+    userId,
+    activeCompanyId,
+    enabledCompanyIds: normalizeCompanyIdList(runtime.companyIds, activeCompanyId),
+  };
+}
+
+/**
+ * Fail closed when a stale client still supplies wire `principal`.
+ */
+export function rejectLegacyPrincipalField(req: unknown, stage: string): void {
+  if (req != null && typeof req === 'object' && Object.prototype.hasOwnProperty.call(req, 'principal')) {
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('principal is derived from the session', { scope: 'service/models/_document_bridge' }),
+      GrpcCode.InvalidArgument,
+      { stage, reason: 'legacy_principal_supplied' }
+    );
+  }
 }

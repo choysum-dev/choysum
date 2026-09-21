@@ -97,21 +97,23 @@ test('Register: anonymous signup assigns base.user inside main company scope', a
   const username = uid('register_user');
   const email = `${uid('register_mail')}@example.com`;
 
-  const userId = await withModelContext(
+  const registered = await withModelContext(
     {} as any,
     async () => {
-      return await User.Register(
-        {
+      return await User.Register({
+        User: {
           Username: username,
           Email: email,
           FirstName: 'Register',
           LastName: 'User',
         } as any,
-        'password-123'
-      );
+        Password: 'password-123',
+      });
     },
     { merge: false }
   );
+  const userId = String(registered.UserId || '').trim();
+  expect(userId === '').toBe(false);
 
   const mainCompanyId = await withModelContext(
     {} as any,
@@ -158,4 +160,109 @@ test('Register: anonymous signup assigns base.user inside main company scope', a
   expect((snapshot.user as any).Preferences?.activeCompanyId).toBe(mainCompanyId);
   expect((snapshot.user as any).Preferences?.enabledCompanyIds).toEqual([mainCompanyId]);
   expect(snapshot.userRoles.length).toBe(1);
+});
+
+test('Register: rejects non-object payloads and non-object User', async () => {
+  resetRequestContext();
+
+  async function expectValidationFailed(fn: () => Promise<unknown>): Promise<void> {
+    let caught: any;
+    try {
+      await fn();
+      throw new Error('expected Register to throw');
+    } catch (err) {
+      caught = err;
+    }
+    expect(String(caught?.code || '')).toBe('VALIDATION_FAILED');
+  }
+
+  await expectValidationFailed(() => User.Register(null as any));
+  await expectValidationFailed(() => User.Register('nope' as any));
+  await expectValidationFailed(() => User.Register([] as any));
+  await expectValidationFailed(() => User.Register({ User: 'bad', Password: 'x' } as any));
+  await expectValidationFailed(() => User.Register({ User: ['bad'], Password: 'x' } as any));
+  await expectValidationFailed(() => User.Register({ User: null, Password: 'x' } as any));
+  await expectValidationFailed(() => User.Register({ User: { Username: 'x' }, Password: 123 as any }));
+  await expectValidationFailed(() => User.Register({ User: { Username: 'x' } } as any));
+  await expectValidationFailed(() => User.Register({ User: { Username: 'x' }, Password: '' } as any));
+});
+
+test('Register: strips server-managed fields from User payload', async () => {
+  resetRequestContext();
+  setupAllowlistForRegister();
+
+  const username = uid('register_strip');
+  const email = `${uid('register_strip_mail')}@example.com`;
+
+  const registered = await withModelContext(
+    {} as any,
+    async () => {
+      return await User.Register({
+        User: {
+          Username: `  ${username}  `,
+          Email: `  ${email}  `,
+          FirstName: '  Strip  ',
+          LastName: '  Test  ',
+          // Over-posted server-managed columns must be ignored.
+          CompanyId: 'cmp_spoof___________',
+          CompanyIds: ['cmp_spoof___________'],
+          Preferences: { activeCompanyId: 'cmp_spoof___________' },
+          Id: 'usr_spoof_____________',
+          PasswordHash: 'over-posted-hash',
+          // Non-string allowlisted keys must also be dropped.
+          LanguageId: { spoof: true },
+        } as any,
+        Password: 'password-123',
+      });
+    },
+    { merge: false }
+  );
+  const userId = String(registered.UserId || '').trim();
+  expect(userId === '').toBe(false);
+  expect(userId).not.toBe('usr_spoof_____________');
+
+  const mainCompanyId = await withModelContext(
+    {} as any,
+    async () => {
+      const rows = await CompanyService.Search(['Code', '=', 'MAIN'] as any, { fields: ['Id'], limit: 1 } as any);
+      return String((rows as any)?.[0]?.Id || '').trim();
+    },
+    { merge: false }
+  );
+
+  const user = await withModelContext(
+    { activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] } as any,
+    async () =>
+      User.Browse(userId, ['Id', 'Username', 'Email', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'LanguageId', 'FirstName', 'LastName'] as any),
+    { merge: false }
+  );
+  expect((user as any).CompanyId).toBe(mainCompanyId);
+  expect(String((user as any).Username || '')).toBe(username);
+  expect(String((user as any).Email || '')).toBe(email);
+  expect((user as any).FirstName).toBe('Strip');
+  expect((user as any).LastName).toBe('Test');
+  expect((user as any).Preferences?.activeCompanyId).toBe(mainCompanyId);
+  const companyIds = Array.isArray((user as any).CompanyIds) ? (user as any).CompanyIds.map(String) : [];
+  expect(companyIds.includes('cmp_spoof___________')).toBe(false);
+  expect(String((user as any).PasswordHash || '')).not.toBe('over-posted-hash');
+  expect(String((user as any).PasswordHash || '') === '').toBe(false);
+  expect((user as any).LanguageId).not.toEqual({ spoof: true });
+});
+
+test('Register: ignores prototype-inherited allowlisted fields', async () => {
+  resetRequestContext();
+  setupAllowlistForRegister();
+
+  const inherited = Object.create({
+    Username: uid('register_proto'),
+    Email: `${uid('register_proto_mail')}@example.com`,
+  });
+
+  let caught: any;
+  try {
+    await User.Register({ User: inherited, Password: 'password-123' } as any);
+  } catch (err) {
+    caught = err;
+  }
+  expect(String(caught?.code || '')).toBe('VALIDATION_FAILED');
 });

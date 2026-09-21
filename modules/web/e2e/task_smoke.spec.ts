@@ -15,9 +15,9 @@ type TaskPbModule = {
   Job: any;
   Schedule: any;
   JobGetJobReqSchema: any;
-  ScheduleCreateScheduleReqSchema: any;
+  ScheduleCreateReqSchema: any;
   ScheduleTriggerScheduleReqSchema: any;
-  ScheduleDeleteScheduleReqSchema: any;
+  ScheduleDeleteByIdReqSchema: any;
 };
 
 let taskPbModulePromise: Promise<TaskPbModule> | null = null;
@@ -239,16 +239,19 @@ test('task: create schedule and trigger job via gRPC-web', async () => {
   const jobClient: any = clients.jobClient;
 
   const name = `e2e-schedule-${Date.now()}`;
-  const createResp: any = await (scheduleClient as any).createSchedule(
-    create(taskPb.ScheduleCreateScheduleReqSchema, {
-      name,
-      targetApp: 'auth',
-      fullMethod: 'auth.User/Login',
-      payloadTemplate: toValue({ email: 'e2e@choysum.test' }),
-      schedulerUserId: userId,
-      triggeredByUserId: userId,
-      cronExpr: '* * * * *',
-      timezone: 'UTC',
+  const createResp: any = await (scheduleClient as any).create(
+    create(taskPb.ScheduleCreateReqSchema, {
+      value: toValue({
+        Active: true,
+        Name: name,
+        TargetApp: 'auth',
+        FullMethod: 'auth.User/Login',
+        PayloadTemplateJson: { email: 'e2e@choysum.test' },
+        SchedulerUserId: userId,
+        TriggeredByUserId: userId,
+        CronExpr: '* * * * *',
+        Timezone: 'UTC',
+      }),
     })
   );
 
@@ -258,10 +261,10 @@ test('task: create schedule and trigger job via gRPC-web', async () => {
 
   const triggerResp: any = await (scheduleClient as any).triggerSchedule(
     create(taskPb.ScheduleTriggerScheduleReqSchema, {
-      scheduleId,
-      payloadOverride: toValue({ email: 'e2e-trigger@choysum.test' }),
-      schedulerUserIdOverride: userId,
-      triggeredByUserId: userId,
+      req: toValue({
+        ScheduleId: scheduleId,
+        PayloadOverride: { email: 'e2e-trigger@choysum.test' },
+      }),
     })
   );
 
@@ -280,9 +283,9 @@ test('task: create schedule and trigger job via gRPC-web', async () => {
   expect(job?.TargetApp || job?.targetApp).toBe('auth');
   expect(job?.FullMethod || job?.fullMethod).toBe('auth.User/Login');
 
-  await (scheduleClient as any).deleteSchedule(
-    create(taskPb.ScheduleDeleteScheduleReqSchema, {
-      scheduleId,
+  await (scheduleClient as any).deleteById(
+    create(taskPb.ScheduleDeleteByIdReqSchema, {
+      id: scheduleId,
     })
   );
 });

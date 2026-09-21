@@ -13,7 +13,7 @@ function hostWithTimezone(timezone: string | null | undefined): User {
 function metadataStub(overrides: Record<string, unknown>): User {
   return Object.assign(Object.create(User.prototype), {
     Id: '',
-    Language: null,
+    LanguageId: null,
     Timezone: null,
     CompanyId: '',
     CompanyIds: [],
@@ -62,9 +62,15 @@ test('auth.User validateTimezoneConstraint rejects invalid IANA ids', () => {
 });
 
 test('auth.User extractUserMetadata omits null timezone', async () => {
+  const { createServiceByModel } = await import('@/core/service/rpc');
+  const LanguageService = createServiceByModel<any>('base.Language');
+  const rows = await LanguageService.Search(['Code', '=', 'en_US'] as any, { fields: ['Id'], limit: 1 } as any);
+  const languageId = String((rows as any)?.[0]?.Id || '');
+  expect(languageId).not.toBe('');
+
   const metadata = await User.extractUserMetadata(
     metadataStub({
-      Language: 'en_US',
+      LanguageId: languageId,
       Timezone: null,
     })
   );
@@ -182,7 +188,6 @@ test('auth.User extractUserMetadata includes timezone and tolerates missing comp
   const metadata = await User.extractUserMetadata(
     metadataStub({
       Id: '',
-      Language: 'en_US',
       Timezone: 'America/New_York',
       CompanyId: 'missing-company-id',
       CompanyIds: ['missing-company-id'],
@@ -229,7 +234,6 @@ test('auth.User extractUserMetadata reads companyTimezone from MAIN company', as
   const metadata = await User.extractUserMetadata(
     metadataStub({
       Id: '',
-      Language: 'en_US',
       Timezone: 'UTC',
       CompanyId: main.Id,
       CompanyIds: [main.Id],

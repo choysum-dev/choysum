@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Compute, Field, Model } from '@/core/service';
+import type { ModelCtor, RowOf } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { getActiveCompanyId } from '@/core/service/api/context';
+import type { FieldSelection, Insertable } from '@/core/service/api';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import PartnerCollaborationModel from '../mixins/partner_collaboration_model';
 import { _t, _lt } from '../i18n';
@@ -12,6 +15,31 @@ import type Country from '@/base/service/models/country';
 import type Currency from '@/base/service/models/currency';
 import type Language from '@/base/service/models/language';
 import PartnerContact from './partner_contact';
+
+/** Matches Partner.Code varchar size. */
+const CODE_MAX_LENGTH = 40;
+
+export type PartnerFindOrCreateReq = {
+  Code: string;
+  /** Display name used only when a new partner is created. Defaults to Code. */
+  Name?: string;
+};
+
+export type PartnerFindOrCreateResp = {
+  PartnerId: string;
+  Created: boolean;
+};
+
+function requireSessionCompanyId(): string {
+  const companyId = String(getActiveCompanyId() || '').trim();
+  if (!companyId) fail(_t('CompanyId is required', { scope: 'service/models/partner' }));
+  return companyId;
+}
+
+function codeSeedFromName(name: string): string {
+  const seed = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_MAX_LENGTH);
+  return seed || 'P';
+}
 
 /**
  * Company-scoped business partner master record with derived default contacts and addresses.
@@ -348,5 +376,92 @@ export default class Partner extends PartnerCollaborationModel {
     const currentId = String(this.Id || '').trim() || undefined;
 
     await Partner.validateEntity(this as unknown as Record<string, unknown>, currentId);
+  }
+
+  /** Return the company partner with this code, creating it when missing. */
+  static async FindOrCreate(req: PartnerFindOrCreateReq): Promise<PartnerFindOrCreateResp> {
+    const companyId = requireSessionCompanyId();
+    const code = assertRequiredText(req?.Code, 'Code').toUpperCase();
+    const existing = await this.Search(
+      { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+      { fields: ['Id'], limit: 1 }
+    );
+    const existingId = String(existing?.[0]?.Id || '').trim();
+    if (existingId) return { PartnerId: existingId, Created: false };
+
+    const name = req?.Name != null && String(req.Name).trim() ? assertRequiredText(req.Name, 'Name') : code;
+    try {
+      const created = await this.Create({ Name: name, Code: code, CompanyId: companyId } as Partial<Partner>, ['Id'] as any);
+      const partnerId = String((created as { Id?: unknown }).Id || '').trim();
+      if (!partnerId) fail(_t('Partner create returned an empty Id', { scope: 'service/models/partner' }));
+      return { PartnerId: partnerId, Created: true };
+    } catch (err) {
+      // Uniqueness errors are localized; re-query decides whether another writer won.
+      let racedId = '';
+      try {
+        const again = await this.Search(
+          { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+          { fields: ['Id'], limit: 1 }
+        );
+        racedId = String(again?.[0]?.Id || '').trim();
+      } catch {
+        throw err;
+      }
+      if (racedId) return { PartnerId: racedId, Created: false };
+      throw err;
+    }
+  }
+
+  /**
+   * Create a partner from a display name (relation typeahead).
+   * Code is derived from the name and disambiguated within the session company.
+   * Allocation retries when the candidate code is already taken (locale-independent).
+   */
+  static async NameCreate<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
+    this: C,
+    name: string,
+    values?: Partial<Insertable<RowOf<C>>>,
+    options?: { returnFields?: F }
+  ): Promise<any> {
+    const partnerValues = (values || {}) as Partial<Insertable<Partner>>;
+    const companyId = requireSessionCompanyId();
+    const requestedCompanyId = normalizeRefId(partnerValues.CompanyId);
+    if (requestedCompanyId && requestedCompanyId !== companyId) {
+      fail(_t('CompanyId must match the active company', { scope: 'service/models/partner' }));
+    }
+    const display = assertRequiredText(name, 'Name');
+    const seed = codeSeedFromName(display);
+    const explicitCode = String(partnerValues.Code || '').trim().toUpperCase();
+    let code = explicitCode || seed.slice(0, CODE_MAX_LENGTH);
+    const maxAttempts = explicitCode ? 1 : 32;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (!explicitCode && attempt > 0) {
+        const suffix = String(attempt);
+        code = `${seed.slice(0, Math.max(1, CODE_MAX_LENGTH - suffix.length))}${suffix}`;
+      }
+      try {
+        return await (this as unknown as typeof Partner).Create(
+          { ...partnerValues, Name: display, Code: code, CompanyId: companyId } as Partial<Insertable<Partner>>,
+          (options?.returnFields as string[] | undefined) as any
+        );
+      } catch (err) {
+        lastErr = err;
+        if (explicitCode) throw err;
+        // Locale-independent: retry only when this code is already taken.
+        let takenId = '';
+        try {
+          const taken = await (this as unknown as typeof Partner).Search(
+            { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+            { fields: ['Id'], limit: 1 }
+          );
+          takenId = String(taken?.[0]?.Id || '').trim();
+        } catch {
+          throw err;
+        }
+        if (!takenId) throw err;
+      }
+    }
+    throw lastErr;
   }
 }

@@ -1,262 +1,272 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/partner.ts:77
+#: service/models/partner.ts:96
 msgctxt "partner.model.Partner.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/partner.ts:51
+#: service/models/partner.ts:70
 msgctxt "partner.model.Partner.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/partner.ts:67
+#: service/models/partner.ts:86
 msgctxt "partner.model.Partner.fields"
 msgid "Company"
 msgstr "所属公司"
 
-#: service/models/partner.ts:203 service/models/partner.ts:222 service/models/partner.ts:241
+#: service/models/partner.ts:222 service/models/partner.ts:241 service/models/partner.ts:260
 msgctxt "partner.model.Partner.fields"
 msgid "Computed from contacts; edit contacts to change defaults."
 msgstr "由联系人计算得出；请通过编辑联系人更改默认值。"
 
-#: service/models/partner.ts:193
+#: service/models/partner.ts:212
 msgctxt "partner.model.Partner.fields"
 msgid "Contacts and Addresses"
 msgstr "联系人与地址"
 
-#: service/models/partner.ts:149
+#: service/models/partner.ts:168
 msgctxt "partner.model.Partner.fields"
 msgid "Country"
 msgstr "国家"
 
-#: service/models/partner.ts:100
+#: service/models/partner.ts:119
 msgctxt "partner.model.Partner.fields"
 msgid "Customer Rank"
 msgstr "客户等级"
 
-#: service/models/partner.ts:221
+#: service/models/partner.ts:240
 msgctxt "partner.model.Partner.fields"
 msgid "Default Billing Address"
 msgstr "默认开票地址"
 
-#: service/models/partner.ts:202
+#: service/models/partner.ts:221
 msgctxt "partner.model.Partner.fields"
 msgid "Default Contact"
 msgstr "默认联系人"
 
-#: service/models/partner.ts:138
+#: service/models/partner.ts:157
 msgctxt "partner.model.Partner.fields"
 msgid "Default Currency"
 msgstr "默认币种"
 
-#: service/models/partner.ts:127
+#: service/models/partner.ts:146
 msgctxt "partner.model.Partner.fields"
 msgid "Default Language"
 msgstr "默认语言"
 
-#: service/models/partner.ts:240
+#: service/models/partner.ts:259
 msgctxt "partner.model.Partner.fields"
 msgid "Default Shipping Address"
 msgstr "默认收货地址"
 
-#: service/models/partner.ts:167
+#: service/models/partner.ts:186
 msgctxt "partner.model.Partner.fields"
 msgid "Email"
 msgstr "邮箱"
 
-#: service/models/partner.ts:158
+#: service/models/partner.ts:177
 msgctxt "partner.model.Partner.fields"
 msgid "External Reference"
 msgstr "外部参考"
 
-#: service/models/partner.ts:185
+#: service/models/partner.ts:204
 msgctxt "partner.model.Partner.fields"
 msgid "Mobile"
 msgstr "手机"
 
-#: service/models/partner.ts:40
+#: service/models/partner.ts:59
 msgctxt "partner.model.Partner.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/partner.ts:101
+#: service/models/partner.ts:120
 msgctxt "partner.model.Partner.fields"
 msgid "Non-zero marks the partner as a customer; higher ranks sort first."
 msgstr "非零表示客户；数值越大排序越靠前。"
 
-#: service/models/partner.ts:114
+#: service/models/partner.ts:133
 msgctxt "partner.model.Partner.fields"
 msgid "Non-zero marks the partner as a supplier; higher ranks sort first."
 msgstr "非零表示供应商；数值越大排序越靠前。"
 
-#: service/models/partner.ts:269
+#: service/models/partner.ts:288
 msgctxt "partner.model.Partner.fields"
 msgid "Notes"
 msgstr "备注"
 
-#: service/models/partner.ts:87
+#: service/models/partner.ts:106
 msgctxt "partner.model.Partner.fields"
 msgid "Organization"
 msgstr "组织主体"
 
-#: service/models/partner.ts:176
+#: service/models/partner.ts:195
 msgctxt "partner.model.Partner.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/partner.ts:260
+#: service/models/partner.ts:279
 msgctxt "partner.model.Partner.fields"
 msgid "Sequence"
 msgstr "排序"
 
-#: service/models/partner.ts:113
+#: service/models/partner.ts:132
 msgctxt "partner.model.Partner.fields"
 msgid "Supplier Rank"
 msgstr "供应商等级"
 
-#: service/models/partner.ts:88
+#: service/models/partner.ts:107
 msgctxt "partner.model.Partner.fields"
 msgid "Uncheck for an individual person rather than an organization."
 msgstr "取消勾选表示个人，而非组织。"
 
-#: service/models/partner.ts:52
+#: service/models/partner.ts:71
 msgctxt "partner.model.Partner.fields"
 msgid "Unique within the company; stored in uppercase."
 msgstr "在公司内唯一；存储为大写。"
 
-#: service/models/partner_contact.ts:151
+#: service/models/partner_contact.ts:155
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/partner_contact.ts:116
+#: service/models/partner_contact.ts:120
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Address"
 msgstr "地址"
 
-#: service/models/partner_contact.ts:125
+#: service/models/partner_contact.ts:129
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Address Type"
 msgstr "地址类型"
 
-#: service/models/partner_contact.ts:169
+#: service/models/partner_contact.ts:173
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Attention To"
 msgstr "收件人"
 
-#: service/models/partner_contact.ts:41
+#: service/models/partner_contact.ts:45
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Company"
 msgstr "所属公司"
 
-#: service/models/partner_contact.ts:138
+#: service/models/partner_contact.ts:142
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Default"
 msgstr "默认"
 
-#: service/models/partner_contact.ts:97
+#: service/models/partner_contact.ts:101
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Department"
 msgstr "部门"
 
-#: service/models/partner_contact.ts:59
+#: service/models/partner_contact.ts:63
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Email"
 msgstr "邮箱"
 
-#: service/models/partner_contact.ts:77
+#: service/models/partner_contact.ts:81
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Mobile"
 msgstr "手机"
 
-#: service/models/partner_contact.ts:50
+#: service/models/partner_contact.ts:54
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/partner_contact.ts:178
+#: service/models/partner_contact.ts:182
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Notes"
 msgstr "备注"
 
-#: service/models/partner_contact.ts:139
+#: service/models/partner_contact.ts:143
 msgctxt "partner.model.PartnerContact.fields"
 msgid "One default contact per partner and address type; used by partner default pickers."
 msgstr "同一伙伴下每种地址类型仅一个默认联系人；用于伙伴默认联系人与地址选择。"
 
-#: service/models/partner_contact.ts:30
+#: service/models/partner_contact.ts:34
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Partner"
 msgstr "伙伴"
 
-#: service/models/partner_contact.ts:68
+#: service/models/partner_contact.ts:72
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/partner_contact.ts:106
+#: service/models/partner_contact.ts:110
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/partner_contact.ts:161
+#: service/models/partner_contact.ts:165
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Sequence"
 msgstr "排序"
 
-#: service/models/partner_contact.ts:87
+#: service/models/partner_contact.ts:91
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Title"
 msgstr "称谓"
 
-#: service/models/partner_contact.ts:126
+#: service/models/partner_contact.ts:130
 msgctxt "partner.model.PartnerContact.fields"
 msgid "billing/shipping/office/registered/other; drives partner default addresses."
 msgstr "billing/shipping/office/registered/other；驱动业务伙伴默认地址。"
 
-#: service/models/partner.ts:317
+#: service/models/partner.ts:336 service/models/partner.ts:35
 msgctxt "service/models/partner"
 msgid "CompanyId is required"
 msgstr "CompanyId 为必填项"
 
-#: service/models/partner.ts:329
+#: service/models/partner.ts:425
+msgctxt "service/models/partner"
+msgid "CompanyId must match the active company"
+msgstr "CompanyId 必须与当前活动公司一致"
+
+#: service/models/partner.ts:348
 msgctxt "service/models/partner"
 msgid "Partner Code must be unique within the company"
 msgstr "伙伴编码在同一公司内必须唯一"
 
-#: service/models/partner_contact.ts:187
+#: service/models/partner.ts:396
+msgctxt "service/models/partner"
+msgid "Partner create returned an empty Id"
+msgstr "合作伙伴创建返回了空的 Id"
+
+#: service/models/partner_contact.ts:191
 msgctxt "service/models/partner_contact"
 msgid "AddressType must be one of billing, shipping, office, registered, other"
 msgstr "AddressType 必须是 billing、shipping、office、registered 或 other"
 
-#: service/models/partner_contact.ts:281
+#: service/models/partner_contact.ts:288
 msgctxt "service/models/partner_contact"
 msgid "CompanyId is required"
 msgstr "CompanyId 为必填项"
 
-#: service/models/partner_contact.ts:215
+#: service/models/partner_contact.ts:219
 msgctxt "service/models/partner_contact"
 msgid "Only one default %s contact is allowed for the same partner"
 msgstr "同一伙伴下每个 %s 类型只能有一个默认联系人"
 
-#: service/models/partner_contact.ts:227
+#: service/models/partner_contact.ts:231
 msgctxt "service/models/partner_contact"
 msgid "PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile"
 msgstr "联系人至少需要填写 Name、AddressId、Email、Phone 或 Mobile 之一"
 
-#: service/models/partner_contact.ts:199 service/models/partner_contact.ts:280
+#: service/models/partner_contact.ts:203 service/models/partner_contact.ts:287
 msgctxt "service/models/partner_contact"
 msgid "PartnerId is required"
 msgstr "PartnerId 为必填项"
 
-#: web/menu/menus.ts:21
+#: web/menu/titles.ts:10
 msgctxt "web/menu/menus"
 msgid "Partner List"
 msgstr "伙伴列表"
 
-#: web/menu/menus.ts:16
+#: web/menu/titles.ts:9
 msgctxt "web/menu/menus"
 msgid "Partner Management"
 msgstr "伙伴管理"
@@ -306,12 +316,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Basic Information"
 msgstr "基础信息"
 
-#: web/views/PartnerFormView.vue:86
+#: web/views/PartnerFormView.vue:85
 msgctxt "web/views/PartnerFormView"
 msgid "Billing Address"
 msgstr "开票地址"
 
-#: web/views/PartnerFormView.vue:108
+#: web/views/PartnerFormView.vue:107
 msgctxt "web/views/PartnerFormView"
 msgid "Billing Contact"
 msgstr "财务联系人"
@@ -331,12 +341,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Contacts and Addresses"
 msgstr "联系人与地址"
 
-#: web/views/PartnerFormView.vue:57
+#: web/views/partner_actions.ts:17
 msgctxt "web/views/PartnerFormView"
 msgid "Copy Partner"
 msgstr "复制伙伴"
 
-#: web/views/PartnerFormView.vue:57
+#: web/views/partner_actions.ts:17
 msgctxt "web/views/PartnerFormView"
 msgid "Create Partner"
 msgstr "新建伙伴"
@@ -356,7 +366,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Delete"
 msgstr "删除"
 
-#: web/views/PartnerFormView.vue:57
+#: web/views/partner_actions.ts:17
 msgctxt "web/views/PartnerFormView"
 msgid "Delete Partner"
 msgstr "删除伙伴"
@@ -371,7 +381,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Edit Contact"
 msgstr "编辑联系人"
 
-#: web/views/PartnerFormView.vue:57
+#: web/views/partner_actions.ts:17
 msgctxt "web/views/PartnerFormView"
 msgid "Edit Partner"
 msgstr "编辑伙伴"
@@ -381,12 +391,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Email"
 msgstr "邮箱"
 
-#: web/views/PartnerFormView.vue:116
+#: web/views/PartnerFormView.vue:115
 msgctxt "web/views/PartnerFormView"
 msgid "Finance Contact"
 msgstr "财务负责人"
 
-#: web/views/PartnerFormView.vue:106
+#: web/views/PartnerFormView.vue:105
 msgctxt "web/views/PartnerFormView"
 msgid "General Contact"
 msgstr "普通联系人"
@@ -396,7 +406,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Inactive"
 msgstr "停用"
 
-#: web/views/PartnerFormView.vue:118
+#: web/views/PartnerFormView.vue:117
 msgctxt "web/views/PartnerFormView"
 msgid "Legal Contact"
 msgstr "法务联系人"
@@ -406,17 +416,17 @@ msgctxt "web/views/PartnerFormView"
 msgid "New Contact"
 msgstr "新增联系人"
 
-#: web/views/PartnerFormView.vue:90
+#: web/views/PartnerFormView.vue:89
 msgctxt "web/views/PartnerFormView"
 msgid "Office Address"
 msgstr "办公地址"
 
-#: web/views/PartnerFormView.vue:94
+#: web/views/PartnerFormView.vue:93
 msgctxt "web/views/PartnerFormView"
 msgid "Other"
 msgstr "其他"
 
-#: web/views/PartnerFormView.vue:57
+#: web/views/partner_actions.ts:18
 msgctxt "web/views/PartnerFormView"
 msgid "Partner"
 msgstr "伙伴"
@@ -426,12 +436,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Phone"
 msgstr "电话"
 
-#: web/views/PartnerFormView.vue:112
+#: web/views/PartnerFormView.vue:111
 msgctxt "web/views/PartnerFormView"
 msgid "Procurement Contact"
 msgstr "采购联系人"
 
-#: web/views/PartnerFormView.vue:92
+#: web/views/PartnerFormView.vue:91
 msgctxt "web/views/PartnerFormView"
 msgid "Registered Address"
 msgstr "注册地址"
@@ -451,7 +461,7 @@ msgctxt "web/views/PartnerFormView"
 msgid "Role"
 msgstr "角色"
 
-#: web/views/PartnerFormView.vue:114
+#: web/views/PartnerFormView.vue:113
 msgctxt "web/views/PartnerFormView"
 msgid "Sales Contact"
 msgstr "销售联系人"
@@ -476,12 +486,12 @@ msgctxt "web/views/PartnerFormView"
 msgid "Select Language"
 msgstr "选择语言"
 
-#: web/views/PartnerFormView.vue:88
+#: web/views/PartnerFormView.vue:87
 msgctxt "web/views/PartnerFormView"
 msgid "Shipping Address"
 msgstr "收货地址"
 
-#: web/views/PartnerFormView.vue:110
+#: web/views/PartnerFormView.vue:109
 msgctxt "web/views/PartnerFormView"
 msgid "Shipping Contact"
 msgstr "收货联系人"
@@ -496,35 +506,10 @@ msgctxt "web/views/PartnerFormView"
 msgid "View Contact"
 msgstr "查看联系人"
 
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Copy Partner"
-msgstr "复制伙伴"
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Create Partner"
-msgstr "新建伙伴"
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Delete Partner"
-msgstr "删除伙伴"
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Edit Partner"
-msgstr "编辑伙伴"
-
-#: web/views/PartnerListView.vue:39
+#: web/views/partner_actions.ts:12
 msgctxt "web/views/PartnerListView"
 msgid "Open Partner Detail"
 msgstr "打开伙伴详情"
-
-#: web/views/PartnerListView.vue:42
-msgctxt "web/views/PartnerListView"
-msgid "Partner"
-msgstr "伙伴"
 
 #~ msgctxt "web/components/PartnerImportWizard"
 #~ msgid "Cancel"
@@ -589,3 +574,23 @@ msgstr "伙伴"
 #~ msgctxt "web/pages/PartnerList"
 #~ msgid "Import CSV"
 #~ msgstr "导入 CSV"
+
+#~ msgctxt "web/views/PartnerListView"
+#~ msgid "Copy Partner"
+#~ msgstr "复制伙伴"
+
+#~ msgctxt "web/views/PartnerListView"
+#~ msgid "Create Partner"
+#~ msgstr "新建伙伴"
+
+#~ msgctxt "web/views/PartnerListView"
+#~ msgid "Delete Partner"
+#~ msgstr "删除伙伴"
+
+#~ msgctxt "web/views/PartnerListView"
+#~ msgid "Edit Partner"
+#~ msgstr "编辑伙伴"
+
+#~ msgctxt "web/views/PartnerListView"
+#~ msgid "Partner"
+#~ msgstr "伙伴"

@@ -3,11 +3,24 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { getActiveCompanyId } from '@/core/service/api/context';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, assertRequiredText, assertDateOrUndefined } from './_partner_commercial_bridge';
 import type Company from '@/base/service/models/company';
 import type Country from '@/base/service/models/country';
 import type Partner from '@/partner/service/models/partner';
+
+export type PartnerIdentifierLookupReq = {
+  IdentifierType: string;
+  Value: string;
+};
+
+export type PartnerIdentifierLookupResp = {
+  Found: boolean;
+  PartnerId?: string;
+  PartnerIdentifierId?: string;
+};
 
 /**
  * Company-scoped commercial identifier row attached to a partner.
@@ -263,5 +276,41 @@ export default class PartnerIdentifier extends BaseModel {
     const currentId = String(this.Id || '').trim() || undefined;
 
     await PartnerIdentifier.validateEntity(this as unknown as Record<string, unknown>, currentId);
+  }
+
+  /**
+   * Find a partner by an active commercial identifier within the session company.
+   * Type is matched lowercase and value uppercase, matching stored normalization.
+   * ValidFrom/ValidTo are not applied; callers that need a validity window must filter themselves.
+   */
+  static async Lookup(req: PartnerIdentifierLookupReq): Promise<PartnerIdentifierLookupResp> {
+    const companyId = String(getActiveCompanyId() || '').trim();
+    if (!companyId) fail(_t('CompanyId is required', { scope: 'service/models/partner_identifier' }));
+    const identifierType = assertRequiredText(req?.IdentifierType, 'IdentifierType', { lower: true });
+    const value = assertRequiredText(req?.Value, 'Value', { upper: true });
+    const rows = await this.Search(
+      {
+        And: [
+          ['CompanyId', '=', companyId],
+          ['IdentifierType', '=', identifierType],
+          ['Value', '=', value],
+          ['IsActive', '=', true],
+        ],
+      },
+      { fields: ['Id', 'PartnerId'], limit: 2 }
+    );
+    if ((rows?.length || 0) > 1) {
+      fail(_t('Ambiguous partner identifier match', { scope: 'service/models/partner_identifier' }));
+    }
+    const row = rows?.[0];
+    const identifierId = String(row?.Id || '').trim();
+    if (!identifierId) return { Found: false };
+    const partnerId = normalizeRefId(row?.PartnerId) || '';
+    if (!partnerId) return { Found: false };
+    return {
+      Found: true,
+      PartnerIdentifierId: identifierId,
+      PartnerId: partnerId,
+    };
   }
 }

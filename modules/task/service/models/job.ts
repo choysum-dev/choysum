@@ -7,10 +7,24 @@ import type { SearchOptions, QueryCondition, OrderBy, UntypedQueryCondition } fr
 import { condition } from '@/core/service/api/query';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/datetime';
+import { getUserId } from '@/core/service/api/context';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { _lt } from '../i18n';
 import { clampLimit } from './_limit';
 import { sanitizePayload } from './_payload';
+
+/**
+ * Command envelope for creating a queued job.
+ * SchedulerUserId and TriggeredByUserId are not accepted; both are the session user.
+ */
+export type EnqueueJobReq = {
+  TargetApp: string;
+  FullMethod: string;
+  Payload?: Record<string, unknown>;
+  RunAfter?: string | number | Date;
+  MaxAttempts?: number;
+  TimeoutMs?: number;
+};
 
 /**
  * Supported lifecycle states for queued jobs.
@@ -241,31 +255,33 @@ export default class Job extends BaseModel {
   })
   ResultTruncated: boolean;
 
-  /** Creates a queued job with sanitized payload data. */
-  static async EnqueueJob(
-    targetApp: string,
-    fullMethod: string,
-    payload: Record<string, unknown> = {},
-    schedulerUserId: string,
-    triggeredByUserId: string,
-    runAfter?: string | number | Date,
-    maxAttempts: number = 1,
-    timeoutMs: number = 0
-  ): Promise<Job> {
-    const runAfterAt = toDate(runAfter) ?? new Date();
-    const payloadSanitized = sanitizePayload(payload ?? {});
+  /** Creates a queued job with sanitized payload data. Actor ids come from the session, not the request. */
+  static async EnqueueJob(req: EnqueueJobReq): Promise<Job> {
+    const userId = String(getUserId() || '').trim();
+    if (!userId) {
+      throw new Error('authenticated user is required to enqueue job');
+    }
+    const targetApp = String(req?.TargetApp || '').trim();
+    const fullMethod = String(req?.FullMethod || '').trim();
+    if (!targetApp || !fullMethod) {
+      throw new Error('TargetApp and FullMethod are required');
+    }
+    const runAfterAt = toDate(req?.RunAfter) ?? new Date();
+    const payloadSanitized = sanitizePayload(req?.Payload ?? {});
     const defaultMaxAttempts = getBackendEnvPositiveInt('CHOYSUM_TASK_DEFAULT_MAX_ATTEMPTS', 1);
+    const maxAttempts = req?.MaxAttempts;
+    const timeoutMs = req?.TimeoutMs;
     return await this.Create({
       TargetApp: targetApp,
       FullMethod: fullMethod,
       PayloadJson: payloadSanitized,
-      SchedulerUserId: schedulerUserId,
-      TriggeredByUserId: triggeredByUserId,
+      SchedulerUserId: userId,
+      TriggeredByUserId: userId,
       Status: 'queued',
       RunAfter: runAfterAt,
       Attempt: 0,
-      MaxAttempts: maxAttempts > 0 ? maxAttempts : defaultMaxAttempts,
-      TimeoutMs: timeoutMs >= 0 ? timeoutMs : 0,
+      MaxAttempts: typeof maxAttempts === 'number' && maxAttempts > 0 ? maxAttempts : defaultMaxAttempts,
+      TimeoutMs: typeof timeoutMs === 'number' && timeoutMs >= 0 ? timeoutMs : 0,
     });
   }
 

@@ -16,7 +16,7 @@ export function detectBrowserTimezone(): string | null {
 }
 
 /**
- * Resolve the Language select value: saved User.Language, else current session
+ * Resolve the Language select value: saved terminology code, else current session
  * terminology lang, else en_US. Marks whether the value came from the session
  * (not a persisted user preference).
  */

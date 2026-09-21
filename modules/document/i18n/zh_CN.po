@@ -46,237 +46,237 @@ msgctxt "document.model.AttachmentBinding.fields"
 msgid "Unbound At"
 msgstr "解绑时间"
 
-#: service/models/attachment_object.ts:85
+#: service/models/attachment_object.ts:86
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Checksum SHA-256"
 msgstr "SHA-256 校验和"
 
-#: service/models/attachment_object.ts:156
+#: service/models/attachment_object.ts:157
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/attachment_object.ts:116
+#: service/models/attachment_object.ts:117
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Format"
 msgstr "图片格式"
 
-#: service/models/attachment_object.ts:105
+#: service/models/attachment_object.ts:106
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Height"
 msgstr "图片高度"
 
-#: service/models/attachment_object.ts:95
+#: service/models/attachment_object.ts:96
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Image Width"
 msgstr "图片宽度"
 
-#: service/models/attachment_object.ts:73
+#: service/models/attachment_object.ts:74
 msgctxt "document.model.AttachmentContent.fields"
 msgid "MIME Type"
 msgstr "MIME 类型"
 
-#: service/models/attachment_object.ts:125
+#: service/models/attachment_object.ts:126
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Metadata"
 msgstr "元数据"
 
-#: service/models/attachment_object.ts:61
+#: service/models/attachment_object.ts:62
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Size Bytes"
 msgstr "字节大小"
 
-#: service/models/attachment_object.ts:143
+#: service/models/attachment_object.ts:144
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/attachment_object.ts:50
+#: service/models/attachment_object.ts:51
 msgctxt "document.model.AttachmentContent.fields"
 msgid "Stored Content"
 msgstr "存储内容"
 
-#: service/models/attachment_mutation_ledger.ts:33
+#: service/models/attachment_mutation_ledger.ts:35
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Action"
 msgstr "动作"
 
-#: service/models/attachment_mutation_ledger.ts:105
+#: service/models/attachment_mutation_ledger.ts:107
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/attachment_mutation_ledger.ts:92
+#: service/models/attachment_mutation_ledger.ts:94
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Error Code"
 msgstr "错误码"
 
-#: service/models/attachment_mutation_ledger.ts:46
+#: service/models/attachment_mutation_ledger.ts:48
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Mutation"
 msgstr "变更"
 
-#: service/models/attachment_mutation_ledger.ts:55
+#: service/models/attachment_mutation_ledger.ts:57
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Request"
 msgstr "请求"
 
-#: service/models/attachment_mutation_ledger.ts:64
+#: service/models/attachment_mutation_ledger.ts:66
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Response"
 msgstr "响应"
 
-#: service/models/attachment_mutation_ledger.ts:81
+#: service/models/attachment_mutation_ledger.ts:83
 msgctxt "document.model.AttachmentMutationLedger.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/upload_session.ts:208
+#: service/models/upload_session.ts:210
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Allowed MIME Types"
 msgstr "允许的 MIME 类型"
 
-#: service/models/upload_session.ts:253
+#: service/models/upload_session.ts:255
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Attachment Content"
 msgstr "附件内容"
 
-#: service/models/upload_session.ts:95
+#: service/models/upload_session.ts:97
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Business Request"
 msgstr "业务请求"
 
-#: service/models/upload_session.ts:135
+#: service/models/upload_session.ts:137
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Checksum SHA-256"
 msgstr "SHA-256 校验和"
 
-#: service/models/upload_session.ts:267
+#: service/models/upload_session.ts:269
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/upload_session.ts:220
+#: service/models/upload_session.ts:222
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Expires At"
 msgstr "过期时间"
 
-#: service/models/upload_session.ts:51
+#: service/models/upload_session.ts:53
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Field Name"
 msgstr "字段名"
 
-#: service/models/upload_session.ts:81
+#: service/models/upload_session.ts:83
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Issuer User"
 msgstr "签发用户"
 
-#: service/models/upload_session.ts:186
+#: service/models/upload_session.ts:188
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Max Upload Bytes"
 msgstr "最大上传字节"
 
-#: service/models/upload_session.ts:67
+#: service/models/upload_session.ts:69
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Operation"
 msgstr "操作"
 
-#: service/models/upload_session.ts:28
+#: service/models/upload_session.ts:30
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Owner Model"
 msgstr "所属模型"
 
-#: service/models/upload_session.ts:39
+#: service/models/upload_session.ts:41
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Owner Record"
 msgstr "所属记录"
 
-#: service/models/upload_session.ts:115
+#: service/models/upload_session.ts:117
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed Content Type"
 msgstr "拟议内容类型"
 
-#: service/models/upload_session.ts:105
+#: service/models/upload_session.ts:107
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed File Name"
 msgstr "拟议文件名"
 
-#: service/models/upload_session.ts:124
+#: service/models/upload_session.ts:126
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Proposed Size Bytes"
 msgstr "拟议字节大小"
 
-#: service/models/upload_session.ts:199
+#: service/models/upload_session.ts:201
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Required Checksum Algorithm"
 msgstr "要求的校验算法"
 
-#: service/models/upload_session.ts:239
+#: service/models/upload_session.ts:241
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/upload_session.ts:155
+#: service/models/upload_session.ts:157
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Checksum SHA-256"
 msgstr "已上传 SHA-256 校验和"
 
-#: service/models/upload_session.ts:165
+#: service/models/upload_session.ts:167
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Content Type"
 msgstr "已上传内容类型"
 
-#: service/models/upload_session.ts:176
+#: service/models/upload_session.ts:178
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Payload Ref"
 msgstr "已上传载荷引用"
 
-#: service/models/upload_session.ts:144
+#: service/models/upload_session.ts:146
 msgctxt "document.model.AttachmentUploadSession.fields"
 msgid "Uploaded Size Bytes"
 msgstr "已上传字节大小"
 
-#: service/models/stored_content.ts:52
+#: service/models/stored_content.ts:53
 msgctxt "document.model.StoredContent.fields"
 msgid "Blob Data"
 msgstr "二进制数据"
 
-#: service/models/stored_content.ts:82
+#: service/models/stored_content.ts:83
 msgctxt "document.model.StoredContent.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/stored_content.ts:42
+#: service/models/stored_content.ts:43
 msgctxt "document.model.StoredContent.fields"
 msgid "Locator JSON"
 msgstr "定位器 JSON"
 
-#: service/models/stored_content.ts:32
+#: service/models/stored_content.ts:33
 msgctxt "document.model.StoredContent.fields"
 msgid "Provider"
 msgstr "提供者"
 
-#: service/models/stored_content.ts:69
+#: service/models/stored_content.ts:70
 msgctxt "document.model.StoredContent.fields"
 msgid "Status"
 msgstr "状态"
 
-#: service/models/_attachment_binding_codec.ts:283
+#: service/models/_attachment_binding_codec.ts:289
 msgctxt "service/models/_attachment_binding_codec"
 msgid "Attachment resource company scope mismatch"
 msgstr "附件资源的公司范围不匹配"
 
-#: service/models/_attachment_binding_codec.ts:104
+#: service/models/_attachment_binding_codec.ts:109
 msgctxt "service/models/_attachment_binding_codec"
 msgid "attachmentBindingIds exceeds maximum batch size of %s"
 msgstr "attachmentBindingIds 超出最大批量大小 %s"
 
-#: service/models/_attachment_binding_codec.ts:92
+#: service/models/_attachment_binding_codec.ts:97
 msgctxt "service/models/_attachment_binding_codec"
 msgid "attachmentBindingIds must be an array"
 msgstr "attachmentBindingIds 必须是数组"
 
-#: service/models/_attachment_binding_codec.ts:146
+#: service/models/_attachment_binding_codec.ts:150
 msgctxt "service/models/_attachment_binding_codec"
 msgid "downloadDisposition must be inline or attachment"
 msgstr "downloadDisposition 必须是 inline 或 attachment"
@@ -331,232 +331,227 @@ msgctxt "service/models/_document_bridge"
 msgid "activeCompanyId is required for document operations"
 msgstr "文档操作需要 activeCompanyId"
 
-#: service/models/_document_bridge.ts:98
+#: service/models/_document_bridge.ts:132
+msgctxt "service/models/_document_bridge"
+msgid "principal is derived from the session"
+msgstr "主体身份由会话派生"
+
+#: service/models/_document_bridge.ts:88
 msgctxt "service/models/_document_bridge"
 msgid "principal.enabledCompanyIds must be an array"
 msgstr "principal.enabledCompanyIds 必须是数组"
 
-#: service/models/_owner_authorization.ts:295
+#: service/models/_owner_authorization.ts:299
 msgctxt "service/models/_owner_authorization"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/_owner_authorization.ts:202
+#: service/models/_owner_authorization.ts:205
 msgctxt "service/models/_owner_authorization"
 msgid "auth service is unavailable for owner authorization check"
 msgstr "所有者授权检查时认证服务不可用"
 
-#: service/models/_owner_authorization.ts:191
+#: service/models/_owner_authorization.ts:194
 msgctxt "service/models/_owner_authorization"
 msgid "failed to fetch owner field rule spec"
 msgstr "获取所有者字段规则规格失败"
 
-#: service/models/_owner_authorization.ts:177
+#: service/models/_owner_authorization.ts:180
 msgctxt "service/models/_owner_authorization"
 msgid "failed to fetch owner record rule condition"
 msgstr "获取所有者记录规则条件失败"
 
-#: service/models/_owner_authorization.ts:148
+#: service/models/_owner_authorization.ts:151
 msgctxt "service/models/_owner_authorization"
 msgid "owner field read is denied by field rule"
 msgstr "所有者字段读取被字段规则拒绝"
 
-#: service/models/_owner_authorization.ts:88
+#: service/models/_owner_authorization.ts:91
 msgctxt "service/models/_owner_authorization"
 msgid "owner field write is denied by field rule"
 msgstr "所有者字段写入被字段规则拒绝"
 
-#: service/models/_owner_authorization.ts:136
+#: service/models/_owner_authorization.ts:139
 msgctxt "service/models/_owner_authorization"
 msgid "owner read is denied by record rule"
 msgstr "所有者读取被记录规则拒绝"
 
-#: service/models/_owner_authorization.ts:160
+#: service/models/_owner_authorization.ts:163
 msgctxt "service/models/_owner_authorization"
 msgid "owner read target is not allowed by record rule scope"
 msgstr "所有者读取目标不在记录规则范围内"
 
-#: service/models/_owner_authorization.ts:262
+#: service/models/_owner_authorization.ts:266
 msgctxt "service/models/_owner_authorization"
 msgid "owner record rule contains invalid token mapping"
 msgstr "所有者记录规则包含无效的令牌映射"
 
-#: service/models/_owner_authorization.ts:218
+#: service/models/_owner_authorization.ts:221
 msgctxt "service/models/_owner_authorization"
 msgid "owner target is not readable"
 msgstr "所有者目标不可读"
 
-#: service/models/_owner_authorization.ts:77
+#: service/models/_owner_authorization.ts:80
 msgctxt "service/models/_owner_authorization"
 msgid "owner write is denied by record rule"
 msgstr "所有者写入被记录规则拒绝"
 
-#: service/models/_owner_authorization.ts:110
+#: service/models/_owner_authorization.ts:113
 msgctxt "service/models/_owner_authorization"
 msgid "owner write target is not allowed by record rule scope"
 msgstr "所有者写入目标不在记录规则范围内"
 
-#: service/models/_owner_authorization.ts:98
+#: service/models/_owner_authorization.ts:101
 msgctxt "service/models/_owner_authorization"
 msgid "ownerRecordId is required for owner write check"
 msgstr "所有者写入检查需要 ownerRecordId"
 
-#: service/models/_upload.ts:75 service/models/_upload.ts:84
+#: service/models/_upload.ts:75
 msgctxt "service/models/_upload"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/_upload.ts:94
+#: service/models/_upload.ts:82
 msgctxt "service/models/_upload"
 msgid "%s must be a non-negative integer"
 msgstr "%s 必须为非负整数"
 
-#: service/models/_upload.ts:211
+#: service/models/_upload.ts:196
 msgctxt "service/models/_upload"
 msgid "activeCompanyId does not match upload session owner"
 msgstr "activeCompanyId 与上传会话所有者不匹配"
 
-#: service/models/_upload.ts:266
+#: service/models/_upload.ts:251
 msgctxt "service/models/_upload"
 msgid "businessRequestId was already used with a different upload context"
 msgstr "businessRequestId 已在不同的上传上下文中使用过"
 
-#: service/models/_upload.ts:135
+#: service/models/_upload.ts:122
 msgctxt "service/models/_upload"
 msgid "operation must be create or update"
 msgstr "operation 必须是 create 或 update"
 
-#: service/models/_upload.ts:145
+#: service/models/_upload.ts:132
 msgctxt "service/models/_upload"
 msgid "ownerRecordId is required when operation=update"
 msgstr "当 operation=update 时 ownerRecordId 为必填项"
 
-#: service/models/_upload.ts:112
+#: service/models/_upload.ts:99
 msgctxt "service/models/_upload"
 msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
 msgstr "payloadReceipt.payloadId 必须是不透明句柄，禁止内联字节载荷"
 
-#: service/models/_upload.ts:223
+#: service/models/_upload.ts:208
 msgctxt "service/models/_upload"
 msgid "userId does not match upload session issuer"
 msgstr "userId 与上传会话签发者不匹配"
 
-#: service/models/attachment_binding.ts:421
+#: service/models/attachment_binding.ts:393
 msgctxt "service/models/attachment_binding"
 msgid "Active attachment binding not found"
 msgstr "未找到有效的附件绑定"
 
-#: service/models/attachment_binding.ts:285
+#: service/models/attachment_binding.ts:257
 msgctxt "service/models/attachment_binding"
 msgid "Active attachment content not found"
 msgstr "未找到有效的附件内容"
 
-#: service/models/attachment_binding.ts:257
+#: service/models/attachment_binding.ts:229
 msgctxt "service/models/attachment_binding"
 msgid "Active attachment content not found in company scope"
 msgstr "在公司范围内未找到有效的附件内容"
 
-#: service/models/attachment_binding.ts:309
+#: service/models/attachment_binding.ts:281
 msgctxt "service/models/attachment_binding"
 msgid "Active stored content not found"
 msgstr "未找到有效的存储内容"
 
-#: service/models/attachment_binding.ts:397
+#: service/models/attachment_binding.ts:369
 msgctxt "service/models/attachment_binding"
 msgid "Attachment binding not found"
 msgstr "未找到附件绑定"
 
-#: service/models/attachment_binding.ts:479
+#: service/models/attachment_binding.ts:451
 msgctxt "service/models/attachment_binding"
 msgid "bind mutationId exists but previous attempt did not succeed"
 msgstr "bind 的 mutationId 已存在，但先前尝试未成功"
 
-#: service/models/attachment_binding.ts:493
+#: service/models/attachment_binding.ts:465
 msgctxt "service/models/attachment_binding"
 msgid "bind replay snapshot is invalid"
 msgstr "bind 回放快照无效"
 
-#: service/models/attachment_binding.ts:343
+#: service/models/attachment_binding.ts:315
 msgctxt "service/models/attachment_binding"
 msgid "database execute bridge is unavailable"
 msgstr "数据库 execute 桥接不可用"
 
-#: service/models/attachment_binding.ts:230
-msgctxt "service/models/attachment_binding"
-msgid "principal activeCompanyId does not match runtime context"
-msgstr "principal 的 activeCompanyId 与运行时上下文不匹配"
-
-#: service/models/attachment_binding.ts:217
-msgctxt "service/models/attachment_binding"
-msgid "principal userId does not match runtime identity"
-msgstr "principal 的 userId 与运行时身份不匹配"
-
-#: service/models/attachment_binding.ts:508
+#: service/models/attachment_binding.ts:480
 msgctxt "service/models/attachment_binding"
 msgid "unbind mutationId exists but previous attempt did not succeed"
 msgstr "unbind 的 mutationId 已存在，但先前尝试未成功"
 
-#: service/models/attachment_binding.ts:522
+#: service/models/attachment_binding.ts:494
 msgctxt "service/models/attachment_binding"
 msgid "unbind replay snapshot is invalid"
 msgstr "unbind 回放快照无效"
 
-#: service/models/attachment_object.ts:331
+#: service/models/attachment_object.ts:340
 msgctxt "service/models/attachment_object"
 msgid "Attachment content not found"
 msgstr "未找到附件内容"
 
-#: service/models/attachment_object.ts:377
+#: service/models/attachment_object.ts:386
 msgctxt "service/models/attachment_object"
 msgid "FinalizeUpload businessRequestId does not match the existing upload session"
 msgstr "FinalizeUpload 的 businessRequestId 与现有上传会话不匹配"
 
-#: service/models/attachment_object.ts:299
+#: service/models/attachment_object.ts:304
 msgctxt "service/models/attachment_object"
 msgid "Stored content company does not match upload session company"
 msgstr "存储内容的公司与上传会话的公司不匹配"
 
-#: service/models/attachment_object.ts:313
+#: service/models/attachment_object.ts:318
 msgctxt "service/models/attachment_object"
 msgid "Stored content must be active before finalize"
 msgstr "完成前存储内容必须处于 active 状态"
 
-#: service/models/attachment_object.ts:283
+#: service/models/attachment_object.ts:288
 msgctxt "service/models/attachment_object"
 msgid "Upload session is missing uploaded payload reference"
 msgstr "上传会话缺少已上传载荷引用"
 
-#: service/models/attachment_object.ts:488
+#: service/models/attachment_object.ts:513
 msgctxt "service/models/attachment_object"
 msgid "Upload session must be prepared before commit"
 msgstr "提交前上传会话必须处于 prepared 状态"
 
-#: service/models/attachment_object.ts:623
+#: service/models/attachment_object.ts:648
 msgctxt "service/models/attachment_object"
 msgid "Upload session must be uploaded before finalize"
 msgstr "完成前上传会话必须处于 uploaded 状态"
 
-#: service/models/attachment_object.ts:251
+#: service/models/attachment_object.ts:256
 msgctxt "service/models/attachment_object"
 msgid "Upload session not found"
 msgstr "未找到上传会话"
 
-#: service/models/attachment_object.ts:446 service/models/attachment_object.ts:528
+#: service/models/attachment_object.ts:463 service/models/attachment_object.ts:553
 msgctxt "service/models/attachment_object"
 msgid "checksum mismatch"
 msgstr "校验和不匹配"
 
-#: service/models/attachment_object.ts:433 service/models/attachment_object.ts:515
+#: service/models/attachment_object.ts:450 service/models/attachment_object.ts:540
 msgctxt "service/models/attachment_object"
 msgid "content type is not allowed"
 msgstr "不允许该内容类型"
 
-#: service/models/attachment_object.ts:419 service/models/attachment_object.ts:501
+#: service/models/attachment_object.ts:436 service/models/attachment_object.ts:526
 msgctxt "service/models/attachment_object"
 msgid "upload body exceeds maxUploadBytes"
 msgstr "上传正文超过 maxUploadBytes"
 
-#: service/models/stored_content.ts:92
+#: service/models/stored_content.ts:97
 msgctxt "service/models/stored_content"
 msgid "Stored content not found"
 msgstr "未找到存储内容"
@@ -664,3 +659,11 @@ msgstr "未找到存储内容"
 #~ msgctxt "service/models/_attachment_upload_ops"
 #~ msgid "upload body exceeds maxUploadBytes"
 #~ msgstr "上传正文超过 maxUploadBytes"
+
+#~ msgctxt "service/models/attachment_binding"
+#~ msgid "principal activeCompanyId does not match runtime context"
+#~ msgstr "principal 的 activeCompanyId 与运行时上下文不匹配"
+
+#~ msgctxt "service/models/attachment_binding"
+#~ msgid "principal userId does not match runtime identity"
+#~ msgstr "principal 的 userId 与运行时身份不匹配"

@@ -235,7 +235,7 @@ export interface FinalizeUploadReq {
  * Finalized attachment content metadata returned to callers.
  */
 export interface FinalizeUploadResp {
-  attachmentObjectId: AttachmentContentId;
+  AttachmentContentId: AttachmentContentId;
   status: 'active';
   mimeType: string;
   sizeBytes: number;
@@ -248,7 +248,6 @@ export interface FinalizeUploadResp {
  */
 export interface AuthorizeUploadPutReq {
   uploadId: AttachmentUploadSessionId;
-  principal: PrincipalContext;
   requestMeta?: {
     contentType?: string;
     contentLength?: number;
@@ -273,7 +272,6 @@ export interface AuthorizeUploadPutResp {
  */
 export interface CommitUploadPutReq {
   uploadId: AttachmentUploadSessionId;
-  principal: PrincipalContext;
   payloadReceipt: {
     payloadId: string;
     sizeBytes: number;
@@ -301,7 +299,6 @@ export interface CommitUploadPutResp {
  */
 export interface ResolveDownloadContentReq {
   attachmentBindingId: AttachmentBindingId;
-  principal: PrincipalContext;
 }
 
 /**
@@ -335,7 +332,7 @@ export interface AttachmentDescriptor {
  * Request payload for binding content to an owner field.
  */
 export interface BindReq {
-  attachmentObjectId: AttachmentContentId;
+  AttachmentContentId: AttachmentContentId;
   ownerModel: string;
   ownerRecordId: string;
   fieldName: string;

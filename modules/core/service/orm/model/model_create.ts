@@ -35,7 +35,7 @@ type AttachmentWriteAction =
   | { kind: 'noop' };
 
 type AttachmentBindingBindReq = {
-  attachmentObjectId: string;
+  AttachmentContentId: string;
   ownerModel: string;
   ownerRecordId: string;
   fieldName: string;
@@ -391,7 +391,7 @@ export class CreateOperations {
       for (const [fieldName, action] of attachmentActions.entries()) {
         if (action.kind === 'set') {
           const bindResp = await bindingService.Bind({
-            attachmentObjectId: action.attachmentObjectId,
+            AttachmentContentId: action.attachmentObjectId,
             ownerModel,
             ownerRecordId: parentId,
             fieldName,

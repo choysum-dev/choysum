@@ -31,7 +31,7 @@ function newAttachmentService(attachmentObjectId = 'ao-test', uploadUrl = 'https
       },
     })),
     FinalizeUpload: asyncFnRecorder(async () => ({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
     })),
   };
 }
@@ -108,6 +108,18 @@ describe('formController attachment protocol', () => {
     expect(service.PrepareUpload.calls.length).toBe(1);
     expect(service.FinalizeUpload.calls.length).toBe(1);
     expect(fetchMock.calls.length).toBe(1);
+  });
+
+  test('rejects FinalizeUpload that omits AttachmentContentId', async () => {
+    const service = newAttachmentService();
+    service.FinalizeUpload = asyncFnRecorder(async () => ({}));
+    const ctx = newCtx(service);
+    const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'application/octet-stream' });
+
+    await expectRejects(
+      () => __resolveAttachmentFieldValueForTest(blob, ctx),
+      '[Attachment] Avatar: FinalizeUpload did not return AttachmentContentId.'
+    );
   });
 
   test('accepts File payload and keeps filename in PrepareUpload request', async () => {

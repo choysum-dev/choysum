@@ -12,7 +12,7 @@ export type AttachmentOwnerDownloadDisposition = 'inline' | 'attachment';
 export type AttachmentOwnerUnbindReason = 'replace' | 'clear' | 'owner_deleted' | 'cleanup' | 'other';
 
 export type AttachmentOwnerBindReq = {
-  attachmentObjectId: string;
+  AttachmentContentId: string;
   ownerModel: string;
   ownerRecordId: string;
   fieldName: string;

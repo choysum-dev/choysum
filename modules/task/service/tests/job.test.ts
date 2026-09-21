@@ -113,7 +113,14 @@ test('task.Job enqueue/list/cancel basics', async () => {
   const fullMethod = 'auth.User/Login';
   const payload = { email: 'a@b.com' };
   const runAfter = new Date('2026-01-19T00:00:00Z');
-  const job = await Job.EnqueueJob('auth', fullMethod, payload, 'admin', 'admin', runAfter, 0, -1);
+  const job = await Job.EnqueueJob({
+    TargetApp: 'auth',
+    FullMethod: fullMethod,
+    Payload: payload,
+    RunAfter: runAfter,
+    MaxAttempts: 0,
+    TimeoutMs: -1,
+  });
 
   expect(job).toBeTruthy();
   expect(job.Status).toBe('queued');
@@ -139,7 +146,13 @@ test('task.Job enqueue uses configured default maxAttempts', async () => {
   resetRequestContext();
 
   await withBackendEnv(ENV_KEY, 3, async () => {
-    const job = await Job.EnqueueJob('auth', 'auth.User/Login', {}, 'admin', 'admin', undefined, 0, 0);
+    const job = await Job.EnqueueJob({
+      TargetApp: 'auth',
+      FullMethod: 'auth.User/Login',
+      Payload: {},
+      MaxAttempts: 0,
+      TimeoutMs: 0,
+    });
     expect(job.MaxAttempts).toBe(3);
   });
 });
@@ -157,7 +170,11 @@ test('task.Job enqueue payload sanitize/truncate', async () => {
     tokens: [{ token: 't1' }, { token: 't2' }],
   };
 
-  const job = await Job.EnqueueJob('auth', 'auth.User/Login', payload, 'admin', 'admin');
+  const job = await Job.EnqueueJob({
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    Payload: payload,
+  });
   const reloaded = await Job.GetJob(job.Id as any, ['Id', 'PayloadJson'] as any);
   const payloadJson = reloaded.PayloadJson as Record<string, any> | undefined;
 
@@ -167,7 +184,11 @@ test('task.Job enqueue payload sanitize/truncate', async () => {
   expect(payloadJson?.tokens).toBe('***');
 
   const bigPayload = { blob: 'x'.repeat(20000) };
-  const bigJob = await Job.EnqueueJob('auth', 'auth.User/Login', bigPayload, 'admin', 'admin');
+  const bigJob = await Job.EnqueueJob({
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    Payload: bigPayload,
+  });
   const bigReloaded = await Job.GetJob(bigJob.Id as any, ['Id', 'PayloadJson'] as any);
   const bigPayloadJson = bigReloaded.PayloadJson as Record<string, any> | undefined;
 
@@ -176,4 +197,18 @@ test('task.Job enqueue payload sanitize/truncate', async () => {
   const previewLen = (bigPayloadJson?._preview || '').length;
   expect(previewLen > 0).toBe(true);
   expect(previewLen <= 16 * 1024).toBe(true);
+});
+
+test('task.Job EnqueueJob ignores forged actor ids and uses the session user', async () => {
+  resetRequestContext();
+  const job = await Job.EnqueueJob({
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    Payload: {},
+    SchedulerUserId: 'spoof-scheduler',
+    TriggeredByUserId: 'spoof-actor',
+  } as any);
+  const reloaded = await Job.GetJob(job.Id as any, ['Id', 'SchedulerUserId', 'TriggeredByUserId'] as any);
+  expect(reloaded.SchedulerUserId).toBe('admin');
+  expect(reloaded.TriggeredByUserId).toBe('admin');
 });

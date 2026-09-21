@@ -73,7 +73,17 @@ test('task.Schedule create/update/trigger basics', async () => {
   resetRequestContext();
 
   const now = Date.now();
-  const schedule = await Schedule.CreateSchedule('test_schedule', 'auth', 'auth.User/Login', { email: 'a@b.com' }, 'admin', 'admin', '* * * * *', 'UTC');
+  const schedule = await Schedule.Create({
+    Active: true,
+    Name: 'test_schedule',
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    PayloadTemplateJson: { email: 'a@b.com' },
+    SchedulerUserId: 'admin',
+    TriggeredByUserId: 'admin',
+    CronExpr: '* * * * *',
+    Timezone: 'UTC',
+  });
 
   expect(Boolean(schedule)).toBe(true);
   expect(Boolean(schedule.NextRunAt)).toBe(true);
@@ -82,31 +92,82 @@ test('task.Schedule create/update/trigger basics', async () => {
   expect(nextRunAtMs >= now).toBe(true);
   expect(nextRunAtMs <= now + 2 * 60 * 1000).toBe(true);
 
-  await Schedule.UpdateSchedule(schedule.Id as any, { Active: false } as any);
+  await Schedule.UpdateById(schedule.Id as any, { Active: false } as any);
   const updated = await Schedule.Browse(schedule.Id as any, ['Id', 'Active', 'NextRunAt'] as any);
   expect(updated.Active).toBe(false);
   expect(Boolean(updated.NextRunAt)).toBe(false);
 
-  const triggerSchedule = await Schedule.CreateSchedule(
-    'trigger_schedule',
-    'auth',
-    'auth.User/Login',
-    { email: 'b@b.com' },
-    'admin',
-    'admin',
-    '* * * * *',
-    'UTC'
-  );
-  const triggerResp = await Schedule.TriggerSchedule(triggerSchedule.Id as any, { email: 'c@b.com' });
-  expect(Boolean(triggerResp.jobId)).toBe(true);
+  const triggerSchedule = await Schedule.Create({
+    Active: true,
+    Name: 'trigger_schedule',
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    PayloadTemplateJson: { email: 'b@b.com' },
+    SchedulerUserId: 'admin',
+    TriggeredByUserId: 'admin',
+    CronExpr: '* * * * *',
+    Timezone: 'UTC',
+  });
+  const triggerResp = await Schedule.TriggerSchedule({
+    ScheduleId: triggerSchedule.Id as any,
+    PayloadOverride: { email: 'c@b.com' },
+    SchedulerUserIdOverride: 'spoof',
+    TriggeredByUserId: 'spoof',
+  } as any);
+  expect(Boolean(triggerResp.JobId)).toBe(true);
 
-  const job = await Job.GetJob(triggerResp.jobId, ['Id', 'TargetApp', 'FullMethod', 'PayloadJson'] as any);
+  const job = await Job.GetJob(triggerResp.JobId, ['Id', 'TargetApp', 'FullMethod', 'PayloadJson', 'SchedulerUserId', 'TriggeredByUserId'] as any);
   expect(job.TargetApp).toBe('auth');
   expect(job.FullMethod).toBe('auth.User/Login');
+  expect(job.SchedulerUserId).toBe('admin');
+  expect(job.TriggeredByUserId).toBe('admin');
 
   const reloaded = await Schedule.Browse(triggerSchedule.Id as any, ['Id', 'LastTriggeredAt', 'LastRunAt'] as any);
   expect(Boolean(reloaded.LastTriggeredAt)).toBe(true);
   expect(Boolean(reloaded.LastRunAt)).toBe(true);
+});
+
+test('task.Schedule TriggerSchedule requires a session even when SchedulerUserId is stored', async () => {
+  resetRequestContext();
+  const schedule = await Schedule.Create({
+    Active: true,
+    Name: 'sessionless_trigger',
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    PayloadTemplateJson: {},
+    SchedulerUserId: 'other-user',
+    TriggeredByUserId: 'other-user',
+    CronExpr: '* * * * *',
+    Timezone: 'UTC',
+  });
+  const jsCtx = ensureRequestContext();
+  jsCtx.identity.userId = '';
+  let error: unknown;
+  try {
+    await Schedule.TriggerSchedule({ ScheduleId: schedule.Id as any });
+  } catch (err) {
+    error = err;
+  }
+  expect(String((error as Error)?.message || error)).toContain('authenticated user');
+});
+
+test('task.Schedule assignNextRunAt clears NextRunAt when the cron expression has no upcoming run', async () => {
+  resetRequestContext();
+  const schedule = await Schedule.Create({
+    Active: true,
+    Name: 'bad_cron_schedule',
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    PayloadTemplateJson: {},
+    SchedulerUserId: 'admin',
+    TriggeredByUserId: 'admin',
+    CronExpr: '* * * * *',
+    Timezone: 'UTC',
+  });
+  expect(Boolean(schedule.NextRunAt)).toBe(true);
+
+  const updated = await Schedule.UpdateById(schedule.Id as any, { CronExpr: 'not valid' }, ['Id', 'NextRunAt'] as any);
+  expect(Boolean(updated.NextRunAt)).toBe(false);
 });
 
 test('task.Schedule Timezone FieldsGet exposes dynamic IANA selection', async () => {
@@ -131,16 +192,17 @@ test('task.Schedule validateTimezoneConstraint normalizes and rejects invalid va
 
 test('task.Schedule UpdateById runs timezone constraint', async () => {
   resetRequestContext();
-  const schedule = await Schedule.CreateSchedule(
-    'tz_constraint_schedule',
-    'auth',
-    'auth.User/Login',
-    { email: 'tz@b.com' },
-    'admin',
-    'admin',
-    '0 0 * * *',
-    'UTC'
-  );
+  const schedule = await Schedule.Create({
+    Active: true,
+    Name: 'tz_constraint_schedule',
+    TargetApp: 'auth',
+    FullMethod: 'auth.User/Login',
+    PayloadTemplateJson: { email: 'tz@b.com' },
+    SchedulerUserId: 'admin',
+    TriggeredByUserId: 'admin',
+    CronExpr: '0 0 * * *',
+    Timezone: 'UTC',
+  });
 
   const updated = await (Schedule as any).UpdateById(schedule.Id, { Timezone: '  Asia/Shanghai  ' }, ['Id', 'Timezone']);
   expect(updated.Timezone).toBe('Asia/Shanghai');

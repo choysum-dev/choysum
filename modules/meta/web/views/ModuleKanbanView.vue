@@ -175,9 +175,9 @@ SPDX-License-Identifier: Apache-2.0
           <span class="label">{{ _t('Error:') }}</span>
           <span class="value">{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span>
         </div>
-        <div class="status-row" v-if="opStatus?.reload_triggered">
+        <div class="status-row" v-if="opStatus?.ReloadTriggered">
           <span class="label">{{ _t('Reload:') }}</span>
-          <span class="value">{{ opStatus?.reload_failed ? _t('Trigger Failed') : _t('Triggered') }}</span>
+          <span class="value">{{ opStatus?.ReloadFailed ? _t('Trigger Failed') : _t('Triggered') }}</span>
         </div>
       </div>
       <div class="module-dialog__section" v-if="dialogStep === 'progress'">
@@ -351,7 +351,7 @@ const dialogTitle = computed(() => {
 const resultTitle = computed(() => {
   if (!opStatus.value) return _t('Completed');
   if (opStatus.value.resultStatus === 'FAILED') return _t('Operation Failed');
-  return opStatus.value.reload_failed ? _t('Succeeded but reload failed') : _t('Operation Succeeded');
+  return opStatus.value.ReloadFailed ? _t('Succeeded but reload failed') : _t('Operation Succeeded');
 });
 
 /**
@@ -360,7 +360,7 @@ const resultTitle = computed(() => {
 const resultAlertType = computed(() => {
   if (!opStatus.value) return 'info';
   if (opStatus.value.resultStatus === 'FAILED') return 'error';
-  return opStatus.value.reload_failed ? 'warning' : 'success';
+  return opStatus.value.ReloadFailed ? 'warning' : 'success';
 });
 
 /**
@@ -488,9 +488,9 @@ async function submitOperation() {
   try {
     let jobId = '';
     const moduleName = targetModule.value.ModuleName;
-    if (action.value === 'install') jobId = await (moduleStore as any).RequestInstall(moduleName, withDemo.value);
-    else if (action.value === 'uninstall') jobId = await (moduleStore as any).RequestUninstall(moduleName);
-    else jobId = await (moduleStore as any).RequestUpgrade(moduleName);
+    if (action.value === 'install') jobId = await (moduleStore as any).RequestInstall({ ModuleName: moduleName, WithDemo: withDemo.value });
+    else if (action.value === 'uninstall') jobId = await (moduleStore as any).RequestUninstall({ ModuleName: moduleName });
+    else jobId = await (moduleStore as any).RequestUpgrade({ ModuleName: moduleName });
     executeLoading.value = false;
     await opProgress.watch(jobId);
   } catch (error: any) {
@@ -543,7 +543,7 @@ async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
-    const jobId = await (store as any).RequestSync({ force: true, ifStale: false });
+    const jobId = await (store as any).RequestSync({ Force: true, IfStale: false });
     ElMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
   } catch (error: any) {
     ElMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
@@ -562,7 +562,7 @@ onBeforeUnmount(() => {
  */
 onMounted(async () => {
   try {
-    await (store as any).RequestSync({ ifStale: true });
+    await (store as any).RequestSync({ IfStale: true });
   } catch {
     // sync unavailable — silently skip, page remains usable
   }

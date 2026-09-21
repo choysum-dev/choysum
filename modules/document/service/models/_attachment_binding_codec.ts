@@ -23,7 +23,7 @@ import {
 import { DocumentErrCode, GrpcCode, throwDocumentError } from '../error';
 import type AttachmentBinding from './attachment_binding';
 import type AttachmentContent from './attachment_object';
-import { requireText, assertPrincipal, normalizeCompanyIdList } from './_document_bridge';
+import { requireText, normalizeCompanyIdList, rejectLegacyPrincipalField } from './_document_bridge';
 import { inlineMimeAllowed, mimeSuffix } from '@/core/service/utils/mime';
 
 const { _t } = createTranslate('document');
@@ -32,7 +32,7 @@ const { _t } = createTranslate('document');
 // Internal normalised-request shapes
 // ---------------------------------------------------------------------------
 
-export type NormalizedBindReq = {
+type NormalizedBindReq = {
   attachmentContentId: string;
   ownerModel: string;
   ownerRecordId: string;
@@ -42,18 +42,17 @@ export type NormalizedBindReq = {
   mutationId: string;
 };
 
-export type NormalizedUnbindReq = {
+type NormalizedUnbindReq = {
   attachmentBindingId: string;
   mutationId: string;
 };
 
-export type NormalizedBatchDescribeReq = {
+type NormalizedBatchDescribeReq = {
   attachmentBindingIds: string[];
 };
 
-export type NormalizedResolveDownloadContentReq = {
+type NormalizedResolveDownloadContentReq = {
   attachmentBindingId: string;
-  principal: PrincipalContext;
 };
 
 export type ResolvedDownloadSemantics = {
@@ -71,7 +70,7 @@ export type ResolvedDownloadSemantics = {
 
 export function assertBindReq(req: BindReq | undefined | null): NormalizedBindReq {
   return {
-    attachmentContentId: requireText(req?.attachmentObjectId, 'attachmentObjectId'),
+    attachmentContentId: requireText(req?.AttachmentContentId, 'AttachmentContentId'),
     ownerModel: requireText(req?.ownerModel, 'ownerModel'),
     ownerRecordId: requireText(req?.ownerRecordId, 'ownerRecordId'),
     fieldName: requireText(req?.fieldName, 'fieldName'),
@@ -130,9 +129,9 @@ export function assertBatchDescribeReq(req: BatchDescribeReq | undefined | null)
 }
 
 export function assertResolveDownloadContentReq(req: ResolveDownloadContentReq | undefined | null): NormalizedResolveDownloadContentReq {
+  rejectLegacyPrincipalField(req, 'resolve_download_content');
   return {
     attachmentBindingId: requireText(req?.attachmentBindingId, 'attachmentBindingId'),
-    principal: assertPrincipal(req?.principal),
   };
 }
 

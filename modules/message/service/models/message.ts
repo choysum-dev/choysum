@@ -36,13 +36,13 @@ export type PostMessageReq = {
   Type?: string | null;
   CompanyId?: string | null;
   /** Optional document.AttachmentContent id to bind after create. */
-  AttachmentObjectId?: string | null;
-  /** Idempotent bind mutation id; generated when AttachmentObjectId is set and omitted. */
+  AttachmentContentId?: string | null;
+  /** Idempotent bind mutation id; generated when AttachmentContentId is set and omitted. */
   AttachmentMutationId?: string | null;
 };
 
 type BindAttachmentReq = {
-  attachmentObjectId: string;
+  AttachmentContentId: string;
   ownerModel: string;
   ownerRecordId: string;
   fieldName: string;
@@ -278,7 +278,7 @@ export default class Message extends PolymorphicRecordModel {
 
   /**
    * Creates one collaboration Message (Unary). Stamps AuthorUid from request identity.
-   * Optional AttachmentObjectId dials document.AttachmentBinding.Bind after create.
+   * Optional AttachmentContentId dials document.AttachmentBinding.Bind after create.
    * On success, fans out follower Notifications and best-effort Publishes thread/inbox tips.
    */
   public static async Post<F extends FieldSelection<Message> = typeof DEFAULT_POST_FIELDS>(
@@ -302,7 +302,7 @@ export default class Message extends PolymorphicRecordModel {
     const type = assertMessageType(req.Type == null || req.Type === '' ? 'comment' : String(req.Type));
     const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
     const returnFields: FieldSelection<Message> = fields ?? [...DEFAULT_POST_FIELDS];
-    const attachmentObjectId = String(req.AttachmentObjectId || '').trim();
+    const attachmentObjectId = String(req.AttachmentContentId || '').trim();
 
     // Resolve Bind before Create so a missing binder does not leave an unbound Message.
     let bind: BindAttachmentFn | null = null;
@@ -342,7 +342,7 @@ export default class Message extends PolymorphicRecordModel {
       const mutationId = String(req.AttachmentMutationId || '').trim() || newMutationId();
       try {
         await bind({
-          attachmentObjectId,
+          AttachmentContentId: attachmentObjectId,
           ownerModel: 'message.Message',
           ownerRecordId,
           fieldName: MESSAGE_ATTACHMENT_FIELD,
@@ -362,7 +362,7 @@ export default class Message extends PolymorphicRecordModel {
       }
     }
 
-    await Notification.FanOutForMessage(created as Message);
+    await Notification.fanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
     // Tip/bind used an augmented Create selection; return only the caller's projection.
     return projectToSelection(created as object, returnFields) as RowOrProjected<Message, F>;

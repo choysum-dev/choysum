@@ -5,7 +5,7 @@ import type { RequestContextKV } from '../../rpc/context';
 import { getCurrentRequestContext } from '../../rpc/context';
 
 export type ResolveRequestLangFallbacks = {
-  /** User.Language when baggage lang is absent. */
+  /** Preferred terminology code when baggage lang is absent. */
   userLanguage?: string;
   /** Company default language. */
   companyDefault?: string;

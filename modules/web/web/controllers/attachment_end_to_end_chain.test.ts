@@ -53,7 +53,7 @@ describe('attachment end-to-end chain regression', () => {
         },
       })),
       FinalizeUpload: asyncFnRecorder(async () => ({
-        attachmentObjectId: finalizedQueue.shift(),
+        AttachmentContentId: finalizedQueue.shift(),
       })),
     };
 

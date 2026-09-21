@@ -9,10 +9,10 @@ import type MetaModuleIndex from './module_index';
 export type ModuleOriginType = 'local' | 'registry';
 export type ModuleSyncOriginType = ModuleOriginType | 'all';
 
-export type RequestSyncParams = {
-  originType?: ModuleSyncOriginType;
-  force?: boolean;
-  ifStale?: boolean;
+export type RequestSyncReq = {
+  OriginType?: ModuleSyncOriginType;
+  Force?: boolean;
+  IfStale?: boolean;
 };
 
 /**

@@ -227,8 +227,9 @@ export default class Notification extends BaseModel {
   /**
    * Creates Notification rows for record followers and best-effort inbox tips.
    * Called from Message.Post after the Message row is authoritative.
+   * Not a gRPC surface (lowercase; in-process only).
    */
-  public static async FanOutForMessage(created: Partial<Message>): Promise<void> {
+  static async fanOutForMessage(created: Partial<Message>): Promise<void> {
     const messageId = String(created.Id || '').trim();
     const model = String(created.Model || '').trim();
     const resId = String(created.ResId || '').trim();

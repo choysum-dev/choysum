@@ -296,8 +296,10 @@ test('auth: SwitchCompanyScope default enabled uses Preferences (enabledCompanyI
 
   const r1: any = await (client0 as any).switchCompanyScope(
     create(authPb.UserSwitchCompanyScopeReqSchema, {
-      activeCompanyId: pair.a,
-      enabledCompanyIds: toValue([pair.a, pair.b]),
+      req: toValue({
+        ActiveCompanyId: pair.a,
+        EnabledCompanyIds: [pair.a, pair.b],
+      }),
     })
   );
   const tokenPair1 = fromValue(r1.result);
@@ -312,7 +314,9 @@ test('auth: SwitchCompanyScope default enabled uses Preferences (enabledCompanyI
   const client1: any = makeUserClient(baseURL, String(tokenPair1.accessToken), authPb.User);
   const r2: any = await (client1 as any).switchCompanyScope(
     create(authPb.UserSwitchCompanyScopeReqSchema, {
-      activeCompanyId: pair.b,
+      req: toValue({
+        ActiveCompanyId: pair.b,
+      }),
     })
   );
   const tokenPair2 = fromValue(r2.result);
@@ -342,8 +346,10 @@ test('auth: SwitchCompanyScope persists view; RefreshTokens reproduces the same 
 
   const r1: any = await (client0 as any).switchCompanyScope(
     create(authPb.UserSwitchCompanyScopeReqSchema, {
-      activeCompanyId: pair.b,
-      enabledCompanyIds: toValue([pair.a, pair.b]),
+      req: toValue({
+        ActiveCompanyId: pair.b,
+        EnabledCompanyIds: [pair.a, pair.b],
+      }),
     })
   );
   const tokenPair1 = fromValue(r1.result);
@@ -352,7 +358,9 @@ test('auth: SwitchCompanyScope persists view; RefreshTokens reproduces the same 
   const client1: any = makeUserClient(baseURL, String(tokenPair1.accessToken), authPb.User);
   const r2: any = await (client1 as any).refreshTokens(
     create(authPb.UserRefreshTokensReqSchema, {
-      refreshToken: String(tokenPair1.refreshToken),
+      req: toValue({
+        RefreshToken: String(tokenPair1.refreshToken),
+      }),
     })
   );
   const tokenPair2 = fromValue(r2.result);
@@ -387,8 +395,10 @@ test('auth: SwitchCompanyScope illegal enabledCompanyIds fails closed and emits 
   try {
     await (client as any).switchCompanyScope(
       create(authPb.UserSwitchCompanyScopeReqSchema, {
-        activeCompanyId: pair.a,
-        enabledCompanyIds: toValue([pair.a, illegalCompanyId]),
+        req: toValue({
+          ActiveCompanyId: pair.a,
+          EnabledCompanyIds: [pair.a, illegalCompanyId],
+        }),
       })
     );
   } catch (e) {

@@ -148,7 +148,7 @@ test('User: AttachmentBind / AttachmentUnbind dial document.AttachmentBinding', 
     }),
     async () => {
       const bound = await User.AttachmentBind({
-        attachmentObjectId: 'c1',
+        AttachmentContentId: 'c1',
         ownerModel: 'auth.User',
         ownerRecordId: 'u1',
         fieldName: 'Avatar',

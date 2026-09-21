@@ -18,7 +18,7 @@ function loginStub(overrides: {
 }): User {
   const stub = Object.assign(Object.create(User.prototype), {
     Timezone: null,
-    Language: null,
+    LanguageId: null,
     CompanyId: '',
     CompanyIds: [],
     Preferences: {},

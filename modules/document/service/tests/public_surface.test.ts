@@ -18,12 +18,13 @@ function listDeclaredConventionalServices(modelCtor: any): string[] {
   return Array.from(names).sort();
 }
 
-test('document model conventional public method whitelist includes task-driven GC surface', () => {
+test('document model conventional public method whitelist', () => {
   expect(listDeclaredConventionalServices(AttachmentContent)).toEqual([
     'AuthorizeUploadPut',
     'CommitUploadPut',
     'FinalizeUpload',
     'PrepareUpload',
+    // Worker FullMethod target (TaskWorker dial); interactive ACL deny-by-default.
     'RunGarbageCollection',
   ]);
   expect(listDeclaredConventionalServices(AttachmentBinding)).toEqual(['BatchDescribe', 'Bind', 'ResolveDownloadContent', 'Unbind']);

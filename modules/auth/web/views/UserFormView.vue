@@ -40,7 +40,7 @@ SPDX-License-Identifier: Apache-2.0
           <OVarCharField :store="store" prop="FullName" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Language" />
+          <OManyToOneRefField :store="store" prop="LanguageId" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OSelectionField

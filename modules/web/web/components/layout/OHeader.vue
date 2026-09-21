@@ -297,7 +297,7 @@ async function handleLanguageChange(locale: string) {
   if (!ok) {
     return;
   }
-  // Guest path only: session UI key stays in i18nStore localStorage. Do not write User.Language here.
+  // Guest path only: session UI key stays in i18nStore localStorage. Do not write User.LanguageId here.
   const { afterLocaleChange, softLocaleRemount } = await import('@/web/web/stores/i18nStore/locale_remount');
   await afterLocaleChange({ remount: softLocaleRemount });
 }
