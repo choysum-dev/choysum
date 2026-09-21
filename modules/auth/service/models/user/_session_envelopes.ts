@@ -38,7 +38,7 @@ export type RefreshTokensReq = {
 export type SwitchCompanyScopeReq = {
   ActiveCompanyId: string;
   /** Readable company scope; omit to default from Preferences / [ActiveCompanyId]. */
-  EnabledCompanyIds?: string[] | null;
+  EnabledCompanyIds?: string[];
 };
 
 export type LogoutReq = {

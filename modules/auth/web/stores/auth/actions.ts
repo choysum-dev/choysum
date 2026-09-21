@@ -165,12 +165,11 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         delete userData.fullName;
       }
 
-      // Forward the hashed password to the backend Register RPC.
-      const result = await state.userStore.Register({
+      // Forward the hashed password to the backend Register RPC (shape B: { UserId }).
+      return await state.userStore.Register({
         User: userData as any,
         Password: hashedPassword,
       });
-      return result;
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.REGISTRATION_FAILED,

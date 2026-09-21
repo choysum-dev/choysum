@@ -385,6 +385,12 @@ export default class User extends AttachmentOwnerMixin {
         message: _t('Register requires a payload', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
+    if (req.User != null && (typeof req.User !== 'object' || Array.isArray(req.User))) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Register requires a User object', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
     const userData = (req.User || {}) as Partial<Insertable<User>>;
     const password = String(req.Password || '');
     const passwordHash = validateAndHashRegistrationInput(userData, password);

@@ -161,3 +161,23 @@ test('Register: anonymous signup assigns base.user inside main company scope', a
   expect((snapshot.user as any).Preferences?.enabledCompanyIds).toEqual([mainCompanyId]);
   expect(snapshot.userRoles.length).toBe(1);
 });
+
+test('Register: rejects non-object payloads and non-object User', async () => {
+  resetRequestContext();
+
+  async function expectValidationFailed(fn: () => Promise<unknown>): Promise<void> {
+    let caught: any;
+    try {
+      await fn();
+      throw new Error('expected Register to throw');
+    } catch (err) {
+      caught = err;
+    }
+    expect(String(caught?.code || '')).toBe('VALIDATION_FAILED');
+  }
+
+  await expectValidationFailed(() => User.Register(null as any));
+  await expectValidationFailed(() => User.Register('nope' as any));
+  await expectValidationFailed(() => User.Register({ User: 'bad', Password: 'x' } as any));
+  await expectValidationFailed(() => User.Register({ User: ['bad'], Password: 'x' } as any));
+});

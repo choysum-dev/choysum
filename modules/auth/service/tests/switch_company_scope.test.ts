@@ -471,3 +471,23 @@ test('User.UpdateById: CompanyId must stay inside enabledCompanyIds (validation_
   expect(Array.isArray(fieldIssues.CompanyId)).toBe(true);
   expect(fieldIssues.CompanyId?.[0]?.code).toBe('platform_cross_company_reference_violation');
 });
+
+test('User session envelopes: reject non-object payloads', async () => {
+  resetRequestContext();
+
+  async function expectValidationFailed(fn: () => Promise<unknown>): Promise<void> {
+    let caught: any;
+    try {
+      await fn();
+      throw new Error('expected session verb to throw');
+    } catch (err) {
+      caught = err;
+    }
+    expect(String(caught?.code || '')).toBe('VALIDATION_FAILED');
+  }
+
+  await expectValidationFailed(() => User.Login(null as any));
+  await expectValidationFailed(() => User.RefreshTokens(null as any));
+  await expectValidationFailed(() => User.SwitchCompanyScope(null as any));
+  await expectValidationFailed(() => User.Logout(null as any));
+});
