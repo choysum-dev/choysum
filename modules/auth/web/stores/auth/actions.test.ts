@@ -465,6 +465,37 @@ test('loadUser: swallows i18n apply failures', async () => {
   expect((mockState.currentUser.value as any)?.Id).toBe('usr_1');
 });
 
+test('loadUser: still applies display overrides when the language store is missing', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.identity.value = { userId: 'usr_1' } as any;
+  mockState._recorders.Browse.resolve({
+    Id: 'usr_1',
+    LanguageId: 'lang_zh',
+    Preferences: { display: { dateFormat: 'YYYY-MM-DD' } },
+  });
+  const setDisplayOverrides = makeFn();
+  setDisplayOverrides.returnValue(undefined);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => {
+      throw new Error('registry down');
+    },
+    importI18nStore: async () => ({
+      useI18nStore: () => ({
+        setUiKey: async () => undefined,
+        setDisplayOverrides: setDisplayOverrides.fn,
+      }),
+      langToUiKey: (lang: string) => lang,
+    }),
+  });
+
+  const ok = await actions.loadUser(true);
+  expect(ok).toBe(true);
+  expect(setDisplayOverrides.calls[0].args[0]).toEqual({ dateFormat: 'YYYY-MM-DD' });
+});
+
 test('loadUser: exercises default i18nStore and Language registry imports', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

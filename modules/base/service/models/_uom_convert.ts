@@ -62,8 +62,7 @@ export async function convertUoM(UoMModel: UoMOps, params: UoMConvertParams | un
     return row as UoMRow;
   };
 
-  const from = await load(fromUoMId, 'FromUoMId');
-  const to = await load(toUoMId, 'ToUoMId');
+  const [from, to] = await Promise.all([load(fromUoMId, 'FromUoMId'), load(toUoMId, 'ToUoMId')]);
   const fromCategory = String(resolveModelRefId(from, 'CategoryId') ?? '').trim();
   const toCategory = String(resolveModelRefId(to, 'CategoryId') ?? '').trim();
   if (!fromCategory || !toCategory || fromCategory !== toCategory) {

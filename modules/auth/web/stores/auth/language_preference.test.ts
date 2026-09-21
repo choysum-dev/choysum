@@ -16,7 +16,7 @@ test('terminologyCodeFromLanguageId: empty id skips Browse', async () => {
 test('terminologyCodeFromLanguageId: returns trimmed Code from Browse', async () => {
   const code = await terminologyCodeFromLanguageId(' lang_1 ', async (id, fields) => {
     expect(id).toBe('lang_1');
-    expect(fields).toEqual(['Code']);
+    expect(fields).toEqual(['Code', 'IsActive']);
     return { Code: '  en_US  ' };
   });
   expect(code).toBe('en_US');
@@ -38,6 +38,11 @@ test('terminologyCodeFromLanguageId: empty object skips Browse', async () => {
   });
   expect(code).toBe('');
   expect(browsed).toBe(false);
+});
+
+test('terminologyCodeFromLanguageId: inactive language yields empty code', async () => {
+  const code = await terminologyCodeFromLanguageId('lang_off', async () => ({ Code: 'zh_CN', IsActive: false }));
+  expect(code).toBe('');
 });
 
 test('applyUserLanguagePreference: sets display overrides before language resolution', async () => {

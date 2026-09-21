@@ -423,11 +423,18 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
           : import('@/web/web/stores/i18nStore'));
         const { applyUserLanguagePreference } = await import('./language_preference');
         const i18nStore = useI18nStore();
-        const languageStore = await getLanguageStore();
+        let browseLanguage: (id: string, fields: string[]) => Promise<{ Code?: string; IsActive?: boolean } | null | undefined> =
+          async () => null;
+        try {
+          const languageStore = await getLanguageStore();
+          browseLanguage = (id, fields) => languageStore.Browse(id, fields);
+        } catch {
+          // Language registry unavailable; display overrides still apply below.
+        }
         await applyUserLanguagePreference({
           languageId: (user as any)?.LanguageId,
           displayOverrides: (user as any)?.Preferences?.display ?? null,
-          browseLanguage: (id, fields) => languageStore.Browse(id, fields),
+          browseLanguage,
           setUiKey: key => i18nStore.setUiKey(key),
           setDisplayOverrides: overrides => i18nStore.setDisplayOverrides(overrides as any),
           langToUiKey,

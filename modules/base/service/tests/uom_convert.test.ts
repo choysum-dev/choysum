@@ -46,6 +46,13 @@ test('base.UoM Convert scales by factor within one category and rounds to the ta
   });
   expect(result.Amount.eq(new Decimal('2000'))).toBe(true);
 
+  const decimalAmount = await UoM.Convert({
+    Amount: new Decimal('2'),
+    FromUoMId: kilogramId,
+    ToUoMId: gramId,
+  });
+  expect(decimalAmount.Amount.eq(new Decimal('2000'))).toBe(true);
+
   const back = await UoM.Convert({
     Amount: '15',
     FromUoMId: gramId,
