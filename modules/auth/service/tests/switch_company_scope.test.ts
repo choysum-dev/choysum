@@ -493,6 +493,14 @@ test('User session envelopes: reject non-object payloads', async () => {
   await expectValidationFailed(() =>
     User.Login({ UsernameOrEmail: 'admin', Password: 'x', RememberMe: 'true' as any })
   );
+  await expectValidationFailed(() => User.Login({ UsernameOrEmail: 'admin', Password: '' } as any));
+  await expectValidationFailed(() => User.Login({ UsernameOrEmail: 123 as any, Password: 'x' }));
+  await expectValidationFailed(() =>
+    User.Login({ UsernameOrEmail: 'admin', Password: 'x', IpAddress: 1 as any })
+  );
+  await expectValidationFailed(() =>
+    User.Login({ UsernameOrEmail: 'admin', Password: 'x', DeviceInfo: 1 as any })
+  );
   await expectValidationFailed(() => User.RefreshTokens(null as any));
   await expectValidationFailed(() => User.RefreshTokens([] as any));
   await expectValidationFailed(() => User.RefreshTokens({ RefreshToken: 123 as any }));
@@ -501,8 +509,11 @@ test('User session envelopes: reject non-object payloads', async () => {
   await expectValidationFailed(() => User.SwitchCompanyScope([] as any));
   await expectValidationFailed(() => User.SwitchCompanyScope({ ActiveCompanyId: 123 as any }));
   await expectValidationFailed(() => User.SwitchCompanyScope({ ActiveCompanyId: '' } as any));
+  await expectValidationFailed(() => User.SwitchCompanyScope({ ActiveCompanyId: '   ' } as any));
   await expectValidationFailed(() => User.Logout(null as any));
   await expectValidationFailed(() => User.Logout([] as any));
   await expectValidationFailed(() => User.Logout({ Token: 123 as any }));
+  await expectValidationFailed(() => User.Logout({ Token: '' }));
   await expectValidationFailed(() => User.Logout({ Token: 't', AllDevices: 'true' as any }));
+  await expectValidationFailed(() => User.Logout({ Token: 't', DeviceInfo: 1 as any }));
 });

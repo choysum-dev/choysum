@@ -461,6 +461,18 @@ export default class User extends AttachmentOwnerMixin {
         message: _t('Login requires a boolean RememberMe', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
+    if (req.IpAddress != null && typeof req.IpAddress !== 'string') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Login requires a string IpAddress', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (req.DeviceInfo != null && typeof req.DeviceInfo !== 'string') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Login requires a string DeviceInfo', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
     const users = await this.Search({
       Or: [
         ['Username', '=', usernameOrEmail],
@@ -576,7 +588,7 @@ export default class User extends AttachmentOwnerMixin {
         message: _t('SwitchCompanyScope requires an ActiveCompanyId', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    const activeCompanyId = req.ActiveCompanyId;
+    const activeCompanyId = req.ActiveCompanyId.trim();
     const enabledCompanyIds = req.EnabledCompanyIds;
     const userId = String(this.userId || '').trim();
     if (!userId) {
@@ -740,6 +752,12 @@ export default class User extends AttachmentOwnerMixin {
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
     const allDevices = req.AllDevices === true;
+    if (req.DeviceInfo != null && typeof req.DeviceInfo !== 'string') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Logout requires a string DeviceInfo', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
     const deviceInfo = req.DeviceInfo;
 
     try {
