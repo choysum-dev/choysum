@@ -199,8 +199,8 @@ test('Register: strips server-managed fields from User payload', async () => {
     async () => {
       return await User.Register({
         User: {
-          Username: username,
-          Email: email,
+          Username: `  ${username}  `,
+          Email: `  ${email}  `,
           FirstName: '  Strip  ',
           LastName: '  Test  ',
           // Over-posted server-managed columns must be ignored.
@@ -233,10 +233,12 @@ test('Register: strips server-managed fields from User payload', async () => {
   const user = await withModelContext(
     { activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] } as any,
     async () =>
-      User.Browse(userId, ['Id', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'Language', 'FirstName', 'LastName'] as any),
+      User.Browse(userId, ['Id', 'Username', 'Email', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'Language', 'FirstName', 'LastName'] as any),
     { merge: false }
   );
   expect((user as any).CompanyId).toBe(mainCompanyId);
+  expect(String((user as any).Username || '')).toBe(username);
+  expect(String((user as any).Email || '')).toBe(email);
   expect((user as any).FirstName).toBe('Strip');
   expect((user as any).LastName).toBe('Test');
   expect((user as any).Preferences?.activeCompanyId).toBe(mainCompanyId);
