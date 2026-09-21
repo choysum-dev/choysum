@@ -48,6 +48,27 @@ test('AuthUserLanguageHooks.backfillUserLanguageId: mysql SQL filters active tri
   expect(calls[0].sql).toContain('trim(auth_user.language)');
 });
 
+test('AuthUserLanguageHooks.backfillUserLanguageId: dialect name is trimmed and lowercased', async () => {
+  const calls: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      dialectName: ' SQLite ',
+      execute: async (sql: string, params: string) => {
+        calls.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await AuthUserLanguageHooks.backfillUserLanguageId();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(calls.length).toBe(1);
+  expect(calls[0].sql).toContain('is_active = 1');
+});
+
 test('AuthUserLanguageHooks.backfillUserLanguageId: postgres SQL filters active trimmed codes', async () => {
   const calls: Array<{ sql: string; params: string }> = [];
   const prev = (globalThis as any).$choysum;

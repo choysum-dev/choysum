@@ -32,7 +32,12 @@ function invalid(message: string): never {
  */
 function roundToUoM(amount: Decimal, rounding: unknown): Decimal {
   if (rounding == null || rounding === '') return amount;
-  const step = rounding instanceof Decimal ? rounding : new Decimal(String(rounding));
+  let step: Decimal;
+  try {
+    step = rounding instanceof Decimal ? rounding : new Decimal(String(rounding));
+  } catch {
+    return amount;
+  }
   if (!step.isFinite() || step.lte(0)) return amount;
   return amount.div(step).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).mul(step);
 }

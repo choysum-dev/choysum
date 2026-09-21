@@ -12,7 +12,7 @@ export class AuthUserLanguageHooks {
   static async backfillUserLanguageId(): Promise<void> {
     const db = (globalThis as { $choysum?: { db?: { dialectName?: string; execute?: (sql: string, params: string) => Promise<unknown> } } }).$choysum?.db;
     if (!db?.execute || !db.dialectName) return;
-    const dialect = String(db.dialectName);
+    const dialect = String(db.dialectName).trim().toLowerCase();
     let sql = '';
     if (dialect === 'sqlite') {
       sql = `UPDATE auth_user

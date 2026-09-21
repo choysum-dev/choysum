@@ -281,6 +281,7 @@ export default class PartnerIdentifier extends BaseModel {
   /**
    * Find a partner by an active commercial identifier within the session company.
    * Type is matched lowercase and value uppercase, matching stored normalization.
+   * ValidFrom/ValidTo are not applied; callers that need a validity window must filter themselves.
    */
   static async Lookup(req: PartnerIdentifierLookupReq): Promise<PartnerIdentifierLookupResp> {
     const companyId = String(getActiveCompanyId() || '').trim();

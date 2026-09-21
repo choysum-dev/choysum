@@ -130,3 +130,17 @@ test('base.UoM Convert rejects a non-decimal Factor as InvalidArgument', async (
   expect(error instanceof ChoysumError).toBe(true);
   expect((error as ChoysumError).code).toBe('InvalidArgument');
 });
+
+test('base.UoM Convert ignores a non-numeric rounding step', async () => {
+  const { convertUoM } = await import('@/base/service/models/_uom_convert');
+  const result = await convertUoM(
+    {
+      Browse: async (id: string) => {
+        if (id === 'from') return { Id: 'from', CategoryId: 'cat', Factor: '1', Rounding: null } as any;
+        return { Id: 'to', CategoryId: 'cat', Factor: '1', Rounding: 'nope' } as any;
+      },
+    },
+    { Amount: '1.5', FromUoMId: 'from', ToUoMId: 'to' }
+  );
+  expect(result.Amount.eq(new Decimal('1.5'))).toBe(true);
+});
