@@ -18,7 +18,7 @@ import type Language from '@/base/service/models/language';
 import PartnerContact from './partner_contact';
 
 function isCodeConflict(err: unknown): boolean {
-  if (resolveValidationSummary(err as { metadata?: Record<string, unknown> }).sqlCode === 'sql_unique_violation') {
+  if (resolveValidationSummary(err as Parameters<typeof resolveValidationSummary>[0]).sqlCode === 'sql_unique_violation') {
     return true;
   }
   // Application constraint runs before SQL and uses the same uniqueness rule.

@@ -23,7 +23,7 @@ export async function applyUserLanguagePreference(opts: {
   languageId: unknown;
   displayOverrides?: unknown;
   browseLanguage: (id: string, fields: string[]) => Promise<{ Code?: string } | null | undefined>;
-  setUiKey: (uiKey: string) => Promise<void> | void;
+  setUiKey: (uiKey: string) => Promise<unknown> | unknown;
   setDisplayOverrides: (overrides: unknown) => void;
   langToUiKey: (terminologyLang: string) => string;
 }): Promise<void> {
