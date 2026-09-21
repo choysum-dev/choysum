@@ -12,7 +12,7 @@ import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';
-import { requireText, requireUserId, requireCompanyId, assertPrincipal } from './_document_bridge';
+import { requireText, requireUserId, requireCompanyId, rejectLegacyPrincipalField } from './_document_bridge';
 import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
 import type AttachmentUploadSession from './upload_session';
 
@@ -46,7 +46,6 @@ export type NormalizedPrepareUploadReq = {
 
 export type NormalizedAuthorizeUploadPutReq = {
   uploadId: string;
-  principal: PrincipalContext;
   requestMeta: {
     contentType?: string;
     contentLength?: number;
@@ -56,7 +55,6 @@ export type NormalizedAuthorizeUploadPutReq = {
 
 export type NormalizedCommitUploadPutReq = {
   uploadId: string;
-  principal: PrincipalContext;
   payloadReceipt: {
     payloadId: string;
     sizeBytes: number;
@@ -162,13 +160,12 @@ export function assertPrepareUploadReq(req: PrepareUploadReq | undefined | null)
 }
 
 export function assertAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefined | null): NormalizedAuthorizeUploadPutReq {
+  rejectLegacyPrincipalField(req, 'authorize_upload_put');
   const uploadId = requireText(req?.uploadId, 'uploadId');
-  const principal = assertPrincipal(req?.principal);
   const requestMeta = asRecord(req?.requestMeta);
 
   return {
     uploadId,
-    principal,
     requestMeta: {
       contentType: normalizeContentType(requestMeta?.contentType),
       contentLength:
@@ -181,13 +178,12 @@ export function assertAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefin
 }
 
 export function assertCommitUploadPutReq(req: CommitUploadPutReq | undefined | null): NormalizedCommitUploadPutReq {
+  rejectLegacyPrincipalField(req, 'commit_upload_put');
   const uploadId = requireText(req?.uploadId, 'uploadId');
-  const principal = assertPrincipal(req?.principal);
   const payloadReceipt = asRecord(req?.payloadReceipt);
 
   return {
     uploadId,
-    principal,
     payloadReceipt: {
       payloadId: assertPayloadReceiptID(payloadReceipt?.payloadId),
       sizeBytes: parseRequiredNonNegativeInt(payloadReceipt?.sizeBytes, 'payloadReceipt.sizeBytes'),

@@ -112,10 +112,9 @@ test('MessageThreadModel: MessagePost / Follow / Search dial message services', 
           const followed = await MessageThreadHarness.MessageFollow({
             Model: 'partner.Partner',
             ResId: 'r1',
-            UserId: 'u1',
           });
           expect((followed as any).Id).toBe('f1');
-          expect(await MessageThreadHarness.MessageUnfollow({ Model: 'partner.Partner', ResId: 'r1', UserId: 'u1' })).toBe(1);
+          expect(await MessageThreadHarness.MessageUnfollow({ Model: 'partner.Partner', ResId: 'r1' })).toBe(1);
 
           const messages = await MessageThreadHarness.MessageSearchByRecord(
             'partner.Partner',

@@ -118,3 +118,33 @@ export function assertPrincipal(raw: unknown): PrincipalContext {
     enabledCompanyIds,
   };
 }
+
+/**
+ * Build PrincipalContext from the trusted request/session runtime axes.
+ */
+export function principalFromRuntime(
+  runtime: { userId?: unknown; companyId?: unknown; companyIds?: unknown },
+  stage: string
+): PrincipalContext {
+  const userId = requireUserId(runtime.userId);
+  const activeCompanyId = requireCompanyId(runtime.companyId, stage);
+  return {
+    userId,
+    activeCompanyId,
+    enabledCompanyIds: normalizeCompanyIdList(runtime.companyIds, activeCompanyId),
+  };
+}
+
+/**
+ * Fail closed when a stale client still supplies wire `principal`.
+ */
+export function rejectLegacyPrincipalField(req: unknown, stage: string): void {
+  if (req != null && typeof req === 'object' && Object.prototype.hasOwnProperty.call(req, 'principal')) {
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('principal is derived from the session', { scope: 'service/models/_document_bridge' }),
+      GrpcCode.InvalidArgument,
+      { stage, reason: 'legacy_principal_supplied' }
+    );
+  }
+}

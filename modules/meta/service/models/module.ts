@@ -437,14 +437,17 @@ export default class MetaModule extends BaseModel {
     } as OpStatusResp;
   }
 
+  /** Task-worker FullMethod target for module install (not interactive client API). */
   static async ExecuteInstall(moduleName: string, withDemo?: boolean, operatorUserId?: string): Promise<ModuleOpResult> {
     return await this.executeModuleOp('install', moduleName, { withDemo, operatorUserId });
   }
 
+  /** Task-worker FullMethod target for module uninstall (not interactive client API). */
   static async ExecuteUninstall(moduleName: string, operatorUserId?: string): Promise<ModuleOpResult> {
     return await this.executeModuleOp('uninstall', moduleName, { operatorUserId });
   }
 
+  /** Task-worker FullMethod target for module upgrade (not interactive client API). */
   static async ExecuteUpgrade(moduleName: string, operatorUserId?: string): Promise<ModuleOpResult> {
     return await this.executeModuleOp('upgrade', moduleName, { operatorUserId });
   }

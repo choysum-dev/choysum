@@ -9,6 +9,7 @@ import {
   assertPrincipal,
   normalizeLooseOptionalText,
   normalizeCompanyIdList,
+  rejectLegacyPrincipalField,
 } from '../models/_document_bridge';
 
 test('document._document_bridge: requireText returns trimmed string for valid input', () => {
@@ -180,4 +181,20 @@ test('document._document_bridge: normalizeCompanyIdList dedupes and prepends act
   expect(normalizeCompanyIdList(undefined, 'cmp_only')).toEqual(['cmp_only']);
   expect(normalizeCompanyIdList([42, 'cmp_b'], 'cmp_active')).toEqual(['cmp_active', '42', 'cmp_b']);
   expect(normalizeCompanyIdList('not-an-array', '')).toEqual([]);
+});
+
+test('document._document_bridge: rejectLegacyPrincipalField fail-closes on wire principal', () => {
+  rejectLegacyPrincipalField({ uploadId: 'u1' }, 'authorize_upload_put');
+
+  let caught: ChoysumError | undefined;
+  try {
+    rejectLegacyPrincipalField({ uploadId: 'u1', principal: { userId: 'other' } }, 'authorize_upload_put');
+  } catch (err) {
+    caught = err as ChoysumError;
+  }
+  expect(caught).toBeDefined();
+  expect(caught!.domain).toBe('document');
+  expect(caught!.code).toBe('INVALID_ARGUMENT');
+  expect(caught!.metadata?.stage).toBe('authorize_upload_put');
+  expect(caught!.metadata?.reason).toBe('legacy_principal_supplied');
 });

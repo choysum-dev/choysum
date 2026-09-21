@@ -48,11 +48,6 @@ test('document contracts: permission denied stage/reason contract exports expect
 test('document contracts: stage-1 request shape compile smoke', () => {
   const authorizeReq: AuthorizeUploadPutReq = {
     uploadId: 'up_001',
-    principal: {
-      userId: 'usr_001',
-      activeCompanyId: 'cmp_001',
-      enabledCompanyIds: ['cmp_001'],
-    },
     requestMeta: {
       contentType: 'image/png',
       contentLength: 128,
@@ -62,7 +57,6 @@ test('document contracts: stage-1 request shape compile smoke', () => {
 
   const commitReq: CommitUploadPutReq = {
     uploadId: 'up_001',
-    principal: authorizeReq.principal,
     payloadReceipt: {
       payloadId: 'pld_001',
       sizeBytes: 128,
@@ -73,7 +67,6 @@ test('document contracts: stage-1 request shape compile smoke', () => {
 
   const resolveReq: ResolveDownloadContentReq = {
     attachmentBindingId: 'bnd_001',
-    principal: authorizeReq.principal,
   };
 
   expect(authorizeReq.uploadId).toBe('up_001');

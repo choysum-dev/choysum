@@ -613,7 +613,7 @@ export default class User extends AttachmentOwnerMixin {
         targetEnabled: enabled,
         reason: 'ok',
       });
-      return await Token.CreateTokenPair(userId, metadata);
+      return await Token.createTokenPair(userId, metadata);
     } catch (error) {
       // Emit an audit failure record without changing error semantics.
       if (!audit.wasEmitted()) {

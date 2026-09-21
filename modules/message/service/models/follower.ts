@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Field, Model } from '@/core/service';
-import { getUserId } from '@/core/service/api/context';
+import { getActiveCompanyId, getUserId } from '@/core/service/api/context';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { Updateable } from '@/core/service/api/input';
 import { MessageErrCode, newMessageError } from '../error';
@@ -19,23 +19,34 @@ export {
 export type FollowRecordReq = {
   Model: string;
   ResId: string;
-  UserId?: string | null;
   SubtypeId?: string | null;
-  CompanyId?: string | null;
 };
 
 export type UnfollowRecordReq = {
   Model: string;
   ResId: string;
-  UserId?: string | null;
 };
 
-function resolveActorUserId(explicit?: string | null): string | null {
-  const fromReq = explicit == null || explicit === '' ? null : String(explicit).trim();
-  if (fromReq) return fromReq;
-  const uid = getUserId();
-  if (uid == null || String(uid).trim() === '') return null;
-  return String(uid).trim();
+function normalizeActorId(value: unknown): string | null {
+  const text = value == null ? '' : String(value).trim();
+  return text === '' ? null : text;
+}
+
+function resolveActorUserId(): string | null {
+  return normalizeActorId(getUserId());
+}
+
+function resolveActorCompanyId(): string | null {
+  return normalizeActorId(getActiveCompanyId());
+}
+
+function rejectLegacyIdentityFields(req: object, verb: string): void {
+  if (Object.prototype.hasOwnProperty.call(req, 'UserId') || Object.prototype.hasOwnProperty.call(req, 'CompanyId')) {
+    throw newMessageError({
+      code: MessageErrCode.INVALID_ARGUMENT,
+      message: `${verb} identity is derived from the session; UserId/CompanyId must not be supplied`,
+    });
+  }
 }
 
 function isUniqueConstraintError(err: unknown): boolean {
@@ -212,7 +223,7 @@ export default class Follower extends PolymorphicRecordModel {
   CompanyId: string | null;
 
   /**
-   * Subscribe the current (or explicit) user to one business record thread.
+   * Subscribe the session user to one business record thread.
    * Idempotent when the same (Model, ResId, UserId) row already exists, including
    * restoring a soft-deleted follower when the unique index is still occupied.
    */
@@ -220,9 +231,10 @@ export default class Follower extends PolymorphicRecordModel {
     if (!req || typeof req !== 'object') {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Follow requires a payload' });
     }
+    rejectLegacyIdentityFields(req, 'Follow');
     const model = String(req.Model || '').trim();
     const resId = String(req.ResId || '').trim();
-    const userId = resolveActorUserId(req.UserId);
+    const userId = resolveActorUserId();
     if (!model || !resId) {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Follow requires Model and ResId' });
     }
@@ -233,10 +245,12 @@ export default class Follower extends PolymorphicRecordModel {
 
     const returnFields = followReturnFields(fields);
     const subtypeId = req.SubtypeId == null || req.SubtypeId === '' ? null : String(req.SubtypeId);
-    const companyId = req.CompanyId == null || req.CompanyId === '' ? null : String(req.CompanyId);
+    const sessionCompanyId = resolveActorCompanyId();
 
     const existing = await findFollowRow(model, resId, userId, returnFields);
     if (existing) {
+      // Keep the row's company on re-follow; only stamp session company on new rows.
+      const companyId = nullableId(existing.CompanyId) ?? sessionCompanyId;
       return await syncFollowRow(existing, subtypeId, companyId, returnFields, isDeletedFollower(existing));
     }
 
@@ -247,7 +261,7 @@ export default class Follower extends PolymorphicRecordModel {
           ResId: resId,
           UserId: userId,
           SubtypeId: subtypeId,
-          CompanyId: companyId,
+          CompanyId: sessionCompanyId,
         },
         returnFields
       )) as Follower;
@@ -255,20 +269,22 @@ export default class Follower extends PolymorphicRecordModel {
       if (!isUniqueConstraintError(err)) throw err;
       const raced = await findFollowRow(model, resId, userId, returnFields);
       if (!raced) throw err;
+      const companyId = nullableId(raced.CompanyId) ?? sessionCompanyId;
       return await syncFollowRow(raced, subtypeId, companyId, returnFields, isDeletedFollower(raced));
     }
   }
 
   /**
-   * Remove one follower row for the current (or explicit) user on a record.
+   * Remove one follower row for the session user on a record.
    */
   public static async Unfollow(req: UnfollowRecordReq): Promise<number> {
     if (!req || typeof req !== 'object') {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Unfollow requires a payload' });
     }
+    rejectLegacyIdentityFields(req, 'Unfollow');
     const model = String(req.Model || '').trim();
     const resId = String(req.ResId || '').trim();
-    const userId = resolveActorUserId(req.UserId);
+    const userId = resolveActorUserId();
     if (!model || !resId) {
       throw newMessageError({ code: MessageErrCode.INVALID_ARGUMENT, message: 'Unfollow requires Model and ResId' });
     }

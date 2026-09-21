@@ -268,12 +268,12 @@ export default class DataTransferJob extends BaseModel {
     return { dataTransferJobId: row.Id, taskJobId: taskJob.Id };
   }
 
-  /** Task worker target for queued record imports. */
+  /** Task-worker FullMethod target for queued record imports (not interactive client API). */
   static async ExecuteImport(dataTransferJobId: string): Promise<Record<string, unknown>> {
     return await executeImport(dataTransferJobId);
   }
 
-  /** Task worker target for queued record exports. */
+  /** Task-worker FullMethod target for queued record exports (not interactive client API). */
   static async ExecuteExport(dataTransferJobId: string): Promise<Record<string, unknown>> {
     return await executeExport(dataTransferJobId);
   }

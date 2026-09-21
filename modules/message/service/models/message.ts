@@ -362,7 +362,7 @@ export default class Message extends PolymorphicRecordModel {
       }
     }
 
-    await Notification.FanOutForMessage(created as Message);
+    await Notification.fanOutForMessage(created as Message);
     await publishThreadChangedTip(created as Message);
     // Tip/bind used an augmented Create selection; return only the caller's projection.
     return projectToSelection(created as object, returnFields) as RowOrProjected<Message, F>;
