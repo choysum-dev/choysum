@@ -134,3 +134,17 @@ export function principalFromRuntime(
     enabledCompanyIds: normalizeCompanyIdList(runtime.companyIds, activeCompanyId),
   };
 }
+
+/**
+ * Fail closed when a stale client still supplies wire `principal`.
+ */
+export function rejectLegacyPrincipalField(req: unknown, stage: string): void {
+  if (req != null && typeof req === 'object' && Object.prototype.hasOwnProperty.call(req, 'principal')) {
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('principal is derived from the session', { scope: 'service/models/_document_bridge' }),
+      GrpcCode.InvalidArgument,
+      { stage, reason: 'legacy_principal_supplied' }
+    );
+  }
+}

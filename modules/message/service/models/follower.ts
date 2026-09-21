@@ -245,10 +245,12 @@ export default class Follower extends PolymorphicRecordModel {
 
     const returnFields = followReturnFields(fields);
     const subtypeId = req.SubtypeId == null || req.SubtypeId === '' ? null : String(req.SubtypeId);
-    const companyId = resolveActorCompanyId();
+    const sessionCompanyId = resolveActorCompanyId();
 
     const existing = await findFollowRow(model, resId, userId, returnFields);
     if (existing) {
+      // Keep the row's company on re-follow; only stamp session company on new rows.
+      const companyId = nullableId(existing.CompanyId) ?? sessionCompanyId;
       return await syncFollowRow(existing, subtypeId, companyId, returnFields, isDeletedFollower(existing));
     }
 
@@ -259,7 +261,7 @@ export default class Follower extends PolymorphicRecordModel {
           ResId: resId,
           UserId: userId,
           SubtypeId: subtypeId,
-          CompanyId: companyId,
+          CompanyId: sessionCompanyId,
         },
         returnFields
       )) as Follower;
@@ -267,6 +269,7 @@ export default class Follower extends PolymorphicRecordModel {
       if (!isUniqueConstraintError(err)) throw err;
       const raced = await findFollowRow(model, resId, userId, returnFields);
       if (!raced) throw err;
+      const companyId = nullableId(raced.CompanyId) ?? sessionCompanyId;
       return await syncFollowRow(raced, subtypeId, companyId, returnFields, isDeletedFollower(raced));
     }
   }

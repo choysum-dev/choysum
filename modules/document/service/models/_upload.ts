@@ -12,7 +12,7 @@ import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';
-import { requireText, requireUserId, requireCompanyId } from './_document_bridge';
+import { requireText, requireUserId, requireCompanyId, rejectLegacyPrincipalField } from './_document_bridge';
 import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';
 import type AttachmentUploadSession from './upload_session';
 
@@ -160,6 +160,7 @@ export function assertPrepareUploadReq(req: PrepareUploadReq | undefined | null)
 }
 
 export function assertAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefined | null): NormalizedAuthorizeUploadPutReq {
+  rejectLegacyPrincipalField(req, 'authorize_upload_put');
   const uploadId = requireText(req?.uploadId, 'uploadId');
   const requestMeta = asRecord(req?.requestMeta);
 
@@ -177,6 +178,7 @@ export function assertAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefin
 }
 
 export function assertCommitUploadPutReq(req: CommitUploadPutReq | undefined | null): NormalizedCommitUploadPutReq {
+  rejectLegacyPrincipalField(req, 'commit_upload_put');
   const uploadId = requireText(req?.uploadId, 'uploadId');
   const payloadReceipt = asRecord(req?.payloadReceipt);
 
