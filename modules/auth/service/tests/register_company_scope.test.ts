@@ -205,8 +205,12 @@ test('Register: strips server-managed fields from User payload', async () => {
           LastName: 'Test',
           // Over-posted server-managed columns must be ignored.
           CompanyId: 'cmp_spoof___________',
+          CompanyIds: ['cmp_spoof___________'],
           Preferences: { activeCompanyId: 'cmp_spoof___________' },
           Id: 'usr_spoof_____________',
+          PasswordHash: 'over-posted-hash',
+          // Non-string allowlisted keys must also be dropped.
+          Language: { spoof: true },
         } as any,
         Password: 'password-123',
       });
@@ -228,9 +232,15 @@ test('Register: strips server-managed fields from User payload', async () => {
 
   const user = await withModelContext(
     { activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] } as any,
-    async () => User.Browse(userId, ['Id', 'CompanyId', 'Preferences'] as any),
+    async () =>
+      User.Browse(userId, ['Id', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'Language'] as any),
     { merge: false }
   );
   expect((user as any).CompanyId).toBe(mainCompanyId);
   expect((user as any).Preferences?.activeCompanyId).toBe(mainCompanyId);
+  const companyIds = Array.isArray((user as any).CompanyIds) ? (user as any).CompanyIds.map(String) : [];
+  expect(companyIds.includes('cmp_spoof___________')).toBe(false);
+  expect(String((user as any).PasswordHash || '')).not.toBe('over-posted-hash');
+  expect(String((user as any).PasswordHash || '') === '').toBe(false);
+  expect((user as any).Language).not.toEqual({ spoof: true });
 });

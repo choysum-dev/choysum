@@ -502,7 +502,7 @@ export default class User extends AttachmentOwnerMixin {
         {
           ipAddress: req.IpAddress,
           deviceInfo: req.DeviceInfo,
-          rememberMe: req.RememberMe === true,
+          rememberMe: req.RememberMe,
         }
       );
     } catch (error) {
