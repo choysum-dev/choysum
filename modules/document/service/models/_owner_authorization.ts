@@ -9,8 +9,9 @@ import type { ConditionEnvelope, UntypedQueryCondition, FieldRuleSpec, RecordRul
 import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
+import { normalizeLooseOptionalText } from '@/core/service/utils/normalization';
 import { observePermissionDenied } from './_owner_authorization_observability';
-import { normalizeLooseOptionalText, normalizeCompanyIdList } from './_document_bridge';
+import { normalizeCompanyIdList } from './_document_bridge';
 
 const { _t } = createTranslate('document');
 

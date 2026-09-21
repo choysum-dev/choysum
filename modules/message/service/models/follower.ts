@@ -5,6 +5,7 @@ import { Field, Model } from '@/core/service';
 import { getActiveCompanyId, getUserId } from '@/core/service/api/context';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { Updateable } from '@/core/service/api/input';
+import { normalizeLooseOptionalText } from '@/core/service/utils/normalization';
 import { MessageErrCode, newMessageError } from '../error';
 import { _lt } from '../i18n';
 import PolymorphicRecordModel from '@/core/service/mixins/polymorphic_record_model';
@@ -27,17 +28,12 @@ export type UnfollowRecordReq = {
   ResId: string;
 };
 
-function normalizeActorId(value: unknown): string | null {
-  const text = value == null ? '' : String(value).trim();
-  return text === '' ? null : text;
-}
-
 function resolveActorUserId(): string | null {
-  return normalizeActorId(getUserId());
+  return normalizeLooseOptionalText(getUserId()) ?? null;
 }
 
 function resolveActorCompanyId(): string | null {
-  return normalizeActorId(getActiveCompanyId());
+  return normalizeLooseOptionalText(getActiveCompanyId()) ?? null;
 }
 
 function rejectLegacyIdentityFields(req: object, verb: string): void {

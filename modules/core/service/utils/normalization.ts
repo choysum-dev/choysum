@@ -18,6 +18,24 @@ export function normalizeOptionalString(value: unknown, opts?: { upper?: boolean
 }
 
 /**
+ * Trim optional text, coercing finite numbers to strings.
+ *
+ * Accepts only `string` and finite `number`. Non-finite numbers, booleans,
+ * objects, and other types are treated as absent — unlike
+ * {@link normalizeOptionalString}, which would stringify them (e.g. `"NaN"`,
+ * `"[object Object]"`). Prefer this at service boundaries that accept id-like
+ * scalars.
+ */
+export function normalizeLooseOptionalText(value: unknown, opts?: { upper?: boolean; lower?: boolean }): string | undefined {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return undefined;
+    return normalizeOptionalString(String(value), opts);
+  }
+  if (typeof value !== 'string') return undefined;
+  return normalizeOptionalString(value, opts);
+}
+
+/**
  * Normalize a possibly-mixed array into a deduplicated list of non-empty trimmed strings.
  */
 export function normalizeStringArray(value: unknown): string[] {
@@ -906,3 +924,6 @@ export function assertOptionalDownloadDisposition(value: unknown): DownloadDispo
 export function assertDownloadDisposition(value: unknown): DownloadDispositionValue {
   return assertOptionalDownloadDisposition(value) ?? 'attachment';
 }
+
+/** Re-export for authors who assert datetime at the same boundary as Decimal/text. */
+export { toDate } from './datetime';

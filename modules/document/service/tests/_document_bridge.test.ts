@@ -7,7 +7,6 @@ import {
   requireUserId,
   requireCompanyId,
   assertPrincipal,
-  normalizeLooseOptionalText,
   normalizeCompanyIdList,
   rejectLegacyPrincipalField,
 } from '../models/_document_bridge';
@@ -166,13 +165,20 @@ test('document._document_bridge: assertPrincipal treats null enabledCompanyIds a
   expect(principal.enabledCompanyIds).toBeUndefined();
 });
 
-test('document._document_bridge: normalizeLooseOptionalText coerces finite numbers', () => {
-  expect(normalizeLooseOptionalText(42)).toBe('42');
-  expect(normalizeLooseOptionalText(0)).toBe('0');
-  expect(normalizeLooseOptionalText(Number.NaN)).toBeUndefined();
-  expect(normalizeLooseOptionalText(Number.POSITIVE_INFINITY)).toBeUndefined();
-  expect(normalizeLooseOptionalText('  text  ')).toBe('text');
-  expect(normalizeLooseOptionalText(undefined)).toBeUndefined();
+test('document._document_bridge: requireText coerces finite numeric values', () => {
+  expect(requireText(42, 'Id')).toBe('42');
+  expect(requireText(0, 'Id')).toBe('0');
+
+  let caught: ChoysumError | undefined;
+  try {
+    requireText(Number.NaN, 'Id');
+  } catch (err) {
+    caught = err as ChoysumError;
+  }
+  expect(caught).toBeDefined();
+  expect(caught!.domain).toBe('document');
+  expect(caught!.code).toBe('INVALID_ARGUMENT');
+  expect(caught!.metadata?.field).toBe('Id');
 });
 
 test('document._document_bridge: normalizeCompanyIdList dedupes and prepends active company', () => {
