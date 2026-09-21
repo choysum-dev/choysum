@@ -45,12 +45,39 @@ import {
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
 } from './_lifecycle_auth';
-
+import {
+  pickRegisterUserInput,
+  type LoginReq,
+  type LogoutReq,
+  type RefreshTokensReq,
+  type RegisterReq,
+  type RegisterResp,
+  type SwitchCompanyScopeReq,
+} from './_session_envelopes';
 import { buildAclAggregation } from './_permission_state_acl';
 import { buildUiPermissionProjection } from './_permission_state_ui';
 import { evaluateFieldRules } from './_field_rule_eval';
 import { evaluateRecordRuleCondition } from './_record_rule_eval';
 import { buildAuthzContext, computePermStateVersion } from './_authz_context';
+
+export type {
+  LoginReq,
+  LogoutReq,
+  RefreshTokensReq,
+  RegisterReq,
+  RegisterResp,
+  RegisterUserInput,
+  SwitchCompanyScopeReq,
+} from './_session_envelopes';
+
+function requireSessionEnvelope(req: unknown, verb: string): asserts req is Record<string, unknown> {
+  if (!req || typeof req !== 'object' || Array.isArray(req)) {
+    throw newAuthError({
+      code: AuthErrCode.VALIDATION_FAILED,
+      message: _t('%s requires a payload', { scope: 'service/models/user' }, verb),
+    }).withGrpcCode(GrpcCode.InvalidArgument);
+  }
+}
 
 /**
  * Auth user model with identity, token, and company-scope operations.
@@ -359,8 +386,24 @@ export default class User extends AttachmentOwnerMixin {
 
   /**
    * Register a new local user and provision the default auth baseline.
+   * Returns UserId only (Register result shape B); callers Login for a session.
    */
-  static async Register(userData: Partial<Insertable<User>>, password: string): Promise<string> {
+  static async Register(req: RegisterReq): Promise<RegisterResp> {
+    requireSessionEnvelope(req, 'Register');
+    if (req.User == null || typeof req.User !== 'object' || Array.isArray(req.User)) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Register requires a User object', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (typeof req.Password !== 'string' || req.Password.length === 0) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Register requires a password string', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const userData = pickRegisterUserInput(req.User as Record<string, unknown>);
+    const password = req.Password;
     const passwordHash = validateAndHashRegistrationInput(userData, password);
     await ensureRegistrationIdentityUnique(userData, {
       searchByUsername: async (username: string) => await this.Search(['Username', '=', username]),
@@ -375,7 +418,7 @@ export default class User extends AttachmentOwnerMixin {
       });
 
       const userId = ensureCreatedUserIdOrThrow(created?.Id);
-      await provisionRegisteredUserBaseline(userId, userData?.Preferences, {
+      await provisionRegisteredUserBaseline(userId, undefined, {
         updateUserCompanyContext: async values => {
           await this.UpdateById(userId, values as Partial<Insertable<User>>, ['Id']);
         },
@@ -391,7 +434,7 @@ export default class User extends AttachmentOwnerMixin {
         }
       );
 
-      return userId;
+      return { UserId: userId };
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.USER_CREATION_FAILED,
@@ -403,7 +446,34 @@ export default class User extends AttachmentOwnerMixin {
   /**
    * Authenticate a local user and create a token pair.
    */
-  static async Login(usernameOrEmail: string, password: string, ipAddress?: string, deviceInfo?: string, rememberMe?: boolean): Promise<TokenPair> {
+  static async Login(req: LoginReq): Promise<TokenPair> {
+    requireSessionEnvelope(req, 'Login');
+    const usernameOrEmail = typeof req.UsernameOrEmail === 'string' ? req.UsernameOrEmail.trim() : '';
+    const password = typeof req.Password === 'string' ? req.Password : '';
+    if (!usernameOrEmail || !password) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Login requires username and password', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (req.RememberMe != null && typeof req.RememberMe !== 'boolean') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Login requires a boolean RememberMe', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (req.IpAddress != null && typeof req.IpAddress !== 'string') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Login requires a string IpAddress', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    if (req.DeviceInfo != null && typeof req.DeviceInfo !== 'string') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Login requires a string DeviceInfo', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
     const users = await this.Search({
       Or: [
         ['Username', '=', usernameOrEmail],
@@ -429,7 +499,11 @@ export default class User extends AttachmentOwnerMixin {
             await this.UpdateById(uid, { LastLogin: timestamp });
           },
         },
-        { ipAddress, deviceInfo, rememberMe }
+        {
+          ipAddress: req.IpAddress,
+          deviceInfo: req.DeviceInfo,
+          rememberMe: req.RememberMe,
+        }
       );
     } catch (error) {
       throw wrapAuthError(error, {
@@ -476,7 +550,15 @@ export default class User extends AttachmentOwnerMixin {
   /**
    * Refresh a token pair using the latest user metadata snapshot.
    */
-  static async RefreshTokens(refreshToken: string): Promise<TokenPair> {
+  static async RefreshTokens(req: RefreshTokensReq): Promise<TokenPair> {
+    requireSessionEnvelope(req, 'RefreshTokens');
+    if (typeof req.RefreshToken !== 'string' || req.RefreshToken.trim() === '') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('RefreshTokens requires a refresh token', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const refreshToken = req.RefreshToken.trim();
     try {
       return await refreshTokensWithLatestMetadata(refreshToken, {
         browseUser: async (userId: string) => await this.Browse(userId),
@@ -492,14 +574,23 @@ export default class User extends AttachmentOwnerMixin {
 
   /**
    * Switch the current company scope for the authenticated user.
-   * - activeCompanyId: company used for current write operations.
-   * - enabledCompanyIds: readable company scope; defaults to Preferences or [activeCompanyId].
+   * - ActiveCompanyId: company used for current write operations.
+   * - EnabledCompanyIds: readable company scope; defaults to Preferences or [ActiveCompanyId].
    *
    * Strict fail-closed validation:
    * - enabled ⊆ allowed
    * - active ∈ enabled
    */
-  static async SwitchCompanyScope(activeCompanyId: string, enabledCompanyIds?: unknown): Promise<TokenPair> {
+  static async SwitchCompanyScope(req: SwitchCompanyScopeReq): Promise<TokenPair> {
+    requireSessionEnvelope(req, 'SwitchCompanyScope');
+    if (typeof req.ActiveCompanyId !== 'string' || req.ActiveCompanyId.trim() === '') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('SwitchCompanyScope requires an ActiveCompanyId', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const activeCompanyId = req.ActiveCompanyId.trim();
+    const enabledCompanyIds = req.EnabledCompanyIds;
     const userId = String(this.userId || '').trim();
     if (!userId) {
       throw newAuthError({
@@ -645,19 +736,30 @@ export default class User extends AttachmentOwnerMixin {
 
   /**
    * Revoke the current token or every token owned by the current user.
-   *
-   * @param token - Access token to revoke.
-   * @param allDevices - Whether to revoke every token owned by the user.
-   * @param deviceInfo - Device information used for audit metadata.
-   * @returns True when logout succeeds.
    */
-  static async Logout(token: string, allDevices: boolean = false, deviceInfo?: string): Promise<boolean> {
-    if (!token) {
+  static async Logout(req: LogoutReq): Promise<boolean> {
+    requireSessionEnvelope(req, 'Logout');
+    if (typeof req.Token !== 'string' || req.Token.trim() === '') {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: _t('Token is required', { scope: 'service/models/user' }),
+        message: _t('Logout requires a token string', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
+    const token = req.Token.trim();
+    if (req.AllDevices != null && typeof req.AllDevices !== 'boolean') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Logout requires a boolean AllDevices', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const allDevices = req.AllDevices === true;
+    if (req.DeviceInfo != null && typeof req.DeviceInfo !== 'string') {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Logout requires a string DeviceInfo', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    const deviceInfo = req.DeviceInfo;
 
     try {
       await revokeLogoutArtifacts(token, allDevices);

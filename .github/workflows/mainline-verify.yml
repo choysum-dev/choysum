@@ -358,6 +358,14 @@ jobs:
         if: ${{ needs.discover-modules.outputs.modules_json == '[]' }}
         run: 'echo "unit skipped: no modules discovered"'
 
+      # Codecov path-matching needs the commit tree on disk; without checkout
+      # the uploader reports NoVersioningSystem and marks the report unusable.
+      - name: Checkout
+        if: ${{ needs.discover-modules.outputs.modules_json != '[]' && needs.unit-shard.result != 'skipped' }}
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
       - name: Download unit coverage artifacts
         if: ${{ needs.discover-modules.outputs.modules_json != '[]' && needs.unit-shard.result != 'skipped' }}
         continue-on-error: true
