@@ -9,8 +9,8 @@ export type ModuleOpStatusSnapshot = {
   summary?: unknown;
   resultStatus?: 'SUCCEEDED' | 'FAILED';
   failureKind?: 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
-  reload_triggered?: boolean;
-  reload_failed?: boolean;
+  ReloadTriggered?: boolean;
+  ReloadFailed?: boolean;
   ReloadWeb?: boolean;
   retryAfterMs?: number;
   errorDomain?: string;

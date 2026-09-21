@@ -63,8 +63,8 @@ type OpStatusResp = {
   startedAt?: Date;
   finishedAt?: Date;
   ReloadWeb?: boolean;
-  reload_triggered?: boolean;
-  reload_failed?: boolean;
+  ReloadTriggered?: boolean;
+  ReloadFailed?: boolean;
   moduleName?: string;
   action?: ModuleAction;
   operatorUserId?: string;
@@ -90,8 +90,8 @@ type ModuleOpResult = {
   errorDomain?: string;
   errorCode?: string;
   errorMessage?: string;
-  reload_triggered: boolean;
-  reload_failed: boolean;
+  ReloadTriggered: boolean;
+  ReloadFailed: boolean;
   ReloadWeb: boolean;
   moduleName: string;
   action: ModuleAction;
@@ -441,8 +441,8 @@ export default class MetaModule extends BaseModel {
       startedAt: exec?.startedAt,
       finishedAt: job?.FinishedAt || exec?.finishedAt,
       ReloadWeb: result.ReloadWeb as boolean | undefined,
-      reload_triggered: result.reload_triggered as boolean | undefined,
-      reload_failed: result.reload_failed as boolean | undefined,
+      ReloadTriggered: result.ReloadTriggered as boolean | undefined,
+      ReloadFailed: result.ReloadFailed as boolean | undefined,
       moduleName: (result.moduleName || payload.moduleName) as string | undefined,
       action,
       operatorUserId: (result.operatorUserId || payload.operatorUserId) as string | undefined,
@@ -538,25 +538,25 @@ export default class MetaModule extends BaseModel {
       else summary = { code: 'MODULE_UPGRADED', params: { moduleName: name } };
     }
 
-    let reload_triggered = false;
-    let reload_failed = false;
+    let ReloadTriggered = false;
+    let ReloadFailed = false;
     let ReloadWeb = false;
     const skipReload = isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_RELOAD', 'choysum_e2e_skip_reload'));
     if (bridgeResult.ok && !skipReload) {
       try {
         const reloadResult = await bridge.reload();
-        reload_triggered = !!reloadResult?.triggered;
-        reload_failed = !!reloadResult?.failed;
-        ReloadWeb = reload_triggered && !reload_failed;
+        ReloadTriggered = !!reloadResult?.triggered;
+        ReloadFailed = !!reloadResult?.failed;
+        ReloadWeb = ReloadTriggered && !ReloadFailed;
       } catch {
-        reload_triggered = true;
-        reload_failed = true;
+        ReloadTriggered = true;
+        ReloadFailed = true;
         ReloadWeb = false;
       }
     }
     if (forceReloadFailed) {
-      reload_triggered = true;
-      reload_failed = true;
+      ReloadTriggered = true;
+      ReloadFailed = true;
       ReloadWeb = false;
     }
 
@@ -593,8 +593,8 @@ export default class MetaModule extends BaseModel {
       errorDomain,
       errorCode,
       errorMessage,
-      reload_triggered,
-      reload_failed,
+      ReloadTriggered,
+      ReloadFailed,
       ReloadWeb,
       moduleName: name,
       action,

@@ -135,13 +135,13 @@ export default class Schedule extends BaseModel {
   })
   TimeoutMs: number;
 
-  /** Next computed run time preview. */
+  /** Next computed run time; null when inactive or the cron has no upcoming run. */
   @Field({
     type: 'datetime',
     index: true,
     string: _lt('Next Run At', { scope: 'task.model.Schedule.fields' }),
   })
-  NextRunAt: Date;
+  NextRunAt: Date | null;
 
   /** Time when the schedule last ran. */
   @Field({
@@ -173,10 +173,10 @@ export default class Schedule extends BaseModel {
   @Constraint<Schedule>(['Active', 'CronExpr', 'Timezone'])
   assignNextRunAt(): void {
     if (this.Active === false) {
-      this.NextRunAt = null as unknown as Date;
+      this.NextRunAt = null;
       return;
     }
-    this.NextRunAt = (computeNextRunAt(this, new Date()) ?? null) as unknown as Date;
+    this.NextRunAt = computeNextRunAt(this, new Date()) ?? null;
   }
 
   /**

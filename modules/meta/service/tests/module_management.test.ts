@@ -518,7 +518,7 @@ test('meta.MetaModule ExecuteUpgrade returns failed result and maps error fields
   expect(logs?.[0]?.SummaryJson?.code).toBe('MODULE_OPERATION_FAILED');
 });
 
-test('meta.MetaModule ExecuteInstall marks reload_failed when reload fails', async () => {
+test('meta.MetaModule ExecuteInstall marks ReloadFailed when reload fails', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
   ensureJobMock();
@@ -533,8 +533,8 @@ test('meta.MetaModule ExecuteInstall marks reload_failed when reload fails', asy
 
   const result = await MetaModule.ExecuteInstall('base', false, 'operator_1');
   expect(result.resultStatus).toBe('SUCCEEDED');
-  expect(result.reload_triggered).toBe(true);
-  expect(result.reload_failed).toBe(true);
+  expect(result.ReloadTriggered).toBe(true);
+  expect(result.ReloadFailed).toBe(true);
   expect(result.ReloadWeb).toBe(false);
 });
 
@@ -554,8 +554,8 @@ test('meta.MetaModule GetOpStatus returns summary and reload flags', async () =>
         resultStatus: 'SUCCEEDED',
         summary: { code: 'MODULE_INSTALLED', params: { moduleName } },
         ReloadWeb: true,
-        reload_triggered: true,
-        reload_failed: false,
+        ReloadTriggered: true,
+        ReloadFailed: false,
         moduleName,
         action: 'install',
         operatorUserId: 'admin',
@@ -588,8 +588,8 @@ test('meta.MetaModule GetOpStatus supports succeeded status with failed result',
         resultStatus: 'FAILED',
         summary: { code: 'MODULE_OPERATION_FAILED', params: { moduleName, action: 'upgrade' } },
         ReloadWeb: false,
-        reload_triggered: false,
-        reload_failed: false,
+        ReloadTriggered: false,
+        ReloadFailed: false,
         moduleName,
         action: 'upgrade',
         operatorUserId: 'admin',
@@ -675,8 +675,8 @@ test('meta.MetaModule GetOpStatus classifies ResultJson lock conflicts without L
         errorMessage: 'lease conflict',
         summary: { code: 'MODULE_OPERATION_FAILED', params: { moduleName, action: 'upgrade' } },
         ReloadWeb: false,
-        reload_triggered: false,
-        reload_failed: false,
+        ReloadTriggered: false,
+        ReloadFailed: false,
         moduleName,
         action: 'upgrade',
         operatorUserId: 'admin',

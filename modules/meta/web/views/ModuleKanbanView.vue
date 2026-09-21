@@ -175,9 +175,9 @@ SPDX-License-Identifier: Apache-2.0
           <span class="label">{{ _t('Error:') }}</span>
           <span class="value">{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span>
         </div>
-        <div class="status-row" v-if="opStatus?.reload_triggered">
+        <div class="status-row" v-if="opStatus?.ReloadTriggered">
           <span class="label">{{ _t('Reload:') }}</span>
-          <span class="value">{{ opStatus?.reload_failed ? _t('Trigger Failed') : _t('Triggered') }}</span>
+          <span class="value">{{ opStatus?.ReloadFailed ? _t('Trigger Failed') : _t('Triggered') }}</span>
         </div>
       </div>
       <div class="module-dialog__section" v-if="dialogStep === 'progress'">
@@ -351,7 +351,7 @@ const dialogTitle = computed(() => {
 const resultTitle = computed(() => {
   if (!opStatus.value) return _t('Completed');
   if (opStatus.value.resultStatus === 'FAILED') return _t('Operation Failed');
-  return opStatus.value.reload_failed ? _t('Succeeded but reload failed') : _t('Operation Succeeded');
+  return opStatus.value.ReloadFailed ? _t('Succeeded but reload failed') : _t('Operation Succeeded');
 });
 
 /**
@@ -360,7 +360,7 @@ const resultTitle = computed(() => {
 const resultAlertType = computed(() => {
   if (!opStatus.value) return 'info';
   if (opStatus.value.resultStatus === 'FAILED') return 'error';
-  return opStatus.value.reload_failed ? 'warning' : 'success';
+  return opStatus.value.ReloadFailed ? 'warning' : 'success';
 });
 
 /**
