@@ -32,7 +32,7 @@ export const EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca49
 // Normalized request types
 // ---------------------------------------------------------------------------
 
-export type NormalizedPrepareUploadReq = {
+type NormalizedPrepareUploadReq = {
   ownerModel: string;
   fieldName: string;
   operation: 'create' | 'update';
@@ -44,7 +44,7 @@ export type NormalizedPrepareUploadReq = {
   checksumSha256?: string;
 };
 
-export type NormalizedAuthorizeUploadPutReq = {
+type NormalizedAuthorizeUploadPutReq = {
   uploadId: string;
   requestMeta: {
     contentType?: string;
@@ -53,7 +53,7 @@ export type NormalizedAuthorizeUploadPutReq = {
   };
 };
 
-export type NormalizedCommitUploadPutReq = {
+type NormalizedCommitUploadPutReq = {
   uploadId: string;
   payloadReceipt: {
     payloadId: string;
@@ -68,26 +68,16 @@ export type NormalizedCommitUploadPutReq = {
 // ---------------------------------------------------------------------------
 
 function parseRequiredNonNegativeInt(value: unknown, fieldName: string): number {
-  if (value === undefined || value === null) {
-    throwDocumentError(
-      DocumentErrCode.INVALID_ARGUMENT,
-      _t('%s is required', { scope: 'service/models/_upload' }, fieldName),
-      GrpcCode.InvalidArgument,
-      { field: fieldName }
-    );
-  }
-  const trimmed = typeof value === 'string' ? value.trim() : value;
-  if (trimmed === '') {
-    throwDocumentError(
-      DocumentErrCode.INVALID_ARGUMENT,
-      _t('%s is required', { scope: 'service/models/_upload' }, fieldName),
-      GrpcCode.InvalidArgument,
-      { field: fieldName }
-    );
-  }
-
-  const num = Number(trimmed);
-  if (!Number.isFinite(num) || num < 0) {
+  const num = normalizeOptionalNonNegativeInt(value);
+  if (num === undefined) {
+    if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+      throwDocumentError(
+        DocumentErrCode.INVALID_ARGUMENT,
+        _t('%s is required', { scope: 'service/models/_upload' }, fieldName),
+        GrpcCode.InvalidArgument,
+        { field: fieldName }
+      );
+    }
     throwDocumentError(
       DocumentErrCode.INVALID_ARGUMENT,
       _t('%s must be a non-negative integer', { scope: 'service/models/_upload' }, fieldName),
@@ -95,8 +85,7 @@ function parseRequiredNonNegativeInt(value: unknown, fieldName: string): number 
       { field: fieldName }
     );
   }
-
-  return Math.trunc(num);
+  return num;
 }
 
 export function isDisallowedInlinePayloadID(payloadId: string): boolean {

@@ -4,6 +4,7 @@
 import { Decimal } from '@/core/service';
 import {
   normalizeOptionalString,
+  normalizeLooseOptionalText,
   normalizeStringArray,
   isRefLike,
   readRefId,
@@ -86,6 +87,15 @@ test('normalizeOptionalString upper takes precedence over lower', () => {
 test('normalizeOptionalString with options returns undefined for empty', () => {
   expect(normalizeOptionalString('', { upper: true })).toBe(undefined);
   expect(normalizeOptionalString(null, { upper: true })).toBe(undefined);
+});
+
+test('normalizeLooseOptionalText coerces finite numbers and rejects non-finite', () => {
+  expect(normalizeLooseOptionalText(42)).toBe('42');
+  expect(normalizeLooseOptionalText(0)).toBe('0');
+  expect(normalizeLooseOptionalText(Number.NaN)).toBe(undefined);
+  expect(normalizeLooseOptionalText(Number.POSITIVE_INFINITY)).toBe(undefined);
+  expect(normalizeLooseOptionalText('  text  ')).toBe('text');
+  expect(normalizeLooseOptionalText(undefined)).toBe(undefined);
 });
 
 test('normalizeStringArray deduplicates and filters empty strings', () => {

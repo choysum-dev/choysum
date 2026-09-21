@@ -32,7 +32,7 @@ const { _t } = createTranslate('document');
 // Internal normalised-request shapes
 // ---------------------------------------------------------------------------
 
-export type NormalizedBindReq = {
+type NormalizedBindReq = {
   attachmentContentId: string;
   ownerModel: string;
   ownerRecordId: string;
@@ -42,16 +42,16 @@ export type NormalizedBindReq = {
   mutationId: string;
 };
 
-export type NormalizedUnbindReq = {
+type NormalizedUnbindReq = {
   attachmentBindingId: string;
   mutationId: string;
 };
 
-export type NormalizedBatchDescribeReq = {
+type NormalizedBatchDescribeReq = {
   attachmentBindingIds: string[];
 };
 
-export type NormalizedResolveDownloadContentReq = {
+type NormalizedResolveDownloadContentReq = {
   attachmentBindingId: string;
 };
 

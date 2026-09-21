@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '@/core/service/error';
+import { normalizeLooseOptionalText } from '@/core/service/utils/normalization';
 import {
   requireText,
   requireUserId,
   requireCompanyId,
   assertPrincipal,
-  normalizeLooseOptionalText,
   normalizeCompanyIdList,
   rejectLegacyPrincipalField,
 } from '../models/_document_bridge';
@@ -166,7 +166,7 @@ test('document._document_bridge: assertPrincipal treats null enabledCompanyIds a
   expect(principal.enabledCompanyIds).toBeUndefined();
 });
 
-test('document._document_bridge: normalizeLooseOptionalText coerces finite numbers', () => {
+test('normalizeLooseOptionalText coerces finite numbers (document callers)', () => {
   expect(normalizeLooseOptionalText(42)).toBe('42');
   expect(normalizeLooseOptionalText(0)).toBe('0');
   expect(normalizeLooseOptionalText(Number.NaN)).toBeUndefined();
