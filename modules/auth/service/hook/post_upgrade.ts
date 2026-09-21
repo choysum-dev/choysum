@@ -37,8 +37,9 @@ export class AuthUserLanguageHooks {
     if (!sql) return;
     try {
       await db.execute(sql, '[]');
-    } catch {
+    } catch (err) {
       // Old language column may already be absent; users can set LanguageId again.
+      console.warn('[auth] User.LanguageId backfill failed', err);
     }
   }
 }

@@ -540,12 +540,18 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     if (!userId) {
       return;
     }
-    const languageStore = await getLanguageStore();
-    const rows = (await languageStore.Search(
-      { And: [['Code', '=', terminologyLang], ['IsActive', '=', true]] } as any,
-      { fields: ['Id'], limit: 1 } as any
-    )) as Array<{ Id?: string }>;
-    const languageId = String(rows?.[0]?.Id || '').trim();
+    let languageId = '';
+    try {
+      const languageStore = await getLanguageStore();
+      const rows = (await languageStore.Search(
+        { And: [['Code', '=', terminologyLang], ['IsActive', '=', true]] } as any,
+        { fields: ['Id'], limit: 1 } as any
+      )) as Array<{ Id?: string }>;
+      languageId = String(rows?.[0]?.Id || '').trim();
+    } catch {
+      // Best-effort preference write; FE locale can still live in i18nStore localStorage.
+      return;
+    }
     if (!languageId) return;
     await state.userStore.UpdateById(userId, { LanguageId: languageId } as any, ['Id', 'LanguageId'] as any);
     if (state.currentUser.value) {

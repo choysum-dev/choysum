@@ -26,6 +26,28 @@ test('AuthUserLanguageHooks.backfillUserLanguageId: sqlite SQL filters active tr
   expect(calls[0].sql).toContain('trim(auth_user.language)');
 });
 
+test('AuthUserLanguageHooks.backfillUserLanguageId: mysql SQL filters active trimmed codes', async () => {
+  const calls: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      dialectName: 'mysql',
+      execute: async (sql: string, params: string) => {
+        calls.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await AuthUserLanguageHooks.backfillUserLanguageId();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(calls.length).toBe(1);
+  expect(calls[0].sql).toContain('is_active = true');
+  expect(calls[0].sql).toContain('trim(auth_user.language)');
+});
+
 test('AuthUserLanguageHooks.backfillUserLanguageId: postgres SQL filters active trimmed codes', async () => {
   const calls: Array<{ sql: string; params: string }> = [];
   const prev = (globalThis as any).$choysum;
@@ -74,4 +96,24 @@ test('AuthUserLanguageHooks.backfillUserLanguageId: no-ops without db', async ()
   } finally {
     (globalThis as any).$choysum = prev;
   }
+});
+
+test('AuthUserLanguageHooks.backfillUserLanguageId: unknown dialect executes no SQL', async () => {
+  const calls: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      dialectName: 'oracle',
+      execute: async (sql: string, params: string) => {
+        calls.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await AuthUserLanguageHooks.backfillUserLanguageId();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(calls.length).toBe(0);
 });

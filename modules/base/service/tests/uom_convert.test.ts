@@ -96,3 +96,37 @@ test('base.UoM Convert rejects a malformed amount', async () => {
   expect(error instanceof ChoysumError).toBe(true);
   expect((error as ChoysumError).code).toBe('InvalidArgument');
 });
+
+test('base.UoM Convert rejects a non-decimal Factor as InvalidArgument', async () => {
+  const categoryId = await createCategory();
+  const gramId = await createUnit(categoryId, '1', true);
+  const bad = await UoM.Create(
+    {
+      Name: uid('BadFactor'),
+      CategoryId: categoryId,
+      IsReference: false,
+      Factor: '1',
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+  const badId = String((bad as any).Id);
+  // Bypass model validation by converting with a stub Browse that returns garbage Factor.
+  const { convertUoM } = await import('@/base/service/models/_uom_convert');
+  let error: unknown;
+  try {
+    await convertUoM(
+      {
+        Browse: async (id: string) => {
+          if (id === gramId) return { Id: gramId, CategoryId: categoryId, Factor: '1', Rounding: null } as any;
+          return { Id: badId, CategoryId: categoryId, Factor: 'not-a-factor', Rounding: null } as any;
+        },
+      },
+      { Amount: '1', FromUoMId: gramId, ToUoMId: badId }
+    );
+  } catch (err) {
+    error = err;
+  }
+  expect(error instanceof ChoysumError).toBe(true);
+  expect((error as ChoysumError).code).toBe('InvalidArgument');
+});

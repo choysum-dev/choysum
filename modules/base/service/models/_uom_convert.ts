@@ -65,11 +65,20 @@ export async function convertUoM(UoMModel: UoMOps, params: UoMConvertParams | un
     invalid(_t('UoMs must belong to the same category', { scope: 'service/models/_uom_convert' }));
   }
 
-  const fromFactor = from.Factor instanceof Decimal ? from.Factor : new Decimal(String(from.Factor));
-  const toFactor = to.Factor instanceof Decimal ? to.Factor : new Decimal(String(to.Factor));
-  if (!fromFactor.isFinite() || fromFactor.lte(0) || !toFactor.isFinite() || toFactor.lte(0)) {
-    invalid(_t('UoM factor must be greater than 0', { scope: 'service/models/_uom_convert' }));
-  }
+  const parseFactor = (value: unknown): Decimal => {
+    try {
+      const factor = value instanceof Decimal ? value : new Decimal(String(value));
+      if (!factor.isFinite() || factor.lte(0)) {
+        invalid(_t('UoM factor must be greater than 0', { scope: 'service/models/_uom_convert' }));
+      }
+      return factor;
+    } catch (err) {
+      if (err instanceof ChoysumError) throw err;
+      invalid(_t('UoM factor must be greater than 0', { scope: 'service/models/_uom_convert' }));
+    }
+  };
+  const fromFactor = parseFactor(from.Factor);
+  const toFactor = parseFactor(to.Factor);
 
   const converted = amount.mul(fromFactor).div(toFactor);
   return { Amount: roundToUoM(converted, to.Rounding) };

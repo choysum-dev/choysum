@@ -397,11 +397,16 @@ export default class Partner extends PartnerCollaborationModel {
       return { PartnerId: partnerId, Created: true };
     } catch (err) {
       // Uniqueness errors are localized; re-query decides whether another writer won.
-      const again = await this.Search(
-        { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
-        { fields: ['Id'], limit: 1 }
-      );
-      const racedId = String(again?.[0]?.Id || '').trim();
+      let racedId = '';
+      try {
+        const again = await this.Search(
+          { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+          { fields: ['Id'], limit: 1 }
+        );
+        racedId = String(again?.[0]?.Id || '').trim();
+      } catch {
+        throw err;
+      }
       if (racedId) return { PartnerId: racedId, Created: false };
       throw err;
     }
@@ -444,11 +449,17 @@ export default class Partner extends PartnerCollaborationModel {
         lastErr = err;
         if (explicitCode) throw err;
         // Locale-independent: retry only when this code is already taken.
-        const taken = await (this as unknown as typeof Partner).Search(
-          { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
-          { fields: ['Id'], limit: 1 }
-        );
-        if (!String(taken?.[0]?.Id || '').trim()) throw err;
+        let takenId = '';
+        try {
+          const taken = await (this as unknown as typeof Partner).Search(
+            { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+            { fields: ['Id'], limit: 1 }
+          );
+          takenId = String(taken?.[0]?.Id || '').trim();
+        } catch {
+          throw err;
+        }
+        if (!takenId) throw err;
       }
     }
     throw lastErr;

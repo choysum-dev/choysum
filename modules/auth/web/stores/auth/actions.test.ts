@@ -465,6 +465,24 @@ test('loadUser: swallows i18n apply failures', async () => {
   expect((mockState.currentUser.value as any)?.Id).toBe('usr_1');
 });
 
+test('loadUser: exercises default i18nStore and Language registry imports', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.identity.value = { userId: 'usr_1' } as any;
+  mockState._recorders.Browse.resolve({
+    Id: 'usr_1',
+    Username: 'ada',
+    LanguageId: 'lang_zh',
+    Preferences: { display: null },
+  });
+
+  // No createLanguageStore / importI18nStore — hit the production dynamic-import branches.
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const ok = await actions.loadUser(true);
+  expect(ok).toBe(true);
+  expect((mockState.currentUser.value as any)?.Id).toBe('usr_1');
+});
+
 test('persistLanguagePreference: writes LanguageId and refreshes tokens', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();
@@ -520,5 +538,23 @@ test('persistLanguagePreference: no-ops when anonymous or language missing', asy
     }),
   });
   await actions2.persistLanguagePreference('en_US');
+  expect(mockState._recorders.UpdateById.calls.length).toBe(0);
+});
+
+test('persistLanguagePreference: no-ops when language lookup throws', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.isAuthenticated.value = true;
+  mockState.currentUser.value = { Id: 'usr_1' } as any;
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: async () => null,
+      Search: async () => {
+        throw new Error('registry down');
+      },
+    }),
+  });
+  await actions.persistLanguagePreference('en_US');
   expect(mockState._recorders.UpdateById.calls.length).toBe(0);
 });
