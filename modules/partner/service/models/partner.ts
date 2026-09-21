@@ -6,7 +6,6 @@ import type { ModelCtor, RowOf } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { getActiveCompanyId } from '@/core/service/api/context';
 import type { FieldSelection, Insertable } from '@/core/service/api';
-import { resolveValidationSummary } from '@/core/service/api/validation';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import PartnerCollaborationModel from '../mixins/partner_collaboration_model';
 import { _t, _lt } from '../i18n';
@@ -17,14 +16,8 @@ import type Currency from '@/base/service/models/currency';
 import type Language from '@/base/service/models/language';
 import PartnerContact from './partner_contact';
 
-function isCodeConflict(err: unknown): boolean {
-  if (resolveValidationSummary(err as Parameters<typeof resolveValidationSummary>[0]).sqlCode === 'sql_unique_violation') {
-    return true;
-  }
-  // Application constraint runs before SQL and uses the same uniqueness rule.
-  const message = String((err as { message?: unknown })?.message || '');
-  return message.includes('Partner Code must be unique');
-}
+/** Matches Partner.Code varchar size. */
+const CODE_MAX_LENGTH = 40;
 
 export type PartnerFindOrCreateReq = {
   Code: string;
@@ -44,7 +37,7 @@ function requireSessionCompanyId(): string {
 }
 
 function codeSeedFromName(name: string): string {
-  const seed = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 32);
+  const seed = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_MAX_LENGTH);
   return seed || 'P';
 }
 
@@ -399,9 +392,11 @@ export default class Partner extends PartnerCollaborationModel {
     const name = req?.Name != null && String(req.Name).trim() ? assertRequiredText(req.Name, 'Name') : code;
     try {
       const created = await this.Create({ Name: name, Code: code, CompanyId: companyId } as Partial<Partner>, ['Id'] as any);
-      return { PartnerId: String((created as { Id?: unknown }).Id || ''), Created: true };
+      const partnerId = String((created as { Id?: unknown }).Id || '').trim();
+      if (!partnerId) fail(_t('Partner create returned an empty Id', { scope: 'service/models/partner' }));
+      return { PartnerId: partnerId, Created: true };
     } catch (err) {
-      if (!isCodeConflict(err)) throw err;
+      // Uniqueness errors are localized; re-query decides whether another writer won.
       const again = await this.Search(
         { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
         { fields: ['Id'], limit: 1 }
@@ -415,7 +410,7 @@ export default class Partner extends PartnerCollaborationModel {
   /**
    * Create a partner from a display name (relation typeahead).
    * Code is derived from the name and disambiguated within the session company.
-   * Allocation retries on unique Code conflict rather than a pre-check Search loop.
+   * Allocation retries when the candidate code is already taken (locale-independent).
    */
   static async NameCreate<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
     this: C,
@@ -432,13 +427,13 @@ export default class Partner extends PartnerCollaborationModel {
     const display = assertRequiredText(name, 'Name');
     const seed = codeSeedFromName(display);
     const explicitCode = String(partnerValues.Code || '').trim().toUpperCase();
-    let code = explicitCode || seed.slice(0, 40);
+    let code = explicitCode || seed.slice(0, CODE_MAX_LENGTH);
     const maxAttempts = explicitCode ? 1 : 32;
     let lastErr: unknown;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (!explicitCode && attempt > 0) {
         const suffix = String(attempt);
-        code = `${seed.slice(0, Math.max(1, 40 - suffix.length))}${suffix}`;
+        code = `${seed.slice(0, Math.max(1, CODE_MAX_LENGTH - suffix.length))}${suffix}`;
       }
       try {
         return await (this as unknown as typeof Partner).Create(
@@ -447,7 +442,13 @@ export default class Partner extends PartnerCollaborationModel {
         );
       } catch (err) {
         lastErr = err;
-        if (explicitCode || !isCodeConflict(err)) throw err;
+        if (explicitCode) throw err;
+        // Locale-independent: retry only when this code is already taken.
+        const taken = await (this as unknown as typeof Partner).Search(
+          { And: [['CompanyId', '=', companyId], ['Code', '=', code]] },
+          { fields: ['Id'], limit: 1 }
+        );
+        if (!String(taken?.[0]?.Id || '').trim()) throw err;
       }
     }
     throw lastErr;

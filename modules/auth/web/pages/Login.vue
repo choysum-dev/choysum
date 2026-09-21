@@ -53,8 +53,6 @@ import { ElForm, ElFormItem, ElInput, ElButton, ElCheckbox, ElAlert, ElCard } fr
 import { User, Lock } from '@element-plus/icons-vue';
 import type { FormRules } from 'element-plus';
 import { createTranslate } from '@/web/web/i18n';
-import { useI18nStore, langToUiKey } from '@/web/web/stores/i18nStore';
-import { applyUserLanguagePreference } from '../stores/auth/language_preference';
 import { runLoginAuthReady } from './login_auth_ready';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
@@ -131,20 +129,9 @@ async function handleLogin() {
 
     await authStore.login(form.username, form.password, '', '', form.rememberMe);
 
-    // Apply persisted User.LanguageId when present (terminology lang → UI locale).
+    // User.LanguageId → UI locale is applied inside loadUser.
     try {
       await authStore.loadUser(true);
-      const i18nStore = useI18nStore();
-      const { createStoreByModel } = await import('@/web/web/stores/registry');
-      const languageStore = createStoreByModel('base.Language');
-      await applyUserLanguagePreference({
-        languageId: (authStore.currentUser as any)?.LanguageId,
-        displayOverrides: (authStore.currentUser as any)?.Preferences?.display ?? null,
-        browseLanguage: (id, fields) => (languageStore as any).Browse(id, fields),
-        setUiKey: key => i18nStore.setUiKey(key),
-        setDisplayOverrides: overrides => i18nStore.setDisplayOverrides(overrides as any),
-        langToUiKey,
-      });
     } catch {
       // Preference apply is best-effort; login already succeeded.
     }

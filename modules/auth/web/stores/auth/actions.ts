@@ -22,6 +22,14 @@ export type AuthActionDeps = {
     Browse: (id: string, fields?: string[]) => Promise<{ Code?: string } | null | undefined>;
     Search: (domain: unknown, opts?: unknown) => Promise<Array<{ Id?: string }>>;
   };
+  /** When set, skips dynamic import of `@/web/web/stores/i18nStore`. */
+  importI18nStore?: () => Promise<{
+    useI18nStore: () => {
+      setUiKey: (uiKey: string) => Promise<unknown> | unknown;
+      setDisplayOverrides: (overrides: unknown) => void;
+    };
+    langToUiKey: (terminologyLang: string) => string;
+  }>;
 };
 
 /**
@@ -410,7 +418,9 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       state.currentUser.value = user;
       // Align FE UI key with the user's LanguageId (covers initAuth refresh paths; Login also applies this).
       try {
-        const { useI18nStore, langToUiKey } = await import('@/web/web/stores/i18nStore');
+        const { useI18nStore, langToUiKey } = await (deps?.importI18nStore
+          ? deps.importI18nStore()
+          : import('@/web/web/stores/i18nStore'));
         const { applyUserLanguagePreference } = await import('./language_preference');
         const i18nStore = useI18nStore();
         const languageStore = await getLanguageStore();

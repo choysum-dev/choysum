@@ -279,7 +279,7 @@ export default class PartnerIdentifier extends BaseModel {
   }
 
   /**
-   * Find a partner by commercial identifier within the session company.
+   * Find a partner by an active commercial identifier within the session company.
    * Type is matched lowercase and value uppercase, matching stored normalization.
    */
   static async Lookup(req: PartnerIdentifierLookupReq): Promise<PartnerIdentifierLookupResp> {
@@ -293,6 +293,7 @@ export default class PartnerIdentifier extends BaseModel {
           ['CompanyId', '=', companyId],
           ['IdentifierType', '=', identifierType],
           ['Value', '=', value],
+          ['IsActive', '=', true],
         ],
       },
       { fields: ['Id', 'PartnerId'], limit: 2 }
@@ -304,10 +305,11 @@ export default class PartnerIdentifier extends BaseModel {
     const identifierId = String(row?.Id || '').trim();
     if (!identifierId) return { Found: false };
     const partnerId = normalizeRefId(row?.PartnerId) || '';
+    if (!partnerId) return { Found: false };
     return {
       Found: true,
       PartnerIdentifierId: identifierId,
-      PartnerId: partnerId || undefined,
+      PartnerId: partnerId,
     };
   }
 }

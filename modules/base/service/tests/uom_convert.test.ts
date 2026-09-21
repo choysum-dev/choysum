@@ -83,3 +83,16 @@ test('base.UoM Convert rejects units from different categories', async () => {
   expect((error as ChoysumError).domain).toBe('base');
   expect((error as ChoysumError).code).toBe('InvalidArgument');
 });
+
+test('base.UoM Convert rejects a malformed amount', async () => {
+  const categoryId = await createCategory();
+  const gramId = await createUnit(categoryId, '1', true);
+  let error: unknown;
+  try {
+    await UoM.Convert({ Amount: 'not-a-number', FromUoMId: gramId, ToUoMId: gramId });
+  } catch (err) {
+    error = err;
+  }
+  expect(error instanceof ChoysumError).toBe(true);
+  expect((error as ChoysumError).code).toBe('InvalidArgument');
+});

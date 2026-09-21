@@ -1,127 +1,127 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/partner.ts:98
+#: service/models/partner.ts:96
 msgctxt "partner.model.Partner.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/partner.ts:72
+#: service/models/partner.ts:70
 msgctxt "partner.model.Partner.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/partner.ts:88
+#: service/models/partner.ts:86
 msgctxt "partner.model.Partner.fields"
 msgid "Company"
 msgstr "所属公司"
 
-#: service/models/partner.ts:224 service/models/partner.ts:243 service/models/partner.ts:262
+#: service/models/partner.ts:222 service/models/partner.ts:241 service/models/partner.ts:260
 msgctxt "partner.model.Partner.fields"
 msgid "Computed from contacts; edit contacts to change defaults."
 msgstr "由联系人计算得出；请通过编辑联系人更改默认值。"
 
-#: service/models/partner.ts:214
+#: service/models/partner.ts:212
 msgctxt "partner.model.Partner.fields"
 msgid "Contacts and Addresses"
 msgstr "联系人与地址"
 
-#: service/models/partner.ts:170
+#: service/models/partner.ts:168
 msgctxt "partner.model.Partner.fields"
 msgid "Country"
 msgstr "国家"
 
-#: service/models/partner.ts:121
+#: service/models/partner.ts:119
 msgctxt "partner.model.Partner.fields"
 msgid "Customer Rank"
 msgstr "客户等级"
 
-#: service/models/partner.ts:242
+#: service/models/partner.ts:240
 msgctxt "partner.model.Partner.fields"
 msgid "Default Billing Address"
 msgstr "默认开票地址"
 
-#: service/models/partner.ts:223
+#: service/models/partner.ts:221
 msgctxt "partner.model.Partner.fields"
 msgid "Default Contact"
 msgstr "默认联系人"
 
-#: service/models/partner.ts:159
+#: service/models/partner.ts:157
 msgctxt "partner.model.Partner.fields"
 msgid "Default Currency"
 msgstr "默认币种"
 
-#: service/models/partner.ts:148
+#: service/models/partner.ts:146
 msgctxt "partner.model.Partner.fields"
 msgid "Default Language"
 msgstr "默认语言"
 
-#: service/models/partner.ts:261
+#: service/models/partner.ts:259
 msgctxt "partner.model.Partner.fields"
 msgid "Default Shipping Address"
 msgstr "默认收货地址"
 
-#: service/models/partner.ts:188
+#: service/models/partner.ts:186
 msgctxt "partner.model.Partner.fields"
 msgid "Email"
 msgstr "邮箱"
 
-#: service/models/partner.ts:179
+#: service/models/partner.ts:177
 msgctxt "partner.model.Partner.fields"
 msgid "External Reference"
 msgstr "外部参考"
 
-#: service/models/partner.ts:206
+#: service/models/partner.ts:204
 msgctxt "partner.model.Partner.fields"
 msgid "Mobile"
 msgstr "手机"
 
-#: service/models/partner.ts:61
+#: service/models/partner.ts:59
 msgctxt "partner.model.Partner.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/partner.ts:122
+#: service/models/partner.ts:120
 msgctxt "partner.model.Partner.fields"
 msgid "Non-zero marks the partner as a customer; higher ranks sort first."
 msgstr "非零表示客户；数值越大排序越靠前。"
 
-#: service/models/partner.ts:135
+#: service/models/partner.ts:133
 msgctxt "partner.model.Partner.fields"
 msgid "Non-zero marks the partner as a supplier; higher ranks sort first."
 msgstr "非零表示供应商；数值越大排序越靠前。"
 
-#: service/models/partner.ts:290
+#: service/models/partner.ts:288
 msgctxt "partner.model.Partner.fields"
 msgid "Notes"
 msgstr "备注"
 
-#: service/models/partner.ts:108
+#: service/models/partner.ts:106
 msgctxt "partner.model.Partner.fields"
 msgid "Organization"
 msgstr "组织主体"
 
-#: service/models/partner.ts:197
+#: service/models/partner.ts:195
 msgctxt "partner.model.Partner.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/partner.ts:281
+#: service/models/partner.ts:279
 msgctxt "partner.model.Partner.fields"
 msgid "Sequence"
 msgstr "排序"
 
-#: service/models/partner.ts:134
+#: service/models/partner.ts:132
 msgctxt "partner.model.Partner.fields"
 msgid "Supplier Rank"
 msgstr "供应商等级"
 
-#: service/models/partner.ts:109
+#: service/models/partner.ts:107
 msgctxt "partner.model.Partner.fields"
 msgid "Uncheck for an individual person rather than an organization."
 msgstr "取消勾选表示个人，而非组织。"
 
-#: service/models/partner.ts:73
+#: service/models/partner.ts:71
 msgctxt "partner.model.Partner.fields"
 msgid "Unique within the company; stored in uppercase."
 msgstr "在公司内唯一；存储为大写。"
@@ -216,7 +216,7 @@ msgctxt "partner.model.PartnerContact.fields"
 msgid "billing/shipping/office/registered/other; drives partner default addresses."
 msgstr "billing/shipping/office/registered/other；驱动业务伙伴默认地址。"
 
-#: service/models/partner.ts:338 service/models/partner.ts:37
+#: service/models/partner.ts:336 service/models/partner.ts:35
 msgctxt "service/models/partner"
 msgid "CompanyId is required"
 msgstr "CompanyId 为必填项"
@@ -226,10 +226,15 @@ msgctxt "service/models/partner"
 msgid "CompanyId must match the active company"
 msgstr "CompanyId 必须与当前活动公司一致"
 
-#: service/models/partner.ts:350
+#: service/models/partner.ts:348
 msgctxt "service/models/partner"
 msgid "Partner Code must be unique within the company"
 msgstr "伙伴编码在同一公司内必须唯一"
+
+#: service/models/partner.ts:396
+msgctxt "service/models/partner"
+msgid "Partner create returned an empty Id"
+msgstr "合作伙伴创建返回了空的 Id"
 
 #: service/models/partner_contact.ts:191
 msgctxt "service/models/partner_contact"

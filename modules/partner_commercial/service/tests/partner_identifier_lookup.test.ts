@@ -64,3 +64,22 @@ test('partner.PartnerIdentifier Lookup matches normalized type and value', async
   const missing = await withCompany(companyId, () => PartnerIdentifier.Lookup({ IdentifierType: 'vat', Value: 'nope' }));
   expect(missing.Found).toBe(false);
 });
+
+test('partner.PartnerIdentifier Lookup ignores inactive identifiers', async () => {
+  const companyId = await ensureCompanyId();
+  const found = await withCompany(companyId, async () => {
+    const partner = await Partner.NameCreate(uid('Inactive'), undefined, { returnFields: ['Id'] });
+    await PartnerIdentifier.Create(
+      {
+        PartnerId: String((partner as any).Id),
+        CompanyId: companyId,
+        IdentifierType: 'vat',
+        Value: 'inactive-1',
+        IsActive: false,
+      } as any,
+      ['Id'] as any
+    );
+    return PartnerIdentifier.Lookup({ IdentifierType: 'vat', Value: 'inactive-1' });
+  });
+  expect(found.Found).toBe(false);
+});

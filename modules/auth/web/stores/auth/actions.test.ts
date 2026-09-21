@@ -401,12 +401,23 @@ test('loadUser: applies LanguageId via injected language store', async () => {
   });
   const langBrowse = makeFn();
   langBrowse.resolve({ Code: 'zh_CN' });
+  const setUiKey = makeFn();
+  setUiKey.resolve(undefined);
+  const setDisplayOverrides = makeFn();
+  setDisplayOverrides.returnValue(undefined);
 
   const actions = defineAuthActions(mockState as any, mockHelpers as any, {
     isClient: true,
     createLanguageStore: () => ({
       Browse: langBrowse.fn,
       Search: async () => [],
+    }),
+    importI18nStore: async () => ({
+      useI18nStore: () => ({
+        setUiKey: setUiKey.fn,
+        setDisplayOverrides: setDisplayOverrides.fn,
+      }),
+      langToUiKey: (lang: string) => `ui:${lang}`,
     }),
   });
 
@@ -421,6 +432,37 @@ test('loadUser: applies LanguageId via injected language store', async () => {
     'Preferences',
   ]);
   expect((mockState.currentUser.value as any)?.LanguageId).toBe('lang_zh');
+  expect(langBrowse.calls.length).toBe(1);
+  expect(setUiKey.calls[0].args[0]).toBe('ui:zh_CN');
+  expect(setDisplayOverrides.calls[0].args[0]).toEqual({ dateFormat: 'YYYY-MM-DD' });
+});
+
+test('loadUser: swallows i18n apply failures', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.identity.value = { userId: 'usr_1' } as any;
+  mockState._recorders.Browse.resolve({ Id: 'usr_1', LanguageId: 'lang_zh' });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    createLanguageStore: () => ({
+      Browse: async () => {
+        throw new Error('browse down');
+      },
+      Search: async () => [],
+    }),
+    importI18nStore: async () => ({
+      useI18nStore: () => ({
+        setUiKey: async () => undefined,
+        setDisplayOverrides: () => undefined,
+      }),
+      langToUiKey: (lang: string) => lang,
+    }),
+  });
+
+  const ok = await actions.loadUser(true);
+  expect(ok).toBe(true);
+  expect((mockState.currentUser.value as any)?.Id).toBe('usr_1');
 });
 
 test('persistLanguagePreference: writes LanguageId and refreshes tokens', async () => {

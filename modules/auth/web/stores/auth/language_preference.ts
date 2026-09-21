@@ -17,6 +17,7 @@ export async function terminologyCodeFromLanguageId(
 
 /**
  * Apply a User.LanguageId (and optional display overrides) to the FE i18n store.
+ * Display overrides are applied first so they stick even when language Browse/setUiKey rejects.
  * Best-effort: callers wrap this when login/auth must continue on i18n failure.
  */
 export async function applyUserLanguagePreference(opts: {
@@ -27,9 +28,9 @@ export async function applyUserLanguagePreference(opts: {
   setDisplayOverrides: (overrides: unknown) => void;
   langToUiKey: (terminologyLang: string) => string;
 }): Promise<void> {
+  opts.setDisplayOverrides(opts.displayOverrides ?? null);
   const preferredLang = await terminologyCodeFromLanguageId(opts.languageId, opts.browseLanguage);
   if (preferredLang) {
     await opts.setUiKey(opts.langToUiKey(preferredLang));
   }
-  opts.setDisplayOverrides(opts.displayOverrides ?? null);
 }
