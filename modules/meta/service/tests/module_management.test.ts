@@ -69,30 +69,28 @@ function ensureJobMock(): void {
 
   JOB_STORE.clear();
 
-  (Job as any).EnqueueJob = async (
-    targetApp: string,
-    fullMethod: string,
-    payload: Record<string, any> = {},
-    schedulerUserId: string,
-    triggeredByUserId: string,
-    runAfter?: string | number | Date,
-    maxAttempts: number = 1,
-    timeoutMs: number = 0
-  ) => {
+  (Job as any).EnqueueJob = async (req: {
+    TargetApp: string;
+    FullMethod: string;
+    Payload?: Record<string, any>;
+    RunAfter?: string | number | Date;
+    MaxAttempts?: number;
+    TimeoutMs?: number;
+  }) => {
     const now = new Date();
-    const runAfterAt = runAfter ? new Date(runAfter as any) : now;
+    const runAfterAt = req?.RunAfter ? new Date(req.RunAfter as any) : now;
     const job = {
       Id: `job_${nextId()}`,
-      TargetApp: targetApp,
-      FullMethod: fullMethod,
-      PayloadJson: payload ?? {},
-      SchedulerUserId: schedulerUserId,
-      TriggeredByUserId: triggeredByUserId,
+      TargetApp: req?.TargetApp,
+      FullMethod: req?.FullMethod,
+      PayloadJson: req?.Payload ?? {},
+      SchedulerUserId: 'admin',
+      TriggeredByUserId: 'admin',
       Status: 'queued',
       RunAfter: runAfterAt,
       Attempt: 0,
-      MaxAttempts: maxAttempts,
-      TimeoutMs: timeoutMs,
+      MaxAttempts: req?.MaxAttempts ?? 1,
+      TimeoutMs: req?.TimeoutMs ?? 0,
       CreatedAt: now,
       UpdatedAt: now,
     };
@@ -319,7 +317,7 @@ test('meta.MetaModule RequestInstall writes operatorUserId into job payload', as
   });
   try {
     const moduleName = uid('req_install');
-    const jobId = await MetaModule.RequestInstall(moduleName, true);
+    const jobId = await MetaModule.RequestInstall({ ModuleName: moduleName, WithDemo: true });
     expect(jobId).toBeTruthy();
 
     const job = await Job.GetJob(jobId, ['Id', 'PayloadJson'] as any);
@@ -349,7 +347,7 @@ test('meta.MetaModule RequestInstall publishes lease-conflict tip when forced', 
   };
   try {
     const moduleName = uid('req_lock');
-    const jobId = await MetaModule.RequestInstall(moduleName);
+    const jobId = await MetaModule.RequestInstall({ ModuleName: moduleName });
     expect(jobId).toBeTruthy();
     const tip = published.find(event => event?.source === 'meta.MetaModule.leaseConflict');
     expect(tip).toBeTruthy();
@@ -366,7 +364,7 @@ test('meta.MetaModule RequestUninstall writes operatorUserId into job payload', 
   ensureJobMock();
 
   const moduleName = uid('req_uninstall');
-  const jobId = await MetaModule.RequestUninstall(moduleName);
+  const jobId = await MetaModule.RequestUninstall({ ModuleName: moduleName });
   expect(jobId).toBeTruthy();
 
   const job = await Job.GetJob(jobId, ['Id', 'PayloadJson'] as any);
@@ -380,7 +378,7 @@ test('meta.MetaModule RequestUpgrade writes operatorUserId into job payload', as
   ensureJobMock();
 
   const moduleName = uid('req_upgrade');
-  const jobId = await MetaModule.RequestUpgrade(moduleName);
+  const jobId = await MetaModule.RequestUpgrade({ ModuleName: moduleName });
   expect(jobId).toBeTruthy();
 
   const job = await Job.GetJob(jobId, ['Id', 'PayloadJson'] as any);
@@ -409,7 +407,7 @@ test('meta.MetaModule ExecuteInstall uses moduleManagement bridge and writes log
 
   const result = await MetaModule.ExecuteInstall('base', true, 'operator_1');
   expect(result.resultStatus).toBe('SUCCEEDED');
-  expect(result.reload_web).toBe(true);
+  expect(result.ReloadWeb).toBe(true);
   expect(result.moduleName).toBe('base');
   expect(result.action).toBe('install');
 
@@ -473,7 +471,7 @@ test('meta.MetaModule ExecuteUninstall uses moduleManagement bridge and writes l
 
   const result = await MetaModule.ExecuteUninstall('base', 'operator_1');
   expect(result.resultStatus).toBe('SUCCEEDED');
-  expect(result.reload_web).toBe(true);
+  expect(result.ReloadWeb).toBe(true);
   expect(result.moduleName).toBe('base');
   expect(result.action).toBe('uninstall');
 
@@ -506,7 +504,7 @@ test('meta.MetaModule ExecuteUpgrade returns failed result and maps error fields
 
   const result = await MetaModule.ExecuteUpgrade('base', 'operator_1');
   expect(result.resultStatus).toBe('FAILED');
-  expect(result.reload_web).toBe(false);
+  expect(result.ReloadWeb).toBe(false);
   expect(result.errorDomain).toBe('MODULE_MANAGEMENT');
   expect(result.errorCode).toBe('OP_FAILED');
   expect(result.summary?.code).toBe('MODULE_OPERATION_FAILED');
@@ -537,7 +535,7 @@ test('meta.MetaModule ExecuteInstall marks reload_failed when reload fails', asy
   expect(result.resultStatus).toBe('SUCCEEDED');
   expect(result.reload_triggered).toBe(true);
   expect(result.reload_failed).toBe(true);
-  expect(result.reload_web).toBe(false);
+  expect(result.ReloadWeb).toBe(false);
 });
 
 test('meta.MetaModule GetOpStatus returns summary and reload flags', async () => {
@@ -546,7 +544,7 @@ test('meta.MetaModule GetOpStatus returns summary and reload flags', async () =>
   ensureJobMock();
 
   const moduleName = uid('status');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteInstall', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteInstall', Payload: { moduleName, operatorUserId: 'admin' } });
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -555,7 +553,7 @@ test('meta.MetaModule GetOpStatus returns summary and reload flags', async () =>
       ResultJson: {
         resultStatus: 'SUCCEEDED',
         summary: { code: 'MODULE_INSTALLED', params: { moduleName } },
-        reload_web: true,
+        ReloadWeb: true,
         reload_triggered: true,
         reload_failed: false,
         moduleName,
@@ -569,7 +567,7 @@ test('meta.MetaModule GetOpStatus returns summary and reload flags', async () =>
   expect(status.status).toBe('succeeded');
   expect(status.resultStatus).toBe('SUCCEEDED');
   expect(status.failureKind).toBe('NONE');
-  expect(status.reload_web).toBe(true);
+  expect(status.ReloadWeb).toBe(true);
   expect(status.moduleName).toBe(moduleName);
   expect(status.action).toBe('install');
 });
@@ -580,7 +578,7 @@ test('meta.MetaModule GetOpStatus supports succeeded status with failed result',
   ensureJobMock();
 
   const moduleName = uid('upgrade_failed');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteUpgrade', Payload: { moduleName, operatorUserId: 'admin' } });
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -589,7 +587,7 @@ test('meta.MetaModule GetOpStatus supports succeeded status with failed result',
       ResultJson: {
         resultStatus: 'FAILED',
         summary: { code: 'MODULE_OPERATION_FAILED', params: { moduleName, action: 'upgrade' } },
-        reload_web: false,
+        ReloadWeb: false,
         reload_triggered: false,
         reload_failed: false,
         moduleName,
@@ -604,7 +602,7 @@ test('meta.MetaModule GetOpStatus supports succeeded status with failed result',
   expect(status.resultStatus).toBe('FAILED');
   expect(status.failureKind).toBe('NON_RETRYABLE');
   expect(status.summary?.code).toBe('MODULE_OPERATION_FAILED');
-  expect(status.reload_web).toBe(false);
+  expect(status.ReloadWeb).toBe(false);
 });
 
 test('meta.MetaModule GetOpStatus maps plain failures as non-retryable', async () => {
@@ -613,7 +611,7 @@ test('meta.MetaModule GetOpStatus maps plain failures as non-retryable', async (
   ensureJobMock();
 
   const moduleName = uid('plain_fail');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteUpgrade', Payload: { moduleName, operatorUserId: 'admin' } });
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -636,7 +634,7 @@ test('meta.MetaModule GetOpStatus maps retryable lock conflicts via errorDomain/
   ensureJobMock();
 
   const moduleName = uid('lock_conflict_alt');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteUpgrade', Payload: { moduleName, operatorUserId: 'admin' } });
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -662,7 +660,7 @@ test('meta.MetaModule GetOpStatus classifies ResultJson lock conflicts without L
   ensureJobMock();
 
   const moduleName = uid('result_lock_conflict');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteUpgrade', Payload: { moduleName, operatorUserId: 'admin' } });
 
   // Logical executeModuleOp failures are stored on ResultJson; the worker leaves LastErrorJson unset.
   await (Job as any).UpdateById(
@@ -676,7 +674,7 @@ test('meta.MetaModule GetOpStatus classifies ResultJson lock conflicts without L
         errorCode: 'LEASE_CONFLICT',
         errorMessage: 'lease conflict',
         summary: { code: 'MODULE_OPERATION_FAILED', params: { moduleName, action: 'upgrade' } },
-        reload_web: false,
+        ReloadWeb: false,
         reload_triggered: false,
         reload_failed: false,
         moduleName,
@@ -747,7 +745,7 @@ test('meta.MetaModule GetOpStatus maps mismatched lock codes as non-retryable', 
   ensureJobMock();
 
   const moduleName = uid('lock_mismatch');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteUpgrade', Payload: { moduleName, operatorUserId: 'admin' } });
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -801,7 +799,7 @@ test('meta.MetaModule GetOpStatus maps cancelled jobs as non-retryable failures'
   ensureJobMock();
 
   const moduleName = uid('cancelled_op');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteUpgrade', Payload: { moduleName, operatorUserId: 'admin' } });
 
   await (Job as any).UpdateById(job.Id as any, { Status: 'cancelled', ResultJson: null } as any);
 
@@ -817,7 +815,7 @@ test('meta.MetaModule GetOpStatus maps retryable lock lease lost', async () => {
   ensureJobMock();
 
   const moduleName = uid('lock_lease_lost');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteUpgrade', Payload: { moduleName, operatorUserId: 'admin' } });
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -842,7 +840,7 @@ test('meta.MetaModule GetOpStatus maps retryable lock conflicts', async () => {
   ensureJobMock();
 
   const moduleName = uid('lock_conflict');
-  const job = await Job.EnqueueJob('meta', 'meta.MetaModule/ExecuteUpgrade', { moduleName, operatorUserId: 'admin' }, 'admin', 'admin');
+  const job = await Job.EnqueueJob({ TargetApp: 'meta', FullMethod: 'meta.MetaModule/ExecuteUpgrade', Payload: { moduleName, operatorUserId: 'admin' } });
 
   await (Job as any).UpdateById(
     job.Id as any,
@@ -875,7 +873,7 @@ test('meta.MetaModuleIndex RequestSync enqueues when stale and no batch sync', a
   const restoreSearch = mockJobSearch([]);
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ OriginType: 'local', IfStale: true, Force: false });
     expect(jobId).toBeTruthy();
   } finally {
     restoreSearch();
@@ -898,7 +896,7 @@ test('meta.MetaModuleIndex RequestSync skips enqueue when not stale', async () =
   };
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ OriginType: 'local', IfStale: true, Force: false });
     expect(jobId).toBe('');
     expect(enqueueCalled).toBe(false);
   } finally {
@@ -923,7 +921,7 @@ test('meta.MetaModuleIndex RequestSync(all) skips enqueue when both origins are 
   };
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ IfStale: true, Force: false });
     expect(jobId).toBe('');
     expect(enqueueCalled).toBe(false);
   } finally {
@@ -941,7 +939,7 @@ test('meta.MetaModuleIndex RequestSync(all) enqueues when stale', async () => {
   const restoreSearch = mockJobSearch([]);
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ IfStale: true, Force: false });
     expect(jobId).toBeTruthy();
   } finally {
     restoreSearch();
@@ -953,12 +951,12 @@ test('meta.MetaModuleIndex RequestSync ignores invalid running origin and enqueu
   resetRequestContext();
   ensureJobMock();
 
-  const restoreSearch = mockJobSearch([{ Id: 'job_running_bad_origin', PayloadJson: { originType: 'remote' } }]);
+  const restoreSearch = mockJobSearch([{ Id: 'job_running_bad_origin', PayloadJson: { req: { OriginType: 'remote' } } }]);
   const originalEnqueue = (Job as any).EnqueueJob;
   (Job as any).EnqueueJob = async () => ({ Id: 'job_after_skip_invalid_origin' });
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ OriginType: 'local', IfStale: true, Force: false });
     expect(jobId).toBe('job_after_skip_invalid_origin');
   } finally {
     (Job as any).EnqueueJob = originalEnqueue;
@@ -970,7 +968,7 @@ test('meta.MetaModuleIndex RequestSync reuses running job for non-force requests
   resetRequestContext();
   ensureJobMock();
 
-  const restoreSearch = mockJobSearch([{ Id: 'job_running_sync', PayloadJson: { originType: 'local' } }]);
+  const restoreSearch = mockJobSearch([{ Id: 'job_running_sync', PayloadJson: { req: { OriginType: 'local' } } }]);
   let enqueueCalled = false;
   const originalEnqueue = (Job as any).EnqueueJob;
   (Job as any).EnqueueJob = async () => {
@@ -979,7 +977,7 @@ test('meta.MetaModuleIndex RequestSync reuses running job for non-force requests
   };
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ OriginType: 'local', IfStale: true, Force: false });
     expect(jobId).toBe('job_running_sync');
     expect(enqueueCalled).toBe(false);
   } finally {
@@ -992,12 +990,12 @@ test('meta.MetaModuleIndex RequestSync ignores incompatible running origin and e
   resetRequestContext();
   ensureJobMock();
 
-  const restoreSearch = mockJobSearch([{ Id: 'job_running_registry', PayloadJson: { originType: 'registry' } }]);
+  const restoreSearch = mockJobSearch([{ Id: 'job_running_registry', PayloadJson: { req: { OriginType: 'registry' } } }]);
   const originalEnqueue = (Job as any).EnqueueJob;
   (Job as any).EnqueueJob = async () => ({ Id: 'job_local_sync' });
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    const jobId = await MetaModuleIndex.RequestSync({ OriginType: 'local', IfStale: true, Force: false });
     expect(jobId).toBe('job_local_sync');
   } finally {
     (Job as any).EnqueueJob = originalEnqueue;
@@ -1009,12 +1007,12 @@ test('meta.MetaModuleIndex RequestSync(force) does not reuse running job', async
   resetRequestContext();
   ensureJobMock();
 
-  const restoreSearch = mockJobSearch([{ Id: 'job_running_sync', PayloadJson: { originType: 'local' } }]);
+  const restoreSearch = mockJobSearch([{ Id: 'job_running_sync', PayloadJson: { req: { OriginType: 'local' } } }]);
   const originalEnqueue = (Job as any).EnqueueJob;
   (Job as any).EnqueueJob = async () => ({ Id: 'job_forced_sync' });
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ originType: 'local', force: true, ifStale: false });
+    const jobId = await MetaModuleIndex.RequestSync({ OriginType: 'local', Force: true, IfStale: false });
     expect(jobId).toBe('job_forced_sync');
   } finally {
     (Job as any).EnqueueJob = originalEnqueue;
@@ -1029,13 +1027,13 @@ test('meta.MetaModuleIndex RequestSync defaults null originType to all', async (
   const restoreSearch = mockJobSearch([]);
   const originalEnqueue = (Job as any).EnqueueJob;
   let enqueuedOrigin: unknown;
-  (Job as any).EnqueueJob = async (_app: string, _method: string, payload: any) => {
-    enqueuedOrigin = payload?.originType;
+  (Job as any).EnqueueJob = async (req: any) => {
+    enqueuedOrigin = req?.Payload?.req?.OriginType;
     return { Id: 'job_default_all_origin' };
   };
 
   try {
-    const jobId = await MetaModuleIndex.RequestSync({ originType: null as any, force: true, ifStale: false });
+    const jobId = await MetaModuleIndex.RequestSync({ OriginType: null as any, Force: true, IfStale: false });
     expect(jobId).toBe('job_default_all_origin');
     expect(enqueuedOrigin).toBe('all');
   } finally {
@@ -1049,7 +1047,7 @@ test('meta.MetaModuleIndex RequestSync rejects invalid originType', async () => 
   ensureJobMock();
 
   await expectAsyncErrorContains(
-    () => MetaModuleIndex.RequestSync({ originType: 'remote' as any, force: true, ifStale: false }),
+    () => MetaModuleIndex.RequestSync({ OriginType: 'remote' as any, Force: true, IfStale: false }),
     'originType'
   );
 });
@@ -1065,9 +1063,9 @@ test('meta.MetaModuleIndex Sync defaults omitted originType to all', async () =>
     return { ok: true };
   };
 
-  await MetaModuleIndex.Sync(undefined, false);
-  await MetaModuleIndex.Sync(null as any, true);
-  await MetaModuleIndex.Sync('local', false);
+  await MetaModuleIndex.Sync({});
+  await MetaModuleIndex.Sync({ OriginType: null as any, Force: true });
+  await MetaModuleIndex.Sync({ OriginType: 'local', Force: false });
 
   expect(seen).toEqual([
     { originType: 'all', force: false },
@@ -1087,7 +1085,7 @@ test('meta.MetaModuleIndex Sync rejects invalid originType before bridge call', 
     return { ok: true };
   };
 
-  await expectAsyncErrorContains(() => MetaModuleIndex.Sync('remote' as any, false), 'originType');
+  await expectAsyncErrorContains(() => MetaModuleIndex.Sync({ OriginType: 'remote' as any, Force: false }), 'originType');
   expect(called).toBe(false);
 });
 

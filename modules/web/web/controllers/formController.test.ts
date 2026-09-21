@@ -31,7 +31,7 @@ function newAttachmentService(attachmentObjectId = 'ao-test', uploadUrl = 'https
       },
     })),
     FinalizeUpload: asyncFnRecorder(async () => ({
-      attachmentObjectId,
+      AttachmentContentId: attachmentObjectId,
     })),
   };
 }

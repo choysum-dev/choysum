@@ -488,9 +488,9 @@ async function submitOperation() {
   try {
     let jobId = '';
     const moduleName = targetModule.value.ModuleName;
-    if (action.value === 'install') jobId = await (moduleStore as any).RequestInstall(moduleName, withDemo.value);
-    else if (action.value === 'uninstall') jobId = await (moduleStore as any).RequestUninstall(moduleName);
-    else jobId = await (moduleStore as any).RequestUpgrade(moduleName);
+    if (action.value === 'install') jobId = await (moduleStore as any).RequestInstall({ ModuleName: moduleName, WithDemo: withDemo.value });
+    else if (action.value === 'uninstall') jobId = await (moduleStore as any).RequestUninstall({ ModuleName: moduleName });
+    else jobId = await (moduleStore as any).RequestUpgrade({ ModuleName: moduleName });
     executeLoading.value = false;
     await opProgress.watch(jobId);
   } catch (error: any) {
@@ -543,7 +543,7 @@ async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
-    const jobId = await (store as any).RequestSync({ force: true, ifStale: false });
+    const jobId = await (store as any).RequestSync({ Force: true, IfStale: false });
     ElMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
   } catch (error: any) {
     ElMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
@@ -562,7 +562,7 @@ onBeforeUnmount(() => {
  */
 onMounted(async () => {
   try {
-    await (store as any).RequestSync({ ifStale: true });
+    await (store as any).RequestSync({ IfStale: true });
   } catch {
     // sync unavailable — silently skip, page remains usable
   }

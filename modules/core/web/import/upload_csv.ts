@@ -24,7 +24,7 @@ type PrepareUploadResp = {
 };
 
 type FinalizeUploadResp = {
-  attachmentObjectId?: string;
+  AttachmentContentId?: string;
 };
 
 type AttachmentContentServiceLike = {
@@ -189,9 +189,9 @@ export async function uploadImportCsv(options: UploadImportCsvOptions): Promise<
   await uploadToTarget(fieldName, prepared.uploadTarget, file, fetchImpl);
 
   const finalized = await service.FinalizeUpload({ uploadId, businessRequestId });
-  const sourceRef = normalizeOptionalString(finalized.attachmentObjectId);
+  const sourceRef = normalizeOptionalString(finalized.AttachmentContentId);
   if (!sourceRef) {
-    throw new Error('FinalizeUpload did not return attachmentObjectId');
+    throw new Error('FinalizeUpload did not return AttachmentContentId');
   }
   return sourceRef;
 }

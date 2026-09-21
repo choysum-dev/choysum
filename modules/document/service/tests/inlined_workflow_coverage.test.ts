@@ -133,7 +133,7 @@ test('inlined upload coverage: protected seams and finalize reuse partial conten
     await markUploaded(uploadId);
     const first = await AttachmentContentUploadProxy.FinalizeUploadInternal(uploadId);
     const replay = await AttachmentContentUploadProxy.FinalizeUploadInternal(uploadId);
-    expect(replay.attachmentObjectId).toBe(first.attachmentObjectId);
+    expect(replay.AttachmentContentId).toBe(first.AttachmentContentId);
   });
 });
 

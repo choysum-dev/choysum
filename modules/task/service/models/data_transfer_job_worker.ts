@@ -54,7 +54,7 @@ export async function executeImport(dataTransferJobId: string): Promise<Record<s
     throw new Error('import bridge is not available');
   }
   const report = await bridge.run(spec);
-  await DataTransferJob.FinalizeReport(id, report ?? {});
+  await DataTransferJob.FinalizeReport({ DataTransferJobId: id, Report: report ?? {} });
   return report ?? {};
 }
 
@@ -79,6 +79,6 @@ export async function executeExport(dataTransferJobId: string): Promise<Record<s
     throw new Error('export bridge is not available');
   }
   const report = await bridge.run(spec);
-  await DataTransferJob.FinalizeReport(id, report ?? {});
+  await DataTransferJob.FinalizeReport({ DataTransferJobId: id, Report: report ?? {} });
   return report ?? {};
 }

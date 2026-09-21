@@ -31,8 +31,17 @@ import {
   type ModuleIndexRecord,
   type ModuleOriginType,
   type ModuleSyncOriginType,
-  type RequestSyncParams,
+  type RequestSyncReq,
 } from './_module_index_query';
+
+export type SyncModuleIndexReq = {
+  OriginType?: ModuleSyncOriginType;
+  Force?: boolean;
+};
+
+export type SyncModuleIndexResp = {
+  Ok: boolean;
+};
 
 const Job = createServiceByModel<typeof JobModel>('task.Job');
 
@@ -60,7 +69,9 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
       }
     }
     const originValue =
-      payload && typeof payload === 'object' ? (payload as { originType?: unknown }).originType : undefined;
+      payload && typeof payload === 'object'
+        ? (payload as { req?: { OriginType?: unknown } }).req?.OriginType
+        : undefined;
     if (!String(originValue || '').trim()) continue;
 
     let runningOrigin: ModuleSyncOriginType;
@@ -312,10 +323,10 @@ export default class MetaModuleIndex extends BaseModel {
     return repository.readGroupCount(readGroupCountOptions as unknown as Parameters<typeof repository.readGroupCount>[0]);
   }
 
-  static async RequestSync(params: RequestSyncParams = {}): Promise<string> {
-    const originType = originTypeOrAll(params.originType);
-    const force = !!params.force;
-    const ifStale = !!params.ifStale;
+  static async RequestSync(req: RequestSyncReq = {}): Promise<string> {
+    const originType = originTypeOrAll(req.OriginType);
+    const force = !!req.Force;
+    const ifStale = !!req.IfStale;
     if (!force && !ifStale) return '';
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
@@ -371,8 +382,14 @@ export default class MetaModuleIndex extends BaseModel {
       }
     }
 
-    const userId = BaseModel.ensureUserId();
-    const job = await Job.EnqueueJob('meta', fullMethod, { originType, force }, userId, userId, undefined, 0, 0);
+    BaseModel.ensureUserId();
+    const job = await Job.EnqueueJob({
+      TargetApp: 'meta',
+      FullMethod: fullMethod,
+      Payload: { req: { OriginType: originType, Force: force } },
+      MaxAttempts: 0,
+      TimeoutMs: 0,
+    });
     return String((job as { Id?: unknown })?.Id || '').trim();
   }
 
@@ -384,7 +401,7 @@ export default class MetaModuleIndex extends BaseModel {
     return root.moduleManagement;
   }
 
-  static async Sync(originType?: ModuleSyncOriginType, force?: boolean): Promise<unknown> {
+  static async Sync(req: SyncModuleIndexReq = {}): Promise<SyncModuleIndexResp> {
     const bridge = this.getModuleManagementBridge();
     const syncIndex = bridge.syncIndex as (params: {
       originType?: ModuleSyncOriginType;
@@ -393,6 +410,7 @@ export default class MetaModuleIndex extends BaseModel {
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }
-    return await syncIndex({ originType: originTypeOrAll(originType), force: !!force });
+    await syncIndex({ originType: originTypeOrAll(req.OriginType), force: !!req.Force });
+    return { Ok: true };
   }
 }

@@ -18,6 +18,19 @@ import ModuleManagementLog from './module_management_log';
 
 const Job = createServiceByModel<typeof JobModel>('task.Job');
 
+export type RequestInstallReq = {
+  ModuleName: string;
+  WithDemo?: boolean;
+};
+
+export type RequestUninstallReq = {
+  ModuleName: string;
+};
+
+export type RequestUpgradeReq = {
+  ModuleName: string;
+};
+
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 type FailureKind = 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
 
@@ -49,7 +62,7 @@ type OpStatusResp = {
   createdAt?: Date;
   startedAt?: Date;
   finishedAt?: Date;
-  reload_web?: boolean;
+  ReloadWeb?: boolean;
   reload_triggered?: boolean;
   reload_failed?: boolean;
   moduleName?: string;
@@ -79,7 +92,7 @@ type ModuleOpResult = {
   errorMessage?: string;
   reload_triggered: boolean;
   reload_failed: boolean;
-  reload_web: boolean;
+  ReloadWeb: boolean;
   moduleName: string;
   action: ModuleAction;
   operatorUserId: string;
@@ -318,16 +331,16 @@ export default class MetaModule extends BaseModel {
     return { baseRevision, affectedModules, risks, blockers };
   }
 
-  static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
-    return this.enqueueModuleOp('install', moduleName, { withDemo: !!withDemo });
+  static async RequestInstall(req: RequestInstallReq): Promise<string> {
+    return this.enqueueModuleOp('install', req?.ModuleName, { withDemo: !!req?.WithDemo });
   }
 
-  static async RequestUninstall(moduleName: string): Promise<string> {
-    return this.enqueueModuleOp('uninstall', moduleName);
+  static async RequestUninstall(req: RequestUninstallReq): Promise<string> {
+    return this.enqueueModuleOp('uninstall', req?.ModuleName);
   }
 
-  static async RequestUpgrade(moduleName: string): Promise<string> {
-    return this.enqueueModuleOp('upgrade', moduleName);
+  static async RequestUpgrade(req: RequestUpgradeReq): Promise<string> {
+    return this.enqueueModuleOp('upgrade', req?.ModuleName);
   }
 
   private static ensureModuleName(name?: string): string {
@@ -343,7 +356,13 @@ export default class MetaModule extends BaseModel {
     const forceLockConflict = isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_FORCE_LOCK_CONFLICT', 'choysum_e2e_force_lock_conflict'));
 
     const payload: Record<string, unknown> = { moduleName: name, operatorUserId: userId, ...(extraPayload || {}) };
-    const job = await Job.EnqueueJob('meta', method, payload, userId, userId, undefined, 0, 0);
+    const job = await Job.EnqueueJob({
+      TargetApp: 'meta',
+      FullMethod: method,
+      Payload: payload,
+      MaxAttempts: 0,
+      TimeoutMs: 0,
+    });
     const jobId = String((job as { Id?: unknown })?.Id || '').trim();
 
     if (forceLockConflict && jobId) {
@@ -421,7 +440,7 @@ export default class MetaModule extends BaseModel {
       createdAt: job?.CreatedAt,
       startedAt: exec?.startedAt,
       finishedAt: job?.FinishedAt || exec?.finishedAt,
-      reload_web: result.reload_web as boolean | undefined,
+      ReloadWeb: result.ReloadWeb as boolean | undefined,
       reload_triggered: result.reload_triggered as boolean | undefined,
       reload_failed: result.reload_failed as boolean | undefined,
       moduleName: (result.moduleName || payload.moduleName) as string | undefined,
@@ -521,24 +540,24 @@ export default class MetaModule extends BaseModel {
 
     let reload_triggered = false;
     let reload_failed = false;
-    let reload_web = false;
+    let ReloadWeb = false;
     const skipReload = isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_RELOAD', 'choysum_e2e_skip_reload'));
     if (bridgeResult.ok && !skipReload) {
       try {
         const reloadResult = await bridge.reload();
         reload_triggered = !!reloadResult?.triggered;
         reload_failed = !!reloadResult?.failed;
-        reload_web = reload_triggered && !reload_failed;
+        ReloadWeb = reload_triggered && !reload_failed;
       } catch {
         reload_triggered = true;
         reload_failed = true;
-        reload_web = false;
+        ReloadWeb = false;
       }
     }
     if (forceReloadFailed) {
       reload_triggered = true;
       reload_failed = true;
-      reload_web = false;
+      ReloadWeb = false;
     }
 
     let job: Partial<Pick<JobModel, 'CreatedAt' | 'FinishedAt' | 'Attempt' | 'MaxAttempts'>> | undefined;
@@ -576,7 +595,7 @@ export default class MetaModule extends BaseModel {
       errorMessage,
       reload_triggered,
       reload_failed,
-      reload_web,
+      ReloadWeb,
       moduleName: name,
       action,
       operatorUserId,

@@ -11,7 +11,7 @@ export type ModuleOpStatusSnapshot = {
   failureKind?: 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
   reload_triggered?: boolean;
   reload_failed?: boolean;
-  reload_web?: boolean;
+  ReloadWeb?: boolean;
   retryAfterMs?: number;
   errorDomain?: string;
   errorCode?: string;
@@ -160,7 +160,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
       clearPoll();
       clearDeadline();
       hooks.onTerminal(status);
-      if (status.reload_web) {
+      if (status.ReloadWeb) {
         reloadWeb();
       }
     }

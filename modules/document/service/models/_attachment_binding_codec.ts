@@ -70,7 +70,7 @@ export type ResolvedDownloadSemantics = {
 
 export function assertBindReq(req: BindReq | undefined | null): NormalizedBindReq {
   return {
-    attachmentContentId: requireText(req?.attachmentObjectId, 'attachmentObjectId'),
+    attachmentContentId: requireText(req?.AttachmentContentId, 'AttachmentContentId'),
     ownerModel: requireText(req?.ownerModel, 'ownerModel'),
     ownerRecordId: requireText(req?.ownerRecordId, 'ownerRecordId'),
     fieldName: requireText(req?.fieldName, 'fieldName'),

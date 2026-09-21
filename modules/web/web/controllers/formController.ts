@@ -78,7 +78,7 @@ type PrepareUploadResp = {
 };
 
 type FinalizeUploadResp = {
-  attachmentObjectId?: string;
+  AttachmentContentId?: string;
 };
 
 type AttachmentContentServiceLike = {
@@ -482,9 +482,9 @@ async function resolveUploadInputToObjectId(
     });
   });
 
-  const attachmentObjectId = normalizeOptionalString(finalized?.attachmentObjectId);
+  const attachmentObjectId = normalizeOptionalString(finalized?.AttachmentContentId);
   if (!attachmentObjectId) {
-    throw new Error(`[Attachment] ${fieldName}: FinalizeUpload did not return attachmentObjectId.`);
+    throw new Error(`[Attachment] ${fieldName}: FinalizeUpload did not return AttachmentContentId.`);
   }
 
   return attachmentObjectId;

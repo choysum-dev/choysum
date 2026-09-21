@@ -683,13 +683,13 @@ test('document.attachment_object: FinalizeUpload creates active object and suppo
       businessRequestId});
 
     expect(finalized.status).toBe('active');
-    expect(finalized.attachmentObjectId).toBeTruthy();
+    expect(finalized.AttachmentContentId).toBeTruthy();
     expect(finalized.mimeType).toBe('text/plain');
 
     const replay = await AttachmentObject.FinalizeUpload({
       uploadId: prepared.uploadId,
       businessRequestId});
-    expect(replay.attachmentObjectId).toBe(finalized.attachmentObjectId);
+    expect(replay.AttachmentContentId).toBe(finalized.AttachmentContentId);
   });
 });
 
@@ -735,7 +735,7 @@ test('document.attachment_object: FinalizeUpload accepts stored_content payload 
       uploadId: prepared.uploadId,
       businessRequestId});
 
-    const reloaded = await loadAttachmentObjectById(finalized.attachmentObjectId);
+    const reloaded = await loadAttachmentObjectById(finalized.AttachmentContentId);
     expect(String(reloaded.StoredContentId || '')).toBe(storedContentId);
     expect(String(reloaded.BlobData || '')).toBe('hello');
   });
@@ -858,7 +858,7 @@ test('document.attachment_object: FinalizeUpload reuses stored_content payload r
         uploadId: prepared.uploadId,
         businessRequestId});
 
-      const reloaded = await loadAttachmentObjectById(finalized.attachmentObjectId);
+      const reloaded = await loadAttachmentObjectById(finalized.AttachmentContentId);
       expect(String(reloaded.Backend || '')).toBe('s3');
       expect(reloaded.LocatorJson).toMatchObject({ bucket: stagingRef.bucket, key: stagingRef.key });
       expect(reloaded.BlobData === null || reloaded.BlobData === undefined || reloaded.BlobData === '').toBe(true);

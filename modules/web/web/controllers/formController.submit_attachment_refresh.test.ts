@@ -27,7 +27,7 @@ function newAttachmentService() {
       uploadId: 'up_1',
       uploadTarget: { method: 'PUT', url: '/_document/uploads/up_1' },
     })),
-    FinalizeUpload: asyncFnRecorder(async () => ({ attachmentObjectId: 'ao_1' })),
+    FinalizeUpload: asyncFnRecorder(async () => ({ AttachmentContentId: 'ao_1' })),
   };
 }
 

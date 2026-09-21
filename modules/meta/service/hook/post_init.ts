@@ -37,16 +37,27 @@ function needsUpdate(existing: Partial<Schedule>): boolean {
 }
 
 async function listScheduleByName(name: string): Promise<Array<Partial<Schedule>>> {
-  const items = await ScheduleService.ListSchedules(condition({ And: [['Name', '=', name]] }), { limit: 1 });
+  const items = await ScheduleService.Search(condition({ And: [['Name', '=', name]] }), { limit: 1 });
   return Array.isArray(items) ? items : [];
 }
 
 async function createSchedule(): Promise<void> {
-  await ScheduleService.CreateSchedule(scheduleName, targetApp, fullMethod, payloadTemplate, 'admin', 'admin', cronExpr, timezone, 0);
+  await ScheduleService.Create({
+    Active: true,
+    Name: scheduleName,
+    TargetApp: targetApp,
+    FullMethod: fullMethod,
+    PayloadTemplateJson: payloadTemplate,
+    SchedulerUserId: 'admin',
+    TriggeredByUserId: 'admin',
+    CronExpr: cronExpr,
+    Timezone: timezone,
+    TimeoutMs: 0,
+  });
 }
 
 async function updateSchedule(scheduleId: string): Promise<void> {
-  await ScheduleService.UpdateSchedule(scheduleId, {
+  await ScheduleService.UpdateById(scheduleId, {
     Active: true,
     CronExpr: cronExpr,
     Timezone: timezone,

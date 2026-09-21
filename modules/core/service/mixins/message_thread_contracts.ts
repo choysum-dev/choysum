@@ -12,7 +12,7 @@ export type MessageThreadPostReq = {
   Body: string;
   Type?: string | null;
   CompanyId?: string | null;
-  AttachmentObjectId?: string | null;
+  AttachmentContentId?: string | null;
   AttachmentMutationId?: string | null;
 };
 

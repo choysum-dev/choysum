@@ -252,12 +252,12 @@ test('message.Message: Post binds attachment via document Binding dial seam', as
       Model: 'partner.Partner',
       ResId: uid('res'),
       Body: 'with file',
-      AttachmentObjectId: 'att_obj_fixture_____',
+      AttachmentContentId: 'att_obj_fixture_____',
       AttachmentMutationId: 'mut_fixture________',
     });
 
     expect(binds.length).toBe(1);
-    expect(binds[0].attachmentObjectId).toBe('att_obj_fixture_____');
+    expect(binds[0].AttachmentContentId).toBe('att_obj_fixture_____');
     expect(binds[0].ownerModel).toBe('message.Message');
     expect(binds[0].ownerRecordId).toBe(String((row as any).Id));
     expect(binds[0].fieldName).toBe(MESSAGE_ATTACHMENT_FIELD);
@@ -270,7 +270,7 @@ test('message.Message: Post binds attachment via document Binding dial seam', as
         Model: 'partner.Partner',
         ResId: uid('res'),
         Body: 'blank mutation',
-        AttachmentObjectId: 'att_obj_blankmut______',
+        AttachmentContentId: 'att_obj_blankmut______',
         AttachmentMutationId: '   ',
       },
       ['Id', 'Body']
@@ -285,7 +285,7 @@ test('message.Message: Post binds attachment via document Binding dial seam', as
         Model: 'partner.Partner',
         ResId: uid('res'),
         Body: 'slim fields',
-        AttachmentObjectId: 'att_obj_slim________',
+        AttachmentContentId: 'att_obj_slim________',
       },
       ['Body', 'Type']
     );
@@ -308,7 +308,7 @@ test('message.Message: Post fails closed when attachment Bind is unavailable or 
         Model: 'partner.Partner',
         ResId: resMissing,
         Body: 'x',
-        AttachmentObjectId: 'att_missing_________',
+        AttachmentContentId: 'att_missing_________',
       });
     } catch (e) {
       missingErr = e;
@@ -328,7 +328,7 @@ test('message.Message: Post fails closed when attachment Bind is unavailable or 
         Model: 'partner.Partner',
         ResId: resBoom,
         Body: 'x',
-        AttachmentObjectId: 'att_boom____________',
+        AttachmentContentId: 'att_boom____________',
       });
     } catch (e) {
       boomErr = e;
@@ -349,7 +349,7 @@ test('message.Message: Post fails closed when attachment Bind is unavailable or 
         Model: 'partner.Partner',
         ResId: resLive,
         Body: 'x',
-        AttachmentObjectId: 'att_live_____________',
+        AttachmentContentId: 'att_live_____________',
       });
     } catch (e) {
       liveErr = e;
@@ -428,7 +428,7 @@ test('message.Message: Post via dialOverride Bind with CompanyId and star fields
         ResId: uid('res'),
         Body: 'company+star',
         CompanyId: companyId,
-        AttachmentObjectId: 'att_star_____________',
+        AttachmentContentId: 'att_star_____________',
       },
       ['*']
     );
@@ -448,7 +448,7 @@ test('message.Message: Post fails closed when dial Bind is missing or dial throw
         Model: 'partner.Partner',
         ResId: uid('res'),
         Body: 'x',
-        AttachmentObjectId: 'att_nobind___________',
+        AttachmentContentId: 'att_nobind___________',
       });
     } catch (e) {
       noBindErr = e;
@@ -464,7 +464,7 @@ test('message.Message: Post fails closed when dial Bind is missing or dial throw
         Model: 'partner.Partner',
         ResId: uid('res'),
         Body: 'x',
-        AttachmentObjectId: 'att_dialthrow________',
+        AttachmentContentId: 'att_dialthrow________',
       });
     } catch (e) {
       dialThrowErr = e;
@@ -488,7 +488,7 @@ test('message.Message: Post surfaces ATTACHMENT_BIND_FAILED when Bind throw is n
         Model: 'partner.Partner',
         ResId: uid('res'),
         Body: 'x',
-        AttachmentObjectId: 'att_nonerr____________',
+        AttachmentContentId: 'att_nonerr____________',
       });
     } catch (e) {
       nonErrorBindErr = e;
@@ -516,7 +516,7 @@ test('message.Message: Post refuses Bind when Create returns without Id', async 
         Model: 'partner.Partner',
         ResId: uid('res'),
         Body: 'x',
-        AttachmentObjectId: 'att_noid______________',
+        AttachmentContentId: 'att_noid______________',
       });
     } catch (e) {
       missingIdErr = e;
@@ -540,7 +540,7 @@ test('message.Message: Post generates mutationId when xid seam is unavailable or
       Model: 'partner.Partner',
       ResId: uid('res'),
       Body: 'no-xid',
-      AttachmentObjectId: 'att_noxid_____________',
+      AttachmentContentId: 'att_noxid_____________',
     });
     expect(String(noXidBinds[0].mutationId || '').length).toBeGreaterThan(0);
     expect(String(noXidBinds[0].mutationId).length).toBeLessThanOrEqual(20);
@@ -555,7 +555,7 @@ test('message.Message: Post generates mutationId when xid seam is unavailable or
       Model: 'partner.Partner',
       ResId: uid('res'),
       Body: 'blank-xid',
-      AttachmentObjectId: 'att_blankxid__________',
+      AttachmentContentId: 'att_blankxid__________',
     });
     expect(String(blankXidBinds[0].mutationId || '').length).toBeGreaterThan(0);
     expect(String(blankXidBinds[0].mutationId).length).toBeLessThanOrEqual(20);
@@ -666,7 +666,7 @@ test('message.Message: Post does not publish tip when attachment bind fails', as
         Model: 'partner.Partner',
         ResId: uid('res'),
         Body: 'with attach',
-        AttachmentObjectId: 'att_fail________________',
+        AttachmentContentId: 'att_fail________________',
       });
     } catch (e) {
       err = e;
