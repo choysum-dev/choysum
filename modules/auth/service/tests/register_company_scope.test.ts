@@ -186,3 +186,51 @@ test('Register: rejects non-object payloads and non-object User', async () => {
   await expectValidationFailed(() => User.Register({ User: { Username: 'x' } } as any));
   await expectValidationFailed(() => User.Register({ User: { Username: 'x' }, Password: '' } as any));
 });
+
+test('Register: strips server-managed fields from User payload', async () => {
+  resetRequestContext();
+  setupAllowlistForRegister();
+
+  const username = uid('register_strip');
+  const email = `${uid('register_strip_mail')}@example.com`;
+
+  const registered = await withModelContext(
+    {} as any,
+    async () => {
+      return await User.Register({
+        User: {
+          Username: username,
+          Email: email,
+          FirstName: 'Strip',
+          LastName: 'Test',
+          // Over-posted server-managed columns must be ignored.
+          CompanyId: 'cmp_spoof___________',
+          Preferences: { activeCompanyId: 'cmp_spoof___________' },
+          Id: 'usr_spoof_____________',
+        } as any,
+        Password: 'password-123',
+      });
+    },
+    { merge: false }
+  );
+  const userId = String(registered.UserId || '').trim();
+  expect(userId === '').toBe(false);
+  expect(userId).not.toBe('usr_spoof_____________');
+
+  const mainCompanyId = await withModelContext(
+    {} as any,
+    async () => {
+      const rows = await CompanyService.Search(['Code', '=', 'MAIN'] as any, { fields: ['Id'], limit: 1 } as any);
+      return String((rows as any)?.[0]?.Id || '').trim();
+    },
+    { merge: false }
+  );
+
+  const user = await withModelContext(
+    { activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] } as any,
+    async () => User.Browse(userId, ['Id', 'CompanyId', 'Preferences'] as any),
+    { merge: false }
+  );
+  expect((user as any).CompanyId).toBe(mainCompanyId);
+  expect((user as any).Preferences?.activeCompanyId).toBe(mainCompanyId);
+});

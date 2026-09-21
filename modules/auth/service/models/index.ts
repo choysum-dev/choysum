@@ -11,6 +11,7 @@ export type {
   RefreshTokensReq,
   RegisterReq,
   RegisterResp,
+  RegisterUserInput,
   SwitchCompanyScopeReq,
 } from './user/user';
 export { default as Session } from './session';

@@ -45,14 +45,20 @@ import {
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
 } from './_lifecycle_auth';
-import type {
-  LoginReq,
-  LogoutReq,
-  RefreshTokensReq,
-  RegisterReq,
-  RegisterResp,
-  SwitchCompanyScopeReq,
+import {
+  pickRegisterUserInput,
+  type LoginReq,
+  type LogoutReq,
+  type RefreshTokensReq,
+  type RegisterReq,
+  type RegisterResp,
+  type SwitchCompanyScopeReq,
 } from './_session_envelopes';
+import { buildAclAggregation } from './_permission_state_acl';
+import { buildUiPermissionProjection } from './_permission_state_ui';
+import { evaluateFieldRules } from './_field_rule_eval';
+import { evaluateRecordRuleCondition } from './_record_rule_eval';
+import { buildAuthzContext, computePermStateVersion } from './_authz_context';
 
 export type {
   LoginReq,
@@ -60,6 +66,7 @@ export type {
   RefreshTokensReq,
   RegisterReq,
   RegisterResp,
+  RegisterUserInput,
   SwitchCompanyScopeReq,
 } from './_session_envelopes';
 
@@ -71,12 +78,6 @@ function requireSessionEnvelope(req: unknown, verb: string): asserts req is Reco
     }).withGrpcCode(GrpcCode.InvalidArgument);
   }
 }
-
-import { buildAclAggregation } from './_permission_state_acl';
-import { buildUiPermissionProjection } from './_permission_state_ui';
-import { evaluateFieldRules } from './_field_rule_eval';
-import { evaluateRecordRuleCondition } from './_record_rule_eval';
-import { buildAuthzContext, computePermStateVersion } from './_authz_context';
 
 /**
  * Auth user model with identity, token, and company-scope operations.
@@ -401,7 +402,7 @@ export default class User extends AttachmentOwnerMixin {
         message: _t('Register requires a password string', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    const userData = req.User as Partial<Insertable<User>>;
+    const userData = pickRegisterUserInput(req.User as Record<string, unknown>);
     const password = req.Password;
     const passwordHash = validateAndHashRegistrationInput(userData, password);
     await ensureRegistrationIdentityUnique(userData, {
@@ -417,7 +418,7 @@ export default class User extends AttachmentOwnerMixin {
       });
 
       const userId = ensureCreatedUserIdOrThrow(created?.Id);
-      await provisionRegisteredUserBaseline(userId, userData?.Preferences, {
+      await provisionRegisteredUserBaseline(userId, undefined, {
         updateUserCompanyContext: async values => {
           await this.UpdateById(userId, values as Partial<Insertable<User>>, ['Id']);
         },

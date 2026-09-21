@@ -19,11 +19,19 @@ export type LoginReq = {
 };
 
 /**
+ * Anonymous-callable Register user fields. Server-managed columns
+ * (Id, Company*, PasswordHash, Preferences, roles, …) are intentionally excluded.
+ */
+export type RegisterUserInput = Partial<
+  Pick<Insertable<User>, 'Username' | 'Email' | 'FirstName' | 'LastName' | 'Language' | 'Timezone'>
+>;
+
+/**
  * Register input. Result is frozen as B: `{ UserId }` (not TokenPair);
  * clients that want a session call Login after Register.
  */
 export type RegisterReq = {
-  User: Partial<Insertable<User>>;
+  User: RegisterUserInput;
   Password: string;
 };
 
@@ -46,3 +54,16 @@ export type LogoutReq = {
   AllDevices?: boolean;
   DeviceInfo?: string;
 };
+
+const REGISTER_USER_KEYS = ['Username', 'Email', 'FirstName', 'LastName', 'Language', 'Timezone'] as const;
+
+/** Keep only anonymous-callable Register fields (runtime over-posting guard). */
+export function pickRegisterUserInput(raw: Record<string, unknown>): RegisterUserInput {
+  const out: Record<string, unknown> = {};
+  for (const key of REGISTER_USER_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(raw, key) && raw[key] !== undefined) {
+      out[key] = raw[key];
+    }
+  }
+  return out as RegisterUserInput;
+}

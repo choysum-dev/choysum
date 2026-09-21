@@ -160,7 +160,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         ...additionalData,
       };
       // Register.vue historically passed camelCase fullName; map to FirstName when present.
-      if (typeof userData.fullName === 'string' && userData.fullName.trim() && userData.FirstName == null) {
+      if (typeof userData.fullName === 'string' && userData.fullName.trim() && !userData.FirstName) {
         userData.FirstName = String(userData.fullName).trim();
       }
       delete userData.fullName;
