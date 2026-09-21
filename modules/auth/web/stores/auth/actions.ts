@@ -166,10 +166,17 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       delete userData.fullName;
 
       // Forward the hashed password to the backend Register RPC (shape B: { UserId }).
-      return await state.userStore.Register({
+      const result = await state.userStore.Register({
         User: userData as any,
         Password: hashedPassword,
       });
+      if (!result || !(result as any).UserId) {
+        throw newAuthError({
+          code: AuthErrCode.REGISTRATION_FAILED,
+          message: _t('Register returned an invalid response'),
+        });
+      }
+      return result;
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.REGISTRATION_FAILED,

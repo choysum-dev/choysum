@@ -181,6 +181,7 @@ test('Register: rejects non-object payloads and non-object User', async () => {
   await expectValidationFailed(() => User.Register([] as any));
   await expectValidationFailed(() => User.Register({ User: 'bad', Password: 'x' } as any));
   await expectValidationFailed(() => User.Register({ User: ['bad'], Password: 'x' } as any));
+  await expectValidationFailed(() => User.Register({ User: null, Password: 'x' } as any));
   await expectValidationFailed(() => User.Register({ User: { Username: 'x' }, Password: 123 as any }));
   await expectValidationFailed(() => User.Register({ User: { Username: 'x' } } as any));
 });
