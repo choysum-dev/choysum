@@ -276,7 +276,7 @@ func scopeChoyUtilityCSS(css, scope string) string {
 			// Declaration-body at-rules keep their blocks verbatim.
 			case "property", "keyframes", "-webkit-keyframes", "font-face", "counter-style", "font-feature-values", "page", "viewport":
 			default:
-				if brace := strings.IndexByte(rest, '{'); brace >= 0 && brace < end {
+				if brace := indexCSSOpenBrace(rest, end); brace >= 0 {
 					out.WriteString(rest[:brace+1])
 					out.WriteString(scopeChoyUtilityCSS(rest[brace+1:end-1], scope))
 					out.WriteString("}")
@@ -412,6 +412,37 @@ func indexCSSBareAtRuleSemi(rest string) int {
 			return i
 		case c == '{' && depth == 0:
 			return -1
+		}
+	}
+	return -1
+}
+
+// indexCSSOpenBrace returns the index of the first '{' in css[:limit] that is
+// outside quotes and /* */ comments. Returns -1 when none is found.
+func indexCSSOpenBrace(css string, limit int) int {
+	if limit < 0 || limit > len(css) {
+		limit = len(css)
+	}
+	var quote byte
+	for i := 0; i < limit; i++ {
+		c := css[i]
+		switch {
+		case quote != 0:
+			if c == '\\' {
+				i++
+			} else if c == quote {
+				quote = 0
+			}
+		case c == '\'' || c == '"':
+			quote = c
+		case c == '/' && i+1 < limit && css[i+1] == '*':
+			end := strings.Index(css[i+2:limit], "*/")
+			if end < 0 {
+				return -1
+			}
+			i += end + 3
+		case c == '{':
+			return i
 		}
 	}
 	return -1

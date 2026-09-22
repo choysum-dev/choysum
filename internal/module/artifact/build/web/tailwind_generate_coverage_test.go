@@ -531,6 +531,24 @@ func TestScopeChoyUtilityCSS(t *testing.T) {
 		t.Fatalf("expected nested .flex scoped inside @media:\n%s", got)
 	}
 
+	// '{' inside a prelude comment/quote must not be treated as the block opener.
+	preludeNoise := `@media /* { */ (min-width: 0) { .gap-1 { gap: 0.25rem; } }`
+	got = scopeChoyUtilityCSS(preludeNoise, choyGalleryRootSelector)
+	if !strings.Contains(got, "/* { */") {
+		t.Fatalf("prelude comment must stay intact:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .gap-1") {
+		t.Fatalf("nested selector must still scope when prelude has comment brace:\n%s", got)
+	}
+	quotedPrelude := `@supports (content: "{") { .italic { font-style: italic; } }`
+	got = scopeChoyUtilityCSS(quotedPrelude, choyGalleryRootSelector)
+	if !strings.Contains(got, `content: "{"`) {
+		t.Fatalf("quoted brace in prelude must stay intact:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .italic") {
+		t.Fatalf("nested selector must still scope when prelude has quoted brace:\n%s", got)
+	}
+
 	where := ":where(.dark, .dark *) .text-sm {\n  font-size: 14px;\n}\n"
 	got = scopeChoyUtilityCSS(where, choyGalleryRootSelector)
 	if !strings.Contains(got, ":where(.dark, .dark *)") {
@@ -595,6 +613,15 @@ func TestScopeChoyUtilityCSSEdgeBranches(t *testing.T) {
 	}
 	if indexCSSBlockEnd("{ /* unterminated") != -1 {
 		t.Fatal("unterminated comment => -1")
+	}
+	if indexCSSOpenBrace(`@media /* { */ (x) {`, 100) != strings.LastIndexByte(`@media /* { */ (x) {`, '{') {
+		t.Fatal("open brace must skip comment")
+	}
+	if indexCSSOpenBrace(`@supports (content: "{") {`, 100) != strings.LastIndexByte(`@supports (content: "{") {`, '{') {
+		t.Fatal("open brace must skip quoted {")
+	}
+	if indexCSSOpenBrace("no-brace", 8) != -1 {
+		t.Fatal("expected no open brace")
 	}
 }
 

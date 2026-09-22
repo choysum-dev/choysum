@@ -665,6 +665,7 @@ func TestIsChoyTailwindGeneratedKitPath(t *testing.T) {
 		{"choy_ui/web/styles/" + choyTailwindGeneratedCSSName, true},
 		{"choy_ui/web/" + choyTailwindGeneratedCSSName, true},
 		{"other/web/styles/" + choyTailwindGeneratedCSSName, false},
+		{"choy_ui_extra/web/styles/" + choyTailwindGeneratedCSSName, false},
 		{"choy_ui/web/styles/other.css", false},
 		{"not-the-file.css", false},
 	}
@@ -681,6 +682,11 @@ func TestChoyTailwindGoModuleVersion(t *testing.T) {
 	readBuildInfo = func() (*debug.BuildInfo, bool) { return nil, false }
 	if got := choyTailwindGoModuleVersion(); got != "" {
 		t.Fatalf("!ok => empty, got %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) { return nil, true }
+	if got := choyTailwindGoModuleVersion(); got != "" {
+		t.Fatalf("nil BuildInfo => empty, got %q", got)
 	}
 
 	readBuildInfo = func() (*debug.BuildInfo, bool) {

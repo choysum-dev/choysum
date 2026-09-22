@@ -244,7 +244,7 @@ var readBuildInfo = debug.ReadBuildInfo
 // Prefer replace directives when present (local path or pinned replace version).
 func choyTailwindGoModuleVersion() string {
 	bi, ok := readBuildInfo()
-	if !ok {
+	if !ok || bi == nil {
 		return ""
 	}
 	for _, dep := range bi.Deps {
