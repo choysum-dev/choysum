@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+      # Integration branch for stacked Choy UI kit PRs (e.g. #430 → feat/choy-ui-kit → main).
+      - feat/choy-ui-kit
   merge_group:
     types:
       - checks_requested
