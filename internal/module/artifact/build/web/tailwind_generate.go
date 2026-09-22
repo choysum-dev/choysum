@@ -243,6 +243,18 @@ func scopeChoyUtilityCSS(css, scope string) string {
 			rest = rest[end:]
 			continue
 		}
+		// A leading comment may contain '{'; emit it verbatim so it is not
+		// mistaken for the selector boundary and prefixed with the scope.
+		if strings.HasPrefix(rest, "/*") {
+			end := strings.Index(rest, "*/")
+			if end < 0 {
+				out.WriteString(rest)
+				break
+			}
+			out.WriteString(rest[:end+2])
+			rest = rest[end+2:]
+			continue
+		}
 		brace := strings.IndexByte(rest, '{')
 		if brace < 0 {
 			out.WriteString(rest)

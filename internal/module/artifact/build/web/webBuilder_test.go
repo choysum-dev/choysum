@@ -4668,10 +4668,10 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Chmod(styles, 0o555); err != nil {
+		// Directory at the generated CSS path forces rename failure without chmod.
+		if err := os.Mkdir(filepath.Join(styles, "choy-tailwind.generated.css"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = os.Chmod(styles, 0o755) })
 
 		builder := &WebModuleBuilder{
 			runtimeScope: testRuntimeScope,
@@ -4688,12 +4688,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 			buildPlugin:    &buildTestPlugin{},
 		}
 		_, err := builder.BuildCtx(context.Background())
-		_ = os.Chmod(styles, 0o755)
-		if err == nil {
-			t.Log("read-only styles dir did not fail the build (e.g. running as root); skipping assertion")
-			return
-		}
-		if !strings.Contains(err.Error(), "Error generating choy_ui Tailwind CSS") {
+		if err == nil || !strings.Contains(err.Error(), "Error generating choy_ui Tailwind CSS") {
 			t.Fatalf("expected wrapped tailwind error, got %v", err)
 		}
 	})

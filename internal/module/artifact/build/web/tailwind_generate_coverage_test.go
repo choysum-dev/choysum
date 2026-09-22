@@ -327,15 +327,14 @@ func TestGenerateChoyTailwindForModuleWriteFailure(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Read-only styles dir → atomic write CreateTemp fails.
-	if err := os.Chmod(styles, 0o555); err != nil {
+	// Make the output path a directory so the final rename fails regardless
+	// of runner privileges (unlike chmod, which root bypasses).
+	if err := os.Mkdir(filepath.Join(styles, choyTailwindGeneratedCSSName), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(styles, 0o755) })
 	_, err := GenerateChoyTailwindForModule(root)
-	_ = os.Chmod(styles, 0o755)
 	if err == nil {
-		t.Log("read-only styles dir did not fail (e.g. running as root); skipping assertion")
+		t.Fatal("expected write failure when output path is a directory")
 	}
 }
 
@@ -652,5 +651,20 @@ func TestScopeChoyUtilityCSSBareAtRules(t *testing.T) {
 	got = scopeChoyUtilityCSS(in, choyGalleryRootSelector)
 	if !strings.Contains(got, choyGalleryRootSelector+" .p-1") {
 		t.Fatalf("@charset statement must not swallow following rule:\n%s", got)
+	}
+	in = `/* { not a brace } */ .m-1 { margin: 0.25rem; }`
+	got = scopeChoyUtilityCSS(in, choyGalleryRootSelector)
+	if !strings.Contains(got, "/* { not a brace } */") {
+		t.Fatalf("leading comment must be preserved:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .m-1") {
+		t.Fatalf("rule after leading comment must still be scoped:\n%s", got)
+	}
+	if strings.Contains(got, choyGalleryRootSelector+" /*") {
+		t.Fatalf("comment must not be prefixed as a selector:\n%s", got)
+	}
+	got = scopeChoyUtilityCSS("/* unterminated", choyGalleryRootSelector)
+	if got != "/* unterminated" {
+		t.Fatalf("unterminated comment copied through: %q", got)
 	}
 }
