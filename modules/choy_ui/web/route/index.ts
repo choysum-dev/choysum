@@ -9,7 +9,7 @@ import { choyUiRoutes } from './routes';
  */
 export function setupRouter(app: ChoysumWebApp): void {
   const router = app.router;
-	if !router.hasRoute('AppLayout') {
+  if (!router.hasRoute('AppLayout')) {
     // Host web shell has not registered the layout yet (or never will).
     console.warn('[choy_ui] AppLayout route is not registered; gallery routes were skipped');
     return;

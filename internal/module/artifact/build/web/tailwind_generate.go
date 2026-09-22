@@ -509,7 +509,16 @@ func TailwindInputDigest(modulesPath string) (dialectHash, contentHash string, e
 	}
 	root := filepath.Join(modulesPath, "choy_ui")
 	webRoot := filepath.Join(root, "web")
+	if st, statErr := os.Stat(webRoot); statErr != nil || !st.IsDir() {
+		if statErr != nil && !os.IsNotExist(statErr) {
+			return "", "", statErr
+		}
+		return "", "", nil
+	}
 	dialectPath := filepath.Join(webRoot, "styles", "theme.css")
+	if st, statErr := os.Stat(dialectPath); statErr == nil && st.IsDir() {
+		return "", "", nil
+	}
 	dialectBytes, err := os.ReadFile(dialectPath)
 	if err != nil {
 		if os.IsNotExist(err) {
