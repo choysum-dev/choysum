@@ -25,7 +25,7 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 
 // webInputDigestSchema invalidates stamped digests when the digest algorithm or
 // embedded web toolchain contract changes across choysum binaries.
-const webInputDigestSchema = "web-input-digest-v5"
+const webInputDigestSchema = "web-input-digest-v6"
 
 // WebInputDigestInputs are the compile flags and module roots that affect dist/web.
 type WebInputDigestInputs struct {
@@ -108,6 +108,15 @@ func ComputeWebInputDigest(in WebInputDigestInputs) (string, error) {
 	if modulesPath := strings.TrimSpace(in.ModulesPath); modulesPath != "" {
 		if err := hashWebSourceTree(h, filepath.Join(modulesPath, "api", "web")); err != nil {
 			return "", err
+		}
+		// Dialect + class candidates (not the generated CSS file) so rebuild skip
+		// stays stable across regenerations with identical inputs.
+		dialectHash, contentHash, err := TailwindInputDigest(modulesPath)
+		if err != nil {
+			return "", err
+		}
+		if dialectHash != "" || contentHash != "" {
+			_, _ = fmt.Fprintf(h, "choy_tailwind_dialect=%s\nchoy_tailwind_content=%s\n", dialectHash, contentHash)
 		}
 	}
 	refs := append([]webEntryRef(nil), in.WebEntryPoints...)
@@ -197,6 +206,11 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 			".woff", ".woff2", ".ttf", ".otf", ".eot", ".wasm",
 			".mp4", ".webm", ".mp3":
 		default:
+			return nil
+		}
+		// Generated Tailwind utilities are derived from dialect + candidates already
+		// hashed via TailwindInputDigest; hashing the output would thrash digests.
+		if strings.HasSuffix(filepath.Base(path), ".generated.css") {
 			return nil
 		}
 		return hashFile(h, path)

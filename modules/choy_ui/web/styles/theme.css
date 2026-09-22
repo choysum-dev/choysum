@@ -1,0 +1,24 @@
+/*
+ * Tailwind v4 dialect for Choy UI (Go interpreter LoadCSS input).
+ * Maps utility color names onto --choy-* tokens. Isolation builds must not
+ * enable product-wide preflight against Element Plus pages (see preflight-policy.css).
+ */
+
+@theme {
+  --color-primary: var(--choy-color-primary);
+  --color-success: var(--choy-color-success);
+  --color-warning: var(--choy-color-warning);
+  --color-danger: var(--choy-color-danger);
+  --color-info: var(--choy-color-info);
+  --color-foreground: var(--choy-color-foreground);
+  --color-background: var(--choy-color-background);
+  --color-muted: var(--choy-color-muted);
+  --color-border: var(--choy-color-border);
+  --color-ring: var(--choy-color-ring);
+
+  --radius-sm: var(--choy-radius-sm);
+  --radius-md: var(--choy-radius-md);
+  --radius-lg: var(--choy-radius-lg);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));

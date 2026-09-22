@@ -1,0 +1,14 @@
+/*
+ * Isolation-period CSS policy for choy_ui gallery.
+ * Do not apply Tailwind preflight to product ERP pages that still load Element Plus.
+ * Gallery scopes its own minimal reset below; generated utilities omit FullCSS preflight.
+ */
+
+.choy-gallery-root,
+.choy-gallery-root * {
+  box-sizing: border-box;
+}
+
+.choy-gallery-root {
+  min-height: 100vh;
+}

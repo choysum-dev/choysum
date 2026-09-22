@@ -213,6 +213,26 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 		t.Fatalf("ForceRebuild must still return a stampable digest, got %q (%v)", forced, err)
 	}
 
+	choyStyles := filepath.Join(root, "choy_ui", "web", "styles")
+	if err := os.MkdirAll(choyStyles, 0o755); err != nil {
+		t.Fatalf("mkdir choy styles: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(choyStyles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatalf("write theme: %v", err)
+	}
+	in.ForceRebuild = false
+	withTailwind, err := ComputeWebInputDigest(in)
+	if err != nil || withTailwind == e {
+		t.Fatalf("choy_ui dialect should alter digest: %q vs %q (%v)", e, withTailwind, err)
+	}
+	if err := os.WriteFile(filepath.Join(choyStyles, "choy-tailwind.generated.css"), []byte("/* noise */\n.flex{}\n"), 0o644); err != nil {
+		t.Fatalf("write generated: %v", err)
+	}
+	afterGenerated, err := ComputeWebInputDigest(in)
+	if err != nil || afterGenerated != withTailwind {
+		t.Fatalf("*.generated.css must not alter digest: %q vs %q (%v)", withTailwind, afterGenerated, err)
+	}
+
 	// Empty roots / "." must not walk the process cwd.
 	empty, err := ComputeWebInputDigest(WebInputDigestInputs{
 		WebEntryPoints: []webEntryRef{{ModuleName: "x", EntryPath: "", ModulePath: "."}},
