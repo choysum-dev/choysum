@@ -41,7 +41,7 @@ type ChoyTailwindGenerateResult struct {
 	OutputPath     string
 }
 
-// ScanTailwindCandidates walks roots for .vue/.ts/.tsx/.css text and returns unique class-like tokens.
+// ScanTailwindCandidates walks roots for Vue/TS/JS/CSS/HTML text and returns unique class-like tokens.
 func ScanTailwindCandidates(roots []string) ([]string, error) {
 	seen := map[string]struct{}{}
 	var out []string
@@ -91,8 +91,10 @@ func ScanTailwindCandidates(roots []string) ([]string, error) {
 }
 
 func shouldScanTailwindPath(path string) bool {
+	// Keep JS/TS module variants aligned with hashWebSourceTreeOpts so classes
+	// authored only in .mts/.cts/.mjs/.cjs still produce utilities.
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".vue", ".ts", ".tsx", ".js", ".jsx", ".css", ".html":
+	case ".vue", ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".css", ".html":
 	default:
 		return false
 	}
@@ -616,7 +618,9 @@ func TailwindInputDigest(modulesPath string) (dialectHash, contentHash string, e
 	}
 	dialectPath := filepath.Join(webRoot, "styles", "theme.css")
 	if st, statErr := os.Stat(dialectPath); statErr == nil && st.IsDir() {
-		return "", "", nil
+		// Mirror EnsureChoyTailwindCSS: a directory here is a broken kit, not
+		// "no Tailwind inputs", so a skip decision cannot silently mask it.
+		return "", "", fmt.Errorf("choy_ui dialect %s is a directory, not a file", dialectPath)
 	}
 	dialectBytes, err := os.ReadFile(dialectPath)
 	if err != nil {

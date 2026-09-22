@@ -64,6 +64,14 @@ func TestScanTailwindCandidatesEdgePaths(t *testing.T) {
 	if err := os.WriteFile(skipExt, []byte(`class="md-only"`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	mts := filepath.Join(root, "widget.mts")
+	if err := os.WriteFile(mts, []byte(`export const cls = "gap-2 rounded-md"`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mjs := filepath.Join(root, "helper.mjs")
+	if err := os.WriteFile(mjs, []byte(`export const cls = "text-xs font-medium"`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	for _, name := range []string{"node_modules", "dist", ".git"} {
 		sub := filepath.Join(root, name)
 		if err := os.MkdirAll(sub, 0o755); err != nil {
@@ -96,6 +104,12 @@ func TestScanTailwindCandidatesEdgePaths(t *testing.T) {
 	got, err = ScanTailwindCandidates([]string{root})
 	if err != nil {
 		t.Fatal(err)
+	}
+	joinedRoot := strings.Join(got, " ")
+	for _, want := range []string{"gap-2", "rounded-md", "text-xs", "font-medium"} {
+		if !strings.Contains(joinedRoot, want) {
+			t.Fatalf("expected .mts/.mjs candidates to include %q, got %v", want, got)
+		}
 	}
 	for _, c := range got {
 		if c == "from-skip-dir" || c == "from-theme" || c == "hidden-gen" || c == "md-only" {

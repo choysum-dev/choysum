@@ -270,6 +270,18 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 		t.Fatalf("non-choy *.generated.css under module should alter digest: %q vs %q (%v)", afterOtherName, afterOther, err)
 	}
 
+	// A tailwind-go engine bump must invalidate the digest even when dialect and
+	// candidates are unchanged; readBuildInfo is stubbed to simulate the bump.
+	prevReadBuildInfo := readBuildInfo
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{{Path: choyTailwindGoModulePath, Version: "v9.9.9"}}}, true
+	}
+	bumpedEngine, err := ComputeWebInputDigest(in)
+	readBuildInfo = prevReadBuildInfo
+	if err != nil || bumpedEngine == afterOther {
+		t.Fatalf("engine version change must alter digest: %q vs %q (%v)", afterOther, bumpedEngine, err)
+	}
+
 	// TailwindInputDigest error should fail the digest.
 	badTheme := filepath.Join(root, "choy_ui", "web", "styles", "theme.css")
 	if err := os.Chmod(badTheme, 0o000); err != nil {

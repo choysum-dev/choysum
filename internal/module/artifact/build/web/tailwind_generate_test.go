@@ -306,7 +306,7 @@ func TestTailwindInputDigestStableAndSensitive(t *testing.T) {
 		t.Fatalf("web file => empty hashes, got %q %q %v", d, c, err)
 	}
 
-	// dialect path is a directory → no-op.
+	// dialect path is a directory → broken kit (same as EnsureChoyTailwindCSS).
 	dirRoot := t.TempDir()
 	stylesDir := filepath.Join(dirRoot, "choy_ui", "web", "styles")
 	if err := os.MkdirAll(stylesDir, 0o755); err != nil {
@@ -316,8 +316,8 @@ func TestTailwindInputDigestStableAndSensitive(t *testing.T) {
 		t.Fatal(err)
 	}
 	d, c, err = TailwindInputDigest(dirRoot)
-	if err != nil || d != "" || c != "" {
-		t.Fatalf("directory dialect => empty hashes, got %q %q %v", d, c, err)
+	if err == nil || !strings.Contains(err.Error(), "directory") || d != "" || c != "" {
+		t.Fatalf("directory dialect => error, got %q %q %v", d, c, err)
 	}
 }
 
