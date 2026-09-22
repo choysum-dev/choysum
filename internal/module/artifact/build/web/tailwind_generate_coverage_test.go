@@ -372,6 +372,32 @@ func TestGenerateChoyTailwindForModuleScanFailure(t *testing.T) {
 	}
 }
 
+func TestTailwindInputDigestPathGuards(t *testing.T) {
+	// web/ present but theme.css missing → empty hashes (NotExist on ReadFile).
+	root := t.TempDir()
+	web := filepath.Join(root, "choy_ui", "web")
+	if err := os.MkdirAll(filepath.Join(web, "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	d, c, err := TailwindInputDigest(root)
+	if err != nil || d != "" || c != "" {
+		t.Fatalf("missing dialect => empty, got %q %q %v", d, c, err)
+	}
+
+	// Non-NotExist Stat(webRoot) error (permission denied on parent).
+	blocked := t.TempDir()
+	parent := filepath.Join(blocked, "choy_ui")
+	if err := os.MkdirAll(parent, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(parent, 0o755) })
+	_, _, err = TailwindInputDigest(blocked)
+	_ = os.Chmod(parent, 0o755)
+	if err == nil {
+		t.Log("permission-denied web stat not observed on this runner")
+	}
+}
+
 func TestTailwindInputDigestErrors(t *testing.T) {
 	d, c, err := TailwindInputDigest("")
 	if err != nil || d != "" || c != "" {
@@ -500,6 +526,12 @@ func TestScopeChoyUtilityCSSEdgeBranches(t *testing.T) {
 	}
 	if got := scopeChoyUtilityCSS("/* trailing */", choyGalleryRootSelector); got != "/* trailing */" {
 		t.Fatalf("no-brace remainder: %q", got)
+	}
+	if got := scopeChoyUtilityCSS(".orphan-no-brace", choyGalleryRootSelector); got != ".orphan-no-brace" {
+		t.Fatalf("selector without block must copy through: %q", got)
+	}
+	if got := scopeChoyUtilityCSS("/* note */ .still-orphan", choyGalleryRootSelector); !strings.Contains(got, "/* note */") || !strings.Contains(got, ".still-orphan") {
+		t.Fatalf("comment then no-brace selector: %q", got)
 	}
 	// Empty selector slot in list.
 	got := prefixCSSSelectorList(".a,, .b", choyGalleryRootSelector)
