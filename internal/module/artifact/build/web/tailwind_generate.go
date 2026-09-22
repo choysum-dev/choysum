@@ -185,7 +185,8 @@ func scopeChoyThemeCSS(theme string) string {
 }
 
 // scopeChoyUtilityCSS prefixes top-level class selectors as descendants of scope.
-// @property / @keyframes blocks are left unchanged.
+// Conditional at-rules (@media/@supports/…) have their nested selector blocks
+// scoped; @property/@keyframes declaration bodies are left unchanged.
 func scopeChoyUtilityCSS(css, scope string) string {
 	if strings.TrimSpace(css) == "" || strings.TrimSpace(scope) == "" {
 		return css
@@ -205,6 +206,22 @@ func scopeChoyUtilityCSS(css, scope string) string {
 			if end < 0 {
 				out.WriteString(rest)
 				break
+			}
+			// Conditional group rules contain nested selector blocks; scope their
+			// bodies. @property/@keyframes/@font-face bodies stay untouched.
+			name := strings.TrimPrefix(rest, "@")
+			if idx := strings.IndexAny(name, " \t\r\n({;"); idx >= 0 {
+				name = name[:idx]
+			}
+			switch strings.ToLower(name) {
+			case "media", "supports", "layer", "container", "scope", "starting-style":
+				if brace := strings.IndexByte(rest, '{'); brace >= 0 && brace < end {
+					out.WriteString(rest[:brace+1])
+					out.WriteString(scopeChoyUtilityCSS(rest[brace+1:end-1], scope))
+					out.WriteString("}")
+					rest = rest[end:]
+					continue
+				}
 			}
 			out.WriteString(rest[:end])
 			rest = rest[end:]
@@ -230,7 +247,7 @@ func scopeChoyUtilityCSS(css, scope string) string {
 }
 
 func prefixCSSSelectorList(selectors, scope string) string {
-	parts := strings.Split(selectors, ",")
+	parts := splitTopLevelSelectors(selectors)
 	for i, part := range parts {
 		trim := strings.TrimSpace(part)
 		if trim == "" {
@@ -243,15 +260,64 @@ func prefixCSSSelectorList(selectors, scope string) string {
 	return strings.Join(parts, ",")
 }
 
+// splitTopLevelSelectors splits a selector list on commas that are not nested
+// inside (), [] or quoted strings, so functional pseudo-classes such as
+// :where(.dark, .dark *) stay intact.
+func splitTopLevelSelectors(selectors string) []string {
+	var parts []string
+	depth := 0
+	var quote byte
+	start := 0
+	for i := 0; i < len(selectors); i++ {
+		c := selectors[i]
+		switch {
+		case quote != 0:
+			if c == '\\' {
+				i++
+			} else if c == quote {
+				quote = 0
+			}
+		case c == '\'' || c == '"':
+			quote = c
+		case c == '(' || c == '[':
+			depth++
+		case c == ')' || c == ']':
+			if depth > 0 {
+				depth--
+			}
+		case c == ',' && depth == 0:
+			parts = append(parts, selectors[start:i])
+			start = i + 1
+		}
+	}
+	return append(parts, selectors[start:])
+}
+
 // indexCSSBlockEnd returns the index after the first top-level closing `}`,
-// accounting for nested braces. Returns -1 when unbalanced.
+// accounting for nested braces, quotes, and /* */ comments. Returns -1 when unbalanced.
 func indexCSSBlockEnd(css string) int {
 	depth := 0
+	var quote byte
 	for i := 0; i < len(css); i++ {
-		switch css[i] {
-		case '{':
+		c := css[i]
+		switch {
+		case quote != 0:
+			if c == '\\' {
+				i++
+			} else if c == quote {
+				quote = 0
+			}
+		case c == '\'' || c == '"':
+			quote = c
+		case c == '/' && i+1 < len(css) && css[i+1] == '*':
+			end := strings.Index(css[i+2:], "*/")
+			if end < 0 {
+				return -1
+			}
+			i += end + 3
+		case c == '{':
 			depth++
-		case '}':
+		case c == '}':
 			depth--
 			if depth == 0 {
 				return i + 1
@@ -376,17 +442,27 @@ var (
 )
 
 // EnsureChoyTailwindCSS finds an installed/local choy_ui module under modulesPath and regenerates CSS.
-// No-op when the module is absent.
+// No-op when the module is absent. Errors when web/ is present but theme.css is missing.
 func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, error) {
 	modulesPath = strings.TrimSpace(modulesPath)
 	if modulesPath == "" {
 		return nil, nil
 	}
 	root := filepath.Join(modulesPath, "choy_ui")
-	st, err := os.Stat(filepath.Join(root, "web", "styles", "theme.css"))
-	if err != nil {
+	webRoot := filepath.Join(root, "web")
+	if st, err := os.Stat(webRoot); err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
+		}
+		return nil, err
+	} else if !st.IsDir() {
+		return nil, nil
+	}
+	dialectPath := filepath.Join(webRoot, "styles", "theme.css")
+	st, err := os.Stat(dialectPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("choy_ui module present but dialect %s is missing", dialectPath)
 		}
 		return nil, err
 	}

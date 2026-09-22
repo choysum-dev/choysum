@@ -445,6 +445,156 @@ func TestScopeChoyUtilityCSS(t *testing.T) {
 	if strings.Contains(got, "\n.flex {") {
 		t.Fatalf("unscoped .flex remained:\n%s", got)
 	}
+
+	media := "@media (min-width: 640px) {\n.flex {\n  display: flex;\n}\n}\n"
+	got = scopeChoyUtilityCSS(media, choyGalleryRootSelector)
+	if !strings.Contains(got, "@media (min-width: 640px)") {
+		t.Fatalf("expected @media preserved:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .flex") {
+		t.Fatalf("expected nested .flex scoped inside @media:\n%s", got)
+	}
+
+	where := ":where(.dark, .dark *) .text-sm {\n  font-size: 14px;\n}\n"
+	got = scopeChoyUtilityCSS(where, choyGalleryRootSelector)
+	if !strings.Contains(got, ":where(.dark, .dark *)") {
+		t.Fatalf("expected :where(...) kept intact:\n%s", got)
+	}
+	if strings.Contains(got, choyGalleryRootSelector+" .dark") {
+		t.Fatalf("should not split inside :where():\n%s", got)
+	}
+}
+
+func TestScopeChoyUtilityCSSEdgeBranches(t *testing.T) {
+	if got := scopeChoyUtilityCSS("", choyGalleryRootSelector); got != "" {
+		t.Fatalf("empty css => empty, got %q", got)
+	}
+	if got := scopeChoyUtilityCSS(".flex{}", ""); got != ".flex{}" {
+		t.Fatalf("empty scope returns input, got %q", got)
+	}
+	// Unbalanced @rule / class block / trailing junk without '{'.
+	if got := scopeChoyUtilityCSS("@media (x) { .a { color: red; }", choyGalleryRootSelector); !strings.Contains(got, "@media") {
+		t.Fatalf("unbalanced @media should be copied through:\n%s", got)
+	}
+	if got := scopeChoyUtilityCSS(".flex { display: flex;", choyGalleryRootSelector); !strings.Contains(got, ".flex") {
+		t.Fatalf("unbalanced class block should be copied through:\n%s", got)
+	}
+	if got := scopeChoyUtilityCSS("/* trailing */", choyGalleryRootSelector); got != "/* trailing */" {
+		t.Fatalf("no-brace remainder: %q", got)
+	}
+	// Empty selector slot in list.
+	got := prefixCSSSelectorList(".a,, .b", choyGalleryRootSelector)
+	if !strings.Contains(got, choyGalleryRootSelector+" .a") || !strings.Contains(got, choyGalleryRootSelector+" .b") {
+		t.Fatalf("empty selector slot: %q", got)
+	}
+	if indexCSSBlockEnd("{ color: red;") != -1 {
+		t.Fatal("expected unbalanced block => -1")
+	}
+	if indexCSSBlockEnd("{ content: \"}\"; }") != len("{ content: \"}\"; }") {
+		t.Fatal("quoted brace should not confuse block end")
+	}
+	if indexCSSBlockEnd("{ /* } */ color: red; }") != len("{ /* } */ color: red; }") {
+		t.Fatal("commented brace should not confuse block end")
+	}
+	if indexCSSBlockEnd("{ /* unterminated") != -1 {
+		t.Fatal("unterminated comment => -1")
+	}
+}
+
+func TestSplitTopLevelSelectors(t *testing.T) {
+	parts := splitTopLevelSelectors(".a, :where(.b, .c), .d")
+	if len(parts) != 3 {
+		t.Fatalf("got %d parts %#v", len(parts), parts)
+	}
+	if !strings.Contains(parts[1], ":where(.b, .c)") {
+		t.Fatalf("where clause split: %#v", parts)
+	}
+	parts = splitTopLevelSelectors(`.a[title="hello, world"], .b`)
+	if len(parts) != 2 || !strings.Contains(parts[0], `"hello, world"`) {
+		t.Fatalf("quoted comma: %#v", parts)
+	}
+	parts = splitTopLevelSelectors(`.a[title="say \"hi\", ok"], .b`)
+	if len(parts) != 2 {
+		t.Fatalf("escaped quote in attr: %#v", parts)
+	}
+	parts = splitTopLevelSelectors(`.a[title='x,y'], .b`)
+	if len(parts) != 2 {
+		t.Fatalf("single-quoted attr: %#v", parts)
+	}
+}
+
+func TestIndexCSSBlockEndQuotesEscapes(t *testing.T) {
+	s := `{ content: "x}"; color: red; }`
+	if indexCSSBlockEnd(s) != len(s) {
+		t.Fatalf("quoted } must not end block, got %d want %d", indexCSSBlockEnd(s), len(s))
+	}
+	s = `{ content: "a\\"; }`
+	if indexCSSBlockEnd(s) != len(s) {
+		t.Fatalf("escaped backslash in quote: %d", indexCSSBlockEnd(s))
+	}
+	s = `{ content: 'a\'}b'; color: red; }`
+	if indexCSSBlockEnd(s) != len(s) {
+		t.Fatalf("escaped single quote: %d", indexCSSBlockEnd(s))
+	}
+}
+
+func TestEnsureChoyTailwindCSSWebNotDir(t *testing.T) {
+	root := t.TempDir()
+	web := filepath.Join(root, "choy_ui", "web")
+	if err := os.MkdirAll(filepath.Dir(web), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(web, []byte("not a dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := EnsureChoyTailwindCSS(root)
+	if err != nil || res != nil {
+		t.Fatalf("web file => nil,nil got %#v %v", res, err)
+	}
+}
+
+func TestEnsureChoyTailwindCSSWebStatError(t *testing.T) {
+	root := t.TempDir()
+	parent := filepath.Join(root, "choy_ui")
+	if err := os.MkdirAll(parent, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(parent, 0o755) })
+	_, err := EnsureChoyTailwindCSS(root)
+	_ = os.Chmod(parent, 0o755)
+	if err == nil {
+		t.Log("permission-denied web stat not observed on this runner")
+	}
+}
+
+func TestGenerateChoyTailwindForModulePropagatesGenerateError(t *testing.T) {
+	root := t.TempDir()
+	styles := filepath.Join(root, "web", "styles")
+	if err := os.MkdirAll(styles, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		choyLoadCSS = func(eng *tw.Engine, css []byte) error { return eng.LoadCSS(css) }
+	})
+	choyLoadCSS = func(*tw.Engine, []byte) error { return os.ErrInvalid }
+	if _, err := GenerateChoyTailwindForModule(root); err == nil {
+		t.Fatal("expected generate error from LoadCSS failure")
+	}
+}
+
+func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
+	root := t.TempDir()
+	web := filepath.Join(root, "choy_ui", "web")
+	if err := os.MkdirAll(web, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := EnsureChoyTailwindCSS(root)
+	if err == nil || !strings.Contains(err.Error(), "dialect") {
+		t.Fatalf("expected missing dialect error, got %v", err)
+	}
 }
 
 func TestScopeChoyThemeCSS(t *testing.T) {

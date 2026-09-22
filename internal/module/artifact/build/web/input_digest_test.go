@@ -249,7 +249,9 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 		t.Fatalf("chmod theme: %v", err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(badTheme, 0o644) })
-	if _, err := ComputeWebInputDigest(in); err == nil {
+	if _, err := os.ReadFile(badTheme); err == nil {
+		t.Log("theme.css still readable on this runner (e.g. root); skipping unreadable-dialect check")
+	} else if _, err := ComputeWebInputDigest(in); err == nil {
 		_ = os.Chmod(badTheme, 0o644)
 		t.Fatal("expected ComputeWebInputDigest to surface TailwindInputDigest error")
 	}
