@@ -6,6 +6,7 @@ package webmodulebuilder
 import (
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -640,5 +641,52 @@ func TestShouldSkipAndStampHelpers(t *testing.T) {
 	dirAsFile := t.TempDir()
 	if err := hashFile(nilWriter{}, dirAsFile); err != nil {
 		t.Fatalf("directory hashFile: %v", err)
+	}
+}
+
+func TestChoyTailwindGoModuleVersion(t *testing.T) {
+	t.Cleanup(func() { readBuildInfo = debug.ReadBuildInfo })
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) { return nil, false }
+	if got := choyTailwindGoModuleVersion(); got != "" {
+		t.Fatalf("!ok => empty, got %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{{Path: "example.com/other", Version: "v1.0.0"}}}, true
+	}
+	if got := choyTailwindGoModuleVersion(); got != "" {
+		t.Fatalf("missing dep => empty, got %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{
+			{Path: "example.com/other", Version: "v1.0.0"},
+			{Path: choyTailwindGoModulePath, Version: "v0.4.0"},
+		}}, true
+	}
+	if got := choyTailwindGoModuleVersion(); got != "v0.4.0" {
+		t.Fatalf("matched dep => v0.4.0, got %q", got)
+	}
+}
+
+func TestIndexCSSBareAtRuleSemi(t *testing.T) {
+	if got := indexCSSBareAtRuleSemi(`@import url("a;b.css");`); got != len(`@import url("a;b.css")`) {
+		t.Fatalf("quoted semi: %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import url("a\"b;c.css");`); got != len(`@import url("a\"b;c.css")`) {
+		t.Fatalf("escaped quote in url: %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import url('a\'b;c.css');`); got != len(`@import url('a\'b;c.css')`) {
+		t.Fatalf("escaped single quote: %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@layer utilities { .a{} }`); got != -1 {
+		t.Fatalf("block at-rule => -1, got %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import url(a)`); got != -1 {
+		t.Fatalf("no terminator => -1, got %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@supports (display: flex) { .a{} }`); got != -1 {
+		t.Fatalf("paren then brace => -1, got %d", got)
 	}
 }

@@ -716,6 +716,14 @@ func TestScopeChoyUtilityCSSBareAtRules(t *testing.T) {
 	if !strings.Contains(got, choyGalleryRootSelector+" .p-1") {
 		t.Fatalf("@charset statement must not swallow following rule:\n%s", got)
 	}
+	in = `@import url("https://example.com/a;b.css"); .gap-2 { gap: 0.5rem; }`
+	got = scopeChoyUtilityCSS(in, choyGalleryRootSelector)
+	if !strings.Contains(got, `@import url("https://example.com/a;b.css");`) {
+		t.Fatalf("quoted ';' in @import must stay inside statement:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .gap-2") {
+		t.Fatalf("rule after quoted-semi @import must still be scoped:\n%s", got)
+	}
 	in = `/* { not a brace } */ .m-1 { margin: 0.25rem; }`
 	got = scopeChoyUtilityCSS(in, choyGalleryRootSelector)
 	if !strings.Contains(got, "/* { not a brace } */") {

@@ -27,7 +27,9 @@ const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 const choyGalleryRootSelector = ".choy-gallery-root"
 
 // maxTailwindCandidateLen rejects scanner leaks from multi-line TS/JS literals.
-const maxTailwindCandidateLen = 128
+// Long arbitrary-value utilities (urls, gradients, shadows) are legitimate; keep
+// the cap generous. Whitespace/brace/semicolon checks already reject real leaks.
+const maxTailwindCandidateLen = 512
 
 // ChoyTailwindGenerateResult is the outcome of a Go Tailwind generate pass.
 type ChoyTailwindGenerateResult struct {
@@ -238,12 +240,10 @@ func scopeChoyUtilityCSS(css, scope string) string {
 			// Block-less at-rules (@import/@charset/@layer a, b;) end at ';'.
 			// Without this, indexCSSBlockEnd jumps to a later rule's '}' and
 			// that rule is copied through unscoped.
-			if semi := strings.IndexByte(rest, ';'); semi >= 0 {
-				if brace := strings.IndexByte(rest, '{'); brace < 0 || semi < brace {
-					out.WriteString(rest[:semi+1])
-					rest = rest[semi+1:]
-					continue
-				}
+			if semi := indexCSSBareAtRuleSemi(rest); semi >= 0 {
+				out.WriteString(rest[:semi+1])
+				rest = rest[semi+1:]
+				continue
 			}
 			end := indexCSSBlockEnd(rest)
 			if end < 0 {
@@ -346,6 +346,38 @@ func splitTopLevelSelectors(selectors string) []string {
 		}
 	}
 	return append(parts, selectors[start:])
+}
+
+// indexCSSBareAtRuleSemi returns the index of the terminating ';' for a
+// block-less at-rule, ignoring ';' inside quotes or nested (). Returns -1 when
+// a top-level '{' appears first (block at-rule) or no terminator is found.
+func indexCSSBareAtRuleSemi(rest string) int {
+	depth := 0
+	var quote byte
+	for i := 0; i < len(rest); i++ {
+		c := rest[i]
+		switch {
+		case quote != 0:
+			if c == '\\' {
+				i++
+			} else if c == quote {
+				quote = 0
+			}
+		case c == '\'' || c == '"':
+			quote = c
+		case c == '(':
+			depth++
+		case c == ')':
+			if depth > 0 {
+				depth--
+			}
+		case c == ';' && depth == 0:
+			return i
+		case c == '{' && depth == 0:
+			return -1
+		}
+	}
+	return -1
 }
 
 // indexCSSBlockEnd returns the index after the first top-level closing `}`,

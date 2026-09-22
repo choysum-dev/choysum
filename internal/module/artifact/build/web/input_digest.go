@@ -230,10 +230,13 @@ func isChoyTailwindGeneratedKitPath(path string) bool {
 	return strings.Contains(filepath.ToSlash(path), "/choy_ui/web/")
 }
 
+// readBuildInfo is debug.ReadBuildInfo; tests replace it to exercise digest versioning.
+var readBuildInfo = debug.ReadBuildInfo
+
 // choyTailwindGoModuleVersion returns the build's tailwind-go module version so
 // engine bumps invalidate web digests even when dialect and candidates are unchanged.
 func choyTailwindGoModuleVersion() string {
-	bi, ok := debug.ReadBuildInfo()
+	bi, ok := readBuildInfo()
 	if !ok {
 		return ""
 	}
