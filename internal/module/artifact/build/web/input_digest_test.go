@@ -225,13 +225,35 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 	if err != nil || withTailwind == e {
 		t.Fatalf("choy_ui dialect should alter digest: %q vs %q (%v)", e, withTailwind, err)
 	}
-	if err := os.WriteFile(filepath.Join(choyStyles, "choy-tailwind.generated.css"), []byte("/* noise */\n.flex{}\n"), 0o644); err != nil {
-		t.Fatalf("write generated: %v", err)
+	// Place the generated artifact under a hashed module root so the digest walker
+	// exercises the choy-tailwind.generated.css exclusion branch.
+	hashedGen := filepath.Join(modPath, "web", "choy-tailwind.generated.css")
+	if err := os.WriteFile(hashedGen, []byte("/* noise */\n.flex{}\n"), 0o644); err != nil {
+		t.Fatalf("write generated under module: %v", err)
 	}
 	afterGenerated, err := ComputeWebInputDigest(in)
 	if err != nil || afterGenerated != withTailwind {
 		t.Fatalf("choy-tailwind.generated.css must not alter digest: %q vs %q (%v)", withTailwind, afterGenerated, err)
 	}
+	if err := os.WriteFile(filepath.Join(modPath, "web", "other.generated.css"), []byte(".other{}\n"), 0o644); err != nil {
+		t.Fatalf("write other generated: %v", err)
+	}
+	afterOther, err := ComputeWebInputDigest(in)
+	if err != nil || afterOther == afterGenerated {
+		t.Fatalf("non-choy *.generated.css under module should alter digest: %q vs %q (%v)", afterGenerated, afterOther, err)
+	}
+
+	// TailwindInputDigest error should fail the digest.
+	badTheme := filepath.Join(root, "choy_ui", "web", "styles", "theme.css")
+	if err := os.Chmod(badTheme, 0o000); err != nil {
+		t.Fatalf("chmod theme: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(badTheme, 0o644) })
+	if _, err := ComputeWebInputDigest(in); err == nil {
+		_ = os.Chmod(badTheme, 0o644)
+		t.Fatal("expected ComputeWebInputDigest to surface TailwindInputDigest error")
+	}
+	_ = os.Chmod(badTheme, 0o644)
 
 	// Empty roots / "." must not walk the process cwd.
 	empty, err := ComputeWebInputDigest(WebInputDigestInputs{

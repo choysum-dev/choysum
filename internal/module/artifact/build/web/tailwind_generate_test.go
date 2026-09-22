@@ -43,6 +43,9 @@ func TestGenerateTailwindCSSNonEmptyAndWithinBudget(t *testing.T) {
 	if !strings.Contains(css, ".flex") && !strings.Contains(css, "display: flex") {
 		t.Fatalf("expected flex utility in CSS, got:\n%s", css)
 	}
+	if !strings.Contains(css, "var(--color-primary)") {
+		t.Fatalf("expected theme-mapped utility var(--color-primary), got:\n%s", css)
+	}
 	if dur > ChoyTailwindBudget {
 		t.Fatalf("generate duration %v exceeds budget %v", dur, ChoyTailwindBudget)
 	}
@@ -188,13 +191,16 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	}
 }
 
-func TestEnsureChoyTailwindCSSPropagatesStatErrors(t *testing.T) {
+func TestEnsureChoyTailwindCSSIgnoresDirectoryThemePath(t *testing.T) {
 	root := t.TempDir()
-	choy := filepath.Join(root, "choy_ui", "web", "styles")
-	if err := os.MkdirAll(choy, 0o755); err != nil {
+	styles := filepath.Join(root, "choy_ui", "web", "styles")
+	if err := os.MkdirAll(styles, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	// theme.css path exists as a directory → treated as absent (nil), not an error.
+	if err := os.Mkdir(filepath.Join(styles, "theme.css"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	res, err := EnsureChoyTailwindCSS(root)
 	if err != nil {
 		t.Fatal(err)

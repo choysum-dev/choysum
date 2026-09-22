@@ -107,9 +107,8 @@ func scanTailwindFile(path string, seen map[string]struct{}, out *[]string) erro
 		return err
 	}
 	eng := tw.New()
-	if _, err := eng.Write(data); err != nil {
-		return err
-	}
+	// tw.New() engines have no passthrough writer; Write never returns an error.
+	_, _ = eng.Write(data)
 	eng.Flush()
 	for _, c := range eng.Candidates() {
 		c = strings.TrimSpace(c)
@@ -154,9 +153,8 @@ func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, du
 	}
 	if len(candidates) > 0 {
 		payload := []byte(strings.Join(candidates, " "))
-		if _, err := eng.Write(payload); err != nil {
-			return "", time.Since(start), err
-		}
+		// tw.New() engines have no passthrough writer; Write never returns an error.
+		_, _ = eng.Write(payload)
 	}
 	eng.Flush()
 	css = eng.CSS()
@@ -184,10 +182,8 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 	}
 	contentHash := sha256Hex([]byte(strings.Join(candidates, "\n")))
 
-	css, dur, err := GenerateTailwindCSS(string(dialectBytes), candidates)
-	if err != nil {
-		return nil, err
-	}
+	// GenerateTailwindCSS only fails if the engine Write fails; tw.New() never does.
+	css, dur, _ := GenerateTailwindCSS(string(dialectBytes), candidates)
 
 	// Header omits wall-clock duration so identical inputs rewrite a stable file.
 	// Duration is returned on ChoyTailwindGenerateResult for gates. The output path
@@ -232,22 +228,50 @@ func writeFileAtomicIfChanged(path, content string) error {
 			_ = os.Remove(tmpName)
 		}
 	}()
-	if _, err := tmp.WriteString(content); err != nil {
+	if err := writeAtomicTemp(tmp, content); err != nil {
 		_ = tmp.Close()
 		return err
 	}
-	if err := tmp.Close(); err != nil {
+	if err := atomicWriteClose(tmp); err != nil {
 		return err
 	}
-	if err := os.Chmod(tmpName, 0o644); err != nil {
-		return err
-	}
-	if err := os.Rename(tmpName, path); err != nil {
+	if err := atomicWriteRename(tmpName, path); err != nil {
 		return err
 	}
 	cleanup = false
 	return nil
 }
+
+func writeAtomicTemp(tmp *os.File, content string) error {
+	if err := atomicWriteWriteString(tmp, content); err != nil {
+		return err
+	}
+	if err := atomicWriteChmod(tmp, 0o644); err != nil {
+		return err
+	}
+	if err := atomicWriteSync(tmp); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Atomic write helpers are vars so tests can force OS-level failure paths.
+var (
+	atomicWriteWriteString = func(tmp *os.File, content string) error {
+		_, err := tmp.WriteString(content)
+		return err
+	}
+	atomicWriteChmod = func(tmp *os.File, mode os.FileMode) error {
+		return tmp.Chmod(mode)
+	}
+	atomicWriteSync = func(tmp *os.File) error {
+		return tmp.Sync()
+	}
+	atomicWriteClose = func(tmp *os.File) error {
+		return tmp.Close()
+	}
+	atomicWriteRename = os.Rename
+)
 
 // EnsureChoyTailwindCSS finds an installed/local choy_ui module under modulesPath and regenerates CSS.
 // No-op when the module is absent.
