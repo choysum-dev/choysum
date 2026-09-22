@@ -241,15 +241,23 @@ var readBuildInfo = debug.ReadBuildInfo
 
 // choyTailwindGoModuleVersion returns the build's tailwind-go module version so
 // engine bumps invalidate web digests even when dialect and candidates are unchanged.
+// Prefer replace directives when present (local path or pinned replace version).
 func choyTailwindGoModuleVersion() string {
 	bi, ok := readBuildInfo()
 	if !ok {
 		return ""
 	}
 	for _, dep := range bi.Deps {
-		if dep.Path == choyTailwindGoModulePath {
-			return dep.Version
+		if dep.Path != choyTailwindGoModulePath {
+			continue
 		}
+		if dep.Replace != nil {
+			if dep.Replace.Version != "" {
+				return dep.Replace.Version
+			}
+			return dep.Replace.Path
+		}
+		return dep.Version
 	}
 	return ""
 }

@@ -303,16 +303,17 @@ func scopeChoyUtilityCSS(css, scope string) string {
 
 func prefixCSSSelectorList(selectors, scope string) string {
 	parts := splitTopLevelSelectors(selectors)
-	for i, part := range parts {
+	scoped := make([]string, 0, len(parts))
+	for _, part := range parts {
 		trim := strings.TrimSpace(part)
 		if trim == "" {
 			continue
 		}
 		// Preserve leading whitespace/newlines around each selector.
 		lead := part[:len(part)-len(strings.TrimLeft(part, " \t\r\n"))]
-		parts[i] = lead + scope + " " + trim
+		scoped = append(scoped, lead+scope+" "+trim)
 	}
-	return strings.Join(parts, ",")
+	return strings.Join(scoped, ",")
 }
 
 // splitTopLevelSelectors splits a selector list on commas that are not nested
@@ -355,8 +356,8 @@ func splitTopLevelSelectors(selectors string) []string {
 }
 
 // indexCSSBareAtRuleSemi returns the index of the terminating ';' for a
-// block-less at-rule, ignoring ';' inside quotes or nested (). Returns -1 when
-// a top-level '{' appears first (block at-rule) or no terminator is found.
+// block-less at-rule, ignoring ';' inside quotes, /* */ comments, or nested ().
+// Returns -1 when a top-level '{' appears first (block at-rule) or no terminator is found.
 func indexCSSBareAtRuleSemi(rest string) int {
 	depth := 0
 	var quote byte
@@ -371,6 +372,12 @@ func indexCSSBareAtRuleSemi(rest string) int {
 			}
 		case c == '\'' || c == '"':
 			quote = c
+		case c == '/' && i+1 < len(rest) && rest[i+1] == '*':
+			end := strings.Index(rest[i+2:], "*/")
+			if end < 0 {
+				return -1
+			}
+			i += end + 3
 		case c == '(':
 			depth++
 		case c == ')':

@@ -687,6 +687,28 @@ func TestChoyTailwindGoModuleVersion(t *testing.T) {
 	if got := choyTailwindGoModuleVersion(); got != "v0.4.0" {
 		t.Fatalf("matched dep => v0.4.0, got %q", got)
 	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{{
+			Path:    choyTailwindGoModulePath,
+			Version: "v0.4.0",
+			Replace: &debug.Module{Path: "github.com/dhamidi/tailwind-go", Version: "v0.4.1"},
+		}}}, true
+	}
+	if got := choyTailwindGoModuleVersion(); got != "v0.4.1" {
+		t.Fatalf("replace version => v0.4.1, got %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{{
+			Path:    choyTailwindGoModulePath,
+			Version: "v0.4.0",
+			Replace: &debug.Module{Path: "../tailwind-go"},
+		}}}, true
+	}
+	if got := choyTailwindGoModuleVersion(); got != "../tailwind-go" {
+		t.Fatalf("replace path => ../tailwind-go, got %q", got)
+	}
 }
 
 func TestIndexCSSBareAtRuleSemi(t *testing.T) {
@@ -707,5 +729,11 @@ func TestIndexCSSBareAtRuleSemi(t *testing.T) {
 	}
 	if got := indexCSSBareAtRuleSemi(`@supports (display: flex) { .a{} }`); got != -1 {
 		t.Fatalf("paren then brace => -1, got %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import /* ; */ url(x.css);`); got != len(`@import /* ; */ url(x.css)`) {
+		t.Fatalf("semi inside comment: %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import /* unterminated`); got != -1 {
+		t.Fatalf("unterminated comment => -1, got %d", got)
 	}
 }

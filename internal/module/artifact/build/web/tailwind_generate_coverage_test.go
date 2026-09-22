@@ -533,10 +533,13 @@ func TestScopeChoyUtilityCSSEdgeBranches(t *testing.T) {
 	if got := scopeChoyUtilityCSS("/* note */ .still-orphan", choyGalleryRootSelector); !strings.Contains(got, "/* note */") || !strings.Contains(got, ".still-orphan") {
 		t.Fatalf("comment then no-brace selector: %q", got)
 	}
-	// Empty selector slot in list.
+	// Empty selector slot in list must be dropped (no ",," in output).
 	got := prefixCSSSelectorList(".a,, .b", choyGalleryRootSelector)
 	if !strings.Contains(got, choyGalleryRootSelector+" .a") || !strings.Contains(got, choyGalleryRootSelector+" .b") {
 		t.Fatalf("empty selector slot: %q", got)
+	}
+	if strings.Contains(got, ",,") {
+		t.Fatalf("empty slots must not leave double commas: %q", got)
 	}
 	if indexCSSBlockEnd("{ color: red;") != -1 {
 		t.Fatal("expected unbalanced block => -1")
