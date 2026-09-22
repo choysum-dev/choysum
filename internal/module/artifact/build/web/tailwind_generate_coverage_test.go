@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tw "github.com/dhamidi/tailwind-go"
 )
@@ -123,6 +124,25 @@ func TestIsPlausibleTailwindCandidate(t *testing.T) {
 		if got := isPlausibleTailwindCandidate(tc.in); got != tc.want {
 			t.Fatalf("isPlausibleTailwindCandidate(%q)=%v want %v", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestGenerateChoyTailwindForModuleRejectsEmptyCSS(t *testing.T) {
+	root := t.TempDir()
+	styles := filepath.Join(root, "web", "styles")
+	if err := os.MkdirAll(styles, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { generateTailwindCSS = GenerateTailwindCSS })
+	generateTailwindCSS = func(string, []string) (string, time.Duration, error) {
+		return "   \n", 0, nil
+	}
+	_, err := GenerateChoyTailwindForModule(root)
+	if err == nil || !strings.Contains(err.Error(), "empty") {
+		t.Fatalf("expected empty CSS error, got %v", err)
 	}
 }
 
@@ -249,7 +269,7 @@ func TestWriteFileAtomicIfChangedErrors(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(ro, 0o755) })
 	if err := writeFileAtomicIfChanged(filepath.Join(ro, "x.css"), "x"); err == nil {
-		t.Log("CreateTemp on read-only dir did not fail (e.g. running as root); skipping assertion")
+		t.Skip("CreateTemp on read-only dir did not fail (e.g. running as root)")
 	}
 }
 
@@ -265,8 +285,7 @@ func TestScanTailwindCandidatesSingleFileReadError(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(vue, 0o644) })
 	if _, err := os.ReadFile(vue); err == nil {
 		_ = os.Chmod(vue, 0o644)
-		t.Log("mode 000 file still readable on this runner (e.g. root); skipping unreadable-root check")
-		return
+		t.Skip("mode 000 file still readable on this runner (e.g. root)")
 	}
 	_, err := ScanTailwindCandidates([]string{vue})
 	_ = os.Chmod(vue, 0o644)
@@ -287,7 +306,7 @@ func TestScanTailwindCandidatesStatPermissionError(t *testing.T) {
 	_, err := ScanTailwindCandidates([]string{child})
 	_ = os.Chmod(blocked, 0o755)
 	if err == nil {
-		t.Log("stat permission error not observed on this runner")
+		t.Skip("stat permission error not observed on this runner (e.g. running as root)")
 	}
 }
 
@@ -313,7 +332,7 @@ func TestEnsureChoyTailwindCSSEmptyAndStatError(t *testing.T) {
 	_, err = EnsureChoyTailwindCSS(root)
 	_ = os.Chmod(styles, 0o755)
 	if err == nil {
-		t.Log("permission-denied stat not observed on this runner")
+		t.Skip("permission-denied stat not observed on this runner (e.g. running as root)")
 	}
 }
 
@@ -362,8 +381,7 @@ func TestGenerateChoyTailwindForModuleScanFailure(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(bad, 0o644) })
 	if _, err := os.ReadFile(bad); err == nil {
 		_ = os.Chmod(bad, 0o644)
-		t.Log("mode 000 vue still readable on this runner (e.g. root); skipping scan-failure check")
-		return
+		t.Skip("mode 000 vue still readable on this runner (e.g. root)")
 	}
 	_, err := GenerateChoyTailwindForModule(root)
 	_ = os.Chmod(bad, 0o644)
@@ -394,7 +412,7 @@ func TestTailwindInputDigestPathGuards(t *testing.T) {
 	_, _, err = TailwindInputDigest(blocked)
 	_ = os.Chmod(parent, 0o755)
 	if err == nil {
-		t.Log("permission-denied web stat not observed on this runner")
+		t.Skip("permission-denied web stat not observed on this runner (e.g. running as root)")
 	}
 }
 
@@ -420,7 +438,7 @@ func TestTailwindInputDigestErrors(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(theme, 0o644) })
 	if _, err := os.ReadFile(theme); err == nil {
 		_ = os.Chmod(theme, 0o644)
-		t.Log("theme.css still readable on this runner (e.g. root); skipping unreadable-theme check")
+		t.Skip("theme.css still readable on this runner (e.g. root)")
 	} else {
 		_, _, err = TailwindInputDigest(root)
 		_ = os.Chmod(theme, 0o644)
@@ -444,8 +462,7 @@ func TestTailwindInputDigestErrors(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(bad, 0o644) })
 	if _, err := os.ReadFile(bad); err == nil {
 		_ = os.Chmod(bad, 0o644)
-		t.Log("mode 000 vue still readable on this runner (e.g. root); skipping unreadable-scan check")
-		return
+		t.Skip("mode 000 vue still readable on this runner (e.g. root)")
 	}
 	_, _, err = TailwindInputDigest(root)
 	_ = os.Chmod(bad, 0o644)
@@ -641,7 +658,7 @@ func TestEnsureChoyTailwindCSSWebStatError(t *testing.T) {
 	_, err := EnsureChoyTailwindCSS(root)
 	_ = os.Chmod(parent, 0o755)
 	if err == nil {
-		t.Log("permission-denied web stat not observed on this runner")
+		t.Skip("permission-denied web stat not observed on this runner (e.g. running as root)")
 	}
 }
 
