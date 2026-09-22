@@ -311,6 +311,12 @@ func prefixCSSSelectorList(selectors, scope string) string {
 		}
 		// Preserve leading whitespace/newlines around each selector.
 		lead := part[:len(part)-len(strings.TrimLeft(part, " \t\r\n"))]
+		// `:root` / `:host` can never match as a descendant of the scope; rebind
+		// them to the gallery root instead of emitting a never-matching selector.
+		if trim == ":root" || trim == ":host" {
+			scoped = append(scoped, lead+scope)
+			continue
+		}
 		scoped = append(scoped, lead+scope+" "+trim)
 	}
 	return strings.Join(scoped, ",")
@@ -569,7 +575,7 @@ func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, err
 		return nil, err
 	}
 	if st.IsDir() {
-		return nil, nil
+		return nil, fmt.Errorf("choy_ui dialect %s is a directory, not a file", dialectPath)
 	}
 	return GenerateChoyTailwindForModule(root)
 }

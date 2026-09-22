@@ -695,12 +695,12 @@ func TestChoyTailwindGoModuleVersion(t *testing.T) {
 			Replace: &debug.Module{Path: "github.com/dhamidi/tailwind-go", Version: "v0.4.1"},
 		}}}, true
 	}
-	if got := choyTailwindGoModuleVersion(); got != "v0.4.1" {
-		t.Fatalf("replace version => v0.4.1, got %q", got)
+	if got := choyTailwindGoModuleVersion(); got != "github.com/dhamidi/tailwind-go@v0.4.1" {
+		t.Fatalf("replace path@version => %q", got)
 	}
 
 	readBuildInfo = func() (*debug.BuildInfo, bool) {
-		return &debug.BuildInfo{Deps: []*debug.Module{{
+		return &debug.BuildInfo{Deps: []*debug.Module{nil, {
 			Path:    choyTailwindGoModulePath,
 			Version: "v0.4.0",
 			Replace: &debug.Module{Path: "../tailwind-go"},

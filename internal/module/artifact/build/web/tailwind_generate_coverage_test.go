@@ -541,6 +541,18 @@ func TestScopeChoyUtilityCSSEdgeBranches(t *testing.T) {
 	if strings.Contains(got, ",,") {
 		t.Fatalf("empty slots must not leave double commas: %q", got)
 	}
+	got = prefixCSSSelectorList(":root, :host, .flex", choyGalleryRootSelector)
+	if strings.Contains(got, choyGalleryRootSelector+" :root") || strings.Contains(got, choyGalleryRootSelector+" :host") {
+		t.Fatalf(":root/:host must rebind to scope, got %q", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .flex") {
+		t.Fatalf("class selector still scoped: %q", got)
+	}
+	// Leading spaces after commas are preserved on later slots.
+	want := choyGalleryRootSelector + ", " + choyGalleryRootSelector + ", " + choyGalleryRootSelector + " .flex"
+	if got != want {
+		t.Fatalf("root rebind join: got %q want %q", got, want)
+	}
 	if indexCSSBlockEnd("{ color: red;") != -1 {
 		t.Fatal("expected unbalanced block => -1")
 	}

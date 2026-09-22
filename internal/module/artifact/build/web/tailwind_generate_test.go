@@ -205,22 +205,19 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	}
 }
 
-func TestEnsureChoyTailwindCSSIgnoresDirectoryThemePath(t *testing.T) {
+func TestEnsureChoyTailwindCSSRejectsDirectoryThemePath(t *testing.T) {
 	root := t.TempDir()
 	styles := filepath.Join(root, "choy_ui", "web", "styles")
 	if err := os.MkdirAll(styles, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// theme.css path exists as a directory → treated as absent (nil), not an error.
+	// theme.css path exists as a directory → broken kit, not a silent no-op.
 	if err := os.Mkdir(filepath.Join(styles, "theme.css"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	res, err := EnsureChoyTailwindCSS(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res != nil {
-		t.Fatalf("expected nil for directory theme path, got %#v", res)
+	_, err := EnsureChoyTailwindCSS(root)
+	if err == nil || !strings.Contains(err.Error(), "directory") {
+		t.Fatalf("expected directory dialect error, got %v", err)
 	}
 }
 

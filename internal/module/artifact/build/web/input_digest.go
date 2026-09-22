@@ -248,12 +248,12 @@ func choyTailwindGoModuleVersion() string {
 		return ""
 	}
 	for _, dep := range bi.Deps {
-		if dep.Path != choyTailwindGoModulePath {
+		if dep == nil || dep.Path != choyTailwindGoModulePath {
 			continue
 		}
 		if dep.Replace != nil {
 			if dep.Replace.Version != "" {
-				return dep.Replace.Version
+				return dep.Replace.Path + "@" + dep.Replace.Version
 			}
 			return dep.Replace.Path
 		}
