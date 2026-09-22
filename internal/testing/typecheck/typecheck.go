@@ -235,6 +235,17 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		}
 	}
 
+	webDir := filepath.Join(modulesRoot, app, "web")
+	if st, err := os.Stat(webDir); err == nil && st.IsDir() {
+		if err := policy.CheckForbiddenUiImportsOnDisk(
+			modulesRoot,
+			app,
+			policy.ModulePathAliasForBoundary(modulesRoot),
+		); err != nil {
+			return xfmt.Errorf("typecheck: %w", err)
+		}
+	}
+
 	var keepDir string
 	if opts.Keep {
 		tmpTsconfigRoot, err := resolveTestingTmpDir(ctx, repoRoot, tmpRoot, "typecheck")
