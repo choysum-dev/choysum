@@ -185,14 +185,41 @@ func scopeChoyThemeCSS(theme string) string {
 		":root,:host", choyGalleryRootSelector,
 		":host,:root", choyGalleryRootSelector,
 	).Replace(theme)
-	theme = strings.ReplaceAll(theme, ":root", choyGalleryRootSelector)
-	theme = strings.ReplaceAll(theme, ":host", choyGalleryRootSelector)
-	return theme
+	return replaceChoyThemeSelectors(theme, choyGalleryRootSelector)
+}
+
+// replaceChoyThemeSelectors rebinds standalone :root / :host selectors to
+// scope and leaves functional forms such as :host-context(...) or :host(.x)
+// untouched.
+func replaceChoyThemeSelectors(theme, scope string) string {
+	var out strings.Builder
+	for i := 0; i < len(theme); {
+		switch {
+		case strings.HasPrefix(theme[i:], ":root") && choyThemeSelectorBoundary(theme, i+len(":root")):
+			out.WriteString(scope)
+			i += len(":root")
+		case strings.HasPrefix(theme[i:], ":host") && choyThemeSelectorBoundary(theme, i+len(":host")):
+			out.WriteString(scope)
+			i += len(":host")
+		default:
+			out.WriteByte(theme[i])
+			i++
+		}
+	}
+	return out.String()
+}
+
+// choyThemeSelectorBoundary reports whether a :root / :host token ends at i.
+func choyThemeSelectorBoundary(s string, i int) bool {
+	if i >= len(s) {
+		return true
+	}
+	return s[i] != '-' && s[i] != '('
 }
 
 // scopeChoyUtilityCSS prefixes top-level class selectors as descendants of scope.
-// Conditional at-rules (@media/@supports/…) have their nested selector blocks
-// scoped; @property/@keyframes declaration bodies are left unchanged.
+// Nested selector blocks inside at-rules are scoped by default; declaration-body
+// at-rules (@property/@keyframes/@font-face/…) keep their blocks verbatim.
 func scopeChoyUtilityCSS(css, scope string) string {
 	if strings.TrimSpace(css) == "" || strings.TrimSpace(scope) == "" {
 		return css
@@ -223,14 +250,14 @@ func scopeChoyUtilityCSS(css, scope string) string {
 				out.WriteString(rest)
 				break
 			}
-			// Conditional group rules contain nested selector blocks; scope their
-			// bodies. @property/@keyframes/@font-face bodies stay untouched.
 			name := strings.TrimPrefix(rest, "@")
 			if idx := strings.IndexAny(name, " \t\r\n({;"); idx >= 0 {
 				name = name[:idx]
 			}
 			switch strings.ToLower(name) {
-			case "media", "supports", "layer", "container", "scope", "starting-style":
+			// Declaration-body at-rules keep their blocks verbatim.
+			case "property", "keyframes", "-webkit-keyframes", "font-face", "counter-style", "font-feature-values", "page", "viewport":
+			default:
 				if brace := strings.IndexByte(rest, '{'); brace >= 0 && brace < end {
 					out.WriteString(rest[:brace+1])
 					out.WriteString(scopeChoyUtilityCSS(rest[brace+1:end-1], scope))

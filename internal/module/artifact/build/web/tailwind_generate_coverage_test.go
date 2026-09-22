@@ -662,11 +662,43 @@ func TestScopeChoyThemeCSS(t *testing.T) {
 		":root,:host { --x: 1; }",
 		":host,:root { --x: 1; }",
 		":host { --x: 1; }",
+		":root { --x: 1; }",
 	} {
 		got = scopeChoyThemeCSS(alt)
 		if strings.Contains(got, ":root") || strings.Contains(got, ":host") {
 			t.Fatalf("alt spelling not rebound: %q =>\n%s", alt, got)
 		}
+	}
+	functional := `:host(.dark) { --x: 1; } :host-context(html) { --y: 2; }`
+	got = scopeChoyThemeCSS(functional)
+	if !strings.Contains(got, ":host(.dark)") || !strings.Contains(got, ":host-context(html)") {
+		t.Fatalf("functional :host forms must stay intact:\n%s", got)
+	}
+	// Token at EOF hits the boundary-at-end path.
+	got = replaceChoyThemeSelectors(":root", choyGalleryRootSelector)
+	if got != choyGalleryRootSelector {
+		t.Fatalf("EOF :root => %q", got)
+	}
+	got = replaceChoyThemeSelectors(":host", choyGalleryRootSelector)
+	if got != choyGalleryRootSelector {
+		t.Fatalf("EOF :host => %q", got)
+	}
+}
+
+func TestScopeChoyUtilityCSSUnknownAtRule(t *testing.T) {
+	// Unknown block at-rules with nested selectors are scoped by default.
+	in := `@custom-variant dark { .text-sm { font-size: 14px; } }`
+	got := scopeChoyUtilityCSS(in, choyGalleryRootSelector)
+	if !strings.Contains(got, "@custom-variant dark") {
+		t.Fatalf("expected at-rule preserved:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .text-sm") {
+		t.Fatalf("nested selectors in unknown at-rule must be scoped:\n%s", got)
+	}
+	prop := `@property --x { syntax: "<color>"; inherits: false; }`
+	got = scopeChoyUtilityCSS(prop, choyGalleryRootSelector)
+	if got != prop {
+		t.Fatalf("@property body must stay verbatim:\n%s", got)
 	}
 }
 
