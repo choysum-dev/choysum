@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -25,7 +26,9 @@ const ForceWebBuildEnv = "CHOYSUM_FORCE_WEB_BUILD"
 
 // webInputDigestSchema invalidates stamped digests when the digest algorithm or
 // embedded web toolchain contract changes across choysum binaries.
-const webInputDigestSchema = "web-input-digest-v6"
+const webInputDigestSchema = "web-input-digest-v7"
+
+const choyTailwindGoModulePath = "github.com/dhamidi/tailwind-go"
 
 // WebInputDigestInputs are the compile flags and module roots that affect dist/web.
 type WebInputDigestInputs struct {
@@ -116,7 +119,7 @@ func ComputeWebInputDigest(in WebInputDigestInputs) (string, error) {
 			return "", err
 		}
 		if dialectHash != "" || contentHash != "" {
-			_, _ = fmt.Fprintf(h, "choy_tailwind_dialect=%s\nchoy_tailwind_content=%s\n", dialectHash, contentHash)
+			_, _ = fmt.Fprintf(h, "choy_tailwind_dialect=%s\nchoy_tailwind_content=%s\nchoy_tailwind_engine=%s\n", dialectHash, contentHash, choyTailwindGoModuleVersion())
 		}
 	}
 	refs := append([]webEntryRef(nil), in.WebEntryPoints...)
@@ -208,13 +211,38 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 		default:
 			return nil
 		}
-		// Generated Tailwind utilities are derived from dialect + candidates already
-		// hashed via TailwindInputDigest; hashing the output would thrash digests.
-		if filepath.Base(path) == choyTailwindGeneratedCSSName {
+		// Only the choy_ui kit's generated Tailwind output is derived from dialect +
+		// candidates already hashed via TailwindInputDigest; hashing it would thrash
+		// digests. A same-named file in any other module is a real input.
+		if isChoyTailwindGeneratedKitPath(path) {
 			return nil
 		}
 		return hashFile(h, path)
 	})
+}
+
+// isChoyTailwindGeneratedKitPath reports whether path is the kit's generated
+// utilities CSS under choy_ui/web (not a same-named file elsewhere).
+func isChoyTailwindGeneratedKitPath(path string) bool {
+	if filepath.Base(path) != choyTailwindGeneratedCSSName {
+		return false
+	}
+	return strings.Contains(filepath.ToSlash(path), "/choy_ui/web/")
+}
+
+// choyTailwindGoModuleVersion returns the build's tailwind-go module version so
+// engine bumps invalidate web digests even when dialect and candidates are unchanged.
+func choyTailwindGoModuleVersion() string {
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	for _, dep := range bi.Deps {
+		if dep.Path == choyTailwindGoModulePath {
+			return dep.Version
+		}
+	}
+	return ""
 }
 
 func hashFile(h io.Writer, path string) error {

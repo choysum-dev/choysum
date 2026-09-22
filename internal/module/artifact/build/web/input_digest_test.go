@@ -225,22 +225,48 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 	if err != nil || withTailwind == e {
 		t.Fatalf("choy_ui dialect should alter digest: %q vs %q (%v)", e, withTailwind, err)
 	}
-	// Place the generated artifact under a hashed module root so the digest walker
-	// exercises the choy-tailwind.generated.css exclusion branch.
-	hashedGen := filepath.Join(modPath, "web", "choy-tailwind.generated.css")
+	// Place the generated artifact under the choy_ui kit web tree (also hashed as a
+	// web entry) so the digest walker exercises the kit-scoped exclusion branch.
+	choyMod := filepath.Join(root, "choy_ui")
+	choyEntry := filepath.Join(choyMod, "web", "index.ts")
+	if err := os.MkdirAll(filepath.Dir(choyEntry), 0o755); err != nil {
+		t.Fatalf("mkdir choy entry: %v", err)
+	}
+	if err := os.WriteFile(choyEntry, []byte("export default {}\n"), 0o644); err != nil {
+		t.Fatalf("write choy entry: %v", err)
+	}
+	in.WebEntryPoints = append(in.WebEntryPoints, webEntryRef{
+		ModuleName: "choy_ui",
+		Version:    "0.0.0",
+		EntryPath:  choyEntry,
+		ModulePath: choyMod,
+	})
+	withChoyEntry, err := ComputeWebInputDigest(in)
+	if err != nil {
+		t.Fatalf("digest with choy_ui entry: %v", err)
+	}
+	hashedGen := filepath.Join(choyMod, "web", "styles", "choy-tailwind.generated.css")
 	if err := os.WriteFile(hashedGen, []byte("/* noise */\n.flex{}\n"), 0o644); err != nil {
-		t.Fatalf("write generated under module: %v", err)
+		t.Fatalf("write generated under choy_ui: %v", err)
 	}
 	afterGenerated, err := ComputeWebInputDigest(in)
-	if err != nil || afterGenerated != withTailwind {
-		t.Fatalf("choy-tailwind.generated.css must not alter digest: %q vs %q (%v)", withTailwind, afterGenerated, err)
+	if err != nil || afterGenerated != withChoyEntry {
+		t.Fatalf("choy_ui choy-tailwind.generated.css must not alter digest: %q vs %q (%v)", withChoyEntry, afterGenerated, err)
+	}
+	// Same basename outside the kit is a real input and must invalidate.
+	if err := os.WriteFile(filepath.Join(modPath, "web", "choy-tailwind.generated.css"), []byte("/* other module */\n"), 0o644); err != nil {
+		t.Fatalf("write generated under other module: %v", err)
+	}
+	afterOtherName, err := ComputeWebInputDigest(in)
+	if err != nil || afterOtherName == afterGenerated {
+		t.Fatalf("same-named generated.css outside choy_ui should alter digest: %q vs %q (%v)", afterGenerated, afterOtherName, err)
 	}
 	if err := os.WriteFile(filepath.Join(modPath, "web", "other.generated.css"), []byte(".other{}\n"), 0o644); err != nil {
 		t.Fatalf("write other generated: %v", err)
 	}
 	afterOther, err := ComputeWebInputDigest(in)
-	if err != nil || afterOther == afterGenerated {
-		t.Fatalf("non-choy *.generated.css under module should alter digest: %q vs %q (%v)", afterGenerated, afterOther, err)
+	if err != nil || afterOther == afterOtherName {
+		t.Fatalf("non-choy *.generated.css under module should alter digest: %q vs %q (%v)", afterOtherName, afterOther, err)
 	}
 
 	// TailwindInputDigest error should fail the digest.
