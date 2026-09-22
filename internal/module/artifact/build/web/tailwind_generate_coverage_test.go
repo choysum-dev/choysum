@@ -308,6 +308,18 @@ func TestScanTailwindCandidatesSingleFileReadError(t *testing.T) {
 	}
 }
 
+func TestScanTailwindFileToleratesMissing(t *testing.T) {
+	seen := map[string]struct{}{}
+	var out []string
+	missing := filepath.Join(t.TempDir(), "gone.vue")
+	if err := scanTailwindFile(missing, seen, &out); err != nil {
+		t.Fatalf("missing file should be tolerated: %v", err)
+	}
+	if len(out) != 0 {
+		t.Fatalf("expected no candidates, got %v", out)
+	}
+}
+
 func TestScanTailwindCandidatesStatPermissionError(t *testing.T) {
 	root := t.TempDir()
 	blocked := filepath.Join(root, "blocked")

@@ -112,6 +112,11 @@ func shouldScanTailwindPath(path string) bool {
 func scanTailwindFile(path string, seen map[string]struct{}, out *[]string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
+		// A file that vanished between WalkDir and ReadFile is not a build
+		// input; mirror hashFile's NotExist tolerance instead of failing.
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return err
 	}
 	eng := tw.New()
