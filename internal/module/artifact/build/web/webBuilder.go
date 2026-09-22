@@ -117,7 +117,7 @@ func (b *WebModuleBuilder) BuildCtx(ctx context.Context) (*module.BuildResult, e
 	restore := b.bindRuntimeState(ctx)
 	defer restore()
 
-	if res, err := EnsureChoyTailwindCSS(b.resolvedRuntimeOptions().modulesPath); err != nil {
+	if res, err := ensureChoyTailwindCSS(b.resolvedRuntimeOptions().modulesPath); err != nil {
 		return nil, xfmt.Errorf("Error generating choy_ui Tailwind CSS: %w", err)
 	} else if res != nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 		if res.Duration > ChoyTailwindBudget {

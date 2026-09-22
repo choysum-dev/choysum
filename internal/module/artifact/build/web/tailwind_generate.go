@@ -182,6 +182,9 @@ var choyLoadCSS = func(eng *tw.Engine, css []byte) error {
 // generateTailwindCSS is GenerateTailwindCSS; tests replace it to force empty output.
 var generateTailwindCSS = GenerateTailwindCSS
 
+// ensureChoyTailwindCSS is EnsureChoyTailwindCSS; tests replace it to force budget-warn paths.
+var ensureChoyTailwindCSS = EnsureChoyTailwindCSS
+
 // scopeChoyThemeCSS rebinds ThemeCSS :root/:host tokens onto the gallery root.
 func scopeChoyThemeCSS(theme string) string {
 	theme = strings.NewReplacer(

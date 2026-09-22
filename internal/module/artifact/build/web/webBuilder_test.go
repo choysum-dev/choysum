@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/choysum-dev/choysum/internal/esbplugins"
@@ -4653,6 +4654,61 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		}
 		if _, err := os.Stat(filepath.Join(styles, "choy-tailwind.generated.css")); err != nil {
 			t.Fatalf("expected generated css: %v", err)
+		}
+	})
+
+	t.Run("warns when generate exceeds soft budget", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := testRuntimeScope.db.Create(&meta.Module{
+			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_auth_tw_budget", Valid: true}},
+			Name:          "auth",
+			Status:        meta.Installed,
+			WebEntryPoint: entryPoint,
+		}).Error; err != nil {
+			t.Fatalf("seed installed module failed: %v", err)
+		}
+
+		prev := ensureChoyTailwindCSS
+		t.Cleanup(func() { ensureChoyTailwindCSS = prev })
+		ensureChoyTailwindCSS = func(string) (*ChoyTailwindGenerateResult, error) {
+			return &ChoyTailwindGenerateResult{
+				Duration:       ChoyTailwindBudget + time.Millisecond,
+				CandidateCount: 1,
+				OutputPath:     "styles/choy-tailwind.generated.css",
+			}, nil
+		}
+
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		builder := &WebModuleBuilder{
+			runtimeScope: testRuntimeScope,
+			runtimeOptions: runtimeOptions{
+				modulesPath:        filepath.Join(t.TempDir(), "modules"),
+				distPath:           filepath.Join(t.TempDir(), "dist"),
+				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				webBaseURL:         "/web/",
+			},
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			parser:         defaultparser.NewVueParser(testRuntimeScope, moduleRef),
+			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
+			buildPlugin:    &buildTestPlugin{},
+			publishDist:    false,
+		}
+		if _, err := builder.BuildCtx(context.Background()); err != nil {
+			t.Fatalf("BuildCtx: %v", err)
+		}
+		logs := logBuf.String()
+		if !strings.Contains(logs, "choy_ui Tailwind generation exceeded soft budget") {
+			t.Fatalf("expected soft-budget warn log, got %q", logs)
+		}
+		if !strings.Contains(logs, "choy_ui Tailwind generated") {
+			t.Fatalf("expected tailwind generate info log, got %q", logs)
 		}
 	})
 
