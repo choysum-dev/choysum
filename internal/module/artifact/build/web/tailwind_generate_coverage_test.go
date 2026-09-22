@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	tw "github.com/dhamidi/tailwind-go"
 )
 
 func TestScanTailwindCandidatesEdgePaths(t *testing.T) {
@@ -407,11 +409,51 @@ func TestTailwindInputDigestErrors(t *testing.T) {
 	}
 }
 
+func TestGenerateTailwindCSSLoadCSSError(t *testing.T) {
+	t.Cleanup(func() {
+		choyLoadCSS = func(eng *tw.Engine, css []byte) error { return eng.LoadCSS(css) }
+	})
+	choyLoadCSS = func(*tw.Engine, []byte) error { return os.ErrInvalid }
+	_, _, err := GenerateTailwindCSS(`@theme { --color-primary: red; }`, []string{"flex"})
+	if err == nil || !strings.Contains(err.Error(), "load Tailwind dialect") {
+		t.Fatalf("expected dialect load error, got %v", err)
+	}
+}
+
 func TestGenerateTailwindCSSEmptyCandidates(t *testing.T) {
 	css, _, err := GenerateTailwindCSS(`@theme { --color-primary: red; }`, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Dialect-only generate should still succeed (may be empty utilities).
-	_ = css
+	if !strings.Contains(css, "--color-primary:") {
+		t.Fatalf("dialect-only generate should still emit ThemeCSS aliases:\n%s", css)
+	}
+}
+
+func TestScopeChoyUtilityCSS(t *testing.T) {
+	in := "@property --tw-x { syntax: \"*\"; inherits: false; }\n\n.flex {\n  display: flex;\n}\n\n.bg-primary, .text-primary {\n  color: red;\n}\n"
+	got := scopeChoyUtilityCSS(in, choyGalleryRootSelector)
+	if !strings.Contains(got, "@property --tw-x") {
+		t.Fatalf("expected @property preserved:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .flex") {
+		t.Fatalf("expected scoped .flex:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" .bg-primary") || !strings.Contains(got, choyGalleryRootSelector+" .text-primary") {
+		t.Fatalf("expected scoped selector list:\n%s", got)
+	}
+	if strings.Contains(got, "\n.flex {") {
+		t.Fatalf("unscoped .flex remained:\n%s", got)
+	}
+}
+
+func TestScopeChoyThemeCSS(t *testing.T) {
+	in := ":root, :host {\n  --color-primary: red;\n}\n"
+	got := scopeChoyThemeCSS(in)
+	if strings.Contains(got, ":root") || strings.Contains(got, ":host") {
+		t.Fatalf("expected :root/:host rebound, got:\n%s", got)
+	}
+	if !strings.Contains(got, choyGalleryRootSelector+" {") {
+		t.Fatalf("expected gallery root theme:\n%s", got)
+	}
 }

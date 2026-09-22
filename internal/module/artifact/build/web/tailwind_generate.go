@@ -22,6 +22,10 @@ const ChoyTailwindBudget = 500 * time.Millisecond
 
 const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 
+// choyGalleryRootSelector scopes generated theme + utilities to the gallery root
+// so product ERP pages are not affected when the gallery stylesheet is imported.
+const choyGalleryRootSelector = ".choy-gallery-root"
+
 // maxTailwindCandidateLen rejects scanner leaks from multi-line TS/JS literals.
 const maxTailwindCandidateLen = 128
 
@@ -144,12 +148,15 @@ func isPlausibleTailwindCandidate(c string) bool {
 	return true
 }
 
-// GenerateTailwindCSS loads dialect CSS, scans candidates, and returns utility CSS (no preflight).
+// GenerateTailwindCSS loads dialect CSS, scans candidates, and returns theme +
+// utility CSS scoped to .choy-gallery-root (no Tailwind FullCSS preflight).
 func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, dur time.Duration, err error) {
 	start := time.Now()
 	eng := tw.New()
 	if strings.TrimSpace(dialectCSS) != "" {
-		eng.LoadCSS([]byte(dialectCSS))
+		if err := choyLoadCSS(eng, []byte(dialectCSS)); err != nil {
+			return "", time.Since(start), fmt.Errorf("load Tailwind dialect: %w", err)
+		}
 	}
 	if len(candidates) > 0 {
 		payload := []byte(strings.Join(candidates, " "))
@@ -157,12 +164,105 @@ func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, du
 		_, _ = eng.Write(payload)
 	}
 	eng.Flush()
-	css = eng.CSS()
+	// ThemeCSS emits --color-* aliases from @theme; CSS() is utilities only.
+	// Scope both under the gallery root so imports do not restyle product pages.
+	theme := scopeChoyThemeCSS(eng.ThemeCSS())
+	utilities := scopeChoyUtilityCSS(eng.CSS(), choyGalleryRootSelector)
+	css = theme + utilities
 	return css, time.Since(start), nil
 }
 
+// choyLoadCSS wraps Engine.LoadCSS so tests can force parse failures.
+var choyLoadCSS = func(eng *tw.Engine, css []byte) error {
+	return eng.LoadCSS(css)
+}
+
+// scopeChoyThemeCSS rebinds ThemeCSS :root/:host tokens onto the gallery root.
+func scopeChoyThemeCSS(theme string) string {
+	theme = strings.Replace(theme, ":root, :host", choyGalleryRootSelector, 1)
+	theme = strings.ReplaceAll(theme, ":root", choyGalleryRootSelector)
+	return theme
+}
+
+// scopeChoyUtilityCSS prefixes top-level class selectors as descendants of scope.
+// @property / @keyframes blocks are left unchanged.
+func scopeChoyUtilityCSS(css, scope string) string {
+	if strings.TrimSpace(css) == "" || strings.TrimSpace(scope) == "" {
+		return css
+	}
+	var out strings.Builder
+	rest := css
+	for len(rest) > 0 {
+		trimmed := strings.TrimLeft(rest, " \t\r\n")
+		leading := rest[:len(rest)-len(trimmed)]
+		out.WriteString(leading)
+		rest = trimmed
+		if rest == "" {
+			break
+		}
+		if strings.HasPrefix(rest, "@") {
+			end := indexCSSBlockEnd(rest)
+			if end < 0 {
+				out.WriteString(rest)
+				break
+			}
+			out.WriteString(rest[:end])
+			rest = rest[end:]
+			continue
+		}
+		brace := strings.IndexByte(rest, '{')
+		if brace < 0 {
+			out.WriteString(rest)
+			break
+		}
+		selectors := rest[:brace]
+		block := rest[brace:]
+		end := indexCSSBlockEnd(block)
+		if end < 0 {
+			out.WriteString(rest)
+			break
+		}
+		out.WriteString(prefixCSSSelectorList(selectors, scope))
+		out.WriteString(block[:end])
+		rest = block[end:]
+	}
+	return out.String()
+}
+
+func prefixCSSSelectorList(selectors, scope string) string {
+	parts := strings.Split(selectors, ",")
+	for i, part := range parts {
+		trim := strings.TrimSpace(part)
+		if trim == "" {
+			continue
+		}
+		// Preserve leading whitespace/newlines around each selector.
+		lead := part[:len(part)-len(strings.TrimLeft(part, " \t\r\n"))]
+		parts[i] = lead + scope + " " + trim
+	}
+	return strings.Join(parts, ",")
+}
+
+// indexCSSBlockEnd returns the index after the first top-level closing `}`,
+// accounting for nested braces. Returns -1 when unbalanced.
+func indexCSSBlockEnd(css string) int {
+	depth := 0
+	for i := 0; i < len(css); i++ {
+		switch css[i] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return i + 1
+			}
+		}
+	}
+	return -1
+}
+
 // GenerateChoyTailwindForModule scans a choy_ui module root and writes generated utilities CSS.
-// Uses eng.CSS() (not FullCSS) so product EP pages are not hit by Tailwind preflight.
+// Emits theme aliases + utilities scoped to .choy-gallery-root (never FullCSS preflight).
 func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResult, error) {
 	moduleRoot = strings.TrimSpace(moduleRoot)
 	if moduleRoot == "" {
@@ -182,8 +282,10 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 	}
 	contentHash := sha256Hex([]byte(strings.Join(candidates, "\n")))
 
-	// GenerateTailwindCSS only fails if the engine Write fails; tw.New() never does.
-	css, dur, _ := GenerateTailwindCSS(string(dialectBytes), candidates)
+	css, dur, err := GenerateTailwindCSS(string(dialectBytes), candidates)
+	if err != nil {
+		return nil, err
+	}
 
 	// Header omits wall-clock duration so identical inputs rewrite a stable file.
 	// Duration is returned on ChoyTailwindGenerateResult for gates. The output path
@@ -191,9 +293,9 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 	header := fmt.Sprintf(
 		"/* Generated by choysum web build (tailwind-go). Do not edit.\n"+
 			" * dialect=%s content=%s candidates=%d\n"+
-			" * Isolation: utilities only (no Tailwind preflight).\n"+
+			" * Isolation: theme+utilities scoped to %s (no Tailwind preflight).\n"+
 			" */\n",
-		dialectHash[:12], contentHash[:12], len(candidates),
+		dialectHash[:12], contentHash[:12], len(candidates), choyGalleryRootSelector,
 	)
 	outPath := filepath.Join(webRoot, "styles", choyTailwindGeneratedCSSName)
 	if err := writeFileAtomicIfChanged(outPath, header+css); err != nil {
