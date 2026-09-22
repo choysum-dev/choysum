@@ -117,14 +117,50 @@ func TestEnsureChoyTailwindCSSNoopWhenMissing(t *testing.T) {
 	}
 }
 
+func TestScanTailwindCandidatesRejectsMultilineTSLiterals(t *testing.T) {
+	dir := t.TempDir()
+	tsPath := filepath.Join(dir, "routes.ts")
+	src := "export const routes = [\n  {\n    path: '__choy_gallery',\n    name: 'ChoyUiGallery',\n  },\n];\n" +
+		`<div class="flex p-4"></div>`
+	if err := os.WriteFile(tsPath, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	vuePath := filepath.Join(dir, "Sample.vue")
+	if err := os.WriteFile(vuePath, []byte(`<div class="flex gap-2"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := ScanTailwindCandidates([]string{dir})
+	if err != nil {
+		t.Fatalf("ScanTailwindCandidates: %v", err)
+	}
+	for _, c := range got {
+		if strings.ContainsAny(c, "\n\r{} ") || strings.Contains(c, "path:") {
+			t.Fatalf("implausible candidate retained: %q", c)
+		}
+	}
+	want := map[string]bool{"flex": true, "gap-2": true, "p-4": true}
+	for _, c := range got {
+		delete(want, c)
+	}
+	if len(want) > 0 {
+		t.Fatalf("missing class candidates %v; got %v", want, got)
+	}
+}
+
 func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	repoModules := findRepoModulesDir(t)
-	theme := filepath.Join(repoModules, "choy_ui", "web", "styles", "theme.css")
+	srcRoot := filepath.Join(repoModules, "choy_ui")
+	theme := filepath.Join(srcRoot, "web", "styles", "theme.css")
 	if _, err := os.Stat(theme); err != nil {
 		t.Skip("choy_ui theme.css not present in checkout")
 	}
+	tmpModules := t.TempDir()
+	dstRoot := filepath.Join(tmpModules, "choy_ui")
+	if err := os.CopyFS(dstRoot, os.DirFS(srcRoot)); err != nil {
+		t.Fatalf("CopyFS: %v", err)
+	}
 	start := time.Now()
-	res, err := EnsureChoyTailwindCSS(repoModules)
+	res, err := EnsureChoyTailwindCSS(tmpModules)
 	if err != nil {
 		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
 	}
@@ -143,8 +179,28 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "duration=") {
+	body := string(data)
+	if strings.Contains(body, "duration=") {
 		t.Fatal("generated CSS header must not include wall-clock duration")
+	}
+	if strings.Contains(body, "path:") || strings.Contains(body, "component:") || strings.Contains(body, "--choy-color-primary'") {
+		t.Fatalf("generated CSS contains leaked TS/JS fragments:\n%s", body)
+	}
+}
+
+func TestEnsureChoyTailwindCSSPropagatesStatErrors(t *testing.T) {
+	root := t.TempDir()
+	choy := filepath.Join(root, "choy_ui", "web", "styles")
+	if err := os.MkdirAll(choy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// theme.css path exists as a directory → treated as absent (nil), not an error.
+	res, err := EnsureChoyTailwindCSS(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res != nil {
+		t.Fatalf("expected nil for directory theme path, got %#v", res)
 	}
 }
 

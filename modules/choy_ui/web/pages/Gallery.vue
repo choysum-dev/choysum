@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { ref } from 'vue';
 import '../styles/tokens.css';
 import '../styles/preflight-policy.css';
 // Produced by web build (EnsureChoyTailwindCSS); not committed.
@@ -61,35 +61,18 @@ const colorSwatches = [
 ];
 
 /**
- * Applies the current theme preference to the document root for token overrides.
- */
-function applyThemeToDocument(): void {
-  const root = document.documentElement;
-  root.classList.toggle('dark', isDark.value);
-  root.dataset.density = density.value;
-}
-
-/**
- * Toggles light / dark token sets.
+ * Toggles light / dark token sets on the gallery root.
  */
 function toggleDark(): void {
   isDark.value = !isDark.value;
 }
 
 /**
- * Toggles comfortable / compact density.
+ * Toggles comfortable / compact density on the gallery root.
  */
 function toggleDensity(): void {
   density.value = density.value === 'comfortable' ? 'compact' : 'comfortable';
 }
-
-onMounted(() => {
-  applyThemeToDocument();
-});
-
-watch([isDark, density], () => {
-  applyThemeToDocument();
-});
 </script>
 
 <style scoped>

@@ -230,7 +230,7 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 	}
 	afterGenerated, err := ComputeWebInputDigest(in)
 	if err != nil || afterGenerated != withTailwind {
-		t.Fatalf("*.generated.css must not alter digest: %q vs %q (%v)", withTailwind, afterGenerated, err)
+		t.Fatalf("choy-tailwind.generated.css must not alter digest: %q vs %q (%v)", withTailwind, afterGenerated, err)
 	}
 
 	// Empty roots / "." must not walk the process cwd.

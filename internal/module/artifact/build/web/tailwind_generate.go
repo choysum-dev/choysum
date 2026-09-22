@@ -12,12 +12,18 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	tw "github.com/dhamidi/tailwind-go"
 )
 
 // ChoyTailwindBudget is the soft wall-clock budget for a representative kit generate.
 const ChoyTailwindBudget = 500 * time.Millisecond
+
+const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
+
+// maxTailwindCandidateLen rejects scanner leaks from multi-line TS/JS literals.
+const maxTailwindCandidateLen = 128
 
 // ChoyTailwindGenerateResult is the outcome of a Go Tailwind generate pass.
 type ChoyTailwindGenerateResult struct {
@@ -46,6 +52,9 @@ func ScanTailwindCandidates(roots []string) ([]string, error) {
 			return nil, err
 		}
 		if !info.IsDir() {
+			if !shouldScanTailwindPath(root) {
+				continue
+			}
 			if err := scanTailwindFile(root, seen, &out); err != nil {
 				return nil, err
 			}
@@ -62,20 +71,10 @@ func ScanTailwindCandidates(roots []string) ([]string, error) {
 				}
 				return nil
 			}
-			switch strings.ToLower(filepath.Ext(path)) {
-			case ".vue", ".ts", ".tsx", ".js", ".jsx", ".css", ".html":
-				base := filepath.Base(path)
-				if strings.HasSuffix(base, ".generated.css") {
-					return nil
-				}
-				// theme.css is LoadCSS dialect input, not class candidate source.
-				if base == "theme.css" {
-					return nil
-				}
-				return scanTailwindFile(path, seen, &out)
-			default:
+			if !shouldScanTailwindPath(path) {
 				return nil
 			}
+			return scanTailwindFile(path, seen, &out)
 		})
 		if err != nil {
 			return nil, err
@@ -83,6 +82,23 @@ func ScanTailwindCandidates(roots []string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+func shouldScanTailwindPath(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".vue", ".ts", ".tsx", ".js", ".jsx", ".css", ".html":
+	default:
+		return false
+	}
+	base := filepath.Base(path)
+	if base == choyTailwindGeneratedCSSName || strings.HasSuffix(base, ".generated.css") {
+		return false
+	}
+	// theme.css is LoadCSS dialect input, not class candidate source.
+	if base == "theme.css" {
+		return false
+	}
+	return true
 }
 
 func scanTailwindFile(path string, seen map[string]struct{}, out *[]string) error {
@@ -97,7 +113,7 @@ func scanTailwindFile(path string, seen map[string]struct{}, out *[]string) erro
 	eng.Flush()
 	for _, c := range eng.Candidates() {
 		c = strings.TrimSpace(c)
-		if c == "" {
+		if !isPlausibleTailwindCandidate(c) {
 			continue
 		}
 		if _, ok := seen[c]; ok {
@@ -107,6 +123,26 @@ func scanTailwindFile(path string, seen map[string]struct{}, out *[]string) erro
 		*out = append(*out, c)
 	}
 	return nil
+}
+
+// isPlausibleTailwindCandidate drops scanner leaks from multi-line TS/JS arrays
+// and object literals (which produce invalid CSS when treated as class names).
+func isPlausibleTailwindCandidate(c string) bool {
+	if c == "" || len(c) > maxTailwindCandidateLen {
+		return false
+	}
+	if strings.ContainsAny(c, "\n\r\t") || strings.Contains(c, " ") {
+		return false
+	}
+	if strings.ContainsAny(c, "{};") {
+		return false
+	}
+	for _, r := range c {
+		if !unicode.IsPrint(r) {
+			return false
+		}
+	}
+	return true
 }
 
 // GenerateTailwindCSS loads dialect CSS, scans candidates, and returns utility CSS (no preflight).
@@ -121,8 +157,8 @@ func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, du
 		if _, err := eng.Write(payload); err != nil {
 			return "", time.Since(start), err
 		}
-		eng.Flush()
 	}
+	eng.Flush()
 	css = eng.CSS()
 	return css, time.Since(start), nil
 }
@@ -163,8 +199,8 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 			" */\n",
 		dialectHash[:12], contentHash[:12], len(candidates),
 	)
-	outPath := filepath.Join(webRoot, "styles", "choy-tailwind.generated.css")
-	if err := os.WriteFile(outPath, []byte(header+css), 0o644); err != nil {
+	outPath := filepath.Join(webRoot, "styles", choyTailwindGeneratedCSSName)
+	if err := writeFileAtomicIfChanged(outPath, header+css); err != nil {
 		return nil, err
 	}
 	return &ChoyTailwindGenerateResult{
@@ -177,6 +213,42 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 	}, nil
 }
 
+func writeFileAtomicIfChanged(path, content string) error {
+	if prev, err := os.ReadFile(path); err == nil && string(prev) == content {
+		return nil
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".choy-tailwind-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = os.Remove(tmpName)
+		}
+	}()
+	if _, err := tmp.WriteString(content); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, 0o644); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return err
+	}
+	cleanup = false
+	return nil
+}
+
 // EnsureChoyTailwindCSS finds an installed/local choy_ui module under modulesPath and regenerates CSS.
 // No-op when the module is absent.
 func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, error) {
@@ -185,7 +257,14 @@ func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, err
 		return nil, nil
 	}
 	root := filepath.Join(modulesPath, "choy_ui")
-	if st, err := os.Stat(filepath.Join(root, "web", "styles", "theme.css")); err != nil || st.IsDir() {
+	st, err := os.Stat(filepath.Join(root, "web", "styles", "theme.css"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if st.IsDir() {
 		return nil, nil
 	}
 	return GenerateChoyTailwindForModule(root)

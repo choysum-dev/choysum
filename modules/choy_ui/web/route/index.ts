@@ -10,6 +10,10 @@ import { choyUiRoutes } from './routes';
 export function setupRouter(app: ChoysumWebApp): void {
   const router = app.router;
   for (const route of choyUiRoutes) {
+    const name = route.name != null ? String(route.name) : '';
+    if (name && router.hasRoute(name)) {
+      continue;
+    }
     router.addRoute('AppLayout', route);
   }
 }

@@ -1,6 +1,8 @@
 /*
  * Choysum Choy UI tokens (frozen names; values tunable).
  * Isolation gallery uses these without Element Plus theme packages.
+ * Layout-affecting resets live on .choy-gallery-root so product ERP pages
+ * are not overridden when the gallery chunk loads.
  */
 
 :root {
@@ -46,7 +48,9 @@
   --choy-z-dropdown: 1000;
   --choy-z-modal: 1100;
   --choy-z-toast: 1200;
+}
 
+.choy-gallery-root {
   color-scheme: light;
   background: var(--choy-color-background);
   color: var(--choy-color-foreground);
@@ -56,7 +60,7 @@
   line-height: 1.5;
 }
 
-.dark {
+.choy-gallery-root.dark {
   --choy-color-primary: oklch(0.7 0.12 255);
   --choy-color-success: oklch(0.72 0.12 150);
   --choy-color-warning: oklch(0.8 0.12 85);
@@ -70,7 +74,7 @@
   color-scheme: dark;
 }
 
-[data-density='compact'] {
+.choy-gallery-root[data-density='compact'] {
   --choy-space-1: 0.2rem;
   --choy-space-2: 0.4rem;
   --choy-space-3: 0.6rem;
