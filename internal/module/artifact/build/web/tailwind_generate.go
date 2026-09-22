@@ -179,8 +179,14 @@ var choyLoadCSS = func(eng *tw.Engine, css []byte) error {
 
 // scopeChoyThemeCSS rebinds ThemeCSS :root/:host tokens onto the gallery root.
 func scopeChoyThemeCSS(theme string) string {
-	theme = strings.Replace(theme, ":root, :host", choyGalleryRootSelector, 1)
+	theme = strings.NewReplacer(
+		":root, :host", choyGalleryRootSelector,
+		":host, :root", choyGalleryRootSelector,
+		":root,:host", choyGalleryRootSelector,
+		":host,:root", choyGalleryRootSelector,
+	).Replace(theme)
 	theme = strings.ReplaceAll(theme, ":root", choyGalleryRootSelector)
+	theme = strings.ReplaceAll(theme, ":host", choyGalleryRootSelector)
 	return theme
 }
 
@@ -202,6 +208,16 @@ func scopeChoyUtilityCSS(css, scope string) string {
 			break
 		}
 		if strings.HasPrefix(rest, "@") {
+			// Block-less at-rules (@import/@charset/@layer a, b;) end at ';'.
+			// Without this, indexCSSBlockEnd jumps to a later rule's '}' and
+			// that rule is copied through unscoped.
+			if semi := strings.IndexByte(rest, ';'); semi >= 0 {
+				if brace := strings.IndexByte(rest, '{'); brace < 0 || semi < brace {
+					out.WriteString(rest[:semi+1])
+					rest = rest[semi+1:]
+					continue
+				}
+			}
 			end := indexCSSBlockEnd(rest)
 			if end < 0 {
 				out.WriteString(rest)

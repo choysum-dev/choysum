@@ -210,7 +210,7 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 		}
 		// Generated Tailwind utilities are derived from dialect + candidates already
 		// hashed via TailwindInputDigest; hashing the output would thrash digests.
-		if filepath.Base(path) == "choy-tailwind.generated.css" {
+		if filepath.Base(path) == choyTailwindGeneratedCSSName {
 			return nil
 		}
 		return hashFile(h, path)

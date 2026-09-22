@@ -8,8 +8,8 @@ import { setupRouter } from './route';
 /**
  * Registers the Choy UI gallery router with the shared web application.
  */
-export function setupApp(app: ChoysumWebApp): void {
-  setupRouter(app);
+export function setupApp(webApp: ChoysumWebApp): void {
+  setupRouter(webApp);
 }
 
 /**
