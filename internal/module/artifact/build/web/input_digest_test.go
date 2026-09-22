@@ -6,6 +6,7 @@ package webmodulebuilder
 import (
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -212,6 +213,88 @@ func TestComputeWebInputDigestStableAndSensitive(t *testing.T) {
 	if err != nil || forced == "" || forced != e {
 		t.Fatalf("ForceRebuild must still return a stampable digest, got %q (%v)", forced, err)
 	}
+
+	choyStyles := filepath.Join(root, "choy_ui", "web", "styles")
+	if err := os.MkdirAll(choyStyles, 0o755); err != nil {
+		t.Fatalf("mkdir choy styles: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(choyStyles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatalf("write theme: %v", err)
+	}
+	in.ForceRebuild = false
+	withTailwind, err := ComputeWebInputDigest(in)
+	if err != nil || withTailwind == e {
+		t.Fatalf("choy_ui dialect should alter digest: %q vs %q (%v)", e, withTailwind, err)
+	}
+	// Place the generated artifact under the choy_ui kit web tree (also hashed as a
+	// web entry) so the digest walker exercises the kit-scoped exclusion branch.
+	choyMod := filepath.Join(root, "choy_ui")
+	choyEntry := filepath.Join(choyMod, "web", "index.ts")
+	if err := os.MkdirAll(filepath.Dir(choyEntry), 0o755); err != nil {
+		t.Fatalf("mkdir choy entry: %v", err)
+	}
+	if err := os.WriteFile(choyEntry, []byte("export default {}\n"), 0o644); err != nil {
+		t.Fatalf("write choy entry: %v", err)
+	}
+	in.WebEntryPoints = append(in.WebEntryPoints, webEntryRef{
+		ModuleName: "choy_ui",
+		Version:    "0.0.0",
+		EntryPath:  choyEntry,
+		ModulePath: choyMod,
+	})
+	withChoyEntry, err := ComputeWebInputDigest(in)
+	if err != nil {
+		t.Fatalf("digest with choy_ui entry: %v", err)
+	}
+	hashedGen := filepath.Join(choyMod, "web", "styles", "choy-tailwind.generated.css")
+	if err := os.WriteFile(hashedGen, []byte("/* noise */\n.flex{}\n"), 0o644); err != nil {
+		t.Fatalf("write generated under choy_ui: %v", err)
+	}
+	afterGenerated, err := ComputeWebInputDigest(in)
+	if err != nil || afterGenerated != withChoyEntry {
+		t.Fatalf("choy_ui choy-tailwind.generated.css must not alter digest: %q vs %q (%v)", withChoyEntry, afterGenerated, err)
+	}
+	// Same basename outside the kit is a real input and must invalidate.
+	if err := os.WriteFile(filepath.Join(modPath, "web", "choy-tailwind.generated.css"), []byte("/* other module */\n"), 0o644); err != nil {
+		t.Fatalf("write generated under other module: %v", err)
+	}
+	afterOtherName, err := ComputeWebInputDigest(in)
+	if err != nil || afterOtherName == afterGenerated {
+		t.Fatalf("same-named generated.css outside choy_ui should alter digest: %q vs %q (%v)", afterGenerated, afterOtherName, err)
+	}
+	if err := os.WriteFile(filepath.Join(modPath, "web", "other.generated.css"), []byte(".other{}\n"), 0o644); err != nil {
+		t.Fatalf("write other generated: %v", err)
+	}
+	afterOther, err := ComputeWebInputDigest(in)
+	if err != nil || afterOther == afterOtherName {
+		t.Fatalf("non-choy *.generated.css under module should alter digest: %q vs %q (%v)", afterOtherName, afterOther, err)
+	}
+
+	// A tailwind-go engine bump must invalidate the digest even when dialect and
+	// candidates are unchanged; readBuildInfo is stubbed to simulate the bump.
+	prevReadBuildInfo := readBuildInfo
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{{Path: choyTailwindGoModulePath, Version: "v9.9.9"}}}, true
+	}
+	bumpedEngine, err := ComputeWebInputDigest(in)
+	readBuildInfo = prevReadBuildInfo
+	if err != nil || bumpedEngine == afterOther {
+		t.Fatalf("engine version change must alter digest: %q vs %q (%v)", afterOther, bumpedEngine, err)
+	}
+
+	// TailwindInputDigest error should fail the digest.
+	badTheme := filepath.Join(root, "choy_ui", "web", "styles", "theme.css")
+	if err := os.Chmod(badTheme, 0o000); err != nil {
+		t.Fatalf("chmod theme: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(badTheme, 0o644) })
+	if _, err := os.ReadFile(badTheme); err == nil {
+		t.Skip("theme.css still readable on this runner (e.g. root)")
+	} else if _, err := ComputeWebInputDigest(in); err == nil {
+		_ = os.Chmod(badTheme, 0o644)
+		t.Fatal("expected ComputeWebInputDigest to surface TailwindInputDigest error")
+	}
+	_ = os.Chmod(badTheme, 0o644)
 
 	// Empty roots / "." must not walk the process cwd.
 	empty, err := ComputeWebInputDigest(WebInputDigestInputs{
@@ -570,5 +653,105 @@ func TestShouldSkipAndStampHelpers(t *testing.T) {
 	dirAsFile := t.TempDir()
 	if err := hashFile(nilWriter{}, dirAsFile); err != nil {
 		t.Fatalf("directory hashFile: %v", err)
+	}
+}
+
+func TestIsChoyTailwindGeneratedKitPath(t *testing.T) {
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"/abs/modules/choy_ui/web/styles/" + choyTailwindGeneratedCSSName, true},
+		{"choy_ui/web/styles/" + choyTailwindGeneratedCSSName, true},
+		{"choy_ui/web/" + choyTailwindGeneratedCSSName, true},
+		{"other/web/styles/" + choyTailwindGeneratedCSSName, false},
+		{"choy_ui_extra/web/styles/" + choyTailwindGeneratedCSSName, false},
+		{"choy_ui/web/styles/other.css", false},
+		{"not-the-file.css", false},
+	}
+	for _, tc := range cases {
+		if got := isChoyTailwindGeneratedKitPath(tc.path); got != tc.want {
+			t.Fatalf("isChoyTailwindGeneratedKitPath(%q)=%v want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
+func TestChoyTailwindGoModuleVersion(t *testing.T) {
+	t.Cleanup(func() { readBuildInfo = debug.ReadBuildInfo })
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) { return nil, false }
+	if got := choyTailwindGoModuleVersion(); got != "" {
+		t.Fatalf("!ok => empty, got %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) { return nil, true }
+	if got := choyTailwindGoModuleVersion(); got != "" {
+		t.Fatalf("nil BuildInfo => empty, got %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{{Path: "example.com/other", Version: "v1.0.0"}}}, true
+	}
+	if got := choyTailwindGoModuleVersion(); got != "" {
+		t.Fatalf("missing dep => empty, got %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{
+			{Path: "example.com/other", Version: "v1.0.0"},
+			{Path: choyTailwindGoModulePath, Version: "v0.4.0"},
+		}}, true
+	}
+	if got := choyTailwindGoModuleVersion(); got != "v0.4.0" {
+		t.Fatalf("matched dep => v0.4.0, got %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{{
+			Path:    choyTailwindGoModulePath,
+			Version: "v0.4.0",
+			Replace: &debug.Module{Path: "github.com/dhamidi/tailwind-go", Version: "v0.4.1"},
+		}}}, true
+	}
+	if got := choyTailwindGoModuleVersion(); got != "github.com/dhamidi/tailwind-go@v0.4.1" {
+		t.Fatalf("replace path@version => %q", got)
+	}
+
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{Deps: []*debug.Module{nil, {
+			Path:    choyTailwindGoModulePath,
+			Version: "v0.4.0",
+			Replace: &debug.Module{Path: "../tailwind-go"},
+		}}}, true
+	}
+	if got := choyTailwindGoModuleVersion(); got != "../tailwind-go" {
+		t.Fatalf("replace path => ../tailwind-go, got %q", got)
+	}
+}
+
+func TestIndexCSSBareAtRuleSemi(t *testing.T) {
+	if got := indexCSSBareAtRuleSemi(`@import url("a;b.css");`); got != len(`@import url("a;b.css")`) {
+		t.Fatalf("quoted semi: %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import url("a\"b;c.css");`); got != len(`@import url("a\"b;c.css")`) {
+		t.Fatalf("escaped quote in url: %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import url('a\'b;c.css');`); got != len(`@import url('a\'b;c.css')`) {
+		t.Fatalf("escaped single quote: %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@layer utilities { .a{} }`); got != -1 {
+		t.Fatalf("block at-rule => -1, got %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import url(a)`); got != -1 {
+		t.Fatalf("no terminator => -1, got %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@supports (display: flex) { .a{} }`); got != -1 {
+		t.Fatalf("paren then brace => -1, got %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import /* ; */ url(x.css);`); got != len(`@import /* ; */ url(x.css)`) {
+		t.Fatalf("semi inside comment: %d", got)
+	}
+	if got := indexCSSBareAtRuleSemi(`@import /* unterminated`); got != -1 {
+		t.Fatalf("unterminated comment => -1, got %d", got)
 	}
 }

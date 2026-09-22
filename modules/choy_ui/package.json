@@ -1,0 +1,30 @@
+{
+  "name": "@choysum-dev/choy_ui",
+  "version": "0.0.0-0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choysum-dev/choysum.git"
+  },
+  "description": "Isolated Choy UI kit (gallery + dogfood); not a second product SPA",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "peerDependencies": {
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
+  },
+  "choysum": {
+    "moduleName": "choy_ui",
+    "application": "choy_ui",
+    "category": "Development",
+    "depends": ["core"],
+    "cli": ">=0.0.0-0 <0.0.0",
+    "entryPoints": {
+      "web": "./web/index.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

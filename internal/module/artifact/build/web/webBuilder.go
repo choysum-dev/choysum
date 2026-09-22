@@ -117,6 +117,24 @@ func (b *WebModuleBuilder) BuildCtx(ctx context.Context) (*module.BuildResult, e
 	restore := b.bindRuntimeState(ctx)
 	defer restore()
 
+	if res, err := ensureChoyTailwindCSS(b.resolvedRuntimeOptions().modulesPath); err != nil {
+		return nil, xfmt.Errorf("Error generating choy_ui Tailwind CSS: %w", err)
+	} else if res != nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		if res.Duration > ChoyTailwindBudget {
+			b.runtimeScope.Logger().Warn(
+				"choy_ui Tailwind generation exceeded soft budget",
+				"duration", res.Duration.String(),
+				"budget", ChoyTailwindBudget.String(),
+			)
+		}
+		b.runtimeScope.Logger().Info(
+			"choy_ui Tailwind generated",
+			"duration", res.Duration.String(),
+			"candidates", res.CandidateCount,
+			"output", res.OutputPath,
+		)
+	}
+
 	// 1. prebuild for parse original model extends
 	prebuildResult, err := b.prebuild()
 	if err != nil {

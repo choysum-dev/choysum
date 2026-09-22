@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/antchfx/htmlquery"
 	"github.com/choysum-dev/choysum/internal/esbplugins"
@@ -81,7 +82,7 @@ func (e *testScope) Session() *scope.Session {
 	return &scope.Session{DB: e.db}
 }
 func (e *testScope) WithContext(ctx context.Context) scope.Scope {
-	return &testScope{ctx: ctx, cfg: e.cfg, db: e.db}
+	return &testScope{ctx: ctx, cfg: e.cfg, db: e.db, log: e.log}
 }
 func (e *testScope) Context() context.Context { return e.ctx }
 func (e *testScope) Logger() *slog.Logger {
@@ -4591,6 +4592,160 @@ func TestBuildPipelineHelpers(t *testing.T) {
 		err := builder.updatePrebuildResult(withParserResults(&module.BuildResult{Module: moduleRef}, &parser.ParserResult{Path: entryPoint, Content: "export const answer = 42"}))
 		if err == nil || !strings.Contains(err.Error(), "Error finding module web entry points") {
 			t.Fatalf("expected db error, got %v", err)
+		}
+	})
+}
+
+func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
+	t.Run("logs successful generate when choy_ui present", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := testRuntimeScope.db.Create(&meta.Module{
+			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_auth_tw", Valid: true}},
+			Name:          "auth",
+			Status:        meta.Installed,
+			WebEntryPoint: entryPoint,
+		}).Error; err != nil {
+			t.Fatalf("seed installed module failed: %v", err)
+		}
+
+		modulesPath := filepath.Join(t.TempDir(), "modules")
+		choyWeb := filepath.Join(modulesPath, "choy_ui", "web")
+		styles := filepath.Join(choyWeb, "styles")
+		pages := filepath.Join(choyWeb, "pages")
+		for _, dir := range []string{styles, pages} {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(pages, "Gallery.vue"), []byte(`<div class="flex"></div>`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		builder := &WebModuleBuilder{
+			runtimeScope: testRuntimeScope,
+			runtimeOptions: runtimeOptions{
+				modulesPath:        modulesPath,
+				distPath:           filepath.Join(t.TempDir(), "dist"),
+				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				webBaseURL:         "/web/",
+			},
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			parser:         defaultparser.NewVueParser(testRuntimeScope, moduleRef),
+			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
+			buildPlugin:    &buildTestPlugin{},
+			publishDist:    false,
+		}
+		if _, err := builder.BuildCtx(context.Background()); err != nil {
+			t.Fatalf("BuildCtx: %v", err)
+		}
+		if !strings.Contains(logBuf.String(), "choy_ui Tailwind generated") {
+			t.Fatalf("expected tailwind generate log, got %q", logBuf.String())
+		}
+		if _, err := os.Stat(filepath.Join(styles, "choy-tailwind.generated.css")); err != nil {
+			t.Fatalf("expected generated css: %v", err)
+		}
+	})
+
+	t.Run("warns when generate exceeds soft budget", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := testRuntimeScope.db.Create(&meta.Module{
+			BaseModel:     meta.BaseModel{Id: sql.NullString{String: "installed_auth_tw_budget", Valid: true}},
+			Name:          "auth",
+			Status:        meta.Installed,
+			WebEntryPoint: entryPoint,
+		}).Error; err != nil {
+			t.Fatalf("seed installed module failed: %v", err)
+		}
+
+		prev := ensureChoyTailwindCSS
+		t.Cleanup(func() { ensureChoyTailwindCSS = prev })
+		ensureChoyTailwindCSS = func(string) (*ChoyTailwindGenerateResult, error) {
+			return &ChoyTailwindGenerateResult{
+				Duration:       ChoyTailwindBudget + time.Millisecond,
+				CandidateCount: 1,
+				OutputPath:     "styles/choy-tailwind.generated.css",
+			}, nil
+		}
+
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+		builder := &WebModuleBuilder{
+			runtimeScope: testRuntimeScope,
+			runtimeOptions: runtimeOptions{
+				modulesPath:        filepath.Join(t.TempDir(), "modules"),
+				distPath:           filepath.Join(t.TempDir(), "dist"),
+				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				webBaseURL:         "/web/",
+			},
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			parser:         defaultparser.NewVueParser(testRuntimeScope, moduleRef),
+			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
+			buildPlugin:    &buildTestPlugin{},
+			publishDist:    false,
+		}
+		if _, err := builder.BuildCtx(context.Background()); err != nil {
+			t.Fatalf("BuildCtx: %v", err)
+		}
+		logs := logBuf.String()
+		if !strings.Contains(logs, "choy_ui Tailwind generation exceeded soft budget") {
+			t.Fatalf("expected soft-budget warn log, got %q", logs)
+		}
+		if !strings.Contains(logs, "choy_ui Tailwind generated") {
+			t.Fatalf("expected tailwind generate info log, got %q", logs)
+		}
+	})
+
+	t.Run("wraps generate errors", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+
+		modulesPath := filepath.Join(t.TempDir(), "modules")
+		styles := filepath.Join(modulesPath, "choy_ui", "web", "styles")
+		if err := os.MkdirAll(styles, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		// Directory at the generated CSS path forces rename failure without chmod.
+		if err := os.Mkdir(filepath.Join(styles, "choy-tailwind.generated.css"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		builder := &WebModuleBuilder{
+			runtimeScope: testRuntimeScope,
+			runtimeOptions: runtimeOptions{
+				modulesPath:        modulesPath,
+				distPath:           filepath.Join(t.TempDir(), "dist"),
+				defaultChoysumPath: filepath.Join(t.TempDir(), ".choysum"),
+				webBaseURL:         "/web/",
+			},
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			parser:         defaultparser.NewVueParser(testRuntimeScope, moduleRef),
+			prebuildPlugin: &buildTestPlugin{parserResults: []*parser.ParserResult{{Path: entryPoint, RawContent: "export const answer = 42", Content: "export const answer = 42"}}},
+			buildPlugin:    &buildTestPlugin{},
+		}
+		_, err := builder.BuildCtx(context.Background())
+		if err == nil || !strings.Contains(err.Error(), "Error generating choy_ui Tailwind CSS") {
+			t.Fatalf("expected wrapped tailwind error, got %v", err)
 		}
 	})
 }
