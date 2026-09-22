@@ -1,4 +1,7 @@
 /*
+ * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * Choysum Choy UI tokens (frozen names; values tunable).
  * Isolation gallery uses these without Element Plus theme packages.
  * Tokens and layout-affecting resets live on .choy-gallery-root so product

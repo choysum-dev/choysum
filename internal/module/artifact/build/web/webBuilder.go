@@ -120,6 +120,13 @@ func (b *WebModuleBuilder) BuildCtx(ctx context.Context) (*module.BuildResult, e
 	if res, err := EnsureChoyTailwindCSS(b.resolvedRuntimeOptions().modulesPath); err != nil {
 		return nil, xfmt.Errorf("Error generating choy_ui Tailwind CSS: %w", err)
 	} else if res != nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+		if res.Duration > ChoyTailwindBudget {
+			b.runtimeScope.Logger().Warn(
+				"choy_ui Tailwind generation exceeded soft budget",
+				"duration", res.Duration.String(),
+				"budget", ChoyTailwindBudget.String(),
+			)
+		}
 		b.runtimeScope.Logger().Info(
 			"choy_ui Tailwind generated",
 			"duration", res.Duration.String(),

@@ -701,6 +701,14 @@ func TestScopeChoyThemeCSS(t *testing.T) {
 	if !strings.Contains(got, ":host(.dark)") || !strings.Contains(got, ":host-context(html)") {
 		t.Fatalf("functional :host forms must stay intact:\n%s", got)
 	}
+	// Identifier continuations must not be rewritten.
+	kept := scopeChoyThemeCSS(`:rooted { --a: 1; } :hostname { --b: 2; }`)
+	if !strings.Contains(kept, ":rooted") || !strings.Contains(kept, ":hostname") {
+		t.Fatalf("identifier continuations must stay intact:\n%s", kept)
+	}
+	if strings.Contains(kept, choyGalleryRootSelector+"ed") || strings.Contains(kept, choyGalleryRootSelector+"name") {
+		t.Fatalf("must not rewrite inside identifier:\n%s", kept)
+	}
 	// Token at EOF hits the boundary-at-end path.
 	got = replaceChoyThemeSelectors(":root", choyGalleryRootSelector)
 	if got != choyGalleryRootSelector {

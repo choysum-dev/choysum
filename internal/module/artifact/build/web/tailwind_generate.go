@@ -216,7 +216,17 @@ func choyThemeSelectorBoundary(s string, i int) bool {
 	if i >= len(s) {
 		return true
 	}
-	return s[i] != '-' && s[i] != '('
+	c := s[i]
+	// Only standalone :root / :host should be rebound; reject identifier
+	// continuations (e.g. :rooted, :hostname) and functional forms such as
+	// :host(...) / :host-context(...).
+	if c == '-' || c == '(' {
+		return false
+	}
+	if c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+		return false
+	}
+	return true
 }
 
 // scopeChoyUtilityCSS prefixes top-level class selectors as descendants of scope.
