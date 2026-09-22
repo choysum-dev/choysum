@@ -39,6 +39,7 @@ SPDX-License-Identifier: Apache-2.0
 import { onMounted, ref, watch } from 'vue';
 import '../styles/tokens.css';
 import '../styles/preflight-policy.css';
+// Produced by web build (EnsureChoyTailwindCSS); not committed.
 import '../styles/choy-tailwind.generated.css';
 
 type Density = 'comfortable' | 'compact';
