@@ -227,7 +227,13 @@ func isChoyTailwindGeneratedKitPath(path string) bool {
 	if filepath.Base(path) != choyTailwindGeneratedCSSName {
 		return false
 	}
-	return strings.Contains(filepath.ToSlash(path), "/choy_ui/web/")
+	slash := filepath.ToSlash(path)
+	// Match absolute ("/…/choy_ui/web/…") and walk-root-relative
+	// ("choy_ui/web/…") paths, e.g. when modulesPath is ".".
+	if strings.HasPrefix(slash, "choy_ui/web/") {
+		return true
+	}
+	return strings.Contains(slash, "/choy_ui/web/")
 }
 
 // readBuildInfo is debug.ReadBuildInfo; tests replace it to exercise digest versioning.

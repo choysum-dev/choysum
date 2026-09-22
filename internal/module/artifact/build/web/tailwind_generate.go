@@ -316,8 +316,8 @@ func prefixCSSSelectorList(selectors, scope string) string {
 }
 
 // splitTopLevelSelectors splits a selector list on commas that are not nested
-// inside (), [] or quoted strings, so functional pseudo-classes such as
-// :where(.dark, .dark *) stay intact.
+// inside (), [] , quoted strings, or /* */ comments, so functional pseudo-classes
+// such as :where(.dark, .dark *) stay intact.
 func splitTopLevelSelectors(selectors string) []string {
 	var parts []string
 	depth := 0
@@ -332,6 +332,12 @@ func splitTopLevelSelectors(selectors string) []string {
 			} else if c == quote {
 				quote = 0
 			}
+		case c == '/' && i+1 < len(selectors) && selectors[i+1] == '*':
+			end := strings.Index(selectors[i+2:], "*/")
+			if end < 0 {
+				return append(parts, selectors[start:])
+			}
+			i += end + 3
 		case c == '\'' || c == '"':
 			quote = c
 		case c == '(' || c == '[':
@@ -480,11 +486,13 @@ func writeFileAtomicIfChanged(path, content string) error {
 	cleanup := true
 	defer func() {
 		if cleanup {
+			// Close before Remove so a failed Close cannot leave the fd open
+			// (and block Remove on Windows).
+			_ = tmp.Close()
 			_ = os.Remove(tmpName)
 		}
 	}()
 	if err := writeAtomicTemp(tmp, content); err != nil {
-		_ = tmp.Close()
 		return err
 	}
 	if err := atomicWriteClose(tmp); err != nil {

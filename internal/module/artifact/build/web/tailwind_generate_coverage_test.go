@@ -572,6 +572,18 @@ func TestSplitTopLevelSelectors(t *testing.T) {
 	if len(parts) != 2 {
 		t.Fatalf("single-quoted attr: %#v", parts)
 	}
+	parts = splitTopLevelSelectors(`.a /* , not a split */, .b`)
+	if len(parts) != 2 || !strings.Contains(parts[0], "/* , not a split */") {
+		t.Fatalf("comma inside comment: %#v", parts)
+	}
+	parts = splitTopLevelSelectors(`.a, /* note */ .b`)
+	if len(parts) != 2 {
+		t.Fatalf("comment between selectors: %#v", parts)
+	}
+	parts = splitTopLevelSelectors(`.a /* unterminated`)
+	if len(parts) != 1 || parts[0] != `.a /* unterminated` {
+		t.Fatalf("unterminated comment: %#v", parts)
+	}
 }
 
 func TestIndexCSSBlockEndQuotesEscapes(t *testing.T) {

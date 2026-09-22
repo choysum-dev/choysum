@@ -644,6 +644,25 @@ func TestShouldSkipAndStampHelpers(t *testing.T) {
 	}
 }
 
+func TestIsChoyTailwindGeneratedKitPath(t *testing.T) {
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"/abs/modules/choy_ui/web/styles/" + choyTailwindGeneratedCSSName, true},
+		{"choy_ui/web/styles/" + choyTailwindGeneratedCSSName, true},
+		{"choy_ui/web/" + choyTailwindGeneratedCSSName, true},
+		{"other/web/styles/" + choyTailwindGeneratedCSSName, false},
+		{"choy_ui/web/styles/other.css", false},
+		{"not-the-file.css", false},
+	}
+	for _, tc := range cases {
+		if got := isChoyTailwindGeneratedKitPath(tc.path); got != tc.want {
+			t.Fatalf("isChoyTailwindGeneratedKitPath(%q)=%v want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestChoyTailwindGoModuleVersion(t *testing.T) {
 	t.Cleanup(func() { readBuildInfo = debug.ReadBuildInfo })
 
