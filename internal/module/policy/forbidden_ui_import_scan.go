@@ -87,7 +87,10 @@ func ScanForbiddenUiImportsOnDisk(input ForbiddenUiImportScanInput) ([]Forbidden
 		if err != nil {
 			return xfmt.Errorf("read %s: %w", path, err)
 		}
-		sources := webImportSources(path, content)
+		sources, err := webImportSources(path, content)
+		if err != nil {
+			return err
+		}
 		for i, src := range sources {
 			if strings.TrimSpace(src.Content) == "" {
 				// Empty / whitespace-only sources have no imports; ParseServiceSourceFile
@@ -185,14 +188,19 @@ type webImportSource struct {
 	LineOffset int // newlines before Content's first line in the on-disk file
 }
 
-func webImportSources(path string, content []byte) []webImportSource {
+func webImportSources(path string, content []byte) ([]webImportSource, error) {
 	if strings.HasSuffix(strings.ToLower(path), ".vue") {
 		// Blank HTML comments (keep length/newlines) so commented-out <script>
 		// samples in docs do not become false positives.
 		masked := maskVueHTMLComments(content)
 		spans := findVueScriptCaptureSpans(masked)
 		if len(spans) == 0 {
-			return nil
+			// Fail closed: a real <script> that the regex did not capture would
+			// otherwise skip the file and miss banned imports.
+			if vueScriptInCommentRe.Match(masked) {
+				return nil, xfmt.Errorf("%s: <script> tag found but no script block parsed; refusing to skip", path)
+			}
+			return nil, nil
 		}
 		out := make([]webImportSource, 0, len(spans))
 		for _, span := range spans {
@@ -214,9 +222,9 @@ func webImportSources(path string, content []byte) []webImportSource {
 				LineOffset: lineOffset,
 			})
 		}
-		return out
+		return out, nil
 	}
-	return []webImportSource{{Content: string(content), LineOffset: 0}}
+	return []webImportSource{{Content: string(content), LineOffset: 0}}, nil
 }
 
 // findVueScriptCaptureSpans returns [start,end) byte ranges of each <script> body.
