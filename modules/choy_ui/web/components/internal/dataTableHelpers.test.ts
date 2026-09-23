@@ -147,6 +147,8 @@ describe('dataTableHelpers', () => {
     expect(pruneDataTableSelection({ a: true, b: true, c: false }, present)).toEqual({ a: true });
     expect(pruneDataTableSelection({ a: true }, present)).toBeNull();
     expect(pruneDataTableSelection({}, present)).toBeNull();
+    // All-false leftovers must not force a no-op `{}` write.
+    expect(pruneDataTableSelection({ a: false, b: false }, present)).toBeNull();
   });
 
   test('dataTableSelectionIdsEqual compares unique encoded ids', () => {

@@ -42,6 +42,11 @@ const props = withDefaults(
     /** Debounce for remote NameSearch keystrokes (ms). */
     debounce?: number;
     search: RelationNameSearchFn;
+    /**
+     * Stable identity for the search target (relation/model). Prefer this over
+     * watching `search` by function identity so inline arrows do not clear options.
+     */
+    searchKey?: string;
     /** Optional seed so an initial modelValue keeps its label before search. */
     selectedOption?: RelationOption | null;
     /** Show a "Search more…" footer action (host opens a dialog in PR5). */
@@ -111,9 +116,12 @@ const virtualizer = useVirtualizer({
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
+/** Prefer searchKey so inline `search` arrows do not thrash watchers. */
+const searchIdentity = computed(() => props.searchKey ?? props.search);
+
 let searchSeq = 0;
 watch(
-  [() => open.value, () => query.value, () => props.search, () => props.pageSize],
+  [() => open.value, () => query.value, searchIdentity, () => props.pageSize],
   async ([isOpen, q]) => {
     if (!isOpen) {
       return;
@@ -177,7 +185,7 @@ watch(
 
 // A different search target (e.g. a reused field pointing at another relation)
 // must not keep stale options or a stale pinned label.
-watch([() => props.search, () => props.pageSize], () => {
+watch([searchIdentity, () => props.pageSize], () => {
   options.value = [];
   pinnedSelected.value = props.selectedOption ?? null;
   clearSearchError();
@@ -295,7 +303,7 @@ function onSearchMore(): void {
               Searching…
             </div>
             <ComboboxEmpty
-              v-else-if="!loading && !displayOptions.length"
+              v-else-if="!loading && !searchError && !displayOptions.length"
               class="px-3 py-2 text-sm text-foreground/60"
             >
               No matches

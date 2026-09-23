@@ -42,7 +42,7 @@ const props = withDefaults(
     data: T[];
     rowId?: (row: T) => DataTableRowId;
     /** Controlled selection ids (pairs with update:rowSelection / v-model:rowSelection). */
-    rowSelection?: DataTableRowId[];
+    rowSelection?: DataTableRowId[] | null;
     height?: number;
     estimateSize?: number;
     enableSorting?: boolean;
@@ -70,20 +70,24 @@ function isControlledSelection(): boolean {
   return props.rowSelection !== undefined;
 }
 
-const presentKeys = computed(
-  () =>
-    new Set(
-      props.data.map((row, index) => {
-        try {
-          return encodeDataTableRowKey(resolveDataTableRowId(row, props.rowId));
-        } catch (error) {
-          const reason = error instanceof Error ? error.message : String(error);
-          // Name the offending row so hosts can fix `rowId` instead of debugging a blank table.
-          throw new Error(`DataTable: row ${index} has no usable Id/id (${reason})`);
-        }
-      }),
-    ),
-);
+const presentKeys = computed(() => {
+  const keys = new Set<string>();
+  props.data.forEach((row, index) => {
+    let key: string;
+    try {
+      key = encodeDataTableRowKey(resolveDataTableRowId(row, props.rowId));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      // Name the offending row so hosts can fix `rowId` instead of debugging a blank table.
+      throw new Error(`DataTable: row ${index} has no usable Id/id (${reason})`);
+    }
+    if (keys.has(key)) {
+      throw new Error(`DataTable: duplicate row id ${key} at index ${index}`);
+    }
+    keys.add(key);
+  });
+  return keys;
+});
 
 function presentKeysFromData(): Set<string> {
   return presentKeys.value;
@@ -103,9 +107,11 @@ watch(
     if (ids === undefined) {
       return;
     }
+    // Nullable v-model hosts may pass null; treat as an empty controlled selection.
+    const list = ids ?? [];
     const present = presentKeysFromData();
     const next: RowSelectionState = {};
-    for (const raw of ids) {
+    for (const raw of list) {
       const id = normalizeDataTableRowId(raw);
       if (id === null) {
         continue;
@@ -412,6 +418,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
       @scroll.passive="onBodyScroll"
     >
       <div
+        role="none"
         :style="{
           height: `${totalSize}px`,
           position: 'relative',
@@ -458,9 +465,11 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
       </div>
       <div
         v-if="!rows.length"
+        role="row"
+        aria-rowindex="2"
         class="flex h-full items-center justify-center text-sm text-foreground/50"
       >
-        No data
+        <div role="cell">No data</div>
       </div>
     </div>
   </div>

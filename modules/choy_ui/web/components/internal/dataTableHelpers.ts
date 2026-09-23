@@ -198,7 +198,11 @@ export function pruneDataTableSelection(
   }
   const prevKeys = Object.keys(selection);
   const nextKeys = Object.keys(pruned);
-  if (prevKeys.length === nextKeys.length && nextKeys.every((key) => selection[key] === true)) {
+  const unchanged =
+    prevKeys.length === nextKeys.length && nextKeys.every((key) => selection[key] === true);
+  // All-false TanStack leftovers have nothing selected — skip a no-op `{}` write.
+  const hadSelected = prevKeys.some((key) => selection[key] === true);
+  if (unchanged || !hadSelected) {
     return null;
   }
   return pruned;

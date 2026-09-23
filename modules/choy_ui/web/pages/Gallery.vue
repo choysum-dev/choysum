@@ -156,6 +156,7 @@ SPDX-License-Identifier: Apache-2.0
             <CardContent class="flex flex-col gap-2">
               <RelationCombobox
                 v-model="relationId"
+                search-key="gallery.partners"
                 :search="searchPartners"
                 @search-more="onRelationSearchMore"
               />
