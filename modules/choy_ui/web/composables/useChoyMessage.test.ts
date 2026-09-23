@@ -56,4 +56,19 @@ describe('useChoyMessage', () => {
     expect(store.value[0].description).toBeUndefined();
     clearToasts();
   });
+
+  test('clamps non-finite or negative duration to a sticky toast', () => {
+    clearToasts();
+    const api = useChoyMessage();
+    const store = useToastStore();
+    api.info('Bad', { duration: Number.NaN });
+    expect(store.value[0].duration).toBe(Number.POSITIVE_INFINITY);
+    clearToasts();
+    api.info('Neg', { duration: -1 });
+    expect(store.value[0].duration).toBe(Number.POSITIVE_INFINITY);
+    clearToasts();
+    api.info('Floor', { duration: 1500.9 });
+    expect(store.value[0].duration).toBe(1500);
+    clearToasts();
+  });
 });

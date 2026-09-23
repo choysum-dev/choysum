@@ -107,6 +107,12 @@ watch(
         : true;
       if (ok) {
         registeredValue.value = value;
+      } else {
+        // Rename lost the race for `value`; still keep label/disabled in sync.
+        ctx?.update(registeredValue.value, {
+          label: resolveLabel(),
+          disabled: props.disabled,
+        });
       }
       return;
     }

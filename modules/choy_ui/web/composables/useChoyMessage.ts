@@ -28,7 +28,10 @@ function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptio
     payload.description = options.description;
   }
   if (options?.duration !== undefined) {
-    payload.duration = options.duration;
+    // 0 keeps the toast open until dismissed; clamp so negative / non-finite
+    // values cannot make the store dismiss the toast immediately.
+    const duration = options.duration;
+    payload.duration = Number.isFinite(duration) ? Math.max(0, Math.floor(duration)) : 0;
   }
   return toast(payload);
 }
