@@ -8,7 +8,7 @@ import { Bell } from 'lucide-vue-next';
 import { computed } from 'vue';
 import Badge from '../vendor/ui/badge/Badge.vue';
 import Button from '../vendor/ui/button/Button.vue';
-import type { ClassValue } from '../../lib/utils';
+import { cn, type ClassValue } from '../../lib/utils';
 
 /**
  * Simplified notification bell. No inbox API in PR3 — optional count badge only.
@@ -46,7 +46,7 @@ const ariaLabel = computed(() =>
 <template>
   <div
     data-anchor="choy.notification-bell"
-    :class="['choy-notification-bell relative inline-flex', props.class]"
+    :class="cn('choy-notification-bell relative inline-flex', props.class)"
   >
     <Button
       variant="ghost"

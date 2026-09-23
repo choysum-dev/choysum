@@ -11,7 +11,7 @@ export type ChoyTabRegistration = {
 
 export type ChoyTabsContext = {
   tabs: Ref<ChoyTabRegistration[]>;
-  register: (tab: ChoyTabRegistration) => void;
+  register: (tab: ChoyTabRegistration) => boolean;
   unregister: (value: string) => void;
   update: (value: string, patch: Partial<ChoyTabRegistration>) => boolean;
 };

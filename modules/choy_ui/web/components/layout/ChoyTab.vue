@@ -28,6 +28,8 @@ const props = withDefaults(
 const ctx = inject(ChoyTabsContextKey, null);
 /** Value currently registered with the parent (may lag props.value briefly). */
 const registeredValue = ref(props.value);
+/** False when register was refused (duplicate value); skip unregister/patch. */
+const ownsRegistration = ref(false);
 
 function resolveLabel(): string {
   if (props.label) {
@@ -38,29 +40,35 @@ function resolveLabel(): string {
 
 onMounted(() => {
   registeredValue.value = props.value;
-  ctx?.register({
-    value: props.value,
-    label: resolveLabel(),
-    disabled: props.disabled,
-  });
+  ownsRegistration.value =
+    ctx?.register({
+      value: props.value,
+      label: resolveLabel(),
+      disabled: props.disabled,
+    }) ?? true;
 });
 
 watch(
   () => [props.value, props.label, props.disabled] as const,
   ([value], [oldValue]) => {
+    if (!ownsRegistration.value) {
+      return;
+    }
     if (oldValue !== value) {
       // Rename in place so the tab keeps its slot; skip if the new value is taken.
-      const ok = ctx?.update(registeredValue.value, {
-        value,
-        label: resolveLabel(),
-        disabled: props.disabled,
-      });
+      const ok = ctx
+        ? ctx.update(registeredValue.value, {
+            value,
+            label: resolveLabel(),
+            disabled: props.disabled,
+          })
+        : true;
       if (ok) {
         registeredValue.value = value;
       }
       return;
     }
-    ctx?.update(value, {
+    ctx?.update(registeredValue.value, {
       label: resolveLabel(),
       disabled: props.disabled,
     });
@@ -68,12 +76,14 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  ctx?.unregister(registeredValue.value);
+  if (ownsRegistration.value) {
+    ctx?.unregister(registeredValue.value);
+  }
 });
 </script>
 
 <template>
-  <TabsContent data-anchor="choy.tab" :value="value" :class="props.class">
+  <TabsContent data-anchor="choy.tab" :value="registeredValue" :class="props.class">
     <slot />
   </TabsContent>
 </template>

@@ -38,9 +38,10 @@ const ctx: ChoyTabsContext = {
   tabs,
   register(tab) {
     if (tabs.value.some((item) => item.value === tab.value)) {
-      return;
+      return false;
     }
     tabs.value = [...tabs.value, tab];
+    return true;
   },
   unregister(value) {
     tabs.value = tabs.value.filter((item) => item.value !== value);
