@@ -51,12 +51,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Tabs
-    v-model="modelValue"
-    data-anchor="choy.tabs"
-    :class="props.class"
-    :default-value="defaultValue"
-  >
+  <Tabs v-model="modelValue" data-anchor="choy.tabs" :class="props.class">
     <TabsList v-if="tabs.length">
       <TabsTrigger
         v-for="tab in tabs"

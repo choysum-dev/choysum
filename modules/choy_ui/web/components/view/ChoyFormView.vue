@@ -63,7 +63,12 @@ withDefaults(
       <slot name="button-box" />
     </div>
 
-    <div v-if="showMessages && $slots.messages" class="choy-form-view__messages px-4 pt-3">
+    <div
+      v-if="showMessages && $slots.messages"
+      class="choy-form-view__messages px-4 pt-3"
+      :aria-hidden="loading || undefined"
+      :inert="loading || undefined"
+    >
       <slot name="messages" />
     </div>
 

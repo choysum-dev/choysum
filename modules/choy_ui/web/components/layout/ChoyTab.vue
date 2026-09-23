@@ -54,12 +54,28 @@ onMounted(() => {
   ownsRegistration.value = tryRegister(props.value);
 });
 
-// Retry when the shared registry changes: the tab that owns this value may
-// unregister without props.value changing.
+// Retry when the shared registry changes: a conflicting tab may release the
+// target value (refused register or collided rename) without props.value changing.
 watch(
   () => ctx?.tabs.value.some((item) => item.value === props.value) ?? false,
   (taken) => {
-    if (ownsRegistration.value || taken) {
+    if (ownsRegistration.value) {
+      // A previous rename may have collided; retry once the value frees up.
+      if (!taken && registeredValue.value !== props.value) {
+        const renamed = ctx
+          ? ctx.update(registeredValue.value, {
+              value: props.value,
+              label: resolveLabel(),
+              disabled: props.disabled,
+            })
+          : true;
+        if (renamed) {
+          registeredValue.value = props.value;
+        }
+      }
+      return;
+    }
+    if (taken) {
       return;
     }
     if (tryRegister(props.value)) {
