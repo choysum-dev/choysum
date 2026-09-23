@@ -10,6 +10,7 @@ describe('choyTabsSelection', () => {
       { value: 'one', label: 'One', disabled: false },
     ];
     expect(nextChoyTabSelection(firstOnly, undefined, 'two')).toBeUndefined();
+    expect(nextChoyTabSelection(firstOnly, undefined, 'two', true)).toBe('one');
 
     const both: ChoyTabRegistration[] = [
       ...firstOnly,
@@ -48,7 +49,10 @@ describe('choyTabsSelection', () => {
       { value: 'one', label: 'One', disabled: false },
     ];
     expect(nextChoyTabSelection(list, 'gone', 'missing')).toBe('one');
+    // Unsettled + empty current: keep waiting for the default.
     expect(nextChoyTabSelection(list, undefined, 'missing')).toBeUndefined();
+    // Settled: fall back so a typo cannot leave the host with no selection.
+    expect(nextChoyTabSelection(list, undefined, 'missing', true)).toBe('one');
   });
 
   test('leaves the selection untouched while no tabs are registered', () => {

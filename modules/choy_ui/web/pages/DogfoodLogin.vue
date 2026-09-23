@@ -22,22 +22,13 @@ import { ChoyMessage } from '../composables/useChoyMessage';
  */
 const login = ref('');
 const password = ref('');
-const submitting = ref(false);
 
 function onSubmit(): void {
-  if (submitting.value) {
+  if (!login.value.trim() || !password.value) {
+    ChoyMessage.error('Login failed', { description: 'Login and password are required.' });
     return;
   }
-  submitting.value = true;
-  try {
-    if (!login.value.trim() || !password.value) {
-      ChoyMessage.error('Login failed', { description: 'Login and password are required.' });
-      return;
-    }
-    ChoyMessage.success('Signed in', { description: `Welcome, ${login.value.trim()}.` });
-  } finally {
-    submitting.value = false;
-  }
+  ChoyMessage.success('Signed in', { description: `Welcome, ${login.value.trim()}.` });
 }
 </script>
 
@@ -61,7 +52,7 @@ function onSubmit(): void {
             />
           </label>
           <div class="flex justify-end gap-2 pt-2">
-            <ChoyButton type="submit" :disabled="submitting">Sign in</ChoyButton>
+            <ChoyButton type="submit">Sign in</ChoyButton>
           </div>
         </form>
       </ChoyCard>

@@ -20,12 +20,18 @@ export function pickChoyTabSelection(
 /**
  * Decides the next model value when the registration list changes.
  * Returns undefined when the caller should leave the current value unchanged
- * (still valid, or waiting for a late-registering defaultValue with no prior selection).
+ * (still valid, or waiting for a late-registering defaultValue while unsettled).
+ *
+ * `settled` becomes true after ChoyTabs finishes its initial mount (children
+ * have already registered). Until then, an empty selection waits for
+ * defaultValue; afterwards a missing default falls back so a typo cannot
+ * leave the host with no selected tab forever.
  */
 export function nextChoyTabSelection(
   list: ChoyTabRegistration[],
   current: string | undefined,
   defaultValue?: string,
+  settled = false,
 ): string | undefined {
   if (!list.length) {
     return undefined;
@@ -36,10 +42,10 @@ export function nextChoyTabSelection(
     return undefined;
   }
   // Wait for the configured default across mount ticks, but only while nothing
-  // is selected yet — a stale current must not strand forever if the default
-  // never registers (typo / conditional tab).
+  // is selected yet and the host is still settling. A stale current, or a
+  // settled host with a typo/conditional default, must not strand forever.
   if (defaultValue && !list.some((item) => item.value === defaultValue)) {
-    return current ? pickChoyTabSelection(list, defaultValue) : undefined;
+    return current || settled ? pickChoyTabSelection(list, defaultValue) : undefined;
   }
   return pickChoyTabSelection(list, defaultValue);
 }

@@ -108,9 +108,9 @@ watch(
       if (ok) {
         registeredValue.value = value;
       } else {
-        // Rename lost the race for `value`; still keep label/disabled in sync.
+        // Rename lost the race for `value`; keep label/disabled on the owned value.
         ctx?.update(registeredValue.value, {
-          label: resolveLabel(),
+          label: props.label || registeredValue.value,
           disabled: props.disabled,
         });
       }
@@ -131,8 +131,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div v-if="!ctx" data-anchor="choy.tab" :class="props.class">
+    <slot />
+  </div>
   <TabsContent
-    v-if="ownsRegistration"
+    v-else-if="ownsRegistration"
     data-anchor="choy.tab"
     :value="registeredValue"
     :class="props.class"

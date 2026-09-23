@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { onBeforeUnmount, provide, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import Tabs from '../vendor/ui/tabs/Tabs.vue';
 import TabsList from '../vendor/ui/tabs/TabsList.vue';
 import TabsTrigger from '../vendor/ui/tabs/TabsTrigger.vue';
@@ -27,9 +27,11 @@ const props = defineProps<{
 const modelValue = defineModel<string>();
 const tabs = ref<ChoyTabRegistration[]>([]);
 const ctx = createChoyTabsContext(tabs);
+/** True after initial mount; children have already registered by then. */
+const settled = ref(false);
 
 function reconcileSelection(list: ChoyTabRegistration[]): void {
-  const next = nextChoyTabSelection(list, modelValue.value, props.defaultValue);
+  const next = nextChoyTabSelection(list, modelValue.value, props.defaultValue, settled.value);
   if (next !== undefined) {
     modelValue.value = next;
   }
@@ -44,6 +46,11 @@ watch(
   () => props.defaultValue,
   () => reconcileSelection(tabs.value),
 );
+
+onMounted(() => {
+  settled.value = true;
+  reconcileSelection(tabs.value);
+});
 
 onBeforeUnmount(() => {
   tabs.value = [];

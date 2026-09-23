@@ -73,102 +73,111 @@ const emit = defineEmits<{
         props.class,
       )
     "
-    :role="title ? 'region' : undefined"
-    :aria-busy="loading"
-    :aria-labelledby="title && !$slots.header ? pageTitleId : undefined"
-    :aria-label="title && $slots.header ? title : undefined"
   >
     <div
-      v-if="
-        $slots.header ||
-        title ||
-        showBreadcrumb ||
-        $slots.breadcrumb ||
-        hasIoMenu ||
-        $slots['title-actions']
-      "
-      class="choy-page__header mb-4 flex flex-col gap-2"
-      :aria-hidden="loading || undefined"
-      :inert="loading || undefined"
+      :role="title ? 'region' : undefined"
+      :aria-busy="loading || undefined"
+      :aria-labelledby="title && !$slots.header ? pageTitleId : undefined"
+      :aria-label="title && $slots.header ? title : undefined"
     >
-      <template v-if="$slots.header">
-        <div
-          v-if="hasIoMenu || $slots['title-actions']"
-          class="choy-page__title-row flex items-start justify-between gap-3"
-        >
-          <div class="choy-page__header-slot min-w-0 flex-1">
-            <slot name="header" />
+      <div
+        v-if="
+          $slots.header ||
+          title ||
+          showBreadcrumb ||
+          $slots.breadcrumb ||
+          hasIoMenu ||
+          $slots['title-actions']
+        "
+        class="choy-page__header mb-4 flex flex-col gap-2"
+        :aria-hidden="loading || undefined"
+        :inert="loading || undefined"
+      >
+        <template v-if="$slots.header">
+          <div
+            v-if="hasIoMenu || $slots['title-actions']"
+            class="choy-page__title-row flex items-start justify-between gap-3"
+          >
+            <div class="choy-page__header-slot min-w-0 flex-1">
+              <slot name="header" />
+            </div>
+            <ChoyPageTitleActions
+              :has-io-menu="hasIoMenu"
+              :action-import="actionImport"
+              :action-export="actionExport"
+              @import="emit('import')"
+              @export="emit('export')"
+            >
+              <slot name="title-actions" />
+            </ChoyPageTitleActions>
           </div>
-          <ChoyPageTitleActions
-            :has-io-menu="hasIoMenu"
-            :action-import="actionImport"
-            :action-export="actionExport"
-            @import="emit('import')"
-            @export="emit('export')"
+          <slot v-else name="header" />
+        </template>
+        <template v-else>
+          <div v-if="showBreadcrumb || $slots.breadcrumb" class="choy-page__breadcrumb text-sm text-foreground/70">
+            <slot name="breadcrumb" />
+          </div>
+          <div
+            v-if="title || hasIoMenu || $slots['title-actions']"
+            class="choy-page__title-row flex items-start justify-between gap-3"
           >
-            <slot name="title-actions" />
-          </ChoyPageTitleActions>
-        </div>
-        <slot v-else name="header" />
-      </template>
-      <template v-else>
-        <div v-if="showBreadcrumb || $slots.breadcrumb" class="choy-page__breadcrumb text-sm text-foreground/70">
-          <slot name="breadcrumb" />
-        </div>
-        <div
-          v-if="title || hasIoMenu || $slots['title-actions']"
-          class="choy-page__title-row flex items-start justify-between gap-3"
-        >
-          <h1 v-if="title" :id="pageTitleId" class="choy-page__title text-xl font-semibold tracking-tight">
-            {{ title }}
-          </h1>
-          <ChoyPageTitleActions
-            :has-io-menu="hasIoMenu"
-            :action-import="actionImport"
-            :action-export="actionExport"
-            @import="emit('import')"
-            @export="emit('export')"
-          >
-            <slot name="title-actions" />
-          </ChoyPageTitleActions>
-        </div>
-      </template>
-    </div>
+            <h1 v-if="title" :id="pageTitleId" class="choy-page__title text-xl font-semibold tracking-tight">
+              {{ title }}
+            </h1>
+            <ChoyPageTitleActions
+              :has-io-menu="hasIoMenu"
+              :action-import="actionImport"
+              :action-export="actionExport"
+              @import="emit('import')"
+              @export="emit('export')"
+            >
+              <slot name="title-actions" />
+            </ChoyPageTitleActions>
+          </div>
+        </template>
+      </div>
 
-    <div
-      v-if="$slots.toolbar"
-      class="choy-page__toolbar mb-4"
-      role="toolbar"
-      :aria-hidden="loading || undefined"
-      :inert="loading || undefined"
-    >
-      <slot name="toolbar" />
-    </div>
+      <div
+        v-if="$slots.toolbar"
+        class="choy-page__toolbar mb-4"
+        role="toolbar"
+        :aria-hidden="loading || undefined"
+        :inert="loading || undefined"
+      >
+        <slot name="toolbar" />
+      </div>
 
-    <div
-      class="choy-page__body"
-      :class="{ 'pb-4': !!$slots.footer }"
-      :aria-hidden="loading || undefined"
-      :inert="loading || undefined"
-    >
-      <slot />
-    </div>
+      <div
+        class="choy-page__body"
+        :class="{ 'pb-4': !!$slots.footer }"
+        :aria-hidden="loading || undefined"
+        :inert="loading || undefined"
+      >
+        <slot />
+      </div>
 
-    <div
-      v-if="$slots.footer"
-      class="choy-page__footer mt-4 border-t border-border pt-4"
-      :aria-hidden="loading || undefined"
-      :inert="loading || undefined"
-    >
-      <slot name="footer" />
+      <div
+        v-if="$slots.footer"
+        class="choy-page__footer mt-4 border-t border-border pt-4"
+        :aria-hidden="loading || undefined"
+        :inert="loading || undefined"
+      >
+        <slot name="footer" />
+      </div>
     </div>
 
     <div
       v-if="loading"
       class="choy-page__loading-mask absolute inset-0 z-10 flex items-center justify-center bg-background/60"
-      role="status"
+      aria-hidden="true"
     >
       <span class="text-sm text-foreground/70">Loading…</span>
+    </div>
+    <div
+      role="status"
+      class="absolute h-px w-px overflow-hidden whitespace-nowrap opacity-0"
+    >
+      {{ loading ? 'Loading…' : '' }}
     </div>
   </div>
 </template>
