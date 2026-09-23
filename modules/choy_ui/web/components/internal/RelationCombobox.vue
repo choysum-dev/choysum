@@ -84,13 +84,14 @@ function clearSearchError(): void {
 }
 
 const selected = computed(() => {
-  if (!modelValue.value) {
+  const id = String(modelValue.value ?? '').trim();
+  if (!id) {
     return null;
   }
   return (
-    findRelationOption(options.value, modelValue.value) ??
-    (pinnedSelected.value?.id === modelValue.value ? pinnedSelected.value : null) ??
-    (props.selectedOption?.id === modelValue.value ? props.selectedOption : null)
+    findRelationOption(options.value, id) ??
+    (String(pinnedSelected.value?.id ?? '').trim() === id ? pinnedSelected.value : null) ??
+    (String(props.selectedOption?.id ?? '').trim() === id ? props.selectedOption : null)
   );
 });
 
@@ -188,7 +189,8 @@ watch([() => props.search, () => props.pageSize], () => {
   }
 });
 
-watch(modelValue, (id) => {
+watch(modelValue, (rawId) => {
+  const id = String(rawId ?? '').trim();
   if (!id) {
     pinnedSelected.value = null;
     emit('select', null);
@@ -196,8 +198,8 @@ watch(modelValue, (id) => {
   }
   const found =
     findRelationOption(options.value, id) ??
-    (pinnedSelected.value?.id === id ? pinnedSelected.value : null) ??
-    (props.selectedOption?.id === id ? props.selectedOption : null);
+    (String(pinnedSelected.value?.id ?? '').trim() === id ? pinnedSelected.value : null) ??
+    (String(props.selectedOption?.id ?? '').trim() === id ? props.selectedOption : null);
   if (!found) {
     // Id is set but its label is not loaded yet; not the same as clearing.
     return;

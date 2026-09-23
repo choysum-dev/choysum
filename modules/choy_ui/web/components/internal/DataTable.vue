@@ -98,7 +98,7 @@ function registerSelectionKey(key: string, id?: DataTableRowId): void {
 // Mirror an externally controlled selection without re-emitting identical state.
 // Only on-page ids enter TanStack state; off-page ids stay parent-owned.
 watch(
-  () => [props.rowSelection, props.data] as const,
+  [() => props.rowSelection, presentKeys],
   ([ids]) => {
     if (ids === undefined) {
       return;
@@ -127,7 +127,7 @@ watch(
     }
     rowSelection.value = next;
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 const selectColumn = computed<ColumnDef<T, unknown>[]>(() => {

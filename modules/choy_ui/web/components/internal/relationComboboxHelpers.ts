@@ -50,7 +50,9 @@ export function mapNameSearchRows(rows: ReadonlyArray<unknown>): RelationOption[
     }
     seen.add(id);
     const rawLabel = [row.DisplayName, row.label].find(
-      (value) => typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)),
+      (value) =>
+        (typeof value === 'string' && value.trim() !== '') ||
+        (typeof value === 'number' && Number.isFinite(value)),
     );
     const label = String(rawLabel ?? id).trim() || id;
     out.push({ id, label, raw: row });

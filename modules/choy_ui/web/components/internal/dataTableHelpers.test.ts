@@ -43,6 +43,14 @@ describe('dataTableHelpers', () => {
       'b',
       'a',
     ]);
+    // Equal keys must keep input order (`Array.prototype.sort` stability under QuickJS).
+    const ties = [
+      { name: 'a', seq: 1 },
+      { name: 'a', seq: 2 },
+      { name: 'a', seq: 3 },
+    ];
+    expect(sortDataTableRows(ties, (r) => r.name, 'asc').map((r) => r.seq)).toEqual([1, 2, 3]);
+    expect(sortDataTableRows(ties, (r) => r.name, 'desc').map((r) => r.seq)).toEqual([1, 2, 3]);
   });
 
   test('compares nulls and numbers', () => {

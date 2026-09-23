@@ -142,5 +142,9 @@ describe('relationComboboxHelpers', () => {
     expect(mapNameSearchRows([{ Id: 'p3', DisplayName: '   ' }])).toEqual([
       { id: 'p3', label: 'p3', raw: { Id: 'p3', DisplayName: '   ' } },
     ]);
+    // Blank DisplayName must not shadow a usable `label` fallback.
+    expect(mapNameSearchRows([{ Id: 'p4', DisplayName: '  ', label: 'Alice' }])).toEqual([
+      { id: 'p4', label: 'Alice', raw: { Id: 'p4', DisplayName: '  ', label: 'Alice' } },
+    ]);
   });
 });
