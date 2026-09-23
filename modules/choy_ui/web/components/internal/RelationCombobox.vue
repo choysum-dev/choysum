@@ -152,6 +152,9 @@ watch(
         return;
       }
       options.value = results;
+      if (listParent.value) {
+        listParent.value.scrollTop = 0;
+      }
       clearSearchError();
       if (modelValue.value) {
         const found = findRelationOption(results, modelValue.value);
@@ -185,7 +188,7 @@ watch(
 
 // A different search target (e.g. a reused field pointing at another relation)
 // must not keep stale options or a stale pinned label.
-watch([searchIdentity, () => props.pageSize], () => {
+watch(searchIdentity, () => {
   options.value = [];
   pinnedSelected.value = props.selectedOption ?? null;
   clearSearchError();

@@ -264,6 +264,17 @@ watch(
   },
 );
 
+// Data swaps (paging) must not keep the previous scroll offset or cached heights.
+watch(
+  () => props.data,
+  () => {
+    if (parentRef.value) {
+      parentRef.value.scrollTop = 0;
+    }
+    virtualizer.value.measure();
+  },
+);
+
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
@@ -441,6 +452,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
           :data-index="virtualRow.index"
           role="row"
           :aria-rowindex="virtualRow.index + 2"
+          :aria-selected="rows[virtualRow.index]?.getIsSelected() ?? false"
           tabindex="0"
           class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           :style="{

@@ -63,8 +63,13 @@ const calendarValue = computed<DateValue | undefined>({
       modelValue.value = clearDatePickerValue();
       return;
     }
-    // Out-of-range years make formatDatePickerValue return ''; keep string | null.
-    modelValue.value = formatDatePickerValue(next) || clearDatePickerValue();
+    const formatted = formatDatePickerValue(next);
+    // Out-of-range years make formatDatePickerValue return ''; keep the previous
+    // value instead of silently clearing a valid selection.
+    if (!formatted) {
+      return;
+    }
+    modelValue.value = formatted;
     open.value = false;
   },
 });

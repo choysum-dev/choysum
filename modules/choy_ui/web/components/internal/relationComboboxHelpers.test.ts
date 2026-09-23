@@ -39,6 +39,10 @@ describe('relationComboboxHelpers', () => {
         raw: { Id: 'obj-label', DisplayName: { nested: true } },
       },
     ]);
+    // Already-normalized options must keep their original `raw` payload.
+    expect(
+      mapNameSearchRows([{ id: 'n1', label: 'Norm', raw: { Id: 'n1', DisplayName: 'Norm' } }]),
+    ).toEqual([{ id: 'n1', label: 'Norm', raw: { Id: 'n1', DisplayName: 'Norm' } }]);
   });
 
   test('runs NameSearch with limit and search-more friendly empty query', async () => {

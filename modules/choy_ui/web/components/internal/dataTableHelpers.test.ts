@@ -171,5 +171,9 @@ describe('dataTableHelpers', () => {
     expect(mergeDataTableControlledSelection(['', Number.NaN, '  ', 1], [2], present)).toEqual([
       1, 2,
     ]);
+    // Padded off-page ids must emit in normalized form.
+    expect(mergeDataTableControlledSelection([' 1 '], [2], present)).toEqual(['1', 2]);
+    // Invalid visible ids are dropped the same way as controlled ghosts.
+    expect(mergeDataTableControlledSelection([1], ['', Number.NaN, 2], present)).toEqual([1, 2]);
   });
 });

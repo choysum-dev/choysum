@@ -55,7 +55,8 @@ export function mapNameSearchRows(rows: ReadonlyArray<unknown>): RelationOption[
         (typeof value === 'number' && Number.isFinite(value)),
     );
     const label = String(rawLabel ?? id).trim() || id;
-    out.push({ id, label, raw: row });
+    const existingRaw = (row as { raw?: unknown }).raw;
+    out.push({ id, label, raw: existingRaw === undefined ? row : existingRaw });
   }
   return out;
 }

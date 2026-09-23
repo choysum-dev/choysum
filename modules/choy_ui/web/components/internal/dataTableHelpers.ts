@@ -237,9 +237,10 @@ export function mergeDataTableControlledSelection(
 ): DataTableRowId[] {
   const kept: DataTableRowId[] = [];
   const seen = new Set<string>();
-  for (const id of controlled) {
+  for (const raw of controlled) {
     // Blank / non-finite ids can never match a page key; keeping them would leak ghosts forever.
-    if (normalizeDataTableRowId(id) === null) {
+    const id = normalizeDataTableRowId(raw);
+    if (id === null) {
       continue;
     }
     const key = encodeDataTableRowKey(id);
@@ -247,10 +248,15 @@ export function mergeDataTableControlledSelection(
       continue;
     }
     seen.add(key);
+    // Emit the normalized id so host state matches the trimmed keys used elsewhere.
     kept.push(id);
   }
   const out = [...kept];
-  for (const id of visibleSelected) {
+  for (const raw of visibleSelected) {
+    const id = normalizeDataTableRowId(raw);
+    if (id === null) {
+      continue;
+    }
     const key = encodeDataTableRowKey(id);
     if (seen.has(key)) {
       continue;
