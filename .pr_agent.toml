@@ -3,10 +3,11 @@
 # See: https://docs.pr-agent.ai/usage-guide/configuration_options/
 
 [ignore]
-# Vendored L2 primitives (shadcn-vue hand-adapted + Reka). Review Gallery /
-# public Choy* / Go policy instead; diff noise on vendor/ui/** is not actionable.
+# Vendored L2 primitives (shadcn-vue hand-adapted + Reka). Path is module-agnostic
+# so it still matches after choy_ui merges into modules/web (same vendor/ui layout).
+# Review Gallery / public Choy* / Go policy instead.
 glob = [
-  'modules/choy_ui/web/components/vendor/ui/**',
+  'modules/*/web/components/vendor/ui/**',
 ]
 
 [pr_description]

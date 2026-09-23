@@ -12,7 +12,29 @@ import (
 	"github.com/choysum-dev/choysum/internal/parser"
 )
 
-const choyUIModuleName = "choy_ui"
+const (
+	// kitHostModuleIsolation is the module that owns L2 vendor/ui during isolation.
+	kitHostModuleIsolation = "choy_ui"
+	// kitHostModuleCutover is the module that owns the kit after choy_ui merges into web.
+	// Keep the relative tree as web/components/vendor/ui (do not rename vendor/ui again).
+	kitHostModuleCutover = "web"
+)
+
+// isKitHostModule reports modules allowed to import reka-ui / vendor/ui / kit internals.
+// Isolation: only choy_ui. After the kit merges into web, return true for web instead.
+func isKitHostModule(moduleName string) bool {
+	switch strings.TrimSpace(moduleName) {
+	case kitHostModuleIsolation:
+		return true
+	case kitHostModuleCutover:
+		// Product web still ships Element Plus until cutover; do not exempt it yet
+		// or domain-facing web code could import Reka unnoticed. Return true once
+		// vendor/ui lives under modules/web and Element Plus is removed.
+		return false
+	default:
+		return false
+	}
+}
 
 // ForbiddenUiImportViolation is one forbidden kit/primitive import in a domain web tree.
 type ForbiddenUiImportViolation struct {
@@ -38,7 +60,7 @@ func CheckForbiddenUiImports(input ForbiddenUiImportScanInput, parserResults []*
 	if moduleName == "" || moduleRoot == "" {
 		return nil
 	}
-	if isChoyUIKitModule(moduleName) {
+	if isKitHostModule(moduleName) {
 		return nil
 	}
 
@@ -92,10 +114,6 @@ func IsModuleWebSource(moduleRoot, path string) bool {
 		return false
 	}
 	return strings.HasPrefix(rel, "web/") || rel == "web"
-}
-
-func isChoyUIKitModule(moduleName string) bool {
-	return strings.TrimSpace(moduleName) == choyUIModuleName
 }
 
 func appendForbiddenUiSpec(
@@ -181,8 +199,10 @@ func isForbiddenInternalPath(lower string) bool {
 }
 
 func isForbiddenChoyDeepPath(lower string) bool {
-	// Domain modules must not deep-import choy_ui component trees (vendor/ui, internal, lib).
-	// Public Choy* barrels land later (@/web); isolation gallery stays inside choy_ui.
+	// Isolation: domain must not deep-import the choy_ui kit trees.
+	// After cutover, continue matching /components/vendor/ui via isForbiddenUIPath;
+	// extend @/web/web/{components/vendor,components/internal,lib} bans once O*
+	// deep imports are replaced by public Choy* barrels.
 	markers := []string{
 		"@/choy_ui/",
 		"@choysum-dev/choy_ui/",
