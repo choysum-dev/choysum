@@ -54,4 +54,13 @@ describe('createChoyTabsContext', () => {
     expect(ctx.tabs.value).toEqual([{ value: 'a', label: 'A', disabled: true }]);
     expect(ctx.update('a', { value: '' })).toBe(false);
   });
+
+  test('a refused duplicate can register once the current owner unregisters', () => {
+    const ctx = createChoyTabsContext();
+    expect(ctx.register({ value: 'a', label: 'A', disabled: false })).toBe(true);
+    expect(ctx.register({ value: 'a', label: 'Dup', disabled: false })).toBe(false);
+    ctx.unregister('a');
+    expect(ctx.register({ value: 'a', label: 'A2', disabled: false })).toBe(true);
+    expect(ctx.tabs.value).toEqual([{ value: 'a', label: 'A2', disabled: false }]);
+  });
 });

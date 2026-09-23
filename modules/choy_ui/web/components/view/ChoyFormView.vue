@@ -40,6 +40,8 @@ withDefaults(
     <div
       v-if="showHeader && (title || $slots['system-actions'] || $slots['user-actions'] || $slots['header-right'] || $slots.statusbar)"
       class="choy-form-view__header flex flex-wrap items-center gap-3 border-b border-border px-4 py-3"
+      :aria-hidden="loading || undefined"
+      :inert="loading || undefined"
     >
       <h2 v-if="title" class="choy-form-view__title text-base font-semibold">{{ title }}</h2>
       <div v-if="$slots.statusbar" class="choy-form-view__statusbar min-w-0 flex-1">
@@ -55,6 +57,8 @@ withDefaults(
     <div
       v-if="showActions && $slots['button-box']"
       class="choy-form-view__button-box flex flex-wrap gap-2 border-b border-border px-4 py-2"
+      :aria-hidden="loading || undefined"
+      :inert="loading || undefined"
     >
       <slot name="button-box" />
     </div>

@@ -88,6 +88,8 @@ const emit = defineEmits<{
         $slots['title-actions']
       "
       class="choy-page__header mb-4 flex flex-col gap-2"
+      :aria-hidden="loading || undefined"
+      :inert="loading || undefined"
     >
       <template v-if="$slots.header">
         <div
@@ -133,7 +135,13 @@ const emit = defineEmits<{
       </template>
     </div>
 
-    <div v-if="$slots.toolbar" class="choy-page__toolbar mb-4" role="toolbar">
+    <div
+      v-if="$slots.toolbar"
+      class="choy-page__toolbar mb-4"
+      role="toolbar"
+      :aria-hidden="loading || undefined"
+      :inert="loading || undefined"
+    >
       <slot name="toolbar" />
     </div>
 
@@ -146,7 +154,12 @@ const emit = defineEmits<{
       <slot />
     </div>
 
-    <div v-if="$slots.footer" class="choy-page__footer mt-4 border-t border-border pt-4">
+    <div
+      v-if="$slots.footer"
+      class="choy-page__footer mt-4 border-t border-border pt-4"
+      :aria-hidden="loading || undefined"
+      :inert="loading || undefined"
+    >
       <slot name="footer" />
     </div>
 
