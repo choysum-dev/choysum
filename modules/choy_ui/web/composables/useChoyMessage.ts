@@ -12,15 +12,15 @@ export type ChoyMessageOptions = {
   duration?: number;
 };
 
+const LEVEL_PREFIX: Record<ChoyMessageLevel, string> = {
+  success: 'Success',
+  warning: 'Warning',
+  error: 'Error',
+  info: 'Info',
+};
+
 function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptions): number {
-  const prefix =
-    level === 'success'
-      ? 'Success'
-      : level === 'warning'
-        ? 'Warning'
-        : level === 'error'
-          ? 'Error'
-          : 'Info';
+  const prefix = LEVEL_PREFIX[level];
   return toast({
     title: title ? `${prefix}: ${title}` : prefix,
     description: options?.description,

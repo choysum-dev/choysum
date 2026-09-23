@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, provide } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
-import { ChoyGridColsKey } from './choyGridContext';
+import { ChoyGridColsKey, normalizeChoyGridCols } from './choyGridContext';
 
 /**
  * CSS grid host for ChoyCol children.
@@ -25,13 +25,7 @@ const props = withDefaults(
   },
 );
 
-const safeCols = computed(() => {
-  const n = Number(props.cols);
-  if (!Number.isFinite(n)) {
-    return 12;
-  }
-  return Math.max(1, Math.floor(n));
-});
+const safeCols = computed(() => normalizeChoyGridCols(props.cols));
 
 provide(ChoyGridColsKey, safeCols);
 

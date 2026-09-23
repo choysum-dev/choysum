@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed, useId, useSlots } from 'vue';
+import { computed, useId } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import ChoyPageIoMenu from './ChoyPageIoMenu.vue';
 
@@ -12,6 +12,7 @@ type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 
 /**
  * Page chrome inside the layout main area (title, toolbar, body, loading).
+ * Slot visibility is read from `$slots` at render time (slots are not reactive).
  */
 const props = withDefaults(
   defineProps<{
@@ -35,19 +36,9 @@ const props = withDefaults(
   },
 );
 
-const slots = useSlots();
 const pageTitleId = useId();
 
 const hasIoMenu = computed(() => props.actionImport || props.actionExport);
-const showTitleActions = computed(() => hasIoMenu.value || !!slots['title-actions']);
-const showHeaderBand = computed(
-  () =>
-    !!slots.header ||
-    !!props.title ||
-    props.showBreadcrumb ||
-    !!slots.breadcrumb ||
-    showTitleActions.value,
-);
 
 const widthClass = computed(() => {
   switch (props.width) {
@@ -87,9 +78,22 @@ const emit = defineEmits<{
     :aria-labelledby="title && !$slots.header ? pageTitleId : undefined"
     :aria-label="title && $slots.header ? title : undefined"
   >
-    <div v-if="showHeaderBand" class="choy-page__header mb-4 flex flex-col gap-2">
+    <div
+      v-if="
+        $slots.header ||
+        title ||
+        showBreadcrumb ||
+        $slots.breadcrumb ||
+        hasIoMenu ||
+        $slots['title-actions']
+      "
+      class="choy-page__header mb-4 flex flex-col gap-2"
+    >
       <template v-if="$slots.header">
-        <div v-if="showTitleActions" class="choy-page__title-row flex items-start justify-between gap-3">
+        <div
+          v-if="hasIoMenu || $slots['title-actions']"
+          class="choy-page__title-row flex items-start justify-between gap-3"
+        >
           <div class="choy-page__header-slot min-w-0 flex-1">
             <slot name="header" />
           </div>
@@ -110,11 +114,17 @@ const emit = defineEmits<{
         <div v-if="showBreadcrumb || $slots.breadcrumb" class="choy-page__breadcrumb text-sm text-foreground/70">
           <slot name="breadcrumb" />
         </div>
-        <div v-if="title || showTitleActions" class="choy-page__title-row flex items-start justify-between gap-3">
+        <div
+          v-if="title || hasIoMenu || $slots['title-actions']"
+          class="choy-page__title-row flex items-start justify-between gap-3"
+        >
           <h1 v-if="title" :id="pageTitleId" class="choy-page__title text-xl font-semibold tracking-tight">
             {{ title }}
           </h1>
-          <div v-if="showTitleActions" class="choy-page__title-actions flex shrink-0 items-center gap-2">
+          <div
+            v-if="hasIoMenu || $slots['title-actions']"
+            class="choy-page__title-actions flex shrink-0 items-center gap-2"
+          >
             <ChoyPageIoMenu
               v-if="hasIoMenu"
               :action-import="actionImport"

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { InjectionKey, Ref } from 'vue';
+import { ref, type InjectionKey, type Ref } from 'vue';
 
 export type ChoyTabRegistration = {
   value: string;
@@ -17,3 +17,37 @@ export type ChoyTabsContext = {
 };
 
 export const ChoyTabsContextKey: InjectionKey<ChoyTabsContext> = Symbol.for('choysum.choyTabs');
+
+/**
+ * Mutable tab registry shared by ChoyTabs and ChoyTab children.
+ * Kept here (not in the SFC) so register/update/unregister are unit-testable.
+ */
+export function createChoyTabsContext(
+  tabs: Ref<ChoyTabRegistration[]> = ref([]),
+): ChoyTabsContext {
+  return {
+    tabs,
+    register(tab) {
+      if (tabs.value.some((item) => item.value === tab.value)) {
+        return false;
+      }
+      tabs.value = [...tabs.value, tab];
+      return true;
+    },
+    unregister(value) {
+      tabs.value = tabs.value.filter((item) => item.value !== value);
+    },
+    update(value, patch) {
+      const nextValue = patch.value;
+      if (
+        nextValue !== undefined &&
+        nextValue !== value &&
+        tabs.value.some((item) => item.value === nextValue)
+      ) {
+        return false;
+      }
+      tabs.value = tabs.value.map((item) => (item.value === value ? { ...item, ...patch } : item));
+      return true;
+    },
+  };
+}

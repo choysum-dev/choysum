@@ -11,8 +11,8 @@ import TabsTrigger from '../vendor/ui/tabs/TabsTrigger.vue';
 import type { ClassValue } from '../../lib/utils';
 import {
   ChoyTabsContextKey,
+  createChoyTabsContext,
   type ChoyTabRegistration,
-  type ChoyTabsContext,
 } from './choyTabsContext';
 import { nextChoyTabSelection } from './choyTabsSelection';
 
@@ -26,6 +26,7 @@ const props = defineProps<{
 
 const modelValue = defineModel<string>();
 const tabs = ref<ChoyTabRegistration[]>([]);
+const ctx = createChoyTabsContext(tabs);
 
 function reconcileSelection(list: ChoyTabRegistration[]): void {
   const next = nextChoyTabSelection(list, modelValue.value, props.defaultValue);
@@ -33,32 +34,6 @@ function reconcileSelection(list: ChoyTabRegistration[]): void {
     modelValue.value = next;
   }
 }
-
-const ctx: ChoyTabsContext = {
-  tabs,
-  register(tab) {
-    if (tabs.value.some((item) => item.value === tab.value)) {
-      return false;
-    }
-    tabs.value = [...tabs.value, tab];
-    return true;
-  },
-  unregister(value) {
-    tabs.value = tabs.value.filter((item) => item.value !== value);
-  },
-  update(value, patch) {
-    const nextValue = patch.value;
-    if (
-      nextValue !== undefined &&
-      nextValue !== value &&
-      tabs.value.some((item) => item.value === nextValue)
-    ) {
-      return false;
-    }
-    tabs.value = tabs.value.map((item) => (item.value === value ? { ...item, ...patch } : item));
-    return true;
-  },
-};
 
 provide(ChoyTabsContextKey, ctx);
 

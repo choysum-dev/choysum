@@ -1,7 +1,17 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { resolveChoyColSpan } from './choyGridContext';
+import { normalizeChoyGridCols, resolveChoyColSpan } from './choyGridContext';
+
+describe('normalizeChoyGridCols', () => {
+  test('defaults and clamps to a positive integer', () => {
+    expect(normalizeChoyGridCols()).toBe(12);
+    expect(normalizeChoyGridCols(8)).toBe(8);
+    expect(normalizeChoyGridCols(0)).toBe(1);
+    expect(normalizeChoyGridCols(-2)).toBe(1);
+    expect(normalizeChoyGridCols(Number.NaN)).toBe(12);
+  });
+});
 
 describe('resolveChoyColSpan', () => {
   test('defaults to full width of twelve tracks', () => {
