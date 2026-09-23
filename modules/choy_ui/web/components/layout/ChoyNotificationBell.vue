@@ -30,10 +30,12 @@ const emit = defineEmits<{
 }>();
 
 const badgeText = computed(() => {
-  if (props.count <= 0) {
+  const count = Number(props.count);
+  if (!Number.isFinite(count) || count <= 0) {
     return '';
   }
-  return props.count > 99 ? '99+' : String(props.count);
+  const whole = Math.floor(count);
+  return whole > 99 ? '99+' : String(whole);
 });
 
 const ariaLabel = computed(() =>

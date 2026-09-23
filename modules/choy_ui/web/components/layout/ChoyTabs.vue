@@ -14,6 +14,7 @@ import {
   type ChoyTabRegistration,
   type ChoyTabsContext,
 } from './choyTabsContext';
+import { nextChoyTabSelection } from './choyTabsSelection';
 
 /**
  * Public tabs host. Children are ChoyTab (not TabPane).
@@ -26,32 +27,10 @@ const props = defineProps<{
 const modelValue = defineModel<string>();
 const tabs = ref<ChoyTabRegistration[]>([]);
 
-function firstEnabledValue(list: ChoyTabRegistration[]): string {
-  const enabled = list.find((item) => !item.disabled);
-  return (enabled ?? list[0])?.value ?? '';
-}
-
-/**
- * Picks a valid selection: prefer defaultValue when it names an enabled tab,
- * otherwise the first enabled registration.
- */
-function pickSelection(list: ChoyTabRegistration[]): string {
-  const def = props.defaultValue;
-  if (def && list.some((item) => item.value === def && !item.disabled)) {
-    return def;
-  }
-  return firstEnabledValue(list);
-}
-
 function reconcileSelection(list: ChoyTabRegistration[]): void {
-  if (!list.length) {
-    return;
-  }
-  const current = modelValue.value;
-  const stillValid =
-    !!current && list.some((item) => item.value === current && !item.disabled);
-  if (!stillValid) {
-    modelValue.value = pickSelection(list);
+  const next = nextChoyTabSelection(list, modelValue.value, props.defaultValue);
+  if (next !== undefined) {
+    modelValue.value = next;
   }
 }
 

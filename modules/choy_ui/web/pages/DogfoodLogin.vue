@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { onUnmounted, ref } from 'vue';
+import { ref } from 'vue';
 import '../styles/tokens.css';
 import '../styles/preflight-policy.css';
 // Produced by web build (EnsureChoyTailwindCSS); not committed.
@@ -14,18 +14,17 @@ import ChoyCard from '../components/layout/ChoyCard.vue';
 import ChoyPage from '../components/layout/ChoyPage.vue';
 import Input from '../components/vendor/ui/input/Input.vue';
 import Toaster from '../components/vendor/ui/toast/Toaster.vue';
-import { clearToasts } from '../components/vendor/ui/toast/useToast';
 import { ChoyMessage } from '../composables/useChoyMessage';
 
 /**
  * Dogfood login page: exercises ChoyButton + L2 Input + ChoyMessage.
- * Fake submit only — no auth RPC.
+ * Fake submit only — no auth RPC. Toaster clears its own toasts on unmount.
  */
 const login = ref('');
 const password = ref('');
 const submitting = ref(false);
 
-async function onSubmit(): Promise<void> {
+function onSubmit(): void {
   if (submitting.value) {
     return;
   }
@@ -40,10 +39,6 @@ async function onSubmit(): Promise<void> {
     submitting.value = false;
   }
 }
-
-onUnmounted(() => {
-  clearToasts();
-});
 </script>
 
 <template>
