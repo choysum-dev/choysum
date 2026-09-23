@@ -250,7 +250,8 @@ const virtualizer = useVirtualizer({
     return rows.value.length;
   },
   getScrollElement: () => parentRef.value as Element | null,
-  estimateSize: () => props.estimateSize,
+  estimateSize: () =>
+    Number.isFinite(props.estimateSize) && props.estimateSize > 0 ? props.estimateSize : 36,
   // Keep measurements attached to the logical row so sorting does not reuse stale heights.
   getItemKey: (index) => rows.value[index]?.id ?? index,
   overscan: 8,
@@ -374,7 +375,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
 
 <template>
   <div
-    role="table"
+    role="grid"
     data-anchor="choy.internal.data-table"
     :aria-rowcount="rows.length ? rows.length + 1 : 2"
     :aria-colcount="table.getVisibleLeafColumns().length"
@@ -466,7 +467,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
           <div
             v-for="cell in rows[virtualRow.index]?.getVisibleCells() ?? []"
             :key="cell.id"
-            role="cell"
+            role="gridcell"
             class="flex items-center truncate px-2"
           >
             <Checkbox
@@ -490,7 +491,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
         aria-rowindex="2"
         class="flex h-full items-center justify-center text-sm text-foreground/50"
       >
-        <div role="cell">No data</div>
+        <div role="gridcell">No data</div>
       </div>
     </div>
   </div>

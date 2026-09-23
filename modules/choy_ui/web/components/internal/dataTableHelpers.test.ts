@@ -109,6 +109,19 @@ describe('dataTableHelpers', () => {
     expect(decodeDataTableRowKey('n: ')).toBe('n: ');
   });
 
+  test('round-trips typed row ids through encode/decode', () => {
+    for (const [raw, expected] of [
+      [0, 0],
+      [42, 42],
+      [-1.5, -1.5],
+      ['42', '42'],
+      [' a ', 'a'],
+      ['0', '0'],
+    ] as const) {
+      expect(decodeDataTableRowKey(encodeDataTableRowKey(raw))).toEqual(expected);
+    }
+  });
+
   test('resolveDataTableRowId prefers Id/id and rejects empty keys', () => {
     expect(resolveDataTableRowId({ Id: 42 })).toBe(42);
     expect(resolveDataTableRowId({ id: 'x' })).toBe('x');

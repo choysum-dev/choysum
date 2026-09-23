@@ -109,7 +109,8 @@ const virtualizer = useVirtualizer({
     return displayOptions.value.length;
   },
   getScrollElement: () => listParent.value as Element | null,
-  estimateSize: () => props.estimateSize,
+  estimateSize: () =>
+    Number.isFinite(props.estimateSize) && props.estimateSize > 0 ? props.estimateSize : 32,
   overscan: 6,
 });
 

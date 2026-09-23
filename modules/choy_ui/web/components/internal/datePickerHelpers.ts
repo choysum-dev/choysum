@@ -48,6 +48,10 @@ export function parseDatePickerValue(
   const rawYear = Number(parts[1]);
   const rawMonth = Number(parts[2]);
   const rawDay = Number(parts[3]);
+  // Mirror formatDatePickerValue's supported range so a parsed value can always be re-emitted.
+  if (rawYear < 1 || rawYear > 9999) {
+    return null;
+  }
   try {
     const parsed = parse(text);
     // Some parsers clamp out-of-range days (2026-02-30 → 2026-02-28); reject those.
