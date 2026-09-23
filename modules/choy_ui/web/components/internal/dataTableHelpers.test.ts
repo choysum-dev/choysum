@@ -167,5 +167,9 @@ describe('dataTableHelpers', () => {
     expect(mergeDataTableControlledSelection([1], [1, 2], present)).toEqual([1, 2]);
     // Duplicate off-page controlled ids must collapse to one entry.
     expect(mergeDataTableControlledSelection([1, 1], [2], present)).toEqual([1, 2]);
+    // Blank / non-finite controlled ids must not survive as ghost off-page entries.
+    expect(mergeDataTableControlledSelection(['', Number.NaN, '  ', 1], [2], present)).toEqual([
+      1, 2,
+    ]);
   });
 });

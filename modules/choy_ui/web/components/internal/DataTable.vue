@@ -256,6 +256,14 @@ const virtualizer = useVirtualizer({
   overscan: 8,
 });
 
+// Cached heights win over `estimateSize`; drop them when the estimate changes.
+watch(
+  () => props.estimateSize,
+  () => {
+    virtualizer.value.measure();
+  },
+);
+
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
@@ -374,7 +382,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
         :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
       >
         <div
-          v-for="header in table.getHeaderGroups()[0]?.headers ?? []"
+          v-for="header in (table.getHeaderGroups().slice(-1)[0]?.headers ?? [])"
           :key="header.id"
           role="columnheader"
           class="flex items-center gap-1 px-2 py-2"
@@ -451,7 +459,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
             <Checkbox
               v-if="cell.column.id === '__select'"
               :model-value="cell.row.getIsSelected()"
-              aria-label="Select row"
+              :aria-label="`Select row ${virtualRow.index + 1}`"
               @click.stop
               @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
             />

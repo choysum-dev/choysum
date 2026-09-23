@@ -238,6 +238,10 @@ export function mergeDataTableControlledSelection(
   const kept: DataTableRowId[] = [];
   const seen = new Set<string>();
   for (const id of controlled) {
+    // Blank / non-finite ids can never match a page key; keeping them would leak ghosts forever.
+    if (normalizeDataTableRowId(id) === null) {
+      continue;
+    }
     const key = encodeDataTableRowKey(id);
     if (presentKeys.has(key) || seen.has(key)) {
       continue;

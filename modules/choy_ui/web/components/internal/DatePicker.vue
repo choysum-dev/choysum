@@ -75,7 +75,7 @@ const displayText = computed(() => {
     return formatDatePickerValue(parsed);
   }
   // Keep host-provided non-canonical values visible instead of rendering an empty field.
-  return (modelValue.value ?? '').trim();
+  return String(modelValue.value ?? '').trim();
 });
 
 function onClear(): void {
@@ -118,7 +118,7 @@ watch(
         </Button>
       </PopoverTrigger>
       <button
-        v-if="clearable && !!modelValue?.trim() && !disabled"
+        v-if="clearable && !!String(modelValue ?? '').trim() && !disabled"
         type="button"
         class="shrink-0 text-xs text-foreground/50 hover:text-foreground"
         aria-label="Clear date"
