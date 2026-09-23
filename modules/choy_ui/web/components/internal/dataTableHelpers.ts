@@ -124,7 +124,9 @@ export function encodeDataTableRowKey(id: DataTableRowId): string {
 /** Decodes an internal TanStack key produced by encodeDataTableRowKey. */
 export function decodeDataTableRowKey(key: string): DataTableRowId {
   if (key.startsWith('n:')) {
-    const n = Number(key.slice(2));
+    const raw = key.slice(2).trim();
+    // `Number('')` is 0, which would silently decode a malformed key to row 0.
+    const n = raw === '' ? Number.NaN : Number(raw);
     if (Number.isFinite(n)) {
       return n;
     }

@@ -121,8 +121,9 @@ watch(
     loading.value = true;
     clearSearchError();
     // Debounce keystrokes so only the newest keyword reaches remote NameSearch.
+    const delay = Number.isFinite(props.debounce) ? Math.max(0, props.debounce) : 0;
     await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, props.debounce);
+      const timer = setTimeout(resolve, delay);
       onWatcherCleanup(() => {
         clearTimeout(timer);
         // Abort this run on re-query, close, or scope teardown.

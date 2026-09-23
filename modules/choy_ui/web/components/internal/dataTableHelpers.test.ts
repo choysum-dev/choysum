@@ -92,6 +92,9 @@ describe('dataTableHelpers', () => {
     expect(encodeDataTableRowKey('')).toBe('s:');
     expect(encodeDataTableRowKey(Number.NaN)).toBe('s:NaN');
     expect(decodeDataTableRowKey(encodeDataTableRowKey(Number.NaN))).toBe('NaN');
+    // Malformed numeric keys must not decode to 0 via Number('').
+    expect(decodeDataTableRowKey('n:')).toBe('n:');
+    expect(decodeDataTableRowKey('n: ')).toBe('n: ');
   });
 
   test('resolveDataTableRowId prefers Id/id and rejects empty keys', () => {

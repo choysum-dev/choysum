@@ -71,7 +71,11 @@ const calendarValue = computed<DateValue | undefined>({
 
 const displayText = computed(() => {
   const parsed = parseDatePickerValue(modelValue.value);
-  return parsed ? formatDatePickerValue(parsed) : '';
+  if (parsed) {
+    return formatDatePickerValue(parsed);
+  }
+  // Keep host-provided non-canonical values visible instead of rendering an empty field.
+  return (modelValue.value ?? '').trim();
 });
 
 function onClear(): void {

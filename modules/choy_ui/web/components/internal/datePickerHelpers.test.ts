@@ -23,6 +23,7 @@ describe('datePickerHelpers', () => {
     // Out-of-range month/day must not emit strings the parser rejects.
     expect(formatDatePickerValue({ year: 2026, month: 13, day: 1 })).toBe('');
     expect(formatDatePickerValue({ year: 2026, month: 1, day: 40 })).toBe('');
+    expect(formatDatePickerValue({ year: 2026, month: 2, day: 30 })).toBe('');
   });
 
   test('treats blank and invalid as null', () => {

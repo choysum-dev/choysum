@@ -73,7 +73,15 @@ function isControlledSelection(): boolean {
 const presentKeys = computed(
   () =>
     new Set(
-      props.data.map((row) => encodeDataTableRowKey(resolveDataTableRowId(row, props.rowId))),
+      props.data.map((row, index) => {
+        try {
+          return encodeDataTableRowKey(resolveDataTableRowId(row, props.rowId));
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          // Name the offending row so hosts can fix `rowId` instead of debugging a blank table.
+          throw new Error(`DataTable: row ${index} has no usable Id/id (${reason})`);
+        }
+      }),
     ),
 );
 
@@ -237,6 +245,8 @@ const virtualizer = useVirtualizer({
   },
   getScrollElement: () => parentRef.value as Element | null,
   estimateSize: () => props.estimateSize,
+  // Keep measurements attached to the logical row so sorting does not reuse stale heights.
+  getItemKey: (index) => rows.value[index]?.id ?? index,
   overscan: 8,
 });
 

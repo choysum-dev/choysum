@@ -49,7 +49,10 @@ export function mapNameSearchRows(rows: ReadonlyArray<unknown>): RelationOption[
       continue;
     }
     seen.add(id);
-    const label = String(row.DisplayName ?? row.label ?? id).trim() || id;
+    const rawLabel = [row.DisplayName, row.label].find(
+      (value) => typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)),
+    );
+    const label = String(rawLabel ?? id).trim() || id;
     out.push({ id, label, raw: row });
   }
   return out;

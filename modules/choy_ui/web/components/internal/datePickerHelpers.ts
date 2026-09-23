@@ -21,6 +21,10 @@ export function formatDatePickerValue(date: DatePickerDateParts): string {
   if (!Number.isInteger(day) || day < 1 || day > 31) {
     return '';
   }
+  // Reject day/month combos that the parser would refuse (e.g. 2026-02-30).
+  if (day > new Date(year, month, 0).getDate()) {
+    return '';
+  }
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 

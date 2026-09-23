@@ -23,6 +23,7 @@ describe('relationComboboxHelpers', () => {
         { Id: 'dup', DisplayName: 'First' },
         { Id: 'dup', DisplayName: 'Second' },
         { Id: 9, DisplayName: 'Nine' },
+        { Id: 'obj-label', DisplayName: { nested: true } },
         null,
         'skip',
       ]),
@@ -32,6 +33,11 @@ describe('relationComboboxHelpers', () => {
       { id: 'from-lower', label: 'Lower', raw: { Id: '', id: 'from-lower', DisplayName: 'Lower' } },
       { id: 'dup', label: 'First', raw: { Id: 'dup', DisplayName: 'First' } },
       { id: '9', label: 'Nine', raw: { Id: 9, DisplayName: 'Nine' } },
+      {
+        id: 'obj-label',
+        label: 'obj-label',
+        raw: { Id: 'obj-label', DisplayName: { nested: true } },
+      },
     ]);
   });
 
