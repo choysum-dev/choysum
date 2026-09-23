@@ -28,7 +28,9 @@ function onSubmit(): void {
     ChoyMessage.error('Login failed', { description: 'Login and password are required.' });
     return;
   }
-  ChoyMessage.success('Signed in', { description: `Welcome, ${login.value.trim()}.` });
+  ChoyMessage.success('Dogfood sign-in (no auth)', {
+    description: `No credentials were verified for ${login.value.trim()}.`,
+  });
 }
 </script>
 

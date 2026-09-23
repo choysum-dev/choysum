@@ -70,6 +70,9 @@ describe('useChoyMessage', () => {
     api.info('Floor', { duration: 1500.9 });
     expect(store.value[0].duration).toBe(1500);
     clearToasts();
+    api.info('Tiny', { duration: 0.5 });
+    expect(store.value[0].duration).toBe(1);
+    clearToasts();
     api.info('Sticky', { duration: 0 });
     expect(store.value[0].duration).toBe(Number.POSITIVE_INFINITY);
     clearToasts();

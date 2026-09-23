@@ -36,6 +36,14 @@ describe('choyTabsSelection', () => {
     expect(nextChoyTabSelection(list, 'two', 'one')).toBeUndefined();
   });
 
+  test('switches a stale current to the configured default', () => {
+    const list: ChoyTabRegistration[] = [
+      { value: 'one', label: 'One', disabled: false },
+      { value: 'two', label: 'Two', disabled: false },
+    ];
+    expect(nextChoyTabSelection(list, 'gone', 'two')).toBe('two');
+  });
+
   test('falls back to the first enabled tab when the default is disabled', () => {
     const list: ChoyTabRegistration[] = [
       { value: 'one', label: 'One', disabled: false },

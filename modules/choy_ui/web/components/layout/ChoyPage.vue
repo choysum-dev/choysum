@@ -95,6 +95,12 @@ const emit = defineEmits<{
       >
         <template v-if="$slots.header">
           <div
+            v-if="showBreadcrumb || $slots.breadcrumb"
+            class="choy-page__breadcrumb text-sm text-foreground/70"
+          >
+            <slot name="breadcrumb" />
+          </div>
+          <div
             v-if="hasIoMenu || $slots['title-actions']"
             class="choy-page__title-row flex items-start justify-between gap-3"
           >
