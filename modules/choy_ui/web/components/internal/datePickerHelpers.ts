@@ -3,12 +3,21 @@
 
 import { CalendarDate, parseDate } from '@internationalized/date';
 
-/** Formats a CalendarDate as YYYY-MM-DD (year padded to four digits). */
-export function formatDatePickerValue(date: CalendarDate): string {
-  const year = String(date.year).padStart(4, '0');
+export type DatePickerDateParts = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+/** Formats a calendar date as YYYY-MM-DD (year padded to four digits, range 1–9999). */
+export function formatDatePickerValue(date: DatePickerDateParts): string {
+  const year = date.year;
+  if (!Number.isInteger(year) || year < 1 || year > 9999) {
+    return '';
+  }
   const month = String(date.month).padStart(2, '0');
   const day = String(date.day).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return `${String(year).padStart(4, '0')}-${month}-${day}`;
 }
 
 /**

@@ -63,8 +63,7 @@ const calendarValue = computed<DateValue | undefined>({
       modelValue.value = clearDatePickerValue();
       return;
     }
-    // CalendarDate is the DateValue we emit from the Gregorian calendar.
-    modelValue.value = formatDatePickerValue(next as Parameters<typeof formatDatePickerValue>[0]);
+    modelValue.value = formatDatePickerValue(next);
     open.value = false;
   },
 });

@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed, onWatcherCleanup, ref, watch } from 'vue';
+import { computed, nextTick, onWatcherCleanup, ref, watch } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import {
   ComboboxAnchor,
@@ -39,6 +39,8 @@ const props = withDefaults(
     clearable?: boolean;
     pageSize?: number;
     estimateSize?: number;
+    /** Debounce for remote NameSearch keystrokes (ms). */
+    debounce?: number;
     search: RelationNameSearchFn;
     /** Optional seed so an initial modelValue keeps its label before search. */
     selectedOption?: RelationOption | null;
@@ -51,6 +53,7 @@ const props = withDefaults(
     clearable: true,
     pageSize: 20,
     estimateSize: 32,
+    debounce: 150,
     selectedOption: null,
     searchMore: true,
   },
@@ -119,7 +122,7 @@ watch(
     clearSearchError();
     // Debounce keystrokes so only the newest keyword reaches remote NameSearch.
     await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 150);
+      const timer = setTimeout(resolve, props.debounce);
       onWatcherCleanup(() => {
         clearTimeout(timer);
         // Abort this run on re-query, close, or scope teardown.
@@ -148,7 +151,7 @@ watch(
       }
     } catch (error) {
       if (seq === searchSeq) {
-        options.value = [];
+        // Keep prior options so the user can still pick; surface the failure above.
         const message = error instanceof Error ? error.message : String(error);
         searchError.value = 'Search failed. Please retry.';
         emit('search-error', message || searchError.value);
@@ -208,8 +211,13 @@ watch(open, (isOpen) => {
     query.value = '';
     searchSeq += 1;
     loading.value = false;
-    // Avoid flashing prior keyword results until the next search resolves.
-    options.value = [];
+    // Clear after the current flush so the modelValue watcher can still resolve
+    // the picked option from options (do not rely on watcher creation order).
+    void nextTick(() => {
+      if (!open.value) {
+        options.value = [];
+      }
+    });
     clearSearchError();
   }
 });
@@ -266,23 +274,26 @@ function onSearchMore(): void {
         <ComboboxViewport>
           <div ref="listParent" class="max-h-56 overflow-auto">
             <div
+              v-if="searchError"
+              class="border-b border-border px-3 py-2 text-sm text-danger"
+              role="alert"
+            >
+              {{ searchError }}
+            </div>
+            <div
               v-if="loading && !displayOptions.length"
               class="px-3 py-2 text-sm text-foreground/60"
             >
               Searching…
             </div>
-            <div
-              v-else-if="searchError"
-              class="px-3 py-2 text-sm text-danger"
-              role="alert"
+            <ComboboxEmpty
+              v-else-if="!loading && !displayOptions.length"
+              class="px-3 py-2 text-sm text-foreground/60"
             >
-              {{ searchError }}
-            </div>
-            <ComboboxEmpty v-else-if="!displayOptions.length" class="px-3 py-2 text-sm text-foreground/60">
               No matches
             </ComboboxEmpty>
             <div
-              v-else
+              v-else-if="displayOptions.length"
               :style="{ height: `${totalSize}px`, position: 'relative', width: '100%' }"
             >
               <template

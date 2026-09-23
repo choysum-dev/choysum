@@ -23,6 +23,8 @@ describe('relationComboboxHelpers', () => {
         { Id: 'dup', DisplayName: 'First' },
         { Id: 'dup', DisplayName: 'Second' },
         { Id: 9, DisplayName: 'Nine' },
+        null,
+        'skip',
       ]),
     ).toEqual([
       { id: 'p1', label: 'Alice', raw: { Id: 'p1', DisplayName: 'Alice' } },

@@ -70,10 +70,15 @@ function isControlledSelection(): boolean {
   return props.rowSelection !== undefined;
 }
 
+const presentKeys = computed(
+  () =>
+    new Set(
+      props.data.map((row) => encodeDataTableRowKey(resolveDataTableRowId(row, props.rowId))),
+    ),
+);
+
 function presentKeysFromData(): Set<string> {
-  return new Set(
-    props.data.map((row) => encodeDataTableRowKey(resolveDataTableRowId(row, props.rowId))),
-  );
+  return presentKeys.value;
 }
 
 function registerSelectionKey(key: string, id?: DataTableRowId): void {
@@ -336,6 +341,8 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
   <div
     role="table"
     data-anchor="choy.internal.data-table"
+    :aria-rowcount="rows.length + 1"
+    :aria-colcount="table.getVisibleLeafColumns().length"
     :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"
   >
     <div
@@ -346,6 +353,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
     >
       <div
         role="row"
+        aria-rowindex="1"
         class="grid"
         :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
       >
@@ -407,6 +415,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
           :ref="measureRowElement"
           :data-index="virtualRow.index"
           role="row"
+          :aria-rowindex="virtualRow.index + 2"
           tabindex="0"
           class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           :style="{

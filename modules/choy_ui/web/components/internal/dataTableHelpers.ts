@@ -49,6 +49,7 @@ export function compareDataTableValues(a: unknown, b: unknown): number {
   if (a instanceof Date && b instanceof Date) {
     return compareDataTableValues(a.getTime(), b.getTime());
   }
+  // localeCompare (not Intl.Collator): QuickJS FE unit runtime has no constructible Collator.
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
 }
 
@@ -113,7 +114,8 @@ export function normalizeDataTableRowId(id: DataTableRowId): DataTableRowId | nu
 export function encodeDataTableRowKey(id: DataTableRowId): string {
   const normalized = normalizeDataTableRowId(id);
   if (normalized === null) {
-    return typeof id === 'number' ? `n:${id}` : `s:${String(id).trim()}`;
+    // Non-finite numbers cannot round-trip through `n:` (decode would not yield a number).
+    return `s:${String(id).trim()}`;
   }
   return typeof normalized === 'number' ? `n:${normalized}` : `s:${normalized}`;
 }
@@ -226,8 +228,16 @@ export function mergeDataTableControlledSelection(
   visibleSelected: readonly DataTableRowId[],
   presentKeys: ReadonlySet<string>,
 ): DataTableRowId[] {
-  const kept = controlled.filter((id) => !presentKeys.has(encodeDataTableRowKey(id)));
-  const seen = new Set(kept.map(encodeDataTableRowKey));
+  const kept: DataTableRowId[] = [];
+  const seen = new Set<string>();
+  for (const id of controlled) {
+    const key = encodeDataTableRowKey(id);
+    if (presentKeys.has(key) || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    kept.push(id);
+  }
   const out = [...kept];
   for (const id of visibleSelected) {
     const key = encodeDataTableRowKey(id);

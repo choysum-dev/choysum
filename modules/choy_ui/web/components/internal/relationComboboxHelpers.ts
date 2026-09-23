@@ -22,13 +22,18 @@ export function normalizeRelationQuery(query: string | null | undefined): string
   return String(query ?? '').trim();
 }
 
+type NameSearchRow = { Id?: unknown; DisplayName?: unknown; label?: unknown; id?: unknown };
+
 /** Maps NameSearch rows that already look like { Id, DisplayName }. */
-export function mapNameSearchRows(
-  rows: ReadonlyArray<{ Id?: unknown; DisplayName?: unknown; label?: unknown; id?: unknown }>,
-): RelationOption[] {
+export function mapNameSearchRows(rows: ReadonlyArray<unknown>): RelationOption[] {
   const out: RelationOption[] = [];
   const seen = new Set<string>();
-  for (const row of rows) {
+  for (const candidate of rows) {
+    // Raw NameSearch payloads may contain null / non-object entries.
+    if (candidate === null || typeof candidate !== 'object') {
+      continue;
+    }
+    const row = candidate as NameSearchRow;
     const raw = [row.Id, row.id].find(
       (value) =>
         (typeof value === 'string' && value.trim() !== '') ||

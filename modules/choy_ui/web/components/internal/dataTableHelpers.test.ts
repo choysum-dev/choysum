@@ -5,6 +5,7 @@ import {
   clampDataTableVirtualWindow,
   compareDataTableValues,
   dataTableSelectionIdsEqual,
+  decodeDataTableRowKey,
   encodeDataTableRowKey,
   mapDataTableSelectionKeys,
   mergeDataTableControlledSelection,
@@ -86,7 +87,8 @@ describe('dataTableHelpers', () => {
     // Padded strings must match the trimmed resolveDataTableRowId key.
     expect(encodeDataTableRowKey(' 7 ')).toBe(encodeDataTableRowKey('7'));
     expect(encodeDataTableRowKey('')).toBe('s:');
-    expect(encodeDataTableRowKey(Number.NaN)).toBe('n:NaN');
+    expect(encodeDataTableRowKey(Number.NaN)).toBe('s:NaN');
+    expect(decodeDataTableRowKey(encodeDataTableRowKey(Number.NaN))).toBe('NaN');
   });
 
   test('resolveDataTableRowId prefers Id/id and rejects empty keys', () => {
@@ -147,5 +149,7 @@ describe('dataTableHelpers', () => {
     expect(mergeDataTableControlledSelection([1], [], present)).toEqual([1]);
     // Visible ids already kept off-page must not be duplicated.
     expect(mergeDataTableControlledSelection([1], [1, 2], present)).toEqual([1, 2]);
+    // Duplicate off-page controlled ids must collapse to one entry.
+    expect(mergeDataTableControlledSelection([1, 1], [2], present)).toEqual([1, 2]);
   });
 });

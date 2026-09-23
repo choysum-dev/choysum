@@ -17,6 +17,9 @@ describe('datePickerHelpers', () => {
     // Years below 1000 must round-trip through the four-digit parse regex.
     expect(formatDatePickerValue(new CalendarDate(999, 1, 5))).toBe('0999-01-05');
     expect(parseDatePickerValue('0999-01-05')?.toString()).toBe('0999-01-05');
+    // Years outside 1–9999 are not format/parse round-trippable.
+    expect(formatDatePickerValue({ year: 10000, month: 1, day: 1 })).toBe('');
+    expect(formatDatePickerValue({ year: 0, month: 1, day: 1 })).toBe('');
   });
 
   test('treats blank and invalid as null', () => {
