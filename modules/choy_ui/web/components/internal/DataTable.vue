@@ -87,8 +87,12 @@ const table = useVueTable({
       return rowSelection.value;
     },
   },
-  enableRowSelection: props.enableRowSelection,
-  enableSorting: props.enableSorting,
+  get enableRowSelection() {
+    return props.enableRowSelection;
+  },
+  get enableSorting() {
+    return props.enableSorting;
+  },
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),
   onSortingChange: (updater) => {

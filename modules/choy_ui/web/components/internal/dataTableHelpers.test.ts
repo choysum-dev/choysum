@@ -41,7 +41,9 @@ describe('dataTableHelpers', () => {
   });
 
   test('compares nulls and numbers', () => {
+    expect(compareDataTableValues(null, null)).toBe(0);
     expect(compareDataTableValues(null, 1)).toBeLessThan(0);
+    expect(compareDataTableValues(1, null)).toBeGreaterThan(0);
     expect(compareDataTableValues(2, 1)).toBeGreaterThan(0);
   });
 
@@ -61,9 +63,18 @@ describe('dataTableHelpers', () => {
   test('resolveDataTableRowId prefers Id/id and rejects empty keys', () => {
     expect(resolveDataTableRowId({ Id: 42 })).toBe(42);
     expect(resolveDataTableRowId({ id: 'x' })).toBe('x');
+    // Blank Id must not block a usable lowercase id.
+    expect(resolveDataTableRowId({ Id: '', id: 'fallback' })).toBe('fallback');
     expect(resolveDataTableRowId({ name: 'a' }, (r) => String(r.name))).toBe('a');
     expect(() => resolveDataTableRowId({ name: 'a' })).toThrow(/rowId/);
     expect(() => resolveDataTableRowId({ Id: '' })).toThrow(/rowId/);
+    expect(() => resolveDataTableRowId({ name: 'a' }, () => '')).toThrow(/empty id/);
+    expect(() => resolveDataTableRowId({ name: 'a' }, () => ({}) as unknown as string)).toThrow(
+      /empty id/,
+    );
+    expect(() => resolveDataTableRowId({ Id: { nested: true } as unknown as string })).toThrow(
+      /rowId/,
+    );
   });
 
   test('mapDataTableSelectionKeys restores original id types', () => {
@@ -72,5 +83,6 @@ describe('dataTableHelpers', () => {
       ['a', 'a'],
     ]);
     expect(mapDataTableSelectionKeys(['42', 'a'], registry)).toEqual([42, 'a']);
+    expect(mapDataTableSelectionKeys(['missing'], registry)).toEqual(['missing']);
   });
 });

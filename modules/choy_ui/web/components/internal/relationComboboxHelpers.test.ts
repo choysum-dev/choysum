@@ -7,6 +7,7 @@ import {
   normalizeRelationQuery,
   runRelationNameSearch,
   upsertRelationOption,
+  type RelationOption,
 } from './relationComboboxHelpers';
 
 describe('relationComboboxHelpers', () => {
@@ -38,8 +39,35 @@ describe('relationComboboxHelpers', () => {
     expect(rows[0]?.label).toBe('Hit:al');
   });
 
+  test('propagates search failures and normalizes non-array results', async () => {
+    let rejected: unknown;
+    try {
+      await runRelationNameSearch(async () => {
+        throw new Error('search failed');
+      }, 'a');
+    } catch (err) {
+      rejected = err;
+    }
+    expect(rejected instanceof Error && rejected.message).toBe('search failed');
+
+    const empty = await runRelationNameSearch(async () => null as unknown as RelationOption[], 'a');
+    expect(empty).toEqual([]);
+
+    const limited = await runRelationNameSearch(
+      async () => [
+        { id: '1', label: 'One' },
+        { id: '2', label: 'Two' },
+      ],
+      'x',
+      Number.NaN,
+    );
+    expect(limited).toHaveLength(2);
+  });
+
   test('upserts and finds selected options', () => {
     const base = [{ id: 'a', label: 'A' }];
+    expect(upsertRelationOption(base, null)).toEqual(base);
+    expect(upsertRelationOption(base, { id: '', label: 'Empty' })).toEqual(base);
     expect(upsertRelationOption(base, { id: 'b', label: 'B' }).map((o) => o.id)).toEqual([
       'b',
       'a',
@@ -47,9 +75,14 @@ describe('relationComboboxHelpers', () => {
     expect(upsertRelationOption(base, { id: 'a', label: 'A2' })[0]?.label).toBe('A2');
     expect(findRelationOption(base, 'a')?.label).toBe('A');
     expect(findRelationOption(base, null)).toBeNull();
+    expect(findRelationOption(base, '   ')).toBeNull();
     // Selection not in the current page still upserts via pinned option.
     expect(
       upsertRelationOption([{ id: 'z', label: 'Z' }], { id: 'a', label: 'A' }).map((o) => o.id),
     ).toEqual(['a', 'z']);
+    // Blank DisplayName falls back to id.
+    expect(mapNameSearchRows([{ Id: 'p3', DisplayName: '   ' }])).toEqual([
+      { id: 'p3', label: 'p3', raw: { Id: 'p3', DisplayName: '   ' } },
+    ]);
   });
 });

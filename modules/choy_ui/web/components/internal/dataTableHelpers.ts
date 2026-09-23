@@ -101,16 +101,22 @@ export function resolveDataTableRowId<T extends Record<string, unknown>>(
 ): DataTableRowId {
   if (rowId) {
     const value = rowId(row);
-    if (value === undefined || value === null || String(value).trim() === '') {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      throw new Error('DataTable rowId() returned an empty id');
+    }
+    if (String(value).trim() === '') {
       throw new Error('DataTable rowId() returned an empty id');
     }
     return value;
   }
-  const raw = (row as { Id?: unknown; id?: unknown }).Id ?? (row as { id?: unknown }).id;
-  if (raw === undefined || raw === null || String(raw).trim() === '') {
+  const raw = [(row as { Id?: unknown }).Id, (row as { id?: unknown }).id].find(
+    (value) =>
+      (typeof value === 'string' || typeof value === 'number') && String(value).trim() !== '',
+  );
+  if (typeof raw !== 'string' && typeof raw !== 'number') {
     throw new Error('DataTable: provide rowId when rows lack Id/id');
   }
-  return raw as DataTableRowId;
+  return raw;
 }
 
 /** Maps TanStack string selection keys back to original DataTableRowId values. */

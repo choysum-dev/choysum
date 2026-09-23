@@ -118,6 +118,10 @@ watch(
           pinnedSelected.value = found;
         }
       }
+    } catch {
+      if (seq === searchSeq) {
+        options.value = [];
+      }
     } finally {
       if (seq === searchSeq) {
         loading.value = false;
@@ -161,8 +165,6 @@ watch(open, (isOpen) => {
 function onClear(): void {
   modelValue.value = null;
   query.value = '';
-  pinnedSelected.value = null;
-  emit('select', null);
 }
 
 function onSearchMore(): void {
@@ -171,8 +173,8 @@ function onSearchMore(): void {
 }
 
 /** Remote search owns filtering; keep every option visible. */
-function alwaysMatch(): boolean {
-  return true;
+function alwaysMatch(): number {
+  return 1;
 }
 </script>
 

@@ -117,8 +117,9 @@ watch(
           class="ml-2 text-xs text-foreground/50 hover:text-foreground"
           role="button"
           tabindex="0"
-          @click="onClear"
-          @keydown.enter.prevent="onClear"
+          @click.stop="onClear"
+          @keydown.enter.stop.prevent="onClear"
+          @keydown.space.stop.prevent="onClear"
         >
           Clear
         </span>
