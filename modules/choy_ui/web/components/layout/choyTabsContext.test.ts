@@ -37,4 +37,11 @@ describe('createChoyTabsContext', () => {
     ctx.unregister('missing');
     expect(ctx.tabs.value).toEqual([{ value: 'a', label: 'A', disabled: false }]);
   });
+
+  test('update with undefined value in the patch keeps tab identity', () => {
+    const ctx = createChoyTabsContext();
+    ctx.register({ value: 'a', label: 'A', disabled: false });
+    expect(ctx.update('a', { value: undefined, label: 'Renamed' })).toBe(true);
+    expect(ctx.tabs.value).toEqual([{ value: 'a', label: 'Renamed', disabled: false }]);
+  });
 });

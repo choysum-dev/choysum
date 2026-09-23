@@ -45,4 +45,15 @@ describe('useChoyMessage', () => {
     expect(store.value[0].title).toBe('Info');
     clearToasts();
   });
+
+  test('toasts created without options keep the store defaults', () => {
+    clearToasts();
+    const api = useChoyMessage();
+    api.success('Saved');
+    const store = useToastStore();
+    expect(store.value[0].duration).not.toBeUndefined();
+    expect(store.value[0].duration).toBe(5000);
+    expect(store.value[0].description).toBeUndefined();
+    clearToasts();
+  });
 });

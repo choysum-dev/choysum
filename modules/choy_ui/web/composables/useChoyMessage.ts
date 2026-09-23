@@ -21,11 +21,16 @@ const LEVEL_PREFIX: Record<ChoyMessageLevel, string> = {
 
 function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptions): number {
   const prefix = LEVEL_PREFIX[level];
-  return toast({
+  const payload: { title: string; description?: string; duration?: number } = {
     title: title ? `${prefix}: ${title}` : prefix,
-    description: options?.description,
-    duration: options?.duration,
-  });
+  };
+  if (options?.description !== undefined) {
+    payload.description = options.description;
+  }
+  if (options?.duration !== undefined) {
+    payload.duration = options.duration;
+  }
+  return toast(payload);
 }
 
 /**

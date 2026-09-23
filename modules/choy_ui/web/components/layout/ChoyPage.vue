@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, useId } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
-import ChoyPageIoMenu from './ChoyPageIoMenu.vue';
+import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 
@@ -97,16 +97,15 @@ const emit = defineEmits<{
           <div class="choy-page__header-slot min-w-0 flex-1">
             <slot name="header" />
           </div>
-          <div class="choy-page__title-actions flex shrink-0 items-center gap-2">
-            <ChoyPageIoMenu
-              v-if="hasIoMenu"
-              :action-import="actionImport"
-              :action-export="actionExport"
-              @import="emit('import')"
-              @export="emit('export')"
-            />
+          <ChoyPageTitleActions
+            :has-io-menu="hasIoMenu"
+            :action-import="actionImport"
+            :action-export="actionExport"
+            @import="emit('import')"
+            @export="emit('export')"
+          >
             <slot name="title-actions" />
-          </div>
+          </ChoyPageTitleActions>
         </div>
         <slot v-else name="header" />
       </template>
@@ -121,19 +120,15 @@ const emit = defineEmits<{
           <h1 v-if="title" :id="pageTitleId" class="choy-page__title text-xl font-semibold tracking-tight">
             {{ title }}
           </h1>
-          <div
-            v-if="hasIoMenu || $slots['title-actions']"
-            class="choy-page__title-actions flex shrink-0 items-center gap-2"
+          <ChoyPageTitleActions
+            :has-io-menu="hasIoMenu"
+            :action-import="actionImport"
+            :action-export="actionExport"
+            @import="emit('import')"
+            @export="emit('export')"
           >
-            <ChoyPageIoMenu
-              v-if="hasIoMenu"
-              :action-import="actionImport"
-              :action-export="actionExport"
-              @import="emit('import')"
-              @export="emit('export')"
-            />
             <slot name="title-actions" />
-          </div>
+          </ChoyPageTitleActions>
         </div>
       </template>
     </div>

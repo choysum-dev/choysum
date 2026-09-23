@@ -37,7 +37,7 @@ function reconcileSelection(list: ChoyTabRegistration[]): void {
 
 provide(ChoyTabsContextKey, ctx);
 
-watch(tabs, (list) => reconcileSelection(list), { deep: true });
+watch(tabs, (list) => reconcileSelection(list));
 
 // Late-arriving or parent-swapped defaultValue must also reconcile.
 watch(

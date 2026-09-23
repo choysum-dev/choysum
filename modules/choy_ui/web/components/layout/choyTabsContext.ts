@@ -41,15 +41,13 @@ export function createChoyTabsContext(
       if (!tabs.value.some((item) => item.value === value)) {
         return false;
       }
-      const nextValue = patch.value;
-      if (
-        nextValue !== undefined &&
-        nextValue !== value &&
-        tabs.value.some((item) => item.value === nextValue)
-      ) {
+      const nextValue = patch.value ?? value;
+      if (nextValue !== value && tabs.value.some((item) => item.value === nextValue)) {
         return false;
       }
-      tabs.value = tabs.value.map((item) => (item.value === value ? { ...item, ...patch } : item));
+      tabs.value = tabs.value.map((item) =>
+        item.value === value ? { ...item, ...patch, value: nextValue } : item,
+      );
       return true;
     },
   };

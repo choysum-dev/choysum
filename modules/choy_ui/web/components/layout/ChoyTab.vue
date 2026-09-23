@@ -38,20 +38,31 @@ function resolveLabel(): string {
   return props.value;
 }
 
+function tryRegister(value: string): boolean {
+  if (!ctx) {
+    return true;
+  }
+  return ctx.register({
+    value,
+    label: resolveLabel(),
+    disabled: props.disabled,
+  });
+}
+
 onMounted(() => {
   registeredValue.value = props.value;
-  ownsRegistration.value =
-    ctx?.register({
-      value: props.value,
-      label: resolveLabel(),
-      disabled: props.disabled,
-    }) ?? true;
+  ownsRegistration.value = tryRegister(props.value);
 });
 
 watch(
   () => [props.value, props.label, props.disabled] as const,
   ([value], [oldValue]) => {
     if (!ownsRegistration.value) {
+      // Refused duplicate must not hide forever: retry when value becomes free.
+      if (oldValue !== value && tryRegister(value)) {
+        ownsRegistration.value = true;
+        registeredValue.value = value;
+      }
       return;
     }
     if (oldValue !== value) {
