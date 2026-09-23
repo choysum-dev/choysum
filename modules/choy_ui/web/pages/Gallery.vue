@@ -291,7 +291,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   toast,
-} from '../components/ui';
+} from '../components/vendor/ui';
 
 type Density = 'comfortable' | 'compact';
 

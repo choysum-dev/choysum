@@ -21,13 +21,16 @@ func TestClassifyForbiddenUiImport(t *testing.T) {
 		{"@unovis/ts", "@unovis"},
 		{"ui/button", "ui/*"},
 		{"../components/ui/button", "ui/*"},
+		{"../components/vendor/ui/button", "ui/*"},
 		{"@/choy_ui/web/components/ui/button", "ui/*"},
+		{"@/choy_ui/web/components/vendor/ui/button", "ui/*"},
 		{"@/web/web/components/ui/button", "ui/*"},
+		{"@/web/web/components/vendor/ui/button", "ui/*"},
 		{"internal/DataTable", "internal/*"},
 		{"../components/internal/DataTable", "internal/*"},
 		{"@/choy_ui/web/components/internal/DatePicker", "internal/*"},
 		{"@/choy_ui/web/lib/utils", "choy_ui-deep"},
-		{"@choysum-dev/choy_ui/web/components/ui/button", "ui/*"},
+		{"@choysum-dev/choy_ui/web/components/vendor/ui/button", "ui/*"},
 		{"vue", ""},
 		{"@/web/web/components/view/OFormView", ""},
 		{"element-plus", ""},
@@ -75,7 +78,7 @@ func TestAssertNoForbiddenUiImports_RejectsVueScriptDeepPath(t *testing.T) {
 	}
 	vue := `<template><div /></template>
 <script setup lang="ts">
-import Button from '@/choy_ui/web/components/ui/button/Button.vue';
+import Button from '@/choy_ui/web/components/vendor/ui/button/Button.vue';
 </script>
 `
 	if err := os.WriteFile(filepath.Join(webDir, "Leak.vue"), []byte(vue), 0o644); err != nil {
@@ -89,7 +92,7 @@ import Button from '@/choy_ui/web/components/ui/button/Button.vue';
 
 func TestAssertNoForbiddenUiImports_AllowsChoyUIModule(t *testing.T) {
 	modulesPath := t.TempDir()
-	webDir := filepath.Join(modulesPath, "choy_ui", "web", "components", "ui")
+	webDir := filepath.Join(modulesPath, "choy_ui", "web", "components", "vendor", "ui")
 	if err := os.MkdirAll(webDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

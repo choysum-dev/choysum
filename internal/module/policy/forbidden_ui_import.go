@@ -153,6 +153,10 @@ func isForbiddenUIPath(lower string) bool {
 	switch {
 	case lower == "ui" || strings.HasPrefix(lower, "ui/"):
 		return true
+	// Current L2 vendor tree: components/vendor/ui/**
+	case strings.Contains(lower, "/components/vendor/ui/") || strings.HasSuffix(lower, "/components/vendor/ui"):
+		return true
+	// Legacy / mistaken layouts still banned so domain cannot sneak past the rename.
 	case strings.Contains(lower, "/components/ui/") || strings.HasSuffix(lower, "/components/ui"):
 		return true
 	case strings.Contains(lower, "/web/components/ui/") || strings.HasSuffix(lower, "/web/components/ui"):
@@ -177,7 +181,7 @@ func isForbiddenInternalPath(lower string) bool {
 }
 
 func isForbiddenChoyDeepPath(lower string) bool {
-	// Domain modules must not deep-import choy_ui component trees (ui/internal/lib).
+	// Domain modules must not deep-import choy_ui component trees (vendor/ui, internal, lib).
 	// Public Choy* barrels land later (@/web); isolation gallery stays inside choy_ui.
 	markers := []string{
 		"@/choy_ui/",

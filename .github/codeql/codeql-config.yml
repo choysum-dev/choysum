@@ -9,3 +9,5 @@ name: "Choysum CodeQL"
 paths-ignore:
   # language-core service-script goldens (fixtures for GoldenCoder; not product TS)
   - "internal/typecheck/testdata/vue/golden/**"
+  # Vendored L2 primitives (shadcn-vue hand-adapted); not product L1 surface
+  - "modules/choy_ui/web/components/vendor/ui/**"
