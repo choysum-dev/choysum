@@ -17,7 +17,12 @@ import {
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
-import { nextDataTableSort, type DataTableRowId } from './dataTableHelpers';
+import {
+  mapDataTableSelectionKeys,
+  nextDataTableSort,
+  resolveDataTableRowId,
+  type DataTableRowId,
+} from './dataTableHelpers';
 
 /**
  * L3 virtual data table (TanStack Table + virtualizer).
@@ -42,13 +47,6 @@ const props = withDefaults(
   },
 );
 
-const resolveRowId = (row: T): string => {
-  if (props.rowId) {
-    return String(props.rowId(row));
-  }
-  return String((row as { Id?: unknown }).Id ?? '');
-};
-
 const emit = defineEmits<{
   'update:rowSelection': [ids: DataTableRowId[]];
   'row-click': [row: T];
@@ -56,6 +54,8 @@ const emit = defineEmits<{
 
 const sorting = ref<SortingState>([]);
 const rowSelection = ref<RowSelectionState>({});
+/** TanStack keys are always strings; keep originals for emit typing. */
+const idRegistry = new Map<string, DataTableRowId>();
 
 const selectColumn = computed<ColumnDef<T, unknown>[]>(() => {
   if (!props.enableRowSelection) {
@@ -97,10 +97,16 @@ const table = useVueTable({
   onRowSelectionChange: (updater) => {
     rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater;
   },
-  getRowId: (row) => resolveRowId(row),
+  getRowId: (row) => {
+    const original = resolveDataTableRowId(row, props.rowId);
+    const key = String(original);
+    idRegistry.set(key, original);
+    return key;
+  },
 });
 
 const parentRef = ref<HTMLElement | null>(null);
+const headerRef = ref<HTMLElement | null>(null);
 const rows = computed(() => table.getRowModel().rows);
 
 const virtualizer = useVirtualizer({
@@ -120,14 +126,15 @@ const gridTemplate = computed(() =>
     .map((col) => `${col.getSize()}px`)
     .join(' '),
 );
+const tableMinWidth = computed(() =>
+  table.getVisibleLeafColumns().reduce((sum, col) => sum + col.getSize(), 0),
+);
 
 watch(
   rowSelection,
   (state) => {
-    emit(
-      'update:rowSelection',
-      Object.keys(state).filter((key) => state[key]),
-    );
+    const keys = Object.keys(state).filter((key) => state[key]);
+    emit('update:rowSelection', mapDataTableSelectionKeys(keys, idRegistry));
   },
   { deep: true },
 );
@@ -144,7 +151,34 @@ function onHeaderClick(columnId: string, canSort: boolean): void {
   sorting.value = next ? [{ id: next.id, desc: next.desc }] : [];
 }
 
-const allSelected = computed(() => table.getIsAllPageRowsSelected());
+const allSelected = computed(() => {
+  if (table.getIsAllPageRowsSelected()) {
+    return true;
+  }
+  if (table.getIsSomePageRowsSelected()) {
+    return 'indeterminate' as const;
+  }
+  return false;
+});
+
+let syncingScroll = false;
+function onBodyScroll(): void {
+  if (syncingScroll || !parentRef.value || !headerRef.value) {
+    return;
+  }
+  syncingScroll = true;
+  headerRef.value.scrollLeft = parentRef.value.scrollLeft;
+  syncingScroll = false;
+}
+
+function onHeaderScroll(): void {
+  if (syncingScroll || !parentRef.value || !headerRef.value) {
+    return;
+  }
+  syncingScroll = true;
+  parentRef.value.scrollLeft = headerRef.value.scrollLeft;
+  syncingScroll = false;
+}
 </script>
 
 <template>
@@ -153,32 +187,38 @@ const allSelected = computed(() => table.getIsAllPageRowsSelected());
     :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"
   >
     <div
-      class="choy-data-table__header grid border-b border-border bg-muted/40 text-xs font-medium text-foreground/80"
-      :style="{ gridTemplateColumns: gridTemplate }"
+      ref="headerRef"
+      class="choy-data-table__header overflow-x-auto overflow-y-hidden border-b border-border bg-muted/40 text-xs font-medium text-foreground/80"
+      @scroll.passive="onHeaderScroll"
     >
       <div
-        v-for="header in table.getHeaderGroups()[0]?.headers ?? []"
-        :key="header.id"
-        class="flex items-center gap-1 px-2 py-2"
+        class="grid"
+        :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
       >
-        <Checkbox
-          v-if="header.column.id === '__select'"
-          :model-value="allSelected"
-          aria-label="Select all"
-          @update:model-value="(v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(v === true)"
-        />
-        <button
-          v-else
-          type="button"
-          class="flex flex-1 items-center gap-1 text-left hover:text-foreground"
-          :class="{ 'cursor-default': !header.column.getCanSort() }"
-          @click="onHeaderClick(header.column.id, header.column.getCanSort())"
+        <div
+          v-for="header in table.getHeaderGroups()[0]?.headers ?? []"
+          :key="header.id"
+          class="flex items-center gap-1 px-2 py-2"
         >
-          <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
-          <span v-if="header.column.getIsSorted()" class="text-[10px] text-foreground/50">
-            {{ header.column.getIsSorted() === 'desc' ? '↓' : '↑' }}
-          </span>
-        </button>
+          <Checkbox
+            v-if="header.column.id === '__select'"
+            :model-value="allSelected"
+            aria-label="Select all"
+            @update:model-value="(v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(v === true)"
+          />
+          <button
+            v-else
+            type="button"
+            class="flex flex-1 items-center gap-1 text-left hover:text-foreground"
+            :class="{ 'cursor-default': !header.column.getCanSort() }"
+            @click="onHeaderClick(header.column.id, header.column.getCanSort())"
+          >
+            <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
+            <span v-if="header.column.getIsSorted()" class="text-[10px] text-foreground/50">
+              {{ header.column.getIsSorted() === 'desc' ? '↓' : '↑' }}
+            </span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -186,8 +226,16 @@ const allSelected = computed(() => table.getIsAllPageRowsSelected());
       ref="parentRef"
       class="choy-data-table__body relative overflow-auto"
       :style="{ height: `${height}px` }"
+      @scroll.passive="onBodyScroll"
     >
-      <div :style="{ height: `${totalSize}px`, position: 'relative', width: '100%' }">
+      <div
+        :style="{
+          height: `${totalSize}px`,
+          position: 'relative',
+          minWidth: `${tableMinWidth}px`,
+          width: '100%',
+        }"
+      >
         <div
           v-for="virtualRow in virtualRows"
           :key="String(rows[virtualRow.index]?.id ?? virtualRow.key)"

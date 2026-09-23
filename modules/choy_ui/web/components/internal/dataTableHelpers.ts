@@ -89,3 +89,34 @@ export function clampDataTableVirtualWindow(
   const safeEnd = Math.min(Math.max(safeStart, Math.floor(end)), safeCount);
   return { start: safeStart, end: safeEnd };
 }
+
+/**
+ * Resolves a stable row id for TanStack.
+ * Prefers an explicit rowId fn, then `Id`, then `id`. Throws when none are usable
+ * (empty-string keys would collide across rows).
+ */
+export function resolveDataTableRowId<T extends Record<string, unknown>>(
+  row: T,
+  rowId?: (row: T) => DataTableRowId,
+): DataTableRowId {
+  if (rowId) {
+    const value = rowId(row);
+    if (value === undefined || value === null || String(value).trim() === '') {
+      throw new Error('DataTable rowId() returned an empty id');
+    }
+    return value;
+  }
+  const raw = (row as { Id?: unknown; id?: unknown }).Id ?? (row as { id?: unknown }).id;
+  if (raw === undefined || raw === null || String(raw).trim() === '') {
+    throw new Error('DataTable: provide rowId when rows lack Id/id');
+  }
+  return raw as DataTableRowId;
+}
+
+/** Maps TanStack string selection keys back to original DataTableRowId values. */
+export function mapDataTableSelectionKeys(
+  keys: readonly string[],
+  registry: ReadonlyMap<string, DataTableRowId>,
+): DataTableRowId[] {
+  return keys.map((key) => registry.get(key) ?? key);
+}

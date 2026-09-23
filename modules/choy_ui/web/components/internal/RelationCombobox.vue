@@ -40,6 +40,8 @@ const props = withDefaults(
     pageSize?: number;
     estimateSize?: number;
     search: RelationNameSearchFn;
+    /** Optional seed so an initial modelValue keeps its label before search. */
+    selectedOption?: RelationOption | null;
     /** Show a "Search more…" footer action (host opens a dialog in PR5). */
     searchMore?: boolean;
   }>(),
@@ -49,6 +51,7 @@ const props = withDefaults(
     clearable: true,
     pageSize: 20,
     estimateSize: 32,
+    selectedOption: null,
     searchMore: true,
   },
 );
@@ -58,6 +61,8 @@ const open = ref(false);
 const query = ref('');
 const loading = ref(false);
 const options = ref<RelationOption[]>([]);
+/** Survives remote pages that omit the current selection. */
+const pinnedSelected = ref<RelationOption | null>(props.selectedOption ?? null);
 const listParent = ref<HTMLElement | null>(null);
 
 const emit = defineEmits<{
@@ -65,7 +70,16 @@ const emit = defineEmits<{
   select: [option: RelationOption | null];
 }>();
 
-const selected = computed(() => findRelationOption(options.value, modelValue.value));
+const selected = computed(() => {
+  if (!modelValue.value) {
+    return null;
+  }
+  return (
+    findRelationOption(options.value, modelValue.value) ??
+    (pinnedSelected.value?.id === modelValue.value ? pinnedSelected.value : null) ??
+    (props.selectedOption?.id === modelValue.value ? props.selectedOption : null)
+  );
+});
 
 const displayOptions = computed(() =>
   upsertRelationOption(options.value, selected.value),
@@ -83,15 +97,6 @@ const virtualizer = useVirtualizer({
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
-async function refreshOptions(rawQuery: string): Promise<void> {
-  loading.value = true;
-  try {
-    options.value = await runRelationNameSearch(props.search, rawQuery, props.pageSize);
-  } finally {
-    loading.value = false;
-  }
-}
-
 let searchSeq = 0;
 watch(
   () => [open.value, query.value] as const,
@@ -100,20 +105,63 @@ watch(
       return;
     }
     const seq = ++searchSeq;
-    await refreshOptions(q);
-    if (seq !== searchSeq) {
-      return;
+    loading.value = true;
+    try {
+      const results = await runRelationNameSearch(props.search, q, props.pageSize);
+      if (seq !== searchSeq) {
+        return;
+      }
+      options.value = results;
+      if (modelValue.value) {
+        const found = findRelationOption(results, modelValue.value);
+        if (found) {
+          pinnedSelected.value = found;
+        }
+      }
+    } finally {
+      if (seq === searchSeq) {
+        loading.value = false;
+      }
+    }
+  },
+);
+
+watch(
+  () => props.selectedOption,
+  (option) => {
+    if (option?.id) {
+      pinnedSelected.value = option;
     }
   },
 );
 
 watch(modelValue, (id) => {
-  emit('select', findRelationOption(options.value, id));
+  if (!id) {
+    pinnedSelected.value = null;
+    emit('select', null);
+    return;
+  }
+  const found =
+    findRelationOption(options.value, id) ??
+    (pinnedSelected.value?.id === id ? pinnedSelected.value : null) ??
+    (props.selectedOption?.id === id ? props.selectedOption : null);
+  if (found) {
+    pinnedSelected.value = found;
+  }
+  emit('select', found);
+});
+
+watch(open, (isOpen) => {
+  if (!isOpen) {
+    // Drop the typeahead keyword so the trigger shows the selected label again.
+    query.value = '';
+  }
 });
 
 function onClear(): void {
   modelValue.value = null;
   query.value = '';
+  pinnedSelected.value = null;
   emit('select', null);
 }
 

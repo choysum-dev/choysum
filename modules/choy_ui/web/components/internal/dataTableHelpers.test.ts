@@ -4,7 +4,9 @@
 import {
   clampDataTableVirtualWindow,
   compareDataTableValues,
+  mapDataTableSelectionKeys,
   nextDataTableSort,
+  resolveDataTableRowId,
   setDataTableSelectionAll,
   sortDataTableRows,
   toggleDataTableSelection,
@@ -54,5 +56,21 @@ describe('dataTableHelpers', () => {
   test('clamps virtual windows', () => {
     expect(clampDataTableVirtualWindow(-2, 50, 10)).toEqual({ start: 0, end: 10 });
     expect(clampDataTableVirtualWindow(3, 7, 10)).toEqual({ start: 3, end: 7 });
+  });
+
+  test('resolveDataTableRowId prefers Id/id and rejects empty keys', () => {
+    expect(resolveDataTableRowId({ Id: 42 })).toBe(42);
+    expect(resolveDataTableRowId({ id: 'x' })).toBe('x');
+    expect(resolveDataTableRowId({ name: 'a' }, (r) => String(r.name))).toBe('a');
+    expect(() => resolveDataTableRowId({ name: 'a' })).toThrow(/rowId/);
+    expect(() => resolveDataTableRowId({ Id: '' })).toThrow(/rowId/);
+  });
+
+  test('mapDataTableSelectionKeys restores original id types', () => {
+    const registry = new Map<string, string | number>([
+      ['42', 42],
+      ['a', 'a'],
+    ]);
+    expect(mapDataTableSelectionKeys(['42', 'a'], registry)).toEqual([42, 'a']);
   });
 });

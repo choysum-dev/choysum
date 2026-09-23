@@ -47,5 +47,9 @@ describe('relationComboboxHelpers', () => {
     expect(upsertRelationOption(base, { id: 'a', label: 'A2' })[0]?.label).toBe('A2');
     expect(findRelationOption(base, 'a')?.label).toBe('A');
     expect(findRelationOption(base, null)).toBeNull();
+    // Selection not in the current page still upserts via pinned option.
+    expect(
+      upsertRelationOption([{ id: 'z', label: 'Z' }], { id: 'a', label: 'A' }).map((o) => o.id),
+    ).toEqual(['a', 'z']);
   });
 });
