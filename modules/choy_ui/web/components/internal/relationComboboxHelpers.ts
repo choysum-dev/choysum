@@ -27,11 +27,19 @@ export function mapNameSearchRows(
   rows: ReadonlyArray<{ Id?: unknown; DisplayName?: unknown; label?: unknown; id?: unknown }>,
 ): RelationOption[] {
   const out: RelationOption[] = [];
+  const seen = new Set<string>();
   for (const row of rows) {
-    const id = String(row.Id ?? row.id ?? '').trim();
-    if (!id) {
+    const raw = row.Id ?? row.id;
+    const id =
+      typeof raw === 'string'
+        ? raw.trim()
+        : typeof raw === 'number' && Number.isFinite(raw)
+          ? String(raw)
+          : '';
+    if (!id || seen.has(id)) {
       continue;
     }
+    seen.add(id);
     const label = String(row.DisplayName ?? row.label ?? id).trim() || id;
     out.push({ id, label, raw: row });
   }
@@ -40,7 +48,7 @@ export function mapNameSearchRows(
 
 /**
  * Runs a NameSearch-style callback and normalizes the result.
- * Rejects blank queries into an empty list (callers may still open with '').
+ * Blank queries are forwarded to the search callback (callers may still open with '').
  */
 export async function runRelationNameSearch(
   search: RelationNameSearchFn,

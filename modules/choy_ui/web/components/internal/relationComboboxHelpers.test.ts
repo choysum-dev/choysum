@@ -18,10 +18,16 @@ describe('relationComboboxHelpers', () => {
         { Id: 'p1', DisplayName: 'Alice' },
         { id: 'p2', label: 'Bob' },
         { Id: '', DisplayName: 'Skip' },
+        { Id: { nested: true }, DisplayName: 'Object' },
+        { Id: 'dup', DisplayName: 'First' },
+        { Id: 'dup', DisplayName: 'Second' },
+        { Id: 9, DisplayName: 'Nine' },
       ]),
     ).toEqual([
       { id: 'p1', label: 'Alice', raw: { Id: 'p1', DisplayName: 'Alice' } },
       { id: 'p2', label: 'Bob', raw: { id: 'p2', label: 'Bob' } },
+      { id: 'dup', label: 'First', raw: { Id: 'dup', DisplayName: 'First' } },
+      { id: '9', label: 'Nine', raw: { Id: 9, DisplayName: 'Nine' } },
     ]);
   });
 

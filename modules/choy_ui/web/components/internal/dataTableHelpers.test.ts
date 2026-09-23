@@ -79,7 +79,9 @@ describe('dataTableHelpers', () => {
     expect(resolveDataTableRowId({ name: 'a' }, (r) => String(r.name))).toBe('a');
     expect(() => resolveDataTableRowId({ name: 'a' })).toThrow(/rowId/);
     expect(() => resolveDataTableRowId({ Id: '' })).toThrow(/rowId/);
+    expect(() => resolveDataTableRowId({ Id: Number.NaN })).toThrow(/rowId/);
     expect(() => resolveDataTableRowId({ name: 'a' }, () => '')).toThrow(/empty id/);
+    expect(() => resolveDataTableRowId({ name: 'a' }, () => Number.NaN)).toThrow(/empty id/);
     expect(() => resolveDataTableRowId({ name: 'a' }, () => ({}) as unknown as string)).toThrow(
       /empty id/,
     );
@@ -100,6 +102,7 @@ describe('dataTableHelpers', () => {
         registry,
       ),
     ).toEqual([42, '42', 'a']);
-    expect(mapDataTableSelectionKeys(['missing'], registry)).toEqual(['missing']);
+    // Missing registry entries decode the internal prefix instead of leaking `n:`/`s:`.
+    expect(mapDataTableSelectionKeys(['n:7', 's:7', 'plain'], new Map())).toEqual([7, '7', 'plain']);
   });
 });

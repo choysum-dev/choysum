@@ -99,6 +99,27 @@ export function encodeDataTableRowKey(id: DataTableRowId): string {
   return typeof id === 'number' ? `n:${id}` : `s:${id}`;
 }
 
+/** Decodes an internal TanStack key produced by encodeDataTableRowKey. */
+export function decodeDataTableRowKey(key: string): DataTableRowId {
+  if (key.startsWith('n:')) {
+    const n = Number(key.slice(2));
+    if (Number.isFinite(n)) {
+      return n;
+    }
+  }
+  if (key.startsWith('s:')) {
+    return key.slice(2);
+  }
+  return key;
+}
+
+function isUsableDataTableRowId(value: unknown): value is DataTableRowId {
+  if (typeof value === 'string') {
+    return value.trim() !== '';
+  }
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 /**
  * Resolves a stable row id for TanStack.
  * Prefers an explicit rowId fn, then `Id`, then `id`. Throws when none are usable
@@ -110,19 +131,13 @@ export function resolveDataTableRowId<T extends Record<string, unknown>>(
 ): DataTableRowId {
   if (rowId) {
     const value = rowId(row);
-    if (typeof value !== 'string' && typeof value !== 'number') {
-      throw new Error('DataTable rowId() returned an empty id');
-    }
-    if (String(value).trim() === '') {
+    if (!isUsableDataTableRowId(value)) {
       throw new Error('DataTable rowId() returned an empty id');
     }
     return value;
   }
-  const raw = [(row as { Id?: unknown }).Id, (row as { id?: unknown }).id].find(
-    (value) =>
-      (typeof value === 'string' || typeof value === 'number') && String(value).trim() !== '',
-  );
-  if (typeof raw !== 'string' && typeof raw !== 'number') {
+  const raw = [(row as { Id?: unknown }).Id, (row as { id?: unknown }).id].find(isUsableDataTableRowId);
+  if (raw === undefined) {
     throw new Error('DataTable: provide rowId when rows lack Id/id');
   }
   return raw;
@@ -133,5 +148,12 @@ export function mapDataTableSelectionKeys(
   keys: readonly string[],
   registry: ReadonlyMap<string, DataTableRowId>,
 ): DataTableRowId[] {
-  return keys.map((key) => registry.get(key) ?? key);
+  return keys.map((key) => {
+    const known = registry.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    // Decode the internal key so `n:`/`s:` never leak into public selection ids.
+    return decodeDataTableRowKey(key);
+  });
 }

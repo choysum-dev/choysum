@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { CalendarDate, parseDate } from '@internationalized/date';
+import { CalendarDate, endOfMonth, parseDate } from '@internationalized/date';
 
 /** Formats a CalendarDate as YYYY-MM-DD. */
 export function formatDatePickerValue(date: CalendarDate): string {
@@ -20,7 +20,9 @@ export function parseDatePickerValue(value: string | null | undefined): Calendar
     return null;
   }
   try {
-    return parseDate(text);
+    const parsed = parseDate(text);
+    // CalendarDate tolerates out-of-range days (e.g. 2026-02-30); reject them here.
+    return parsed.day <= endOfMonth(parsed).day ? parsed : null;
   } catch {
     return null;
   }

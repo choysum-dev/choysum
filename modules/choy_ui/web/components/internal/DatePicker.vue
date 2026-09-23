@@ -114,7 +114,7 @@ watch(
         </Button>
       </PopoverTrigger>
       <button
-        v-if="clearable && displayText && !disabled"
+        v-if="clearable && !!modelValue?.trim() && !disabled"
         type="button"
         class="shrink-0 text-xs text-foreground/50 hover:text-foreground"
         aria-label="Clear date"

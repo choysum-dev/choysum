@@ -20,6 +20,7 @@ describe('datePickerHelpers', () => {
     expect(parseDatePickerValue('')).toBeNull();
     expect(parseDatePickerValue('   ')).toBeNull();
     expect(parseDatePickerValue('not-a-date')).toBeNull();
+    expect(parseDatePickerValue('2026-02-30')).toBeNull();
     expect(clearDatePickerValue()).toBeNull();
   });
 
