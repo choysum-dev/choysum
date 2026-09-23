@@ -101,7 +101,7 @@ const totalSize = computed(() => virtualizer.value.getTotalSize());
 
 let searchSeq = 0;
 watch(
-  [() => open.value, () => query.value],
+  [() => open.value, () => query.value, () => props.search, () => props.pageSize],
   async ([isOpen, q]) => {
     if (!isOpen) {
       return;
@@ -156,6 +156,16 @@ watch(
     }
   },
 );
+
+// A different search target (e.g. a reused field pointing at another relation)
+// must not keep stale options or a stale pinned label.
+watch([() => props.search, () => props.pageSize], () => {
+  options.value = [];
+  pinnedSelected.value = props.selectedOption ?? null;
+  searchSeq += 1;
+  loading.value = false;
+  searchError.value = null;
+});
 
 watch(modelValue, (id) => {
   if (!id) {

@@ -45,6 +45,18 @@ describe('relationComboboxHelpers', () => {
     );
     expect(calls).toEqual([{ query: 'al', limit: 5 }]);
     expect(rows[0]?.label).toBe('Hit:al');
+
+    // Opening the combobox with no keyword must forward an empty query.
+    const blank = await runRelationNameSearch(
+      async (query, opts) => {
+        calls.push({ query, limit: opts.limit });
+        return mapNameSearchRows([{ Id: 'p2', DisplayName: `Hit:${query || '*'}` }]);
+      },
+      '',
+      5,
+    );
+    expect(calls[1]).toEqual({ query: '', limit: 5 });
+    expect(blank[0]?.label).toBe('Hit:*');
   });
 
   test('propagates search failures and normalizes non-array results', async () => {

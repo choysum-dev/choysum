@@ -36,6 +36,8 @@ const props = withDefaults(
     columns: ColumnDef<T, unknown>[];
     data: T[];
     rowId?: (row: T) => DataTableRowId;
+    /** Controlled selection ids (pairs with update:rowSelection / v-model:rowSelection). */
+    rowSelection?: DataTableRowId[];
     height?: number;
     estimateSize?: number;
     enableSorting?: boolean;
@@ -58,6 +60,32 @@ const sorting = ref<SortingState>([]);
 const rowSelection = ref<RowSelectionState>({});
 /** TanStack keys are always strings; keep originals for emit typing. */
 const idRegistry = new Map<string, DataTableRowId>();
+
+// Mirror an externally controlled selection without re-emitting identical state.
+watch(
+  () => props.rowSelection,
+  (ids) => {
+    if (ids === undefined) {
+      return;
+    }
+    const next: RowSelectionState = {};
+    for (const id of ids) {
+      const key = encodeDataTableRowKey(id);
+      idRegistry.set(key, id);
+      next[key] = true;
+    }
+    const currentKeys = Object.keys(rowSelection.value).filter((key) => rowSelection.value[key]);
+    const nextKeys = Object.keys(next);
+    if (
+      currentKeys.length === nextKeys.length &&
+      nextKeys.every((key) => rowSelection.value[key] === true)
+    ) {
+      return;
+    }
+    rowSelection.value = next;
+  },
+  { immediate: true },
+);
 
 const selectColumn = computed<ColumnDef<T, unknown>[]>(() => {
   if (!props.enableRowSelection) {
