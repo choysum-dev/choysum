@@ -29,17 +29,17 @@ const emit = defineEmits<{
   click: [];
 }>();
 
-const badgeText = computed(() => {
+const unreadCount = computed(() => {
   const count = Number(props.count);
-  if (!Number.isFinite(count) || count <= 0) {
-    return '';
-  }
-  const whole = Math.max(1, Math.ceil(count));
-  return whole > 99 ? '99+' : String(whole);
+  return Number.isFinite(count) && count > 0 ? Math.max(1, Math.ceil(count)) : 0;
 });
 
+const badgeText = computed(() =>
+  unreadCount.value > 99 ? '99+' : unreadCount.value ? String(unreadCount.value) : '',
+);
+
 const ariaLabel = computed(() =>
-  badgeText.value ? `${props.label} (${badgeText.value} unread)` : props.label,
+  unreadCount.value ? `${props.label} (${unreadCount.value} unread)` : props.label,
 );
 </script>
 

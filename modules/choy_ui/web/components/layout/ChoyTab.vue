@@ -83,7 +83,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <TabsContent data-anchor="choy.tab" :value="registeredValue" :class="props.class">
+  <TabsContent
+    v-if="ownsRegistration"
+    data-anchor="choy.tab"
+    :value="registeredValue"
+    :class="props.class"
+  >
     <slot />
   </TabsContent>
 </template>

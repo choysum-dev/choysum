@@ -29,4 +29,12 @@ describe('createChoyTabsContext', () => {
     ctx.unregister('a');
     expect(ctx.tabs.value.map((t) => t.value)).toEqual(['b']);
   });
+
+  test('update / unregister on an unknown value are non-destructive', () => {
+    const ctx = createChoyTabsContext();
+    ctx.register({ value: 'a', label: 'A', disabled: false });
+    expect(ctx.update('missing', { label: 'X' })).toBe(false);
+    ctx.unregister('missing');
+    expect(ctx.tabs.value).toEqual([{ value: 'a', label: 'A', disabled: false }]);
+  });
 });

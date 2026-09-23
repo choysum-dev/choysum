@@ -26,5 +26,6 @@ describe('resolveChoyColSpan', () => {
     expect(resolveChoyColSpan(2.9, 12)).toBe(2);
     expect(resolveChoyColSpan(3, Number.NaN)).toBe(3);
     expect(resolveChoyColSpan(3, 0)).toBe(1);
+    expect(resolveChoyColSpan(null, 12)).toBe(12);
   });
 });

@@ -16,9 +16,9 @@ export function normalizeChoyGridCols(cols?: number): number {
  * Clamps a ChoyCol span against the parent track count.
  * Invalid / missing cols default to 12; span defaults to full width.
  */
-export function resolveChoyColSpan(span?: number, cols?: number): number {
+export function resolveChoyColSpan(span?: number | null, cols?: number): number {
   const safeCols = normalizeChoyGridCols(cols);
-  const spanRaw = span === undefined ? safeCols : Number(span);
+  const spanRaw = span == null ? safeCols : Number(span);
   const spanBase = Number.isFinite(spanRaw) ? Math.floor(spanRaw) : safeCols;
   return Math.min(Math.max(spanBase, 1), safeCols);
 }

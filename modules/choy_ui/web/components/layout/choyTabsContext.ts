@@ -38,6 +38,9 @@ export function createChoyTabsContext(
       tabs.value = tabs.value.filter((item) => item.value !== value);
     },
     update(value, patch) {
+      if (!tabs.value.some((item) => item.value === value)) {
+        return false;
+      }
       const nextValue = patch.value;
       if (
         nextValue !== undefined &&
