@@ -30,4 +30,10 @@ describe('resolveChoyColSpan', () => {
     expect(resolveChoyColSpan(null, 12)).toBe(12);
     expect(resolveChoyColSpan(3, 10000)).toBe(3);
   });
+
+  test('coerces template attribute strings for span and cols', () => {
+    expect(resolveChoyColSpan('3' as unknown as number, 12)).toBe(3);
+    expect(resolveChoyColSpan(2, '6' as unknown as number)).toBe(2);
+    expect(normalizeChoyGridCols('8' as unknown as number)).toBe(8);
+  });
 });

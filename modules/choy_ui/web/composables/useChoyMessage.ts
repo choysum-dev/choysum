@@ -28,10 +28,15 @@ function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptio
     payload.description = options.description;
   }
   if (options?.duration !== undefined) {
-    // 0 keeps the toast open until dismissed; clamp so negative / non-finite
-    // values cannot make the store dismiss the toast immediately.
     const duration = options.duration;
-    payload.duration = Number.isFinite(duration) ? Math.max(0, Math.floor(duration)) : 0;
+    if (duration === 0) {
+      // Explicit 0 keeps the toast open until dismissed (store maps 0 to Infinity).
+      payload.duration = 0;
+    } else if (Number.isFinite(duration) && duration > 0) {
+      payload.duration = Math.max(1, Math.floor(duration));
+    }
+    // Invalid (NaN / Infinity / negative) durations stay unset so the store
+    // default applies instead of silently pinning a sticky toast.
   }
   return toast(payload);
 }

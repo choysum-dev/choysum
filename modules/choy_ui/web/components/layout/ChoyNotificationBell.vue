@@ -64,5 +64,11 @@ const ariaLabel = computed(() =>
     >
       {{ badgeText }}
     </Badge>
+    <span
+      role="status"
+      class="absolute h-px w-px overflow-hidden whitespace-nowrap opacity-0"
+    >
+      {{ unreadCount ? `${unreadCount} unread notifications` : '' }}
+    </span>
   </div>
 </template>
