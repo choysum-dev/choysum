@@ -52,6 +52,11 @@ describe('dataTableHelpers', () => {
     expect(compareDataTableValues(Number.NaN, 1)).toBeGreaterThan(0);
     expect(compareDataTableValues(1, Number.NaN)).toBeLessThan(0);
     expect(compareDataTableValues(Number.NaN, Number.NaN)).toBe(0);
+    const earlier = new Date('2026-01-01T00:00:00Z');
+    const later = new Date('2026-12-31T00:00:00Z');
+    expect(compareDataTableValues(earlier, later)).toBeLessThan(0);
+    expect(compareDataTableValues(later, earlier)).toBeGreaterThan(0);
+    expect(compareDataTableValues(new Date(Number.NaN), later)).toBeGreaterThan(0);
   });
 
   test('toggles and bulk-sets selection', () => {

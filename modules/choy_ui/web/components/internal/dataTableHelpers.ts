@@ -46,6 +46,9 @@ export function compareDataTableValues(a: unknown, b: unknown): number {
     }
     return a - b;
   }
+  if (a instanceof Date && b instanceof Date) {
+    return compareDataTableValues(a.getTime(), b.getTime());
+  }
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
 }
 
