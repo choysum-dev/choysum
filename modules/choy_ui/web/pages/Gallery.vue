@@ -9,8 +9,8 @@ SPDX-License-Identifier: Apache-2.0
       <header class="choy-gallery-header">
         <h1 class="choy-gallery-title">Choy UI Gallery</h1>
         <p class="choy-gallery-lede">
-          Isolation kit shell: tokens, L1 shells, L2 controls, density / dark toggles. No Element Plus on
-          this page.
+          Isolation kit shell: tokens, L1 shells, L2 controls, L3 engines, density / dark toggles. No
+          Element Plus on this page.
         </p>
         <div class="choy-gallery-controls">
           <Button variant="outline" size="sm" @click="toggleDark">{{ isDark ? 'Light' : 'Dark' }}</Button>
@@ -111,6 +111,58 @@ SPDX-License-Identifier: Apache-2.0
                 </template>
                 <p class="text-sm text-foreground/80">Default slot — fields land in PR5.</p>
               </ChoyFormView>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section class="choy-gallery-section">
+        <h2>L3 engines (internal)</h2>
+        <p class="mb-4 text-sm text-foreground/70">
+          Gallery dogfood only — not exported from the public barrel.
+        </p>
+        <div class="choy-gallery-l2-grid">
+          <Card>
+            <CardHeader>
+              <CardTitle>DataTable</CardTitle>
+              <CardDescription>TanStack Table + virtualizer; selected {{ tableSelection.length }}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                :columns="tableColumns"
+                :data="tableRows"
+                :height="220"
+                @update:row-selection="(ids) => (tableSelection = ids)"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>DatePicker</CardTitle>
+              <CardDescription>@internationalized/date + Reka Calendar</CardDescription>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-2">
+              <DatePicker v-model="pickedDate" />
+              <p class="text-sm text-foreground/70">Value: {{ pickedDate ?? '(null)' }}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>RelationCombobox</CardTitle>
+              <CardDescription>NameSearch mock + virtual list</CardDescription>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-2">
+              <RelationCombobox
+                v-model="relationId"
+                :search="searchPartners"
+                @search-more="onRelationSearchMore"
+              />
+              <p class="text-sm text-foreground/70">
+                Selected: {{ relationId ?? '(null)' }}
+                <span v-if="relationSearchMoreHint"> · {{ relationSearchMoreHint }}</span>
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -384,9 +436,15 @@ import ChoyPage from '../components/layout/ChoyPage.vue';
 import ChoyTab from '../components/layout/ChoyTab.vue';
 import ChoyTabs from '../components/layout/ChoyTabs.vue';
 import ChoyFormView from '../components/view/ChoyFormView.vue';
+import DataTable from '../components/internal/DataTable.vue';
+import DatePicker from '../components/internal/DatePicker.vue';
+import RelationCombobox from '../components/internal/RelationCombobox.vue';
 import { ChoyMessage } from '../composables/useChoyMessage';
+import type { ColumnDef } from '@tanstack/vue-table';
+import type { RelationOption } from '../components/internal/relationComboboxHelpers';
 
 type Density = 'comfortable' | 'compact';
+type DemoRow = { Id: string; name: string; role: string };
 
 const isDark = ref(false);
 const density = ref<Density>('comfortable');
@@ -401,6 +459,39 @@ const dialogOpen = ref(false);
 const selectValue = ref('');
 const comboboxValue = ref('');
 const lastMenuAction = ref('');
+
+const tableSelection = ref<Array<string | number>>([]);
+const pickedDate = ref<string | null>(null);
+const relationId = ref<string | null>(null);
+const relationSearchMoreHint = ref('');
+
+const tableColumns: ColumnDef<DemoRow, unknown>[] = [
+  { accessorKey: 'name', header: 'Name', size: 160 },
+  { accessorKey: 'role', header: 'Role', size: 140 },
+];
+
+const tableRows: DemoRow[] = Array.from({ length: 40 }, (_, i) => ({
+  Id: `r${i + 1}`,
+  name: `Partner ${i + 1}`,
+  role: i % 2 === 0 ? 'Customer' : 'Vendor',
+}));
+
+const partnerCatalog: RelationOption[] = Array.from({ length: 80 }, (_, i) => ({
+  id: `p${i + 1}`,
+  label: `Partner ${i + 1}`,
+}));
+
+async function searchPartners(query: string, opts: { limit: number }): Promise<RelationOption[]> {
+  const q = query.toLowerCase();
+  const filtered = partnerCatalog.filter(
+    (row) => !q || row.label.toLowerCase().includes(q) || row.id.includes(q),
+  );
+  return filtered.slice(0, opts.limit);
+}
+
+function onRelationSearchMore(query: string): void {
+  relationSearchMoreHint.value = `Search more requested for "${query || '*'}"`;
+}
 
 const colorSwatches = [
   { name: '--choy-color-primary' },

@@ -1,0 +1,30 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { CalendarDate } from '@internationalized/date';
+import {
+  clearDatePickerValue,
+  formatDatePickerValue,
+  parseDatePickerValue,
+  todayDatePickerValue,
+} from './datePickerHelpers';
+
+describe('datePickerHelpers', () => {
+  test('formats and parses YYYY-MM-DD', () => {
+    const date = new CalendarDate(2026, 9, 23);
+    expect(formatDatePickerValue(date)).toBe('2026-09-23');
+    expect(parseDatePickerValue('2026-09-23')?.toString()).toBe(date.toString());
+  });
+
+  test('treats blank and invalid as null', () => {
+    expect(parseDatePickerValue('')).toBeNull();
+    expect(parseDatePickerValue('   ')).toBeNull();
+    expect(parseDatePickerValue('not-a-date')).toBeNull();
+    expect(clearDatePickerValue()).toBeNull();
+  });
+
+  test('todayDatePickerValue uses local calendar parts', () => {
+    const fixed = new Date(2026, 0, 5);
+    expect(formatDatePickerValue(todayDatePickerValue(fixed))).toBe('2026-01-05');
+  });
+});
