@@ -4,9 +4,9 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 /**
- * Maintainer-only gallery routes (not registered in product menus).
+ * Maintainer-only gallery / dogfood routes (not registered in product menus).
  * Plain records (no defineRoute resourceId) so any authenticated user can open
- * the isolation gallery without a dedicated RoleUiResource grant.
+ * isolation pages without a dedicated RoleUiResource grant.
  */
 export const choyUiRoutes: RouteRecordRaw[] = [
   {
@@ -17,6 +17,16 @@ export const choyUiRoutes: RouteRecordRaw[] = [
       requiresAuth: true,
       hideInMenu: true,
       title: 'Choy UI Gallery',
+    },
+  },
+  {
+    path: '__choy_dogfood_login',
+    name: 'ChoyUiDogfoodLogin',
+    component: () => import('../pages/DogfoodLogin.vue'),
+    meta: {
+      requiresAuth: true,
+      hideInMenu: true,
+      title: 'Choy UI Dogfood Login',
     },
   },
 ];

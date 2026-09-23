@@ -9,7 +9,8 @@ SPDX-License-Identifier: Apache-2.0
       <header class="choy-gallery-header">
         <h1 class="choy-gallery-title">Choy UI Gallery</h1>
         <p class="choy-gallery-lede">
-          Isolation kit shell: tokens, L2 controls, density / dark toggles. No Element Plus on this page.
+          Isolation kit shell: tokens, L1 shells, L2 controls, density / dark toggles. No Element Plus on
+          this page.
         </p>
         <div class="choy-gallery-controls">
           <Button variant="outline" size="sm" @click="toggleDark">{{ isDark ? 'Light' : 'Dark' }}</Button>
@@ -31,6 +32,87 @@ SPDX-License-Identifier: Apache-2.0
         <h2>Utility smoke (generated Tailwind)</h2>
         <div class="flex items-center gap-4 p-4 rounded-md bg-muted text-foreground border border-border">
           <span class="text-sm text-primary">bg-primary / text-sm / flex</span>
+        </div>
+      </section>
+
+      <section class="choy-gallery-section">
+        <h2>L1 shells</h2>
+        <div class="choy-gallery-l2-grid">
+          <Card>
+            <CardHeader>
+              <CardTitle>Layout + Page</CardTitle>
+              <CardDescription>App shell vs page chrome (nested)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChoyLayout class="min-h-40 overflow-hidden rounded-md border border-border text-sm">
+                <template #header>
+                  <div class="flex items-center justify-between gap-2 px-3 py-2">
+                    <span class="font-medium">Header</span>
+                    <ChoyNotificationBell :count="3" />
+                  </div>
+                </template>
+                <template #aside>
+                  <nav class="p-3 text-foreground/70">Aside</nav>
+                </template>
+                <ChoyPage title="Sample page" :padding="true" :action-export="true" class="!p-3">
+                  <p class="text-sm text-foreground/80">Page body inside layout main.</p>
+                </ChoyPage>
+                <template #footer>
+                  <div class="px-3 py-2 text-xs text-foreground/60">Footer</div>
+                </template>
+              </ChoyLayout>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Card / Grid / Tabs / Button</CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+              <ChoyGrid :cols="2" gap="sm">
+                <ChoyCol :span="1">
+                  <ChoyCard title="Col A">
+                    <p class="text-sm">Grid column A</p>
+                  </ChoyCard>
+                </ChoyCol>
+                <ChoyCol :span="1">
+                  <ChoyCard title="Col B">
+                    <p class="text-sm">Grid column B</p>
+                  </ChoyCard>
+                </ChoyCol>
+              </ChoyGrid>
+              <ChoyTabs v-model="l1Tab" default-value="overview">
+                <ChoyTab value="overview" label="Overview">
+                  <p class="text-sm text-foreground/80">L1 tabs overview panel.</p>
+                </ChoyTab>
+                <ChoyTab value="details" label="Details">
+                  <p class="text-sm text-foreground/80">L1 tabs details panel.</p>
+                </ChoyTab>
+              </ChoyTabs>
+              <div class="flex flex-wrap gap-2">
+                <ChoyButton @click="showChoyMessage('success')">ChoyButton + Message</ChoyButton>
+                <ChoyButton variant="outline" @click="showChoyMessage('info')">Info</ChoyButton>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>FormView skeleton</CardTitle>
+              <CardDescription>Chrome only — no store / validation yet</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChoyFormView title="Demo record" :show-actions="true">
+                <template #system-actions>
+                  <ChoyButton size="sm" variant="outline">Save</ChoyButton>
+                </template>
+                <template #button-box>
+                  <ChoyButton size="sm" variant="ghost">Action</ChoyButton>
+                </template>
+                <p class="text-sm text-foreground/80">Default slot — fields land in PR5.</p>
+              </ChoyFormView>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -292,6 +374,17 @@ import {
   TooltipTrigger,
   toast,
 } from '../components/vendor/ui';
+import ChoyButton from '../components/layout/ChoyButton.vue';
+import ChoyCard from '../components/layout/ChoyCard.vue';
+import ChoyCol from '../components/layout/ChoyCol.vue';
+import ChoyGrid from '../components/layout/ChoyGrid.vue';
+import ChoyLayout from '../components/layout/ChoyLayout.vue';
+import ChoyNotificationBell from '../components/layout/ChoyNotificationBell.vue';
+import ChoyPage from '../components/layout/ChoyPage.vue';
+import ChoyTab from '../components/layout/ChoyTab.vue';
+import ChoyTabs from '../components/layout/ChoyTabs.vue';
+import ChoyFormView from '../components/view/ChoyFormView.vue';
+import { ChoyMessage } from '../composables/useChoyMessage';
 
 type Density = 'comfortable' | 'compact';
 
@@ -303,6 +396,7 @@ const sampleTextarea = ref('');
 const checkboxOn = ref<boolean | 'indeterminate'>(false);
 const switchOn = ref(true);
 const activeTab = ref('one');
+const l1Tab = ref('overview');
 const dialogOpen = ref(false);
 const selectValue = ref('');
 const comboboxValue = ref('');
@@ -409,6 +503,14 @@ function showSampleToast(): void {
     title: 'Saved',
     description: 'Gallery toast via Reka ToastProvider.',
   });
+}
+
+function showChoyMessage(level: 'success' | 'info'): void {
+  if (level === 'success') {
+    ChoyMessage.success('Gallery action');
+    return;
+  }
+  ChoyMessage.info('L1 shell tip', { description: 'ChoyMessage wraps the L2 toast store.' });
 }
 </script>
 
