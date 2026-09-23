@@ -52,19 +52,21 @@ export function createChoyTabsContext(
       if (!isUsableTabValue(nextValue)) {
         return false;
       }
-      if (nextValue !== value && tabs.value.some((item) => item.value === nextValue)) {
-        return false;
-      }
+      const valueTaken =
+        nextValue !== value && tabs.value.some((item) => item.value === nextValue);
+      // A colliding rename keeps the owned value but still applies the rest of
+      // the patch so callers do not silently lose label / disabled updates.
+      const effectiveValue = valueTaken ? value : nextValue;
       tabs.value = tabs.value.map((item) =>
         item.value === value
           ? {
-              value: nextValue,
+              value: effectiveValue,
               label: patch.label ?? item.label,
               disabled: patch.disabled ?? item.disabled,
             }
           : item,
       );
-      return true;
+      return !valueTaken;
     },
   };
 }

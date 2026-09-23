@@ -21,8 +21,9 @@ const LEVEL_PREFIX: Record<ChoyMessageLevel, string> = {
 
 function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptions): number {
   const prefix = LEVEL_PREFIX[level];
+  const text = String(title ?? '').trim();
   const payload: { title: string; description?: string; duration?: number } = {
-    title: title ? `${prefix}: ${title}` : prefix,
+    title: text ? `${prefix}: ${text}` : prefix,
   };
   if (options?.description !== undefined) {
     payload.description = options.description;
@@ -33,7 +34,8 @@ function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptio
       // Explicit 0 keeps the toast open until dismissed (store maps 0 to Infinity).
       payload.duration = 0;
     } else if (Number.isFinite(duration) && duration > 0) {
-      payload.duration = Math.max(1, Math.floor(duration));
+      // Cap at the 32-bit timer limit: larger delays overflow and fire ~immediately.
+      payload.duration = Math.min(2_147_483_647, Math.max(1, Math.floor(duration)));
     }
     // Invalid (NaN / Infinity / negative) durations stay unset so the store
     // default applies instead of silently pinning a sticky toast.

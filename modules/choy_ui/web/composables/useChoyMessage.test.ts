@@ -44,6 +44,9 @@ describe('useChoyMessage', () => {
     const store = useToastStore();
     expect(store.value[0].title).toBe('Info');
     clearToasts();
+    api.info('   ');
+    expect(store.value[0].title).toBe('Info');
+    clearToasts();
   });
 
   test('toasts created without options keep the store defaults', () => {
@@ -72,6 +75,9 @@ describe('useChoyMessage', () => {
     clearToasts();
     api.info('Tiny', { duration: 0.5 });
     expect(store.value[0].duration).toBe(1);
+    clearToasts();
+    api.info('Huge', { duration: 1e12 });
+    expect(store.value[0].duration).toBe(2_147_483_647);
     clearToasts();
     api.info('Sticky', { duration: 0 });
     expect(store.value[0].duration).toBe(Number.POSITIVE_INFINITY);

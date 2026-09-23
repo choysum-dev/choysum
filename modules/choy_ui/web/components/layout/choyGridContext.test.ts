@@ -36,4 +36,11 @@ describe('resolveChoyColSpan', () => {
     expect(resolveChoyColSpan(2, '6' as unknown as number)).toBe(2);
     expect(normalizeChoyGridCols('8' as unknown as number)).toBe(8);
   });
+
+  test('treats blank attribute strings as unset', () => {
+    expect(normalizeChoyGridCols('' as unknown as number)).toBe(12);
+    expect(normalizeChoyGridCols('   ' as unknown as number)).toBe(12);
+    expect(resolveChoyColSpan('' as unknown as number, 12)).toBe(12);
+    expect(resolveChoyColSpan(' ' as unknown as number, 8)).toBe(8);
+  });
 });

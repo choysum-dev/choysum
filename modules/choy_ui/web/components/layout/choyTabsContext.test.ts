@@ -17,6 +17,7 @@ describe('createChoyTabsContext', () => {
     ).toBe(false);
 
     expect(ctx.update('a', { value: 'b', label: 'A2' })).toBe(false);
+    expect(ctx.tabs.value[0]).toEqual({ value: 'a', label: 'A2', disabled: false });
     expect(ctx.update('a', { value: 'c', label: 'C', disabled: true })).toBe(true);
     expect(ctx.tabs.value.map((t) => t.value)).toEqual(['c', 'b']);
     expect(ctx.tabs.value[0]).toEqual({ value: 'c', label: 'C', disabled: true });
