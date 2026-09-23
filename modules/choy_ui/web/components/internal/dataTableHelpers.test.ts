@@ -4,8 +4,10 @@
 import {
   clampDataTableVirtualWindow,
   compareDataTableValues,
+  dataTableSelectionIdsEqual,
   encodeDataTableRowKey,
   mapDataTableSelectionKeys,
+  mergeDataTableControlledSelection,
   nextDataTableSort,
   pruneDataTableSelection,
   resolveDataTableRowId,
@@ -120,5 +122,20 @@ describe('dataTableHelpers', () => {
     expect(pruneDataTableSelection({ a: true, b: true, c: false }, present)).toEqual({ a: true });
     expect(pruneDataTableSelection({ a: true }, present)).toBeNull();
     expect(pruneDataTableSelection({}, present)).toBeNull();
+  });
+
+  test('dataTableSelectionIdsEqual compares unique encoded ids', () => {
+    expect(dataTableSelectionIdsEqual([1, 1], [1])).toBe(true);
+    expect(dataTableSelectionIdsEqual([1, 1], [1, 2])).toBe(false);
+    expect(dataTableSelectionIdsEqual([42, '42'], [42, '42'])).toBe(true);
+    expect(dataTableSelectionIdsEqual([42], ['42'])).toBe(false);
+  });
+
+  test('mergeDataTableControlledSelection keeps off-page ids', () => {
+    const present = new Set([encodeDataTableRowKey(2), encodeDataTableRowKey(3)]);
+    expect(mergeDataTableControlledSelection([1, 2], [2, 3], present)).toEqual([1, 2, 3]);
+    expect(mergeDataTableControlledSelection([1], [], present)).toEqual([1]);
+    // Visible ids already kept off-page must not be duplicated.
+    expect(mergeDataTableControlledSelection([1], [1, 2], present)).toEqual([1, 2]);
   });
 });

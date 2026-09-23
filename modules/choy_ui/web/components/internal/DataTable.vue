@@ -18,8 +18,12 @@ import { useVirtualizer } from '@tanstack/vue-virtual';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import {
+  compareDataTableValues,
+  dataTableSelectionIdsEqual,
+  decodeDataTableRowKey,
   encodeDataTableRowKey,
   mapDataTableSelectionKeys,
+  mergeDataTableControlledSelection,
   nextDataTableSort,
   pruneDataTableSelection,
   resolveDataTableRowId,
@@ -61,16 +65,37 @@ const rowSelection = ref<RowSelectionState>({});
 /** TanStack keys are always strings; keep originals for emit typing. */
 const idRegistry = new Map<string, DataTableRowId>();
 
+function isControlledSelection(): boolean {
+  return props.rowSelection !== undefined;
+}
+
+function presentKeysFromData(): Set<string> {
+  return new Set(
+    props.data.map((row) => encodeDataTableRowKey(resolveDataTableRowId(row, props.rowId))),
+  );
+}
+
+function registerSelectionKey(key: string, id?: DataTableRowId): void {
+  if (!idRegistry.has(key)) {
+    idRegistry.set(key, id ?? decodeDataTableRowKey(key));
+  }
+}
+
 // Mirror an externally controlled selection without re-emitting identical state.
+// Only on-page ids enter TanStack state; off-page ids stay parent-owned.
 watch(
-  () => props.rowSelection,
-  (ids) => {
+  () => [props.rowSelection, props.data] as const,
+  ([ids]) => {
     if (ids === undefined) {
       return;
     }
+    const present = presentKeysFromData();
     const next: RowSelectionState = {};
     for (const id of ids) {
       const key = encodeDataTableRowKey(id);
+      if (!present.has(key)) {
+        continue;
+      }
       idRegistry.set(key, id);
       next[key] = true;
     }
@@ -123,13 +148,38 @@ const table = useVueTable({
   get enableSorting() {
     return props.enableSorting;
   },
+  get defaultColumn() {
+    return {
+      sortingFn: (rowA, rowB, columnId) =>
+        compareDataTableValues(rowA.getValue(columnId), rowB.getValue(columnId)),
+    };
+  },
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),
   onSortingChange: (updater) => {
     sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater;
   },
   onRowSelectionChange: (updater) => {
-    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater;
+    const proposed = typeof updater === 'function' ? updater(rowSelection.value) : updater;
+    for (const key of Object.keys(proposed)) {
+      if (proposed[key]) {
+        registerSelectionKey(key);
+      }
+    }
+    const visibleIds = mapDataTableSelectionKeys(
+      Object.keys(proposed).filter((key) => proposed[key]),
+      idRegistry,
+    );
+    if (isControlledSelection()) {
+      const present = presentKeysFromData();
+      const nextIds = mergeDataTableControlledSelection(props.rowSelection ?? [], visibleIds, present);
+      if (!dataTableSelectionIdsEqual(props.rowSelection ?? [], nextIds)) {
+        emit('update:rowSelection', nextIds);
+      }
+      // Prop remains authoritative; wait for the parent to accept the update.
+      return;
+    }
+    rowSelection.value = proposed;
   },
   getRowId: (row) => {
     const original = resolveDataTableRowId(row, props.rowId);
@@ -143,13 +193,16 @@ const parentRef = ref<HTMLElement | null>(null);
 const headerRef = ref<HTMLElement | null>(null);
 const rows = computed(() => table.getRowModel().rows);
 
-// Data swaps can drop rows; prune cached ids + selection so emits never report missing rows.
+// Data swaps can drop rows; prune only when selection is uncontrolled.
 watch(rows, (current) => {
   const present = new Set(current.map((row) => row.id));
   for (const key of [...idRegistry.keys()]) {
     if (!present.has(key)) {
       idRegistry.delete(key);
     }
+  }
+  if (isControlledSelection()) {
+    return;
   }
   const pruned = pruneDataTableSelection(rowSelection.value, present);
   if (pruned) {
@@ -181,18 +234,11 @@ const tableMinWidth = computed(() =>
 watch(
   rowSelection,
   (state) => {
-    const keys = Object.keys(state).filter((key) => state[key]);
-    const ids = mapDataTableSelectionKeys(keys, idRegistry);
-    const controlled = props.rowSelection;
-    // Skip echoing a selection that already equals the controlled prop.
-    if (
-      controlled !== undefined &&
-      controlled.length === ids.length &&
-      controlled.every((id) => ids.includes(id))
-    ) {
+    if (isControlledSelection()) {
       return;
     }
-    emit('update:rowSelection', ids);
+    const keys = Object.keys(state).filter((key) => state[key]);
+    emit('update:rowSelection', mapDataTableSelectionKeys(keys, idRegistry));
   },
   { deep: true },
 );
@@ -237,35 +283,47 @@ function onHeaderScroll(): void {
   parent.scrollLeft = header.scrollLeft;
 }
 
+const interactiveRowClickSelector =
+  'a,button,input,textarea,select,label,[role="button"],[role="checkbox"],[role="switch"],[role="menuitem"],[role="menuitemcheckbox"],[role="link"],[role="option"],[role="combobox"],[role="slider"],[contenteditable="true"],[data-no-row-click]';
+
+function isInteractiveRowClickTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest(interactiveRowClickSelector);
+}
+
 /** Skip row-click when the event originated from an interactive cell control. */
 function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefined): void {
-  if (!row) {
+  if (!row || isInteractiveRowClickTarget(event.target)) {
     return;
   }
-  const target = event.target;
-  if (
-    target instanceof Element &&
-    target.closest(
-      'a,button,input,textarea,select,label,[role="button"],[role="checkbox"],[role="menuitem"],[role="link"],[role="option"],[role="combobox"],[data-no-row-click]',
-    )
-  ) {
+  emit('row-click', row.original);
+}
+
+function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | undefined): void {
+  if (!row || (event.key !== 'Enter' && event.key !== ' ')) {
     return;
   }
+  if (isInteractiveRowClickTarget(event.target)) {
+    return;
+  }
+  event.preventDefault();
   emit('row-click', row.original);
 }
 </script>
 
 <template>
   <div
+    role="table"
     data-anchor="choy.internal.data-table"
     :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"
   >
     <div
       ref="headerRef"
+      role="rowgroup"
       class="choy-data-table__header overflow-x-auto overflow-y-hidden border-b border-border bg-muted/40 text-xs font-medium text-foreground/80"
       @scroll.passive="onHeaderScroll"
     >
       <div
+        role="row"
         class="grid"
         :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
       >
@@ -308,6 +366,7 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
 
     <div
       ref="parentRef"
+      role="rowgroup"
       class="choy-data-table__body relative overflow-auto"
       :style="{ height: `${height}px` }"
       @scroll.passive="onBodyScroll"
@@ -323,17 +382,21 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
         <div
           v-for="virtualRow in virtualRows"
           :key="String(rows[virtualRow.index]?.id ?? virtualRow.key)"
-          class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30"
+          role="row"
+          tabindex="0"
+          class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           :style="{
             transform: `translateY(${virtualRow.start}px)`,
             height: `${virtualRow.size}px`,
             gridTemplateColumns: gridTemplate,
           }"
           @click="onRowClick($event, rows[virtualRow.index])"
+          @keydown="onRowKeydown($event, rows[virtualRow.index])"
         >
           <div
             v-for="cell in rows[virtualRow.index]?.getVisibleCells() ?? []"
             :key="cell.id"
+            role="cell"
             class="flex items-center truncate px-2"
           >
             <Checkbox

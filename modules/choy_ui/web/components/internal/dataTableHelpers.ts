@@ -182,3 +182,44 @@ export function pruneDataTableSelection(
   }
   return pruned;
 }
+
+/** Set-equality of selection ids using typed TanStack keys (dedupes duplicates). */
+export function dataTableSelectionIdsEqual(
+  left: readonly DataTableRowId[],
+  right: readonly DataTableRowId[],
+): boolean {
+  const leftKeys = new Set(left.map(encodeDataTableRowKey));
+  const rightKeys = new Set(right.map(encodeDataTableRowKey));
+  if (leftKeys.size !== rightKeys.size) {
+    return false;
+  }
+  for (const key of leftKeys) {
+    if (!rightKeys.has(key)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Merges controlled ids that are off the current page with the visible selection.
+ * Preserves parent-owned ids across data swaps while reflecting on-page toggles.
+ */
+export function mergeDataTableControlledSelection(
+  controlled: readonly DataTableRowId[],
+  visibleSelected: readonly DataTableRowId[],
+  presentKeys: ReadonlySet<string>,
+): DataTableRowId[] {
+  const kept = controlled.filter((id) => !presentKeys.has(encodeDataTableRowKey(id)));
+  const seen = new Set(kept.map(encodeDataTableRowKey));
+  const out = [...kept];
+  for (const id of visibleSelected) {
+    const key = encodeDataTableRowKey(id);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(id);
+  }
+  return out;
+}

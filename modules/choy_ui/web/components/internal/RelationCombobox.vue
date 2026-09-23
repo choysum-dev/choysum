@@ -72,6 +72,14 @@ const emit = defineEmits<{
   select: [option: RelationOption | null];
 }>();
 
+function clearSearchError(): void {
+  if (searchError.value === null) {
+    return;
+  }
+  searchError.value = null;
+  emit('search-error', null);
+}
+
 const selected = computed(() => {
   if (!modelValue.value) {
     return null;
@@ -108,7 +116,7 @@ watch(
     }
     const seq = ++searchSeq;
     loading.value = true;
-    searchError.value = null;
+    clearSearchError();
     // Debounce keystrokes so only the newest keyword reaches remote NameSearch.
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 150);
@@ -125,8 +133,7 @@ watch(
         return;
       }
       options.value = results;
-      searchError.value = null;
-      emit('search-error', null);
+      clearSearchError();
       if (modelValue.value) {
         const found = findRelationOption(results, modelValue.value);
         if (found) {
@@ -162,7 +169,7 @@ watch(
 watch([() => props.search, () => props.pageSize], () => {
   options.value = [];
   pinnedSelected.value = props.selectedOption ?? null;
-  searchError.value = null;
+  clearSearchError();
   // While open, the search watcher already re-queries with the new target;
   // bumping searchSeq here would cancel that fresh request and leave the list empty.
   if (!open.value) {
@@ -193,6 +200,9 @@ watch(open, (isOpen) => {
     query.value = '';
     searchSeq += 1;
     loading.value = false;
+    // Avoid flashing prior keyword results until the next search resolves.
+    options.value = [];
+    clearSearchError();
   }
 });
 
