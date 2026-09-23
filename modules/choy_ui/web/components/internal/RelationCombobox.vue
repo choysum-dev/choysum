@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onWatcherCleanup, ref, watch } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import {
   ComboboxAnchor,
@@ -119,7 +119,11 @@ watch(
     clearSearchError();
     // Debounce keystrokes so only the newest keyword reaches remote NameSearch.
     await new Promise<void>((resolve) => {
-      setTimeout(resolve, 150);
+      const timer = setTimeout(resolve, 150);
+      onWatcherCleanup(() => {
+        clearTimeout(timer);
+        resolve();
+      });
     });
     if (seq !== searchSeq || !open.value) {
       if (seq === searchSeq) {
@@ -230,6 +234,7 @@ function onSearchMore(): void {
       <ComboboxInput
         v-model="query"
         :disabled="disabled"
+        :display-value="() => selected?.label ?? ''"
         :placeholder="selected?.label || placeholder"
         :class="
           cn(
@@ -276,18 +281,22 @@ function onSearchMore(): void {
               v-else
               :style="{ height: `${totalSize}px`, position: 'relative', width: '100%' }"
             >
-              <ComboboxItem
+              <template
                 v-for="virtualRow in virtualRows"
                 :key="displayOptions[virtualRow.index]?.id ?? String(virtualRow.key)"
-                :value="displayOptions[virtualRow.index]?.id ?? ''"
-                class="absolute left-0 flex w-full cursor-default items-center px-2 text-sm outline-none data-[highlighted]:bg-muted"
-                :style="{
-                  transform: `translateY(${virtualRow.start}px)`,
-                  height: `${virtualRow.size}px`,
-                }"
               >
-                {{ displayOptions[virtualRow.index]?.label }}
-              </ComboboxItem>
+                <ComboboxItem
+                  v-if="displayOptions[virtualRow.index]"
+                  :value="displayOptions[virtualRow.index]!.id"
+                  class="absolute left-0 flex w-full cursor-default items-center px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                  :style="{
+                    transform: `translateY(${virtualRow.start}px)`,
+                    height: `${virtualRow.size}px`,
+                  }"
+                >
+                  {{ displayOptions[virtualRow.index]?.label }}
+                </ComboboxItem>
+              </template>
             </div>
           </div>
         </ComboboxViewport>

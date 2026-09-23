@@ -14,6 +14,9 @@ describe('datePickerHelpers', () => {
     const date = new CalendarDate(2026, 9, 23);
     expect(formatDatePickerValue(date)).toBe('2026-09-23');
     expect(parseDatePickerValue('2026-09-23')?.toString()).toBe(date.toString());
+    // Years below 1000 must round-trip through the four-digit parse regex.
+    expect(formatDatePickerValue(new CalendarDate(999, 1, 5))).toBe('0999-01-05');
+    expect(parseDatePickerValue('0999-01-05')?.toString()).toBe('0999-01-05');
   });
 
   test('treats blank and invalid as null', () => {

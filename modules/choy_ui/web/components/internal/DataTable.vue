@@ -25,6 +25,7 @@ import {
   mapDataTableSelectionKeys,
   mergeDataTableControlledSelection,
   nextDataTableSort,
+  normalizeDataTableRowId,
   pruneDataTableSelection,
   resolveDataTableRowId,
   type DataTableRowId,
@@ -91,7 +92,11 @@ watch(
     }
     const present = presentKeysFromData();
     const next: RowSelectionState = {};
-    for (const id of ids) {
+    for (const raw of ids) {
+      const id = normalizeDataTableRowId(raw);
+      if (id === null) {
+        continue;
+      }
       const key = encodeDataTableRowKey(id);
       if (!present.has(key)) {
         continue;
@@ -172,8 +177,11 @@ const table = useVueTable({
     );
     if (isControlledSelection()) {
       const present = presentKeysFromData();
-      const nextIds = mergeDataTableControlledSelection(props.rowSelection ?? [], visibleIds, present);
-      if (!dataTableSelectionIdsEqual(props.rowSelection ?? [], nextIds)) {
+      const controlledIds = (props.rowSelection ?? [])
+        .map(normalizeDataTableRowId)
+        .filter((id): id is DataTableRowId => id !== null);
+      const nextIds = mergeDataTableControlledSelection(controlledIds, visibleIds, present);
+      if (!dataTableSelectionIdsEqual(controlledIds, nextIds)) {
         emit('update:rowSelection', nextIds);
       }
       // Prop remains authoritative; wait for the parent to accept the update.

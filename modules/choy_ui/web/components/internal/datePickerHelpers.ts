@@ -3,11 +3,12 @@
 
 import { CalendarDate, parseDate } from '@internationalized/date';
 
-/** Formats a CalendarDate as YYYY-MM-DD. */
+/** Formats a CalendarDate as YYYY-MM-DD (year padded to four digits). */
 export function formatDatePickerValue(date: CalendarDate): string {
+  const year = String(date.year).padStart(4, '0');
   const month = String(date.month).padStart(2, '0');
   const day = String(date.day).padStart(2, '0');
-  return `${date.year}-${month}-${day}`;
+  return `${year}-${month}-${day}`;
 }
 
 /**

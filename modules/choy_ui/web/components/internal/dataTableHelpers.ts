@@ -96,10 +96,23 @@ export function clampDataTableVirtualWindow(
 
 /**
  * TanStack row keys are strings; encode the original id type so `42` and `'42'`
- * stay distinct in selection state.
+ * stay distinct in selection state. String ids are trimmed so padded controlled
+ * ids match `resolveDataTableRowId` keys.
  */
+export function normalizeDataTableRowId(id: DataTableRowId): DataTableRowId | null {
+  if (typeof id === 'string') {
+    const trimmed = id.trim();
+    return trimmed === '' ? null : trimmed;
+  }
+  return Number.isFinite(id) ? id : null;
+}
+
 export function encodeDataTableRowKey(id: DataTableRowId): string {
-  return typeof id === 'number' ? `n:${id}` : `s:${id}`;
+  const normalized = normalizeDataTableRowId(id);
+  if (normalized === null) {
+    return typeof id === 'number' ? `n:${id}` : `s:${String(id).trim()}`;
+  }
+  return typeof normalized === 'number' ? `n:${normalized}` : `s:${normalized}`;
 }
 
 /** Decodes an internal TanStack key produced by encodeDataTableRowKey. */

@@ -78,6 +78,10 @@ describe('dataTableHelpers', () => {
     expect(encodeDataTableRowKey(42)).toBe('n:42');
     expect(encodeDataTableRowKey('42')).toBe('s:42');
     expect(encodeDataTableRowKey(42)).not.toBe(encodeDataTableRowKey('42'));
+    // Padded strings must match the trimmed resolveDataTableRowId key.
+    expect(encodeDataTableRowKey(' 7 ')).toBe(encodeDataTableRowKey('7'));
+    expect(encodeDataTableRowKey('')).toBe('s:');
+    expect(encodeDataTableRowKey(Number.NaN)).toBe('n:NaN');
   });
 
   test('resolveDataTableRowId prefers Id/id and rejects empty keys', () => {
@@ -129,6 +133,7 @@ describe('dataTableHelpers', () => {
     expect(dataTableSelectionIdsEqual([1, 1], [1, 2])).toBe(false);
     expect(dataTableSelectionIdsEqual([42, '42'], [42, '42'])).toBe(true);
     expect(dataTableSelectionIdsEqual([42], ['42'])).toBe(false);
+    expect(dataTableSelectionIdsEqual([' 7 '], ['7'])).toBe(true);
   });
 
   test('mergeDataTableControlledSelection keeps off-page ids', () => {
