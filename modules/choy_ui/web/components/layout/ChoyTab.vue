@@ -54,6 +54,21 @@ onMounted(() => {
   ownsRegistration.value = tryRegister(props.value);
 });
 
+// Retry when the shared registry changes: the tab that owns this value may
+// unregister without props.value changing.
+watch(
+  () => ctx?.tabs.value.some((item) => item.value === props.value) ?? false,
+  (taken) => {
+    if (ownsRegistration.value || taken) {
+      return;
+    }
+    if (tryRegister(props.value)) {
+      ownsRegistration.value = true;
+      registeredValue.value = props.value;
+    }
+  },
+);
+
 watch(
   () => [props.value, props.label, props.disabled] as const,
   ([value], [oldValue]) => {

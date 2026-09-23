@@ -55,4 +55,16 @@ describe('choyTabsSelection', () => {
     expect(nextChoyTabSelection([], undefined, undefined)).toBeUndefined();
     expect(nextChoyTabSelection([], 'one', 'one')).toBeUndefined();
   });
+
+  test('recovers to the first enabled tab after an all-disabled list', () => {
+    const disabledOnly: ChoyTabRegistration[] = [
+      { value: 'one', label: 'One', disabled: true },
+    ];
+    expect(nextChoyTabSelection(disabledOnly, undefined, 'one')).toBe('');
+
+    const enabled: ChoyTabRegistration[] = [
+      { value: 'one', label: 'One', disabled: false },
+    ];
+    expect(nextChoyTabSelection(enabled, '', undefined)).toBe('one');
+  });
 });

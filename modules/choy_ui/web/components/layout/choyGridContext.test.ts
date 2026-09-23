@@ -10,6 +10,7 @@ describe('normalizeChoyGridCols', () => {
     expect(normalizeChoyGridCols(0)).toBe(1);
     expect(normalizeChoyGridCols(-2)).toBe(1);
     expect(normalizeChoyGridCols(Number.NaN)).toBe(12);
+    expect(normalizeChoyGridCols(10000)).toBe(24);
   });
 });
 
@@ -27,5 +28,6 @@ describe('resolveChoyColSpan', () => {
     expect(resolveChoyColSpan(3, Number.NaN)).toBe(3);
     expect(resolveChoyColSpan(3, 0)).toBe(1);
     expect(resolveChoyColSpan(null, 12)).toBe(12);
+    expect(resolveChoyColSpan(3, 10000)).toBe(3);
   });
 });

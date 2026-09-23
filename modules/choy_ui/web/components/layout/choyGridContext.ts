@@ -6,10 +6,15 @@ import type { InjectionKey, Ref } from 'vue';
 /** Parent ChoyGrid column count for ChoyCol span clamping. */
 export const ChoyGridColsKey: InjectionKey<Ref<number>> = Symbol.for('choysum.choyGridCols');
 
+/** Upper bound for generated grid tracks (guards against pathological input). */
+export const MAX_CHOY_GRID_COLS = 24;
+
 /** Normalizes a parent grid track count to a positive integer (defaults to 12). */
 export function normalizeChoyGridCols(cols?: number): number {
   const colsRaw = Number(cols ?? 12);
-  return Number.isFinite(colsRaw) ? Math.max(1, Math.floor(colsRaw)) : 12;
+  return Number.isFinite(colsRaw)
+    ? Math.min(MAX_CHOY_GRID_COLS, Math.max(1, Math.floor(colsRaw)))
+    : 12;
 }
 
 /**

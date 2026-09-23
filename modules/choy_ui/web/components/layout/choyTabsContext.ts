@@ -18,6 +18,10 @@ export type ChoyTabsContext = {
 
 export const ChoyTabsContextKey: InjectionKey<ChoyTabsContext> = Symbol.for('choysum.choyTabs');
 
+function isUsableTabValue(value: string | undefined): boolean {
+  return !!String(value ?? '').trim();
+}
+
 /**
  * Mutable tab registry shared by ChoyTabs and ChoyTab children.
  * Kept here (not in the SFC) so register/update/unregister are unit-testable.
@@ -28,6 +32,9 @@ export function createChoyTabsContext(
   return {
     tabs,
     register(tab) {
+      if (!isUsableTabValue(tab.value)) {
+        return false;
+      }
       if (tabs.value.some((item) => item.value === tab.value)) {
         return false;
       }
@@ -42,11 +49,20 @@ export function createChoyTabsContext(
         return false;
       }
       const nextValue = patch.value ?? value;
+      if (!isUsableTabValue(nextValue)) {
+        return false;
+      }
       if (nextValue !== value && tabs.value.some((item) => item.value === nextValue)) {
         return false;
       }
       tabs.value = tabs.value.map((item) =>
-        item.value === value ? { ...item, ...patch, value: nextValue } : item,
+        item.value === value
+          ? {
+              value: nextValue,
+              label: patch.label ?? item.label,
+              disabled: patch.disabled ?? item.disabled,
+            }
+          : item,
       );
       return true;
     },

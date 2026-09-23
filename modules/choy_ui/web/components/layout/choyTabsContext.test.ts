@@ -44,4 +44,14 @@ describe('createChoyTabsContext', () => {
     expect(ctx.update('a', { value: undefined, label: 'Renamed' })).toBe(true);
     expect(ctx.tabs.value).toEqual([{ value: 'a', label: 'Renamed', disabled: false }]);
   });
+
+  test('refuses empty tab values and preserves fields on partial update', () => {
+    const ctx = createChoyTabsContext();
+    expect(ctx.register({ value: '', label: 'Empty', disabled: false })).toBe(false);
+    expect(ctx.register({ value: '   ', label: 'WS', disabled: false })).toBe(false);
+    ctx.register({ value: 'a', label: 'A', disabled: false });
+    expect(ctx.update('a', { label: undefined, disabled: true })).toBe(true);
+    expect(ctx.tabs.value).toEqual([{ value: 'a', label: 'A', disabled: true }]);
+    expect(ctx.update('a', { value: '' })).toBe(false);
+  });
 });

@@ -63,7 +63,11 @@ withDefaults(
       <slot name="messages" />
     </div>
 
-    <div class="choy-form-view__body p-4">
+    <div
+      class="choy-form-view__body p-4"
+      :aria-hidden="loading || undefined"
+      :inert="loading || undefined"
+    >
       <slot />
     </div>
 

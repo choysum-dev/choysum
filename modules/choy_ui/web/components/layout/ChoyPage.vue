@@ -137,7 +137,12 @@ const emit = defineEmits<{
       <slot name="toolbar" />
     </div>
 
-    <div class="choy-page__body" :class="{ 'pb-4': !!$slots.footer }">
+    <div
+      class="choy-page__body"
+      :class="{ 'pb-4': !!$slots.footer }"
+      :aria-hidden="loading || undefined"
+      :inert="loading || undefined"
+    >
       <slot />
     </div>
 
