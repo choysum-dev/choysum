@@ -4,6 +4,7 @@
 package policy
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -55,12 +56,53 @@ const n = ref(1);
 func TestAssertNoForbiddenUiImports_AllowsTypeOnlyImport(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "partner")
-	src := "import type { DialogRoot } from 'reka-ui';\nexport type X = DialogRoot;\n"
+	src := "import type { DialogRoot } from 'reka-ui';\nexport type { DialogRoot } from 'reka-ui';\nexport type X = DialogRoot;\n"
 	if err := os.WriteFile(filepath.Join(webDir, "types.ts"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := AssertNoForbiddenUiImports(modulesPath, "partner"); err != nil {
-		t.Fatalf("type-only import must be allowed: %v", err)
+		t.Fatalf("type-only import/re-export must be allowed: %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsScriptWithCommentLiteral(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	// A "<!--" string in script plus a later "-->" must not blank the real
+	// script block (only HTML comments that embed <script> are masked).
+	vue := `<template><div /></template>
+<script setup lang="ts">
+const marker = "<!--";
+import { DialogRoot } from 'reka-ui';
+export const x = DialogRoot;
+</script>
+<!-- trailing -->
+`
+	if err := os.WriteFile(filepath.Join(webDir, "Literal.vue"), []byte(vue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui ban despite comment literal, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsScriptWithCloseTagLiteral(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	vue := `<template><div /></template>
+<script setup lang="ts">
+const close = "</script>";
+import { DialogRoot } from 'reka-ui';
+export const x = DialogRoot;
+</script>
+`
+	if err := os.WriteFile(filepath.Join(webDir, "CloseLit.vue"), []byte(vue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui ban despite </script> literal, got %v", err)
 	}
 }
 
@@ -536,8 +578,13 @@ func TestWebImportHelpers_Direct(t *testing.T) {
 	}
 
 	masked := maskVueHTMLComments([]byte("a<!--x\ny-->b"))
-	if string(masked) != "a     \n    b" {
-		t.Fatalf("mask: %q", masked)
+	if string(masked) != "a<!--x\ny-->b" {
+		t.Fatalf("non-script comment must stay: %q", masked)
+	}
+	scriptComment := []byte("a<!--\n<script>import 'reka-ui'</script>\n-->b")
+	maskedScript := maskVueHTMLComments(scriptComment)
+	if bytes.Contains(maskedScript, []byte("<script>")) {
+		t.Fatalf("script-bearing comment must be blanked: %q", maskedScript)
 	}
 }
 

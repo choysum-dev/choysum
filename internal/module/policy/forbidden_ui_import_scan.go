@@ -22,8 +22,11 @@ var walkWebTree = func(root string, walkFn fs.WalkDirFunc) error {
 // parseWebImportFile parses one web import source; tests may override.
 var parseWebImportFile = ParseServiceSourceFile
 
-var vueScriptBlockRe = regexp.MustCompile(`(?is)<script\b[^>]*>([\s\S]*?)</script>`)
+var vueScriptBlockRe = regexp.MustCompile(`(?ims)<script\b[^>]*>([\s\S]*?)(?:^[ \t]*</script>|</script>[ \t]*$)`)
 var vueHTMLCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
+
+// vueScriptInCommentRe detects HTML comments that embed a <script> sample (docs).
+var vueScriptInCommentRe = regexp.MustCompile(`(?i)<script\b`)
 
 // ScanForbiddenUiImportsOnDisk walks moduleRoot/web and applies forbidden kit import rules.
 func ScanForbiddenUiImportsOnDisk(input ForbiddenUiImportScanInput) ([]ForbiddenUiImportViolation, error) {
@@ -203,9 +206,15 @@ func webImportSources(path string, content []byte) []webImportSource {
 	return []webImportSource{{Content: string(content), LineOffset: 0}}
 }
 
-// maskVueHTMLComments replaces <!-- ... --> with spaces, preserving newlines and length.
+// maskVueHTMLComments blanks HTML comments that embed a <script> sample.
+// Length and newlines are preserved so reported line numbers stay correct.
+// Only script-bearing comments are blanked; masking every comment lets a stray
+// "<!--" inside script source reach a later "-->" and hide real imports.
 func maskVueHTMLComments(content []byte) []byte {
 	return vueHTMLCommentRe.ReplaceAllFunc(content, func(match []byte) []byte {
+		if !vueScriptInCommentRe.Match(match) {
+			return match
+		}
 		out := make([]byte, len(match))
 		for i, b := range match {
 			if b == '\n' || b == '\r' {

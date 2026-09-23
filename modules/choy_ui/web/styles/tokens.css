@@ -53,11 +53,10 @@ html.choy-gallery-token-scope {
   --choy-z-dropdown: 1000;
   --choy-z-modal: 1100;
   --choy-z-toast: 1200;
-
-  color-scheme: light;
 }
 
 .choy-gallery-root {
+  color-scheme: light;
   background: var(--choy-color-background);
   color: var(--choy-color-foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Noto Sans CJK SC',
@@ -78,6 +77,9 @@ html.choy-gallery-token-scope.dark {
   --choy-color-muted: oklch(0.28 0.02 260);
   --choy-color-border: oklch(0.35 0.02 260);
   --choy-color-ring: oklch(0.7 0.12 255);
+}
+
+.choy-gallery-root.dark {
   color-scheme: dark;
 }
 
