@@ -5,6 +5,7 @@ package typecheck
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -370,5 +371,68 @@ func TestTypecheckApp_ServiceImportBoundary(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "partner -> auth") {
 		t.Fatalf("TypecheckApp() error = %v, want partner -> auth edge", err)
+	}
+}
+
+func TestTypecheckApp_ForbiddenUiImports(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	repoRoot := t.TempDir()
+	modulesPath := t.TempDir()
+
+	makeDir(t, filepath.Join(modulesPath, "partner"))
+	writeFile(t, filepath.Join(modulesPath, "partner", "package.json"), `{
+  "name": "@test/partner",
+  "version": "0.0.0-test",
+  "choysum": {"moduleName":"partner","application":"partner"}
+}`)
+	makeDir(t, filepath.Join(modulesPath, "partner", "web"))
+	writeFile(
+		t,
+		filepath.Join(modulesPath, "partner", "web", "leak.ts"),
+		"import { DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n",
+	)
+
+	err := TypecheckApp(context.Background(), RunOptions{
+		ModulesPath: modulesPath,
+		RepoRoot:    repoRoot,
+		TmpPath:     t.TempDir(),
+	}, "partner")
+	if err == nil || !strings.Contains(err.Error(), "forbidden Choy UI kit imports") {
+		t.Fatalf("TypecheckApp() error = %v, want forbidden UI import failure", err)
+	}
+	if !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("TypecheckApp() error = %v, want reka-ui", err)
+	}
+}
+
+func TestTypecheckApp_WebDirStatError(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	repoRoot := t.TempDir()
+	modulesPath := t.TempDir()
+
+	makeDir(t, filepath.Join(modulesPath, "partner", "web"))
+	writeFile(t, filepath.Join(modulesPath, "partner", "package.json"), `{
+  "name": "@test/partner",
+  "version": "0.0.0-test",
+  "choysum": {"moduleName":"partner","application":"partner"}
+}`)
+	writeFile(t, filepath.Join(modulesPath, "partner", "web", "ok.ts"), "export {};\n")
+
+	orig := osStat
+	t.Cleanup(func() { osStat = orig })
+	osStat = func(name string) (os.FileInfo, error) {
+		if strings.HasSuffix(filepath.Clean(name), string(filepath.Separator)+"web") || filepath.Base(name) == "web" {
+			return nil, errors.New("permission denied")
+		}
+		return orig(name)
+	}
+
+	err := TypecheckApp(context.Background(), RunOptions{
+		ModulesPath: modulesPath,
+		RepoRoot:    repoRoot,
+		TmpPath:     t.TempDir(),
+	}, "partner")
+	if err == nil || !strings.Contains(err.Error(), "stat web dir") {
+		t.Fatalf("TypecheckApp() error = %v, want stat web dir failure", err)
 	}
 }

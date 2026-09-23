@@ -20,6 +20,7 @@ var walkWebTree = func(root string, walkFn fs.WalkDirFunc) error {
 }
 
 var vueScriptBlockRe = regexp.MustCompile(`(?is)<script\b[^>]*>([\s\S]*?)</script>`)
+var vueHTMLCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 
 // ScanForbiddenUiImportsOnDisk walks moduleRoot/web and applies forbidden kit import rules.
 func ScanForbiddenUiImportsOnDisk(input ForbiddenUiImportScanInput) ([]ForbiddenUiImportViolation, error) {
@@ -138,7 +139,7 @@ func shouldSkipWebScanDir(name string) bool {
 func isWebImportSource(path string) bool {
 	name := strings.ToLower(filepath.Base(path))
 	switch {
-	case strings.HasSuffix(name, ".d.ts"):
+	case isTypeScriptDeclarationFile(name):
 		return false
 	case strings.HasSuffix(name, ".vue"):
 		return true
@@ -152,6 +153,12 @@ func isWebImportSource(path string) bool {
 	}
 }
 
+func isTypeScriptDeclarationFile(name string) bool {
+	return strings.HasSuffix(name, ".d.ts") ||
+		strings.HasSuffix(name, ".d.mts") ||
+		strings.HasSuffix(name, ".d.cts")
+}
+
 // webImportSource is one parse unit extracted from a web source file.
 type webImportSource struct {
 	Content    string
@@ -160,19 +167,16 @@ type webImportSource struct {
 
 func webImportSources(path string, content []byte) []webImportSource {
 	if strings.HasSuffix(strings.ToLower(path), ".vue") {
-		matches := vueScriptBlockRe.FindAllSubmatchIndex(content, -1)
+		// Blank HTML comments (keep length/newlines) so commented-out <script>
+		// samples in docs do not become false positives.
+		masked := maskVueHTMLComments(content)
+		matches := vueScriptBlockRe.FindAllSubmatchIndex(masked, -1)
 		if len(matches) == 0 {
 			return nil
 		}
 		out := make([]webImportSource, 0, len(matches))
 		for _, m := range matches {
-			if len(m) < 4 {
-				continue
-			}
 			start, end := m[2], m[3]
-			if start < 0 || end < start || end > len(content) {
-				continue
-			}
 			raw := content[start:end]
 			trimmed := bytes.TrimSpace(raw)
 			if len(trimmed) == 0 {
@@ -180,9 +184,6 @@ func webImportSources(path string, content []byte) []webImportSource {
 			}
 			// Account for TrimSpace so reported lines match the kept script text.
 			trimLead := bytes.Index(raw, trimmed)
-			if trimLead < 0 {
-				trimLead = 0
-			}
 			lineOffset := bytes.Count(content[:start+trimLead], []byte{'\n'})
 			out = append(out, webImportSource{
 				Content:    string(trimmed),
@@ -194,10 +195,26 @@ func webImportSources(path string, content []byte) []webImportSource {
 	return []webImportSource{{Content: string(content), LineOffset: 0}}
 }
 
+// maskVueHTMLComments replaces <!-- ... --> with spaces, preserving newlines and length.
+func maskVueHTMLComments(content []byte) []byte {
+	return vueHTMLCommentRe.ReplaceAllFunc(content, func(match []byte) []byte {
+		out := make([]byte, len(match))
+		for i, b := range match {
+			if b == '\n' || b == '\r' {
+				out[i] = b
+			} else {
+				out[i] = ' '
+			}
+		}
+		return out
+	})
+}
+
 // webImportVirtualPath picks a typescript-go-safe path while preserving JSX when needed.
+// The original extension is kept in the stem so Foo.vue and Foo.ts do not collide.
 func webImportVirtualPath(path string, index int) string {
 	ext := strings.ToLower(filepath.Ext(path))
-	base := strings.TrimSuffix(path, filepath.Ext(path))
+	base := path // keep original extension in the stem
 	suffix := ".webimport"
 	if index > 0 {
 		suffix = ".webimport." + itoa(index)

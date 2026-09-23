@@ -70,13 +70,13 @@ func CheckForbiddenUiImports(input ForbiddenUiImportScanInput, parserResults []*
 			continue
 		}
 		for _, imp := range result.Imports {
-			if imp == nil {
+			if imp == nil || imp.IsTypeOnly {
 				continue
 			}
 			violations = appendForbiddenUiSpec(violations, result.Path, imp.ModuleSpecText, imp.Line, imp.Column)
 		}
 		for _, imp := range result.DynamicImports {
-			if imp == nil {
+			if imp == nil || imp.IsTypeOnly {
 				continue
 			}
 			violations = appendForbiddenUiSpec(violations, result.Path, imp.ModuleSpecText, imp.Line, imp.Column)
@@ -103,19 +103,16 @@ func CheckForbiddenUiImports(input ForbiddenUiImportScanInput, parserResults []*
 
 // IsModuleWebSource reports whether path is under moduleRoot/web/.
 func IsModuleWebSource(moduleRoot, path string) bool {
-	moduleRoot = strings.TrimSpace(moduleRoot)
-	path = strings.TrimSpace(path)
-	if moduleRoot == "" || path == "" {
+	moduleRoot = filepath.Clean(strings.TrimSpace(moduleRoot))
+	path = filepath.Clean(strings.TrimSpace(path))
+	if moduleRoot == "" || path == "" || moduleRoot == "." {
 		return false
 	}
-	rel, err := filepath.Rel(filepath.Clean(moduleRoot), filepath.Clean(path))
-	if err != nil {
+	prefix := moduleRoot + string(filepath.Separator)
+	if !strings.HasPrefix(path, prefix) {
 		return false
 	}
-	rel = filepath.ToSlash(rel)
-	if rel == "." || strings.HasPrefix(rel, "../") || rel == ".." {
-		return false
-	}
+	rel := filepath.ToSlash(strings.TrimPrefix(path, prefix))
 	return strings.HasPrefix(rel, "web/") || rel == "web"
 }
 
@@ -202,8 +199,6 @@ func isForbiddenUIPath(lower string) bool {
 	// Legacy / mistaken layouts still banned so domain cannot sneak past the rename.
 	case strings.Contains(lower, "/components/ui/") || strings.HasSuffix(lower, "/components/ui"):
 		return true
-	case strings.Contains(lower, "/web/components/ui/") || strings.HasSuffix(lower, "/web/components/ui"):
-		return true
 	default:
 		return false
 	}
@@ -215,8 +210,6 @@ func isForbiddenInternalPath(lower string) bool {
 		// Relative "internal/..." from domain web is still a kit L3 leak risk.
 		return true
 	case strings.Contains(lower, "/components/internal/") || strings.HasSuffix(lower, "/components/internal"):
-		return true
-	case strings.Contains(lower, "/web/components/internal/") || strings.HasSuffix(lower, "/web/components/internal"):
 		return true
 	default:
 		return false

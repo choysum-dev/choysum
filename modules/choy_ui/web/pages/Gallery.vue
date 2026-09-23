@@ -323,10 +323,31 @@ const colorSwatches = [
 
 const galleryTokenScopeClass = 'choy-gallery-token-scope';
 
+/** Host documentElement theme captured once on mount; restored on unmount. */
+let hostHadDark = false;
+let hostHadTokenScope = false;
+let hostDensity: string | null = null;
+let hostThemeCaptured = false;
+
+/**
+ * Captures host theme attributes before the gallery mutates documentElement.
+ */
+function captureHostThemeOnce(): void {
+  if (hostThemeCaptured) {
+    return;
+  }
+  const el = document.documentElement;
+  hostHadDark = el.classList.contains('dark');
+  hostHadTokenScope = el.classList.contains(galleryTokenScopeClass);
+  hostDensity = el.getAttribute('data-density');
+  hostThemeCaptured = true;
+}
+
 /**
  * Mirrors gallery tokens onto documentElement so Reka portals under body inherit --choy-*.
  */
 function syncGalleryTokenScope(): void {
+  captureHostThemeOnce();
   const el = document.documentElement;
   el.classList.add(galleryTokenScopeClass);
   el.classList.toggle('dark', isDark.value);
@@ -334,12 +355,24 @@ function syncGalleryTokenScope(): void {
 }
 
 /**
- * Clears the documentElement token mirror when leaving the gallery page.
+ * Restores documentElement theme state the gallery did not own.
  */
 function clearGalleryTokenScope(): void {
   const el = document.documentElement;
-  el.classList.remove(galleryTokenScopeClass, 'dark');
-  el.removeAttribute('data-density');
+  if (!hostHadTokenScope) {
+    el.classList.remove(galleryTokenScopeClass);
+  }
+  if (hostHadDark) {
+    el.classList.add('dark');
+  } else {
+    el.classList.remove('dark');
+  }
+  if (hostDensity === null) {
+    el.removeAttribute('data-density');
+  } else {
+    el.setAttribute('data-density', hostDensity);
+  }
+  hostThemeCaptured = false;
 }
 
 onMounted(syncGalleryTokenScope);
