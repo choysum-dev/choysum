@@ -21,6 +21,10 @@ describe('datePickerHelpers', () => {
     expect(parseDatePickerValue('   ')).toBeNull();
     expect(parseDatePickerValue('not-a-date')).toBeNull();
     expect(parseDatePickerValue('2026-02-30')).toBeNull();
+    // Reject clamped parser results that no longer match the requested parts.
+    expect(
+      parseDatePickerValue('2026-02-30', () => new CalendarDate(2026, 2, 28)),
+    ).toBeNull();
     expect(clearDatePickerValue()).toBeNull();
   });
 

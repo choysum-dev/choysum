@@ -13,8 +13,12 @@ export function formatDatePickerValue(date: CalendarDate): string {
 /**
  * Parses a YYYY-MM-DD string (or blank) into a CalendarDate.
  * Returns null for empty / whitespace / invalid input.
+ * `parse` is injectable so tests can exercise the clamp-rejection path.
  */
-export function parseDatePickerValue(value: string | null | undefined): CalendarDate | null {
+export function parseDatePickerValue(
+  value: string | null | undefined,
+  parse: (text: string) => CalendarDate = parseDate,
+): CalendarDate | null {
   const text = String(value ?? '').trim();
   if (!text) {
     return null;
@@ -27,8 +31,8 @@ export function parseDatePickerValue(value: string | null | undefined): Calendar
   const rawMonth = Number(parts[2]);
   const rawDay = Number(parts[3]);
   try {
-    const parsed = parseDate(text);
-    // CalendarDate may clamp or tolerate out-of-range days; require an exact match.
+    const parsed = parse(text);
+    // Some parsers clamp out-of-range days (2026-02-30 → 2026-02-28); reject those.
     if (parsed.year !== rawYear || parsed.month !== rawMonth || parsed.day !== rawDay) {
       return null;
     }
