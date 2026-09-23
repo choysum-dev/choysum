@@ -108,6 +108,48 @@ func TestAssertNoForbiddenUiImports_RejectsRuntimeReExport(t *testing.T) {
 	}
 }
 
+func TestAssertNoForbiddenUiImports_RejectsWildcardReExport(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := filepath.Join(modulesPath, "partner", "web")
+	if err := os.MkdirAll(webDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "partner", "package.json"), []byte(`{
+  "name": "@choysum-dev/partner",
+  "choysum": { "moduleName": "partner", "application": "partner" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src := "export * from 'reka-ui';\n"
+	if err := os.WriteFile(filepath.Join(webDir, "star.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui wildcard re-export ban, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_AllowsEmptyWebSource(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := filepath.Join(modulesPath, "partner", "web")
+	if err := os.MkdirAll(webDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "partner", "package.json"), []byte(`{
+  "name": "@choysum-dev/partner",
+  "choysum": { "moduleName": "partner", "application": "partner" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webDir, "empty.ts"), []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := AssertNoForbiddenUiImports(modulesPath, "partner"); err != nil {
+		t.Fatalf("empty web source must pass: %v", err)
+	}
+}
+
 func TestAssertNoForbiddenUiImports_VueLineMatchesFile(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := filepath.Join(modulesPath, "auth", "web", "pages")

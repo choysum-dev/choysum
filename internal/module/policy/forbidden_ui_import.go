@@ -149,13 +149,22 @@ func appendForbiddenUiExports(
 		return violations
 	}
 	if len(exp.Wildcard) > 0 {
+		sawSpec := false
 		for _, wild := range exp.Wildcard {
 			if wild == nil || wild.IsTypeOnly {
 				continue
 			}
+			if strings.TrimSpace(wild.ModuleSpecPath) == "" {
+				continue
+			}
+			sawSpec = true
 			violations = appendForbiddenUiSpec(violations, sourcePath, wild.ModuleSpecPath, wild.Line, wild.Column)
 		}
-		return violations
+		if sawSpec {
+			return violations
+		}
+		// Some parser shapes keep the specifier only on the parent Export.
+		return appendForbiddenUiSpec(violations, sourcePath, exp.ModuleSpecPath, exp.Line, exp.Column)
 	}
 	return appendForbiddenUiSpec(violations, sourcePath, exp.ModuleSpecPath, exp.Line, exp.Column)
 }

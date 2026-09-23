@@ -274,7 +274,24 @@ func TestScanForbiddenUiImportsOnDisk_WalkAndParseErrors(t *testing.T) {
 	}
 
 	walkWebTree = origWalk
-	if err := os.WriteFile(filepath.Join(webDir, "empty.ts"), []byte(""), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(webDir, "empty.ts"), []byte("   \n\t"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ScanForbiddenUiImportsOnDisk(ForbiddenUiImportScanInput{
+		ModulesPath: modulesPath,
+		ModuleName:  "solo",
+		ModuleRoot:  modRoot,
+		PathAlias:   ModulePathAliasForBoundary(modulesPath),
+	}); err != nil {
+		t.Fatalf("whitespace-only source must be skipped, got %v", err)
+	}
+
+	origParse := parseWebImportFile
+	t.Cleanup(func() { parseWebImportFile = origParse })
+	parseWebImportFile = func(map[string]string, string, []byte) (*parser.ParserResult, error) {
+		return nil, fmt.Errorf("parse boom")
+	}
+	if err := os.WriteFile(filepath.Join(webDir, "ok.ts"), []byte("export {};\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	_, err = ScanForbiddenUiImportsOnDisk(ForbiddenUiImportScanInput{
@@ -283,8 +300,8 @@ func TestScanForbiddenUiImportsOnDisk_WalkAndParseErrors(t *testing.T) {
 		ModuleRoot:  modRoot,
 		PathAlias:   ModulePathAliasForBoundary(modulesPath),
 	})
-	if err == nil || !strings.Contains(err.Error(), "empty.ts") {
-		t.Fatalf("expected parse error for empty.ts, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "ok.ts") {
+		t.Fatalf("expected parse error for ok.ts, got %v", err)
 	}
 }
 
@@ -429,6 +446,19 @@ func TestClassifyAndPathHelpers_ExtraCases(t *testing.T) {
 	}
 	if appendForbiddenUiExports(nil, "p", nil) != nil {
 		t.Fatal("nil export")
+	}
+	// Parent ModuleSpecPath fallback when wildcard entries lack a specifier.
+	got := appendForbiddenUiExports(nil, "p", &parser.Export{
+		ModuleSpecPath: "reka-ui",
+		Line:           3,
+		Column:         1,
+		Wildcard: []*parser.Export{
+			nil,
+			{ModuleSpecPath: "", Line: 3, Column: 1},
+		},
+	})
+	if len(got) != 1 || got[0].SpecText != "reka-ui" || got[0].Line != 3 {
+		t.Fatalf("parent fallback: %#v", got)
 	}
 }
 

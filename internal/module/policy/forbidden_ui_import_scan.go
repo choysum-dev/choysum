@@ -19,6 +19,9 @@ var walkWebTree = func(root string, walkFn fs.WalkDirFunc) error {
 	return filepath.WalkDir(root, walkFn)
 }
 
+// parseWebImportFile parses one web import source; tests may override.
+var parseWebImportFile = ParseServiceSourceFile
+
 var vueScriptBlockRe = regexp.MustCompile(`(?is)<script\b[^>]*>([\s\S]*?)</script>`)
 var vueHTMLCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 
@@ -77,8 +80,13 @@ func ScanForbiddenUiImportsOnDisk(input ForbiddenUiImportScanInput) ([]Forbidden
 		}
 		sources := webImportSources(path, content)
 		for i, src := range sources {
+			if strings.TrimSpace(src.Content) == "" {
+				// Empty / whitespace-only sources have no imports; ParseServiceSourceFile
+				// rejects empty content, and TypeScript still accepts empty files.
+				continue
+			}
 			virtualPath := webImportVirtualPath(path, i)
-			result, err := ParseServiceSourceFile(input.PathAlias, virtualPath, []byte(src.Content))
+			result, err := parseWebImportFile(input.PathAlias, virtualPath, []byte(src.Content))
 			if err != nil {
 				return xfmt.Errorf("%s: %w", path, err)
 			}
