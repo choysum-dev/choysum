@@ -67,6 +67,15 @@ export function dismiss(id: number): void {
 }
 
 /**
+ * Drops every pending toast. Call from the Toaster host's onUnmounted: the
+ * store is module-level and outlives the component, so an open record would
+ * otherwise reappear when the host mounts again.
+ */
+export function clearToasts(): void {
+  toasts.value = [];
+}
+
+/**
  * Reactive toast list for the gallery Toaster host.
  */
 export function useToastStore() {

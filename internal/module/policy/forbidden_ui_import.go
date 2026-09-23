@@ -276,8 +276,10 @@ func FormatForbiddenUiImportError(violations []ForbiddenUiImportViolation) error
 	b.WriteString("forbidden Choy UI kit imports in domain web sources (use public Choy* APIs only):\n")
 	for _, v := range violations {
 		loc := v.SourcePath
-		if v.Line > 0 {
+		if v.Line > 0 && v.Column > 0 {
 			loc = fmt.Sprintf("%s:%d:%d", v.SourcePath, v.Line, v.Column)
+		} else if v.Line > 0 {
+			loc = fmt.Sprintf("%s:%d", v.SourcePath, v.Line)
 		}
 		fmt.Fprintf(&b, "  - %s imports %q (rule %s)\n", loc, v.SpecText, v.Rule)
 	}

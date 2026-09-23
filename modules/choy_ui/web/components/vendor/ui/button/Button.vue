@@ -60,7 +60,8 @@ const classes = computed(() =>
     :is="as"
     data-slot="button"
     :class="classes"
-    :disabled="disabled"
+    :disabled="as === 'button' ? disabled : undefined"
+    :aria-disabled="as !== 'button' && disabled ? true : undefined"
     :type="as === 'button' ? type : undefined"
   >
     <slot />

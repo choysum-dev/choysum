@@ -190,13 +190,13 @@ func webImportSources(path string, content []byte) []webImportSource {
 		// Blank HTML comments (keep length/newlines) so commented-out <script>
 		// samples in docs do not become false positives.
 		masked := maskVueHTMLComments(content)
-		matches := vueScriptBlockRe.FindAllSubmatchIndex(masked, -1)
-		if len(matches) == 0 {
+		spans := findVueScriptCaptureSpans(masked)
+		if len(spans) == 0 {
 			return nil
 		}
-		out := make([]webImportSource, 0, len(matches))
-		for _, m := range matches {
-			start, end := m[2], m[3]
+		out := make([]webImportSource, 0, len(spans))
+		for _, span := range spans {
+			start, end := span[0], span[1]
 			raw := content[start:end]
 			trimmed := bytes.TrimSpace(raw)
 			if len(trimmed) == 0 {
@@ -213,6 +213,36 @@ func webImportSources(path string, content []byte) []webImportSource {
 		return out
 	}
 	return []webImportSource{{Content: string(content), LineOffset: 0}}
+}
+
+// findVueScriptCaptureSpans returns [start,end) byte ranges of each <script> body.
+// The regex may consume a trailing '<' that starts the next tag; rewind so a
+// same-line following <script> is still found.
+func findVueScriptCaptureSpans(masked []byte) [][2]int {
+	var spans [][2]int
+	offset := 0
+	for offset < len(masked) {
+		m := vueScriptBlockRe.FindSubmatchIndex(masked[offset:])
+		if m == nil || len(m) < 4 || m[2] < 0 || m[3] < 0 {
+			break
+		}
+		start := offset + m[2]
+		end := offset + m[3]
+		spans = append(spans, [2]int{start, end})
+
+		next := offset + m[1]
+		if next > 0 && next <= len(masked) && masked[next-1] == '<' {
+			next--
+		}
+		if next <= offset {
+			next = offset + m[1]
+			if next <= offset {
+				break
+			}
+		}
+		offset = next
+	}
+	return spans
 }
 
 // maskVueHTMLComments blanks HTML comments that embed a <script> sample.

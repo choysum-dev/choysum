@@ -4,10 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
+import { onUnmounted } from 'vue';
 import { ToastClose, ToastDescription, ToastProvider, ToastRoot, ToastTitle, ToastViewport } from 'reka-ui';
-import { dismiss, useToastStore } from './useToast';
+import { clearToasts, dismiss, useToastStore } from './useToast';
 
 const toasts = useToastStore();
+
+onUnmounted(() => {
+  clearToasts();
+});
 </script>
 
 <template>

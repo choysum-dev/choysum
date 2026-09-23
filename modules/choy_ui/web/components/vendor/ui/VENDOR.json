@@ -1,4 +1,6 @@
 {
+  "spdxFileCopyrightText": "2026-present Brian Wang <wangbuke@gmail.com>",
+  "spdxLicenseIdentifier": "Apache-2.0",
   "source": "shadcn-vue (hand-adapted)",
   "upstreamLicense": "MIT",
   "upstreamCopyright": "shadcn-vue contributors",

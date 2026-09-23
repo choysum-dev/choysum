@@ -95,6 +95,19 @@ func TestAssertNoForbiddenUiImports_RejectsBareChoyUIPackage(t *testing.T) {
 	}
 }
 
+func TestAssertNoForbiddenUiImports_RejectsSameLineScripts(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	vue := `<template><div/></template><script setup lang="ts">import { ref } from 'vue';export const n = ref(1);</script><script setup lang="ts">import { DialogRoot } from 'reka-ui';export const x = DialogRoot;</script>`
+	if err := os.WriteFile(filepath.Join(webDir, "SameLine.vue"), []byte(vue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui ban from same-line second script, got %v", err)
+	}
+}
+
 func TestAssertNoForbiddenUiImports_RejectsScriptCloseWithWhitespace(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "partner")
@@ -749,6 +762,19 @@ func TestFormatForbiddenUiImportError_NoLine(t *testing.T) {
 		Rule:       "reka-ui",
 	}})
 	if err == nil || !strings.Contains(err.Error(), "web/x.ts imports") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFormatForbiddenUiImportError_LineWithoutColumn(t *testing.T) {
+	err := FormatForbiddenUiImportError([]ForbiddenUiImportViolation{{
+		SourcePath: "web/x.ts",
+		Line:       12,
+		Column:     0,
+		SpecText:   "reka-ui",
+		Rule:       "reka-ui",
+	}})
+	if err == nil || !strings.Contains(err.Error(), "web/x.ts:12 imports") || strings.Contains(err.Error(), ":12:0") {
 		t.Fatalf("got %v", err)
 	}
 }
