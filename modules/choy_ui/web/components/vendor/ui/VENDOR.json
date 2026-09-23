@@ -3,6 +3,7 @@
   "upstreamLicense": "MIT",
   "upstreamCopyright": "shadcn-vue contributors",
   "rekaVersion": "2.10.4",
+  "lucideVersion": "0.542.0",
   "copiedAt": "2026-09-22",
   "items": [
     "button",

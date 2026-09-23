@@ -65,6 +65,19 @@ func TestAssertNoForbiddenUiImports_AllowsTypeOnlyImport(t *testing.T) {
 	}
 }
 
+func TestAssertNoForbiddenUiImports_RejectsCompactOneLineVue(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	vue := `<template><div/></template><script setup lang="ts">import { DialogRoot } from 'reka-ui';export const x = DialogRoot;</script><style scoped></style>`
+	if err := os.WriteFile(filepath.Join(webDir, "Compact.vue"), []byte(vue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui ban from compact one-line SFC, got %v", err)
+	}
+}
+
 func TestAssertNoForbiddenUiImports_RejectsScriptWithCommentLiteral(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "partner")
@@ -464,6 +477,22 @@ func TestCheckForbiddenUiImports_UnitBranches(t *testing.T) {
 	}, results)
 	if len(violations) < 4 {
 		t.Fatalf("expected multiple violations, got %#v", violations)
+	}
+
+	// Same statement, multiple bindings → one violation per line/rule after dedupe.
+	dup := CheckForbiddenUiImports(ForbiddenUiImportScanInput{
+		ModuleName: "partner",
+		ModuleRoot: root,
+	}, []*parser.ParserResult{{
+		Path: "/modules/partner/web/dup.ts",
+		Imports: map[string]*parser.Import{
+			"A": {ModuleSpecText: "reka-ui", Line: 1, Column: 10},
+			"B": {ModuleSpecText: "reka-ui", Line: 1, Column: 13},
+			"C": {ModuleSpecText: "reka-ui", Line: 1, Column: 16},
+		},
+	}})
+	if len(dup) != 1 || dup[0].Rule != "reka-ui" {
+		t.Fatalf("expected one deduped reka-ui violation, got %#v", dup)
 	}
 }
 

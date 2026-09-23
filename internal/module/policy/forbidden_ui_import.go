@@ -93,12 +93,27 @@ func CheckForbiddenUiImports(input ForbiddenUiImportScanInput, parserResults []*
 		if violations[i].Line != violations[j].Line {
 			return violations[i].Line < violations[j].Line
 		}
+		if violations[i].Rule != violations[j].Rule {
+			return violations[i].Rule < violations[j].Rule
+		}
 		if violations[i].Column != violations[j].Column {
 			return violations[i].Column < violations[j].Column
 		}
 		return violations[i].SpecText < violations[j].SpecText
 	})
-	return violations
+	// Parsers that key Imports by name report one entry per imported binding;
+	// keep a single violation per source line and rule so CI output stays stable.
+	deduped := violations[:0]
+	lastKey := ""
+	for _, v := range violations {
+		key := fmt.Sprintf("%s|%d|%s", v.SourcePath, v.Line, v.Rule)
+		if key == lastKey {
+			continue
+		}
+		lastKey = key
+		deduped = append(deduped, v)
+	}
+	return deduped
 }
 
 // IsModuleWebSource reports whether path is under moduleRoot/web/.

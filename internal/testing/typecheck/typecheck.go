@@ -217,6 +217,18 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		return errNoTypecheckInputs
 	}
 
+	// Fail fast on domain kit-import bans before type-asset preparation.
+	webDir := filepath.Join(modulesRoot, app, "web")
+	if st, err := osStat(webDir); err == nil {
+		if st.IsDir() {
+			if err := policy.AssertNoForbiddenUiImports(modulesRoot, app); err != nil {
+				return xfmt.Errorf("typecheck: %w", err)
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return xfmt.Errorf("typecheck: stat web dir: %w", err)
+	}
+
 	warnedMissingTypeAssets, err := warnMissingTypeAssetsPrecheck(opts.Stderr, modulesRoot, app)
 	if err != nil {
 		return err
@@ -234,17 +246,6 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		); err != nil {
 			return xfmt.Errorf("typecheck: %w", err)
 		}
-	}
-
-	webDir := filepath.Join(modulesRoot, app, "web")
-	if st, err := osStat(webDir); err == nil {
-		if st.IsDir() {
-			if err := policy.AssertNoForbiddenUiImports(modulesRoot, app); err != nil {
-				return xfmt.Errorf("typecheck: %w", err)
-			}
-		}
-	} else if !os.IsNotExist(err) {
-		return xfmt.Errorf("typecheck: stat web dir: %w", err)
 	}
 
 	var keepDir string

@@ -9,7 +9,7 @@ import { cn, type ClassValue } from '../../../../lib/utils';
 
 const props = defineProps<{
   class?: ClassValue;
-  modelValue?: string | number;
+  modelValue?: string;
 }>();
 
 const emit = defineEmits<{

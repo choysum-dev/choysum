@@ -358,6 +358,11 @@ function syncGalleryTokenScope(): void {
  * Restores documentElement theme state the gallery did not own.
  */
 function clearGalleryTokenScope(): void {
+  // onUnmounted may run without onMounted (SSR / suspended / HMR unmount);
+  // without a capture the zero defaults would strip the host's own theme.
+  if (!hostThemeCaptured) {
+    return;
+  }
   const el = document.documentElement;
   if (!hostHadTokenScope) {
     el.classList.remove(galleryTokenScopeClass);

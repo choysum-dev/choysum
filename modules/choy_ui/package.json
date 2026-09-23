@@ -14,7 +14,7 @@
     "vue": "^3.5.35",
     "vue-router": "^5.1.0",
     "reka-ui": "2.10.4",
-    "lucide-vue-next": "^0.542.0"
+    "lucide-vue-next": "0.542.0"
   },
   "choysum": {
     "moduleName": "choy_ui",
