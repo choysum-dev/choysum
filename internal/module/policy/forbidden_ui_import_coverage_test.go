@@ -108,6 +108,22 @@ func TestAssertNoForbiddenUiImports_RejectsSameLineScripts(t *testing.T) {
 	}
 }
 
+func TestWebImportSources_PreservesIndentedScriptBody(t *testing.T) {
+	// First kept script line is indented; body must keep that indent (TrimSpace would
+	// strip it and drift columns if the parser ever reports real offsets).
+	vue := []byte("<template><div /></template>\n<script setup lang=\"ts\">\n  import { DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n</script>\n")
+	srcs := webImportSources("Indent.vue", vue)
+	if len(srcs) != 1 {
+		t.Fatalf("expected 1 script source, got %d", len(srcs))
+	}
+	if !strings.HasPrefix(srcs[0].Content, "  import") {
+		t.Fatalf("expected leading indent preserved, got %q", srcs[0].Content)
+	}
+	if srcs[0].LineOffset != 2 {
+		t.Fatalf("LineOffset=%d want 2", srcs[0].LineOffset)
+	}
+}
+
 func TestAssertNoForbiddenUiImports_RejectsScriptCloseWithWhitespace(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "partner")

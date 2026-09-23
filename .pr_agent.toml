@@ -7,7 +7,8 @@
 # so it still matches after choy_ui merges into modules/web (same vendor/ui layout).
 # Review Gallery / public Choy* / Go policy instead.
 glob = [
-  'modules/*/web/components/vendor/ui/**',
+  # Vendored SFCs only; keep hand-written helpers (useToast.ts, index.ts) in review.
+  'modules/*/web/components/vendor/ui/**/*.vue',
 ]
 
 [pr_description]

@@ -29,6 +29,6 @@ ignore:
   # Legacy path from addons→modules rename; exclude stale carryforward from project totals.
   - "addons/**"
   - ".dev/**"
-  # Vendored L2 primitives (shadcn-vue hand-adapted). Module-agnostic glob so
-  # coverage ignore survives choy_ui → web cutover (same components/vendor/ui layout).
-  - "modules/*/web/components/vendor/ui/**"
+  # Vendored L2 SFCs only (shadcn-vue hand-adapted). Module-agnostic so ignore
+  # survives choy_ui → web cutover; hand-written helpers stay coverage-eligible.
+  - "modules/*/web/components/vendor/ui/**/*.vue"

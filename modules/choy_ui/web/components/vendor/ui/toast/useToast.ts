@@ -24,6 +24,9 @@ export type ToastInput = {
 };
 
 const defaultToastDurationMs = 5000;
+/** Delay before removing a dismissed toast (close animation). */
+const removalDelayMs = 200;
+const removalTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
 /**
  * Resolves toast duration for ToastRoot.
@@ -61,9 +64,17 @@ export function toast(input: ToastInput): number {
  */
 export function dismiss(id: number): void {
   toasts.value = toasts.value.map((item) => (item.id === id ? { ...item, open: false } : item));
-  setTimeout(() => {
-    toasts.value = toasts.value.filter((item) => item.id !== id);
-  }, 200);
+  const pending = removalTimers.get(id);
+  if (pending !== undefined) {
+    clearTimeout(pending);
+  }
+  removalTimers.set(
+    id,
+    setTimeout(() => {
+      removalTimers.delete(id);
+      toasts.value = toasts.value.filter((item) => item.id !== id);
+    }, removalDelayMs),
+  );
 }
 
 /**
@@ -72,6 +83,10 @@ export function dismiss(id: number): void {
  * otherwise reappear when the host mounts again.
  */
 export function clearToasts(): void {
+  for (const timer of removalTimers.values()) {
+    clearTimeout(timer);
+  }
+  removalTimers.clear();
   toasts.value = [];
 }
 

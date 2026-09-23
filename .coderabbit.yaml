@@ -17,7 +17,7 @@ reviews:
     base_branches:
       - ".*"
 
-  # Vendored L2 primitives (shadcn-vue hand-adapted). Module-agnostic so the
-  # same filter works after choy_ui merges into modules/web.
+  # Vendored L2 SFCs only (shadcn-vue hand-adapted). Hand-written helpers
+  # (useToast.ts, index.ts) stay in review. Module-agnostic for web cutover.
   path_filters:
-    - "!modules/*/web/components/vendor/ui/**"
+    - "!modules/*/web/components/vendor/ui/**/*.vue"

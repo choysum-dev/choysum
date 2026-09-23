@@ -198,15 +198,19 @@ func webImportSources(path string, content []byte) []webImportSource {
 		for _, span := range spans {
 			start, end := span[0], span[1]
 			raw := content[start:end]
-			trimmed := bytes.TrimSpace(raw)
-			if len(trimmed) == 0 {
+			// Drop leading blank lines only; keep the first kept line's indentation
+			// so reported columns match the on-disk file.
+			lead := 0
+			for lead < len(raw) && (raw[lead] == '\n' || raw[lead] == '\r') {
+				lead++
+			}
+			body := raw[lead:]
+			if len(bytes.TrimSpace(body)) == 0 {
 				continue
 			}
-			// Account for TrimSpace so reported lines match the kept script text.
-			trimLead := bytes.Index(raw, trimmed)
-			lineOffset := bytes.Count(content[:start+trimLead], []byte{'\n'})
+			lineOffset := bytes.Count(content[:start+lead], []byte{'\n'})
 			out = append(out, webImportSource{
-				Content:    string(trimmed),
+				Content:    string(body),
 				LineOffset: lineOffset,
 			})
 		}
@@ -226,19 +230,12 @@ func findVueScriptCaptureSpans(masked []byte) [][2]int {
 		if m == nil || len(m) < 4 || m[2] < 0 || m[3] < 0 {
 			break
 		}
-		start := offset + m[2]
-		end := offset + m[3]
-		spans = append(spans, [2]int{start, end})
-
+		spans = append(spans, [2]int{offset + m[2], offset + m[3]})
 		next := offset + m[1]
-		if next > 0 && next <= len(masked) && masked[next-1] == '<' {
+		// Full match always advances (vueScriptBlockRe never matches empty).
+		// Rewind only when the regex consumed the next tag's opening '<'.
+		if next > offset && masked[next-1] == '<' {
 			next--
-		}
-		if next <= offset {
-			next = offset + m[1]
-			if next <= offset {
-				break
-			}
 		}
 		offset = next
 	}
