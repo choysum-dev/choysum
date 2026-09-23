@@ -60,6 +60,7 @@ const modelValue = defineModel<string | null>({ default: null });
 const open = ref(false);
 const query = ref('');
 const loading = ref(false);
+const searchError = ref<string | null>(null);
 const options = ref<RelationOption[]>([]);
 /** Survives remote pages that omit the current selection. */
 const pinnedSelected = ref<RelationOption | null>(props.selectedOption ?? null);
@@ -67,6 +68,7 @@ const listParent = ref<HTMLElement | null>(null);
 
 const emit = defineEmits<{
   'search-more': [query: string];
+  'search-error': [message: string | null];
   select: [option: RelationOption | null];
 }>();
 
@@ -99,28 +101,44 @@ const totalSize = computed(() => virtualizer.value.getTotalSize());
 
 let searchSeq = 0;
 watch(
-  () => [open.value, query.value] as const,
+  [() => open.value, () => query.value],
   async ([isOpen, q]) => {
     if (!isOpen) {
       return;
     }
     const seq = ++searchSeq;
     loading.value = true;
+    searchError.value = null;
+    // Debounce keystrokes so only the newest keyword reaches remote NameSearch.
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 150);
+    });
+    if (seq !== searchSeq || !open.value) {
+      if (seq === searchSeq) {
+        loading.value = false;
+      }
+      return;
+    }
     try {
       const results = await runRelationNameSearch(props.search, q, props.pageSize);
       if (seq !== searchSeq) {
         return;
       }
       options.value = results;
+      searchError.value = null;
+      emit('search-error', null);
       if (modelValue.value) {
         const found = findRelationOption(results, modelValue.value);
         if (found) {
           pinnedSelected.value = found;
         }
       }
-    } catch {
+    } catch (error) {
       if (seq === searchSeq) {
         options.value = [];
+        const message = error instanceof Error ? error.message : String(error);
+        searchError.value = message || 'Search failed';
+        emit('search-error', searchError.value);
       }
     } finally {
       if (seq === searchSeq) {
@@ -159,6 +177,8 @@ watch(open, (isOpen) => {
   if (!isOpen) {
     // Drop the typeahead keyword so the trigger shows the selected label again.
     query.value = '';
+    searchSeq += 1;
+    loading.value = false;
   }
 });
 
@@ -171,11 +191,6 @@ function onSearchMore(): void {
   emit('search-more', normalizeRelationQuery(query.value));
   open.value = false;
 }
-
-/** Remote search owns filtering; keep every option visible. */
-function alwaysMatch(): number {
-  return 1;
-}
 </script>
 
 <template>
@@ -184,7 +199,7 @@ function alwaysMatch(): number {
     v-model:open="open"
     data-anchor="choy.internal.relation-combobox"
     :disabled="disabled"
-    :filter-function="alwaysMatch"
+    :ignore-filter="true"
     :class="cn('choy-relation-combobox relative w-full', props.class)"
   >
     <ComboboxAnchor class="flex w-full gap-1">
@@ -218,6 +233,13 @@ function alwaysMatch(): number {
         <ComboboxViewport>
           <div ref="listParent" class="max-h-56 overflow-auto">
             <div v-if="loading" class="px-3 py-2 text-sm text-foreground/60">Searching…</div>
+            <div
+              v-else-if="searchError"
+              class="px-3 py-2 text-sm text-danger"
+              role="alert"
+            >
+              {{ searchError }}
+            </div>
             <ComboboxEmpty v-else-if="!displayOptions.length" class="px-3 py-2 text-sm text-foreground/60">
               No matches
             </ComboboxEmpty>

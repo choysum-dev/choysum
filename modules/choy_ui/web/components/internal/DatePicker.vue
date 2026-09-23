@@ -74,9 +74,7 @@ const displayText = computed(() => {
   return parsed ? formatDatePickerValue(parsed) : '';
 });
 
-function onClear(event: Event): void {
-  event.preventDefault();
-  event.stopPropagation();
+function onClear(): void {
   modelValue.value = clearDatePickerValue();
 }
 
@@ -97,34 +95,34 @@ watch(
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <Button
-        type="button"
-        variant="outline"
-        data-anchor="choy.internal.date-picker"
-        :disabled="disabled"
-        :class="
-          cn(
-            'choy-date-picker w-full justify-between font-normal',
-            !displayText && 'text-foreground/50',
-            props.class,
-          )
-        "
-      >
-        <span>{{ displayText || placeholder }}</span>
-        <span
-          v-if="clearable && displayText && !disabled"
-          class="ml-2 text-xs text-foreground/50 hover:text-foreground"
-          role="button"
-          tabindex="0"
-          @click.stop="onClear"
-          @keydown.enter.stop.prevent="onClear"
-          @keydown.space.stop.prevent="onClear"
+    <div class="flex w-full items-center gap-1">
+      <PopoverTrigger as-child>
+        <Button
+          type="button"
+          variant="outline"
+          data-anchor="choy.internal.date-picker"
+          :disabled="disabled"
+          :class="
+            cn(
+              'choy-date-picker w-full justify-start font-normal',
+              !displayText && 'text-foreground/50',
+              props.class,
+            )
+          "
         >
-          Clear
-        </span>
-      </Button>
-    </PopoverTrigger>
+          <span>{{ displayText || placeholder }}</span>
+        </Button>
+      </PopoverTrigger>
+      <button
+        v-if="clearable && displayText && !disabled"
+        type="button"
+        class="shrink-0 text-xs text-foreground/50 hover:text-foreground"
+        aria-label="Clear date"
+        @click="onClear"
+      >
+        Clear
+      </button>
+    </div>
     <PopoverContent class="w-auto p-3" align="start">
       <CalendarRoot
         v-slot="{ weekDays, grid }"

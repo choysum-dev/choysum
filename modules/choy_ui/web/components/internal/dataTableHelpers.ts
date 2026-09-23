@@ -84,10 +84,19 @@ export function clampDataTableVirtualWindow(
   end: number,
   rowCount: number,
 ): { start: number; end: number } {
-  const safeCount = Math.max(0, Math.floor(rowCount));
-  const safeStart = Math.min(Math.max(0, Math.floor(start)), safeCount);
-  const safeEnd = Math.min(Math.max(safeStart, Math.floor(end)), safeCount);
+  const toIndex = (value: number): number => (Number.isFinite(value) ? Math.floor(value) : 0);
+  const safeCount = Math.max(0, toIndex(rowCount));
+  const safeStart = Math.min(Math.max(0, toIndex(start)), safeCount);
+  const safeEnd = Math.min(Math.max(safeStart, toIndex(end)), safeCount);
   return { start: safeStart, end: safeEnd };
+}
+
+/**
+ * TanStack row keys are strings; encode the original id type so `42` and `'42'`
+ * stay distinct in selection state.
+ */
+export function encodeDataTableRowKey(id: DataTableRowId): string {
+  return typeof id === 'number' ? `n:${id}` : `s:${id}`;
 }
 
 /**

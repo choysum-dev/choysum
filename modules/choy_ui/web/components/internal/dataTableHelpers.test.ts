@@ -4,6 +4,7 @@
 import {
   clampDataTableVirtualWindow,
   compareDataTableValues,
+  encodeDataTableRowKey,
   mapDataTableSelectionKeys,
   nextDataTableSort,
   resolveDataTableRowId,
@@ -58,6 +59,16 @@ describe('dataTableHelpers', () => {
   test('clamps virtual windows', () => {
     expect(clampDataTableVirtualWindow(-2, 50, 10)).toEqual({ start: 0, end: 10 });
     expect(clampDataTableVirtualWindow(3, 7, 10)).toEqual({ start: 3, end: 7 });
+    expect(clampDataTableVirtualWindow(Number.NaN, Number.NaN, Number.NaN)).toEqual({
+      start: 0,
+      end: 0,
+    });
+  });
+
+  test('encodeDataTableRowKey keeps numeric and string ids distinct', () => {
+    expect(encodeDataTableRowKey(42)).toBe('n:42');
+    expect(encodeDataTableRowKey('42')).toBe('s:42');
+    expect(encodeDataTableRowKey(42)).not.toBe(encodeDataTableRowKey('42'));
   });
 
   test('resolveDataTableRowId prefers Id/id and rejects empty keys', () => {
@@ -79,10 +90,16 @@ describe('dataTableHelpers', () => {
 
   test('mapDataTableSelectionKeys restores original id types', () => {
     const registry = new Map<string, string | number>([
-      ['42', 42],
-      ['a', 'a'],
+      [encodeDataTableRowKey(42), 42],
+      [encodeDataTableRowKey('42'), '42'],
+      [encodeDataTableRowKey('a'), 'a'],
     ]);
-    expect(mapDataTableSelectionKeys(['42', 'a'], registry)).toEqual([42, 'a']);
+    expect(
+      mapDataTableSelectionKeys(
+        [encodeDataTableRowKey(42), encodeDataTableRowKey('42'), encodeDataTableRowKey('a')],
+        registry,
+      ),
+    ).toEqual([42, '42', 'a']);
     expect(mapDataTableSelectionKeys(['missing'], registry)).toEqual(['missing']);
   });
 });

@@ -18,6 +18,7 @@ import { useVirtualizer } from '@tanstack/vue-virtual';
 import { cn, type ClassValue } from '../../lib/utils';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import {
+  encodeDataTableRowKey,
   mapDataTableSelectionKeys,
   nextDataTableSort,
   resolveDataTableRowId,
@@ -103,7 +104,7 @@ const table = useVueTable({
   },
   getRowId: (row) => {
     const original = resolveDataTableRowId(row, props.rowId);
-    const key = String(original);
+    const key = encodeDataTableRowKey(original);
     idRegistry.set(key, original);
     return key;
   },
@@ -112,6 +113,25 @@ const table = useVueTable({
 const parentRef = ref<HTMLElement | null>(null);
 const headerRef = ref<HTMLElement | null>(null);
 const rows = computed(() => table.getRowModel().rows);
+
+// Data swaps can drop rows; prune cached ids + selection so emits never report missing rows.
+watch(rows, (current) => {
+  const present = new Set(current.map((row) => row.id));
+  for (const key of [...idRegistry.keys()]) {
+    if (!present.has(key)) {
+      idRegistry.delete(key);
+    }
+  }
+  const pruned: RowSelectionState = {};
+  for (const [key, isSelected] of Object.entries(rowSelection.value)) {
+    if (isSelected && present.has(key)) {
+      pruned[key] = isSelected;
+    }
+  }
+  if (Object.keys(pruned).length !== Object.keys(rowSelection.value).length) {
+    rowSelection.value = pruned;
+  }
+});
 
 const virtualizer = useVirtualizer({
   get count() {
@@ -183,6 +203,23 @@ function onHeaderScroll(): void {
   parentRef.value.scrollLeft = headerRef.value.scrollLeft;
   syncingScroll = false;
 }
+
+/** Skip row-click when the event originated from an interactive cell control. */
+function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefined): void {
+  if (!row) {
+    return;
+  }
+  const target = event.target;
+  if (
+    target instanceof Element &&
+    target.closest(
+      'a,button,input,textarea,select,label,[role="button"],[role="checkbox"],[role="menuitem"],[role="link"]',
+    )
+  ) {
+    return;
+  }
+  emit('row-click', row.original);
+}
 </script>
 
 <template>
@@ -249,7 +286,7 @@ function onHeaderScroll(): void {
             height: `${virtualRow.size}px`,
             gridTemplateColumns: gridTemplate,
           }"
-          @click="rows[virtualRow.index] && emit('row-click', rows[virtualRow.index].original)"
+          @click="onRowClick($event, rows[virtualRow.index])"
         >
           <div
             v-for="cell in rows[virtualRow.index]?.getVisibleCells() ?? []"
