@@ -1,0 +1,11 @@
+# CodeRabbit repository configuration.
+# Docs: https://docs.coderabbit.ai/getting-started/yaml-configuration
+# Path filters: patterns with ! are excluded from review (and sparse checkout).
+
+language: "en-US"
+
+reviews:
+  # Vendored L2 primitives (shadcn-vue hand-adapted). Module-agnostic so the
+  # same filter works after choy_ui merges into modules/web.
+  path_filters:
+    - "!modules/*/web/components/vendor/ui/**"

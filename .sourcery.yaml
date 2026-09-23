@@ -1,0 +1,8 @@
+# Sourcery repository configuration.
+# Docs: https://docs.sourcery.ai/References/Legacy-Configuration/sourcery-yaml/
+# Directory entries are walked recursively; ** globs are not supported.
+
+ignore:
+  # Vendored L2 primitives (shadcn-vue hand-adapted). Module-agnostic path so
+  # ignore survives choy_ui → web cutover (same components/vendor/ui layout).
+  - modules/*/web/components/vendor/ui
