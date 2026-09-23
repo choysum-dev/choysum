@@ -140,12 +140,14 @@ watch(
       >
         <CalendarHeader class="flex items-center justify-between gap-2 pb-2">
           <CalendarPrev
+            aria-label="Previous month"
             class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
           >
             <ChevronLeft class="size-4" />
           </CalendarPrev>
           <CalendarHeading class="text-sm font-medium" />
           <CalendarNext
+            aria-label="Next month"
             class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
           >
             <ChevronRight class="size-4" />

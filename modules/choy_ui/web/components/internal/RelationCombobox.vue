@@ -111,6 +111,8 @@ const virtualizer = useVirtualizer({
   getScrollElement: () => listParent.value as Element | null,
   estimateSize: () =>
     Number.isFinite(props.estimateSize) && props.estimateSize > 0 ? props.estimateSize : 32,
+  // Prepending the selected option shifts indices; keep measurements bound to the option.
+  getItemKey: (index) => displayOptions.value[index]?.id ?? index,
   overscan: 6,
 });
 

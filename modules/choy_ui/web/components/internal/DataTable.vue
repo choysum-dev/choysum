@@ -265,9 +265,10 @@ watch(
   },
 );
 
-// Data swaps (paging) must not keep the previous scroll offset or cached heights.
+// Data swaps (paging) must reset offset/heights, but a host that rebuilds an equal
+// array must not jump the user back to the top.
 watch(
-  () => props.data,
+  () => [...presentKeys.value].join('\0'),
   () => {
     if (parentRef.value) {
       parentRef.value.scrollTop = 0;

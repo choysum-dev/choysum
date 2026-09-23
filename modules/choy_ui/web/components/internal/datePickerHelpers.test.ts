@@ -40,6 +40,12 @@ describe('datePickerHelpers', () => {
     expect(
       parseDatePickerValue('2026-02-30', () => new CalendarDate(2026, 2, 28)),
     ).toBeNull();
+    // A parser that throws must be swallowed into `null`, not escape the helper.
+    expect(
+      parseDatePickerValue('2026-09-23', () => {
+        throw new Error('unsupported date');
+      }),
+    ).toBeNull();
     expect(clearDatePickerValue()).toBeNull();
   });
 
