@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# Sourcery repository configuration.
+# Docs: https://docs.sourcery.ai/References/Legacy-Configuration/sourcery-yaml/
+# Directory entries are walked recursively; ** globs are not supported.
+
+ignore:
+  # Vendored L2 tree (shadcn-vue hand-adapted). Sourcery does not support **
+  # globs, so this stays directory-wide (unlike PR-Agent/CodeRabbit/Codecov
+  # which narrow to **/*.vue). Module-agnostic for choy_ui → web cutover.
+  - modules/*/web/components/vendor/ui

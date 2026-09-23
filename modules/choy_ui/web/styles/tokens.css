@@ -4,11 +4,13 @@
  *
  * Choysum Choy UI tokens (frozen names; values tunable).
  * Isolation gallery uses these without Element Plus theme packages.
- * Tokens and layout-affecting resets live on .choy-gallery-root so product
- * ERP pages are not overridden when the gallery chunk loads.
+ * Tokens live on .choy-gallery-root and html.choy-gallery-token-scope so Reka
+ * portals under body still resolve --choy-* without polluting product ERP pages
+ * when the gallery is not mounted.
  */
 
-.choy-gallery-root {
+.choy-gallery-root,
+html.choy-gallery-token-scope {
   --choy-color-primary: oklch(0.55 0.14 255);
   --choy-color-success: oklch(0.62 0.14 150);
   --choy-color-warning: oklch(0.75 0.14 85);
@@ -51,7 +53,9 @@
   --choy-z-dropdown: 1000;
   --choy-z-modal: 1100;
   --choy-z-toast: 1200;
+}
 
+.choy-gallery-root {
   color-scheme: light;
   background: var(--choy-color-background);
   color: var(--choy-color-foreground);
@@ -61,7 +65,8 @@
   line-height: 1.5;
 }
 
-.choy-gallery-root.dark {
+.choy-gallery-root.dark,
+html.choy-gallery-token-scope.dark {
   --choy-color-primary: oklch(0.7 0.12 255);
   --choy-color-success: oklch(0.72 0.12 150);
   --choy-color-warning: oklch(0.8 0.12 85);
@@ -72,10 +77,15 @@
   --choy-color-muted: oklch(0.28 0.02 260);
   --choy-color-border: oklch(0.35 0.02 260);
   --choy-color-ring: oklch(0.7 0.12 255);
+}
+
+.choy-gallery-root.dark,
+html.choy-gallery-token-scope.dark {
   color-scheme: dark;
 }
 
-.choy-gallery-root[data-density='compact'] {
+.choy-gallery-root[data-density='compact'],
+html.choy-gallery-token-scope[data-density='compact'] {
   --choy-space-1: 0.2rem;
   --choy-space-2: 0.4rem;
   --choy-space-3: 0.6rem;
@@ -90,7 +100,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .choy-gallery-root {
+  .choy-gallery-root,
+  html.choy-gallery-token-scope {
     --choy-motion-duration-fast: 0ms;
     --choy-motion-duration-normal: 0ms;
   }

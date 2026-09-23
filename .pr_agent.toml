@@ -2,6 +2,15 @@
 # Loaded from the default branch; keep this file minimal and project-specific.
 # See: https://docs.pr-agent.ai/usage-guide/configuration_options/
 
+[ignore]
+# Vendored L2 primitives (shadcn-vue hand-adapted + Reka). Path is module-agnostic
+# so it still matches after choy_ui merges into modules/web (same vendor/ui layout).
+# Review Gallery / public Choy* / Go policy instead.
+glob = [
+  # Vendored SFCs only; keep hand-written helpers (useToast.ts, index.ts) in review.
+  'modules/*/web/components/vendor/ui/**/*.vue',
+]
+
 [pr_description]
 enable_pr_diagram = false
 extra_instructions = """\

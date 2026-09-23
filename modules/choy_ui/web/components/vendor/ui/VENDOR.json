@@ -1,0 +1,31 @@
+{
+  "spdxFileCopyrightText": "2026-present Brian Wang <wangbuke@gmail.com>",
+  "spdxLicenseIdentifier": "Apache-2.0",
+  "source": "shadcn-vue (hand-adapted)",
+  "upstreamLicense": "MIT",
+  "upstreamCopyright": "shadcn-vue contributors",
+  "rekaVersion": "2.10.4",
+  "lucideVersion": "0.542.0",
+  "copiedAt": "2026-09-22",
+  "items": [
+    "button",
+    "input",
+    "textarea",
+    "checkbox",
+    "switch",
+    "select",
+    "combobox",
+    "dialog",
+    "dropdown-menu",
+    "popover",
+    "tooltip",
+    "tabs",
+    "card",
+    "badge",
+    "separator",
+    "scroll-area",
+    "skeleton",
+    "toast"
+  ],
+  "notes": "path components/vendor/ui; kept L2 data-slot; tokens via --choy-* / Tailwind theme aliases (bg-primary etc.); no Element Plus; no shadcn CLI"
+}
