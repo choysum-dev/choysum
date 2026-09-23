@@ -508,6 +508,20 @@ func TestCheckForbiddenUiImports_UnitBranches(t *testing.T) {
 	if len(sortedRules) != 2 || sortedRules[0].Rule > sortedRules[1].Rule {
 		t.Fatalf("expected rule-ordered violations, got %#v", sortedRules)
 	}
+
+	sameCol := CheckForbiddenUiImports(ForbiddenUiImportScanInput{
+		ModuleName: "partner",
+		ModuleRoot: root,
+	}, []*parser.ParserResult{{
+		Path: "/modules/partner/web/spec.ts",
+		Imports: map[string]*parser.Import{
+			"A": {ModuleSpecText: "reka-ui/Dialog", Line: 1, Column: 1},
+			"B": {ModuleSpecText: "reka-ui", Line: 1, Column: 1},
+		},
+	}})
+	if len(sameCol) != 1 {
+		t.Fatalf("expected deduped same-line reka-ui, got %#v", sameCol)
+	}
 }
 
 func TestClassifyAndPathHelpers_ExtraCases(t *testing.T) {
