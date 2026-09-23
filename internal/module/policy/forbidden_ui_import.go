@@ -136,7 +136,7 @@ func appendForbiddenUiSpec(
 	sourcePath, specText string,
 	line, column int,
 ) []ForbiddenUiImportViolation {
-	spec := strings.TrimSpace(strings.Trim(specText, `"'`))
+	spec := strings.TrimSpace(strings.Trim(specText, "\"'`"))
 	if spec == "" {
 		return violations
 	}

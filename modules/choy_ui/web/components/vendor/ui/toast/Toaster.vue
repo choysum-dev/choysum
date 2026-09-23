@@ -16,6 +16,7 @@ const toasts = useToastStore();
       v-for="item in toasts"
       :key="item.id"
       v-model:open="item.open"
+      :duration="item.duration"
       data-slot="toast"
       class="group pointer-events-auto relative flex w-full items-center justify-between gap-2 overflow-hidden rounded-md border border-border bg-background p-4 text-foreground shadow-lg"
       @update:open="(value: boolean) => !value && dismiss(item.id)"

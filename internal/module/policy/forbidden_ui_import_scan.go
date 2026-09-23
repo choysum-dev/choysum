@@ -22,11 +22,11 @@ var walkWebTree = func(root string, walkFn fs.WalkDirFunc) error {
 // parseWebImportFile parses one web import source; tests may override.
 var parseWebImportFile = ParseServiceSourceFile
 
-// Closing </script> must be followed by spaces and either another tag ('<') or
-// end-of-line/EOF. Go's RE2 has no lookahead; consuming an optional '<' is fine
-// because we only use the capture group body. This still rejects mid-line
-// string literals such as "</script>" while matching compact one-line SFCs.
-var vueScriptBlockRe = regexp.MustCompile(`(?ims)<script\b[^>]*>([\s\S]*?)</script>(?:[ \t]*(?:<|$))`)
+// Script open tags may include quoted attributes that contain '>' (e.g. unknown=">").
+// Closing </script> must be followed by spaces (including CR) and either another tag
+// ('<') or a newline/EOF so mid-line string literals like "</script>" do not truncate
+// the block, while CRLF SFCs and compact one-line SFCs still match.
+var vueScriptBlockRe = regexp.MustCompile(`(?ims)<script\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)</script>(?:[\t \r]*(?:<|\n|$))`)
 var vueHTMLCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 
 // vueScriptInCommentRe detects HTML comments that embed a <script> sample (docs).

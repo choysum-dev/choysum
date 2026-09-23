@@ -8,6 +8,7 @@ export type ToastRecord = {
   title: string;
   description?: string;
   open: boolean;
+  duration: number;
 };
 
 let nextId = 0;
@@ -20,8 +21,11 @@ export type ToastInput = {
   duration?: number;
 };
 
+const defaultToastDurationMs = 5000;
+
 /**
- * Shows a transient toast and removes it after the duration elapses.
+ * Shows a transient toast. Duration is owned by ToastRoot (Reka default 5000ms);
+ * dismiss/removal still runs from the Toaster open update handler.
  */
 export function toast(input: ToastInput): number {
   const id = ++nextId;
@@ -30,11 +34,9 @@ export function toast(input: ToastInput): number {
     title: input.title,
     description: input.description,
     open: true,
+    duration: input.duration ?? defaultToastDurationMs,
   };
   toasts.value = [...toasts.value, record];
-  const duration = input.duration ?? 4000;
-  // Ambient timer: works in the browser and in the Go-embedded QuickJS FE runtime.
-  setTimeout(() => dismiss(id), duration);
   return id;
 }
 

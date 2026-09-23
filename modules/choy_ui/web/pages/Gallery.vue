@@ -300,7 +300,7 @@ const density = ref<Density>('comfortable');
 
 const sampleInput = ref('');
 const sampleTextarea = ref('');
-const checkboxOn = ref(false);
+const checkboxOn = ref<boolean | 'indeterminate'>(false);
 const switchOn = ref(true);
 const activeTab = ref('one');
 const dialogOpen = ref(false);
@@ -367,15 +367,17 @@ function clearGalleryTokenScope(): void {
   if (!hostHadTokenScope) {
     el.classList.remove(galleryTokenScopeClass);
   }
-  if (hostHadDark) {
-    el.classList.add('dark');
-  } else {
-    el.classList.remove('dark');
+  // Only revert attributes this gallery still owns; another writer may
+  // have changed them while the gallery was mounted.
+  if (el.classList.contains('dark') === isDark.value) {
+    el.classList.toggle('dark', hostHadDark);
   }
-  if (hostDensity === null) {
-    el.removeAttribute('data-density');
-  } else {
-    el.setAttribute('data-density', hostDensity);
+  if (el.getAttribute('data-density') === density.value) {
+    if (hostDensity === null) {
+      el.removeAttribute('data-density');
+    } else {
+      el.setAttribute('data-density', hostDensity);
+    }
   }
   hostThemeCaptured = false;
 }

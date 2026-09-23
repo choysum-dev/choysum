@@ -65,6 +65,37 @@ func TestAssertNoForbiddenUiImports_AllowsTypeOnlyImport(t *testing.T) {
 	}
 }
 
+func TestAssertNoForbiddenUiImports_RejectsCRLFVue(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	vue := "<template><div /></template>\r\n<script setup lang=\"ts\">\r\nimport { DialogRoot } from 'reka-ui';\r\nexport const x = DialogRoot;\r\n</script>\r\n"
+	if err := os.WriteFile(filepath.Join(webDir, "CRLF.vue"), []byte(vue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui ban from CRLF SFC, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsScriptAttrWithGt(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	vue := `<template><div /></template>
+<script setup lang="ts" data-x=">">
+import { DialogRoot } from 'reka-ui';
+export const x = DialogRoot;
+</script>
+`
+	if err := os.WriteFile(filepath.Join(webDir, "AttrGt.vue"), []byte(vue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui ban with '>' in script attr, got %v", err)
+	}
+}
+
 func TestAssertNoForbiddenUiImports_RejectsCompactOneLineVue(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "partner")
@@ -531,6 +562,7 @@ func TestClassifyAndPathHelpers_ExtraCases(t *testing.T) {
 	}{
 		{"", ""},
 		{"  ", ""},
+		{"`reka-ui`", "reka-ui"},
 		{"@unovis", "@unovis"},
 		{"ui", "ui/*"},
 		{"/components/vendor/ui", "ui/*"},
