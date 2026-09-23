@@ -122,6 +122,8 @@ watch(
       const timer = setTimeout(resolve, 150);
       onWatcherCleanup(() => {
         clearTimeout(timer);
+        // Abort this run on re-query, close, or scope teardown.
+        searchSeq += 1;
         resolve();
       });
     });
@@ -192,9 +194,11 @@ watch(modelValue, (id) => {
     findRelationOption(options.value, id) ??
     (pinnedSelected.value?.id === id ? pinnedSelected.value : null) ??
     (props.selectedOption?.id === id ? props.selectedOption : null);
-  if (found) {
-    pinnedSelected.value = found;
+  if (!found) {
+    // Id is set but its label is not loaded yet; not the same as clearing.
+    return;
   }
+  pinnedSelected.value = found;
   emit('select', found);
 });
 

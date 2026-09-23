@@ -82,6 +82,20 @@ describe('relationComboboxHelpers', () => {
       Number.NaN,
     );
     expect(limited).toHaveLength(2);
+
+    // Raw NameSearch payloads are normalized (and deduped) defensively.
+    const raw = await runRelationNameSearch(
+      async () =>
+        [
+          { Id: 'r1', DisplayName: 'Raw' },
+          { Id: 'r1', DisplayName: 'Dup' },
+        ] as unknown as RelationOption[],
+      'r',
+      10,
+    );
+    expect(raw).toEqual([
+      { id: 'r1', label: 'Raw', raw: { Id: 'r1', DisplayName: 'Raw' } },
+    ]);
   });
 
   test('upserts and finds selected options', () => {

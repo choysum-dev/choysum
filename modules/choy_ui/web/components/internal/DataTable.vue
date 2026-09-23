@@ -132,12 +132,25 @@ const selectColumn = computed<ColumnDef<T, unknown>[]>(() => {
   ];
 });
 
+const resolvedColumns = computed<ColumnDef<T, unknown>[]>(() => [
+  ...selectColumn.value,
+  ...props.columns,
+]);
+
+const defaultColumn = {
+  sortingFn: (
+    rowA: { getValue: (columnId: string) => unknown },
+    rowB: { getValue: (columnId: string) => unknown },
+    columnId: string,
+  ) => compareDataTableValues(rowA.getValue(columnId), rowB.getValue(columnId)),
+};
+
 const table = useVueTable({
   get data() {
     return props.data;
   },
   get columns() {
-    return [...selectColumn.value, ...props.columns];
+    return resolvedColumns.value;
   },
   state: {
     get sorting() {
@@ -153,12 +166,7 @@ const table = useVueTable({
   get enableSorting() {
     return props.enableSorting;
   },
-  get defaultColumn() {
-    return {
-      sortingFn: (rowA, rowB, columnId) =>
-        compareDataTableValues(rowA.getValue(columnId), rowB.getValue(columnId)),
-    };
-  },
+  defaultColumn,
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),
   onSortingChange: (updater) => {
@@ -229,6 +237,12 @@ const virtualizer = useVirtualizer({
 
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
+
+function measureRowElement(el: Element | null): void {
+  if (el) {
+    virtualizer.value.measureElement(el);
+  }
+}
 const gridTemplate = computed(() =>
   table
     .getVisibleLeafColumns()
@@ -390,12 +404,13 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
         <div
           v-for="virtualRow in virtualRows"
           :key="String(rows[virtualRow.index]?.id ?? virtualRow.key)"
+          :ref="measureRowElement"
+          :data-index="virtualRow.index"
           role="row"
           tabindex="0"
           class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           :style="{
             transform: `translateY(${virtualRow.start}px)`,
-            height: `${virtualRow.size}px`,
             gridTemplateColumns: gridTemplate,
           }"
           @click="onRowClick($event, rows[virtualRow.index])"

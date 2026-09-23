@@ -62,7 +62,7 @@ export async function runRelationNameSearch(
   const limit = Number.isFinite(pageSize) ? Math.max(1, Math.floor(pageSize)) : 20;
   const keyword = normalizeRelationQuery(query);
   const rows = await search(keyword, { limit });
-  return Array.isArray(rows) ? rows.slice(0, limit) : [];
+  return Array.isArray(rows) ? mapNameSearchRows(rows).slice(0, limit) : [];
 }
 
 /** Merges a selected option into the list so the trigger keeps a label. */
