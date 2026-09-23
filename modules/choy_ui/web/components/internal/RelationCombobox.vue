@@ -137,8 +137,8 @@ watch(
       if (seq === searchSeq) {
         options.value = [];
         const message = error instanceof Error ? error.message : String(error);
-        searchError.value = message || 'Search failed';
-        emit('search-error', searchError.value);
+        searchError.value = 'Search failed. Please retry.';
+        emit('search-error', message || searchError.value);
       }
     } finally {
       if (seq === searchSeq) {

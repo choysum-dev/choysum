@@ -21,6 +21,7 @@ import {
   encodeDataTableRowKey,
   mapDataTableSelectionKeys,
   nextDataTableSort,
+  pruneDataTableSelection,
   resolveDataTableRowId,
   type DataTableRowId,
 } from './dataTableHelpers';
@@ -122,13 +123,8 @@ watch(rows, (current) => {
       idRegistry.delete(key);
     }
   }
-  const pruned: RowSelectionState = {};
-  for (const [key, isSelected] of Object.entries(rowSelection.value)) {
-    if (isSelected && present.has(key)) {
-      pruned[key] = isSelected;
-    }
-  }
-  if (Object.keys(pruned).length !== Object.keys(rowSelection.value).length) {
+  const pruned = pruneDataTableSelection(rowSelection.value, present);
+  if (pruned) {
     rowSelection.value = pruned;
   }
 });
@@ -185,23 +181,22 @@ const allSelected = computed(() => {
   return false;
 });
 
-let syncingScroll = false;
 function onBodyScroll(): void {
-  if (syncingScroll || !parentRef.value || !headerRef.value) {
+  const parent = parentRef.value;
+  const header = headerRef.value;
+  if (!parent || !header || header.scrollLeft === parent.scrollLeft) {
     return;
   }
-  syncingScroll = true;
-  headerRef.value.scrollLeft = parentRef.value.scrollLeft;
-  syncingScroll = false;
+  header.scrollLeft = parent.scrollLeft;
 }
 
 function onHeaderScroll(): void {
-  if (syncingScroll || !parentRef.value || !headerRef.value) {
+  const parent = parentRef.value;
+  const header = headerRef.value;
+  if (!parent || !header || parent.scrollLeft === header.scrollLeft) {
     return;
   }
-  syncingScroll = true;
-  parentRef.value.scrollLeft = headerRef.value.scrollLeft;
-  syncingScroll = false;
+  parent.scrollLeft = header.scrollLeft;
 }
 
 /** Skip row-click when the event originated from an interactive cell control. */
@@ -213,7 +208,7 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
   if (
     target instanceof Element &&
     target.closest(
-      'a,button,input,textarea,select,label,[role="button"],[role="checkbox"],[role="menuitem"],[role="link"]',
+      'a,button,input,textarea,select,label,[role="button"],[role="checkbox"],[role="menuitem"],[role="link"],[role="option"],[role="combobox"],[data-no-row-click]',
     )
   ) {
     return;

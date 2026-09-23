@@ -7,6 +7,7 @@ import {
   encodeDataTableRowKey,
   mapDataTableSelectionKeys,
   nextDataTableSort,
+  pruneDataTableSelection,
   resolveDataTableRowId,
   setDataTableSelectionAll,
   sortDataTableRows,
@@ -46,6 +47,9 @@ describe('dataTableHelpers', () => {
     expect(compareDataTableValues(null, 1)).toBeLessThan(0);
     expect(compareDataTableValues(1, null)).toBeGreaterThan(0);
     expect(compareDataTableValues(2, 1)).toBeGreaterThan(0);
+    expect(compareDataTableValues(Number.NaN, 1)).toBeGreaterThan(0);
+    expect(compareDataTableValues(1, Number.NaN)).toBeLessThan(0);
+    expect(compareDataTableValues(Number.NaN, Number.NaN)).toBe(0);
   });
 
   test('toggles and bulk-sets selection', () => {
@@ -74,9 +78,11 @@ describe('dataTableHelpers', () => {
   test('resolveDataTableRowId prefers Id/id and rejects empty keys', () => {
     expect(resolveDataTableRowId({ Id: 42 })).toBe(42);
     expect(resolveDataTableRowId({ id: 'x' })).toBe('x');
+    expect(resolveDataTableRowId({ Id: ' 7 ' })).toBe('7');
     // Blank Id must not block a usable lowercase id.
     expect(resolveDataTableRowId({ Id: '', id: 'fallback' })).toBe('fallback');
     expect(resolveDataTableRowId({ name: 'a' }, (r) => String(r.name))).toBe('a');
+    expect(resolveDataTableRowId({ name: 'a' }, () => '  z  ')).toBe('z');
     expect(() => resolveDataTableRowId({ name: 'a' })).toThrow(/rowId/);
     expect(() => resolveDataTableRowId({ Id: '' })).toThrow(/rowId/);
     expect(() => resolveDataTableRowId({ Id: Number.NaN })).toThrow(/rowId/);
@@ -104,5 +110,12 @@ describe('dataTableHelpers', () => {
     ).toEqual([42, '42', 'a']);
     // Missing registry entries decode the internal prefix instead of leaking `n:`/`s:`.
     expect(mapDataTableSelectionKeys(['n:7', 's:7', 'plain'], new Map())).toEqual([7, '7', 'plain']);
+  });
+
+  test('pruneDataTableSelection drops missing and deselected keys', () => {
+    const present = new Set(['a', 'c']);
+    expect(pruneDataTableSelection({ a: true, b: true, c: false }, present)).toEqual({ a: true });
+    expect(pruneDataTableSelection({ a: true }, present)).toBeNull();
+    expect(pruneDataTableSelection({}, present)).toBeNull();
   });
 });

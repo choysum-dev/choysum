@@ -29,7 +29,11 @@ export function mapNameSearchRows(
   const out: RelationOption[] = [];
   const seen = new Set<string>();
   for (const row of rows) {
-    const raw = row.Id ?? row.id;
+    const raw = [row.Id, row.id].find(
+      (value) =>
+        (typeof value === 'string' && value.trim() !== '') ||
+        (typeof value === 'number' && Number.isFinite(value)),
+    );
     const id =
       typeof raw === 'string'
         ? raw.trim()

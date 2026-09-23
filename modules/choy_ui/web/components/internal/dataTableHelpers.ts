@@ -41,6 +41,9 @@ export function compareDataTableValues(a: unknown, b: unknown): number {
     return 1;
   }
   if (typeof a === 'number' && typeof b === 'number') {
+    if (Number.isNaN(a) || Number.isNaN(b)) {
+      return Number.isNaN(a) === Number.isNaN(b) ? 0 : Number.isNaN(a) ? 1 : -1;
+    }
     return a - b;
   }
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
@@ -134,13 +137,13 @@ export function resolveDataTableRowId<T extends Record<string, unknown>>(
     if (!isUsableDataTableRowId(value)) {
       throw new Error('DataTable rowId() returned an empty id');
     }
-    return value;
+    return typeof value === 'string' ? value.trim() : value;
   }
   const raw = [(row as { Id?: unknown }).Id, (row as { id?: unknown }).id].find(isUsableDataTableRowId);
   if (raw === undefined) {
     throw new Error('DataTable: provide rowId when rows lack Id/id');
   }
-  return raw;
+  return typeof raw === 'string' ? raw.trim() : raw;
 }
 
 /** Maps TanStack string selection keys back to original DataTableRowId values. */
@@ -156,4 +159,26 @@ export function mapDataTableSelectionKeys(
     // Decode the internal key so `n:`/`s:` never leak into public selection ids.
     return decodeDataTableRowKey(key);
   });
+}
+
+/**
+ * Keeps only selected keys that are still present after a data swap.
+ * Returns null when the selection is already clean (no write needed).
+ */
+export function pruneDataTableSelection(
+  selection: Readonly<Record<string, boolean>>,
+  presentKeys: ReadonlySet<string>,
+): Record<string, boolean> | null {
+  const pruned: Record<string, boolean> = {};
+  for (const [key, isSelected] of Object.entries(selection)) {
+    if (isSelected && presentKeys.has(key)) {
+      pruned[key] = true;
+    }
+  }
+  const prevKeys = Object.keys(selection);
+  const nextKeys = Object.keys(pruned);
+  if (prevKeys.length === nextKeys.length && nextKeys.every((key) => selection[key] === true)) {
+    return null;
+  }
+  return pruned;
 }
