@@ -562,7 +562,6 @@ func TestClassifyAndPathHelpers_ExtraCases(t *testing.T) {
 	}{
 		{"", ""},
 		{"  ", ""},
-		{"`reka-ui`", "reka-ui"},
 		{"@unovis", "@unovis"},
 		{"ui", "ui/*"},
 		{"/components/vendor/ui", "ui/*"},
@@ -586,6 +585,10 @@ func TestClassifyAndPathHelpers_ExtraCases(t *testing.T) {
 
 	if appendForbiddenUiSpec(nil, "p", `""`, 1, 1) != nil {
 		t.Fatal("empty quoted spec")
+	}
+	backtick := appendForbiddenUiSpec(nil, "p", "`reka-ui`", 1, 1)
+	if len(backtick) != 1 || backtick[0].SpecText != "reka-ui" || backtick[0].Rule != "reka-ui" {
+		t.Fatalf("backtick specifier: %#v", backtick)
 	}
 	if appendForbiddenUiExports(nil, "p", nil) != nil {
 		t.Fatal("nil export")
