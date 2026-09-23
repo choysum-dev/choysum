@@ -13,7 +13,7 @@ export type ChoyTabsContext = {
   tabs: Ref<ChoyTabRegistration[]>;
   register: (tab: ChoyTabRegistration) => void;
   unregister: (value: string) => void;
-  update: (value: string, patch: Partial<ChoyTabRegistration>) => void;
+  update: (value: string, patch: Partial<ChoyTabRegistration>) => boolean;
 };
 
 export const ChoyTabsContextKey: InjectionKey<ChoyTabsContext> = Symbol.for('choysum.choyTabs');

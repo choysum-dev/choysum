@@ -46,7 +46,16 @@ const ctx: ChoyTabsContext = {
     tabs.value = tabs.value.filter((item) => item.value !== value);
   },
   update(value, patch) {
+    const nextValue = patch.value;
+    if (
+      nextValue !== undefined &&
+      nextValue !== value &&
+      tabs.value.some((item) => item.value === nextValue)
+    ) {
+      return false;
+    }
     tabs.value = tabs.value.map((item) => (item.value === value ? { ...item, ...patch } : item));
+    return true;
   },
 };
 

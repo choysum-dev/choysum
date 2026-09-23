@@ -31,8 +31,10 @@ withDefaults(
 <template>
   <div
     data-anchor="choy.form-view"
-    class="choy-form-view relative rounded-lg border border-border bg-background text-foreground"
-    :class="{ 'border-0 shadow-none': embedded }"
+    :class="[
+      'choy-form-view relative rounded-lg bg-background text-foreground',
+      embedded ? 'border-0 shadow-none' : 'border border-border',
+    ]"
     :aria-busy="loading"
   >
     <div

@@ -50,4 +50,9 @@ describe('choyTabsSelection', () => {
     expect(nextChoyTabSelection(list, 'gone', 'missing')).toBe('one');
     expect(nextChoyTabSelection(list, undefined, 'missing')).toBeUndefined();
   });
+
+  test('leaves the selection untouched while no tabs are registered', () => {
+    expect(nextChoyTabSelection([], undefined, undefined)).toBeUndefined();
+    expect(nextChoyTabSelection([], 'one', 'one')).toBeUndefined();
+  });
 });
