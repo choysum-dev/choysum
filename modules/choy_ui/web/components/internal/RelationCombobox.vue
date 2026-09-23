@@ -162,9 +162,13 @@ watch(
 watch([() => props.search, () => props.pageSize], () => {
   options.value = [];
   pinnedSelected.value = props.selectedOption ?? null;
-  searchSeq += 1;
-  loading.value = false;
   searchError.value = null;
+  // While open, the search watcher already re-queries with the new target;
+  // bumping searchSeq here would cancel that fresh request and leave the list empty.
+  if (!open.value) {
+    searchSeq += 1;
+    loading.value = false;
+  }
 });
 
 watch(modelValue, (id) => {
@@ -242,7 +246,12 @@ function onSearchMore(): void {
       >
         <ComboboxViewport>
           <div ref="listParent" class="max-h-56 overflow-auto">
-            <div v-if="loading" class="px-3 py-2 text-sm text-foreground/60">Searching…</div>
+            <div
+              v-if="loading && !displayOptions.length"
+              class="px-3 py-2 text-sm text-foreground/60"
+            >
+              Searching…
+            </div>
             <div
               v-else-if="searchError"
               class="px-3 py-2 text-sm text-danger"

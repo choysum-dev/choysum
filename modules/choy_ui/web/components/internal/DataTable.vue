@@ -182,7 +182,17 @@ watch(
   rowSelection,
   (state) => {
     const keys = Object.keys(state).filter((key) => state[key]);
-    emit('update:rowSelection', mapDataTableSelectionKeys(keys, idRegistry));
+    const ids = mapDataTableSelectionKeys(keys, idRegistry);
+    const controlled = props.rowSelection;
+    // Skip echoing a selection that already equals the controlled prop.
+    if (
+      controlled !== undefined &&
+      controlled.length === ids.length &&
+      controlled.every((id) => ids.includes(id))
+    ) {
+      return;
+    }
+    emit('update:rowSelection', ids);
   },
   { deep: true },
 );
@@ -262,7 +272,17 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
         <div
           v-for="header in table.getHeaderGroups()[0]?.headers ?? []"
           :key="header.id"
+          role="columnheader"
           class="flex items-center gap-1 px-2 py-2"
+          :aria-sort="
+            header.column.id === '__select' || !header.column.getCanSort()
+              ? undefined
+              : header.column.getIsSorted() === 'asc'
+                ? 'ascending'
+                : header.column.getIsSorted() === 'desc'
+                  ? 'descending'
+                  : 'none'
+          "
         >
           <Checkbox
             v-if="header.column.id === '__select'"

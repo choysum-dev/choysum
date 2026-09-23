@@ -67,6 +67,9 @@ describe('dataTableHelpers', () => {
       start: 0,
       end: 0,
     });
+    // Reversed / out-of-range windows must collapse instead of inverting or overflowing.
+    expect(clampDataTableVirtualWindow(5, 2, 10)).toEqual({ start: 5, end: 5 });
+    expect(clampDataTableVirtualWindow(7, 9, 3)).toEqual({ start: 3, end: 3 });
   });
 
   test('encodeDataTableRowKey keeps numeric and string ids distinct', () => {
