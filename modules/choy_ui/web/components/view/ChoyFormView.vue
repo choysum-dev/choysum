@@ -68,7 +68,7 @@ withDefaults(
     <div
       v-if="loading"
       class="choy-form-view__loading absolute inset-0 z-10 flex items-center justify-center bg-background/60"
-      aria-hidden="true"
+      role="status"
     >
       <span class="text-sm text-foreground/70">Loading…</span>
     </div>

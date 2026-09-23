@@ -54,6 +54,12 @@ provide(ChoyTabsContextKey, ctx);
 
 watch(tabs, (list) => reconcileSelection(list), { deep: true });
 
+// Late-arriving or parent-swapped defaultValue must also reconcile.
+watch(
+  () => props.defaultValue,
+  () => reconcileSelection(tabs.value),
+);
+
 onBeforeUnmount(() => {
   tabs.value = [];
 });

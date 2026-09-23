@@ -34,4 +34,20 @@ describe('choyTabsSelection', () => {
     ];
     expect(nextChoyTabSelection(list, 'two', 'one')).toBeUndefined();
   });
+
+  test('falls back to the first enabled tab when the default is disabled', () => {
+    const list: ChoyTabRegistration[] = [
+      { value: 'one', label: 'One', disabled: false },
+      { value: 'two', label: 'Two', disabled: true },
+    ];
+    expect(nextChoyTabSelection(list, undefined, 'two')).toBe('one');
+  });
+
+  test('rescues a stale selection when the default never registers', () => {
+    const list: ChoyTabRegistration[] = [
+      { value: 'one', label: 'One', disabled: false },
+    ];
+    expect(nextChoyTabSelection(list, 'gone', 'missing')).toBe('one');
+    expect(nextChoyTabSelection(list, undefined, 'missing')).toBeUndefined();
+  });
 });

@@ -20,7 +20,7 @@ export function pickChoyTabSelection(
 /**
  * Decides the next model value when the registration list changes.
  * Returns undefined when the caller should leave the current value unchanged
- * (still valid, or waiting for a late-registering defaultValue).
+ * (still valid, or waiting for a late-registering defaultValue with no prior selection).
  */
 export function nextChoyTabSelection(
   list: ChoyTabRegistration[],
@@ -35,9 +35,11 @@ export function nextChoyTabSelection(
   if (stillValid) {
     return undefined;
   }
-  // Wait for the configured default to register across mount ticks.
+  // Wait for the configured default across mount ticks, but only while nothing
+  // is selected yet — a stale current must not strand forever if the default
+  // never registers (typo / conditional tab).
   if (defaultValue && !list.some((item) => item.value === defaultValue)) {
-    return undefined;
+    return current ? pickChoyTabSelection(list, defaultValue) : undefined;
   }
   return pickChoyTabSelection(list, defaultValue);
 }

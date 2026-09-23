@@ -49,13 +49,13 @@ watch(
   () => [props.value, props.label, props.disabled] as const,
   ([value], [oldValue]) => {
     if (oldValue !== value) {
-      ctx?.unregister(registeredValue.value);
-      registeredValue.value = value;
-      ctx?.register({
+      // Rename in place so the tab keeps its slot in the tab bar.
+      ctx?.update(registeredValue.value, {
         value,
         label: resolveLabel(),
         disabled: props.disabled,
       });
+      registeredValue.value = value;
       return;
     }
     ctx?.update(value, {

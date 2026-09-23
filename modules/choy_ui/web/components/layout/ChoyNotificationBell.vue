@@ -34,7 +34,7 @@ const badgeText = computed(() => {
   if (!Number.isFinite(count) || count <= 0) {
     return '';
   }
-  const whole = Math.floor(count);
+  const whole = Math.max(1, Math.ceil(count));
   return whole > 99 ? '99+' : String(whole);
 });
 
