@@ -183,7 +183,7 @@ func TestAssertNoForbiddenUiImports_SkipsScanDirs(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "partner")
 	leak := "import { DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n"
-	for _, dir := range []string{"node_modules", "dist", ".choysum", "tmp", ".git"} {
+	for _, dir := range []string{"node_modules", "dist", ".choysum", "tmp", ".git", "public", "coverage"} {
 		nested := filepath.Join(webDir, dir)
 		if err := os.MkdirAll(nested, 0o755); err != nil {
 			t.Fatal(err)
@@ -344,6 +344,18 @@ func TestScanForbiddenUiImportsOnDisk_WalkAndParseErrors(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "ok.ts") {
 		t.Fatalf("expected parse error for ok.ts, got %v", err)
+	}
+
+	parseWebImportFile = func(map[string]string, string, []byte) (*parser.ParserResult, error) {
+		return nil, nil
+	}
+	if _, err := ScanForbiddenUiImportsOnDisk(ForbiddenUiImportScanInput{
+		ModulesPath: modulesPath,
+		ModuleName:  "solo",
+		ModuleRoot:  modRoot,
+		PathAlias:   ModulePathAliasForBoundary(modulesPath),
+	}); err != nil {
+		t.Fatalf("nil parser result must be skipped, got %v", err)
 	}
 }
 

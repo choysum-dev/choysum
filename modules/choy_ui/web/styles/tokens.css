@@ -79,7 +79,8 @@ html.choy-gallery-token-scope.dark {
   --choy-color-ring: oklch(0.7 0.12 255);
 }
 
-.choy-gallery-root.dark {
+.choy-gallery-root.dark,
+html.choy-gallery-token-scope.dark {
   color-scheme: dark;
 }
 

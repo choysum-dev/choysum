@@ -93,6 +93,9 @@ func ScanForbiddenUiImportsOnDisk(input ForbiddenUiImportScanInput) ([]Forbidden
 			if err != nil {
 				return xfmt.Errorf("%s: %w", path, err)
 			}
+			if result == nil {
+				continue
+			}
 			adjustParserResultLines(result, src.LineOffset)
 			// Keep the on-disk path for violation reporting.
 			result.Path = path
@@ -140,7 +143,7 @@ func CheckForbiddenUiImportsOnDisk(modulesPath, moduleName string, pathAlias map
 
 func shouldSkipWebScanDir(name string) bool {
 	switch name {
-	case "node_modules", "dist", ".choysum", "tmp", ".git":
+	case "node_modules", "dist", ".choysum", "tmp", ".git", "public", "coverage":
 		return true
 	default:
 		return false
