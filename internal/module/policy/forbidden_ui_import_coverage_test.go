@@ -494,6 +494,20 @@ func TestCheckForbiddenUiImports_UnitBranches(t *testing.T) {
 	if len(dup) != 1 || dup[0].Rule != "reka-ui" {
 		t.Fatalf("expected one deduped reka-ui violation, got %#v", dup)
 	}
+
+	sortedRules := CheckForbiddenUiImports(ForbiddenUiImportScanInput{
+		ModuleName: "partner",
+		ModuleRoot: root,
+	}, []*parser.ParserResult{{
+		Path: "/modules/partner/web/rules.ts",
+		Imports: map[string]*parser.Import{
+			"U": {ModuleSpecText: "@unovis/vue", Line: 2, Column: 1},
+			"R": {ModuleSpecText: "reka-ui", Line: 2, Column: 20},
+		},
+	}})
+	if len(sortedRules) != 2 || sortedRules[0].Rule > sortedRules[1].Rule {
+		t.Fatalf("expected rule-ordered violations, got %#v", sortedRules)
+	}
 }
 
 func TestClassifyAndPathHelpers_ExtraCases(t *testing.T) {
