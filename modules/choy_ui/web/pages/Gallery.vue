@@ -239,7 +239,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import '../styles/tokens.css';
 import '../styles/preflight-policy.css';
 // Produced by web build (EnsureChoyTailwindCSS); not committed.
@@ -320,6 +320,31 @@ const colorSwatches = [
   { name: '--choy-color-border' },
   { name: '--choy-color-ring' },
 ];
+
+const galleryTokenScopeClass = 'choy-gallery-token-scope';
+
+/**
+ * Mirrors gallery tokens onto documentElement so Reka portals under body inherit --choy-*.
+ */
+function syncGalleryTokenScope(): void {
+  const el = document.documentElement;
+  el.classList.add(galleryTokenScopeClass);
+  el.classList.toggle('dark', isDark.value);
+  el.setAttribute('data-density', density.value);
+}
+
+/**
+ * Clears the documentElement token mirror when leaving the gallery page.
+ */
+function clearGalleryTokenScope(): void {
+  const el = document.documentElement;
+  el.classList.remove(galleryTokenScopeClass, 'dark');
+  el.removeAttribute('data-density');
+}
+
+onMounted(syncGalleryTokenScope);
+watch([isDark, density], syncGalleryTokenScope);
+onUnmounted(clearGalleryTokenScope);
 
 /**
  * Toggles light / dark token sets on the gallery root.

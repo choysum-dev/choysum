@@ -81,6 +81,9 @@ func CheckForbiddenUiImports(input ForbiddenUiImportScanInput, parserResults []*
 			}
 			violations = appendForbiddenUiSpec(violations, result.Path, imp.ModuleSpecText, imp.Line, imp.Column)
 		}
+		for _, exp := range result.Exports {
+			violations = appendForbiddenUiExports(violations, result.Path, exp)
+		}
 	}
 
 	sort.Slice(violations, func(i, j int) bool {
@@ -136,6 +139,28 @@ func appendForbiddenUiSpec(
 		SpecText:   spec,
 		Rule:       rule,
 	})
+}
+
+// appendForbiddenUiExports records runtime re-exports (export … from / export * from).
+// Type-only re-exports are skipped; Export has no ModuleSpecText, so ModuleSpecPath is used.
+func appendForbiddenUiExports(
+	violations []ForbiddenUiImportViolation,
+	sourcePath string,
+	exp *parser.Export,
+) []ForbiddenUiImportViolation {
+	if exp == nil || exp.IsTypeOnly {
+		return violations
+	}
+	if len(exp.Wildcard) > 0 {
+		for _, wild := range exp.Wildcard {
+			if wild == nil || wild.IsTypeOnly {
+				continue
+			}
+			violations = appendForbiddenUiSpec(violations, sourcePath, wild.ModuleSpecPath, wild.Line, wild.Column)
+		}
+		return violations
+	}
+	return appendForbiddenUiSpec(violations, sourcePath, exp.ModuleSpecPath, exp.Line, exp.Column)
 }
 
 // classifyForbiddenUiImport returns a rule id when the import specifier is banned for domain modules.

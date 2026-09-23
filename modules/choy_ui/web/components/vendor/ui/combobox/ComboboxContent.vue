@@ -14,6 +14,7 @@ defineProps<{ class?: ClassValue }>();
   <ComboboxPortal>
     <ComboboxContent
       data-slot="combobox-content"
+      position="popper"
       :class="
         cn(
           'z-50 max-h-60 w-[var(--reka-combobox-trigger-width)] overflow-hidden rounded-md border border-border bg-background p-1 text-foreground shadow-md',

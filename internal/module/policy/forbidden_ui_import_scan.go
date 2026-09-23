@@ -4,6 +4,7 @@
 package policy
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -30,6 +31,17 @@ func ScanForbiddenUiImportsOnDisk(input ForbiddenUiImportScanInput) ([]Forbidden
 	}
 	if isKitHostModule(moduleName) {
 		return nil, nil
+	}
+
+	rootSt, err := statPath(moduleRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, xfmt.Errorf("module root does not exist: %s", moduleRoot)
+		}
+		return nil, xfmt.Errorf("stat module root: %w", err)
+	}
+	if !rootSt.IsDir() {
+		return nil, xfmt.Errorf("module root is not a directory: %s", moduleRoot)
 	}
 
 	webRoot := filepath.Join(moduleRoot, "web")
@@ -64,15 +76,12 @@ func ScanForbiddenUiImportsOnDisk(input ForbiddenUiImportScanInput) ([]Forbidden
 		}
 		sources := webImportSources(path, content)
 		for i, src := range sources {
-			// Always parse as .ts: Vue paths make typescript-go panic (ScriptKind unset).
-			virtualPath := strings.TrimSuffix(path, filepath.Ext(path)) + ".webimport.ts"
-			if i > 0 {
-				virtualPath = strings.TrimSuffix(path, filepath.Ext(path)) + ".webimport." + itoa(i) + ".ts"
-			}
-			result, err := ParseServiceSourceFile(input.PathAlias, virtualPath, []byte(src))
+			virtualPath := webImportVirtualPath(path, i)
+			result, err := ParseServiceSourceFile(input.PathAlias, virtualPath, []byte(src.Content))
 			if err != nil {
-				return err
+				return xfmt.Errorf("%s: %w", path, err)
 			}
+			adjustParserResultLines(result, src.LineOffset)
 			// Keep the on-disk path for violation reporting.
 			result.Path = path
 			parserResults = append(parserResults, result)
@@ -143,26 +152,92 @@ func isWebImportSource(path string) bool {
 	}
 }
 
-func webImportSources(path string, content []byte) []string {
+// webImportSource is one parse unit extracted from a web source file.
+type webImportSource struct {
+	Content    string
+	LineOffset int // newlines before Content's first line in the on-disk file
+}
+
+func webImportSources(path string, content []byte) []webImportSource {
 	if strings.HasSuffix(strings.ToLower(path), ".vue") {
-		matches := vueScriptBlockRe.FindAllSubmatch(content, -1)
+		matches := vueScriptBlockRe.FindAllSubmatchIndex(content, -1)
 		if len(matches) == 0 {
 			return nil
 		}
-		out := make([]string, 0, len(matches))
+		out := make([]webImportSource, 0, len(matches))
 		for _, m := range matches {
-			if len(m) < 2 {
+			if len(m) < 4 {
 				continue
 			}
-			src := strings.TrimSpace(string(m[1]))
-			if src == "" {
+			start, end := m[2], m[3]
+			if start < 0 || end < start || end > len(content) {
 				continue
 			}
-			out = append(out, src)
+			raw := content[start:end]
+			trimmed := bytes.TrimSpace(raw)
+			if len(trimmed) == 0 {
+				continue
+			}
+			// Account for TrimSpace so reported lines match the kept script text.
+			trimLead := bytes.Index(raw, trimmed)
+			if trimLead < 0 {
+				trimLead = 0
+			}
+			lineOffset := bytes.Count(content[:start+trimLead], []byte{'\n'})
+			out = append(out, webImportSource{
+				Content:    string(trimmed),
+				LineOffset: lineOffset,
+			})
 		}
 		return out
 	}
-	return []string{string(content)}
+	return []webImportSource{{Content: string(content), LineOffset: 0}}
+}
+
+// webImportVirtualPath picks a typescript-go-safe path while preserving JSX when needed.
+func webImportVirtualPath(path string, index int) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	base := strings.TrimSuffix(path, filepath.Ext(path))
+	suffix := ".webimport"
+	if index > 0 {
+		suffix = ".webimport." + itoa(index)
+	}
+	switch ext {
+	case ".tsx", ".jsx":
+		return base + suffix + ext
+	default:
+		// Force .ts for .vue and other non-JSX sources: Vue paths make typescript-go panic.
+		return base + suffix + ".ts"
+	}
+}
+
+func adjustParserResultLines(result *parser.ParserResult, lineOffset int) {
+	if result == nil || lineOffset == 0 {
+		return
+	}
+	for _, imp := range result.Imports {
+		if imp != nil && imp.Line > 0 {
+			imp.Line += lineOffset
+		}
+	}
+	for _, imp := range result.DynamicImports {
+		if imp != nil && imp.Line > 0 {
+			imp.Line += lineOffset
+		}
+	}
+	for _, exp := range result.Exports {
+		if exp == nil {
+			continue
+		}
+		if exp.Line > 0 {
+			exp.Line += lineOffset
+		}
+		for _, wild := range exp.Wildcard {
+			if wild != nil && wild.Line > 0 {
+				wild.Line += lineOffset
+			}
+		}
+	}
 }
 
 func itoa(n int) string {

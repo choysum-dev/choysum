@@ -64,6 +64,89 @@ func TestAssertNoForbiddenUiImports_RejectsDomainReka(t *testing.T) {
 	}
 }
 
+func TestAssertNoForbiddenUiImports_RejectsDynamicImport(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := filepath.Join(modulesPath, "partner", "web")
+	if err := os.MkdirAll(webDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "partner", "package.json"), []byte(`{
+  "name": "@choysum-dev/partner",
+  "choysum": { "moduleName": "partner", "application": "partner" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src := "export async function load() {\n  return import('@unovis/vue');\n}\n"
+	if err := os.WriteFile(filepath.Join(webDir, "dyn.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "@unovis") {
+		t.Fatalf("expected @unovis dynamic-import ban, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsRuntimeReExport(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := filepath.Join(modulesPath, "partner", "web")
+	if err := os.MkdirAll(webDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "partner", "package.json"), []byte(`{
+  "name": "@choysum-dev/partner",
+  "choysum": { "moduleName": "partner", "application": "partner" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src := "export { DialogRoot } from 'reka-ui';\n"
+	if err := os.WriteFile(filepath.Join(webDir, "reexport.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui re-export ban, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_VueLineMatchesFile(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := filepath.Join(modulesPath, "auth", "web", "pages")
+	if err := os.MkdirAll(webDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "package.json"), []byte(`{
+  "name": "@choysum-dev/auth",
+  "choysum": { "moduleName": "auth", "application": "auth" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	vue := `<template><div /></template>
+<script setup lang="ts">
+import Button from '@/choy_ui/web/components/vendor/ui/button/Button.vue';
+</script>
+`
+	path := filepath.Join(webDir, "LeakLine.vue")
+	if err := os.WriteFile(path, []byte(vue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "auth")
+	if err == nil {
+		t.Fatal("expected violation")
+	}
+	// Import is on file line 3 (1-based).
+	if !strings.Contains(err.Error(), "LeakLine.vue:3:") {
+		t.Fatalf("expected file-relative line 3 in error, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_MissingModuleRootErrors(t *testing.T) {
+	modulesPath := t.TempDir()
+	err := AssertNoForbiddenUiImports(modulesPath, "does-not-exist")
+	if err == nil || !strings.Contains(err.Error(), "module root does not exist") {
+		t.Fatalf("expected missing module root error, got %v", err)
+	}
+}
+
 func TestAssertNoForbiddenUiImports_RejectsVueScriptDeepPath(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := filepath.Join(modulesPath, "auth", "web", "pages")

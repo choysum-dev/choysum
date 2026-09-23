@@ -33,7 +33,8 @@ export function toast(input: ToastInput): number {
   };
   toasts.value = [...toasts.value, record];
   const duration = input.duration ?? 4000;
-  window.setTimeout(() => dismiss(id), duration);
+  // Ambient timer: works in the browser and in the Go-embedded QuickJS FE runtime.
+  setTimeout(() => dismiss(id), duration);
   return id;
 }
 
@@ -42,7 +43,7 @@ export function toast(input: ToastInput): number {
  */
 export function dismiss(id: number): void {
   toasts.value = toasts.value.map((item) => (item.id === id ? { ...item, open: false } : item));
-  window.setTimeout(() => {
+  setTimeout(() => {
     toasts.value = toasts.value.filter((item) => item.id !== id);
   }, 200);
 }

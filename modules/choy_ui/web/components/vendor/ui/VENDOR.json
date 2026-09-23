@@ -1,5 +1,7 @@
 {
   "source": "shadcn-vue (hand-adapted)",
+  "upstreamLicense": "MIT",
+  "upstreamCopyright": "shadcn-vue contributors",
   "rekaVersion": "2.10.4",
   "copiedAt": "2026-09-22",
   "items": [

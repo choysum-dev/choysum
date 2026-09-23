@@ -237,11 +237,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 
 	webDir := filepath.Join(modulesRoot, app, "web")
 	if st, err := os.Stat(webDir); err == nil && st.IsDir() {
-		if err := policy.CheckForbiddenUiImportsOnDisk(
-			modulesRoot,
-			app,
-			policy.ModulePathAliasForBoundary(modulesRoot),
-		); err != nil {
+		if err := policy.AssertNoForbiddenUiImports(modulesRoot, app); err != nil {
 			return xfmt.Errorf("typecheck: %w", err)
 		}
 	}
