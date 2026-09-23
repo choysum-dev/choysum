@@ -63,6 +63,11 @@ const widthClass = computed(() => {
       return '';
   }
 });
+
+const emit = defineEmits<{
+  import: [];
+  export: [];
+}>();
 </script>
 
 <template>
@@ -89,7 +94,13 @@ const widthClass = computed(() => {
             <slot name="header" />
           </div>
           <div class="choy-page__title-actions flex shrink-0 items-center gap-2">
-            <ChoyPageIoMenu v-if="hasIoMenu" :action-import="actionImport" :action-export="actionExport" />
+            <ChoyPageIoMenu
+              v-if="hasIoMenu"
+              :action-import="actionImport"
+              :action-export="actionExport"
+              @import="emit('import')"
+              @export="emit('export')"
+            />
             <slot name="title-actions" />
           </div>
         </div>
@@ -104,7 +115,13 @@ const widthClass = computed(() => {
             {{ title }}
           </h1>
           <div v-if="showTitleActions" class="choy-page__title-actions flex shrink-0 items-center gap-2">
-            <ChoyPageIoMenu v-if="hasIoMenu" :action-import="actionImport" :action-export="actionExport" />
+            <ChoyPageIoMenu
+              v-if="hasIoMenu"
+              :action-import="actionImport"
+              :action-export="actionExport"
+              @import="emit('import')"
+              @export="emit('export')"
+            />
             <slot name="title-actions" />
           </div>
         </div>

@@ -35,6 +35,10 @@ const badgeText = computed(() => {
   }
   return props.count > 99 ? '99+' : String(props.count);
 });
+
+const ariaLabel = computed(() =>
+  badgeText.value ? `${props.label} (${badgeText.value} unread)` : props.label,
+);
 </script>
 
 <template>
@@ -42,12 +46,19 @@ const badgeText = computed(() => {
     data-anchor="choy.notification-bell"
     :class="['choy-notification-bell relative inline-flex', props.class]"
   >
-    <Button variant="ghost" size="icon" type="button" :aria-label="label" @click="emit('click')">
+    <Button
+      variant="ghost"
+      size="icon"
+      type="button"
+      :aria-label="ariaLabel"
+      @click="emit('click')"
+    >
       <Bell class="h-4 w-4" aria-hidden="true" />
     </Button>
     <Badge
       v-if="badgeText"
-      class="absolute -right-1 -top-1 min-w-5 justify-center px-1 text-[10px]"
+      aria-hidden="true"
+      class="pointer-events-none absolute -right-1 -top-1 min-w-5 justify-center px-1 text-[10px]"
     >
       {{ badgeText }}
     </Badge>

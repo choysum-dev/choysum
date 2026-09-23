@@ -4,12 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed, provide, toRef } from 'vue';
+import { computed, provide } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import { ChoyGridColsKey } from './choyGridContext';
 
 /**
- * Responsive CSS grid host for ChoyCol children.
+ * CSS grid host for ChoyCol children.
+ * Track count is the `cols` prop (not Tailwind `grid-cols-*` on `class`);
+ * change `cols` / `span` for layout — inline styles intentionally own the tracks.
  */
 const props = withDefaults(
   defineProps<{
@@ -23,7 +25,15 @@ const props = withDefaults(
   },
 );
 
-provide(ChoyGridColsKey, toRef(props, 'cols'));
+const safeCols = computed(() => {
+  const n = Number(props.cols);
+  if (!Number.isFinite(n)) {
+    return 12;
+  }
+  return Math.max(1, Math.floor(n));
+});
+
+provide(ChoyGridColsKey, safeCols);
 
 const gapClass = computed(() => {
   switch (props.gap) {
@@ -39,7 +49,7 @@ const gapClass = computed(() => {
 });
 
 const style = computed(() => ({
-  gridTemplateColumns: `repeat(${props.cols}, minmax(0, 1fr))`,
+  gridTemplateColumns: `repeat(${safeCols.value}, minmax(0, 1fr))`,
 }));
 </script>
 

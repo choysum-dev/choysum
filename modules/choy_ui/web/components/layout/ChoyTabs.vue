@@ -26,6 +26,35 @@ const props = defineProps<{
 const modelValue = defineModel<string>();
 const tabs = ref<ChoyTabRegistration[]>([]);
 
+function firstEnabledValue(list: ChoyTabRegistration[]): string {
+  const enabled = list.find((item) => !item.disabled);
+  return (enabled ?? list[0])?.value ?? '';
+}
+
+/**
+ * Picks a valid selection: prefer defaultValue when it names an enabled tab,
+ * otherwise the first enabled registration.
+ */
+function pickSelection(list: ChoyTabRegistration[]): string {
+  const def = props.defaultValue;
+  if (def && list.some((item) => item.value === def && !item.disabled)) {
+    return def;
+  }
+  return firstEnabledValue(list);
+}
+
+function reconcileSelection(list: ChoyTabRegistration[]): void {
+  if (!list.length) {
+    return;
+  }
+  const current = modelValue.value;
+  const stillValid =
+    !!current && list.some((item) => item.value === current && !item.disabled);
+  if (!stillValid) {
+    modelValue.value = pickSelection(list);
+  }
+}
+
 const ctx: ChoyTabsContext = {
   tabs,
   register(tab) {
@@ -44,18 +73,7 @@ const ctx: ChoyTabsContext = {
 
 provide(ChoyTabsContextKey, ctx);
 
-watch(
-  tabs,
-  (list) => {
-    if (!list.length) {
-      return;
-    }
-    if (modelValue.value === undefined || modelValue.value === '') {
-      modelValue.value = props.defaultValue ?? list[0].value;
-    }
-  },
-  { deep: true },
-);
+watch(tabs, (list) => reconcileSelection(list), { deep: true });
 
 onBeforeUnmount(() => {
   tabs.value = [];

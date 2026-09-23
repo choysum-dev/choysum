@@ -5,6 +5,10 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { onUnmounted, ref } from 'vue';
+import '../styles/tokens.css';
+import '../styles/preflight-policy.css';
+// Produced by web build (EnsureChoyTailwindCSS); not committed.
+import '../styles/choy-tailwind.generated.css';
 import ChoyButton from '../components/layout/ChoyButton.vue';
 import ChoyCard from '../components/layout/ChoyCard.vue';
 import ChoyPage from '../components/layout/ChoyPage.vue';

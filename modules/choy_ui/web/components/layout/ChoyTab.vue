@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { inject, onBeforeUnmount, onMounted, watch } from 'vue';
+import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TabsContent from '../vendor/ui/tabs/TabsContent.vue';
 import type { ClassValue } from '../../lib/utils';
 import { ChoyTabsContextKey } from './choyTabsContext';
@@ -26,6 +26,8 @@ const props = withDefaults(
 );
 
 const ctx = inject(ChoyTabsContextKey, null);
+/** Value currently registered with the parent (may lag props.value briefly). */
+const registeredValue = ref(props.value);
 
 function resolveLabel(): string {
   if (props.label) {
@@ -35,6 +37,7 @@ function resolveLabel(): string {
 }
 
 onMounted(() => {
+  registeredValue.value = props.value;
   ctx?.register({
     value: props.value,
     label: resolveLabel(),
@@ -43,9 +46,19 @@ onMounted(() => {
 });
 
 watch(
-  () => [props.label, props.disabled] as const,
-  () => {
-    ctx?.update(props.value, {
+  () => [props.value, props.label, props.disabled] as const,
+  ([value], [oldValue]) => {
+    if (oldValue !== value) {
+      ctx?.unregister(registeredValue.value);
+      registeredValue.value = value;
+      ctx?.register({
+        value,
+        label: resolveLabel(),
+        disabled: props.disabled,
+      });
+      return;
+    }
+    ctx?.update(value, {
       label: resolveLabel(),
       disabled: props.disabled,
     });
@@ -53,7 +66,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  ctx?.unregister(props.value);
+  ctx?.unregister(registeredValue.value);
 });
 </script>
 

@@ -36,4 +36,13 @@ describe('useChoyMessage', () => {
     clearToasts();
     expect(store.value.length).toBe(0);
   });
+
+  test('falls back to the bare level label for an empty title', () => {
+    clearToasts();
+    const api = useChoyMessage();
+    api.info('');
+    const store = useToastStore();
+    expect(store.value[0].title).toBe('Info');
+    clearToasts();
+  });
 });
