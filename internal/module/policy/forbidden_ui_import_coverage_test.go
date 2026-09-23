@@ -56,12 +56,60 @@ const n = ref(1);
 func TestAssertNoForbiddenUiImports_AllowsTypeOnlyImport(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "partner")
-	src := "import type { DialogRoot } from 'reka-ui';\nexport type { DialogRoot } from 'reka-ui';\nexport type X = DialogRoot;\n"
+	// Statement-level, inline-specifier and mixed forms: only runtime bindings ban.
+	src := "import type { DialogRoot } from 'reka-ui';\n" +
+		"import { type DialogTrigger } from 'reka-ui';\n" +
+		"export type { DialogRoot } from 'reka-ui';\n" +
+		"export type X = DialogRoot;\n"
 	if err := os.WriteFile(filepath.Join(webDir, "types.ts"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := AssertNoForbiddenUiImports(modulesPath, "partner"); err != nil {
 		t.Fatalf("type-only import/re-export must be allowed: %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsMixedTypeAndValueImport(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	src := "import { type DialogTrigger, DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n"
+	if err := os.WriteFile(filepath.Join(webDir, "mixed.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected runtime reka-ui ban from mixed import, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsBareChoyUIPackage(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	src := "import * as kit from '@choysum-dev/choy_ui';\nexport const x = kit;\n"
+	if err := os.WriteFile(filepath.Join(webDir, "bare.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "choy_ui-deep") {
+		t.Fatalf("expected bare choy_ui package ban, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsScriptCloseWithWhitespace(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "partner")
+	vue := `<template><div /></template>
+<script setup lang="ts">
+import { DialogRoot } from 'reka-ui';
+export const x = DialogRoot;
+</script >
+`
+	if err := os.WriteFile(filepath.Join(webDir, "CloseWS.vue"), []byte(vue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("expected reka-ui ban with </script >, got %v", err)
 	}
 }
 
@@ -574,6 +622,8 @@ func TestClassifyAndPathHelpers_ExtraCases(t *testing.T) {
 		{"/web/components/internal/", "internal/*"},
 		{"choy_ui/web/components/x", "choy_ui-deep"},
 		{"choy_ui/web/lib/x", "choy_ui-deep"},
+		{"choy_ui", "choy_ui-deep"},
+		{"@choysum-dev/choy_ui", "choy_ui-deep"},
 		{"choy_ui/other", ""},
 		{"@/choy_ui/web/lib/utils", "choy_ui-deep"},
 	}
@@ -650,8 +700,8 @@ func TestWebImportHelpers_Direct(t *testing.T) {
 		t.Fatalf("jsx: %s", got)
 	}
 
-	if itoa(0) != "0" || itoa(12) != "12" || itoa(7) != "7" {
-		t.Fatalf("itoa: %q %q %q", itoa(0), itoa(12), itoa(7))
+	if itoa(0) != "0" || itoa(12) != "12" || itoa(7) != "7" || itoa(-3) != "-3" {
+		t.Fatalf("itoa: %q %q %q %q", itoa(0), itoa(12), itoa(7), itoa(-3))
 	}
 
 	adjustParserResultLines(nil, 1)

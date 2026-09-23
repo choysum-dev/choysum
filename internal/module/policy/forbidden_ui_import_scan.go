@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -23,10 +24,11 @@ var walkWebTree = func(root string, walkFn fs.WalkDirFunc) error {
 var parseWebImportFile = ParseServiceSourceFile
 
 // Script open tags may include quoted attributes that contain '>' (e.g. unknown=">").
-// Closing </script> must be followed by spaces (including CR) and either another tag
-// ('<') or a newline/EOF so mid-line string literals like "</script>" do not truncate
+// Closing </script> may include whitespace before '>' (Vue accepts </script >).
+// After the close tag, require spaces (including CR) and either another tag ('<')
+// or a newline/EOF so mid-line string literals like "</script>" do not truncate
 // the block, while CRLF SFCs and compact one-line SFCs still match.
-var vueScriptBlockRe = regexp.MustCompile(`(?ims)<script\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)</script>(?:[\t \r]*(?:<|\n|$))`)
+var vueScriptBlockRe = regexp.MustCompile(`(?ims)<script\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)</script\s*>(?:[\t \r]*(?:<|\n|$))`)
 var vueHTMLCommentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 
 // vueScriptInCommentRe detects HTML comments that embed a <script> sample (docs).
@@ -282,15 +284,5 @@ func adjustParserResultLines(result *parser.ParserResult, lineOffset int) {
 }
 
 func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var b [20]byte
-	i := len(b)
-	for n > 0 {
-		i--
-		b[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(b[i:])
+	return strconv.Itoa(n)
 }

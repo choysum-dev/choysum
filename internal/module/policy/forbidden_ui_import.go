@@ -4,6 +4,7 @@
 package policy
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -199,6 +200,10 @@ func classifyForbiddenUiImport(spec string) string {
 	if lower == "@unovis" || strings.HasPrefix(lower, "@unovis/") {
 		return "@unovis"
 	}
+	// Bare kit entry points: deep-path markers only match subpaths.
+	if lower == "@choysum-dev/choy_ui" || lower == "choy_ui" {
+		return "choy_ui-deep"
+	}
 
 	// Bare / alias imports that target L2 ui/* or L3 internal/* trees.
 	if isForbiddenUIPath(lower) {
@@ -276,7 +281,7 @@ func FormatForbiddenUiImportError(violations []ForbiddenUiImportViolation) error
 		}
 		fmt.Fprintf(&b, "  - %s imports %q (rule %s)\n", loc, v.SpecText, v.Rule)
 	}
-	return fmt.Errorf("%s", strings.TrimSuffix(b.String(), "\n"))
+	return errors.New(strings.TrimSuffix(b.String(), "\n"))
 }
 
 // AssertNoForbiddenUiImports is the disk entry used by typecheck and unit tests.

@@ -31,6 +31,8 @@ func TestClassifyForbiddenUiImport(t *testing.T) {
 		{"@/choy_ui/web/components/internal/DatePicker", "internal/*"},
 		{"@/choy_ui/web/lib/utils", "choy_ui-deep"},
 		{"@choysum-dev/choy_ui/web/components/vendor/ui/button", "ui/*"},
+		{"@choysum-dev/choy_ui", "choy_ui-deep"},
+		{"choy_ui", "choy_ui-deep"},
 		{"vue", ""},
 		{"@/web/web/components/view/OFormView", ""},
 		{"element-plus", ""},

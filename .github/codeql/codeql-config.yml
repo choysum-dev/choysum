@@ -9,5 +9,6 @@ name: "Choysum CodeQL"
 paths-ignore:
   # language-core service-script goldens (fixtures for GoldenCoder; not product TS)
   - "internal/typecheck/testdata/vue/golden/**"
-  # Vendored L2 primitives (shadcn-vue hand-adapted). Module-agnostic for choy_ui → web cutover.
-  - "modules/*/web/components/vendor/ui/**"
+  # Vendored L2 primitives stay in CodeQL scope: files are hand-adapted product
+  # sources. Review-noise ignores live in .pr_agent.toml / .coderabbit.yaml /
+  # .sourcery.yaml / codecov.yml instead.

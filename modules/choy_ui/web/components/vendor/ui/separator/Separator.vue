@@ -31,9 +31,9 @@ const classes = computed(() =>
 <template>
   <div
     data-slot="separator"
-    role="separator"
-    :aria-orientation="orientation"
-    :aria-hidden="decorative ? 'true' : undefined"
+    :role="decorative ? 'none' : 'separator'"
+    :aria-orientation="decorative ? undefined : orientation"
+    :aria-hidden="decorative ? true : undefined"
     :class="classes"
   />
 </template>
