@@ -207,6 +207,11 @@ watch(modelValue, (id) => {
 
 watch(open, (isOpen) => {
   if (!isOpen) {
+    // Pin before options are dropped so the trigger label survives a deferred model update.
+    const current = findRelationOption(options.value, modelValue.value);
+    if (current) {
+      pinnedSelected.value = current;
+    }
     // Drop the typeahead keyword so the trigger shows the selected label again.
     query.value = '';
     searchSeq += 1;

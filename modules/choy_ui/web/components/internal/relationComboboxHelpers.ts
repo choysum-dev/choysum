@@ -75,13 +75,16 @@ export function upsertRelationOption(
   options: readonly RelationOption[],
   selected: RelationOption | null | undefined,
 ): RelationOption[] {
-  if (!selected?.id) {
+  const id = String(selected?.id ?? '').trim();
+  if (!selected || !id) {
     return [...options];
   }
-  if (options.some((item) => item.id === selected.id)) {
-    return options.map((item) => (item.id === selected.id ? selected : item));
+  // Normalize so a padded id matches the trimmed ids used by findRelationOption.
+  const normalized: RelationOption = { ...selected, id };
+  if (options.some((item) => item.id === id)) {
+    return options.map((item) => (item.id === id ? normalized : item));
   }
-  return [selected, ...options];
+  return [normalized, ...options];
 }
 
 /** Finds an option by id. */

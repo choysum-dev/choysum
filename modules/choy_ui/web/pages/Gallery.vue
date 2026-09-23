@@ -129,10 +129,10 @@ SPDX-License-Identifier: Apache-2.0
             </CardHeader>
             <CardContent>
               <DataTable
+                v-model:row-selection="tableSelection"
                 :columns="tableColumns"
                 :data="tableRows"
                 :height="220"
-                @update:row-selection="(ids) => (tableSelection = ids)"
               />
             </CardContent>
           </Card>

@@ -63,7 +63,8 @@ const calendarValue = computed<DateValue | undefined>({
       modelValue.value = clearDatePickerValue();
       return;
     }
-    modelValue.value = formatDatePickerValue(next);
+    // Out-of-range years make formatDatePickerValue return ''; keep string | null.
+    modelValue.value = formatDatePickerValue(next) || clearDatePickerValue();
     open.value = false;
   },
 });

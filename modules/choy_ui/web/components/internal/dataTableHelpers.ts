@@ -40,17 +40,18 @@ export function compareDataTableValues(a: unknown, b: unknown): number {
   if (b == null) {
     return 1;
   }
-  if (typeof a === 'number' && typeof b === 'number') {
-    if (Number.isNaN(a) || Number.isNaN(b)) {
-      return Number.isNaN(a) === Number.isNaN(b) ? 0 : Number.isNaN(a) ? 1 : -1;
+  // Coerce Dates to epoch millis so mixed Date/number columns compare numerically;
+  // an invalid Date yields NaN and keeps the NaN ordering below.
+  const left = a instanceof Date ? a.getTime() : a;
+  const right = b instanceof Date ? b.getTime() : b;
+  if (typeof left === 'number' && typeof right === 'number') {
+    if (Number.isNaN(left) || Number.isNaN(right)) {
+      return Number.isNaN(left) === Number.isNaN(right) ? 0 : Number.isNaN(left) ? 1 : -1;
     }
-    return a - b;
-  }
-  if (a instanceof Date && b instanceof Date) {
-    return compareDataTableValues(a.getTime(), b.getTime());
+    return left - right;
   }
   // localeCompare (not Intl.Collator): QuickJS FE unit runtime has no constructible Collator.
-  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+  return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' });
 }
 
 /** Stable sort of rows by a column accessor and direction. */

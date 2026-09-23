@@ -20,6 +20,9 @@ describe('datePickerHelpers', () => {
     // Years outside 1–9999 are not format/parse round-trippable.
     expect(formatDatePickerValue({ year: 10000, month: 1, day: 1 })).toBe('');
     expect(formatDatePickerValue({ year: 0, month: 1, day: 1 })).toBe('');
+    // Out-of-range month/day must not emit strings the parser rejects.
+    expect(formatDatePickerValue({ year: 2026, month: 13, day: 1 })).toBe('');
+    expect(formatDatePickerValue({ year: 2026, month: 1, day: 40 })).toBe('');
   });
 
   test('treats blank and invalid as null', () => {

@@ -85,6 +85,17 @@ describe('relationComboboxHelpers', () => {
     );
     expect(limited).toHaveLength(2);
 
+    // `limit` must actually cap the page, not just guard against a NaN pageSize.
+    const capped = await runRelationNameSearch(
+      async () => [
+        { id: '1', label: 'One' },
+        { id: '2', label: 'Two' },
+      ],
+      'x',
+      1,
+    );
+    expect(capped.map((row) => row.id)).toEqual(['1']);
+
     // Raw NameSearch payloads are normalized (and deduped) defensively.
     const raw = await runRelationNameSearch(
       async () =>
@@ -109,6 +120,11 @@ describe('relationComboboxHelpers', () => {
       'a',
     ]);
     expect(upsertRelationOption(base, { id: 'a', label: 'A2' })[0]?.label).toBe('A2');
+    // Padded host ids must trim to match findRelationOption / mapNameSearchRows.
+    expect(upsertRelationOption(base, { id: ' a ', label: 'A3' })[0]).toEqual({
+      id: 'a',
+      label: 'A3',
+    });
     expect(findRelationOption(base, 'a')?.label).toBe('A');
     expect(findRelationOption(base, null)).toBeNull();
     expect(findRelationOption(base, '   ')).toBeNull();

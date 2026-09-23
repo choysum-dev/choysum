@@ -11,13 +11,17 @@ export type DatePickerDateParts = {
 
 /** Formats a calendar date as YYYY-MM-DD (year padded to four digits, range 1–9999). */
 export function formatDatePickerValue(date: DatePickerDateParts): string {
-  const year = date.year;
+  const { year, month, day } = date;
   if (!Number.isInteger(year) || year < 1 || year > 9999) {
     return '';
   }
-  const month = String(date.month).padStart(2, '0');
-  const day = String(date.day).padStart(2, '0');
-  return `${String(year).padStart(4, '0')}-${month}-${day}`;
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    return '';
+  }
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    return '';
+  }
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 /**

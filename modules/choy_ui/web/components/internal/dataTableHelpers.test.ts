@@ -58,6 +58,9 @@ describe('dataTableHelpers', () => {
     expect(compareDataTableValues(earlier, later)).toBeLessThan(0);
     expect(compareDataTableValues(later, earlier)).toBeGreaterThan(0);
     expect(compareDataTableValues(new Date(Number.NaN), later)).toBeGreaterThan(0);
+    // Mixed Date/number columns must compare on epoch millis, not localeCompare.
+    expect(compareDataTableValues(earlier, earlier.getTime())).toBe(0);
+    expect(compareDataTableValues(later.getTime(), earlier)).toBeGreaterThan(0);
   });
 
   test('toggles and bulk-sets selection', () => {
