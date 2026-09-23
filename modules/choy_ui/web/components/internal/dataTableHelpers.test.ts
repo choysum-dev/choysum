@@ -69,6 +69,10 @@ describe('dataTableHelpers', () => {
     // Mixed Date/number columns must compare on epoch millis, not localeCompare.
     expect(compareDataTableValues(earlier, earlier.getTime())).toBe(0);
     expect(compareDataTableValues(later.getTime(), earlier)).toBeGreaterThan(0);
+    // ±Infinity must order via < / >, not subtraction (Infinity - Infinity is NaN).
+    expect(compareDataTableValues(Number.POSITIVE_INFINITY, 1)).toBeGreaterThan(0);
+    expect(compareDataTableValues(Number.NEGATIVE_INFINITY, 1)).toBeLessThan(0);
+    expect(compareDataTableValues(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)).toBe(0);
   });
 
   test('toggles and bulk-sets selection', () => {

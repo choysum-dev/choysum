@@ -48,7 +48,7 @@ export function compareDataTableValues(a: unknown, b: unknown): number {
     if (Number.isNaN(left) || Number.isNaN(right)) {
       return Number.isNaN(left) === Number.isNaN(right) ? 0 : Number.isNaN(left) ? 1 : -1;
     }
-    return left - right;
+    return left < right ? -1 : left > right ? 1 : 0;
   }
   // localeCompare (not Intl.Collator): QuickJS FE unit runtime has no constructible Collator.
   return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' });

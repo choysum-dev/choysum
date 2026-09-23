@@ -376,7 +376,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
   <div
     role="table"
     data-anchor="choy.internal.data-table"
-    :aria-rowcount="rows.length + 1"
+    :aria-rowcount="rows.length ? rows.length + 1 : 2"
     :aria-colcount="table.getVisibleLeafColumns().length"
     :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"
   >
@@ -418,6 +418,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
             type="button"
             class="flex flex-1 items-center gap-1 text-left hover:text-foreground"
             :class="{ 'cursor-default': !header.column.getCanSort() }"
+            :disabled="!header.column.getCanSort()"
             @click="onHeaderClick(header.column.id, header.column.getCanSort())"
           >
             <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
