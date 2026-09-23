@@ -276,6 +276,16 @@ watch(
   },
 );
 
+// Swapping columns (e.g. another entity) can leave a sort id with no matching column.
+watch(
+  () => props.columns,
+  () => {
+    if (sorting.value.some((sort) => !table.getColumn(sort.id))) {
+      sorting.value = [];
+    }
+  },
+);
+
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
@@ -377,6 +387,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
   <div
     role="grid"
     data-anchor="choy.internal.data-table"
+    :aria-multiselectable="enableRowSelection ? 'true' : undefined"
     :aria-rowcount="rows.length ? rows.length + 1 : 2"
     :aria-colcount="table.getVisibleLeafColumns().length"
     :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"

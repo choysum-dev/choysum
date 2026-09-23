@@ -88,8 +88,8 @@ function onClear(): void {
 }
 
 function onToday(): void {
-  modelValue.value = formatDatePickerValue(todayDatePickerValue());
-  open.value = false;
+  // Route through the validated setter so an out-of-range result can never clear the model.
+  calendarValue.value = todayDatePickerValue();
 }
 
 watch(

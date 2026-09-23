@@ -73,6 +73,9 @@ describe('dataTableHelpers', () => {
     expect(compareDataTableValues(Number.POSITIVE_INFINITY, 1)).toBeGreaterThan(0);
     expect(compareDataTableValues(Number.NEGATIVE_INFINITY, 1)).toBeLessThan(0);
     expect(compareDataTableValues(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)).toBe(0);
+    // Numeric-looking strings must sort numerically even without ICU localeCompare options.
+    expect(compareDataTableValues('9', '10')).toBeLessThan(0);
+    expect(compareDataTableValues('10', '9')).toBeGreaterThan(0);
   });
 
   test('toggles and bulk-sets selection', () => {

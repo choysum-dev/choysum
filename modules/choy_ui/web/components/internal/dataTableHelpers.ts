@@ -50,8 +50,21 @@ export function compareDataTableValues(a: unknown, b: unknown): number {
     }
     return left < right ? -1 : left > right ? 1 : 0;
   }
-  // localeCompare (not Intl.Collator): QuickJS FE unit runtime has no constructible Collator.
-  return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' });
+  // localeCompare options are ignored by runtimes without ICU (e.g. QuickJS), so order
+  // numeric-looking strings explicitly before falling back to a locale-aware compare.
+  const leftText = String(left);
+  const rightText = String(right);
+  const leftNumber = Number(leftText);
+  const rightNumber = Number(rightText);
+  if (
+    leftText.trim() !== '' &&
+    rightText.trim() !== '' &&
+    Number.isFinite(leftNumber) &&
+    Number.isFinite(rightNumber)
+  ) {
+    return leftNumber < rightNumber ? -1 : leftNumber > rightNumber ? 1 : 0;
+  }
+  return leftText.localeCompare(rightText, undefined, { numeric: true, sensitivity: 'base' });
 }
 
 /** Stable sort of rows by a column accessor and direction. */
