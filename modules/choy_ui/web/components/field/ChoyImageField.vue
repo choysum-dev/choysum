@@ -61,6 +61,15 @@ watch(
   { immediate: true },
 );
 
+watch(
+  // A host-driven value change (e.g. loading another record) must drop a stale
+  // pick-rejection error; a rejected pick never changes the model, so it survives.
+  () => model.value,
+  () => {
+    fileError.value = '';
+  },
+);
+
 onBeforeUnmount(() => {
   if (localObjectUrl.value) {
     URL.revokeObjectURL(localObjectUrl.value);

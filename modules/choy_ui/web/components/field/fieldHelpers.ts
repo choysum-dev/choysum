@@ -147,19 +147,17 @@ export function formatChoyMonetary(
       formatted = rounded.text;
     } else if (
       trimmed &&
+      /e/i.test(trimmed) &&
       Number.isFinite(numeric) &&
+      Number.isSafeInteger(Math.trunc(numeric)) &&
       /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(trimmed)
     ) {
-      const numericRounded = roundChoyDecimal(String(numeric), precision);
-      // Exponential text may still fall back to toFixed, but only when the numeric
-      // value is exactly representable; otherwise the displayed amount would be wrong.
-      if (
-        !numericRounded &&
-        (!/e/i.test(trimmed) || !Number.isSafeInteger(Math.trunc(numeric)))
-      ) {
-        return '';
-      }
-      formatted = numericRounded?.text ?? numeric.toFixed(precision);
+      // Only exponential text needs the numeric fallback: a plain decimal rejected by
+      // roundChoyDecimal is unrepresentable, so returning '' avoids a silently
+      // re-rounded (lossy) amount.
+      formatted =
+        roundChoyDecimal(String(numeric), precision)?.text ??
+        numeric.toFixed(precision);
     } else {
       return '';
     }

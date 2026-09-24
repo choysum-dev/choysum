@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { ClassValue } from '../../lib/utils';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
@@ -40,6 +40,15 @@ const model = defineModel<ChoyBinaryValue>({ default: null });
 const inputRef = ref<HTMLInputElement | null>(null);
 /** Set when a picked file is rejected by `accept`; the model stays untouched. */
 const fileError = ref('');
+
+watch(
+  // A host-driven value change (e.g. loading another record) must drop a stale
+  // pick-rejection error; a rejected pick never changes the model, so it survives.
+  () => model.value,
+  () => {
+    fileError.value = '';
+  },
+);
 
 const displayName = computed(() => model.value?.name ?? '');
 const displaySize = computed(() => {
@@ -78,13 +87,25 @@ function onChange(event: Event): void {
       .split(',')
       .map((token) => token.trim())
       .filter(Boolean)
-      .some((token) =>
-        token.startsWith('.')
-          ? name.endsWith(token)
-          : token.endsWith('/*')
-            ? type.startsWith(token.slice(0, -1))
-            : type === token,
-      );
+      .some((token) => {
+        // `*` / `*/*` mean "any type"; they must not reject every file.
+        if (token === '*' || token === '*/*') {
+          return true;
+        }
+        if (token.startsWith('.')) {
+          return name.endsWith(token);
+        }
+        if (token.endsWith('/*')) {
+          return type.startsWith(token.slice(0, -1));
+        }
+        // Some OS/browser pairs report an empty `file.type`; fall back to the
+        // extension so a valid pick is not rejected outright.
+        const subtype = token.split('/')[1] ?? '';
+        return (
+          type === token ||
+          (type === '' && subtype !== '' && name.endsWith(`.${subtype}`))
+        );
+      });
     if (!allowed) {
       fileError.value = 'Selected file type is not allowed.';
       input.value = '';

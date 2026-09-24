@@ -4,13 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router';
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
 import { ChevronRight } from 'lucide-vue-next';
 import type { ClassValue } from '../../lib/utils';
 
 export type ChoyBreadcrumbItem = {
   label: string;
-  to?: string;
+  to?: RouteLocationRaw;
 };
 
 /**

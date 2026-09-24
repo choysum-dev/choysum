@@ -174,9 +174,18 @@ function onSave(): void {
     ChoyMessage.error('Save failed', { description: 'Name is required.' });
     return;
   }
+  const selectedId =
+    listSelection.value.length === 1 ? String(listSelection.value[0]) : null;
+  // Only trust a selection that is still visible on the current page, so a stale
+  // id from a previous page cannot become the write target.
   const captureRowId =
-    selectedRowId.value ??
-    (listSelection.value.length === 1 ? String(listSelection.value[0]) : null);
+    (selectedRowId.value !== null &&
+    pageRows.value.some((row) => row.Id === selectedRowId.value)
+      ? selectedRowId.value
+      : null) ??
+    (selectedId !== null && pageRows.value.some((row) => row.Id === selectedId)
+      ? selectedId
+      : null);
   const captureActive = active.value;
   const captureCurrencyLabel = currencyOption.value?.label ?? 'no currency';
   if (!captureRowId) {
@@ -226,7 +235,7 @@ function onRowClick(row: CompanyRow): void {
               <template #breadcrumb>
                 <ChoyBreadcrumb
                   :items="[
-                    { label: 'Gallery', to: '/web/__choy_gallery' },
+                    { label: 'Gallery', to: { name: 'ChoyUiGallery' } },
                     { label: 'Dogfood Company' },
                   ]"
                 />
