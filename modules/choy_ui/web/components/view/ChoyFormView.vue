@@ -38,11 +38,17 @@ withDefaults(
   >
     <div :aria-busy="loading || undefined">
       <div
-        v-if="showHeader && (title || $slots['system-actions'] || $slots['user-actions'] || $slots['header-right'] || $slots.statusbar)"
+        v-if="showHeader && (title || $slots.breadcrumb || $slots['system-actions'] || $slots['user-actions'] || $slots['header-right'] || $slots.statusbar)"
         class="choy-form-view__header flex flex-wrap items-center gap-3 border-b border-border px-4 py-3"
         :aria-hidden="loading || undefined"
         :inert="loading || undefined"
       >
+        <div
+          v-if="$slots.breadcrumb"
+          class="choy-form-view__breadcrumb w-full basis-full"
+        >
+          <slot name="breadcrumb" />
+        </div>
         <h2 v-if="title" class="choy-form-view__title text-base font-semibold">{{ title }}</h2>
         <div v-if="$slots.statusbar" class="choy-form-view__statusbar min-w-0 flex-1">
           <slot name="statusbar" />

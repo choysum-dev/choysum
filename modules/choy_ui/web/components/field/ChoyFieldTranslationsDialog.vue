@@ -1,0 +1,94 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import Dialog from '../vendor/ui/dialog/Dialog.vue';
+import DialogContent from '../vendor/ui/dialog/DialogContent.vue';
+import DialogDescription from '../vendor/ui/dialog/DialogDescription.vue';
+import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue';
+import Input from '../vendor/ui/input/Input.vue';
+import ChoyButton from '../layout/ChoyButton.vue';
+
+export type ChoyTranslationRow = {
+  lang: string;
+  value: string;
+};
+
+/**
+ * Dialog for editing per-language field translations.
+ */
+const props = withDefaults(
+  defineProps<{
+    fieldLabel?: string;
+    rows?: ChoyTranslationRow[];
+  }>(),
+  {
+    fieldLabel: '',
+    rows: () => [],
+  },
+);
+
+const open = defineModel<boolean>('open', { default: false });
+
+const emit = defineEmits<{
+  save: [rows: ChoyTranslationRow[]];
+}>();
+
+const draft = ref<ChoyTranslationRow[]>([]);
+
+watch(
+  [open, () => props.rows],
+  ([isOpen]) => {
+    if (isOpen) {
+      draft.value = (props.rows ?? []).map((r) => ({
+        lang: String(r.lang ?? ''),
+        value: String(r.value ?? ''),
+      }));
+    }
+  },
+  { immediate: true },
+);
+
+function onSave(): void {
+  emit(
+    'save',
+    draft.value.map((r) => ({ lang: r.lang, value: r.value })),
+  );
+  open.value = false;
+}
+
+function onCancel(): void {
+  open.value = false;
+}
+</script>
+
+<template>
+  <Dialog v-model:open="open">
+    <DialogContent data-anchor="choy.field-translations-dialog" class="max-w-md">
+      <DialogTitle>
+        Translations{{ fieldLabel ? `: ${fieldLabel}` : '' }}
+      </DialogTitle>
+      <DialogDescription>
+        Edit translated values for this field.
+      </DialogDescription>
+      <div class="flex max-h-72 flex-col gap-3 overflow-auto py-2">
+        <div
+          v-for="(row, index) in draft"
+          :key="`${row.lang}-${index}`"
+          class="grid grid-cols-[6rem_1fr] items-center gap-2"
+        >
+          <span class="text-sm font-medium text-foreground/70">{{ row.lang || '—' }}</span>
+          <Input v-model="row.value" :aria-label="`Value for ${row.lang}`" />
+        </div>
+        <p v-if="!draft.length" class="text-sm text-foreground/60">No translations.</p>
+      </div>
+      <div class="flex justify-end gap-2">
+        <ChoyButton type="button" variant="outline" @click="onCancel">Cancel</ChoyButton>
+        <ChoyButton type="button" @click="onSave">Save</ChoyButton>
+      </div>
+    </DialogContent>
+  </Dialog>
+</template>
