@@ -67,7 +67,7 @@ export function roundChoyDecimal(
   const digits = resolveChoyMonetaryPrecision(precision);
   // Users routinely commit "12." — drop a trailing decimal point before validating.
   const text = String(raw ?? '').trim().replace(/\.$/, '');
-  if (!text || !/^-?\d+(\.\d+)?$/.test(text)) {
+  if (!text || !/^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
     return null;
   }
   const negative = text.startsWith('-');
@@ -200,7 +200,7 @@ export function parseChoyNumber(
     const n = Number(text);
     return Number.isSafeInteger(n) ? n : null;
   }
-  if (!/^-?\d+(\.\d+)?$/.test(text)) {
+  if (!/^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
     return null;
   }
   const n = Number(text);

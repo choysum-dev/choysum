@@ -144,7 +144,7 @@ function onInput(value: string): void {
     :required="required"
     :readonly="readonly"
     :disabled="disabled"
-    :error="error"
+    :error="error || (invalidDraft ? 'Invalid amount' : '')"
     :name="name"
     :visible="visible"
   >

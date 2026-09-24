@@ -96,7 +96,7 @@ function commitDraft(): void {
     :required="required"
     :readonly="readonly"
     :disabled="disabled"
-    :error="error"
+    :error="error || (invalidDraft ? 'Invalid number' : '')"
     :name="name"
     :visible="visible"
   >

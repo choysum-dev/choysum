@@ -114,6 +114,11 @@ describe('fieldHelpers', () => {
     // A trailing decimal point is a common commit state; keep it parseable.
     expect(parseChoyNumber('12.', 'decimal')).toBe(12);
     expect(parseChoyNumber('12.', 'integer')).toBe(12);
+    // Leading decimal points are just as common and must match formatChoyMonetary.
+    expect(parseChoyNumber('.5', 'decimal')).toBe(0.5);
+    expect(parseChoyNumber('-.5', 'float')).toBe(-0.5);
+    expect(formatChoyMonetary('.5', { precision: 2 })).toBe('0.50');
+    expect(roundChoyDecimal('.5', 2)).toEqual({ value: 0.5, text: '0.50' });
     expect(parseChoyNumber('.', 'decimal')).toBeNull();
     expect(roundChoyDecimal('12.', 2)).toEqual({ value: 12, text: '12.00' });
     // Values beyond the exactly-representable range must not be silently rounded.
