@@ -38,6 +38,8 @@ const model = defineModel<number | null>({ default: null });
 const draft = ref(
   model.value === null || model.value === undefined ? '' : String(model.value),
 );
+/** True when commit kept an unparsed draft while the host model is unchanged. */
+const invalidDraft = ref(false);
 
 watch(model, (next) => {
   const expected = next === null || next === undefined ? '' : String(next);
@@ -45,8 +47,14 @@ watch(model, (next) => {
   const draftInvalid = draft.value.trim() !== '' && parsed === null;
   if (parsed !== next || draftInvalid) {
     draft.value = expected;
+    invalidDraft.value = false;
   }
 });
+
+function onDraftInput(value: string | number): void {
+  draft.value = String(value ?? '');
+  invalidDraft.value = false;
+}
 
 function commitDraft(): void {
   if (props.readonly || props.disabled) {
@@ -56,13 +64,17 @@ function commitDraft(): void {
   if (!text) {
     model.value = null;
     draft.value = '';
+    invalidDraft.value = false;
     return;
   }
   const parsed = parseChoyNumber(draft.value, props.mode);
   if (parsed === null) {
-    // Keep the draft so the user can correct invalid input; leave the model unchanged.
+    // Keep the draft so the user can correct invalid input; leave the model unchanged,
+    // but mark the control invalid so it cannot look committed.
+    invalidDraft.value = true;
     return;
   }
+  invalidDraft.value = false;
   model.value = parsed;
   draft.value = resolveChoyNumberDraftText(parsed, text, props.mode);
 }
@@ -84,16 +96,17 @@ function commitDraft(): void {
     <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <Input
         :id="controlId"
-        v-model="draft"
+        :model-value="draft"
         type="text"
         :name="name || undefined"
         :placeholder="placeholder"
         :disabled="disabled"
         :readonly="readonly"
-        :aria-invalid="ariaInvalid"
+        :aria-invalid="ariaInvalid || invalidDraft || undefined"
         :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
         :inputmode="mode === 'integer' ? 'numeric' : 'decimal'"
+        @update:model-value="onDraftInput"
         @change="commitDraft"
         @blur="commitDraft"
         @keydown.enter.prevent="commitDraft"

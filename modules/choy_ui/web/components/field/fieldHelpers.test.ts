@@ -49,7 +49,7 @@ describe('fieldHelpers', () => {
   test('rounded decimal text round-trips through parseChoyNumber', () => {
     // ChoyNumberField/ChoyMonetaryField commit roundChoyDecimal(...).text back
     // through parseChoyNumber, so the two helpers must stay in agreement.
-    for (const raw of ['1.005', '-1.005', '9.999', '12.3', '0.004', '-0.000', '0.005']) {
+    for (const raw of ['1.005', '-1.005', '9.999', '12.3', '0.004', '-0.000', '0.005', '-0.005']) {
       const rounded = roundChoyDecimal(raw, 2);
       expect(rounded).not.toBeNull();
       expect(parseChoyNumber(rounded!.text, 'decimal')).toBe(rounded!.value);

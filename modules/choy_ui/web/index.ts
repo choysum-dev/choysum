@@ -25,7 +25,18 @@ export { default as ChoySearchView } from './components/view/ChoySearchView.vue'
 export { default as ChoyPagination } from './components/view/ChoyPagination.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';
 export type { ChoyBreadcrumbItem } from './components/view/ChoyBreadcrumb.vue';
-export type { ChoySearchQuery, ChoySearchFilter } from './components/view/searchViewHelpers';
+export {
+  buildChoySearchQuery,
+  filterRowsByKeyword,
+  normalizeChoySearchKeyword,
+  type ChoySearchFilter,
+  type ChoySearchQuery,
+} from './components/view/searchViewHelpers';
+export {
+  clampChoyPage,
+  choyPageOffset,
+  choyTotalPages,
+} from './components/view/paginationHelpers';
 
 export { default as ChoyFieldBase } from './components/field/ChoyFieldBase.vue';
 export { default as ChoyVarcharField } from './components/field/ChoyVarcharField.vue';

@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
         <div class="choy-gallery-controls">
           <Button variant="outline" size="sm" @click="toggleDark">{{ isDark ? 'Light' : 'Dark' }}</Button>
           <Button variant="outline" size="sm" @click="toggleDensity">Density: {{ density }}</Button>
-          <Button variant="outline" size="sm" as="a" href="/web/__choy_dogfood_company">
+          <Button variant="outline" size="sm" @click="goDogfoodCompany">
             Dogfood Company
           </Button>
         </div>
@@ -415,6 +415,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import '../styles/tokens.css';
 import '../styles/preflight-policy.css';
 // Produced by web build (EnsureChoyTailwindCSS); not committed.
@@ -499,6 +500,7 @@ import type { RelationOption } from '../components/internal/relationComboboxHelp
 type Density = 'comfortable' | 'compact';
 type DemoRow = { Id: string; name: string; role: string };
 
+const router = useRouter();
 const isDark = ref(false);
 const density = ref<Density>('comfortable');
 
@@ -657,6 +659,10 @@ onUnmounted(clearGalleryTokenScope);
 /**
  * Toggles light / dark token sets on the gallery root.
  */
+function goDogfoodCompany(): void {
+  void router.push({ name: 'ChoyUiDogfoodCompany' });
+}
+
 function toggleDark(): void {
   isDark.value = !isDark.value;
 }

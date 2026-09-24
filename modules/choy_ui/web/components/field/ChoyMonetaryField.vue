@@ -41,6 +41,8 @@ const model = defineModel<number | null>({ default: null });
 const focused = ref(false);
 /** True after the user types; keeps draft visible across blur when still invalid. */
 const edited = ref(false);
+/** True when blur kept an unparsed draft while the host model is unchanged. */
+const invalidDraft = ref(false);
 const draft = ref('');
 
 const displayValue = computed(() => {
@@ -67,6 +69,7 @@ watch(model, (next) => {
   }
   // Host-driven updates (e.g. loading another record) must win over a stale invalid draft.
   edited.value = false;
+  invalidDraft.value = false;
   draft.value = next === null || next === undefined ? '' : String(next);
 });
 
@@ -75,6 +78,7 @@ function onFocus(): void {
     return;
   }
   focused.value = true;
+  invalidDraft.value = false;
   if (!edited.value) {
     draft.value =
       model.value === null || model.value === undefined ? '' : String(model.value);
@@ -98,21 +102,26 @@ function onBlur(): void {
     model.value = null;
     draft.value = '';
     edited.value = false;
+    invalidDraft.value = false;
     return;
   }
   if (parseChoyNumber(draft.value, 'decimal') === null) {
-    // Keep the invalid draft visible so the user can correct it.
+    // Keep the invalid draft visible so the user can correct it, but mark the control
+    // invalid so it cannot look committed while the host still holds the old amount.
     edited.value = true;
+    invalidDraft.value = true;
     return;
   }
   const rounded = roundChoyDecimal(draft.value, resolveChoyMonetaryPrecision(props.precision));
   if (!rounded) {
     edited.value = true;
+    invalidDraft.value = true;
     return;
   }
   model.value = rounded.value;
   draft.value = rounded.text;
   edited.value = false;
+  invalidDraft.value = false;
 }
 
 function onInput(value: string): void {
@@ -121,6 +130,7 @@ function onInput(value: string): void {
     return;
   }
   edited.value = true;
+  invalidDraft.value = false;
   draft.value = value;
 }
 </script>
@@ -146,7 +156,7 @@ function onInput(value: string): void {
         :placeholder="placeholder"
         :disabled="disabled"
         :readonly="readonly"
-        :aria-invalid="ariaInvalid"
+        :aria-invalid="ariaInvalid || invalidDraft || undefined"
         :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
         inputmode="decimal"
