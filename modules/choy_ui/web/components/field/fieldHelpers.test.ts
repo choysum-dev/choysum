@@ -37,6 +37,8 @@ describe('fieldHelpers', () => {
     // Full carry past the leading digit inserts a new high-place 1.
     expect(roundChoyDecimal('9.5', 0)).toEqual({ value: 10, text: '10' });
     expect(roundChoyDecimal('9.999', 2)).toEqual({ value: 10, text: '10.00' });
+    // Lossy integer magnitudes (beyond MAX_SAFE_INTEGER) are rejected.
+    expect(roundChoyDecimal('9007199254740993', 0)).toBeNull();
     // Overflowing digit strings become non-finite after Number(...).
     expect(roundChoyDecimal('9'.repeat(400), 0)).toBeNull();
   });

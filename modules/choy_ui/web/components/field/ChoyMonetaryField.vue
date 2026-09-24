@@ -55,10 +55,13 @@ const displayValue = computed(() => {
 
 watch(model, (next) => {
   // Preserve an in-progress edit only when the host value already matches the draft.
+  const parsedDraft = parseChoyNumber(draft.value, 'decimal');
   if (
     focused.value &&
     edited.value &&
-    parseChoyNumber(draft.value, 'decimal') === next
+    parsedDraft !== null &&
+    next !== null &&
+    parsedDraft === next
   ) {
     return;
   }

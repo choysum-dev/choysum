@@ -33,6 +33,14 @@ const totalPages = computed(() => choyTotalPages(props.total, pageSize.value));
 
 const currentPage = computed(() => clampChoyPage(page.value, totalPages.value));
 
+watch(pageSize, () => {
+  // A new page size invalidates the current row window; restart at page 1.
+  const clamped = clampChoyPage(1, totalPages.value);
+  if (page.value !== clamped) {
+    page.value = clamped;
+  }
+});
+
 watch(
   [page, totalPages],
   () => {

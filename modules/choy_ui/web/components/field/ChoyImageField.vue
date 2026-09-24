@@ -76,6 +76,11 @@ function onChange(event: Event): void {
   if (!file) {
     return;
   }
+  // `accept` is only a hint; reject non-images so hosts never receive one.
+  if (file.type && !file.type.startsWith('image/')) {
+    input.value = '';
+    return;
+  }
   // Let the model watcher own create/revoke of the local object URL.
   model.value = { name: file.name, size: file.size, file };
   input.value = '';

@@ -109,7 +109,8 @@ export function roundChoyDecimal(
       ? `${negative ? '-' : ''}${outInt}`
       : `${negative ? '-' : ''}${outInt}.${outFrac}`;
   const value = Number(signed);
-  if (!Number.isFinite(value)) {
+  // Beyond MAX_SAFE_INTEGER the numeric `value` no longer matches the exact `text`.
+  if (!Number.isFinite(value) || !Number.isSafeInteger(Math.trunc(value))) {
     return null;
   }
   // Zero (including negative zero) is handled above via `isZero`.

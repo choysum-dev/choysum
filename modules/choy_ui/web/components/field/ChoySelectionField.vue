@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
@@ -36,6 +36,17 @@ const props = withDefaults(
 );
 
 const model = defineModel<string | null>({ default: null });
+
+// Reka rejects '' as an item value; treat an empty string as "unset".
+watch(
+  model,
+  (value) => {
+    if (value === '') {
+      model.value = null;
+    }
+  },
+  { immediate: true },
+);
 
 /** Reka SelectItem rejects empty-string values; null model covers "unset". */
 const selectOptions = computed(() =>

@@ -36,7 +36,18 @@ const controlId = computed(() =>
   props.name ? `${props.name}-${uid}` : `choy-field-${uid}`,
 );
 const labelId = computed(() => `${controlId.value}-label`);
+const helpId = computed(() => `${controlId.value}-help`);
 const errorId = computed(() => `${controlId.value}-error`);
+const controlDescribedBy = computed(() => {
+  const parts: string[] = [];
+  if (props.error) {
+    parts.push(errorId.value);
+  }
+  if (props.help) {
+    parts.push(helpId.value);
+  }
+  return parts.length ? parts.join(' ') : undefined;
+});
 </script>
 
 <template>
@@ -86,9 +97,16 @@ const errorId = computed(() => `${controlId.value}-error`);
         :label-id="labelId"
         :aria-invalid="error ? true : undefined"
         :aria-required="required || undefined"
-        :aria-describedby="error ? errorId : undefined"
+        :aria-describedby="controlDescribedBy"
       />
     </div>
+    <p
+      v-if="help"
+      :id="helpId"
+      class="sr-only"
+    >
+      {{ help }}
+    </p>
     <p
       v-if="error"
       :id="errorId"

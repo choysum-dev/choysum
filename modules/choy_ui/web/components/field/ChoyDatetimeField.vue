@@ -28,6 +28,10 @@ const props = withDefaults(
 const model = defineModel<string | null>({ default: null });
 
 function onInput(value: string): void {
+  // Browsers may ignore `readonly` on native datetime-local inputs, so guard the update too.
+  if (props.readonly || props.disabled) {
+    return;
+  }
   model.value = value === '' ? null : value;
 }
 </script>
