@@ -114,7 +114,8 @@ export function roundChoyDecimal(
   if (!Number.isFinite(value)) {
     return null;
   }
-  return { value: Object.is(value, -0) ? 0 : value, text: signed };
+  // Zero (including negative zero) is handled above via `isZero`.
+  return { value, text: signed };
 }
 
 /**

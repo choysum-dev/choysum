@@ -54,7 +54,11 @@ describe('fieldHelpers', () => {
     expect(formatChoyMonetary(12.3, { precision: 1000 })).toBe(`12.3${'0'.repeat(99)}`);
     expect(formatChoyMonetary(12.3, { precision: 2, currency: 'USD' })).toBe('12.30 USD');
     expect(formatChoyMonetary(0)).toBe('0.00');
-    // Exponential string / number use the numeric toFixed fallback path.
+    expect(formatChoyMonetary(-0)).toBe('0.00');
+    // Exponential string: Number() may re-canonicalize into a decimal digit string.
+    expect(formatChoyMonetary('2e0', { precision: 2 })).toBe('2.00');
+    expect(formatChoyMonetary('1.005e0', { precision: 2 })).toBe('1.01');
+    // Exponential string / number still needing toFixed when String(numeric) is not decimal.
     expect(formatChoyMonetary('1e-7', { precision: 2 })).toBe((1e-7).toFixed(2));
     expect(formatChoyMonetary(1e21, { precision: 2 })).toBe((1e21).toFixed(2));
   });
