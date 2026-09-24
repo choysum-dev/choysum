@@ -79,10 +79,13 @@ function onChange(event: Event): void {
   }
   // `accept` is only a hint; reject non-images so hosts never receive one.
   // Some OS/browser pairs report an empty `file.type`, so fall back to the extension.
+  // SVG is excluded by default: hosts may later serve it in a script-capable context.
+  const isSvg = file.type === 'image/svg+xml' || /\.svg$/i.test(file.name);
   const isImage =
-    file.type !== ''
+    !isSvg &&
+    (file.type !== ''
       ? file.type.startsWith('image/')
-      : /\.(png|jpe?g|gif|webp|bmp|svg|avif)$/i.test(file.name);
+      : /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(file.name));
   if (!isImage) {
     input.value = '';
     return;

@@ -55,9 +55,15 @@ export { default as ChoyImageField } from './components/field/ChoyImageField.vue
 export { default as ChoyVirtualField } from './components/field/ChoyVirtualField.vue';
 export { default as ChoyFieldTranslationsDialog } from './components/field/ChoyFieldTranslationsDialog.vue';
 export { default as ChoyFieldCompanyValuesDialog } from './components/field/ChoyFieldCompanyValuesDialog.vue';
-export type {
-  ChoyFieldChromeProps,
-  ChoySelectionOption,
+export {
+  formatChoyMonetary,
+  parseChoyNumber,
+  resolveChoyFieldVisible,
+  resolveChoyMonetaryPrecision,
+  resolveChoyNumberDraftText,
+  roundChoyDecimal,
+  type ChoyFieldChromeProps,
+  type ChoySelectionOption,
 } from './components/field/fieldHelpers';
 export type { ChoyBinaryValue } from './components/field/ChoyBinaryField.vue';
 export type { ChoyImageValue } from './components/field/ChoyImageField.vue';

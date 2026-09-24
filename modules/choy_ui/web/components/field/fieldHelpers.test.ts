@@ -128,4 +128,15 @@ describe('fieldHelpers', () => {
     expect(parseChoyNumber('12345678901234567890', 'decimal')).toBeNull();
     expect(formatChoyMonetary('9007199254740993')).toBe('');
   });
+
+  test('roundChoyDecimal text is stable when re-rounded', () => {
+    // Committed monetary/number text is re-rounded on blur; it must not drift.
+    for (const raw of ['1.005', '-1.005', '9.999', '12.3', '0.004', '-0.005', '0.995', '0.4']) {
+      const once = roundChoyDecimal(raw, 2);
+      if (!once) {
+        continue;
+      }
+      expect(roundChoyDecimal(once.text, 2)).toEqual(once);
+    }
+  });
 });
