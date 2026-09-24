@@ -46,6 +46,16 @@ describe('fieldHelpers', () => {
     expect(roundChoyDecimal('9'.repeat(400), 0)).toBeNull();
   });
 
+  test('rounded decimal text round-trips through parseChoyNumber', () => {
+    // ChoyNumberField/ChoyMonetaryField commit roundChoyDecimal(...).text back
+    // through parseChoyNumber, so the two helpers must stay in agreement.
+    for (const raw of ['1.005', '-1.005', '9.999', '12.3', '0.004', '-0.000', '0.005']) {
+      const rounded = roundChoyDecimal(raw, 2);
+      expect(rounded).not.toBeNull();
+      expect(parseChoyNumber(rounded!.text, 'decimal')).toBe(rounded!.value);
+    }
+  });
+
   test('formatChoyMonetary formats precision and currency', () => {
     expect(formatChoyMonetary(null)).toBe('');
     expect(formatChoyMonetary(undefined)).toBe('');

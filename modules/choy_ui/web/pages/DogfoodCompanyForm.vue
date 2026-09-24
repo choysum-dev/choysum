@@ -103,8 +103,8 @@ const page = ref(1);
 const pageSize = ref(10);
 
 const monetaryCurrency = computed(() => {
-  const id = String(currencyId.value ?? '').trim().toUpperCase();
-  return id || 'USD';
+  // No currency selected → no suffix; don't imply USD on the amount.
+  return String(currencyId.value ?? '').trim().toUpperCase();
 });
 
 const listColumns: ColumnDef<CompanyRow, unknown>[] = [
