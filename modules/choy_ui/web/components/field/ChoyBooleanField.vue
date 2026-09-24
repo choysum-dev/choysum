@@ -30,6 +30,10 @@ const props = withDefaults(
 );
 
 const model = defineModel<boolean>({ default: false });
+
+function onCheckboxUpdate(value: boolean | 'indeterminate'): void {
+  model.value = value === true;
+}
 </script>
 
 <template>
@@ -50,11 +54,12 @@ const model = defineModel<boolean>({ default: false });
         <Checkbox
           v-if="widget === 'checkbox'"
           :id="controlId"
-          v-model="model"
+          :model-value="model"
           :disabled="disabled || readonly"
           :aria-invalid="ariaInvalid"
           :aria-required="ariaRequired"
           :aria-describedby="ariaDescribedby"
+          @update:model-value="onCheckboxUpdate"
         />
         <Switch
           v-else

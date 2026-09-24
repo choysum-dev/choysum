@@ -131,11 +131,19 @@ export function formatChoyMonetary(
   const precision = resolveChoyMonetaryPrecision(opts?.precision);
   let formatted: string;
   if (typeof value === 'string') {
-    const rounded = roundChoyDecimal(value.trim(), precision);
-    if (!rounded) {
+    const trimmed = value.trim();
+    const rounded = roundChoyDecimal(trimmed, precision);
+    const numeric = Number(trimmed);
+    if (rounded) {
+      formatted = rounded.text;
+    } else if (trimmed && Number.isFinite(numeric)) {
+      // Exponential / non-canonical text: fall back to the numeric path.
+      formatted =
+        roundChoyDecimal(String(numeric), precision)?.text ??
+        numeric.toFixed(precision);
+    } else {
       return '';
     }
-    formatted = rounded.text;
   } else {
     if (!Number.isFinite(value)) {
       return '';

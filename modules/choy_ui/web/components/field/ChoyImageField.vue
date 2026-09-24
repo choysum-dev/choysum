@@ -52,7 +52,7 @@ watch(
       localObjectUrl.value = URL.createObjectURL(next.file);
     }
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 onBeforeUnmount(() => {

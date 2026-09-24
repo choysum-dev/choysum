@@ -5,6 +5,7 @@ import {
   formatChoyMonetary,
   parseChoyNumber,
   resolveChoyFieldVisible,
+  resolveChoyMonetaryPrecision,
   resolveChoyNumberDraftText,
   roundChoyDecimal,
 } from './fieldHelpers';
@@ -17,6 +18,15 @@ describe('fieldHelpers', () => {
     expect(resolveChoyFieldVisible(false)).toBe(false);
   });
 
+  test('resolveChoyMonetaryPrecision defaults and clamps', () => {
+    expect(resolveChoyMonetaryPrecision()).toBe(2);
+    expect(resolveChoyMonetaryPrecision(-1)).toBe(2);
+    expect(resolveChoyMonetaryPrecision(0)).toBe(0);
+    expect(resolveChoyMonetaryPrecision(2.9)).toBe(2);
+    expect(resolveChoyMonetaryPrecision(1000)).toBe(100);
+    expect(resolveChoyMonetaryPrecision(Number.NaN)).toBe(2);
+  });
+
   test('roundChoyDecimal uses decimal half-away-from-zero', () => {
     expect(roundChoyDecimal('1.005', 2)).toEqual({ value: 1.01, text: '1.01' });
     expect(roundChoyDecimal('-1.005', 2)).toEqual({ value: -1.01, text: '-1.01' });
@@ -24,6 +34,8 @@ describe('fieldHelpers', () => {
     expect(roundChoyDecimal('-0.000', 2)).toEqual({ value: 0, text: '0.00' });
     expect(roundChoyDecimal('12.3', 2)).toEqual({ value: 12.3, text: '12.30' });
     expect(roundChoyDecimal('bad', 2)).toBeNull();
+    // Overflowing digit strings become non-finite after Number(...).
+    expect(roundChoyDecimal('9'.repeat(400), 0)).toBeNull();
   });
 
   test('formatChoyMonetary formats precision and currency', () => {
@@ -42,6 +54,9 @@ describe('fieldHelpers', () => {
     expect(formatChoyMonetary(12.3, { precision: 1000 })).toBe(`12.3${'0'.repeat(99)}`);
     expect(formatChoyMonetary(12.3, { precision: 2, currency: 'USD' })).toBe('12.30 USD');
     expect(formatChoyMonetary(0)).toBe('0.00');
+    // Exponential string / number use the numeric toFixed fallback path.
+    expect(formatChoyMonetary('1e-7', { precision: 2 })).toBe((1e-7).toFixed(2));
+    expect(formatChoyMonetary(1e21, { precision: 2 })).toBe((1e21).toFixed(2));
   });
 
   test('resolveChoyNumberDraftText keeps preferred when String is exponential', () => {
@@ -51,6 +66,7 @@ describe('fieldHelpers', () => {
     expect(
       resolveChoyNumberDraftText(tiny, '0.0000000000000000000001', 'float'),
     ).toBe('0.0000000000000000000001');
+    expect(resolveChoyNumberDraftText(tiny, '   ', 'float')).toBe(String(tiny));
     expect(resolveChoyNumberDraftText(12, '12', 'integer')).toBe('12');
   });
 

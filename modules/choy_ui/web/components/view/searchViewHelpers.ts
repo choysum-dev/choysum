@@ -28,11 +28,13 @@ export function buildChoySearchQuery(
 ): ChoySearchQuery {
   return {
     keyword: normalizeChoySearchKeyword(keyword),
-    filters: (filters ?? []).map((f) => ({
-      field: String(f.field ?? '').trim(),
-      op: String(f.op ?? '').trim(),
-      value: String(f.value ?? ''),
-    })),
+    filters: (filters ?? [])
+      .map((f) => ({
+        field: String(f.field ?? '').trim(),
+        op: String(f.op ?? '').trim(),
+        value: String(f.value ?? ''),
+      }))
+      .filter((f) => f.field !== ''),
   };
 }
 

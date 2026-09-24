@@ -54,8 +54,12 @@ const displayValue = computed(() => {
 });
 
 watch(model, (next) => {
-  // Only an in-progress user edit outranks the host value while focused.
-  if (focused.value && edited.value) {
+  // Preserve an in-progress edit only when the host value already matches the draft.
+  if (
+    focused.value &&
+    edited.value &&
+    parseChoyNumber(draft.value, 'decimal') === next
+  ) {
     return;
   }
   // Host-driven updates (e.g. loading another record) must win over a stale invalid draft.

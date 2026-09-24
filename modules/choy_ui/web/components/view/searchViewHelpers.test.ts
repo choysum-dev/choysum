@@ -22,6 +22,15 @@ describe('searchViewHelpers', () => {
       keyword: 'x',
       filters: [{ field: 'name', op: '=', value: 'a' }],
     });
+    expect(
+      buildChoySearchQuery('x', [
+        { field: '  ', op: '=', value: 'skip' },
+        { field: 'code', op: '=', value: 'ok' },
+      ]),
+    ).toEqual({
+      keyword: 'x',
+      filters: [{ field: 'code', op: '=', value: 'ok' }],
+    });
   });
 
   test('filterRowsByKeyword matches listed fields', () => {
