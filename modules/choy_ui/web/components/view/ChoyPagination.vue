@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import type { ClassValue } from '../../lib/utils';
 import {
@@ -32,6 +32,18 @@ const pageSize = defineModel<number>('pageSize', { default: 20 });
 const totalPages = computed(() => choyTotalPages(props.total, pageSize.value));
 
 const currentPage = computed(() => clampChoyPage(page.value, totalPages.value));
+
+watch(
+  totalPages,
+  (max) => {
+    if (page.value > max) {
+      page.value = max;
+    } else if (page.value < 1) {
+      page.value = 1;
+    }
+  },
+  { immediate: true },
+);
 
 const canPrev = computed(() => currentPage.value > 1 && !props.disabled);
 const canNext = computed(

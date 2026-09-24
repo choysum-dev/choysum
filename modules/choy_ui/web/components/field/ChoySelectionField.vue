@@ -59,17 +59,25 @@ const selectValue = computed({
     :name="name"
     :visible="visible"
   >
-    <Select v-model="selectValue" :disabled="disabled || readonly">
-      <SelectTrigger :placeholder="placeholder" :disabled="disabled || readonly" />
-      <SelectContent>
-        <SelectItem
-          v-for="opt in options"
-          :key="opt.value"
-          :value="opt.value"
-        >
-          {{ opt.label }}
-        </SelectItem>
-      </SelectContent>
-    </Select>
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <Select v-model="selectValue" :disabled="disabled || readonly">
+        <SelectTrigger
+          :id="controlId"
+          :placeholder="placeholder"
+          :disabled="disabled || readonly"
+          :aria-invalid="ariaInvalid"
+          :aria-describedby="ariaDescribedby"
+        />
+        <SelectContent>
+          <SelectItem
+            v-for="opt in options"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </template>
   </ChoyFieldBase>
 </template>

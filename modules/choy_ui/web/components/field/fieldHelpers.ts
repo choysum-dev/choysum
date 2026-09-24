@@ -59,7 +59,7 @@ export function formatChoyMonetary(
   }
   const precision =
     opts?.precision !== undefined && Number.isFinite(opts.precision) && opts.precision >= 0
-      ? Math.floor(opts.precision)
+      ? Math.min(100, Math.floor(opts.precision))
       : 2;
   const formatted = num.toFixed(precision);
   const currency = String(opts?.currency ?? '').trim();

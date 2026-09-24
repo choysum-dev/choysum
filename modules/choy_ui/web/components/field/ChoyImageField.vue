@@ -75,12 +75,8 @@ function onChange(event: Event): void {
   if (!file) {
     return;
   }
-  const previewUrl = URL.createObjectURL(file);
-  if (localObjectUrl.value) {
-    URL.revokeObjectURL(localObjectUrl.value);
-  }
-  localObjectUrl.value = previewUrl;
-  model.value = { name: file.name, size: file.size, previewUrl, file };
+  // Let the model watcher own create/revoke of the local object URL.
+  model.value = { name: file.name, size: file.size, file };
   input.value = '';
 }
 

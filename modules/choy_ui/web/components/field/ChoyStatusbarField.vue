@@ -52,22 +52,29 @@ function select(value: string): void {
     :name="name"
     :visible="visible"
   >
-    <div
-      class="choy-statusbar-field flex flex-wrap gap-1"
-      role="group"
-      :aria-disabled="disabled || readonly || undefined"
-    >
-      <ChoyButton
-        v-for="opt in options"
-        :key="opt.value"
-        type="button"
-        size="sm"
-        :variant="model === opt.value ? 'default' : 'outline'"
-        :disabled="disabled || readonly"
-        @click="select(opt.value)"
+    <template #default="{ labelId, ariaInvalid, ariaDescribedby }">
+      <div
+        class="choy-statusbar-field flex flex-wrap gap-1"
+        role="group"
+        :aria-labelledby="label ? labelId : undefined"
+        :aria-label="label ? undefined : name || 'Status'"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+        :aria-disabled="disabled || readonly || undefined"
       >
-        {{ opt.label }}
-      </ChoyButton>
-    </div>
+        <ChoyButton
+          v-for="opt in options"
+          :key="opt.value"
+          type="button"
+          size="sm"
+          :variant="model === opt.value ? 'default' : 'outline'"
+          :disabled="disabled || readonly"
+          :aria-pressed="model === opt.value"
+          @click="select(opt.value)"
+        >
+          {{ opt.label }}
+        </ChoyButton>
+      </div>
+    </template>
   </ChoyFieldBase>
 </template>

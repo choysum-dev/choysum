@@ -40,8 +40,8 @@ const emit = defineEmits<{
 const draft = ref<ChoyTranslationRow[]>([]);
 
 watch(
-  [open, () => props.rows],
-  ([isOpen]) => {
+  open,
+  (isOpen) => {
     if (isOpen) {
       draft.value = (props.rows ?? []).map((r) => ({
         lang: String(r.lang ?? ''),

@@ -29,8 +29,11 @@ describe('searchViewHelpers', () => {
       { Id: '1', Name: 'Alpha', Code: 'A1' },
       { Id: '2', Name: 'Beta', Code: 'B2' },
       { Id: '3', Name: 'Gamma', Code: 'alpha-x' },
+      { Id: '4', Name: null as unknown as string, Code: 'Z' },
     ];
     expect(filterRowsByKeyword(rows, '', ['Name'])).toEqual(rows);
+    expect(filterRowsByKeyword(rows, 'alpha', [])).toEqual(rows);
+    expect(filterRowsByKeyword(rows, 'alpha', ['  ', ''])).toEqual(rows);
     expect(filterRowsByKeyword(rows, 'alpha', ['Name'])).toEqual([rows[0]]);
     expect(filterRowsByKeyword(rows, 'alpha', ['Name', 'Code'])).toEqual([rows[0], rows[2]]);
     expect(filterRowsByKeyword(rows, 'zzz', ['Name'])).toEqual([]);

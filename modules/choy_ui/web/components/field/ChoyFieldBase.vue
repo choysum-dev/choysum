@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { CircleHelp } from 'lucide-vue-next';
 import { cn, type ClassValue } from '../../lib/utils';
 import Tooltip from '../vendor/ui/tooltip/Tooltip.vue';
@@ -19,7 +19,7 @@ import {
 
 /**
  * Field chrome only: label, help tooltip, required mark, and error text.
- * Control widgets live in the default slot.
+ * Control widgets live in the default slot (receives controlId / a11y attrs).
  */
 const props = withDefaults(
   defineProps<
@@ -31,6 +31,10 @@ const props = withDefaults(
 );
 
 const isVisible = computed(() => resolveChoyFieldVisible(props.visible));
+const uid = useId();
+const controlId = computed(() => props.name || `choy-field-${uid}`);
+const labelId = computed(() => `${controlId.value}-label`);
+const errorId = computed(() => `${controlId.value}-error`);
 </script>
 
 <template>
@@ -45,8 +49,9 @@ const isVisible = computed(() => resolveChoyFieldVisible(props.visible));
     >
       <label
         v-if="label"
+        :id="labelId"
         class="text-sm font-medium text-foreground"
-        :for="name || undefined"
+        :for="controlId"
       >
         {{ label }}
         <span v-if="required" class="text-danger" aria-hidden="true">*</span>
@@ -74,10 +79,16 @@ const isVisible = computed(() => resolveChoyFieldVisible(props.visible));
       </TooltipProvider>
     </div>
     <div class="choy-field-base__control min-w-0">
-      <slot />
+      <slot
+        :control-id="controlId"
+        :label-id="labelId"
+        :aria-invalid="error ? true : undefined"
+        :aria-describedby="error ? errorId : undefined"
+      />
     </div>
     <p
       v-if="error"
+      :id="errorId"
       class="choy-field-base__error text-sm text-danger"
       role="alert"
     >

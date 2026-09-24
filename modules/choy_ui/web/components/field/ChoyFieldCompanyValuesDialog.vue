@@ -40,8 +40,8 @@ const emit = defineEmits<{
 const draft = ref<ChoyCompanyValueRow[]>([]);
 
 watch(
-  [open, () => props.rows],
-  ([isOpen]) => {
+  open,
+  (isOpen) => {
     if (isOpen) {
       draft.value = (props.rows ?? []).map((r) => ({
         company: String(r.company ?? ''),

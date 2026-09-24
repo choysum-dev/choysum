@@ -64,19 +64,24 @@ const emit = defineEmits<{
     :name="name"
     :visible="visible"
   >
-    <RelationCombobox
-      v-model="model"
-      :search="search"
-      :search-key="searchKey"
-      :selected-option="selectedOption"
-      :page-size="pageSize"
-      :search-more="searchMore"
-      :placeholder="placeholder"
-      :disabled="disabled || readonly"
-      :clearable="clearable && !readonly"
-      @search-more="emit('search-more', $event)"
-      @search-error="emit('search-error', $event)"
-      @select="emit('select', $event)"
-    />
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <RelationCombobox
+        v-model="model"
+        :id="controlId"
+        :search="search"
+        :search-key="searchKey"
+        :selected-option="selectedOption"
+        :page-size="pageSize"
+        :search-more="searchMore"
+        :placeholder="placeholder"
+        :disabled="disabled || readonly"
+        :clearable="clearable && !readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+        @search-more="emit('search-more', $event)"
+        @search-error="emit('search-error', $event)"
+        @select="emit('select', $event)"
+      />
+    </template>
   </ChoyFieldBase>
 </template>

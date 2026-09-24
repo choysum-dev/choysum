@@ -48,6 +48,9 @@ const props = withDefaults(
     placeholder?: string;
     disabled?: boolean;
     clearable?: boolean;
+    id?: string;
+    'aria-invalid'?: boolean | 'true' | 'false';
+    'aria-describedby'?: string;
   }>(),
   {
     placeholder: 'Pick a date',
@@ -115,7 +118,10 @@ watch(
           type="button"
           variant="outline"
           data-anchor="choy.internal.date-picker"
+          :id="id || undefined"
           :disabled="disabled"
+          :aria-invalid="props['aria-invalid']"
+          :aria-describedby="props['aria-describedby']"
           :class="
             cn(
               'choy-date-picker w-full justify-start font-normal',

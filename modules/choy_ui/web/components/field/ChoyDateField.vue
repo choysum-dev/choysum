@@ -46,11 +46,16 @@ const model = defineModel<string | null>({ default: null });
     :name="name"
     :visible="visible"
   >
-    <DatePicker
-      v-model="model"
-      :placeholder="placeholder"
-      :disabled="disabled || readonly"
-      :clearable="clearable && !readonly"
-    />
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <DatePicker
+        v-model="model"
+        :id="controlId"
+        :placeholder="placeholder"
+        :disabled="disabled || readonly"
+        :clearable="clearable && !readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+      />
+    </template>
   </ChoyFieldBase>
 </template>

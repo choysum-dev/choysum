@@ -8,12 +8,23 @@ import { ChevronDown } from 'lucide-vue-next';
 import { SelectIcon, SelectTrigger, SelectValue } from 'reka-ui';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
-defineProps<{ class?: ClassValue; placeholder?: string }>();
+defineProps<{
+  class?: ClassValue;
+  placeholder?: string;
+  id?: string;
+  disabled?: boolean;
+  'aria-invalid'?: boolean | 'true' | 'false';
+  'aria-describedby'?: string;
+}>();
 </script>
 
 <template>
   <SelectTrigger
     data-slot="select-trigger"
+    :id="id || undefined"
+    :disabled="disabled"
+    :aria-invalid="$props['aria-invalid']"
+    :aria-describedby="$props['aria-describedby']"
     :class="
       cn(
         'flex h-9 w-full items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm',

@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
 import '../styles/tokens.css';
 import '../styles/preflight-policy.css';
@@ -82,6 +82,8 @@ const allRows = ref<CompanyRow[]>(
 
 const activeTab = ref('form');
 const formLoading = ref(false);
+const selectedRowId = ref<string | null>(null);
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 const name = ref('Acme Holdings');
 const notes = ref('Isolation dogfood company record.');
@@ -98,6 +100,11 @@ const appliedQuery = ref<ChoySearchQuery>({ keyword: '', filters: [] });
 const listSelection = ref<Array<string | number>>([]);
 const page = ref(1);
 const pageSize = ref(10);
+
+const monetaryCurrency = computed(() => {
+  const id = String(currencyId.value ?? '').trim().toUpperCase();
+  return id || 'USD';
+});
 
 const listColumns: ColumnDef<CompanyRow, unknown>[] = [
   { accessorKey: 'name', header: 'Name', size: 180 },
@@ -117,10 +124,18 @@ const filteredRows = computed(() =>
 const total = computed(() => filteredRows.value.length);
 
 const pageRows = computed(() => {
-  const pages = Math.max(1, Math.ceil(total.value / pageSize.value) || 1);
+  const size = Math.max(1, Math.floor(pageSize.value) || 1);
+  const pages = Math.max(1, Math.ceil(total.value / size));
   const safePage = clampChoyPage(page.value, pages);
-  const offset = choyPageOffset(safePage, pageSize.value);
-  return filteredRows.value.slice(offset, offset + pageSize.value);
+  const offset = choyPageOffset(safePage, size);
+  return filteredRows.value.slice(offset, offset + size);
+});
+
+onBeforeUnmount(() => {
+  if (saveTimer !== null) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
 });
 
 async function searchCurrencies(
@@ -152,15 +167,28 @@ function onSave(): void {
     return;
   }
   formLoading.value = true;
-  window.setTimeout(() => {
+  if (saveTimer !== null) {
+    clearTimeout(saveTimer);
+  }
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    const trimmed = name.value.trim();
+    if (selectedRowId.value) {
+      const row = allRows.value.find((r) => r.Id === selectedRowId.value);
+      if (row) {
+        row.name = trimmed;
+        row.active = active.value;
+      }
+    }
     formLoading.value = false;
     ChoyMessage.success('Company saved (dogfood)', {
-      description: `${name.value.trim()} · ${currencyOption.value?.label ?? 'no currency'}`,
+      description: `${trimmed} · ${currencyOption.value?.label ?? 'no currency'}`,
     });
   }, 400);
 }
 
 function onRowClick(row: CompanyRow): void {
+  selectedRowId.value = row.Id;
   name.value = row.name;
   active.value = row.active;
   activeTab.value = 'form';
@@ -240,7 +268,7 @@ function onRowClick(row: CompanyRow): void {
                     v-model="capital"
                     label="Share capital"
                     name="capital"
-                    currency="USD"
+                    :currency="monetaryCurrency"
                     :precision="2"
                   />
                 </ChoyCol>

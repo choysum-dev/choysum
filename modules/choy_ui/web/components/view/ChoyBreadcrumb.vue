@@ -48,6 +48,7 @@ const props = withDefaults(
           v-if="item.to"
           :to="item.to"
           class="hover:text-foreground hover:underline"
+          :aria-current="index === items.length - 1 ? 'page' : undefined"
         >
           {{ item.label }}
         </RouterLink>

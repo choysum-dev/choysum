@@ -20,9 +20,13 @@ describe('fieldHelpers', () => {
     expect(formatChoyMonetary(undefined)).toBe('');
     expect(formatChoyMonetary('')).toBe('');
     expect(formatChoyMonetary('bad')).toBe('');
+    expect(formatChoyMonetary(Number.POSITIVE_INFINITY)).toBe('');
     expect(formatChoyMonetary(12.345)).toBe('12.35');
     expect(formatChoyMonetary('12.3', { precision: 2 })).toBe('12.30');
     expect(formatChoyMonetary(12.3, { precision: 0 })).toBe('12');
+    expect(formatChoyMonetary(12.3, { precision: 1000 })).toBe(
+      (12.3).toFixed(100),
+    );
     expect(formatChoyMonetary(12.3, { precision: 2, currency: 'USD' })).toBe('12.30 USD');
     expect(formatChoyMonetary(0)).toBe('0.00');
   });
@@ -33,6 +37,7 @@ describe('fieldHelpers', () => {
     expect(parseChoyNumber('12', 'integer')).toBe(12);
     expect(parseChoyNumber('-3', 'integer')).toBe(-3);
     expect(parseChoyNumber('12.5', 'integer')).toBeNull();
+    expect(parseChoyNumber('9007199254740994', 'integer')).toBeNull();
     expect(parseChoyNumber('12.5', 'float')).toBe(12.5);
     expect(parseChoyNumber('12.50', 'decimal')).toBe(12.5);
     expect(parseChoyNumber('abc', 'float')).toBeNull();

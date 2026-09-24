@@ -92,39 +92,44 @@ function onClear(): void {
     :name="name"
     :visible="visible"
   >
-    <div class="flex flex-wrap items-center gap-2">
-      <input
-        ref="inputRef"
-        type="file"
-        class="hidden"
-        :accept="accept || undefined"
-        :disabled="disabled || readonly"
-        @change="onChange"
-      />
-      <ChoyButton
-        type="button"
-        variant="outline"
-        size="sm"
-        :disabled="disabled || readonly"
-        @click="onPick"
-      >
-        Choose file
-      </ChoyButton>
-      <span v-if="displayName" class="text-sm text-foreground">
-        {{ displayName }}
-        <span v-if="displaySize" class="text-foreground/60">({{ displaySize }})</span>
-      </span>
-      <span v-else class="text-sm text-foreground/50">No file chosen</span>
-      <ChoyButton
-        v-if="model"
-        type="button"
-        variant="ghost"
-        size="sm"
-        :disabled="disabled || readonly"
-        @click="onClear"
-      >
-        Clear
-      </ChoyButton>
-    </div>
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          ref="inputRef"
+          type="file"
+          class="hidden"
+          :id="controlId"
+          :accept="accept || undefined"
+          :disabled="disabled || readonly"
+          :aria-invalid="ariaInvalid"
+          :aria-describedby="ariaDescribedby"
+          @change="onChange"
+        />
+        <ChoyButton
+          type="button"
+          variant="outline"
+          size="sm"
+          :disabled="disabled || readonly"
+          @click="onPick"
+        >
+          Choose file
+        </ChoyButton>
+        <span v-if="displayName" class="text-sm text-foreground">
+          {{ displayName }}
+          <span v-if="displaySize" class="text-foreground/60">({{ displaySize }})</span>
+        </span>
+        <span v-else class="text-sm text-foreground/50">No file chosen</span>
+        <ChoyButton
+          v-if="model"
+          type="button"
+          variant="ghost"
+          size="sm"
+          :disabled="disabled || readonly"
+          @click="onClear"
+        >
+          Clear
+        </ChoyButton>
+      </div>
+    </template>
   </ChoyFieldBase>
 </template>

@@ -51,6 +51,9 @@ const props = withDefaults(
     selectedOption?: RelationOption | null;
     /** Show a "Search more…" footer action (host opens a dialog in PR5). */
     searchMore?: boolean;
+    id?: string;
+    'aria-invalid'?: boolean | 'true' | 'false';
+    'aria-describedby'?: string;
   }>(),
   {
     placeholder: 'Search…',
@@ -272,7 +275,10 @@ function onSearchMore(): void {
     <ComboboxAnchor class="flex w-full gap-1">
       <ComboboxInput
         v-model="query"
+        :id="id || undefined"
         :disabled="disabled"
+        :aria-invalid="props['aria-invalid']"
+        :aria-describedby="props['aria-describedby']"
         :display-value="() => selected?.label ?? ''"
         :placeholder="selected?.label || placeholder"
         :class="
