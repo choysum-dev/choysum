@@ -95,6 +95,11 @@ function onChange(event: Event): void {
         if (token.startsWith('.')) {
           return name.endsWith(token);
         }
+        // Authors commonly write `*.pdf`; browsers ignore such tokens, so match
+        // by extension instead of rejecting every pick.
+        if (token.startsWith('*.')) {
+          return name.endsWith(token.slice(1));
+        }
         if (token.endsWith('/*')) {
           // An empty `file.type` cannot be matched against a wildcard; don't
           // reject a pick we cannot verify here — the host still validates uploads.
@@ -103,13 +108,15 @@ function onChange(event: Event): void {
         // Some OS/browser pairs report an empty `file.type`; fall back to the
         // extension so a valid pick is not rejected outright.
         const subtype = token.split('/')[1] ?? '';
-        // `image/jpeg` files are usually stored with a `.jpg` extension.
+        // `image/jpeg` → `.jpg`/`.jpeg`; `image/svg+xml` → `.svg` (not `.svg+xml`).
         const fallbackExts =
           subtype === 'jpeg'
             ? ['.jpg', '.jpeg']
-            : subtype
-              ? [`.${subtype}`]
-              : [];
+            : token === 'image/svg+xml'
+              ? ['.svg']
+              : subtype
+                ? [`.${subtype}`]
+                : [];
         return (
           type === token ||
           (type === '' && fallbackExts.some((ext) => name.endsWith(ext)))

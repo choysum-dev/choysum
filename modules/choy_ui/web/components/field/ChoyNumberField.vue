@@ -90,6 +90,15 @@ function commitDraft(): void {
   model.value = parsed;
   draft.value = resolveChoyNumberDraftText(parsed, text, props.mode);
 }
+
+function onKeydown(event: KeyboardEvent): void {
+  // Confirming an IME candidate also fires Enter; don't commit half-composed text.
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) {
+    return;
+  }
+  event.preventDefault();
+  commitDraft();
+}
 </script>
 
 <template>
@@ -121,7 +130,7 @@ function commitDraft(): void {
         @update:model-value="onDraftInput"
         @change="commitDraft"
         @blur="commitDraft"
-        @keydown.enter.prevent="commitDraft"
+        @keydown="onKeydown"
       />
     </template>
   </ChoyFieldBase>

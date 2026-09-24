@@ -63,7 +63,8 @@ export type ChoyDecimalRound = {
  */
 export function expandExponentialDecimalText(raw: string): string | null {
   const text = String(raw ?? '').trim();
-  const m = /^([+-]?)(\d+)(?:\.(\d+))?e([+-]?\d+)$/i.exec(text);
+  // Allow a trailing decimal point with no frac digits (`12.e0` ≡ `12e0`).
+  const m = /^([+-]?)(\d+)(?:\.(\d*))?e([+-]?\d+)$/i.exec(text);
   if (!m) {
     return null;
   }
@@ -236,13 +237,17 @@ export function formatChoyMonetary(
       trimmed &&
       /e/i.test(trimmed) &&
       Number.isFinite(numeric) &&
-      /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(trimmed) &&
-      // Compare exact digits instead of `Number.isSafeInteger`: an exactly
-      // representable magnitude like `1e21` must not blank here while the
-      // numeric branch returns it; lossy literals stay rejected.
-      canonicalChoyDecimal(expandExponentialDecimalText(trimmed) ?? String(numeric)) ===
-        canonicalChoyDecimal(String(numeric))
+      /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(trimmed)
     ) {
+      // Require a successful literal expansion so forms like `9007199254740993.e0`
+      // (expandable) and unexpandable e-text cannot pass via String(numeric)===itself.
+      const expanded = expandExponentialDecimalText(trimmed);
+      if (
+        expanded === null ||
+        canonicalChoyDecimal(expanded) !== canonicalChoyDecimal(String(numeric))
+      ) {
+        return '';
+      }
       // Only exponential text needs the numeric fallback: a plain decimal rejected by
       // roundChoyDecimal is unrepresentable, so returning '' avoids a silently
       // re-rounded (lossy) amount.

@@ -4,6 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import type { ClassValue } from '../../lib/utils';
 import ChoyFieldBase from './ChoyFieldBase.vue';
@@ -30,6 +31,11 @@ const props = withDefaults(
 );
 
 const model = defineModel<string>({ default: '' });
+
+/** Drop empty values so an unset model cannot look pressed (parity with selection). */
+const statusOptions = computed(() =>
+  (props.options ?? []).filter((opt) => typeof opt.value === 'string' && opt.value !== ''),
+);
 
 function select(value: string): void {
   if (props.readonly || props.disabled) {
@@ -64,7 +70,7 @@ function select(value: string): void {
         :aria-disabled="disabled || readonly || undefined"
       >
         <ChoyButton
-          v-for="(opt, index) in options"
+          v-for="(opt, index) in statusOptions"
           :key="`${opt.value}-${index}`"
           type="button"
           size="sm"

@@ -139,6 +139,15 @@ function onInput(value: string): void {
   invalidDraft.value = false;
   draft.value = value;
 }
+
+function onKeydown(event: KeyboardEvent): void {
+  // Confirming an IME candidate also fires Enter; don't commit half-composed text.
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) {
+    return;
+  }
+  event.preventDefault();
+  commitDraft();
+}
 </script>
 
 <template>
@@ -169,7 +178,7 @@ function onInput(value: string): void {
         @update:model-value="onInput"
         @focus="onFocus"
         @blur="onBlur"
-        @keydown.enter.prevent="commitDraft"
+        @keydown="onKeydown"
       />
     </template>
   </ChoyFieldBase>

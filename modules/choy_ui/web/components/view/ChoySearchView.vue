@@ -43,6 +43,15 @@ function submit(): void {
   keyword.value = query.keyword;
   emit('query-update', query);
 }
+
+function onKeydown(event: KeyboardEvent): void {
+  // Confirming an IME candidate also fires Enter; don't submit half-composed text.
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) {
+    return;
+  }
+  event.preventDefault();
+  submit();
+}
 </script>
 
 <template>
@@ -56,7 +65,7 @@ function submit(): void {
       :placeholder="placeholder"
       :disabled="disabled"
       :aria-label="placeholder"
-      @keydown.enter.prevent="submit"
+      @keydown="onKeydown"
     />
     <ChoyButton
       type="button"
