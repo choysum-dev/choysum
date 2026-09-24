@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
  * Virtual field: holds a model value for forms without rendering DOM.
  * Hosts may still bind v-model for computed/derived values.
  */
+defineOptions({ inheritAttrs: false });
 defineModel<unknown>({ default: null });
 </script>
 

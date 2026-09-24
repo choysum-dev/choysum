@@ -42,7 +42,7 @@ const inputRef = ref<HTMLInputElement | null>(null);
 const displayName = computed(() => model.value?.name ?? '');
 const displaySize = computed(() => {
   const size = model.value?.size;
-  if (size === undefined || size === null) {
+  if (typeof size !== 'number' || !Number.isFinite(size) || size < 0) {
     return '';
   }
   if (size < 1024) {

@@ -66,6 +66,7 @@ watch(
       seedDraft();
     }
   },
+  { deep: true },
 );
 
 function onDraftInput(): void {

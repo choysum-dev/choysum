@@ -53,7 +53,7 @@ const selectOptions = computed(() => {
   const seen = new Set<string>();
   const out: ChoySelectionOption[] = [];
   for (const opt of props.options ?? []) {
-    if (opt.value === '' || seen.has(opt.value)) {
+    if (typeof opt.value !== 'string' || opt.value === '' || seen.has(opt.value)) {
       continue;
     }
     seen.add(opt.value);
