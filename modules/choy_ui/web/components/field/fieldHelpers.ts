@@ -57,6 +57,74 @@ export type ChoyDecimalRound = {
 };
 
 /**
+ * Expands a finite number's shortest string into plain decimal digits when it
+ * uses exponential notation (e.g. `1e-7` → `0.0000001`).
+ */
+function expandFiniteNumberToPlainDecimal(n: number): string | null {
+  if (Object.is(n, -0) || n === 0) {
+    return '0';
+  }
+  const s = String(n);
+  if (!/e/i.test(s)) {
+    return s;
+  }
+  const m = /^([+-]?)(\d+)(?:\.(\d+))?e([+-]?\d+)$/i.exec(s);
+  if (!m) {
+    return null;
+  }
+  const neg = m[1] === '-';
+  const digits = `${m[2]}${m[3] ?? ''}`;
+  const exp = Number(m[4]);
+  const point = m[2]!.length + exp;
+  if (point <= 0) {
+    return `${neg ? '-' : ''}0.${'0'.repeat(-point)}${digits}`;
+  }
+  if (point >= digits.length) {
+    return `${neg ? '-' : ''}${digits}${'0'.repeat(point - digits.length)}`;
+  }
+  return `${neg ? '-' : ''}${digits.slice(0, point)}.${digits.slice(point)}`;
+}
+
+/**
+ * Normalizes decimal / exponential text for exactness comparison.
+ * Strips '+', leading int zeros, trailing frac zeros; maps ±0 to '0'.
+ * Exponential forms are expanded to plain decimal when possible.
+ */
+function canonicalChoyDecimal(raw: string): string | null {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) {
+    return null;
+  }
+  let text = trimmed;
+  if (/e/i.test(text)) {
+    const n = Number(text);
+    if (!Number.isFinite(n)) {
+      return null;
+    }
+    const expanded = expandFiniteNumberToPlainDecimal(n);
+    if (expanded === null) {
+      return null;
+    }
+    text = expanded;
+  }
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(text)) {
+    return null;
+  }
+  const neg = text.startsWith('-');
+  const body = text.replace(/^[+-]/, '');
+  const [intRaw, fracRaw = ''] = body.includes('.')
+    ? (body.split('.') as [string, string])
+    : [body, ''];
+  const intPart = (intRaw || '0').replace(/^0+(?=\d)/, '') || '0';
+  const fracPart = fracRaw.replace(/0+$/, '');
+  if (intPart === '0' && fracPart === '') {
+    return '0';
+  }
+  const core = fracPart ? `${intPart}.${fracPart}` : intPart;
+  return neg ? `-${core}` : core;
+}
+
+/**
  * Rounds a decimal digit string with half-away-from-zero ties.
  * Operates on decimal digits so values like `"1.005"` at precision 2 become `1.01`.
  */
@@ -118,8 +186,8 @@ export function roundChoyDecimal(
   if (!Number.isFinite(value) || !Number.isSafeInteger(Math.trunc(value))) {
     return null;
   }
-  // At/above 2^52 every finite double is an integer; a non-zero fraction in `text` is lost.
-  if (digits > 0 && /[1-9]/.test(outFrac) && Math.abs(value) >= 2 ** 52) {
+  // Reject text that the double cannot reproduce (covers the [2^51, 2^52) hole).
+  if (canonicalChoyDecimal(signed) !== canonicalChoyDecimal(String(value))) {
     return null;
   }
   // Zero (including negative zero) is handled above via `isZero`.
@@ -210,8 +278,8 @@ export function parseChoyNumber(
   if (!Number.isFinite(n) || !Number.isSafeInteger(Math.trunc(n))) {
     return null;
   }
-  // At/above 2^52 the double spacing is >= 1, so a typed non-zero fraction is dropped.
-  if (/\.\d*[1-9]/.test(text) && Math.abs(n) >= 2 ** 52) {
+  // Reject text that the double cannot reproduce (covers the [2^51, 2^52) hole).
+  if (canonicalChoyDecimal(text) !== canonicalChoyDecimal(String(n))) {
     return null;
   }
   return n;

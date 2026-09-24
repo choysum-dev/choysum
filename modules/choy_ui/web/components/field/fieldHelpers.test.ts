@@ -42,6 +42,9 @@ describe('fieldHelpers', () => {
     // Fractional digits are unrepresentable at/above 2^52 (double spacing >= 1).
     expect(roundChoyDecimal('9007199254740990.4', 2)).toBeNull();
     expect(parseChoyNumber('9007199254740990.4', 'decimal')).toBeNull();
+    // Between 2^51 and 2^52 spacing is already 0.5; reject inexact fractions.
+    expect(roundChoyDecimal('2251799813685248.37', 2)).toBeNull();
+    expect(parseChoyNumber('2251799813685248.37', 'decimal')).toBeNull();
     // Overflowing digit strings become non-finite after Number(...).
     expect(roundChoyDecimal('9'.repeat(400), 0)).toBeNull();
   });

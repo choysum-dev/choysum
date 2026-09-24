@@ -176,11 +176,11 @@ function onSave(): void {
   }
   const selectedId =
     listSelection.value.length === 1 ? String(listSelection.value[0]) : null;
-  // Only trust a selection that is still visible on the current page, so a stale
-  // id from a previous page cannot become the write target.
+  // The form's loaded row stays the save target across paging; checkbox selection
+  // still requires a visible row on the current page.
   const captureRowId =
     (selectedRowId.value !== null &&
-    pageRows.value.some((row) => row.Id === selectedRowId.value)
+    allRows.value.some((row) => row.Id === selectedRowId.value)
       ? selectedRowId.value
       : null) ??
     (selectedId !== null && pageRows.value.some((row) => row.Id === selectedId)
