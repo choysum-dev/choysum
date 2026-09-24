@@ -13,6 +13,7 @@ import {
   formatChoyMonetary,
   parseChoyNumber,
   resolveChoyMonetaryPrecision,
+  roundChoyDecimal,
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
 
@@ -38,10 +39,12 @@ const props = withDefaults(
 
 const model = defineModel<number | null>({ default: null });
 const focused = ref(false);
+/** True after the user types; keeps draft visible across blur when still invalid. */
+const edited = ref(false);
 const draft = ref('');
 
 const displayValue = computed(() => {
-  if (focused.value) {
+  if (focused.value || edited.value) {
     return draft.value;
   }
   return formatChoyMonetary(model.value, {
@@ -51,7 +54,7 @@ const displayValue = computed(() => {
 });
 
 watch(model, (next) => {
-  if (!focused.value) {
+  if (!focused.value && !edited.value) {
     draft.value = next === null || next === undefined ? '' : String(next);
   }
 });
@@ -61,7 +64,10 @@ function onFocus(): void {
     return;
   }
   focused.value = true;
-  draft.value = model.value === null || model.value === undefined ? '' : String(model.value);
+  if (!edited.value) {
+    draft.value =
+      model.value === null || model.value === undefined ? '' : String(model.value);
+  }
 }
 
 function onBlur(): void {
@@ -69,21 +75,30 @@ function onBlur(): void {
   if (props.readonly || props.disabled) {
     return;
   }
-  const parsed = parseChoyNumber(draft.value, 'decimal');
-  if (parsed === null) {
-    if (draft.value.trim() === '') {
-      model.value = null;
-      draft.value = '';
-    }
+  const text = draft.value.trim();
+  if (!text) {
+    model.value = null;
+    draft.value = '';
+    edited.value = false;
     return;
   }
-  const precision = resolveChoyMonetaryPrecision(props.precision);
-  const rounded = Number(parsed.toFixed(precision));
-  model.value = rounded;
-  draft.value = String(rounded);
+  if (parseChoyNumber(draft.value, 'decimal') === null) {
+    // Keep the invalid draft visible so the user can correct it.
+    edited.value = true;
+    return;
+  }
+  const rounded = roundChoyDecimal(draft.value, resolveChoyMonetaryPrecision(props.precision));
+  if (!rounded) {
+    edited.value = true;
+    return;
+  }
+  model.value = rounded.value;
+  draft.value = rounded.text;
+  edited.value = false;
 }
 
 function onInput(value: string): void {
+  edited.value = true;
   draft.value = value;
 }
 </script>
@@ -107,7 +122,7 @@ function onInput(value: string): void {
         :model-value="displayValue"
         :name="name || undefined"
         :placeholder="placeholder"
-        :disabled="disabled || readonly"
+        :disabled="disabled"
         :readonly="readonly"
         :aria-invalid="ariaInvalid"
         :aria-describedby="ariaDescribedby"

@@ -51,7 +51,7 @@ function onInput(value: string): void {
         type="datetime-local"
         :model-value="model ?? ''"
         :name="name || undefined"
-        :disabled="disabled || readonly"
+        :disabled="disabled"
         :readonly="readonly"
         :aria-invalid="ariaInvalid"
         :aria-describedby="ariaDescribedby"

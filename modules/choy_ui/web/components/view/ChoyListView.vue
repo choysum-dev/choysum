@@ -66,7 +66,7 @@ function onRowClick(row: T): void {
       :columns="columns"
       :data="data"
       :row-id="rowId"
-      :row-selection="rowSelection"
+      :row-selection="rowSelection ?? []"
       :height="height"
       :enable-row-selection="enableRowSelection"
       :enable-sorting="enableSorting"

@@ -32,7 +32,9 @@ const props = withDefaults(
 
 const isVisible = computed(() => resolveChoyFieldVisible(props.visible));
 const uid = useId();
-const controlId = computed(() => props.name || `choy-field-${uid}`);
+const controlId = computed(() =>
+  props.name ? `${props.name}-${uid}` : `choy-field-${uid}`,
+);
 const labelId = computed(() => `${controlId.value}-label`);
 const errorId = computed(() => `${controlId.value}-error`);
 </script>

@@ -45,6 +45,78 @@ export function resolveChoyMonetaryPrecision(precision?: number): number {
     : 2;
 }
 
+export type ChoyDecimalRound = {
+  /** Numeric value (negative zero normalized to `0`). */
+  value: number;
+  /** Canonical decimal text at the requested precision. */
+  text: string;
+};
+
+/**
+ * Rounds a decimal digit string with half-away-from-zero ties.
+ * Operates on decimal digits so values like `"1.005"` at precision 2 become `1.01`.
+ */
+export function roundChoyDecimal(
+  raw: string,
+  precision?: number,
+): ChoyDecimalRound | null {
+  const digits = resolveChoyMonetaryPrecision(precision);
+  const text = String(raw ?? '').trim();
+  if (!text || !/^-?\d+(\.\d+)?$/.test(text)) {
+    return null;
+  }
+  const negative = text.startsWith('-');
+  const body = negative ? text.slice(1) : text;
+  const [intRaw, fracRaw = ''] = body.split('.');
+  const intDigits = (intRaw || '0').replace(/^0+(?=\d)/, '') || '0';
+  const fracPadded = fracRaw.padEnd(digits + 1, '0');
+  const keepFrac = digits > 0 ? fracPadded.slice(0, digits) : '';
+  const roundDigit = digits === 0 ? (fracRaw.charAt(0) || '0') : fracPadded.charAt(digits);
+  let digs = `${intDigits}${keepFrac}`.split('').map((c) => c.charCodeAt(0) - 48);
+  if (roundDigit >= '5') {
+    let i = digs.length - 1;
+    while (i >= 0) {
+      digs[i]! += 1;
+      if (digs[i]! < 10) {
+        break;
+      }
+      digs[i] = 0;
+      i -= 1;
+    }
+    if (i < 0) {
+      digs.unshift(1);
+    }
+  }
+  let outInt: string;
+  let outFrac: string;
+  if (digits === 0) {
+    outInt = digs.join('').replace(/^0+(?=\d)/, '') || '0';
+    outFrac = '';
+  } else {
+    while (digs.length <= digits) {
+      digs.unshift(0);
+    }
+    outFrac = digs.slice(-digits).join('');
+    outInt = digs.slice(0, -digits).join('').replace(/^0+(?=\d)/, '') || '0';
+  }
+  const isZero = outInt === '0' && (digits === 0 || /^0+$/.test(outFrac));
+  if (isZero) {
+    return {
+      value: 0,
+      text: digits === 0 ? '0' : `0.${'0'.repeat(digits)}`,
+    };
+  }
+  const signed =
+    digits === 0
+      ? `${negative ? '-' : ''}${outInt}`
+      : `${negative ? '-' : ''}${outInt}.${outFrac}`;
+  const value = Number(signed);
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return { value: Object.is(value, -0) ? 0 : value, text: signed };
+}
+
 /**
  * Formats a monetary amount for display. Empty/invalid input yields ''.
  * When `currency` is set it is appended after the number.
@@ -56,16 +128,21 @@ export function formatChoyMonetary(
   if (value === null || value === undefined) {
     return '';
   }
-  const raw = typeof value === 'number' ? value : String(value).trim();
-  if (raw === '' || (typeof raw === 'string' && Number.isNaN(Number(raw)))) {
-    return '';
-  }
-  const num = typeof raw === 'number' ? raw : Number(raw);
-  if (!Number.isFinite(num)) {
-    return '';
-  }
   const precision = resolveChoyMonetaryPrecision(opts?.precision);
-  const formatted = num.toFixed(precision);
+  let formatted: string;
+  if (typeof value === 'string') {
+    const rounded = roundChoyDecimal(value.trim(), precision);
+    if (!rounded) {
+      return '';
+    }
+    formatted = rounded.text;
+  } else {
+    if (!Number.isFinite(value)) {
+      return '';
+    }
+    // Numbers are already committed via roundChoyDecimal; toFixed is safe here.
+    formatted = Object.is(value, -0) ? (0).toFixed(precision) : value.toFixed(precision);
+  }
   const currency = String(opts?.currency ?? '').trim();
   return currency ? `${formatted} ${currency}` : formatted;
 }

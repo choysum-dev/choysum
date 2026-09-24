@@ -39,7 +39,9 @@ const draft = ref(
 
 watch(model, (next) => {
   const expected = next === null || next === undefined ? '' : String(next);
-  if (parseChoyNumber(draft.value, props.mode) !== next) {
+  const parsed = parseChoyNumber(draft.value, props.mode);
+  const draftInvalid = draft.value.trim() !== '' && parsed === null;
+  if (parsed !== next || draftInvalid) {
     draft.value = expected;
   }
 });
@@ -86,7 +88,7 @@ function commitDraft(): void {
         :type="inputType"
         :name="name || undefined"
         :placeholder="placeholder"
-        :disabled="disabled || readonly"
+        :disabled="disabled"
         :readonly="readonly"
         :aria-invalid="ariaInvalid"
         :aria-describedby="ariaDescribedby"
