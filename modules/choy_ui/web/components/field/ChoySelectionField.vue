@@ -48,10 +48,19 @@ watch(
   { immediate: true },
 );
 
-/** Reka SelectItem rejects empty-string values; null model covers "unset". */
-const selectOptions = computed(() =>
-  (props.options ?? []).filter((opt) => opt.value !== ''),
-);
+/** Reka SelectItem rejects empty-string values and duplicates; null model covers "unset". */
+const selectOptions = computed(() => {
+  const seen = new Set<string>();
+  const out: ChoySelectionOption[] = [];
+  for (const opt of props.options ?? []) {
+    if (opt.value === '' || seen.has(opt.value)) {
+      continue;
+    }
+    seen.add(opt.value);
+    out.push(opt);
+  }
+  return out;
+});
 </script>
 
 <template>

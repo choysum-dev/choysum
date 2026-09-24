@@ -65,7 +65,8 @@ export function roundChoyDecimal(
   precision?: number,
 ): ChoyDecimalRound | null {
   const digits = resolveChoyMonetaryPrecision(precision);
-  const text = String(raw ?? '').trim();
+  // Users routinely commit "12." — drop a trailing decimal point before validating.
+  const text = String(raw ?? '').trim().replace(/\.$/, '');
   if (!text || !/^-?\d+(\.\d+)?$/.test(text)) {
     return null;
   }
@@ -184,7 +185,8 @@ export function parseChoyNumber(
   raw: string,
   mode: 'integer' | 'float' | 'decimal',
 ): number | null {
-  const text = String(raw ?? '').trim();
+  // Users routinely commit "12." — drop a trailing decimal point before validating.
+  const text = String(raw ?? '').trim().replace(/\.$/, '');
   if (!text) {
     return null;
   }

@@ -89,7 +89,11 @@ function goNext(): void {
     >
       Prev
     </ChoyButton>
-    <span class="choy-pagination__summary tabular-nums">
+    <span
+      class="choy-pagination__summary tabular-nums"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       Page {{ currentPage }} of {{ totalPages }}
       <span class="text-foreground/60">· {{ total }} total</span>
     </span>
