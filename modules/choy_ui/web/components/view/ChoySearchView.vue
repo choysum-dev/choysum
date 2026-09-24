@@ -14,19 +14,16 @@ import {
 
 /**
  * Keyword search chrome. Emits a normalized ChoySearchQuery on submit.
- * `keywordFields` documents which row fields a host may filter client-side.
+ * Hosts decide which row fields to filter with filterRowsByKeyword.
  */
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
     placeholder?: string;
-    /** Documented keyword field names for host-side filtering (isolation). */
-    keywordFields?: string[];
     disabled?: boolean;
   }>(),
   {
     placeholder: 'Search…',
-    keywordFields: () => [],
     disabled: false,
   },
 );

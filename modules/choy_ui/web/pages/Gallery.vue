@@ -555,6 +555,8 @@ const galleryListRows = computed(() => {
 function onGalleryListSearch(query: ChoySearchQuery): void {
   galleryListApplied.value = query.keyword;
   galleryListPage.value = 1;
+  // The visible row set changes, so ids selected on the previous result set must not linger.
+  galleryListSelection.value = [];
 }
 
 const partnerCatalog: RelationOption[] = Array.from({ length: 80 }, (_, i) => ({

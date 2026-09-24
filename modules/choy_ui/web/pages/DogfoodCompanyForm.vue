@@ -157,6 +157,8 @@ function onCurrencySelect(option: RelationOption | null): void {
 function onSearch(query: ChoySearchQuery): void {
   appliedQuery.value = query;
   page.value = 1;
+  // The visible row set changes, so ids selected on the previous result set must not linger.
+  listSelection.value = [];
   ChoyMessage.info('Search applied', {
     description: query.keyword ? `Keyword: ${query.keyword}` : 'Cleared keyword filter.',
   });
@@ -304,7 +306,6 @@ function onRowClick(row: CompanyRow): void {
               <template #search>
                 <ChoySearchView
                   v-model:keyword="searchKeyword"
-                  :keyword-fields="['name', 'country']"
                   placeholder="Filter by name or country…"
                   @query-update="onSearch"
                 />

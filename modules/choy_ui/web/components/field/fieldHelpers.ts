@@ -165,6 +165,10 @@ export function formatChoyMonetary(
     }
     const decimal = Object.is(value, -0) ? '0' : String(value);
     const rounded = roundChoyDecimal(decimal, precision);
+    if (!rounded && !/e/i.test(decimal)) {
+      // Non-exponential magnitudes rejected by roundChoyDecimal must not use lossy toFixed.
+      return '';
+    }
     // Exponential notation (|value| >= 1e21) is not decimal-parseable; keep toFixed there.
     formatted = rounded ? rounded.text : value.toFixed(precision);
   }

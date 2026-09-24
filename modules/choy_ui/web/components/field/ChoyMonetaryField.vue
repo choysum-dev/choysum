@@ -86,6 +86,13 @@ function onBlur(): void {
   if (props.readonly || props.disabled) {
     return;
   }
+  if (!edited.value) {
+    // Focus/blur alone must not rewrite the host model: re-committing the raw text
+    // would silently round it (12.345 -> 12.35) even though nothing was typed.
+    draft.value =
+      model.value === null || model.value === undefined ? '' : String(model.value);
+    return;
+  }
   const text = draft.value.trim();
   if (!text) {
     model.value = null;
