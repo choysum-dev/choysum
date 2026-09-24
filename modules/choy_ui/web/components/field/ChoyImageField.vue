@@ -78,7 +78,12 @@ function onChange(event: Event): void {
     return;
   }
   // `accept` is only a hint; reject non-images so hosts never receive one.
-  if (file.type && !file.type.startsWith('image/')) {
+  // Some OS/browser pairs report an empty `file.type`, so fall back to the extension.
+  const isImage =
+    file.type !== ''
+      ? file.type.startsWith('image/')
+      : /\.(png|jpe?g|gif|webp|bmp|svg|avif)$/i.test(file.name);
+  if (!isImage) {
     input.value = '';
     return;
   }

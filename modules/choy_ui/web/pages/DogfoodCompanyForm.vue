@@ -159,12 +159,16 @@ function onSearch(query: ChoySearchQuery): void {
   page.value = 1;
   // The visible row set changes, so ids selected on the previous result set must not linger.
   listSelection.value = [];
+  selectedRowId.value = null;
   ChoyMessage.info('Search applied', {
     description: query.keyword ? `Keyword: ${query.keyword}` : 'Cleared keyword filter.',
   });
 }
 
 function onSave(): void {
+  if (formLoading.value) {
+    return;
+  }
   const trimmed = name.value.trim();
   if (!trimmed) {
     ChoyMessage.error('Save failed', { description: 'Name is required.' });
@@ -231,7 +235,14 @@ function onRowClick(row: CompanyRow): void {
                 <ChoyStatusbarField v-model="state" :options="STATE_OPTIONS" label="" />
               </template>
               <template #system-actions>
-                <ChoyButton size="sm" type="button" @click="onSave">Save</ChoyButton>
+                <ChoyButton
+                  size="sm"
+                  type="button"
+                  :disabled="formLoading"
+                  @click="onSave"
+                >
+                  Save
+                </ChoyButton>
               </template>
               <template #button-box>
                 <ChoyButton size="sm" variant="ghost" type="button" @click="activeTab = 'list'">

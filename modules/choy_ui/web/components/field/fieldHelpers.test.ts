@@ -109,6 +109,9 @@ describe('fieldHelpers', () => {
     expect(parseChoyNumber('9007199254740994', 'integer')).toBeNull();
     expect(parseChoyNumber('12.5', 'float')).toBe(12.5);
     expect(parseChoyNumber('12.50', 'decimal')).toBe(12.5);
+    expect(parseChoyNumber('+12.5', 'decimal')).toBe(12.5);
+    expect(parseChoyNumber('+12', 'integer')).toBe(12);
+    expect(roundChoyDecimal('+1.005', 2)).toEqual({ value: 1.01, text: '1.01' });
     expect(parseChoyNumber('abc', 'float')).toBeNull();
     expect(parseChoyNumber('1e2', 'float')).toBeNull();
     // A trailing decimal point is a common commit state; keep it parseable.

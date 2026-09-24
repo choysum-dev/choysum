@@ -67,11 +67,11 @@ export function roundChoyDecimal(
   const digits = resolveChoyMonetaryPrecision(precision);
   // Users routinely commit "12." — drop a trailing decimal point before validating.
   const text = String(raw ?? '').trim().replace(/\.$/, '');
-  if (!text || !/^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
+  if (!text || !/^[+-]?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
     return null;
   }
   const negative = text.startsWith('-');
-  const body = negative ? text.slice(1) : text;
+  const body = text.replace(/^[+-]/, '');
   const [intRaw, fracRaw = ''] = body.split('.');
   const intDigits = (intRaw || '0').replace(/^0+(?=\d)/, '') || '0';
   const fracPadded = fracRaw.padEnd(digits + 1, '0');
@@ -194,13 +194,13 @@ export function parseChoyNumber(
     return null;
   }
   if (mode === 'integer') {
-    if (!/^-?\d+$/.test(text)) {
+    if (!/^[+-]?\d+$/.test(text)) {
       return null;
     }
     const n = Number(text);
     return Number.isSafeInteger(n) ? n : null;
   }
-  if (!/^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
+  if (!/^[+-]?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
     return null;
   }
   const n = Number(text);

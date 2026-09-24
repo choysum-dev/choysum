@@ -67,6 +67,27 @@ function onChange(event: Event): void {
   if (!file) {
     return;
   }
+  // `accept` is only a hint; drop files the host did not ask for.
+  const accept = props.accept.trim().toLowerCase();
+  if (accept) {
+    const name = file.name.toLowerCase();
+    const type = file.type.toLowerCase();
+    const allowed = accept
+      .split(',')
+      .map((token) => token.trim())
+      .filter(Boolean)
+      .some((token) =>
+        token.startsWith('.')
+          ? name.endsWith(token)
+          : token.endsWith('/*')
+            ? type.startsWith(token.slice(0, -1))
+            : type === token,
+      );
+    if (!allowed) {
+      input.value = '';
+      return;
+    }
+  }
   model.value = { name: file.name, size: file.size, file };
   input.value = '';
 }
