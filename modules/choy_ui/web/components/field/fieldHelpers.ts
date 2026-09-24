@@ -71,11 +71,21 @@ export function expandExponentialDecimalText(raw: string): string | null {
   const digits = `${m[2]}${m[3] ?? ''}`;
   const exp = Number(m[4]);
   const point = m[2]!.length + exp;
+  // Pathological exponents (e.g. `1e-999999999`, whose Number() is still finite 0)
+  // would make `String.repeat` throw RangeError; any finite double needs ≪ 400 pad digits.
   if (point <= 0) {
-    return `${neg ? '-' : ''}0.${'0'.repeat(-point)}${digits}`;
+    const pad = -point;
+    if (!Number.isSafeInteger(pad) || pad > 400) {
+      return null;
+    }
+    return `${neg ? '-' : ''}0.${'0'.repeat(pad)}${digits}`;
   }
   if (point >= digits.length) {
-    return `${neg ? '-' : ''}${digits}${'0'.repeat(point - digits.length)}`;
+    const pad = point - digits.length;
+    if (!Number.isSafeInteger(pad) || pad > 400) {
+      return null;
+    }
+    return `${neg ? '-' : ''}${digits}${'0'.repeat(pad)}`;
   }
   return `${neg ? '-' : ''}${digits.slice(0, point)}.${digits.slice(point)}`;
 }
@@ -226,8 +236,12 @@ export function formatChoyMonetary(
       trimmed &&
       /e/i.test(trimmed) &&
       Number.isFinite(numeric) &&
-      Number.isSafeInteger(Math.trunc(numeric)) &&
-      /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(trimmed)
+      /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(trimmed) &&
+      // Compare exact digits instead of `Number.isSafeInteger`: an exactly
+      // representable magnitude like `1e21` must not blank here while the
+      // numeric branch returns it; lossy literals stay rejected.
+      canonicalChoyDecimal(expandExponentialDecimalText(trimmed) ?? String(numeric)) ===
+        canonicalChoyDecimal(String(numeric))
     ) {
       // Only exponential text needs the numeric fallback: a plain decimal rejected by
       // roundChoyDecimal is unrepresentable, so returning '' avoids a silently

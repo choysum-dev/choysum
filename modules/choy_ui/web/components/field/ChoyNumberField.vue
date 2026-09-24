@@ -52,6 +52,11 @@ watch(model, (next) => {
 });
 
 function onDraftInput(value: string | number): void {
+  // Guard like the monetary/datetime fields: some browsers still emit updates
+  // while the underlying input is readonly or disabled.
+  if (props.readonly || props.disabled) {
+    return;
+  }
   draft.value = String(value ?? '');
   invalidDraft.value = false;
 }

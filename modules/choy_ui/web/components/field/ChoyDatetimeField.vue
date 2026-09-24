@@ -41,6 +41,11 @@ function onInput(value: string): void {
   if (props.readonly || props.disabled) {
     return;
   }
+  // Don't echo the narrowed display text back into the host model: a value like
+  // `2026-09-23T10:30:45Z` would silently lose its offset (and any trailing junk).
+  if (value !== '' && value === displayValue.value) {
+    return;
+  }
   model.value = value === '' ? null : value;
 }
 </script>

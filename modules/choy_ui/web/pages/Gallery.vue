@@ -512,7 +512,7 @@ const switchOn = ref(true);
 const activeTab = ref('one');
 const l1Tab = ref('overview');
 const dialogOpen = ref(false);
-const selectValue = ref('');
+const selectValue = ref<string | null>(null);
 const comboboxValue = ref('');
 const lastMenuAction = ref('');
 

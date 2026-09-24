@@ -85,6 +85,8 @@ describe('fieldHelpers', () => {
     expect(formatChoyMonetary('1e-7', { precision: 2 })).toBe('0.00');
     expect(formatChoyMonetary(-1e-7, { precision: 2 })).toBe('0.00');
     expect(formatChoyMonetary(1e21, { precision: 2 })).toBe('1e+21');
+    // String and number paths must agree for exactly representable large magnitudes.
+    expect(formatChoyMonetary('1e21', { precision: 2 })).toBe('1e+21');
     // Lossy exponential magnitudes must not bypass the plain-decimal reject path.
     expect(formatChoyMonetary('9007199254740993e0')).toBe('');
     // Plain decimals rejected by roundChoyDecimal must not re-round via Number().
@@ -166,6 +168,8 @@ describe('fieldHelpers', () => {
     expect(expandExponentialDecimalText('0e0')).toBe('0');
     expect(expandExponentialDecimalText('not-exponential')).toBeNull();
     expect(expandExponentialDecimalText('1e')).toBeNull();
+    expect(expandExponentialDecimalText('1e-999999999')).toBeNull();
+    expect(expandExponentialDecimalText('1e999999999')).toBeNull();
   });
 
   test('canonicalChoyDecimal expands exponentials and rejects non-finite', () => {
