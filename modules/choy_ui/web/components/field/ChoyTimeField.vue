@@ -30,14 +30,18 @@ const model = defineModel<string | null>({ default: null });
 /** Native `time` only accepts `HH:mm[:ss]`. */
 const displayValue = computed(() => {
   const normalized = String(model.value ?? '').trim();
-  return normalized.match(/^\d{1,2}:\d{2}(:\d{2})?/)?.[0] ?? '';
+  const match = /^(\d{1,2}):(\d{2})(:\d{2})?/.exec(normalized);
+  // Native `time` inputs require a two-digit hour; a model like "9:30" would
+  // otherwise render as an empty control and hide the loaded value.
+  return match ? `${match[1]!.padStart(2, '0')}:${match[2]}${match[3] ?? ''}` : '';
 });
 
 /** Truncates text to the minute precision a native `time` input often reports. */
 function toInputPrecision(text: string): string {
-  return String(text ?? '')
+  const match = String(text ?? '')
     .trim()
-    .match(/^(\d{1,2}:\d{2})/)?.[1] ?? '';
+    .match(/^(\d{1,2}):(\d{2})/);
+  return match ? `${match[1]!.padStart(2, '0')}:${match[2]}` : '';
 }
 
 function onInput(value: string): void {

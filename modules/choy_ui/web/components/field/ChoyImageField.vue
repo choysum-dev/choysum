@@ -100,9 +100,12 @@ function onChange(event: Event): void {
     'image/bmp',
     'image/avif',
   ]);
+  const reportedType = file.type.toLowerCase();
+  // Some OS/browser pairs report `application/octet-stream` for valid images;
+  // fall back to the extension instead of rejecting the pick outright.
   const isImage =
-    file.type !== ''
-      ? rasterTypes.has(file.type.toLowerCase())
+    reportedType !== '' && reportedType !== 'application/octet-stream'
+      ? rasterTypes.has(reportedType)
       : /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(file.name);
   if (!isImage) {
     fileError.value = 'Only raster image files are supported.';

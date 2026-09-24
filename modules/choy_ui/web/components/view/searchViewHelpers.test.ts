@@ -52,5 +52,12 @@ describe('searchViewHelpers', () => {
       { Id: '2', Name: 'Beta', Meta: 'object' },
     ];
     expect(filterRowsByKeyword(mixed, 'object', ['Meta'])).toEqual([mixed[1]]);
+    // Primitive number/boolean cells are matched through String() coercion.
+    const primitives = [
+      { Id: '1', Active: true, Qty: 12 },
+      { Id: '2', Active: false, Qty: 7 },
+    ];
+    expect(filterRowsByKeyword(primitives, 'true', ['Active'])).toEqual([primitives[0]]);
+    expect(filterRowsByKeyword(primitives, '12', ['Qty'])).toEqual([primitives[0]]);
   });
 });

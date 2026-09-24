@@ -56,11 +56,12 @@ const displayValue = computed(() => {
 });
 
 watch(model, (next) => {
-  // Preserve an in-progress edit only when the host value already matches the draft.
+  // Keep the visible draft whenever it already parses to the new host value:
+  // an in-progress edit must survive, and a just-committed rounded draft
+  // (e.g. "12.30") must not be rewritten to `String(12.3)` while still focused.
   const parsedDraft = parseChoyNumber(draft.value, 'decimal');
   if (
     focused.value &&
-    edited.value &&
     parsedDraft !== null &&
     next !== null &&
     parsedDraft === next
