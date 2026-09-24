@@ -545,10 +545,11 @@ const galleryListFiltered = computed(() =>
 );
 
 const galleryListRows = computed(() => {
-  const pages = choyTotalPages(galleryListFiltered.value.length, galleryListPageSize.value);
+  const size = Math.max(1, Math.floor(galleryListPageSize.value) || 1);
+  const pages = choyTotalPages(galleryListFiltered.value.length, size);
   const safePage = clampChoyPage(galleryListPage.value, pages);
-  const offset = choyPageOffset(safePage, galleryListPageSize.value);
-  return galleryListFiltered.value.slice(offset, offset + galleryListPageSize.value);
+  const offset = choyPageOffset(safePage, size);
+  return galleryListFiltered.value.slice(offset, offset + size);
 });
 
 function onGalleryListSearch(query: ChoySearchQuery): void {

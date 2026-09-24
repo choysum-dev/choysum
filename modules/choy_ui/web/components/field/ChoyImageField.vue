@@ -38,21 +38,22 @@ const inputRef = ref<HTMLInputElement | null>(null);
 const localObjectUrl = ref<string | null>(null);
 
 const previewSrc = computed(
-  () => model.value?.previewUrl || localObjectUrl.value || '',
+  () => localObjectUrl.value || model.value?.previewUrl || '',
 );
 
 watch(
-  model,
-  (next) => {
+  () => [model.value?.file, model.value?.previewUrl] as const,
+  ([file]) => {
     if (localObjectUrl.value) {
       URL.revokeObjectURL(localObjectUrl.value);
       localObjectUrl.value = null;
     }
-    if (next?.file && !next.previewUrl) {
-      localObjectUrl.value = URL.createObjectURL(next.file);
+    // Prefer a fresh object URL for the current File over a stale host previewUrl.
+    if (file) {
+      localObjectUrl.value = URL.createObjectURL(file);
     }
   },
-  { immediate: true, deep: true },
+  { immediate: true },
 );
 
 onBeforeUnmount(() => {

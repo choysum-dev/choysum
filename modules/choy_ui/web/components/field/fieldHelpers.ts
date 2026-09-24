@@ -93,9 +93,7 @@ export function roundChoyDecimal(
     outInt = digs.join('').replace(/^0+(?=\d)/, '') || '0';
     outFrac = '';
   } else {
-    while (digs.length <= digits) {
-      digs.unshift(0);
-    }
+    // `digs` is always int-digits + `digits` frac digits (and may grow on carry).
     outFrac = digs.slice(-digits).join('');
     outInt = digs.slice(0, -digits).join('').replace(/^0+(?=\d)/, '') || '0';
   }
@@ -137,8 +135,12 @@ export function formatChoyMonetary(
     const numeric = Number(trimmed);
     if (rounded) {
       formatted = rounded.text;
-    } else if (trimmed && Number.isFinite(numeric)) {
-      // Exponential / non-canonical text: fall back to the numeric path.
+    } else if (
+      trimmed &&
+      Number.isFinite(numeric) &&
+      /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(trimmed)
+    ) {
+      // Exponential / non-canonical decimal text: fall back to the numeric path.
       formatted =
         roundChoyDecimal(String(numeric), precision)?.text ??
         numeric.toFixed(precision);
@@ -198,5 +200,8 @@ export function resolveChoyNumberDraftText(
     return normalized;
   }
   const preferred = String(preferredRaw ?? '').trim();
-  return preferred || normalized;
+  if (preferred && parseChoyNumber(preferred, mode) === value) {
+    return preferred;
+  }
+  return normalized;
 }

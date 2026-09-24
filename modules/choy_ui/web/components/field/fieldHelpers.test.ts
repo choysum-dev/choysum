@@ -34,6 +34,9 @@ describe('fieldHelpers', () => {
     expect(roundChoyDecimal('-0.000', 2)).toEqual({ value: 0, text: '0.00' });
     expect(roundChoyDecimal('12.3', 2)).toEqual({ value: 12.3, text: '12.30' });
     expect(roundChoyDecimal('bad', 2)).toBeNull();
+    // Full carry past the leading digit inserts a new high-place 1.
+    expect(roundChoyDecimal('9.5', 0)).toEqual({ value: 10, text: '10' });
+    expect(roundChoyDecimal('9.999', 2)).toEqual({ value: 10, text: '10.00' });
     // Overflowing digit strings become non-finite after Number(...).
     expect(roundChoyDecimal('9'.repeat(400), 0)).toBeNull();
   });
@@ -59,8 +62,10 @@ describe('fieldHelpers', () => {
     expect(formatChoyMonetary('2e0', { precision: 2 })).toBe('2.00');
     expect(formatChoyMonetary('1.005e0', { precision: 2 })).toBe('1.01');
     // Exponential string / number still needing toFixed when String(numeric) is not decimal.
-    expect(formatChoyMonetary('1e-7', { precision: 2 })).toBe((1e-7).toFixed(2));
-    expect(formatChoyMonetary(1e21, { precision: 2 })).toBe((1e21).toFixed(2));
+    expect(formatChoyMonetary('1e-7', { precision: 2 })).toBe('0.00');
+    expect(formatChoyMonetary(1e21, { precision: 2 })).toBe('1e+21');
+    // Non-decimal literals are rejected (Number('0x10') is finite but not monetary text).
+    expect(formatChoyMonetary('0x10')).toBe('');
   });
 
   test('resolveChoyNumberDraftText keeps preferred when String is exponential', () => {
@@ -70,7 +75,9 @@ describe('fieldHelpers', () => {
     expect(
       resolveChoyNumberDraftText(tiny, '0.0000000000000000000001', 'float'),
     ).toBe('0.0000000000000000000001');
+    // Preferred text that does not parse back to `value` is ignored.
     expect(resolveChoyNumberDraftText(tiny, '   ', 'float')).toBe(String(tiny));
+    expect(resolveChoyNumberDraftText(tiny, 'not-a-number', 'float')).toBe(String(tiny));
     expect(resolveChoyNumberDraftText(12, '12', 'integer')).toBe('12');
   });
 
