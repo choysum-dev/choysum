@@ -140,8 +140,10 @@ export function formatChoyMonetary(
     if (!Number.isFinite(value)) {
       return '';
     }
-    // Numbers are already committed via roundChoyDecimal; toFixed is safe here.
-    formatted = Object.is(value, -0) ? (0).toFixed(precision) : value.toFixed(precision);
+    const decimal = Object.is(value, -0) ? '0' : String(value);
+    const rounded = roundChoyDecimal(decimal, precision);
+    // Exponential notation (|value| >= 1e21) is not decimal-parseable; keep toFixed there.
+    formatted = rounded ? rounded.text : value.toFixed(precision);
   }
   const currency = String(opts?.currency ?? '').trim();
   return currency ? `${formatted} ${currency}` : formatted;

@@ -54,9 +54,12 @@ const displayValue = computed(() => {
 });
 
 watch(model, (next) => {
-  if (!focused.value && !edited.value) {
-    draft.value = next === null || next === undefined ? '' : String(next);
+  if (focused.value) {
+    return;
   }
+  // Host-driven updates (e.g. loading another record) must win over a stale invalid draft.
+  edited.value = false;
+  draft.value = next === null || next === undefined ? '' : String(next);
 });
 
 function onFocus(): void {

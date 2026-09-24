@@ -488,7 +488,7 @@ import {
   filterRowsByKeyword,
   type ChoySearchQuery,
 } from '../components/view/searchViewHelpers';
-import { choyPageOffset, clampChoyPage } from '../components/view/paginationHelpers';
+import { choyPageOffset, clampChoyPage, choyTotalPages } from '../components/view/paginationHelpers';
 import DataTable from '../components/internal/DataTable.vue';
 import DatePicker from '../components/internal/DatePicker.vue';
 import RelationCombobox from '../components/internal/RelationCombobox.vue';
@@ -545,7 +545,7 @@ const galleryListFiltered = computed(() =>
 );
 
 const galleryListRows = computed(() => {
-  const pages = Math.max(1, Math.ceil(galleryListFiltered.value.length / galleryListPageSize.value) || 1);
+  const pages = choyTotalPages(galleryListFiltered.value.length, galleryListPageSize.value);
   const safePage = clampChoyPage(galleryListPage.value, pages);
   const offset = choyPageOffset(safePage, galleryListPageSize.value);
   return galleryListFiltered.value.slice(offset, offset + galleryListPageSize.value);

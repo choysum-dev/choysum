@@ -32,11 +32,13 @@ describe('fieldHelpers', () => {
     expect(formatChoyMonetary('bad')).toBe('');
     expect(formatChoyMonetary(Number.POSITIVE_INFINITY)).toBe('');
     expect(formatChoyMonetary(12.345)).toBe('12.35');
+    expect(formatChoyMonetary(2.675)).toBe('2.68');
+    expect(formatChoyMonetary('2.675')).toBe('2.68');
     expect(formatChoyMonetary('12.3', { precision: 2 })).toBe('12.30');
     expect(formatChoyMonetary('1.005', { precision: 2 })).toBe('1.01');
     expect(formatChoyMonetary(12.3, { precision: 0 })).toBe('12');
     expect(formatChoyMonetary(12.3, { precision: 1000 })).toBe(
-      (12.3).toFixed(100),
+      roundChoyDecimal('12.3', 100)!.text,
     );
     expect(formatChoyMonetary(12.3, { precision: 2, currency: 'USD' })).toBe('12.30 USD');
     expect(formatChoyMonetary(0)).toBe('0.00');

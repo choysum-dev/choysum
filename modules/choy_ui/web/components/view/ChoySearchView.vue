@@ -41,7 +41,10 @@ function submit(): void {
   if (props.disabled) {
     return;
   }
-  emit('query-update', buildChoySearchQuery(keyword.value));
+  const query = buildChoySearchQuery(keyword.value);
+  // Keep the bound input in sync with the normalized query.
+  keyword.value = query.keyword;
+  emit('query-update', query);
 }
 </script>
 

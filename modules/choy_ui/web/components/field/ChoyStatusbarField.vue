@@ -63,8 +63,8 @@ function select(value: string): void {
         :aria-disabled="disabled || readonly || undefined"
       >
         <ChoyButton
-          v-for="opt in options"
-          :key="opt.value"
+          v-for="(opt, index) in options"
+          :key="`${opt.value}-${index}`"
           type="button"
           size="sm"
           :variant="model === opt.value ? 'default' : 'outline'"

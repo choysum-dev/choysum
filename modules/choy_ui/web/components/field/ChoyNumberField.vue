@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import Input from '../vendor/ui/input/Input.vue';
 import type { ClassValue } from '../../lib/utils';
 import ChoyFieldBase from './ChoyFieldBase.vue';
@@ -16,6 +16,7 @@ import {
 
 /**
  * Numeric field. Model is `number | null`; input text is parsed on blur/commit.
+ * Always uses a text input so partial/invalid entries are not coerced to ''.
  */
 const props = withDefaults(
   defineProps<
@@ -45,8 +46,6 @@ watch(model, (next) => {
     draft.value = expected;
   }
 });
-
-const inputType = computed(() => (props.mode === 'integer' ? 'number' : 'text'));
 
 function commitDraft(): void {
   if (props.readonly || props.disabled) {
@@ -85,7 +84,7 @@ function commitDraft(): void {
       <Input
         :id="controlId"
         v-model="draft"
-        :type="inputType"
+        type="text"
         :name="name || undefined"
         :placeholder="placeholder"
         :disabled="disabled"
