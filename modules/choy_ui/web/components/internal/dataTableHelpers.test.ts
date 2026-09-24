@@ -10,6 +10,7 @@ import {
   mapDataTableSelectionKeys,
   mergeDataTableControlledSelection,
   nextDataTableSort,
+  normalizeDataTableRowId,
   pruneDataTableSelection,
   resolveDataTableRowId,
   setDataTableSelectionAll,
@@ -76,6 +77,11 @@ describe('dataTableHelpers', () => {
     // Numeric-looking strings must sort numerically even without ICU localeCompare options.
     expect(compareDataTableValues('9', '10')).toBeLessThan(0);
     expect(compareDataTableValues('10', '9')).toBeGreaterThan(0);
+    expect(compareDataTableValues('9', '9')).toBe(0);
+    // Distinct snowflake-style ids beyond MAX_SAFE_INTEGER must not collapse as equal.
+    expect(
+      compareDataTableValues('9007199254740992', '9007199254740993'),
+    ).not.toBe(0);
   });
 
   test('toggles and bulk-sets selection', () => {
@@ -177,6 +183,17 @@ describe('dataTableHelpers', () => {
     expect(dataTableSelectionIdsEqual([42, '42'], [42, '42'])).toBe(true);
     expect(dataTableSelectionIdsEqual([42], ['42'])).toBe(false);
     expect(dataTableSelectionIdsEqual([' 7 '], ['7'])).toBe(true);
+    // Unusable ids must not equate to encoded string ghosts like `s:NaN`.
+    expect(dataTableSelectionIdsEqual([Number.NaN], ['NaN'])).toBe(false);
+  });
+
+  test('normalizeDataTableRowId trims strings and rejects unusable ids', () => {
+    expect(normalizeDataTableRowId(42)).toBe(42);
+    expect(normalizeDataTableRowId(' 7 ')).toBe('7');
+    expect(normalizeDataTableRowId('   ')).toBeNull();
+    expect(normalizeDataTableRowId(Number.NaN)).toBeNull();
+    expect(normalizeDataTableRowId(Number.POSITIVE_INFINITY)).toBeNull();
+    expect(encodeDataTableRowKey(normalizeDataTableRowId(' a ') as string)).toBe('s:a');
   });
 
   test('mergeDataTableControlledSelection keeps off-page ids', () => {

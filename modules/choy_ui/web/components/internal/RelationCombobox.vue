@@ -119,8 +119,13 @@ const virtualizer = useVirtualizer({
 const virtualRows = computed(() => virtualizer.value.getVirtualItems());
 const totalSize = computed(() => virtualizer.value.getTotalSize());
 
-/** Prefer searchKey so inline `search` arrows do not thrash watchers. */
-const searchIdentity = computed(() => props.searchKey ?? props.search);
+/**
+ * Prefer searchKey so inline `search` arrows do not thrash watchers: a fresh function
+ * identity (created by every parent render) must not clear `options` / `pinnedSelected`
+ * or restart the debounce. Without a searchKey the newest `props.search` is still read
+ * at call time; pass searchKey when switching search targets.
+ */
+const searchIdentity = computed(() => props.searchKey ?? '');
 
 let searchSeq = 0;
 watch(

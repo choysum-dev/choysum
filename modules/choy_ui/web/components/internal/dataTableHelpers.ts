@@ -62,7 +62,18 @@ export function compareDataTableValues(a: unknown, b: unknown): number {
     Number.isFinite(leftNumber) &&
     Number.isFinite(rightNumber)
   ) {
-    return leftNumber < rightNumber ? -1 : leftNumber > rightNumber ? 1 : 0;
+    if (leftNumber < rightNumber) {
+      return -1;
+    }
+    if (leftNumber > rightNumber) {
+      return 1;
+    }
+    if (leftText === rightText) {
+      return 0;
+    }
+    // Distinct integers beyond Number.MAX_SAFE_INTEGER collapse into one double
+    // (e.g. '9007199254740993' vs '9007199254740992'); order them textually.
+    return leftText.localeCompare(rightText, undefined, { numeric: true, sensitivity: 'base' });
   }
   return leftText.localeCompare(rightText, undefined, { numeric: true, sensitivity: 'base' });
 }
@@ -226,8 +237,19 @@ export function dataTableSelectionIdsEqual(
   left: readonly DataTableRowId[],
   right: readonly DataTableRowId[],
 ): boolean {
-  const leftKeys = new Set(left.map(encodeDataTableRowKey));
-  const rightKeys = new Set(right.map(encodeDataTableRowKey));
+  const toKeys = (ids: readonly DataTableRowId[]): Set<string> => {
+    const keys = new Set<string>();
+    for (const id of ids) {
+      // Blank / non-finite ids encode to `s:` / `s:NaN` and must not match real string ids.
+      if (normalizeDataTableRowId(id) === null) {
+        continue;
+      }
+      keys.add(encodeDataTableRowKey(id));
+    }
+    return keys;
+  };
+  const leftKeys = toKeys(left);
+  const rightKeys = toKeys(right);
   if (leftKeys.size !== rightKeys.size) {
     return false;
   }

@@ -373,10 +373,19 @@ function onRowClick(event: MouseEvent, row: (typeof rows.value)[number] | undefi
 }
 
 function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | undefined): void {
-  if (!row || (event.key !== 'Enter' && event.key !== ' ')) {
+  if (!row || isInteractiveRowClickTarget(event.target)) {
     return;
   }
-  if (isInteractiveRowClickTarget(event.target)) {
+  if (event.key === ' ') {
+    if (!props.enableRowSelection || !row.getCanSelect()) {
+      return;
+    }
+    // ARIA grids toggle the row selection with Space; Enter activates the row.
+    event.preventDefault();
+    row.toggleSelected();
+    return;
+  }
+  if (event.key !== 'Enter') {
     return;
   }
   event.preventDefault();

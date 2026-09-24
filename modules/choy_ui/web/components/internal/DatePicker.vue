@@ -21,6 +21,7 @@ import {
   CalendarRoot,
 } from 'reka-ui';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { CalendarDate } from '@internationalized/date';
 import { cn, type ClassValue } from '../../lib/utils';
 import Button from '../vendor/ui/button/Button.vue';
 import Popover from '../vendor/ui/popover/Popover.vue';
@@ -32,6 +33,10 @@ import {
   parseDatePickerValue,
   todayDatePickerValue,
 } from './datePickerHelpers';
+
+/** Matches formatDatePickerValue's supported YYYY-MM-DD year range. */
+const datePickerMinValue = new CalendarDate(1, 1, 1);
+const datePickerMaxValue = new CalendarDate(9999, 12, 31);
 
 /**
  * L3 date picker built on @internationalized/date + Reka Calendar.
@@ -136,6 +141,8 @@ watch(
       <CalendarRoot
         v-slot="{ weekDays, grid }"
         v-model="calendarValue"
+        :min-value="datePickerMinValue"
+        :max-value="datePickerMaxValue"
         class="choy-date-picker__calendar"
       >
         <CalendarHeader class="flex items-center justify-between gap-2 pb-2">
