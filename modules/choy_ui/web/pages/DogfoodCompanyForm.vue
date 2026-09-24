@@ -170,7 +170,9 @@ function onSave(): void {
     ChoyMessage.error('Save failed', { description: 'Name is required.' });
     return;
   }
-  const captureRowId = selectedRowId.value;
+  const captureRowId =
+    selectedRowId.value ??
+    (listSelection.value.length === 1 ? String(listSelection.value[0]) : null);
   const captureActive = active.value;
   const captureCurrencyLabel = currencyOption.value?.label ?? 'no currency';
   if (!captureRowId) {

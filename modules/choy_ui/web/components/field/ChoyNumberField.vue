@@ -60,6 +60,13 @@ function commitDraft(): void {
   if (props.readonly || props.disabled) {
     return;
   }
+  const hostText =
+    model.value === null || model.value === undefined ? '' : String(model.value);
+  // Focus/blur alone must not flag a host value whose shortest form is exponential
+  // (e.g. `1e-22`) as invalid; only real edits can be unparseable.
+  if (draft.value === hostText) {
+    return;
+  }
   const text = draft.value.trim();
   if (!text) {
     model.value = null;

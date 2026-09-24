@@ -79,6 +79,8 @@ describe('fieldHelpers', () => {
     // Exponential string / number still needing toFixed when String(numeric) is not decimal.
     expect(formatChoyMonetary('1e-7', { precision: 2 })).toBe('0.00');
     expect(formatChoyMonetary(1e21, { precision: 2 })).toBe('1e+21');
+    // Lossy exponential magnitudes must not bypass the plain-decimal reject path.
+    expect(formatChoyMonetary('9007199254740993e0')).toBe('');
     // Number path matches string path: unrepresentable magnitudes stay blank.
     expect(formatChoyMonetary(Number.MAX_SAFE_INTEGER + 1)).toBe('');
     // Non-decimal literals are rejected (Number('0x10') is finite but not monetary text).
