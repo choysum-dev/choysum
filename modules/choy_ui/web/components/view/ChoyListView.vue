@@ -29,8 +29,8 @@ const props = withDefaults(
   },
 );
 
-const rowSelection = defineModel<DataTableRowId[] | null>('rowSelection', {
-  default: null,
+const rowSelection = defineModel<DataTableRowId[]>('rowSelection', {
+  default: () => [],
 });
 
 const emit = defineEmits<{
@@ -66,7 +66,7 @@ function onRowClick(row: T): void {
       :columns="columns"
       :data="data"
       :row-id="rowId"
-      :row-selection="rowSelection ?? []"
+      :row-selection="rowSelection"
       :height="height"
       :enable-row-selection="enableRowSelection"
       :enable-sorting="enableSorting"

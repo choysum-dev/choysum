@@ -109,6 +109,10 @@ function onBlur(): void {
 }
 
 function onInput(value: string): void {
+  // Guard like datetime/time: some browsers still emit updates when readonly/disabled.
+  if (props.readonly || props.disabled) {
+    return;
+  }
   edited.value = true;
   draft.value = value;
 }

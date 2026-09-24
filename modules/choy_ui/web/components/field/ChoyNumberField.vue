@@ -96,6 +96,7 @@ function commitDraft(): void {
         :inputmode="mode === 'integer' ? 'numeric' : 'decimal'"
         @change="commitDraft"
         @blur="commitDraft"
+        @keydown.enter="commitDraft"
       />
     </template>
   </ChoyFieldBase>

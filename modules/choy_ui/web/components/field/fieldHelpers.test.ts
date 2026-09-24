@@ -94,5 +94,8 @@ describe('fieldHelpers', () => {
     expect(parseChoyNumber('12.50', 'decimal')).toBe(12.5);
     expect(parseChoyNumber('abc', 'float')).toBeNull();
     expect(parseChoyNumber('1e2', 'float')).toBeNull();
+    // Values beyond the exactly-representable range must not be silently rounded.
+    expect(parseChoyNumber('12345678901234567890', 'decimal')).toBeNull();
+    expect(formatChoyMonetary('9007199254740993')).toBe('');
   });
 });

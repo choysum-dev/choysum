@@ -16,7 +16,11 @@ export type ChoyFieldChromeProps = {
   visible?: boolean;
 };
 
-/** Option row shared by selection and statusbar fields. */
+/**
+ * Option row shared by selection and statusbar fields.
+ * `value` must be non-empty: Reka Select rejects `''`, and the selection model
+ * uses `null` for unset (empty-string options are filtered out).
+ */
 export type ChoySelectionOption = {
   value: string;
   label: string;
@@ -141,10 +145,13 @@ export function formatChoyMonetary(
       Number.isFinite(numeric) &&
       /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(trimmed)
     ) {
-      // Exponential / non-canonical decimal text: fall back to the numeric path.
-      formatted =
-        roundChoyDecimal(String(numeric), precision)?.text ??
-        numeric.toFixed(precision);
+      const numericRounded = roundChoyDecimal(String(numeric), precision);
+      // Plain decimals rejected by roundChoyDecimal are not exactly representable —
+      // never surface a silently lossy toFixed. Exponential still falls back.
+      if (!numericRounded && !/e/i.test(trimmed)) {
+        return '';
+      }
+      formatted = numericRounded?.text ?? numeric.toFixed(precision);
     } else {
       return '';
     }
@@ -184,7 +191,11 @@ export function parseChoyNumber(
     return null;
   }
   const n = Number(text);
-  return Number.isFinite(n) ? n : null;
+  // Match roundChoyDecimal: reject magnitudes that Number cannot represent exactly.
+  if (!Number.isFinite(n) || !Number.isSafeInteger(Math.trunc(n))) {
+    return null;
+  }
+  return n;
 }
 
 /**
