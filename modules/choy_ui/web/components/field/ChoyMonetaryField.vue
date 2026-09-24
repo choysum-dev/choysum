@@ -88,6 +88,11 @@ function onFocus(): void {
 
 function onBlur(): void {
   focused.value = false;
+  commitDraft();
+}
+
+/** Commits the current draft; shared by blur and Enter so both paths round identically. */
+function commitDraft(): void {
   if (props.readonly || props.disabled) {
     return;
   }
@@ -164,6 +169,7 @@ function onInput(value: string): void {
         @update:model-value="onInput"
         @focus="onFocus"
         @blur="onBlur"
+        @keydown.enter.prevent="commitDraft"
       />
     </template>
   </ChoyFieldBase>

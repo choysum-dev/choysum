@@ -322,6 +322,7 @@ function onRowClick(row: CompanyRow): void {
               v-model:row-selection="listSelection"
               :columns="listColumns"
               :data="pageRows"
+              :row-id="(row) => row.Id"
               :height="280"
               @row-click="onRowClick"
             >

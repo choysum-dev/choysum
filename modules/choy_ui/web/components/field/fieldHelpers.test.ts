@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  canonicalChoyDecimal,
+  expandExponentialDecimalText,
   formatChoyMonetary,
   parseChoyNumber,
   resolveChoyFieldVisible,
@@ -144,5 +146,39 @@ describe('fieldHelpers', () => {
       }
       expect(roundChoyDecimal(once.text, 2)).toEqual(once);
     }
+  });
+
+  test('roundChoyDecimal expands exponential values to plain decimal text', () => {
+    // Magnitudes below 1e-6 stringify as exponential (e.g. 1e-22); the exactness
+    // comparison must expand them before deciding the value is representable.
+    expect(roundChoyDecimal('0.0000000000000000000001', 22)).toEqual({
+      value: 1e-22,
+      text: '0.0000000000000000000001',
+    });
+  });
+
+  test('expandExponentialDecimalText covers LE0 / MID / GE forms', () => {
+    expect(expandExponentialDecimalText('1e-3')).toBe('0.001');
+    expect(expandExponentialDecimalText('-1.25e-2')).toBe('-0.0125');
+    expect(expandExponentialDecimalText('1.5e1')).toBe('15');
+    expect(expandExponentialDecimalText('12.34e1')).toBe('123.4');
+    expect(expandExponentialDecimalText('1e5')).toBe('100000');
+    expect(expandExponentialDecimalText('0e0')).toBe('0');
+    expect(expandExponentialDecimalText('not-exponential')).toBeNull();
+    expect(expandExponentialDecimalText('1e')).toBeNull();
+  });
+
+  test('canonicalChoyDecimal expands exponentials and rejects non-finite', () => {
+    expect(canonicalChoyDecimal('1e-7')).toBe('0.0000001');
+    expect(canonicalChoyDecimal('1.5e1')).toBe('15');
+    expect(canonicalChoyDecimal('0e10')).toBe('0');
+    expect(canonicalChoyDecimal('-0e5')).toBe('0');
+    // Forms Number accepts but the expander regex rejects → String(n) fallback.
+    expect(canonicalChoyDecimal('.0e1')).toBe('0');
+    expect(canonicalChoyDecimal('0xe0')).toBe('224');
+    expect(canonicalChoyDecimal('Infinity')).toBeNull();
+    expect(canonicalChoyDecimal('1e9999')).toBeNull();
+    expect(canonicalChoyDecimal('')).toBeNull();
+    expect(canonicalChoyDecimal('12.30')).toBe('12.3');
   });
 });

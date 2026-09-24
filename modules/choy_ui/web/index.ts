@@ -56,6 +56,7 @@ export { default as ChoyVirtualField } from './components/field/ChoyVirtualField
 export { default as ChoyFieldTranslationsDialog } from './components/field/ChoyFieldTranslationsDialog.vue';
 export { default as ChoyFieldCompanyValuesDialog } from './components/field/ChoyFieldCompanyValuesDialog.vue';
 export {
+  choyFieldChromeDefaults,
   formatChoyMonetary,
   parseChoyNumber,
   resolveChoyFieldVisible,

@@ -136,6 +136,7 @@ SPDX-License-Identifier: Apache-2.0
                 v-model:row-selection="galleryListSelection"
                 :columns="galleryListColumns"
                 :data="galleryListRows"
+                :row-id="(row) => row.Id"
                 :height="200"
               >
                 <template #search>

@@ -59,6 +59,12 @@ const selectOptions = computed(() => {
     seen.add(opt.value);
     out.push(opt);
   }
+  // Keep a host-set value that has no matching option visible instead of showing
+  // the placeholder (which would hide the loaded value and invite overwrites).
+  const current = model.value;
+  if (typeof current === 'string' && current !== '' && !seen.has(current)) {
+    out.push({ value: current, label: current });
+  }
   return out;
 });
 </script>

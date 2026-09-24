@@ -57,18 +57,13 @@ export type ChoyDecimalRound = {
 };
 
 /**
- * Expands a finite number's shortest string into plain decimal digits when it
- * uses exponential notation (e.g. `1e-7` → `0.0000001`).
+ * Expands exponential decimal text into plain digits
+ * (e.g. `1.25e-3` → `0.00125`, `1.5e1` → `15`).
+ * Returns null when `raw` is not a plain coefficient×10^exp form.
  */
-function expandFiniteNumberToPlainDecimal(n: number): string | null {
-  if (Object.is(n, -0) || n === 0) {
-    return '0';
-  }
-  const s = String(n);
-  if (!/e/i.test(s)) {
-    return s;
-  }
-  const m = /^([+-]?)(\d+)(?:\.(\d+))?e([+-]?\d+)$/i.exec(s);
+export function expandExponentialDecimalText(raw: string): string | null {
+  const text = String(raw ?? '').trim();
+  const m = /^([+-]?)(\d+)(?:\.(\d+))?e([+-]?\d+)$/i.exec(text);
   if (!m) {
     return null;
   }
@@ -86,11 +81,27 @@ function expandFiniteNumberToPlainDecimal(n: number): string | null {
 }
 
 /**
+ * Expands a finite number's shortest string into plain decimal digits when it
+ * uses exponential notation (e.g. `1e-7` → `0.0000001`).
+ */
+function expandFiniteNumberToPlainDecimal(n: number): string {
+  if (Object.is(n, -0) || n === 0) {
+    return '0';
+  }
+  const s = String(n);
+  if (!/e/i.test(s)) {
+    return s;
+  }
+  // Engine `String(n)` exponential forms always match the expander regex.
+  return expandExponentialDecimalText(s) ?? s;
+}
+
+/**
  * Normalizes decimal / exponential text for exactness comparison.
  * Strips '+', leading int zeros, trailing frac zeros; maps ±0 to '0'.
  * Exponential forms are expanded to plain decimal when possible.
  */
-function canonicalChoyDecimal(raw: string): string | null {
+export function canonicalChoyDecimal(raw: string): string | null {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) {
     return null;
@@ -101,11 +112,9 @@ function canonicalChoyDecimal(raw: string): string | null {
     if (!Number.isFinite(n)) {
       return null;
     }
-    const expanded = expandFiniteNumberToPlainDecimal(n);
-    if (expanded === null) {
-      return null;
-    }
-    text = expanded;
+    // Prefer expanding the literal so MID coefficient forms stay exact; fall back
+    // to String(n) for engine-specific exponential shapes (and ±0).
+    text = expandExponentialDecimalText(text) ?? expandFiniteNumberToPlainDecimal(n);
   }
   if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(text)) {
     return null;

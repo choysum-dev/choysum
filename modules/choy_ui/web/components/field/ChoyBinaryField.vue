@@ -96,14 +96,23 @@ function onChange(event: Event): void {
           return name.endsWith(token);
         }
         if (token.endsWith('/*')) {
-          return type.startsWith(token.slice(0, -1));
+          // An empty `file.type` cannot be matched against a wildcard; don't
+          // reject a pick we cannot verify here — the host still validates uploads.
+          return type === '' || type.startsWith(token.slice(0, -1));
         }
         // Some OS/browser pairs report an empty `file.type`; fall back to the
         // extension so a valid pick is not rejected outright.
         const subtype = token.split('/')[1] ?? '';
+        // `image/jpeg` files are usually stored with a `.jpg` extension.
+        const fallbackExts =
+          subtype === 'jpeg'
+            ? ['.jpg', '.jpeg']
+            : subtype
+              ? [`.${subtype}`]
+              : [];
         return (
           type === token ||
-          (type === '' && subtype !== '' && name.endsWith(`.${subtype}`))
+          (type === '' && fallbackExts.some((ext) => name.endsWith(ext)))
         );
       });
     if (!allowed) {

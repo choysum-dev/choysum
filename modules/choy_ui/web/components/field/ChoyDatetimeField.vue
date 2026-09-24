@@ -4,6 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import Input from '../vendor/ui/input/Input.vue';
 import type { ClassValue } from '../../lib/utils';
 import ChoyFieldBase from './ChoyFieldBase.vue';
@@ -26,6 +27,14 @@ const props = withDefaults(
 );
 
 const model = defineModel<string | null>({ default: null });
+
+/** Native `datetime-local` only accepts `YYYY-MM-DDTHH:mm[:ss]`. */
+const displayValue = computed(() => {
+  const normalized = String(model.value ?? '')
+    .trim()
+    .replace(' ', 'T');
+  return normalized.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?/)?.[0] ?? '';
+});
 
 function onInput(value: string): void {
   // Browsers may ignore `readonly` on native datetime-local inputs, so guard the update too.
@@ -53,7 +62,7 @@ function onInput(value: string): void {
       <Input
         :id="controlId"
         type="datetime-local"
-        :model-value="model ?? ''"
+        :model-value="displayValue"
         :name="name || undefined"
         :disabled="disabled"
         :readonly="readonly"
