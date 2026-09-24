@@ -176,6 +176,10 @@ export function formatChoyMonetary(
     // Exponential notation (|value| >= 1e21) is not decimal-parseable; keep toFixed there.
     formatted = rounded ? rounded.text : value.toFixed(precision);
   }
+  // `toFixed` on a tiny negative magnitude yields "-0.00" / "-0"; normalize it like `-0`.
+  if (/^-0(\.0+)?$/.test(formatted)) {
+    formatted = formatted.slice(1);
+  }
   const currency = String(opts?.currency ?? '').trim();
   return currency ? `${formatted} ${currency}` : formatted;
 }

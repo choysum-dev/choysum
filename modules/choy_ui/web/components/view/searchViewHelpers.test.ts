@@ -46,5 +46,11 @@ describe('searchViewHelpers', () => {
     expect(filterRowsByKeyword(rows, 'alpha', ['Name'])).toEqual([rows[0]]);
     expect(filterRowsByKeyword(rows, 'alpha', ['Name', 'Code'])).toEqual([rows[0], rows[2]]);
     expect(filterRowsByKeyword(rows, 'zzz', ['Name'])).toEqual([]);
+    // Non-primitive cells are ignored (avoid matching "[object Object]" / Date strings).
+    const mixed = [
+      { Id: '1', Name: 'Alpha', Meta: { nested: true } },
+      { Id: '2', Name: 'Beta', Meta: 'object' },
+    ];
+    expect(filterRowsByKeyword(mixed, 'object', ['Meta'])).toEqual([mixed[1]]);
   });
 });

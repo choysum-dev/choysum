@@ -22,7 +22,9 @@ export type ChoyImageValue = {
 } | null;
 
 /**
- * Image field: accept=image/* with preview from object URL or provided previewUrl.
+ * Image field: raster image pick with preview from object URL or provided previewUrl.
+ * SVG is rejected (and omitted from `accept`) because hosts may later serve it
+ * in a script-capable context.
  */
 const props = withDefaults(
   defineProps<
@@ -36,6 +38,8 @@ const props = withDefaults(
 const model = defineModel<ChoyImageValue>({ default: null });
 const inputRef = ref<HTMLInputElement | null>(null);
 const localObjectUrl = ref<string | null>(null);
+/** Set when a picked file is rejected; the model stays untouched. */
+const fileError = ref('');
 
 const previewSrc = computed(
   () => localObjectUrl.value || model.value?.previewUrl || '',
@@ -87,10 +91,12 @@ function onChange(event: Event): void {
       ? file.type.startsWith('image/')
       : /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(file.name));
   if (!isImage) {
+    fileError.value = 'Only raster image files are supported.';
     input.value = '';
     return;
   }
   // Let the model watcher own create/revoke of the local object URL.
+  fileError.value = '';
   model.value = { name: file.name, size: file.size, file };
   input.value = '';
 }
@@ -99,6 +105,7 @@ function onClear(): void {
   if (props.readonly || props.disabled) {
     return;
   }
+  fileError.value = '';
   model.value = null;
 }
 </script>
@@ -112,7 +119,7 @@ function onClear(): void {
     :required="required"
     :readonly="readonly"
     :disabled="disabled"
-    :error="error"
+    :error="error || fileError"
     :name="name"
     :visible="visible"
   >
@@ -121,7 +128,7 @@ function onClear(): void {
         <input
           ref="inputRef"
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,image/avif"
           class="hidden"
           :id="controlId"
           :disabled="disabled || readonly"

@@ -78,7 +78,8 @@ function onFocus(): void {
     return;
   }
   focused.value = true;
-  invalidDraft.value = false;
+  // Keep the invalid flag until the user edits the text (`onInput` clears it), so the
+  // control does not stop advertising an unparsed draft on focus.
   if (!edited.value) {
     draft.value =
       model.value === null || model.value === undefined ? '' : String(model.value);

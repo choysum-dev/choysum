@@ -40,7 +40,8 @@ export function buildChoySearchQuery(
 
 /**
  * Case-insensitive substring filter over the listed string fields.
- * Blank keyword returns all rows.
+ * Blank keyword returns all rows. Only primitive string/number/boolean cells
+ * are compared; hosts should pre-format other values.
  */
 export function filterRowsByKeyword<T extends Record<string, unknown>>(
   rows: ReadonlyArray<T>,
@@ -58,7 +59,11 @@ export function filterRowsByKeyword<T extends Record<string, unknown>>(
   return rows.filter((row) =>
     keys.some((key) => {
       const cell = row[key];
-      if (cell === null || cell === undefined) {
+      if (
+        typeof cell !== 'string' &&
+        typeof cell !== 'number' &&
+        typeof cell !== 'boolean'
+      ) {
         return false;
       }
       return String(cell).toLowerCase().includes(needle);

@@ -38,6 +38,8 @@ const props = withDefaults(
 
 const model = defineModel<ChoyBinaryValue>({ default: null });
 const inputRef = ref<HTMLInputElement | null>(null);
+/** Set when a picked file is rejected by `accept`; the model stays untouched. */
+const fileError = ref('');
 
 const displayName = computed(() => model.value?.name ?? '');
 const displaySize = computed(() => {
@@ -84,10 +86,12 @@ function onChange(event: Event): void {
             : type === token,
       );
     if (!allowed) {
+      fileError.value = 'Selected file type is not allowed.';
       input.value = '';
       return;
     }
   }
+  fileError.value = '';
   model.value = { name: file.name, size: file.size, file };
   input.value = '';
 }
@@ -96,6 +100,7 @@ function onClear(): void {
   if (props.readonly || props.disabled) {
     return;
   }
+  fileError.value = '';
   model.value = null;
 }
 </script>
@@ -109,7 +114,7 @@ function onClear(): void {
     :required="required"
     :readonly="readonly"
     :disabled="disabled"
-    :error="error"
+    :error="error || fileError"
     :name="name"
     :visible="visible"
   >
