@@ -14,6 +14,7 @@ defineProps<{
   id?: string;
   disabled?: boolean;
   'aria-invalid'?: boolean | 'true' | 'false';
+  'aria-required'?: boolean | 'true' | 'false';
   'aria-describedby'?: string;
 }>();
 </script>
@@ -24,6 +25,7 @@ defineProps<{
     :id="id || undefined"
     :disabled="disabled"
     :aria-invalid="$props['aria-invalid']"
+    :aria-required="$props['aria-required']"
     :aria-describedby="$props['aria-describedby']"
     :class="
       cn(

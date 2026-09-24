@@ -5,6 +5,7 @@ import {
   formatChoyMonetary,
   parseChoyNumber,
   resolveChoyFieldVisible,
+  resolveChoyNumberDraftText,
   roundChoyDecimal,
 } from './fieldHelpers';
 
@@ -37,11 +38,20 @@ describe('fieldHelpers', () => {
     expect(formatChoyMonetary('12.3', { precision: 2 })).toBe('12.30');
     expect(formatChoyMonetary('1.005', { precision: 2 })).toBe('1.01');
     expect(formatChoyMonetary(12.3, { precision: 0 })).toBe('12');
-    expect(formatChoyMonetary(12.3, { precision: 1000 })).toBe(
-      roundChoyDecimal('12.3', 100)!.text,
-    );
+    // precision clamps to 100 → "12.3" + 99 trailing zeros
+    expect(formatChoyMonetary(12.3, { precision: 1000 })).toBe(`12.3${'0'.repeat(99)}`);
     expect(formatChoyMonetary(12.3, { precision: 2, currency: 'USD' })).toBe('12.30 USD');
     expect(formatChoyMonetary(0)).toBe('0.00');
+  });
+
+  test('resolveChoyNumberDraftText keeps preferred when String is exponential', () => {
+    const tiny = Number('0.0000000000000000000001');
+    expect(String(tiny)).toMatch(/e/i);
+    expect(parseChoyNumber(String(tiny), 'float')).toBeNull();
+    expect(
+      resolveChoyNumberDraftText(tiny, '0.0000000000000000000001', 'float'),
+    ).toBe('0.0000000000000000000001');
+    expect(resolveChoyNumberDraftText(12, '12', 'integer')).toBe('12');
   });
 
   test('parseChoyNumber modes', () => {

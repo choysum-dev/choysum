@@ -46,7 +46,7 @@ const model = defineModel<string>({ default: '' });
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <Textarea
         :id="controlId"
         v-model="model"
@@ -56,6 +56,7 @@ const model = defineModel<string>({ default: '' });
         :disabled="disabled"
         :readonly="readonly"
         :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
       />
     </template>

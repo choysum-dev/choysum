@@ -64,7 +64,7 @@ const emit = defineEmits<{
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <RelationCombobox
         v-model="model"
         :id="controlId"
@@ -77,6 +77,7 @@ const emit = defineEmits<{
         :disabled="disabled || readonly"
         :clearable="clearable && !readonly"
         :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
         @search-more="emit('search-more', $event)"
         @search-error="emit('search-error', $event)"

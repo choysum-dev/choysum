@@ -85,6 +85,7 @@ const errorId = computed(() => `${controlId.value}-error`);
         :control-id="controlId"
         :label-id="labelId"
         :aria-invalid="error ? true : undefined"
+        :aria-required="required || undefined"
         :aria-describedby="error ? errorId : undefined"
       />
     </div>

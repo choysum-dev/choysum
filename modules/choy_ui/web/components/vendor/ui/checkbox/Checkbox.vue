@@ -13,6 +13,7 @@ const props = defineProps<{
   disabled?: boolean;
   id?: string;
   'aria-invalid'?: boolean | 'true' | 'false';
+  'aria-required'?: boolean | 'true' | 'false';
   'aria-describedby'?: string;
 }>();
 
@@ -26,6 +27,7 @@ const checked = defineModel<boolean | 'indeterminate'>({ default: false });
     data-slot="checkbox"
     :disabled="disabled"
     :aria-invalid="props['aria-invalid']"
+    :aria-required="props['aria-required']"
     :aria-describedby="props['aria-describedby']"
     :class="
       cn(

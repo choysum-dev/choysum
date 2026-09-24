@@ -45,7 +45,7 @@ function onInput(value: string): void {
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <Input
         :id="controlId"
         type="datetime-local"
@@ -54,6 +54,7 @@ function onInput(value: string): void {
         :disabled="disabled"
         :readonly="readonly"
         :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
         @update:model-value="onInput"
       />

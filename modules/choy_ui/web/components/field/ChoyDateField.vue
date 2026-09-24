@@ -46,7 +46,7 @@ const model = defineModel<string | null>({ default: null });
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <DatePicker
         v-model="model"
         :id="controlId"
@@ -54,6 +54,7 @@ const model = defineModel<string | null>({ default: null });
         :disabled="disabled || readonly"
         :clearable="clearable && !readonly"
         :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
       />
     </template>

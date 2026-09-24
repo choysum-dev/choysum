@@ -11,6 +11,7 @@ import ChoyFieldBase from './ChoyFieldBase.vue';
 import {
   choyFieldChromeDefaults,
   parseChoyNumber,
+  resolveChoyNumberDraftText,
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
 
@@ -63,7 +64,7 @@ function commitDraft(): void {
     return;
   }
   model.value = parsed;
-  draft.value = String(parsed);
+  draft.value = resolveChoyNumberDraftText(parsed, text, props.mode);
 }
 </script>
 
@@ -80,7 +81,7 @@ function commitDraft(): void {
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <Input
         :id="controlId"
         v-model="draft"
@@ -90,6 +91,7 @@ function commitDraft(): void {
         :disabled="disabled"
         :readonly="readonly"
         :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
         :inputmode="mode === 'integer' ? 'numeric' : 'decimal'"
         @change="commitDraft"

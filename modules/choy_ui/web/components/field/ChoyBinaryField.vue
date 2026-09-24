@@ -92,24 +92,25 @@ function onClear(): void {
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <div class="flex flex-wrap items-center gap-2">
         <input
           ref="inputRef"
           type="file"
           class="hidden"
+          :id="controlId"
           :accept="accept || undefined"
           :disabled="disabled || readonly"
+          :aria-invalid="ariaInvalid"
+          :aria-required="ariaRequired"
+          :aria-describedby="ariaDescribedby"
           @change="onChange"
         />
         <ChoyButton
           type="button"
           variant="outline"
           size="sm"
-          :id="controlId"
           :disabled="disabled || readonly"
-          :aria-invalid="ariaInvalid"
-          :aria-describedby="ariaDescribedby"
           @click="onPick"
         >
           Choose file

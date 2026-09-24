@@ -52,13 +52,14 @@ function select(value: string): void {
     :name="name"
     :visible="visible"
   >
-    <template #default="{ labelId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ labelId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <div
         class="choy-statusbar-field flex flex-wrap gap-1"
         role="group"
         :aria-labelledby="label ? labelId : undefined"
         :aria-label="label ? undefined : name || 'Status'"
         :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
         :aria-disabled="disabled || readonly || undefined"
       >

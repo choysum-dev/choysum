@@ -45,7 +45,7 @@ const model = defineModel<boolean>({ default: false });
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <div class="flex items-center gap-2">
         <Checkbox
           v-if="widget === 'checkbox'"
@@ -53,6 +53,7 @@ const model = defineModel<boolean>({ default: false });
           v-model="model"
           :disabled="disabled || readonly"
           :aria-invalid="ariaInvalid"
+          :aria-required="ariaRequired"
           :aria-describedby="ariaDescribedby"
         />
         <Switch
@@ -61,6 +62,7 @@ const model = defineModel<boolean>({ default: false });
           v-model="model"
           :disabled="disabled || readonly"
           :aria-invalid="ariaInvalid"
+          :aria-required="ariaRequired"
           :aria-describedby="ariaDescribedby"
         />
       </div>

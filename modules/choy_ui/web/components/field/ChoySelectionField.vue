@@ -4,6 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
@@ -35,6 +36,11 @@ const props = withDefaults(
 );
 
 const model = defineModel<string | null>({ default: null });
+
+/** Reka SelectItem rejects empty-string values; null model covers "unset". */
+const selectOptions = computed(() =>
+  (props.options ?? []).filter((opt) => opt.value !== ''),
+);
 </script>
 
 <template>
@@ -50,19 +56,20 @@ const model = defineModel<string | null>({ default: null });
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <Select v-model="model" :disabled="disabled || readonly">
         <SelectTrigger
           :id="controlId"
           :placeholder="placeholder"
           :disabled="disabled || readonly"
           :aria-invalid="ariaInvalid"
+          :aria-required="ariaRequired"
           :aria-describedby="ariaDescribedby"
         />
         <SelectContent>
           <SelectItem
-            v-for="opt in options"
-            :key="opt.value === '' ? '__empty__' : opt.value"
+            v-for="opt in selectOptions"
+            :key="opt.value"
             :value="opt.value"
           >
             {{ opt.label }}

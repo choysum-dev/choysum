@@ -54,7 +54,8 @@ const displayValue = computed(() => {
 });
 
 watch(model, (next) => {
-  if (focused.value) {
+  // Only an in-progress user edit outranks the host value while focused.
+  if (focused.value && edited.value) {
     return;
   }
   // Host-driven updates (e.g. loading another record) must win over a stale invalid draft.
@@ -119,7 +120,7 @@ function onInput(value: string): void {
     :name="name"
     :visible="visible"
   >
-    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
       <Input
         :id="controlId"
         :model-value="displayValue"
@@ -128,6 +129,7 @@ function onInput(value: string): void {
         :disabled="disabled"
         :readonly="readonly"
         :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
         inputmode="decimal"
         @update:model-value="onInput"

@@ -50,6 +50,7 @@ const props = withDefaults(
     clearable?: boolean;
     id?: string;
     'aria-invalid'?: boolean | 'true' | 'false';
+    'aria-required'?: boolean | 'true' | 'false';
     'aria-describedby'?: string;
   }>(),
   {
@@ -121,6 +122,7 @@ watch(
           :id="id || undefined"
           :disabled="disabled"
           :aria-invalid="props['aria-invalid']"
+          :aria-required="props['aria-required']"
           :aria-describedby="props['aria-describedby']"
           :class="
             cn(

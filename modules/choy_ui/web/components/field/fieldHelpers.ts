@@ -174,3 +174,20 @@ export function parseChoyNumber(
   const n = Number(text);
   return Number.isFinite(n) ? n : null;
 }
+
+/**
+ * Prefer a draft string that `parseChoyNumber` still accepts for `value`.
+ * `String(value)` can be exponential (e.g. `1e-22`), which this parser rejects.
+ */
+export function resolveChoyNumberDraftText(
+  value: number,
+  preferredRaw: string,
+  mode: 'integer' | 'float' | 'decimal',
+): string {
+  const normalized = String(value);
+  if (parseChoyNumber(normalized, mode) === value) {
+    return normalized;
+  }
+  const preferred = String(preferredRaw ?? '').trim();
+  return preferred || normalized;
+}
