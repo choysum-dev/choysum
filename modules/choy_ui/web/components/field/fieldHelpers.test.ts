@@ -39,6 +39,9 @@ describe('fieldHelpers', () => {
     expect(roundChoyDecimal('9.999', 2)).toEqual({ value: 10, text: '10.00' });
     // Lossy integer magnitudes (beyond MAX_SAFE_INTEGER) are rejected.
     expect(roundChoyDecimal('9007199254740993', 0)).toBeNull();
+    // Fractional digits are unrepresentable at/above 2^52 (double spacing >= 1).
+    expect(roundChoyDecimal('9007199254740990.4', 2)).toBeNull();
+    expect(parseChoyNumber('9007199254740990.4', 'decimal')).toBeNull();
     // Overflowing digit strings become non-finite after Number(...).
     expect(roundChoyDecimal('9'.repeat(400), 0)).toBeNull();
   });

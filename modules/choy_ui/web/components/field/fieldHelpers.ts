@@ -117,6 +117,10 @@ export function roundChoyDecimal(
   if (!Number.isFinite(value) || !Number.isSafeInteger(Math.trunc(value))) {
     return null;
   }
+  // At/above 2^52 every finite double is an integer; a non-zero fraction in `text` is lost.
+  if (digits > 0 && /[1-9]/.test(outFrac) && Math.abs(value) >= 2 ** 52) {
+    return null;
+  }
   // Zero (including negative zero) is handled above via `isZero`.
   return { value, text: signed };
 }
@@ -193,6 +197,10 @@ export function parseChoyNumber(
   const n = Number(text);
   // Match roundChoyDecimal: reject magnitudes that Number cannot represent exactly.
   if (!Number.isFinite(n) || !Number.isSafeInteger(Math.trunc(n))) {
+    return null;
+  }
+  // At/above 2^52 the double spacing is >= 1, so a typed non-zero fraction is dropped.
+  if (/\.\d*[1-9]/.test(text) && Math.abs(n) >= 2 ** 52) {
     return null;
   }
   return n;

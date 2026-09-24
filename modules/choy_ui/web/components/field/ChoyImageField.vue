@@ -42,13 +42,14 @@ const previewSrc = computed(
 );
 
 watch(
-  () => [model.value?.file, model.value?.previewUrl] as const,
-  ([file]) => {
+  // Only the picked File owns the local object URL; a host previewUrl change must not
+  // revoke/re-create it (that would reload the blob preview needlessly).
+  () => model.value?.file,
+  (file) => {
     if (localObjectUrl.value) {
       URL.revokeObjectURL(localObjectUrl.value);
       localObjectUrl.value = null;
     }
-    // Prefer a fresh object URL for the current File over a stale host previewUrl.
     if (file) {
       localObjectUrl.value = URL.createObjectURL(file);
     }

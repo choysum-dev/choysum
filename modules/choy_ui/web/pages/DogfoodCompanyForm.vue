@@ -34,6 +34,7 @@ import ChoyPagination from '../components/view/ChoyPagination.vue';
 import ChoySearchView from '../components/view/ChoySearchView.vue';
 import {
   choyPageOffset,
+  choyTotalPages,
   clampChoyPage,
 } from '../components/view/paginationHelpers';
 import {
@@ -125,7 +126,7 @@ const total = computed(() => filteredRows.value.length);
 
 const pageRows = computed(() => {
   const size = Math.max(1, Math.floor(pageSize.value) || 1);
-  const pages = Math.max(1, Math.ceil(total.value / size));
+  const pages = choyTotalPages(total.value, size);
   const safePage = clampChoyPage(page.value, pages);
   const offset = choyPageOffset(safePage, size);
   return filteredRows.value.slice(offset, offset + size);
