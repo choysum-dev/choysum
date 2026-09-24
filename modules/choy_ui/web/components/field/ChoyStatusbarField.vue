@@ -32,10 +32,17 @@ const props = withDefaults(
 
 const model = defineModel<string>({ default: '' });
 
-/** Drop empty values so an unset model cannot look pressed (parity with selection). */
-const statusOptions = computed(() =>
-  (props.options ?? []).filter((opt) => typeof opt.value === 'string' && opt.value !== ''),
-);
+/** Drop empty/duplicate values so an unset model cannot look pressed (parity with selection). */
+const statusOptions = computed(() => {
+  const seen = new Set<string>();
+  return (props.options ?? []).filter((opt) => {
+    if (typeof opt.value !== 'string' || opt.value === '' || seen.has(opt.value)) {
+      return false;
+    }
+    seen.add(opt.value);
+    return true;
+  });
+});
 
 function select(value: string): void {
   if (props.readonly || props.disabled) {

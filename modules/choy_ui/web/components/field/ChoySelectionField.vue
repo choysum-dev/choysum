@@ -37,16 +37,14 @@ const props = withDefaults(
 
 const model = defineModel<string | null>({ default: null });
 
-// Reka rejects '' as an item value; treat an empty string as "unset".
-watch(
-  model,
-  (value) => {
-    if (value === '') {
-      model.value = null;
-    }
-  },
-  { immediate: true },
-);
+// Reka rejects '' as an item value; normalize empty string to "unset" when it
+// changes. Not `immediate`: Select already maps '' ↔ null for the root, and
+// writing back during setup would rewrite a host `''` sentinel on mount.
+watch(model, (value) => {
+  if (value === '') {
+    model.value = null;
+  }
+});
 
 /** Reka SelectItem rejects empty-string values and duplicates; null model covers "unset". */
 const selectOptions = computed(() => {

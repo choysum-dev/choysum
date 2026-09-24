@@ -63,15 +63,20 @@ export type ChoyDecimalRound = {
  */
 export function expandExponentialDecimalText(raw: string): string | null {
   const text = String(raw ?? '').trim();
-  // Allow a trailing decimal point with no frac digits (`12.e0` ≡ `12e0`).
-  const m = /^([+-]?)(\d+)(?:\.(\d*))?e([+-]?\d+)$/i.exec(text);
+  // Allow trailing-dot (`12.e0`) and leading-dot (`.5e0`) coefficients.
+  const m = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))e([+-]?\d+)$/i.exec(text);
   if (!m) {
     return null;
   }
   const neg = m[1] === '-';
-  const digits = `${m[2]}${m[3] ?? ''}`;
-  const exp = Number(m[4]);
-  const point = m[2]!.length + exp;
+  const intPart = m[2] ?? '';
+  const fracPart = m[3] ?? m[4] ?? '';
+  const digits = `${intPart}${fracPart}`;
+  if (!digits) {
+    return null;
+  }
+  const exp = Number(m[5]);
+  const point = intPart.length + exp;
   // Pathological exponents (e.g. `1e-999999999`, whose Number() is still finite 0)
   // would make `String.repeat` throw RangeError; any finite double needs ≪ 400 pad digits.
   if (point <= 0) {
@@ -104,7 +109,7 @@ function expandFiniteNumberToPlainDecimal(n: number): string {
     return s;
   }
   // Engine `String(n)` exponential forms always match the expander regex.
-  return expandExponentialDecimalText(s) ?? s;
+  return expandExponentialDecimalText(s)!;
 }
 
 /**

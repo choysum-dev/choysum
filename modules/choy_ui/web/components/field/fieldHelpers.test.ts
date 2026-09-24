@@ -89,6 +89,9 @@ describe('fieldHelpers', () => {
     expect(formatChoyMonetary('1e21', { precision: 2 })).toBe('1e+21');
     // Trailing-dot exponential that Number() quietly rounds must still be rejected.
     expect(formatChoyMonetary('9007199254740993.e0')).toBe('');
+    // Leading-dot exponential must expand (parity with plain `.5` support).
+    expect(formatChoyMonetary('.5e0', { precision: 2 })).toBe('0.50');
+    expect(formatChoyMonetary('-.5e0', { precision: 2 })).toBe('-0.50');
     // Lossy exponential magnitudes must not bypass the plain-decimal reject path.
     expect(formatChoyMonetary('9007199254740993e0')).toBe('');
     // Plain decimals rejected by roundChoyDecimal must not re-round via Number().
@@ -167,6 +170,8 @@ describe('fieldHelpers', () => {
     expect(expandExponentialDecimalText('1.5e1')).toBe('15');
     expect(expandExponentialDecimalText('12.34e1')).toBe('123.4');
     expect(expandExponentialDecimalText('12.e0')).toBe('12');
+    expect(expandExponentialDecimalText('.5e0')).toBe('0.5');
+    expect(expandExponentialDecimalText('-.5e1')).toBe('-5');
     expect(expandExponentialDecimalText('1e5')).toBe('100000');
     expect(expandExponentialDecimalText('0e0')).toBe('0');
     expect(expandExponentialDecimalText('not-exponential')).toBeNull();

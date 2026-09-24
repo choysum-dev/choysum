@@ -51,6 +51,19 @@ watch(model, (next) => {
   }
 });
 
+watch(
+  () => props.mode,
+  () => {
+    // A mode switch can make the current draft unparseable (e.g. "12.5" in integer
+    // mode); fall back to the host value instead of keeping text that cannot commit.
+    if (draft.value.trim() !== '' && parseChoyNumber(draft.value, props.mode) === null) {
+      draft.value =
+        model.value === null || model.value === undefined ? '' : String(model.value);
+      invalidDraft.value = false;
+    }
+  },
+);
+
 function onDraftInput(value: string | number): void {
   // Guard like the monetary/datetime fields: some browsers still emit updates
   // while the underlying input is readonly or disabled.

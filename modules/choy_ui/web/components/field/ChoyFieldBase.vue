@@ -32,8 +32,15 @@ const props = withDefaults(
 
 const isVisible = computed(() => resolveChoyFieldVisible(props.visible));
 const uid = useId();
+/** DOM ids must not contain whitespace or arbitrary punctuation from `name`. */
+const idFragment = computed(() =>
+  String(props.name ?? '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, ''),
+);
 const controlId = computed(() =>
-  props.name ? `${props.name}-${uid}` : `choy-field-${uid}`,
+  idFragment.value ? `${idFragment.value}-${uid}` : `choy-field-${uid}`,
 );
 const labelId = computed(() => `${controlId.value}-label`);
 const helpId = computed(() => `${controlId.value}-help`);

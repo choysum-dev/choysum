@@ -41,6 +41,20 @@ const inputRef = ref<HTMLInputElement | null>(null);
 /** Set when a picked file is rejected by `accept`; the model stays untouched. */
 const fileError = ref('');
 
+/** HTML `accept` requires `.ext`; authors often write `*.ext` — normalize for the picker. */
+const acceptAttr = computed(() => {
+  const raw = props.accept.trim();
+  if (!raw) {
+    return undefined;
+  }
+  const tokens = raw
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => (token.startsWith('*.') ? token.slice(1) : token));
+  return tokens.length ? tokens.join(',') : undefined;
+});
+
 watch(
   // A host-driven value change (e.g. loading another record) must drop a stale
   // pick-rejection error; a rejected pick never changes the model, so it survives.
@@ -162,7 +176,7 @@ function onClear(): void {
           type="file"
           class="hidden"
           :id="controlId"
-          :accept="accept || undefined"
+          :accept="acceptAttr"
           :disabled="disabled || readonly"
           tabindex="-1"
           aria-hidden="true"

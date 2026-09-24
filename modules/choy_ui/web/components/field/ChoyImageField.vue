@@ -90,15 +90,20 @@ function onChange(event: Event): void {
   if (!file) {
     return;
   }
-  // `accept` is only a hint; reject non-images so hosts never receive one.
-  // Some OS/browser pairs report an empty `file.type`, so fall back to the extension.
-  // SVG is excluded by default: hosts may later serve it in a script-capable context.
-  const isSvg = file.type === 'image/svg+xml' || /\.svg$/i.test(file.name);
+  // `accept` is only a hint; validate against the same raster allow-list the
+  // input offers (SVG stays excluded: hosts may serve it in a script-capable context).
+  const rasterTypes = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/bmp',
+    'image/avif',
+  ]);
   const isImage =
-    !isSvg &&
-    (file.type !== ''
-      ? file.type.startsWith('image/')
-      : /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(file.name));
+    file.type !== ''
+      ? rasterTypes.has(file.type.toLowerCase())
+      : /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(file.name);
   if (!isImage) {
     fileError.value = 'Only raster image files are supported.';
     input.value = '';

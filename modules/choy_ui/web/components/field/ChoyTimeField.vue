@@ -4,6 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import Input from '../vendor/ui/input/Input.vue';
 import type { ClassValue } from '../../lib/utils';
 import ChoyFieldBase from './ChoyFieldBase.vue';
@@ -26,9 +27,27 @@ const props = withDefaults(
 
 const model = defineModel<string | null>({ default: null });
 
+/** Native `time` only accepts `HH:mm[:ss]`. */
+const displayValue = computed(() => {
+  const normalized = String(model.value ?? '').trim();
+  return normalized.match(/^\d{1,2}:\d{2}(:\d{2})?/)?.[0] ?? '';
+});
+
+/** Truncates text to the minute precision a native `time` input often reports. */
+function toInputPrecision(text: string): string {
+  return String(text ?? '')
+    .trim()
+    .match(/^(\d{1,2}:\d{2})/)?.[1] ?? '';
+}
+
 function onInput(value: string): void {
   // Browsers may ignore `readonly` on native time inputs, so guard the update too.
   if (props.readonly || props.disabled) {
+    return;
+  }
+  // A re-pick of the current time must not rewrite the host model and strip an
+  // offset/second-bearing value (native inputs often omit seconds).
+  if (value !== '' && toInputPrecision(value) === toInputPrecision(displayValue.value)) {
     return;
   }
   model.value = value === '' ? null : value;
@@ -52,7 +71,7 @@ function onInput(value: string): void {
       <Input
         :id="controlId"
         type="time"
-        :model-value="model ?? ''"
+        :model-value="displayValue"
         :name="name || undefined"
         :disabled="disabled"
         :readonly="readonly"
