@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { SelectRoot } from 'reka-ui';
 
-const modelValue = defineModel<string>();
+const modelValue = defineModel<string | null>();
 </script>
 
 <template>

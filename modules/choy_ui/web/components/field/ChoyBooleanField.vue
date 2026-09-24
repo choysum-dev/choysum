@@ -45,19 +45,25 @@ const model = defineModel<boolean>({ default: false });
     :name="name"
     :visible="visible"
   >
-    <div class="flex items-center gap-2">
-      <Checkbox
-        v-if="widget === 'checkbox'"
-        :id="name || undefined"
-        v-model="model"
-        :disabled="disabled || readonly"
-      />
-      <Switch
-        v-else
-        :id="name || undefined"
-        v-model="model"
-        :disabled="disabled || readonly"
-      />
-    </div>
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <div class="flex items-center gap-2">
+        <Checkbox
+          v-if="widget === 'checkbox'"
+          :id="controlId"
+          v-model="model"
+          :disabled="disabled || readonly"
+          :aria-invalid="ariaInvalid"
+          :aria-describedby="ariaDescribedby"
+        />
+        <Switch
+          v-else
+          :id="controlId"
+          v-model="model"
+          :disabled="disabled || readonly"
+          :aria-invalid="ariaInvalid"
+          :aria-describedby="ariaDescribedby"
+        />
+      </div>
+    </template>
   </ChoyFieldBase>
 </template>

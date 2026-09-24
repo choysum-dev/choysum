@@ -162,8 +162,18 @@ function onSearch(query: ChoySearchQuery): void {
 }
 
 function onSave(): void {
-  if (!name.value.trim()) {
+  const trimmed = name.value.trim();
+  if (!trimmed) {
     ChoyMessage.error('Save failed', { description: 'Name is required.' });
+    return;
+  }
+  const captureRowId = selectedRowId.value;
+  const captureActive = active.value;
+  const captureCurrencyLabel = currencyOption.value?.label ?? 'no currency';
+  if (!captureRowId) {
+    ChoyMessage.info('No row selected', {
+      description: 'Pick a company from the list before saving.',
+    });
     return;
   }
   formLoading.value = true;
@@ -172,17 +182,18 @@ function onSave(): void {
   }
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    const trimmed = name.value.trim();
-    if (selectedRowId.value) {
-      const row = allRows.value.find((r) => r.Id === selectedRowId.value);
-      if (row) {
-        row.name = trimmed;
-        row.active = active.value;
-      }
-    }
     formLoading.value = false;
+    const row = allRows.value.find((r) => r.Id === captureRowId);
+    if (!row) {
+      ChoyMessage.info('No row selected', {
+        description: 'Pick a company from the list before saving.',
+      });
+      return;
+    }
+    row.name = trimmed;
+    row.active = captureActive;
     ChoyMessage.success('Company saved (dogfood)', {
-      description: `${trimmed} · ${currencyOption.value?.label ?? 'no currency'}`,
+      description: `${trimmed} · ${captureCurrencyLabel}`,
     });
   }, 400);
 }

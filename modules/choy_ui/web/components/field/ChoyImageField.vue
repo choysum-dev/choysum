@@ -101,43 +101,48 @@ function onClear(): void {
     :name="name"
     :visible="visible"
   >
-    <div class="flex flex-col gap-2">
-      <input
-        ref="inputRef"
-        type="file"
-        accept="image/*"
-        class="hidden"
-        :disabled="disabled || readonly"
-        @change="onChange"
-      />
-      <div class="flex flex-wrap items-center gap-2">
-        <ChoyButton
-          type="button"
-          variant="outline"
-          size="sm"
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <div class="flex flex-col gap-2">
+        <input
+          ref="inputRef"
+          type="file"
+          accept="image/*"
+          class="hidden"
           :disabled="disabled || readonly"
-          @click="onPick"
-        >
-          Choose image
-        </ChoyButton>
-        <span v-if="model?.name" class="text-sm text-foreground">{{ model.name }}</span>
-        <ChoyButton
-          v-if="model"
-          type="button"
-          variant="ghost"
-          size="sm"
-          :disabled="disabled || readonly"
-          @click="onClear"
-        >
-          Clear
-        </ChoyButton>
+          @change="onChange"
+        />
+        <div class="flex flex-wrap items-center gap-2">
+          <ChoyButton
+            type="button"
+            variant="outline"
+            size="sm"
+            :id="controlId"
+            :disabled="disabled || readonly"
+            :aria-invalid="ariaInvalid"
+            :aria-describedby="ariaDescribedby"
+            @click="onPick"
+          >
+            Choose image
+          </ChoyButton>
+          <span v-if="model?.name" class="text-sm text-foreground">{{ model.name }}</span>
+          <ChoyButton
+            v-if="model"
+            type="button"
+            variant="ghost"
+            size="sm"
+            :disabled="disabled || readonly"
+            @click="onClear"
+          >
+            Clear
+          </ChoyButton>
+        </div>
+        <img
+          v-if="previewSrc"
+          :src="previewSrc"
+          :alt="model?.name || 'Image preview'"
+          class="max-h-40 max-w-full rounded-md border border-border object-contain"
+        />
       </div>
-      <img
-        v-if="previewSrc"
-        :src="previewSrc"
-        :alt="model?.name || 'Image preview'"
-        class="max-h-40 max-w-full rounded-md border border-border object-contain"
-      />
-    </div>
+    </template>
   </ChoyFieldBase>
 </template>

@@ -50,9 +50,19 @@ function commitDraft(): void {
   if (props.readonly || props.disabled) {
     return;
   }
+  const text = draft.value.trim();
+  if (!text) {
+    model.value = null;
+    draft.value = '';
+    return;
+  }
   const parsed = parseChoyNumber(draft.value, props.mode);
+  if (parsed === null) {
+    // Keep the draft so the user can correct invalid input; leave the model unchanged.
+    return;
+  }
   model.value = parsed;
-  draft.value = parsed === null ? '' : String(parsed);
+  draft.value = String(parsed);
 }
 </script>
 
@@ -69,17 +79,21 @@ function commitDraft(): void {
     :name="name"
     :visible="visible"
   >
-    <Input
-      :id="name || undefined"
-      v-model="draft"
-      :type="inputType"
-      :name="name || undefined"
-      :placeholder="placeholder"
-      :disabled="disabled || readonly"
-      :readonly="readonly"
-      inputmode="decimal"
-      @change="commitDraft"
-      @blur="commitDraft"
-    />
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <Input
+        :id="controlId"
+        v-model="draft"
+        :type="inputType"
+        :name="name || undefined"
+        :placeholder="placeholder"
+        :disabled="disabled || readonly"
+        :readonly="readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+        :inputmode="mode === 'integer' ? 'numeric' : 'decimal'"
+        @change="commitDraft"
+        @blur="commitDraft"
+      />
+    </template>
   </ChoyFieldBase>
 </template>

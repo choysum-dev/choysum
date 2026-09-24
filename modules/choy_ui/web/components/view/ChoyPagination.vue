@@ -34,12 +34,11 @@ const totalPages = computed(() => choyTotalPages(props.total, pageSize.value));
 const currentPage = computed(() => clampChoyPage(page.value, totalPages.value));
 
 watch(
-  totalPages,
-  (max) => {
-    if (page.value > max) {
-      page.value = max;
-    } else if (page.value < 1) {
-      page.value = 1;
+  [page, totalPages],
+  () => {
+    const clamped = clampChoyPage(page.value, totalPages.value);
+    if (page.value !== clamped) {
+      page.value = clamped;
     }
   },
   { immediate: true },

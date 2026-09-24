@@ -38,6 +38,13 @@ export function resolveChoyFieldVisible(visible?: boolean): boolean {
   return visible !== false;
 }
 
+/** Clamps monetary display/commit precision to the range supported by `toFixed`. */
+export function resolveChoyMonetaryPrecision(precision?: number): number {
+  return precision !== undefined && Number.isFinite(precision) && precision >= 0
+    ? Math.min(100, Math.floor(precision))
+    : 2;
+}
+
 /**
  * Formats a monetary amount for display. Empty/invalid input yields ''.
  * When `currency` is set it is appended after the number.
@@ -57,10 +64,7 @@ export function formatChoyMonetary(
   if (!Number.isFinite(num)) {
     return '';
   }
-  const precision =
-    opts?.precision !== undefined && Number.isFinite(opts.precision) && opts.precision >= 0
-      ? Math.min(100, Math.floor(opts.precision))
-      : 2;
+  const precision = resolveChoyMonetaryPrecision(opts?.precision);
   const formatted = num.toFixed(precision);
   const currency = String(opts?.currency ?? '').trim();
   return currency ? `${formatted} ${currency}` : formatted;

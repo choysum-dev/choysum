@@ -12,6 +12,7 @@ import {
   choyFieldChromeDefaults,
   formatChoyMonetary,
   parseChoyNumber,
+  resolveChoyMonetaryPrecision,
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
 
@@ -69,8 +70,17 @@ function onBlur(): void {
     return;
   }
   const parsed = parseChoyNumber(draft.value, 'decimal');
-  model.value = parsed;
-  draft.value = parsed === null ? '' : String(parsed);
+  if (parsed === null) {
+    if (draft.value.trim() === '') {
+      model.value = null;
+      draft.value = '';
+    }
+    return;
+  }
+  const precision = resolveChoyMonetaryPrecision(props.precision);
+  const rounded = Number(parsed.toFixed(precision));
+  model.value = rounded;
+  draft.value = String(rounded);
 }
 
 function onInput(value: string): void {
@@ -91,17 +101,21 @@ function onInput(value: string): void {
     :name="name"
     :visible="visible"
   >
-    <Input
-      :id="name || undefined"
-      :model-value="displayValue"
-      :name="name || undefined"
-      :placeholder="placeholder"
-      :disabled="disabled || readonly"
-      :readonly="readonly"
-      inputmode="decimal"
-      @update:model-value="onInput"
-      @focus="onFocus"
-      @blur="onBlur"
-    />
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <Input
+        :id="controlId"
+        :model-value="displayValue"
+        :name="name || undefined"
+        :placeholder="placeholder"
+        :disabled="disabled || readonly"
+        :readonly="readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+        inputmode="decimal"
+        @update:model-value="onInput"
+        @focus="onFocus"
+        @blur="onBlur"
+      />
+    </template>
   </ChoyFieldBase>
 </template>

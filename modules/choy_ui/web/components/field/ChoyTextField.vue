@@ -46,14 +46,18 @@ const model = defineModel<string>({ default: '' });
     :name="name"
     :visible="visible"
   >
-    <Textarea
-      :id="name || undefined"
-      v-model="model"
-      :name="name || undefined"
-      :placeholder="placeholder"
-      :rows="rows"
-      :disabled="disabled || readonly"
-      :readonly="readonly"
-    />
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <Textarea
+        :id="controlId"
+        v-model="model"
+        :name="name || undefined"
+        :placeholder="placeholder"
+        :rows="rows"
+        :disabled="disabled || readonly"
+        :readonly="readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+      />
+    </template>
   </ChoyFieldBase>
 </template>

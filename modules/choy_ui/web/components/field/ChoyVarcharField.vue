@@ -44,13 +44,17 @@ const model = defineModel<string>({ default: '' });
     :name="name"
     :visible="visible"
   >
-    <Input
-      :id="name || undefined"
-      v-model="model"
-      :name="name || undefined"
-      :placeholder="placeholder"
-      :disabled="disabled || readonly"
-      :readonly="readonly"
-    />
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <Input
+        :id="controlId"
+        v-model="model"
+        :name="name || undefined"
+        :placeholder="placeholder"
+        :disabled="disabled || readonly"
+        :readonly="readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+      />
+    </template>
   </ChoyFieldBase>
 </template>

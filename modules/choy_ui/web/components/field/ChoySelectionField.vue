@@ -4,7 +4,6 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
@@ -36,14 +35,6 @@ const props = withDefaults(
 );
 
 const model = defineModel<string | null>({ default: null });
-
-/** Reka Select expects string; map null to empty sentinel. */
-const selectValue = computed({
-  get: () => model.value ?? '',
-  set: (next: string) => {
-    model.value = next === '' ? null : next;
-  },
-});
 </script>
 
 <template>
@@ -60,7 +51,7 @@ const selectValue = computed({
     :visible="visible"
   >
     <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
-      <Select v-model="selectValue" :disabled="disabled || readonly">
+      <Select v-model="model" :disabled="disabled || readonly">
         <SelectTrigger
           :id="controlId"
           :placeholder="placeholder"
@@ -71,7 +62,7 @@ const selectValue = computed({
         <SelectContent>
           <SelectItem
             v-for="opt in options"
-            :key="opt.value"
+            :key="opt.value === '' ? '__empty__' : opt.value"
             :value="opt.value"
           >
             {{ opt.label }}

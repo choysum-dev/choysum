@@ -38,19 +38,39 @@ const emit = defineEmits<{
 }>();
 
 const draft = ref<ChoyTranslationRow[]>([]);
+/** True until the user edits a draft value while the dialog is open. */
+const draftPristine = ref(true);
+
+function seedDraft(): void {
+  draft.value = (props.rows ?? []).map((r) => ({
+    lang: String(r.lang ?? ''),
+    value: String(r.value ?? ''),
+  }));
+  draftPristine.value = true;
+}
 
 watch(
   open,
   (isOpen) => {
     if (isOpen) {
-      draft.value = (props.rows ?? []).map((r) => ({
-        lang: String(r.lang ?? ''),
-        value: String(r.value ?? ''),
-      }));
+      seedDraft();
     }
   },
   { immediate: true },
 );
+
+watch(
+  () => props.rows,
+  () => {
+    if (open.value && draftPristine.value) {
+      seedDraft();
+    }
+  },
+);
+
+function onDraftInput(): void {
+  draftPristine.value = false;
+}
 
 function onSave(): void {
   emit(
@@ -81,7 +101,11 @@ function onCancel(): void {
           class="grid grid-cols-[6rem_1fr] items-center gap-2"
         >
           <span class="text-sm font-medium text-foreground/70">{{ row.lang || '—' }}</span>
-          <Input v-model="row.value" :aria-label="`Value for ${row.lang}`" />
+          <Input
+            v-model="row.value"
+            :aria-label="`Value for ${row.lang}`"
+            @update:model-value="onDraftInput"
+          />
         </div>
         <p v-if="!draft.length" class="text-sm text-foreground/60">No translations.</p>
       </div>

@@ -44,14 +44,18 @@ function onInput(value: string): void {
     :name="name"
     :visible="visible"
   >
-    <Input
-      :id="name || undefined"
-      type="time"
-      :model-value="model ?? ''"
-      :name="name || undefined"
-      :disabled="disabled || readonly"
-      :readonly="readonly"
-      @update:model-value="onInput"
-    />
+    <template #default="{ controlId, ariaInvalid, ariaDescribedby }">
+      <Input
+        :id="controlId"
+        type="time"
+        :model-value="model ?? ''"
+        :name="name || undefined"
+        :disabled="disabled || readonly"
+        :readonly="readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+        @update:model-value="onInput"
+      />
+    </template>
   </ChoyFieldBase>
 </template>

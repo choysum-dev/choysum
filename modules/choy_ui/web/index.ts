@@ -50,6 +50,8 @@ export type {
 } from './components/field/fieldHelpers';
 export type { ChoyBinaryValue } from './components/field/ChoyBinaryField.vue';
 export type { ChoyImageValue } from './components/field/ChoyImageField.vue';
+export type { ChoyTranslationRow } from './components/field/ChoyFieldTranslationsDialog.vue';
+export type { ChoyCompanyValueRow } from './components/field/ChoyFieldCompanyValuesDialog.vue';
 
 export { ChoyMessage, useChoyMessage } from './composables/useChoyMessage';
 export type { ChoyMessageLevel, ChoyMessageOptions } from './composables/useChoyMessage';
