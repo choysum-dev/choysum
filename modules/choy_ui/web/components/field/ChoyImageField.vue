@@ -26,6 +26,26 @@ export type ChoyImageValue = {
  * SVG is rejected (and omitted from `accept`) because hosts may later serve it
  * in a script-capable context.
  */
+
+/** Single source of truth for the picker `accept` attr and pick validation. */
+const RASTER_IMAGE_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/bmp',
+  'image/avif',
+] as const;
+const RASTER_IMAGE_ACCEPT = RASTER_IMAGE_TYPES.join(',');
+const RASTER_IMAGE_TYPE_SET: ReadonlySet<string> = new Set(RASTER_IMAGE_TYPES);
+const RASTER_IMAGE_EXT_RE = new RegExp(
+  `\\.(${RASTER_IMAGE_TYPES.map((t) => {
+    const subtype = t.slice('image/'.length);
+    return subtype === 'jpeg' ? 'jpe?g' : subtype;
+  }).join('|')})$`,
+  'i',
+);
+
 const props = withDefaults(
   defineProps<
     ChoyFieldChromeProps & {
@@ -92,21 +112,13 @@ function onChange(event: Event): void {
   }
   // `accept` is only a hint; validate against the same raster allow-list the
   // input offers (SVG stays excluded: hosts may serve it in a script-capable context).
-  const rasterTypes = new Set([
-    'image/png',
-    'image/jpeg',
-    'image/gif',
-    'image/webp',
-    'image/bmp',
-    'image/avif',
-  ]);
   const reportedType = file.type.toLowerCase();
   // Some OS/browser pairs report `application/octet-stream` for valid images;
   // fall back to the extension instead of rejecting the pick outright.
   const isImage =
     reportedType !== '' && reportedType !== 'application/octet-stream'
-      ? rasterTypes.has(reportedType)
-      : /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(file.name);
+      ? RASTER_IMAGE_TYPE_SET.has(reportedType)
+      : RASTER_IMAGE_EXT_RE.test(file.name);
   if (!isImage) {
     fileError.value = 'Only raster image files are supported.';
     input.value = '';
@@ -145,7 +157,7 @@ function onClear(): void {
         <input
           ref="inputRef"
           type="file"
-          accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,image/avif"
+          :accept="RASTER_IMAGE_ACCEPT"
           class="hidden"
           :id="controlId"
           :disabled="disabled || readonly"

@@ -98,7 +98,7 @@ export function expandExponentialDecimalText(raw: string): string | null {
  * Expands a finite number's shortest string into plain decimal digits when it
  * uses exponential notation (e.g. `1e-7` → `0.0000001`).
  */
-function expandFiniteNumberToPlainDecimal(n: number): string {
+export function expandFiniteNumberToPlainDecimal(n: number): string {
   if (Object.is(n, -0) || n === 0) {
     return '0';
   }

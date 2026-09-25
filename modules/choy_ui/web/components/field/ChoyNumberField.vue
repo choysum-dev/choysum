@@ -54,8 +54,8 @@ watch(model, (next) => {
 watch(
   () => props.mode,
   () => {
-    // After a mode switch, show the host text and flag it when the new mode
-    // cannot parse that value (e.g. model 12.5 under integer). Do not rewrite
+    // On mount or after a mode switch, show the host text and flag it when the
+    // mode cannot parse that value (e.g. model 12.5 under integer). Do not rewrite
     // the host — the user (or host) must correct it.
     const hostText =
       model.value === null || model.value === undefined ? '' : String(model.value);
@@ -63,6 +63,7 @@ watch(
     invalidDraft.value =
       hostText !== '' && parseChoyNumber(hostText, props.mode) === null;
   },
+  { immediate: true },
 );
 
 function onDraftInput(value: string | number): void {

@@ -100,6 +100,7 @@ function onChange(event: Event): void {
   if (accept) {
     const name = file.name.toLowerCase();
     const type = file.type.toLowerCase();
+    let sawRestrictive = false;
     const allowed = accept
       .split(',')
       .map((token) => token.trim())
@@ -107,21 +108,31 @@ function onChange(event: Event): void {
       .some((token) => {
         // `*` / `*/*` mean "any type"; they must not reject every file.
         if (token === '*' || token === '*/*') {
+          sawRestrictive = true;
           return true;
         }
         if (token.startsWith('.')) {
+          sawRestrictive = true;
           return name.endsWith(token);
         }
         // Authors commonly write `*.pdf`; browsers ignore such tokens, so match
         // by extension instead of rejecting every pick.
         if (token.startsWith('*.')) {
+          sawRestrictive = true;
           return name.endsWith(token.slice(1));
         }
         if (token.endsWith('/*')) {
+          sawRestrictive = true;
           // An empty `file.type` cannot be matched against a wildcard; don't
           // reject a pick we cannot verify here — the host still validates uploads.
           return type === '' || type.startsWith(token.slice(0, -1));
         }
+        // Bare tokens (`pdf`) are not valid `accept` entries; browsers ignore them,
+        // so ignore them here too (do not treat as a match or a hard reject).
+        if (!token.includes('/')) {
+          return false;
+        }
+        sawRestrictive = true;
         // Some OS/browser pairs report an empty `file.type`; fall back to the
         // extension so a valid pick is not rejected outright.
         const subtype = token.split('/')[1] ?? '';
@@ -139,7 +150,8 @@ function onChange(event: Event): void {
           (type === '' && fallbackExts.some((ext) => name.endsWith(ext)))
         );
       });
-    if (!allowed) {
+    // Only reject when at least one restrictive token was present and none matched.
+    if (sawRestrictive && !allowed) {
       fileError.value = 'Selected file type is not allowed.';
       input.value = '';
       return;

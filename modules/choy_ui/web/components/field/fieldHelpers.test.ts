@@ -4,6 +4,7 @@
 import {
   canonicalChoyDecimal,
   expandExponentialDecimalText,
+  expandFiniteNumberToPlainDecimal,
   formatChoyMonetary,
   parseChoyNumber,
   resolveChoyFieldVisible,
@@ -180,6 +181,13 @@ describe('fieldHelpers', () => {
     expect(expandExponentialDecimalText('1e999999999')).toBeNull();
     // Huge digit exponents become Infinity; still rejected via pad > 400.
     expect(expandExponentialDecimalText(`1e${'9'.repeat(400)}`)).toBeNull();
+  });
+
+  test('expandFiniteNumberToPlainDecimal covers zero and exponential String(n)', () => {
+    expect(expandFiniteNumberToPlainDecimal(0)).toBe('0');
+    expect(expandFiniteNumberToPlainDecimal(-0)).toBe('0');
+    expect(expandFiniteNumberToPlainDecimal(12)).toBe('12');
+    expect(expandFiniteNumberToPlainDecimal(1e-7)).toBe('0.0000001');
   });
 
   test('canonicalChoyDecimal expands exponentials and rejects non-finite', () => {
