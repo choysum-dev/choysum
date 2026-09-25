@@ -136,7 +136,7 @@ SPDX-License-Identifier: Apache-2.0
                 v-model:row-selection="galleryListSelection"
                 :columns="galleryListColumns"
                 :data="galleryListRows"
-                :row-id="(row) => row.Id"
+                :row-id="demoRowId"
                 :height="200"
               >
                 <template #search>
@@ -536,6 +536,10 @@ const tableColumns: ColumnDef<DemoRow, unknown>[] = [
 ];
 
 const galleryListColumns = tableColumns;
+
+function demoRowId(row: DemoRow): string {
+  return row.Id;
+}
 
 const tableRows: DemoRow[] = Array.from({ length: 40 }, (_, i) => ({
   Id: `r${i + 1}`,

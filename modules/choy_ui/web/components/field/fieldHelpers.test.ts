@@ -178,6 +178,8 @@ describe('fieldHelpers', () => {
     expect(expandExponentialDecimalText('1e')).toBeNull();
     expect(expandExponentialDecimalText('1e-999999999')).toBeNull();
     expect(expandExponentialDecimalText('1e999999999')).toBeNull();
+    // Huge digit exponents become Infinity; still rejected via pad > 400.
+    expect(expandExponentialDecimalText(`1e${'9'.repeat(400)}`)).toBeNull();
   });
 
   test('canonicalChoyDecimal expands exponentials and rejects non-finite', () => {

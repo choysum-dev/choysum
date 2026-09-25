@@ -72,23 +72,21 @@ export function expandExponentialDecimalText(raw: string): string | null {
   const intPart = m[2] ?? '';
   const fracPart = m[3] ?? m[4] ?? '';
   const digits = `${intPart}${fracPart}`;
-  if (!digits) {
-    return null;
-  }
   const exp = Number(m[5]);
   const point = intPart.length + exp;
   // Pathological exponents (e.g. `1e-999999999`, whose Number() is still finite 0)
   // would make `String.repeat` throw RangeError; any finite double needs ≪ 400 pad digits.
+  // (`Infinity > 400` also rejects engine overflow from huge exponent literals.)
   if (point <= 0) {
     const pad = -point;
-    if (!Number.isSafeInteger(pad) || pad > 400) {
+    if (pad > 400) {
       return null;
     }
     return `${neg ? '-' : ''}0.${'0'.repeat(pad)}${digits}`;
   }
   if (point >= digits.length) {
     const pad = point - digits.length;
-    if (!Number.isSafeInteger(pad) || pad > 400) {
+    if (pad > 400) {
       return null;
     }
     return `${neg ? '-' : ''}${digits}${'0'.repeat(pad)}`;

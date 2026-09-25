@@ -118,6 +118,10 @@ const listColumns: ColumnDef<CompanyRow, unknown>[] = [
   },
 ];
 
+function companyRowId(row: CompanyRow): string {
+  return row.Id;
+}
+
 const filteredRows = computed(() =>
   filterRowsByKeyword(allRows.value, appliedQuery.value.keyword, ['name', 'country']),
 );
@@ -322,7 +326,7 @@ function onRowClick(row: CompanyRow): void {
               v-model:row-selection="listSelection"
               :columns="listColumns"
               :data="pageRows"
-              :row-id="(row) => row.Id"
+              :row-id="companyRowId"
               :height="280"
               @row-click="onRowClick"
             >

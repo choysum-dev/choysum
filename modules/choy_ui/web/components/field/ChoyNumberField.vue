@@ -54,13 +54,14 @@ watch(model, (next) => {
 watch(
   () => props.mode,
   () => {
-    // A mode switch can make the current draft unparseable (e.g. "12.5" in integer
-    // mode); fall back to the host value instead of keeping text that cannot commit.
-    if (draft.value.trim() !== '' && parseChoyNumber(draft.value, props.mode) === null) {
-      draft.value =
-        model.value === null || model.value === undefined ? '' : String(model.value);
-      invalidDraft.value = false;
-    }
+    // After a mode switch, show the host text and flag it when the new mode
+    // cannot parse that value (e.g. model 12.5 under integer). Do not rewrite
+    // the host — the user (or host) must correct it.
+    const hostText =
+      model.value === null || model.value === undefined ? '' : String(model.value);
+    draft.value = hostText;
+    invalidDraft.value =
+      hostText !== '' && parseChoyNumber(hostText, props.mode) === null;
   },
 );
 
