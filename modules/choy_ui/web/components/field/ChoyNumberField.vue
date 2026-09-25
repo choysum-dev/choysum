@@ -41,13 +41,34 @@ const draft = ref(
 /** True when commit kept an unparsed draft while the host model is unchanged. */
 const invalidDraft = ref(false);
 
+/**
+ * Host model is already a number — validate mode against the value itself.
+ * `String(1e-22)` is exponential and `parseChoyNumber` rejects it, but the host
+ * number is still a valid float/decimal.
+ */
+function isHostNumberCompatibleWithMode(
+  value: number,
+  mode: 'integer' | 'float' | 'decimal',
+): boolean {
+  if (!Number.isFinite(value)) {
+    return false;
+  }
+  if (mode === 'integer') {
+    return Number.isSafeInteger(value);
+  }
+  return Number.isSafeInteger(Math.trunc(value));
+}
+
 watch(model, (next) => {
   const expected = next === null || next === undefined ? '' : String(next);
   const parsed = parseChoyNumber(draft.value, props.mode);
   const draftInvalid = draft.value.trim() !== '' && parsed === null;
   if (parsed !== next || draftInvalid) {
     draft.value = expected;
-    invalidDraft.value = false;
+    invalidDraft.value =
+      next !== null &&
+      next !== undefined &&
+      !isHostNumberCompatibleWithMode(next, props.mode);
   }
 });
 
@@ -55,13 +76,14 @@ watch(
   () => props.mode,
   () => {
     // On mount or after a mode switch, show the host text and flag it when the
-    // mode cannot parse that value (e.g. model 12.5 under integer). Do not rewrite
-    // the host — the user (or host) must correct it.
-    const hostText =
-      model.value === null || model.value === undefined ? '' : String(model.value);
-    draft.value = hostText;
+    // mode cannot accept that host number (e.g. model 12.5 under integer). Do
+    // not rewrite the host — the user (or host) must correct it.
+    const host = model.value;
+    draft.value = host === null || host === undefined ? '' : String(host);
     invalidDraft.value =
-      hostText !== '' && parseChoyNumber(hostText, props.mode) === null;
+      host !== null &&
+      host !== undefined &&
+      !isHostNumberCompatibleWithMode(host, props.mode);
   },
   { immediate: true },
 );
