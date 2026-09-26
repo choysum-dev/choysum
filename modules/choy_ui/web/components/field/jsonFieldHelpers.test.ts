@@ -55,6 +55,15 @@ describe('jsonFieldHelpers', () => {
     expect(stringifyChoyJson(bad)).toBe('');
   });
 
+  test('stringifyChoyJson coalesces undefined toJSON results to empty string', () => {
+    const blank = {
+      toJSON(): undefined {
+        return undefined;
+      },
+    };
+    expect(stringifyChoyJson(blank)).toBe('');
+  });
+
   test('normalizeChoyJsonIncoming accepts object and JSON string', () => {
     expect(normalizeChoyJsonIncoming({ x: 1 })).toEqual({ x: 1 });
     expect(normalizeChoyJsonIncoming('{"y":2}')).toEqual({ y: 2 });

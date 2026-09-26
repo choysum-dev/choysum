@@ -70,6 +70,11 @@ export function sanitizeHtmlForClient(html: string | null | undefined, deps?: Sa
   const raw = String(html);
   if (!raw) return '';
   const purify = resolvePurify(deps);
+  // dompurify's default export is a factory without `sanitize` when no DOM is
+  // present (QuickJS/SSR); strip tags instead of crashing or returning raw markup.
+  if (typeof purify.sanitize !== 'function') {
+    return raw.replace(/<[^>]*>/g, '');
+  }
   ensureDomPurifyHooks(purify);
   return purify.sanitize(raw, purifyConfig);
 }

@@ -80,6 +80,21 @@ describe('propertiesDefinitionHelpers', () => {
     expect(items[1]!.default).toBe(true);
   });
 
+  test('draftsToDefinitionItems persists only normalized selection options', () => {
+    const items = draftsToDefinitionItems([
+      {
+        ...emptyDraftItem(),
+        name: 'tier',
+        type: 'selection',
+        selectionText: JSON.stringify([['a', 'A'], 1, { value: 'b', label: 'B' }, { value: 2 }]),
+      },
+    ]);
+    expect(items[0]!.selection).toEqual([
+      ['a', 'A'],
+      ['b', 'B'],
+    ]);
+  });
+
   test('draftsToDefinitionItems coerces defaults and skips blank names', () => {
     const items = draftsToDefinitionItems([
       { ...emptyDraftItem(), name: '  ' },

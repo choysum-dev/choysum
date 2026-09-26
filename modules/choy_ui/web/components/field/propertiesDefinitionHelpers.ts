@@ -99,7 +99,8 @@ export function draftsToDefinitionItems(
       if (!options.length) {
         throw new Error(`selection property '${name}' has no usable options`);
       }
-      item.selection = parsed as PropertyItemDefinition['selection'];
+      // Persist only usable options so malformed entries are not stored.
+      item.selection = options.map(o => [o.value, o.label]) as PropertyItemDefinition['selection'];
     }
     out.push(item);
   }

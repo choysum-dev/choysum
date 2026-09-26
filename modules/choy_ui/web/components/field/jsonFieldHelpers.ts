@@ -19,7 +19,7 @@ export function stringifyChoyJson(value: unknown, pretty = true): string {
     if (typeof sorted !== 'object' || sorted === null) {
       return String(sorted);
     }
-    return pretty ? JSON.stringify(sorted, null, 2) : JSON.stringify(sorted);
+    return (pretty ? JSON.stringify(sorted, null, 2) : JSON.stringify(sorted)) ?? '';
   } catch {
     return '';
   }
