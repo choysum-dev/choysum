@@ -945,15 +945,18 @@ function goDogfoodPartner(): void {
   void router.push({ name: 'ChoyUiDogfoodPartner' });
 }
 
-function persistGalleryTheme(theme?: 'light' | 'dark'): void {
-  // Don't invent theme on density-only changes: a planted `light` would later
-  // make DogfoodPartnerForm apply it and strip a host-managed dark class.
+function persistGalleryTheme(theme?: 'light' | 'dark', nextDensity?: Density): void {
+  // Don't invent theme/density on partial changes: planted values would later
+  // make DogfoodPartnerForm apply them and strip host-managed document state.
   const stored = readChoyThemePreference();
-  const next: { theme?: 'light' | 'dark' | 'auto'; density: Density } = {
-    density: density.value,
-  };
+  const next: {
+    theme?: 'light' | 'dark' | 'auto';
+    density?: Density | 'standard';
+  } = {};
   const themeToStore = theme ?? stored.theme;
   if (themeToStore !== undefined) next.theme = themeToStore;
+  const densityToStore = nextDensity ?? stored.density;
+  if (densityToStore !== undefined) next.density = densityToStore;
   persistChoyThemePreference(next);
 }
 
@@ -967,7 +970,7 @@ function toggleDark(): void {
  */
 function toggleDensity(): void {
   density.value = density.value === 'comfortable' ? 'compact' : 'comfortable';
-  persistGalleryTheme();
+  persistGalleryTheme(undefined, density.value);
 }
 
 function onMenuAction(action: string): void {
