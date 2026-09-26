@@ -42,7 +42,7 @@ func ScanForbiddenUiImportsOnDisk(input ForbiddenUiImportScanInput) ([]Forbidden
 	if modulesPath == "" || moduleName == "" || moduleRoot == "" {
 		return nil, nil
 	}
-	if isKitHostModule(moduleName) {
+	if isKitHostModule(modulesPath, moduleName) {
 		return nil, nil
 	}
 
@@ -131,7 +131,7 @@ func CheckForbiddenUiImportsOnDisk(modulesPath, moduleName string, pathAlias map
 	if modulesPath == "" || moduleName == "" {
 		return nil
 	}
-	if isKitHostModule(moduleName) {
+	if isKitHostModule(modulesPath, moduleName) {
 		return nil
 	}
 	moduleRoot := filepath.Join(modulesPath, moduleName)

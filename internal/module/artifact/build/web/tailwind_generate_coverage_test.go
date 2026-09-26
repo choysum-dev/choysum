@@ -397,7 +397,7 @@ func TestGenerateChoyTailwindForModuleScanFailure(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	bad := filepath.Join(pages, "Bad.vue")
+	bad := filepath.Join(pages, "Gallery.vue")
 	if err := os.WriteFile(bad, []byte(`<div class="flex"></div>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -473,12 +473,12 @@ func TestTailwindInputDigestErrors(t *testing.T) {
 		}
 	}
 
-	// Scan error: unreadable candidate file under web/.
+	// Scan error: unreadable candidate file under kit gallery pages.
 	pages := filepath.Join(root, "choy_ui", "web", "pages")
 	if err := os.MkdirAll(pages, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	bad := filepath.Join(pages, "Bad.vue")
+	bad := filepath.Join(pages, "Gallery.vue")
 	if err := os.WriteFile(bad, []byte(`<div class="flex"></div>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -733,15 +733,45 @@ func TestGenerateChoyTailwindForModulePropagatesGenerateError(t *testing.T) {
 	}
 }
 
+func TestResolveChoyKitModuleRootPrefersWeb(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"choy_ui", "web"} {
+		dir := filepath.Join(root, name, "web", "styles")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := resolveChoyKitModuleRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(got) != "web" {
+		t.Fatalf("resolveChoyKitModuleRoot = %q, want the web kit to win", got)
+	}
+}
+
 func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
 	root := t.TempDir()
-	web := filepath.Join(root, "choy_ui", "web")
+	web := filepath.Join(root, "web", "web")
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, err := EnsureChoyTailwindCSS(root)
+	// Product web without a Choy dialect is not a kit host (dual-stack stub).
+	res, err := EnsureChoyTailwindCSS(root)
+	if err != nil || res != nil {
+		t.Fatalf("incomplete web without dialect => nil,nil got %#v %v", res, err)
+	}
+
+	kitUI := filepath.Join(web, "components", "vendor", "ui")
+	if err := os.MkdirAll(kitUI, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err = EnsureChoyTailwindCSS(root)
 	if err == nil || !strings.Contains(err.Error(), "dialect") {
-		t.Fatalf("expected missing dialect error, got %v", err)
+		t.Fatalf("kit tree without dialect must fail, got %v", err)
 	}
 }
 

@@ -170,13 +170,13 @@ func TestScanTailwindCandidatesRejectsMultilineTSLiterals(t *testing.T) {
 
 func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	repoModules := findRepoModulesDir(t)
-	srcRoot := filepath.Join(repoModules, "choy_ui")
+	srcRoot := filepath.Join(repoModules, "web")
 	theme := filepath.Join(srcRoot, "web", "styles", "theme.css")
 	if _, err := os.Stat(theme); err != nil {
-		t.Skip("choy_ui theme.css not present in checkout")
+		t.Skip("web theme.css not present in checkout")
 	}
 	tmpModules := t.TempDir()
-	dstRoot := filepath.Join(tmpModules, "choy_ui")
+	dstRoot := filepath.Join(tmpModules, "web")
 	if err := os.CopyFS(dstRoot, os.DirFS(srcRoot)); err != nil {
 		t.Fatalf("CopyFS: %v", err)
 	}
@@ -186,10 +186,10 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
 	}
 	if res == nil {
-		t.Fatal("expected generate result for repo choy_ui")
+		t.Fatal("expected generate result for repo web kit")
 	}
 	wall := time.Since(start)
-	t.Logf("repo choy_ui Tailwind wall=%v engine=%v candidates=%d out=%s", wall, res.Duration, res.CandidateCount, res.OutputPath)
+	t.Logf("repo web Tailwind wall=%v engine=%v candidates=%d out=%s", wall, res.Duration, res.CandidateCount, res.OutputPath)
 	if res.Duration > ChoyTailwindBudget {
 		t.Fatalf("engine duration %v exceeds budget %v", res.Duration, ChoyTailwindBudget)
 	}
@@ -215,7 +215,7 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 
 func TestEnsureChoyTailwindCSSRejectsDirectoryThemePath(t *testing.T) {
 	root := t.TempDir()
-	styles := filepath.Join(root, "choy_ui", "web", "styles")
+	styles := filepath.Join(root, "web", "web", "styles")
 	if err := os.MkdirAll(styles, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func findRepoModulesDir(t *testing.T) string {
 	}
 	dir := wd
 	for i := 0; i < 10; i++ {
-		candidate := filepath.Join(dir, "modules", "choy_ui", "web", "styles", "theme.css")
+		candidate := filepath.Join(dir, "modules", "web", "web", "styles", "theme.css")
 		if _, err := os.Stat(candidate); err == nil {
 			return filepath.Join(dir, "modules")
 		}
@@ -344,6 +344,121 @@ func findRepoModulesDir(t *testing.T) string {
 		}
 		dir = parent
 	}
-	t.Skip("could not locate modules/choy_ui from test wd")
+	t.Skip("could not locate modules/web kit theme from test wd")
 	return ""
+}
+
+func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
+	t.Parallel()
+	got, err := ScanChoyKitTailwindCandidates("")
+	if err != nil || got != nil {
+		t.Fatalf("empty root => nil,nil got %#v %v", got, err)
+	}
+	got, err = ScanChoyKitTailwindCandidates(filepath.Join(t.TempDir(), "missing"))
+	if err != nil || got != nil {
+		t.Fatalf("missing root => nil,nil got %#v %v", got, err)
+	}
+	_, err = ScanChoyKitTailwindCandidates("web\x00root")
+	if err == nil {
+		t.Fatal("expected Stat error for NUL in path")
+	}
+	fileRoot := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(fileRoot, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err = ScanChoyKitTailwindCandidates(fileRoot)
+	if err != nil || got != nil {
+		t.Fatalf("file root => nil,nil got %#v %v", got, err)
+	}
+	if isChoyKitTailwindInputPath("/abs/web", "relative/only.css") {
+		t.Fatal("Rel mismatch must return false")
+	}
+
+	webRoot := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(webRoot, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("styles/theme.css", `.x { color: red }`)
+	write("styles/tokens.scss", `$x: 1;`) // ignored: not .css
+	write("styles/"+choyTailwindGeneratedCSSName, `/* generated */`)
+	write("styles/foo.generated.css", `/* generated sibling */`)
+	write("components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("components/internal/engine.ts", `export const c = "gap-2"`)
+	write("lib/utils.ts", `export const c = "p-2"`)
+	write("composables/useChoyTheme.ts", `export const c = "text-sm"`)
+	write("composables/useOther.ts", `export const c = "hidden"`)
+	write("pages/Gallery.vue", `<div class="block"></div>`)
+	write("pages/DogfoodLogin.vue", `<div class="inline"></div>`)
+	write("pages/partnerDetailSheet.vue", `<div class="grid"></div>`)
+	write("pages/Home.vue", `<div class="sr-only"></div>`)
+	write("pages/ChoySettings.vue", `<div class="kit-page-settings"></div>`)
+	write("styles/Foo.Generated.Css", `/* cased generated */`)
+	write("components/layout/ChoyShell.vue", `<div class="min-h-0"></div>`)
+	write("components/layout/OLayout.vue", `<div class="max-w-0"></div>`)
+	write("components/view/Helpers.ts", `export const c = "rounded"`)
+	write("components/field/plain.ts", `export const c = "border"`)
+	write("components/chatter/chatterHelpers.ts", `export const c = "shadow"`)
+	write("other/Ignore.vue", `<div class="opacity-0"></div>`)
+
+	write("components/field/ChoyVarcharField.test.ts", `export const c = "test-only-util"`)
+	write("components/field/ChoyVarcharField.spec.ts", `export const c = "spec-only-util"`)
+	write("__tests__/ChoyFixtureHelper.ts", `export const c = "tests-dir-util"`)
+	write("components/shell/ChoyShellExtra.vue", `<div class="kit-shell-extra"></div>`)
+
+	for _, skip := range []string{"node_modules/pkg/x.vue", "dist/out.css", ".git/config"} {
+		write(skip, `<div class="should-skip"></div>`)
+	}
+
+	locked := filepath.Join(webRoot, "locked-dir")
+	if err := os.MkdirAll(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "x.vue"), []byte(`<div class="x"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	got, err = ScanChoyKitTailwindCandidates(webRoot)
+	if err == nil {
+		// Some environments (root / platform) can still walk mode 000 dirs.
+		t.Logf("walk continued despite locked dir; candidates=%d", len(got))
+	} else {
+		// Whatever error surfaces, a failed walk must never return partial candidates.
+		if got != nil {
+			t.Fatalf("walk error must not return partial candidates, got %v", got)
+		}
+		t.Logf("ScanChoyKitTailwindCandidates locked-dir error: %v", err)
+	}
+
+	// Re-scan without the locked dir for stable candidate assertions.
+	_ = os.Chmod(locked, 0o755)
+	_ = os.RemoveAll(locked)
+	got, err = ScanChoyKitTailwindCandidates(webRoot)
+	if err != nil {
+		t.Fatalf("ScanChoyKitTailwindCandidates: %v", err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "gap-2", "p-2", "text-sm", "block", "inline", "grid", "min-h-0", "rounded", "shadow", "kit-shell-extra", "kit-page-settings"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border", "test-only-util", "spec-only-util", "tests-dir-util"} {
+		if set[deny] {
+			t.Fatalf("unexpected candidate %q in %v", deny, got)
+		}
+	}
 }

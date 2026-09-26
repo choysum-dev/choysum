@@ -87,8 +87,9 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 	modulesDir := filepath.Join(repoRoot, "modules")
 	stubDir := filepath.Join(repoRoot, "internal", "testing", "frontend", "testdata", "stubs")
 
-	// Keep path aliases for @; vue is pinned via WithBareImportPins (bare +
-	// esm.sh /vue@^… peer paths from pinia/vue-i18n) so one Vue instance is used.
+	// Keep path aliases for @; vue (+ exact peers from modules/web) are pinned
+	// via WithBareImportPins so esm.sh does not float to incompatible majors
+	// (e.g. @tanstack/vue-table v9 renaming useVueTable).
 	alias := map[string]string{
 		"@": modulesDir,
 	}
@@ -212,13 +213,15 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			},
 		})
 	}
+	barePins, pinErr := vueHostBareImportPins(repoRoot)
+	if pinErr != nil {
+		return nil, pinErr
+	}
 	plugins = append(plugins, esmresolver.New(
 		esmresolver.WithCacheDir(cacheDir),
 		esmresolver.WithTarget("es2020"),
 		esmresolver.WithModulePath(repoRoot),
-		esmresolver.WithBareImportPins(map[string]string{
-			"vue": choysummount.VuePackageVersion,
-		}),
+		esmresolver.WithBareImportPins(barePins),
 	).Plugin())
 	if opts.WithVuePlugin {
 		if opts.JsExecutor == nil {
@@ -314,4 +317,27 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 		out.Warnings = append(out.Warnings, w.Text)
 	}
 	return out, nil
+}
+
+// vueHostBareImportPins merges the host Vue pin with exact versions from
+// modules/web/package.json so FE unit bundles resolve Choy kit peers
+// (TanStack Table, Reka, …) instead of floating esm.sh majors.
+func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
+	pins := map[string]string{
+		"vue": choysummount.VuePackageVersion,
+	}
+	webPins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	if err != nil {
+		return nil, xfmt.Errorf("vue host bundle: exact pins from modules/web: %w", err)
+	}
+	if len(webPins) == 0 {
+		return pins, nil
+	}
+	for name, ver := range webPins {
+		if name == "vue" {
+			continue // host Vue pin wins for single-instance correctness
+		}
+		pins[name] = ver
+	}
+	return pins, nil
 }

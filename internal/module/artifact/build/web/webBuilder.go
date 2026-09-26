@@ -118,17 +118,17 @@ func (b *WebModuleBuilder) BuildCtx(ctx context.Context) (*module.BuildResult, e
 	defer restore()
 
 	if res, err := ensureChoyTailwindCSS(b.resolvedRuntimeOptions().modulesPath); err != nil {
-		return nil, xfmt.Errorf("Error generating choy_ui Tailwind CSS: %w", err)
+		return nil, xfmt.Errorf("Error generating Choy kit Tailwind CSS: %w", err)
 	} else if res != nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 		if res.Duration > ChoyTailwindBudget {
 			b.runtimeScope.Logger().Warn(
-				"choy_ui Tailwind generation exceeded soft budget",
+				"Choy kit Tailwind generation exceeded soft budget",
 				"duration", res.Duration.String(),
 				"budget", ChoyTailwindBudget.String(),
 			)
 		}
 		b.runtimeScope.Logger().Info(
-			"choy_ui Tailwind generated",
+			"Choy kit Tailwind generated",
 			"duration", res.Duration.String(),
 			"candidates", res.CandidateCount,
 			"output", res.OutputPath,
@@ -2253,6 +2253,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
+		webResolverOpts = b.appendExactPinsFromPackageJSON(webResolverOpts)
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2271,6 +2272,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
+		webResolverOpts = b.appendExactPinsFromPackageJSON(webResolverOpts)
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2282,6 +2284,23 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 	}
 
 	return &buildOptions
+}
+
+func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Option) []esmresolver.Option {
+	if b == nil || b.module == nil {
+		return opts
+	}
+	pins, err := esmresolver.ExactPinsFromPackageJSON(b.module.Path)
+	if err != nil {
+		if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+			b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", b.module.Name, "error", err)
+		}
+		return opts
+	}
+	if len(pins) > 0 {
+		opts = append(opts, esmresolver.WithBareImportPins(pins))
+	}
+	return opts
 }
 
 func (b *WebModuleBuilder) entryPointImports() []string {

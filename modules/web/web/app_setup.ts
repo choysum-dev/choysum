@@ -23,6 +23,7 @@ import { detectBrowserTimezone, resolveRequestTimezone } from './utils/request_t
 import { setUserTimeZoneResolver } from './utils/datetime';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import ElementPlus from 'element-plus';
+import { registerChoyGalleryRoute } from './route/choyGallery';
 
 /** Optional overrides for unit tests; production callers omit this. */
 export type SetupAppDeps = {
@@ -45,6 +46,7 @@ export type SetupAppDeps = {
   createAppRouter?: typeof createAppRouter;
   createAppMenu?: typeof createAppMenu;
   ElementPlus?: typeof ElementPlus;
+  registerChoyGalleryRoute?: typeof registerChoyGalleryRoute;
   baseUrl?: string;
   hasWindow?: () => boolean;
 };
@@ -176,4 +178,8 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   app.usePlugin('element-plus', elementPlus, {
     locale: i18nStore.currentLocale.elementLocale,
   });
+
+  // Gallery / dogfood routes live under this module; registration is idempotent.
+  const registerGallery = pickDep(deps.registerChoyGalleryRoute, registerChoyGalleryRoute);
+  registerGallery(app);
 }

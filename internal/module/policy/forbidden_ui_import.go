@@ -6,6 +6,7 @@ package policy
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -22,16 +23,20 @@ const (
 )
 
 // isKitHostModule reports modules allowed to import reka-ui / vendor/ui / kit internals.
-// Isolation: only choy_ui. After the kit merges into web, return true for web instead.
-func isKitHostModule(moduleName string) bool {
+// choy_ui is always a host (thin registration shell). web is a host only when the kit
+// tree actually lives under it (components/vendor/ui), so a stale rename cannot
+// silently disable the domain-module import ban.
+func isKitHostModule(modulesPath, moduleName string) bool {
 	switch strings.TrimSpace(moduleName) {
 	case kitHostModuleIsolation:
 		return true
 	case kitHostModuleCutover:
-		// Product web still ships Element Plus until cutover; do not exempt it yet
-		// or domain-facing web code could import Reka unnoticed. Return true once
-		// vendor/ui lives under modules/web and Element Plus is removed.
-		return false
+		if strings.TrimSpace(modulesPath) == "" {
+			return false
+		}
+		kitDir := filepath.Join(modulesPath, kitHostModuleCutover, "web", "components", "vendor", "ui")
+		st, err := os.Stat(kitDir)
+		return err == nil && st.IsDir()
 	default:
 		return false
 	}
@@ -61,7 +66,7 @@ func CheckForbiddenUiImports(input ForbiddenUiImportScanInput, parserResults []*
 	if moduleName == "" || moduleRoot == "" {
 		return nil
 	}
-	if isKitHostModule(moduleName) {
+	if isKitHostModule(input.ModulesPath, moduleName) {
 		return nil
 	}
 
