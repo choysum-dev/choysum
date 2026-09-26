@@ -200,6 +200,10 @@ func shouldScanTailwindPath(path string) bool {
 	if base == "theme.css" {
 		return false
 	}
+	// Test/spec sources never render; class strings there only bloat utilities.
+	if strings.Contains(base, ".test.") || strings.Contains(base, ".spec.") {
+		return false
+	}
 	return true
 }
 

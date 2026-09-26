@@ -168,7 +168,9 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 		esmresolver.WithTarget("es2020"),
 		esmresolver.WithModulePath(repoRoot),
 	}
-	if pins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web")); err == nil && len(pins) > 0 {
+	if pins, pinErr := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web")); pinErr != nil {
+		return nil, xfmt.Errorf("e2e bundle: exact pins from modules/web/package.json: %w", pinErr)
+	} else if len(pins) > 0 {
 		esmOpts = append(esmOpts, esmresolver.WithBareImportPins(pins))
 	}
 	plugins = append(plugins, esmresolver.New(esmOpts...).Plugin())

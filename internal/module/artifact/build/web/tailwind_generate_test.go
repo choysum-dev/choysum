@@ -405,6 +405,9 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	write("components/chatter/chatterHelpers.ts", `export const c = "shadow"`)
 	write("other/Ignore.vue", `<div class="opacity-0"></div>`)
 
+	write("components/field/ChoyVarcharField.test.ts", `export const c = "test-only-util"`)
+	write("components/field/ChoyVarcharField.spec.ts", `export const c = "spec-only-util"`)
+
 	for _, skip := range []string{"node_modules/pkg/x.vue", "dist/out.css", ".git/config"} {
 		write(skip, `<div class="should-skip"></div>`)
 	}
@@ -446,7 +449,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border"} {
+	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border", "test-only-util", "spec-only-util"} {
 		if set[deny] {
 			t.Fatalf("unexpected candidate %q in %v", deny, got)
 		}

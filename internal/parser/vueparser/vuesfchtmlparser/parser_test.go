@@ -166,10 +166,50 @@ func TestMaskPascalCaseRawTextTagsOutsideQuotesEscapes(t *testing.T) {
 	if !strings.Contains(got, `title="say \"hi\""`) {
 		t.Fatalf("escaped quotes must stay intact, got %q", got)
 	}
-	// Lone trailing backslash inside an unclosed quote clamps without panicking.
-	got = maskPascalCaseRawTextTagsOutsideQuotes(`title="x\`)
-	if got != `title="x\` {
+	// Lone trailing backslash inside an unclosed attribute quote clamps.
+	got = maskPascalCaseRawTextTagsOutsideQuotes(`<div title="x\`)
+	if !strings.HasSuffix(got, `title="x\`) {
 		t.Fatalf("trailing backslash clamp, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsApostropheInText(t *testing.T) {
+	source := `<template>
+  <p>User's note</p>
+  <Textarea v-model="x" />
+</template>
+<script setup lang="ts">const x = 'ok'</script>`
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("apostrophe must not leave Textarea unmasked (script swallowed), scripts=%d", len(scripts))
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, "User's note") || !strings.Contains(rendered, `<Textarea`) {
+		t.Fatalf("expected apostrophe text + Textarea, got %q", rendered)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsSkipsScriptEmbeddedTemplate(t *testing.T) {
+	source := `<template><div/></template>
+<script setup lang="ts">
+const fixture = "<template><Textarea/></template>";
+</script>`
+	got := maskPascalCaseRawTextTags(source)
+	if strings.Contains(got, vueRawTextMaskPrefix) {
+		t.Fatalf("script-embedded template must not be masked, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `<template><Textarea/></template>`) {
+		t.Fatalf("script fixture corrupted: %q", scripts[0].FirstChild.Data)
 	}
 }
 

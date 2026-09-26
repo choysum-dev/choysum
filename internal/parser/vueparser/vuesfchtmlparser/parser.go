@@ -130,12 +130,26 @@ var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|Title|Style|Script|N
 var sfcTemplateOpen = regexp.MustCompile(`(?i)<template\b[^>]*>`)
 var sfcTemplateClose = regexp.MustCompile(`(?i)</template\s*>`)
 
+// sfcScriptStyleBlock matches top-level <script>/<style> so a "<template>" literal
+// inside their source is never treated as the SFC template region.
+var sfcScriptStyleBlock = regexp.MustCompile(`(?is)<(script|style)\b[^>]*>.*?</(script|style)\s*>`)
+
 const vueRawTextMaskPrefix = "VueSfcRaw"
 
 // vueSfcHTMLParse is the HTML parse step after masking; tests may override it.
 var vueSfcHTMLParse = parseWithCaseSensitive
 
 func maskPascalCaseRawTextTags(src string) string {
+	scriptStyle := sfcScriptStyleBlock.FindAllStringIndex(src, -1)
+	inScriptOrStyle := func(pos int) bool {
+		for _, r := range scriptStyle {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
+
 	var out strings.Builder
 	out.Grow(len(src) + 32)
 	i := 0
@@ -145,7 +159,14 @@ func maskPascalCaseRawTextTags(src string) string {
 			out.WriteString(src[i:])
 			break
 		}
+		openStart := i + openLoc[0]
 		openEnd := i + openLoc[1]
+		if inScriptOrStyle(openStart) {
+			// Literal "<template" inside script/style — copy through and keep scanning.
+			out.WriteString(src[i:openEnd])
+			i = openEnd
+			continue
+		}
 		out.WriteString(src[i:openEnd])
 		bodyStart := openEnd
 		depth := 1
@@ -180,42 +201,50 @@ func maskPascalCaseRawTextTags(src string) string {
 	return out.String()
 }
 
+// maskPascalCaseRawTextTagsOutsideQuotes rewrites PascalCase raw-text tags in a
+// template body, skipping only quoted attribute values inside tags. Apostrophes
+// in text (e.g. "User's") must not enter quote-skip mode.
 func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
 	var out strings.Builder
 	out.Grow(len(s) + 16)
+	inTag := false
+	segStart := 0
 	i := 0
 	for i < len(s) {
-		j := i
-		for j < len(s) {
-			c := s[j]
-			if c == '\'' || c == '"' || c == '`' {
-				break
-			}
-			j++
-		}
-		out.WriteString(replacePascalCaseRawTextTags(s[i:j]))
-		if j >= len(s) {
-			break
-		}
-		quote := s[j]
-		k := j + 1
-		for k < len(s) {
-			if s[k] == '\\' {
-				k += 2
-				continue
-			}
-			if s[k] == quote {
+		c := s[i]
+		switch {
+		case c == '<':
+			inTag = true
+			i++
+		case c == '>':
+			inTag = false
+			i++
+		case inTag && (c == '\'' || c == '"' || c == '`'):
+			out.WriteString(replacePascalCaseRawTextTags(s[segStart:i]))
+			quote := c
+			k := i + 1
+			for k < len(s) {
+				if s[k] == '\\' {
+					k += 2
+					continue
+				}
+				if s[k] == quote {
+					k++
+					break
+				}
 				k++
-				break
 			}
-			k++
+			if k > len(s) {
+				k = len(s)
+			}
+			out.WriteString(s[i:k])
+			i = k
+			segStart = i
+		default:
+			i++
 		}
-		if k > len(s) {
-			k = len(s)
-		}
-		out.WriteString(s[j:k])
-		i = k
 	}
+	out.WriteString(replacePascalCaseRawTextTags(s[segStart:]))
 	return out.String()
 }
 
