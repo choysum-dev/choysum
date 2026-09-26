@@ -56,8 +56,8 @@ defineExpose({ clear });
       :rows="3"
       :placeholder="placeholder"
       :disabled="posting || disabled"
-      @keydown.ctrl.enter.prevent="submit"
-      @keydown.meta.enter.prevent="submit"
+      @keydown.ctrl.enter.prevent="!$event.isComposing && submit()"
+      @keydown.meta.enter.prevent="!$event.isComposing && submit()"
     />
     <div class="flex justify-end">
       <Button
