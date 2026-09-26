@@ -37,15 +37,22 @@ export function normalizeSeriesToPercent(
   // Negative values cannot form a 0–100 percent stack; clamp them out of totals
   // (same product rule as pieAdapter dropping non-positive slices).
   const positive = (v: unknown): number => Math.max(0, toFiniteNumber(v));
-  const totals = categories.map((_, idx) =>
-    seriesMatrix.reduce((sum, s) => sum + positive(s.data?.[idx]), 0),
-  );
   // Largest-remainder to 2 dp so each column sums to exactly 100 (or 0).
   const columns = categories.map((_, idx) => {
-    const total = totals[idx] || 0;
     const n = seriesMatrix.length;
-    if (!total || n === 0) return seriesMatrix.map(() => 0);
-    const raw = seriesMatrix.map(s => (10000 * positive(s.data?.[idx])) / total);
+    if (n === 0) return [];
+    const positives = seriesMatrix.map(s => positive(s.data?.[idx]));
+    // Scale by max before summing so large finite values cannot overflow total.
+    let max = 0;
+    for (const v of positives) {
+      if (v > max) max = v;
+    }
+    if (!max) return seriesMatrix.map(() => 0);
+    const scaled = positives.map(v => v / max);
+    const scaledTotal = scaled.reduce((a, b) => a + b, 0);
+    if (!scaledTotal) return seriesMatrix.map(() => 0);
+    // Divide before the 10000 factor to avoid numerator overflow.
+    const raw = scaled.map(v => 10000 * (v / scaledTotal));
     const hundredths = raw.map(v => Math.floor(v));
     const order = raw
       .map((v, si) => ({ si, frac: v - (hundredths[si] ?? 0) }))
@@ -75,7 +82,10 @@ export function sortChartCategories(
   if (sort === 'none' || categories.length === 0) {
     return {
       categories: categories.slice(),
-      seriesMatrix: seriesMatrix.map(s => ({ name: s.name, data: (s.data || []).slice() })),
+      seriesMatrix: seriesMatrix.map(s => ({
+        name: s.name,
+        data: (s.data || []).map(toFiniteNumber),
+      })),
       order: categories.map((_, idx) => idx),
     };
   }

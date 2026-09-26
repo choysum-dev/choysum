@@ -413,7 +413,7 @@ function onLineClick(
 
 /**
  * Donut segment click: datum is DonutArcDatum; original row is d.data.
- * Prefer key/name identity; fall back to d.index when the datum has no identity.
+ * Match by unique key first; name/index only when no key is present.
  */
 function onPieSegmentClick(d: {
   data?: { key?: string; name?: string };
@@ -426,11 +426,11 @@ function onPieSegmentClick(d: {
   if (!current || !slices) return;
   const clickedKey = d?.data?.key ?? d?.key;
   const clickedName = d?.data?.name ?? d?.name;
-  let idx = slices.findIndex(
-    sl =>
-      (clickedKey != null && sl.key === clickedKey) ||
-      (clickedName != null && sl.name === clickedName),
-  );
+  let idx =
+    clickedKey != null ? slices.findIndex(sl => sl.key === clickedKey) : -1;
+  if (idx < 0 && clickedKey == null && clickedName != null) {
+    idx = slices.findIndex(sl => sl.name === clickedName);
+  }
   if (idx < 0) {
     idx =
       typeof d?.index === 'number' && Number.isFinite(d.index)

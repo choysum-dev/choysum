@@ -224,6 +224,31 @@ test('normalizeSeriesToPercent pads short series to categories length', () => {
   ).toEqual([{ name: 'X', data: [100, 0, 0] }]);
 });
 
+test('normalizeSeriesToPercent handles large finite values without overflow', () => {
+  expect(
+    normalizeSeriesToPercent(
+      ['T'],
+      [
+        { name: 'A', data: [1e305] },
+        { name: 'B', data: [1e305] },
+      ],
+    ),
+  ).toEqual([
+    { name: 'A', data: [50] },
+    { name: 'B', data: [50] },
+  ]);
+});
+
+test('sortChartCategories none coerces non-finite values', () => {
+  const sorted = sortChartCategories(
+    ['A'],
+    [{ name: 'X', data: [Number.POSITIVE_INFINITY, Number.NaN] }],
+    'none',
+  );
+  expect(sorted.seriesMatrix[0]!.data).toEqual([0, 0]);
+  expect(sorted.order).toEqual([0]);
+});
+
 test('chartSpecToXyRows / chartSpecToPieRows flatten for Unovis', () => {
   const spec = barAdapter.build({
     categories: ['Jan', 'Feb'],
