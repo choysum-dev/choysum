@@ -90,7 +90,8 @@ export function htmlToPlaintext(html: string | null | undefined, deps?: Sanitize
     // (e.g. <p>Hello</p><p>world</p> → "Hello world", not "Helloworld").
     const withBreaks = sanitizeHtmlForClient(raw, deps)
       .replace(/<br\s*\/?>/gi, ' ')
-      .replace(/<\/(p|div|h[1-6]|li|blockquote|pre|tr|hr)>/gi, ' </$1>');
+      .replace(/<hr\s*\/?>/gi, ' ')
+      .replace(/<\/(p|div|h[1-6]|li|blockquote|pre|tr)>/gi, ' </$1>');
     el.innerHTML = withBreaks;
     return String(el.textContent || '')
       .replace(/\s+/g, ' ')
@@ -119,8 +120,10 @@ export function normalizeHtmlForStore(html: string | null | undefined, deps?: Sa
 export function resolveChoyHtmlLinkHref(raw: string): string | null | false {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) return null;
-  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed);
+  // `host:port` (e.g. localhost:3000) is a host, not a scheme: only treat a
+  // leading `word:` as a scheme when it is not followed solely by a port.
+  const schemeMatch = /^([a-z][a-z0-9+.-]*):(?!\d+(?:[/?#]|$))/i.exec(trimmed);
   // Link.protocols only affects autolink; reject javascript:/data: etc. here.
-  if (hasScheme && !/^(https?|mailto):/i.test(trimmed)) return false;
-  return hasScheme ? trimmed : `https://${trimmed}`;
+  if (schemeMatch && !/^(https?|mailto):/i.test(trimmed)) return false;
+  return schemeMatch ? trimmed : `https://${trimmed}`;
 }

@@ -88,7 +88,11 @@ function dropOnLane(toLaneKey: string, toIndex: number, event: DragEvent): void 
   const next = applyChoyKanbanMove(lanes.value, move);
   if (!next) return;
   lanes.value = next;
-  emit('card-move', move);
+  // `toIndex` above is the pre-removal drop index; report the card's real final
+  // index so hosts persisting order match ChoyKanbanMove's post-move contract.
+  const finalLane = next.find(l => l.key === toLaneKey);
+  const finalIndex = finalLane ? finalLane.cards.findIndex(c => c.id === cardId) : toIndex;
+  emit('card-move', { ...move, toIndex: finalIndex < 0 ? toIndex : finalIndex });
   onDragEnd();
 }
 

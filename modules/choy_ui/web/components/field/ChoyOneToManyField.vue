@@ -87,6 +87,8 @@ function rowSubtitle(row: T): string | undefined {
 
 const dialogTitle = computed(() => (dialogRow.value ? rowTitle(dialogRow.value) : 'Row'));
 
+let blankRowSeq = 0;
+
 function canEdit(): boolean {
   return props.editable && !props.readonly && !props.disabled;
 }
@@ -94,7 +96,10 @@ function canEdit(): boolean {
 function onAdd(): void {
   emit('add-click');
   if (canEdit() && props.widget === 'kanban') {
-    const blank = { Id: `new_${Date.now()}`, [props.titleField]: 'New row' } as unknown as T;
+    const blank = {
+      Id: `new_${Date.now()}_${blankRowSeq++}`,
+      [props.titleField]: 'New row',
+    } as unknown as T;
     model.value = [...model.value, blank];
     dialogRow.value = blank;
     dialogOpen.value = true;

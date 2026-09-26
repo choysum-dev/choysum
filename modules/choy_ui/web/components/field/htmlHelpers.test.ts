@@ -119,6 +119,7 @@ describe('htmlHelpers', () => {
     });
     try {
       expect(htmlToPlaintext('<p>Hello</p><p>world</p>', { purify })).toBe('Hello world');
+      expect(htmlToPlaintext('a<hr>b', { purify })).toBe('a b');
     } finally {
       if (previousDescriptor) {
         Object.defineProperty(globalThis, 'document', previousDescriptor);
@@ -146,5 +147,7 @@ describe('htmlHelpers', () => {
     expect(resolveChoyHtmlLinkHref('http://example.com')).toBe('http://example.com');
     expect(resolveChoyHtmlLinkHref('mailto:a@b.com')).toBe('mailto:a@b.com');
     expect(resolveChoyHtmlLinkHref('example.com/path')).toBe('https://example.com/path');
+    expect(resolveChoyHtmlLinkHref('localhost:3000')).toBe('https://localhost:3000');
+    expect(resolveChoyHtmlLinkHref('example.com:8080/path')).toBe('https://example.com:8080/path');
   });
 });

@@ -23,7 +23,10 @@ export type ChoyKanbanMove = {
   cardId: string;
   fromLaneKey: string;
   toLaneKey: string;
-  /** Index within the destination lane after the move (0-based). */
+  /**
+   * For `applyChoyKanbanMove` input: drop target index before the card is removed.
+   * For `card-move` emit: index within the destination lane after the move.
+   */
   toIndex: number;
 };
 
