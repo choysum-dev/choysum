@@ -67,9 +67,12 @@ export function parseChatterTimestamp(value: unknown): number | null {
   }
   // Naive date-times (no Z/offset) parse as local time and drift by host TZ;
   // pin them to UTC so V8 and QuickJS agree. Date-only forms stay UTC per ES.
-  const hasTime = raw.includes('T');
-  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/.test(raw);
-  const parsed = Date.parse(hasTime && !hasZone ? `${raw}Z` : raw);
+  // ECMA-262 only defines millisecond precision; trim longer fractions so
+  // engines cannot fall back to implementation-defined parsing.
+  const normalized = raw.replace(/(\.\d{3})\d+/, '$1');
+  const hasTime = normalized.includes('T');
+  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized);
+  const parsed = Date.parse(hasTime && !hasZone ? `${normalized}Z` : normalized);
   return Number.isNaN(parsed) ? null : parsed;
 }
 

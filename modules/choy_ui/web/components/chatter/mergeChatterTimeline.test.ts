@@ -17,6 +17,10 @@ test('parseChatterTimestamp parses Date, number, and ISO strings', () => {
   expect(parseChatterTimestamp('2024-01-01T00:00:00.000Z')).toBe(
     Date.parse('2024-01-01T00:00:00.000Z'),
   );
+  // Longer fractional seconds are truncated to milliseconds (ECMA-262).
+  expect(parseChatterTimestamp('2024-01-01T03:04:00.123456Z')).toBe(
+    Date.parse('2024-01-01T03:04:00.123Z'),
+  );
   // Naive date-time is pinned to UTC (not host-local).
   expect(parseChatterTimestamp('2024-01-01T03:04:00')).toBe(
     Date.parse('2024-01-01T03:04:00.000Z'),
