@@ -64,7 +64,7 @@ onBeforeUnmount(() => {
 <template>
   <Tabs
     v-model="modelValue"
-    :data-anchor="props.dataAnchor || 'choy.tabs'"
+    :data-anchor="props.dataAnchor?.trim() || 'choy.tabs'"
     :class="props.class"
   >
     <TabsList v-if="tabs.length">

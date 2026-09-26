@@ -29,7 +29,7 @@ export function parseChatterTimestamp(value: unknown): number | null {
   // separators and locale/RFC forms that Date.parse resolves differently
   // across V8 vs QuickJS. Offset requires the ISO `:` separator.
   if (
-    !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/i.test(
+    !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/.test(
       raw,
     )
   ) {
@@ -38,7 +38,7 @@ export function parseChatterTimestamp(value: unknown): number | null {
   // Naive date-times (no Z/offset) parse as local time and drift by host TZ;
   // pin them to UTC so V8 and QuickJS agree. Date-only forms stay UTC per ES.
   const hasTime = raw.includes('T');
-  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw);
+  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/.test(raw);
   const parsed = Date.parse(hasTime && !hasZone ? `${raw}Z` : raw);
   return Number.isNaN(parsed) ? null : parsed;
 }

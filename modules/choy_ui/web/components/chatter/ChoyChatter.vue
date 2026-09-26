@@ -90,11 +90,23 @@ function onPost(body: string): void {
   emit('post', body);
 }
 
+const postingResId = ref<string | null>(null);
+
 watch(
   () => props.posting,
   (next, prev) => {
-    // Clear draft when a post finishes successfully (posting true → false, no error).
-    if (prev === true && next === false && props.postError == null) {
+    if (next === true) {
+      postingResId.value = String(props.resId || '');
+      return;
+    }
+    // Clear only when the finished post still belongs to the current record,
+    // so a stale completion cannot wipe a draft typed after resId changed.
+    if (
+      prev === true &&
+      next === false &&
+      props.postError == null &&
+      postingResId.value === String(props.resId || '')
+    ) {
       composerRef.value?.clear();
     }
   },
