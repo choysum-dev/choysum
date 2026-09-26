@@ -2253,6 +2253,13 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
+		if pins, err := esmresolver.ExactPinsFromPackageJSON(b.module.Path); err != nil {
+			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", b.module.Name, "error", err)
+			}
+		} else if len(pins) > 0 {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithBareImportPins(pins))
+		}
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2270,6 +2277,13 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModulePath(b.module.Path),
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
+		}
+		if pins, err := esmresolver.ExactPinsFromPackageJSON(b.module.Path); err != nil {
+			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", b.module.Name, "error", err)
+			}
+		} else if len(pins) > 0 {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithBareImportPins(pins))
 		}
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
