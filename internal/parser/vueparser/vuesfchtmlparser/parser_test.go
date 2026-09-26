@@ -237,6 +237,21 @@ func TestMaskPascalCaseRawTextTagsSelfClosingSlot(t *testing.T) {
 	}
 }
 
+func TestIsSelfClosingHTMLOpenTagEdges(t *testing.T) {
+	if isSelfClosingHTMLOpenTag("") {
+		t.Fatal("empty tag is not self-closing")
+	}
+	if isSelfClosingHTMLOpenTag("<template") {
+		t.Fatal("tag without '>' is not self-closing")
+	}
+	if !isSelfClosingHTMLOpenTag("<template />") {
+		t.Fatal("expected self-closing template")
+	}
+	if isSelfClosingHTMLOpenTag("<template>") {
+		t.Fatal("open template must not count as self-closing")
+	}
+}
+
 func TestCloneNodeCreatesDetachedDeepCopy(t *testing.T) {
 	original, err := htmlquery.Parse(strings.NewReader(`<root><div id="a"><span>text</span></div></root>`))
 	if err != nil {

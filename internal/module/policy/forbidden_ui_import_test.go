@@ -10,6 +10,18 @@ import (
 	"testing"
 )
 
+func TestIsKitHostModuleEmptyModulesPath(t *testing.T) {
+	if isKitHostModule("", "web") {
+		t.Fatal("web without modulesPath must not be kit host")
+	}
+	if isKitHostModule("   ", "web") {
+		t.Fatal("blank modulesPath must not make web a kit host")
+	}
+	if !isKitHostModule("", "choy_ui") {
+		t.Fatal("choy_ui remains a kit host even without modulesPath")
+	}
+}
+
 func TestClassifyForbiddenUiImport(t *testing.T) {
 	cases := []struct {
 		spec string

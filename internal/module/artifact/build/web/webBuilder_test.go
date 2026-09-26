@@ -5280,3 +5280,17 @@ func TestBuildOptionsExactPinsFromPackageJSON(t *testing.T) {
 		}
 	})
 }
+
+func TestAppendExactPinsFromPackageJSONNilReceiver(t *testing.T) {
+	opts := []esmresolver.Option{esmresolver.WithTarget("es2020")}
+	var nilBuilder *WebModuleBuilder
+	got := nilBuilder.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("nil receiver must return opts unchanged, got %d", len(got))
+	}
+	empty := &WebModuleBuilder{}
+	got = empty.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("nil module must return opts unchanged, got %d", len(got))
+	}
+}

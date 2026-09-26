@@ -126,3 +126,36 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 		t.Fatalf("expected exact pins error, got %v", err)
 	}
 }
+
+func TestBuildFrontendVueHostBundleExactPinsError(t *testing.T) {
+	root := t.TempDir()
+	webRoot := filepath.Join(root, "modules", "web")
+	if err := os.MkdirAll(webRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(root, "entry.js")
+	if err := os.WriteFile(entry, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prev := resolveChoysumMountSourcePath
+	mount := filepath.Join(t.TempDir(), "choysummount.js")
+	if err := os.WriteFile(mount, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resolveChoysumMountSourcePath = func() (string, error) { return mount, nil }
+	t.Cleanup(func() { resolveChoysumMountSourcePath = prev })
+
+	_, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
+		RepoRoot:              root,
+		EntryPath:             entry,
+		CacheDir:              t.TempDir(),
+		Outfile:               filepath.Join(t.TempDir(), "out.js"),
+		DisableDefaultFEStubs: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "exact pins") {
+		t.Fatalf("expected exact pins error from host bundle, got %v", err)
+	}
+}
