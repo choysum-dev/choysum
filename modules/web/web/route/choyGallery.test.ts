@@ -11,10 +11,11 @@ test('setupRouter > skips when router is missing', () => {
   try {
     setupRouter({} as any);
     setupRouter({ router: null } as any);
+    setupRouter({ router: { hasRoute: () => true } } as any);
   } finally {
     console.warn = prev;
   }
-  expect(warn.calls.length).toBe(2);
+  expect(warn.calls.length).toBe(3);
 });
 
 test('setupRouter > skips when AppLayout is not registered', () => {

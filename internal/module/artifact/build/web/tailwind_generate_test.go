@@ -429,8 +429,11 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	if err == nil {
 		// Some environments (root / platform) can still walk mode 000 dirs.
 		t.Logf("walk continued despite locked dir; candidates=%d", len(got))
-	} else if !os.IsPermission(err) && !strings.Contains(err.Error(), "permission") {
-		// Still accept other walk errors from the locked dir.
+	} else {
+		// Whatever error surfaces, a failed walk must never return partial candidates.
+		if got != nil {
+			t.Fatalf("walk error must not return partial candidates, got %v", got)
+		}
 		t.Logf("ScanChoyKitTailwindCandidates locked-dir error: %v", err)
 	}
 

@@ -9,7 +9,7 @@ import { choyUiRoutes } from './choyGalleryRoutes';
  */
 export function setupRouter(app: ChoysumWebApp): void {
   const router = app?.router;
-  if (!router || typeof router.hasRoute !== 'function') {
+  if (!router || typeof router.hasRoute !== 'function' || typeof router.addRoute !== 'function') {
     console.warn('[web] router is not ready; Choy gallery routes were skipped');
     return;
   }

@@ -233,12 +233,8 @@ func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
 		c := s[i]
 		switch {
 		case c == '<':
-			// Bare '<' in text/interpolation (e.g. `{{ a < b }}`) is not a tag opener.
-			if i+1 < len(s) {
-				n := s[i+1]
-				if (n >= 'a' && n <= 'z') || (n >= 'A' && n <= 'Z') || n == '/' || n == '!' {
-					inTag = true
-				}
+			if looksLikeHTMLTagOpener(s, i) {
+				inTag = true
 			}
 			i++
 		case c == '>':
@@ -271,6 +267,44 @@ func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
 	}
 	out.WriteString(replacePascalCaseRawTextTags(s[segStart:]))
 	return out.String()
+}
+
+// looksLikeHTMLTagOpener reports whether s[start] begins a real tag ('<' plus a
+// name/'/'/'!' that reaches '>' before another '<', skipping quoted attrs).
+// Comparisons in text like `{{ a <b }}` must not enter inTag mode.
+func looksLikeHTMLTagOpener(s string, start int) bool {
+	if start < 0 || start >= len(s) || s[start] != '<' || start+1 >= len(s) {
+		return false
+	}
+	n := s[start+1]
+	if !((n >= 'a' && n <= 'z') || (n >= 'A' && n <= 'Z') || n == '/' || n == '!') {
+		return false
+	}
+	inQuote := byte(0)
+	for j := start + 1; j < len(s); j++ {
+		c := s[j]
+		if inQuote != 0 {
+			if c == '\\' {
+				j++
+				continue
+			}
+			if c == inQuote {
+				inQuote = 0
+			}
+			continue
+		}
+		if c == '\'' || c == '"' || c == '`' {
+			inQuote = c
+			continue
+		}
+		if c == '<' {
+			return false
+		}
+		if c == '>' {
+			return true
+		}
+	}
+	return false
 }
 
 func replacePascalCaseRawTextTags(s string) string {
