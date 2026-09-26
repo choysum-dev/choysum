@@ -204,10 +204,9 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	if strings.Contains(body, "duration=") {
 		t.Fatal("generated CSS header must not include wall-clock duration")
 	}
-	// Strip only the CSS properties that legitimately contain `-path:` so a
-	// leaked bare TS `path:` key (e.g. route objects) is still flagged.
-	withoutCssPaths := strings.NewReplacer("clip-path:", "", "offset-path:", "").Replace(body)
-	if regexp.MustCompile(`(^|[^a-z])path:`).MatchString(withoutCssPaths) ||
+	// Detect a bare TS `path:` key (e.g. route objects) without flagging CSS
+	// properties like `clip-path:` / `-webkit-clip-path:` (hyphen before path).
+	if regexp.MustCompile(`(^|[^a-z-])path:`).MatchString(body) ||
 		strings.Contains(body, "component:") ||
 		strings.Contains(body, "--choy-color-primary'") {
 		t.Fatalf("generated CSS contains leaked TS/JS fragments:\n%s", body)
