@@ -94,6 +94,13 @@ watch(
     }
   },
 );
+
+/** Clears the composer draft after a confirmed successful post (host-driven). */
+function clear(): void {
+  composerRef.value?.clear();
+}
+
+defineExpose({ clear });
 </script>
 
 <template>

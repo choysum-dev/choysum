@@ -8,14 +8,21 @@ import type { ChatterTimelineEntry } from './chatterTypes';
 import ChoyChatterFieldChangeItem from './ChoyChatterFieldChangeItem.vue';
 import ChoyChatterMessageItem from './ChoyChatterMessageItem.vue';
 
-defineProps<{
-  entries: ChatterTimelineEntry[];
-  loading?: boolean;
-  error?: string | null;
-  resolveAuthorLabel: (userId: string | null | undefined) => string;
-  loadingLabel?: string;
-  emptyLabel?: string;
-}>();
+withDefaults(
+  defineProps<{
+    entries?: ChatterTimelineEntry[];
+    loading?: boolean;
+    error?: string | null;
+    resolveAuthorLabel: (userId: string | null | undefined) => string;
+    loadingLabel?: string;
+    emptyLabel?: string;
+  }>(),
+  {
+    entries: () => [],
+    loading: false,
+    error: null,
+  },
+);
 </script>
 
 <template>
