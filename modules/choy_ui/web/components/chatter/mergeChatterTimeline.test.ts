@@ -34,9 +34,11 @@ test('parseChatterTimestamp returns null for empty or invalid values', () => {
   expect(parseChatterTimestamp(Number.NaN)).toBeNull();
   expect(parseChatterTimestamp(new Date('invalid'))).toBeNull();
   expect(parseChatterTimestamp('not-a-date')).toBeNull();
-  // Locale / RFC forms are engine-dependent; wire uses ISO or epoch digits.
+  // Locale / RFC / space-separated forms are engine-dependent; wire uses ISO-8601.
   expect(parseChatterTimestamp('01/02/2024')).toBeNull();
   expect(parseChatterTimestamp('Mon, 01 Jan 2024 00:00:00 GMT')).toBeNull();
+  expect(parseChatterTimestamp('2024-01-01 00:00:00')).toBeNull();
+  expect(parseChatterTimestamp('2024-01-01 00:00:00Z')).toBeNull();
 });
 
 test('mergeChatterTimeline merges messages and field changes ascending', () => {

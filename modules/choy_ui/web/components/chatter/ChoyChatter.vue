@@ -60,6 +60,11 @@ const emit = defineEmits<{
 
 const composerRef = ref<{ clear: () => void } | null>(null);
 
+watch(
+  () => props.resId,
+  () => composerRef.value?.clear(),
+);
+
 const composerVisible = computed(
   () =>
     props.showComposer &&
