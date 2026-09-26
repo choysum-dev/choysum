@@ -57,6 +57,14 @@ test('readChoyThemePreference ignores corrupt JSON', () => {
   expect(readChoyThemePreference(storage)).toEqual({});
 });
 
+test('readChoyThemePreference rejects JSON arrays', () => {
+  expect(
+    readChoyThemePreference({
+      getItem: () => '[]',
+    }),
+  ).toEqual({});
+});
+
 test('applyChoyThemePreference toggles root class and density attr', () => {
   const classes = new Set<string>();
   const attrs = new Map<string, string>();

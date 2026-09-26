@@ -8,20 +8,34 @@ import { computed } from 'vue';
 import type { ChatterFieldChangeEntry } from './chatterTypes';
 import { formatChoyUtcIso, formatFieldChangeSummary } from './chatterHelpers';
 
-const props = defineProps<{
-  entry: ChatterFieldChangeEntry;
-  authorLabel: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    entry: ChatterFieldChangeEntry;
+    authorLabel: string;
+    labels?: {
+      created?: string;
+      unlinked?: string;
+      changed?: (field: string, oldValue: string, newValue: string) => string;
+      action?: (name: string) => string;
+      fieldFallback?: string;
+    };
+  }>(),
+  {
+    labels: () => ({}),
+  },
+);
 
 const timeLabel = computed(() => formatChoyUtcIso(props.entry.at));
 
 const summary = computed(() =>
   formatFieldChangeSummary(props.entry, {
-    created: 'Record created',
-    unlinked: 'Record removed',
-    changed: (field, oldValue, newValue) => `${field} changed from ${oldValue} to ${newValue}`,
-    action: name => `Action: ${name}`,
-    fieldFallback: 'Field',
+    created: props.labels.created || 'Record created',
+    unlinked: props.labels.unlinked || 'Record removed',
+    changed:
+      props.labels.changed ||
+      ((field, oldValue, newValue) => `${field} changed from ${oldValue} to ${newValue}`),
+    action: props.labels.action || (name => `Action: ${name}`),
+    fieldFallback: props.labels.fieldFallback || 'Field',
   }),
 );
 </script>

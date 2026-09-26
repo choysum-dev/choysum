@@ -74,7 +74,7 @@ export function readChoyThemePreference(
     const raw = store.getItem(storageKey);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as ChoyThemePreference;
-    if (!parsed || typeof parsed !== 'object') return {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return {
       theme:
         parsed.theme === 'dark' || parsed.theme === 'auto' || parsed.theme === 'light'
