@@ -195,3 +195,20 @@ export function resolveLineClickCategory(rel: number, count: number): number {
   const clamped = Math.min(1, Math.max(0, rel));
   return Math.round(clamped * (count - 1));
 }
+
+/**
+ * Client X for Unovis click events. Touch uses `changedTouches`; mouse/pointer
+ * use `clientX` on the event itself.
+ */
+export function resolveClickClientX(event: {
+  clientX?: number;
+  changedTouches?: ArrayLike<{ clientX?: number }>;
+}): number | undefined {
+  const touches = event.changedTouches;
+  if (touches && touches.length > 0) {
+    const x = touches[0]?.clientX;
+    return typeof x === 'number' && Number.isFinite(x) ? x : undefined;
+  }
+  const x = event.clientX;
+  return typeof x === 'number' && Number.isFinite(x) ? x : undefined;
+}

@@ -37,6 +37,7 @@ import {
   chartSpecToXyRows,
   normalizeSeriesToPercent,
   resolveGroupedXyClickTarget,
+  resolveClickClientX,
   resolveLineClickCategory,
   resolveStackedXyClickTarget,
   sortChartCategories,
@@ -371,21 +372,22 @@ function onLineClick(
   if (!spec.value) return;
   const rows = xyRows.value;
   if (!rows.length) return;
-  const mouse = event as MouseEvent;
-  const target = (mouse.currentTarget ?? mouse.target) as Element | null;
+  const ev = event as MouseEvent & TouchEvent;
+  const target = (ev.currentTarget ?? ev.target) as Element | null;
   const svg =
     target instanceof SVGSVGElement
       ? target
       : target instanceof Element
         ? target.closest('svg')
         : null;
-  if (!svg || typeof mouse.clientX !== 'number') return;
+  const clientX = resolveClickClientX(ev);
+  if (!svg || clientX == null) return;
   // The clicked path spans the data x-domain more tightly than the full SVG
   // box (which also covers axis gutters).
   const rect = (target instanceof Element ? target : svg).getBoundingClientRect();
   // Zero/negative width (hidden tab, pre-layout) makes clientX meaningless.
   if (rect.width <= 0) return;
-  const rel = (mouse.clientX - rect.left) / rect.width;
+  const rel = (clientX - rect.left) / rect.width;
   const categoryIdx = resolveLineClickCategory(rel, rows.length);
   const nSeries = spec.value.series.length;
   let si =
@@ -549,6 +551,7 @@ const donutEvents = computed(() => ({
       <slot
         name="stacked-switcher"
         :stacked="localStacked"
+        :disabled="stackedDisabled"
         :toggle="toggleStacked"
       >
         <ChoyButton
@@ -565,6 +568,7 @@ const donutEvents = computed(() => ({
       <slot
         name="sort-switcher"
         :current="localSort"
+        :disabled="sortDisabled"
         :change="selectSort"
       >
         <div
@@ -665,6 +669,7 @@ const donutEvents = computed(() => ({
           />
           <VisAxis
             type="y"
+            :label="spec.metricLabel"
             :tick-line="false"
             :domain-line="false"
             :grid-line="true"

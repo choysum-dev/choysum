@@ -13,6 +13,7 @@ import {
   chartSpecToXyRows,
   normalizeSeriesToPercent,
   resolveGroupedXyClickTarget,
+  resolveClickClientX,
   resolveLineClickCategory,
   resolveStackedXyClickTarget,
   sortChartCategories,
@@ -361,6 +362,17 @@ test('resolveLineClickCategory maps relative x to nearest category', () => {
   expect(resolveLineClickCategory(1.2, 4)).toBe(3);
   expect(resolveLineClickCategory(0.5, 3)).toBe(1);
   expect(resolveLineClickCategory(Number.NaN, 4)).toBe(0);
+});
+
+test('resolveClickClientX prefers changedTouches then clientX', () => {
+  expect(resolveClickClientX({ clientX: 42 })).toBe(42);
+  expect(resolveClickClientX({ clientX: Number.NaN })).toBeUndefined();
+  expect(resolveClickClientX({ changedTouches: [{ clientX: 17 }] })).toBe(17);
+  expect(
+    resolveClickClientX({ clientX: 99, changedTouches: [{ clientX: 17 }] }),
+  ).toBe(17);
+  expect(resolveClickClientX({ changedTouches: [] })).toBeUndefined();
+  expect(resolveClickClientX({})).toBeUndefined();
 });
 
 test('sortChartCategories coerces non-finite values to 0', () => {
