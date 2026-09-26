@@ -22,6 +22,9 @@ test('parseChatterTimestamp parses Date, number, and ISO strings', () => {
   expect(parseChatterTimestamp('-1000')).toBe(-1000);
   // Beyond Number.MAX_SAFE_INTEGER must not coerce with precision loss.
   expect(parseChatterTimestamp('9007199254740992')).toBeNull();
+  // Safe integers outside ECMAScript Date range must be rejected.
+  expect(parseChatterTimestamp(Number.MAX_SAFE_INTEGER)).toBeNull();
+  expect(parseChatterTimestamp(String(Number.MAX_SAFE_INTEGER))).toBeNull();
 });
 
 test('parseChatterTimestamp returns null for empty or invalid values', () => {
@@ -79,6 +82,20 @@ test('mergeChatterTimeline skips rows without ids or timestamps', () => {
     [{ Id: 'f1', Kind: 'create', At: null }],
   );
   expect(entries).toEqual([]);
+});
+
+test('mergeChatterTimeline dedupes identical kind:id after sort', () => {
+  const at = '2024-01-01T00:00:00.000Z';
+  const entries = mergeChatterTimeline(
+    [
+      { Id: 'm1', Body: 'first', CreatedAt: at },
+      { Id: 'm1', Body: 'dup', CreatedAt: at },
+    ],
+    [],
+  );
+  expect(entries).toHaveLength(1);
+  expect(entries[0]!.kind).toBe('message');
+  expect(entries[0]!.kind === 'message' ? entries[0]!.body : '').toBe('first');
 });
 
 test('compareChatterTimelineEntries tie-breaks fieldChange before message', () => {

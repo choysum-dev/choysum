@@ -89,7 +89,7 @@ watch(
   () => props.posting,
   (next, prev) => {
     // Clear draft when a post finishes successfully (posting true → false, no error).
-    if (prev === true && next === false && !props.postError) {
+    if (prev === true && next === false && props.postError == null) {
       composerRef.value?.clear();
     }
   },

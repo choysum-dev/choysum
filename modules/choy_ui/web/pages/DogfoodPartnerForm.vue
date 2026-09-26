@@ -117,7 +117,12 @@ export default defineComponent({
     Toaster,
   },
   setup() {
-    applyChoyThemePreference(readChoyThemePreference(), { persist: false });
+    const storedTheme = readChoyThemePreference();
+    // Only apply when a stored preference exists — empty storage must not
+    // resolve to light and strip a host-managed documentElement.dark class.
+    if (storedTheme.theme || storedTheme.density) {
+      applyChoyThemePreference(storedTheme, { persist: false });
+    }
 
     const router = useRouter();
     const name = ref('Acme Partner');

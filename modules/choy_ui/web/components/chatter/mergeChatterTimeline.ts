@@ -17,19 +17,23 @@ export function parseChatterTimestamp(value: unknown): number | null {
     return Number.isNaN(ms) ? null : ms;
   }
   if (typeof value === 'number') {
-    // Mirror the string branch: reject non-integer / unsafe magnitudes.
-    return Number.isSafeInteger(value) ? value : null;
+    return asValidEpochMs(value);
   }
   const raw = String(value).trim();
   if (!raw) return null;
   // Protobuf JSON serializes int64 timestamps as strings; Date.parse fails on them.
   if (/^-?\d+$/.test(raw)) {
-    const asNumber = Number(raw);
-    // Protobuf int64 strings beyond 2^53 would silently lose precision.
-    return Number.isSafeInteger(asNumber) ? asNumber : null;
+    return asValidEpochMs(Number(raw));
   }
   const parsed = Date.parse(raw);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+/** Safe integer that `Date` can represent (ECMAScript TimeClip range). */
+function asValidEpochMs(value: number): number | null {
+  if (!Number.isSafeInteger(value)) return null;
+  // Some safe integers (e.g. Number.MAX_SAFE_INTEGER) are still Invalid Date.
+  return Number.isNaN(new Date(value).getTime()) ? null : value;
 }
 
 /**
@@ -79,7 +83,13 @@ export function mergeChatterTimeline(
   }
 
   entries.sort(compareChatterTimelineEntries);
-  return entries;
+  const seen = new Set<string>();
+  return entries.filter(entry => {
+    const key = `${entry.kind}:${entry.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
