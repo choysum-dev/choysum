@@ -192,6 +192,31 @@ test('normalizeSeriesToPercent and sortChartCategories', () => {
   expect(asc.seriesMatrix[0]!.data).toEqual([10, 25]);
 });
 
+test('sort uses raw totals before percent normalization', () => {
+  const sorted = sortChartCategories(
+    ['A', 'B'],
+    [
+      { name: 'X', data: [90, 10] },
+      { name: 'Y', data: [0, 10] },
+    ],
+    'desc',
+  );
+  expect(sorted.categories).toEqual(['A', 'B']);
+  expect(normalizeSeriesToPercent(sorted.categories, sorted.seriesMatrix)).toEqual([
+    { name: 'X', data: [100, 50] },
+    { name: 'Y', data: [0, 50] },
+  ]);
+});
+
+test('normalizeSeriesToPercent pads short series to categories length', () => {
+  expect(
+    normalizeSeriesToPercent(
+      ['A', 'B', 'C'],
+      [{ name: 'X', data: [10] }],
+    ),
+  ).toEqual([{ name: 'X', data: [100, 0, 0] }]);
+});
+
 test('chartSpecToXyRows / chartSpecToPieRows flatten for Unovis', () => {
   const spec = barAdapter.build({
     categories: ['Jan', 'Feb'],

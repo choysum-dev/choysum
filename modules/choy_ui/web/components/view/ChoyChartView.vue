@@ -373,7 +373,9 @@ function onLineClick(
   // The clicked path spans the data x-domain more tightly than the full SVG
   // box (which also covers axis gutters).
   const rect = (target instanceof Element ? target : svg).getBoundingClientRect();
-  const rel = (mouse.clientX - rect.left) / Math.max(rect.width, 1);
+  // Zero/negative width (hidden tab, pre-layout) makes clientX meaningless.
+  if (rect.width <= 0) return;
+  const rel = (mouse.clientX - rect.left) / rect.width;
   const categoryIdx = resolveLineClickCategory(rel, rows.length);
   const nSeries = spec.value.series.length;
   let si =

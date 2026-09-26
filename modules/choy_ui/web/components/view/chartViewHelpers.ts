@@ -34,11 +34,11 @@ export function normalizeSeriesToPercent(
   );
   return seriesMatrix.map(s => ({
     name: s.name,
-    data: (s.data || []).map((v, idx) => {
+    data: categories.map((_, idx) => {
       const total = totals[idx] || 0;
       if (!total) return 0;
       // Round to 2 dp so axis labels / click payloads stay readable.
-      return Math.round(((100 * positive(v)) / total) * 100) / 100;
+      return Math.round(((100 * positive(s.data?.[idx])) / total) * 100) / 100;
     }),
   }));
 }
