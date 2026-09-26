@@ -36,9 +36,10 @@ jobs:
           # Models not yet in PR-Agent's MAX_TOKENS table still need custom_model_*.
           config.custom_model_max_tokens: "100000"
           config.max_model_tokens: "100000"
-          # Prefer shorter completions so reasoning models leave room for YAML output.
-          config.reasoning_effort: "low"
           config.ai_timeout: "180"
+          # Note: config.reasoning_effort is intentionally unset. PR-Agent v0.45.0 only
+          # forwards it for allowlisted ids (e.g. gemini-2.5-flash/pro), not for
+          # gemini-3.8-flash / deepseek-v4-flash — so it would be a no-op here.
           # Auto review/describe/improve on open/reopen/ready_for_review.
           # Project-specific instructions live in .pr_agent.toml
           github_action_config.auto_review: "true"

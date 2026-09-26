@@ -2,11 +2,6 @@
 # Loaded from the default branch; keep this file minimal and project-specific.
 # See: https://docs.pr-agent.ai/usage-guide/configuration_options/
 
-[config]
-# Keep reasoning afterthoughts small so /improve completions are not truncated
-# (finish_reason=length with empty content) on large diffs.
-reasoning_effort = "low"
-
 [pr_description]
 enable_pr_diagram = false
 extra_instructions = """\
