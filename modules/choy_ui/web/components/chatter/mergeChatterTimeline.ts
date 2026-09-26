@@ -35,6 +35,19 @@ export function parseChatterTimestamp(value: unknown): number | null {
   ) {
     return null;
   }
+  // Date.parse rolls impossible calendar days (e.g. 2024-02-30 → Mar 1);
+  // reject those so timeline sort/display cannot use a drifted date.
+  const [year, month, day] = raw.slice(0, 10).split('-').map(Number);
+  const calendarDate = new Date(0);
+  calendarDate.setUTCFullYear(year!, month! - 1, day!);
+  calendarDate.setUTCHours(0, 0, 0, 0);
+  if (
+    calendarDate.getUTCFullYear() !== year ||
+    calendarDate.getUTCMonth() !== month! - 1 ||
+    calendarDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
   // Naive date-times (no Z/offset) parse as local time and drift by host TZ;
   // pin them to UTC so V8 and QuickJS agree. Date-only forms stay UTC per ES.
   const hasTime = raw.includes('T');

@@ -31,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCard title="Detail" data-region="partner-detail-tabs">
           <ChoyTabs
             v-model="activeTab"
-            :data-anchor="PARTNER_DETAIL_TAB_PANELS_ANCHOR"
+            data-anchor="partner.detail.tab-panels"
             default-value="general"
           >
             <ChoyTab value="general" label="General" data-region="partner-general-tab">
@@ -95,7 +95,6 @@ import {
   applyChoyThemePreference,
   readChoyThemePreference,
 } from '../composables/applyChoyThemePreference';
-import { PARTNER_DETAIL_TAB_PANELS_ANCHOR } from './partnerDetailXpath';
 
 /**
  * Partner-style dogfood base view.
@@ -244,7 +243,6 @@ export default defineComponent({
     }
 
     return {
-      PARTNER_DETAIL_TAB_PANELS_ANCHOR,
       name,
       email,
       notes,

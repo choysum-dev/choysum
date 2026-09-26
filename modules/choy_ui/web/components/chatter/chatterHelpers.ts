@@ -39,7 +39,8 @@ export function formatChoyUtcIso(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms)) return '';
   const d = new Date(ms);
   if (Number.isNaN(d.getTime())) return '';
-  const y = String(d.getUTCFullYear()).padStart(4, '0');
+  const year = d.getUTCFullYear();
+  const y = `${year < 0 ? '-' : ''}${String(Math.abs(year)).padStart(4, '0')}`;
   const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
   const day = String(d.getUTCDate()).padStart(2, '0');
   const h = String(d.getUTCHours()).padStart(2, '0');

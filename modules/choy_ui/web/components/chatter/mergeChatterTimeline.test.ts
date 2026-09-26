@@ -48,6 +48,9 @@ test('parseChatterTimestamp returns null for empty or invalid values', () => {
   // Lowercase t/z is not ISO-8601 wire form; keep case consistent with UTC pin.
   expect(parseChatterTimestamp('2024-01-01t03:04:00')).toBeNull();
   expect(parseChatterTimestamp('2024-01-01T03:04:00z')).toBeNull();
+  // Impossible calendar days must not roll via Date.parse (Feb 30 → Mar 1).
+  expect(parseChatterTimestamp('2024-02-30T10:00:00Z')).toBeNull();
+  expect(parseChatterTimestamp('2024-02-30T10:00:00+02:00')).toBeNull();
 });
 
 test('mergeChatterTimeline merges messages and field changes ascending', () => {
