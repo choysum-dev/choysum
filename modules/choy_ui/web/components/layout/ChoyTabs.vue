@@ -18,10 +18,14 @@ import { nextChoyTabSelection } from './choyTabsSelection';
 
 /**
  * Public tabs host. Children are ChoyTab (not TabPane).
+ * `dataAnchor` overrides the default L1 anchor for IMD extension points
+ * (e.g. partner.detail.tab-panels).
  */
 const props = defineProps<{
   class?: ClassValue;
   defaultValue?: string;
+  /** Public IMD extension anchor; defaults to choy.tabs. */
+  dataAnchor?: string;
 }>();
 
 const modelValue = defineModel<string>();
@@ -58,7 +62,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Tabs v-model="modelValue" data-anchor="choy.tabs" :class="props.class">
+  <Tabs
+    v-model="modelValue"
+    :data-anchor="props.dataAnchor?.trim() || 'choy.tabs'"
+    :class="props.class"
+  >
     <TabsList v-if="tabs.length">
       <TabsTrigger
         v-for="tab in tabs"

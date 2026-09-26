@@ -10,13 +10,16 @@ SPDX-License-Identifier: Apache-2.0
         <h1 class="choy-gallery-title">Choy UI Gallery</h1>
         <p class="choy-gallery-lede">
           Isolation kit shell: tokens, L1 shells, fields, Form/List/Search/Kanban, Html/Json/Properties,
-          O2M·M2M, L2 controls, L3 engines, density / dark toggles. No Element Plus on this page.
+          O2M·M2M, Chatter, L2 controls, L3 engines, persisted density / dark. No Element Plus on this page.
         </p>
         <div class="choy-gallery-controls">
           <Button variant="outline" size="sm" @click="toggleDark">{{ isDark ? 'Light' : 'Dark' }}</Button>
           <Button variant="outline" size="sm" @click="toggleDensity">Density: {{ density }}</Button>
           <Button variant="outline" size="sm" @click="goDogfoodCompany">
             Dogfood Company
+          </Button>
+          <Button variant="outline" size="sm" @click="goDogfoodPartner">
+            Dogfood Partner
           </Button>
         </div>
       </header>
@@ -506,6 +509,23 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </section>
 
+      <section class="choy-gallery-section">
+        <h2>Chatter</h2>
+        <ChoyChatter
+          model="choy.GalleryDemo"
+          res-id="gallery_1"
+          :entries="galleryChatterEntries"
+          :following="galleryFollowing"
+          :follower-count="galleryFollowerCount"
+          :posting="galleryPosting"
+          current-user-id="usr_gallery"
+          current-user-name="Gallery User"
+          @post="onGalleryChatterPost"
+          @follow="galleryFollowing = true; galleryFollowerCount += 1"
+          @unfollow="galleryFollowing = false; galleryFollowerCount = Math.max(0, galleryFollowerCount - 1)"
+        />
+      </section>
+
       <Toaster />
     </div>
   </TooltipProvider>
@@ -515,6 +535,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import '../styles/tokens.css';
+import '../styles/theme.override.css';
 import '../styles/preflight-policy.css';
 // Produced by web build (EnsureChoyTailwindCSS); not committed.
 import '../styles/choy-tailwind.generated.css';
@@ -608,6 +629,13 @@ import DataTable from '../components/internal/DataTable.vue';
 import DatePicker from '../components/internal/DatePicker.vue';
 import RelationCombobox from '../components/internal/RelationCombobox.vue';
 import { ChoyMessage } from '../composables/useChoyMessage';
+import {
+  persistChoyThemePreference,
+  readChoyThemePreference,
+  resolveChoyThemePreference,
+} from '../composables/applyChoyThemePreference';
+import ChoyChatter from '../components/chatter/ChoyChatter.vue';
+import type { ChatterTimelineEntry } from '../components/chatter/chatterTypes';
 import type { ColumnDef } from '@tanstack/vue-table';
 import type { RelationOption } from '../components/internal/relationComboboxHelpers';
 
@@ -615,8 +643,9 @@ type Density = 'comfortable' | 'compact';
 type DemoRow = { Id: string; name: string; role: string };
 
 const router = useRouter();
-const isDark = ref(false);
-const density = ref<Density>('comfortable');
+const initialTheme = resolveChoyThemePreference(readChoyThemePreference());
+const isDark = ref(initialTheme.dark);
+const density = ref<Density>(initialTheme.density);
 
 const sampleInput = ref('');
 const sampleTextarea = ref('');
@@ -709,6 +738,53 @@ const galleryTreeNodes: ChoyManyToManyTreeNode[] = [
   },
   { id: 'n2', label: 'Root B' },
 ];
+
+const galleryChatterEntries = ref<ChatterTimelineEntry[]>([
+  {
+    kind: 'fieldChange',
+    id: 'gf1',
+    at: Date.parse('2024-06-01T09:00:00.000Z'),
+    field: 'Status',
+    changeKind: 'field',
+    oldValue: 'draft',
+    newValue: 'open',
+    actorUid: 'usr_gallery',
+  },
+  {
+    kind: 'message',
+    id: 'gm1',
+    at: Date.parse('2024-06-01T10:00:00.000Z'),
+    type: 'comment',
+    body: 'Gallery chatter smoke comment.',
+    authorUid: 'usr_other',
+  },
+]);
+const galleryFollowing = ref(false);
+const galleryFollowerCount = ref(0);
+const galleryPosting = ref(false);
+let galleryPostTimer: number | undefined;
+
+function onGalleryChatterPost(body: string): void {
+  // Ignore overlapping posts; clearTimeout would drop the earlier message.
+  if (galleryPosting.value) return;
+  galleryPosting.value = true;
+  window.clearTimeout(galleryPostTimer);
+  galleryPostTimer = window.setTimeout(() => {
+    galleryPostTimer = undefined;
+    galleryChatterEntries.value = [
+      ...galleryChatterEntries.value,
+      {
+        kind: 'message',
+        id: `gm_${Date.now()}`,
+        at: Date.now(),
+        type: 'comment',
+        body,
+        authorUid: 'usr_gallery',
+      },
+    ];
+    galleryPosting.value = false;
+  }, 80);
+}
 
 function onGalleryKanbanMove(move: ChoyKanbanMove): void {
   ChoyMessage.info('Kanban move', {
@@ -854,7 +930,11 @@ function clearGalleryTokenScope(): void {
 
 onMounted(syncGalleryTokenScope);
 watch([isDark, density], syncGalleryTokenScope);
-onUnmounted(clearGalleryTokenScope);
+onUnmounted(() => {
+  window.clearTimeout(galleryPostTimer);
+  galleryPostTimer = undefined;
+  clearGalleryTokenScope();
+});
 
 /**
  * Toggles light / dark token sets on the gallery root.
@@ -863,8 +943,28 @@ function goDogfoodCompany(): void {
   void router.push({ name: 'ChoyUiDogfoodCompany' });
 }
 
+function goDogfoodPartner(): void {
+  void router.push({ name: 'ChoyUiDogfoodPartner' });
+}
+
+function persistGalleryTheme(theme?: 'light' | 'dark', nextDensity?: Density): void {
+  // Don't invent theme/density on partial changes: planted values would later
+  // make DogfoodPartnerForm apply them and strip host-managed document state.
+  const stored = readChoyThemePreference();
+  const next: {
+    theme?: 'light' | 'dark' | 'auto';
+    density?: Density | 'standard';
+  } = {};
+  const themeToStore = theme ?? stored.theme;
+  if (themeToStore !== undefined) next.theme = themeToStore;
+  const densityToStore = nextDensity ?? stored.density;
+  if (densityToStore !== undefined) next.density = densityToStore;
+  persistChoyThemePreference(next);
+}
+
 function toggleDark(): void {
   isDark.value = !isDark.value;
+  persistGalleryTheme(isDark.value ? 'dark' : 'light');
 }
 
 /**
@@ -872,6 +972,7 @@ function toggleDark(): void {
  */
 function toggleDensity(): void {
   density.value = density.value === 'comfortable' ? 'compact' : 'comfortable';
+  persistGalleryTheme(undefined, density.value);
 }
 
 function onMenuAction(action: string): void {

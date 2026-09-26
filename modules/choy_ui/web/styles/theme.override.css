@@ -1,0 +1,13 @@
+/* SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Module theme overrides — variables only (no utility classes).
+ * Loaded after tokens so site/brand can remint --choy-* without forking L2.
+ */
+:root,
+.choy-gallery-root,
+html.choy-gallery-token-scope {
+  /* Example (commented): --choy-color-primary: oklch(0.55 0.18 250); */
+}
