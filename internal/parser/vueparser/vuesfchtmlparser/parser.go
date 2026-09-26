@@ -246,7 +246,10 @@ func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
 			k := i + 1
 			for k < len(s) {
 				if s[k] == '\\' {
-					k += 2
+					k++
+					if k < len(s) {
+						k++
+					}
 					continue
 				}
 				if s[k] == quote {
@@ -254,9 +257,6 @@ func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
 					break
 				}
 				k++
-			}
-			if k > len(s) {
-				k = len(s)
 			}
 			out.WriteString(s[i:k])
 			i = k
@@ -286,6 +286,9 @@ func looksLikeHTMLTagOpener(s string, start int) bool {
 		if inQuote != 0 {
 			if c == '\\' {
 				j++
+				if j >= len(s) {
+					return false
+				}
 				continue
 			}
 			if c == inQuote {

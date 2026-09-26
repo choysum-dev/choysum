@@ -398,6 +398,8 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	write("pages/DogfoodLogin.vue", `<div class="inline"></div>`)
 	write("pages/partnerDetailSheet.vue", `<div class="grid"></div>`)
 	write("pages/Home.vue", `<div class="sr-only"></div>`)
+	write("pages/ChoySettings.vue", `<div class="kit-page-settings"></div>`)
+	write("styles/Foo.Generated.Css", `/* cased generated */`)
 	write("components/layout/ChoyShell.vue", `<div class="min-h-0"></div>`)
 	write("components/layout/OLayout.vue", `<div class="max-w-0"></div>`)
 	write("components/view/Helpers.ts", `export const c = "rounded"`)
@@ -448,7 +450,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "gap-2", "p-2", "text-sm", "block", "inline", "grid", "min-h-0", "rounded", "shadow", "kit-shell-extra"} {
+	for _, want := range []string{"flex", "gap-2", "p-2", "text-sm", "block", "inline", "grid", "min-h-0", "rounded", "shadow", "kit-shell-extra", "kit-page-settings"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}

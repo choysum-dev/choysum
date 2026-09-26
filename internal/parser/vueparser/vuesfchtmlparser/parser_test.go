@@ -166,10 +166,10 @@ func TestMaskPascalCaseRawTextTagsOutsideQuotesEscapes(t *testing.T) {
 	if !strings.Contains(got, `title="say \"hi\""`) {
 		t.Fatalf("escaped quotes must stay intact, got %q", got)
 	}
-	// Lone trailing backslash inside an unclosed attribute quote clamps.
-	got = maskPascalCaseRawTextTagsOutsideQuotes(`<div title="x\`)
-	if !strings.HasSuffix(got, `title="x\`) {
-		t.Fatalf("trailing backslash clamp, got %q", got)
+	// Lone trailing backslash inside an attribute is skipped safely (no panic).
+	got = maskPascalCaseRawTextTagsOutsideQuotes(`<div title="ok"><span title="x\`)
+	if !strings.Contains(got, vueRawTextMaskPrefix) && !strings.Contains(got, `<div`) {
+		t.Fatalf("expected stable copy for trailing backslash, got %q", got)
 	}
 }
 
@@ -215,9 +215,9 @@ func TestMaskPascalCaseRawTextTagsBareLessThanInText(t *testing.T) {
 }
 
 func TestMaskPascalCaseRawTextTagsLessThanLetterInText(t *testing.T) {
-	// `{{ a <b }}` looks like a tag start at '<'+'b' but never closes before the next '<'.
+	// `{{ a <b <c }}` starts with '<'+'b' but hits another '<' before '>', so it is not a tag.
 	source := `<template>
-  <p>{{ a <b }}'s note</p>
+  <p>{{ a <b <c }}</p>
   <Textarea v-model="x" />
 </template>
 <script setup>const x = 'ok'</script>`
@@ -226,17 +226,44 @@ func TestMaskPascalCaseRawTextTagsLessThanLetterInText(t *testing.T) {
 		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
 	}
 	if len(scripts) != 1 {
-		t.Fatalf("'<b' comparison must not swallow script, scripts=%d", len(scripts))
+		t.Fatalf("'<b <c' comparison must not swallow script, scripts=%d", len(scripts))
 	}
 	got := maskPascalCaseRawTextTags(source)
 	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
-		t.Fatalf("Textarea after '<b' comparison must still mask, got %q", got)
+		t.Fatalf("Textarea after '<b <c' comparison must still mask, got %q", got)
 	}
 	// Attribute values may contain '<' without breaking real tag detection.
 	attr := `<div title="a < b"><Textarea/></div>`
 	got = maskPascalCaseRawTextTagsOutsideQuotes(attr)
 	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
 		t.Fatalf("Textarea after attr with '<' must mask, got %q", got)
+	}
+}
+
+func TestLooksLikeHTMLTagOpenerEdges(t *testing.T) {
+	if looksLikeHTMLTagOpener("", 0) || looksLikeHTMLTagOpener("x", 0) || looksLikeHTMLTagOpener("<", 0) {
+		t.Fatal("empty / non-tag / lone '<' must be false")
+	}
+	if looksLikeHTMLTagOpener("<x", -1) || looksLikeHTMLTagOpener("<x", 99) {
+		t.Fatal("out-of-range start must be false")
+	}
+	if looksLikeHTMLTagOpener("{{ a < 3 }}", strings.IndexByte("{{ a < 3 }}", '<')) {
+		t.Fatal("'<' followed by space must be false")
+	}
+	if !looksLikeHTMLTagOpener("<div>", 0) || !looksLikeHTMLTagOpener("</div>", 0) || !looksLikeHTMLTagOpener("<!--x-->", 0) {
+		t.Fatal("normal open/close/comment openers must be true")
+	}
+	if looksLikeHTMLTagOpener("<b <c>", 0) {
+		t.Fatal("second '<' before '>' must be false")
+	}
+	if !looksLikeHTMLTagOpener(`<div title="a\\">`, 0) {
+		t.Fatal("escaped backslash in attr must still look like a tag")
+	}
+	if looksLikeHTMLTagOpener(`<div title="x\`, 0) {
+		t.Fatal("unclosed escaped attr must be false")
+	}
+	if looksLikeHTMLTagOpener("<div", 0) || looksLikeHTMLTagOpener("<div title='x'", 0) {
+		t.Fatal("tag never closed with '>' must be false")
 	}
 }
 

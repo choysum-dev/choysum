@@ -146,9 +146,10 @@ func isChoyKitTailwindInputPath(webRoot, path string) bool {
 	switch {
 	case strings.HasPrefix(slash, "styles/"):
 		// Product EP SCSS lives beside Choy tokens; only scan Choy CSS dialect siblings.
-		return strings.HasSuffix(strings.ToLower(base), ".css") &&
-			!strings.HasSuffix(base, ".generated.css") &&
-			base != choyTailwindGeneratedCSSName
+		lower := strings.ToLower(base)
+		return strings.HasSuffix(lower, ".css") &&
+			!strings.HasSuffix(lower, ".generated.css") &&
+			lower != choyTailwindGeneratedCSSName
 	case strings.HasPrefix(slash, "components/vendor/"),
 		strings.HasPrefix(slash, "components/internal/"),
 		strings.HasPrefix(slash, "lib/"):
@@ -158,7 +159,8 @@ func isChoyKitTailwindInputPath(webRoot, path string) bool {
 	case strings.HasPrefix(slash, "pages/"):
 		return base == "Gallery.vue" ||
 			strings.HasPrefix(base, "Dogfood") ||
-			strings.HasPrefix(base, "partnerDetail")
+			strings.HasPrefix(base, "partnerDetail") ||
+			strings.HasPrefix(base, "Choy")
 	case strings.HasPrefix(slash, "components/layout/"),
 		strings.HasPrefix(slash, "components/view/"),
 		strings.HasPrefix(slash, "components/field/"),
