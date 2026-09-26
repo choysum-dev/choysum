@@ -60,12 +60,14 @@ const emit = defineEmits<{
 
 const composerRef = ref<{ clear: () => void } | null>(null);
 const postingResId = ref<string | null>(null);
+const postingModel = ref<string | null>(null);
 
 watch(
-  () => props.resId,
+  () => [props.model, props.resId] as const,
   () => {
-    // Invalidate in-flight post so A→B→A cannot let a stale completion clear
-    // a draft typed after re-selecting the record.
+    // Invalidate in-flight post so switching model/resId (incl. A→B→A) cannot
+    // let a stale completion clear a draft typed for the new context.
+    postingModel.value = null;
     postingResId.value = null;
     composerRef.value?.clear();
   },
@@ -97,14 +99,15 @@ watch(
   () => props.posting,
   (next, prev) => {
     if (next === true) {
+      postingModel.value = String(props.model || '');
       postingResId.value = String(props.resId || '');
       return;
     }
-    // Clear only when the finished post still belongs to the current record,
-    // so a stale completion cannot wipe a draft typed after resId changed.
+    // Clear only when the finished post still belongs to the current context.
     if (
       prev === true &&
       next === false &&
+      postingModel.value === String(props.model || '') &&
       postingResId.value === String(props.resId || '')
     ) {
       // Hosts may flip posting false before assigning postError in the same
@@ -113,6 +116,7 @@ watch(
         if (
           !props.posting &&
           !props.postError &&
+          postingModel.value === String(props.model || '') &&
           postingResId.value === String(props.resId || '')
         ) {
           composerRef.value?.clear();
@@ -122,7 +126,7 @@ watch(
   },
   // Sync flush: a host that sets posting true→false within one tick would
   // otherwise coalesce to "no change" and never clear the draft.
-  // Immediate: capture postingResId when mounting mid-flight.
+  // Immediate: capture posting context when mounting mid-flight.
   { flush: 'sync', immediate: true },
 );
 

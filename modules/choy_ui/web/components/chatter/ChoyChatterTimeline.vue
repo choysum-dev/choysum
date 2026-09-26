@@ -31,7 +31,7 @@ withDefaults(
 <template>
   <div class="choy-chatter-timeline" data-anchor="choy.chatter.timeline">
     <div
-      v-if="loading"
+      v-if="loading && entries.length === 0"
       class="px-3 py-4 text-center text-sm text-muted-foreground"
     >
       {{ loadingLabel || 'Loading activity...' }}

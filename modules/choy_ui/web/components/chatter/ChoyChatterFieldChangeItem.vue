@@ -49,6 +49,6 @@ const summary = computed(() =>
       <span class="font-semibold text-foreground">{{ authorLabel }}</span>
       <span>{{ timeLabel }}</span>
     </div>
-    <div class="text-sm text-foreground/90">{{ summary }}</div>
+    <div class="whitespace-pre-wrap break-words text-sm text-foreground/90">{{ summary }}</div>
   </div>
 </template>
