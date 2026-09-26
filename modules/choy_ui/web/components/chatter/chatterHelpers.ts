@@ -17,10 +17,14 @@ export function formatFieldChangeSummary(
   },
 ): string {
   const kind = String(entry.changeKind || '').trim();
-  if (kind === 'create') return labels.created;
-  if (kind === 'unlink') return labels.unlinked;
-  if (kind.startsWith('action:')) {
-    return labels.action(kind.slice('action:'.length) || kind);
+  const normalizedKind = kind.toLowerCase();
+  if (normalizedKind === 'create') return labels.created;
+  if (normalizedKind === 'unlink') return labels.unlinked;
+  if (normalizedKind.startsWith('action:')) {
+    // Keep empty-name fallback as the raw kind (product parity: Action:action:).
+    const colon = kind.indexOf(':');
+    const name = colon >= 0 ? kind.slice(colon + 1).trim() : '';
+    return labels.action(name || kind);
   }
   const field = entry.field || labels.fieldFallback;
   const oldValue = entry.oldValue == null || entry.oldValue === '' ? '—' : entry.oldValue;

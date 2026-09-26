@@ -72,6 +72,36 @@ test('formatFieldChangeSummary formats create, unlink, field, and action kinds',
       labels,
     ),
   ).toBe('Action:confirm');
+  expect(
+    formatFieldChangeSummary(
+      {
+        kind: 'fieldChange',
+        id: '4b',
+        at: 1,
+        field: null,
+        changeKind: 'Action:Confirm',
+        oldValue: null,
+        newValue: null,
+        actorUid: 'u1',
+      },
+      labels,
+    ),
+  ).toBe('Action:Confirm');
+  expect(
+    formatFieldChangeSummary(
+      {
+        kind: 'fieldChange',
+        id: '4c',
+        at: 1,
+        field: null,
+        changeKind: 'action:',
+        oldValue: null,
+        newValue: null,
+        actorUid: null,
+      },
+      labels,
+    ),
+  ).toBe('Action:action:');
 });
 
 test('formatFieldChangeSummary normalizes empty values', () => {
@@ -90,6 +120,21 @@ test('formatFieldChangeSummary normalizes empty values', () => {
       labels,
     ),
   ).toBe('Name:—->—');
+  expect(
+    formatFieldChangeSummary(
+      {
+        kind: 'fieldChange',
+        id: '7',
+        at: 1,
+        field: null,
+        changeKind: 'field',
+        oldValue: 'A',
+        newValue: 'B',
+        actorUid: null,
+      },
+      labels,
+    ),
+  ).toBe('Field:A->B');
 });
 
 test('formatChoyUtcIso formats finite UTC timestamps', () => {

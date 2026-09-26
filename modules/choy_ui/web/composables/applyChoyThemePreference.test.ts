@@ -218,3 +218,29 @@ test('applyChoyThemePreference keeps a stored theme when only density is applied
     density: 'compact',
   });
 });
+
+test('applyChoyThemePreference ignores unrecognized caller theme and keeps stored', () => {
+  const mem = new Map<string, string>([['choy.ui.theme', JSON.stringify({ theme: 'dark' })]]);
+  const storage = {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      mem.set(k, v);
+    },
+  };
+  applyChoyThemePreference(
+    { theme: 'system', density: 'compact' } as unknown as ChoyThemePreference,
+    {
+      root: {
+        classList: { toggle: () => undefined },
+        setAttribute: () => undefined,
+        removeAttribute: () => undefined,
+      } as never,
+      storage,
+      persist: true,
+    },
+  );
+  expect(JSON.parse(mem.get('choy.ui.theme')!)).toEqual({
+    theme: 'dark',
+    density: 'compact',
+  });
+});

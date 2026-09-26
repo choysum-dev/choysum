@@ -125,9 +125,14 @@ export function applyChoyThemePreference(
   opts: ApplyChoyThemePreferenceOptions = {},
 ): ResolvedChoyThemePreference {
   const stored = readChoyThemePreference(opts.storage, opts.storageKey);
+  const isThemeMode = (value: unknown): value is ChoyThemeMode =>
+    value === 'light' || value === 'dark' || value === 'auto';
+  const isDensity = (value: unknown): value is ChoyDensityPreference =>
+    value === 'comfortable' || value === 'compact' || value === 'standard';
+  // Ignore unrecognized caller values so they cannot resolve+persist over stored prefs.
   const effective: ChoyThemePreference = {
-    theme: prefs?.theme ?? stored.theme,
-    density: prefs?.density ?? stored.density,
+    theme: isThemeMode(prefs?.theme) ? prefs.theme : stored.theme,
+    density: isDensity(prefs?.density) ? prefs.density : stored.density,
   };
   const resolved = resolveChoyThemePreference(effective, { prefersDark: opts.prefersDark });
   const root =
