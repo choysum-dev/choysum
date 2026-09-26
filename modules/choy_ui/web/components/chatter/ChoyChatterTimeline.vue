@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import type { ChatterTimelineEntry } from './chatterTypes';
+import { resolveChoyChatterAuthorLabel } from './chatterHelpers';
 import ChoyChatterFieldChangeItem from './ChoyChatterFieldChangeItem.vue';
 import ChoyChatterMessageItem from './ChoyChatterMessageItem.vue';
 
@@ -13,7 +14,7 @@ withDefaults(
     entries?: ChatterTimelineEntry[];
     loading?: boolean;
     error?: string | null;
-    resolveAuthorLabel: (userId: string | null | undefined) => string;
+    resolveAuthorLabel?: (userId: string | null | undefined) => string;
     loadingLabel?: string;
     emptyLabel?: string;
   }>(),
@@ -21,6 +22,8 @@ withDefaults(
     entries: () => [],
     loading: false,
     error: null,
+    resolveAuthorLabel: (userId: string | null | undefined) =>
+      resolveChoyChatterAuthorLabel(userId),
   },
 );
 </script>

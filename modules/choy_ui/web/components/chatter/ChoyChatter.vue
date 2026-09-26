@@ -112,7 +112,7 @@ watch(
       void Promise.resolve().then(() => {
         if (
           !props.posting &&
-          props.postError == null &&
+          !props.postError &&
           postingResId.value === String(props.resId || '')
         ) {
           composerRef.value?.clear();
