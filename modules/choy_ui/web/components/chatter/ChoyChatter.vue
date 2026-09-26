@@ -110,6 +110,9 @@ watch(
       composerRef.value?.clear();
     }
   },
+  // Sync flush: a host that sets posting true→false within one tick would
+  // otherwise coalesce to "no change" and never clear the draft.
+  { flush: 'sync' },
 );
 
 /** Clears the composer draft after a confirmed successful post (host-driven). */
