@@ -34,8 +34,9 @@ func isKitHostModule(modulesPath, moduleName string) bool {
 		if strings.TrimSpace(modulesPath) == "" {
 			return false
 		}
-		_, err := os.Stat(filepath.Join(modulesPath, kitHostModuleCutover, "web", "components", "vendor", "ui"))
-		return err == nil
+		kitDir := filepath.Join(modulesPath, kitHostModuleCutover, "web", "components", "vendor", "ui")
+		st, err := os.Stat(kitDir)
+		return err == nil && st.IsDir()
 	default:
 		return false
 	}

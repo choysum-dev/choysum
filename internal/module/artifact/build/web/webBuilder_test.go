@@ -5240,11 +5240,16 @@ func TestBuildOptionsExactPinsFromPackageJSON(t *testing.T) {
 			prebuildPlugin: plugin,
 			buildPlugin:    plugin,
 		}
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
 		for _, prebuild := range []bool{true, false} {
 			opts := builder.buildOptions(prebuild)
 			if opts == nil || len(opts.Plugins) == 0 {
 				t.Fatalf("prebuild=%v: expected plugins from exact pins path", prebuild)
 			}
+		}
+		if strings.Contains(logBuf.String(), "exact peer pins from package.json unavailable") {
+			t.Fatalf("expected package.json pins to be read, got warn %q", logBuf.String())
 		}
 	})
 

@@ -17,10 +17,23 @@ func TestScanRepoChoyVueParse(t *testing.T) {
 	}
 	// internal/parser/vueparser/vuesfchtmlparser -> repo root
 	root := filepath.Clean(filepath.Join(wd, "../../../../modules/web/web"))
+	if st, statErr := os.Stat(root); statErr != nil || !st.IsDir() {
+		t.Skip("modules/web/web kit tree not present in checkout")
+	}
 	var fails []string
 	err = filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil || d.IsDir() || !strings.HasSuffix(path, ".vue") {
+		if walkErr != nil {
 			return walkErr
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case "node_modules", "dist", ".git":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".vue") {
+			return nil
 		}
 		if strings.HasPrefix(filepath.Base(path), "O") {
 			return nil
