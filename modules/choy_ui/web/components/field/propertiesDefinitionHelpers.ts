@@ -78,7 +78,7 @@ export function draftsToDefinitionItems(
     if (label) item.string = label;
     if (draft.readonly) item.readonly = true;
     const defRaw = String(draft.default ?? '');
-    if (defRaw !== '') {
+    if (defRaw.trim() !== '') {
       item.default = coerceDefaultForType(type, defRaw);
     }
     if (type === 'selection') {
@@ -108,18 +108,21 @@ export function draftsToDefinitionItems(
 }
 
 function coerceDefaultForType(type: string, raw: string): unknown {
+  const trimmed = raw.trim();
   if (type === 'boolean') {
-    const s = raw.trim().toLowerCase();
+    const s = trimmed.toLowerCase();
     if (s === 'true' || s === '1') return true;
     if (s === 'false' || s === '0') return false;
     return raw;
   }
   if (type === 'integer') {
-    const n = Number(raw);
+    if (!trimmed) return raw;
+    const n = Number(trimmed);
     return Number.isFinite(n) ? Math.trunc(n) : raw;
   }
   if (type === 'float') {
-    const n = Number(raw);
+    if (!trimmed) return raw;
+    const n = Number(trimmed);
     return Number.isFinite(n) ? n : raw;
   }
   return raw;

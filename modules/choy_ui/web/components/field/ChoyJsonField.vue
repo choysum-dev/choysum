@@ -54,9 +54,9 @@ watch(
       allowArray: props.allowArray,
       nullable: props.nullable,
     });
-    // Keep an in-progress invalid draft; only sync when the textarea already matches the model.
-    if (!check.ok) return;
-    if (stringifyChoyJson(check.value) === pretty) return;
+    // Only skip when the draft already reflects the incoming model; an external
+    // model update (e.g. form reset) must win even if the draft is invalid.
+    if (check.ok && stringifyChoyJson(check.value) === pretty) return;
     draft.value = pretty;
     parseError.value = '';
   },

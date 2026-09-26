@@ -48,7 +48,10 @@ const error = ref('');
 
 watch(
   () => props.items,
-  next => {
+  (next, prev) => {
+    // A parent re-render can pass a brand-new array with identical content;
+    // only re-seed when the definition content actually changed.
+    if (JSON.stringify(next ?? []) === JSON.stringify(prev ?? [])) return;
     drafts.value = definitionItemsToDrafts(next);
     error.value = '';
   },

@@ -35,11 +35,16 @@ function createTestPurify(): DomPurifyLike & { hooks: Array<(node: any) => void>
         '<p>Hello <strong>world</strong></p>': '<p>Hello <strong>world</strong></p>',
         '<p>Hello</p><p>world</p>': '<p>Hello</p><p>world</p>',
         '<hr>': '<hr>',
-        '<a href="https://example.com" target="_blank">x</a>':
-          '<a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>',
       };
       if (html === 'HOOK') return blankAttrs.rel || '';
-      return fixtures[String(html)] ?? String(html);
+      const known = fixtures[String(html)];
+      if (known !== undefined) return known;
+      // Build the anchor from the hook mutation so the assertion depends on
+      // afterSanitizeAttributes rather than a hard-coded rel fixture.
+      if (html === '<a href="https://example.com" target="_blank">x</a>') {
+        return `<a href="https://example.com" target="_blank" rel="${blankAttrs.rel ?? ''}">x</a>`;
+      }
+      return String(html);
     },
   };
 }

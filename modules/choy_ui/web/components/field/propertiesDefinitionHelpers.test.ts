@@ -107,6 +107,7 @@ describe('propertiesDefinitionHelpers', () => {
       { ...emptyDraftItem(), name: 'f', type: 'float', default: '1.5' },
       { ...emptyDraftItem(), name: 'f2', type: 'float', default: 'nope' },
       { ...emptyDraftItem(), name: 'c', type: 'char', default: 'x', string: ' Label ' },
+      { ...emptyDraftItem(), name: 'ws', type: 'integer', default: '   ' },
     ]);
     expect(items.find(i => i.name === 'flag')!.default).toBe(false);
     expect(items.find(i => i.name === 'flag2')!.default).toBe(false);
@@ -117,6 +118,9 @@ describe('propertiesDefinitionHelpers', () => {
     expect(items.find(i => i.name === 'f')!.default).toBe(1.5);
     expect(items.find(i => i.name === 'f2')!.default).toBe('nope');
     expect(items.find(i => i.name === 'c')!.string).toBe('Label');
+    expect(Object.prototype.hasOwnProperty.call(items.find(i => i.name === 'ws')!, 'default')).toBe(
+      false,
+    );
   });
 
   test('draftsToDefinitionItems rejects bad selection and unsupported types', () => {
