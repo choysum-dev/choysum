@@ -106,5 +106,47 @@ export type { ChoyCompanyValueRow } from './components/field/ChoyFieldCompanyVal
 export type { ChoyManyToManyWidget, ChoyManyToManyTreeNode } from './components/field/ChoyManyToManyField.vue';
 export type { ChoyOneToManyWidget } from './components/field/ChoyOneToManyField.vue';
 
+export { default as ChoyChatter } from './components/chatter/ChoyChatter.vue';
+export { default as ChoyChatterComposer } from './components/chatter/ChoyChatterComposer.vue';
+export { default as ChoyChatterTimeline } from './components/chatter/ChoyChatterTimeline.vue';
+export { default as ChoyChatterFollowerBar } from './components/chatter/ChoyChatterFollowerBar.vue';
+export { default as ChoyChatterMessageItem } from './components/chatter/ChoyChatterMessageItem.vue';
+export { default as ChoyChatterFieldChangeItem } from './components/chatter/ChoyChatterFieldChangeItem.vue';
+export {
+  formatChoyUtcIso,
+  formatFieldChangeSummary,
+  resolveChoyChatterAuthorLabel,
+} from './components/chatter/chatterHelpers';
+export {
+  compareChatterTimelineEntries,
+  mergeChatterTimeline,
+  parseChatterTimestamp,
+} from './components/chatter/mergeChatterTimeline';
+export type {
+  ChatterFieldChangeEntry,
+  ChatterFieldChangeRow,
+  ChatterMessageEntry,
+  ChatterMessageRow,
+  ChatterTimelineEntry,
+} from './components/chatter/chatterTypes';
+export {
+  PARTNER_DETAIL_TAB_PANELS_ANCHOR,
+  PARTNER_DETAIL_TAB_PANELS_XPATH,
+} from './pages/partnerDetailXpath';
+
 export { ChoyMessage, useChoyMessage } from './composables/useChoyMessage';
 export type { ChoyMessageLevel, ChoyMessageOptions } from './composables/useChoyMessage';
+export {
+  applyChoyThemePreference,
+  persistChoyThemePreference,
+  readChoyThemePreference,
+  resolveChoyThemePreference,
+  CHOY_THEME_STORAGE_KEY,
+} from './composables/applyChoyThemePreference';
+export type {
+  ApplyChoyThemePreferenceOptions,
+  ChoyDensityPreference,
+  ChoyThemeMode,
+  ChoyThemePreference,
+  ResolvedChoyThemePreference,
+} from './composables/applyChoyThemePreference';

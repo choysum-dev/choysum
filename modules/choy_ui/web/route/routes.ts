@@ -39,4 +39,15 @@ export const choyUiRoutes: RouteRecordRaw[] = [
       title: 'Choy UI Dogfood Company',
     },
   },
+  {
+    path: '__choy_dogfood_partner',
+    name: 'ChoyUiDogfoodPartner',
+    // Xpath-extended partner dogfood (IMD merge injects Bank Accounts tab).
+    component: () => import('../pages/DogfoodPartnerFormXpath.vue'),
+    meta: {
+      requiresAuth: true,
+      hideInMenu: true,
+      title: 'Choy UI Dogfood Partner',
+    },
+  },
 ];
