@@ -67,8 +67,9 @@ watch(
     const current = ed.getHTML();
     if (current === sanitized) return;
     // TipTap serializes an empty doc as '<p></p>' while the model normalizes to null;
-    // skip the reset so clearing content does not move the caret.
-    if (!sanitized && ed.getText().trim() === '') return;
+    // skip the reset so clearing content does not move the caret. Use HTML, not
+    // getText(): hr-only docs also have empty text but must still reset.
+    if (!sanitized && current === '<p></p>') return;
     htmlEditorSetContent(ed, sanitized, false);
   },
   { immediate: true },

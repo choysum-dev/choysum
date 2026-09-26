@@ -95,6 +95,8 @@ describe('htmlHelpers', () => {
     });
     try {
       expect(htmlToPlaintext('<p>Hello <strong>world</strong></p>', { purify })).toBe('Hello world');
+      expect(htmlToPlaintext('<script>alert(1)</script><p>ok</p>', { purify })).toBe('ok');
+      expect(htmlToPlaintext('<style>.x{}</style>hi', { purify })).toBe('hi');
       expect(htmlToPlaintext(null, { purify })).toBe('');
       expect(htmlToPlaintext('', { purify })).toBe('');
     } finally {
@@ -156,5 +158,6 @@ describe('htmlHelpers', () => {
     expect(resolveChoyHtmlLinkHref('example.com/path')).toBe('https://example.com/path');
     expect(resolveChoyHtmlLinkHref('localhost:3000')).toBe('https://localhost:3000');
     expect(resolveChoyHtmlLinkHref('example.com:8080/path')).toBe('https://example.com:8080/path');
+    expect(resolveChoyHtmlLinkHref('//example.com/path')).toBe('https://example.com/path');
   });
 });

@@ -100,6 +100,8 @@ export function htmlToPlaintext(html: string | null | undefined, deps?: Sanitize
       .trim();
   }
   return raw
+    // Match the DOM path: drop script/style bodies before stripping tags.
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -122,6 +124,8 @@ export function normalizeHtmlForStore(html: string | null | undefined, deps?: Sa
 export function resolveChoyHtmlLinkHref(raw: string): string | null | false {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) return null;
+  // Protocol-relative URLs are not relative paths; do not prepend `https://`.
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
   // `host:port` (e.g. localhost:3000) is a host, not a scheme: only treat a
   // leading `word:` as a scheme when it is not followed solely by a port.
   const schemeMatch = /^([a-z][a-z0-9+.-]*):(?!\d+(?:[/?#]|$))/i.exec(trimmed);

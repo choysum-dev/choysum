@@ -94,16 +94,19 @@ function canEdit(): boolean {
 }
 
 function onAdd(): void {
-  emit('add-click');
   if (canEdit() && props.widget === 'kanban') {
+    // Kanban self-inserts; skip add-click so hosts do not append a second row.
+    const generatedId = `new_${Date.now()}_${blankRowSeq++}`;
     const blank = {
-      Id: `new_${Date.now()}_${blankRowSeq++}`,
-      [props.titleField]: 'New row',
+      ...(props.titleField === 'Id' ? {} : { [props.titleField]: 'New row' }),
+      Id: generatedId,
     } as unknown as T;
     model.value = [...model.value, blank];
     dialogRow.value = blank;
     dialogOpen.value = true;
+    return;
   }
+  emit('add-click');
 }
 
 function onCardClick(row: T): void {
