@@ -22,6 +22,7 @@ export { default as ChoyNotificationBell } from './components/layout/ChoyNotific
 export { default as ChoyFormView } from './components/view/ChoyFormView.vue';
 export { default as ChoyListView } from './components/view/ChoyListView.vue';
 export { default as ChoyKanbanView } from './components/view/ChoyKanbanView.vue';
+export { default as ChoyChartView } from './components/view/ChoyChartView.vue';
 export { default as ChoySearchView } from './components/view/ChoySearchView.vue';
 export { default as ChoyPagination } from './components/view/ChoyPagination.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';
@@ -47,6 +48,31 @@ export {
   type ChoyKanbanLane,
   type ChoyKanbanMove,
 } from './components/view/kanbanViewHelpers';
+export {
+  availableChartTypes,
+  resolveChartAdapter,
+  chartTypeRegistry,
+  CHOY_CHART_DEFAULT_PALETTE,
+} from './components/view/chart/chartTypeAdapter';
+export type {
+  ChartBuildContext,
+  ChartSupportContext,
+  ChoyChartKind,
+  ChoyChartSeries,
+  ChoyChartSort,
+  ChoyChartSpec,
+  IChartTypeAdapter,
+} from './components/view/chart/chartTypeAdapter';
+export {
+  chartSpecToPieRows,
+  chartSpecToXyRows,
+  normalizeSeriesToPercent,
+  sortChartCategories,
+} from './components/view/chartViewHelpers';
+export type {
+  ChoyChartItemClickPayload,
+  ChoyChartMetricOption,
+} from './components/view/chartViewHelpers';
 
 export { default as ChoyFieldBase } from './components/field/ChoyFieldBase.vue';
 export { default as ChoyVarcharField } from './components/field/ChoyVarcharField.vue';

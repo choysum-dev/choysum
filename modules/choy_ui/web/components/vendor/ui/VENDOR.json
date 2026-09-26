@@ -25,7 +25,8 @@
     "separator",
     "scroll-area",
     "skeleton",
-    "toast"
+    "toast",
+    "chart"
   ],
-  "notes": "path components/vendor/ui; kept L2 data-slot; tokens via --choy-* / Tailwind theme aliases (bg-primary etc.); no Element Plus; no shadcn CLI"
+  "notes": "path components/vendor/ui; kept L2 data-slot; tokens via --choy-* / Tailwind theme aliases (bg-primary etc.); chart shell for Unovis (ChartContainer/Legend); no Element Plus; no echarts; no shadcn CLI"
 }
