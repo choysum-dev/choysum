@@ -69,7 +69,12 @@ export function parseChatterTimestamp(value: unknown): number | null {
   // pin them to UTC so V8 and QuickJS agree. Date-only forms stay UTC per ES.
   // ECMA-262 only defines millisecond precision; trim longer fractions so
   // engines cannot fall back to implementation-defined parsing.
-  const normalized = raw.replace(/(\.\d{3})\d+/, '$1');
+  // Also pad missing seconds and short fractions — minute-only / 1–2 digit
+  // forms are similarly engine-specific under Date.parse.
+  const trimmed = raw
+    .replace(/(\.\d{3})\d+/, '$1')
+    .replace(/\.(\d{1,2})(?=$|Z|[+-])/, (_, frac: string) => `.${frac.padEnd(3, '0')}`);
+  const normalized = trimmed.replace(/T(\d{2}:\d{2})(?=$|Z|[+-])/, 'T$1:00');
   const hasTime = normalized.includes('T');
   const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/.test(normalized);
   const parsed = Date.parse(hasTime && !hasZone ? `${normalized}Z` : normalized);

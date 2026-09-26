@@ -21,6 +21,13 @@ test('parseChatterTimestamp parses Date, number, and ISO strings', () => {
   expect(parseChatterTimestamp('2024-01-01T03:04:00.123456Z')).toBe(
     Date.parse('2024-01-01T03:04:00.123Z'),
   );
+  // Minute-only and short fractions are normalized before Date.parse.
+  expect(parseChatterTimestamp('2024-01-01T03:04Z')).toBe(
+    Date.parse('2024-01-01T03:04:00.000Z'),
+  );
+  expect(parseChatterTimestamp('2024-01-01T03:04:00.12Z')).toBe(
+    Date.parse('2024-01-01T03:04:00.120Z'),
+  );
   // Naive date-time is pinned to UTC (not host-local).
   expect(parseChatterTimestamp('2024-01-01T03:04:00')).toBe(
     Date.parse('2024-01-01T03:04:00.000Z'),
