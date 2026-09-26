@@ -64,3 +64,20 @@ console.log(ref, defineStore, createPinia, createI18n);
 		}
 	}
 }
+
+func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
+	repoRoot, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pins := vueHostBareImportPins(repoRoot)
+	if pins["vue"] != choysummount.VuePackageVersion {
+		t.Fatalf("vue pin = %q want %q", pins["vue"], choysummount.VuePackageVersion)
+	}
+	if pins["@tanstack/vue-table"] != "8.21.3" {
+		t.Fatalf("@tanstack/vue-table pin = %q want 8.21.3", pins["@tanstack/vue-table"])
+	}
+	if pins["@tanstack/vue-virtual"] != "3.13.39" {
+		t.Fatalf("@tanstack/vue-virtual pin = %q want 3.13.39", pins["@tanstack/vue-virtual"])
+	}
+}

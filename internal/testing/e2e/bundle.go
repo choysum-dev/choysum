@@ -163,11 +163,15 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 		})
 	}
 
-	plugins = append(plugins, esmresolver.New(
+	esmOpts := []esmresolver.Option{
 		esmresolver.WithCacheDir(cacheDir),
 		esmresolver.WithTarget("es2020"),
 		esmresolver.WithModulePath(repoRoot),
-	).Plugin())
+	}
+	if pins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web")); err == nil && len(pins) > 0 {
+		esmOpts = append(esmOpts, esmresolver.WithBareImportPins(pins))
+	}
+	plugins = append(plugins, esmresolver.New(esmOpts...).Plugin())
 
 	absWorkingDir := strings.TrimSpace(opts.WorkingDir)
 	if absWorkingDir == "" {

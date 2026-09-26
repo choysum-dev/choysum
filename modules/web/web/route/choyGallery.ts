@@ -8,7 +8,11 @@ import { choyUiRoutes } from './choyGalleryRoutes';
  * Registers the Choy UI gallery under the authenticated layout without a menu entry.
  */
 export function setupRouter(app: ChoysumWebApp): void {
-  const router = app.router;
+  const router = app?.router;
+  if (!router || typeof router.hasRoute !== 'function') {
+    console.warn('[web] router is not ready; Choy gallery routes were skipped');
+    return;
+  }
   if (!router.hasRoute('AppLayout')) {
     console.warn('[web] AppLayout route is not registered; Choy gallery routes were skipped');
     return;
