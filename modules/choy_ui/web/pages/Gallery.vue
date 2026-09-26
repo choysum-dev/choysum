@@ -946,12 +946,15 @@ function goDogfoodPartner(): void {
 }
 
 function persistGalleryTheme(theme?: 'light' | 'dark'): void {
-  // Don't rewrite an explicit `auto` preference on density-only changes.
+  // Don't invent theme on density-only changes: a planted `light` would later
+  // make DogfoodPartnerForm apply it and strip a host-managed dark class.
   const stored = readChoyThemePreference();
-  persistChoyThemePreference({
-    theme: theme ?? stored.theme ?? (isDark.value ? 'dark' : 'light'),
+  const next: { theme?: 'light' | 'dark' | 'auto'; density: Density } = {
     density: density.value,
-  });
+  };
+  const themeToStore = theme ?? stored.theme;
+  if (themeToStore !== undefined) next.theme = themeToStore;
+  persistChoyThemePreference(next);
 }
 
 function toggleDark(): void {
