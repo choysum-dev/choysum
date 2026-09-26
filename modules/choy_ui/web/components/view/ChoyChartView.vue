@@ -271,6 +271,8 @@ function xTickFormat(v: number): string {
 }
 
 function selectMetric(alias: string): void {
+  if (alias === localMetric.value) return;
+  if (props.metrics.length > 0 && !props.metrics.some(m => m.alias === alias)) return;
   localMetric.value = alias;
   emit('metric-change', alias);
 }
@@ -409,10 +411,12 @@ function onPieSegmentClick(d: {
   key?: string;
   name?: string;
 }): void {
-  if (!spec.value?.slices) return;
+  const current = spec.value;
+  const slices = current?.slices;
+  if (!current || !slices) return;
   const clickedKey = d?.data?.key ?? d?.key;
   const clickedName = d?.data?.name ?? d?.name;
-  let idx = spec.value.slices.findIndex(
+  let idx = slices.findIndex(
     sl =>
       (clickedKey != null && sl.key === clickedKey) ||
       (clickedName != null && sl.name === clickedName),
@@ -424,19 +428,21 @@ function onPieSegmentClick(d: {
         : -1;
   }
   if (idx < 0) return;
-  const slice = spec.value.slices[idx];
+  const slice = slices[idx];
   if (!slice) return;
   const originIdx =
     typeof slice.categoryIndex === 'number' && Number.isFinite(slice.categoryIndex)
       ? Math.round(slice.categoryIndex)
       : idx;
+  // Single-series pie: slices are categories. Multi-series: slices are series totals.
+  const multiSeries = current.series.length > 1;
   emit('chart-item-click', {
     chartType: 'pie',
-    category: slice.name,
-    seriesName: slice.name,
+    category: multiSeries ? undefined : slice.name,
+    seriesName: multiSeries ? slice.name : current.series[0]?.name,
     value: slice.value,
-    categoryIndex: originIdx,
-    seriesIndex: originIdx,
+    categoryIndex: multiSeries ? undefined : originIdx,
+    seriesIndex: multiSeries ? originIdx : 0,
     path: [slice.name],
   });
 }
