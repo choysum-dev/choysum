@@ -25,6 +25,15 @@ export function parseChatterTimestamp(value: unknown): number | null {
   if (/^-?\d+$/.test(raw)) {
     return asValidEpochMs(Number(raw));
   }
+  // Wire contract is ISO-8601 (or epoch digits above). Reject locale/RFC forms
+  // that Date.parse resolves differently across V8 vs QuickJS.
+  if (
+    !/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/i.test(
+      raw,
+    )
+  ) {
+    return null;
+  }
   const parsed = Date.parse(raw);
   return Number.isNaN(parsed) ? null : parsed;
 }
