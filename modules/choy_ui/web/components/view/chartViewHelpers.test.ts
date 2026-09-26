@@ -371,6 +371,13 @@ test('resolveClickClientX prefers changedTouches then clientX', () => {
   expect(
     resolveClickClientX({ clientX: 99, changedTouches: [{ clientX: 17 }] }),
   ).toBe(17);
+  // Non-finite touch X falls through to event.clientX.
+  expect(
+    resolveClickClientX({
+      clientX: 55,
+      changedTouches: [{ clientX: Number.NaN }],
+    }),
+  ).toBe(55);
   expect(resolveClickClientX({ changedTouches: [] })).toBeUndefined();
   expect(resolveClickClientX({})).toBeUndefined();
 });

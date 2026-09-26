@@ -327,7 +327,7 @@ function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
  * StackedBar click: datum is mapped with stackIndex + original row; index is category.
  */
 function onStackedBarClick(
-  d: XyRow & { stackIndex?: number },
+  d: (XyRow & { stackIndex?: number }) | undefined,
   _event: UnovisClickEvent,
   categoryIdx?: number,
 ): void {
@@ -335,7 +335,7 @@ function onStackedBarClick(
   const { categoryIdx: idx, seriesIdx } = resolveStackedXyClickTarget(
     d,
     categoryIdx,
-    d.stackIndex,
+    d?.stackIndex,
   );
   if (idx == null) return;
   emitXyClick(idx, seriesIdx);
@@ -400,8 +400,8 @@ function onLineClick(
 }
 
 /**
- * Donut segment click: datum is DonutArcDatum; original row is d.data, slice index is d.index.
- * Second callback arg is the DOM event (not an index).
+ * Donut segment click: datum is DonutArcDatum; original row is d.data.
+ * Prefer key/name identity; fall back to d.index when the datum has no identity.
  */
 function onPieSegmentClick(d: {
   data?: { key?: string; name?: string };
@@ -410,16 +410,19 @@ function onPieSegmentClick(d: {
   name?: string;
 }): void {
   if (!spec.value?.slices) return;
-  let idx =
-    typeof d?.index === 'number' && Number.isFinite(d.index)
-      ? Math.round(d.index)
-      : spec.value.slices.findIndex(
-          sl =>
-            sl.key === d?.data?.key ||
-            sl.name === d?.data?.name ||
-            sl.key === d?.key ||
-            sl.name === d?.name,
-        );
+  const clickedKey = d?.data?.key ?? d?.key;
+  const clickedName = d?.data?.name ?? d?.name;
+  let idx = spec.value.slices.findIndex(
+    sl =>
+      (clickedKey != null && sl.key === clickedKey) ||
+      (clickedName != null && sl.name === clickedName),
+  );
+  if (idx < 0) {
+    idx =
+      typeof d?.index === 'number' && Number.isFinite(d.index)
+        ? Math.round(d.index)
+        : -1;
+  }
   if (idx < 0) return;
   const slice = spec.value.slices[idx];
   if (!slice) return;

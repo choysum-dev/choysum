@@ -207,7 +207,7 @@ export function resolveClickClientX(event: {
   const touches = event.changedTouches;
   if (touches && touches.length > 0) {
     const x = touches[0]?.clientX;
-    return typeof x === 'number' && Number.isFinite(x) ? x : undefined;
+    if (typeof x === 'number' && Number.isFinite(x)) return x;
   }
   const x = event.clientX;
   return typeof x === 'number' && Number.isFinite(x) ? x : undefined;
