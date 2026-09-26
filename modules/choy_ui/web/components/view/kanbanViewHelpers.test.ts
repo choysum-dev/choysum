@@ -43,6 +43,23 @@ describe('kanbanViewHelpers', () => {
     expect(lanes[2]!.label).toBe('mystery');
   });
 
+  test('groupRowsIntoChoyKanbanLanes dedupes equivalent laneDefs', () => {
+    const lanes = groupRowsIntoChoyKanbanLanes(
+      [{ Id: '1', Title: 'A', State: 'draft' }],
+      {
+        laneField: 'State',
+        laneDefs: [
+          { key: 'draft', label: 'Draft' },
+          { key: ' draft ', label: 'Draft again' },
+          { key: '', label: 'Unset A' },
+          { key: '  ', label: 'Unset B' },
+        ],
+        titleField: 'Title',
+      },
+    );
+    expect(lanes.map(l => l.key)).toEqual(['draft', '__unset__']);
+  });
+
   test('groupRowsIntoChoyKanbanLanes without laneDefs uses discovery order', () => {
     const lanes = groupRowsIntoChoyKanbanLanes(
       [

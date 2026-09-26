@@ -126,6 +126,12 @@ describe('propertiesDefinitionHelpers', () => {
     expect(() =>
       draftsToDefinitionItems([{ ...emptyDraftItem(), name: 'x', type: 'binary' }]),
     ).toThrow(/unsupported property type/);
+    expect(() =>
+      draftsToDefinitionItems([
+        { ...emptyDraftItem(), name: 'dup', type: 'char' },
+        { ...emptyDraftItem(), name: 'dup', type: 'integer' },
+      ]),
+    ).toThrow(/duplicate property name/);
     expect(draftsToDefinitionItems(null)).toEqual([]);
   });
 

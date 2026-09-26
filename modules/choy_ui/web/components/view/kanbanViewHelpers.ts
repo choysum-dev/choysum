@@ -90,6 +90,8 @@ export function groupRowsIntoChoyKanbanLanes(
     const seen = new Set<string>();
     for (const def of defs) {
       const key = normalizeChoyKanbanLaneKey(def.key);
+      // Duplicate / equivalent defs must not push the same lane twice.
+      if (seen.has(key)) continue;
       const lane = byKey.get(key);
       if (lane) {
         ordered.push(lane);

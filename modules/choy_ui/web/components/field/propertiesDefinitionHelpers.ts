@@ -61,9 +61,14 @@ export function draftsToDefinitionItems(
   drafts: DefinitionEditorDraftItem[] | null | undefined,
 ): PropertyItemDefinition[] {
   const out: PropertyItemDefinition[] = [];
+  const seenNames = new Set<string>();
   for (const draft of drafts || []) {
     const name = String(draft.name || '').trim();
     if (!name) continue;
+    if (seenNames.has(name)) {
+      throw new Error(`duplicate property name '${name}'`);
+    }
+    seenNames.add(name);
     const type = String(draft.type || '').trim();
     if (!PROPERTIES_V1_TYPES.has(type)) {
       throw new Error(`unsupported property type '${type}' (${name})`);

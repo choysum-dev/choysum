@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { htmlToPlaintext, normalizeHtmlForStore, sanitizeHtmlForClient, type DomPurifyLike } from './htmlHelpers';
+import { htmlToPlaintext, normalizeHtmlForStore, resolveChoyHtmlLinkHref, sanitizeHtmlForClient, type DomPurifyLike } from './htmlHelpers';
 
 function createTestPurify(): DomPurifyLike & { hooks: Array<(node: any) => void> } {
   const hooks: Array<(node: any) => void> = [];
@@ -127,5 +127,16 @@ describe('htmlHelpers', () => {
     expect(normalizeHtmlForStore('<p>ok</p>', { purify })).toBe('<p>ok</p>');
     expect(normalizeHtmlForStore('<hr>', { purify })).toBe('<hr>');
     expect(normalizeHtmlForStore(null, { purify })).toBeNull();
+  });
+
+  test('resolveChoyHtmlLinkHref validates schemes', () => {
+    expect(resolveChoyHtmlLinkHref('')).toBeNull();
+    expect(resolveChoyHtmlLinkHref('  ')).toBeNull();
+    expect(resolveChoyHtmlLinkHref('javascript:alert(1)')).toBe(false);
+    expect(resolveChoyHtmlLinkHref('data:text/html,x')).toBe(false);
+    expect(resolveChoyHtmlLinkHref('https://example.com')).toBe('https://example.com');
+    expect(resolveChoyHtmlLinkHref('http://example.com')).toBe('http://example.com');
+    expect(resolveChoyHtmlLinkHref('mailto:a@b.com')).toBe('mailto:a@b.com');
+    expect(resolveChoyHtmlLinkHref('example.com/path')).toBe('https://example.com/path');
   });
 });

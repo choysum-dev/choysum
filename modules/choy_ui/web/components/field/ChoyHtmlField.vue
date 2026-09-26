@@ -14,7 +14,7 @@ import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
-import { htmlToPlaintext, normalizeHtmlForStore, sanitizeHtmlForClient } from './htmlHelpers';
+import { htmlToPlaintext, normalizeHtmlForStore, resolveChoyHtmlLinkHref, sanitizeHtmlForClient } from './htmlHelpers';
 import { htmlEditorChain, htmlEditorSetContent } from './tiptapHtmlCommands';
 
 /**
@@ -96,11 +96,13 @@ function toggleLink(): void {
   const href = typeof window !== 'undefined' ? window.prompt('URL', prev || 'https://') : null;
   if (href == null) return;
   const trimmed = href.trim();
-  if (!trimmed) {
+  const resolved = resolveChoyHtmlLinkHref(trimmed);
+  if (resolved === null) {
     htmlEditorChain(ed).focus().unsetLink().run();
     return;
   }
-  htmlEditorChain(ed).focus().extendMarkRange('link').setLink({ href: trimmed }).run();
+  if (resolved === false) return;
+  htmlEditorChain(ed).focus().extendMarkRange('link').setLink({ href: resolved }).run();
 }
 
 const displayPlain = () => htmlToPlaintext(model.value);

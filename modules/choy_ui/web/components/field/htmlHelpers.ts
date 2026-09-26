@@ -106,3 +106,16 @@ export function normalizeHtmlForStore(html: string | null | undefined, deps?: Sa
   if (htmlToPlaintext(cleaned, deps) === '') return null;
   return cleaned;
 }
+
+/**
+ * Normalize a user-entered link href for TipTap setLink.
+ * Returns `null` to unset, `false` when the scheme is rejected, otherwise the href.
+ */
+export function resolveChoyHtmlLinkHref(raw: string): string | null | false {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) return null;
+  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed);
+  // Link.protocols only affects autolink; reject javascript:/data: etc. here.
+  if (hasScheme && !/^(https?|mailto):/i.test(trimmed)) return false;
+  return hasScheme ? trimmed : `https://${trimmed}`;
+}
