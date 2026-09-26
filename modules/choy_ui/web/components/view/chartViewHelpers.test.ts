@@ -147,6 +147,18 @@ test('normalizeSeriesToPercent and sortChartCategories', () => {
     { name: 'X', data: [0] },
     { name: 'Y', data: [0] },
   ]);
+  expect(
+    normalizeSeriesToPercent(
+      ['N'],
+      [
+        { name: 'X', data: [10] },
+        { name: 'Y', data: [-5] },
+      ],
+    ),
+  ).toEqual([
+    { name: 'X', data: [100] },
+    { name: 'Y', data: [0] },
+  ]);
   const none = sortChartCategories(categories, series, 'none');
   expect(none.categories).toEqual(['A', 'B']);
   const desc = sortChartCategories(categories, series, 'desc');
@@ -220,13 +232,17 @@ test('resolveGroupedXyClickTarget maps flat element index', () => {
   });
 });
 
-test('resolveStackedXyClickTarget prefers event category and stackIndex', () => {
+test('resolveStackedXyClickTarget prefers row index over event index', () => {
   expect(resolveStackedXyClickTarget({ index: 2, stackIndex: 9 }, 1, 0)).toEqual({
-    categoryIdx: 1,
+    categoryIdx: 2,
     seriesIdx: 0,
   });
   expect(resolveStackedXyClickTarget({ index: '2' }, undefined, 1)).toEqual({
     categoryIdx: 2,
+    seriesIdx: 1,
+  });
+  expect(resolveStackedXyClickTarget(undefined, 3, 1)).toEqual({
+    categoryIdx: 3,
     seriesIdx: 1,
   });
 });

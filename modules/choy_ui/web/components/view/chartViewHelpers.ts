@@ -25,15 +25,18 @@ export function normalizeSeriesToPercent(
   categories: string[],
   seriesMatrix: ChoyChartSeries[],
 ): ChoyChartSeries[] {
+  // Negative values cannot form a 0–100 percent stack; clamp them out of totals
+  // (same product rule as pieAdapter dropping non-positive slices).
+  const positive = (v: unknown): number => Math.max(0, Number(v) || 0);
   const totals = categories.map((_, idx) =>
-    seriesMatrix.reduce((sum, s) => sum + (Number(s.data[idx]) || 0), 0),
+    seriesMatrix.reduce((sum, s) => sum + positive(s.data[idx]), 0),
   );
   return seriesMatrix.map(s => ({
     name: s.name,
     data: (s.data || []).map((v, idx) => {
       const total = totals[idx] || 0;
       if (!total) return 0;
-      return (100 * (Number(v) || 0)) / total;
+      return (100 * positive(v)) / total;
     }),
   }));
 }
@@ -151,10 +154,13 @@ export function resolveStackedXyClickTarget(
   categoryIdxFromEvent: number | undefined,
   stackIndex: number | undefined,
 ): { categoryIdx: number | null; seriesIdx: number | undefined } {
+  // Prefer the row's own index (always set by chartSpecToXyRows); the event
+  // index is only a fallback when the datum did not carry one.
   const categoryIdx =
-    typeof categoryIdxFromEvent === 'number' && Number.isFinite(categoryIdxFromEvent)
+    rowCategoryIndex(row) ??
+    (typeof categoryIdxFromEvent === 'number' && Number.isFinite(categoryIdxFromEvent)
       ? Math.round(categoryIdxFromEvent)
-      : rowCategoryIndex(row);
+      : null);
   const seriesIdx =
     typeof stackIndex === 'number' && Number.isFinite(stackIndex)
       ? Math.round(stackIndex)

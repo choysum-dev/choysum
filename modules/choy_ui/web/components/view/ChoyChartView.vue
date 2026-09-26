@@ -221,6 +221,8 @@ const prepared = computed(() => {
 });
 
 const spec = computed<ChoyChartSpec | null>(() => {
+  // Never render a kind that the data context or the host allowlist rejects.
+  if (!availableTypes.value.includes(localChartType.value)) return null;
   const adapter = resolveChartAdapter(localChartType.value);
   if (!adapter) return null;
   if (!adapter.supports(supportCtx.value)) return null;
