@@ -219,6 +219,37 @@ test('applyChoyThemePreference keeps a stored theme when only density is applied
   });
 });
 
+test('applyChoyThemePreference density-only does not strip host dark class', () => {
+  const classes = new Set<string>(['dark']);
+  const attrs = new Map<string, string>();
+  applyChoyThemePreference(
+    { density: 'compact' },
+    {
+      root: {
+        classList: {
+          toggle(name: string, force?: boolean) {
+            if (force) classes.add(name);
+            else classes.delete(name);
+          },
+        },
+        setAttribute(name: string, value: string) {
+          attrs.set(name, value);
+        },
+        removeAttribute(name: string) {
+          attrs.delete(name);
+        },
+      } as never,
+      storage: {
+        getItem: () => null,
+        setItem: () => undefined,
+      },
+      persist: false,
+    },
+  );
+  expect(classes.has('dark')).toBe(true);
+  expect(attrs.get('data-density')).toBe('compact');
+});
+
 test('applyChoyThemePreference ignores unrecognized caller theme and keeps stored', () => {
   const mem = new Map<string, string>([['choy.ui.theme', JSON.stringify({ theme: 'dark' })]]);
   const storage = {
