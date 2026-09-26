@@ -45,7 +45,9 @@ Skip pure formatting nits that gofmt or existing linters already enforce.
 focus_only_on_problems = false
 auto_extended_mode = true
 parallel_calls = true
-num_code_suggestions_per_chunk = 8
+# Fewer suggestions per chunk → shorter YAML completions; large PRs already call
+# multiple chunks after max_model_tokens is capped in the workflow.
+num_code_suggestions_per_chunk = 4
 max_number_of_calls = 5
 suggestions_score_threshold = 0
 # false = each /improve (manual or auto-on-push) posts a new comment instead of editing the previous one.
