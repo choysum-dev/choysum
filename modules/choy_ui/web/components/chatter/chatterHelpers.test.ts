@@ -164,4 +164,11 @@ test('resolveChoyChatterAuthorLabel maps system / you / other', () => {
       currentUserId: 'usr_1',
     }),
   ).toBe('usr_other');
+  expect(resolveChoyChatterAuthorLabel(null, { systemLabel: 'No author' })).toBe('No author');
+  expect(
+    resolveChoyChatterAuthorLabel('usr_1', {
+      currentUserId: 'usr_1',
+      youLabel: 'Me',
+    }),
+  ).toBe('Me');
 });

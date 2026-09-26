@@ -206,6 +206,9 @@ export default defineComponent({
     });
 
     function onPost(body: string): void {
+      // Ignore overlapping posts (parity with Gallery) so a rapid second
+      // submit cannot queue a duplicate message.
+      if (posting.value) return;
       posting.value = true;
       postError.value = null;
       schedule(() => {
