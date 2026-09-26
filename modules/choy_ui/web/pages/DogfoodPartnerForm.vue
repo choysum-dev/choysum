@@ -121,7 +121,17 @@ export default defineComponent({
     // Only apply when a stored preference exists — empty storage must not
     // resolve to light and strip a host-managed documentElement.dark class.
     if (storedTheme.theme || storedTheme.density) {
+      const themeRoot = typeof document !== 'undefined' ? document.documentElement : null;
+      const previousDark = themeRoot ? themeRoot.classList.contains('dark') : false;
+      const previousDensity = themeRoot ? themeRoot.getAttribute('data-density') : null;
       applyChoyThemePreference(storedTheme, { persist: false });
+      onBeforeUnmount(() => {
+        // Hand global theme/density back to the host shell (Gallery does the same).
+        if (!themeRoot) return;
+        themeRoot.classList.toggle('dark', previousDark);
+        if (previousDensity == null) themeRoot.removeAttribute('data-density');
+        else themeRoot.setAttribute('data-density', previousDensity);
+      });
     }
 
     const router = useRouter();
