@@ -9,8 +9,9 @@ SPDX-License-Identifier: Apache-2.0
 product API — domain modules must use exported `Choy*` only.
 
 **SFC block order:** keep shadcn's `script` → `template` here so upstream diffs stay
-small. Product `Choy*` / domain / `internal/*` SFCs use `template` → `script` →
-`style` (IMD/xpath reviewers open the markup first).
+small. Every other product SFC — `Choy*`, domain views/fields, `internal/*`, and
+`modules/*/web/pages/*.vue` — uses `template` → `script` → `style` (IMD/xpath
+reviewers open the markup first).
 
 **Cutover:** this tree moves with the kit into `modules/web/web/components/vendor/`
 (same relative layout). Keep the `vendor/ui` segment stable so ignore rules, import

@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
       <el-result :status="errorConfig.status" :title="errorConfig.title" :sub-title="errorConfig.subtitle">
         <!-- Error details. -->
         <template #extra>
-          <p class="error-message" v-html="errorConfig.message"></p>
+          <p class="error-message">{{ errorConfig.message }}</p>
 
           <el-divider />
 
