@@ -22,7 +22,7 @@ export function parseChatterTimestamp(value: unknown): number | null {
   const raw = String(value).trim();
   if (!raw) return null;
   // Protobuf JSON serializes int64 timestamps as strings; Date.parse fails on them.
-  if (/^\d+$/.test(raw)) {
+  if (/^-?\d+$/.test(raw)) {
     const asNumber = Number(raw);
     return Number.isFinite(asNumber) ? asNumber : null;
   }
