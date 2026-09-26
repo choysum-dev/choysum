@@ -104,10 +104,19 @@ watch(
     if (
       prev === true &&
       next === false &&
-      props.postError == null &&
       postingResId.value === String(props.resId || '')
     ) {
-      composerRef.value?.clear();
+      // Hosts may flip posting false before assigning postError in the same
+      // tick (sync flush sees posting first). Re-check on the next microtask.
+      void Promise.resolve().then(() => {
+        if (
+          !props.posting &&
+          props.postError == null &&
+          postingResId.value === String(props.resId || '')
+        ) {
+          composerRef.value?.clear();
+        }
+      });
     }
   },
   // Sync flush: a host that sets posting true→false within one tick would

@@ -139,6 +139,7 @@ test('formatFieldChangeSummary normalizes empty values', () => {
 
 test('formatChoyUtcIso formats finite UTC timestamps', () => {
   expect(formatChoyUtcIso(Date.parse('2024-01-02T03:04:00.000Z'))).toBe('2024-01-02 03:04');
+  expect(formatChoyUtcIso(Date.UTC(99, 0, 1, 0, 0))).toBe('0099-01-01 00:00');
   expect(formatChoyUtcIso(null)).toBe('');
   expect(formatChoyUtcIso(Number.NaN)).toBe('');
 });

@@ -98,6 +98,12 @@ test('mergeChatterTimeline skips rows without ids or timestamps', () => {
   expect(entries).toEqual([]);
 });
 
+test('mergeChatterTimeline tolerates omitted input lists', () => {
+  expect(mergeChatterTimeline(null, undefined)).toEqual([]);
+  expect(mergeChatterTimeline(undefined, null)).toEqual([]);
+  expect(mergeChatterTimeline(undefined, undefined)).toEqual([]);
+});
+
 test('mergeChatterTimeline keeps a message and field change sharing an id', () => {
   const at = '2024-01-01T00:00:00.000Z';
   const entries = mergeChatterTimeline(
