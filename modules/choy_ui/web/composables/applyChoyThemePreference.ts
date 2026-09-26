@@ -136,10 +136,10 @@ export function applyChoyThemePreference(
     }
   }
   if (opts.persist !== false) {
-    // Keep caller-provided values (e.g. auth density: 'standard') for round-trip.
+    // Persist normalized theme; keep caller density (e.g. auth `standard`) for round-trip.
     persistChoyThemePreference(
       {
-        theme: prefs?.theme ?? resolved.theme,
+        theme: resolved.theme,
         density: prefs?.density ?? resolved.density,
       },
       opts.storage,

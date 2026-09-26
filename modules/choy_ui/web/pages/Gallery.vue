@@ -762,10 +762,13 @@ const galleryChatterEntries = ref<ChatterTimelineEntry[]>([
 const galleryFollowing = ref(false);
 const galleryFollowerCount = ref(0);
 const galleryPosting = ref(false);
+let galleryPostTimer: number | undefined;
 
 function onGalleryChatterPost(body: string): void {
   galleryPosting.value = true;
-  window.setTimeout(() => {
+  window.clearTimeout(galleryPostTimer);
+  galleryPostTimer = window.setTimeout(() => {
+    galleryPostTimer = undefined;
     galleryChatterEntries.value = [
       ...galleryChatterEntries.value,
       {
@@ -925,7 +928,11 @@ function clearGalleryTokenScope(): void {
 
 onMounted(syncGalleryTokenScope);
 watch([isDark, density], syncGalleryTokenScope);
-onUnmounted(clearGalleryTokenScope);
+onUnmounted(() => {
+  window.clearTimeout(galleryPostTimer);
+  galleryPostTimer = undefined;
+  clearGalleryTokenScope();
+});
 
 /**
  * Toggles light / dark token sets on the gallery root.

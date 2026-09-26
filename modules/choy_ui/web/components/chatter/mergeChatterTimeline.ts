@@ -21,6 +21,11 @@ export function parseChatterTimestamp(value: unknown): number | null {
   }
   const raw = String(value).trim();
   if (!raw) return null;
+  // Protobuf JSON serializes int64 timestamps as strings; Date.parse fails on them.
+  if (/^\d+$/.test(raw)) {
+    const asNumber = Number(raw);
+    return Number.isFinite(asNumber) ? asNumber : null;
+  }
   const parsed = Date.parse(raw);
   return Number.isNaN(parsed) ? null : parsed;
 }
@@ -84,5 +89,6 @@ export function compareChatterTimelineEntries(
 ): number {
   if (left.at !== right.at) return left.at - right.at;
   if (left.kind !== right.kind) return left.kind === 'fieldChange' ? -1 : 1;
-  return left.id.localeCompare(right.id);
+  // Code-unit order so tie-breaks are locale-independent.
+  return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
 }
