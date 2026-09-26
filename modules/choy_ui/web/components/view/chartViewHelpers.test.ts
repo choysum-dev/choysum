@@ -182,7 +182,7 @@ test('normalizeSeriesToPercent and sortChartCategories', () => {
       ],
     ),
   ).toEqual([
-    { name: 'A', data: [33.33] },
+    { name: 'A', data: [33.34] },
     { name: 'B', data: [33.33] },
     { name: 'C', data: [33.33] },
   ]);
@@ -342,6 +342,10 @@ test('resolveStackedXyClickTarget prefers row index over event index', () => {
     seriesIdx: 0,
   });
   expect(resolveStackedXyClickTarget({ index: '' }, undefined, 1)).toEqual({
+    categoryIdx: null,
+    seriesIdx: 1,
+  });
+  expect(resolveStackedXyClickTarget({ index: '   ' }, undefined, 1)).toEqual({
     categoryIdx: null,
     seriesIdx: 1,
   });

@@ -40,14 +40,26 @@ export function normalizeSeriesToPercent(
   const totals = categories.map((_, idx) =>
     seriesMatrix.reduce((sum, s) => sum + positive(s.data?.[idx]), 0),
   );
-  return seriesMatrix.map(s => ({
+  // Largest-remainder to 2 dp so each column sums to exactly 100 (or 0).
+  const columns = categories.map((_, idx) => {
+    const total = totals[idx] || 0;
+    const n = seriesMatrix.length;
+    if (!total || n === 0) return seriesMatrix.map(() => 0);
+    const raw = seriesMatrix.map(s => (10000 * positive(s.data?.[idx])) / total);
+    const hundredths = raw.map(v => Math.floor(v));
+    const order = raw
+      .map((v, si) => ({ si, frac: v - (hundredths[si] ?? 0) }))
+      .sort((a, b) => b.frac - a.frac || a.si - b.si);
+    let remainder = 10000 - hundredths.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < remainder && i < order.length; i++) {
+      const si = order[i]!.si;
+      hundredths[si] = (hundredths[si] ?? 0) + 1;
+    }
+    return hundredths.map(v => v / 100);
+  });
+  return seriesMatrix.map((s, si) => ({
     name: s.name,
-    data: categories.map((_, idx) => {
-      const total = totals[idx] || 0;
-      if (!total) return 0;
-      // Round to 2 dp so axis labels / click payloads stay readable.
-      return Math.round(((100 * positive(s.data?.[idx])) / total) * 100) / 100;
-    }),
+    data: categories.map((_, cIdx) => columns[cIdx]![si] ?? 0),
   }));
 }
 
@@ -121,12 +133,9 @@ function rowCategoryIndex(
   if (typeof rawIndex === 'number' && Number.isFinite(rawIndex)) {
     return Math.round(rawIndex);
   }
-  if (
-    typeof rawIndex === 'string' &&
-    rawIndex !== '' &&
-    Number.isFinite(Number(rawIndex))
-  ) {
-    return Math.round(Number(rawIndex));
+  if (typeof rawIndex === 'string' && rawIndex.trim() !== '') {
+    const parsed = Number(rawIndex);
+    if (Number.isFinite(parsed)) return Math.round(parsed);
   }
   return null;
 }

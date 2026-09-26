@@ -276,7 +276,7 @@ function selectMetric(alias: string): void {
 }
 
 function selectChartType(type: ChoyChartKind): void {
-  if (!availableTypes.value.includes(type)) return;
+  if (!availableTypes.value.includes(type) || type === localChartType.value) return;
   localChartType.value = type;
   emit('chart-type-change', type);
 }
@@ -288,7 +288,7 @@ function toggleStacked(): void {
 }
 
 function selectSort(next: ChoyChartSort): void {
-  if (sortDisabled.value) return;
+  if (sortDisabled.value || next === localSort.value) return;
   localSort.value = next;
   emit('sort-change', next);
 }
