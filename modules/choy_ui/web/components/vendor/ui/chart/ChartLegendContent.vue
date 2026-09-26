@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, inject, type Ref } from 'vue';
-import type { ChartConfig } from './chartTypes';
+import { CHOY_CHART_FALLBACK_COLOR, type ChartConfig } from './chartTypes';
 
 /**
  * Simple legend listing ChartConfig keys with color swatches.
@@ -17,7 +17,7 @@ const items = computed(() => {
   return Object.entries(cfg).map(([key, item]) => ({
     key,
     label: item.label || key,
-    color: item.color || 'var(--choy-chart-1)',
+    color: item.color || CHOY_CHART_FALLBACK_COLOR,
   }));
 });
 </script>

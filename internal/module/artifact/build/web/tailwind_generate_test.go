@@ -6,6 +6,7 @@ package webmodulebuilder
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -203,9 +204,9 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	if strings.Contains(body, "duration=") {
 		t.Fatal("generated CSS header must not include wall-clock duration")
 	}
-	// Legitimate CSS uses `clip-path:`; strip *-path: properties before looking for
-	// leaked TS object keys like `path: '__choy_gallery'`.
-	sanitized := strings.ReplaceAll(body, "clip-path:", "")
+	// Strip every CSS `*-path:` property name (clip-path, offset-path, …) but
+	// keep a bare `path:` so a leaked TS object key is still detected.
+	sanitized := regexp.MustCompile(`[a-z-]+path:`).ReplaceAllString(body, "")
 	if strings.Contains(sanitized, "path:") ||
 		strings.Contains(body, "component:") ||
 		strings.Contains(body, "--choy-color-primary'") {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ChoyChartSeries, ChoyChartSort, ChoyChartSpec } from './chart/chartTypeAdapter';
+import { CHOY_CHART_FALLBACK_COLOR } from '../vendor/ui/chart/chartTypes';
 
 export type ChoyChartMetricOption = {
   alias: string;
@@ -100,7 +101,7 @@ export function chartSpecToPieRows(
     key: sl.key,
     name: sl.name,
     value: sl.value,
-    color: spec.config[sl.key]?.color || 'var(--choy-chart-1)',
+    color: spec.config[sl.key]?.color || CHOY_CHART_FALLBACK_COLOR,
   }));
 }
 
@@ -174,4 +175,14 @@ export function resolveStackedXyClickTarget(
       ? Math.round(stackIndex)
       : undefined;
   return { categoryIdx, seriesIdx };
+}
+
+/**
+ * Maps a relative pointer position (0–1) along the plot width to the nearest
+ * category index; pure so the line-click math stays unit-testable.
+ */
+export function resolveLineClickCategory(rel: number, count: number): number {
+  if (count <= 1) return 0;
+  const clamped = Math.min(1, Math.max(0, rel));
+  return Math.round(clamped * (count - 1));
 }

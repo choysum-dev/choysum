@@ -25,6 +25,7 @@ import {
 } from '../vendor/ui/chart';
 import {
   availableChartTypes,
+  CHOY_CHART_DEFAULT_PALETTE,
   resolveChartAdapter,
   type ChoyChartKind,
   type ChoyChartSeries,
@@ -36,6 +37,7 @@ import {
   chartSpecToXyRows,
   normalizeSeriesToPercent,
   resolveGroupedXyClickTarget,
+  resolveLineClickCategory,
   resolveStackedXyClickTarget,
   sortChartCategories,
   type ChoyChartItemClickPayload,
@@ -251,7 +253,9 @@ const xyYAccessors = computed(() => {
 
 const xyColors = computed(() => {
   if (!spec.value) return [];
-  return spec.value.series.map(s => spec.value!.config[s.key]?.color || 'var(--choy-chart-1)');
+  return spec.value.series.map(
+    s => spec.value!.config[s.key]?.color || CHOY_CHART_DEFAULT_PALETTE[0],
+  );
 });
 
 type XyRow = Record<string, string | number>;
@@ -370,10 +374,7 @@ function onLineClick(
   // box (which also covers axis gutters).
   const rect = (target instanceof Element ? target : svg).getBoundingClientRect();
   const rel = (mouse.clientX - rect.left) / Math.max(rect.width, 1);
-  const categoryIdx = Math.max(
-    0,
-    Math.min(rows.length - 1, Math.round(rel * (rows.length - 1))),
-  );
+  const categoryIdx = resolveLineClickCategory(rel, rows.length);
   const nSeries = spec.value.series.length;
   let si =
     typeof seriesIdx === 'number' && Number.isFinite(seriesIdx)
@@ -680,13 +681,13 @@ const donutEvents = computed(() => ({
       </div>
 
       <div
-        v-if="loading"
+        v-if="loading && !error"
         class="absolute inset-0 flex items-center justify-center bg-background/60 text-sm text-muted-foreground"
       >
         Loading…
       </div>
       <div
-        v-if="error"
+        v-else-if="error"
         class="absolute inset-0 flex items-center justify-center bg-background/70 text-sm text-destructive"
         role="alert"
       >

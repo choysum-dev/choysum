@@ -8,3 +8,6 @@ export type ChartConfigItem = {
 };
 
 export type ChartConfig = Record<string, ChartConfigItem>;
+
+/** Default fill when a series/slice has no color in ChartConfig. */
+export const CHOY_CHART_FALLBACK_COLOR = 'var(--choy-chart-1)';

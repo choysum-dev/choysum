@@ -13,6 +13,7 @@ import {
   chartSpecToXyRows,
   normalizeSeriesToPercent,
   resolveGroupedXyClickTarget,
+  resolveLineClickCategory,
   resolveStackedXyClickTarget,
   sortChartCategories,
 } from './chartViewHelpers';
@@ -289,4 +290,12 @@ test('resolveStackedXyClickTarget prefers row index over event index', () => {
     categoryIdx: null,
     seriesIdx: 1,
   });
+});
+
+test('resolveLineClickCategory maps relative x to nearest category', () => {
+  expect(resolveLineClickCategory(0.5, 0)).toBe(0);
+  expect(resolveLineClickCategory(0.5, 1)).toBe(0);
+  expect(resolveLineClickCategory(-0.2, 4)).toBe(0);
+  expect(resolveLineClickCategory(1.2, 4)).toBe(3);
+  expect(resolveLineClickCategory(0.5, 3)).toBe(1);
 });

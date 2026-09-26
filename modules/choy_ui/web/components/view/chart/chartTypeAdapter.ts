@@ -1,11 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { ChartConfig } from '../../vendor/ui/chart/chartTypes';
+import {
+  CHOY_CHART_FALLBACK_COLOR,
+  type ChartConfig,
+} from '../../vendor/ui/chart/chartTypes';
 
 /** Default series colors bound to kit chart tokens (no hardcoded hex). */
 export const CHOY_CHART_DEFAULT_PALETTE = [
-  'var(--choy-chart-1)',
+  CHOY_CHART_FALLBACK_COLOR,
   'var(--choy-chart-2)',
   'var(--choy-chart-3)',
   'var(--choy-chart-4)',
