@@ -172,3 +172,36 @@ test('readChoyThemePreference returns {} when storage access throws', () => {
     }),
   ).toEqual({});
 });
+
+test('applyChoyThemePreference keeps a stored theme when only density is applied', () => {
+  const mem = new Map<string, string>([['choy.ui.theme', JSON.stringify({ theme: 'dark' })]]);
+  const storage = {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      mem.set(k, v);
+    },
+  };
+  const classes = new Set<string>();
+  applyChoyThemePreference(
+    { density: 'compact' },
+    {
+      root: {
+        classList: {
+          toggle(name: string, force?: boolean) {
+            if (force) classes.add(name);
+            else classes.delete(name);
+          },
+        },
+        setAttribute: () => undefined,
+        removeAttribute: () => undefined,
+      } as never,
+      storage,
+      persist: true,
+    },
+  );
+  expect(classes.has('dark')).toBe(true);
+  expect(JSON.parse(mem.get('choy.ui.theme')!)).toEqual({
+    theme: 'dark',
+    density: 'compact',
+  });
+});

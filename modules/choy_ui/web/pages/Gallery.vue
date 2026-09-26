@@ -945,16 +945,18 @@ function goDogfoodPartner(): void {
   void router.push({ name: 'ChoyUiDogfoodPartner' });
 }
 
-function persistGalleryTheme(): void {
+function persistGalleryTheme(theme?: 'light' | 'dark'): void {
+  // Don't rewrite an explicit `auto` preference on density-only changes.
+  const stored = readChoyThemePreference();
   persistChoyThemePreference({
-    theme: isDark.value ? 'dark' : 'light',
+    theme: theme ?? stored.theme ?? (isDark.value ? 'dark' : 'light'),
     density: density.value,
   });
 }
 
 function toggleDark(): void {
   isDark.value = !isDark.value;
-  persistGalleryTheme();
+  persistGalleryTheme(isDark.value ? 'dark' : 'light');
 }
 
 /**

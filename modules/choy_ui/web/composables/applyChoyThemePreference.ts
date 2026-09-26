@@ -118,12 +118,18 @@ export function persistChoyThemePreference(
 /**
  * Applies dark / density to the document root and optionally persists prefs.
  * Compatible with auth User.Preferences `{ theme, density }` shape.
+ * Omitted fields are filled from storage so a density-only apply cannot clobber theme.
  */
 export function applyChoyThemePreference(
   prefs: ChoyThemePreference | null | undefined,
   opts: ApplyChoyThemePreferenceOptions = {},
 ): ResolvedChoyThemePreference {
-  const resolved = resolveChoyThemePreference(prefs, { prefersDark: opts.prefersDark });
+  const stored = readChoyThemePreference(opts.storage, opts.storageKey);
+  const effective: ChoyThemePreference = {
+    theme: prefs?.theme ?? stored.theme,
+    density: prefs?.density ?? stored.density,
+  };
+  const resolved = resolveChoyThemePreference(effective, { prefersDark: opts.prefersDark });
   const root =
     opts.root ??
     (typeof document !== 'undefined' ? document.documentElement : null);
@@ -136,11 +142,11 @@ export function applyChoyThemePreference(
     }
   }
   if (opts.persist !== false) {
-    // Persist normalized theme; keep caller density (e.g. auth `standard`) for round-trip.
+    // Persist effective prefs (caller + stored); theme is always a valid mode.
     persistChoyThemePreference(
       {
-        theme: resolved.theme,
-        density: prefs?.density ?? resolved.density,
+        theme: effective.theme ?? resolved.theme,
+        density: effective.density ?? resolved.density,
       },
       opts.storage,
       opts.storageKey,
