@@ -73,7 +73,9 @@ export function sanitizeHtmlForClient(html: string | null | undefined, deps?: Sa
   // dompurify's default export is a factory without `sanitize` when no DOM is
   // present (QuickJS/SSR); strip tags instead of crashing or returning raw markup.
   if (typeof purify.sanitize !== 'function') {
-    return raw.replace(/<[^>]*>/g, '');
+    // No DOM → DOMPurify cannot run. `>?` keeps stripping unterminated
+    // tags (`<img src=x onerror=…`) so no active `<` can survive.
+    return raw.replace(/<[^>]*>?/g, '');
   }
   ensureDomPurifyHooks(purify);
   return purify.sanitize(raw, purifyConfig);

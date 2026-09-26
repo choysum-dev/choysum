@@ -67,7 +67,14 @@ export function buildFullPropertiesMap(items: ResolvedPropertyItem[], previous: 
   const next: PropertiesMap = Object.create(null);
   for (const item of items) {
     if (!item?.name) continue;
-    if (!PROPERTIES_V1_TYPES.has(String(item.type))) continue;
+    if (!PROPERTIES_V1_TYPES.has(String(item.type))) {
+      // Preserve values for schema items this UI cannot render, otherwise the
+      // next write drops them from the persisted properties map.
+      if (Object.prototype.hasOwnProperty.call(prev, item.name)) {
+        next[item.name] = prev[item.name];
+      }
+      continue;
+    }
     if (Object.prototype.hasOwnProperty.call(prev, item.name)) {
       next[item.name] = prev[item.name];
     } else if (Object.prototype.hasOwnProperty.call(item, 'value')) {

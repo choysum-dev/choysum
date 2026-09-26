@@ -76,6 +76,8 @@ describe('htmlHelpers', () => {
       sanitize: undefined as unknown as DomPurifyLike['sanitize'],
     };
     expect(sanitizeHtmlForClient('<p>Hi</p><script>x</script>', { purify })).toBe('Hix');
+    // Unterminated tag must not survive the no-DOM fallback.
+    expect(sanitizeHtmlForClient('<img src=x onerror=alert(1)', { purify })).toBe('');
   });
 
   test('htmlToPlaintext strips tags (non-DOM path)', () => {

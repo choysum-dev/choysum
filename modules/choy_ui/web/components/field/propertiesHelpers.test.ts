@@ -59,4 +59,17 @@ describe('propertiesHelpers', () => {
     expect(countSchemaMapIntersection(['color', 'qty', 'missing'], next)).toBe(2);
     expect(countSchemaMapIntersection([], next)).toBe(0);
   });
+
+  test('buildFullPropertiesMap preserves previous values for unrenderable types', () => {
+    const items = [
+      { name: 'color', type: 'char', default: 'red' },
+      { name: 'blob', type: 'binary' },
+    ];
+    const map = buildFullPropertiesMap(items, { color: 'blue', blob: 'deadbeef' });
+    expect(map.color).toBe('blue');
+    expect(map.blob).toBe('deadbeef');
+    const afterWrite = writePropertyValue(items, map, 'color', 'green');
+    expect(afterWrite.color).toBe('green');
+    expect(afterWrite.blob).toBe('deadbeef');
+  });
 });
