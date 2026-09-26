@@ -421,13 +421,17 @@ function onPieSegmentClick(d: {
   if (idx < 0) return;
   const slice = spec.value.slices[idx];
   if (!slice) return;
+  const originIdx =
+    typeof slice.categoryIndex === 'number' && Number.isFinite(slice.categoryIndex)
+      ? Math.round(slice.categoryIndex)
+      : idx;
   emit('chart-item-click', {
     chartType: 'pie',
     category: slice.name,
     seriesName: slice.name,
     value: slice.value,
-    categoryIndex: idx,
-    seriesIndex: idx,
+    categoryIndex: originIdx,
+    seriesIndex: originIdx,
     path: [slice.name],
   });
 }

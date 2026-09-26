@@ -33,6 +33,9 @@ test('resolveChartAdapter returns bar/line/pie and rejects unknown', () => {
   expect(resolveChartAdapter('line')?.id).toBe('line');
   expect(resolveChartAdapter('pie')?.id).toBe('pie');
   expect(resolveChartAdapter('radar')).toBeUndefined();
+  // Own-property guard: Object.prototype members must not resolve as adapters.
+  expect(resolveChartAdapter('toString')).toBeUndefined();
+  expect(resolveChartAdapter('constructor')).toBeUndefined();
 });
 
 test('availableChartTypes filters pie by groupDepth or multi-series', () => {
@@ -135,8 +138,8 @@ test('pieAdapter collapses multi-series into slices', () => {
   });
   expect(spec.kind).toBe('pie');
   expect(spec.slices).toEqual([
-    { key: 'desktop_0', name: 'Desktop', value: 30 },
-    { key: 'mobile_1', name: 'Mobile', value: 10 },
+    { key: 'desktop_0', name: 'Desktop', value: 30, categoryIndex: 0 },
+    { key: 'mobile_1', name: 'Mobile', value: 10, categoryIndex: 1 },
   ]);
 });
 
@@ -254,6 +257,17 @@ test('chartSpecToXyRows / chartSpecToPieRows flatten for Unovis', () => {
   expect(chartSpecToPieRows(noColor)[0]!.color).toBe('var(--choy-chart-1)');
 });
 
+test('pieAdapter preserves original categoryIndex after filtering', () => {
+  const spec = pieAdapter.build({
+    categories: ['A', 'B', 'C'],
+    seriesMatrix: [{ name: 'Visitors', data: [0, 40, 60] }],
+    metricLabel: 'Visitors',
+    stacked: false,
+  });
+  expect(spec.slices?.map(s => s.categoryIndex)).toEqual([1, 2]);
+  expect(spec.slices?.map(s => s.name)).toEqual(['B', 'C']);
+});
+
 test('pieAdapter drops non-positive slices', () => {
   const spec = pieAdapter.build({
     categories: ['A', 'B', 'C'],
@@ -261,8 +275,31 @@ test('pieAdapter drops non-positive slices', () => {
     metricLabel: 'Visitors',
     stacked: false,
   });
-  expect(spec.slices).toEqual([{ key: 'a_0', name: 'A', value: 10 }]);
+  expect(spec.slices).toEqual([
+    { key: 'a_0', name: 'A', value: 10, categoryIndex: 0 },
+  ]);
   expect(Object.keys(spec.config)).toEqual(['a_0']);
+});
+
+test('normalize and sort tolerate missing series data', () => {
+  const categories = ['A', 'B'];
+  const series = [
+    { name: 'X', data: [10] },
+    { name: 'Y' } as { name: string; data?: number[] },
+  ];
+  expect(
+    normalizeSeriesToPercent(categories, series as { name: string; data: number[] }[]),
+  ).toEqual([
+    { name: 'X', data: [100, 0] },
+    { name: 'Y', data: [0, 0] },
+  ]);
+  expect(
+    sortChartCategories(
+      categories,
+      series as { name: string; data: number[] }[],
+      'desc',
+    ).categories,
+  ).toEqual(['A', 'B']);
 });
 
 test('resolveGroupedXyClickTarget maps flat element index', () => {

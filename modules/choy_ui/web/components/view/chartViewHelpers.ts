@@ -38,7 +38,7 @@ export function normalizeSeriesToPercent(
   // (same product rule as pieAdapter dropping non-positive slices).
   const positive = (v: unknown): number => Math.max(0, toFiniteNumber(v));
   const totals = categories.map((_, idx) =>
-    seriesMatrix.reduce((sum, s) => sum + positive(s.data[idx]), 0),
+    seriesMatrix.reduce((sum, s) => sum + positive(s.data?.[idx]), 0),
   );
   return seriesMatrix.map(s => ({
     name: s.name,
@@ -66,7 +66,7 @@ export function sortChartCategories(
     };
   }
   const totals = categories.map((_, idx) =>
-    seriesMatrix.reduce((sum, s) => sum + toFiniteNumber(s.data[idx]), 0),
+    seriesMatrix.reduce((sum, s) => sum + toFiniteNumber(s.data?.[idx]), 0),
   );
   const order = categories
     .map((_, idx) => idx)
@@ -78,7 +78,7 @@ export function sortChartCategories(
     categories: order.map(i => categories[i]!),
     seriesMatrix: seriesMatrix.map(s => ({
       name: s.name,
-      data: order.map(i => toFiniteNumber(s.data[i])),
+      data: order.map(i => toFiniteNumber(s.data?.[i])),
     })),
   };
 }

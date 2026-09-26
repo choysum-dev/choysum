@@ -45,6 +45,8 @@ export type ChoyChartSlice = {
   key: string;
   name: string;
   value: number;
+  /** Original categories/series index before non-positive slices are dropped. */
+  categoryIndex?: number;
 };
 
 export type ChoyChartSeriesOut = {
@@ -170,12 +172,14 @@ export const pieAdapter: IChartTypeAdapter = {
         key: seriesKey(name, i),
         name,
         value: toFiniteNumber(values[i]),
+        categoryIndex: i,
       }));
     } else {
       slices = data.seriesMatrix.map((s, i) => ({
         key: seriesKey(s.name, i),
         name: s.name || `Series ${i + 1}`,
         value: (s.data || []).reduce((a, b) => a + toFiniteNumber(b), 0),
+        categoryIndex: i,
       }));
     }
     // Donut arcs need positive values; drop empty/negative slices so the ring
@@ -211,10 +215,10 @@ export const chartTypeRegistry: Record<ChoyChartKind, IChartTypeAdapter> = {
  * Resolves a chart type adapter by id.
  */
 export function resolveChartAdapter(type: string): IChartTypeAdapter | undefined {
-  if (type === 'bar' || type === 'line' || type === 'pie') {
-    return chartTypeRegistry[type];
+  if (!Object.prototype.hasOwnProperty.call(chartTypeRegistry, type)) {
+    return undefined;
   }
-  return undefined;
+  return chartTypeRegistry[type as ChoyChartKind];
 }
 
 /**
