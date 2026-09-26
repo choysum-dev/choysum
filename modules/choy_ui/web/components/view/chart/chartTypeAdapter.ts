@@ -107,11 +107,16 @@ function buildConfig(
   return config;
 }
 
+function toFiniteNumber(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function toSeriesOut(seriesMatrix: ChoyChartSeries[]): ChoyChartSeriesOut[] {
   return seriesMatrix.map((s, idx) => ({
     key: seriesKey(s.name, idx),
     name: s.name || `Series ${idx + 1}`,
-    values: (s.data || []).map(v => Number(v) || 0),
+    values: (s.data || []).map(toFiniteNumber),
   }));
 }
 
@@ -161,13 +166,13 @@ export const pieAdapter: IChartTypeAdapter = {
       slices = data.categories.map((name, i) => ({
         key: seriesKey(name, i),
         name,
-        value: Number(values[i]) || 0,
+        value: toFiniteNumber(values[i]),
       }));
     } else {
       slices = data.seriesMatrix.map((s, i) => ({
         key: seriesKey(s.name, i),
         name: s.name || `Series ${i + 1}`,
-        value: (s.data || []).reduce((a, b) => a + (Number(b) || 0), 0),
+        value: (s.data || []).reduce((a, b) => a + toFiniteNumber(b), 0),
       }));
     }
     const config: ChartConfig = {};

@@ -138,7 +138,24 @@ watch(
 watch(
   () => props.metricAlias,
   v => {
-    localMetric.value = v;
+    const known = props.metrics.some(m => m.alias === v);
+    const next = known ? v : props.metrics[0]?.alias ?? v;
+    localMetric.value = next;
+    if (next !== v) {
+      emit('metric-change', next);
+    }
+  },
+  { immediate: true },
+);
+watch(
+  () => props.metrics,
+  metrics => {
+    const known = metrics.some(m => m.alias === localMetric.value);
+    if (known) return;
+    const next = metrics[0]?.alias;
+    if (!next || next === localMetric.value) return;
+    localMetric.value = next;
+    emit('metric-change', next);
   },
 );
 
@@ -357,18 +374,20 @@ function onLineClick(
   const rows = xyRows.value;
   if (!rows.length) return;
   const mouse = event as MouseEvent;
-  const target = mouse.currentTarget;
+  const target = (mouse.currentTarget ?? mouse.target) as Element | null;
   const svg =
-    target instanceof SVGElement
-      ? target.ownerSVGElement ?? (target instanceof SVGSVGElement ? target : null)
-      : null;
-  let categoryIdx = 0;
-  if (svg && typeof mouse.clientX === 'number') {
-    const rect = svg.getBoundingClientRect();
-    const rel = (mouse.clientX - rect.left) / Math.max(rect.width, 1);
-    categoryIdx = Math.round(rel * (rows.length - 1));
-  }
-  categoryIdx = Math.max(0, Math.min(rows.length - 1, categoryIdx));
+    target instanceof SVGSVGElement
+      ? target
+      : target instanceof Element
+        ? target.closest('svg')
+        : null;
+  if (!svg || typeof mouse.clientX !== 'number') return;
+  const rect = svg.getBoundingClientRect();
+  const rel = (mouse.clientX - rect.left) / Math.max(rect.width, 1);
+  const categoryIdx = Math.max(
+    0,
+    Math.min(rows.length - 1, Math.round(rel * (rows.length - 1))),
+  );
   const nSeries = spec.value.series.length;
   let si =
     typeof seriesIdx === 'number' && Number.isFinite(seriesIdx)

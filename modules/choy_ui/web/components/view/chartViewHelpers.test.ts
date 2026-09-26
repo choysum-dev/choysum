@@ -15,6 +15,16 @@ import {
   sortChartCategories,
 } from './chartViewHelpers';
 
+test('toSeriesOut coerces non-finite values to 0', () => {
+  const spec = barAdapter.build({
+    categories: ['A', 'B'],
+    seriesMatrix: [{ name: 'X', data: [Number.POSITIVE_INFINITY, Number.NaN] }],
+    metricLabel: 'Count',
+    stacked: false,
+  });
+  expect(spec.series[0]!.values).toEqual([0, 0]);
+});
+
 test('resolveChartAdapter returns bar/line/pie and rejects unknown', () => {
   expect(resolveChartAdapter('bar')?.id).toBe('bar');
   expect(resolveChartAdapter('line')?.id).toBe('line');
