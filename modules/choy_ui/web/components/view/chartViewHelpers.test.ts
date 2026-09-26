@@ -323,4 +323,18 @@ test('resolveLineClickCategory maps relative x to nearest category', () => {
   expect(resolveLineClickCategory(-0.2, 4)).toBe(0);
   expect(resolveLineClickCategory(1.2, 4)).toBe(3);
   expect(resolveLineClickCategory(0.5, 3)).toBe(1);
+  expect(resolveLineClickCategory(Number.NaN, 4)).toBe(0);
+});
+
+test('sortChartCategories coerces non-finite values to 0', () => {
+  const sorted = sortChartCategories(
+    ['A', 'B'],
+    [
+      { name: 'X', data: [Number.POSITIVE_INFINITY, 1] },
+      { name: 'Y', data: [0, 2] },
+    ],
+    'asc',
+  );
+  expect(sorted.categories).toEqual(['A', 'B']);
+  expect(sorted.seriesMatrix[0]!.data).toEqual([0, 1]);
 });

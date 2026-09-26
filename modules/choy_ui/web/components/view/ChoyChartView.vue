@@ -297,17 +297,27 @@ type UnovisClickEvent = MouseEvent | PointerEvent | TouchEvent | WheelEvent;
 
 function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
   if (!spec.value) return;
-  const category = spec.value.categories[categoryIdx];
-  if (category == null) return;
+  const idx = Number.isFinite(categoryIdx) ? Math.round(categoryIdx) : -1;
+  const category = spec.value.categories[idx];
+  if (idx < 0 || category == null) return;
+  // Stacked/grouped event indexes can be stale or out of range: never emit a
+  // series index that has no matching series.
+  const resolvedSeriesIdx =
+    seriesIdx != null &&
+    Number.isFinite(seriesIdx) &&
+    seriesIdx >= 0 &&
+    seriesIdx < spec.value.series.length
+      ? Math.round(seriesIdx)
+      : undefined;
   const series =
-    seriesIdx == null ? undefined : spec.value.series[seriesIdx];
+    resolvedSeriesIdx == null ? undefined : spec.value.series[resolvedSeriesIdx];
   emit('chart-item-click', {
     chartType: spec.value.kind,
     category,
     seriesName: series?.name,
-    value: series?.values[categoryIdx],
-    categoryIndex: categoryIdx,
-    seriesIndex: seriesIdx,
+    value: series?.values[idx],
+    categoryIndex: idx,
+    seriesIndex: resolvedSeriesIdx,
     path: [category],
   });
 }

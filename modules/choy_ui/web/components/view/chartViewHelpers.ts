@@ -20,6 +20,14 @@ export type ChoyChartItemClickPayload = {
 };
 
 /**
+ * Coerces unknown values to a finite number (Infinity/NaN → 0).
+ */
+function toFiniteNumber(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
  * Normalizes each category column to percentages that sum to 100 (or 0).
  */
 export function normalizeSeriesToPercent(
@@ -28,7 +36,7 @@ export function normalizeSeriesToPercent(
 ): ChoyChartSeries[] {
   // Negative values cannot form a 0–100 percent stack; clamp them out of totals
   // (same product rule as pieAdapter dropping non-positive slices).
-  const positive = (v: unknown): number => Math.max(0, Number(v) || 0);
+  const positive = (v: unknown): number => Math.max(0, toFiniteNumber(v));
   const totals = categories.map((_, idx) =>
     seriesMatrix.reduce((sum, s) => sum + positive(s.data[idx]), 0),
   );
@@ -58,7 +66,7 @@ export function sortChartCategories(
     };
   }
   const totals = categories.map((_, idx) =>
-    seriesMatrix.reduce((sum, s) => sum + (Number(s.data[idx]) || 0), 0),
+    seriesMatrix.reduce((sum, s) => sum + toFiniteNumber(s.data[idx]), 0),
   );
   const order = categories
     .map((_, idx) => idx)
@@ -70,7 +78,7 @@ export function sortChartCategories(
     categories: order.map(i => categories[i]!),
     seriesMatrix: seriesMatrix.map(s => ({
       name: s.name,
-      data: order.map(i => Number(s.data[i]) || 0),
+      data: order.map(i => toFiniteNumber(s.data[i])),
     })),
   };
 }
@@ -183,6 +191,7 @@ export function resolveStackedXyClickTarget(
  */
 export function resolveLineClickCategory(rel: number, count: number): number {
   if (count <= 1) return 0;
+  if (!Number.isFinite(rel)) return 0;
   const clamped = Math.min(1, Math.max(0, rel));
   return Math.round(clamped * (count - 1));
 }
