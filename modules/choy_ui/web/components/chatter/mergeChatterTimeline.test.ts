@@ -84,6 +84,17 @@ test('mergeChatterTimeline skips rows without ids or timestamps', () => {
   expect(entries).toEqual([]);
 });
 
+test('mergeChatterTimeline keeps a message and field change sharing an id', () => {
+  const at = '2024-01-01T00:00:00.000Z';
+  const entries = mergeChatterTimeline(
+    [{ Id: 'dup', Body: 'm', CreatedAt: at }],
+    [{ Id: 'dup', Kind: 'field', Field: 'Name', At: at }],
+  );
+  expect(entries).toHaveLength(2);
+  expect(entries.some(entry => entry.kind === 'message')).toBe(true);
+  expect(entries.some(entry => entry.kind === 'fieldChange')).toBe(true);
+});
+
 test('mergeChatterTimeline dedupes identical kind:id after sort', () => {
   const at = '2024-01-01T00:00:00.000Z';
   const entries = mergeChatterTimeline(
