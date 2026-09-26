@@ -59,17 +59,20 @@ const emit = defineEmits<{
 }>();
 
 const composerRef = ref<{ clear: () => void } | null>(null);
+const postingResId = ref<string | null>(null);
 
 watch(
   () => props.resId,
-  () => composerRef.value?.clear(),
+  () => {
+    // Invalidate in-flight post so A→B→A cannot let a stale completion clear
+    // a draft typed after re-selecting the record.
+    postingResId.value = null;
+    composerRef.value?.clear();
+  },
 );
 
 const composerVisible = computed(
-  () =>
-    props.showComposer &&
-    !!String(props.resId || '').trim() &&
-    !props.disabled,
+  () => props.showComposer && !!String(props.resId || '').trim(),
 );
 
 const canToggleFollow = computed(
@@ -89,8 +92,6 @@ function resolveAuthorLabel(userId: string | null | undefined): string {
 function onPost(body: string): void {
   emit('post', body);
 }
-
-const postingResId = ref<string | null>(null);
 
 watch(
   () => props.posting,
