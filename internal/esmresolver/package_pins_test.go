@@ -67,3 +67,25 @@ func TestExactPinsFromPackageJSONInvalidJSON(t *testing.T) {
 		t.Fatal("expected parse error")
 	}
 }
+
+func TestExactPinsFromPackageJSONReadErrorAndEmptyExact(t *testing.T) {
+	dir := t.TempDir()
+	pkgPath := filepath.Join(dir, "package.json")
+	if err := os.WriteFile(pkgPath, []byte(`{"dependencies":{"left-pad":"^1.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pins, err := ExactPinsFromPackageJSON(dir)
+	if err != nil || pins != nil {
+		t.Fatalf("only ranges => nil,nil got %#v %v", pins, err)
+	}
+
+	// package.json as a directory makes ReadFile fail with a non-NotExist error.
+	badRoot := t.TempDir()
+	if err := os.Mkdir(filepath.Join(badRoot, "package.json"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err = ExactPinsFromPackageJSON(badRoot)
+	if err == nil {
+		t.Fatal("expected read error when package.json is a directory")
+	}
+}

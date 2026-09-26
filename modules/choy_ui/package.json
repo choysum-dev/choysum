@@ -30,7 +30,8 @@
     "application": "choy_ui",
     "category": "Development",
     "depends": [
-      "core"
+      "core",
+      "web"
     ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {

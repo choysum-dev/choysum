@@ -81,3 +81,32 @@ func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
 		t.Fatalf("@tanstack/vue-virtual pin = %q want 3.13.39", pins["@tanstack/vue-virtual"])
 	}
 }
+
+func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
+	empty := vueHostBareImportPins(t.TempDir())
+	if len(empty) != 1 || empty["vue"] != choysummount.VuePackageVersion {
+		t.Fatalf("missing web package.json => host vue only, got %#v", empty)
+	}
+
+	root := t.TempDir()
+	webRoot := filepath.Join(root, "modules", "web")
+	if err := os.MkdirAll(webRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkg := `{
+  "peerDependencies": {
+    "vue": "9.9.9",
+    "@tanstack/vue-table": "8.21.3"
+  }
+}`
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(pkg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pins := vueHostBareImportPins(root)
+	if pins["vue"] != choysummount.VuePackageVersion {
+		t.Fatalf("host vue must win over package.json, got %q", pins["vue"])
+	}
+	if pins["@tanstack/vue-table"] != "8.21.3" {
+		t.Fatalf("expected peer pin, got %#v", pins)
+	}
+}

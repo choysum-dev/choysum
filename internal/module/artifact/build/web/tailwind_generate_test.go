@@ -347,3 +347,108 @@ func findRepoModulesDir(t *testing.T) string {
 	t.Skip("could not locate modules/web kit theme from test wd")
 	return ""
 }
+
+func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
+	t.Parallel()
+	got, err := ScanChoyKitTailwindCandidates("")
+	if err != nil || got != nil {
+		t.Fatalf("empty root => nil,nil got %#v %v", got, err)
+	}
+	got, err = ScanChoyKitTailwindCandidates(filepath.Join(t.TempDir(), "missing"))
+	if err != nil || got != nil {
+		t.Fatalf("missing root => nil,nil got %#v %v", got, err)
+	}
+	_, err = ScanChoyKitTailwindCandidates("web\x00root")
+	if err == nil {
+		t.Fatal("expected Stat error for NUL in path")
+	}
+	fileRoot := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(fileRoot, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err = ScanChoyKitTailwindCandidates(fileRoot)
+	if err != nil || got != nil {
+		t.Fatalf("file root => nil,nil got %#v %v", got, err)
+	}
+	if isChoyKitTailwindInputPath("/abs/web", "relative/only.css") {
+		t.Fatal("Rel mismatch must return false")
+	}
+
+	webRoot := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(webRoot, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("styles/theme.css", `.x { color: red }`)
+	write("styles/tokens.scss", `$x: 1;`) // ignored: not .css
+	write("styles/"+choyTailwindGeneratedCSSName, `/* generated */`)
+	write("styles/foo.generated.css", `/* generated sibling */`)
+	write("components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("components/internal/engine.ts", `export const c = "gap-2"`)
+	write("lib/utils.ts", `export const c = "p-2"`)
+	write("composables/useChoyTheme.ts", `export const c = "text-sm"`)
+	write("composables/useOther.ts", `export const c = "hidden"`)
+	write("pages/Gallery.vue", `<div class="block"></div>`)
+	write("pages/DogfoodLogin.vue", `<div class="inline"></div>`)
+	write("pages/partnerDetailSheet.vue", `<div class="grid"></div>`)
+	write("pages/Home.vue", `<div class="sr-only"></div>`)
+	write("components/layout/ChoyShell.vue", `<div class="min-h-0"></div>`)
+	write("components/layout/OLayout.vue", `<div class="max-w-0"></div>`)
+	write("components/view/Helpers.ts", `export const c = "rounded"`)
+	write("components/field/plain.ts", `export const c = "border"`)
+	write("components/chatter/chatterHelpers.ts", `export const c = "shadow"`)
+	write("other/Ignore.vue", `<div class="opacity-0"></div>`)
+
+	for _, skip := range []string{"node_modules/pkg/x.vue", "dist/out.css", ".git/config"} {
+		write(skip, `<div class="should-skip"></div>`)
+	}
+
+	locked := filepath.Join(webRoot, "locked-dir")
+	if err := os.MkdirAll(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "x.vue"), []byte(`<div class="x"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	got, err = ScanChoyKitTailwindCandidates(webRoot)
+	if err == nil {
+		// Some environments (root / platform) can still walk mode 000 dirs.
+		t.Logf("walk continued despite locked dir; candidates=%d", len(got))
+	} else if !os.IsPermission(err) && !strings.Contains(err.Error(), "permission") {
+		// Still accept other walk errors from the locked dir.
+		t.Logf("ScanChoyKitTailwindCandidates locked-dir error: %v", err)
+	}
+
+	// Re-scan without the locked dir for stable candidate assertions.
+	_ = os.Chmod(locked, 0o755)
+	_ = os.RemoveAll(locked)
+	got, err = ScanChoyKitTailwindCandidates(webRoot)
+	if err != nil {
+		t.Fatalf("ScanChoyKitTailwindCandidates: %v", err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "gap-2", "p-2", "text-sm", "block", "inline", "grid", "min-h-0", "rounded", "shadow"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border"} {
+		if set[deny] {
+			t.Fatalf("unexpected candidate %q in %v", deny, got)
+		}
+	}
+}

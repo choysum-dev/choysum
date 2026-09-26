@@ -102,8 +102,10 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 	// x/net/html treats <textarea>/<title>/… as raw-text elements (case-insensitive).
 	// Vue product SFCs often put PascalCase component tags (e.g. <Textarea>) before
 	// <script setup>; without masking, the tokenizer swallows the script block.
+	// Masking is limited to unquoted text inside <template> so script/style string
+	// literals and attribute values keep literal "<Textarea>" unchanged.
 	masked := maskPascalCaseRawTextTags(string(src))
-	doc, err := parseWithCaseSensitive(strings.NewReader(masked))
+	doc, err := vueSfcHTMLParse(strings.NewReader(masked))
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -125,10 +127,100 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 // Go regexp has no lookahead; the trailing delimiter is re-emitted by the replacer.
 var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|Title|Style|Script|Noscript|Iframe|Noembed|Noframes|Xmp|Plaintext)([\s/>])`)
 
+var sfcTemplateOpen = regexp.MustCompile(`(?i)<template\b[^>]*>`)
+var sfcTemplateClose = regexp.MustCompile(`(?i)</template\s*>`)
+
 const vueRawTextMaskPrefix = "VueSfcRaw"
 
+// vueSfcHTMLParse is the HTML parse step after masking; tests may override it.
+var vueSfcHTMLParse = parseWithCaseSensitive
+
 func maskPascalCaseRawTextTags(src string) string {
-	return pascalCaseRawTextTag.ReplaceAllStringFunc(src, func(m string) string {
+	var out strings.Builder
+	out.Grow(len(src) + 32)
+	i := 0
+	for i < len(src) {
+		openLoc := sfcTemplateOpen.FindStringIndex(src[i:])
+		if openLoc == nil {
+			out.WriteString(src[i:])
+			break
+		}
+		openEnd := i + openLoc[1]
+		out.WriteString(src[i:openEnd])
+		bodyStart := openEnd
+		depth := 1
+		pos := bodyStart
+		for depth > 0 {
+			nextOpen := sfcTemplateOpen.FindStringIndex(src[pos:])
+			nextClose := sfcTemplateClose.FindStringIndex(src[pos:])
+			if nextClose == nil {
+				out.WriteString(maskPascalCaseRawTextTagsOutsideQuotes(src[bodyStart:]))
+				return out.String()
+			}
+			closeAt := pos + nextClose[0]
+			closeEnd := pos + nextClose[1]
+			if nextOpen != nil {
+				openAt := pos + nextOpen[0]
+				if openAt < closeAt {
+					pos = pos + nextOpen[1]
+					depth++
+					continue
+				}
+			}
+			depth--
+			if depth == 0 {
+				out.WriteString(maskPascalCaseRawTextTagsOutsideQuotes(src[bodyStart:closeAt]))
+				out.WriteString(src[closeAt:closeEnd])
+				i = closeEnd
+				break
+			}
+			pos = closeEnd
+		}
+	}
+	return out.String()
+}
+
+func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
+	var out strings.Builder
+	out.Grow(len(s) + 16)
+	i := 0
+	for i < len(s) {
+		j := i
+		for j < len(s) {
+			c := s[j]
+			if c == '\'' || c == '"' || c == '`' {
+				break
+			}
+			j++
+		}
+		out.WriteString(replacePascalCaseRawTextTags(s[i:j]))
+		if j >= len(s) {
+			break
+		}
+		quote := s[j]
+		k := j + 1
+		for k < len(s) {
+			if s[k] == '\\' {
+				k += 2
+				continue
+			}
+			if s[k] == quote {
+				k++
+				break
+			}
+			k++
+		}
+		if k > len(s) {
+			k = len(s)
+		}
+		out.WriteString(s[j:k])
+		i = k
+	}
+	return out.String()
+}
+
+func replacePascalCaseRawTextTags(s string) string {
+	return pascalCaseRawTextTag.ReplaceAllStringFunc(s, func(m string) string {
 		delim := m[len(m)-1:]
 		body := m[:len(m)-1]
 		if strings.HasPrefix(body, "</") {

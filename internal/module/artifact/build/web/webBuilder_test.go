@@ -5220,3 +5220,58 @@ func TestPersistModuleUiResourcesDeleteErrors(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildOptionsExactPinsFromPackageJSON(t *testing.T) {
+	t.Run("applies exact pins on prebuild and build", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		pkg := `{"peerDependencies":{"@tanstack/vue-table":"8.21.3","reka-ui":"2.10.4"}}`
+		if err := os.WriteFile(filepath.Join(moduleRef.Path, "package.json"), []byte(pkg), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		plugin := &buildTestPlugin{}
+		builder := &WebModuleBuilder{
+			runtimeScope:   testRuntimeScope,
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			prebuildPlugin: plugin,
+			buildPlugin:    plugin,
+		}
+		for _, prebuild := range []bool{true, false} {
+			opts := builder.buildOptions(prebuild)
+			if opts == nil || len(opts.Plugins) == 0 {
+				t.Fatalf("prebuild=%v: expected plugins from exact pins path", prebuild)
+			}
+		}
+	})
+
+	t.Run("warns when package.json pins are unreadable", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := os.Mkdir(filepath.Join(moduleRef.Path, "package.json"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		plugin := &buildTestPlugin{}
+		builder := &WebModuleBuilder{
+			runtimeScope:   testRuntimeScope,
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			prebuildPlugin: plugin,
+			buildPlugin:    plugin,
+		}
+		for _, prebuild := range []bool{true, false} {
+			_ = builder.buildOptions(prebuild)
+		}
+		if !strings.Contains(logBuf.String(), "exact peer pins from package.json unavailable") {
+			t.Fatalf("expected pin warn log, got %q", logBuf.String())
+		}
+	})
+}

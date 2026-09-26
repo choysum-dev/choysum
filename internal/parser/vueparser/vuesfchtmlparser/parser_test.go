@@ -4,6 +4,8 @@
 package vuesfchtmlparser
 
 import (
+	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -59,6 +61,115 @@ func TestParseVueSfcTemplateFirstWithPascalTextarea(t *testing.T) {
 	}
 	if !strings.Contains(scripts[0].FirstChild.Data, "const x") {
 		t.Fatalf("expected script body, got %#v", scripts[0])
+	}
+}
+
+func TestParseVueSfcDoesNotMaskScriptOrAttributeLiterals(t *testing.T) {
+	source := `<template>
+  <div data-sample="<Textarea>" :title="'<Style>'">
+    <Textarea>body</Textarea>
+  </div>
+</template>
+<script setup lang="ts">
+const label = "<Textarea>";
+const other = '<Title>';
+</script>`
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	scriptText := scripts[0].FirstChild.Data
+	if strings.Contains(scriptText, vueRawTextMaskPrefix) {
+		t.Fatalf("script literals must not be masked, got %q", scriptText)
+	}
+	if !strings.Contains(scriptText, `const label = "<Textarea>"`) {
+		t.Fatalf("expected preserved Textarea string literal, got %q", scriptText)
+	}
+	if !strings.Contains(scriptText, `const other = '<Title>'`) {
+		t.Fatalf("expected preserved Title string literal, got %q", scriptText)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(rendered, vueRawTextMaskPrefix) {
+		t.Fatalf("template must unmask element names, got %q", rendered)
+	}
+	if !strings.Contains(rendered, `data-sample="<Textarea>"`) {
+		t.Fatalf("attribute value must stay unmasked, got %q", rendered)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `</Textarea>`) {
+		t.Fatalf("expected paired Textarea elements, got %q", rendered)
+	}
+}
+
+func TestParseVueSfcHTMLParseError(t *testing.T) {
+	prev := vueSfcHTMLParse
+	t.Cleanup(func() { vueSfcHTMLParse = prev })
+	vueSfcHTMLParse = func(r io.Reader) (*html.Node, error) {
+		return nil, errors.New("forced parse failure")
+	}
+	_, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(`<template/><script setup></script>`))
+	if err == nil || !strings.Contains(err.Error(), "forced parse failure") {
+		t.Fatalf("expected forced parse failure, got %v", err)
+	}
+}
+
+func TestUnmaskPascalCaseRawTextTagsNil(t *testing.T) {
+	unmaskPascalCaseRawTextTags(nil)
+}
+
+func TestMaskPascalCaseRawTextTagsUnclosedTemplate(t *testing.T) {
+	src := `<template><Textarea />`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("expected mask in unclosed template, got %q", got)
+	}
+	src = `<div/><script>const x = "<Textarea>"</script>`
+	got = maskPascalCaseRawTextTags(src)
+	if strings.Contains(got, vueRawTextMaskPrefix) {
+		t.Fatalf("script outside template must not be masked, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsNestedSlotTemplates(t *testing.T) {
+	src := `<template>
+  <Shell>
+    <template #header><span/></template>
+    <Textarea v-model="x" />
+  </Shell>
+</template>
+<script setup>const x = "<Textarea>"</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("root-template Textarea must be masked, got %q", got)
+	}
+	if strings.Contains(got, `const x = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("script literal must stay unmasked, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const x = "<Textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsOutsideQuotesEscapes(t *testing.T) {
+	// Escaped quote inside an attribute must not end the string early.
+	in := `<span title="say \"hi\""></span><Textarea/>`
+	got := maskPascalCaseRawTextTagsOutsideQuotes(in)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea outside quotes must mask, got %q", got)
+	}
+	if !strings.Contains(got, `title="say \"hi\""`) {
+		t.Fatalf("escaped quotes must stay intact, got %q", got)
+	}
+	// Lone trailing backslash inside an unclosed quote clamps without panicking.
+	got = maskPascalCaseRawTextTagsOutsideQuotes(`title="x\`)
+	if got != `title="x\` {
+		t.Fatalf("trailing backslash clamp, got %q", got)
 	}
 }
 
