@@ -9,8 +9,8 @@ SPDX-License-Identifier: Apache-2.0
       <header class="choy-gallery-header">
         <h1 class="choy-gallery-title">Choy UI Gallery</h1>
         <p class="choy-gallery-lede">
-          Isolation kit shell: tokens, L1 shells, fields, Form/List/Search, L2 controls, L3 engines,
-          density / dark toggles. No Element Plus on this page.
+          Isolation kit shell: tokens, L1 shells, fields, Form/List/Search/Kanban, Html/Json/Properties,
+          O2M·M2M, L2 controls, L3 engines, density / dark toggles. No Element Plus on this page.
         </p>
         <div class="choy-gallery-controls">
           <Button variant="outline" size="sm" @click="toggleDark">{{ isDark ? 'Light' : 'Dark' }}</Button>
@@ -151,6 +151,103 @@ SPDX-License-Identifier: Apache-2.0
                 v-model:page="galleryListPage"
                 v-model:page-size="galleryListPageSize"
                 :total="galleryListFiltered.length"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section class="choy-gallery-section">
+        <h2>PR6 — Kanban / relations / Html / Json / Properties</h2>
+        <div class="choy-gallery-l2-grid">
+          <Card class="sm:col-span-2">
+            <CardHeader>
+              <CardTitle>Kanban</CardTitle>
+              <CardDescription>Drag cards across lanes (local state)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChoyKanbanView v-model:lanes="galleryKanbanLanes" @card-move="onGalleryKanbanMove" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Html / Json</CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+              <ChoyHtmlField v-model="galleryHtml" label="Notes (HTML)" name="html" />
+              <ChoyJsonField v-model="galleryJson" label="Meta (JSON)" name="json" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Properties</CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+              <ChoyPropertiesField
+                v-model="galleryPropsMap"
+                label="Dynamic props"
+                :items="galleryPropItems"
+              />
+              <ChoyPropertiesDefinitionEditor
+                :items="galleryPropDefs"
+                @saved="onGalleryPropDefsSaved"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>One2Many</CardTitle>
+              <CardDescription>list + kanban widgets</CardDescription>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+              <ChoyOneToManyField
+                v-model="galleryO2MRows"
+                label="Lines (list)"
+                widget="list"
+                :columns="galleryO2MColumns"
+                title-field="Title"
+              />
+              <ChoyOneToManyField
+                v-model="galleryO2MRows"
+                label="Lines (kanban)"
+                widget="kanban"
+                title-field="Title"
+                subtitle-field="Note"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Many2Many</CardTitle>
+              <CardDescription>tags / list / tree</CardDescription>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+              <ChoyManyToManyField
+                v-model="galleryM2MIds"
+                label="Tags"
+                widget="tags"
+                search-key="gallery.m2m"
+                :search="searchPartners"
+                :options="partnerCatalog"
+              />
+              <ChoyManyToManyField
+                v-model="galleryM2MIds"
+                label="List"
+                widget="list"
+                search-key="gallery.m2m"
+                :search="searchPartners"
+                :options="partnerCatalog"
+                :height="160"
+              />
+              <ChoyManyToManyField
+                v-model="galleryM2MTreeIds"
+                label="Tree"
+                widget="tree"
+                :tree-nodes="galleryTreeNodes"
               />
             </CardContent>
           </Card>
@@ -480,12 +577,28 @@ import ChoyTab from '../components/layout/ChoyTab.vue';
 import ChoyTabs from '../components/layout/ChoyTabs.vue';
 import ChoyFormView from '../components/view/ChoyFormView.vue';
 import ChoyListView from '../components/view/ChoyListView.vue';
+import ChoyKanbanView from '../components/view/ChoyKanbanView.vue';
 import ChoySearchView from '../components/view/ChoySearchView.vue';
 import ChoyPagination from '../components/view/ChoyPagination.vue';
 import ChoyBreadcrumb from '../components/view/ChoyBreadcrumb.vue';
 import ChoyVarcharField from '../components/field/ChoyVarcharField.vue';
 import ChoyDateField from '../components/field/ChoyDateField.vue';
 import ChoyBooleanField from '../components/field/ChoyBooleanField.vue';
+import ChoyHtmlField from '../components/field/ChoyHtmlField.vue';
+import ChoyJsonField from '../components/field/ChoyJsonField.vue';
+import ChoyPropertiesField from '../components/field/ChoyPropertiesField.vue';
+import ChoyPropertiesDefinitionEditor from '../components/field/ChoyPropertiesDefinitionEditor.vue';
+import ChoyOneToManyField from '../components/field/ChoyOneToManyField.vue';
+import ChoyManyToManyField from '../components/field/ChoyManyToManyField.vue';
+import {
+  groupRowsIntoChoyKanbanLanes,
+  type ChoyKanbanLane,
+  type ChoyKanbanMove,
+} from '../components/view/kanbanViewHelpers';
+import type { ChoyJsonValue } from '../components/field/jsonFieldHelpers';
+import type { PropertiesMap } from '../components/field/propertiesHelpers';
+import type { PropertyItemDefinition, ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
+import type { ChoyManyToManyTreeNode } from '../components/field/ChoyManyToManyField.vue';
 import {
   filterRowsByKeyword,
   type ChoySearchQuery,
@@ -529,6 +642,88 @@ const tableSelection = ref<Array<string | number>>([]);
 const pickedDate = ref<string | null>(null);
 const relationId = ref<string | null>(null);
 const relationSearchMoreHint = ref('');
+
+const galleryKanbanLanes = ref<ChoyKanbanLane[]>(
+  groupRowsIntoChoyKanbanLanes(
+    [
+      { Id: 'k1', Title: 'Draft invoice', State: 'draft', Note: 'Acme' },
+      { Id: 'k2', Title: 'Review contract', State: 'review', Note: 'Legal' },
+      { Id: 'k3', Title: 'Ship order', State: 'done', Note: 'Warehouse' },
+      { Id: 'k4', Title: 'Write proposal', State: 'draft', Note: 'Sales' },
+    ],
+    {
+      laneField: 'State',
+      laneDefs: [
+        { key: 'draft', label: 'Draft' },
+        { key: 'review', label: 'Review' },
+        { key: 'done', label: 'Done' },
+      ],
+      titleField: 'Title',
+      subtitleField: 'Note',
+    },
+  ),
+);
+
+const galleryHtml = ref<string | null>('<p>Hello <strong>Choy</strong> HTML</p>');
+const galleryJson = ref<ChoyJsonValue>({ region: 'APAC', tier: 1 });
+const galleryPropDefs = ref<PropertyItemDefinition[]>([
+  { name: 'color', type: 'char', string: 'Color', default: 'blue' },
+  { name: 'priority', type: 'selection', string: 'Priority', selection: [['low', 'Low'], ['high', 'High']] },
+  { name: 'active', type: 'boolean', string: 'Active', default: true },
+]);
+const galleryPropItems = ref<ResolvedPropertyItem[]>([
+  { name: 'color', type: 'char', string: 'Color', value: 'blue' },
+  {
+    name: 'priority',
+    type: 'selection',
+    string: 'Priority',
+    selection: [['low', 'Low'], ['high', 'High']],
+    value: 'low',
+  },
+  { name: 'active', type: 'boolean', string: 'Active', value: true },
+]);
+const galleryPropsMap = ref<PropertiesMap>(
+  Object.assign(Object.create(null), { color: 'blue', priority: 'low', active: true }),
+);
+
+type O2MRow = { Id: string; Title: string; Note?: string };
+const galleryO2MRows = ref<O2MRow[]>([
+  { Id: 'l1', Title: 'Line A', Note: 'first' },
+  { Id: 'l2', Title: 'Line B', Note: 'second' },
+]);
+const galleryO2MColumns: ColumnDef<O2MRow, unknown>[] = [
+  { accessorKey: 'Title', header: 'Title', size: 140 },
+  { accessorKey: 'Note', header: 'Note', size: 120 },
+];
+
+const galleryM2MIds = ref<string[]>(['p1', 'p2']);
+const galleryM2MTreeIds = ref<string[]>(['n1']);
+const galleryTreeNodes: ChoyManyToManyTreeNode[] = [
+  {
+    id: 'n1',
+    label: 'Root A',
+    children: [
+      { id: 'n1a', label: 'Child A1' },
+      { id: 'n1b', label: 'Child A2' },
+    ],
+  },
+  { id: 'n2', label: 'Root B' },
+];
+
+function onGalleryKanbanMove(move: ChoyKanbanMove): void {
+  ChoyMessage.info('Kanban move', {
+    description: `${move.cardId}: ${move.fromLaneKey} → ${move.toLaneKey}`,
+  });
+}
+
+function onGalleryPropDefsSaved(items: PropertyItemDefinition[]): void {
+  galleryPropDefs.value = items;
+  galleryPropItems.value = items.map(item => ({
+    ...item,
+    value: galleryPropsMap.value[item.name] ?? item.default,
+  }));
+  ChoyMessage.success('Property definition saved (gallery)');
+}
 
 const tableColumns: ColumnDef<DemoRow, unknown>[] = [
   { accessorKey: 'name', header: 'Name', size: 160 },

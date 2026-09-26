@@ -12,13 +12,21 @@ import '../styles/preflight-policy.css';
 import '../styles/choy-tailwind.generated.css';
 import ChoyBooleanField from '../components/field/ChoyBooleanField.vue';
 import ChoyDateField from '../components/field/ChoyDateField.vue';
+import ChoyHtmlField from '../components/field/ChoyHtmlField.vue';
+import ChoyJsonField from '../components/field/ChoyJsonField.vue';
+import ChoyManyToManyField from '../components/field/ChoyManyToManyField.vue';
 import ChoyManyToOneField from '../components/field/ChoyManyToOneField.vue';
 import ChoyMonetaryField from '../components/field/ChoyMonetaryField.vue';
+import ChoyOneToManyField from '../components/field/ChoyOneToManyField.vue';
+import ChoyPropertiesField from '../components/field/ChoyPropertiesField.vue';
 import ChoySelectionField from '../components/field/ChoySelectionField.vue';
 import ChoyStatusbarField from '../components/field/ChoyStatusbarField.vue';
 import ChoyTextField from '../components/field/ChoyTextField.vue';
 import ChoyVarcharField from '../components/field/ChoyVarcharField.vue';
 import type { RelationOption } from '../components/internal/relationComboboxHelpers';
+import type { ChoyJsonValue } from '../components/field/jsonFieldHelpers';
+import type { PropertiesMap } from '../components/field/propertiesHelpers';
+import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
 import ChoyButton from '../components/layout/ChoyButton.vue';
 import ChoyCard from '../components/layout/ChoyCard.vue';
 import ChoyCol from '../components/layout/ChoyCol.vue';
@@ -29,9 +37,14 @@ import ChoyTabs from '../components/layout/ChoyTabs.vue';
 import Toaster from '../components/vendor/ui/toast/Toaster.vue';
 import ChoyBreadcrumb from '../components/view/ChoyBreadcrumb.vue';
 import ChoyFormView from '../components/view/ChoyFormView.vue';
+import ChoyKanbanView from '../components/view/ChoyKanbanView.vue';
 import ChoyListView from '../components/view/ChoyListView.vue';
 import ChoyPagination from '../components/view/ChoyPagination.vue';
 import ChoySearchView from '../components/view/ChoySearchView.vue';
+import {
+  groupRowsIntoChoyKanbanLanes,
+  type ChoyKanbanLane,
+} from '../components/view/kanbanViewHelpers';
 import {
   choyPageOffset,
   choyTotalPages,
@@ -44,8 +57,8 @@ import {
 import { ChoyMessage } from '../composables/useChoyMessage';
 
 /**
- * Dogfood company form: Form + fields + List/Search/Pagination against local mocks.
- * No RPC — exercises the PR5 main path in isolation.
+ * Dogfood company form: Form + fields + List/Search/Kanban against local mocks.
+ * No RPC — exercises the PR5/PR6 main path in isolation.
  */
 
 type CompanyRow = {
@@ -95,6 +108,53 @@ const state = ref('draft');
 const founded = ref<string | null>('2020-03-15');
 const currencyId = ref<string | null>('usd');
 const currencyOption = ref<RelationOption | null>(CURRENCIES[0] ?? null);
+const htmlNotes = ref<string | null>('<p>Dogfood <em>HTML</em> notes.</p>');
+const metaJson = ref<ChoyJsonValue>({ source: 'dogfood', version: 1 });
+const propItems: ResolvedPropertyItem[] = [
+  { name: 'segment', type: 'char', string: 'Segment', value: 'enterprise' },
+  {
+    name: 'tier',
+    type: 'selection',
+    string: 'Tier',
+    selection: [['bronze', 'Bronze'], ['silver', 'Silver'], ['gold', 'Gold']],
+    value: 'silver',
+  },
+];
+const propsMap = ref<PropertiesMap>(
+  Object.assign(Object.create(null), { segment: 'enterprise', tier: 'silver' }),
+);
+
+type ContactLine = { Id: string; Title: string; Role?: string };
+const contactLines = ref<ContactLine[]>([
+  { Id: 'ct1', Title: 'Ada Lovelace', Role: 'Owner' },
+  { Id: 'ct2', Title: 'Grace Hopper', Role: 'Billing' },
+]);
+const contactColumns: ColumnDef<ContactLine, unknown>[] = [
+  { accessorKey: 'Title', header: 'Name', size: 160 },
+  { accessorKey: 'Role', header: 'Role', size: 100 },
+];
+const tagIds = ref<string[]>(['usd']);
+
+const kanbanLanes = ref<ChoyKanbanLane[]>(
+  groupRowsIntoChoyKanbanLanes(
+    allRows.value.slice(0, 12).map((row, i) => ({
+      Id: row.Id,
+      Title: row.name,
+      State: i % 3 === 0 ? 'draft' : i % 3 === 1 ? 'confirmed' : 'done',
+      Note: row.country,
+    })),
+    {
+      laneField: 'State',
+      laneDefs: [
+        { key: 'draft', label: 'Draft' },
+        { key: 'confirmed', label: 'Confirmed' },
+        { key: 'done', label: 'Done' },
+      ],
+      titleField: 'Title',
+      subtitleField: 'Note',
+    },
+  ),
+);
 
 const searchKeyword = ref('');
 const appliedQuery = ref<ChoySearchQuery>({ keyword: '', filters: [] });
@@ -214,6 +274,14 @@ function onSave(): void {
     }
     row.name = trimmed;
     row.active = captureActive;
+    // Keep Kanban cards in sync with the renamed company row.
+    for (const lane of kanbanLanes.value) {
+      for (const card of lane.cards) {
+        if (card.id === captureRowId) {
+          card.title = trimmed;
+        }
+      }
+    }
     ChoyMessage.success('Company saved (dogfood)', {
       description: `${trimmed} · ${captureCurrencyLabel}`,
     });
@@ -315,8 +383,48 @@ function onRowClick(row: CompanyRow): void {
                 <ChoyCol :span="12">
                   <ChoyTextField v-model="notes" label="Notes" name="notes" />
                 </ChoyCol>
+                <ChoyCol :span="12">
+                  <ChoyHtmlField v-model="htmlNotes" label="HTML notes" name="html_notes" />
+                </ChoyCol>
+                <ChoyCol :span="6">
+                  <ChoyJsonField v-model="metaJson" label="Meta JSON" name="meta" />
+                </ChoyCol>
+                <ChoyCol :span="6">
+                  <ChoyPropertiesField
+                    v-model="propsMap"
+                    label="Properties"
+                    name="properties"
+                    :items="propItems"
+                  />
+                </ChoyCol>
+                <ChoyCol :span="12">
+                  <ChoyOneToManyField
+                    v-model="contactLines"
+                    label="Contacts"
+                    widget="list"
+                    :columns="contactColumns"
+                    title-field="Title"
+                    subtitle-field="Role"
+                  />
+                </ChoyCol>
+                <ChoyCol :span="12">
+                  <ChoyManyToManyField
+                    v-model="tagIds"
+                    label="Currency tags"
+                    widget="tags"
+                    search-key="dogfood.currency.tags"
+                    :search="searchCurrencies"
+                    :options="CURRENCIES"
+                  />
+                </ChoyCol>
               </ChoyGrid>
             </ChoyFormView>
+          </ChoyCard>
+        </ChoyTab>
+
+        <ChoyTab value="kanban" label="Kanban">
+          <ChoyCard class="mt-4" title="Company pipeline">
+            <ChoyKanbanView v-model:lanes="kanbanLanes" />
           </ChoyCard>
         </ChoyTab>
 
@@ -353,8 +461,8 @@ function onRowClick(row: CompanyRow): void {
 
       <template #footer>
         <p class="text-sm text-foreground/70">
-          Isolation dogfood — Form/List/Search + field main set on local mocks; no Element Plus /
-          no RPC.
+          Isolation dogfood — Form/List/Search/Kanban + field set (incl. Html/Json/Properties/O2M/M2M)
+          on local mocks; no Element Plus / no RPC.
         </p>
       </template>
     </ChoyPage>
