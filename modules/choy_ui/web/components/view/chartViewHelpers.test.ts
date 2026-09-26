@@ -159,6 +159,20 @@ test('normalizeSeriesToPercent and sortChartCategories', () => {
     { name: 'X', data: [100] },
     { name: 'Y', data: [0] },
   ]);
+  expect(
+    normalizeSeriesToPercent(
+      ['T'],
+      [
+        { name: 'A', data: [1] },
+        { name: 'B', data: [1] },
+        { name: 'C', data: [1] },
+      ],
+    ),
+  ).toEqual([
+    { name: 'A', data: [33.33] },
+    { name: 'B', data: [33.33] },
+    { name: 'C', data: [33.33] },
+  ]);
   const none = sortChartCategories(categories, series, 'none');
   expect(none.categories).toEqual(['A', 'B']);
   const desc = sortChartCategories(categories, series, 'desc');
@@ -229,6 +243,11 @@ test('resolveGroupedXyClickTarget maps flat element index', () => {
   expect(resolveGroupedXyClickTarget({ index: 0 }, undefined, 1)).toEqual({
     categoryIdx: 0,
     seriesIdx: 0,
+  });
+  // Flat index implies another category — do not invent a series.
+  expect(resolveGroupedXyClickTarget({ index: 0 }, 3, 2)).toEqual({
+    categoryIdx: 0,
+    seriesIdx: undefined,
   });
 });
 

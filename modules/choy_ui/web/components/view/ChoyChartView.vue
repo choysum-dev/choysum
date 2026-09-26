@@ -228,7 +228,7 @@ const spec = computed<ChoyChartSpec | null>(() => {
   if (!adapter.supports(supportCtx.value)) return null;
   const { categories, seriesMatrix, percent } = prepared.value;
   if (!categories.length || !seriesMatrix.length) return null;
-  return adapter.build({
+  const built = adapter.build({
     categories,
     seriesMatrix,
     metricLabel: metricLabel.value,
@@ -236,6 +236,9 @@ const spec = computed<ChoyChartSpec | null>(() => {
     palette: props.palette,
     percent,
   });
+  // Pie drops non-positive slices; an all-zero dataset must show empty state.
+  if (built.kind === 'pie' && !built.slices?.length) return null;
+  return built;
 });
 
 const xyRows = computed(() => (spec.value && spec.value.kind !== 'pie' ? chartSpecToXyRows(spec.value) : []));

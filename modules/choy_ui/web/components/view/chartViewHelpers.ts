@@ -36,7 +36,8 @@ export function normalizeSeriesToPercent(
     data: (s.data || []).map((v, idx) => {
       const total = totals[idx] || 0;
       if (!total) return 0;
-      return (100 * positive(v)) / total;
+      // Round to 2 dp so axis labels / click payloads stay readable.
+      return Math.round(((100 * positive(v)) / total) * 100) / 100;
     }),
   }));
 }
@@ -137,10 +138,17 @@ export function resolveGroupedXyClickTarget(
     seriesCount > 0
   ) {
     const flat = Math.round(flatIndex);
-    seriesIdx = ((flat % seriesCount) + seriesCount) % seriesCount;
+    const derivedSeries = ((flat % seriesCount) + seriesCount) % seriesCount;
+    const derivedCategory = Math.floor(flat / seriesCount);
     if (categoryIdx == null) {
-      categoryIdx = Math.floor(flat / seriesCount);
+      // No row index available: the flat element index determines both.
+      categoryIdx = derivedCategory;
+      seriesIdx = derivedSeries;
+    } else if (derivedCategory === categoryIdx) {
+      seriesIdx = derivedSeries;
     }
+    // Otherwise the event index disagrees with the datum: leave seriesIdx
+    // undefined rather than attributing a series from another category.
   }
   if (seriesCount === 1) seriesIdx = 0;
   return { categoryIdx, seriesIdx };
