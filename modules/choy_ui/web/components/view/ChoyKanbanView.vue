@@ -113,7 +113,7 @@ function onCreate(): void {
       <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <div v-if="showActions" class="flex flex-wrap gap-2">
           <slot name="system-actions">
-            <ChoyButton size="sm" @click="onCreate">{{ createLabel }}</ChoyButton>
+            <ChoyButton v-if="!readonly" size="sm" @click="onCreate">{{ createLabel }}</ChoyButton>
           </slot>
           <slot name="user-actions" />
         </div>

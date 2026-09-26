@@ -78,7 +78,12 @@ export function sanitizeHtmlForClient(html: string | null | undefined, deps?: Sa
     return raw.replace(/<[^>]*>?/g, '');
   }
   ensureDomPurifyHooks(purify);
-  return purify.sanitize(raw, purifyConfig);
+  try {
+    return purify.sanitize(raw, purifyConfig);
+  } catch {
+    // Misconfigured hooks / DOMPurify failure must not leave active markup.
+    return raw.replace(/<[^>]*>?/g, '');
+  }
 }
 
 /** Strip tags for list / search plaintext projection. Prefer DOM textContent. */

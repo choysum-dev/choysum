@@ -143,6 +143,28 @@ describe('propertiesDefinitionHelpers', () => {
       ]),
     ).toThrow(/no usable options/);
     expect(() =>
+      draftsToDefinitionItems([
+        {
+          ...emptyDraftItem(),
+          name: 's',
+          type: 'selection',
+          default: 'missing',
+          selectionText: JSON.stringify([['a', 'A']]),
+        },
+      ]),
+    ).toThrow(/default is not one of the options/);
+    expect(
+      draftsToDefinitionItems([
+        {
+          ...emptyDraftItem(),
+          name: 's',
+          type: 'selection',
+          default: 'a',
+          selectionText: JSON.stringify([['a', 'A']]),
+        },
+      ])[0]!.default,
+    ).toBe('a');
+    expect(() =>
       draftsToDefinitionItems([{ ...emptyDraftItem(), name: 'x', type: 'binary' }]),
     ).toThrow(/unsupported property type/);
     expect(() =>

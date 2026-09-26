@@ -85,6 +85,17 @@ describe('htmlHelpers', () => {
     expect(sanitizeHtmlForClient('<img src=x onerror=alert(1)', { purify })).toBe('');
   });
 
+  test('sanitizeHtmlForClient strips tags when purify.sanitize throws', () => {
+    const purify = {
+      addHook: () => undefined,
+      sanitize: () => {
+        throw new Error('sanitize failed');
+      },
+    };
+    expect(sanitizeHtmlForClient('<p>Hi</p><script>x</script>', { purify })).toBe('Hix');
+    expect(sanitizeHtmlForClient('<img src=x onerror=alert(1)', { purify })).toBe('');
+  });
+
   test('htmlToPlaintext strips tags (non-DOM path)', () => {
     const purify = createTestPurify();
     // Prefer non-DOM fallback: avoid mutating global document in QuickJS.

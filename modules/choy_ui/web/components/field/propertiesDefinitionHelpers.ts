@@ -99,6 +99,9 @@ export function draftsToDefinitionItems(
       if (!options.length) {
         throw new Error(`selection property '${name}' has no usable options`);
       }
+      if (item.default != null && !options.some(o => o.value === String(item.default))) {
+        throw new Error(`selection property '${name}' default is not one of the options`);
+      }
       // Persist only usable options so malformed entries are not stored.
       item.selection = options.map(o => [o.value, o.label]) as PropertyItemDefinition['selection'];
     }
