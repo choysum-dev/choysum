@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 )
 
@@ -77,11 +78,20 @@ func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
 	if pins["vue"] != choysummount.VuePackageVersion {
 		t.Fatalf("vue pin = %q want %q", pins["vue"], choysummount.VuePackageVersion)
 	}
-	if pins["@tanstack/vue-table"] != "8.21.3" {
-		t.Fatalf("@tanstack/vue-table pin = %q want 8.21.3", pins["@tanstack/vue-table"])
+	want, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if pins["@tanstack/vue-virtual"] != "3.13.39" {
-		t.Fatalf("@tanstack/vue-virtual pin = %q want 3.13.39", pins["@tanstack/vue-virtual"])
+	if len(want) == 0 {
+		t.Fatal("expected exact pins in modules/web/package.json")
+	}
+	for name, ver := range want {
+		if name == "vue" {
+			continue
+		}
+		if pins[name] != ver {
+			t.Fatalf("pin %q = %q want %q from package.json", name, pins[name], ver)
+		}
 	}
 }
 

@@ -195,6 +195,25 @@ func TestMaskPascalCaseRawTextTagsApostropheInText(t *testing.T) {
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsBareLessThanInText(t *testing.T) {
+	source := `<template>
+  <p>{{ a < b }}'s note</p>
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 'ok'</script>`
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("bare '<' in text must not swallow script, scripts=%d", len(scripts))
+	}
+	got := maskPascalCaseRawTextTags(source)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after bare '<' must still mask, got %q", got)
+	}
+}
+
 func TestMaskPascalCaseRawTextTagsSkipsScriptEmbeddedTemplate(t *testing.T) {
 	source := `<template><div/></template>
 <script setup lang="ts">

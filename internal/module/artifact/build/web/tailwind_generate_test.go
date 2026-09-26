@@ -407,6 +407,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 
 	write("components/field/ChoyVarcharField.test.ts", `export const c = "test-only-util"`)
 	write("components/field/ChoyVarcharField.spec.ts", `export const c = "spec-only-util"`)
+	write("components/shell/ChoyShellExtra.vue", `<div class="kit-shell-extra"></div>`)
 
 	for _, skip := range []string{"node_modules/pkg/x.vue", "dist/out.css", ".git/config"} {
 		write(skip, `<div class="should-skip"></div>`)
@@ -444,7 +445,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "gap-2", "p-2", "text-sm", "block", "inline", "grid", "min-h-0", "rounded", "shadow"} {
+	for _, want := range []string{"flex", "gap-2", "p-2", "text-sm", "block", "inline", "grid", "min-h-0", "rounded", "shadow", "kit-shell-extra"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}

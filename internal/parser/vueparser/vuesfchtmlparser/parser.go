@@ -132,7 +132,8 @@ var sfcTemplateClose = regexp.MustCompile(`(?i)</template\s*>`)
 
 // sfcScriptStyleBlock matches top-level <script>/<style> so a "<template>" literal
 // inside their source is never treated as the SFC template region.
-var sfcScriptStyleBlock = regexp.MustCompile(`(?is)<(script|style)\b[^>]*>.*?</(script|style)\s*>`)
+// Each opener is paired with its own closer (RE2 has no backreferences).
+var sfcScriptStyleBlock = regexp.MustCompile(`(?is)<script\b[^>]*>.*?</script\s*>|<style\b[^>]*>.*?</style\s*>`)
 
 const vueRawTextMaskPrefix = "VueSfcRaw"
 
@@ -232,7 +233,13 @@ func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
 		c := s[i]
 		switch {
 		case c == '<':
-			inTag = true
+			// Bare '<' in text/interpolation (e.g. `{{ a < b }}`) is not a tag opener.
+			if i+1 < len(s) {
+				n := s[i+1]
+				if (n >= 'a' && n <= 'z') || (n >= 'A' && n <= 'Z') || n == '/' || n == '!' {
+					inTag = true
+				}
+			}
 			i++
 		case c == '>':
 			inTag = false

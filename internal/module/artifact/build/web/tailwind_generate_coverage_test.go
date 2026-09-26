@@ -733,6 +733,26 @@ func TestGenerateChoyTailwindForModulePropagatesGenerateError(t *testing.T) {
 	}
 }
 
+func TestResolveChoyKitModuleRootPrefersWeb(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"choy_ui", "web"} {
+		dir := filepath.Join(root, name, "web", "styles")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := resolveChoyKitModuleRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(got) != "web" {
+		t.Fatalf("resolveChoyKitModuleRoot = %q, want the web kit to win", got)
+	}
+}
+
 func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
 	root := t.TempDir()
 	web := filepath.Join(root, "web", "web")
