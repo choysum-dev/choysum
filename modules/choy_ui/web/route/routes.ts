@@ -29,4 +29,14 @@ export const choyUiRoutes: RouteRecordRaw[] = [
       title: 'Choy UI Dogfood Login',
     },
   },
+  {
+    path: '__choy_dogfood_company',
+    name: 'ChoyUiDogfoodCompany',
+    component: () => import('../pages/DogfoodCompanyForm.vue'),
+    meta: {
+      requiresAuth: true,
+      hideInMenu: true,
+      title: 'Choy UI Dogfood Company',
+    },
+  },
 ];

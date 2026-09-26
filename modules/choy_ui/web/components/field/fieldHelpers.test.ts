@@ -1,0 +1,206 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import {
+  canonicalChoyDecimal,
+  expandExponentialDecimalText,
+  expandFiniteNumberToPlainDecimal,
+  formatChoyMonetary,
+  parseChoyNumber,
+  resolveChoyFieldVisible,
+  resolveChoyMonetaryPrecision,
+  resolveChoyNumberDraftText,
+  roundChoyDecimal,
+} from './fieldHelpers';
+
+describe('fieldHelpers', () => {
+  test('resolveChoyFieldVisible defaults to true', () => {
+    expect(resolveChoyFieldVisible()).toBe(true);
+    expect(resolveChoyFieldVisible(undefined)).toBe(true);
+    expect(resolveChoyFieldVisible(true)).toBe(true);
+    expect(resolveChoyFieldVisible(false)).toBe(false);
+  });
+
+  test('resolveChoyMonetaryPrecision defaults and clamps', () => {
+    expect(resolveChoyMonetaryPrecision()).toBe(2);
+    expect(resolveChoyMonetaryPrecision(-1)).toBe(2);
+    expect(resolveChoyMonetaryPrecision(0)).toBe(0);
+    expect(resolveChoyMonetaryPrecision(2.9)).toBe(2);
+    expect(resolveChoyMonetaryPrecision(1000)).toBe(100);
+    expect(resolveChoyMonetaryPrecision(Number.NaN)).toBe(2);
+  });
+
+  test('roundChoyDecimal uses decimal half-away-from-zero', () => {
+    expect(roundChoyDecimal('1.005', 2)).toEqual({ value: 1.01, text: '1.01' });
+    expect(roundChoyDecimal('-1.005', 2)).toEqual({ value: -1.01, text: '-1.01' });
+    expect(roundChoyDecimal('0.995', 2)).toEqual({ value: 1, text: '1.00' });
+    expect(roundChoyDecimal('-0.000', 2)).toEqual({ value: 0, text: '0.00' });
+    expect(roundChoyDecimal('12.3', 2)).toEqual({ value: 12.3, text: '12.30' });
+    expect(roundChoyDecimal('bad', 2)).toBeNull();
+    // Full carry past the leading digit inserts a new high-place 1.
+    expect(roundChoyDecimal('9.5', 0)).toEqual({ value: 10, text: '10' });
+    expect(roundChoyDecimal('9.999', 2)).toEqual({ value: 10, text: '10.00' });
+    // Lossy integer magnitudes (beyond MAX_SAFE_INTEGER) are rejected.
+    expect(roundChoyDecimal('9007199254740993', 0)).toBeNull();
+    // Fractional digits are unrepresentable at/above 2^52 (double spacing >= 1).
+    expect(roundChoyDecimal('9007199254740990.4', 2)).toBeNull();
+    expect(parseChoyNumber('9007199254740990.4', 'decimal')).toBeNull();
+    // Between 2^51 and 2^52 spacing is already 0.5; reject inexact fractions.
+    expect(roundChoyDecimal('2251799813685248.37', 2)).toBeNull();
+    expect(parseChoyNumber('2251799813685248.37', 'decimal')).toBeNull();
+    // Overflowing digit strings become non-finite after Number(...).
+    expect(roundChoyDecimal('9'.repeat(400), 0)).toBeNull();
+  });
+
+  test('rounded decimal text round-trips through parseChoyNumber', () => {
+    // ChoyNumberField/ChoyMonetaryField commit roundChoyDecimal(...).text back
+    // through parseChoyNumber, so the two helpers must stay in agreement.
+    for (const raw of ['1.005', '-1.005', '9.999', '12.3', '0.004', '-0.000', '0.005', '-0.005']) {
+      const rounded = roundChoyDecimal(raw, 2);
+      expect(rounded).not.toBeNull();
+      expect(parseChoyNumber(rounded!.text, 'decimal')).toBe(rounded!.value);
+    }
+  });
+
+  test('formatChoyMonetary formats precision and currency', () => {
+    expect(formatChoyMonetary(null)).toBe('');
+    expect(formatChoyMonetary(undefined)).toBe('');
+    expect(formatChoyMonetary('')).toBe('');
+    expect(formatChoyMonetary('bad')).toBe('');
+    expect(formatChoyMonetary(Number.POSITIVE_INFINITY)).toBe('');
+    expect(formatChoyMonetary(12.345)).toBe('12.35');
+    expect(formatChoyMonetary(2.675)).toBe('2.68');
+    expect(formatChoyMonetary('2.675')).toBe('2.68');
+    expect(formatChoyMonetary('12.3', { precision: 2 })).toBe('12.30');
+    expect(formatChoyMonetary('1.005', { precision: 2 })).toBe('1.01');
+    expect(formatChoyMonetary(12.3, { precision: 0 })).toBe('12');
+    // precision clamps to 100 → "12.3" + 99 trailing zeros
+    expect(formatChoyMonetary(12.3, { precision: 1000 })).toBe(`12.3${'0'.repeat(99)}`);
+    expect(formatChoyMonetary(12.3, { precision: 2, currency: 'USD' })).toBe('12.30 USD');
+    expect(formatChoyMonetary(0)).toBe('0.00');
+    expect(formatChoyMonetary(-0)).toBe('0.00');
+    // Exponential string: Number() may re-canonicalize into a decimal digit string.
+    expect(formatChoyMonetary('2e0', { precision: 2 })).toBe('2.00');
+    expect(formatChoyMonetary('1.005e0', { precision: 2 })).toBe('1.01');
+    // Exponential string / number still needing toFixed when String(numeric) is not decimal.
+    expect(formatChoyMonetary('1e-7', { precision: 2 })).toBe('0.00');
+    expect(formatChoyMonetary(-1e-7, { precision: 2 })).toBe('0.00');
+    expect(formatChoyMonetary(1e21, { precision: 2 })).toBe('1e+21');
+    // String and number paths must agree for exactly representable large magnitudes.
+    expect(formatChoyMonetary('1e21', { precision: 2 })).toBe('1e+21');
+    // Trailing-dot exponential that Number() quietly rounds must still be rejected.
+    expect(formatChoyMonetary('9007199254740993.e0')).toBe('');
+    // Leading-dot exponential must expand (parity with plain `.5` support).
+    expect(formatChoyMonetary('.5e0', { precision: 2 })).toBe('0.50');
+    expect(formatChoyMonetary('-.5e0', { precision: 2 })).toBe('-0.50');
+    // Lossy exponential magnitudes must not bypass the plain-decimal reject path.
+    expect(formatChoyMonetary('9007199254740993e0')).toBe('');
+    // Plain decimals rejected by roundChoyDecimal must not re-round via Number().
+    expect(formatChoyMonetary('9007199254740990.4')).toBe('');
+    // Number path matches string path: unrepresentable magnitudes stay blank.
+    expect(formatChoyMonetary(Number.MAX_SAFE_INTEGER + 1)).toBe('');
+    // Non-decimal literals are rejected (Number('0x10') is finite but not monetary text).
+    expect(formatChoyMonetary('0x10')).toBe('');
+  });
+
+  test('resolveChoyNumberDraftText keeps preferred when String is exponential', () => {
+    const tiny = Number('0.0000000000000000000001');
+    expect(String(tiny)).toMatch(/e/i);
+    expect(parseChoyNumber(String(tiny), 'float')).toBeNull();
+    expect(
+      resolveChoyNumberDraftText(tiny, '0.0000000000000000000001', 'float'),
+    ).toBe('0.0000000000000000000001');
+    // Preferred text that does not parse back to `value` is ignored.
+    expect(resolveChoyNumberDraftText(tiny, '   ', 'float')).toBe(String(tiny));
+    expect(resolveChoyNumberDraftText(tiny, 'not-a-number', 'float')).toBe(String(tiny));
+    expect(resolveChoyNumberDraftText(12, '12', 'integer')).toBe('12');
+  });
+
+  test('parseChoyNumber modes', () => {
+    expect(parseChoyNumber('', 'integer')).toBeNull();
+    expect(parseChoyNumber('  ', 'float')).toBeNull();
+    expect(parseChoyNumber('12', 'integer')).toBe(12);
+    expect(parseChoyNumber('-3', 'integer')).toBe(-3);
+    expect(parseChoyNumber('12.5', 'integer')).toBeNull();
+    expect(parseChoyNumber('9007199254740994', 'integer')).toBeNull();
+    expect(parseChoyNumber('12.5', 'float')).toBe(12.5);
+    expect(parseChoyNumber('12.50', 'decimal')).toBe(12.5);
+    expect(parseChoyNumber('+12.5', 'decimal')).toBe(12.5);
+    expect(parseChoyNumber('+12', 'integer')).toBe(12);
+    expect(roundChoyDecimal('+1.005', 2)).toEqual({ value: 1.01, text: '1.01' });
+    expect(parseChoyNumber('abc', 'float')).toBeNull();
+    expect(parseChoyNumber('1e2', 'float')).toBeNull();
+    // A trailing decimal point is a common commit state; keep it parseable.
+    expect(parseChoyNumber('12.', 'decimal')).toBe(12);
+    expect(parseChoyNumber('12.', 'integer')).toBe(12);
+    // Leading decimal points are just as common and must match formatChoyMonetary.
+    expect(parseChoyNumber('.5', 'decimal')).toBe(0.5);
+    expect(parseChoyNumber('-.5', 'float')).toBe(-0.5);
+    expect(formatChoyMonetary('.5', { precision: 2 })).toBe('0.50');
+    expect(roundChoyDecimal('.5', 2)).toEqual({ value: 0.5, text: '0.50' });
+    expect(parseChoyNumber('.', 'decimal')).toBeNull();
+    expect(roundChoyDecimal('12.', 2)).toEqual({ value: 12, text: '12.00' });
+    // Values beyond the exactly-representable range must not be silently rounded.
+    expect(parseChoyNumber('12345678901234567890', 'decimal')).toBeNull();
+    expect(formatChoyMonetary('9007199254740993')).toBe('');
+  });
+
+  test('roundChoyDecimal text is stable when re-rounded', () => {
+    // Committed monetary/number text is re-rounded on blur; it must not drift.
+    for (const raw of ['1.005', '-1.005', '9.999', '12.3', '0.004', '-0.005', '0.995', '0.4']) {
+      const once = roundChoyDecimal(raw, 2);
+      if (!once) {
+        continue;
+      }
+      expect(roundChoyDecimal(once.text, 2)).toEqual(once);
+    }
+  });
+
+  test('roundChoyDecimal expands exponential values to plain decimal text', () => {
+    // Magnitudes below 1e-6 stringify as exponential (e.g. 1e-22); the exactness
+    // comparison must expand them before deciding the value is representable.
+    expect(roundChoyDecimal('0.0000000000000000000001', 22)).toEqual({
+      value: 1e-22,
+      text: '0.0000000000000000000001',
+    });
+  });
+
+  test('expandExponentialDecimalText covers LE0 / MID / GE forms', () => {
+    expect(expandExponentialDecimalText('1e-3')).toBe('0.001');
+    expect(expandExponentialDecimalText('-1.25e-2')).toBe('-0.0125');
+    expect(expandExponentialDecimalText('1.5e1')).toBe('15');
+    expect(expandExponentialDecimalText('12.34e1')).toBe('123.4');
+    expect(expandExponentialDecimalText('12.e0')).toBe('12');
+    expect(expandExponentialDecimalText('.5e0')).toBe('0.5');
+    expect(expandExponentialDecimalText('-.5e1')).toBe('-5');
+    expect(expandExponentialDecimalText('1e5')).toBe('100000');
+    expect(expandExponentialDecimalText('0e0')).toBe('0');
+    expect(expandExponentialDecimalText('not-exponential')).toBeNull();
+    expect(expandExponentialDecimalText('1e')).toBeNull();
+    expect(expandExponentialDecimalText('1e-999999999')).toBeNull();
+    expect(expandExponentialDecimalText('1e999999999')).toBeNull();
+    // Huge digit exponents become Infinity; still rejected via pad > 400.
+    expect(expandExponentialDecimalText(`1e${'9'.repeat(400)}`)).toBeNull();
+  });
+
+  test('expandFiniteNumberToPlainDecimal covers zero and exponential String(n)', () => {
+    expect(expandFiniteNumberToPlainDecimal(0)).toBe('0');
+    expect(expandFiniteNumberToPlainDecimal(-0)).toBe('0');
+    expect(expandFiniteNumberToPlainDecimal(12)).toBe('12');
+    expect(expandFiniteNumberToPlainDecimal(1e-7)).toBe('0.0000001');
+  });
+
+  test('canonicalChoyDecimal expands exponentials and rejects non-finite', () => {
+    expect(canonicalChoyDecimal('1e-7')).toBe('0.0000001');
+    expect(canonicalChoyDecimal('1.5e1')).toBe('15');
+    expect(canonicalChoyDecimal('0e10')).toBe('0');
+    expect(canonicalChoyDecimal('-0e5')).toBe('0');
+    // Forms Number accepts but the expander regex rejects → String(n) fallback.
+    expect(canonicalChoyDecimal('.0e1')).toBe('0');
+    expect(canonicalChoyDecimal('0xe0')).toBe('224');
+    expect(canonicalChoyDecimal('Infinity')).toBeNull();
+    expect(canonicalChoyDecimal('1e9999')).toBeNull();
+    expect(canonicalChoyDecimal('')).toBeNull();
+    expect(canonicalChoyDecimal('12.30')).toBe('12.3');
+  });
+});

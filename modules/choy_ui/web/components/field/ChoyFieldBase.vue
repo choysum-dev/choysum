@@ -1,0 +1,126 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<script setup lang="ts">
+import { computed, useId } from 'vue';
+import { CircleHelp } from 'lucide-vue-next';
+import { cn, type ClassValue } from '../../lib/utils';
+import Tooltip from '../vendor/ui/tooltip/Tooltip.vue';
+import TooltipContent from '../vendor/ui/tooltip/TooltipContent.vue';
+import TooltipProvider from '../vendor/ui/tooltip/TooltipProvider.vue';
+import TooltipTrigger from '../vendor/ui/tooltip/TooltipTrigger.vue';
+import {
+  choyFieldChromeDefaults,
+  resolveChoyFieldVisible,
+  type ChoyFieldChromeProps,
+} from './fieldHelpers';
+
+/**
+ * Field chrome only: label, help tooltip, required mark, and error text.
+ * Control widgets live in the default slot (receives controlId / a11y attrs).
+ */
+const props = withDefaults(
+  defineProps<
+    ChoyFieldChromeProps & {
+      class?: ClassValue;
+    }
+  >(),
+  { ...choyFieldChromeDefaults },
+);
+
+const isVisible = computed(() => resolveChoyFieldVisible(props.visible));
+const uid = useId();
+/** DOM ids must not contain whitespace or arbitrary punctuation from `name`. */
+const idFragment = computed(() =>
+  String(props.name ?? '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, ''),
+);
+const controlId = computed(() =>
+  idFragment.value ? `${idFragment.value}-${uid}` : `choy-field-${uid}`,
+);
+const labelId = computed(() => `${controlId.value}-label`);
+const helpId = computed(() => `${controlId.value}-help`);
+const errorId = computed(() => `${controlId.value}-error`);
+const controlDescribedBy = computed(() => {
+  const parts: string[] = [];
+  if (props.error) {
+    parts.push(errorId.value);
+  }
+  if (props.help) {
+    parts.push(helpId.value);
+  }
+  return parts.length ? parts.join(' ') : undefined;
+});
+</script>
+
+<template>
+  <div
+    v-if="isVisible"
+    data-anchor="choy.field-base"
+    :class="cn('choy-field-base flex w-full flex-col gap-1.5', props.class)"
+  >
+    <div
+      v-if="label || help || required"
+      class="choy-field-base__label-row flex items-center gap-1.5"
+    >
+      <label
+        v-if="label"
+        :id="labelId"
+        class="text-sm font-medium text-foreground"
+        :for="controlId"
+      >
+        {{ label }}
+        <span v-if="required" class="text-danger" aria-hidden="true">*</span>
+      </label>
+      <span
+        v-else-if="required"
+        class="text-sm text-danger"
+        aria-hidden="true"
+      >*</span>
+      <TooltipProvider v-if="help">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <button
+              type="button"
+              class="inline-flex size-4 items-center justify-center text-foreground/50 hover:text-foreground"
+              :aria-label="`Help: ${label || name || 'field'}`"
+            >
+              <CircleHelp class="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p class="max-w-xs whitespace-pre-wrap">{{ help }}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+    <div class="choy-field-base__control min-w-0">
+      <slot
+        :control-id="controlId"
+        :label-id="labelId"
+        :aria-invalid="error ? true : undefined"
+        :aria-required="required || undefined"
+        :aria-describedby="controlDescribedBy"
+      />
+    </div>
+    <p
+      v-if="help"
+      :id="helpId"
+      class="sr-only"
+    >
+      {{ help }}
+    </p>
+    <p
+      v-if="error"
+      :id="errorId"
+      class="choy-field-base__error text-sm text-danger"
+      role="alert"
+    >
+      {{ error }}
+    </p>
+  </div>
+</template>

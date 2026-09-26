@@ -11,6 +11,9 @@ const props = defineProps<{
   class?: ClassValue;
   disabled?: boolean;
   id?: string;
+  'aria-invalid'?: boolean | 'true' | 'false';
+  'aria-required'?: boolean | 'true' | 'false';
+  'aria-describedby'?: string;
 }>();
 
 const checked = defineModel<boolean>({ default: false });
@@ -22,6 +25,9 @@ const checked = defineModel<boolean>({ default: false });
     v-model="checked"
     data-slot="switch"
     :disabled="disabled"
+    :aria-invalid="props['aria-invalid']"
+    :aria-required="props['aria-required']"
+    :aria-describedby="props['aria-describedby']"
     :class="
       cn(
         'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors',

@@ -9,12 +9,15 @@ SPDX-License-Identifier: Apache-2.0
       <header class="choy-gallery-header">
         <h1 class="choy-gallery-title">Choy UI Gallery</h1>
         <p class="choy-gallery-lede">
-          Isolation kit shell: tokens, L1 shells, L2 controls, L3 engines, density / dark toggles. No
-          Element Plus on this page.
+          Isolation kit shell: tokens, L1 shells, fields, Form/List/Search, L2 controls, L3 engines,
+          density / dark toggles. No Element Plus on this page.
         </p>
         <div class="choy-gallery-controls">
           <Button variant="outline" size="sm" @click="toggleDark">{{ isDark ? 'Light' : 'Dark' }}</Button>
           <Button variant="outline" size="sm" @click="toggleDensity">Density: {{ density }}</Button>
+          <Button variant="outline" size="sm" @click="goDogfoodCompany">
+            Dogfood Company
+          </Button>
         </div>
       </header>
 
@@ -98,19 +101,57 @@ SPDX-License-Identifier: Apache-2.0
 
           <Card>
             <CardHeader>
-              <CardTitle>FormView skeleton</CardTitle>
-              <CardDescription>Chrome only — no store / validation yet</CardDescription>
+              <CardTitle>FormView + fields</CardTitle>
+              <CardDescription>Main-path chrome with Varchar / Date / Boolean</CardDescription>
             </CardHeader>
             <CardContent>
               <ChoyFormView title="Demo record" :show-actions="true">
+                <template #breadcrumb>
+                  <ChoyBreadcrumb :items="[{ label: 'Gallery' }, { label: 'Demo record' }]" />
+                </template>
                 <template #system-actions>
                   <ChoyButton size="sm" variant="outline">Save</ChoyButton>
                 </template>
                 <template #button-box>
                   <ChoyButton size="sm" variant="ghost">Action</ChoyButton>
                 </template>
-                <p class="text-sm text-foreground/80">Default slot — fields land in PR5.</p>
+                <div class="flex flex-col gap-3">
+                  <ChoyVarcharField v-model="galleryName" label="Name" name="name" />
+                  <ChoyDateField v-model="galleryDate" label="Date" name="date" />
+                  <ChoyBooleanField v-model="galleryActive" label="Active" widget="switch" />
+                </div>
               </ChoyFormView>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>List + Search</CardTitle>
+              <CardDescription>
+                ChoyListView / SearchView; selected {{ galleryListSelection.length }}
+              </CardDescription>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-3">
+              <ChoyListView
+                v-model:row-selection="galleryListSelection"
+                :columns="galleryListColumns"
+                :data="galleryListRows"
+                :row-id="demoRowId"
+                :height="200"
+              >
+                <template #search>
+                  <ChoySearchView
+                    v-model:keyword="galleryListKeyword"
+                    placeholder="Filter names…"
+                    @query-update="onGalleryListSearch"
+                  />
+                </template>
+              </ChoyListView>
+              <ChoyPagination
+                v-model:page="galleryListPage"
+                v-model:page-size="galleryListPageSize"
+                :total="galleryListFiltered.length"
+              />
             </CardContent>
           </Card>
         </div>
@@ -374,7 +415,8 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import '../styles/tokens.css';
 import '../styles/preflight-policy.css';
 // Produced by web build (EnsureChoyTailwindCSS); not committed.
@@ -437,6 +479,18 @@ import ChoyPage from '../components/layout/ChoyPage.vue';
 import ChoyTab from '../components/layout/ChoyTab.vue';
 import ChoyTabs from '../components/layout/ChoyTabs.vue';
 import ChoyFormView from '../components/view/ChoyFormView.vue';
+import ChoyListView from '../components/view/ChoyListView.vue';
+import ChoySearchView from '../components/view/ChoySearchView.vue';
+import ChoyPagination from '../components/view/ChoyPagination.vue';
+import ChoyBreadcrumb from '../components/view/ChoyBreadcrumb.vue';
+import ChoyVarcharField from '../components/field/ChoyVarcharField.vue';
+import ChoyDateField from '../components/field/ChoyDateField.vue';
+import ChoyBooleanField from '../components/field/ChoyBooleanField.vue';
+import {
+  filterRowsByKeyword,
+  type ChoySearchQuery,
+} from '../components/view/searchViewHelpers';
+import { choyPageOffset, clampChoyPage, choyTotalPages } from '../components/view/paginationHelpers';
 import DataTable from '../components/internal/DataTable.vue';
 import DatePicker from '../components/internal/DatePicker.vue';
 import RelationCombobox from '../components/internal/RelationCombobox.vue';
@@ -447,6 +501,7 @@ import type { RelationOption } from '../components/internal/relationComboboxHelp
 type Density = 'comfortable' | 'compact';
 type DemoRow = { Id: string; name: string; role: string };
 
+const router = useRouter();
 const isDark = ref(false);
 const density = ref<Density>('comfortable');
 
@@ -457,9 +512,18 @@ const switchOn = ref(true);
 const activeTab = ref('one');
 const l1Tab = ref('overview');
 const dialogOpen = ref(false);
-const selectValue = ref('');
+const selectValue = ref<string | null>(null);
 const comboboxValue = ref('');
 const lastMenuAction = ref('');
+
+const galleryName = ref('Demo Partner');
+const galleryDate = ref<string | null>('2026-09-23');
+const galleryActive = ref(true);
+const galleryListKeyword = ref('');
+const galleryListApplied = ref('');
+const galleryListSelection = ref<Array<string | number>>([]);
+const galleryListPage = ref(1);
+const galleryListPageSize = ref(8);
 
 const tableSelection = ref<Array<string | number>>([]);
 const pickedDate = ref<string | null>(null);
@@ -471,11 +535,36 @@ const tableColumns: ColumnDef<DemoRow, unknown>[] = [
   { accessorKey: 'role', header: 'Role', size: 140 },
 ];
 
+const galleryListColumns = tableColumns;
+
+function demoRowId(row: DemoRow): string {
+  return row.Id;
+}
+
 const tableRows: DemoRow[] = Array.from({ length: 40 }, (_, i) => ({
   Id: `r${i + 1}`,
   name: `Partner ${i + 1}`,
   role: i % 2 === 0 ? 'Customer' : 'Vendor',
 }));
+
+const galleryListFiltered = computed(() =>
+  filterRowsByKeyword(tableRows, galleryListApplied.value, ['name', 'role']),
+);
+
+const galleryListRows = computed(() => {
+  const size = Math.max(1, Math.floor(galleryListPageSize.value) || 1);
+  const pages = choyTotalPages(galleryListFiltered.value.length, size);
+  const safePage = clampChoyPage(galleryListPage.value, pages);
+  const offset = choyPageOffset(safePage, size);
+  return galleryListFiltered.value.slice(offset, offset + size);
+});
+
+function onGalleryListSearch(query: ChoySearchQuery): void {
+  galleryListApplied.value = query.keyword;
+  galleryListPage.value = 1;
+  // The visible row set changes, so ids selected on the previous result set must not linger.
+  galleryListSelection.value = [];
+}
 
 const partnerCatalog: RelationOption[] = Array.from({ length: 80 }, (_, i) => ({
   id: `p${i + 1}`,
@@ -575,6 +664,10 @@ onUnmounted(clearGalleryTokenScope);
 /**
  * Toggles light / dark token sets on the gallery root.
  */
+function goDogfoodCompany(): void {
+  void router.push({ name: 'ChoyUiDogfoodCompany' });
+}
+
 function toggleDark(): void {
   isDark.value = !isDark.value;
 }

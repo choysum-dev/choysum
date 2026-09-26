@@ -1,0 +1,186 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import Input from '../vendor/ui/input/Input.vue';
+import type { ClassValue } from '../../lib/utils';
+import ChoyFieldBase from './ChoyFieldBase.vue';
+import {
+  choyFieldChromeDefaults,
+  formatChoyMonetary,
+  parseChoyNumber,
+  resolveChoyMonetaryPrecision,
+  roundChoyDecimal,
+  type ChoyFieldChromeProps,
+} from './fieldHelpers';
+
+/**
+ * Monetary amount field. Focus shows raw number; blur shows formatted text.
+ */
+const props = withDefaults(
+  defineProps<
+    ChoyFieldChromeProps & {
+      class?: ClassValue;
+      placeholder?: string;
+      precision?: number;
+      currency?: string;
+    }
+  >(),
+  {
+    ...choyFieldChromeDefaults,
+    placeholder: '',
+    precision: 2,
+    currency: '',
+  },
+);
+
+const model = defineModel<number | null>({ default: null });
+const focused = ref(false);
+/** True after the user types; keeps draft visible across blur when still invalid. */
+const edited = ref(false);
+/** True when blur kept an unparsed draft while the host model is unchanged. */
+const invalidDraft = ref(false);
+const draft = ref('');
+
+const displayValue = computed(() => {
+  if (focused.value || edited.value) {
+    return draft.value;
+  }
+  return formatChoyMonetary(model.value, {
+    precision: props.precision,
+    currency: props.currency,
+  });
+});
+
+watch(model, (next) => {
+  // Keep the visible draft whenever it already parses to the new host value:
+  // an in-progress edit must survive, and a just-committed rounded draft
+  // (e.g. "12.30") must not be rewritten to `String(12.3)` while still focused.
+  const parsedDraft = parseChoyNumber(draft.value, 'decimal');
+  if (
+    focused.value &&
+    parsedDraft !== null &&
+    next !== null &&
+    parsedDraft === next
+  ) {
+    return;
+  }
+  // Host-driven updates (e.g. loading another record) must win over a stale invalid draft.
+  edited.value = false;
+  invalidDraft.value = false;
+  draft.value = next === null || next === undefined ? '' : String(next);
+});
+
+function onFocus(): void {
+  if (props.readonly || props.disabled) {
+    return;
+  }
+  focused.value = true;
+  // Keep the invalid flag until the user edits the text (`onInput` clears it), so the
+  // control does not stop advertising an unparsed draft on focus.
+  if (!edited.value) {
+    draft.value =
+      model.value === null || model.value === undefined ? '' : String(model.value);
+  }
+}
+
+function onBlur(): void {
+  focused.value = false;
+  commitDraft();
+}
+
+/** Commits the current draft; shared by blur and Enter so both paths round identically. */
+function commitDraft(): void {
+  if (props.readonly || props.disabled) {
+    return;
+  }
+  if (!edited.value) {
+    // Focus/blur alone must not rewrite the host model: re-committing the raw text
+    // would silently round it (12.345 -> 12.35) even though nothing was typed.
+    draft.value =
+      model.value === null || model.value === undefined ? '' : String(model.value);
+    return;
+  }
+  const text = draft.value.trim();
+  if (!text) {
+    model.value = null;
+    draft.value = '';
+    edited.value = false;
+    invalidDraft.value = false;
+    return;
+  }
+  if (parseChoyNumber(draft.value, 'decimal') === null) {
+    // Keep the invalid draft visible so the user can correct it, but mark the control
+    // invalid so it cannot look committed while the host still holds the old amount.
+    edited.value = true;
+    invalidDraft.value = true;
+    return;
+  }
+  const rounded = roundChoyDecimal(draft.value, resolveChoyMonetaryPrecision(props.precision));
+  if (!rounded) {
+    edited.value = true;
+    invalidDraft.value = true;
+    return;
+  }
+  model.value = rounded.value;
+  draft.value = rounded.text;
+  edited.value = false;
+  invalidDraft.value = false;
+}
+
+function onInput(value: string): void {
+  // Guard like datetime/time: some browsers still emit updates when readonly/disabled.
+  if (props.readonly || props.disabled) {
+    return;
+  }
+  edited.value = true;
+  invalidDraft.value = false;
+  draft.value = value;
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  // Confirming an IME candidate also fires Enter; don't commit half-composed text.
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) {
+    return;
+  }
+  event.preventDefault();
+  commitDraft();
+}
+</script>
+
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.monetary-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error || (invalidDraft ? 'Invalid amount' : '')"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+      <Input
+        :id="controlId"
+        :model-value="displayValue"
+        :name="name || undefined"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :readonly="readonly"
+        :aria-invalid="ariaInvalid || invalidDraft || undefined"
+        :aria-required="ariaRequired"
+        :aria-describedby="ariaDescribedby"
+        inputmode="decimal"
+        @update:model-value="onInput"
+        @focus="onFocus"
+        @blur="onBlur"
+        @keydown="onKeydown"
+      />
+    </template>
+  </ChoyFieldBase>
+</template>
