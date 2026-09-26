@@ -3,29 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-import { cn, type ClassValue } from '../../lib/utils';
-
-/**
- * Application shell (header / aside / main / footer). Product Header/Sidebar
- * wiring lands at cutover; isolation uses slots only.
- * Slot visibility is read from `$slots` at render time (slots are not reactive).
- */
-const props = withDefaults(
-  defineProps<{
-    class?: ClassValue;
-    showHeader?: boolean;
-    showAside?: boolean;
-    showFooter?: boolean;
-  }>(),
-  {
-    showHeader: undefined,
-    showAside: undefined,
-    showFooter: undefined,
-  },
-);
-</script>
-
 <template>
   <div
     data-anchor="choy.layout"
@@ -59,3 +36,26 @@ const props = withDefaults(
     </footer>
   </div>
 </template>
+
+<script setup lang="ts">
+import { cn, type ClassValue } from '../../lib/utils';
+
+/**
+ * Application shell (header / aside / main / footer). Product Header/Sidebar
+ * wiring lands at cutover; isolation uses slots only.
+ * Slot visibility is read from `$slots` at render time (slots are not reactive).
+ */
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    showHeader?: boolean;
+    showAside?: boolean;
+    showFooter?: boolean;
+  }>(),
+  {
+    showHeader: undefined,
+    showAside: undefined,
+    showFooter: undefined,
+  },
+);
+</script>

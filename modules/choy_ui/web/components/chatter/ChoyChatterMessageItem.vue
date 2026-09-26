@@ -3,19 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-import { computed } from 'vue';
-import type { ChatterMessageEntry } from './chatterTypes';
-import { formatChoyUtcIso } from './chatterHelpers';
-
-const props = defineProps<{
-  entry: ChatterMessageEntry;
-  authorLabel: string;
-}>();
-
-const timeLabel = computed(() => formatChoyUtcIso(props.entry.at));
-</script>
-
 <template>
   <div
     class="choy-chatter-message flex flex-col gap-1.5 rounded-md border border-border bg-background px-3 py-2.5"
@@ -28,3 +15,16 @@ const timeLabel = computed(() => formatChoyUtcIso(props.entry.at));
     <div class="whitespace-pre-wrap break-words text-sm text-foreground">{{ entry.body }}</div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { ChatterMessageEntry } from './chatterTypes';
+import { formatChoyUtcIso } from './chatterHelpers';
+
+const props = defineProps<{
+  entry: ChatterMessageEntry;
+  authorLabel: string;
+}>();
+
+const timeLabel = computed(() => formatChoyUtcIso(props.entry.at));
+</script>

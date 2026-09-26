@@ -3,6 +3,36 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.datetime-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+      <Input
+        :id="controlId"
+        type="datetime-local"
+        :model-value="displayValue"
+        :name="name || undefined"
+        :disabled="disabled"
+        :readonly="readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
+        :aria-describedby="ariaDescribedby"
+        @update:model-value="onInput"
+      />
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import { computed } from 'vue';
 import Input from '../vendor/ui/input/Input.vue';
@@ -58,33 +88,3 @@ function onInput(value: string): void {
   model.value = value === '' ? null : value;
 }
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.datetime-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <Input
-        :id="controlId"
-        type="datetime-local"
-        :model-value="displayValue"
-        :name="name || undefined"
-        :disabled="disabled"
-        :readonly="readonly"
-        :aria-invalid="ariaInvalid"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
-        @update:model-value="onInput"
-      />
-    </template>
-  </ChoyFieldBase>
-</template>

@@ -3,6 +3,20 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div v-if="!ctx" data-anchor="choy.tab" :class="props.class">
+    <slot />
+  </div>
+  <TabsContent
+    v-else-if="ownsRegistration"
+    data-anchor="choy.tab"
+    :value="registeredValue"
+    :class="props.class"
+  >
+    <slot />
+  </TabsContent>
+</template>
+
 <script setup lang="ts">
 import { inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TabsContent from '../vendor/ui/tabs/TabsContent.vue';
@@ -129,17 +143,3 @@ onBeforeUnmount(() => {
   }
 });
 </script>
-
-<template>
-  <div v-if="!ctx" data-anchor="choy.tab" :class="props.class">
-    <slot />
-  </div>
-  <TabsContent
-    v-else-if="ownsRegistration"
-    data-anchor="choy.tab"
-    :value="registeredValue"
-    :class="props.class"
-  >
-    <slot />
-  </TabsContent>
-</template>

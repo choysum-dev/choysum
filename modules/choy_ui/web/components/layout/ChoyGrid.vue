@@ -3,6 +3,16 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div
+    data-anchor="choy.grid"
+    :class="cn('choy-grid grid w-full', gapClass, props.class)"
+    :style="style"
+  >
+    <slot />
+  </div>
+</template>
+
 <script setup lang="ts">
 import { computed, provide } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
@@ -46,13 +56,3 @@ const style = computed(() => ({
   gridTemplateColumns: `repeat(${safeCols.value}, minmax(0, 1fr))`,
 }));
 </script>
-
-<template>
-  <div
-    data-anchor="choy.grid"
-    :class="cn('choy-grid grid w-full', gapClass, props.class)"
-    :style="style"
-  >
-    <slot />
-  </div>
-</template>

@@ -3,6 +3,272 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div
+    data-anchor="choy.chart-view"
+    data-region="chart-view"
+    :class="cn('choy-chart-view flex flex-col gap-3', props.class)"
+  >
+    <div
+      v-if="showHeader"
+      class="flex flex-wrap items-center justify-between gap-2"
+    >
+      <div v-if="showActions" class="flex flex-wrap items-center gap-2">
+        <slot name="system-actions">
+          <ChoyButton
+            v-if="showCreate"
+            size="sm"
+            variant="outline"
+            @click="emit('create')"
+          >
+            {{ createLabel }}
+          </ChoyButton>
+          <ChoyButton
+            v-if="showRefresh"
+            size="sm"
+            variant="outline"
+            @click="emit('refresh')"
+          >
+            {{ refreshLabel }}
+          </ChoyButton>
+        </slot>
+        <slot name="user-actions" />
+      </div>
+      <div class="min-w-0 flex-1">
+        <slot name="search" />
+      </div>
+      <slot name="header-right" />
+    </div>
+
+    <div
+      v-if="showChartControls"
+      class="flex flex-wrap items-center gap-2"
+      data-region="chart-controls"
+    >
+      <slot
+        name="metric-switcher"
+        :metrics="metrics"
+        :current="localMetric"
+        :change="selectMetric"
+      >
+        <label
+          v-if="metrics.length"
+          class="flex items-center gap-2 text-xs text-muted-foreground"
+        >
+          Metric
+          <select
+            class="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+            :value="localMetric"
+            aria-label="Metric selection"
+            @change="selectMetric(($event.target as HTMLSelectElement).value)"
+          >
+            <option
+              v-for="m in metrics"
+              :key="m.alias"
+              :value="m.alias"
+            >
+              {{ m.label }}
+            </option>
+          </select>
+        </label>
+      </slot>
+
+      <slot
+        name="chart-type-switcher"
+        :types="availableTypes"
+        :current="localChartType"
+        :change="selectChartType"
+      >
+        <div
+          v-if="availableTypes.length"
+          class="inline-flex overflow-hidden rounded-md border border-border"
+          role="group"
+          aria-label="Chart type"
+        >
+          <ChoyButton
+            v-for="t in availableTypes"
+            :key="t"
+            size="sm"
+            :variant="localChartType === t ? 'default' : 'ghost'"
+            class="rounded-none"
+            :aria-pressed="localChartType === t"
+            @click="selectChartType(t)"
+          >
+            {{ t }}
+          </ChoyButton>
+        </div>
+      </slot>
+
+      <slot
+        name="stacked-switcher"
+        :stacked="localStacked"
+        :disabled="stackedDisabled"
+        :toggle="toggleStacked"
+      >
+        <ChoyButton
+          size="sm"
+          :variant="localStacked && !stackedDisabled ? 'default' : 'outline'"
+          :disabled="stackedDisabled"
+          :aria-pressed="localStacked"
+          @click="toggleStacked"
+        >
+          Stack
+        </ChoyButton>
+      </slot>
+
+      <slot
+        name="sort-switcher"
+        :current="localSort"
+        :disabled="sortDisabled"
+        :change="selectSort"
+      >
+        <div
+          class="inline-flex overflow-hidden rounded-md border border-border"
+          role="group"
+          aria-label="Sort"
+        >
+          <ChoyButton
+            size="sm"
+            class="rounded-none"
+            :variant="localSort === 'none' ? 'default' : 'ghost'"
+            :disabled="sortDisabled"
+            :aria-pressed="localSort === 'none'"
+            aria-label="No sort"
+            title="No sort"
+            @click="selectSort('none')"
+          >
+            ∅
+          </ChoyButton>
+          <ChoyButton
+            size="sm"
+            class="rounded-none"
+            :variant="localSort === 'asc' ? 'default' : 'ghost'"
+            :disabled="sortDisabled"
+            :aria-pressed="localSort === 'asc'"
+            aria-label="Sort ascending"
+            title="Sort ascending"
+            @click="selectSort('asc')"
+          >
+            ↑
+          </ChoyButton>
+          <ChoyButton
+            size="sm"
+            class="rounded-none"
+            :variant="localSort === 'desc' ? 'default' : 'ghost'"
+            :disabled="sortDisabled"
+            :aria-pressed="localSort === 'desc'"
+            aria-label="Sort descending"
+            title="Sort descending"
+            @click="selectSort('desc')"
+          >
+            ↓
+          </ChoyButton>
+        </div>
+      </slot>
+    </div>
+
+    <div class="relative min-h-[280px] w-full" data-region="chart-body">
+      <ChartContainer
+        v-if="spec"
+        :config="spec.config"
+        class="min-h-[280px] w-full"
+      >
+        <VisXYContainer
+          v-if="spec.kind === 'bar' || spec.kind === 'line'"
+          :data="xyRows"
+          :height="280"
+          class="h-[280px] w-full"
+        >
+          <VisGroupedBar
+            v-if="spec.kind === 'bar' && !spec.stacked"
+            :x="xAccessor"
+            :y="xyYAccessors"
+            :color="xyColors"
+            :rounded-corners="2"
+            :events="groupedBarEvents"
+          />
+          <VisStackedBar
+            v-else-if="spec.kind === 'bar' && spec.stacked"
+            :x="xAccessor"
+            :y="xyYAccessors"
+            :color="xyColors"
+            :rounded-corners="2"
+            :events="stackedBarEvents"
+          />
+          <template v-else-if="spec.kind === 'line'">
+            <VisArea
+              v-if="spec.stacked"
+              :x="xAccessor"
+              :y="xyYAccessors"
+              :color="xyColors"
+              :opacity="0.25"
+            />
+            <VisLine
+              :x="xAccessor"
+              :y="xyYAccessors"
+              :color="xyColors"
+              :events="lineEvents"
+            />
+          </template>
+          <VisAxis
+            type="x"
+            :x="xAccessor"
+            :tick-format="xTickFormat"
+            :tick-line="false"
+            :domain-line="false"
+            :grid-line="false"
+          />
+          <VisAxis
+            type="y"
+            :label="spec.metricLabel"
+            :tick-line="false"
+            :domain-line="false"
+            :grid-line="true"
+            :tick-format="spec.percent ? ((v: number) => `${v}%`) : undefined"
+          />
+        </VisXYContainer>
+
+        <VisSingleContainer
+          v-else-if="spec.kind === 'pie'"
+          :data="pieRows"
+          :height="280"
+          class="h-[280px] w-full"
+        >
+          <VisDonut
+            :value="(d: { value: number }) => d.value"
+            :color="(d: { color: string }) => d.color"
+            :arc-width="40"
+            :events="donutEvents"
+          />
+        </VisSingleContainer>
+
+        <ChartLegendContent />
+      </ChartContainer>
+
+      <div
+        v-else
+        class="flex min-h-[280px] items-center justify-center text-sm text-muted-foreground"
+      >
+        {{ emptyLabel }}
+      </div>
+
+      <div
+        v-if="loading && !error"
+        class="absolute inset-0 flex items-center justify-center bg-background/60 text-sm text-muted-foreground"
+      >
+        Loading…
+      </div>
+      <div
+        v-else-if="error"
+        class="absolute inset-0 flex items-center justify-center bg-background/70 text-sm text-destructive"
+        role="alert"
+      >
+        {{ error }}
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import {
@@ -470,269 +736,3 @@ const donutEvents = computed(() => ({
   [Donut.selectors.segment]: { click: onPieSegmentClick },
 }));
 </script>
-
-<template>
-  <div
-    data-anchor="choy.chart-view"
-    data-region="chart-view"
-    :class="cn('choy-chart-view flex flex-col gap-3', props.class)"
-  >
-    <div
-      v-if="showHeader"
-      class="flex flex-wrap items-center justify-between gap-2"
-    >
-      <div v-if="showActions" class="flex flex-wrap items-center gap-2">
-        <slot name="system-actions">
-          <ChoyButton
-            v-if="showCreate"
-            size="sm"
-            variant="outline"
-            @click="emit('create')"
-          >
-            {{ createLabel }}
-          </ChoyButton>
-          <ChoyButton
-            v-if="showRefresh"
-            size="sm"
-            variant="outline"
-            @click="emit('refresh')"
-          >
-            {{ refreshLabel }}
-          </ChoyButton>
-        </slot>
-        <slot name="user-actions" />
-      </div>
-      <div class="min-w-0 flex-1">
-        <slot name="search" />
-      </div>
-      <slot name="header-right" />
-    </div>
-
-    <div
-      v-if="showChartControls"
-      class="flex flex-wrap items-center gap-2"
-      data-region="chart-controls"
-    >
-      <slot
-        name="metric-switcher"
-        :metrics="metrics"
-        :current="localMetric"
-        :change="selectMetric"
-      >
-        <label
-          v-if="metrics.length"
-          class="flex items-center gap-2 text-xs text-muted-foreground"
-        >
-          Metric
-          <select
-            class="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground"
-            :value="localMetric"
-            aria-label="Metric selection"
-            @change="selectMetric(($event.target as HTMLSelectElement).value)"
-          >
-            <option
-              v-for="m in metrics"
-              :key="m.alias"
-              :value="m.alias"
-            >
-              {{ m.label }}
-            </option>
-          </select>
-        </label>
-      </slot>
-
-      <slot
-        name="chart-type-switcher"
-        :types="availableTypes"
-        :current="localChartType"
-        :change="selectChartType"
-      >
-        <div
-          v-if="availableTypes.length"
-          class="inline-flex overflow-hidden rounded-md border border-border"
-          role="group"
-          aria-label="Chart type"
-        >
-          <ChoyButton
-            v-for="t in availableTypes"
-            :key="t"
-            size="sm"
-            :variant="localChartType === t ? 'default' : 'ghost'"
-            class="rounded-none"
-            :aria-pressed="localChartType === t"
-            @click="selectChartType(t)"
-          >
-            {{ t }}
-          </ChoyButton>
-        </div>
-      </slot>
-
-      <slot
-        name="stacked-switcher"
-        :stacked="localStacked"
-        :disabled="stackedDisabled"
-        :toggle="toggleStacked"
-      >
-        <ChoyButton
-          size="sm"
-          :variant="localStacked && !stackedDisabled ? 'default' : 'outline'"
-          :disabled="stackedDisabled"
-          :aria-pressed="localStacked"
-          @click="toggleStacked"
-        >
-          Stack
-        </ChoyButton>
-      </slot>
-
-      <slot
-        name="sort-switcher"
-        :current="localSort"
-        :disabled="sortDisabled"
-        :change="selectSort"
-      >
-        <div
-          class="inline-flex overflow-hidden rounded-md border border-border"
-          role="group"
-          aria-label="Sort"
-        >
-          <ChoyButton
-            size="sm"
-            class="rounded-none"
-            :variant="localSort === 'none' ? 'default' : 'ghost'"
-            :disabled="sortDisabled"
-            :aria-pressed="localSort === 'none'"
-            aria-label="No sort"
-            title="No sort"
-            @click="selectSort('none')"
-          >
-            ∅
-          </ChoyButton>
-          <ChoyButton
-            size="sm"
-            class="rounded-none"
-            :variant="localSort === 'asc' ? 'default' : 'ghost'"
-            :disabled="sortDisabled"
-            :aria-pressed="localSort === 'asc'"
-            aria-label="Sort ascending"
-            title="Sort ascending"
-            @click="selectSort('asc')"
-          >
-            ↑
-          </ChoyButton>
-          <ChoyButton
-            size="sm"
-            class="rounded-none"
-            :variant="localSort === 'desc' ? 'default' : 'ghost'"
-            :disabled="sortDisabled"
-            :aria-pressed="localSort === 'desc'"
-            aria-label="Sort descending"
-            title="Sort descending"
-            @click="selectSort('desc')"
-          >
-            ↓
-          </ChoyButton>
-        </div>
-      </slot>
-    </div>
-
-    <div class="relative min-h-[280px] w-full" data-region="chart-body">
-      <ChartContainer
-        v-if="spec"
-        :config="spec.config"
-        class="min-h-[280px] w-full"
-      >
-        <VisXYContainer
-          v-if="spec.kind === 'bar' || spec.kind === 'line'"
-          :data="xyRows"
-          :height="280"
-          class="h-[280px] w-full"
-        >
-          <VisGroupedBar
-            v-if="spec.kind === 'bar' && !spec.stacked"
-            :x="xAccessor"
-            :y="xyYAccessors"
-            :color="xyColors"
-            :rounded-corners="2"
-            :events="groupedBarEvents"
-          />
-          <VisStackedBar
-            v-else-if="spec.kind === 'bar' && spec.stacked"
-            :x="xAccessor"
-            :y="xyYAccessors"
-            :color="xyColors"
-            :rounded-corners="2"
-            :events="stackedBarEvents"
-          />
-          <template v-else-if="spec.kind === 'line'">
-            <VisArea
-              v-if="spec.stacked"
-              :x="xAccessor"
-              :y="xyYAccessors"
-              :color="xyColors"
-              :opacity="0.25"
-            />
-            <VisLine
-              :x="xAccessor"
-              :y="xyYAccessors"
-              :color="xyColors"
-              :events="lineEvents"
-            />
-          </template>
-          <VisAxis
-            type="x"
-            :x="xAccessor"
-            :tick-format="xTickFormat"
-            :tick-line="false"
-            :domain-line="false"
-            :grid-line="false"
-          />
-          <VisAxis
-            type="y"
-            :label="spec.metricLabel"
-            :tick-line="false"
-            :domain-line="false"
-            :grid-line="true"
-            :tick-format="spec.percent ? ((v: number) => `${v}%`) : undefined"
-          />
-        </VisXYContainer>
-
-        <VisSingleContainer
-          v-else-if="spec.kind === 'pie'"
-          :data="pieRows"
-          :height="280"
-          class="h-[280px] w-full"
-        >
-          <VisDonut
-            :value="(d: { value: number }) => d.value"
-            :color="(d: { color: string }) => d.color"
-            :arc-width="40"
-            :events="donutEvents"
-          />
-        </VisSingleContainer>
-
-        <ChartLegendContent />
-      </ChartContainer>
-
-      <div
-        v-else
-        class="flex min-h-[280px] items-center justify-center text-sm text-muted-foreground"
-      >
-        {{ emptyLabel }}
-      </div>
-
-      <div
-        v-if="loading && !error"
-        class="absolute inset-0 flex items-center justify-center bg-background/60 text-sm text-muted-foreground"
-      >
-        Loading…
-      </div>
-      <div
-        v-else-if="error"
-        class="absolute inset-0 flex items-center justify-center bg-background/70 text-sm text-destructive"
-        role="alert"
-      >
-        {{ error }}
-      </div>
-    </div>
-  </div>
-</template>

@@ -3,6 +3,12 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div data-anchor="choy.col" :class="cn('choy-col min-w-0', props.class)" :style="style">
+    <slot />
+  </div>
+</template>
+
 <script setup lang="ts">
 import { computed, inject } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
@@ -28,9 +34,3 @@ const style = computed(() => {
   return { gridColumn: `span ${span} / span ${span}` };
 });
 </script>
-
-<template>
-  <div data-anchor="choy.col" :class="cn('choy-col min-w-0', props.class)" :style="style">
-    <slot />
-  </div>
-</template>

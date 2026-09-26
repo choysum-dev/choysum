@@ -3,31 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-/**
- * Form view chrome skeleton. Slots and action-bar regions only; store,
- * validation, and record CRUD are not wired here yet.
- */
-withDefaults(
-  defineProps<{
-    title?: string;
-    showHeader?: boolean;
-    showActions?: boolean;
-    showMessages?: boolean;
-    loading?: boolean;
-    embedded?: boolean;
-  }>(),
-  {
-    title: '',
-    showHeader: true,
-    showActions: true,
-    showMessages: true,
-    loading: false,
-    embedded: false,
-  },
-);
-</script>
-
 <template>
   <div
     data-anchor="choy.form-view"
@@ -103,3 +78,28 @@ withDefaults(
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+/**
+ * Form view chrome skeleton. Slots and action-bar regions only; store,
+ * validation, and record CRUD are not wired here yet.
+ */
+withDefaults(
+  defineProps<{
+    title?: string;
+    showHeader?: boolean;
+    showActions?: boolean;
+    showMessages?: boolean;
+    loading?: boolean;
+    embedded?: boolean;
+  }>(),
+  {
+    title: '',
+    showHeader: true,
+    showActions: true,
+    showMessages: true,
+    loading: false,
+    embedded: false,
+  },
+);
+</script>

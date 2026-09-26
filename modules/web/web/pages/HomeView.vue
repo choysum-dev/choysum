@@ -3,137 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-// Copyright 2025 The Choysum Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-import { ref, onMounted, computed, shallowRef } from 'vue';
-import { useI18nStore } from '@/web/web/stores';
-import OPage from '@/web/web/components/page/OPage.vue';
-import { ElCard, ElCol, ElRow, ElStatistic, ElIcon, ElProgress, ElButton, ElEmpty, ElDivider } from 'element-plus';
-
-import { Key, Plus, Edit, User, TrendCharts, Connection, Finished } from '@element-plus/icons-vue';
-
-// Activity item type definition.
-interface ActivityItem {
-  id: number;
-  type: string;
-  user: string;
-  time: Date;
-}
-
-// I18n store.
-const i18nStore = useI18nStore();
-// Keep this computed for potential logic, but do not use it to drive RTL classes.
-const isRtlMode = computed(() => i18nStore.currentLocale.textDirection === 'rtl');
-
-// Statistics data kept in shallow refs to reduce reactivity overhead.
-const statistics = shallowRef({
-  activeUsers: 128,
-  totalProjects: 24,
-  completedTasks: 342,
-  systemHealth: 98.5,
-});
-
-// System status kept in shallow refs to reduce reactivity overhead.
-const systemStatus = shallowRef({
-  cpuUsage: 24,
-  memoryUsage: 38,
-  diskUsage: 45,
-  networkUsage: 12,
-});
-
-// Recent activities kept in shallow refs to reduce reactivity overhead.
-const recentActivities = shallowRef<ActivityItem[]>([
-  { id: 1, type: 'login', user: 'admin', time: new Date(Date.now() - 3600000) },
-  { id: 2, type: 'create', user: 'user1', time: new Date(Date.now() - 7200000) },
-  { id: 3, type: 'update', user: 'user2', time: new Date(Date.now() - 10800000) },
-]);
-
-// Load dashboard data.
-async function loadDashboardData() {
-  try {
-    // This will load real data from the API in the future.
-    statistics.value = {
-      activeUsers: 128,
-      totalProjects: 24,
-      completedTasks: 342,
-      systemHealth: 98.5,
-    };
-
-    recentActivities.value = [
-      { id: 1, type: 'login', user: 'admin', time: new Date(Date.now() - 3600000) },
-      { id: 2, type: 'create', user: 'user1', time: new Date(Date.now() - 7200000) },
-      { id: 3, type: 'update', user: 'user2', time: new Date(Date.now() - 10800000) },
-    ];
-  } catch (error) {
-    console.error('Failed to load dashboard data:', error);
-  }
-}
-
-// Format activity time.
-function formatActivityTime(time: Date): string {
-  return i18nStore.formatDateTime(time, { type: 'relative' });
-}
-
-const formattedActivities = computed(() => {
-  return recentActivities.value.map(activity => ({
-    id: activity.id,
-    // Precompute everything to avoid branching in the template.
-    iconComponent: activity.type === 'login' ? Key : activity.type === 'create' ? Plus : Edit,
-    title: `${activity.user} ${activity.type === 'login' ? '登录了系统' : activity.type === 'create' ? '创建了新项目' : '更新了设置'}`,
-    time: formatActivityTime(activity.time),
-  }));
-});
-
-const progressColors = computed(() => ({
-  cpu: systemStatus.value.cpuUsage > 80 ? '#F56C6C' : '#67C23A',
-  memory: systemStatus.value.memoryUsage > 80 ? '#F56C6C' : '#67C23A',
-  disk: systemStatus.value.diskUsage > 80 ? '#F56C6C' : '#67C23A',
-  network: systemStatus.value.networkUsage > 80 ? '#F56C6C' : '#67C23A',
-}));
-
-const systemMetrics = computed(() => [
-  {
-    key: 'cpu',
-    label: 'CPU使用率',
-    value: systemStatus.value.cpuUsage,
-    color: progressColors.value.cpu,
-  },
-  {
-    key: 'memory',
-    label: '内存使用率',
-    value: systemStatus.value.memoryUsage,
-    color: progressColors.value.memory,
-  },
-  {
-    key: 'disk',
-    label: '磁盘使用率',
-    value: systemStatus.value.diskUsage,
-    color: progressColors.value.disk,
-  },
-  {
-    key: 'network',
-    label: '网络使用率',
-    value: systemStatus.value.networkUsage,
-    color: progressColors.value.network,
-  },
-]);
-
-// Load data after the component mounts.
-onMounted(loadDashboardData);
-</script>
-
 <template>
   <OPage title="仪表板" padding width="full" elevated>
     <template #toolbar>
@@ -275,6 +144,137 @@ onMounted(loadDashboardData);
     </el-row>
   </OPage>
 </template>
+
+<script setup lang="ts">
+// Copyright 2025 The Choysum Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+import { ref, onMounted, computed, shallowRef } from 'vue';
+import { useI18nStore } from '@/web/web/stores';
+import OPage from '@/web/web/components/page/OPage.vue';
+import { ElCard, ElCol, ElRow, ElStatistic, ElIcon, ElProgress, ElButton, ElEmpty, ElDivider } from 'element-plus';
+
+import { Key, Plus, Edit, User, TrendCharts, Connection, Finished } from '@element-plus/icons-vue';
+
+// Activity item type definition.
+interface ActivityItem {
+  id: number;
+  type: string;
+  user: string;
+  time: Date;
+}
+
+// I18n store.
+const i18nStore = useI18nStore();
+// Keep this computed for potential logic, but do not use it to drive RTL classes.
+const isRtlMode = computed(() => i18nStore.currentLocale.textDirection === 'rtl');
+
+// Statistics data kept in shallow refs to reduce reactivity overhead.
+const statistics = shallowRef({
+  activeUsers: 128,
+  totalProjects: 24,
+  completedTasks: 342,
+  systemHealth: 98.5,
+});
+
+// System status kept in shallow refs to reduce reactivity overhead.
+const systemStatus = shallowRef({
+  cpuUsage: 24,
+  memoryUsage: 38,
+  diskUsage: 45,
+  networkUsage: 12,
+});
+
+// Recent activities kept in shallow refs to reduce reactivity overhead.
+const recentActivities = shallowRef<ActivityItem[]>([
+  { id: 1, type: 'login', user: 'admin', time: new Date(Date.now() - 3600000) },
+  { id: 2, type: 'create', user: 'user1', time: new Date(Date.now() - 7200000) },
+  { id: 3, type: 'update', user: 'user2', time: new Date(Date.now() - 10800000) },
+]);
+
+// Load dashboard data.
+async function loadDashboardData() {
+  try {
+    // This will load real data from the API in the future.
+    statistics.value = {
+      activeUsers: 128,
+      totalProjects: 24,
+      completedTasks: 342,
+      systemHealth: 98.5,
+    };
+
+    recentActivities.value = [
+      { id: 1, type: 'login', user: 'admin', time: new Date(Date.now() - 3600000) },
+      { id: 2, type: 'create', user: 'user1', time: new Date(Date.now() - 7200000) },
+      { id: 3, type: 'update', user: 'user2', time: new Date(Date.now() - 10800000) },
+    ];
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error);
+  }
+}
+
+// Format activity time.
+function formatActivityTime(time: Date): string {
+  return i18nStore.formatDateTime(time, { type: 'relative' });
+}
+
+const formattedActivities = computed(() => {
+  return recentActivities.value.map(activity => ({
+    id: activity.id,
+    // Precompute everything to avoid branching in the template.
+    iconComponent: activity.type === 'login' ? Key : activity.type === 'create' ? Plus : Edit,
+    title: `${activity.user} ${activity.type === 'login' ? '登录了系统' : activity.type === 'create' ? '创建了新项目' : '更新了设置'}`,
+    time: formatActivityTime(activity.time),
+  }));
+});
+
+const progressColors = computed(() => ({
+  cpu: systemStatus.value.cpuUsage > 80 ? '#F56C6C' : '#67C23A',
+  memory: systemStatus.value.memoryUsage > 80 ? '#F56C6C' : '#67C23A',
+  disk: systemStatus.value.diskUsage > 80 ? '#F56C6C' : '#67C23A',
+  network: systemStatus.value.networkUsage > 80 ? '#F56C6C' : '#67C23A',
+}));
+
+const systemMetrics = computed(() => [
+  {
+    key: 'cpu',
+    label: 'CPU使用率',
+    value: systemStatus.value.cpuUsage,
+    color: progressColors.value.cpu,
+  },
+  {
+    key: 'memory',
+    label: '内存使用率',
+    value: systemStatus.value.memoryUsage,
+    color: progressColors.value.memory,
+  },
+  {
+    key: 'disk',
+    label: '磁盘使用率',
+    value: systemStatus.value.diskUsage,
+    color: progressColors.value.disk,
+  },
+  {
+    key: 'network',
+    label: '网络使用率',
+    value: systemStatus.value.networkUsage,
+    color: progressColors.value.network,
+  },
+]);
+
+// Load data after the component mounts.
+onMounted(loadDashboardData);
+</script>
 
 <style lang="scss" scoped>
 .dashboard-toolbar {

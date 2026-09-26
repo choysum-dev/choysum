@@ -3,6 +3,111 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <OPage width="medium" elevated padding :useCard="false">
+    <div class="welcome-container" :dir="isRtlMode ? 'rtl' : 'ltr'">
+      <!-- Welcome header section. -->
+      <div class="welcome-header">
+        <img src="@/web/web/assets/logo.svg" alt="Choysum Logo" class="welcome-logo" />
+        <h1 class="welcome-title">欢迎使用 Choysum</h1>
+        <p class="welcome-subtitle">下一代企业级开源管理平台</p>
+        <el-tag type="success" effect="plain" class="version-tag">v{{ systemInfo.version }}</el-tag>
+      </div>
+
+      <el-divider />
+
+      <!-- Onboarding steps section. -->
+      <div class="welcome-steps">
+        <h2 class="section-title">快速开始</h2>
+
+        <el-steps :active="activeStep" finish-status="success" simple class="welcome-step-list">
+          <el-step v-for="(step, index) in steps" :key="index" :title="step.title" :description="step.description">
+            <template #icon>
+              <el-icon><component :is="step.icon" /></el-icon>
+            </template>
+          </el-step>
+        </el-steps>
+
+        <!-- Step content section. -->
+        <el-card class="step-content" shadow="hover">
+          <div class="step-panel">
+            <div class="step-icon">
+              <el-icon><component :is="steps[activeStep].icon" /></el-icon>
+            </div>
+            <h3 class="step-title">{{ steps[activeStep].title }}</h3>
+            <p class="step-description">{{ steps[activeStep].content }}</p>
+
+            <div class="step-actions">
+              <el-button v-if="activeStep > 0" @click="prevStep" icon="ArrowLeft">上一步</el-button>
+
+              <template v-if="activeStep < steps.length - 1">
+                <el-button type="primary" @click="nextStep" icon="ArrowRight" class="next-button">继续</el-button>
+              </template>
+              <template v-else>
+                <el-button type="primary" @click="goToDashboard" icon="Right" class="next-button">进入仪表板</el-button>
+              </template>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
+      <el-divider />
+
+      <!-- Resource cards section. -->
+      <el-row :gutter="20" class="resource-cards">
+        <el-col v-for="(card, index) in resourceCards" :key="index" :sm="24" :md="8">
+          <el-card shadow="hover" class="resource-card">
+            <template #header>
+              <div class="card-header">
+                <el-icon class="card-icon">
+                  <component :is="card.icon" />
+                </el-icon>
+                <h3>{{ card.title }}</h3>
+              </div>
+            </template>
+            <p>{{ card.description }}</p>
+            <el-button type="primary" text @click="card.action">
+              {{ card.buttonText }}
+            </el-button>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <!-- System information section. -->
+      <el-card class="system-info" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <h3>系统信息</h3>
+          </div>
+        </template>
+
+        <el-descriptions :column="isRtlMode ? 1 : 2" border>
+          <el-descriptions-item label="版本">
+            {{ systemInfo.version }}
+          </el-descriptions-item>
+          <el-descriptions-item label="构建日期">
+            {{ systemInfo.buildDate }}
+          </el-descriptions-item>
+          <el-descriptions-item label="环境">
+            {{ systemInfo.environment }}
+          </el-descriptions-item>
+          <el-descriptions-item label="运行时间">
+            {{ systemInfo.uptime }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </el-card>
+
+      <!-- Footer actions section. -->
+      <div class="welcome-footer">
+        <el-button type="primary" size="large" @click="goToDashboard">
+          <el-icon class="el-icon--left"><Compass /></el-icon>
+          进入系统
+        </el-button>
+      </div>
+    </div>
+  </OPage>
+</template>
+
 <script setup lang="ts">
 // Copyright 2025 The Choysum Authors
 //
@@ -119,111 +224,6 @@ function goToDocumentation() {
   window.open('https://docs.example.com', '_blank');
 }
 </script>
-
-<template>
-  <OPage width="medium" elevated padding :useCard="false">
-    <div class="welcome-container" :dir="isRtlMode ? 'rtl' : 'ltr'">
-      <!-- Welcome header section. -->
-      <div class="welcome-header">
-        <img src="@/web/web/assets/logo.svg" alt="Choysum Logo" class="welcome-logo" />
-        <h1 class="welcome-title">欢迎使用 Choysum</h1>
-        <p class="welcome-subtitle">下一代企业级开源管理平台</p>
-        <el-tag type="success" effect="plain" class="version-tag">v{{ systemInfo.version }}</el-tag>
-      </div>
-
-      <el-divider />
-
-      <!-- Onboarding steps section. -->
-      <div class="welcome-steps">
-        <h2 class="section-title">快速开始</h2>
-
-        <el-steps :active="activeStep" finish-status="success" simple class="welcome-step-list">
-          <el-step v-for="(step, index) in steps" :key="index" :title="step.title" :description="step.description">
-            <template #icon>
-              <el-icon><component :is="step.icon" /></el-icon>
-            </template>
-          </el-step>
-        </el-steps>
-
-        <!-- Step content section. -->
-        <el-card class="step-content" shadow="hover">
-          <div class="step-panel">
-            <div class="step-icon">
-              <el-icon><component :is="steps[activeStep].icon" /></el-icon>
-            </div>
-            <h3 class="step-title">{{ steps[activeStep].title }}</h3>
-            <p class="step-description">{{ steps[activeStep].content }}</p>
-
-            <div class="step-actions">
-              <el-button v-if="activeStep > 0" @click="prevStep" icon="ArrowLeft">上一步</el-button>
-
-              <template v-if="activeStep < steps.length - 1">
-                <el-button type="primary" @click="nextStep" icon="ArrowRight" class="next-button">继续</el-button>
-              </template>
-              <template v-else>
-                <el-button type="primary" @click="goToDashboard" icon="Right" class="next-button">进入仪表板</el-button>
-              </template>
-            </div>
-          </div>
-        </el-card>
-      </div>
-
-      <el-divider />
-
-      <!-- Resource cards section. -->
-      <el-row :gutter="20" class="resource-cards">
-        <el-col v-for="(card, index) in resourceCards" :key="index" :sm="24" :md="8">
-          <el-card shadow="hover" class="resource-card">
-            <template #header>
-              <div class="card-header">
-                <el-icon class="card-icon">
-                  <component :is="card.icon" />
-                </el-icon>
-                <h3>{{ card.title }}</h3>
-              </div>
-            </template>
-            <p>{{ card.description }}</p>
-            <el-button type="primary" text @click="card.action">
-              {{ card.buttonText }}
-            </el-button>
-          </el-card>
-        </el-col>
-      </el-row>
-
-      <!-- System information section. -->
-      <el-card class="system-info" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            <h3>系统信息</h3>
-          </div>
-        </template>
-
-        <el-descriptions :column="isRtlMode ? 1 : 2" border>
-          <el-descriptions-item label="版本">
-            {{ systemInfo.version }}
-          </el-descriptions-item>
-          <el-descriptions-item label="构建日期">
-            {{ systemInfo.buildDate }}
-          </el-descriptions-item>
-          <el-descriptions-item label="环境">
-            {{ systemInfo.environment }}
-          </el-descriptions-item>
-          <el-descriptions-item label="运行时间">
-            {{ systemInfo.uptime }}
-          </el-descriptions-item>
-        </el-descriptions>
-      </el-card>
-
-      <!-- Footer actions section. -->
-      <div class="welcome-footer">
-        <el-button type="primary" size="large" @click="goToDashboard">
-          <el-icon class="el-icon--left"><Compass /></el-icon>
-          进入系统
-        </el-button>
-      </div>
-    </div>
-  </OPage>
-</template>
 
 <style lang="scss" scoped>
 .welcome-container {

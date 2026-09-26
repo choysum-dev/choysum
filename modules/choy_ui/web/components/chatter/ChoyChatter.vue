@@ -3,6 +3,48 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div
+    class="choy-chatter mt-3.5"
+    data-anchor="choy.chatter"
+    data-region="chatter"
+  >
+    <ChoyCard>
+      <template #header>
+        <div class="flex w-full items-center justify-between gap-3 font-semibold">
+          <span>{{ title }}</span>
+          <ChoyChatterFollowerBar
+            :following="following"
+            :follower-count="followerCount"
+            :loading="followersLoading"
+            :disabled="disabled"
+            :can-toggle="canToggleFollow"
+            @follow="emit('follow')"
+            @unfollow="emit('unfollow')"
+          />
+        </div>
+      </template>
+
+      <ChoyChatterComposer
+        v-if="composerVisible"
+        ref="composerRef"
+        class="mb-3"
+        :disabled="disabled"
+        :posting="posting"
+        :error="postError"
+        @post="onPost"
+      />
+
+      <ChoyChatterTimeline
+        :entries="entries"
+        :loading="loading"
+        :error="error"
+        :resolve-author-label="resolveAuthorLabel"
+      />
+    </ChoyCard>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import ChoyCard from '../layout/ChoyCard.vue';
@@ -137,45 +179,3 @@ function clear(): void {
 
 defineExpose({ clear });
 </script>
-
-<template>
-  <div
-    class="choy-chatter mt-3.5"
-    data-anchor="choy.chatter"
-    data-region="chatter"
-  >
-    <ChoyCard>
-      <template #header>
-        <div class="flex w-full items-center justify-between gap-3 font-semibold">
-          <span>{{ title }}</span>
-          <ChoyChatterFollowerBar
-            :following="following"
-            :follower-count="followerCount"
-            :loading="followersLoading"
-            :disabled="disabled"
-            :can-toggle="canToggleFollow"
-            @follow="emit('follow')"
-            @unfollow="emit('unfollow')"
-          />
-        </div>
-      </template>
-
-      <ChoyChatterComposer
-        v-if="composerVisible"
-        ref="composerRef"
-        class="mb-3"
-        :disabled="disabled"
-        :posting="posting"
-        :error="postError"
-        @post="onPost"
-      />
-
-      <ChoyChatterTimeline
-        :entries="entries"
-        :loading="loading"
-        :error="error"
-        :resolve-author-label="resolveAuthorLabel"
-      />
-    </ChoyCard>
-  </div>
-</template>

@@ -3,6 +3,42 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.many-to-one-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+      <RelationCombobox
+        v-model="model"
+        :id="controlId"
+        :search="search"
+        :search-key="searchKey"
+        :selected-option="selectedOption"
+        :page-size="pageSize"
+        :search-more="searchMore"
+        :placeholder="placeholder"
+        :disabled="disabled || readonly"
+        :clearable="clearable && !readonly"
+        :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
+        :aria-describedby="ariaDescribedby"
+        @search-more="emit('search-more', $event)"
+        @search-error="emit('search-error', $event)"
+        @select="emit('select', $event)"
+      />
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import RelationCombobox from '../internal/RelationCombobox.vue';
 import type {
@@ -50,39 +86,3 @@ const emit = defineEmits<{
   select: [option: RelationOption | null];
 }>();
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.many-to-one-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <RelationCombobox
-        v-model="model"
-        :id="controlId"
-        :search="search"
-        :search-key="searchKey"
-        :selected-option="selectedOption"
-        :page-size="pageSize"
-        :search-more="searchMore"
-        :placeholder="placeholder"
-        :disabled="disabled || readonly"
-        :clearable="clearable && !readonly"
-        :aria-invalid="ariaInvalid"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
-        @search-more="emit('search-more', $event)"
-        @search-error="emit('search-error', $event)"
-        @select="emit('select', $event)"
-      />
-    </template>
-  </ChoyFieldBase>
-</template>

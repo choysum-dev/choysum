@@ -3,6 +3,86 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.one-to-many-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default>
+      <div class="choy-one-to-many-field flex flex-col gap-2">
+        <div v-if="!readonly && !disabled" class="flex flex-wrap gap-2">
+          <ChoyButton size="sm" @click="onAdd">{{ addLabel }}</ChoyButton>
+          <slot name="actions" />
+        </div>
+
+        <DataTable
+          v-if="widget === 'list'"
+          :columns="columns"
+          :data="model"
+          :row-id="rowKey"
+          :height="height"
+          :enable-row-selection="false"
+          :enable-sorting="true"
+          @row-click="onRowClick"
+        />
+
+        <div
+          v-else
+          class="grid gap-2"
+          :style="{ gridTemplateColumns: 'repeat(auto-fill, minmax(10rem, 1fr))' }"
+        >
+          <div
+            v-for="(row, index) in model"
+            :key="String(rowKey(row, index))"
+            class="rounded-md border border-border bg-background p-3 shadow-sm"
+            @click="onCardClick(row)"
+          >
+            <div class="text-sm font-medium">{{ rowTitle(row) }}</div>
+            <div v-if="rowSubtitle(row)" class="mt-1 text-xs text-foreground/60">
+              {{ rowSubtitle(row) }}
+            </div>
+            <div v-if="removable && !readonly && !disabled" class="mt-2">
+              <ChoyButton
+                size="sm"
+                variant="ghost"
+                @click.stop="onRemove(row)"
+              >
+                Remove
+              </ChoyButton>
+            </div>
+          </div>
+          <div
+            v-if="model.length === 0"
+            class="col-span-full rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-foreground/50"
+          >
+            {{ emptyLabel }}
+          </div>
+        </div>
+
+        <Dialog v-model:open="dialogOpen">
+          <DialogContent>
+            <DialogTitle>{{ dialogTitle }}</DialogTitle>
+            <DialogDescription>One-to-many card detail (host may replace via slots).</DialogDescription>
+            <slot name="dialog" :row="dialogRow">
+              <pre class="max-h-60 overflow-auto rounded-md bg-muted/30 p-2 text-xs">{{
+                dialogRow ? JSON.stringify(dialogRow, null, 2) : ''
+              }}</pre>
+            </slot>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts" generic="T extends Record<string, unknown>">
 import { computed, ref } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
@@ -130,83 +210,3 @@ function onRowClick(row: T): void {
   if (canEdit()) emit('edit-request', row);
 }
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.one-to-many-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default>
-      <div class="choy-one-to-many-field flex flex-col gap-2">
-        <div v-if="!readonly && !disabled" class="flex flex-wrap gap-2">
-          <ChoyButton size="sm" @click="onAdd">{{ addLabel }}</ChoyButton>
-          <slot name="actions" />
-        </div>
-
-        <DataTable
-          v-if="widget === 'list'"
-          :columns="columns"
-          :data="model"
-          :row-id="rowKey"
-          :height="height"
-          :enable-row-selection="false"
-          :enable-sorting="true"
-          @row-click="onRowClick"
-        />
-
-        <div
-          v-else
-          class="grid gap-2"
-          :style="{ gridTemplateColumns: 'repeat(auto-fill, minmax(10rem, 1fr))' }"
-        >
-          <div
-            v-for="(row, index) in model"
-            :key="String(rowKey(row, index))"
-            class="rounded-md border border-border bg-background p-3 shadow-sm"
-            @click="onCardClick(row)"
-          >
-            <div class="text-sm font-medium">{{ rowTitle(row) }}</div>
-            <div v-if="rowSubtitle(row)" class="mt-1 text-xs text-foreground/60">
-              {{ rowSubtitle(row) }}
-            </div>
-            <div v-if="removable && !readonly && !disabled" class="mt-2">
-              <ChoyButton
-                size="sm"
-                variant="ghost"
-                @click.stop="onRemove(row)"
-              >
-                Remove
-              </ChoyButton>
-            </div>
-          </div>
-          <div
-            v-if="model.length === 0"
-            class="col-span-full rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-foreground/50"
-          >
-            {{ emptyLabel }}
-          </div>
-        </div>
-
-        <Dialog v-model:open="dialogOpen">
-          <DialogContent>
-            <DialogTitle>{{ dialogTitle }}</DialogTitle>
-            <DialogDescription>One-to-many card detail (host may replace via slots).</DialogDescription>
-            <slot name="dialog" :row="dialogRow">
-              <pre class="max-h-60 overflow-auto rounded-md bg-muted/30 p-2 text-xs">{{
-                dialogRow ? JSON.stringify(dialogRow, null, 2) : ''
-              }}</pre>
-            </slot>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </template>
-  </ChoyFieldBase>
-</template>

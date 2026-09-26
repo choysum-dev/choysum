@@ -3,6 +3,40 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.monetary-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error || (invalidDraft ? 'Invalid amount' : '')"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+      <Input
+        :id="controlId"
+        :model-value="displayValue"
+        :name="name || undefined"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :readonly="readonly"
+        :aria-invalid="ariaInvalid || invalidDraft || undefined"
+        :aria-required="ariaRequired"
+        :aria-describedby="ariaDescribedby"
+        inputmode="decimal"
+        @update:model-value="onInput"
+        @focus="onFocus"
+        @blur="onBlur"
+        @keydown="onKeydown"
+      />
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import Input from '../vendor/ui/input/Input.vue';
@@ -150,37 +184,3 @@ function onKeydown(event: KeyboardEvent): void {
   commitDraft();
 }
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.monetary-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error || (invalidDraft ? 'Invalid amount' : '')"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <Input
-        :id="controlId"
-        :model-value="displayValue"
-        :name="name || undefined"
-        :placeholder="placeholder"
-        :disabled="disabled"
-        :readonly="readonly"
-        :aria-invalid="ariaInvalid || invalidDraft || undefined"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
-        inputmode="decimal"
-        @update:model-value="onInput"
-        @focus="onFocus"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
-    </template>
-  </ChoyFieldBase>
-</template>
