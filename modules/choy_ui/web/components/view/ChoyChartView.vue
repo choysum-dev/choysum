@@ -170,9 +170,9 @@ const supportCtx = computed(() => ({
 }));
 
 const availableTypes = computed(() => {
-  const supported = availableChartTypes(supportCtx.value);
-  const allowed = new Set(props.chartTypes);
-  return supported.filter(t => allowed.has(t));
+  const supported = new Set(availableChartTypes(supportCtx.value));
+  // Preserve host-declared order; dedupe and keep allowlist semantics.
+  return [...new Set(props.chartTypes)].filter(t => supported.has(t));
 });
 
 watch(
@@ -366,7 +366,9 @@ function onLineClick(
         ? target.closest('svg')
         : null;
   if (!svg || typeof mouse.clientX !== 'number') return;
-  const rect = svg.getBoundingClientRect();
+  // The clicked path spans the data x-domain more tightly than the full SVG
+  // box (which also covers axis gutters).
+  const rect = (target instanceof Element ? target : svg).getBoundingClientRect();
   const rel = (mouse.clientX - rect.left) / Math.max(rect.width, 1);
   const categoryIdx = Math.max(
     0,

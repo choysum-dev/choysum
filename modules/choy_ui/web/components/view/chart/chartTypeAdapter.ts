@@ -157,7 +157,7 @@ export const lineAdapter: IChartTypeAdapter = {
 export const pieAdapter: IChartTypeAdapter = {
   id: 'pie',
   // Pie needs at least one grouping dimension (categories or multi-series).
-  supports: ctx => ctx.groupDepth >= 1,
+  supports: ctx => ctx.groupDepth >= 1 || ctx.seriesCount > 1,
   build(data) {
     const colors = resolvePalette(data.palette);
     let slices: ChoyChartSlice[] = [];

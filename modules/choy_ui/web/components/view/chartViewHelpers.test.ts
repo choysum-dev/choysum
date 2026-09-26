@@ -34,7 +34,7 @@ test('resolveChartAdapter returns bar/line/pie and rejects unknown', () => {
   expect(resolveChartAdapter('radar')).toBeUndefined();
 });
 
-test('availableChartTypes filters pie by groupDepth', () => {
+test('availableChartTypes filters pie by groupDepth or multi-series', () => {
   expect(
     availableChartTypes({
       groupDepth: 0,
@@ -43,6 +43,14 @@ test('availableChartTypes filters pie by groupDepth', () => {
       metricAlias: 'count',
     }),
   ).toEqual(['bar', 'line']);
+  expect(
+    availableChartTypes({
+      groupDepth: 0,
+      stacked: true,
+      seriesCount: 2,
+      metricAlias: 'count',
+    }),
+  ).toEqual(['bar', 'line', 'pie']);
   expect(
     availableChartTypes({
       groupDepth: 1,
@@ -262,6 +270,23 @@ test('resolveStackedXyClickTarget prefers row index over event index', () => {
   });
   expect(resolveStackedXyClickTarget(undefined, 3, 1)).toEqual({
     categoryIdx: 3,
+    seriesIdx: 1,
+  });
+  // Row present but index unusable → fall through to null (covers final return).
+  expect(resolveStackedXyClickTarget({ category: 'A' }, undefined, 0)).toEqual({
+    categoryIdx: null,
+    seriesIdx: 0,
+  });
+  expect(resolveStackedXyClickTarget({ index: '' }, undefined, 1)).toEqual({
+    categoryIdx: null,
+    seriesIdx: 1,
+  });
+  expect(resolveStackedXyClickTarget({ index: 'nope' }, undefined, 1)).toEqual({
+    categoryIdx: null,
+    seriesIdx: 1,
+  });
+  expect(resolveStackedXyClickTarget({ index: Number.NaN }, undefined, 1)).toEqual({
+    categoryIdx: null,
     seriesIdx: 1,
   });
 });
