@@ -3,30 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-import ChoyButton from './ChoyButton.vue';
-
-/**
- * Simplified page IO menu. PR3 exposes Import/Export triggers only; real
- * upload/export pipelines land with product cutover / later PRs.
- */
-const props = withDefaults(
-  defineProps<{
-    actionImport?: boolean;
-    actionExport?: boolean;
-  }>(),
-  {
-    actionImport: false,
-    actionExport: false,
-  },
-);
-
-const emit = defineEmits<{
-  import: [];
-  export: [];
-}>();
-</script>
-
 <template>
   <div
     v-if="props.actionImport || props.actionExport"
@@ -53,3 +29,27 @@ const emit = defineEmits<{
     </ChoyButton>
   </div>
 </template>
+
+<script setup lang="ts">
+import ChoyButton from './ChoyButton.vue';
+
+/**
+ * Simplified page IO menu. PR3 exposes Import/Export triggers only; real
+ * upload/export pipelines land with product cutover / later PRs.
+ */
+const props = withDefaults(
+  defineProps<{
+    actionImport?: boolean;
+    actionExport?: boolean;
+  }>(),
+  {
+    actionImport: false,
+    actionExport: false,
+  },
+);
+
+const emit = defineEmits<{
+  import: [];
+  export: [];
+}>();
+</script>

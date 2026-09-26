@@ -3,30 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-import { RouterLink, type RouteLocationRaw } from 'vue-router';
-import { ChevronRight } from 'lucide-vue-next';
-import type { ClassValue } from '../../lib/utils';
-
-export type ChoyBreadcrumbItem = {
-  label: string;
-  to?: RouteLocationRaw;
-};
-
-/**
- * Breadcrumb nav. Items with `to` render as router-link; others as span.
- */
-const props = withDefaults(
-  defineProps<{
-    class?: ClassValue;
-    items?: ChoyBreadcrumbItem[];
-  }>(),
-  {
-    items: () => [],
-  },
-);
-</script>
-
 <template>
   <nav
     data-anchor="choy.breadcrumb"
@@ -62,3 +38,27 @@ const props = withDefaults(
     </ol>
   </nav>
 </template>
+
+<script setup lang="ts">
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
+import { ChevronRight } from 'lucide-vue-next';
+import type { ClassValue } from '../../lib/utils';
+
+export type ChoyBreadcrumbItem = {
+  label: string;
+  to?: RouteLocationRaw;
+};
+
+/**
+ * Breadcrumb nav. Items with `to` render as router-link; others as span.
+ */
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    items?: ChoyBreadcrumbItem[];
+  }>(),
+  {
+    items: () => [],
+  },
+);
+</script>

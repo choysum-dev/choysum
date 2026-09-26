@@ -3,6 +3,179 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div class="choy-dogfood-company choy-gallery-token-scope min-h-full bg-background text-foreground">
+    <ChoyPage title="Dogfood Company" width="wide">
+      <ChoyTabs v-model="activeTab">
+        <ChoyTab value="form" label="Form">
+          <ChoyCard class="mt-4">
+            <ChoyFormView title="Company" :loading="formLoading">
+              <template #breadcrumb>
+                <ChoyBreadcrumb
+                  :items="[
+                    { label: 'Gallery', to: { name: 'ChoyUiGallery' } },
+                    { label: 'Dogfood Company' },
+                  ]"
+                />
+              </template>
+              <template #statusbar>
+                <ChoyStatusbarField v-model="state" :options="STATE_OPTIONS" label="" />
+              </template>
+              <template #system-actions>
+                <ChoyButton
+                  size="sm"
+                  type="button"
+                  :disabled="formLoading"
+                  @click="onSave"
+                >
+                  Save
+                </ChoyButton>
+              </template>
+              <template #button-box>
+                <ChoyButton size="sm" variant="ghost" type="button" @click="activeTab = 'list'">
+                  Open list
+                </ChoyButton>
+              </template>
+
+              <ChoyGrid :cols="12" class="gap-4">
+                <ChoyCol :span="6">
+                  <ChoyVarcharField
+                    v-model="name"
+                    label="Name"
+                    name="name"
+                    required
+                    help="Legal or trading name."
+                  />
+                </ChoyCol>
+                <ChoyCol :span="6">
+                  <ChoyManyToOneField
+                    v-model="currencyId"
+                    label="Currency"
+                    name="currency_id"
+                    search-key="dogfood.currency"
+                    :search="searchCurrencies"
+                    :selected-option="currencyOption"
+                    @select="onCurrencySelect"
+                  />
+                </ChoyCol>
+                <ChoyCol :span="4">
+                  <ChoyDateField v-model="founded" label="Founded" name="founded" />
+                </ChoyCol>
+                <ChoyCol :span="4">
+                  <ChoySelectionField
+                    v-model="partnerType"
+                    label="Type"
+                    name="partner_type"
+                    :options="TYPE_OPTIONS"
+                  />
+                </ChoyCol>
+                <ChoyCol :span="4">
+                  <ChoyBooleanField
+                    v-model="active"
+                    label="Active"
+                    name="active"
+                    widget="switch"
+                  />
+                </ChoyCol>
+                <ChoyCol :span="6">
+                  <ChoyMonetaryField
+                    v-model="capital"
+                    label="Share capital"
+                    name="capital"
+                    :currency="monetaryCurrency"
+                    :precision="2"
+                  />
+                </ChoyCol>
+                <ChoyCol :span="12">
+                  <ChoyTextField v-model="notes" label="Notes" name="notes" />
+                </ChoyCol>
+                <ChoyCol :span="12">
+                  <ChoyHtmlField v-model="htmlNotes" label="HTML notes" name="html_notes" />
+                </ChoyCol>
+                <ChoyCol :span="6">
+                  <ChoyJsonField v-model="metaJson" label="Meta JSON" name="meta" />
+                </ChoyCol>
+                <ChoyCol :span="6">
+                  <ChoyPropertiesField
+                    v-model="propsMap"
+                    label="Properties"
+                    name="properties"
+                    :items="propItems"
+                  />
+                </ChoyCol>
+                <ChoyCol :span="12">
+                  <ChoyOneToManyField
+                    v-model="contactLines"
+                    label="Contacts"
+                    widget="list"
+                    :columns="contactColumns"
+                    title-field="Title"
+                    subtitle-field="Role"
+                  />
+                </ChoyCol>
+                <ChoyCol :span="12">
+                  <ChoyManyToManyField
+                    v-model="tagIds"
+                    label="Currency tags"
+                    widget="tags"
+                    search-key="dogfood.currency.tags"
+                    :search="searchCurrencies"
+                    :options="CURRENCIES"
+                  />
+                </ChoyCol>
+              </ChoyGrid>
+            </ChoyFormView>
+          </ChoyCard>
+        </ChoyTab>
+
+        <ChoyTab value="kanban" label="Kanban">
+          <ChoyCard class="mt-4" title="Company pipeline">
+            <ChoyKanbanView v-model:lanes="kanbanLanes" />
+          </ChoyCard>
+        </ChoyTab>
+
+        <ChoyTab value="list" label="List">
+          <ChoyCard class="mt-4" title="Companies">
+            <ChoyListView
+              v-model:row-selection="listSelection"
+              :columns="listColumns"
+              :data="pageRows"
+              :row-id="companyRowId"
+              :height="280"
+              @row-click="onRowClick"
+            >
+              <template #search>
+                <ChoySearchView
+                  v-model:keyword="searchKeyword"
+                  placeholder="Filter by name or country…"
+                  @query-update="onSearch"
+                />
+              </template>
+              <template #header>
+                <p class="text-sm text-foreground/70">
+                  Selected {{ listSelection.length }} · showing {{ pageRows.length }} of
+                  {{ total }}
+                </p>
+              </template>
+            </ChoyListView>
+            <div class="mt-3 flex justify-end">
+              <ChoyPagination v-model:page="page" v-model:page-size="pageSize" :total="total" />
+            </div>
+          </ChoyCard>
+        </ChoyTab>
+      </ChoyTabs>
+
+      <template #footer>
+        <p class="text-sm text-foreground/70">
+          Isolation dogfood — Form/List/Search/Kanban + field set (incl. Html/Json/Properties/O2M/M2M)
+          on local mocks; no Element Plus / no RPC.
+        </p>
+      </template>
+    </ChoyPage>
+    <Toaster />
+  </div>
+</template>
+
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
@@ -297,176 +470,3 @@ function onRowClick(row: CompanyRow): void {
   ChoyMessage.info('Loaded from list', { description: row.name });
 }
 </script>
-
-<template>
-  <div class="choy-dogfood-company choy-gallery-token-scope min-h-full bg-background text-foreground">
-    <ChoyPage title="Dogfood Company" width="wide">
-      <ChoyTabs v-model="activeTab">
-        <ChoyTab value="form" label="Form">
-          <ChoyCard class="mt-4">
-            <ChoyFormView title="Company" :loading="formLoading">
-              <template #breadcrumb>
-                <ChoyBreadcrumb
-                  :items="[
-                    { label: 'Gallery', to: { name: 'ChoyUiGallery' } },
-                    { label: 'Dogfood Company' },
-                  ]"
-                />
-              </template>
-              <template #statusbar>
-                <ChoyStatusbarField v-model="state" :options="STATE_OPTIONS" label="" />
-              </template>
-              <template #system-actions>
-                <ChoyButton
-                  size="sm"
-                  type="button"
-                  :disabled="formLoading"
-                  @click="onSave"
-                >
-                  Save
-                </ChoyButton>
-              </template>
-              <template #button-box>
-                <ChoyButton size="sm" variant="ghost" type="button" @click="activeTab = 'list'">
-                  Open list
-                </ChoyButton>
-              </template>
-
-              <ChoyGrid :cols="12" class="gap-4">
-                <ChoyCol :span="6">
-                  <ChoyVarcharField
-                    v-model="name"
-                    label="Name"
-                    name="name"
-                    required
-                    help="Legal or trading name."
-                  />
-                </ChoyCol>
-                <ChoyCol :span="6">
-                  <ChoyManyToOneField
-                    v-model="currencyId"
-                    label="Currency"
-                    name="currency_id"
-                    search-key="dogfood.currency"
-                    :search="searchCurrencies"
-                    :selected-option="currencyOption"
-                    @select="onCurrencySelect"
-                  />
-                </ChoyCol>
-                <ChoyCol :span="4">
-                  <ChoyDateField v-model="founded" label="Founded" name="founded" />
-                </ChoyCol>
-                <ChoyCol :span="4">
-                  <ChoySelectionField
-                    v-model="partnerType"
-                    label="Type"
-                    name="partner_type"
-                    :options="TYPE_OPTIONS"
-                  />
-                </ChoyCol>
-                <ChoyCol :span="4">
-                  <ChoyBooleanField
-                    v-model="active"
-                    label="Active"
-                    name="active"
-                    widget="switch"
-                  />
-                </ChoyCol>
-                <ChoyCol :span="6">
-                  <ChoyMonetaryField
-                    v-model="capital"
-                    label="Share capital"
-                    name="capital"
-                    :currency="monetaryCurrency"
-                    :precision="2"
-                  />
-                </ChoyCol>
-                <ChoyCol :span="12">
-                  <ChoyTextField v-model="notes" label="Notes" name="notes" />
-                </ChoyCol>
-                <ChoyCol :span="12">
-                  <ChoyHtmlField v-model="htmlNotes" label="HTML notes" name="html_notes" />
-                </ChoyCol>
-                <ChoyCol :span="6">
-                  <ChoyJsonField v-model="metaJson" label="Meta JSON" name="meta" />
-                </ChoyCol>
-                <ChoyCol :span="6">
-                  <ChoyPropertiesField
-                    v-model="propsMap"
-                    label="Properties"
-                    name="properties"
-                    :items="propItems"
-                  />
-                </ChoyCol>
-                <ChoyCol :span="12">
-                  <ChoyOneToManyField
-                    v-model="contactLines"
-                    label="Contacts"
-                    widget="list"
-                    :columns="contactColumns"
-                    title-field="Title"
-                    subtitle-field="Role"
-                  />
-                </ChoyCol>
-                <ChoyCol :span="12">
-                  <ChoyManyToManyField
-                    v-model="tagIds"
-                    label="Currency tags"
-                    widget="tags"
-                    search-key="dogfood.currency.tags"
-                    :search="searchCurrencies"
-                    :options="CURRENCIES"
-                  />
-                </ChoyCol>
-              </ChoyGrid>
-            </ChoyFormView>
-          </ChoyCard>
-        </ChoyTab>
-
-        <ChoyTab value="kanban" label="Kanban">
-          <ChoyCard class="mt-4" title="Company pipeline">
-            <ChoyKanbanView v-model:lanes="kanbanLanes" />
-          </ChoyCard>
-        </ChoyTab>
-
-        <ChoyTab value="list" label="List">
-          <ChoyCard class="mt-4" title="Companies">
-            <ChoyListView
-              v-model:row-selection="listSelection"
-              :columns="listColumns"
-              :data="pageRows"
-              :row-id="companyRowId"
-              :height="280"
-              @row-click="onRowClick"
-            >
-              <template #search>
-                <ChoySearchView
-                  v-model:keyword="searchKeyword"
-                  placeholder="Filter by name or country…"
-                  @query-update="onSearch"
-                />
-              </template>
-              <template #header>
-                <p class="text-sm text-foreground/70">
-                  Selected {{ listSelection.length }} · showing {{ pageRows.length }} of
-                  {{ total }}
-                </p>
-              </template>
-            </ChoyListView>
-            <div class="mt-3 flex justify-end">
-              <ChoyPagination v-model:page="page" v-model:page-size="pageSize" :total="total" />
-            </div>
-          </ChoyCard>
-        </ChoyTab>
-      </ChoyTabs>
-
-      <template #footer>
-        <p class="text-sm text-foreground/70">
-          Isolation dogfood — Form/List/Search/Kanban + field set (incl. Html/Json/Properties/O2M/M2M)
-          on local mocks; no Element Plus / no RPC.
-        </p>
-      </template>
-    </ChoyPage>
-    <Toaster />
-  </div>
-</template>

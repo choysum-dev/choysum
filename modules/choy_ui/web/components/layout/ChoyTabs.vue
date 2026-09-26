@@ -3,6 +3,26 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <Tabs
+    v-model="modelValue"
+    :data-anchor="props.dataAnchor?.trim() || 'choy.tabs'"
+    :class="props.class"
+  >
+    <TabsList v-if="tabs.length">
+      <TabsTrigger
+        v-for="tab in tabs"
+        :key="tab.value"
+        :value="tab.value"
+        :disabled="tab.disabled"
+      >
+        {{ tab.label }}
+      </TabsTrigger>
+    </TabsList>
+    <slot />
+  </Tabs>
+</template>
+
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import Tabs from '../vendor/ui/tabs/Tabs.vue';
@@ -60,23 +80,3 @@ onBeforeUnmount(() => {
   tabs.value = [];
 });
 </script>
-
-<template>
-  <Tabs
-    v-model="modelValue"
-    :data-anchor="props.dataAnchor?.trim() || 'choy.tabs'"
-    :class="props.class"
-  >
-    <TabsList v-if="tabs.length">
-      <TabsTrigger
-        v-for="tab in tabs"
-        :key="tab.value"
-        :value="tab.value"
-        :disabled="tab.disabled"
-      >
-        {{ tab.label }}
-      </TabsTrigger>
-    </TabsList>
-    <slot />
-  </Tabs>
-</template>

@@ -3,6 +3,69 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.image-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error || fileError"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, labelId, ariaInvalid, ariaRequired, ariaDescribedby }">
+      <div class="flex flex-col gap-2">
+        <input
+          ref="inputRef"
+          type="file"
+          :accept="RASTER_IMAGE_ACCEPT"
+          class="hidden"
+          :id="controlId"
+          :disabled="disabled || readonly"
+          tabindex="-1"
+          aria-hidden="true"
+          @change="onChange"
+        />
+        <div class="flex flex-wrap items-center gap-2">
+          <ChoyButton
+            type="button"
+            variant="outline"
+            size="sm"
+            :disabled="disabled || readonly"
+            :aria-labelledby="label ? labelId : undefined"
+            :aria-invalid="ariaInvalid"
+            :aria-required="ariaRequired"
+            :aria-describedby="ariaDescribedby"
+            @click="onPick"
+          >
+            Choose image
+          </ChoyButton>
+          <span v-if="model?.name" class="text-sm text-foreground">{{ model.name }}</span>
+          <ChoyButton
+            v-if="model"
+            type="button"
+            variant="ghost"
+            size="sm"
+            :disabled="disabled || readonly"
+            @click="onClear"
+          >
+            Clear
+          </ChoyButton>
+        </div>
+        <img
+          v-if="previewSrc"
+          :src="previewSrc"
+          :alt="model?.name || 'Image preview'"
+          class="max-h-40 max-w-full rounded-md border border-border object-contain"
+        />
+      </div>
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import type { ClassValue } from '../../lib/utils';
@@ -138,66 +201,3 @@ function onClear(): void {
   model.value = null;
 }
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.image-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error || fileError"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default="{ controlId, labelId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <div class="flex flex-col gap-2">
-        <input
-          ref="inputRef"
-          type="file"
-          :accept="RASTER_IMAGE_ACCEPT"
-          class="hidden"
-          :id="controlId"
-          :disabled="disabled || readonly"
-          tabindex="-1"
-          aria-hidden="true"
-          @change="onChange"
-        />
-        <div class="flex flex-wrap items-center gap-2">
-          <ChoyButton
-            type="button"
-            variant="outline"
-            size="sm"
-            :disabled="disabled || readonly"
-            :aria-labelledby="label ? labelId : undefined"
-            :aria-invalid="ariaInvalid"
-            :aria-required="ariaRequired"
-            :aria-describedby="ariaDescribedby"
-            @click="onPick"
-          >
-            Choose image
-          </ChoyButton>
-          <span v-if="model?.name" class="text-sm text-foreground">{{ model.name }}</span>
-          <ChoyButton
-            v-if="model"
-            type="button"
-            variant="ghost"
-            size="sm"
-            :disabled="disabled || readonly"
-            @click="onClear"
-          >
-            Clear
-          </ChoyButton>
-        </div>
-        <img
-          v-if="previewSrc"
-          :src="previewSrc"
-          :alt="model?.name || 'Image preview'"
-          class="max-h-40 max-w-full rounded-md border border-border object-contain"
-        />
-      </div>
-    </template>
-  </ChoyFieldBase>
-</template>

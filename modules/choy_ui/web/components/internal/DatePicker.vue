@@ -3,6 +3,110 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <Popover v-model:open="open">
+    <div class="flex w-full items-center gap-1">
+      <PopoverTrigger as-child>
+        <Button
+          type="button"
+          variant="outline"
+          data-anchor="choy.internal.date-picker"
+          :id="id || undefined"
+          :disabled="disabled"
+          :aria-invalid="props['aria-invalid']"
+          :aria-required="props['aria-required']"
+          :aria-describedby="props['aria-describedby']"
+          :class="
+            cn(
+              'choy-date-picker w-full justify-start font-normal',
+              !displayText && 'text-foreground/50',
+              props.class,
+            )
+          "
+        >
+          <span>{{ displayText || placeholder }}</span>
+        </Button>
+      </PopoverTrigger>
+      <button
+        v-if="clearable && !!String(modelValue ?? '').trim() && !disabled"
+        type="button"
+        class="shrink-0 text-xs text-foreground/50 hover:text-foreground"
+        aria-label="Clear date"
+        @click="onClear"
+      >
+        Clear
+      </button>
+    </div>
+    <PopoverContent class="w-auto p-3" align="start">
+      <CalendarRoot
+        v-slot="{ weekDays, grid }"
+        v-model="calendarValue"
+        :min-value="datePickerMinValue"
+        :max-value="datePickerMaxValue"
+        class="choy-date-picker__calendar"
+      >
+        <CalendarHeader class="flex items-center justify-between gap-2 pb-2">
+          <CalendarPrev
+            aria-label="Previous month"
+            class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
+          >
+            <ChevronLeft class="size-4" />
+          </CalendarPrev>
+          <CalendarHeading class="text-sm font-medium" />
+          <CalendarNext
+            aria-label="Next month"
+            class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
+          >
+            <ChevronRight class="size-4" />
+          </CalendarNext>
+        </CalendarHeader>
+        <div class="flex flex-col gap-4">
+          <CalendarGrid
+            v-for="month in grid"
+            :key="month.value.toString()"
+            class="w-full border-collapse space-y-1"
+          >
+            <CalendarGridHead>
+              <CalendarGridRow class="flex">
+                <CalendarHeadCell
+                  v-for="day in weekDays"
+                  :key="day"
+                  class="w-8 rounded-md text-[0.7rem] font-normal text-foreground/60"
+                >
+                  {{ day }}
+                </CalendarHeadCell>
+              </CalendarGridRow>
+            </CalendarGridHead>
+            <CalendarGridBody>
+              <CalendarGridRow
+                v-for="(weekDates, index) in month.rows"
+                :key="`week-${index}`"
+                class="flex w-full"
+              >
+                <CalendarCell
+                  v-for="weekDate in weekDates"
+                  :key="weekDate.toString()"
+                  :date="weekDate"
+                  class="relative p-0 text-center text-sm"
+                >
+                  <CalendarCellTrigger
+                    :day="weekDate"
+                    :month="month.value"
+                    class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[outside-view]:text-foreground/30"
+                  />
+                </CalendarCell>
+              </CalendarGridRow>
+            </CalendarGridBody>
+          </CalendarGrid>
+        </div>
+      </CalendarRoot>
+      <div class="mt-2 flex justify-end border-t border-border pt-2">
+        <Button type="button" variant="ghost" size="sm" @click="onToday">Today</Button>
+      </div>
+    </PopoverContent>
+  </Popover>
+</template>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { DateValue } from 'reka-ui';
@@ -110,107 +214,3 @@ watch(
   },
 );
 </script>
-
-<template>
-  <Popover v-model:open="open">
-    <div class="flex w-full items-center gap-1">
-      <PopoverTrigger as-child>
-        <Button
-          type="button"
-          variant="outline"
-          data-anchor="choy.internal.date-picker"
-          :id="id || undefined"
-          :disabled="disabled"
-          :aria-invalid="props['aria-invalid']"
-          :aria-required="props['aria-required']"
-          :aria-describedby="props['aria-describedby']"
-          :class="
-            cn(
-              'choy-date-picker w-full justify-start font-normal',
-              !displayText && 'text-foreground/50',
-              props.class,
-            )
-          "
-        >
-          <span>{{ displayText || placeholder }}</span>
-        </Button>
-      </PopoverTrigger>
-      <button
-        v-if="clearable && !!String(modelValue ?? '').trim() && !disabled"
-        type="button"
-        class="shrink-0 text-xs text-foreground/50 hover:text-foreground"
-        aria-label="Clear date"
-        @click="onClear"
-      >
-        Clear
-      </button>
-    </div>
-    <PopoverContent class="w-auto p-3" align="start">
-      <CalendarRoot
-        v-slot="{ weekDays, grid }"
-        v-model="calendarValue"
-        :min-value="datePickerMinValue"
-        :max-value="datePickerMaxValue"
-        class="choy-date-picker__calendar"
-      >
-        <CalendarHeader class="flex items-center justify-between gap-2 pb-2">
-          <CalendarPrev
-            aria-label="Previous month"
-            class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
-          >
-            <ChevronLeft class="size-4" />
-          </CalendarPrev>
-          <CalendarHeading class="text-sm font-medium" />
-          <CalendarNext
-            aria-label="Next month"
-            class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
-          >
-            <ChevronRight class="size-4" />
-          </CalendarNext>
-        </CalendarHeader>
-        <div class="flex flex-col gap-4">
-          <CalendarGrid
-            v-for="month in grid"
-            :key="month.value.toString()"
-            class="w-full border-collapse space-y-1"
-          >
-            <CalendarGridHead>
-              <CalendarGridRow class="flex">
-                <CalendarHeadCell
-                  v-for="day in weekDays"
-                  :key="day"
-                  class="w-8 rounded-md text-[0.7rem] font-normal text-foreground/60"
-                >
-                  {{ day }}
-                </CalendarHeadCell>
-              </CalendarGridRow>
-            </CalendarGridHead>
-            <CalendarGridBody>
-              <CalendarGridRow
-                v-for="(weekDates, index) in month.rows"
-                :key="`week-${index}`"
-                class="flex w-full"
-              >
-                <CalendarCell
-                  v-for="weekDate in weekDates"
-                  :key="weekDate.toString()"
-                  :date="weekDate"
-                  class="relative p-0 text-center text-sm"
-                >
-                  <CalendarCellTrigger
-                    :day="weekDate"
-                    :month="month.value"
-                    class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[outside-view]:text-foreground/30"
-                  />
-                </CalendarCell>
-              </CalendarGridRow>
-            </CalendarGridBody>
-          </CalendarGrid>
-        </div>
-      </CalendarRoot>
-      <div class="mt-2 flex justify-end border-t border-border pt-2">
-        <Button type="button" variant="ghost" size="sm" @click="onToday">Today</Button>
-      </div>
-    </PopoverContent>
-  </Popover>
-</template>

@@ -3,6 +3,106 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ComboboxRoot
+    v-model="modelValue"
+    v-model:open="open"
+    data-anchor="choy.internal.relation-combobox"
+    :disabled="disabled"
+    :ignore-filter="true"
+    :class="cn('choy-relation-combobox relative w-full', props.class)"
+  >
+    <ComboboxAnchor class="flex w-full gap-1">
+      <ComboboxInput
+        v-model="query"
+        :id="id || undefined"
+        :disabled="disabled"
+        :aria-invalid="props['aria-invalid']"
+        :aria-required="props['aria-required']"
+        :aria-describedby="props['aria-describedby']"
+        :display-value="() => selected?.label ?? ''"
+        :placeholder="selected?.label || placeholder"
+        :class="
+          cn(
+            'flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm',
+            'placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            disabled && 'opacity-50',
+          )
+        "
+      />
+      <Button
+        v-if="clearable && modelValue && !disabled"
+        type="button"
+        variant="ghost"
+        size="sm"
+        @click="onClear"
+      >
+        Clear
+      </Button>
+    </ComboboxAnchor>
+    <ComboboxPortal>
+      <ComboboxContent
+        position="popper"
+        class="z-50 w-[var(--reka-combobox-trigger-width)] overflow-hidden rounded-md border border-border bg-background text-foreground shadow-md"
+      >
+        <ComboboxViewport>
+          <div ref="listParent" class="max-h-56 overflow-auto">
+            <div
+              v-if="searchError"
+              class="border-b border-border px-3 py-2 text-sm text-danger"
+              role="alert"
+            >
+              {{ searchError }}
+            </div>
+            <div
+              v-if="loading && !displayOptions.length"
+              class="px-3 py-2 text-sm text-foreground/60"
+            >
+              Searching…
+            </div>
+            <ComboboxEmpty
+              v-else-if="!loading && !searchError && !displayOptions.length"
+              class="px-3 py-2 text-sm text-foreground/60"
+            >
+              No matches
+            </ComboboxEmpty>
+            <div
+              v-else-if="displayOptions.length"
+              :style="{ height: `${totalSize}px`, position: 'relative', width: '100%' }"
+            >
+              <template
+                v-for="virtualRow in virtualRows"
+                :key="displayOptions[virtualRow.index]?.id ?? String(virtualRow.key)"
+              >
+                <ComboboxItem
+                  v-if="displayOptions[virtualRow.index]"
+                  :value="displayOptions[virtualRow.index]!.id"
+                  class="absolute left-0 flex w-full cursor-default items-center px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                  :style="{
+                    transform: `translateY(${virtualRow.start}px)`,
+                    height: `${virtualRow.size}px`,
+                  }"
+                >
+                  {{ displayOptions[virtualRow.index]?.label }}
+                </ComboboxItem>
+              </template>
+            </div>
+          </div>
+        </ComboboxViewport>
+        <button
+          v-if="searchMore"
+          type="button"
+          class="w-full border-t border-border px-3 py-2 text-left text-sm text-primary hover:bg-muted"
+          data-testid="choy-relation-search-more"
+          @click="onSearchMore"
+        >
+          Search more…
+        </button>
+      </ComboboxContent>
+    </ComboboxPortal>
+  </ComboboxRoot>
+</template>
+
 <script setup lang="ts">
 import { computed, nextTick, onWatcherCleanup, ref, watch } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
@@ -263,103 +363,3 @@ function onSearchMore(): void {
   open.value = false;
 }
 </script>
-
-<template>
-  <ComboboxRoot
-    v-model="modelValue"
-    v-model:open="open"
-    data-anchor="choy.internal.relation-combobox"
-    :disabled="disabled"
-    :ignore-filter="true"
-    :class="cn('choy-relation-combobox relative w-full', props.class)"
-  >
-    <ComboboxAnchor class="flex w-full gap-1">
-      <ComboboxInput
-        v-model="query"
-        :id="id || undefined"
-        :disabled="disabled"
-        :aria-invalid="props['aria-invalid']"
-        :aria-required="props['aria-required']"
-        :aria-describedby="props['aria-describedby']"
-        :display-value="() => selected?.label ?? ''"
-        :placeholder="selected?.label || placeholder"
-        :class="
-          cn(
-            'flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm',
-            'placeholder:text-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            disabled && 'opacity-50',
-          )
-        "
-      />
-      <Button
-        v-if="clearable && modelValue && !disabled"
-        type="button"
-        variant="ghost"
-        size="sm"
-        @click="onClear"
-      >
-        Clear
-      </Button>
-    </ComboboxAnchor>
-    <ComboboxPortal>
-      <ComboboxContent
-        position="popper"
-        class="z-50 w-[var(--reka-combobox-trigger-width)] overflow-hidden rounded-md border border-border bg-background text-foreground shadow-md"
-      >
-        <ComboboxViewport>
-          <div ref="listParent" class="max-h-56 overflow-auto">
-            <div
-              v-if="searchError"
-              class="border-b border-border px-3 py-2 text-sm text-danger"
-              role="alert"
-            >
-              {{ searchError }}
-            </div>
-            <div
-              v-if="loading && !displayOptions.length"
-              class="px-3 py-2 text-sm text-foreground/60"
-            >
-              Searching…
-            </div>
-            <ComboboxEmpty
-              v-else-if="!loading && !searchError && !displayOptions.length"
-              class="px-3 py-2 text-sm text-foreground/60"
-            >
-              No matches
-            </ComboboxEmpty>
-            <div
-              v-else-if="displayOptions.length"
-              :style="{ height: `${totalSize}px`, position: 'relative', width: '100%' }"
-            >
-              <template
-                v-for="virtualRow in virtualRows"
-                :key="displayOptions[virtualRow.index]?.id ?? String(virtualRow.key)"
-              >
-                <ComboboxItem
-                  v-if="displayOptions[virtualRow.index]"
-                  :value="displayOptions[virtualRow.index]!.id"
-                  class="absolute left-0 flex w-full cursor-default items-center px-2 text-sm outline-none data-[highlighted]:bg-muted"
-                  :style="{
-                    transform: `translateY(${virtualRow.start}px)`,
-                    height: `${virtualRow.size}px`,
-                  }"
-                >
-                  {{ displayOptions[virtualRow.index]?.label }}
-                </ComboboxItem>
-              </template>
-            </div>
-          </div>
-        </ComboboxViewport>
-        <button
-          v-if="searchMore"
-          type="button"
-          class="w-full border-t border-border px-3 py-2 text-left text-sm text-primary hover:bg-muted"
-          data-testid="choy-relation-search-more"
-          @click="onSearchMore"
-        >
-          Search more…
-        </button>
-      </ComboboxContent>
-    </ComboboxPortal>
-  </ComboboxRoot>
-</template>

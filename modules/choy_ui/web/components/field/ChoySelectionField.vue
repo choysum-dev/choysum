@@ -3,6 +3,43 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.selection-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+      <Select v-model="model" :disabled="disabled || readonly">
+        <SelectTrigger
+          :id="controlId"
+          :placeholder="placeholder"
+          :disabled="disabled || readonly"
+          :aria-invalid="ariaInvalid"
+          :aria-required="ariaRequired"
+          :aria-describedby="ariaDescribedby"
+        />
+        <SelectContent>
+          <SelectItem
+            v-for="opt in selectOptions"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import { computed } from 'vue';
 import Select from '../vendor/ui/select/Select.vue';
@@ -57,40 +94,3 @@ const selectOptions = computed(() => {
   return out;
 });
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.selection-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <Select v-model="model" :disabled="disabled || readonly">
-        <SelectTrigger
-          :id="controlId"
-          :placeholder="placeholder"
-          :disabled="disabled || readonly"
-          :aria-invalid="ariaInvalid"
-          :aria-required="ariaRequired"
-          :aria-describedby="ariaDescribedby"
-        />
-        <SelectContent>
-          <SelectItem
-            v-for="opt in selectOptions"
-            :key="opt.value"
-            :value="opt.value"
-          >
-            {{ opt.label }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
-    </template>
-  </ChoyFieldBase>
-</template>

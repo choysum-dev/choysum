@@ -3,6 +3,84 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.properties-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default>
+      <div class="choy-properties-field flex flex-col gap-3">
+        <div
+          v-if="renderable.length === 0"
+          class="rounded-md border border-dashed border-border px-3 py-4 text-sm text-foreground/50"
+        >
+          No properties defined
+        </div>
+        <div
+          v-for="item in renderable"
+          :key="item.name"
+          class="flex flex-col gap-1"
+        >
+          <label class="text-sm font-medium text-foreground">
+            {{ item.string || item.name }}
+          </label>
+          <Checkbox
+            v-if="item.type === 'boolean'"
+            :model-value="asBool(readValue(item.name))"
+            :disabled="disabled || readonly || item.readonly === true"
+            @update:model-value="onCheckbox(item.name, $event)"
+          />
+          <Input
+            v-else-if="item.type === 'integer' || item.type === 'float'"
+            :model-value="asString(readValue(item.name))"
+            type="number"
+            :disabled="disabled || readonly || item.readonly === true"
+            @update:model-value="onNumber(item.name, $event, item.type === 'integer')"
+          />
+          <Textarea
+            v-else-if="item.type === 'text'"
+            :model-value="asString(readValue(item.name))"
+            :rows="3"
+            :disabled="disabled || readonly || item.readonly === true"
+            @update:model-value="setValue(item.name, $event)"
+          />
+          <Select
+            v-else-if="item.type === 'selection'"
+            :model-value="(readValue(item.name) as string | null) ?? null"
+            :disabled="disabled || readonly || item.readonly === true"
+            @update:model-value="setValue(item.name, $event)"
+          >
+            <SelectTrigger class="w-full" placeholder="Select…" />
+            <SelectContent>
+              <SelectItem
+                v-for="opt in normalizeSelectionOptions(item.selection)"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            v-else
+            :model-value="asString(readValue(item.name))"
+            :disabled="disabled || readonly || item.readonly === true"
+            @update:model-value="setValue(item.name, $event)"
+          />
+        </div>
+      </div>
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
@@ -86,81 +164,3 @@ function onNumber(name: string, raw: string, integer: boolean): void {
   setValue(name, integer ? Math.trunc(n) : n);
 }
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.properties-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default>
-      <div class="choy-properties-field flex flex-col gap-3">
-        <div
-          v-if="renderable.length === 0"
-          class="rounded-md border border-dashed border-border px-3 py-4 text-sm text-foreground/50"
-        >
-          No properties defined
-        </div>
-        <div
-          v-for="item in renderable"
-          :key="item.name"
-          class="flex flex-col gap-1"
-        >
-          <label class="text-sm font-medium text-foreground">
-            {{ item.string || item.name }}
-          </label>
-          <Checkbox
-            v-if="item.type === 'boolean'"
-            :model-value="asBool(readValue(item.name))"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="onCheckbox(item.name, $event)"
-          />
-          <Input
-            v-else-if="item.type === 'integer' || item.type === 'float'"
-            :model-value="asString(readValue(item.name))"
-            type="number"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="onNumber(item.name, $event, item.type === 'integer')"
-          />
-          <Textarea
-            v-else-if="item.type === 'text'"
-            :model-value="asString(readValue(item.name))"
-            :rows="3"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="setValue(item.name, $event)"
-          />
-          <Select
-            v-else-if="item.type === 'selection'"
-            :model-value="(readValue(item.name) as string | null) ?? null"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="setValue(item.name, $event)"
-          >
-            <SelectTrigger class="w-full" placeholder="Select…" />
-            <SelectContent>
-              <SelectItem
-                v-for="opt in normalizeSelectionOptions(item.selection)"
-                :key="opt.value"
-                :value="opt.value"
-              >
-                {{ opt.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            v-else
-            :model-value="asString(readValue(item.name))"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="setValue(item.name, $event)"
-          />
-        </div>
-      </div>
-    </template>
-  </ChoyFieldBase>
-</template>

@@ -3,6 +3,47 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.statusbar-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, labelId, ariaInvalid, ariaDescribedby }">
+      <div
+        :id="controlId"
+        class="choy-statusbar-field flex flex-wrap gap-1"
+        role="group"
+        :aria-labelledby="label ? labelId : undefined"
+        :aria-label="label ? undefined : name || 'Status'"
+        :aria-invalid="ariaInvalid"
+        :aria-describedby="ariaDescribedby"
+        :aria-disabled="disabled || readonly || undefined"
+      >
+        <ChoyButton
+          v-for="(opt, index) in statusOptions"
+          :key="`${opt.value}-${index}`"
+          type="button"
+          size="sm"
+          :variant="model === opt.value ? 'default' : 'outline'"
+          :disabled="disabled || readonly"
+          :aria-pressed="model === opt.value"
+          @click="select(opt.value)"
+        >
+          {{ opt.label }}
+        </ChoyButton>
+      </div>
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import { computed } from 'vue';
 import ChoyButton from '../layout/ChoyButton.vue';
@@ -51,44 +92,3 @@ function select(value: string): void {
   model.value = value;
 }
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.statusbar-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default="{ controlId, labelId, ariaInvalid, ariaDescribedby }">
-      <div
-        :id="controlId"
-        class="choy-statusbar-field flex flex-wrap gap-1"
-        role="group"
-        :aria-labelledby="label ? labelId : undefined"
-        :aria-label="label ? undefined : name || 'Status'"
-        :aria-invalid="ariaInvalid"
-        :aria-describedby="ariaDescribedby"
-        :aria-disabled="disabled || readonly || undefined"
-      >
-        <ChoyButton
-          v-for="(opt, index) in statusOptions"
-          :key="`${opt.value}-${index}`"
-          type="button"
-          size="sm"
-          :variant="model === opt.value ? 'default' : 'outline'"
-          :disabled="disabled || readonly"
-          :aria-pressed="model === opt.value"
-          @click="select(opt.value)"
-        >
-          {{ opt.label }}
-        </ChoyButton>
-      </div>
-    </template>
-  </ChoyFieldBase>
-</template>

@@ -3,6 +3,20 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <Button
+    data-anchor="choy.button"
+    :variant="props.variant"
+    :size="props.size"
+    :as="props.as"
+    :class="props.class"
+    :disabled="props.disabled"
+    :type="props.type"
+  >
+    <slot />
+  </Button>
+</template>
+
 <script setup lang="ts">
 import Button from '../vendor/ui/button/Button.vue';
 import type { ClassValue } from '../../lib/utils';
@@ -31,17 +45,3 @@ const props = withDefaults(
   },
 );
 </script>
-
-<template>
-  <Button
-    data-anchor="choy.button"
-    :variant="props.variant"
-    :size="props.size"
-    :as="props.as"
-    :class="props.class"
-    :disabled="props.disabled"
-    :type="props.type"
-  >
-    <slot />
-  </Button>
-</template>

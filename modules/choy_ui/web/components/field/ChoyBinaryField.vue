@@ -3,6 +3,65 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.binary-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error || fileError"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, labelId, ariaInvalid, ariaRequired, ariaDescribedby }">
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          ref="inputRef"
+          type="file"
+          class="hidden"
+          :id="controlId"
+          :accept="acceptAttr"
+          :disabled="disabled || readonly"
+          tabindex="-1"
+          aria-hidden="true"
+          @change="onChange"
+        />
+        <ChoyButton
+          type="button"
+          variant="outline"
+          size="sm"
+          :disabled="disabled || readonly"
+          :aria-labelledby="label ? labelId : undefined"
+          :aria-invalid="ariaInvalid"
+          :aria-required="ariaRequired"
+          :aria-describedby="ariaDescribedby"
+          @click="onPick"
+        >
+          Choose file
+        </ChoyButton>
+        <span v-if="displayName" class="text-sm text-foreground">
+          {{ displayName }}
+          <span v-if="displaySize" class="text-foreground/60">({{ displaySize }})</span>
+        </span>
+        <span v-else class="text-sm text-foreground/50">No file chosen</span>
+        <ChoyButton
+          v-if="model"
+          type="button"
+          variant="ghost"
+          size="sm"
+          :disabled="disabled || readonly"
+          @click="onClear"
+        >
+          Clear
+        </ChoyButton>
+      </div>
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { ClassValue } from '../../lib/utils';
@@ -170,62 +229,3 @@ function onClear(): void {
   model.value = null;
 }
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.binary-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error || fileError"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default="{ controlId, labelId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <div class="flex flex-wrap items-center gap-2">
-        <input
-          ref="inputRef"
-          type="file"
-          class="hidden"
-          :id="controlId"
-          :accept="acceptAttr"
-          :disabled="disabled || readonly"
-          tabindex="-1"
-          aria-hidden="true"
-          @change="onChange"
-        />
-        <ChoyButton
-          type="button"
-          variant="outline"
-          size="sm"
-          :disabled="disabled || readonly"
-          :aria-labelledby="label ? labelId : undefined"
-          :aria-invalid="ariaInvalid"
-          :aria-required="ariaRequired"
-          :aria-describedby="ariaDescribedby"
-          @click="onPick"
-        >
-          Choose file
-        </ChoyButton>
-        <span v-if="displayName" class="text-sm text-foreground">
-          {{ displayName }}
-          <span v-if="displaySize" class="text-foreground/60">({{ displaySize }})</span>
-        </span>
-        <span v-else class="text-sm text-foreground/50">No file chosen</span>
-        <ChoyButton
-          v-if="model"
-          type="button"
-          variant="ghost"
-          size="sm"
-          :disabled="disabled || readonly"
-          @click="onClear"
-        >
-          Clear
-        </ChoyButton>
-      </div>
-    </template>
-  </ChoyFieldBase>
-</template>

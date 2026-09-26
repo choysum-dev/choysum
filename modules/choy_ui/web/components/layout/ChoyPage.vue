@@ -3,64 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-import { computed, useId } from 'vue';
-import { cn, type ClassValue } from '../../lib/utils';
-import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
-
-type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
-
-/**
- * Page chrome inside the layout main area (title, toolbar, body, loading).
- * Slot visibility is read from `$slots` at render time (slots are not reactive).
- */
-const props = withDefaults(
-  defineProps<{
-    class?: ClassValue;
-    title?: string;
-    showBreadcrumb?: boolean;
-    padding?: boolean;
-    width?: PageWidth;
-    loading?: boolean;
-    actionImport?: boolean;
-    actionExport?: boolean;
-  }>(),
-  {
-    title: '',
-    showBreadcrumb: false,
-    padding: true,
-    width: '',
-    loading: false,
-    actionImport: false,
-    actionExport: false,
-  },
-);
-
-const pageTitleId = useId();
-
-const hasIoMenu = computed(() => props.actionImport || props.actionExport);
-
-const widthClass = computed(() => {
-  switch (props.width) {
-    case 'narrow':
-      return 'max-w-2xl';
-    case 'medium':
-      return 'max-w-4xl';
-    case 'wide':
-      return 'max-w-6xl';
-    case 'full':
-      return 'max-w-none';
-    default:
-      return '';
-  }
-});
-
-const emit = defineEmits<{
-  import: [];
-  export: [];
-}>();
-</script>
-
 <template>
   <div
     data-anchor="choy.page"
@@ -187,3 +129,61 @@ const emit = defineEmits<{
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed, useId } from 'vue';
+import { cn, type ClassValue } from '../../lib/utils';
+import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
+
+type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
+
+/**
+ * Page chrome inside the layout main area (title, toolbar, body, loading).
+ * Slot visibility is read from `$slots` at render time (slots are not reactive).
+ */
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    title?: string;
+    showBreadcrumb?: boolean;
+    padding?: boolean;
+    width?: PageWidth;
+    loading?: boolean;
+    actionImport?: boolean;
+    actionExport?: boolean;
+  }>(),
+  {
+    title: '',
+    showBreadcrumb: false,
+    padding: true,
+    width: '',
+    loading: false,
+    actionImport: false,
+    actionExport: false,
+  },
+);
+
+const pageTitleId = useId();
+
+const hasIoMenu = computed(() => props.actionImport || props.actionExport);
+
+const widthClass = computed(() => {
+  switch (props.width) {
+    case 'narrow':
+      return 'max-w-2xl';
+    case 'medium':
+      return 'max-w-4xl';
+    case 'wide':
+      return 'max-w-6xl';
+    case 'full':
+      return 'max-w-none';
+    default:
+      return '';
+  }
+});
+
+const emit = defineEmits<{
+  import: [];
+  export: [];
+}>();
+</script>

@@ -3,34 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-import Input from '../vendor/ui/input/Input.vue';
-import type { ClassValue } from '../../lib/utils';
-import ChoyFieldBase from './ChoyFieldBase.vue';
-import {
-  choyFieldChromeDefaults,
-  type ChoyFieldChromeProps,
-} from './fieldHelpers';
-
-/**
- * Single-line string field.
- */
-const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      placeholder?: string;
-    }
-  >(),
-  {
-    ...choyFieldChromeDefaults,
-    placeholder: '',
-  },
-);
-
-const model = defineModel<string>({ default: '' });
-</script>
-
 <template>
   <ChoyFieldBase
     data-anchor="choy.varchar-field"
@@ -59,3 +31,31 @@ const model = defineModel<string>({ default: '' });
     </template>
   </ChoyFieldBase>
 </template>
+
+<script setup lang="ts">
+import Input from '../vendor/ui/input/Input.vue';
+import type { ClassValue } from '../../lib/utils';
+import ChoyFieldBase from './ChoyFieldBase.vue';
+import {
+  choyFieldChromeDefaults,
+  type ChoyFieldChromeProps,
+} from './fieldHelpers';
+
+/**
+ * Single-line string field.
+ */
+const props = withDefaults(
+  defineProps<
+    ChoyFieldChromeProps & {
+      class?: ClassValue;
+      placeholder?: string;
+    }
+  >(),
+  {
+    ...choyFieldChromeDefaults,
+    placeholder: '',
+  },
+);
+
+const model = defineModel<string>({ default: '' });
+</script>

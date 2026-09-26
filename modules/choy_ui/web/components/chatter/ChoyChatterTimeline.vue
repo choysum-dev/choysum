@@ -3,31 +3,6 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<script setup lang="ts">
-import type { ChatterTimelineEntry } from './chatterTypes';
-import { resolveChoyChatterAuthorLabel } from './chatterHelpers';
-import ChoyChatterFieldChangeItem from './ChoyChatterFieldChangeItem.vue';
-import ChoyChatterMessageItem from './ChoyChatterMessageItem.vue';
-
-withDefaults(
-  defineProps<{
-    entries?: ChatterTimelineEntry[];
-    loading?: boolean;
-    error?: string | null;
-    resolveAuthorLabel?: (userId: string | null | undefined) => string;
-    loadingLabel?: string;
-    emptyLabel?: string;
-  }>(),
-  {
-    entries: () => [],
-    loading: false,
-    error: null,
-    resolveAuthorLabel: (userId: string | null | undefined) =>
-      resolveChoyChatterAuthorLabel(userId),
-  },
-);
-</script>
-
 <template>
   <div class="choy-chatter-timeline" data-anchor="choy.chatter.timeline">
     <div
@@ -65,3 +40,28 @@ withDefaults(
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import type { ChatterTimelineEntry } from './chatterTypes';
+import { resolveChoyChatterAuthorLabel } from './chatterHelpers';
+import ChoyChatterFieldChangeItem from './ChoyChatterFieldChangeItem.vue';
+import ChoyChatterMessageItem from './ChoyChatterMessageItem.vue';
+
+withDefaults(
+  defineProps<{
+    entries?: ChatterTimelineEntry[];
+    loading?: boolean;
+    error?: string | null;
+    resolveAuthorLabel?: (userId: string | null | undefined) => string;
+    loadingLabel?: string;
+    emptyLabel?: string;
+  }>(),
+  {
+    entries: () => [],
+    loading: false,
+    error: null,
+    resolveAuthorLabel: (userId: string | null | undefined) =>
+      resolveChoyChatterAuthorLabel(userId),
+  },
+);
+</script>

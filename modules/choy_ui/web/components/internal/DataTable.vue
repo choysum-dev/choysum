@@ -3,6 +3,131 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div
+    role="grid"
+    data-anchor="choy.internal.data-table"
+    :aria-multiselectable="enableRowSelection ? 'true' : undefined"
+    :aria-rowcount="rows.length ? rows.length + 1 : 2"
+    :aria-colcount="table.getVisibleLeafColumns().length"
+    :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"
+  >
+    <div
+      ref="headerRef"
+      role="rowgroup"
+      class="choy-data-table__header overflow-x-auto overflow-y-hidden border-b border-border bg-muted/40 text-xs font-medium text-foreground/80"
+      @scroll.passive="onHeaderScroll"
+    >
+      <div
+        role="row"
+        aria-rowindex="1"
+        class="grid"
+        :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
+      >
+        <div
+          v-for="header in (table.getHeaderGroups().slice(-1)[0]?.headers ?? [])"
+          :key="header.id"
+          role="columnheader"
+          class="flex items-center gap-1 px-2 py-2"
+          :aria-sort="
+            header.column.id === '__select' || !header.column.getCanSort()
+              ? undefined
+              : header.column.getIsSorted() === 'asc'
+                ? 'ascending'
+                : header.column.getIsSorted() === 'desc'
+                  ? 'descending'
+                  : 'none'
+          "
+        >
+          <Checkbox
+            v-if="header.column.id === '__select'"
+            :model-value="allSelected"
+            aria-label="Select all"
+            @update:model-value="(v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(v === true)"
+          />
+          <button
+            v-else
+            type="button"
+            class="flex flex-1 items-center gap-1 text-left hover:text-foreground"
+            :class="{ 'cursor-default': !header.column.getCanSort() }"
+            :disabled="!header.column.getCanSort()"
+            @click="onHeaderClick(header.column.id, header.column.getCanSort())"
+          >
+            <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
+            <span v-if="header.column.getIsSorted()" class="text-[10px] text-foreground/50">
+              {{ header.column.getIsSorted() === 'desc' ? '↓' : '↑' }}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      ref="parentRef"
+      role="rowgroup"
+      class="choy-data-table__body relative overflow-auto"
+      :style="{ height: `${height}px` }"
+      @scroll.passive="onBodyScroll"
+    >
+      <div
+        role="none"
+        :style="{
+          height: `${totalSize}px`,
+          position: 'relative',
+          minWidth: `${tableMinWidth}px`,
+          width: '100%',
+        }"
+      >
+        <div
+          v-for="virtualRow in virtualRows"
+          :key="String(rows[virtualRow.index]?.id ?? virtualRow.key)"
+          :ref="measureRowElement"
+          :data-index="virtualRow.index"
+          role="row"
+          :aria-rowindex="virtualRow.index + 2"
+          :aria-selected="rows[virtualRow.index]?.getIsSelected() ?? false"
+          tabindex="0"
+          class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          :style="{
+            transform: `translateY(${virtualRow.start}px)`,
+            gridTemplateColumns: gridTemplate,
+          }"
+          @click="onRowClick($event, rows[virtualRow.index])"
+          @keydown="onRowKeydown($event, rows[virtualRow.index])"
+        >
+          <div
+            v-for="cell in rows[virtualRow.index]?.getVisibleCells() ?? []"
+            :key="cell.id"
+            role="gridcell"
+            class="flex items-center truncate px-2"
+          >
+            <Checkbox
+              v-if="cell.column.id === '__select'"
+              :model-value="cell.row.getIsSelected()"
+              :aria-label="`Select row ${virtualRow.index + 1}`"
+              @click.stop
+              @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
+            />
+            <FlexRender
+              v-else
+              :render="cell.column.columnDef.cell"
+              :props="cell.getContext()"
+            />
+          </div>
+        </div>
+      </div>
+      <div
+        v-if="!rows.length"
+        role="row"
+        aria-rowindex="2"
+        class="flex h-full items-center justify-center text-sm text-foreground/50"
+      >
+        <div role="gridcell">No data</div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts" generic="T extends Record<string, unknown>">
 import { computed, ref, watch } from 'vue';
 import {
@@ -392,128 +517,3 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
   emit('row-click', row.original);
 }
 </script>
-
-<template>
-  <div
-    role="grid"
-    data-anchor="choy.internal.data-table"
-    :aria-multiselectable="enableRowSelection ? 'true' : undefined"
-    :aria-rowcount="rows.length ? rows.length + 1 : 2"
-    :aria-colcount="table.getVisibleLeafColumns().length"
-    :class="cn('choy-data-table overflow-hidden rounded-md border border-border bg-background', props.class)"
-  >
-    <div
-      ref="headerRef"
-      role="rowgroup"
-      class="choy-data-table__header overflow-x-auto overflow-y-hidden border-b border-border bg-muted/40 text-xs font-medium text-foreground/80"
-      @scroll.passive="onHeaderScroll"
-    >
-      <div
-        role="row"
-        aria-rowindex="1"
-        class="grid"
-        :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
-      >
-        <div
-          v-for="header in (table.getHeaderGroups().slice(-1)[0]?.headers ?? [])"
-          :key="header.id"
-          role="columnheader"
-          class="flex items-center gap-1 px-2 py-2"
-          :aria-sort="
-            header.column.id === '__select' || !header.column.getCanSort()
-              ? undefined
-              : header.column.getIsSorted() === 'asc'
-                ? 'ascending'
-                : header.column.getIsSorted() === 'desc'
-                  ? 'descending'
-                  : 'none'
-          "
-        >
-          <Checkbox
-            v-if="header.column.id === '__select'"
-            :model-value="allSelected"
-            aria-label="Select all"
-            @update:model-value="(v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(v === true)"
-          />
-          <button
-            v-else
-            type="button"
-            class="flex flex-1 items-center gap-1 text-left hover:text-foreground"
-            :class="{ 'cursor-default': !header.column.getCanSort() }"
-            :disabled="!header.column.getCanSort()"
-            @click="onHeaderClick(header.column.id, header.column.getCanSort())"
-          >
-            <FlexRender :render="header.column.columnDef.header" :props="header.getContext()" />
-            <span v-if="header.column.getIsSorted()" class="text-[10px] text-foreground/50">
-              {{ header.column.getIsSorted() === 'desc' ? '↓' : '↑' }}
-            </span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      ref="parentRef"
-      role="rowgroup"
-      class="choy-data-table__body relative overflow-auto"
-      :style="{ height: `${height}px` }"
-      @scroll.passive="onBodyScroll"
-    >
-      <div
-        role="none"
-        :style="{
-          height: `${totalSize}px`,
-          position: 'relative',
-          minWidth: `${tableMinWidth}px`,
-          width: '100%',
-        }"
-      >
-        <div
-          v-for="virtualRow in virtualRows"
-          :key="String(rows[virtualRow.index]?.id ?? virtualRow.key)"
-          :ref="measureRowElement"
-          :data-index="virtualRow.index"
-          role="row"
-          :aria-rowindex="virtualRow.index + 2"
-          :aria-selected="rows[virtualRow.index]?.getIsSelected() ?? false"
-          tabindex="0"
-          class="absolute left-0 grid w-full border-b border-border/60 text-sm hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          :style="{
-            transform: `translateY(${virtualRow.start}px)`,
-            gridTemplateColumns: gridTemplate,
-          }"
-          @click="onRowClick($event, rows[virtualRow.index])"
-          @keydown="onRowKeydown($event, rows[virtualRow.index])"
-        >
-          <div
-            v-for="cell in rows[virtualRow.index]?.getVisibleCells() ?? []"
-            :key="cell.id"
-            role="gridcell"
-            class="flex items-center truncate px-2"
-          >
-            <Checkbox
-              v-if="cell.column.id === '__select'"
-              :model-value="cell.row.getIsSelected()"
-              :aria-label="`Select row ${virtualRow.index + 1}`"
-              @click.stop
-              @update:model-value="(v: boolean | 'indeterminate') => cell.row.toggleSelected(v === true)"
-            />
-            <FlexRender
-              v-else
-              :render="cell.column.columnDef.cell"
-              :props="cell.getContext()"
-            />
-          </div>
-        </div>
-      </div>
-      <div
-        v-if="!rows.length"
-        role="row"
-        aria-rowindex="2"
-        class="flex h-full items-center justify-center text-sm text-foreground/50"
-      >
-        <div role="gridcell">No data</div>
-      </div>
-    </div>
-  </div>
-</template>

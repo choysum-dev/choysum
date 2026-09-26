@@ -3,6 +3,93 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <ChoyFieldBase
+    data-anchor="choy.html-field"
+    :class="props.class"
+    :label="label"
+    :help="help"
+    :required="required"
+    :readonly="readonly"
+    :disabled="disabled"
+    :error="error"
+    :name="name"
+    :visible="visible"
+  >
+    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+      <div
+        v-if="readonly || disabled"
+        :id="controlId"
+        class="choy-html-field__display rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
+        :aria-invalid="ariaInvalid"
+        :aria-required="ariaRequired"
+        :aria-describedby="ariaDescribedby"
+      >
+        <span v-if="plaintext">{{ displayPlain() }}</span>
+        <div v-else class="prose-choy" v-html="displayHtml()" />
+      </div>
+      <div
+        v-else
+        class="choy-html-field__edit overflow-hidden rounded-md border border-border bg-background"
+      >
+        <div
+          v-if="editor"
+          class="flex flex-wrap gap-1 border-b border-border bg-muted/30 px-2 py-1"
+          role="toolbar"
+        >
+          <button
+            type="button"
+            class="rounded px-2 py-0.5 text-xs font-semibold hover:bg-muted"
+            :class="{ 'bg-muted': editor.isActive('bold') }"
+            @click.prevent="htmlEditorChain(editor).focus().toggleBold().run()"
+          >
+            B
+          </button>
+          <button
+            type="button"
+            class="rounded px-2 py-0.5 text-xs italic hover:bg-muted"
+            :class="{ 'bg-muted': editor.isActive('italic') }"
+            @click.prevent="htmlEditorChain(editor).focus().toggleItalic().run()"
+          >
+            I
+          </button>
+          <button
+            type="button"
+            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
+            :class="{ 'bg-muted': editor.isActive('bulletList') }"
+            @click.prevent="htmlEditorChain(editor).focus().toggleBulletList().run()"
+          >
+            •
+          </button>
+          <button
+            type="button"
+            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
+            :class="{ 'bg-muted': editor.isActive('orderedList') }"
+            @click.prevent="htmlEditorChain(editor).focus().toggleOrderedList().run()"
+          >
+            1.
+          </button>
+          <button
+            type="button"
+            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
+            :class="{ 'bg-muted': editor.isActive('link') }"
+            @click.prevent="toggleLink"
+          >
+            Link
+          </button>
+        </div>
+        <EditorContent
+          :editor="editor"
+          :id="controlId"
+          :aria-invalid="ariaInvalid"
+          :aria-required="ariaRequired"
+          :aria-describedby="ariaDescribedby"
+        />
+      </div>
+    </template>
+  </ChoyFieldBase>
+</template>
+
 <script setup lang="ts">
 import { onBeforeUnmount, watch } from 'vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
@@ -109,90 +196,3 @@ function toggleLink(): void {
 const displayPlain = () => htmlToPlaintext(model.value);
 const displayHtml = () => sanitizeHtmlForClient(model.value);
 </script>
-
-<template>
-  <ChoyFieldBase
-    data-anchor="choy.html-field"
-    :class="props.class"
-    :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
-    :visible="visible"
-  >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <div
-        v-if="readonly || disabled"
-        :id="controlId"
-        class="choy-html-field__display rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
-        :aria-invalid="ariaInvalid"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
-      >
-        <span v-if="plaintext">{{ displayPlain() }}</span>
-        <div v-else class="prose-choy" v-html="displayHtml()" />
-      </div>
-      <div
-        v-else
-        class="choy-html-field__edit overflow-hidden rounded-md border border-border bg-background"
-      >
-        <div
-          v-if="editor"
-          class="flex flex-wrap gap-1 border-b border-border bg-muted/30 px-2 py-1"
-          role="toolbar"
-        >
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs font-semibold hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('bold') }"
-            @click.prevent="htmlEditorChain(editor).focus().toggleBold().run()"
-          >
-            B
-          </button>
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs italic hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('italic') }"
-            @click.prevent="htmlEditorChain(editor).focus().toggleItalic().run()"
-          >
-            I
-          </button>
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('bulletList') }"
-            @click.prevent="htmlEditorChain(editor).focus().toggleBulletList().run()"
-          >
-            •
-          </button>
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('orderedList') }"
-            @click.prevent="htmlEditorChain(editor).focus().toggleOrderedList().run()"
-          >
-            1.
-          </button>
-          <button
-            type="button"
-            class="rounded px-2 py-0.5 text-xs hover:bg-muted"
-            :class="{ 'bg-muted': editor.isActive('link') }"
-            @click.prevent="toggleLink"
-          >
-            Link
-          </button>
-        </div>
-        <EditorContent
-          :editor="editor"
-          :id="controlId"
-          :aria-invalid="ariaInvalid"
-          :aria-required="ariaRequired"
-          :aria-describedby="ariaDescribedby"
-        />
-      </div>
-    </template>
-  </ChoyFieldBase>
-</template>

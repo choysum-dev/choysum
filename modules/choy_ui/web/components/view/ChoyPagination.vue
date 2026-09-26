@@ -3,6 +3,43 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div
+    data-anchor="choy.pagination"
+    :class="[
+      'choy-pagination flex flex-wrap items-center gap-3 text-sm text-foreground',
+      props.class,
+    ]"
+  >
+    <ChoyButton
+      type="button"
+      variant="outline"
+      size="sm"
+      :disabled="!canPrev"
+      @click="goPrev"
+    >
+      Prev
+    </ChoyButton>
+    <span
+      class="choy-pagination__summary tabular-nums"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      Page {{ currentPage }} of {{ totalPages }}
+      <span class="text-foreground/60">· {{ total }} total</span>
+    </span>
+    <ChoyButton
+      type="button"
+      variant="outline"
+      size="sm"
+      :disabled="!canNext"
+      @click="goNext"
+    >
+      Next
+    </ChoyButton>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import ChoyButton from '../layout/ChoyButton.vue';
@@ -70,40 +107,3 @@ function goNext(): void {
   page.value = currentPage.value + 1;
 }
 </script>
-
-<template>
-  <div
-    data-anchor="choy.pagination"
-    :class="[
-      'choy-pagination flex flex-wrap items-center gap-3 text-sm text-foreground',
-      props.class,
-    ]"
-  >
-    <ChoyButton
-      type="button"
-      variant="outline"
-      size="sm"
-      :disabled="!canPrev"
-      @click="goPrev"
-    >
-      Prev
-    </ChoyButton>
-    <span
-      class="choy-pagination__summary tabular-nums"
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      Page {{ currentPage }} of {{ totalPages }}
-      <span class="text-foreground/60">· {{ total }} total</span>
-    </span>
-    <ChoyButton
-      type="button"
-      variant="outline"
-      size="sm"
-      :disabled="!canNext"
-      @click="goNext"
-    >
-      Next
-    </ChoyButton>
-  </div>
-</template>

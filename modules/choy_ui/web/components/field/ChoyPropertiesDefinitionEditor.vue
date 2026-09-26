@@ -3,6 +3,61 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <div
+    data-anchor="choy.properties-definition-editor"
+    :class="['choy-properties-definition-editor flex flex-col gap-3', props.class]"
+  >
+    <div
+      v-for="(draft, index) in drafts"
+      :key="index"
+      class="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-2"
+    >
+      <Input v-model="draft.name" placeholder="name" :disabled="disabled" />
+      <Select v-model="draft.type" :disabled="disabled">
+        <SelectTrigger class="w-full" placeholder="type" />
+        <SelectContent>
+          <SelectItem
+            v-for="t in PROPERTY_DEFINITION_V1_TYPE_OPTIONS"
+            :key="t"
+            :value="t"
+          >
+            {{ t }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      <Input v-model="draft.string" placeholder="label" :disabled="disabled" />
+      <Input v-model="draft.default" placeholder="default" :disabled="disabled" />
+      <label class="flex items-center gap-2 text-sm sm:col-span-2">
+        <Checkbox
+          :model-value="draft.readonly"
+          :disabled="disabled"
+          @update:model-value="draft.readonly = $event === true"
+        />
+        Readonly
+      </label>
+      <Textarea
+        v-if="draft.type === 'selection'"
+        v-model="draft.selectionText"
+        class="font-mono text-xs sm:col-span-2"
+        :rows="3"
+        placeholder='[["a","A"],["b","B"]]'
+        :disabled="disabled"
+      />
+      <div class="sm:col-span-2">
+        <ChoyButton size="sm" variant="outline" :disabled="disabled" @click="removeRow(index)">
+          Remove
+        </ChoyButton>
+      </div>
+    </div>
+    <p v-if="error" class="text-sm text-danger">{{ error }}</p>
+    <div class="flex flex-wrap gap-2">
+      <ChoyButton size="sm" variant="outline" :disabled="disabled" @click="addRow">Add property</ChoyButton>
+      <ChoyButton size="sm" :disabled="disabled" @click="onSave">Save definition</ChoyButton>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import type { PropertyItemDefinition } from '@/core/service/orm/model/properties_types';
@@ -77,58 +132,3 @@ function onSave(): void {
   }
 }
 </script>
-
-<template>
-  <div
-    data-anchor="choy.properties-definition-editor"
-    :class="['choy-properties-definition-editor flex flex-col gap-3', props.class]"
-  >
-    <div
-      v-for="(draft, index) in drafts"
-      :key="index"
-      class="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-2"
-    >
-      <Input v-model="draft.name" placeholder="name" :disabled="disabled" />
-      <Select v-model="draft.type" :disabled="disabled">
-        <SelectTrigger class="w-full" placeholder="type" />
-        <SelectContent>
-          <SelectItem
-            v-for="t in PROPERTY_DEFINITION_V1_TYPE_OPTIONS"
-            :key="t"
-            :value="t"
-          >
-            {{ t }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
-      <Input v-model="draft.string" placeholder="label" :disabled="disabled" />
-      <Input v-model="draft.default" placeholder="default" :disabled="disabled" />
-      <label class="flex items-center gap-2 text-sm sm:col-span-2">
-        <Checkbox
-          :model-value="draft.readonly"
-          :disabled="disabled"
-          @update:model-value="draft.readonly = $event === true"
-        />
-        Readonly
-      </label>
-      <Textarea
-        v-if="draft.type === 'selection'"
-        v-model="draft.selectionText"
-        class="font-mono text-xs sm:col-span-2"
-        :rows="3"
-        placeholder='[["a","A"],["b","B"]]'
-        :disabled="disabled"
-      />
-      <div class="sm:col-span-2">
-        <ChoyButton size="sm" variant="outline" :disabled="disabled" @click="removeRow(index)">
-          Remove
-        </ChoyButton>
-      </div>
-    </div>
-    <p v-if="error" class="text-sm text-danger">{{ error }}</p>
-    <div class="flex flex-wrap gap-2">
-      <ChoyButton size="sm" variant="outline" :disabled="disabled" @click="addRow">Add property</ChoyButton>
-      <ChoyButton size="sm" :disabled="disabled" @click="onSave">Save definition</ChoyButton>
-    </div>
-  </div>
-</template>

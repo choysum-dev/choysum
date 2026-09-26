@@ -3,6 +3,29 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<template>
+  <OPage width="medium" padding>
+    <div class="error-container" :dir="isRtlMode ? 'rtl' : 'ltr'">
+      <!-- Render the Element Plus Result component. -->
+      <el-result :status="errorConfig.status" :title="errorConfig.title" :sub-title="errorConfig.subtitle">
+        <!-- Error details. -->
+        <template #extra>
+          <p class="error-message">{{ errorConfig.message }}</p>
+
+          <el-divider />
+
+          <!-- Action buttons. -->
+          <div class="error-actions">
+            <el-button v-for="(action, index) in errorConfig.actions" :key="index" :type="action.type" @click="action.action">
+              {{ action.text }}
+            </el-button>
+          </div>
+        </template>
+      </el-result>
+    </div>
+  </OPage>
+</template>
+
 <script setup lang="ts">
 // Copyright 2025 The Choysum Authors
 //
@@ -166,29 +189,6 @@ function reportIssue() {
   window.open('https://example.com/support', '_blank');
 }
 </script>
-
-<template>
-  <OPage width="medium" padding>
-    <div class="error-container" :dir="isRtlMode ? 'rtl' : 'ltr'">
-      <!-- Render the Element Plus Result component. -->
-      <el-result :status="errorConfig.status" :title="errorConfig.title" :sub-title="errorConfig.subtitle">
-        <!-- Error details. -->
-        <template #extra>
-          <p class="error-message" v-html="errorConfig.message"></p>
-
-          <el-divider />
-
-          <!-- Action buttons. -->
-          <div class="error-actions">
-            <el-button v-for="(action, index) in errorConfig.actions" :key="index" :type="action.type" @click="action.action">
-              {{ action.text }}
-            </el-button>
-          </div>
-        </template>
-      </el-result>
-    </div>
-  </OPage>
-</template>
 
 <style lang="scss" scoped>
 .error-container {
