@@ -124,13 +124,21 @@ export default defineComponent({
       const themeRoot = typeof document !== 'undefined' ? document.documentElement : null;
       const previousDark = themeRoot ? themeRoot.classList.contains('dark') : false;
       const previousDensity = themeRoot ? themeRoot.getAttribute('data-density') : null;
-      applyChoyThemePreference(storedTheme, { persist: false });
+      const applied = applyChoyThemePreference(storedTheme, { persist: false });
+      // Only attributes this page actually wrote are eligible for restore.
+      const touchedTheme = storedTheme.theme !== undefined;
+      const touchedDensity = storedTheme.density !== undefined;
+      const appliedDensity = applied.density === 'compact' ? 'compact' : null;
       onBeforeUnmount(() => {
-        // Hand global theme/density back to the host shell (Gallery does the same).
+        // Same ownership check as Gallery: skip values the host changed while mounted.
         if (!themeRoot) return;
-        themeRoot.classList.toggle('dark', previousDark);
-        if (previousDensity == null) themeRoot.removeAttribute('data-density');
-        else themeRoot.setAttribute('data-density', previousDensity);
+        if (touchedTheme && themeRoot.classList.contains('dark') === applied.dark) {
+          themeRoot.classList.toggle('dark', previousDark);
+        }
+        if (touchedDensity && themeRoot.getAttribute('data-density') === appliedDensity) {
+          if (previousDensity == null) themeRoot.removeAttribute('data-density');
+          else themeRoot.setAttribute('data-density', previousDensity);
+        }
       });
     }
 
