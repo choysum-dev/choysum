@@ -121,11 +121,13 @@ export function applyChoyKanbanMove(lanes: ChoyKanbanLane[], move: ChoyKanbanMov
   if (cardIndex < 0) return null;
 
   const [card] = fromLane.cards.splice(cardIndex, 1);
-  if (!card) return null;
-
-  const moved: ChoyKanbanCard = { ...card, laneKey: move.toLaneKey };
-  const insertAt = Math.max(0, Math.min(move.toIndex, toLane.cards.length));
-  if (fromIdx === toIdx && insertAt === cardIndex) {
+  const moved: ChoyKanbanCard = { ...card!, laneKey: move.toLaneKey };
+  // Drop targets use pre-removal indexes. Same-lane downward moves must subtract
+  // one after the splice so the card lands before the hovered target, not after.
+  const sameLane = fromIdx === toIdx;
+  const rawInsertAt = sameLane && cardIndex < move.toIndex ? move.toIndex - 1 : move.toIndex;
+  const insertAt = Math.max(0, Math.min(rawInsertAt, toLane.cards.length));
+  if (sameLane && insertAt === cardIndex) {
     return null;
   }
   toLane.cards.splice(insertAt, 0, moved);

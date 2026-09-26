@@ -274,6 +274,14 @@ function onSave(): void {
     }
     row.name = trimmed;
     row.active = captureActive;
+    // Keep Kanban cards in sync with the renamed company row.
+    for (const lane of kanbanLanes.value) {
+      for (const card of lane.cards) {
+        if (card.id === captureRowId) {
+          card.title = trimmed;
+        }
+      }
+    }
     ChoyMessage.success('Company saved (dogfood)', {
       description: `${trimmed} · ${captureCurrencyLabel}`,
     });

@@ -3,6 +3,8 @@
 
 import { PROPERTIES_V1_TYPES, type PropertyItemDefinition } from '@/core/service/orm/model/properties_types';
 
+import { normalizeSelectionOptions } from './propertiesHelpers';
+
 export const PROPERTY_DEFINITION_V1_TYPE_OPTIONS = [...PROPERTIES_V1_TYPES].sort();
 
 export type DefinitionEditorDraftItem = {
@@ -87,6 +89,10 @@ export function draftsToDefinitionItems(
       }
       if (!Array.isArray(parsed) || !parsed.length) {
         throw new Error(`selection property '${name}' requires a non-empty selection array`);
+      }
+      const options = normalizeSelectionOptions(parsed);
+      if (!options.length) {
+        throw new Error(`selection property '${name}' has no usable options`);
       }
       item.selection = parsed as PropertyItemDefinition['selection'];
     }

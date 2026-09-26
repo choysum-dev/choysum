@@ -33,6 +33,8 @@ function createTestPurify(): DomPurifyLike & { hooks: Array<(node: any) => void>
         '<p></p>': '<p></p>',
         '<p>ok</p>': '<p>ok</p>',
         '<p>Hello <strong>world</strong></p>': '<p>Hello <strong>world</strong></p>',
+        '<p>Hello</p><p>world</p>': '<p>Hello</p><p>world</p>',
+        '<hr>': '<hr>',
         '<a href="https://example.com" target="_blank">x</a>':
           '<a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>',
       };
@@ -62,14 +64,68 @@ describe('htmlHelpers', () => {
     expect(cleaned).toContain('rel="noopener noreferrer"');
   });
 
-  test('htmlToPlaintext strips tags (non-DOM path)', () => {
+  test('sanitizeHtmlForClient handles null and empty', () => {
     const purify = createTestPurify();
-    expect(htmlToPlaintext('<p>Hello <strong>world</strong></p>', { purify })).toBe('Hello world');
+    expect(sanitizeHtmlForClient(null, { purify })).toBe('');
+    expect(sanitizeHtmlForClient('', { purify })).toBe('');
   });
 
-  test('normalizeHtmlForStore maps empty markup to null', () => {
+  test('htmlToPlaintext strips tags (non-DOM path)', () => {
+    const purify = createTestPurify();
+    // Prefer non-DOM fallback: avoid mutating global document in QuickJS.
+    const previousDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: undefined,
+    });
+    try {
+      expect(htmlToPlaintext('<p>Hello <strong>world</strong></p>', { purify })).toBe('Hello world');
+      expect(htmlToPlaintext(null, { purify })).toBe('');
+      expect(htmlToPlaintext('', { purify })).toBe('');
+    } finally {
+      if (previousDescriptor) {
+        Object.defineProperty(globalThis, 'document', previousDescriptor);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete (globalThis as { document?: unknown }).document;
+      }
+    }
+  });
+
+  test('htmlToPlaintext DOM path preserves separators between blocks', () => {
+    const purify = createTestPurify();
+    const previousDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+    let stored = '';
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: {
+        createElement: () => ({
+          set innerHTML(html: string) {
+            stored = String(html).replace(/<[^>]+>/g, ' ');
+          },
+          get textContent() {
+            return stored;
+          },
+        }),
+      },
+    });
+    try {
+      expect(htmlToPlaintext('<p>Hello</p><p>world</p>', { purify })).toBe('Hello world');
+    } finally {
+      if (previousDescriptor) {
+        Object.defineProperty(globalThis, 'document', previousDescriptor);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete (globalThis as { document?: unknown }).document;
+      }
+    }
+  });
+
+  test('normalizeHtmlForStore maps empty markup to null and keeps hr', () => {
     const purify = createTestPurify();
     expect(normalizeHtmlForStore('<p></p>', { purify })).toBeNull();
     expect(normalizeHtmlForStore('<p>ok</p>', { purify })).toBe('<p>ok</p>');
+    expect(normalizeHtmlForStore('<hr>', { purify })).toBe('<hr>');
+    expect(normalizeHtmlForStore(null, { purify })).toBeNull();
   });
 });

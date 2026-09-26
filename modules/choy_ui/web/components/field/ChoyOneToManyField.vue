@@ -87,9 +87,13 @@ function rowSubtitle(row: T): string | undefined {
 
 const dialogTitle = computed(() => (dialogRow.value ? rowTitle(dialogRow.value) : 'Row'));
 
+function canEdit(): boolean {
+  return props.editable && !props.readonly && !props.disabled;
+}
+
 function onAdd(): void {
   emit('add-click');
-  if (props.editable && props.widget === 'kanban') {
+  if (canEdit() && props.widget === 'kanban') {
     const blank = { Id: `new_${Date.now()}`, [props.titleField]: 'New row' } as unknown as T;
     model.value = [...model.value, blank];
     dialogRow.value = blank;
@@ -99,23 +103,23 @@ function onAdd(): void {
 
 function onCardClick(row: T): void {
   emit('card-click', row);
-  if (props.editable) {
-    dialogRow.value = row;
-    dialogOpen.value = true;
-    emit('edit-request', row);
-  }
+  if (!canEdit()) return;
+  dialogRow.value = row;
+  dialogOpen.value = true;
+  emit('edit-request', row);
 }
 
 function onRemove(row: T): void {
   emit('remove-request', row);
   if (!props.removable || props.readonly || props.disabled) return;
-  const id = String(rowKey(row));
-  model.value = model.value.filter((r, i) => String(rowKey(r, i)) !== id);
+  const index = model.value.indexOf(row);
+  if (index < 0) return;
+  model.value = model.value.filter((_, i) => i !== index);
 }
 
 function onRowClick(row: T): void {
   emit('card-click', row);
-  if (props.editable) emit('edit-request', row);
+  if (canEdit()) emit('edit-request', row);
 }
 </script>
 

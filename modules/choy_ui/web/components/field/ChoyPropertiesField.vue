@@ -48,7 +48,15 @@ const renderable = computed(() => filterRenderablePropertyItems(props.items ?? [
 
 function readValue(name: string): unknown {
   const map = model.value || Object.create(null);
-  return Object.prototype.hasOwnProperty.call(map, name) ? map[name] : undefined;
+  if (Object.prototype.hasOwnProperty.call(map, name)) {
+    return map[name];
+  }
+  // Match buildFullPropertiesMap: prefer item.value, then item.default.
+  const item = (props.items ?? []).find(i => i?.name === name);
+  if (!item) return undefined;
+  if (Object.prototype.hasOwnProperty.call(item, 'value')) return item.value;
+  if (Object.prototype.hasOwnProperty.call(item, 'default')) return item.default;
+  return undefined;
 }
 
 function setValue(name: string, value: unknown): void {

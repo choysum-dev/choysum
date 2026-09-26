@@ -11,23 +11,33 @@ export type ChoyJsonParseResult =
   | { ok: true; value: ChoyJsonValue }
   | { ok: false; error: string };
 
-/** Stable pretty print (object keys sorted). */
+/** Stable pretty print (object keys sorted recursively). */
 export function stringifyChoyJson(value: unknown, pretty = true): string {
   if (value == null) return '';
   try {
-    if (Array.isArray(value)) {
-      return pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value);
+    const sorted = sortKeysDeep(value);
+    if (typeof sorted !== 'object' || sorted === null) {
+      return String(sorted);
     }
-    if (typeof value === 'object') {
-      const sorted = Object.keys(value as Record<string, unknown>).sort();
-      return pretty
-        ? JSON.stringify(value, sorted, 2)
-        : JSON.stringify(value, sorted);
-    }
-    return String(value);
+    return pretty ? JSON.stringify(sorted, null, 2) : JSON.stringify(sorted);
   } catch {
     return '';
   }
+}
+
+/** Recursively sort object keys; arrays keep order. */
+function sortKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortKeysDeep);
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      out[key] = sortKeysDeep((value as Record<string, unknown>)[key]);
+    }
+    return out;
+  }
+  return value;
 }
 
 /** Coerce incoming model values (object / JSON string) to ChoyJsonValue. */

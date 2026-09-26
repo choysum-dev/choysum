@@ -81,7 +81,12 @@ export function htmlToPlaintext(html: string | null | undefined, deps?: Sanitize
   if (!raw) return '';
   if (typeof document !== 'undefined') {
     const el = document.createElement('div');
-    el.innerHTML = sanitizeHtmlForClient(raw, deps);
+    // Insert separators for block / br so adjacent blocks do not concatenate
+    // (e.g. <p>Hello</p><p>world</p> → "Hello world", not "Helloworld").
+    const withBreaks = sanitizeHtmlForClient(raw, deps)
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/(p|div|h[1-6]|li|blockquote|pre|tr|hr)>/gi, ' </$1>');
+    el.innerHTML = withBreaks;
     return String(el.textContent || '')
       .replace(/\s+/g, ' ')
       .trim();

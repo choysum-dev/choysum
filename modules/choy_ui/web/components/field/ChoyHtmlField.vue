@@ -59,8 +59,8 @@ const editor = useEditor({
 });
 
 watch(
-  () => model.value,
-  next => {
+  () => [model.value, editor.value] as const,
+  ([next]) => {
     if (!editor.value) return;
     const sanitized = next == null || next === '' ? '' : sanitizeHtmlForClient(next);
     const current = editor.value.getHTML();

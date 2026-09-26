@@ -43,6 +43,25 @@ describe('kanbanViewHelpers', () => {
     expect(lanes[2]!.label).toBe('mystery');
   });
 
+  test('groupRowsIntoChoyKanbanLanes without laneDefs uses discovery order', () => {
+    const lanes = groupRowsIntoChoyKanbanLanes(
+      [
+        { Id: '1', Title: '', State: '  ' },
+        { Id: '2', Name: 'B', State: 'done', Note: 'n' },
+      ],
+      {
+        laneField: 'State',
+        titleField: 'Name',
+        subtitleField: 'Note',
+      },
+    );
+    expect(lanes.map(l => l.key)).toEqual(['__unset__', 'done']);
+    expect(lanes[0]!.label).toBe('Unset');
+    expect(lanes[0]!.cards[0]!.title).toBe('1');
+    expect(lanes[1]!.cards[0]!.title).toBe('B');
+    expect(lanes[1]!.cards[0]!.subtitle).toBe('n');
+  });
+
   test('applyChoyKanbanMove moves across lanes', () => {
     const lanes = groupRowsIntoChoyKanbanLanes(
       [
@@ -69,7 +88,25 @@ describe('kanbanViewHelpers', () => {
     expect(next![1]!.cards[0]!.laneKey).toBe('done');
   });
 
-  test('applyChoyKanbanMove returns null for no-op same index', () => {
+  test('applyChoyKanbanMove adjusts same-lane downward drop index', () => {
+    const lanes = groupRowsIntoChoyKanbanLanes(
+      [
+        { Id: '1', Title: 'A', State: 'draft' },
+        { Id: '2', Title: 'B', State: 'draft' },
+        { Id: '3', Title: 'C', State: 'draft' },
+      ],
+      { laneField: 'State', laneDefs: [{ key: 'draft', label: 'Draft' }] },
+    );
+    const next = applyChoyKanbanMove(lanes, {
+      cardId: '1',
+      fromLaneKey: 'draft',
+      toLaneKey: 'draft',
+      toIndex: 2,
+    });
+    expect(next![0]!.cards.map(c => c.id)).toEqual(['2', '1', '3']);
+  });
+
+  test('applyChoyKanbanMove returns null for no-op and missing refs', () => {
     const lanes = groupRowsIntoChoyKanbanLanes(
       [{ Id: '1', Title: 'A', State: 'draft' }],
       { laneField: 'State', laneDefs: [{ key: 'draft', label: 'Draft' }] },
@@ -78,6 +115,22 @@ describe('kanbanViewHelpers', () => {
       applyChoyKanbanMove(lanes, {
         cardId: '1',
         fromLaneKey: 'draft',
+        toLaneKey: 'draft',
+        toIndex: 0,
+      }),
+    ).toBeNull();
+    expect(
+      applyChoyKanbanMove(lanes, {
+        cardId: 'missing',
+        fromLaneKey: 'draft',
+        toLaneKey: 'draft',
+        toIndex: 0,
+      }),
+    ).toBeNull();
+    expect(
+      applyChoyKanbanMove(lanes, {
+        cardId: '1',
+        fromLaneKey: 'nope',
         toLaneKey: 'draft',
         toIndex: 0,
       }),
