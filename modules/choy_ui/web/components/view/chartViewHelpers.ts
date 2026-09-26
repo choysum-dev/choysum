@@ -99,3 +99,65 @@ export function chartSpecToPieRows(
     color: spec.config[sl.key]?.color || 'var(--choy-chart-1)',
   }));
 }
+
+function rowCategoryIndex(
+  row: Record<string, string | number> | undefined,
+): number | null {
+  if (!row) return null;
+  const rawIndex = row.index;
+  if (typeof rawIndex === 'number' && Number.isFinite(rawIndex)) {
+    return Math.round(rawIndex);
+  }
+  if (
+    typeof rawIndex === 'string' &&
+    rawIndex !== '' &&
+    Number.isFinite(Number(rawIndex))
+  ) {
+    return Math.round(Number(rawIndex));
+  }
+  return null;
+}
+
+/**
+ * Maps a GroupedBar Unovis click (row + flat element index) to category/series.
+ */
+export function resolveGroupedXyClickTarget(
+  row: Record<string, string | number> | undefined,
+  flatIndex: number | undefined,
+  seriesCount: number,
+): { categoryIdx: number | null; seriesIdx: number | undefined } {
+  let categoryIdx = rowCategoryIndex(row);
+  let seriesIdx: number | undefined;
+  if (
+    typeof flatIndex === 'number' &&
+    Number.isFinite(flatIndex) &&
+    seriesCount > 0
+  ) {
+    const flat = Math.round(flatIndex);
+    seriesIdx = ((flat % seriesCount) + seriesCount) % seriesCount;
+    if (categoryIdx == null) {
+      categoryIdx = Math.floor(flat / seriesCount);
+    }
+  }
+  if (seriesCount === 1) seriesIdx = 0;
+  return { categoryIdx, seriesIdx };
+}
+
+/**
+ * Maps a StackedBar Unovis click (mapped datum with stackIndex + category index).
+ */
+export function resolveStackedXyClickTarget(
+  row: Record<string, string | number> | undefined,
+  categoryIdxFromEvent: number | undefined,
+  stackIndex: number | undefined,
+): { categoryIdx: number | null; seriesIdx: number | undefined } {
+  const categoryIdx =
+    typeof categoryIdxFromEvent === 'number' && Number.isFinite(categoryIdxFromEvent)
+      ? Math.round(categoryIdxFromEvent)
+      : rowCategoryIndex(row);
+  const seriesIdx =
+    typeof stackIndex === 'number' && Number.isFinite(stackIndex)
+      ? Math.round(stackIndex)
+      : undefined;
+  return { categoryIdx, seriesIdx };
+}

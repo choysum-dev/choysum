@@ -175,6 +175,9 @@ export const pieAdapter: IChartTypeAdapter = {
         value: (s.data || []).reduce((a, b) => a + toFiniteNumber(b), 0),
       }));
     }
+    // Donut arcs need positive values; drop empty/negative slices so the ring
+    // stays valid and palette colors stay dense.
+    slices = slices.filter(sl => sl.value > 0);
     const config: ChartConfig = {};
     slices.forEach((sl, idx) => {
       config[sl.key] = {

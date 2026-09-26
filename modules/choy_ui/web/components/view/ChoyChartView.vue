@@ -35,6 +35,8 @@ import {
   chartSpecToPieRows,
   chartSpecToXyRows,
   normalizeSeriesToPercent,
+  resolveGroupedXyClickTarget,
+  resolveStackedXyClickTarget,
   sortChartCategories,
   type ChoyChartItemClickPayload,
   type ChoyChartMetricOption,
@@ -157,6 +159,7 @@ watch(
     localMetric.value = next;
     emit('metric-change', next);
   },
+  { deep: true },
 );
 
 const supportCtx = computed(() => ({
@@ -283,17 +286,6 @@ function selectSort(next: ChoyChartSort): void {
 /** Unovis VisEventCallback: (datum, event, index, elements). */
 type UnovisClickEvent = MouseEvent | PointerEvent | TouchEvent | WheelEvent;
 
-function rowCategoryIndex(d: XyRow | undefined): number | null {
-  if (!d) return null;
-  if (typeof d.index === 'number' && Number.isFinite(d.index)) {
-    return Math.round(d.index);
-  }
-  if (typeof d.index === 'string' && d.index !== '' && Number.isFinite(Number(d.index))) {
-    return Math.round(Number(d.index));
-  }
-  return null;
-}
-
 function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
   if (!spec.value) return;
   const category = spec.value.categories[categoryIdx];
@@ -320,15 +312,12 @@ function onStackedBarClick(
   categoryIdx?: number,
 ): void {
   if (!spec.value) return;
-  const idx =
-    typeof categoryIdx === 'number' && Number.isFinite(categoryIdx)
-      ? Math.round(categoryIdx)
-      : rowCategoryIndex(d);
+  const { categoryIdx: idx, seriesIdx } = resolveStackedXyClickTarget(
+    d,
+    categoryIdx,
+    d.stackIndex,
+  );
   if (idx == null) return;
-  const seriesIdx =
-    typeof d.stackIndex === 'number' && Number.isFinite(d.stackIndex)
-      ? Math.round(d.stackIndex)
-      : undefined;
   emitXyClick(idx, seriesIdx);
 }
 
@@ -342,22 +331,12 @@ function onGroupedBarClick(
   flatIndex?: number,
 ): void {
   if (!spec.value) return;
-  const nSeries = spec.value.series.length;
-  let categoryIdx = rowCategoryIndex(d);
-  let seriesIdx: number | undefined;
-  if (
-    typeof flatIndex === 'number' &&
-    Number.isFinite(flatIndex) &&
-    nSeries > 0
-  ) {
-    const flat = Math.round(flatIndex);
-    seriesIdx = ((flat % nSeries) + nSeries) % nSeries;
-    if (categoryIdx == null) {
-      categoryIdx = Math.floor(flat / nSeries);
-    }
-  }
+  const { categoryIdx, seriesIdx } = resolveGroupedXyClickTarget(
+    d,
+    flatIndex,
+    spec.value.series.length,
+  );
   if (categoryIdx == null) return;
-  if (nSeries === 1) seriesIdx = 0;
   emitXyClick(categoryIdx, seriesIdx);
 }
 
@@ -575,6 +554,8 @@ const donutEvents = computed(() => ({
             :variant="localSort === 'none' ? 'default' : 'ghost'"
             :disabled="sortDisabled"
             :aria-pressed="localSort === 'none'"
+            aria-label="No sort"
+            title="No sort"
             @click="selectSort('none')"
           >
             ∅
@@ -585,6 +566,8 @@ const donutEvents = computed(() => ({
             :variant="localSort === 'asc' ? 'default' : 'ghost'"
             :disabled="sortDisabled"
             :aria-pressed="localSort === 'asc'"
+            aria-label="Sort ascending"
+            title="Sort ascending"
             @click="selectSort('asc')"
           >
             ↑
@@ -595,6 +578,8 @@ const donutEvents = computed(() => ({
             :variant="localSort === 'desc' ? 'default' : 'ghost'"
             :disabled="sortDisabled"
             :aria-pressed="localSort === 'desc'"
+            aria-label="Sort descending"
+            title="Sort descending"
             @click="selectSort('desc')"
           >
             ↓

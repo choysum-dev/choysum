@@ -12,6 +12,8 @@ import {
   chartSpecToPieRows,
   chartSpecToXyRows,
   normalizeSeriesToPercent,
+  resolveGroupedXyClickTarget,
+  resolveStackedXyClickTarget,
   sortChartCategories,
 } from './chartViewHelpers';
 
@@ -190,4 +192,41 @@ test('chartSpecToXyRows / chartSpecToPieRows flatten for Unovis', () => {
     config: { ...pie.config, [pie.slices![0]!.key]: { label: 'Chrome' } },
   };
   expect(chartSpecToPieRows(noColor)[0]!.color).toBe('var(--choy-chart-1)');
+});
+
+test('pieAdapter drops non-positive slices', () => {
+  const spec = pieAdapter.build({
+    categories: ['A', 'B', 'C'],
+    seriesMatrix: [{ name: 'Visitors', data: [10, 0, -5] }],
+    metricLabel: 'Visitors',
+    stacked: false,
+  });
+  expect(spec.slices).toEqual([{ key: 'a_0', name: 'A', value: 10 }]);
+  expect(Object.keys(spec.config)).toEqual(['a_0']);
+});
+
+test('resolveGroupedXyClickTarget maps flat element index', () => {
+  expect(resolveGroupedXyClickTarget({ index: 1 }, 3, 2)).toEqual({
+    categoryIdx: 1,
+    seriesIdx: 1,
+  });
+  expect(resolveGroupedXyClickTarget(undefined, 3, 2)).toEqual({
+    categoryIdx: 1,
+    seriesIdx: 1,
+  });
+  expect(resolveGroupedXyClickTarget({ index: 0 }, undefined, 1)).toEqual({
+    categoryIdx: 0,
+    seriesIdx: 0,
+  });
+});
+
+test('resolveStackedXyClickTarget prefers event category and stackIndex', () => {
+  expect(resolveStackedXyClickTarget({ index: 2, stackIndex: 9 }, 1, 0)).toEqual({
+    categoryIdx: 1,
+    seriesIdx: 0,
+  });
+  expect(resolveStackedXyClickTarget({ index: '2' }, undefined, 1)).toEqual({
+    categoryIdx: 2,
+    seriesIdx: 1,
+  });
 });
