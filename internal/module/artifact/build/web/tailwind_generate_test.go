@@ -170,13 +170,13 @@ func TestScanTailwindCandidatesRejectsMultilineTSLiterals(t *testing.T) {
 
 func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	repoModules := findRepoModulesDir(t)
-	srcRoot := filepath.Join(repoModules, "choy_ui")
+	srcRoot := filepath.Join(repoModules, "web")
 	theme := filepath.Join(srcRoot, "web", "styles", "theme.css")
 	if _, err := os.Stat(theme); err != nil {
-		t.Skip("choy_ui theme.css not present in checkout")
+		t.Skip("web theme.css not present in checkout")
 	}
 	tmpModules := t.TempDir()
-	dstRoot := filepath.Join(tmpModules, "choy_ui")
+	dstRoot := filepath.Join(tmpModules, "web")
 	if err := os.CopyFS(dstRoot, os.DirFS(srcRoot)); err != nil {
 		t.Fatalf("CopyFS: %v", err)
 	}
@@ -186,10 +186,10 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
 	}
 	if res == nil {
-		t.Fatal("expected generate result for repo choy_ui")
+		t.Fatal("expected generate result for repo web kit")
 	}
 	wall := time.Since(start)
-	t.Logf("repo choy_ui Tailwind wall=%v engine=%v candidates=%d out=%s", wall, res.Duration, res.CandidateCount, res.OutputPath)
+	t.Logf("repo web Tailwind wall=%v engine=%v candidates=%d out=%s", wall, res.Duration, res.CandidateCount, res.OutputPath)
 	if res.Duration > ChoyTailwindBudget {
 		t.Fatalf("engine duration %v exceeds budget %v", res.Duration, ChoyTailwindBudget)
 	}
@@ -215,7 +215,7 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 
 func TestEnsureChoyTailwindCSSRejectsDirectoryThemePath(t *testing.T) {
 	root := t.TempDir()
-	styles := filepath.Join(root, "choy_ui", "web", "styles")
+	styles := filepath.Join(root, "web", "web", "styles")
 	if err := os.MkdirAll(styles, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func findRepoModulesDir(t *testing.T) string {
 	}
 	dir := wd
 	for i := 0; i < 10; i++ {
-		candidate := filepath.Join(dir, "modules", "choy_ui", "web", "styles", "theme.css")
+		candidate := filepath.Join(dir, "modules", "web", "web", "styles", "theme.css")
 		if _, err := os.Stat(candidate); err == nil {
 			return filepath.Join(dir, "modules")
 		}
@@ -344,6 +344,6 @@ func findRepoModulesDir(t *testing.T) string {
 		}
 		dir = parent
 	}
-	t.Skip("could not locate modules/choy_ui from test wd")
+	t.Skip("could not locate modules/web kit theme from test wd")
 	return ""
 }

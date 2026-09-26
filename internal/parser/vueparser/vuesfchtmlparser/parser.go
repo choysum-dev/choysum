@@ -5,6 +5,7 @@ package vuesfchtmlparser
 
 import (
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/antchfx/htmlquery"
@@ -94,10 +95,19 @@ func renderNode(w io.Writer, n *html.Node) error {
 }
 
 func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode *html.Node, styleNodes []*html.Node, err error) {
-	doc, err := parseWithCaseSensitive(r)
+	src, err := io.ReadAll(r)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	// x/net/html treats <textarea>/<title>/… as raw-text elements (case-insensitive).
+	// Vue product SFCs often put PascalCase component tags (e.g. <Textarea>) before
+	// <script setup>; without masking, the tokenizer swallows the script block.
+	masked := maskPascalCaseRawTextTags(string(src))
+	doc, err := parseWithCaseSensitive(strings.NewReader(masked))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	unmaskPascalCaseRawTextTags(doc)
 	scriptNodes = htmlquery.Find(doc, "//script")
 	templateNode = htmlquery.FindOne(doc, "//template")
 	styleNodes = htmlquery.Find(doc, "//style")
@@ -108,6 +118,36 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 
 	return scriptNodes, templateNode, styleNodes, nil
 
+}
+
+// pascalCaseRawTextTag matches Vue component tags whose local names collide with
+// HTML raw-text / RCDATA elements when lowercased by the tokenizer.
+// Go regexp has no lookahead; the trailing delimiter is re-emitted by the replacer.
+var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|Title|Style|Script|Noscript|Iframe|Noembed|Noframes|Xmp|Plaintext)([\s/>])`)
+
+const vueRawTextMaskPrefix = "VueSfcRaw"
+
+func maskPascalCaseRawTextTags(src string) string {
+	return pascalCaseRawTextTag.ReplaceAllStringFunc(src, func(m string) string {
+		delim := m[len(m)-1:]
+		body := m[:len(m)-1]
+		if strings.HasPrefix(body, "</") {
+			return "</" + vueRawTextMaskPrefix + body[2:] + delim
+		}
+		return "<" + vueRawTextMaskPrefix + body[1:] + delim
+	})
+}
+
+func unmaskPascalCaseRawTextTags(n *html.Node) {
+	if n == nil {
+		return
+	}
+	if n.Type == html.ElementNode && strings.HasPrefix(n.Data, vueRawTextMaskPrefix) {
+		n.Data = strings.TrimPrefix(n.Data, vueRawTextMaskPrefix)
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		unmaskPascalCaseRawTextTags(c)
+	}
 }
 
 func parseWithCaseSensitive(r io.Reader) (*html.Node, error) {

@@ -1047,6 +1047,10 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 
 	moduleRef := &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth")}
 	entryPoint := filepath.Join(modulesPath, "auth", "web", "index.ts")
+	// Kit CSS is gitignored; gallery/dogfood pages import it via the web barrel.
+	if _, err := EnsureChoyTailwindCSS(modulesPath); err != nil {
+		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
+	}
 	builder, ok := NewWebBuilder(testRuntimeScope, nil, moduleRef, entryPoint).(*WebModuleBuilder)
 	if !ok {
 		t.Fatal("expected NewWebBuilder to return *WebModuleBuilder")
@@ -4649,7 +4653,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		if _, err := builder.BuildCtx(context.Background()); err != nil {
 			t.Fatalf("BuildCtx: %v", err)
 		}
-		if !strings.Contains(logBuf.String(), "choy_ui Tailwind generated") {
+		if !strings.Contains(logBuf.String(), "Choy kit Tailwind generated") {
 			t.Fatalf("expected tailwind generate log, got %q", logBuf.String())
 		}
 		if _, err := os.Stat(filepath.Join(styles, "choy-tailwind.generated.css")); err != nil {
@@ -4704,10 +4708,10 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 			t.Fatalf("BuildCtx: %v", err)
 		}
 		logs := logBuf.String()
-		if !strings.Contains(logs, "choy_ui Tailwind generation exceeded soft budget") {
+		if !strings.Contains(logs, "Choy kit Tailwind generation exceeded soft budget") {
 			t.Fatalf("expected soft-budget warn log, got %q", logs)
 		}
-		if !strings.Contains(logs, "choy_ui Tailwind generated") {
+		if !strings.Contains(logs, "Choy kit Tailwind generated") {
 			t.Fatalf("expected tailwind generate info log, got %q", logs)
 		}
 	})
@@ -4744,7 +4748,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 			buildPlugin:    &buildTestPlugin{},
 		}
 		_, err := builder.BuildCtx(context.Background())
-		if err == nil || !strings.Contains(err.Error(), "Error generating choy_ui Tailwind CSS") {
+		if err == nil || !strings.Contains(err.Error(), "Error generating Choy kit Tailwind CSS") {
 			t.Fatalf("expected wrapped tailwind error, got %v", err)
 		}
 	})

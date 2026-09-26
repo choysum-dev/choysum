@@ -245,16 +245,16 @@ export const x = DialogRoot;
 	}
 }
 
-func TestAssertNoForbiddenUiImports_RejectsWebModuleUntilCutover(t *testing.T) {
+func TestAssertNoForbiddenUiImports_AllowsWebModuleAsKitHost(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "web")
 	src := "import { DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n"
 	if err := os.WriteFile(filepath.Join(webDir, "leak.ts"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := AssertNoForbiddenUiImports(modulesPath, "web")
-	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
-		t.Fatalf("product web must still be gated until cutover, got %v", err)
+	// Kit source lives under modules/web; product web is the kit host and may import Reka.
+	if err := AssertNoForbiddenUiImports(modulesPath, "web"); err != nil {
+		t.Fatalf("web kit host must be exempt: %v", err)
 	}
 }
 

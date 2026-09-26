@@ -39,6 +39,29 @@ func TestParseVueSfcToHtmlNodeRequiresScript(t *testing.T) {
 	}
 }
 
+func TestParseVueSfcTemplateFirstWithPascalTextarea(t *testing.T) {
+	// Product SFCs are template-first; <Textarea> must not eat the following script.
+	source := `<template><Textarea v-model="x" /></template>
+<script setup lang="ts">const x = 'ok'</script>`
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	if len(scripts) != 1 || templateNode == nil {
+		t.Fatalf("scripts=%d template=%v", len(scripts), templateNode)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea`) {
+		t.Fatalf("expected PascalCase Textarea preserved, got %q", rendered)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, "const x") {
+		t.Fatalf("expected script body, got %#v", scripts[0])
+	}
+}
+
 func TestCloneNodeCreatesDetachedDeepCopy(t *testing.T) {
 	original, err := htmlquery.Parse(strings.NewReader(`<root><div id="a"><span>text</span></div></root>`))
 	if err != nil {

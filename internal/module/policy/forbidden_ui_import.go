@@ -23,15 +23,12 @@ const (
 
 // isKitHostModule reports modules allowed to import reka-ui / vendor/ui / kit internals.
 // Isolation: only choy_ui. After the kit merges into web, return true for web instead.
+// isKitHostModule reports modules allowed to import reka-ui / vendor/ui / kit internals.
+// Both web (kit tree) and choy_ui (thin registration shell) are hosts during dual-stack.
 func isKitHostModule(moduleName string) bool {
 	switch strings.TrimSpace(moduleName) {
-	case kitHostModuleIsolation:
+	case kitHostModuleIsolation, kitHostModuleCutover:
 		return true
-	case kitHostModuleCutover:
-		// Product web still ships Element Plus until cutover; do not exempt it yet
-		// or domain-facing web code could import Reka unnoticed. Return true once
-		// vendor/ui lives under modules/web and Element Plus is removed.
-		return false
 	default:
 		return false
 	}

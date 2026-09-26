@@ -5,7 +5,7 @@
     "type": "git",
     "url": "git+https://github.com/choysum-dev/choysum.git"
   },
-  "description": "Isolated Choy UI kit (gallery + dogfood); not a second product SPA",
+  "description": "Thin choy_ui shell: re-exports Choy kit from @/web; gallery registration host until deleted",
   "license": "Apache-2.0",
   "author": "Choysum Team",
   "type": "module",
@@ -29,7 +29,9 @@
     "moduleName": "choy_ui",
     "application": "choy_ui",
     "category": "Development",
-    "depends": ["core"],
+    "depends": [
+      "core"
+    ],
     "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {
       "web": "./web/index.ts"

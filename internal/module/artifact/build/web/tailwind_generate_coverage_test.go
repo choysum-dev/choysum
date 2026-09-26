@@ -397,7 +397,7 @@ func TestGenerateChoyTailwindForModuleScanFailure(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(styles, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	bad := filepath.Join(pages, "Bad.vue")
+	bad := filepath.Join(pages, "Gallery.vue")
 	if err := os.WriteFile(bad, []byte(`<div class="flex"></div>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -473,12 +473,12 @@ func TestTailwindInputDigestErrors(t *testing.T) {
 		}
 	}
 
-	// Scan error: unreadable candidate file under web/.
+	// Scan error: unreadable candidate file under kit gallery pages.
 	pages := filepath.Join(root, "choy_ui", "web", "pages")
 	if err := os.MkdirAll(pages, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	bad := filepath.Join(pages, "Bad.vue")
+	bad := filepath.Join(pages, "Gallery.vue")
 	if err := os.WriteFile(bad, []byte(`<div class="flex"></div>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -735,13 +735,14 @@ func TestGenerateChoyTailwindForModulePropagatesGenerateError(t *testing.T) {
 
 func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
 	root := t.TempDir()
-	web := filepath.Join(root, "choy_ui", "web")
+	web := filepath.Join(root, "web", "web")
 	if err := os.MkdirAll(web, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, err := EnsureChoyTailwindCSS(root)
-	if err == nil || !strings.Contains(err.Error(), "dialect") {
-		t.Fatalf("expected missing dialect error, got %v", err)
+	// Product web without a Choy dialect is not a kit host (dual-stack stub).
+	res, err := EnsureChoyTailwindCSS(root)
+	if err != nil || res != nil {
+		t.Fatalf("incomplete web without dialect => nil,nil got %#v %v", res, err)
 	}
 }
 

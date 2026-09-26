@@ -211,9 +211,9 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 		default:
 			return nil
 		}
-		// Only the choy_ui kit's generated Tailwind output is derived from dialect +
+		// Only the kit's generated Tailwind output under styles/ is derived from dialect +
 		// candidates already hashed via TailwindInputDigest; hashing it would thrash
-		// digests. A same-named file in any other module is a real input.
+		// digests. A same-named file outside kit styles/ is a real input.
 		if isChoyTailwindGeneratedKitPath(path) {
 			return nil
 		}
@@ -222,18 +222,18 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 }
 
 // isChoyTailwindGeneratedKitPath reports whether path is the kit's generated
-// utilities CSS under choy_ui/web (not a same-named file elsewhere).
+// utilities CSS under a kit host styles/ tree (not a same-named file elsewhere).
 func isChoyTailwindGeneratedKitPath(path string) bool {
 	if filepath.Base(path) != choyTailwindGeneratedCSSName {
 		return false
 	}
 	slash := filepath.ToSlash(path)
-	// Match absolute ("/…/choy_ui/web/…") and walk-root-relative
-	// ("choy_ui/web/…") paths, e.g. when modulesPath is ".".
-	if strings.HasPrefix(slash, "choy_ui/web/") {
-		return true
+	for _, prefix := range []string{"web/web/styles/", "choy_ui/web/styles/"} {
+		if strings.HasPrefix(slash, prefix) || strings.Contains(slash, "/"+prefix) {
+			return true
+		}
 	}
-	return strings.Contains(slash, "/choy_ui/web/")
+	return false
 }
 
 // readBuildInfo is debug.ReadBuildInfo; tests replace it to exercise digest versioning.

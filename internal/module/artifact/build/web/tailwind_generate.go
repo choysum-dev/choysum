@@ -90,6 +90,100 @@ func ScanTailwindCandidates(roots []string) ([]string, error) {
 	return out, nil
 }
 
+// ScanChoyKitTailwindCandidates walks a module web/ tree but only files that belong
+// to the Choy kit surface. Dual-stack product web also ships O*/Element Plus trees;
+// scanning those would inflate candidates and break the soft generate budget.
+func ScanChoyKitTailwindCandidates(webRoot string) ([]string, error) {
+	webRoot = strings.TrimSpace(webRoot)
+	if webRoot == "" {
+		return nil, nil
+	}
+	seen := map[string]struct{}{}
+	var out []string
+	info, err := os.Stat(webRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, nil
+	}
+	err = filepath.WalkDir(webRoot, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if name == "node_modules" || name == "dist" || name == ".git" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !shouldScanTailwindPath(path) || !isChoyKitTailwindInputPath(webRoot, path) {
+			return nil
+		}
+		return scanTailwindFile(path, seen, &out)
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// isChoyKitTailwindInputPath reports whether path under webRoot is Choy kit input
+// (vendor/ui, internal engines, Choy* SFCs/helpers, gallery/dogfood pages, tokens CSS).
+func isChoyKitTailwindInputPath(webRoot, path string) bool {
+	rel, err := filepath.Rel(webRoot, path)
+	if err != nil {
+		return false
+	}
+	slash := filepath.ToSlash(rel)
+	base := filepath.Base(path)
+
+	switch {
+	case strings.HasPrefix(slash, "styles/"):
+		// Product EP SCSS lives beside Choy tokens; only scan Choy CSS dialect siblings.
+		return strings.HasSuffix(strings.ToLower(base), ".css") &&
+			!strings.HasSuffix(base, ".generated.css") &&
+			base != choyTailwindGeneratedCSSName
+	case strings.HasPrefix(slash, "components/vendor/"),
+		strings.HasPrefix(slash, "components/internal/"),
+		strings.HasPrefix(slash, "lib/"):
+		return true
+	case strings.HasPrefix(slash, "composables/"):
+		return strings.Contains(base, "Choy") || strings.Contains(base, "choy")
+	case strings.HasPrefix(slash, "pages/"):
+		return base == "Gallery.vue" ||
+			strings.HasPrefix(base, "Dogfood") ||
+			strings.HasPrefix(base, "partnerDetail")
+	case strings.HasPrefix(slash, "components/layout/"),
+		strings.HasPrefix(slash, "components/view/"),
+		strings.HasPrefix(slash, "components/field/"),
+		strings.HasPrefix(slash, "components/chatter/"):
+		if strings.HasPrefix(base, "O") {
+			return false
+		}
+		return strings.HasPrefix(base, "Choy") ||
+			strings.Contains(base, "Helpers") ||
+			strings.Contains(base, "Types") ||
+			strings.Contains(base, "Adapter") ||
+			strings.HasPrefix(base, "merge") ||
+			strings.HasPrefix(base, "chart") ||
+			strings.HasPrefix(base, "html") ||
+			strings.HasPrefix(base, "json") ||
+			strings.HasPrefix(base, "properties") ||
+			strings.HasPrefix(base, "chatter") ||
+			strings.HasPrefix(base, "kanban") ||
+			strings.HasPrefix(base, "pagination") ||
+			strings.HasPrefix(base, "search")
+	default:
+		return false
+	}
+}
+
 func shouldScanTailwindPath(path string) bool {
 	// Keep JS/TS module variants aligned with hashWebSourceTreeOpts so classes
 	// authored only in .mts/.cts/.mjs/.cjs still produce utilities.
@@ -487,12 +581,12 @@ func indexCSSBlockEnd(css string) int {
 	return -1
 }
 
-// GenerateChoyTailwindForModule scans a choy_ui module root and writes generated utilities CSS.
+// GenerateChoyTailwindForModule scans a Choy kit module root and writes generated utilities CSS.
 // Emits theme aliases + utilities scoped to .choy-gallery-root (never FullCSS preflight).
 func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResult, error) {
 	moduleRoot = strings.TrimSpace(moduleRoot)
 	if moduleRoot == "" {
-		return nil, fmt.Errorf("choy_ui module root is empty")
+		return nil, fmt.Errorf("choy kit module root is empty")
 	}
 	webRoot := filepath.Join(moduleRoot, "web")
 	dialectPath := filepath.Join(webRoot, "styles", "theme.css")
@@ -502,7 +596,7 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 	}
 	dialectHash := sha256Hex(dialectBytes)
 
-	candidates, err := ScanTailwindCandidates([]string{webRoot})
+	candidates, err := ScanChoyKitTailwindCandidates(webRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -606,58 +700,72 @@ var (
 	atomicWriteRename = os.Rename
 )
 
-// EnsureChoyTailwindCSS finds an installed/local choy_ui module under modulesPath and regenerates CSS.
-// No-op when the module is absent. Errors when web/ is present but theme.css is missing.
+// EnsureChoyTailwindCSS finds the Choy kit under modulesPath and regenerates CSS.
+// Prefers modules/web when styles/theme.css is present; falls back to modules/choy_ui.
+// No-op when neither kit root owns a dialect file.
 func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, error) {
 	modulesPath = strings.TrimSpace(modulesPath)
 	if modulesPath == "" {
 		return nil, nil
 	}
-	root := filepath.Join(modulesPath, "choy_ui")
-	webRoot := filepath.Join(root, "web")
-	if st, err := os.Stat(webRoot); err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	} else if !st.IsDir() {
-		return nil, nil
-	}
-	dialectPath := filepath.Join(webRoot, "styles", "theme.css")
-	st, err := os.Stat(dialectPath)
+	root, err := resolveChoyKitModuleRoot(modulesPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("choy_ui module present but dialect %s is missing", dialectPath)
-		}
 		return nil, err
 	}
-	if st.IsDir() {
-		return nil, fmt.Errorf("choy_ui dialect %s is a directory, not a file", dialectPath)
+	if root == "" {
+		return nil, nil
 	}
 	return GenerateChoyTailwindForModule(root)
 }
 
-// TailwindInputDigest returns stable dialect and candidate hashes for choy_ui under modulesPath.
+// resolveChoyKitModuleRoot returns the module root that owns Choy styles/theme.css.
+// Prefers web when it has a dialect file; falls back to choy_ui.
+func resolveChoyKitModuleRoot(modulesPath string) (string, error) {
+	for _, name := range []string{"web", "choy_ui"} {
+		root := filepath.Join(modulesPath, name)
+		webRoot := filepath.Join(root, "web")
+		st, err := os.Stat(webRoot)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return "", err
+		}
+		if !st.IsDir() {
+			continue
+		}
+		dialectPath := filepath.Join(webRoot, "styles", "theme.css")
+		st, err = os.Stat(dialectPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return "", err
+		}
+		if st.IsDir() {
+			return "", fmt.Errorf("%s dialect %s is a directory, not a file", name, dialectPath)
+		}
+		return root, nil
+	}
+	return "", nil
+}
+
+// TailwindInputDigest returns stable dialect and candidate hashes for the Choy kit under modulesPath.
 // Empty strings when the kit module is absent (no Tailwind inputs to invalidate).
 func TailwindInputDigest(modulesPath string) (dialectHash, contentHash string, err error) {
 	modulesPath = strings.TrimSpace(modulesPath)
 	if modulesPath == "" {
 		return "", "", nil
 	}
-	root := filepath.Join(modulesPath, "choy_ui")
-	webRoot := filepath.Join(root, "web")
-	if st, statErr := os.Stat(webRoot); statErr != nil || !st.IsDir() {
-		if statErr != nil && !os.IsNotExist(statErr) {
-			return "", "", statErr
-		}
+	root, err := resolveChoyKitModuleRoot(modulesPath)
+	if err != nil {
+		return "", "", err
+	}
+	if root == "" {
 		return "", "", nil
 	}
+	webRoot := filepath.Join(root, "web")
 	dialectPath := filepath.Join(webRoot, "styles", "theme.css")
-	if st, statErr := os.Stat(dialectPath); statErr == nil && st.IsDir() {
-		// Mirror EnsureChoyTailwindCSS: a directory here is a broken kit, not
-		// "no Tailwind inputs", so a skip decision cannot silently mask it.
-		return "", "", fmt.Errorf("choy_ui dialect %s is a directory, not a file", dialectPath)
-	}
 	dialectBytes, err := os.ReadFile(dialectPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -665,7 +773,7 @@ func TailwindInputDigest(modulesPath string) (dialectHash, contentHash string, e
 		}
 		return "", "", err
 	}
-	candidates, err := ScanTailwindCandidates([]string{webRoot})
+	candidates, err := ScanChoyKitTailwindCandidates(webRoot)
 	if err != nil {
 		return "", "", err
 	}

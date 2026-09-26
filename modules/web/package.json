@@ -30,7 +30,14 @@
     "@tiptap/starter-kit": "^2.11.5",
     "@tiptap/extension-link": "^2.11.5",
     "dompurify": "^3.2.4",
-    "vue-json-pretty": "^2.6.0"
+    "vue-json-pretty": "^2.6.0",
+    "reka-ui": "2.10.4",
+    "lucide-vue-next": "0.542.0",
+    "@tanstack/vue-table": "8.21.3",
+    "@tanstack/vue-virtual": "3.13.39",
+    "@internationalized/date": "3.12.4",
+    "@unovis/vue": "1.7.0",
+    "@unovis/ts": "1.7.0"
   },
   "choysum": {
     "moduleName": "web",
