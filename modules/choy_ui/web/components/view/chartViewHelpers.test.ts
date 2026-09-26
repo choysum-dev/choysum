@@ -1,0 +1,113 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import {
+  availableChartTypes,
+  barAdapter,
+  pieAdapter,
+  resolveChartAdapter,
+} from './chart/chartTypeAdapter';
+import {
+  chartSpecToPieRows,
+  chartSpecToXyRows,
+  normalizeSeriesToPercent,
+  sortChartCategories,
+} from './chartViewHelpers';
+
+test('resolveChartAdapter returns bar/line/pie and rejects unknown', () => {
+  expect(resolveChartAdapter('bar')?.id).toBe('bar');
+  expect(resolveChartAdapter('line')?.id).toBe('line');
+  expect(resolveChartAdapter('pie')?.id).toBe('pie');
+  expect(resolveChartAdapter('radar')).toBeUndefined();
+});
+
+test('availableChartTypes filters pie by groupDepth', () => {
+  expect(
+    availableChartTypes({
+      groupDepth: 0,
+      stacked: true,
+      seriesCount: 1,
+      metricAlias: 'count',
+    }),
+  ).toEqual(['bar', 'line']);
+  expect(
+    availableChartTypes({
+      groupDepth: 1,
+      stacked: true,
+      seriesCount: 2,
+      metricAlias: 'count',
+    }),
+  ).toEqual(['bar', 'line', 'pie']);
+});
+
+test('barAdapter builds ChartConfig with choy token colors', () => {
+  const spec = barAdapter.build({
+    categories: ['A', 'B'],
+    seriesMatrix: [
+      { name: 'Desktop', data: [1, 2] },
+      { name: 'Mobile', data: [3, 4] },
+    ],
+    metricLabel: 'Count',
+    stacked: true,
+  });
+  expect(spec.kind).toBe('bar');
+  expect(spec.stacked).toBe(true);
+  expect(spec.config.desktop?.color).toBe('var(--choy-chart-1)');
+  expect(spec.config.mobile?.color).toBe('var(--choy-chart-2)');
+  expect(spec.series.map(s => s.key)).toEqual(['desktop', 'mobile']);
+});
+
+test('pieAdapter collapses multi-series into slices', () => {
+  const spec = pieAdapter.build({
+    categories: ['A', 'B'],
+    seriesMatrix: [
+      { name: 'Desktop', data: [10, 20] },
+      { name: 'Mobile', data: [5, 5] },
+    ],
+    metricLabel: 'Count',
+    stacked: true,
+  });
+  expect(spec.kind).toBe('pie');
+  expect(spec.slices).toEqual([
+    { key: 'desktop', name: 'Desktop', value: 30 },
+    { key: 'mobile', name: 'Mobile', value: 10 },
+  ]);
+});
+
+test('normalizeSeriesToPercent and sortChartCategories', () => {
+  const categories = ['A', 'B'];
+  const series = [
+    { name: 'X', data: [25, 10] },
+    { name: 'Y', data: [75, 40] },
+  ];
+  expect(normalizeSeriesToPercent(categories, series)).toEqual([
+    { name: 'X', data: [25, 20] },
+    { name: 'Y', data: [75, 80] },
+  ]);
+  const desc = sortChartCategories(categories, series, 'desc');
+  expect(desc.categories).toEqual(['A', 'B']);
+  expect(desc.seriesMatrix[0]!.data).toEqual([25, 10]);
+  const asc = sortChartCategories(categories, series, 'asc');
+  expect(asc.categories).toEqual(['B', 'A']);
+  expect(asc.seriesMatrix[0]!.data).toEqual([10, 25]);
+});
+
+test('chartSpecToXyRows / chartSpecToPieRows flatten for Unovis', () => {
+  const spec = barAdapter.build({
+    categories: ['Jan', 'Feb'],
+    seriesMatrix: [{ name: 'Desktop', data: [1, 2] }],
+    metricLabel: 'Count',
+    stacked: false,
+  });
+  expect(chartSpecToXyRows(spec)).toEqual([
+    { category: 'Jan', index: 0, desktop: 1 },
+    { category: 'Feb', index: 1, desktop: 2 },
+  ]);
+  const pie = pieAdapter.build({
+    categories: ['Chrome', 'Safari'],
+    seriesMatrix: [{ name: 'Visitors', data: [100, 50] }],
+    metricLabel: 'Visitors',
+    stacked: false,
+  });
+  expect(chartSpecToPieRows(pie).map(r => r.name)).toEqual(['Chrome', 'Safari']);
+});

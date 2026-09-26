@@ -28,6 +28,8 @@ type feUnitStubPaths struct {
 	TipTapStarterKit    string
 	TipTapExtensionLink string
 	DOMPurify           string
+	UnovisVue           string
+	UnovisTs            string
 }
 
 func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bool) {
@@ -54,6 +56,10 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 		return stubs.TipTapExtensionLink, true
 	case "dompurify":
 		return stubs.DOMPurify, true
+	case "@unovis/vue":
+		return stubs.UnovisVue, true
+	case "@unovis/ts":
+		return stubs.UnovisTs, true
 	default:
 		if importPath == "echarts" || strings.HasPrefix(importPath, "echarts/") {
 			return stubs.Echarts, true

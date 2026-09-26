@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
       <header class="choy-gallery-header">
         <h1 class="choy-gallery-title">Choy UI Gallery</h1>
         <p class="choy-gallery-lede">
-          Isolation kit shell: tokens, L1 shells, fields, Form/List/Search/Kanban, Html/Json/Properties,
+          Isolation kit shell: tokens, L1 shells, fields, Form/List/Search/Kanban/Chart, Html/Json/Properties,
           O2M·M2M, Chatter, L2 controls, L3 engines, persisted density / dark. No Element Plus on this page.
         </p>
         <div class="choy-gallery-controls">
@@ -155,6 +155,45 @@ SPDX-License-Identifier: Apache-2.0
                 v-model:page-size="galleryListPageSize"
                 :total="galleryListFiltered.length"
               />
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section class="choy-gallery-section">
+        <h2>PR8 — Chart (Unovis)</h2>
+        <p class="mb-4 text-sm text-foreground/70">
+          ChoyChartView product surface — bar / line / pie via Unovis (no ECharts).
+        </p>
+        <div class="choy-gallery-l2-grid">
+          <Card class="md:col-span-2">
+            <CardHeader>
+              <CardTitle>ChoyChartView</CardTitle>
+              <CardDescription>
+                Metric / type / stack / sort controls; host-owned categories + series.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChoyChartView
+                :categories="galleryChartCategories"
+                :series-matrix="galleryChartSeries"
+                :metrics="galleryChartMetrics"
+                :metric-alias="galleryChartMetric"
+                :chart-type="galleryChartType"
+                :stacked="galleryChartStacked"
+                :stack-mode="galleryChartStackMode"
+                :sort="galleryChartSort"
+                :group-depth="1"
+                @metric-change="galleryChartMetric = $event"
+                @chart-type-change="galleryChartType = $event"
+                @stacked-change="galleryChartStacked = $event"
+                @sort-change="galleryChartSort = $event"
+                @chart-item-click="onGalleryChartClick"
+                @refresh="onGalleryChartRefresh"
+              />
+              <p class="mt-2 text-xs text-muted-foreground">
+                Last click: {{ galleryChartClickLabel }}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -599,6 +638,7 @@ import ChoyTabs from '../components/layout/ChoyTabs.vue';
 import ChoyFormView from '../components/view/ChoyFormView.vue';
 import ChoyListView from '../components/view/ChoyListView.vue';
 import ChoyKanbanView from '../components/view/ChoyKanbanView.vue';
+import ChoyChartView from '../components/view/ChoyChartView.vue';
 import ChoySearchView from '../components/view/ChoySearchView.vue';
 import ChoyPagination from '../components/view/ChoyPagination.vue';
 import ChoyBreadcrumb from '../components/view/ChoyBreadcrumb.vue';
@@ -616,6 +656,11 @@ import {
   type ChoyKanbanLane,
   type ChoyKanbanMove,
 } from '../components/view/kanbanViewHelpers';
+import type {
+  ChoyChartItemClickPayload,
+  ChoyChartMetricOption,
+} from '../components/view/chartViewHelpers';
+import type { ChoyChartKind, ChoyChartSeries, ChoyChartSort } from '../components/view/chart/chartTypeAdapter';
 import type { ChoyJsonValue } from '../components/field/jsonFieldHelpers';
 import type { PropertiesMap } from '../components/field/propertiesHelpers';
 import type { PropertyItemDefinition, ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
@@ -692,6 +737,22 @@ const galleryKanbanLanes = ref<ChoyKanbanLane[]>(
     },
   ),
 );
+
+const galleryChartCategories = ref(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']);
+const galleryChartSeries = ref<ChoyChartSeries[]>([
+  { name: 'Desktop', data: [186, 305, 237, 73, 209, 214] },
+  { name: 'Mobile', data: [80, 200, 120, 190, 130, 140] },
+]);
+const galleryChartMetrics = ref<ChoyChartMetricOption[]>([
+  { alias: 'count', label: 'Count' },
+  { alias: 'amount', label: 'Amount' },
+]);
+const galleryChartMetric = ref('count');
+const galleryChartType = ref<ChoyChartKind>('bar');
+const galleryChartStacked = ref(true);
+const galleryChartStackMode = ref<'absolute' | 'percent'>('absolute');
+const galleryChartSort = ref<ChoyChartSort>('none');
+const galleryChartClickLabel = ref('(none)');
 
 const galleryHtml = ref<string | null>('<p>Hello <strong>Choy</strong> HTML</p>');
 const galleryJson = ref<ChoyJsonValue>({ region: 'APAC', tier: 1 });
@@ -790,6 +851,21 @@ function onGalleryKanbanMove(move: ChoyKanbanMove): void {
   ChoyMessage.info('Kanban move', {
     description: `${move.cardId}: ${move.fromLaneKey} → ${move.toLaneKey}`,
   });
+}
+
+function onGalleryChartClick(payload: ChoyChartItemClickPayload): void {
+  galleryChartClickLabel.value = [
+    payload.chartType,
+    payload.category,
+    payload.seriesName,
+    payload.value,
+  ]
+    .filter(v => v != null && v !== '')
+    .join(' / ');
+}
+
+function onGalleryChartRefresh(): void {
+  ChoyMessage.info('Chart refresh (gallery)');
 }
 
 function onGalleryPropDefsSaved(items: PropertyItemDefinition[]): void {

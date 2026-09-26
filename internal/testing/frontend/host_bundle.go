@@ -135,11 +135,13 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			TipTapStarterKit:    filepath.Join(stubDir, "tiptap_starter_kit.js"),
 			TipTapExtensionLink: filepath.Join(stubDir, "tiptap_extension_link.js"),
 			DOMPurify:           filepath.Join(stubDir, "dompurify.js"),
+			UnovisVue:           filepath.Join(stubDir, "unovis_vue.js"),
+			UnovisTs:            filepath.Join(stubDir, "unovis_ts.js"),
 		}
 		plugins = append(plugins, api.Plugin{
 			Name: "choysum-fe-unit-package-stubs",
 			Setup: func(build api.PluginBuild) {
-				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify)$`},
+				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 						// Filter only admits known package names; lookup always succeeds.
 						path, _ := feUnitPackageStubPath(args.Path, stubs)
