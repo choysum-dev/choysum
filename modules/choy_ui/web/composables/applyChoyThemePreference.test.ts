@@ -137,6 +137,31 @@ test('applyChoyThemePreference honors persist:false, prefersDark and storageKey'
   expect(mem.size).toBe(0);
 });
 
+test('applyChoyThemePreference writes only the custom storageKey when persisting', () => {
+  const mem = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      mem.set(k, v);
+    },
+  };
+  applyChoyThemePreference(
+    { theme: 'dark' },
+    {
+      root: {
+        classList: { toggle: () => undefined },
+        setAttribute: () => undefined,
+        removeAttribute: () => undefined,
+      } as never,
+      storage,
+      persist: true,
+      storageKey: 'custom.key',
+    },
+  );
+  expect(JSON.parse(mem.get('custom.key')!)).toEqual({ theme: 'dark' });
+  expect(mem.has('choy.ui.theme')).toBe(false);
+});
+
 test('applyChoyThemePreference persists original density including standard', () => {
   const mem = new Map<string, string>();
   const storage = {

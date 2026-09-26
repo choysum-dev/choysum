@@ -112,7 +112,8 @@ watch(
   },
   // Sync flush: a host that sets posting true→false within one tick would
   // otherwise coalesce to "no change" and never clear the draft.
-  { flush: 'sync' },
+  // Immediate: capture postingResId when mounting mid-flight.
+  { flush: 'sync', immediate: true },
 );
 
 /** Clears the composer draft after a confirmed successful post (host-driven). */
