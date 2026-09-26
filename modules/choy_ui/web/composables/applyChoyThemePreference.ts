@@ -153,15 +153,19 @@ export function applyChoyThemePreference(
     }
   }
   if (opts.persist !== false) {
-    // Persist validated theme; keep intentional auth `standard` density for round-trip.
-    persistChoyThemePreference(
-      {
-        theme: resolved.theme,
-        density: effective.density === 'standard' ? 'standard' : resolved.density,
-      },
-      opts.storage,
-      opts.storageKey,
-    );
+    // Persist only expressed fields; inferred defaults would make a later partial
+    // apply treat them as real prefs and strip host-managed dark / density.
+    const next: ChoyThemePreference = {};
+    if (effective.theme !== undefined) {
+      next.theme = resolved.theme;
+    }
+    if (effective.density !== undefined) {
+      // Keep intentional auth `standard` density for round-trip.
+      next.density = effective.density === 'standard' ? 'standard' : resolved.density;
+    }
+    if (next.theme !== undefined || next.density !== undefined) {
+      persistChoyThemePreference(next, opts.storage, opts.storageKey);
+    }
   }
   return resolved;
 }

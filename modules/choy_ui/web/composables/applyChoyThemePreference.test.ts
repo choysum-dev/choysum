@@ -222,32 +222,35 @@ test('applyChoyThemePreference keeps a stored theme when only density is applied
 test('applyChoyThemePreference density-only does not strip host dark class', () => {
   const classes = new Set<string>(['dark']);
   const attrs = new Map<string, string>();
-  applyChoyThemePreference(
-    { density: 'compact' },
-    {
-      root: {
-        classList: {
-          toggle(name: string, force?: boolean) {
-            if (force) classes.add(name);
-            else classes.delete(name);
-          },
-        },
-        setAttribute(name: string, value: string) {
-          attrs.set(name, value);
-        },
-        removeAttribute(name: string) {
-          attrs.delete(name);
-        },
-      } as never,
-      storage: {
-        getItem: () => null,
-        setItem: () => undefined,
-      },
-      persist: false,
+  const mem = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      mem.set(k, v);
     },
-  );
+  };
+  const root = {
+    classList: {
+      toggle(name: string, force?: boolean) {
+        if (force) classes.add(name);
+        else classes.delete(name);
+      },
+    },
+    setAttribute(name: string, value: string) {
+      attrs.set(name, value);
+    },
+    removeAttribute(name: string) {
+      attrs.delete(name);
+    },
+  } as never;
+  applyChoyThemePreference({ density: 'compact' }, { root, storage, persist: true });
   expect(classes.has('dark')).toBe(true);
   expect(attrs.get('data-density')).toBe('compact');
+  // Must not invent theme:'light' — a second apply would then strip host dark.
+  expect(JSON.parse(mem.get('choy.ui.theme')!)).toEqual({ density: 'compact' });
+  applyChoyThemePreference({ density: 'comfortable' }, { root, storage, persist: true });
+  expect(classes.has('dark')).toBe(true);
+  expect(attrs.has('data-density')).toBe(false);
 });
 
 test('applyChoyThemePreference ignores unrecognized caller theme and keeps stored', () => {
