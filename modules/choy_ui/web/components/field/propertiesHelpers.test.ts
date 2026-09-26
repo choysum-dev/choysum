@@ -40,12 +40,17 @@ describe('propertiesHelpers', () => {
     const items = [
       { name: 'color', type: 'char', default: 'red' },
       { name: 'qty', type: 'integer', value: 3 },
+      { name: 'tier', type: 'char', default: 'bronze' },
       { name: '', type: 'char', default: 'x' },
       { name: 'skip', type: 'binary', default: 'x' },
     ];
+    // color is present in previous → prev wins over default.
+    // qty has value and no previous → value wins.
+    // tier has only default and no previous → default branch.
     const map = buildFullPropertiesMap(items, { color: 'blue' });
     expect(map.color).toBe('blue');
     expect(map.qty).toBe(3);
+    expect(map.tier).toBe('bronze');
     expect(Object.prototype.hasOwnProperty.call(map, 'skip')).toBe(false);
     const next = writePropertyValue(items, map, 'qty', 9);
     expect(next.qty).toBe(9);

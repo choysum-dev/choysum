@@ -101,7 +101,7 @@ describe('htmlHelpers', () => {
       value: {
         createElement: () => ({
           set innerHTML(html: string) {
-            stored = String(html).replace(/<[^>]+>/g, ' ');
+            stored = String(html).replace(/<[^>]+>/g, '');
           },
           get textContent() {
             return stored;

@@ -61,11 +61,15 @@ const editor = useEditor({
 watch(
   () => [model.value, editor.value] as const,
   ([next]) => {
-    if (!editor.value) return;
+    const ed = editor.value;
+    if (!ed) return;
     const sanitized = next == null || next === '' ? '' : sanitizeHtmlForClient(next);
-    const current = editor.value.getHTML();
+    const current = ed.getHTML();
     if (current === sanitized) return;
-    htmlEditorSetContent(editor.value, sanitized || '', false);
+    // TipTap serializes an empty doc as '<p></p>' while the model normalizes to null;
+    // skip the reset so clearing content does not move the caret.
+    if (!sanitized && ed.getText().trim() === '') return;
+    htmlEditorSetContent(ed, sanitized, false);
   },
   { immediate: true },
 );

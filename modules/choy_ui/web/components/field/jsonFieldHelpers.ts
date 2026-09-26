@@ -31,7 +31,13 @@ function sortKeysDeep(value: unknown): unknown {
     return value.map(sortKeysDeep);
   }
   if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
+    // Leave Date / custom serializers intact so JSON.stringify can call toJSON.
+    const toJSON = (value as { toJSON?: unknown }).toJSON;
+    if (typeof toJSON === 'function') {
+      return value;
+    }
+    // null-prototype so an own "__proto__" key stays a data key (not prototype).
+    const out: Record<string, unknown> = Object.create(null);
     for (const key of Object.keys(value as Record<string, unknown>).sort()) {
       out[key] = sortKeysDeep((value as Record<string, unknown>)[key]);
     }

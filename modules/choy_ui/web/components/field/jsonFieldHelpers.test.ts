@@ -18,6 +18,27 @@ describe('jsonFieldHelpers', () => {
     );
   });
 
+  test('stringifyChoyJson preserves own __proto__ keys', () => {
+    const parsed = JSON.parse('{"b":1,"__proto__":{"x":1},"a":2}') as Record<string, unknown>;
+    const text = stringifyChoyJson(parsed);
+    expect(text).toContain('"__proto__"');
+    expect(text).toContain('"a": 2');
+    const roundTrip = JSON.parse(text) as Record<string, unknown>;
+    // Object-literal `{ __proto__: … }` sets the prototype; assert via own keys instead.
+    expect(Object.keys(roundTrip).sort()).toEqual(['__proto__', 'a', 'b']);
+    expect(roundTrip.a).toBe(2);
+    expect(roundTrip.b).toBe(1);
+    expect(Object.prototype.hasOwnProperty.call(roundTrip, '__proto__')).toBe(true);
+    expect(roundTrip['__proto__']).toEqual({ x: 1 });
+  });
+
+  test('stringifyChoyJson preserves Date via toJSON', () => {
+    const createdAt = new Date('2020-01-01T00:00:00.000Z');
+    const text = stringifyChoyJson({ z: 1, createdAt });
+    expect(text).toContain('"createdAt": "2020-01-01T00:00:00.000Z"');
+    expect(text).toContain('"z": 1');
+  });
+
   test('stringifyChoyJson handles arrays, scalars, compact mode, and null', () => {
     expect(stringifyChoyJson(null)).toBe('');
     expect(stringifyChoyJson([1, { b: 1, a: 2 }], false)).toBe('[1,{"a":2,"b":1}]');
