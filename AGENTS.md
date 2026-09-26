@@ -15,12 +15,6 @@ On-demand procedures and repository policies live under [`.agents/skills/`](.age
 Optional maintainer long-form (principles / review / hardcut / related) may exist under
 gitignored `.dev/docs/…` — see the `service-api-guidelines` skill’s local-only table; skip on clean clones.
 
-## Conventions
-
-- **Vue SFC block order (IMD-first):** product / domain / `internal/*` use
-  `template` → `script` → `style`. Exception: `**/vendor/ui/**` keeps shadcn’s
-  `script` → `template`. Local Cursor rule (gitignored): `.cursor/rules/vue-sfc-block-order.mdc`.
-
 ## Cloud and local agent setup
 
 Choysum is a single product: a Go binary (`choysum`) that embeds a QuickJS
