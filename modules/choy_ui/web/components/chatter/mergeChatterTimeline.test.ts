@@ -18,6 +18,8 @@ test('parseChatterTimestamp parses Date, number, and ISO strings', () => {
   // Protobuf JSON int64 epoch ms arrives as a digit string.
   expect(parseChatterTimestamp('1704067200000')).toBe(1_704_067_200_000);
   expect(parseChatterTimestamp('-1000')).toBe(-1000);
+  // Beyond Number.MAX_SAFE_INTEGER must not coerce with precision loss.
+  expect(parseChatterTimestamp('9007199254740992')).toBeNull();
 });
 
 test('parseChatterTimestamp returns null for empty or invalid values', () => {

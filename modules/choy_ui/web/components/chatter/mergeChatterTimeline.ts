@@ -24,7 +24,8 @@ export function parseChatterTimestamp(value: unknown): number | null {
   // Protobuf JSON serializes int64 timestamps as strings; Date.parse fails on them.
   if (/^-?\d+$/.test(raw)) {
     const asNumber = Number(raw);
-    return Number.isFinite(asNumber) ? asNumber : null;
+    // Protobuf int64 strings beyond 2^53 would silently lose precision.
+    return Number.isSafeInteger(asNumber) ? asNumber : null;
   }
   const parsed = Date.parse(raw);
   return Number.isNaN(parsed) ? null : parsed;

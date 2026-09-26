@@ -167,7 +167,12 @@ export default defineComponent({
     const timerIds: number[] = [];
 
     function schedule(fn: () => void, ms: number): void {
-      timerIds.push(window.setTimeout(fn, ms));
+      const id = window.setTimeout(() => {
+        const index = timerIds.indexOf(id);
+        if (index !== -1) timerIds.splice(index, 1);
+        fn();
+      }, ms);
+      timerIds.push(id);
     }
 
     onBeforeUnmount(() => {

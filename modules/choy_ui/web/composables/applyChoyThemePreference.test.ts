@@ -173,6 +173,19 @@ test('readChoyThemePreference returns {} when storage access throws', () => {
   ).toEqual({});
 });
 
+test('persistChoyThemePreference swallows storage write failures', () => {
+  expect(() =>
+    persistChoyThemePreference(
+      { theme: 'dark', density: 'compact' },
+      {
+        setItem: () => {
+          throw new Error('quota');
+        },
+      },
+    ),
+  ).not.toThrow();
+});
+
 test('applyChoyThemePreference keeps a stored theme when only density is applied', () => {
   const mem = new Map<string, string>([['choy.ui.theme', JSON.stringify({ theme: 'dark' })]]);
   const storage = {
