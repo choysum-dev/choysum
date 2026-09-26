@@ -62,14 +62,15 @@ export function readChoyThemePreference(
   storage?: Pick<Storage, 'getItem'> | null,
   storageKey: string = CHOY_THEME_STORAGE_KEY,
 ): ChoyThemePreference {
-  const store =
-    storage === undefined
-      ? typeof localStorage !== 'undefined'
-        ? localStorage
-        : null
-      : storage;
-  if (!store) return {};
   try {
+    // Resolve default store inside try: some browsers throw on localStorage access.
+    const store =
+      storage === undefined
+        ? typeof localStorage !== 'undefined'
+          ? localStorage
+          : null
+        : storage;
+    if (!store) return {};
     const raw = store.getItem(storageKey);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as ChoyThemePreference;
@@ -99,17 +100,18 @@ export function persistChoyThemePreference(
   storage?: Pick<Storage, 'setItem'> | null,
   storageKey: string = CHOY_THEME_STORAGE_KEY,
 ): void {
-  const store =
-    storage === undefined
-      ? typeof localStorage !== 'undefined'
-        ? localStorage
-        : null
-      : storage;
-  if (!store) return;
   try {
+    // Resolve default store inside try: denied storage must not break apply.
+    const store =
+      storage === undefined
+        ? typeof localStorage !== 'undefined'
+          ? localStorage
+          : null
+        : storage;
+    if (!store) return;
     store.setItem(storageKey, JSON.stringify(prefs));
   } catch {
-    // Quota / private mode — ignore.
+    // Quota / private mode / SecurityError — ignore.
   }
 }
 
@@ -134,8 +136,12 @@ export function applyChoyThemePreference(
     }
   }
   if (opts.persist !== false) {
+    // Keep caller-provided values (e.g. auth density: 'standard') for round-trip.
     persistChoyThemePreference(
-      { theme: resolved.theme, density: resolved.density },
+      {
+        theme: prefs?.theme ?? resolved.theme,
+        density: prefs?.density ?? resolved.density,
+      },
       opts.storage,
       opts.storageKey,
     );

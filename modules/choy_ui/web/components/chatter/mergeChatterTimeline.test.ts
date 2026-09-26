@@ -99,3 +99,47 @@ test('compareChatterTimelineEntries tie-breaks fieldChange before message', () =
     ),
   ).toBeLessThan(0);
 });
+
+test('compareChatterTimelineEntries tie-breaks equal kind by id', () => {
+  const at = Date.parse('2024-01-01T00:00:00.000Z');
+  expect(
+    compareChatterTimelineEntries(
+      {
+        kind: 'message',
+        id: 'm-a',
+        at,
+        type: 'comment',
+        body: 'a',
+        authorUid: null,
+      },
+      {
+        kind: 'message',
+        id: 'm-b',
+        at,
+        type: 'comment',
+        body: 'b',
+        authorUid: null,
+      },
+    ),
+  ).toBeLessThan(0);
+  expect(
+    compareChatterTimelineEntries(
+      {
+        kind: 'message',
+        id: 'm-b',
+        at,
+        type: 'comment',
+        body: 'b',
+        authorUid: null,
+      },
+      {
+        kind: 'message',
+        id: 'm-a',
+        at,
+        type: 'comment',
+        body: 'a',
+        authorUid: null,
+      },
+    ),
+  ).toBeGreaterThan(0);
+});

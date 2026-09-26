@@ -101,3 +101,66 @@ test('applyChoyThemePreference toggles root class and density attr', () => {
   expect(classes.has('dark')).toBe(false);
   expect(attrs.has('data-density')).toBe(false);
 });
+
+test('applyChoyThemePreference honors persist:false, prefersDark and storageKey', () => {
+  const mem = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      mem.set(k, v);
+    },
+  };
+  const root = {
+    classList: { toggle: () => undefined },
+    setAttribute: () => undefined,
+    removeAttribute: () => undefined,
+  };
+  const resolved = applyChoyThemePreference(
+    { theme: 'auto', density: 'standard' },
+    {
+      root: root as never,
+      storage,
+      persist: false,
+      prefersDark: true,
+      storageKey: 'custom.key',
+    },
+  );
+  expect(resolved).toEqual({ theme: 'auto', density: 'comfortable', dark: true });
+  expect(mem.size).toBe(0);
+});
+
+test('applyChoyThemePreference persists original density including standard', () => {
+  const mem = new Map<string, string>();
+  const storage = {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      mem.set(k, v);
+    },
+  };
+  applyChoyThemePreference(
+    { theme: 'light', density: 'standard' },
+    {
+      root: {
+        classList: { toggle: () => undefined },
+        setAttribute: () => undefined,
+        removeAttribute: () => undefined,
+      } as never,
+      storage,
+      persist: true,
+    },
+  );
+  expect(JSON.parse(mem.get('choy.ui.theme')!)).toEqual({
+    theme: 'light',
+    density: 'standard',
+  });
+});
+
+test('readChoyThemePreference returns {} when storage access throws', () => {
+  expect(
+    readChoyThemePreference({
+      getItem: () => {
+        throw new Error('denied');
+      },
+    }),
+  ).toEqual({});
+});

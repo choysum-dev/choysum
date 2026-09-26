@@ -40,6 +40,8 @@ import DogfoodPartnerForm from './DogfoodPartnerForm.vue';
 export default defineComponent({
   name: 'DogfoodPartnerForm',
   extends: DogfoodPartnerForm,
+  // IMD merge keeps only this script; re-bind base setup so reactive state survives.
+  setup: DogfoodPartnerForm.setup,
   components: {
     Xpath,
     ChoyTab,

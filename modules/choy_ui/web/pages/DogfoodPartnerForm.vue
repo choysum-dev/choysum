@@ -72,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import '../styles/tokens.css';
 import '../styles/theme.override.css';
@@ -164,10 +164,23 @@ export default defineComponent({
       void router.push({ name: 'ChoyUiGallery' });
     }
 
+    const timerIds: number[] = [];
+
+    function schedule(fn: () => void, ms: number): void {
+      timerIds.push(window.setTimeout(fn, ms));
+    }
+
+    onBeforeUnmount(() => {
+      for (const id of timerIds) {
+        window.clearTimeout(id);
+      }
+      timerIds.length = 0;
+    });
+
     function onPost(body: string): void {
       posting.value = true;
       postError.value = null;
-      window.setTimeout(() => {
+      schedule(() => {
         entries.value = [
           ...entries.value,
           {
@@ -185,7 +198,7 @@ export default defineComponent({
 
     function onFollow(): void {
       followersLoading.value = true;
-      window.setTimeout(() => {
+      schedule(() => {
         following.value = true;
         followerCount.value += 1;
         followersLoading.value = false;
@@ -194,7 +207,7 @@ export default defineComponent({
 
     function onUnfollow(): void {
       followersLoading.value = true;
-      window.setTimeout(() => {
+      schedule(() => {
         following.value = false;
         followerCount.value = Math.max(0, followerCount.value - 1);
         followersLoading.value = false;
