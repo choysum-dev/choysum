@@ -70,7 +70,10 @@ func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pins := vueHostBareImportPins(repoRoot)
+	pins, err := vueHostBareImportPins(repoRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if pins["vue"] != choysummount.VuePackageVersion {
 		t.Fatalf("vue pin = %q want %q", pins["vue"], choysummount.VuePackageVersion)
 	}
@@ -83,7 +86,10 @@ func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
 }
 
 func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
-	empty := vueHostBareImportPins(t.TempDir())
+	empty, err := vueHostBareImportPins(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(empty) != 1 || empty["vue"] != choysummount.VuePackageVersion {
 		t.Fatalf("missing web package.json => host vue only, got %#v", empty)
 	}
@@ -102,11 +108,21 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(pkg), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	pins := vueHostBareImportPins(root)
+	pins, err := vueHostBareImportPins(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if pins["vue"] != choysummount.VuePackageVersion {
 		t.Fatalf("host vue must win over package.json, got %q", pins["vue"])
 	}
 	if pins["@tanstack/vue-table"] != "8.21.3" {
 		t.Fatalf("expected peer pin, got %#v", pins)
+	}
+
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "exact pins") {
+		t.Fatalf("expected exact pins error, got %v", err)
 	}
 }

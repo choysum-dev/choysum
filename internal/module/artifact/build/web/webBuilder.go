@@ -2253,13 +2253,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
-		if pins, err := esmresolver.ExactPinsFromPackageJSON(b.module.Path); err != nil {
-			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
-				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", b.module.Name, "error", err)
-			}
-		} else if len(pins) > 0 {
-			webResolverOpts = append(webResolverOpts, esmresolver.WithBareImportPins(pins))
-		}
+		webResolverOpts = b.appendExactPinsFromPackageJSON(webResolverOpts)
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2278,13 +2272,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
-		if pins, err := esmresolver.ExactPinsFromPackageJSON(b.module.Path); err != nil {
-			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
-				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", b.module.Name, "error", err)
-			}
-		} else if len(pins) > 0 {
-			webResolverOpts = append(webResolverOpts, esmresolver.WithBareImportPins(pins))
-		}
+		webResolverOpts = b.appendExactPinsFromPackageJSON(webResolverOpts)
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2296,6 +2284,23 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 	}
 
 	return &buildOptions
+}
+
+func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Option) []esmresolver.Option {
+	if b == nil || b.module == nil {
+		return opts
+	}
+	pins, err := esmresolver.ExactPinsFromPackageJSON(b.module.Path)
+	if err != nil {
+		if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+			b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", b.module.Name, "error", err)
+		}
+		return opts
+	}
+	if len(pins) > 0 {
+		opts = append(opts, esmresolver.WithBareImportPins(pins))
+	}
+	return opts
 }
 
 func (b *WebModuleBuilder) entryPointImports() []string {

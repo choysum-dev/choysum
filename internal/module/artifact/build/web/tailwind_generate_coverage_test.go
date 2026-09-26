@@ -744,6 +744,15 @@ func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
 	if err != nil || res != nil {
 		t.Fatalf("incomplete web without dialect => nil,nil got %#v %v", res, err)
 	}
+
+	kitUI := filepath.Join(web, "components", "vendor", "ui")
+	if err := os.MkdirAll(kitUI, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err = EnsureChoyTailwindCSS(root)
+	if err == nil || !strings.Contains(err.Error(), "dialect") {
+		t.Fatalf("kit tree without dialect must fail, got %v", err)
+	}
 }
 
 func TestScopeChoyThemeCSS(t *testing.T) {

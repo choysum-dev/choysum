@@ -248,6 +248,9 @@ export const x = DialogRoot;
 func TestAssertNoForbiddenUiImports_AllowsWebModuleAsKitHost(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "web")
+	if err := os.MkdirAll(filepath.Join(webDir, "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	src := "import { DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n"
 	if err := os.WriteFile(filepath.Join(webDir, "leak.ts"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
@@ -255,6 +258,19 @@ func TestAssertNoForbiddenUiImports_AllowsWebModuleAsKitHost(t *testing.T) {
 	// Kit source lives under modules/web; product web is the kit host and may import Reka.
 	if err := AssertNoForbiddenUiImports(modulesPath, "web"); err != nil {
 		t.Fatalf("web kit host must be exempt: %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsWebWithoutKitTree(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "web")
+	src := "import { DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n"
+	if err := os.WriteFile(filepath.Join(webDir, "leak.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "web")
+	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
+		t.Fatalf("web without vendor/ui must stay gated, got %v", err)
 	}
 }
 

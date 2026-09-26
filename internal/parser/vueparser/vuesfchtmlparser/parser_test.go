@@ -213,6 +213,30 @@ const fixture = "<template><Textarea/></template>";
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsSelfClosingSlot(t *testing.T) {
+	source := `<template>
+  <Shell>
+    <template #header />
+    <Textarea v-model="x" />
+  </Shell>
+</template>
+<script setup>const x = "<Textarea>"</script>`
+	got := maskPascalCaseRawTextTags(source)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after self-closing slot must still mask, got %q", got)
+	}
+	if strings.Contains(got, `const x = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("script must stay unmasked after self-closing slot, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const x = "<Textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+}
+
 func TestCloneNodeCreatesDetachedDeepCopy(t *testing.T) {
 	original, err := htmlquery.Parse(strings.NewReader(`<root><div id="a"><span>text</span></div></root>`))
 	if err != nil {

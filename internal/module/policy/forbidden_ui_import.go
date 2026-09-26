@@ -6,6 +6,7 @@ package policy
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -22,11 +23,19 @@ const (
 )
 
 // isKitHostModule reports modules allowed to import reka-ui / vendor/ui / kit internals.
-// Both web (kit tree) and choy_ui (thin registration shell) are hosts during dual-stack.
-func isKitHostModule(moduleName string) bool {
+// choy_ui is always a host (thin registration shell). web is a host only when the kit
+// tree actually lives under it (components/vendor/ui), so a stale rename cannot
+// silently disable the domain-module import ban.
+func isKitHostModule(modulesPath, moduleName string) bool {
 	switch strings.TrimSpace(moduleName) {
-	case kitHostModuleIsolation, kitHostModuleCutover:
+	case kitHostModuleIsolation:
 		return true
+	case kitHostModuleCutover:
+		if strings.TrimSpace(modulesPath) == "" {
+			return false
+		}
+		_, err := os.Stat(filepath.Join(modulesPath, kitHostModuleCutover, "web", "components", "vendor", "ui"))
+		return err == nil
 	default:
 		return false
 	}
@@ -56,7 +65,7 @@ func CheckForbiddenUiImports(input ForbiddenUiImportScanInput, parserResults []*
 	if moduleName == "" || moduleRoot == "" {
 		return nil
 	}
-	if isKitHostModule(moduleName) {
+	if isKitHostModule(input.ModulesPath, moduleName) {
 		return nil
 	}
 

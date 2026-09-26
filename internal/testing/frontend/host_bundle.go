@@ -213,11 +213,15 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			},
 		})
 	}
+	barePins, pinErr := vueHostBareImportPins(repoRoot)
+	if pinErr != nil {
+		return nil, pinErr
+	}
 	plugins = append(plugins, esmresolver.New(
 		esmresolver.WithCacheDir(cacheDir),
 		esmresolver.WithTarget("es2020"),
 		esmresolver.WithModulePath(repoRoot),
-		esmresolver.WithBareImportPins(vueHostBareImportPins(repoRoot)),
+		esmresolver.WithBareImportPins(barePins),
 	).Plugin())
 	if opts.WithVuePlugin {
 		if opts.JsExecutor == nil {
@@ -318,13 +322,16 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 // vueHostBareImportPins merges the host Vue pin with exact versions from
 // modules/web/package.json so FE unit bundles resolve Choy kit peers
 // (TanStack Table, Reka, …) instead of floating esm.sh majors.
-func vueHostBareImportPins(repoRoot string) map[string]string {
+func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
 	pins := map[string]string{
 		"vue": choysummount.VuePackageVersion,
 	}
 	webPins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
-	if err != nil || len(webPins) == 0 {
-		return pins
+	if err != nil {
+		return nil, xfmt.Errorf("vue host bundle: exact pins from modules/web: %w", err)
+	}
+	if len(webPins) == 0 {
+		return pins, nil
 	}
 	for name, ver := range webPins {
 		if name == "vue" {
@@ -332,5 +339,5 @@ func vueHostBareImportPins(repoRoot string) map[string]string {
 		}
 		pins[name] = ver
 	}
-	return pins
+	return pins, nil
 }

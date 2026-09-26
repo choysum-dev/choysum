@@ -167,6 +167,12 @@ func maskPascalCaseRawTextTags(src string) string {
 			i = openEnd
 			continue
 		}
+		openTag := src[openStart:openEnd]
+		if isSelfClosingHTMLOpenTag(openTag) {
+			out.WriteString(src[i:openEnd])
+			i = openEnd
+			continue
+		}
 		out.WriteString(src[i:openEnd])
 		bodyStart := openEnd
 		depth := 1
@@ -183,8 +189,11 @@ func maskPascalCaseRawTextTags(src string) string {
 			if nextOpen != nil {
 				openAt := pos + nextOpen[0]
 				if openAt < closeAt {
+					nestedTag := src[openAt : pos+nextOpen[1]]
 					pos = pos + nextOpen[1]
-					depth++
+					if !isSelfClosingHTMLOpenTag(nestedTag) {
+						depth++
+					}
 					continue
 				}
 			}
@@ -199,6 +208,15 @@ func maskPascalCaseRawTextTags(src string) string {
 		}
 	}
 	return out.String()
+}
+
+// isSelfClosingHTMLOpenTag reports whether openTag (including trailing '>') ends with />.
+func isSelfClosingHTMLOpenTag(openTag string) bool {
+	if openTag == "" || openTag[len(openTag)-1] != '>' {
+		return false
+	}
+	inner := strings.TrimSpace(openTag[:len(openTag)-1])
+	return strings.HasSuffix(inner, "/")
 }
 
 // maskPascalCaseRawTextTagsOutsideQuotes rewrites PascalCase raw-text tags in a
