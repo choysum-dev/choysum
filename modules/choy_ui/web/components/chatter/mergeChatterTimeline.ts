@@ -48,6 +48,15 @@ export function parseChatterTimestamp(value: unknown): number | null {
   ) {
     return null;
   }
+  // Regex admits `24:xx` / `99:xx`; engines disagree on Date.parse rollover vs
+  // reject, so validate time parts the same way as calendar days.
+  const timeMatch = /T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(raw);
+  if (timeMatch) {
+    const hour = Number(timeMatch[1]);
+    const minute = Number(timeMatch[2]);
+    const second = timeMatch[3] === undefined ? 0 : Number(timeMatch[3]);
+    if (hour > 23 || minute > 59 || second > 59) return null;
+  }
   // Naive date-times (no Z/offset) parse as local time and drift by host TZ;
   // pin them to UTC so V8 and QuickJS agree. Date-only forms stay UTC per ES.
   const hasTime = raw.includes('T');

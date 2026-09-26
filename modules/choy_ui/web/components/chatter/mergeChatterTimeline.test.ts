@@ -51,6 +51,11 @@ test('parseChatterTimestamp returns null for empty or invalid values', () => {
   // Impossible calendar days must not roll via Date.parse (Feb 30 → Mar 1).
   expect(parseChatterTimestamp('2024-02-30T10:00:00Z')).toBeNull();
   expect(parseChatterTimestamp('2024-02-30T10:00:00+02:00')).toBeNull();
+  // Out-of-range time parts are engine-dependent under Date.parse.
+  expect(parseChatterTimestamp('2024-01-01T24:00:00Z')).toBeNull();
+  expect(parseChatterTimestamp('2024-01-01T99:00:00Z')).toBeNull();
+  expect(parseChatterTimestamp('2024-01-01T12:60:00Z')).toBeNull();
+  expect(parseChatterTimestamp('2024-01-01T12:00:60Z')).toBeNull();
 });
 
 test('mergeChatterTimeline merges messages and field changes ascending', () => {
