@@ -139,11 +139,17 @@ export function applyChoyThemePreference(
     opts.root ??
     (typeof document !== 'undefined' ? document.documentElement : null);
   if (root) {
-    root.classList.toggle('dark', resolved.dark);
-    if (resolved.density === 'compact') {
-      root.setAttribute('data-density', 'compact');
-    } else {
-      root.removeAttribute('data-density');
+    // Only mutate what caller/storage actually expressed; a partial apply must
+    // not strip a host-managed dark class or data-density.
+    if (effective.theme !== undefined) {
+      root.classList.toggle('dark', resolved.dark);
+    }
+    if (effective.density !== undefined) {
+      if (resolved.density === 'compact') {
+        root.setAttribute('data-density', 'compact');
+      } else {
+        root.removeAttribute('data-density');
+      }
     }
   }
   if (opts.persist !== false) {
