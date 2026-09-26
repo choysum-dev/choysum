@@ -65,16 +65,18 @@ export function normalizeSeriesToPercent(
 
 /**
  * Sorts categories (and aligned series values) by Y total ascending/descending.
+ * `order[sortedIdx]` is the original category index before sorting.
  */
 export function sortChartCategories(
   categories: string[],
   seriesMatrix: ChoyChartSeries[],
   sort: ChoyChartSort,
-): { categories: string[]; seriesMatrix: ChoyChartSeries[] } {
+): { categories: string[]; seriesMatrix: ChoyChartSeries[]; order: number[] } {
   if (sort === 'none' || categories.length === 0) {
     return {
       categories: categories.slice(),
       seriesMatrix: seriesMatrix.map(s => ({ name: s.name, data: (s.data || []).slice() })),
+      order: categories.map((_, idx) => idx),
     };
   }
   const totals = categories.map((_, idx) =>
@@ -92,6 +94,7 @@ export function sortChartCategories(
       name: s.name,
       data: order.map(i => toFiniteNumber(s.data?.[i])),
     })),
+    order,
   };
 }
 

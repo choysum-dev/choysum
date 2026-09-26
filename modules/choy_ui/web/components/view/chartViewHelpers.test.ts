@@ -188,11 +188,14 @@ test('normalizeSeriesToPercent and sortChartCategories', () => {
   ]);
   const none = sortChartCategories(categories, series, 'none');
   expect(none.categories).toEqual(['A', 'B']);
+  expect(none.order).toEqual([0, 1]);
   const desc = sortChartCategories(categories, series, 'desc');
   expect(desc.categories).toEqual(['A', 'B']);
+  expect(desc.order).toEqual([0, 1]);
   expect(desc.seriesMatrix[0]!.data).toEqual([25, 10]);
   const asc = sortChartCategories(categories, series, 'asc');
   expect(asc.categories).toEqual(['B', 'A']);
+  expect(asc.order).toEqual([1, 0]);
   expect(asc.seriesMatrix[0]!.data).toEqual([10, 25]);
 });
 

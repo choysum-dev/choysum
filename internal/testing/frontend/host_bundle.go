@@ -143,8 +143,12 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 			Setup: func(build api.PluginBuild) {
 				build.OnResolve(api.OnResolveOptions{Filter: `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts)$`},
 					func(args api.OnResolveArgs) (api.OnResolveResult, error) {
-						// Filter only admits known package names; lookup always succeeds.
-						path, _ := feUnitPackageStubPath(args.Path, stubs)
+						// Filter and feUnitPackageStubPath must stay in sync; if they
+						// drifted, fall through instead of resolving to an empty path.
+						path, ok := feUnitPackageStubPath(args.Path, stubs)
+						if !ok {
+							return api.OnResolveResult{}, nil
+						}
 						return api.OnResolveResult{Path: path, Namespace: "file"}, nil
 					})
 			},

@@ -206,6 +206,7 @@ const prepared = computed(() => {
     name: s.name,
     data: (s.data || []).slice(),
   }));
+  let categoryOrder = categories.map((_, idx) => idx);
   const percent =
     localStacked.value &&
     props.stackMode === 'percent' &&
@@ -216,11 +217,12 @@ const prepared = computed(() => {
     const sorted = sortChartCategories(categories, seriesMatrix, localSort.value);
     categories = sorted.categories;
     seriesMatrix = sorted.seriesMatrix;
+    categoryOrder = sorted.order;
   }
   if (percent) {
     seriesMatrix = normalizeSeriesToPercent(categories, seriesMatrix);
   }
-  return { categories, seriesMatrix, percent };
+  return { categories, seriesMatrix, percent, categoryOrder };
 });
 
 const spec = computed<ChoyChartSpec | null>(() => {
@@ -266,8 +268,14 @@ function xAccessor(d: XyRow): number {
 }
 
 function xTickFormat(v: number): string {
-  const idx = Math.round(Number(v));
-  return spec.value?.categories[idx] ?? String(v);
+  const cats = spec.value?.categories ?? [];
+  const raw = Number(v);
+  if (!cats.length || !Number.isFinite(raw)) return '';
+  const idx = Math.round(raw);
+  // Fractional ticks round onto a neighbour and duplicate labels; out-of-range
+  // ticks must not print raw numbers either.
+  if (Math.abs(raw - idx) > 1e-6 || idx < 0 || idx >= cats.length) return '';
+  return cats[idx]!;
 }
 
 function selectMetric(alias: string): void {
@@ -314,12 +322,14 @@ function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
       : undefined;
   const series =
     resolvedSeriesIdx == null ? undefined : spec.value.series[resolvedSeriesIdx];
+  // Map sorted plot position back to the host's original categories index.
+  const originIdx = prepared.value.categoryOrder[idx] ?? idx;
   emit('chart-item-click', {
     chartType: spec.value.kind,
     category,
     seriesName: series?.name,
     value: series?.values[idx],
-    categoryIndex: idx,
+    categoryIndex: originIdx,
     seriesIndex: resolvedSeriesIdx,
     path: [category],
   });
