@@ -409,6 +409,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 
 	write("components/field/ChoyVarcharField.test.ts", `export const c = "test-only-util"`)
 	write("components/field/ChoyVarcharField.spec.ts", `export const c = "spec-only-util"`)
+	write("__tests__/ChoyFixtureHelper.ts", `export const c = "tests-dir-util"`)
 	write("components/shell/ChoyShellExtra.vue", `<div class="kit-shell-extra"></div>`)
 
 	for _, skip := range []string{"node_modules/pkg/x.vue", "dist/out.css", ".git/config"} {
@@ -455,7 +456,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border", "test-only-util", "spec-only-util"} {
+	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border", "test-only-util", "spec-only-util", "tests-dir-util"} {
 		if set[deny] {
 			t.Fatalf("unexpected candidate %q in %v", deny, got)
 		}

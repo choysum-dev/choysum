@@ -156,6 +156,27 @@ func TestMaskPascalCaseRawTextTagsNestedSlotTemplates(t *testing.T) {
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsQuoteInTemplateAttr(t *testing.T) {
+	src := `<template data-sample="a > b">
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 'ok'</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea inside template with '>' in attr must mask, got %q", got)
+	}
+	if !strings.Contains(got, `data-sample="a > b"`) {
+		t.Fatalf("template opener attr must stay intact, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script, got %d", len(scripts))
+	}
+}
+
 func TestMaskPascalCaseRawTextTagsOutsideQuotesEscapes(t *testing.T) {
 	// Escaped quote inside an attribute must not end the string early.
 	in := `<span title="say \"hi\""></span><Textarea/>`

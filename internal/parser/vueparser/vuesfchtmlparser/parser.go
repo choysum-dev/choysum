@@ -127,13 +127,14 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 // Go regexp has no lookahead; the trailing delimiter is re-emitted by the replacer.
 var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|Title|Style|Script|Noscript|Iframe|Noembed|Noframes|Xmp|Plaintext)([\s/>])`)
 
-var sfcTemplateOpen = regexp.MustCompile(`(?i)<template\b[^>]*>`)
+var sfcTemplateOpen = regexp.MustCompile(`(?i)<template\b(?:[^>"']|"[^"]*"|'[^']*')*>`)
 var sfcTemplateClose = regexp.MustCompile(`(?i)</template\s*>`)
 
 // sfcScriptStyleBlock matches top-level <script>/<style> so a "<template>" literal
 // inside their source is never treated as the SFC template region.
 // Each opener is paired with its own closer (RE2 has no backreferences).
-var sfcScriptStyleBlock = regexp.MustCompile(`(?is)<script\b[^>]*>.*?</script\s*>|<style\b[^>]*>.*?</style\s*>`)
+// Opener attrs are quote-aware so a '>' inside a quoted value does not truncate the tag.
+var sfcScriptStyleBlock = regexp.MustCompile(`(?is)<script\b(?:[^>"']|"[^"]*"|'[^']*')*>.*?</script\s*>|<style\b(?:[^>"']|"[^"]*"|'[^']*')*>.*?</style\s*>`)
 
 const vueRawTextMaskPrefix = "VueSfcRaw"
 

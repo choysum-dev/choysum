@@ -57,6 +57,24 @@ func TestExactPinsFromPackageJSON(t *testing.T) {
 	}
 }
 
+func TestExactPinsFromPackageJSONDependencyWinsOverPeer(t *testing.T) {
+	dir := t.TempDir()
+	pkg := `{
+  "dependencies": {"left-pad": "1.3.0"},
+  "peerDependencies": {"left-pad": "1.2.0"}
+}`
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(pkg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pins, err := ExactPinsFromPackageJSON(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pins["left-pad"] != "1.3.0" {
+		t.Fatalf("exact dependency must win over peer, got %q", pins["left-pad"])
+	}
+}
+
 func TestExactPinsFromPackageJSONInvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte("{"), 0o644); err != nil {

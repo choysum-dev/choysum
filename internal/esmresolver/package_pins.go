@@ -38,8 +38,10 @@ func ExactPinsFromPackageJSON(moduleRoot string) (map[string]string, error) {
 		return nil, fmt.Errorf("parse package.json: %w", err)
 	}
 	out := make(map[string]string)
-	collectExactPins(out, pkg.Dependencies)
+	// Peers first so a module's own exact dependency version wins when both
+	// blocks pin the same package.
 	collectExactPins(out, pkg.PeerDependencies)
+	collectExactPins(out, pkg.Dependencies)
 	if len(out) == 0 {
 		return nil, nil
 	}
