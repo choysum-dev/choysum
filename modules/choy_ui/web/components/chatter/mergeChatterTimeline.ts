@@ -57,6 +57,14 @@ export function parseChatterTimestamp(value: unknown): number | null {
     const second = timeMatch[3] === undefined ? 0 : Number(timeMatch[3]);
     if (hour > 23 || minute > 59 || second > 59) return null;
   }
+  // ISO regex admits out-of-range offsets (e.g. `+99:99`); engines may reject
+  // or roll them, so validate offset parts like the time parts above.
+  const offsetMatch = /[+-](\d{2}):(\d{2})$/.exec(raw);
+  if (offsetMatch) {
+    const offsetHour = Number(offsetMatch[1]);
+    const offsetMinute = Number(offsetMatch[2]);
+    if (offsetHour > 23 || offsetMinute > 59) return null;
+  }
   // Naive date-times (no Z/offset) parse as local time and drift by host TZ;
   // pin them to UTC so V8 and QuickJS agree. Date-only forms stay UTC per ES.
   const hasTime = raw.includes('T');

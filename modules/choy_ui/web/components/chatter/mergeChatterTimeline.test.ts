@@ -56,6 +56,10 @@ test('parseChatterTimestamp returns null for empty or invalid values', () => {
   expect(parseChatterTimestamp('2024-01-01T99:00:00Z')).toBeNull();
   expect(parseChatterTimestamp('2024-01-01T12:60:00Z')).toBeNull();
   expect(parseChatterTimestamp('2024-01-01T12:00:60Z')).toBeNull();
+  expect(parseChatterTimestamp('2024-01-01T12:00:00+99:99')).toBeNull();
+  expect(parseChatterTimestamp('2024-01-01T12:00:00+14:00')).toBe(
+    Date.parse('2024-01-01T12:00:00+14:00'),
+  );
 });
 
 test('mergeChatterTimeline merges messages and field changes ascending', () => {

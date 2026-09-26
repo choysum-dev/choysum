@@ -765,6 +765,8 @@ const galleryPosting = ref(false);
 let galleryPostTimer: number | undefined;
 
 function onGalleryChatterPost(body: string): void {
+  // Ignore overlapping posts; clearTimeout would drop the earlier message.
+  if (galleryPosting.value) return;
   galleryPosting.value = true;
   window.clearTimeout(galleryPostTimer);
   galleryPostTimer = window.setTimeout(() => {
