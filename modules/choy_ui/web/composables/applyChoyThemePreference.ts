@@ -142,11 +142,11 @@ export function applyChoyThemePreference(
     }
   }
   if (opts.persist !== false) {
-    // Persist effective prefs (caller + stored); theme is always a valid mode.
+    // Persist validated theme; keep intentional auth `standard` density for round-trip.
     persistChoyThemePreference(
       {
-        theme: effective.theme ?? resolved.theme,
-        density: effective.density ?? resolved.density,
+        theme: resolved.theme,
+        density: effective.density === 'standard' ? 'standard' : resolved.density,
       },
       opts.storage,
       opts.storageKey,

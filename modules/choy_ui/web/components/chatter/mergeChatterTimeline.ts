@@ -17,7 +17,8 @@ export function parseChatterTimestamp(value: unknown): number | null {
     return Number.isNaN(ms) ? null : ms;
   }
   if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null;
+    // Mirror the string branch: reject non-integer / unsafe magnitudes.
+    return Number.isSafeInteger(value) ? value : null;
   }
   const raw = String(value).trim();
   if (!raw) return null;

@@ -12,6 +12,8 @@ test('parseChatterTimestamp parses Date, number, and ISO strings', () => {
     Date.parse('2024-01-01T00:00:00.000Z'),
   );
   expect(parseChatterTimestamp(1_704_067_200_000)).toBe(1_704_067_200_000);
+  expect(parseChatterTimestamp(1.5)).toBeNull();
+  expect(parseChatterTimestamp(Number.MAX_SAFE_INTEGER + 1)).toBeNull();
   expect(parseChatterTimestamp('2024-01-01T00:00:00.000Z')).toBe(
     Date.parse('2024-01-01T00:00:00.000Z'),
   );
