@@ -17,6 +17,12 @@ test('parseChatterTimestamp parses Date, number, and ISO strings', () => {
   expect(parseChatterTimestamp('2024-01-01T00:00:00.000Z')).toBe(
     Date.parse('2024-01-01T00:00:00.000Z'),
   );
+  // Naive date-time is pinned to UTC (not host-local).
+  expect(parseChatterTimestamp('2024-01-01T03:04:00')).toBe(
+    Date.parse('2024-01-01T03:04:00.000Z'),
+  );
+  // Offset without ISO `:` separator is rejected.
+  expect(parseChatterTimestamp('2024-01-01T03:04:00+0500')).toBeNull();
   // Protobuf JSON int64 epoch ms arrives as a digit string.
   expect(parseChatterTimestamp('1704067200000')).toBe(1_704_067_200_000);
   expect(parseChatterTimestamp('-1000')).toBe(-1000);
@@ -112,6 +118,19 @@ test('mergeChatterTimeline dedupes identical kind:id after sort', () => {
   expect(entries).toHaveLength(1);
   expect(entries[0]!.kind).toBe('message');
   expect(entries[0]!.kind === 'message' ? entries[0]!.body : '').toBe('first');
+});
+
+test('mergeChatterTimeline keeps earliest at when kind:id duplicates differ', () => {
+  const entries = mergeChatterTimeline(
+    [
+      { Id: 'm1', Body: 'later', CreatedAt: '2024-01-02T00:00:00.000Z' },
+      { Id: 'm1', Body: 'earlier', CreatedAt: '2024-01-01T00:00:00.000Z' },
+    ],
+    [],
+  );
+  expect(entries).toHaveLength(1);
+  expect(entries[0]!.kind === 'message' ? entries[0]!.body : '').toBe('earlier');
+  expect(entries[0]!.at).toBe(Date.parse('2024-01-01T00:00:00.000Z'));
 });
 
 test('compareChatterTimelineEntries tie-breaks fieldChange before message', () => {

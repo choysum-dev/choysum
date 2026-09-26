@@ -27,15 +27,19 @@ export function parseChatterTimestamp(value: unknown): number | null {
   }
   // Wire contract is ISO-8601 with `T` (or epoch digits above). Reject space
   // separators and locale/RFC forms that Date.parse resolves differently
-  // across V8 vs QuickJS.
+  // across V8 vs QuickJS. Offset requires the ISO `:` separator.
   if (
-    !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/i.test(
+    !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/i.test(
       raw,
     )
   ) {
     return null;
   }
-  const parsed = Date.parse(raw);
+  // Naive date-times (no Z/offset) parse as local time and drift by host TZ;
+  // pin them to UTC so V8 and QuickJS agree. Date-only forms stay UTC per ES.
+  const hasTime = raw.includes('T');
+  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw);
+  const parsed = Date.parse(hasTime && !hasZone ? `${raw}Z` : raw);
   return Number.isNaN(parsed) ? null : parsed;
 }
 
@@ -92,14 +96,15 @@ export function mergeChatterTimeline(
     });
   }
 
-  entries.sort(compareChatterTimelineEntries);
-  const seen = new Set<string>();
-  return entries.filter(entry => {
+  // Collapse duplicates by `kind:id` before sorting so the winner does not
+  // depend on sort stability for equal comparator results (QuickJS).
+  const byKey = new Map<string, ChatterTimelineEntry>();
+  for (const entry of entries) {
     const key = `${entry.kind}:${entry.id}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    const existing = byKey.get(key);
+    if (!existing || entry.at < existing.at) byKey.set(key, entry);
+  }
+  return [...byKey.values()].sort(compareChatterTimelineEntries);
 }
 
 /**
