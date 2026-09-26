@@ -122,7 +122,17 @@ watch(
 watch(
   () => props.chartType,
   v => {
-    localChartType.value = v;
+    const next = availableTypes.value.includes(v) ? v : availableTypes.value[0];
+    if (!next) {
+      localChartType.value = v;
+      return;
+    }
+    if (next !== localChartType.value) {
+      localChartType.value = next;
+      if (next !== v) {
+        emit('chart-type-change', next);
+      }
+    }
   },
 );
 watch(
@@ -253,60 +263,144 @@ function selectSort(next: ChoyChartSort): void {
   emit('sort-change', next);
 }
 
-function resolveCategoryIndex(d: XyRow | undefined, i?: number): number | null {
-  if (typeof i === 'number' && Number.isFinite(i)) {
-    return Math.round(i);
-  }
-  if (d && typeof d.index === 'number' && Number.isFinite(d.index)) {
+/** Unovis VisEventCallback: (datum, event, index, elements). */
+type UnovisClickEvent = MouseEvent | PointerEvent | TouchEvent | WheelEvent;
+
+function rowCategoryIndex(d: XyRow | undefined): number | null {
+  if (!d) return null;
+  if (typeof d.index === 'number' && Number.isFinite(d.index)) {
     return Math.round(d.index);
   }
-  if (d && typeof d.index === 'string' && d.index !== '' && Number.isFinite(Number(d.index))) {
+  if (typeof d.index === 'string' && d.index !== '' && Number.isFinite(Number(d.index))) {
     return Math.round(Number(d.index));
   }
   return null;
 }
 
-function resolveSeriesIndex(d: XyRow | undefined, seriesIndex?: number): number {
-  if (typeof seriesIndex === 'number' && Number.isFinite(seriesIndex) && seriesIndex >= 0) {
-    return Math.round(seriesIndex);
-  }
-  if (!spec.value || !d) return 0;
-  for (let si = 0; si < spec.value.series.length; si++) {
-    const key = spec.value.series[si]!.key;
-    if (Object.prototype.hasOwnProperty.call(d, key) && d[key] !== undefined) {
-      // Prefer the first series key present; stacked click payloads are the full row.
-      return si;
-    }
-  }
-  return 0;
-}
-
-function onXyDatumClick(d: XyRow, i?: number, _e?: unknown, seriesIndex?: number): void {
+function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
   if (!spec.value) return;
-  const idx = resolveCategoryIndex(d, i);
-  if (idx == null) return;
-  const category = spec.value.categories[idx];
+  const category = spec.value.categories[categoryIdx];
   if (category == null) return;
-  const si = resolveSeriesIndex(d, seriesIndex);
-  const series = spec.value.series[si] ?? spec.value.series[0];
+  const series =
+    seriesIdx == null ? undefined : spec.value.series[seriesIdx];
   emit('chart-item-click', {
     chartType: spec.value.kind,
     category,
     seriesName: series?.name,
-    value: series?.values[idx],
-    categoryIndex: idx,
-    seriesIndex: si,
+    value: series?.values[categoryIdx],
+    categoryIndex: categoryIdx,
+    seriesIndex: seriesIdx,
     path: [category],
   });
 }
 
-function onPieSegmentClick(d: { name?: string; value?: number; key?: string }, i?: number): void {
+/**
+ * StackedBar click: datum is mapped with stackIndex + original row; index is category.
+ */
+function onStackedBarClick(
+  d: XyRow & { stackIndex?: number },
+  _event: UnovisClickEvent,
+  categoryIdx?: number,
+): void {
+  if (!spec.value) return;
+  const idx =
+    typeof categoryIdx === 'number' && Number.isFinite(categoryIdx)
+      ? Math.round(categoryIdx)
+      : rowCategoryIndex(d);
+  if (idx == null) return;
+  const seriesIdx =
+    typeof d.stackIndex === 'number' && Number.isFinite(d.stackIndex)
+      ? Math.round(d.stackIndex)
+      : undefined;
+  emitXyClick(idx, seriesIdx);
+}
+
+/**
+ * GroupedBar click: datum is the XY row; index is the flattened bar element index
+ * (category * seriesCount + series). Prefer row.index for category.
+ */
+function onGroupedBarClick(
+  d: XyRow,
+  _event: UnovisClickEvent,
+  flatIndex?: number,
+): void {
+  if (!spec.value) return;
+  const nSeries = spec.value.series.length;
+  let categoryIdx = rowCategoryIndex(d);
+  let seriesIdx: number | undefined;
+  if (
+    typeof flatIndex === 'number' &&
+    Number.isFinite(flatIndex) &&
+    nSeries > 0
+  ) {
+    const flat = Math.round(flatIndex);
+    seriesIdx = ((flat % nSeries) + nSeries) % nSeries;
+    if (categoryIdx == null) {
+      categoryIdx = Math.floor(flat / nSeries);
+    }
+  }
+  if (categoryIdx == null) return;
+  if (nSeries === 1) seriesIdx = 0;
+  emitXyClick(categoryIdx, seriesIdx);
+}
+
+/**
+ * Line path click: datum is the transformed series polyline (not a category row).
+ * Map pointer X within the SVG to the nearest category; third arg is series index.
+ */
+function onLineClick(
+  _data: unknown,
+  event: UnovisClickEvent,
+  seriesIdx?: number,
+): void {
+  if (!spec.value) return;
+  const rows = xyRows.value;
+  if (!rows.length) return;
+  const mouse = event as MouseEvent;
+  const target = mouse.currentTarget;
+  const svg =
+    target instanceof SVGElement
+      ? target.ownerSVGElement ?? (target instanceof SVGSVGElement ? target : null)
+      : null;
+  let categoryIdx = 0;
+  if (svg && typeof mouse.clientX === 'number') {
+    const rect = svg.getBoundingClientRect();
+    const rel = (mouse.clientX - rect.left) / Math.max(rect.width, 1);
+    categoryIdx = Math.round(rel * (rows.length - 1));
+  }
+  categoryIdx = Math.max(0, Math.min(rows.length - 1, categoryIdx));
+  const nSeries = spec.value.series.length;
+  let si =
+    typeof seriesIdx === 'number' && Number.isFinite(seriesIdx)
+      ? Math.round(seriesIdx)
+      : undefined;
+  if (nSeries === 1) si = 0;
+  if (si != null && (si < 0 || si >= nSeries)) si = undefined;
+  emitXyClick(categoryIdx, si);
+}
+
+/**
+ * Donut segment click: datum is DonutArcDatum; original row is d.data, slice index is d.index.
+ * Second callback arg is the DOM event (not an index).
+ */
+function onPieSegmentClick(d: {
+  data?: { key?: string; name?: string };
+  index?: number;
+  key?: string;
+  name?: string;
+}): void {
   if (!spec.value?.slices) return;
   let idx =
-    typeof i === 'number' && Number.isFinite(i)
-      ? Math.round(i)
-      : spec.value.slices.findIndex(sl => sl.key === d?.key || sl.name === d?.name);
-  if (idx < 0) idx = 0;
+    typeof d?.index === 'number' && Number.isFinite(d.index)
+      ? Math.round(d.index)
+      : spec.value.slices.findIndex(
+          sl =>
+            sl.key === d?.data?.key ||
+            sl.name === d?.data?.name ||
+            sl.key === d?.key ||
+            sl.name === d?.name,
+        );
+  if (idx < 0) return;
   const slice = spec.value.slices[idx];
   if (!slice) return;
   emit('chart-item-click', {
@@ -321,19 +415,13 @@ function onPieSegmentClick(d: { name?: string; value?: number; key?: string }, i
 }
 
 const groupedBarEvents = computed(() => ({
-  [GroupedBar.selectors.bar]: { click: onXyDatumClick },
+  [GroupedBar.selectors.bar]: { click: onGroupedBarClick },
 }));
 const stackedBarEvents = computed(() => ({
-  [StackedBar.selectors.bar]: { click: onXyDatumClick },
+  [StackedBar.selectors.bar]: { click: onStackedBarClick },
 }));
 const lineEvents = computed(() => ({
-  [Line.selectors.line]: {
-    click: (data: XyRow[] | XyRow, i?: number) => {
-      const row = Array.isArray(data) ? data[typeof i === 'number' ? i : 0] : data;
-      if (!row) return;
-      onXyDatumClick(row, typeof i === 'number' ? i : undefined);
-    },
-  },
+  [Line.selectors.line]: { click: onLineClick },
 }));
 const donutEvents = computed(() => ({
   [Donut.selectors.segment]: { click: onPieSegmentClick },
