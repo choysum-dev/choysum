@@ -15,6 +15,7 @@ import {
   VisStackedBar,
   VisXYContainer,
 } from '@unovis/vue';
+import { Donut, GroupedBar, Line, StackedBar } from '@unovis/ts';
 import type { ClassValue } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 import ChoyButton from '../layout/ChoyButton.vue';
@@ -177,13 +178,14 @@ const prepared = computed(() => {
     props.stackMode === 'percent' &&
     localChartType.value !== 'pie' &&
     seriesMatrix.length > 1;
-  if (percent) {
-    seriesMatrix = normalizeSeriesToPercent(categories, seriesMatrix);
-  }
+  // Sort on raw totals first; percent columns all sum to 100 and would no-op sort.
   if (!sortDisabled.value && localSort.value !== 'none') {
     const sorted = sortChartCategories(categories, seriesMatrix, localSort.value);
     categories = sorted.categories;
     seriesMatrix = sorted.seriesMatrix;
+  }
+  if (percent) {
+    seriesMatrix = normalizeSeriesToPercent(categories, seriesMatrix);
   }
   return { categories, seriesMatrix, percent };
 });
@@ -251,25 +253,60 @@ function selectSort(next: ChoyChartSort): void {
   emit('sort-change', next);
 }
 
-function onXyClick(payload: { x?: number; y?: number[]; i?: number }): void {
+function resolveCategoryIndex(d: XyRow | undefined, i?: number): number | null {
+  if (typeof i === 'number' && Number.isFinite(i)) {
+    return Math.round(i);
+  }
+  if (d && typeof d.index === 'number' && Number.isFinite(d.index)) {
+    return Math.round(d.index);
+  }
+  if (d && typeof d.index === 'string' && d.index !== '' && Number.isFinite(Number(d.index))) {
+    return Math.round(Number(d.index));
+  }
+  return null;
+}
+
+function resolveSeriesIndex(d: XyRow | undefined, seriesIndex?: number): number {
+  if (typeof seriesIndex === 'number' && Number.isFinite(seriesIndex) && seriesIndex >= 0) {
+    return Math.round(seriesIndex);
+  }
+  if (!spec.value || !d) return 0;
+  for (let si = 0; si < spec.value.series.length; si++) {
+    const key = spec.value.series[si]!.key;
+    if (Object.prototype.hasOwnProperty.call(d, key) && d[key] !== undefined) {
+      // Prefer the first series key present; stacked click payloads are the full row.
+      return si;
+    }
+  }
+  return 0;
+}
+
+function onXyDatumClick(d: XyRow, i?: number, _e?: unknown, seriesIndex?: number): void {
   if (!spec.value) return;
-  const idx = typeof payload.i === 'number' ? payload.i : Math.round(Number(payload.x) || 0);
+  const idx = resolveCategoryIndex(d, i);
+  if (idx == null) return;
   const category = spec.value.categories[idx];
-  const series = spec.value.series[0];
+  if (category == null) return;
+  const si = resolveSeriesIndex(d, seriesIndex);
+  const series = spec.value.series[si] ?? spec.value.series[0];
   emit('chart-item-click', {
     chartType: spec.value.kind,
     category,
     seriesName: series?.name,
     value: series?.values[idx],
     categoryIndex: idx,
-    seriesIndex: 0,
-    path: category ? [category] : undefined,
+    seriesIndex: si,
+    path: [category],
   });
 }
 
-function onPieClick(payload: { i?: number }): void {
+function onPieSegmentClick(d: { name?: string; value?: number; key?: string }, i?: number): void {
   if (!spec.value?.slices) return;
-  const idx = typeof payload.i === 'number' ? payload.i : 0;
+  let idx =
+    typeof i === 'number' && Number.isFinite(i)
+      ? Math.round(i)
+      : spec.value.slices.findIndex(sl => sl.key === d?.key || sl.name === d?.name);
+  if (idx < 0) idx = 0;
   const slice = spec.value.slices[idx];
   if (!slice) return;
   emit('chart-item-click', {
@@ -282,6 +319,25 @@ function onPieClick(payload: { i?: number }): void {
     path: [slice.name],
   });
 }
+
+const groupedBarEvents = computed(() => ({
+  [GroupedBar.selectors.bar]: { click: onXyDatumClick },
+}));
+const stackedBarEvents = computed(() => ({
+  [StackedBar.selectors.bar]: { click: onXyDatumClick },
+}));
+const lineEvents = computed(() => ({
+  [Line.selectors.line]: {
+    click: (data: XyRow[] | XyRow, i?: number) => {
+      const row = Array.isArray(data) ? data[typeof i === 'number' ? i : 0] : data;
+      if (!row) return;
+      onXyDatumClick(row, typeof i === 'number' ? i : undefined);
+    },
+  },
+}));
+const donutEvents = computed(() => ({
+  [Donut.selectors.segment]: { click: onPieSegmentClick },
+}));
 </script>
 
 <template>
@@ -458,7 +514,7 @@ function onPieClick(payload: { i?: number }): void {
             :y="xyYAccessors"
             :color="xyColors"
             :rounded-corners="2"
-            @click="onXyClick"
+            :events="groupedBarEvents"
           />
           <VisStackedBar
             v-else-if="spec.kind === 'bar' && spec.stacked"
@@ -466,7 +522,7 @@ function onPieClick(payload: { i?: number }): void {
             :y="xyYAccessors"
             :color="xyColors"
             :rounded-corners="2"
-            @click="onXyClick"
+            :events="stackedBarEvents"
           />
           <template v-else-if="spec.kind === 'line'">
             <VisArea
@@ -480,7 +536,7 @@ function onPieClick(payload: { i?: number }): void {
               :x="xAccessor"
               :y="xyYAccessors"
               :color="xyColors"
-              @click="onXyClick"
+              :events="lineEvents"
             />
           </template>
           <VisAxis
@@ -510,7 +566,7 @@ function onPieClick(payload: { i?: number }): void {
             :value="(d: { value: number }) => d.value"
             :color="(d: { color: string }) => d.color"
             :arc-width="40"
-            @click="onPieClick"
+            :events="donutEvents"
           />
         </VisSingleContainer>
 

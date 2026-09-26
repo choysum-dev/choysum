@@ -75,13 +75,21 @@ function resolvePalette(palette?: string[]): string[] {
   return palette && palette.length ? palette : [...CHOY_CHART_DEFAULT_PALETTE];
 }
 
+/** Reserved XY row fields; series keys must not overwrite them. */
+const RESERVED_SERIES_KEYS = new Set(['category', 'index']);
+
 function seriesKey(name: string, index: number): string {
   const slug = String(name || '')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
-  return slug || `s${index}`;
+  let base = slug || `s${index}`;
+  if (RESERVED_SERIES_KEYS.has(base)) {
+    base = `s_${base}`;
+  }
+  // Append index so colliding slugs (e.g. "Direct Sales" / "direct-sales") stay unique.
+  return `${base}_${index}`;
 }
 
 function buildConfig(

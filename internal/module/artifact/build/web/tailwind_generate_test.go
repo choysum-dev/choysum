@@ -203,7 +203,12 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	if strings.Contains(body, "duration=") {
 		t.Fatal("generated CSS header must not include wall-clock duration")
 	}
-	if strings.Contains(body, "path:") || strings.Contains(body, "component:") || strings.Contains(body, "--choy-color-primary'") {
+	// Legitimate CSS uses `clip-path:`; strip *-path: properties before looking for
+	// leaked TS object keys like `path: '__choy_gallery'`.
+	sanitized := strings.ReplaceAll(body, "clip-path:", "")
+	if strings.Contains(sanitized, "path:") ||
+		strings.Contains(body, "component:") ||
+		strings.Contains(body, "--choy-color-primary'") {
 		t.Fatalf("generated CSS contains leaked TS/JS fragments:\n%s", body)
 	}
 }

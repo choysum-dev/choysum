@@ -4,6 +4,7 @@
 import {
   availableChartTypes,
   barAdapter,
+  lineAdapter,
   pieAdapter,
   resolveChartAdapter,
 } from './chart/chartTypeAdapter';
@@ -52,9 +53,53 @@ test('barAdapter builds ChartConfig with choy token colors', () => {
   });
   expect(spec.kind).toBe('bar');
   expect(spec.stacked).toBe(true);
-  expect(spec.config.desktop?.color).toBe('var(--choy-chart-1)');
-  expect(spec.config.mobile?.color).toBe('var(--choy-chart-2)');
-  expect(spec.series.map(s => s.key)).toEqual(['desktop', 'mobile']);
+  expect(spec.config.desktop_0?.color).toBe('var(--choy-chart-1)');
+  expect(spec.config.mobile_1?.color).toBe('var(--choy-chart-2)');
+  expect(spec.series.map(s => s.key)).toEqual(['desktop_0', 'mobile_1']);
+});
+
+test('lineAdapter honors custom palette and empty series names', () => {
+  const spec = lineAdapter.build({
+    categories: ['A'],
+    seriesMatrix: [
+      { name: '', data: [1] },
+      { name: '!!!', data: [2] },
+    ],
+    metricLabel: 'Count',
+    stacked: false,
+    palette: ['var(--choy-chart-3)', 'var(--choy-chart-4)'],
+  });
+  expect(spec.kind).toBe('line');
+  expect(spec.series[0]!.key).toBe('s0_0');
+  expect(spec.series[0]!.name).toBe('Series 1');
+  expect(spec.series[1]!.key).toBe('s1_1');
+  expect(spec.config.s0_0?.color).toBe('var(--choy-chart-3)');
+});
+
+test('seriesKey avoids reserved row keys and slug collisions', () => {
+  const spec = barAdapter.build({
+    categories: ['A'],
+    seriesMatrix: [
+      { name: 'Category', data: [1] },
+      { name: 'Index', data: [2] },
+      { name: 'Direct Sales', data: [3] },
+      { name: 'direct-sales', data: [4] },
+    ],
+    metricLabel: 'Count',
+    stacked: true,
+  });
+  expect(spec.series.map(s => s.key)).toEqual([
+    's_category_0',
+    's_index_1',
+    'direct_sales_2',
+    'direct_sales_3',
+  ]);
+  const rows = chartSpecToXyRows(spec);
+  expect(rows[0]!.category).toBe('A');
+  expect(rows[0]!.index).toBe(0);
+  expect(rows[0]!.s_category_0).toBe(1);
+  expect(rows[0]!.direct_sales_2).toBe(3);
+  expect(rows[0]!.direct_sales_3).toBe(4);
 });
 
 test('pieAdapter collapses multi-series into slices', () => {
@@ -69,8 +114,8 @@ test('pieAdapter collapses multi-series into slices', () => {
   });
   expect(spec.kind).toBe('pie');
   expect(spec.slices).toEqual([
-    { key: 'desktop', name: 'Desktop', value: 30 },
-    { key: 'mobile', name: 'Mobile', value: 10 },
+    { key: 'desktop_0', name: 'Desktop', value: 30 },
+    { key: 'mobile_1', name: 'Mobile', value: 10 },
   ]);
 });
 
@@ -84,6 +129,14 @@ test('normalizeSeriesToPercent and sortChartCategories', () => {
     { name: 'X', data: [25, 20] },
     { name: 'Y', data: [75, 80] },
   ]);
+  expect(
+    normalizeSeriesToPercent(['Z'], [{ name: 'X', data: [0] }, { name: 'Y', data: [0] }]),
+  ).toEqual([
+    { name: 'X', data: [0] },
+    { name: 'Y', data: [0] },
+  ]);
+  const none = sortChartCategories(categories, series, 'none');
+  expect(none.categories).toEqual(['A', 'B']);
   const desc = sortChartCategories(categories, series, 'desc');
   expect(desc.categories).toEqual(['A', 'B']);
   expect(desc.seriesMatrix[0]!.data).toEqual([25, 10]);
@@ -100,8 +153,17 @@ test('chartSpecToXyRows / chartSpecToPieRows flatten for Unovis', () => {
     stacked: false,
   });
   expect(chartSpecToXyRows(spec)).toEqual([
-    { category: 'Jan', index: 0, desktop: 1 },
-    { category: 'Feb', index: 1, desktop: 2 },
+    { category: 'Jan', index: 0, desktop_0: 1 },
+    { category: 'Feb', index: 1, desktop_0: 2 },
+  ]);
+  expect(
+    chartSpecToXyRows({
+      ...spec,
+      series: [{ key: 'desktop_0', name: 'Desktop', values: [1] }],
+    }),
+  ).toEqual([
+    { category: 'Jan', index: 0, desktop_0: 1 },
+    { category: 'Feb', index: 1, desktop_0: 0 },
   ]);
   const pie = pieAdapter.build({
     categories: ['Chrome', 'Safari'],
@@ -109,5 +171,13 @@ test('chartSpecToXyRows / chartSpecToPieRows flatten for Unovis', () => {
     metricLabel: 'Visitors',
     stacked: false,
   });
+  expect(chartSpecToPieRows({ ...pie, slices: undefined })).toEqual([]);
   expect(chartSpecToPieRows(pie).map(r => r.name)).toEqual(['Chrome', 'Safari']);
+  expect(chartSpecToPieRows(pie)[0]!.color).toBe('var(--choy-chart-1)');
+  // Missing slice color falls back when config entry has no color.
+  const noColor = {
+    ...pie,
+    config: { ...pie.config, [pie.slices![0]!.key]: { label: 'Chrome' } },
+  };
+  expect(chartSpecToPieRows(noColor)[0]!.color).toBe('var(--choy-chart-1)');
 });

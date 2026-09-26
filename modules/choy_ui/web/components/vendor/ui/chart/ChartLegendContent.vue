@@ -17,7 +17,7 @@ const items = computed(() => {
   return Object.entries(cfg).map(([key, item]) => ({
     key,
     label: item.label || key,
-    color: item.color || `var(--color-${key})`,
+    color: item.color || 'var(--choy-chart-1)',
   }));
 });
 </script>

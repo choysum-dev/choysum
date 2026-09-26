@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LGPL-3.0-or-later
 
 /** FE unit stub for `@unovis/vue` chart components used by ChoyChartView. */
 import { defineComponent, h } from 'vue';
