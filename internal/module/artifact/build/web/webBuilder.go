@@ -2300,6 +2300,11 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 			return
 		}
 		for name, ver := range got {
+			// The embedded host owns the Vue instance; never let a module-level
+			// exact pin override it (mirrors vueHostBareImportPins).
+			if name == "vue" {
+				continue
+			}
 			if prev, ok := pins[name]; ok && prev != ver &&
 				b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 				b.runtimeScope.Logger().Warn(

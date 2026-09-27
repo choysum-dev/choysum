@@ -5300,6 +5300,29 @@ func TestAppendExactPinsFromPackageJSONNilReceiver(t *testing.T) {
 	}
 }
 
+func TestAppendExactPinsFromPackageJSONSkipsVue(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	if err := os.MkdirAll(domain, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: domain}}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 0 {
+		t.Fatalf("exact vue pin must be dropped for single-instance host, got %d opts", len(opts))
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13","local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("non-vue exact pins must still apply, got %d", len(opts))
+	}
+}
+
 func TestAppendExactPinsFromPackageJSONMergesKitHost(t *testing.T) {
 	root := t.TempDir()
 	domain := filepath.Join(root, "partner")
