@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
+import { defineComponent, h } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyShellLayout from './ChoyShellLayout.vue';
 import ChoyLayout from './ChoyLayout.vue';
@@ -135,5 +135,39 @@ describe('ChoyShellLayout', () => {
     expect(mounted.q('[data-test=custom-body]')?.textContent).toBe('Custom');
     expect(mounted.q('[data-test=router-view]')).toBeNull();
     mounted.unmount();
+  });
+
+  test('honors route.meta.keepAlive when rendering the matched view', async () => {
+    const Page = defineComponent({
+      name: 'DemoPage',
+      setup: () => () => h('div', { 'data-test': 'page' }, 'ok'),
+    });
+
+    function mountWithMeta(keepAlive: boolean) {
+      return mountApp(ChoyShellLayout as any, {
+        props: { showHeader: false },
+        stubs: {
+          'router-view': {
+            setup: (_props: any, { slots }: any) => {
+              return () =>
+                slots.default?.({
+                  Component: Page,
+                  route: { meta: { keepAlive }, name: 'Demo' },
+                });
+            },
+          },
+        },
+      });
+    }
+
+    const cached = mountWithMeta(true);
+    await flushPromises();
+    expect(cached.q('[data-test=page]')?.textContent).toBe('ok');
+    cached.unmount();
+
+    const plain = mountWithMeta(false);
+    await flushPromises();
+    expect(plain.q('[data-test=page]')?.textContent).toBe('ok');
+    plain.unmount();
   });
 });

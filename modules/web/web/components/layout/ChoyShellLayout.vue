@@ -22,7 +22,12 @@ SPDX-License-Identifier: Apache-2.0
       </nav>
     </template>
     <slot>
-      <router-view />
+      <router-view v-slot="{ Component, route }">
+        <KeepAlive v-if="route.meta.keepAlive">
+          <component :is="Component" />
+        </KeepAlive>
+        <component v-else :is="Component" />
+      </router-view>
     </slot>
     <template v-if="showFooter && $slots.footer" #footer>
       <div class="px-4 py-2 text-xs text-foreground/60">
@@ -33,6 +38,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { KeepAlive } from 'vue';
 import ChoyLayout from './ChoyLayout.vue';
 
 /**

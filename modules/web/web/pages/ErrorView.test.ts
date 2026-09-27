@@ -156,18 +156,20 @@ describe('ErrorView', () => {
   });
 
   test('omits Go back when from is not a same-app absolute path', async () => {
-    const mounted = mountError({
-      path: '/error/403',
-      fullPath: '/error/403?from=//evil.example',
-      params: {},
-      query: { from: '//evil.example' },
-    });
-    await flushPromises();
-    const actions = mounted.qa('[data-test=action]');
-    // Home + Contact only; protocol-relative from must not add Go back.
-    expect(actions.length).toBe(2);
-    expect(mounted.text()).not.toMatch(/Go back/i);
-    mounted.unmount();
+    for (const from of ['//evil.example', '/\\evil.example']) {
+      const mounted = mountError({
+        path: '/error/403',
+        fullPath: `/error/403?from=${encodeURIComponent(from)}`,
+        params: {},
+        query: { from },
+      });
+      await flushPromises();
+      const actions = mounted.qa('[data-test=action]');
+      // Home + Contact only; protocol-relative from must not add Go back.
+      expect(actions.length).toBe(2);
+      expect(mounted.text()).not.toMatch(/Go back/i);
+      mounted.unmount();
+    }
   });
 
 

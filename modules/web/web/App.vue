@@ -6,11 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-app min-h-screen w-full bg-background text-foreground">
     <!-- Resolves via Element Plus global registration from setupApp (dual-stack). -->
-    <el-config-provider
-      data-test="ep-config"
-      :locale="currentLocale?.elementLocale"
-      :size="componentSize"
-    >
+    <el-config-provider :locale="currentLocale?.elementLocale" :size="componentSize">
       <router-view />
     </el-config-provider>
   </div>

@@ -57,10 +57,10 @@ function pickQueryString(value: unknown): string | undefined {
   return first == null || first === '' ? undefined : String(first);
 }
 
-/** Same-app absolute path only; rejects protocol-relative `//host` and non-paths. */
+/** Same-app absolute path only; rejects protocol-relative `//host` / `/\host`. */
 function sameAppPath(value: unknown): string | undefined {
   const raw = pickQueryString(value);
-  if (!raw || !/^\/(?!\/)/.test(raw)) return undefined;
+  if (!raw || !/^\/(?![/\\])/.test(raw)) return undefined;
   return raw;
 }
 
