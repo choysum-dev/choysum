@@ -274,6 +274,42 @@ func TestEnsureChoyTailwindCSSScansDomainModules(t *testing.T) {
 	}
 }
 
+func TestEnsureChoyTailwindCSSSkipsDomainSpecFiles(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
+	// Unscoped product CSS must not adopt classes that exist only in domain
+	// test/spec files, otherwise a stray utility leaks globally onto EP pages.
+	write("partner/web/pages/Home.spec.ts", `export const c = "spec-only-leak"`)
+	write("partner/web/__tests__/Helper.ts", `export const c = "tests-dir-leak"`)
+	res, err := EnsureChoyTailwindCSS(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(res.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(data)
+	if strings.Contains(body, "spec-only-leak") || strings.Contains(body, "tests-dir-leak") {
+		t.Fatalf("domain spec/test-only class leaked into unscoped product CSS:\n%s", body)
+	}
+	if !strings.Contains(body, "underline") && !strings.Contains(body, "text-decoration-line: underline") {
+		t.Fatalf("real domain utility missing from product CSS:\n%s", body)
+	}
+}
+
 func TestEnsureChoyTailwindCSSRejectsDirectoryThemePath(t *testing.T) {
 	root := t.TempDir()
 	styles := filepath.Join(root, "web", "web", "styles")
@@ -868,6 +904,39 @@ func TestScanChoyProductTailwindCandidatesDomainThemeCSSNotKitFiltered(t *testin
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesIgnoresNonKitDirectoryDialect(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-ok"></div>`)
+	// Stray directory at styles/theme.css on a non-kit sibling must not abort.
+	if err := os.MkdirAll(filepath.Join(modules, "partner", "web", "styles", "theme.css"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatalf("non-kit directory dialect must be ignored, got %v", err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	if !set["flex"] || !set["domain-ok"] {
+		t.Fatalf("expected kit+domain candidates, got %v", got)
 	}
 }
 

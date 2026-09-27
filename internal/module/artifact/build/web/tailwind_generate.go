@@ -207,9 +207,11 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		}
 		dialectPath := filepath.Join(webRoot, "styles", "theme.css")
 		if dialectStat, dialectErr := choyProductStat(dialectPath); dialectErr == nil {
-			// Match resolveChoyKitModuleRoot: a directory dialect is an error, not
-			// a silently kit-filtered sibling host.
-			if dialectStat.IsDir() {
+			// resolveChoyKitModuleRoot hard-errors for web/choy_ui directory
+			// dialects; keep the same for those kit names here. An unrelated
+			// sibling with a stray directory at styles/theme.css must not abort
+			// the whole product scan.
+			if dialectStat.IsDir() && (name == "web" || name == "choy_ui") {
 				return nil, fmt.Errorf("%s dialect %s is a directory, not a file", name, dialectPath)
 			}
 		} else if !os.IsNotExist(dialectErr) {
