@@ -528,3 +528,59 @@ func TestMaskPascalCaseRawTextTagsScriptUnclosedCommentDoesNotSkipTemplate(t *te
 		t.Fatalf("non-self-closing Textarea must not swallow following markup, got %q", rendered)
 	}
 }
+
+func TestMaskPascalCaseRawTextTagsCloseInsideCommentSkipped(t *testing.T) {
+	// A </template> inside a comment must not close the SFC template region.
+	src := `<template>
+  <!-- </template> -->
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 1</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after comment-close must mask, got %q", got)
+	}
+	if strings.Contains(got, `<!-- </`+vueRawTextMaskPrefix) {
+		t.Fatalf("comment closer text must stay unmasked, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script after real template close, got %d", len(scripts))
+	}
+}
+
+func TestFindHTMLCommentRangesUnclosedInHTMLContext(t *testing.T) {
+	src := `<template><!-- never closed
+  <Textarea/>
+</template>
+<script setup></script>`
+	ranges := findHTMLCommentRanges(src, nil)
+	if len(ranges) != 1 || ranges[0][0] != strings.Index(src, "<!--") || ranges[0][1] != len(src) {
+		t.Fatalf("unclosed HTML comment must span to EOF, got %v", ranges)
+	}
+	got := maskPascalCaseRawTextTags(src)
+	// Real </template> sits inside the comment span; fallback clamps before script.
+	if strings.Contains(got, `<`+vueRawTextMaskPrefix+`script`) || strings.Contains(got, `</`+vueRawTextMaskPrefix+`script`) {
+		t.Fatalf("script block must not be rewritten, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsOutsideQuotesUnclosedComment(t *testing.T) {
+	in := `before <!-- unclosed <Textarea/> after`
+	got := maskPascalCaseRawTextTagsOutsideQuotes(in)
+	if got != in {
+		t.Fatalf("unclosed comment must copy remainder unchanged, got %q", got)
+	}
+	// Closed comment still leaves surrounding tags eligible for masking.
+	in = `<!-- note <Textarea/> --><Textarea/>`
+	got = maskPascalCaseRawTextTagsOutsideQuotes(in)
+	if strings.Contains(got, `<!-- note <`+vueRawTextMaskPrefix) {
+		t.Fatalf("closed comment body must stay unmasked, got %q", got)
+	}
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after closed comment must mask, got %q", got)
+	}
+}
