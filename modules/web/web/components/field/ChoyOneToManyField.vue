@@ -111,6 +111,8 @@ import type { ChoyOneToManyWidget } from './choyRelationFieldTypes';
 
 export type { ChoyOneToManyWidget };
 
+defineOptions({ name: 'ChoyOneToManyField', inheritAttrs: false });
+
 /**
  * One-to-many field. Store+prop hosts OOneToManyField; otherwise chrome array model.
  */

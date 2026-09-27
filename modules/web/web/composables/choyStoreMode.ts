@@ -64,8 +64,8 @@ export function useChoyStoreFieldBinding(
 
 /**
  * Split useAttrs() into non-listener bind props and v-on listener keys.
- * Attrs use Vue's onFoo form; v-on="listeners" runs toHandlers which prepends
- * on again, so listeners must be { foo: fn } (not { onFoo: fn }).
+ * Attrs use Vue's onFoo form (`/^on[^a-z]/`); v-on="listeners" runs toHandlers
+ * which prepends on again, so listeners must be { foo: fn } (not { onFoo: fn }).
  */
 export function splitChoyAttrsListeners(attrs: Record<string, unknown>): {
   bind: Record<string, unknown>;
@@ -74,8 +74,8 @@ export function splitChoyAttrsListeners(attrs: Record<string, unknown>): {
   const bind: Record<string, unknown> = {};
   const listeners: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(attrs)) {
-    if (key.startsWith('on') && key.length > 2 && typeof value === 'function') {
-      const rawEvent = key.startsWith('on-') ? key.slice(3) : key.slice(2);
+    if (/^on[^a-z]/.test(key) && typeof value === 'function') {
+      const rawEvent = key.slice(2);
       const eventName = rawEvent.charAt(0).toLowerCase() + rawEvent.slice(1);
       listeners[eventName] = value;
     } else {

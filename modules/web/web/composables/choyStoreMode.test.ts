@@ -67,6 +67,7 @@ describe('choyStoreMode', () => {
     const onSelectionChange = () => undefined;
     const onUpdateModelValue = () => undefined;
     const onBare = () => undefined;
+    const onchangeSessionId = () => undefined;
     const { bind, listeners } = splitChoyAttrsListeners({
       class: 'x',
       'data-test': 't',
@@ -75,12 +76,15 @@ describe('choyStoreMode', () => {
       'onUpdate:modelValue': onUpdateModelValue,
       onBar: 'not-a-function',
       on: onBare,
+      // CamelCase prop mistaken for a listener if we only use startsWith('on').
+      onchangeSessionId,
     });
     expect(bind).toEqual({
       class: 'x',
       'data-test': 't',
       onBar: 'not-a-function',
       on: onBare,
+      onchangeSessionId,
     });
     expect(listeners).toEqual({
       foo: onFoo,

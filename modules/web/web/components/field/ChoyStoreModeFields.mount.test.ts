@@ -133,7 +133,9 @@ describe('Choy store-mode field hosts', () => {
     ];
     for (const [Comp, id] of cases) {
       const w = await mountField(Comp, { store: fakeStore, prop: 'Name' });
-      expect(w.q(`[data-test=${id}]`)).not.toBeNull();
+      const host = w.q(`[data-test=${id}]`);
+      expect(host).not.toBeNull();
+      expect(host?.getAttribute('data-prop')).toBe('Name');
       w.unmount();
     }
   });
@@ -143,7 +145,9 @@ describe('Choy store-mode field hosts', () => {
       store: fakeStore,
       prop: 'CompanyId',
     });
-    expect(refW.q('[data-test=o-m2o-ref]')).not.toBeNull();
+    const refHost = refW.q('[data-test=o-m2o-ref]');
+    expect(refHost).not.toBeNull();
+    expect(refHost?.getAttribute('data-prop')).toBe('CompanyId');
     expect(refW.q('[data-test=o-m2o]')).toBeNull();
     refW.unmount();
 
@@ -152,7 +156,10 @@ describe('Choy store-mode field hosts', () => {
       prop: 'CompanyId',
       valueMode: 'record',
     });
-    expect(recW.q('[data-test=o-m2o]')).not.toBeNull();
+    const recHost = recW.q('[data-test=o-m2o]');
+    expect(recHost).not.toBeNull();
+    expect(recHost?.getAttribute('data-prop')).toBe('CompanyId');
+    expect(recHost?.getAttribute('data-value-mode')).toBe('record');
     expect(recW.q('[data-test=o-m2o-ref]')).toBeNull();
     recW.unmount();
   });
