@@ -382,14 +382,35 @@ describe('Choy store-mode field hosts', () => {
     expect(rowClicks.length).toBeGreaterThan(0);
     lw.unmount();
 
-    // Store-mode List/Search/Form with undeclared on* attrs covers storeListeners
-    // (declared emits like onQueryUpdate do not land in useAttrs).
-    const formListen = await mountField(ChoyFormView, {
-      store: fakeStore,
-      onLoadSuccess: () => undefined,
+    // Undeclared on* attrs forward via v-on once (keys stripped for toHandlers).
+    const loadHits: unknown[] = [];
+    stubSfc(OFormView as any, {
+      props: { store: null },
+      emits: ['load-success'],
+      setup: ((_props: any, { emit }: any) => {
+        return () =>
+          h('button', {
+            'data-test': 'emit-load',
+            onClick: () => emit('load-success', { ok: true }),
+          });
+      }) as any,
     });
-    expect(formListen.q('[data-test=o-form]')).not.toBeNull();
+    const formListen = mountApp(ChoyFormView as any, {
+      props: { store: fakeStore },
+      on: {
+        onLoadSuccess: (payload: unknown) => {
+          loadHits.push(payload);
+        },
+      },
+    });
+    await flushPromises();
+    formListen.click('[data-test=emit-load]');
+    await flushPromises();
+    expect(loadHits).toEqual([{ ok: true }]);
     formListen.unmount();
+    restoreSfc(OFormView as any);
+    stubHost(OFormView as any, 'o-form');
+
     const listListen = await mountField(ChoyListView, {
       store: fakeStore,
       onSelectionChange: () => undefined,

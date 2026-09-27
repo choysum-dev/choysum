@@ -30,8 +30,9 @@ export function hasChoyStoreEngine(
 }
 
 /**
- * Split useAttrs() into non-listener bind props and on* listeners so store
- * hosts can v-bind + v-on without registering each handler twice.
+ * Split useAttrs() into non-listener bind props and v-on listener keys.
+ * Attrs use Vue's onFoo form; v-on="listeners" runs toHandlers which prepends
+ * on again, so listeners must be { foo: fn } (not { onFoo: fn }).
  */
 export function splitChoyAttrsListeners(attrs: Record<string, unknown>): {
   bind: Record<string, unknown>;
@@ -40,8 +41,10 @@ export function splitChoyAttrsListeners(attrs: Record<string, unknown>): {
   const bind: Record<string, unknown> = {};
   const listeners: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(attrs)) {
-    if (key.startsWith('on') && typeof value === 'function') {
-      listeners[key] = value;
+    if (key.startsWith('on') && key.length > 2 && typeof value === 'function') {
+      const rawEvent = key.startsWith('on-') ? key.slice(3) : key.slice(2);
+      const eventName = rawEvent.charAt(0).toLowerCase() + rawEvent.slice(1);
+      listeners[eventName] = value;
     } else {
       bind[key] = value;
     }

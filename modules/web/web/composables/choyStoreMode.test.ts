@@ -32,15 +32,30 @@ describe('choyStoreMode', () => {
     expect(hasChoyStoreEngine(undefined, { model: 'x' })).toBe(true);
   });
 
-  test('splitChoyAttrsListeners separates on* functions from bind attrs', () => {
+  test('splitChoyAttrsListeners strips on prefix for v-on object keys', () => {
     const onFoo = () => undefined;
+    const onSelectionChange = () => undefined;
+    const onUpdateModelValue = () => undefined;
+    const onBare = () => undefined;
     const { bind, listeners } = splitChoyAttrsListeners({
       class: 'x',
       'data-test': 't',
       onFoo,
+      onSelectionChange,
+      'onUpdate:modelValue': onUpdateModelValue,
       onBar: 'not-a-function',
+      on: onBare,
     });
-    expect(bind).toEqual({ class: 'x', 'data-test': 't', onBar: 'not-a-function' });
-    expect(listeners).toEqual({ onFoo });
+    expect(bind).toEqual({
+      class: 'x',
+      'data-test': 't',
+      onBar: 'not-a-function',
+      on: onBare,
+    });
+    expect(listeners).toEqual({
+      foo: onFoo,
+      selectionChange: onSelectionChange,
+      'update:modelValue': onUpdateModelValue,
+    });
   });
 });
