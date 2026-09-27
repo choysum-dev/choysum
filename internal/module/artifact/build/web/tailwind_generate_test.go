@@ -524,8 +524,57 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	}
 }
 
+func TestModulesPathForKitRoot(t *testing.T) {
+	if got := modulesPathForKitRoot(""); got != "" {
+		t.Fatalf("empty => \"\", got %q", got)
+	}
+	if got := modulesPathForKitRoot("/abs/modules/web"); got != "/abs/modules" {
+		t.Fatalf("modules/web => parent modules, got %q", got)
+	}
+	if got := modulesPathForKitRoot("/tmp/isolated-kit"); got != "" {
+		t.Fatalf("non-modules parent => \"\", got %q", got)
+	}
+}
+
+func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
+	root := t.TempDir()
+	modules := filepath.Join(root, "modules")
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
+
+	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "web"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, contentHash, err := TailwindInputDigest(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ContentHash != contentHash {
+		t.Fatalf("exported Generate contentHash %q must match TailwindInputDigest %q", res.ContentHash, contentHash)
+	}
+	data, err := os.ReadFile(res.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), ".underline") && !strings.Contains(string(data), "text-decoration-line: underline") {
+		t.Fatalf("product scan via Generate must include domain utility:\n%s", data)
+	}
+}
+
 func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
-	t.Parallel()
+	// Not parallel: this test swaps the package-level choyProductReadDir hook.
 	if got, err := ScanChoyProductTailwindCandidates(""); err != nil || got != nil {
 		t.Fatalf("empty modulesPath => nil,nil got %#v %v", got, err)
 	}

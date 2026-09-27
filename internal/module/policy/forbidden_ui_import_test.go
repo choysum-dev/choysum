@@ -94,6 +94,26 @@ func TestClassifyForbiddenUiImport(t *testing.T) {
 	}
 }
 
+func TestNormalizeImportPathSegments(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"", ""},
+		{"   ", ""},
+		{".", ""},
+		{"./", ""},
+		{"@/", "@/"},
+		{"@/.", "@/"},
+		{"@/web/web/components/../lib/utils", "@/web/web/lib/utils"},
+		{"web/web/lib/./cn", "web/web/lib/cn"},
+	}
+	for _, tc := range cases {
+		if got := normalizeImportPathSegments(tc.in); got != tc.want {
+			t.Fatalf("normalizeImportPathSegments(%q)=%q want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 	prev := CutoverImportBans
 	CutoverImportBans = true
@@ -108,7 +128,10 @@ func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 		{"@element-plus/icons-vue", "element-plus"},
 		{"@/web/web/lib/utils", "web-lib-deep"},
 		{"@/web/web/lib/cn", "web-lib-deep"},
+		{"@/web/web/lib", "web-lib-deep"},
+		{"@/web/web/components/../lib/utils", "web-lib-deep"},
 		{"../web/web/lib/utils", "web-lib-deep"},
+		{"web/web/lib", "web-lib-deep"},
 		{"@/web", ""},
 		{"@/web/index", ""},
 		{"vue", ""},

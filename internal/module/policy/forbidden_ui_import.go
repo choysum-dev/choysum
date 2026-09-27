@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -260,16 +261,32 @@ func classifyCutoverForbiddenUiImport(lower string) string {
 }
 
 func isForbiddenWebLibDeepPath(lower string) bool {
-	markers := []string{
-		"@/web/web/lib/",
-		"/web/web/lib/",
+	n := normalizeImportPathSegments(lower)
+	if strings.Contains(n, "/web/web/lib/") || strings.HasSuffix(n, "/web/web/lib") {
+		return true
 	}
-	for _, m := range markers {
-		if strings.Contains(lower, m) {
-			return true
-		}
+	return n == "web/web/lib" || strings.HasPrefix(n, "web/web/lib/")
+}
+
+// normalizeImportPathSegments cleans "." / ".." segments in an import specifier
+// while preserving a leading "@/". Used so cutover deep-lib bans cannot be
+// bypassed with paths like "@/web/web/components/../lib/utils".
+func normalizeImportPathSegments(spec string) string {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return ""
 	}
-	return false
+	prefix := ""
+	rest := spec
+	if strings.HasPrefix(spec, "@/") {
+		prefix = "@/"
+		rest = spec[2:]
+	}
+	cleaned := path.Clean(rest)
+	if cleaned == "." {
+		cleaned = ""
+	}
+	return prefix + cleaned
 }
 
 func isForbiddenUIPath(lower string) bool {

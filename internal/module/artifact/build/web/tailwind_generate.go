@@ -665,9 +665,24 @@ func indexCSSBlockEnd(css string) int {
 
 // GenerateChoyTailwindForModule scans a Choy kit module root and writes generated utilities CSS.
 // Emits unscoped theme aliases + utilities for the product main bundle (never FullCSS preflight).
-// When modulesPath is non-empty, candidates also include every other module web/ tree.
+// When moduleRoot lives under a modules/ directory, candidates match TailwindInputDigest
+// (kit + every sibling module web/ tree); isolated temp kit roots stay kit-only.
 func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResult, error) {
-	return generateChoyTailwindForModule(moduleRoot, "")
+	return generateChoyTailwindForModule(moduleRoot, modulesPathForKitRoot(moduleRoot))
+}
+
+// modulesPathForKitRoot returns the parent modules/ directory when moduleRoot is
+// modules/<name>; otherwise "" so isolated kit fixtures keep a kit-only scan.
+func modulesPathForKitRoot(moduleRoot string) string {
+	root := filepath.Clean(strings.TrimSpace(moduleRoot))
+	if root == "" || root == "." {
+		return ""
+	}
+	parent := filepath.Dir(root)
+	if filepath.Base(parent) != "modules" {
+		return ""
+	}
+	return parent
 }
 
 func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwindGenerateResult, error) {
