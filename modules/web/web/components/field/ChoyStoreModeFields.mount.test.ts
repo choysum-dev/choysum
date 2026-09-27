@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, defineComponent, type Component } from 'vue';
+import { h, defineComponent, inject, type Component } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyPage from '../layout/ChoyPage.vue';
 import ChoyFormView from '../view/ChoyFormView.vue';
@@ -560,8 +560,23 @@ describe('Choy store-mode field hosts', () => {
   });
 
   test('ViewScope / ButtonBox / StatInfo / VColumn mount', async () => {
-    const scope = await mountField(ChoyViewScope, { viewMode: 'display', container: 'List' });
-    expect(scope.el.textContent).toBe('');
+    let injectedMode: unknown = undefined;
+    const Probe = defineComponent({
+      setup() {
+        injectedMode = inject('view-mode');
+        return () => h('span', { 'data-test': 'scope-probe' });
+      },
+    });
+    const scopeHost = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyViewScope, { viewMode: 'display', container: 'List' }, () => h(Probe));
+      },
+    });
+    const scope = mountApp(scopeHost);
+    await flushPromises();
+    expect(scope.q('[data-test=scope-probe]')).not.toBeNull();
+    expect((injectedMode as { value?: string } | null)?.value).toBe('display');
     scope.unmount();
 
     const HostBox = defineComponent({

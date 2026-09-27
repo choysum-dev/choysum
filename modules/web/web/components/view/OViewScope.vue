@@ -9,6 +9,11 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref, watch, provide } from 'vue';
+import {
+  VIEW_MODE_KEY,
+  VIEW_CONTAINER_KEY,
+  FIELD_PREFIX_KEY,
+} from './viewScopeKeys';
 
 export type ViewMode = 'display' | 'edit' | 'create';
 export type ViewContainer = 'Form' | 'List' | 'Kanban';
@@ -32,9 +37,9 @@ const modeRef = ref<ViewMode>(props.viewMode);
 const containerRef = ref<ViewContainer>(props.container);
 const fieldPrefixRef = ref<string | undefined>(props.fieldPrefix);
 
-provide('view-mode', modeRef);
-provide('view-container', containerRef);
-provide('field-prefix', fieldPrefixRef);
+provide(VIEW_MODE_KEY, modeRef);
+provide(VIEW_CONTAINER_KEY, containerRef);
+provide(FIELD_PREFIX_KEY, fieldPrefixRef);
 
 watch(
   () => props.viewMode,

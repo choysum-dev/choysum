@@ -51,6 +51,12 @@ describe('searchViewHelpers', () => {
       { field: 'Name', op: '=', value: 'a' },
       { field: 'code', op: 'ilike', value: 'x' },
     ]);
+    // Singleton group object (not wrapped in an array) still flattens.
+    expect(
+      flattenChoySearchFilters({
+        children: [{ field: 'name', operator: '=', value: 'solo' }],
+      }),
+    ).toEqual([{ field: 'name', op: '=', value: 'solo' }]);
   });
 
   test('choySearchQueryFromPayload adapts OSearchView payload', () => {

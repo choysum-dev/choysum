@@ -47,11 +47,10 @@ type FilterTreeNode = {
 
 /** Flattens OSearchView ConditionGroup trees into Choy chrome filter rows. */
 export function flattenChoySearchFilters(
-  groups: ReadonlyArray<FilterTreeNode> | null | undefined,
+  groups: ReadonlyArray<FilterTreeNode> | FilterTreeNode | null | undefined,
 ): ChoySearchFilter[] {
   const out: ChoySearchFilter[] = [];
-  const walk = (nodes: ReadonlyArray<FilterTreeNode> | null | undefined): void => {
-    if (!nodes) return;
+  const walk = (nodes: ReadonlyArray<FilterTreeNode>): void => {
     for (const node of nodes) {
       if (!node || typeof node !== 'object') continue;
       if (Array.isArray(node.children)) {
@@ -67,14 +66,15 @@ export function flattenChoySearchFilters(
       });
     }
   };
-  walk(groups);
+  if (groups == null) return out;
+  walk(Array.isArray(groups) ? groups : [groups]);
   return out;
 }
 
-/** Adapts OSearchView query-update payload to the ChoySearchQuery chrome shape. */
+/** Adapts OSearchView query-update payload to the chrome ChoySearchQuery shape. */
 export function choySearchQueryFromPayload(payload: {
   keyword?: string | null;
-  appliedFilters?: ReadonlyArray<FilterTreeNode> | null;
+  appliedFilters?: ReadonlyArray<FilterTreeNode> | FilterTreeNode | null;
 }): ChoySearchQuery {
   return buildChoySearchQuery(
     payload?.keyword,
