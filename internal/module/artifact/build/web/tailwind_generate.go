@@ -157,7 +157,7 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		}
 	}
 	if kitRoot != "" {
-		kitCandidates, err := ScanChoyKitTailwindCandidates(filepath.Join(kitRoot, "web"))
+		kitCandidates, err := choyScanKitCandidates(filepath.Join(kitRoot, "web"))
 		if err != nil {
 			return nil, err
 		}
@@ -205,16 +205,22 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		if !st.IsDir() {
 			continue
 		}
-		if _, dialectErr := choyProductStat(filepath.Join(webRoot, "styles", "theme.css")); dialectErr == nil {
+		dialectPath := filepath.Join(webRoot, "styles", "theme.css")
+		if dialectStat, dialectErr := choyProductStat(dialectPath); dialectErr == nil {
+			// Match resolveChoyKitModuleRoot: a directory dialect is an error, not
+			// a silently kit-filtered sibling host.
+			if dialectStat.IsDir() {
+				return nil, fmt.Errorf("%s dialect %s is a directory, not a file", name, dialectPath)
+			}
 			// Sibling kit host (non-selected web/choy_ui) keeps kit filters so
 			// O*/EP-only utilities are not re-admitted into unscoped product CSS.
-			kitCandidates, err := ScanChoyKitTailwindCandidates(webRoot)
+			kitCandidates, err := choyScanKitCandidates(webRoot)
 			if err != nil {
 				return nil, err
 			}
 			add(kitCandidates)
 			continue
-		} else if dialectErr != nil && !os.IsNotExist(dialectErr) {
+		} else if !os.IsNotExist(dialectErr) {
 			return nil, dialectErr
 		}
 		domainCandidates, err := ScanTailwindCandidates([]string{webRoot})
@@ -232,6 +238,9 @@ var choyProductReadDir = os.ReadDir
 
 // choyProductStat is os.Stat; tests replace it to force module/dialect Stat failures.
 var choyProductStat = os.Stat
+
+// choyScanKitCandidates is ScanChoyKitTailwindCandidates; tests replace it to force kit-scan errors.
+var choyScanKitCandidates = ScanChoyKitTailwindCandidates
 
 // isChoyKitTailwindInputPath reports whether path under webRoot is Choy kit input
 // (vendor/ui, internal engines, Choy* SFCs/helpers, gallery/dogfood pages, tokens CSS).

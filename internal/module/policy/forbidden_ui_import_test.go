@@ -178,6 +178,40 @@ func TestAssertNoForbiddenUiImports_CutoverRejectsElementPlus(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "element-plus") {
 		t.Fatalf("expected element-plus ban under cutover, got %v", err)
 	}
+	// Deep @/web/web/lib imports must be rejected through the file scan too.
+	if err := os.Remove(filepath.Join(webDir, "leak.ts")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webDir, "deep.ts"), []byte("import { cn } from '@/web/web/lib/utils';\nexport const y = cn;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := AssertNoForbiddenUiImports(modulesPath, "partner"); err == nil || !strings.Contains(err.Error(), "web-lib-deep") {
+		t.Fatalf("expected web-lib-deep ban under cutover, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_CutoverExemptsKitHost(t *testing.T) {
+	prev := CutoverImportBans
+	CutoverImportBans = true
+	t.Cleanup(func() { CutoverImportBans = prev })
+
+	modulesPath := t.TempDir()
+	kitWeb := filepath.Join(modulesPath, "web", "web")
+	if err := os.MkdirAll(filepath.Join(kitWeb, "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "web", "package.json"), []byte(`{
+  "name": "@choysum-dev/web",
+  "choysum": { "moduleName": "web", "application": "web" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(kitWeb, "app.ts"), []byte("import 'element-plus/dist/index.css';\nexport const x = 1;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := AssertNoForbiddenUiImports(modulesPath, "web"); err != nil {
+		t.Fatalf("kit host must stay exempt under cutover bans, got %v", err)
+	}
 }
 
 func TestAssertNoForbiddenUiImports_RejectsDomainReka(t *testing.T) {

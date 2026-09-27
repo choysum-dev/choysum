@@ -754,23 +754,38 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 		t.Fatalf("expected dialect Stat error, got %v", err)
 	}
 
-	// Sibling kit ScanChoyKitTailwindCandidates error surfaces.
+	// Sibling kit error surfaces: directory dialect is deterministic (unlike chmod 000).
 	choyProductStat = prev
-	locked := filepath.Join(modules, "choy_ui", "web", "locked")
-	if err := os.MkdirAll(locked, 0o755); err != nil {
+	siblingDialect := filepath.Join(modules, "choy_ui", "web", "styles", "theme.css")
+	if err := os.Remove(siblingDialect); err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(locked, "x.vue"), []byte(`<div class="x"></div>`), 0o644); err != nil {
+	if err := os.MkdirAll(siblingDialect, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(locked, 0o000); err != nil {
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "is a directory") {
+		t.Fatalf("expected directory dialect error for sibling kit, got %v", err)
+	}
+
+	// Restore dialect file, then force sibling kit scan error via hook.
+	if err := os.RemoveAll(siblingDialect); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
-	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil {
-		t.Log("sibling kit walk did not error on this runner")
+	if err := os.WriteFile(siblingDialect, []byte(`@theme { --color-primary: blue; }`), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	_ = os.Chmod(locked, 0o755)
+	prevScan := choyScanKitCandidates
+	t.Cleanup(func() { choyScanKitCandidates = prevScan })
+	choyScanKitCandidates = func(webRoot string) ([]string, error) {
+		if strings.Contains(filepath.ToSlash(webRoot), "/choy_ui/web") {
+			return nil, errors.New("sibling kit scan boom")
+		}
+		return prevScan(webRoot)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "sibling kit scan boom") {
+		t.Fatalf("expected sibling kit scan error, got %v", err)
+	}
+	choyScanKitCandidates = prevScan
 }
 
 func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
