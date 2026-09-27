@@ -355,6 +355,19 @@ func TestMaskPascalCaseRawTextTagsSelfClosingSlot(t *testing.T) {
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsTopLevelSelfClosingTemplate(t *testing.T) {
+	// A leading self-closing <template /> must be skipped so a later real
+	// template region is still masked.
+	src := `<template /><template><Textarea/></template><script setup></script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, `<template />`) {
+		t.Fatalf("self-closing template must be copied through, got %q", got)
+	}
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("following template body must still mask, got %q", got)
+	}
+}
+
 func TestIsSelfClosingHTMLOpenTagEdges(t *testing.T) {
 	if isSelfClosingHTMLOpenTag("") {
 		t.Fatal("empty tag is not self-closing")
