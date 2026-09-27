@@ -2311,7 +2311,7 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		}
 	}
 	// Kit host peers first so the built module's own exact pins win on conflict.
-	modulePath := filepath.Clean(b.module.Path)
+	modulePath := filepath.Clean(strings.TrimSpace(b.module.Path))
 	kitHost := filepath.Join(filepath.Dir(modulePath), "web")
 	if kitHost != modulePath {
 		mergePins(kitHost, kitHost)

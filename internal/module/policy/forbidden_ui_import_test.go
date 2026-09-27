@@ -22,7 +22,7 @@ func TestIsKitHostModuleEmptyModulesPath(t *testing.T) {
 	}
 }
 
-func TestIsKitHostModuleStatPermissionKeepsWebExempt(t *testing.T) {
+func TestIsKitHostModuleStatErrorDoesNotExempt(t *testing.T) {
 	root := t.TempDir()
 	web := filepath.Join(root, "web", "web", "components", "vendor")
 	if err := os.MkdirAll(web, 0o755); err != nil {
@@ -34,8 +34,8 @@ func TestIsKitHostModuleStatPermissionKeepsWebExempt(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(web, 0o755) })
 	ok := isKitHostModule(root, "web")
 	_ = os.Chmod(web, 0o755)
-	if !ok {
-		t.Skip("permission-denied kit Stat not observed on this runner (e.g. running as root)")
+	if ok {
+		t.Fatal("stat failure must not make web a kit host")
 	}
 }
 

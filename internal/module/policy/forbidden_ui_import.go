@@ -37,9 +37,10 @@ func isKitHostModule(modulesPath, moduleName string) bool {
 		kitDir := filepath.Join(modulesPath, kitHostModuleCutover, "web", "components", "vendor", "ui")
 		st, err := os.Stat(kitDir)
 		if err != nil {
-			// A present-but-unreadable kit tree (EACCES) still means web is the
-			// host; any other stat failure must not silently disable the ban.
-			return os.IsPermission(err)
+			// Only a confirmed directory proves web still hosts the kit; any stat
+			// failure (including EACCES on an ancestor) must not silently disable
+			// the domain-module import ban.
+			return false
 		}
 		return st.IsDir()
 	default:
