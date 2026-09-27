@@ -104,7 +104,11 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 	// <script setup>; without masking, the tokenizer swallows the script block.
 	// Masking is limited to unquoted text inside <template> so script/style string
 	// literals and attribute values keep literal "<Textarea>" unchanged.
-	masked := maskPascalCaseRawTextTags(string(src))
+	// Fast path: the multi-pass masker is a no-op unless such a tag is present.
+	masked := string(src)
+	if pascalCaseRawTextTag.MatchString(masked) {
+		masked = maskPascalCaseRawTextTags(masked)
+	}
 	doc, err := vueSfcHTMLParse(strings.NewReader(masked))
 	if err != nil {
 		return nil, nil, nil, err
