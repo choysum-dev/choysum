@@ -107,6 +107,29 @@ describe('ErrorView', () => {
     mounted.unmount();
   });
 
+  test('normalizes array params and query code to the first entry', async () => {
+    const fromParams = mountError({
+      path: '/error',
+      fullPath: '/error',
+      params: { code: ['500', '400'] },
+      query: {},
+    });
+    await flushPromises();
+    expect(fromParams.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/Server|error/i);
+    fromParams.unmount();
+
+    const fromQuery = mountError({
+      path: '/oops',
+      fullPath: '/oops?code=403&code=404',
+      params: {},
+      query: { code: ['403', '404'] },
+    });
+    await flushPromises();
+    expect(fromQuery.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/denied|Access/i);
+    fromQuery.unmount();
+  });
+
+
 
   test('invokes navigation and window helpers from action buttons', async () => {
     const open = fnRecorder(() => null);

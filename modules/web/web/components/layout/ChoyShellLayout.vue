@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyLayout
     :show-header="showHeader"
-    :show-aside="showSidebar"
+    :show-aside="showSidebar && !!$slots.aside"
     :show-footer="showFooter"
     class="min-h-screen"
   >
@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
         <slot name="header-actions" />
       </div>
     </template>
-    <template v-if="showSidebar" #aside>
+    <template v-if="showSidebar && $slots.aside" #aside>
       <nav class="p-3 text-sm text-foreground/80" aria-label="Main">
         <slot name="aside" />
       </nav>

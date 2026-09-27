@@ -80,6 +80,20 @@ describe('ChoyShellLayout', () => {
     mounted.unmount();
   });
 
+  test('skips empty aside chrome when showSidebar lacks aside slot', async () => {
+    const mounted = mountApp(ChoyShellLayout as any, {
+      props: { showHeader: true, showSidebar: true, showFooter: false },
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    const root = mounted.q('[data-test=choy-layout]');
+    expect(root?.getAttribute('data-aside')).toBe('false');
+    expect(mounted.q('[data-test=slot-aside]')).toBeNull();
+    mounted.unmount();
+  });
+
   test('hides header chrome when showHeader is false', async () => {
     const mounted = mountApp(ChoyShellLayout as any, {
       props: { showHeader: false, showSidebar: false, showFooter: false },

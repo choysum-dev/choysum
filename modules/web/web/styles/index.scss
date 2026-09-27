@@ -42,6 +42,7 @@ a {
   // Mix toward white/black so hover/active stay distinct when --choy-color-primary
   // is set (unlike falling back to the same primary token for every state).
   &:hover {
+    color: var(--choy-color-primary-light, var(--el-color-primary-light-3, #3b82f6));
     color: color-mix(
       in oklab,
       var(--choy-color-primary, var(--el-color-primary-light-3, #3b82f6)) 82%,
@@ -50,6 +51,7 @@ a {
   }
 
   &:active {
+    color: var(--choy-color-primary-dark, var(--el-color-primary-dark-2, #1d4ed8));
     color: color-mix(
       in oklab,
       var(--choy-color-primary, var(--el-color-primary-dark-2, #1d4ed8)) 82%,

@@ -55,7 +55,10 @@ const errorConfig = computed<ErrorConfig>(() => {
   // Auth/web redirects use static paths (/error/403) rather than :code params.
   const pathMatch = route.path.match(/\/error\/(\d+)/);
   // Prefer path (/error/403) over a stray ?code=; params.code wins for :code routes.
-  const code = String(route.params.code || pathMatch?.[1] || route.query.code || '404');
+  // vue-router may yield string[] for repeated keys — take the first entry.
+  const paramCode = Array.isArray(route.params.code) ? route.params.code[0] : route.params.code;
+  const queryCode = Array.isArray(route.query.code) ? route.query.code[0] : route.query.code;
+  const code = String(paramCode || pathMatch?.[1] || queryCode || '404');
   switch (code) {
     case '403': {
       const reason = route.query.reason as string;
