@@ -515,6 +515,10 @@ func unmaskPascalCaseRawTextTags(n *html.Node) {
 	case html.CommentNode:
 		// Comments are plain text; element rename never restores them.
 		n.Data = strings.ReplaceAll(n.Data, vueRawTextMaskPrefix, "")
+	case html.TextNode:
+		// A mis-identified template region can leave masks in text (e.g. script
+		// bodies); strip them so script/output is never corrupted.
+		n.Data = strings.ReplaceAll(n.Data, vueRawTextMaskPrefix, "")
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		unmaskPascalCaseRawTextTags(c)

@@ -119,6 +119,18 @@ func TestUnmaskPascalCaseRawTextTagsNil(t *testing.T) {
 	unmaskPascalCaseRawTextTags(nil)
 }
 
+func TestUnmaskPascalCaseRawTextTagsTextNode(t *testing.T) {
+	root := &html.Node{Type: html.ElementNode, Data: "root"}
+	root.AppendChild(&html.Node{
+		Type: html.TextNode,
+		Data: `const t = "<` + vueRawTextMaskPrefix + `Textarea>"`,
+	})
+	unmaskPascalCaseRawTextTags(root)
+	if root.FirstChild.Data != `const t = "<Textarea>"` {
+		t.Fatalf("text node mask must be stripped, got %q", root.FirstChild.Data)
+	}
+}
+
 func TestMaskPascalCaseRawTextTagsUnclosedTemplate(t *testing.T) {
 	src := `<template><Textarea />`
 	got := maskPascalCaseRawTextTags(src)

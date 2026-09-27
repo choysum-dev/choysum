@@ -573,6 +573,25 @@ func TestCheckForbiddenUiImports_UnitBranches(t *testing.T) {
 		t.Fatal("kit host")
 	}
 
+	// ModulesPath unset: derive from ModuleRoot so a web kit host still exempts.
+	webKit := t.TempDir()
+	webRoot := filepath.Join(webKit, "web")
+	if err := os.MkdirAll(filepath.Join(webRoot, "web", "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if CheckForbiddenUiImports(ForbiddenUiImportScanInput{
+		ModuleName: "web",
+		ModuleRoot: filepath.Join(webRoot),
+		// ModulesPath intentionally empty
+	}, []*parser.ParserResult{{
+		Path: filepath.Join(webRoot, "web", "a.ts"),
+		Imports: map[string]*parser.Import{
+			"X": {ModuleSpecText: "reka-ui", Line: 1, Column: 1},
+		},
+	}}) != nil {
+		t.Fatal("web kit host with derived ModulesPath must be exempt")
+	}
+
 	root := "/modules/partner"
 	results := []*parser.ParserResult{
 		nil,

@@ -135,6 +135,51 @@ test('formatFieldChangeSummary normalizes empty values', () => {
       labels,
     ),
   ).toBe('Field:A->B');
+  expect(
+    formatFieldChangeSummary(
+      {
+        kind: 'fieldChange',
+        id: '8',
+        at: 1,
+        field: 'Status',
+        changeKind: undefined as any,
+        oldValue: 'open',
+        newValue: '',
+        actorUid: null,
+      },
+      labels,
+    ),
+  ).toBe('Status:open->—');
+  expect(
+    formatFieldChangeSummary(
+      {
+        kind: 'fieldChange',
+        id: '9',
+        at: 1,
+        field: '',
+        changeKind: null as any,
+        oldValue: null,
+        newValue: 'done',
+        actorUid: null,
+      },
+      labels,
+    ),
+  ).toBe('Field:—->done');
+  expect(
+    formatFieldChangeSummary(
+      {
+        kind: 'fieldChange',
+        id: '10',
+        at: 1,
+        field: null,
+        changeKind: 'field',
+        oldValue: 'A',
+        newValue: 'B',
+        actorUid: null,
+      },
+      { ...labels, fieldFallback: '字段' },
+    ),
+  ).toBe('字段:A->B');
 });
 
 test('formatChoyUtcIso formats finite UTC timestamps', () => {
