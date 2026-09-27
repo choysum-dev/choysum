@@ -2290,13 +2290,25 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 	if b == nil || b.module == nil {
 		return opts
 	}
-	pins, err := esmresolver.ExactPinsFromPackageJSON(b.module.Path)
-	if err != nil {
-		if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
-			b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", b.module.Name, "error", err)
+	pins := map[string]string{}
+	mergePins := func(modulePath, logName string) {
+		got, err := esmresolver.ExactPinsFromPackageJSON(modulePath)
+		if err != nil {
+			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", logName, "error", err)
+			}
+			return
 		}
-		return opts
+		for name, ver := range got {
+			pins[name] = ver
+		}
 	}
+	// Kit host peers first so the built module's own exact pins win on conflict.
+	kitHost := filepath.Join(filepath.Dir(b.module.Path), "web")
+	if kitHost != b.module.Path {
+		mergePins(kitHost, kitHost)
+	}
+	mergePins(b.module.Path, b.module.Name)
 	if len(pins) > 0 {
 		opts = append(opts, esmresolver.WithBareImportPins(pins))
 	}

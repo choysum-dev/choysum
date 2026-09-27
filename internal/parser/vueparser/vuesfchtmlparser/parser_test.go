@@ -648,6 +648,35 @@ func TestFindMustacheAndQuotedAttrRangesEdges(t *testing.T) {
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsScriptMustacheDoesNotHideTemplate(t *testing.T) {
+	// An unmatched "{{" inside script must not protect the later real <template>.
+	src := `<script setup>const OPEN = "{{";</script>
+<template>
+  <Textarea><span id="inner">x</span></Textarea>
+</template>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must still be masked, got %q", got)
+	}
+}
+
+func TestFindScriptStyleRangesCrossScriptCommentMarkers(t *testing.T) {
+	// "<!--" / "-->" split across script string literals must not hide a real
+	// middle <script> block from scriptStyle ranges.
+	src := `<script>const a = "<!--"</script>
+<script setup>const mid = 1</script>
+<script>const b = "-->"</script>
+<template><Textarea/></template>`
+	ranges := findScriptStyleRanges(src)
+	if len(ranges) < 3 {
+		t.Fatalf("expected three script ranges, got %v", ranges)
+	}
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must mask when middle script is kept, got %q", got)
+	}
+}
+
 func TestFindHTMLCommentRangesUnclosedInHTMLContext(t *testing.T) {
 	src := `<template><!-- never closed
   <Textarea/>

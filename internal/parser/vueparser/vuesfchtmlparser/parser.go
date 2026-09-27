@@ -150,7 +150,22 @@ func maskPascalCaseRawTextTags(src string) string {
 	comments := findHTMLCommentRanges(src, scriptStyle)
 	// Template open/close candidates must also ignore mustaches and quoted
 	// attribute values — a literal "</template>" there must not close the region.
-	protected := append(append([][]int{}, comments...), findMustacheAndQuotedAttrRanges(src)...)
+	// Ranges that start inside script/style are string/code, not template text.
+	mustacheAttr := findMustacheAndQuotedAttrRanges(src)
+	kept := mustacheAttr[:0]
+	for _, r := range mustacheAttr {
+		inScript := false
+		for _, s := range scriptStyle {
+			if r[0] >= s[0] && r[0] < s[1] {
+				inScript = true
+				break
+			}
+		}
+		if !inScript {
+			kept = append(kept, r)
+		}
+	}
+	protected := append(append([][]int{}, comments...), kept...)
 	inRange := func(pos int, ranges [][]int) bool {
 		for _, r := range ranges {
 			if pos >= r[0] && pos < r[1] {
@@ -248,15 +263,25 @@ func maskPascalCaseRawTextTags(src string) string {
 // still ignored when comment ranges are computed (via findHTMLCommentRanges skip).
 func findScriptStyleRanges(src string) [][]int {
 	naiveComments := findHTMLCommentRanges(src, nil)
-	inComment := func(pos int) bool {
-		for _, r := range naiveComments {
+	var ranges [][]int
+	inAccepted := func(pos int) bool {
+		for _, r := range ranges {
 			if pos >= r[0] && pos < r[1] {
 				return true
 			}
 		}
 		return false
 	}
-	var ranges [][]int
+	inComment := func(pos int) bool {
+		for _, r := range naiveComments {
+			if pos >= r[0] && pos < r[1] {
+				// A marker inside an already-accepted script/style body is string
+				// content, not an HTML comment, so it must not hide a real block.
+				return !inAccepted(r[0])
+			}
+		}
+		return false
+	}
 	searchFrom := 0
 	for searchFrom < len(src) {
 		m := sfcScriptStyleBlock.FindStringIndex(src[searchFrom:])

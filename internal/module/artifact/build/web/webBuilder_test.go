@@ -5294,3 +5294,35 @@ func TestAppendExactPinsFromPackageJSONNilReceiver(t *testing.T) {
 		t.Fatalf("nil module must return opts unchanged, got %d", len(got))
 	}
 }
+
+func TestAppendExactPinsFromPackageJSONMergesKitHost(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"reka-ui":"2.10.4","shared":"1.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"shared":"9.9.9","local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder := &WebModuleBuilder{
+		module: &meta.Module{Name: "partner", Path: domain},
+	}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("expected one WithBareImportPins option from kit+own merge, got %d", len(opts))
+	}
+	// Domain-only empty pins still pick up kit host pins.
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("kit host pins alone must still produce an option, got %d", len(opts))
+	}
+}
