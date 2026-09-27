@@ -67,7 +67,6 @@ html.choy-gallery-token-scope {
 }
 
 html.dark,
-.dark,
 .choy-gallery-root.dark,
 html.choy-gallery-token-scope.dark {
   --choy-color-primary: oklch(0.7 0.12 255);
@@ -83,14 +82,12 @@ html.choy-gallery-token-scope.dark {
 }
 
 html.dark,
-.dark,
 .choy-gallery-root.dark,
 html.choy-gallery-token-scope.dark {
   color-scheme: dark;
 }
 
 html[data-density='compact'],
-[data-density='compact'],
 .choy-gallery-root[data-density='compact'],
 html.choy-gallery-token-scope[data-density='compact'] {
   --choy-space-1: 0.2rem;

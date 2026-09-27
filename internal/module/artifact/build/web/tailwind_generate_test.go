@@ -702,6 +702,40 @@ func TestScanChoyProductTailwindCandidatesFiltersSiblingKit(t *testing.T) {
 	}
 }
 
+func TestScanChoyProductTailwindCandidatesDomainThemeCSSNotKitFiltered(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	// Domain ships theme.css but no vendor/ui → must stay on domain scan.
+	write("partner/web/styles/theme.css", `@theme { --color-primary: green; }`)
+	write("partner/web/pages/Home.vue", `<div class="domain-theme-util"></div>`)
+	write("partner/web/components/view/OLocal.vue", `<div class="domain-o-util"></div>`)
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "domain-theme-util", "domain-o-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+}
+
 func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 	modules := t.TempDir()
 	write := func(rel, body string) {
@@ -722,6 +756,20 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 
 	prev := choyProductStat
 	t.Cleanup(func() { choyProductStat = prev })
+
+	// Primary (selected) kit scan error must surface before the domain loop.
+	prevScan := choyScanKitCandidates
+	t.Cleanup(func() { choyScanKitCandidates = prevScan })
+	choyScanKitCandidates = func(webRoot string) ([]string, error) {
+		if strings.Contains(filepath.ToSlash(webRoot), "/web/web") && !strings.Contains(filepath.ToSlash(webRoot), "/choy_ui/") {
+			return nil, errors.New("primary kit scan boom")
+		}
+		return prevScan(webRoot)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "primary kit scan boom") {
+		t.Fatalf("expected primary kit scan error, got %v", err)
+	}
+	choyScanKitCandidates = prevScan
 
 	choyProductStat = func(name string) (os.FileInfo, error) {
 		if filepath.Base(name) == "partner" {
@@ -774,8 +822,6 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 	if err := os.WriteFile(siblingDialect, []byte(`@theme { --color-primary: blue; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	prevScan := choyScanKitCandidates
-	t.Cleanup(func() { choyScanKitCandidates = prevScan })
 	choyScanKitCandidates = func(webRoot string) ([]string, error) {
 		if strings.Contains(filepath.ToSlash(webRoot), "/choy_ui/web") {
 			return nil, errors.New("sibling kit scan boom")
@@ -786,6 +832,18 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 		t.Fatalf("expected sibling kit scan error, got %v", err)
 	}
 	choyScanKitCandidates = prevScan
+
+	// vendor/ui Stat non-IsNotExist error surfaces for dialect-bearing siblings.
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		if strings.Contains(filepath.ToSlash(name), "/choy_ui/web/components/vendor/ui") {
+			return nil, errors.New("vendor ui boom")
+		}
+		return prev(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "vendor ui boom") {
+		t.Fatalf("expected vendor/ui Stat error, got %v", err)
+	}
+	choyProductStat = prev
 }
 
 func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
@@ -883,19 +941,21 @@ func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
 	}
 	choyProductStat = prevStat
 
-	// Unreadable file inside domain web → ScanTailwindCandidates error.
-	badFile := filepath.Join(modules, "partner", "web", "Bad.vue")
-	if err := os.WriteFile(badFile, []byte(`<div class="bad"></div>`), 0o644); err != nil {
-		t.Fatal(err)
+	// Domain scan error must surface (chmod 000 is unreliable on root/CI).
+	prevDomain := choyScanDomainCandidates
+	t.Cleanup(func() { choyScanDomainCandidates = prevDomain })
+	choyScanDomainCandidates = func(roots []string) ([]string, error) {
+		for _, r := range roots {
+			if strings.Contains(filepath.ToSlash(r), "/partner/web") {
+				return nil, errors.New("domain scan boom")
+			}
+		}
+		return prevDomain(roots)
 	}
-	if err := os.Chmod(badFile, 0o000); err != nil {
-		t.Fatal(err)
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "domain scan boom") {
+		t.Fatalf("expected domain scan error, got %v", err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(badFile, 0o644) })
-	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil {
-		t.Log("unreadable domain vue did not error on this runner")
-	}
-	_ = os.Chmod(badFile, 0o644)
+	choyScanDomainCandidates = prevDomain
 
 	// No kit root: still scan domain modules.
 	noKit := t.TempDir()

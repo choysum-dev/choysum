@@ -212,18 +212,25 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 			if dialectStat.IsDir() {
 				return nil, fmt.Errorf("%s dialect %s is a directory, not a file", name, dialectPath)
 			}
-			// Sibling kit host (non-selected web/choy_ui) keeps kit filters so
-			// O*/EP-only utilities are not re-admitted into unscoped product CSS.
-			kitCandidates, err := choyScanKitCandidates(webRoot)
-			if err != nil {
-				return nil, err
+			// Same kit-host marker as policy.isKitHostModule: only a module that
+			// owns the vendor/ui tree is a kit host. A domain module that merely
+			// ships its own styles/theme.css keeps full domain scanning.
+			vendorUI, vErr := choyProductStat(filepath.Join(webRoot, "components", "vendor", "ui"))
+			if vErr != nil && !os.IsNotExist(vErr) {
+				return nil, vErr
 			}
-			add(kitCandidates)
-			continue
+			if vErr == nil && vendorUI.IsDir() {
+				kitCandidates, err := choyScanKitCandidates(webRoot)
+				if err != nil {
+					return nil, err
+				}
+				add(kitCandidates)
+				continue
+			}
 		} else if !os.IsNotExist(dialectErr) {
 			return nil, dialectErr
 		}
-		domainCandidates, err := ScanTailwindCandidates([]string{webRoot})
+		domainCandidates, err := choyScanDomainCandidates([]string{webRoot})
 		if err != nil {
 			return nil, err
 		}
@@ -241,6 +248,9 @@ var choyProductStat = os.Stat
 
 // choyScanKitCandidates is ScanChoyKitTailwindCandidates; tests replace it to force kit-scan errors.
 var choyScanKitCandidates = ScanChoyKitTailwindCandidates
+
+// choyScanDomainCandidates is ScanTailwindCandidates; tests replace it to force domain-scan errors.
+var choyScanDomainCandidates = ScanTailwindCandidates
 
 // isChoyKitTailwindInputPath reports whether path under webRoot is Choy kit input
 // (vendor/ui, internal engines, Choy* SFCs/helpers, gallery/dogfood pages, tokens CSS).
