@@ -500,3 +500,31 @@ func TestMaskPascalCaseRawTextTagsClampsBeforeScriptOnUnbalancedDepth(t *testing
 		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
 	}
 }
+
+func TestMaskPascalCaseRawTextTagsScriptUnclosedCommentDoesNotSkipTemplate(t *testing.T) {
+	// Script-first SFC: an unclosed "<!--" inside a script string must not open
+	// an HTML comment through EOF that skips masking the following template.
+	src := `<script setup>const note = "<!-- unclosed"</script>
+<template>
+  <Textarea>typed</Textarea>
+  <span id="after">ok</span>
+</template>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must still be masked, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `<!-- unclosed`) {
+		t.Fatalf("script string must stay intact, got %q", scripts[0].FirstChild.Data)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `id="after"`) {
+		t.Fatalf("non-self-closing Textarea must not swallow following markup, got %q", rendered)
+	}
+}

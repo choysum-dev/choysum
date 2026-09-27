@@ -145,7 +145,9 @@ var vueSfcHTMLParse = parseWithCaseSensitive
 
 func maskPascalCaseRawTextTags(src string) string {
 	scriptStyle := sfcScriptStyleBlock.FindAllStringIndex(src, -1)
-	comments := findHTMLCommentRanges(src)
+	// Comment spans are HTML-context only; a "<!--" literal inside script/style
+	// must not open a range that swallows later <template> markup.
+	comments := findHTMLCommentRanges(src, scriptStyle)
 	inRange := func(pos int, ranges [][]int) bool {
 		for _, r := range ranges {
 			if pos >= r[0] && pos < r[1] {
@@ -234,9 +236,19 @@ func maskPascalCaseRawTextTags(src string) string {
 	return out.String()
 }
 
-// findHTMLCommentRanges returns [start,end) spans of <!-- … --> in src.
-// An unclosed comment runs to EOF.
-func findHTMLCommentRanges(src string) [][]int {
+// findHTMLCommentRanges returns [start,end) spans of <!-- … --> in HTML context.
+// Positions inside skip (typically script/style blocks) are ignored so a "<!--"
+// string literal there cannot open a comment through EOF. An unclosed comment
+// in HTML context still runs to EOF.
+func findHTMLCommentRanges(src string, skip [][]int) [][]int {
+	inSkip := func(pos int) bool {
+		for _, r := range skip {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
 	var ranges [][]int
 	for i := 0; i < len(src); {
 		start := strings.Index(src[i:], "<!--")
@@ -244,6 +256,10 @@ func findHTMLCommentRanges(src string) [][]int {
 			break
 		}
 		start += i
+		if inSkip(start) {
+			i = start + 4
+			continue
+		}
 		endRel := strings.Index(src[start+4:], "-->")
 		if endRel < 0 {
 			ranges = append(ranges, []int{start, len(src)})
