@@ -27,13 +27,13 @@ SPDX-License-Identifier: Apache-2.0
         <KeepAlive>
           <component
             :is="Component"
-            v-if="route.meta.keepAlive"
+            v-if="Component && route.meta.keepAlive"
             :key="String(route.name ?? route.path)"
           />
         </KeepAlive>
         <component
           :is="Component"
-          v-if="!route.meta.keepAlive"
+          v-if="Component && !route.meta.keepAlive"
           :key="route.fullPath"
         />
       </router-view>

@@ -171,6 +171,28 @@ describe('ChoyShellLayout', () => {
     plain.unmount();
   });
 
+  test('skips rendering when router-view has no matched Component', async () => {
+    const mounted = mountApp(ChoyShellLayout as any, {
+      props: { showHeader: false },
+      stubs: {
+        'router-view': {
+          setup: (_props: any, { slots }: any) => {
+            return () =>
+              slots.default?.({
+                Component: undefined,
+                route: { meta: { keepAlive: false }, name: 'AppLayout', path: '/', fullPath: '/' },
+              });
+          },
+        },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=choy-layout]')).not.toBeNull();
+    expect(mounted.q('[data-test=page]')).toBeNull();
+    expect(mounted.q('[data-test=cached]')).toBeNull();
+    mounted.unmount();
+  });
+
   test('keeps cached views alive across a non-keepAlive navigation', async () => {
     let mountCount = 0;
     let activateCount = 0;
