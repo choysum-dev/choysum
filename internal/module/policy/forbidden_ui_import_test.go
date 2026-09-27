@@ -106,6 +106,9 @@ func TestNormalizeImportPathSegments(t *testing.T) {
 		{"@/.", "@/"},
 		{"@/web/web/components/../lib/utils", "@/web/web/lib/utils"},
 		{"web/web/lib/./cn", "web/web/lib/cn"},
+		{"@/web/web/lib?raw", "@/web/web/lib"},
+		{"@/web/web/lib/utils?raw#frag", "@/web/web/lib/utils"},
+		{"?#only", ""},
 	}
 	for _, tc := range cases {
 		if got := normalizeImportPathSegments(tc.in); got != tc.want {
@@ -129,6 +132,7 @@ func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 		{"@/web/web/lib/utils", "web-lib-deep"},
 		{"@/web/web/lib/cn", "web-lib-deep"},
 		{"@/web/web/lib", "web-lib-deep"},
+		{"@/web/web/lib?raw", "web-lib-deep"},
 		{"@/web/web/components/../lib/utils", "web-lib-deep"},
 		{"../web/web/lib/utils", "web-lib-deep"},
 		{"web/web/lib", "web-lib-deep"},

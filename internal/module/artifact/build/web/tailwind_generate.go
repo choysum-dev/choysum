@@ -172,7 +172,8 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		kitName = filepath.Base(kitRoot)
 	}
 	for _, entry := range entries {
-		if !entry.IsDir() {
+		// Symlinked module roots report !IsDir(); let os.Stat(web/) decide.
+		if !entry.IsDir() && entry.Type()&os.ModeSymlink == 0 {
 			continue
 		}
 		name := entry.Name()
@@ -689,6 +690,17 @@ func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwin
 	moduleRoot = strings.TrimSpace(moduleRoot)
 	if moduleRoot == "" {
 		return nil, fmt.Errorf("choy kit module root is empty")
+	}
+	// Keep dialect/output on the same kit root the product scan and
+	// TailwindInputDigest resolve (prefer web over choy_ui), so hashes converge.
+	if mp := strings.TrimSpace(modulesPath); mp != "" {
+		resolved, err := resolveChoyKitModuleRoot(mp)
+		if err != nil {
+			return nil, err
+		}
+		if resolved != "" {
+			moduleRoot = filepath.Clean(resolved)
+		}
 	}
 	webRoot := filepath.Join(moduleRoot, "web")
 	dialectPath := filepath.Join(webRoot, "styles", "theme.css")

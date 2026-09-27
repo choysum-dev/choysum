@@ -536,6 +536,13 @@ func TestModulesPathForKitRoot(t *testing.T) {
 	}
 }
 
+func TestGenerateChoyTailwindForModuleResolveError(t *testing.T) {
+	_, err := generateChoyTailwindForModule(t.TempDir(), "modules\x00root")
+	if err == nil {
+		t.Fatal("expected resolveChoyKitModuleRoot error for NUL modulesPath")
+	}
+}
+
 func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	root := t.TempDir()
 	modules := filepath.Join(root, "modules")
@@ -552,17 +559,25 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	write("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
+	// Non-preferred kit root still present; generate must resolve to web.
+	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
 
-	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "web"))
+	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "choy_ui"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, contentHash, err := TailwindInputDigest(modules)
+	dialectHash, contentHash, err := TailwindInputDigest(modules)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.ContentHash != contentHash {
 		t.Fatalf("exported Generate contentHash %q must match TailwindInputDigest %q", res.ContentHash, contentHash)
+	}
+	if res.DialectHash != dialectHash {
+		t.Fatalf("Generate via choy_ui root must use preferred web dialect hash %q, got %q", dialectHash, res.DialectHash)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(res.OutputPath), "/web/web/styles/"+choyTailwindGeneratedCSSName) {
+		t.Fatalf("output must land under preferred web kit, got %s", res.OutputPath)
 	}
 	data, err := os.ReadFile(res.OutputPath)
 	if err != nil {
@@ -570,6 +585,47 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	}
 	if !strings.Contains(string(data), ".underline") && !strings.Contains(string(data), "text-decoration-line: underline") {
 		t.Fatalf("product scan via Generate must include domain utility:\n%s", data)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesFollowsSymlinkModule(t *testing.T) {
+	modules := t.TempDir()
+	realMod := filepath.Join(t.TempDir(), "partner-real")
+	if err := os.MkdirAll(filepath.Join(realMod, "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(realMod, "web", "Home.vue"), []byte(`<div class="italic"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(modules, "web", "web", "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modules, "web", "web", "styles", "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(modules, "web", "web", "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modules, "web", "web", "components", "vendor", "ui", "B.vue"), []byte(`<div class="flex"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(modules, "partner")
+	if err := os.Symlink(realMod, link); err != nil {
+		t.Skipf("symlink not available: %v", err)
+	}
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, c := range got {
+		if c == "italic" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("symlinked module web/ must be scanned, got %v", got)
 	}
 }
 

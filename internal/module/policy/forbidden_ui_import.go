@@ -276,6 +276,12 @@ func normalizeImportPathSegments(spec string) string {
 	if spec == "" {
 		return ""
 	}
+	if i := strings.IndexAny(spec, "?#"); i >= 0 {
+		spec = strings.TrimSpace(spec[:i])
+	}
+	if spec == "" {
+		return ""
+	}
 	prefix := ""
 	rest := spec
 	if strings.HasPrefix(spec, "@/") {

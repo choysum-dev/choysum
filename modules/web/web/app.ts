@@ -16,8 +16,8 @@ import 'element-plus/theme-chalk/display.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import './styles/tokens.css';
 import './styles/preflight-policy.css';
-import './styles/choy-tailwind.generated.css';
 import './styles/index.scss';
+import './styles/choy-tailwind.generated.css';
 
 const app = createApp(App).setup(setupApp);
 
