@@ -567,6 +567,17 @@ func TestModulesPathForKitRoot(t *testing.T) {
 	if got != want {
 		t.Fatalf("custom modules dir => %q, got %q", want, got)
 	}
+	// Both kit roots under a custom parent: non-preferred choy_ui still maps to parent.
+	choyUI := filepath.Join(custom, "apps", "choy_ui")
+	if err := os.MkdirAll(filepath.Join(choyUI, "web", "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(choyUI, "web", "styles", "theme.css"), []byte(`@theme{ --x: 1; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := modulesPathForKitRoot(choyUI); got != want {
+		t.Fatalf("custom dir choy_ui (web preferred) => %q, got %q", want, got)
+	}
 	// Sibling without dialect must not make an arbitrary parent a modules root.
 	other := filepath.Join(custom, "apps", "partner")
 	if err := os.MkdirAll(filepath.Join(other, "web"), 0o755); err != nil {
@@ -626,6 +637,43 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	}
 	if !strings.Contains(string(data), ".underline") && !strings.Contains(string(data), "text-decoration-line: underline") {
 		t.Fatalf("product scan via Generate must include domain utility:\n%s", data)
+	}
+
+	// Custom modules-dir name with both kit roots: Generate(choy_ui) must still
+	// product-scan and match TailwindInputDigest on the preferred web dialect.
+	customParent := filepath.Join(root, "apps")
+	cwrite := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(customParent, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cwrite("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
+	cwrite("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	cwrite("partner/web/pages/Home.vue", `<div class="overline"></div>`)
+	cwrite("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	cres, err := GenerateChoyTailwindForModule(filepath.Join(customParent, "choy_ui"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cdialect, ccontent, err := TailwindInputDigest(customParent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cres.ContentHash != ccontent || cres.DialectHash != cdialect {
+		t.Fatalf("custom-dir Generate/digest mismatch: gen=%q/%q digest=%q/%q",
+			cres.DialectHash, cres.ContentHash, cdialect, ccontent)
+	}
+	cdata, err := os.ReadFile(cres.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cdata), ".overline") && !strings.Contains(string(cdata), "text-decoration-line: overline") {
+		t.Fatalf("custom-dir product scan must include domain utility:\n%s", cdata)
 	}
 }
 
@@ -749,6 +797,43 @@ func TestScanChoyProductTailwindCandidatesKitHostWithoutDialect(t *testing.T) {
 	}
 	if set["no-dialect-ep-only"] {
 		t.Fatalf("vendor/ui host without dialect must stay kit-filtered, got %v", got)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesChoyUIShellWithoutVendorUI(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	// Thin choy_ui shell: no vendor/ui, but still a kit host by name.
+	write("choy_ui/web/pages/Shell.vue", `<div class="shell-util"></div>`)
+	write("choy_ui/web/components/view/OFormView.vue", `<div class="shell-ep-only"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "domain-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	if set["shell-ep-only"] {
+		t.Fatalf("choy_ui shell without vendor/ui must kit-filter O*.vue, got %v", got)
 	}
 }
 

@@ -4,7 +4,8 @@
 
 /**
  * Module theme overrides — variables only (no utility classes).
- * Loaded after tokens so site/brand can remint --choy-* without forking L2.
+ * Loaded after tokens and index.scss so site/brand can remint --choy-* /
+ * --el-* without forking L2; generated utilities stay last.
  */
 :root,
 .choy-gallery-root,

@@ -215,24 +215,24 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		} else if !os.IsNotExist(dialectErr) {
 			return nil, dialectErr
 		}
-		// Same kit-host marker as policy.isKitHostModule: owning vendor/ui makes
-		// a module a kit host even without styles/theme.css. A domain module that
-		// merely ships a dialect keeps full domain scanning.
+		// Kit hosts: choy_ui is always a host (policy.isKitHostModule), and any
+		// module that owns vendor/ui is a host even without styles/theme.css.
+		// A domain module that merely ships a dialect keeps full domain scanning.
 		vendorUI, vErr := choyProductStat(filepath.Join(webRoot, "components", "vendor", "ui"))
 		if vErr != nil && !os.IsNotExist(vErr) {
 			return nil, vErr
 		}
-		if vErr == nil && vendorUI.IsDir() {
+		if name == "choy_ui" || (vErr == nil && vendorUI.IsDir()) {
 			kitCandidates, err := choyScanKitCandidates(webRoot)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("scan module %s kit candidates under %s: %w", name, webRoot, err)
 			}
 			add(kitCandidates)
 			continue
 		}
 		domainCandidates, err := choyScanDomainCandidates([]string{webRoot})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan module %s candidates under %s: %w", name, webRoot, err)
 		}
 		add(domainCandidates)
 	}
@@ -722,8 +722,8 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 
 // modulesPathForKitRoot returns the parent modules directory for product scans.
 // Prefer a parent literally named "modules"; also accept a non-standard parent
-// name when resolveChoyKitModuleRoot(parent) returns this exact kit root so
-// Generate and TailwindInputDigest stay aligned on custom layouts. Isolated
+// name when that parent resolves to any Choy kit root (web or choy_ui), so
+// Generate(choy_ui) still product-scans when resolve prefers web. Isolated
 // temp kit fixtures (no resolvable sibling kit tree) stay kit-only.
 func modulesPathForKitRoot(moduleRoot string) string {
 	root := filepath.Clean(strings.TrimSpace(moduleRoot))
@@ -737,8 +737,15 @@ func modulesPathForKitRoot(moduleRoot string) string {
 	if filepath.Base(parent) == "modules" {
 		return parent
 	}
-	if resolved, err := resolveChoyKitModuleRoot(parent); err == nil && resolved != "" && filepath.Clean(resolved) == root {
-		return parent
+	if resolved, err := resolveChoyKitModuleRoot(parent); err == nil && resolved != "" {
+		// Accept either recognized kit module under the custom parent, even when
+		// resolve prefers the other root; preferred-root selection stays in
+		// generateChoyTailwindForModule.
+		for _, name := range []string{"web", "choy_ui"} {
+			if filepath.Clean(filepath.Join(parent, name)) == root {
+				return parent
+			}
+		}
 	}
 	return ""
 }
