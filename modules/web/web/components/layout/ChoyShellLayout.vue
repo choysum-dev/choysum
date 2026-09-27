@@ -23,10 +23,19 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <slot>
       <router-view v-slot="{ Component, route }">
-        <KeepAlive v-if="route.meta.keepAlive">
-          <component :is="Component" />
+        <!-- KeepAlive stays mounted so cached views survive non-keepAlive navigations. -->
+        <KeepAlive>
+          <component
+            :is="Component"
+            v-if="route.meta.keepAlive"
+            :key="String(route.name ?? route.path)"
+          />
         </KeepAlive>
-        <component v-else :is="Component" />
+        <component
+          :is="Component"
+          v-if="!route.meta.keepAlive"
+          :key="route.fullPath"
+        />
       </router-view>
     </slot>
     <template v-if="showFooter && $slots.footer" #footer>

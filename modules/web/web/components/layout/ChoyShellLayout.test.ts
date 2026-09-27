@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, onActivated, ref } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyShellLayout from './ChoyShellLayout.vue';
 import ChoyLayout from './ChoyLayout.vue';
@@ -152,7 +152,7 @@ describe('ChoyShellLayout', () => {
               return () =>
                 slots.default?.({
                   Component: Page,
-                  route: { meta: { keepAlive }, name: 'Demo' },
+                  route: { meta: { keepAlive }, name: 'Demo', path: '/demo', fullPath: '/demo' },
                 });
             },
           },
@@ -169,5 +169,61 @@ describe('ChoyShellLayout', () => {
     await flushPromises();
     expect(plain.q('[data-test=page]')?.textContent).toBe('ok');
     plain.unmount();
+  });
+
+  test('keeps cached views alive across a non-keepAlive navigation', async () => {
+    let mountCount = 0;
+    let activateCount = 0;
+    const CachedPage = defineComponent({
+      name: 'CachedPage',
+      setup() {
+        mountCount += 1;
+        onActivated(() => {
+          activateCount += 1;
+        });
+        return () => h('div', { 'data-test': 'cached' }, `m${mountCount}`);
+      },
+    });
+    const PlainPage = defineComponent({
+      name: 'PlainPage',
+      setup: () => () => h('div', { 'data-test': 'plain' }, 'plain'),
+    });
+
+    const current = ref({
+      Component: CachedPage as any,
+      route: { meta: { keepAlive: true }, name: 'Cached', path: '/cached', fullPath: '/cached' },
+    });
+
+    const mounted = mountApp(ChoyShellLayout as any, {
+      props: { showHeader: false },
+      stubs: {
+        'router-view': {
+          setup: (_props: any, { slots }: any) => {
+            return () => slots.default?.(current.value);
+          },
+        },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
+    expect(mountCount).toBe(1);
+    const activatesAfterFirst = activateCount;
+
+    current.value = {
+      Component: PlainPage as any,
+      route: { meta: { keepAlive: false }, name: 'Plain', path: '/plain', fullPath: '/plain' },
+    };
+    await flushPromises();
+    expect(mounted.q('[data-test=plain]')?.textContent).toBe('plain');
+
+    current.value = {
+      Component: CachedPage as any,
+      route: { meta: { keepAlive: true }, name: 'Cached', path: '/cached', fullPath: '/cached' },
+    };
+    await flushPromises();
+    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
+    expect(mountCount).toBe(1);
+    expect(activateCount).toBeGreaterThan(activatesAfterFirst);
+    mounted.unmount();
   });
 });

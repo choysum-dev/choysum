@@ -25,7 +25,8 @@ export const routes: RouteRecordRaw[] = [
     props: {
       showSidebar: false,
       showHeader: true,
-      showFooter: true,
+      // Footer slot cannot be filled via router-view; omit empty chrome.
+      showFooter: false,
     },
     children: [
       defineRoute('web.route.home', {
@@ -48,11 +49,11 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('../components/layout/ChoyShellLayout.vue'),
     name: 'AppLayout',
     props: {
-      // Sidebar chrome waits for menu content; route components cannot fill
-      // ChoyShellLayout named slots via a plain router-view.
+      // Sidebar/footer chrome wait for menu content; route components cannot
+      // fill ChoyShellLayout named slots via a plain router-view.
       showSidebar: false,
       showHeader: true,
-      showFooter: true,
+      showFooter: false,
     },
     children: [],
   },

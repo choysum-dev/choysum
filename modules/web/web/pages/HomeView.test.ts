@@ -71,12 +71,16 @@ describe('HomeView', () => {
 
   test('resyncs theme labels when a keepAlive view is re-activated', async () => {
     const visible = ref(true);
+    const Parked = defineComponent({
+      name: 'ParkedView',
+      setup: () => () => h('div', { 'data-test': 'parked' }),
+    });
     const Host = defineComponent({
       setup() {
         return () =>
-          visible.value
-            ? h(KeepAlive, null, { default: () => h(HomeView as any) })
-            : h('div', { 'data-test': 'parked' });
+          h(KeepAlive, null, {
+            default: () => (visible.value ? h(HomeView as any) : h(Parked)),
+          });
       },
     });
 
