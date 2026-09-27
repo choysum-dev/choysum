@@ -193,7 +193,7 @@ describe('ChoyShellLayout', () => {
     mounted.unmount();
   });
 
-  test('remounts keepAlive views when fullPath changes under the same name', async () => {
+  test('remounts keepAlive views when path params change under the same name', async () => {
     let mountCount = 0;
     const CachedPage = defineComponent({
       name: 'ParamCachedPage',
@@ -238,6 +238,54 @@ describe('ChoyShellLayout', () => {
     await flushPromises();
     expect(mounted.q('[data-test=cached]')?.textContent).toBe('m2');
     expect(mountCount).toBe(2);
+    mounted.unmount();
+  });
+
+  test('reuses keepAlive cache when only the query string changes', async () => {
+    let mountCount = 0;
+    const CachedPage = defineComponent({
+      name: 'QueryCachedPage',
+      setup() {
+        mountCount += 1;
+        return () => h('div', { 'data-test': 'cached' }, `m${mountCount}`);
+      },
+    });
+
+    const current = ref({
+      Component: CachedPage as any,
+      route: {
+        meta: { keepAlive: true },
+        name: 'Home',
+        path: '/home',
+        fullPath: '/home?tab=a',
+      },
+    });
+
+    const mounted = mountApp(ChoyShellLayout as any, {
+      props: { showHeader: false },
+      stubs: {
+        'router-view': {
+          setup: (_props: any, { slots }: any) => {
+            return () => slots.default?.(current.value);
+          },
+        },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
+
+    current.value = {
+      Component: CachedPage as any,
+      route: {
+        meta: { keepAlive: true },
+        name: 'Home',
+        path: '/home',
+        fullPath: '/home?tab=b',
+      },
+    };
+    await flushPromises();
+    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
+    expect(mountCount).toBe(1);
     mounted.unmount();
   });
 
