@@ -215,6 +215,8 @@ func classifyForbiddenUiImport(spec string) string {
 	}
 	slash := filepath.ToSlash(spec)
 	lower := strings.ToLower(slash)
+	// Normalize once so ./ ../ and ?/# cannot bypass any ban rule below.
+	lower = normalizeImportPathSegments(lower)
 
 	if lower == "reka-ui" || strings.HasPrefix(lower, "reka-ui/") {
 		return "reka-ui"
@@ -247,31 +249,31 @@ func classifyForbiddenUiImport(spec string) string {
 
 // classifyCutoverForbiddenUiImport returns cutover-only rule ids (element-plus,
 // @/web deep lib). Public barrel imports from "@/web" (Choy*) stay allowed.
+// lower is already normalized by classifyForbiddenUiImport.
 func classifyCutoverForbiddenUiImport(lower string) string {
-	n := normalizeImportPathSegments(lower)
-	if n == "element-plus" || strings.HasPrefix(n, "element-plus/") {
+	if lower == "element-plus" || strings.HasPrefix(lower, "element-plus/") {
 		return "element-plus"
 	}
-	if n == "@element-plus/icons-vue" || strings.HasPrefix(n, "@element-plus/") {
+	if lower == "@element-plus/icons-vue" || strings.HasPrefix(lower, "@element-plus/") {
 		return "element-plus"
 	}
-	if isForbiddenWebLibDeepPath(n) {
+	if isForbiddenWebLibDeepPath(lower) {
 		return "web-lib-deep"
 	}
 	return ""
 }
 
-func isForbiddenWebLibDeepPath(lower string) bool {
-	n := normalizeImportPathSegments(lower)
+func isForbiddenWebLibDeepPath(n string) bool {
+	// Caller passes a path already cleaned by normalizeImportPathSegments.
 	if strings.Contains(n, "/web/web/lib/") || strings.HasSuffix(n, "/web/web/lib") {
 		return true
 	}
 	return n == "web/web/lib" || strings.HasPrefix(n, "web/web/lib/")
 }
 
-// normalizeImportPathSegments cleans "." / ".." segments in an import specifier
-// while preserving a leading "@/". Used so cutover deep-lib bans cannot be
-// bypassed with paths like "@/web/web/components/../lib/utils".
+// normalizeImportPathSegments cleans "." / ".." segments and strips ?/# suffixes
+// while preserving a leading "@/". Applied once in classifyForbiddenUiImport so
+// every ban rule sees the same canonical specifier.
 func normalizeImportPathSegments(spec string) string {
 	spec = strings.TrimSpace(spec)
 	if spec == "" {
