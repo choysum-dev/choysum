@@ -669,6 +669,8 @@ func TestIsChoyTailwindGeneratedKitPath(t *testing.T) {
 		{"choy_ui/web/" + choyTailwindGeneratedCSSName, false},
 		{"other/web/styles/" + choyTailwindGeneratedCSSName, false},
 		{"choy_ui_extra/web/styles/" + choyTailwindGeneratedCSSName, false},
+		{"/abs/modules/myweb/web/styles/" + choyTailwindGeneratedCSSName, false},
+		{"mychoy_ui/web/styles/" + choyTailwindGeneratedCSSName, false},
 		{"choy_ui/web/styles/other.css", false},
 		{"not-the-file.css", false},
 	}

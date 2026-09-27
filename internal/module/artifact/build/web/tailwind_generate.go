@@ -150,9 +150,11 @@ func isChoyKitTailwindInputPath(webRoot, path string) bool {
 		return strings.HasSuffix(lower, ".css") &&
 			!strings.HasSuffix(lower, ".generated.css") &&
 			lower != choyTailwindGeneratedCSSName
-	case strings.HasPrefix(slash, "components/vendor/"),
+	case strings.HasPrefix(slash, "components/vendor/ui/"),
 		strings.HasPrefix(slash, "components/internal/"),
 		strings.HasPrefix(slash, "lib/"):
+		// Only the L2 kit vendor tree is Choy input; other vendor subtrees would
+		// inflate candidates and blow the soft generate budget.
 		return true
 	case strings.HasPrefix(slash, "composables/"):
 		return strings.Contains(base, "Choy") || strings.Contains(base, "choy")

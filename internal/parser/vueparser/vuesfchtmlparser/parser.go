@@ -167,35 +167,19 @@ func rawTextTagNameFromMatch(m string) string {
 }
 func maskPascalCaseRawTextTags(src string) string {
 	// Script/style ranges ignore openers that sit inside HTML comments (e.g.
-	// <!-- <script> -->), then comment spans ignore "<!--" inside real blocks.
+	// <!-- <script> -->). Comment vs mustache/attr discovery is interleaved:
+	// seed ranges from a first comment pass let a "<!--" inside a quoted attr
+	// be ignored on the second comment pass; final mustache/attr discovery then
+	// skips the corrected comments so an unclosed "{{" inside <!-- … --> cannot
+	// run to EOF and hide later quoted attrs (including after a phantom <!--).
 	scriptStyle := findScriptStyleRanges(src)
 	comments := findHTMLCommentRanges(src, scriptStyle)
-	// Template open/close candidates must also ignore mustaches and quoted
-	// attribute values — a literal "</template>" there must not close the region.
-	// Ranges that start inside script/style are string/code, not template text.
-	mustacheAttr := findMustacheAndQuotedAttrRanges(src)
-	kept := mustacheAttr[:0]
-	for _, r := range mustacheAttr {
-		skip := false
-		for _, s := range scriptStyle {
-			if r[0] >= s[0] && r[0] < s[1] {
-				skip = true
-				break
-			}
-		}
-		if !skip {
-			for _, c := range comments {
-				if r[0] >= c[0] && r[0] < c[1] {
-					skip = true
-					break
-				}
-			}
-		}
-		if !skip {
-			kept = append(kept, r)
-		}
-	}
-	protected := append(append([][]int{}, comments...), kept...)
+	seed := findMustacheAndQuotedAttrRanges(src, comments)
+	skipForComments := append(append([][]int{}, scriptStyle...), seed...)
+	comments = findHTMLCommentRanges(src, skipForComments)
+	skipForMustache := append(append([][]int{}, scriptStyle...), comments...)
+	mustacheAttr := findMustacheAndQuotedAttrRanges(src, skipForMustache)
+	protected := append(append([][]int{}, comments...), mustacheAttr...)
 	inRange := func(pos int, ranges [][]int) bool {
 		for _, r := range ranges {
 			if pos >= r[0] && pos < r[1] {
@@ -334,10 +318,31 @@ func findScriptStyleRanges(src string) [][]int {
 
 // findMustacheAndQuotedAttrRanges returns [start,end) spans that cannot hold a
 // real template tag: Vue mustaches {{ … }} and quoted attribute values inside
-// HTML tags. A literal "</template>" in those spans must not affect depth.
-func findMustacheAndQuotedAttrRanges(src string) [][]int {
+// HTML tags. Positions inside skip (typically HTML comments) are ignored so an
+// unclosed "{{" there cannot run to EOF. A literal "</template>" in returned
+// spans must not affect depth.
+func findMustacheAndQuotedAttrRanges(src string, skip [][]int) [][]int {
+	inSkip := func(pos int) bool {
+		for _, r := range skip {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
 	var ranges [][]int
 	for i := 0; i < len(src); {
+		if inSkip(i) {
+			// Jump to the end of the covering skip span.
+			end := i + 1
+			for _, r := range skip {
+				if i >= r[0] && i < r[1] && r[1] > end {
+					end = r[1]
+				}
+			}
+			i = end
+			continue
+		}
 		if i+1 < len(src) && src[i] == '{' && src[i+1] == '{' {
 			start := i
 			j := i + 2

@@ -701,15 +701,15 @@ func TestMaskPascalCaseRawTextTagsLiteralCloseInMustacheAndAttr(t *testing.T) {
 }
 
 func TestFindMustacheAndQuotedAttrRangesEdges(t *testing.T) {
-	ranges := findMustacheAndQuotedAttrRanges(`before {{ unclosed`)
+	ranges := findMustacheAndQuotedAttrRanges(`before {{ unclosed`, nil)
 	if len(ranges) != 1 || ranges[0][1] != len(`before {{ unclosed`) {
 		t.Fatalf("unclosed mustache must span to EOF, got %v", ranges)
 	}
-	ranges = findMustacheAndQuotedAttrRanges(`<div title="a\"b">`)
+	ranges = findMustacheAndQuotedAttrRanges(`<div title="a\"b">`, nil)
 	if len(ranges) != 1 {
 		t.Fatalf("escaped quote in attr must yield one range, got %v", ranges)
 	}
-	ranges = findMustacheAndQuotedAttrRanges(`<div title="unterminated`)
+	ranges = findMustacheAndQuotedAttrRanges(`<div title="unterminated`, nil)
 	if len(ranges) != 0 {
 		// Unclosed tag: no completed quoted span; scanner stops at EOF.
 		t.Fatalf("unterminated tag should not invent a closed range, got %v", ranges)
@@ -738,6 +738,58 @@ func TestMaskPascalCaseRawTextTagsCommentMustacheDoesNotHideTemplate(t *testing.
 	got := maskPascalCaseRawTextTags(src)
 	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
 		t.Fatalf("template Textarea must still be masked, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsCommentMustacheWithQuotedClose(t *testing.T) {
+	// Comment-skipped mustache discovery must still record later quoted attrs so
+	// title="</template>" does not close the region early.
+	src := `<!-- {{ unclosed -->
+<template>
+  <div title="</template>"><Textarea><span id="inner">x</span></Textarea></div>
+</template>
+<script setup></script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after comment+quoted close must mask, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script, got %d", len(scripts))
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `id="inner"`) {
+		t.Fatalf("nested markup must survive, got %q", rendered)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsCommentMarkerInAttr(t *testing.T) {
+	// A "<!--" inside a quoted attribute must not open a phantom comment that
+	// hides a later title="</template>" or nested Textarea.
+	src := `<template>
+  <div data-x="<!--" title="</template>"><Textarea><span id="inner">x</span></Textarea></div>
+</template>
+<script setup></script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after attr comment marker must mask, got %q", got)
+	}
+	_, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `id="inner"`) {
+		t.Fatalf("nested markup must survive, got %q", rendered)
 	}
 }
 

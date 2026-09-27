@@ -43,6 +43,17 @@ type E2EBundleResult struct {
 	JSPath string
 }
 
+// e2eExactPinsWithoutVue loads exact pins from modules/web/package.json and drops
+// vue so the embedded host remains the single Vue instance (same as vueHostBareImportPins).
+func e2eExactPinsWithoutVue(repoRoot string) (map[string]string, error) {
+	pins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	if err != nil {
+		return nil, err
+	}
+	delete(pins, "vue")
+	return pins, nil
+}
+
 // WriteE2EEntry writes a generated entry that imports each absolute spec path.
 func WriteE2EEntry(entryPath string, specFiles []string) error {
 	if strings.TrimSpace(entryPath) == "" {
@@ -168,7 +179,7 @@ func BuildE2EBundle(opts E2EBundleOptions) (*E2EBundleResult, error) {
 		esmresolver.WithTarget("es2020"),
 		esmresolver.WithModulePath(repoRoot),
 	}
-	if pins, pinErr := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web")); pinErr != nil {
+	if pins, pinErr := e2eExactPinsWithoutVue(repoRoot); pinErr != nil {
 		return nil, xfmt.Errorf("e2e bundle: exact pins from modules/web/package.json: %w", pinErr)
 	} else if len(pins) > 0 {
 		esmOpts = append(esmOpts, esmresolver.WithBareImportPins(pins))

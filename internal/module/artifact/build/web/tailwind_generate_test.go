@@ -401,6 +401,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	write("styles/"+choyTailwindGeneratedCSSName, `/* generated */`)
 	write("styles/foo.generated.css", `/* generated sibling */`)
 	write("components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("components/vendor/ep/ElButton.vue", `<div class="ep-only-util"></div>`)
 	write("components/internal/engine.ts", `export const c = "gap-2"`)
 	write("lib/utils.ts", `export const c = "p-2"`)
 	write("composables/useChoyTheme.ts", `export const c = "text-sm"`)
@@ -468,7 +469,7 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border", "test-only-util", "spec-only-util", "tests-dir-util"} {
+	for _, deny := range []string{"should-skip", "max-w-0", "sr-only", "hidden", "opacity-0", "border", "test-only-util", "spec-only-util", "tests-dir-util", "ep-only-util"} {
 		if set[deny] {
 			t.Fatalf("unexpected candidate %q in %v", deny, got)
 		}
