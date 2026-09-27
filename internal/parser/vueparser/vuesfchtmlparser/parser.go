@@ -159,14 +159,22 @@ func maskPascalCaseRawTextTags(src string) string {
 	mustacheAttr := findMustacheAndQuotedAttrRanges(src)
 	kept := mustacheAttr[:0]
 	for _, r := range mustacheAttr {
-		inScript := false
+		skip := false
 		for _, s := range scriptStyle {
 			if r[0] >= s[0] && r[0] < s[1] {
-				inScript = true
+				skip = true
 				break
 			}
 		}
-		if !inScript {
+		if !skip {
+			for _, c := range comments {
+				if r[0] >= c[0] && r[0] < c[1] {
+					skip = true
+					break
+				}
+			}
+		}
+		if !skip {
 			kept = append(kept, r)
 		}
 	}

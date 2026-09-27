@@ -165,7 +165,9 @@ func isChoyKitTailwindInputPath(webRoot, path string) bool {
 		strings.HasPrefix(slash, "components/view/"),
 		strings.HasPrefix(slash, "components/field/"),
 		strings.HasPrefix(slash, "components/chatter/"):
-		if strings.HasPrefix(base, "O") {
+		// Element Plus product views are O*.vue; a kit .ts helper that merely
+		// starts with "O" must not be dropped from candidate scanning.
+		if strings.HasPrefix(base, "O") && strings.EqualFold(filepath.Ext(base), ".vue") {
 			return false
 		}
 		return strings.HasPrefix(base, "Choy") ||

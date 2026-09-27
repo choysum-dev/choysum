@@ -36,7 +36,12 @@ func isKitHostModule(modulesPath, moduleName string) bool {
 		}
 		kitDir := filepath.Join(modulesPath, kitHostModuleCutover, "web", "components", "vendor", "ui")
 		st, err := os.Stat(kitDir)
-		return err == nil && st.IsDir()
+		if err != nil {
+			// Only a definitive absence means web is not (yet) the kit host; any
+			// other stat failure must not silently re-enable the ban for web.
+			return !os.IsNotExist(err)
+		}
+		return st.IsDir()
 	default:
 		return false
 	}

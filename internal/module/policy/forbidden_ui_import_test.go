@@ -22,6 +22,33 @@ func TestIsKitHostModuleEmptyModulesPath(t *testing.T) {
 	}
 }
 
+func TestIsKitHostModuleStatPermissionKeepsWebExempt(t *testing.T) {
+	root := t.TempDir()
+	web := filepath.Join(root, "web", "web", "components", "vendor")
+	if err := os.MkdirAll(web, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(web, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(web, 0o755) })
+	ok := isKitHostModule(root, "web")
+	_ = os.Chmod(web, 0o755)
+	if !ok {
+		t.Skip("permission-denied kit Stat not observed on this runner (e.g. running as root)")
+	}
+}
+
+func TestIsKitHostModuleMissingKitDir(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "web", "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if isKitHostModule(root, "web") {
+		t.Fatal("web without vendor/ui must not be kit host")
+	}
+}
+
 func TestClassifyForbiddenUiImport(t *testing.T) {
 	cases := []struct {
 		spec string

@@ -713,6 +713,19 @@ func TestMaskPascalCaseRawTextTagsScriptMustacheDoesNotHideTemplate(t *testing.T
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsCommentMustacheDoesNotHideTemplate(t *testing.T) {
+	// A closed comment containing an unmatched "{{" must not protect past -->.
+	src := `<!-- {{ unclosed -->
+<template>
+  <Textarea><span id="inner">x</span></Textarea>
+</template>
+<script setup></script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must still be masked, got %q", got)
+	}
+}
+
 func TestFindScriptStyleRangesCrossScriptCommentMarkers(t *testing.T) {
 	// "<!--" / "-->" split across script string literals must not hide a real
 	// middle <script> block from scriptStyle ranges.
