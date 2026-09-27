@@ -775,6 +775,24 @@ func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
 	}
 }
 
+func TestResolveChoyKitModuleRootUIStatPermissionError(t *testing.T) {
+	root := t.TempDir()
+	web := filepath.Join(root, "web", "web")
+	blockedParent := filepath.Join(web, "components", "vendor")
+	if err := os.MkdirAll(blockedParent, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(blockedParent, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blockedParent, 0o755) })
+	_, err := resolveChoyKitModuleRoot(root)
+	_ = os.Chmod(blockedParent, 0o755)
+	if err == nil {
+		t.Skip("permission-denied UI stat not observed on this runner (e.g. running as root)")
+	}
+}
+
 func TestScopeChoyThemeCSS(t *testing.T) {
 	in := ":root, :host {\n  --color-primary: red;\n}\n"
 	got := scopeChoyThemeCSS(in)

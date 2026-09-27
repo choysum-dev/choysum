@@ -124,8 +124,10 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 
 // pascalCaseRawTextTag matches Vue component tags whose local names collide with
 // HTML raw-text / RCDATA elements when lowercased by the tokenizer.
+// Includes common mixed-case spellings (TextArea, IFrame, …); the tokenizer is
+// case-insensitive, so those variants would otherwise swallow following blocks.
 // Go regexp has no lookahead; the trailing delimiter is re-emitted by the replacer.
-var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|Title|Style|Script|Noscript|Iframe|Noembed|Noframes|Xmp|Plaintext)([\s/>])`)
+var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|TextArea|Title|Style|Script|Noscript|NoScript|Iframe|IFrame|Noembed|NoEmbed|Noframes|NoFrames|Xmp|Plaintext|PlainText)([\s/>])`)
 
 var sfcTemplateOpen = regexp.MustCompile(`(?i)<template\b(?:[^>"']|"[^"]*"|'[^']*')*>`)
 var sfcTemplateClose = regexp.MustCompile(`(?i)</template\s*>`)
@@ -143,14 +145,17 @@ var vueSfcHTMLParse = parseWithCaseSensitive
 
 func maskPascalCaseRawTextTags(src string) string {
 	scriptStyle := sfcScriptStyleBlock.FindAllStringIndex(src, -1)
-	inScriptOrStyle := func(pos int) bool {
-		for _, r := range scriptStyle {
+	comments := findHTMLCommentRanges(src)
+	inRange := func(pos int, ranges [][]int) bool {
+		for _, r := range ranges {
 			if pos >= r[0] && pos < r[1] {
 				return true
 			}
 		}
 		return false
 	}
+	inScriptOrStyle := func(pos int) bool { return inRange(pos, scriptStyle) }
+	inComment := func(pos int) bool { return inRange(pos, comments) }
 
 	var out strings.Builder
 	out.Grow(len(src) + 32)
@@ -163,8 +168,8 @@ func maskPascalCaseRawTextTags(src string) string {
 		}
 		openStart := i + openLoc[0]
 		openEnd := i + openLoc[1]
-		if inScriptOrStyle(openStart) {
-			// Literal "<template" inside script/style — copy through and keep scanning.
+		if inScriptOrStyle(openStart) || inComment(openStart) {
+			// Literal "<template" inside script/style/comment — copy through.
 			out.WriteString(src[i:openEnd])
 			i = openEnd
 			continue
@@ -183,16 +188,33 @@ func maskPascalCaseRawTextTags(src string) string {
 			nextOpen := sfcTemplateOpen.FindStringIndex(src[pos:])
 			nextClose := sfcTemplateClose.FindStringIndex(src[pos:])
 			if nextClose == nil {
-				out.WriteString(maskPascalCaseRawTextTagsOutsideQuotes(src[bodyStart:]))
+				// Unbalanced depth (e.g. "<template" literal in an attribute) must
+				// not mask past the next script/style block — those bodies are
+				// TextNodes and cannot be repaired by unmaskPascalCaseRawTextTags.
+				end := len(src)
+				if m := sfcScriptStyleBlock.FindStringIndex(src[bodyStart:]); m != nil {
+					end = bodyStart + m[0]
+				}
+				out.WriteString(maskPascalCaseRawTextTagsOutsideQuotes(src[bodyStart:end]))
+				out.WriteString(src[end:])
 				return out.String()
 			}
 			closeAt := pos + nextClose[0]
 			closeEnd := pos + nextClose[1]
+			if inComment(closeAt) {
+				pos = closeEnd
+				continue
+			}
 			if nextOpen != nil {
 				openAt := pos + nextOpen[0]
 				if openAt < closeAt {
-					nestedTag := src[openAt : pos+nextOpen[1]]
-					pos = pos + nextOpen[1]
+					nestedEnd := pos + nextOpen[1]
+					if inComment(openAt) {
+						pos = nestedEnd
+						continue
+					}
+					nestedTag := src[openAt:nestedEnd]
+					pos = nestedEnd
 					if !isSelfClosingHTMLOpenTag(nestedTag) {
 						depth++
 					}
@@ -210,6 +232,28 @@ func maskPascalCaseRawTextTags(src string) string {
 		}
 	}
 	return out.String()
+}
+
+// findHTMLCommentRanges returns [start,end) spans of <!-- … --> in src.
+// An unclosed comment runs to EOF.
+func findHTMLCommentRanges(src string) [][]int {
+	var ranges [][]int
+	for i := 0; i < len(src); {
+		start := strings.Index(src[i:], "<!--")
+		if start < 0 {
+			break
+		}
+		start += i
+		endRel := strings.Index(src[start+4:], "-->")
+		if endRel < 0 {
+			ranges = append(ranges, []int{start, len(src)})
+			break
+		}
+		end := start + 4 + endRel + 3
+		ranges = append(ranges, []int{start, end})
+		i = end
+	}
+	return ranges
 }
 
 // isSelfClosingHTMLOpenTag reports whether openTag (including trailing '>') ends with />.
@@ -233,6 +277,18 @@ func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
 	for i < len(s) {
 		c := s[i]
 		switch {
+		case !inTag && c == '<' && strings.HasPrefix(s[i:], "<!--"):
+			// Comments are CommentNodes after parse; leave their text unmasked.
+			out.WriteString(replacePascalCaseRawTextTags(s[segStart:i]))
+			endRel := strings.Index(s[i+4:], "-->")
+			if endRel < 0 {
+				out.WriteString(s[i:])
+				return out.String()
+			}
+			end := i + 4 + endRel + 3
+			out.WriteString(s[i:end])
+			i = end
+			segStart = i
 		case c == '<':
 			if looksLikeHTMLTagOpener(s, i) {
 				inTag = true
@@ -326,8 +382,14 @@ func unmaskPascalCaseRawTextTags(n *html.Node) {
 	if n == nil {
 		return
 	}
-	if n.Type == html.ElementNode && strings.HasPrefix(n.Data, vueRawTextMaskPrefix) {
-		n.Data = strings.TrimPrefix(n.Data, vueRawTextMaskPrefix)
+	switch n.Type {
+	case html.ElementNode:
+		if strings.HasPrefix(n.Data, vueRawTextMaskPrefix) {
+			n.Data = strings.TrimPrefix(n.Data, vueRawTextMaskPrefix)
+		}
+	case html.CommentNode:
+		// Comments are plain text; element rename never restores them.
+		n.Data = strings.ReplaceAll(n.Data, vueRawTextMaskPrefix, "")
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		unmaskPascalCaseRawTextTags(c)

@@ -749,7 +749,12 @@ func resolveChoyKitModuleRoot(modulesPath string) (string, error) {
 			if os.IsNotExist(err) {
 				// A module that already hosts the kit tree but lost its dialect is a
 				// broken install, not a host that never carried the kit.
-				if kitSt, kitErr := os.Stat(filepath.Join(webRoot, "components", "vendor", "ui")); kitErr == nil && kitSt.IsDir() {
+				kitSt, kitErr := os.Stat(filepath.Join(webRoot, "components", "vendor", "ui"))
+				if kitErr != nil {
+					if !os.IsNotExist(kitErr) {
+						return "", kitErr
+					}
+				} else if kitSt.IsDir() {
 					return "", fmt.Errorf("%s module present but dialect %s is missing", name, dialectPath)
 				}
 				continue
