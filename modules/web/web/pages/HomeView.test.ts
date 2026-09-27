@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
+import { KeepAlive, defineComponent, h, ref } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import {
   applyChoyThemePreference,
@@ -64,6 +64,33 @@ describe('HomeView', () => {
     mounted.click('[data-test=refresh]');
     await flushPromises();
 
+    expect(mounted.text()).toContain('dark');
+    expect(mounted.text()).toContain('compact');
+    mounted.unmount();
+  });
+
+  test('resyncs theme labels when a keepAlive view is re-activated', async () => {
+    const visible = ref(true);
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          visible.value
+            ? h(KeepAlive, null, { default: () => h(HomeView as any) })
+            : h('div', { 'data-test': 'parked' });
+      },
+    });
+
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    expect(mounted.text()).toContain('light');
+
+    applyChoyThemePreference({ theme: 'dark', density: 'compact' });
+    visible.value = false;
+    await flushPromises();
+    expect(mounted.q('[data-test=parked]')).not.toBeNull();
+
+    visible.value = true;
+    await flushPromises();
     expect(mounted.text()).toContain('dark');
     expect(mounted.text()).toContain('compact');
     mounted.unmount();

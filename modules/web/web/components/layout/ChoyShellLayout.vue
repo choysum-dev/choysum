@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyLayout
     :show-header="showHeader"
     :show-aside="showSidebar && !!$slots.aside"
-    :show-footer="showFooter"
+    :show-footer="showFooter && !!$slots.footer"
     class="min-h-screen"
   >
     <template v-if="showHeader" #header>
@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
     <slot>
       <router-view />
     </slot>
-    <template v-if="showFooter" #footer>
+    <template v-if="showFooter && $slots.footer" #footer>
       <div class="px-4 py-2 text-xs text-foreground/60">
         <slot name="footer" />
       </div>

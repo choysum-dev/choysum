@@ -94,6 +94,20 @@ describe('ChoyShellLayout', () => {
     mounted.unmount();
   });
 
+  test('skips empty footer chrome when showFooter lacks footer slot', async () => {
+    const mounted = mountApp(ChoyShellLayout as any, {
+      props: { showHeader: true, showSidebar: false, showFooter: true },
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    const root = mounted.q('[data-test=choy-layout]');
+    expect(root?.getAttribute('data-footer')).toBe('false');
+    expect(mounted.q('[data-test=slot-footer]')).toBeNull();
+    mounted.unmount();
+  });
+
   test('hides header chrome when showHeader is false', async () => {
     const mounted = mountApp(ChoyShellLayout as any, {
       props: { showHeader: false, showSidebar: false, showFooter: false },

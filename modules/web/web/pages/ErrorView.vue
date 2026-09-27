@@ -57,6 +57,13 @@ function pickQueryString(value: unknown): string | undefined {
   return first == null || first === '' ? undefined : String(first);
 }
 
+/** Same-app absolute path only; rejects protocol-relative `//host` and non-paths. */
+function sameAppPath(value: unknown): string | undefined {
+  const raw = pickQueryString(value);
+  if (!raw || !/^\/(?!\/)/.test(raw)) return undefined;
+  return raw;
+}
+
 const errorConfig = computed<ErrorConfig>(() => {
   // Auth/web redirects use static paths (/error/403) rather than :code params.
   const pathMatch = route.path.match(/\/error\/(\d+)/);
@@ -68,7 +75,7 @@ const errorConfig = computed<ErrorConfig>(() => {
     case '403': {
       const reason = pickQueryString(route.query.reason);
       const message = pickQueryString(route.query.message);
-      const fromPath = pickQueryString(route.query.from);
+      const fromPath = sameAppPath(route.query.from);
       let subtitle = _t('You do not have permission to access this page');
       if (reason === 'role') {
         subtitle = _t('You are missing the required role');

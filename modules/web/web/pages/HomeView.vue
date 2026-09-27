@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onActivated, ref } from 'vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyCard from '@/web/web/components/layout/ChoyCard.vue';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
@@ -55,6 +55,11 @@ const prefs = ref(readChoyThemePreference());
 
 const themeLabel = computed(() => prefs.value.theme ?? 'light');
 const densityLabel = computed(() => prefs.value.density ?? 'comfortable');
+
+// Home is keepAlive; re-read persisted prefs when the cached view is shown again.
+onActivated(() => {
+  prefs.value = readChoyThemePreference();
+});
 
 function refresh() {
   const next = readChoyThemePreference();
