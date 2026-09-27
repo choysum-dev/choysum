@@ -4,16 +4,22 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OSearch
-    :store="store"
-    :placeholder="effectivePlaceholder"
-    :current-keyword="keywordForChild"
-    :current-applied-filters="appliedFiltersForChild"
-    :current-applied-groups="appliedGroupsForChild"
-    :default-filters="codeDefaultFilters"
-    @query-update="onQueryUpdate"
-    @defaults-ready="onDefaultsReady"
-  />
+  <div
+    class="o-search-view"
+    :inert="disabled || undefined"
+    :aria-disabled="disabled ? 'true' : undefined"
+  >
+    <OSearch
+      :store="store"
+      :placeholder="effectivePlaceholder"
+      :current-keyword="keywordForChild"
+      :current-applied-filters="appliedFiltersForChild"
+      :current-applied-groups="appliedGroupsForChild"
+      :default-filters="codeDefaultFilters"
+      @query-update="onQueryUpdate"
+      @defaults-ready="onDefaultsReady"
+    />
+  </div>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
@@ -33,6 +39,8 @@ const props = withDefaults(
   defineProps<{
     store: WebModelStore<T>;
     placeholder?: string;
+    /** When true, blocks pointer/keyboard interaction with the search chrome. */
+    disabled?: boolean;
     // Controlled overrides take precedence over store.state.queryState.
     keyword?: string;
     appliedFilters?: ConditionGroup[];
@@ -44,6 +52,7 @@ const props = withDefaults(
     initialEmit?: boolean; // Control whether the first-frame emit happens here.
   }>(),
   {
+    disabled: false,
     initialEmit: true,
   }
 );

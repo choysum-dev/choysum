@@ -474,7 +474,7 @@ describe('Choy store-mode field hosts', () => {
     w.unmount();
   });
 
-  test('store List/Search forward engine events to wrapper emits', async () => {
+  test('store List/Search forward engine events and Search bind props', async () => {
     const rows: unknown[] = [];
     stubSfc(OListView as any, {
       props: { store: null },
@@ -504,23 +504,35 @@ describe('Choy store-mode field hosts', () => {
     stubHost(OListView as any, 'o-list');
 
     const queries: Array<{ keyword: string }> = [];
+    let seenBind: Record<string, unknown> = {};
     stubSfc(OSearchView as any, {
-      props: { store: null },
+      props: { store: null, placeholder: String, disabled: Boolean },
       emits: ['query-update'],
-      setup: ((_props: any, { emit }: any) => {
+      setup: ((props: any, { emit }: any) => {
+        seenBind = {
+          placeholder: props.placeholder,
+          disabled: props.disabled,
+        };
         return () =>
           h('button', {
             'data-test': 'emit-query',
-            onClick: () =>
-              emit('query-update', {
+            onClick: () => {
+              const payload = {
                 keyword: '  acme  ',
                 appliedFilters: [{ children: [{ field: 'name', operator: '=', value: 'a' }] }],
-              }),
+              };
+              emit('query-update', payload);
+              props.onQueryUpdate?.(payload);
+            },
           });
       }) as any,
     });
     const search = mountApp(ChoySearchView as any, {
-      props: { store: fakeStore },
+      props: {
+        store: fakeStore,
+        placeholder: 'Find…',
+        disabled: true,
+      },
       on: {
         onQueryUpdate: (q: { keyword: string; filters: unknown[] }) => {
           queries.push(q as any);
@@ -528,8 +540,11 @@ describe('Choy store-mode field hosts', () => {
       },
     });
     await flushPromises();
+    expect(seenBind.placeholder).toBe('Find…');
+    expect(seenBind.disabled).toBe(true);
     search.click('[data-test=emit-query]');
     await flushPromises();
+    expect(queries.length).toBeGreaterThan(0);
     expect(queries[0]?.keyword).toBe('acme');
     expect((queries[0] as any)?.filters?.length).toBe(1);
     search.unmount();
@@ -572,7 +587,10 @@ describe('Choy store-mode field hosts', () => {
         return () =>
           h(
             'div',
-            { 'data-test': 'o-vcolumn' },
+            {
+              'data-test': 'o-vcolumn',
+              'data-has-slot': slots.default ? '1' : '0',
+            },
             slots.default?.({
               row: { Id: '1' },
               column: {},
@@ -594,8 +612,15 @@ describe('Choy store-mode field hosts', () => {
     const col = mountApp(ColHost);
     await flushPromises();
     expect(col.q('[data-test=o-vcolumn]')).not.toBeNull();
+    expect(col.q('[data-test=o-vcolumn]')?.getAttribute('data-has-slot')).toBe('1');
     expect(col.q('[data-test=cell]')?.getAttribute('data-id')).toBe('1');
     col.unmount();
+
+    // No consumer default slot → do not forward an empty slot to OVColumn.
+    const bare = mountApp(ChoyVColumn as any, { props: { label: 'Name' } });
+    await flushPromises();
+    expect(bare.q('[data-test=o-vcolumn]')?.getAttribute('data-has-slot')).toBe('0');
+    bare.unmount();
     restoreSfc(OVColumn as any);
     stubHost(OVColumn as any, 'o-vcolumn');
   });

@@ -84,6 +84,8 @@ const storeBind = computed(() => ({
   ...splitAttrs.value.bind,
   store: props.store ?? pageStore.value,
   class: props.class,
+  placeholder: props.placeholder,
+  disabled: props.disabled,
 }));
 
 const storeListeners = computed(() => splitAttrs.value.listeners);

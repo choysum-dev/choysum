@@ -37,12 +37,11 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue';
+import { useAttrs } from 'vue';
 import Textarea from '../vendor/ui/textarea/Textarea.vue';
 import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
-import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
+import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import OTextField from './OTextField.vue';
 import {
@@ -74,9 +73,7 @@ const props = withDefaults(
 );
 
 const attrs = useAttrs();
-const pageStore = useOptionalPageStore();
-const storeMode = computed(() => isChoyStoreFieldBinding(props, pageStore.value));
-const storeBind = computed(() => ({ ...attrs, ...props, store: props.store ?? pageStore.value }) as any);
+const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
 
 const model = defineModel<string>({ default: '' });
 </script>

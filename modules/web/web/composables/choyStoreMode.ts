@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { computed, type ComputedRef } from 'vue';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
+
 /**
  * Detects whether a Choy field/view should host the store-bound O* engine.
  * Chrome / Dogfood paths omit store+prop and keep defineModel APIs.
@@ -27,6 +30,36 @@ export function hasChoyStoreEngine(
   pageStore: unknown | null | undefined,
 ): boolean {
   return propStore != null || pageStore != null;
+}
+
+type ChoyStoreFieldProps = {
+  store?: unknown;
+  prop?: unknown;
+  binding?: unknown;
+} & Record<string, unknown>;
+
+/**
+ * Shared field-host binding: store-mode flag plus props forwarded to the O* engine.
+ */
+export function useChoyStoreFieldBinding(
+  props: ChoyStoreFieldProps,
+  attrs: Record<string, unknown>,
+): {
+  storeMode: ComputedRef<boolean>;
+  storeBind: ComputedRef<Record<string, unknown>>;
+} {
+  const pageStore = useOptionalPageStore();
+  return {
+    storeMode: computed(() => isChoyStoreFieldBinding(props, pageStore.value)),
+    storeBind: computed(
+      () =>
+        ({
+          ...attrs,
+          ...props,
+          store: props.store ?? pageStore.value,
+        }) as Record<string, unknown>,
+    ),
+  };
 }
 
 /**
