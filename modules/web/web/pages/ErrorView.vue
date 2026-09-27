@@ -57,10 +57,10 @@ function pickQueryString(value: unknown): string | undefined {
   return first == null || first === '' ? undefined : String(first);
 }
 
-/** Same-app absolute path only; rejects protocol-relative `//host` / `/\host`. */
+/** Same-app absolute path only; rejects protocol-relative and /error loops. */
 function sameAppPath(value: unknown): string | undefined {
   const raw = pickQueryString(value);
-  if (!raw || !/^\/(?![/\\])/.test(raw)) return undefined;
+  if (!raw || !/^\/(?![/\\])/.test(raw) || /^\/error(?:\/|\?|$)/.test(raw)) return undefined;
   return raw;
 }
 
@@ -137,10 +137,10 @@ function retry() {
 }
 
 function contactAdmin() {
-  window.open('mailto:admin@example.com', '_blank');
+  window.open('mailto:admin@example.com', '_blank', 'noopener,noreferrer');
 }
 
 function reportIssue() {
-  window.open('https://example.com/support', '_blank');
+  window.open('https://example.com/support', '_blank', 'noopener,noreferrer');
 }
 </script>

@@ -39,23 +39,21 @@ a {
   text-decoration: none;
   transition: color var(--choy-motion-duration-fast, 150ms);
 
-  // Mix toward white/black so hover/active stay distinct when --choy-color-primary
-  // is set (unlike falling back to the same primary token for every state).
+  // Prefer explicit theme tokens; otherwise mix from base primary. Keep a solid
+  // color ahead of color-mix so older engines still get a hover/active tint.
   &:hover {
     color: var(--choy-color-primary-light, var(--el-color-primary-light-3, #3b82f6));
-    color: color-mix(
-      in oklab,
-      var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%,
-      white
+    color: var(
+      --choy-color-primary-light,
+      color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, white)
     );
   }
 
   &:active {
     color: var(--choy-color-primary-dark, var(--el-color-primary-dark-2, #1d4ed8));
-    color: color-mix(
-      in oklab,
-      var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%,
-      black
+    color: var(
+      --choy-color-primary-dark,
+      color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, black)
     );
   }
 }

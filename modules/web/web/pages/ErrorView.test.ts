@@ -156,7 +156,7 @@ describe('ErrorView', () => {
   });
 
   test('omits Go back when from is not a same-app absolute path', async () => {
-    for (const from of ['//evil.example', '/\\evil.example']) {
+    for (const from of ['//evil.example', '/\\evil.example', '/error/500', '/error']) {
       const mounted = mountError({
         path: '/error/403',
         fullPath: `/error/403?from=${encodeURIComponent(from)}`,
@@ -165,7 +165,7 @@ describe('ErrorView', () => {
       });
       await flushPromises();
       const actions = mounted.qa('[data-test=action]');
-      // Home + Contact only; protocol-relative from must not add Go back.
+      // Home + Contact only; unsafe or error from must not add Go back.
       expect(actions.length).toBe(2);
       expect(mounted.text()).not.toMatch(/Go back/i);
       mounted.unmount();
@@ -208,6 +208,7 @@ describe('ErrorView', () => {
       (deniedActions[2] as HTMLElement).click();
       expect(deniedPush.calls.map(c => c[0])).toEqual(['/', '/auth/users']);
       expect(open.calls[0]?.[0]).toBe('mailto:admin@example.com');
+      expect(open.calls[0]?.[2]).toBe('noopener,noreferrer');
       denied.unmount();
 
       const fiveStub = createFeStubRouter({
@@ -219,7 +220,8 @@ describe('ErrorView', () => {
       (fiveActions[1] as HTMLElement).click();
       (fiveActions[2] as HTMLElement).click();
       expect(reload.calls.length).toBe(1);
-      expect(open.calls.some(c => String(c[0]).includes('example.com/support'))).toBe(true);
+      const supportCall = open.calls.find(c => String(c[0]).includes('example.com/support'));
+      expect(supportCall?.[2]).toBe('noopener,noreferrer');
       five.unmount();
 
       const missingStub = createFeStubRouter({

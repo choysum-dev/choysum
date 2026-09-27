@@ -193,6 +193,30 @@ describe('ChoyShellLayout', () => {
     mounted.unmount();
   });
 
+  test('treats missing route.meta as a non-keepAlive view', async () => {
+    const Page = defineComponent({
+      name: 'NoMetaPage',
+      setup: () => () => h('div', { 'data-test': 'page' }, 'ok'),
+    });
+    const mounted = mountApp(ChoyShellLayout as any, {
+      props: { showHeader: false },
+      stubs: {
+        'router-view': {
+          setup: (_props: any, { slots }: any) => {
+            return () =>
+              slots.default?.({
+                Component: Page,
+                route: { name: 'Bare', path: '/bare', fullPath: '/bare' },
+              });
+          },
+        },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=page]')?.textContent).toBe('ok');
+    mounted.unmount();
+  });
+
   test('remounts keepAlive views when path params change under the same name', async () => {
     let mountCount = 0;
     const CachedPage = defineComponent({
