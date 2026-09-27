@@ -259,6 +259,19 @@ func TestEnsureChoyTailwindCSSScansDomainModules(t *testing.T) {
 	if !strings.Contains(body, "text-decoration-line: underline") && !strings.Contains(body, ".underline") {
 		t.Fatalf("domain-only utility must appear in generated CSS:\n%s", body)
 	}
+	// Digest drives cache invalidation; a domain-only class change must bump it.
+	_, before, err := TailwindInputDigest(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("partner/web/pages/Home.vue", `<div class="tracking-widest"></div>`)
+	_, after, err := TailwindInputDigest(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before == after {
+		t.Fatal("TailwindInputDigest must change when a domain module adds a class")
+	}
 }
 
 func TestEnsureChoyTailwindCSSRejectsDirectoryThemePath(t *testing.T) {

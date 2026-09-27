@@ -225,7 +225,7 @@ func classifyForbiddenUiImport(spec string) string {
 		return "@unovis"
 	}
 	// Bare kit entry points: deep-path markers only match subpaths.
-	if lower == "@choysum-dev/choy_ui" || lower == "choy_ui" {
+	if lower == "@choysum-dev/choy_ui" || lower == "@/choy_ui" || lower == "choy_ui" {
 		return "choy_ui-deep"
 	}
 
@@ -299,6 +299,11 @@ func normalizeImportPathSegments(spec string) string {
 	cleaned := path.Clean(rest)
 	if cleaned == "." {
 		cleaned = ""
+	}
+	// path.Clean drops a directory-style trailing slash; keep it so markers
+	// such as "@/choy_ui/" still match after normalization.
+	if cleaned != "" && strings.HasSuffix(spec, "/") {
+		cleaned += "/"
 	}
 	return prefix + cleaned
 }

@@ -86,6 +86,8 @@ func TestClassifyForbiddenUiImport(t *testing.T) {
 		{"@/choy_ui/web/components/../lib/utils", "choy_ui-deep"},
 		{"@choysum-dev/choy_ui/web/components/vendor/ui/button", "ui/*"},
 		{"@choysum-dev/choy_ui", "choy_ui-deep"},
+		{"@/choy_ui", "choy_ui-deep"},
+		{"@/choy_ui/", "choy_ui-deep"},
 		{"choy_ui", "choy_ui-deep"},
 		{"vue", ""},
 		{"@/web/web/components/view/OFormView", ""},
@@ -115,6 +117,9 @@ func TestNormalizeImportPathSegments(t *testing.T) {
 		{"@/web/web/lib?raw", "@/web/web/lib"},
 		{"@/web/web/lib/utils?raw#frag", "@/web/web/lib/utils"},
 		{"?#only", ""},
+		{"@/choy_ui/", "@/choy_ui/"},
+		{"@/choy_ui", "@/choy_ui"},
+		{"@choysum-dev/choy_ui/", "@choysum-dev/choy_ui/"},
 		// Leading ./ collapses, so relative specs can match root-relative kit bans.
 		{"./ui/button", "ui/button"},
 		{"./../components/vendor/ui/button", "../components/vendor/ui/button"},
