@@ -531,6 +531,9 @@ func TestModulesPathForKitRoot(t *testing.T) {
 	if got := modulesPathForKitRoot("."); got != "" {
 		t.Fatalf(". => \"\", got %q", got)
 	}
+	if got := modulesPathForKitRoot("/"); got != "" {
+		t.Fatalf("/ => \"\" (parent==root), got %q", got)
+	}
 	if got := modulesPathForKitRoot("/abs/modules/web"); got != "/abs/modules" {
 		t.Fatalf("modules/web => parent modules, got %q", got)
 	}
