@@ -528,11 +528,36 @@ func TestModulesPathForKitRoot(t *testing.T) {
 	if got := modulesPathForKitRoot(""); got != "" {
 		t.Fatalf("empty => \"\", got %q", got)
 	}
+	if got := modulesPathForKitRoot("."); got != "" {
+		t.Fatalf(". => \"\", got %q", got)
+	}
 	if got := modulesPathForKitRoot("/abs/modules/web"); got != "/abs/modules" {
 		t.Fatalf("modules/web => parent modules, got %q", got)
 	}
 	if got := modulesPathForKitRoot("/tmp/isolated-kit"); got != "" {
-		t.Fatalf("non-modules parent => \"\", got %q", got)
+		t.Fatalf("non-modules parent without kit => \"\", got %q", got)
+	}
+	// Custom modules-dir name: accept parent when it resolves back to this kit.
+	custom := t.TempDir()
+	kit := filepath.Join(custom, "apps", "web")
+	if err := os.MkdirAll(filepath.Join(kit, "web", "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(kit, "web", "styles", "theme.css"), []byte(`@theme{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := modulesPathForKitRoot(kit)
+	want := filepath.Join(custom, "apps")
+	if got != want {
+		t.Fatalf("custom modules dir => %q, got %q", want, got)
+	}
+	// Sibling without dialect must not make an arbitrary parent a modules root.
+	other := filepath.Join(custom, "apps", "partner")
+	if err := os.MkdirAll(filepath.Join(other, "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := modulesPathForKitRoot(other); got != "" {
+		t.Fatalf("non-kit under custom dir => \"\", got %q", got)
 	}
 }
 
@@ -818,7 +843,7 @@ func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
 		t.Fatalf("dot-directory modules must be skipped, got %v", got)
 	}
 
-	// Domain web Stat permission error must surface (not silently skip).
+	// Domain web Stat error must surface (chmod 000 is unreliable on root/CI).
 	lockedParent := filepath.Join(modules, "locked")
 	lockedWeb := filepath.Join(lockedParent, "web")
 	if err := os.MkdirAll(lockedWeb, 0o755); err != nil {
@@ -827,15 +852,18 @@ func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(lockedWeb, "X.vue"), []byte(`<div class="x"></div>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(lockedParent, 0o000); err != nil {
-		t.Fatal(err)
+	prevStat := choyProductStat
+	t.Cleanup(func() { choyProductStat = prevStat })
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		if strings.HasSuffix(filepath.ToSlash(name), "/locked/web") {
+			return nil, errors.New("domain web stat boom")
+		}
+		return prevStat(name)
 	}
-	t.Cleanup(func() { _ = os.Chmod(lockedParent, 0o755) })
-	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil {
-		// Some runners (root) can still Stat mode 000 trees.
-		t.Log("locked domain web Stat did not error on this runner")
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "domain web stat boom") {
+		t.Fatalf("expected domain web Stat error, got %v", err)
 	}
-	_ = os.Chmod(lockedParent, 0o755)
+	choyProductStat = prevStat
 
 	// Unreadable file inside domain web → ScanTailwindCandidates error.
 	badFile := filepath.Join(modules, "partner", "web", "Bad.vue")

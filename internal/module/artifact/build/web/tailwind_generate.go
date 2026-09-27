@@ -701,18 +701,27 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 	return generateChoyTailwindForModule(moduleRoot, modulesPathForKitRoot(moduleRoot))
 }
 
-// modulesPathForKitRoot returns the parent modules/ directory when moduleRoot is
-// modules/<name>; otherwise "" so isolated kit fixtures keep a kit-only scan.
+// modulesPathForKitRoot returns the parent modules directory for product scans.
+// Prefer a parent literally named "modules"; also accept a non-standard parent
+// name when resolveChoyKitModuleRoot(parent) returns this exact kit root so
+// Generate and TailwindInputDigest stay aligned on custom layouts. Isolated
+// temp kit fixtures (no resolvable sibling kit tree) stay kit-only.
 func modulesPathForKitRoot(moduleRoot string) string {
 	root := filepath.Clean(strings.TrimSpace(moduleRoot))
 	if root == "" || root == "." {
 		return ""
 	}
 	parent := filepath.Dir(root)
-	if filepath.Base(parent) != "modules" {
+	if parent == "." || parent == root {
 		return ""
 	}
-	return parent
+	if filepath.Base(parent) == "modules" {
+		return parent
+	}
+	if resolved, err := resolveChoyKitModuleRoot(parent); err == nil && resolved != "" && filepath.Clean(resolved) == root {
+		return parent
+	}
+	return ""
 }
 
 func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwindGenerateResult, error) {
