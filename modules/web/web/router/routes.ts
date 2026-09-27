@@ -48,7 +48,9 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('../components/layout/ChoyShellLayout.vue'),
     name: 'AppLayout',
     props: {
-      showSidebar: true,
+      // Sidebar chrome waits for menu content; route components cannot fill
+      // ChoyShellLayout named slots via a plain router-view.
+      showSidebar: false,
       showHeader: true,
       showFooter: true,
     },

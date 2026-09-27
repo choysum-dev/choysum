@@ -262,6 +262,7 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
     ElementPlus: { name: 'ElementPlus' } as any,
     registerChoyGalleryRoute: (() => {}) as any,
     applyChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable', dark: false })) as any,
+    readChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable' })) as any,
     baseUrl: '/',
     hasWindow: () => false,
     _store: store,
