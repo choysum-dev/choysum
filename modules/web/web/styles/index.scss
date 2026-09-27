@@ -45,7 +45,7 @@ a {
     color: var(--choy-color-primary-light, var(--el-color-primary-light-3, #3b82f6));
     color: color-mix(
       in oklab,
-      var(--choy-color-primary, var(--el-color-primary-light-3, #3b82f6)) 82%,
+      var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%,
       white
     );
   }
@@ -54,7 +54,7 @@ a {
     color: var(--choy-color-primary-dark, var(--el-color-primary-dark-2, #1d4ed8));
     color: color-mix(
       in oklab,
-      var(--choy-color-primary, var(--el-color-primary-dark-2, #1d4ed8)) 82%,
+      var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%,
       black
     );
   }

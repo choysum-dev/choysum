@@ -62,8 +62,8 @@ onActivated(() => {
 });
 
 function refresh() {
-  const next = readChoyThemePreference();
-  applyChoyThemePreference(next);
-  prefs.value = next;
+  applyChoyThemePreference(readChoyThemePreference());
+  // Re-read so labels match whatever apply normalized into storage.
+  prefs.value = readChoyThemePreference();
 }
 </script>

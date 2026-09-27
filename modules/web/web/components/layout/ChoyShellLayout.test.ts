@@ -193,6 +193,54 @@ describe('ChoyShellLayout', () => {
     mounted.unmount();
   });
 
+  test('remounts keepAlive views when fullPath changes under the same name', async () => {
+    let mountCount = 0;
+    const CachedPage = defineComponent({
+      name: 'ParamCachedPage',
+      setup() {
+        mountCount += 1;
+        return () => h('div', { 'data-test': 'cached' }, `m${mountCount}`);
+      },
+    });
+
+    const current = ref({
+      Component: CachedPage as any,
+      route: {
+        meta: { keepAlive: true },
+        name: 'Record',
+        path: '/records/1',
+        fullPath: '/records/1',
+      },
+    });
+
+    const mounted = mountApp(ChoyShellLayout as any, {
+      props: { showHeader: false },
+      stubs: {
+        'router-view': {
+          setup: (_props: any, { slots }: any) => {
+            return () => slots.default?.(current.value);
+          },
+        },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
+
+    current.value = {
+      Component: CachedPage as any,
+      route: {
+        meta: { keepAlive: true },
+        name: 'Record',
+        path: '/records/2',
+        fullPath: '/records/2',
+      },
+    };
+    await flushPromises();
+    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m2');
+    expect(mountCount).toBe(2);
+    mounted.unmount();
+  });
+
   test('keeps cached views alive across a non-keepAlive navigation', async () => {
     let mountCount = 0;
     let activateCount = 0;
