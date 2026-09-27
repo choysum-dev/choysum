@@ -5293,6 +5293,11 @@ func TestAppendExactPinsFromPackageJSONNilReceiver(t *testing.T) {
 	if len(got) != len(opts) {
 		t.Fatalf("nil module must return opts unchanged, got %d", len(got))
 	}
+	blankPath := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: "  "}}
+	got = blankPath.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("blank module path must return opts unchanged, got %d", len(got))
+	}
 }
 
 func TestAppendExactPinsFromPackageJSONMergesKitHost(t *testing.T) {

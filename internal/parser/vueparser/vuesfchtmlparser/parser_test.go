@@ -487,6 +487,7 @@ func TestRenderNodeHandlesTextElementAndComment(t *testing.T) {
 func TestMaskPascalCaseRawTextTagsAllCaps(t *testing.T) {
 	src := `<template>
   <TEXTAREA>typed</TEXTAREA>
+  <TextAREA v-model="y" />
   <span id="after">ok</span>
 </template>
 <script setup>const t = "<textarea>"</script>`
@@ -494,8 +495,22 @@ func TestMaskPascalCaseRawTextTagsAllCaps(t *testing.T) {
 	if !strings.Contains(got, vueRawTextMaskPrefix+"TEXTAREA") {
 		t.Fatalf("all-caps TEXTAREA must mask, got %q", got)
 	}
+	if !strings.Contains(got, vueRawTextMaskPrefix+"TextAREA") {
+		t.Fatalf("mixed-case TextAREA must mask, got %q", got)
+	}
 	if strings.Contains(got, `const t = "<`+vueRawTextMaskPrefix) {
 		t.Fatalf("lowercase textarea in script must stay unmasked, got %q", got)
+	}
+	if sourceNeedsPascalCaseRawTextMask(`<template/><script setup></script>`) {
+		t.Fatal("lowercase-only script tags must not need masking")
+	}
+	// Lowercase HTML tags inside template text must stay unmasked by the replacer.
+	mixed := maskPascalCaseRawTextTagsOutsideQuotes(`<textarea></textarea><TextAREA/>`)
+	if strings.Contains(mixed, vueRawTextMaskPrefix+"textarea") || !strings.Contains(mixed, `<textarea>`) {
+		t.Fatalf("lowercase textarea must stay, got %q", mixed)
+	}
+	if !strings.Contains(mixed, vueRawTextMaskPrefix+"TextAREA") {
+		t.Fatalf("mixed-case TextAREA must mask, got %q", mixed)
 	}
 	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
 	if err != nil {

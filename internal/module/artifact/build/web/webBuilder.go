@@ -2287,7 +2287,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 }
 
 func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Option) []esmresolver.Option {
-	if b == nil || b.module == nil {
+	if b == nil || b.module == nil || strings.TrimSpace(b.module.Path) == "" {
 		return opts
 	}
 	pins := map[string]string{}

@@ -104,9 +104,10 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 	// <script setup>; without masking, the tokenizer swallows the script block.
 	// Masking is limited to unquoted text inside <template> so script/style string
 	// literals and attribute values keep literal "<Textarea>" unchanged.
-	// Fast path: the multi-pass masker is a no-op unless such a tag is present.
+	// Fast path: the multi-pass masker is a no-op unless a non-lowercase
+	// raw-text-named tag is present (real <script>/<textarea> stay unmasked).
 	masked := string(src)
-	if pascalCaseRawTextTag.MatchString(masked) {
+	if sourceNeedsPascalCaseRawTextMask(masked) {
 		masked = maskPascalCaseRawTextTags(masked)
 	}
 	doc, err := vueSfcHTMLParse(strings.NewReader(masked))
@@ -126,13 +127,11 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 
 }
 
-// pascalCaseRawTextTag matches Vue component tags whose local names collide with
-// HTML raw-text / RCDATA elements when lowercased by the tokenizer.
-// Includes common mixed-case and all-caps spellings (TextArea, TEXTAREA, …);
-// the tokenizer is case-insensitive, so those variants would otherwise swallow
-// following blocks. Lowercase HTML tags (textarea/script/…) stay unmasked.
+// pascalCaseRawTextTag matches tags whose local names collide with HTML raw-text
+// / RCDATA elements when lowercased by the tokenizer (case-insensitive).
+// replacePascalCaseRawTextTags leaves all-lowercase HTML tags untouched.
 // Go regexp has no lookahead; the trailing delimiter is re-emitted by the replacer.
-var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|TextArea|TEXTAREA|Title|TITLE|Style|STYLE|Script|SCRIPT|Noscript|NoScript|NOSCRIPT|Iframe|IFrame|IFRAME|Noembed|NoEmbed|NOEMBED|Noframes|NoFrames|NOFRAMES|Xmp|XMP|Plaintext|PlainText|PLAINTEXT)([\s/>])`)
+var pascalCaseRawTextTag = regexp.MustCompile(`(?i)</?(textarea|title|style|script|noscript|iframe|noembed|noframes|xmp|plaintext)([\s/>])`)
 
 var sfcTemplateOpen = regexp.MustCompile(`(?i)<template\b(?:[^>"']|"[^"]*"|'[^']*')*>`)
 var sfcTemplateClose = regexp.MustCompile(`(?i)</template\s*>`)
@@ -148,6 +147,24 @@ const vueRawTextMaskPrefix = "VueSfcRaw"
 // vueSfcHTMLParse is the HTML parse step after masking; tests may override it.
 var vueSfcHTMLParse = parseWithCaseSensitive
 
+// sourceNeedsPascalCaseRawTextMask reports whether s contains a raw-text-named tag
+// that is not all-lowercase (those need masking; real HTML lowercase tags do not).
+func sourceNeedsPascalCaseRawTextMask(s string) bool {
+	for _, m := range pascalCaseRawTextTag.FindAllString(s, -1) {
+		if rawTextTagNameFromMatch(m) != strings.ToLower(rawTextTagNameFromMatch(m)) {
+			return true
+		}
+	}
+	return false
+}
+
+func rawTextTagNameFromMatch(m string) string {
+	body := m[:len(m)-1]
+	if strings.HasPrefix(body, "</") {
+		return body[2:]
+	}
+	return strings.TrimPrefix(body, "<")
+}
 func maskPascalCaseRawTextTags(src string) string {
 	// Script/style ranges ignore openers that sit inside HTML comments (e.g.
 	// <!-- <script> -->), then comment spans ignore "<!--" inside real blocks.
@@ -539,6 +556,11 @@ func replacePascalCaseRawTextTags(s string) string {
 	return pascalCaseRawTextTag.ReplaceAllStringFunc(s, func(m string) string {
 		delim := m[len(m)-1:]
 		body := m[:len(m)-1]
+		name := rawTextTagNameFromMatch(m)
+		// Real lowercase HTML raw-text/RCDATA tags must stay untouched.
+		if name == strings.ToLower(name) {
+			return m
+		}
 		if strings.HasPrefix(body, "</") {
 			return "</" + vueRawTextMaskPrefix + body[2:] + delim
 		}

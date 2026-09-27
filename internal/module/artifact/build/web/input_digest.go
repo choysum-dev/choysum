@@ -228,12 +228,10 @@ func isChoyTailwindGeneratedKitPath(path string) bool {
 		return false
 	}
 	slash := filepath.ToSlash(path)
-	switch {
-	case strings.HasPrefix(slash, "web/web/styles/"), strings.Contains(slash, "/web/web/styles/"),
-		strings.HasPrefix(slash, "choy_ui/web/styles/"), strings.Contains(slash, "/choy_ui/web/styles/"):
-		return true
-	}
-	return false
+	// Only "<module>/web/styles/<name>" of the web/choy_ui kit hosts is derived
+	// output; a same-named file under any other module path is a real input.
+	return strings.HasSuffix(slash, "web/web/styles/"+choyTailwindGeneratedCSSName) ||
+		strings.HasSuffix(slash, "choy_ui/web/styles/"+choyTailwindGeneratedCSSName)
 }
 
 // readBuildInfo is debug.ReadBuildInfo; tests replace it to exercise digest versioning.
