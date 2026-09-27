@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -21,6 +22,12 @@ const (
 	// Keep the relative tree as web/components/vendor/ui (do not rename vendor/ui again).
 	kitHostModuleCutover = "web"
 )
+
+// CutoverImportBans enables post-cutover domain import rules: ban element-plus /
+// @element-plus/*, and deep @/web/web/lib paths. Off by default during dual-stack
+// so domain modules that still import EP/O* keep typechecking; PR9z (or tests)
+// flips this on for the hard cut. Kit hosts remain fully exempt.
+var CutoverImportBans = false
 
 // isKitHostModule reports modules allowed to import reka-ui / vendor/ui / kit internals.
 // choy_ui is always a host (thin registration shell). web is a host only when the kit
@@ -208,6 +215,8 @@ func classifyForbiddenUiImport(spec string) string {
 	}
 	slash := filepath.ToSlash(spec)
 	lower := strings.ToLower(slash)
+	// Normalize once so ./ ../ and ?/# cannot bypass any ban rule below.
+	lower = normalizeImportPathSegments(lower)
 
 	if lower == "reka-ui" || strings.HasPrefix(lower, "reka-ui/") {
 		return "reka-ui"
@@ -216,7 +225,7 @@ func classifyForbiddenUiImport(spec string) string {
 		return "@unovis"
 	}
 	// Bare kit entry points: deep-path markers only match subpaths.
-	if lower == "@choysum-dev/choy_ui" || lower == "choy_ui" {
+	if lower == "@choysum-dev/choy_ui" || lower == "@/choy_ui" || lower == "choy_ui" {
 		return "choy_ui-deep"
 	}
 
@@ -230,7 +239,86 @@ func classifyForbiddenUiImport(spec string) string {
 	if isForbiddenChoyDeepPath(lower) {
 		return "choy_ui-deep"
 	}
+	if CutoverImportBans {
+		if rule := classifyCutoverForbiddenUiImport(lower); rule != "" {
+			return rule
+		}
+	}
 	return ""
+}
+
+// classifyCutoverForbiddenUiImport returns cutover-only rule ids (element-plus,
+// @/web deep lib). Public barrel imports from "@/web" (Choy*) stay allowed.
+// lower is already normalized by classifyForbiddenUiImport.
+func classifyCutoverForbiddenUiImport(lower string) string {
+	if lower == "element-plus" || strings.HasPrefix(lower, "element-plus/") {
+		return "element-plus"
+	}
+	if lower == "@element-plus/icons-vue" || strings.HasPrefix(lower, "@element-plus/") {
+		return "element-plus"
+	}
+	if isForbiddenWebLibDeepPath(lower) {
+		return "web-lib-deep"
+	}
+	return ""
+}
+
+func isForbiddenWebLibDeepPath(n string) bool {
+	// Caller passes a path already cleaned by normalizeImportPathSegments.
+	// Match the kit module's web/web/lib tree by leading segments only so
+	// unrelated paths that merely embed "/web/web/lib/" (e.g. partner's own
+	// tree) do not false-positive. Strip "@/", "../", "./", and the published
+	// @choysum-dev/web/ package prefix in any order so specs like
+	// "../@/web/web/lib/utils" or "@choysum-dev/web/web/lib/utils" cannot evade
+	// the cutover ban. Package subpaths are module-root relative, so
+	// "@choysum-dev/web/web/lib" rewrites to "web/web/lib".
+	trimmed := n
+	for {
+		switch {
+		case strings.HasPrefix(trimmed, "../"):
+			trimmed = trimmed[3:]
+		case strings.HasPrefix(trimmed, "./"):
+			trimmed = trimmed[2:]
+		case strings.HasPrefix(trimmed, "@/"):
+			trimmed = trimmed[2:]
+		case strings.HasPrefix(trimmed, "@choysum-dev/web/"):
+			trimmed = "web/" + trimmed[len("@choysum-dev/web/"):]
+		default:
+			return trimmed == "web/web/lib" || strings.HasPrefix(trimmed, "web/web/lib/")
+		}
+	}
+}
+
+// normalizeImportPathSegments cleans "." / ".." segments and strips ?/# suffixes
+// while preserving a leading "@/". Applied once in classifyForbiddenUiImport so
+// every ban rule sees the same canonical specifier.
+func normalizeImportPathSegments(spec string) string {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return ""
+	}
+	if i := strings.IndexAny(spec, "?#"); i >= 0 {
+		spec = strings.TrimSpace(spec[:i])
+	}
+	if spec == "" {
+		return ""
+	}
+	prefix := ""
+	rest := spec
+	if strings.HasPrefix(spec, "@/") {
+		prefix = "@/"
+		rest = spec[2:]
+	}
+	cleaned := path.Clean(rest)
+	if cleaned == "." {
+		cleaned = ""
+	}
+	// path.Clean drops a directory-style trailing slash; keep it so markers
+	// such as "@/choy_ui/" still match after normalization.
+	if cleaned != "" && strings.HasSuffix(spec, "/") {
+		cleaned += "/"
+	}
+	return prefix + cleaned
 }
 
 func isForbiddenUIPath(lower string) bool {
@@ -261,10 +349,10 @@ func isForbiddenInternalPath(lower string) bool {
 }
 
 func isForbiddenChoyDeepPath(lower string) bool {
-	// Isolation: domain must not deep-import the choy_ui kit trees.
-	// After cutover, continue matching /components/vendor/ui via isForbiddenUIPath;
-	// extend @/web/web/{components/vendor,components/internal,lib} bans once O*
-	// deep imports are replaced by public Choy* barrels.
+	// Isolation + cutover: domain must not deep-import kit trees under choy_ui.
+	// vendor/ui and components/internal under @/web are covered by isForbiddenUIPath /
+	// isForbiddenInternalPath. @/web/web/lib deep paths are gated by CutoverImportBans
+	// (domain still deep-imports O* from @/web/web/components until PR9d–g).
 	markers := []string{
 		"@/choy_ui/",
 		"@choysum-dev/choy_ui/",

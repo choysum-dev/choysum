@@ -14,7 +14,11 @@ import 'normalize.css/normalize.css';
 import 'element-plus/dist/index.css';
 import 'element-plus/theme-chalk/display.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import './styles/tokens.css';
+import './styles/preflight-policy.css';
 import './styles/index.scss';
+import './styles/theme.override.css';
+import './styles/choy-tailwind.generated.css';
 
 const app = createApp(App).setup(setupApp);
 

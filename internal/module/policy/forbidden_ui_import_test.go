@@ -68,27 +68,193 @@ func TestClassifyForbiddenUiImport(t *testing.T) {
 		{"@unovis/vue", "@unovis"},
 		{"@unovis/ts", "@unovis"},
 		{"ui/button", "ui/*"},
+		{"./ui/button", "ui/*"}, // leading ./ collapses into root-relative ui/*
 		{"../components/ui/button", "ui/*"},
 		{"../components/vendor/ui/button", "ui/*"},
+		{"./../components/vendor/ui/button", "ui/*"},
 		{"@/choy_ui/web/components/ui/button", "ui/*"},
 		{"@/choy_ui/web/components/vendor/ui/button", "ui/*"},
 		{"@/web/web/components/ui/button", "ui/*"},
 		{"@/web/web/components/vendor/ui/button", "ui/*"},
+		{"@/web/web/components/vendor/./ui/button", "ui/*"},
+		{"@/web/web/components/vendor/ui/button?raw", "ui/*"},
 		{"internal/DataTable", "internal/*"},
+		{"internal/./DataTable", "internal/*"},
 		{"../components/internal/DataTable", "internal/*"},
 		{"@/choy_ui/web/components/internal/DatePicker", "internal/*"},
 		{"@/choy_ui/web/lib/utils", "choy_ui-deep"},
+		{"@/choy_ui/web/components/../lib/utils", "choy_ui-deep"},
 		{"@choysum-dev/choy_ui/web/components/vendor/ui/button", "ui/*"},
 		{"@choysum-dev/choy_ui", "choy_ui-deep"},
+		{"@/choy_ui", "choy_ui-deep"},
+		{"@/choy_ui/", "choy_ui-deep"},
 		{"choy_ui", "choy_ui-deep"},
 		{"vue", ""},
 		{"@/web/web/components/view/OFormView", ""},
 		{"element-plus", ""},
+		{"@/web", ""},
+		{"@/web/web/lib/utils", ""}, // cutover flag off
 	}
 	for _, tc := range cases {
 		if got := classifyForbiddenUiImport(tc.spec); got != tc.want {
 			t.Fatalf("classifyForbiddenUiImport(%q)=%q want %q", tc.spec, got, tc.want)
 		}
+	}
+}
+
+func TestNormalizeImportPathSegments(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"", ""},
+		{"   ", ""},
+		{".", ""},
+		{"./", ""},
+		{"@/", "@/"},
+		{"@/.", "@/"},
+		{"@/web/web/components/../lib/utils", "@/web/web/lib/utils"},
+		{"web/web/lib/./cn", "web/web/lib/cn"},
+		{"@/web/web/lib?raw", "@/web/web/lib"},
+		{"@/web/web/lib/utils?raw#frag", "@/web/web/lib/utils"},
+		{"?#only", ""},
+		{"@/choy_ui/", "@/choy_ui/"},
+		{"@/choy_ui", "@/choy_ui"},
+		{"@choysum-dev/choy_ui/", "@choysum-dev/choy_ui/"},
+		// Leading ./ collapses, so relative specs can match root-relative kit bans.
+		{"./ui/button", "ui/button"},
+		{"./../components/vendor/ui/button", "../components/vendor/ui/button"},
+		{"./web/web/lib/utils", "web/web/lib/utils"},
+	}
+	for _, tc := range cases {
+		if got := normalizeImportPathSegments(tc.in); got != tc.want {
+			t.Fatalf("normalizeImportPathSegments(%q)=%q want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestIsForbiddenWebLibDeepPathPrefixLoop(t *testing.T) {
+	// Direct cases that survive normalize or exercise the strip loop order.
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"./web/web/lib/utils", true},
+		{"../@/web/web/lib/utils", true},
+		{"@/./web/web/lib/cn", true},
+		{"@choysum-dev/web/web/lib/utils", true},
+		{"@choysum-dev/web/web/lib", true},
+		{"@choysum-dev/web/web/components/view/OForm", false},
+		{"partner/web/web/lib/utils", false},
+	}
+	for _, tc := range cases {
+		if got := isForbiddenWebLibDeepPath(tc.in); got != tc.want {
+			t.Fatalf("isForbiddenWebLibDeepPath(%q)=%v want %v", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
+	prev := CutoverImportBans
+	CutoverImportBans = true
+	t.Cleanup(func() { CutoverImportBans = prev })
+
+	cases := []struct {
+		spec string
+		want string
+	}{
+		{"element-plus", "element-plus"},
+		{"element-plus?raw", "element-plus"},
+		{"element-plus/es/components/button", "element-plus"},
+		{"@element-plus/icons-vue", "element-plus"},
+		{"@element-plus/icons-vue?raw", "element-plus"},
+		{"@/web/web/lib/utils", "web-lib-deep"},
+		{"@/web/web/lib/cn", "web-lib-deep"},
+		{"@/web/web/lib", "web-lib-deep"},
+		{"@/web/web/lib?raw", "web-lib-deep"},
+		{"@/web/web/components/../lib/utils", "web-lib-deep"},
+		{"../web/web/lib/utils", "web-lib-deep"},
+		{"./web/web/lib/utils", "web-lib-deep"},
+		{"../@/web/web/lib/utils", "web-lib-deep"},
+		{"@/../web/web/lib/utils", "web-lib-deep"},
+		{"web/web/lib", "web-lib-deep"},
+		{"@choysum-dev/web/web/lib/utils", "web-lib-deep"},
+		{"@choysum-dev/web/web/lib", "web-lib-deep"},
+		{"@choysum-dev/web/web/lib?raw", "web-lib-deep"},
+		// Embedded substring must not false-positive as kit web/web/lib.
+		{"@/partner/web/web/lib/utils", ""},
+		{"partner/web/web/lib/utils", ""},
+		{"@choysum-dev/web", ""},
+		{"@choysum-dev/web/index", ""},
+		{"@choysum-dev/web/web/components/view/OFormView", ""},
+		{"@/web", ""},
+		{"@/web/index", ""},
+		{"vue", ""},
+		{"reka-ui", "reka-ui"}, // still banned
+	}
+	for _, tc := range cases {
+		if got := classifyForbiddenUiImport(tc.spec); got != tc.want {
+			t.Fatalf("cutover classify(%q)=%q want %q", tc.spec, got, tc.want)
+		}
+	}
+}
+
+func TestAssertNoForbiddenUiImports_CutoverRejectsElementPlus(t *testing.T) {
+	prev := CutoverImportBans
+	CutoverImportBans = true
+	t.Cleanup(func() { CutoverImportBans = prev })
+
+	modulesPath := t.TempDir()
+	webDir := filepath.Join(modulesPath, "partner", "web")
+	if err := os.MkdirAll(webDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "partner", "package.json"), []byte(`{
+  "name": "@choysum-dev/partner",
+  "choysum": { "moduleName": "partner", "application": "partner" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src := "import { ElButton } from 'element-plus';\nexport const x = ElButton;\n"
+	if err := os.WriteFile(filepath.Join(webDir, "leak.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "element-plus") {
+		t.Fatalf("expected element-plus ban under cutover, got %v", err)
+	}
+	// Deep @/web/web/lib imports must be rejected through the file scan too.
+	if err := os.Remove(filepath.Join(webDir, "leak.ts")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webDir, "deep.ts"), []byte("import { cn } from '@/web/web/lib/utils';\nexport const y = cn;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := AssertNoForbiddenUiImports(modulesPath, "partner"); err == nil || !strings.Contains(err.Error(), "web-lib-deep") {
+		t.Fatalf("expected web-lib-deep ban under cutover, got %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_CutoverExemptsKitHost(t *testing.T) {
+	prev := CutoverImportBans
+	CutoverImportBans = true
+	t.Cleanup(func() { CutoverImportBans = prev })
+
+	modulesPath := t.TempDir()
+	kitWeb := filepath.Join(modulesPath, "web", "web")
+	if err := os.MkdirAll(filepath.Join(kitWeb, "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "web", "package.json"), []byte(`{
+  "name": "@choysum-dev/web",
+  "choysum": { "moduleName": "web", "application": "web" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(kitWeb, "app.ts"), []byte("import 'element-plus/dist/index.css';\nexport const x = 1;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := AssertNoForbiddenUiImports(modulesPath, "web"); err != nil {
+		t.Fatalf("kit host must stay exempt under cutover bans, got %v", err)
 	}
 }
 

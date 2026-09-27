@@ -4,6 +4,7 @@
 package webmodulebuilder
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -50,8 +51,11 @@ func TestGenerateTailwindCSSNonEmptyAndWithinBudget(t *testing.T) {
 	if !strings.Contains(css, "--color-primary:") {
 		t.Fatalf("expected ThemeCSS alias --color-primary:, got:\n%s", css)
 	}
-	if !strings.Contains(css, choyGalleryRootSelector+" .flex") {
-		t.Fatalf("expected utilities scoped under %s, got:\n%s", choyGalleryRootSelector, css)
+	if !strings.Contains(css, ".flex") {
+		t.Fatalf("expected unscoped .flex utility for main bundle, got:\n%s", css)
+	}
+	if strings.Contains(css, choyGalleryRootSelector+" .flex") {
+		t.Fatalf("cutover CSS must not gallery-scope utilities, got:\n%s", css)
 	}
 	if strings.Contains(css, "*, ::before") {
 		t.Fatalf("generated CSS must not include Tailwind preflight:\n%s", css)
@@ -111,8 +115,14 @@ func TestGenerateChoyTailwindForModuleWritesFile(t *testing.T) {
 	if !strings.Contains(body, "--color-primary:") {
 		t.Fatalf("expected ThemeCSS --color-primary alias:\n%s", body)
 	}
-	if !strings.Contains(body, choyGalleryRootSelector) {
-		t.Fatalf("expected gallery-scoped CSS:\n%s", body)
+	if !strings.Contains(body, ".flex") {
+		t.Fatalf("expected unscoped .flex utility:\n%s", body)
+	}
+	if strings.Contains(body, choyGalleryRootSelector+" .flex") {
+		t.Fatalf("cutover CSS must not gallery-scope utilities:\n%s", body)
+	}
+	if !strings.Contains(body, "Cutover:") {
+		t.Fatalf("header must record cutover product mode:\n%s", body)
 	}
 	if res.DialectHash == "" || res.ContentHash == "" {
 		t.Fatal("expected dialect and content hashes")
@@ -204,12 +214,99 @@ func TestEnsureChoyTailwindCSSRunsForRepoModule(t *testing.T) {
 	if strings.Contains(body, "duration=") {
 		t.Fatal("generated CSS header must not include wall-clock duration")
 	}
+	if !strings.Contains(body, "Cutover:") {
+		t.Fatalf("Ensure path must emit cutover product CSS header:\n%s", body)
+	}
+	if strings.Contains(body, choyGalleryRootSelector+" .") {
+		t.Fatalf("Ensure path must not gallery-scope utilities:\n%s", body)
+	}
 	// Detect a bare TS `path:` key (e.g. route objects) without flagging CSS
 	// properties like `clip-path:` / `-webkit-clip-path:` (hyphen before path).
 	if regexp.MustCompile(`(^|[^a-z-])path:`).MatchString(body) ||
 		strings.Contains(body, "component:") ||
 		strings.Contains(body, "--choy-color-primary'") {
 		t.Fatalf("generated CSS contains leaked TS/JS fragments:\n%s", body)
+	}
+}
+
+func TestEnsureChoyTailwindCSSScansDomainModules(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
+	res, err := EnsureChoyTailwindCSS(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res == nil || res.CandidateCount < 2 {
+		t.Fatalf("expected kit+domain candidates, got %#v", res)
+	}
+	data, err := os.ReadFile(res.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(data)
+	if !strings.Contains(body, "text-decoration-line: underline") && !strings.Contains(body, ".underline") {
+		t.Fatalf("domain-only utility must appear in generated CSS:\n%s", body)
+	}
+	// Digest drives cache invalidation; a domain-only class change must bump it.
+	_, before, err := TailwindInputDigest(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("partner/web/pages/Home.vue", `<div class="tracking-widest"></div>`)
+	_, after, err := TailwindInputDigest(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before == after {
+		t.Fatal("TailwindInputDigest must change when a domain module adds a class")
+	}
+}
+
+func TestEnsureChoyTailwindCSSSkipsDomainSpecFiles(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
+	// Unscoped product CSS must not adopt classes that exist only in domain
+	// test/spec files, otherwise a stray utility leaks globally onto EP pages.
+	write("partner/web/pages/Home.spec.ts", `export const c = "spec-only-leak"`)
+	write("partner/web/__tests__/Helper.ts", `export const c = "tests-dir-leak"`)
+	res, err := EnsureChoyTailwindCSS(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(res.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(data)
+	if strings.Contains(body, "spec-only-leak") || strings.Contains(body, "tests-dir-leak") {
+		t.Fatalf("domain spec/test-only class leaked into unscoped product CSS:\n%s", body)
+	}
+	if !strings.Contains(body, "underline") && !strings.Contains(body, "text-decoration-line: underline") {
+		t.Fatalf("real domain utility missing from product CSS:\n%s", body)
 	}
 }
 
@@ -473,5 +570,616 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 		if set[deny] {
 			t.Fatalf("unexpected candidate %q in %v", deny, got)
 		}
+	}
+}
+
+func TestModulesPathForKitRoot(t *testing.T) {
+	if got := modulesPathForKitRoot(""); got != "" {
+		t.Fatalf("empty => \"\", got %q", got)
+	}
+	if got := modulesPathForKitRoot("."); got != "" {
+		t.Fatalf(". => \"\", got %q", got)
+	}
+	if got := modulesPathForKitRoot("/"); got != "" {
+		t.Fatalf("/ => \"\" (parent==root), got %q", got)
+	}
+	if got := modulesPathForKitRoot("/abs/modules/web"); got != "/abs/modules" {
+		t.Fatalf("modules/web => parent modules, got %q", got)
+	}
+	if got := modulesPathForKitRoot("/tmp/isolated-kit"); got != "" {
+		t.Fatalf("non-modules parent without kit => \"\", got %q", got)
+	}
+	// Custom modules-dir name: accept parent when it resolves back to this kit.
+	custom := t.TempDir()
+	kit := filepath.Join(custom, "apps", "web")
+	if err := os.MkdirAll(filepath.Join(kit, "web", "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(kit, "web", "styles", "theme.css"), []byte(`@theme{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := modulesPathForKitRoot(kit)
+	want := filepath.Join(custom, "apps")
+	if got != want {
+		t.Fatalf("custom modules dir => %q, got %q", want, got)
+	}
+	// Both kit roots under a custom parent: non-preferred choy_ui still maps to parent.
+	choyUI := filepath.Join(custom, "apps", "choy_ui")
+	if err := os.MkdirAll(filepath.Join(choyUI, "web", "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(choyUI, "web", "styles", "theme.css"), []byte(`@theme{ --x: 1; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := modulesPathForKitRoot(choyUI); got != want {
+		t.Fatalf("custom dir choy_ui (web preferred) => %q, got %q", want, got)
+	}
+	// Sibling without dialect must not make an arbitrary parent a modules root.
+	other := filepath.Join(custom, "apps", "partner")
+	if err := os.MkdirAll(filepath.Join(other, "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := modulesPathForKitRoot(other); got != "" {
+		t.Fatalf("non-kit under custom dir => \"\", got %q", got)
+	}
+}
+
+func TestGenerateChoyTailwindForModuleResolveError(t *testing.T) {
+	_, err := generateChoyTailwindForModule(t.TempDir(), "modules\x00root")
+	if err == nil {
+		t.Fatal("expected resolveChoyKitModuleRoot error for NUL modulesPath")
+	}
+}
+
+func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
+	root := t.TempDir()
+	modules := filepath.Join(root, "modules")
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
+	// Non-preferred kit root still present; generate must resolve to web.
+	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+
+	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "choy_ui"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dialectHash, contentHash, err := TailwindInputDigest(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ContentHash != contentHash {
+		t.Fatalf("exported Generate contentHash %q must match TailwindInputDigest %q", res.ContentHash, contentHash)
+	}
+	if res.DialectHash != dialectHash {
+		t.Fatalf("Generate via choy_ui root must use preferred web dialect hash %q, got %q", dialectHash, res.DialectHash)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(res.OutputPath), "/web/web/styles/"+choyTailwindGeneratedCSSName) {
+		t.Fatalf("output must land under preferred web kit, got %s", res.OutputPath)
+	}
+	data, err := os.ReadFile(res.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), ".underline") && !strings.Contains(string(data), "text-decoration-line: underline") {
+		t.Fatalf("product scan via Generate must include domain utility:\n%s", data)
+	}
+
+	// Custom modules-dir name with both kit roots: Generate(choy_ui) must still
+	// product-scan and match TailwindInputDigest on the preferred web dialect.
+	customParent := filepath.Join(root, "apps")
+	cwrite := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(customParent, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cwrite("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
+	cwrite("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	cwrite("partner/web/pages/Home.vue", `<div class="overline"></div>`)
+	cwrite("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	cres, err := GenerateChoyTailwindForModule(filepath.Join(customParent, "choy_ui"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cdialect, ccontent, err := TailwindInputDigest(customParent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cres.ContentHash != ccontent || cres.DialectHash != cdialect {
+		t.Fatalf("custom-dir Generate/digest mismatch: gen=%q/%q digest=%q/%q",
+			cres.DialectHash, cres.ContentHash, cdialect, ccontent)
+	}
+	cdata, err := os.ReadFile(cres.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cdata), ".overline") && !strings.Contains(string(cdata), "text-decoration-line: overline") {
+		t.Fatalf("custom-dir product scan must include domain utility:\n%s", cdata)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesFollowsSymlinkModule(t *testing.T) {
+	modules := t.TempDir()
+	realMod := filepath.Join(t.TempDir(), "partner-real")
+	if err := os.MkdirAll(filepath.Join(realMod, "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(realMod, "web", "Home.vue"), []byte(`<div class="italic"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(modules, "web", "web", "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modules, "web", "web", "styles", "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(modules, "web", "web", "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modules, "web", "web", "components", "vendor", "ui", "B.vue"), []byte(`<div class="flex"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(modules, "partner")
+	if err := os.Symlink(realMod, link); err != nil {
+		t.Skipf("symlink not available: %v", err)
+	}
+	// Symlink to a regular file must be skipped, not abort the scan with ENOTDIR.
+	fileTarget := filepath.Join(t.TempDir(), "not-a-module")
+	if err := os.WriteFile(fileTarget, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(fileTarget, filepath.Join(modules, "bogus")); err != nil {
+		t.Skipf("symlink not available: %v", err)
+	}
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, c := range got {
+		if c == "italic" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("symlinked module web/ must be scanned, got %v", got)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesFiltersSiblingKit(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
+	write("choy_ui/web/components/view/OFormView.vue", `<div class="sibling-ep-only"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "gap-2", "domain-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	if set["sibling-ep-only"] {
+		t.Fatalf("sibling kit O*.vue must stay kit-filtered, got %v", got)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesKitHostWithoutDialect(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	// Sibling owns vendor/ui but no styles/theme.css — still a kit host.
+	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
+	write("choy_ui/web/components/view/OFormView.vue", `<div class="no-dialect-ep-only"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "gap-2", "domain-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	if set["no-dialect-ep-only"] {
+		t.Fatalf("vendor/ui host without dialect must stay kit-filtered, got %v", got)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesChoyUIShellWithoutVendorUI(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	// Thin choy_ui shell: no vendor/ui, but still a kit host by name.
+	write("choy_ui/web/pages/Shell.vue", `<div class="shell-util"></div>`)
+	write("choy_ui/web/components/view/OFormView.vue", `<div class="shell-ep-only"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "domain-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	if set["shell-ep-only"] {
+		t.Fatalf("choy_ui shell without vendor/ui must kit-filter O*.vue, got %v", got)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesDomainThemeCSSNotKitFiltered(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	// Domain ships theme.css but no vendor/ui → must stay on domain scan.
+	write("partner/web/styles/theme.css", `@theme { --color-primary: green; }`)
+	write("partner/web/pages/Home.vue", `<div class="domain-theme-util"></div>`)
+	write("partner/web/components/view/OLocal.vue", `<div class="domain-o-util"></div>`)
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "domain-theme-util", "domain-o-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesIgnoresNonKitDirectoryDialect(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-ok"></div>`)
+	// Stray directory at styles/theme.css on a non-kit sibling must not abort.
+	if err := os.MkdirAll(filepath.Join(modules, "partner", "web", "styles", "theme.css"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatalf("non-kit directory dialect must be ignored, got %v", err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	if !set["flex"] || !set["domain-ok"] {
+		t.Fatalf("expected kit+domain candidates, got %v", got)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="gap-1"></div>`)
+	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="p-1"></div>`)
+
+	prev := choyProductStat
+	t.Cleanup(func() { choyProductStat = prev })
+
+	// Primary (selected) kit scan error must surface before the domain loop.
+	prevScan := choyScanKitCandidates
+	t.Cleanup(func() { choyScanKitCandidates = prevScan })
+	choyScanKitCandidates = func(webRoot string) ([]string, error) {
+		if strings.Contains(filepath.ToSlash(webRoot), "/web/web") && !strings.Contains(filepath.ToSlash(webRoot), "/choy_ui/") {
+			return nil, errors.New("primary kit scan boom")
+		}
+		return prevScan(webRoot)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "primary kit scan boom") {
+		t.Fatalf("expected primary kit scan error, got %v", err)
+	}
+	choyScanKitCandidates = prevScan
+
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "partner" {
+			return nil, os.ErrNotExist
+		}
+		return prev(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err != nil {
+		t.Fatalf("IsNotExist on module root must skip, got %v", err)
+	}
+
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "partner" {
+			return nil, errors.New("mod stat boom")
+		}
+		return prev(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "mod stat boom") {
+		t.Fatalf("expected module Stat error, got %v", err)
+	}
+
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		slash := filepath.ToSlash(name)
+		if strings.Contains(slash, "/choy_ui/web/styles/theme.css") {
+			return nil, errors.New("dialect boom")
+		}
+		return prev(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "dialect boom") {
+		t.Fatalf("expected dialect Stat error, got %v", err)
+	}
+
+	// Sibling kit error surfaces: directory dialect is deterministic (unlike chmod 000).
+	choyProductStat = prev
+	siblingDialect := filepath.Join(modules, "choy_ui", "web", "styles", "theme.css")
+	if err := os.Remove(siblingDialect); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(siblingDialect, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "is a directory") {
+		t.Fatalf("expected directory dialect error for sibling kit, got %v", err)
+	}
+
+	// Restore dialect file, then force sibling kit scan error via hook.
+	if err := os.RemoveAll(siblingDialect); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(siblingDialect, []byte(`@theme { --color-primary: blue; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	choyScanKitCandidates = func(webRoot string) ([]string, error) {
+		if strings.Contains(filepath.ToSlash(webRoot), "/choy_ui/web") {
+			return nil, errors.New("sibling kit scan boom")
+		}
+		return prevScan(webRoot)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "sibling kit scan boom") {
+		t.Fatalf("expected sibling kit scan error, got %v", err)
+	}
+	choyScanKitCandidates = prevScan
+
+	// vendor/ui Stat non-IsNotExist error surfaces for dialect-bearing siblings.
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		if strings.Contains(filepath.ToSlash(name), "/choy_ui/web/components/vendor/ui") {
+			return nil, errors.New("vendor ui boom")
+		}
+		return prev(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "vendor ui boom") {
+		t.Fatalf("expected vendor/ui Stat error, got %v", err)
+	}
+	choyProductStat = prev
+}
+
+func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
+	// Not parallel: this test swaps the package-level choyProductReadDir hook.
+	if got, err := ScanChoyProductTailwindCandidates(""); err != nil || got != nil {
+		t.Fatalf("empty modulesPath => nil,nil got %#v %v", got, err)
+	}
+	if _, err := ScanChoyProductTailwindCandidates("modules\x00root"); err == nil {
+		t.Fatal("expected resolve error for NUL in modulesPath")
+	}
+	// modulesPath is a regular file: resolve finds no kit, ReadDir fails.
+	fileModules := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(fileModules, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(fileModules); err == nil {
+		t.Fatal("expected ReadDir error when modulesPath is a file")
+	}
+	prevReadDir := choyProductReadDir
+	choyProductReadDir = func(string) ([]os.DirEntry, error) {
+		return nil, errors.New("readdir boom")
+	}
+	t.Cleanup(func() { choyProductReadDir = prevReadDir })
+	if _, err := ScanChoyProductTailwindCandidates(t.TempDir()); err == nil || !strings.Contains(err.Error(), "readdir boom") {
+		t.Fatalf("expected injected ReadDir error, got %v", err)
+	}
+	choyProductReadDir = prevReadDir
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex shared-util"></div>`)
+	write("web/web/components/view/OFormView.vue", `<div class="ep-product-only"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-kit-util gap-3 shared-util"></div>`)
+	write("auth/web/pages/Login.vue", `<div class="auth-only-util"></div>`)
+	write("empty/package.json", `{}`) // no web/
+	write("notdir/web", `i-am-a-file`) // web path is a file
+	if err := os.MkdirAll(filepath.Join(modules, ".hidden", "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modules, ".hidden", "web", "X.vue"), []byte(`<div class="hidden-mod-util"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modules, "sidecar.txt"), []byte("file entry"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "domain-kit-util", "gap-3", "auth-only-util", "shared-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	if set["ep-product-only"] {
+		t.Fatalf("kit host O*.vue must stay filtered out, got %v", got)
+	}
+	if set["hidden-mod-util"] {
+		t.Fatalf("dot-directory modules must be skipped, got %v", got)
+	}
+
+	// Domain web Stat error must surface (chmod 000 is unreliable on root/CI).
+	lockedParent := filepath.Join(modules, "locked")
+	lockedWeb := filepath.Join(lockedParent, "web")
+	if err := os.MkdirAll(lockedWeb, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(lockedWeb, "X.vue"), []byte(`<div class="x"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prevStat := choyProductStat
+	t.Cleanup(func() { choyProductStat = prevStat })
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		if strings.HasSuffix(filepath.ToSlash(name), "/locked/web") {
+			return nil, errors.New("domain web stat boom")
+		}
+		return prevStat(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "domain web stat boom") {
+		t.Fatalf("expected domain web Stat error, got %v", err)
+	}
+	choyProductStat = prevStat
+
+	// Domain scan error must surface (chmod 000 is unreliable on root/CI).
+	prevDomain := choyScanDomainCandidates
+	t.Cleanup(func() { choyScanDomainCandidates = prevDomain })
+	choyScanDomainCandidates = func(roots []string) ([]string, error) {
+		for _, r := range roots {
+			if strings.Contains(filepath.ToSlash(r), "/partner/web") {
+				return nil, errors.New("domain scan boom")
+			}
+		}
+		return prevDomain(roots)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "domain scan boom") {
+		t.Fatalf("expected domain scan error, got %v", err)
+	}
+	choyScanDomainCandidates = prevDomain
+
+	// No kit root: still scan domain modules.
+	noKit := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(noKit, "partner", "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(noKit, "partner", "web", "P.vue"), []byte(`<div class="nokit-domain"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err = ScanChoyProductTailwindCandidates(noKit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, c := range got {
+		if c == "nokit-domain" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("domain-only modulesPath must still yield candidates, got %v", got)
 	}
 }

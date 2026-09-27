@@ -74,10 +74,6 @@ SPDX-License-Identifier: Apache-2.0
 <script lang="ts">
 import { defineComponent, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import '../styles/tokens.css';
-import '../styles/theme.override.css';
-import '../styles/preflight-policy.css';
-import '../styles/choy-tailwind.generated.css';
 import ChoyButton from '../components/layout/ChoyButton.vue';
 import ChoyCard from '../components/layout/ChoyCard.vue';
 import ChoyCol from '../components/layout/ChoyCol.vue';
