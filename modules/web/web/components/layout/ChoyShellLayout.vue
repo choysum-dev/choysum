@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
     <slot>
       <router-view v-slot="{ Component, route }">
         <!-- KeepAlive stays mounted so cached views survive non-keepAlive navigations. -->
-        <KeepAlive>
+        <KeepAlive :max="10">
           <component
             :is="Component"
             v-if="Component && route.meta?.keepAlive"

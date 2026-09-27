@@ -156,7 +156,15 @@ describe('ErrorView', () => {
   });
 
   test('omits Go back when from is not a same-app absolute path', async () => {
-    for (const from of ['//evil.example', '/\\evil.example', '/error/500', '/error']) {
+    for (const from of [
+      '//evil.example',
+      '/\\evil.example',
+      '/\tevil.example',
+      '/foo\\bar',
+      '/%5cevil.example',
+      '/error/500',
+      '/error',
+    ]) {
       const mounted = mountError({
         path: '/error/403',
         fullPath: `/error/403?from=${encodeURIComponent(from)}`,
