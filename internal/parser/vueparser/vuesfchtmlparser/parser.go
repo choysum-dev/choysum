@@ -144,9 +144,9 @@ const vueRawTextMaskPrefix = "VueSfcRaw"
 var vueSfcHTMLParse = parseWithCaseSensitive
 
 func maskPascalCaseRawTextTags(src string) string {
-	scriptStyle := sfcScriptStyleBlock.FindAllStringIndex(src, -1)
-	// Comment spans are HTML-context only; a "<!--" literal inside script/style
-	// must not open a range that swallows later <template> markup.
+	// Script/style ranges ignore openers that sit inside HTML comments (e.g.
+	// <!-- <script> -->), then comment spans ignore "<!--" inside real blocks.
+	scriptStyle := findScriptStyleRanges(src)
 	comments := findHTMLCommentRanges(src, scriptStyle)
 	inRange := func(pos int, ranges [][]int) bool {
 		for _, r := range ranges {
@@ -194,8 +194,11 @@ func maskPascalCaseRawTextTags(src string) string {
 				// not mask past the next script/style block — those bodies are
 				// TextNodes and cannot be repaired by unmaskPascalCaseRawTextTags.
 				end := len(src)
-				if m := sfcScriptStyleBlock.FindStringIndex(src[bodyStart:]); m != nil {
-					end = bodyStart + m[0]
+				for _, r := range scriptStyle {
+					if r[0] >= bodyStart {
+						end = r[0]
+						break
+					}
 				}
 				out.WriteString(maskPascalCaseRawTextTagsOutsideQuotes(src[bodyStart:end]))
 				out.WriteString(src[end:])
@@ -234,6 +237,42 @@ func maskPascalCaseRawTextTags(src string) string {
 		}
 	}
 	return out.String()
+}
+
+// findScriptStyleRanges returns [start,end) spans of top-level <script>/<style>
+// blocks whose openers are not inside HTML comments. A commented opener such as
+// <!-- <script> --> must not pair with a later real </script> and swallow the
+// template between them. Comment markers inside real script/style bodies are
+// still ignored when comment ranges are computed (via findHTMLCommentRanges skip).
+func findScriptStyleRanges(src string) [][]int {
+	naiveComments := findHTMLCommentRanges(src, nil)
+	inComment := func(pos int) bool {
+		for _, r := range naiveComments {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
+	var ranges [][]int
+	searchFrom := 0
+	for searchFrom < len(src) {
+		m := sfcScriptStyleBlock.FindStringIndex(src[searchFrom:])
+		if m == nil {
+			break
+		}
+		start := searchFrom + m[0]
+		end := searchFrom + m[1]
+		if inComment(start) {
+			// Reject this match and resume just past the false opener so a later
+			// real <script>/<style> can still be found.
+			searchFrom = start + 1
+			continue
+		}
+		ranges = append(ranges, []int{start, end})
+		searchFrom = end
+	}
+	return ranges
 }
 
 // findHTMLCommentRanges returns [start,end) spans of <!-- … --> in HTML context.

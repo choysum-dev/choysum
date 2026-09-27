@@ -584,3 +584,34 @@ func TestMaskPascalCaseRawTextTagsOutsideQuotesUnclosedComment(t *testing.T) {
 		t.Fatalf("Textarea after closed comment must mask, got %q", got)
 	}
 }
+
+func TestMaskPascalCaseRawTextTagsCommentedScriptOpenerDoesNotSwallowTemplate(t *testing.T) {
+	// A commented <script> must not pair with the real </script> and treat the
+	// template as script body (leaving <Textarea> unmasked so nested markup dies).
+	src := `<!-- <script> -->
+<template>
+  <Textarea><span id="inner">x</span></Textarea>
+</template>
+<script setup>const t = "<Textarea>"</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must be masked, got %q", got)
+	}
+	if strings.Contains(got, `const t = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("real script literal must stay unmasked, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const t = "<Textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `id="inner"`) {
+		t.Fatalf("Textarea must not swallow nested markup, got %q", rendered)
+	}
+}
