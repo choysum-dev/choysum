@@ -165,19 +165,22 @@ const dialogRow = ref<T | null>(null);
 
 function rowKey(row: T, index = 0): DataTableRowId {
   if (props.rowId) return props.rowId(row);
-  const id = (row as any).Id ?? (row as any).id;
+  const record = row as Record<string, unknown>;
+  const id = record.Id ?? record.id;
   if (id != null && String(id).trim() !== '') return String(id);
   return `__o2m_${index}`;
 }
 
 function rowTitle(row: T): string {
-  const v = (row as any)[props.titleField];
+  const field = props.titleField || '';
+  const v = (row as Record<string, unknown>)[field];
   return v == null || v === '' ? String(rowKey(row)) : String(v);
 }
 
 function rowSubtitle(row: T): string | undefined {
-  if (!props.subtitleField) return undefined;
-  const v = (row as any)[props.subtitleField];
+  const field = props.subtitleField;
+  if (!field) return undefined;
+  const v = (row as Record<string, unknown>)[field];
   return v == null || v === '' ? undefined : String(v);
 }
 

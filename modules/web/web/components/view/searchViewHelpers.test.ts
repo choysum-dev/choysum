@@ -57,6 +57,12 @@ describe('searchViewHelpers', () => {
         children: [{ field: 'name', operator: '=', value: 'solo' }],
       }),
     ).toEqual([{ field: 'name', op: '=', value: 'solo' }]);
+    // Leaf with empty children array must not be dropped as an empty group.
+    expect(
+      flattenChoySearchFilters([
+        { field: 'code', operator: '=', value: 'x', children: [] },
+      ]),
+    ).toEqual([{ field: 'code', op: '=', value: 'x' }]);
   });
 
   test('choySearchQueryFromPayload adapts OSearchView payload', () => {

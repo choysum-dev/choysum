@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { ref, watch, provide } from 'vue';
+import { toRef, provide } from 'vue';
 import {
   VIEW_MODE_KEY,
   VIEW_CONTAINER_KEY,
@@ -33,24 +33,11 @@ const props = withDefaults(
   }
 );
 
-const modeRef = ref<ViewMode>(props.viewMode);
-const containerRef = ref<ViewContainer>(props.container);
-const fieldPrefixRef = ref<string | undefined>(props.fieldPrefix);
+const modeRef = toRef(props, 'viewMode');
+const containerRef = toRef(props, 'container');
+const fieldPrefixRef = toRef(props, 'fieldPrefix');
 
 provide(VIEW_MODE_KEY, modeRef);
 provide(VIEW_CONTAINER_KEY, containerRef);
 provide(FIELD_PREFIX_KEY, fieldPrefixRef);
-
-watch(
-  () => props.viewMode,
-  v => (modeRef.value = v)
-);
-watch(
-  () => props.container,
-  v => (containerRef.value = v)
-);
-watch(
-  () => props.fieldPrefix,
-  v => (fieldPrefixRef.value = v)
-);
 </script>

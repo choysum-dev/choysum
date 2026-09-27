@@ -90,6 +90,24 @@ describe('Choy store engine', () => {
     wrapper.unmount();
   });
 
+  test('ChoyListView keeps chrome when columns/data set under page store', async () => {
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyPage, { store: fakeStore, title: 'Outer' }, () =>
+            h(ChoyListView, {
+              columns: [{ accessorKey: 'name', header: 'Name' }],
+              data: [{ name: 'a' }],
+            } as any),
+          );
+      },
+    });
+    const wrapper = mountApp(Host);
+    await flushPromises();
+    expect(wrapper.q('[data-anchor="choy.list-view"]')).not.toBeNull();
+    wrapper.unmount();
+  });
+
   test('nested ChoyPage without store keeps ancestor page store', async () => {
     let seen: unknown = undefined;
     const Probe = defineComponent({

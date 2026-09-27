@@ -53,7 +53,8 @@ export function flattenChoySearchFilters(
   const walk = (nodes: ReadonlyArray<FilterTreeNode>): void => {
     for (const node of nodes) {
       if (!node || typeof node !== 'object') continue;
-      if (Array.isArray(node.children)) {
+      // Empty children must not hide a leaf field (serialized Condition with children: []).
+      if (Array.isArray(node.children) && node.children.length > 0) {
         walk(node.children);
         continue;
       }

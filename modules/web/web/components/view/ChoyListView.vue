@@ -86,7 +86,13 @@ const props = withDefaults(
 
 const attrs = useAttrs();
 const pageStore = useOptionalPageStore();
-const useStoreEngine = computed(() => hasChoyStoreEngine(props.store, pageStore.value));
+// Explicit columns/data keep chrome mode even under a store-backed ChoyPage.
+const useStoreEngine = computed(
+  () =>
+    hasChoyStoreEngine(props.store, pageStore.value) &&
+    props.columns == null &&
+    props.data == null,
+);
 
 const splitAttrs = computed(() => splitChoyAttrsListeners(attrs as Record<string, unknown>));
 
