@@ -26,6 +26,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   const exposeBrowserI18nOnWindow = fnRecorder();
   const createAppRouter = fnRecorder(() => ({ name: 'router' }));
   const createAppMenu = fnRecorder(() => ({ name: 'menu' }));
+  const applyTheme = fnRecorder(() => ({ theme: 'dark', density: 'compact', dark: true }));
   const createTerminologyCatalogMerger = fnRecorder(() => fnRecorder());
   const pinia = { name: 'pinia' };
   const createPinia = () => ({ use: () => pinia }) as any;
@@ -68,7 +69,8 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: createAppRouter as any,
     createAppMenu: createAppMenu as any,
-    applyChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable', dark: false })) as any,
+    applyChoyThemePreference: applyTheme as any,
+    readChoyThemePreference: (() => ({ theme: 'dark', density: 'compact' })) as any,
     baseUrl: '/',
     hasWindow: () => true,
   });
@@ -76,6 +78,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   expect(registerGlobalDirectives.calls.length).toBe(1);
   expect(registerGlobalDirectives.calls[0][0]).toBe(app);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
+  expect(applyTheme.calls).toEqual([[{ theme: 'dark', density: 'compact' }]]);
   expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
   expect(createAppRouter.calls.length).toBe(1);
   expect(createAppMenu.calls.length).toBe(1);

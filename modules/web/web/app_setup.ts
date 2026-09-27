@@ -23,7 +23,10 @@ import { detectBrowserTimezone, resolveRequestTimezone } from './utils/request_t
 import { setUserTimeZoneResolver } from './utils/datetime';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { registerChoyGalleryRoute } from './route/choyGallery';
-import { applyChoyThemePreference } from './composables/applyChoyThemePreference';
+import {
+  applyChoyThemePreference,
+  readChoyThemePreference,
+} from './composables/applyChoyThemePreference';
 
 /** Optional overrides for unit tests; production callers omit this. */
 export type SetupAppDeps = {
@@ -47,6 +50,7 @@ export type SetupAppDeps = {
   createAppMenu?: typeof createAppMenu;
   registerChoyGalleryRoute?: typeof registerChoyGalleryRoute;
   applyChoyThemePreference?: typeof applyChoyThemePreference;
+  readChoyThemePreference?: typeof readChoyThemePreference;
   baseUrl?: string;
   hasWindow?: () => boolean;
 };
@@ -75,6 +79,7 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   const makeRouter = pickDep(deps.createAppRouter, createAppRouter);
   const makeMenu = pickDep(deps.createAppMenu, createAppMenu);
   const applyTheme = pickDep(deps.applyChoyThemePreference, applyChoyThemePreference);
+  const readTheme = pickDep(deps.readChoyThemePreference, readChoyThemePreference);
   const baseUrl = pickDep(deps.baseUrl, import.meta.env?.BASE_URL ?? '/');
   const hasWindow = pickDep(deps.hasWindow, () => typeof window !== 'undefined');
 
@@ -135,8 +140,8 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
 
   if (hasWindow()) {
     exposeBrowserI18n(i18n.global);
-    // Theme root (.dark / data-density) on documentElement for Choy tokens.
-    applyTheme({});
+    // Restore persisted theme/density onto documentElement for Choy tokens.
+    applyTheme(readTheme());
   }
 
   watch(

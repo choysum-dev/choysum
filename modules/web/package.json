@@ -33,7 +33,9 @@
     "@tanstack/vue-virtual": "3.13.39",
     "@internationalized/date": "3.12.4",
     "@unovis/vue": "1.7.0",
-    "@unovis/ts": "1.7.0"
+    "@unovis/ts": "1.7.0",
+    "echarts": "^6.1.0",
+    "vue-echarts": "^8.0.1"
   },
   "choysum": {
     "moduleName": "web",
