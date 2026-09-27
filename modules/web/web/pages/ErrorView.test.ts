@@ -95,6 +95,19 @@ describe('ErrorView', () => {
     mounted.unmount();
   });
 
+  test('prefers static path segment over query code', async () => {
+    const mounted = mountError({
+      path: '/error/403',
+      fullPath: '/error/403?code=500',
+      params: {},
+      query: { code: '500' },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=card]')?.getAttribute('data-title')).toMatch(/denied|Access/i);
+    mounted.unmount();
+  });
+
+
   test('invokes navigation and window helpers from action buttons', async () => {
     const open = fnRecorder(() => null);
     const reload = fnRecorder(() => undefined);

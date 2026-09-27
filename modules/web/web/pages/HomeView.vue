@@ -54,7 +54,7 @@ const { _t } = createTranslate('web', { scope: 'web/pages/HomeView' });
 const tick = ref(0);
 
 const prefs = computed(() => {
-  tick.value;
+  void tick.value;
   return readChoyThemePreference();
 });
 

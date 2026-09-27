@@ -54,7 +54,8 @@ const route = useRoute();
 const errorConfig = computed<ErrorConfig>(() => {
   // Auth/web redirects use static paths (/error/403) rather than :code params.
   const pathMatch = route.path.match(/\/error\/(\d+)/);
-  const code = String(route.params.code || route.query.code || pathMatch?.[1] || '404');
+  // Prefer path (/error/403) over a stray ?code=; params.code wins for :code routes.
+  const code = String(route.params.code || pathMatch?.[1] || route.query.code || '404');
   switch (code) {
     case '403': {
       const reason = route.query.reason as string;
