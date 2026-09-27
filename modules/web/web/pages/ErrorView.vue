@@ -51,19 +51,24 @@ interface ErrorConfig {
 const router = useRouter();
 const route = useRoute();
 
+/** vue-router may yield string[] for repeated keys — take the first entry. */
+function pickQueryString(value: unknown): string | undefined {
+  const first = Array.isArray(value) ? value[0] : value;
+  return first == null || first === '' ? undefined : String(first);
+}
+
 const errorConfig = computed<ErrorConfig>(() => {
   // Auth/web redirects use static paths (/error/403) rather than :code params.
   const pathMatch = route.path.match(/\/error\/(\d+)/);
   // Prefer path (/error/403) over a stray ?code=; params.code wins for :code routes.
-  // vue-router may yield string[] for repeated keys — take the first entry.
-  const paramCode = Array.isArray(route.params.code) ? route.params.code[0] : route.params.code;
-  const queryCode = Array.isArray(route.query.code) ? route.query.code[0] : route.query.code;
+  const paramCode = pickQueryString(route.params.code);
+  const queryCode = pickQueryString(route.query.code);
   const code = String(paramCode || pathMatch?.[1] || queryCode || '404');
   switch (code) {
     case '403': {
-      const reason = route.query.reason as string;
-      const message = route.query.message as string;
-      const fromPath = route.query.from as string;
+      const reason = pickQueryString(route.query.reason);
+      const message = pickQueryString(route.query.message);
+      const fromPath = pickQueryString(route.query.from);
       let subtitle = _t('You do not have permission to access this page');
       if (reason === 'role') {
         subtitle = _t('You are missing the required role');
@@ -87,7 +92,7 @@ const errorConfig = computed<ErrorConfig>(() => {
         title: _t('Server error'),
         subtitle: _t('The server encountered an error'),
         message:
-          (route.query.message as string) ||
+          pickQueryString(route.query.message) ||
           _t('An internal error occurred. Try again later or contact support.'),
         actions: [
           { text: _t('Back to home'), action: goHome, variant: 'default' },

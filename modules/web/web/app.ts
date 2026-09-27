@@ -11,6 +11,9 @@ import { setupApp } from './app_setup';
 import App from './App.vue';
 
 import 'normalize.css/normalize.css';
+// Dual-stack: O* views / TerminologyEditor still need Element Plus until full Choy cutover.
+import 'element-plus/dist/index.css';
+import 'element-plus/theme-chalk/display.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import './styles/tokens.css';
 import './styles/preflight-policy.css';

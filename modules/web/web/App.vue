@@ -12,6 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 /**
  * Root host for the web SPA. Theme class / density live on documentElement
- * (see applyChoyThemePreference from setupApp); no Element Plus provider.
+ * (see applyChoyThemePreference from setupApp). Element Plus remains registered
+ * for dual-stack O* views until full Choy cutover.
  */
 </script>

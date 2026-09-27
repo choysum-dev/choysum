@@ -129,6 +129,33 @@ describe('ErrorView', () => {
     fromQuery.unmount();
   });
 
+  test('normalizes repeated reason/message/from query values', async () => {
+    const stub = createFeStubRouter({
+      route: {
+        path: '/error/403',
+        fullPath: '/error/403?reason=role&reason=permission&from=/a&from=/b&message=one&message=two',
+        params: {},
+        query: {
+          reason: ['role', 'permission'],
+          from: ['/a', '/b'],
+          message: ['one', 'two'],
+        },
+      },
+    });
+    const push = fnRecorder((to: unknown) => Promise.resolve(to));
+    stub.router.push = push;
+
+    const mounted = mountApp(ErrorView as any, { plugins: [stub.router] });
+    await flushPromises();
+    expect(mounted.text()).toMatch(/missing the required role/i);
+    expect(mounted.text()).toContain('one');
+    const actions = mounted.qa('[data-test=action]');
+    (actions[1] as HTMLElement).click();
+    expect(push.calls.map(c => c[0])).toEqual(['/a']);
+    mounted.unmount();
+  });
+
+
 
 
   test('invokes navigation and window helpers from action buttons', async () => {

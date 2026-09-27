@@ -69,6 +69,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: createAppRouter as any,
     createAppMenu: createAppMenu as any,
+    ElementPlus: { name: 'ElementPlus' } as any,
     applyChoyThemePreference: applyTheme as any,
     readChoyThemePreference: (() => ({ theme: 'dark', density: 'compact' })) as any,
     baseUrl: '/',
@@ -79,7 +80,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   expect(registerGlobalDirectives.calls[0][0]).toBe(app);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
   expect(applyTheme.calls).toEqual([[{ theme: 'dark', density: 'compact' }]]);
-  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
   expect(createAppRouter.calls.length).toBe(1);
   expect(createAppMenu.calls.length).toBe(1);
   expect(createTerminologyCatalogMerger.calls.length).toBe(1);
@@ -258,6 +259,7 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
+    ElementPlus: { name: 'ElementPlus' } as any,
     registerChoyGalleryRoute: (() => {}) as any,
     applyChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable', dark: false })) as any,
     baseUrl: '/',
@@ -358,8 +360,9 @@ test('setupApp > swallows auth errors while building request context timezone', 
   });
 });
 
-test('setupApp > loads legacy vue-i18n messages on locale change', async () => {
-  const app = makeApp();
+test('setupApp > updates Element Plus locale and legacy messages on locale change', async () => {
+  const elementLocale = { name: 'zh-CN' };
+  const app = makeApp(elementLocale);
   const mergeLocaleMessage = fnRecorder();
   const loadVueI18nMessages = asyncFnRecorder(async () => ({ legacy: 'messages' }));
   const i18nLocale = ref('en');
@@ -382,9 +385,11 @@ test('setupApp > loads legacy vue-i18n messages on locale change', async () => {
   });
 
   currentLocale.code = 'zh-CN';
+  currentLocale.elementLocale = elementLocale;
   await nextTick();
   await nextTick();
 
+  expect(app.config.globalProperties.$ELEMENT.locale).toEqual(elementLocale);
   expect(loadVueI18nMessages.calls.map(c => c[0])).toEqual(['zh-CN']);
   expect(mergeLocaleMessage.calls).toEqual([['zh-CN', { legacy: 'messages' }]]);
   expect(i18nLocale.value).toBe('zh-CN');
@@ -477,7 +482,7 @@ test('setupApp > uses production defaults for omitted deps', () => {
   const i18nLocale = ref('en');
   const exposeBrowserI18nOnWindow = fnRecorder();
 
-  // Omit baseUrl/hasWindow/sourceMessages/piniaPlugin/timezone helpers/
+  // Omit baseUrl/hasWindow/ElementPlus/sourceMessages/piniaPlugin/timezone helpers/
   // terminology project/notify/track so those `deps.x ?? default` arms execute.
   setupApp(app as any, {
     registerGlobalDirectives: fnRecorder() as any,
@@ -503,8 +508,9 @@ test('setupApp > uses production defaults for omitted deps', () => {
     exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
+    ElementPlus: { name: 'ElementPlus' } as any,
   });
 
-  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
 });

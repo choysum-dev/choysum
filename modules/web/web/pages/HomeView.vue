@@ -51,18 +51,14 @@ import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/pages/HomeView' });
 
-const tick = ref(0);
-
-const prefs = computed(() => {
-  void tick.value;
-  return readChoyThemePreference();
-});
+const prefs = ref(readChoyThemePreference());
 
 const themeLabel = computed(() => prefs.value.theme ?? 'light');
 const densityLabel = computed(() => prefs.value.density ?? 'comfortable');
 
 function refresh() {
-  applyChoyThemePreference(readChoyThemePreference());
-  tick.value += 1;
+  const next = readChoyThemePreference();
+  applyChoyThemePreference(next);
+  prefs.value = next;
 }
 </script>
