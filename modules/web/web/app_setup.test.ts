@@ -26,6 +26,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   const exposeBrowserI18nOnWindow = fnRecorder();
   const createAppRouter = fnRecorder(() => ({ name: 'router' }));
   const createAppMenu = fnRecorder(() => ({ name: 'menu' }));
+  const applyTheme = fnRecorder(() => ({ theme: 'dark', density: 'compact', dark: true }));
   const createTerminologyCatalogMerger = fnRecorder(() => fnRecorder());
   const pinia = { name: 'pinia' };
   const createPinia = () => ({ use: () => pinia }) as any;
@@ -69,6 +70,8 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
     createAppRouter: createAppRouter as any,
     createAppMenu: createAppMenu as any,
     ElementPlus: { name: 'ElementPlus' } as any,
+    applyChoyThemePreference: applyTheme as any,
+    readChoyThemePreference: (() => ({ theme: 'dark', density: 'compact' })) as any,
     baseUrl: '/',
     hasWindow: () => true,
   });
@@ -76,6 +79,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   expect(registerGlobalDirectives.calls.length).toBe(1);
   expect(registerGlobalDirectives.calls[0][0]).toBe(app);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
+  expect(applyTheme.calls).toEqual([[{ theme: 'dark', density: 'compact' }]]);
   expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
   expect(createAppRouter.calls.length).toBe(1);
   expect(createAppMenu.calls.length).toBe(1);
@@ -121,7 +125,6 @@ test('setupApp > skips browser i18n expose without window', () => {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: {} as any,
     baseUrl: '/',
     hasWindow: () => false,
   });
@@ -167,7 +170,6 @@ test('setupApp > resolves user timezone from auth store', () => {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: {} as any,
     baseUrl: '/',
     hasWindow: () => false,
   });
@@ -215,7 +217,6 @@ test('setupApp > falls back to identity timezone and swallows auth lookup failur
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: {} as any,
     baseUrl: '/',
     hasWindow: () => false,
   });
@@ -258,8 +259,10 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: {} as any,
+    ElementPlus: { name: 'ElementPlus' } as any,
     registerChoyGalleryRoute: (() => {}) as any,
+    applyChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable', dark: false })) as any,
+    readChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable' })) as any,
     baseUrl: '/',
     hasWindow: () => false,
     _store: store,
@@ -506,6 +509,7 @@ test('setupApp > uses production defaults for omitted deps', () => {
     exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
+    ElementPlus: { name: 'ElementPlus' } as any,
   });
 
   expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);

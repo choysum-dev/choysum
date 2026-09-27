@@ -24,6 +24,10 @@ import { setUserTimeZoneResolver } from './utils/datetime';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import ElementPlus from 'element-plus';
 import { registerChoyGalleryRoute } from './route/choyGallery';
+import {
+  applyChoyThemePreference,
+  readChoyThemePreference,
+} from './composables/applyChoyThemePreference';
 
 /** Optional overrides for unit tests; production callers omit this. */
 export type SetupAppDeps = {
@@ -47,6 +51,8 @@ export type SetupAppDeps = {
   createAppMenu?: typeof createAppMenu;
   ElementPlus?: typeof ElementPlus;
   registerChoyGalleryRoute?: typeof registerChoyGalleryRoute;
+  applyChoyThemePreference?: typeof applyChoyThemePreference;
+  readChoyThemePreference?: typeof readChoyThemePreference;
   baseUrl?: string;
   hasWindow?: () => boolean;
 };
@@ -75,6 +81,8 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   const makeRouter = pickDep(deps.createAppRouter, createAppRouter);
   const makeMenu = pickDep(deps.createAppMenu, createAppMenu);
   const elementPlus = pickDep(deps.ElementPlus, ElementPlus);
+  const applyTheme = pickDep(deps.applyChoyThemePreference, applyChoyThemePreference);
+  const readTheme = pickDep(deps.readChoyThemePreference, readChoyThemePreference);
   const baseUrl = pickDep(deps.baseUrl, import.meta.env?.BASE_URL ?? '/');
   const hasWindow = pickDep(deps.hasWindow, () => typeof window !== 'undefined');
 
@@ -135,6 +143,8 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
 
   if (hasWindow()) {
     exposeBrowserI18n(i18n.global);
+    // Restore persisted theme/density onto documentElement for Choy tokens.
+    applyTheme(readTheme());
   }
 
   watch(
@@ -175,6 +185,7 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   const menuPlugin = makeMenu();
   app.usePlugin('menu', menuPlugin);
 
+  // Dual-stack host: O* views and TerminologyEditor still register Element Plus.
   app.usePlugin('element-plus', elementPlus, {
     locale: i18nStore.currentLocale.elementLocale,
   });

@@ -4,9 +4,9 @@
 /**
  * Entry point for the Choysum Web module.
  *
- * Exports the application instance and the Choy UI kit surface co-located
- * under this module. Product pages still use O* / Element Plus during the
- * dual-stack window; domain must import only public Choy* names from here.
+ * Exports the application instance and the public Choy UI kit surface.
+ * Domain modules must import only public Choy* names (and listed helpers)
+ * from here — never ui/*, internal/*, Reka, Unovis, or TanStack.
  */
 
 export { default } from './app';
