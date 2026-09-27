@@ -89,4 +89,28 @@ describe('Choy store engine', () => {
     expect(wrapper.q('[data-anchor="choy.list-view"]')).not.toBeNull();
     wrapper.unmount();
   });
+
+  test('nested ChoyPage without store keeps ancestor page store', async () => {
+    let seen: unknown = undefined;
+    const Probe = defineComponent({
+      setup() {
+        const ctx = useOPageContext();
+        seen = ctx?.store.value;
+        return () => h('div', { 'data-test': 'nested-probe' });
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyPage, { store: fakeStore, title: 'Outer' }, () =>
+            h(ChoyPage, { title: 'Inner' }, () => h(Probe)),
+          );
+      },
+    });
+    const wrapper = mountApp(Host);
+    await flushPromises();
+    expect(wrapper.q('[data-test=nested-probe]')).not.toBeNull();
+    expect(seen).toBe(fakeStore);
+    wrapper.unmount();
+  });
 });

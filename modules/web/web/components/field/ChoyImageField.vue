@@ -72,6 +72,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useAttrs, watch } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import OImageField from './OImageField.vue';
 import type { ClassValue } from '../../lib/utils';
@@ -130,8 +131,9 @@ const props = withDefaults(
 defineOptions({ name: 'ChoyImageField', inheritAttrs: false });
 
 const attrs = useAttrs();
-const storeMode = computed(() => isChoyStoreFieldBinding(props));
-const storeBind = computed(() => ({ ...attrs, ...props }) as any);
+const pageStore = useOptionalPageStore();
+const storeMode = computed(() => isChoyStoreFieldBinding(props, pageStore.value));
+const storeBind = computed(() => ({ ...attrs, ...props, store: props.store ?? pageStore.value }) as any);
 
 const model = defineModel<ChoyImageValue>({ default: null });
 const inputRef = ref<HTMLInputElement | null>(null);

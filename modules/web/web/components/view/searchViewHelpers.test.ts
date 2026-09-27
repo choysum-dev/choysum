@@ -3,7 +3,9 @@
 
 import {
   buildChoySearchQuery,
+  choySearchQueryFromPayload,
   filterRowsByKeyword,
+  flattenChoySearchFilters,
   normalizeChoySearchKeyword,
 } from './searchViewHelpers';
 
@@ -30,6 +32,36 @@ describe('searchViewHelpers', () => {
     ).toEqual({
       keyword: 'x',
       filters: [{ field: 'code', op: '=', value: 'ok' }],
+    });
+  });
+
+  test('flattenChoySearchFilters walks nested ConditionGroups', () => {
+    expect(flattenChoySearchFilters(null)).toEqual([]);
+    expect(
+      flattenChoySearchFilters([
+        {
+          children: [
+            { field: ' Name ', operator: ' = ', value: 'a' },
+            { children: [{ field: 'code', operator: 'ilike', value: 'x' }] },
+            { field: '', operator: '=', value: 'skip' },
+          ],
+        },
+      ]),
+    ).toEqual([
+      { field: 'Name', op: '=', value: 'a' },
+      { field: 'code', op: 'ilike', value: 'x' },
+    ]);
+  });
+
+  test('choySearchQueryFromPayload adapts OSearchView payload', () => {
+    expect(
+      choySearchQueryFromPayload({
+        keyword: '  hi  ',
+        appliedFilters: [{ children: [{ field: 'name', operator: '=', value: 'a' }] }],
+      }),
+    ).toEqual({
+      keyword: 'hi',
+      filters: [{ field: 'name', op: '=', value: 'a' }],
     });
   });
 

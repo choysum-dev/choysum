@@ -109,7 +109,10 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, useAttrs } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
-import { hasChoyStoreEngine } from '@/web/web/composables/choyStoreMode';
+import {
+  hasChoyStoreEngine,
+  splitChoyAttrsListeners,
+} from '@/web/web/composables/choyStoreMode';
 import OFormView from './OFormView.vue';
 
 defineOptions({ name: 'ChoyFormView', inheritAttrs: false });
@@ -152,8 +155,10 @@ const attrs = useAttrs();
 const pageStore = useOptionalPageStore();
 const useStoreEngine = computed(() => hasChoyStoreEngine(props.store, pageStore.value));
 
+const splitAttrs = computed(() => splitChoyAttrsListeners(attrs as Record<string, unknown>));
+
 const storeBind = computed(() => ({
-  ...attrs,
+  ...splitAttrs.value.bind,
   store: props.store ?? pageStore.value,
   recordId: props.recordId,
   initialValues: props.initialValues,
@@ -172,13 +177,5 @@ const storeBind = computed(() => ({
   resolveRecordIdFromRoute: props.resolveRecordIdFromRoute,
 }));
 
-const storeListeners = computed(() => {
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(attrs)) {
-    if (key.startsWith('on') && typeof value === 'function') {
-      out[key] = value;
-    }
-  }
-  return out;
-});
+const storeListeners = computed(() => splitAttrs.value.listeners);
 </script>

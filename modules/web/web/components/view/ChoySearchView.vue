@@ -4,7 +4,12 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OSearchView v-if="useStoreEngine" v-bind="(storeBind as any)" v-on="(storeListeners as any)">
+  <OSearchView
+    v-if="useStoreEngine"
+    v-bind="(storeBind as any)"
+    v-on="(storeListeners as any)"
+    @query-update="onStoreQueryUpdate"
+  >
     <slot />
   </OSearchView>
 
@@ -37,12 +42,16 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, useAttrs } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
-import { hasChoyStoreEngine } from '@/web/web/composables/choyStoreMode';
+import {
+  hasChoyStoreEngine,
+  splitChoyAttrsListeners,
+} from '@/web/web/composables/choyStoreMode';
 import Input from '../vendor/ui/input/Input.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import type { ClassValue } from '../../lib/utils';
 import {
   buildChoySearchQuery,
+  choySearchQueryFromPayload,
   type ChoySearchQuery,
 } from './searchViewHelpers';
 import OSearchView from './OSearchView.vue';
@@ -69,21 +78,15 @@ const attrs = useAttrs();
 const pageStore = useOptionalPageStore();
 const useStoreEngine = computed(() => hasChoyStoreEngine(props.store, pageStore.value));
 
+const splitAttrs = computed(() => splitChoyAttrsListeners(attrs as Record<string, unknown>));
+
 const storeBind = computed(() => ({
-  ...attrs,
+  ...splitAttrs.value.bind,
   store: props.store ?? pageStore.value,
   class: props.class,
 }));
 
-const storeListeners = computed(() => {
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(attrs)) {
-    if (key.startsWith('on') && typeof value === 'function') {
-      out[key] = value;
-    }
-  }
-  return out;
-});
+const storeListeners = computed(() => splitAttrs.value.listeners);
 
 const keyword = defineModel<string>('keyword', { default: '' });
 
@@ -106,5 +109,20 @@ function onKeydown(event: KeyboardEvent): void {
   }
   event.preventDefault();
   submit();
+}
+
+/** Adapt OSearchView QueryUpdatePayload to the chrome ChoySearchQuery shape. */
+function onStoreQueryUpdate(payload: {
+  keyword?: string | null;
+  appliedFilters?: ReadonlyArray<{
+    field?: unknown;
+    operator?: unknown;
+    value?: unknown;
+    children?: ReadonlyArray<any> | null;
+  }> | null;
+}): void {
+  const query = choySearchQueryFromPayload(payload ?? {});
+  keyword.value = query.keyword;
+  emit('query-update', query);
 }
 </script>

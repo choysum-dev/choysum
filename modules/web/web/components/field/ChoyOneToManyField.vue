@@ -92,6 +92,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, useAttrs } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import DataTable from '../internal/DataTable.vue';
 import type { DataTableRowId } from '../internal/dataTableHelpers';
@@ -147,8 +148,9 @@ const props = withDefaults(
 );
 
 const attrs = useAttrs();
-const storeMode = computed(() => isChoyStoreFieldBinding(props));
-const storeBind = computed(() => ({ ...attrs, ...props }) as any);
+const pageStore = useOptionalPageStore();
+const storeMode = computed(() => isChoyStoreFieldBinding(props, pageStore.value));
+const storeBind = computed(() => ({ ...attrs, ...props, store: props.store ?? pageStore.value }) as any);
 
 const model = defineModel<T[]>({ default: () => [] });
 

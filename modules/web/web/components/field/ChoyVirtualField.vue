@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import OVirtualField from './OVirtualField.vue';
 
@@ -26,8 +27,9 @@ const props = defineProps<{
 }>();
 
 const attrs = useAttrs();
-const storeMode = computed(() => isChoyStoreFieldBinding(props));
-const storeBind = computed(() => ({ ...attrs, ...props }) as any);
+const pageStore = useOptionalPageStore();
+const storeMode = computed(() => isChoyStoreFieldBinding(props, pageStore.value));
+const storeBind = computed(() => ({ ...attrs, ...props, store: props.store ?? pageStore.value }) as any);
 
 defineModel<unknown>({ default: null });
 </script>

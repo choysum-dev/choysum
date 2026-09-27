@@ -41,6 +41,7 @@ import { computed, useAttrs } from 'vue';
 import Textarea from '../vendor/ui/textarea/Textarea.vue';
 import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import OTextField from './OTextField.vue';
@@ -73,8 +74,9 @@ const props = withDefaults(
 );
 
 const attrs = useAttrs();
-const storeMode = computed(() => isChoyStoreFieldBinding(props));
-const storeBind = computed(() => ({ ...attrs, ...props }) as any);
+const pageStore = useOptionalPageStore();
+const storeMode = computed(() => isChoyStoreFieldBinding(props, pageStore.value));
+const storeBind = computed(() => ({ ...attrs, ...props, store: props.store ?? pageStore.value }) as any);
 
 const model = defineModel<string>({ default: '' });
 </script>

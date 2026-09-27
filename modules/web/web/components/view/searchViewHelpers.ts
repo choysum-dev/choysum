@@ -38,6 +38,50 @@ export function buildChoySearchQuery(
   };
 }
 
+type FilterTreeNode = {
+  field?: unknown;
+  operator?: unknown;
+  value?: unknown;
+  children?: ReadonlyArray<FilterTreeNode> | null;
+};
+
+/** Flattens OSearchView ConditionGroup trees into Choy chrome filter rows. */
+export function flattenChoySearchFilters(
+  groups: ReadonlyArray<FilterTreeNode> | null | undefined,
+): ChoySearchFilter[] {
+  const out: ChoySearchFilter[] = [];
+  const walk = (nodes: ReadonlyArray<FilterTreeNode> | null | undefined): void => {
+    if (!nodes) return;
+    for (const node of nodes) {
+      if (!node || typeof node !== 'object') continue;
+      if (Array.isArray(node.children)) {
+        walk(node.children);
+        continue;
+      }
+      const field = String(node.field ?? '').trim();
+      if (!field) continue;
+      out.push({
+        field,
+        op: String(node.operator ?? '').trim(),
+        value: String(node.value ?? ''),
+      });
+    }
+  };
+  walk(groups);
+  return out;
+}
+
+/** Adapts OSearchView query-update payload to the ChoySearchQuery chrome shape. */
+export function choySearchQueryFromPayload(payload: {
+  keyword?: string | null;
+  appliedFilters?: ReadonlyArray<FilterTreeNode> | null;
+}): ChoySearchQuery {
+  return buildChoySearchQuery(
+    payload?.keyword,
+    flattenChoySearchFilters(payload?.appliedFilters),
+  );
+}
+
 /**
  * Case-insensitive substring filter over the listed string fields.
  * Blank keyword returns all rows. Only primitive string/number/boolean cells

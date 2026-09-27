@@ -51,6 +51,7 @@ import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import Switch from '../vendor/ui/switch/Switch.vue';
 import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import OBooleanField from './OBooleanField.vue';
@@ -81,8 +82,9 @@ const props = withDefaults(
 );
 
 const attrs = useAttrs();
-const storeMode = computed(() => isChoyStoreFieldBinding(props));
-const storeBind = computed(() => ({ ...attrs, ...props }) as any);
+const pageStore = useOptionalPageStore();
+const storeMode = computed(() => isChoyStoreFieldBinding(props, pageStore.value));
+const storeBind = computed(() => ({ ...attrs, ...props, store: props.store ?? pageStore.value }) as any);
 
 const model = defineModel<boolean>({ default: false });
 

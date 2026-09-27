@@ -51,6 +51,7 @@ import SelectItem from '../vendor/ui/select/SelectItem.vue';
 import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
 import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import OSelectionField from './OSelectionField.vue';
@@ -84,8 +85,9 @@ const props = withDefaults(
 );
 
 const attrs = useAttrs();
-const storeMode = computed(() => isChoyStoreFieldBinding(props));
-const storeBind = computed(() => ({ ...attrs, ...props }) as any);
+const pageStore = useOptionalPageStore();
+const storeMode = computed(() => isChoyStoreFieldBinding(props, pageStore.value));
+const storeBind = computed(() => ({ ...attrs, ...props, store: props.store ?? pageStore.value }) as any);
 
 const model = defineModel<string | null>({ default: null });
 

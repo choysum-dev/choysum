@@ -3,6 +3,7 @@
 
 import { h, defineComponent, type Component } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import ChoyPage from '../layout/ChoyPage.vue';
 import ChoyFormView from '../view/ChoyFormView.vue';
 import ChoyListView from '../view/ChoyListView.vue';
 import ChoySearchView from '../view/ChoySearchView.vue';
@@ -436,6 +437,85 @@ describe('Choy store-mode field hosts', () => {
     w.unmount();
   });
 
+  test('field prop under ChoyPage store hosts O* without explicit store prop', async () => {
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyPage, { store: fakeStore, title: 'Page' }, () =>
+            h(ChoyVarcharField, { prop: 'Name' }),
+          );
+      },
+    });
+    const w = mountApp(Host);
+    await flushPromises();
+    expect(w.q('[data-test=o-varchar]')).not.toBeNull();
+    expect(w.q('[data-anchor="choy.varchar-field"]')).toBeNull();
+    w.unmount();
+  });
+
+  test('store List/Search forward engine events to wrapper emits', async () => {
+    const rows: unknown[] = [];
+    stubSfc(OListView as any, {
+      props: { store: null },
+      emits: ['row-click'],
+      setup: ((_props: any, { emit }: any) => {
+        return () =>
+          h('button', {
+            'data-test': 'emit-row',
+            onClick: () => emit('row-click', { row: { name: 'r1' }, rowIndex: 0 }),
+          });
+      }) as any,
+    });
+    const list = mountApp(ChoyListView as any, {
+      props: { store: fakeStore },
+      on: {
+        onRowClick: (row: unknown) => {
+          rows.push(row);
+        },
+      },
+    });
+    await flushPromises();
+    list.click('[data-test=emit-row]');
+    await flushPromises();
+    expect(rows).toEqual([{ name: 'r1' }]);
+    list.unmount();
+    restoreSfc(OListView as any);
+    stubHost(OListView as any, 'o-list');
+
+    const queries: Array<{ keyword: string }> = [];
+    stubSfc(OSearchView as any, {
+      props: { store: null },
+      emits: ['query-update'],
+      setup: ((_props: any, { emit }: any) => {
+        return () =>
+          h('button', {
+            'data-test': 'emit-query',
+            onClick: () =>
+              emit('query-update', {
+                keyword: '  acme  ',
+                appliedFilters: [{ children: [{ field: 'name', operator: '=', value: 'a' }] }],
+              }),
+          });
+      }) as any,
+    });
+    const search = mountApp(ChoySearchView as any, {
+      props: { store: fakeStore },
+      on: {
+        onQueryUpdate: (q: { keyword: string; filters: unknown[] }) => {
+          queries.push(q as any);
+        },
+      },
+    });
+    await flushPromises();
+    search.click('[data-test=emit-query]');
+    await flushPromises();
+    expect(queries[0]?.keyword).toBe('acme');
+    expect((queries[0] as any)?.filters?.length).toBe(1);
+    search.unmount();
+    restoreSfc(OSearchView as any);
+    stubHost(OSearchView as any, 'o-search');
+  });
+
   test('ViewScope / ButtonBox / StatInfo / VColumn mount', async () => {
     const scope = await mountField(ChoyViewScope, { viewMode: 'display', container: 'List' });
     expect(scope.el.textContent).toBe('');
@@ -466,9 +546,37 @@ describe('Choy store-mode field hosts', () => {
     expect(stat.q('[data-test=o-stat]')).not.toBeNull();
     stat.unmount();
 
-    const col = await mountField(ChoyVColumn, { label: 'Name' });
+    stubSfc(OVColumn as any, {
+      setup: ((_props: any, { slots }: any) => {
+        return () =>
+          h(
+            'div',
+            { 'data-test': 'o-vcolumn' },
+            slots.default?.({
+              row: { Id: '1' },
+              column: {},
+              $index: 0,
+              store: fakeStore,
+            }),
+          );
+      }) as any,
+    });
+    const ColHost = defineComponent({
+      setup() {
+        return () =>
+          h(ChoyVColumn as any, null, {
+            default: (slotProps: any) =>
+              h('span', { 'data-test': 'cell', 'data-id': String(slotProps?.row?.Id ?? '') }),
+          });
+      },
+    });
+    const col = mountApp(ColHost);
+    await flushPromises();
     expect(col.q('[data-test=o-vcolumn]')).not.toBeNull();
+    expect(col.q('[data-test=cell]')?.getAttribute('data-id')).toBe('1');
     col.unmount();
+    restoreSfc(OVColumn as any);
+    stubHost(OVColumn as any, 'o-vcolumn');
   });
 
   test('field chrome forwards attrs when inheritAttrs is false', async () => {

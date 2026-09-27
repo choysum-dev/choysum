@@ -5,7 +5,9 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OVColumn v-bind="($attrs as any)">
-    <slot />
+    <template #default="slotProps">
+      <slot v-bind="(slotProps as any) || {}" />
+    </template>
   </OVColumn>
 </template>
 

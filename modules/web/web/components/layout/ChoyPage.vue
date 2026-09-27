@@ -133,7 +133,10 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, useId } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
-import { provideOPageContext } from '../../composables/usePageContext';
+import {
+  provideOPageContext,
+  useOptionalPageStore,
+} from '../../composables/usePageContext';
 import type { WebModelStore } from '../../stores/modelStore';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
 
@@ -168,7 +171,8 @@ const props = withDefaults(
   },
 );
 
-provideOPageContext({ store: () => props.store });
+const parentPageStore = useOptionalPageStore();
+provideOPageContext({ store: () => props.store ?? parentPageStore.value });
 
 const pageTitleId = useId();
 
