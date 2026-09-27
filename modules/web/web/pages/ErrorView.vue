@@ -61,8 +61,8 @@ function pickQueryString(value: unknown): string | undefined {
 function sameAppPath(value: unknown): string | undefined {
   const raw = pickQueryString(value);
   if (!raw || !/^\/(?![/\\])/.test(raw)) return undefined;
-  // URL parsers strip TAB/LF/CR and turn "\" into "/"; inspect the whole value.
-  if (/[\t\n\r\\]|%5c/i.test(raw)) return undefined;
+  // URL parsers strip TAB/LF/CR and turn "\" into "/"; reject raw and encoded forms.
+  if (/[\t\n\r\\]|%(?:5c|2f|09|0a|0d)/i.test(raw)) return undefined;
   if (/^\/error(?:\/|\?|$)/.test(raw)) return undefined;
   return raw;
 }

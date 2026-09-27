@@ -39,22 +39,28 @@ a {
   text-decoration: none;
   transition: color var(--choy-motion-duration-fast, 150ms);
 
-  // Prefer explicit theme tokens; otherwise mix from base primary. Keep a solid
-  // color ahead of color-mix so older engines still get a hover/active tint.
+  // Prefer explicit theme tokens; otherwise mix from base primary. Solid color
+  // first; color-mix sits behind @supports so IACVT cannot wipe the fallback.
   &:hover {
     color: var(--choy-color-primary-light, var(--el-color-primary-light-3, #3b82f6));
-    color: var(
-      --choy-color-primary-light,
-      color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, white)
-    );
+
+    @supports (color: color-mix(in oklab, red, white)) {
+      color: var(
+        --choy-color-primary-light,
+        color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, white)
+      );
+    }
   }
 
   &:active {
     color: var(--choy-color-primary-dark, var(--el-color-primary-dark-2, #1d4ed8));
-    color: var(
-      --choy-color-primary-dark,
-      color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, black)
-    );
+
+    @supports (color: color-mix(in oklab, red, white)) {
+      color: var(
+        --choy-color-primary-dark,
+        color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, black)
+      );
+    }
   }
 }
 

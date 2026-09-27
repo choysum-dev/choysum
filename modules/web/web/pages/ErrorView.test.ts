@@ -162,6 +162,8 @@ describe('ErrorView', () => {
       '/\tevil.example',
       '/foo\\bar',
       '/%5cevil.example',
+      '/%2f%2fhost',
+      '/%09evil.example',
       '/error/500',
       '/error',
     ]) {
