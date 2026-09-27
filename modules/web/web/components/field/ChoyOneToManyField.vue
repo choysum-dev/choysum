@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
   </OOneToManyField>
   <ChoyFieldBase
     v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.one-to-many-field"
     :class="props.class"
     :label="label"

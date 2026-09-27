@@ -30,6 +30,7 @@ SPDX-License-Identifier: Apache-2.0
   <!-- Chrome skeleton for Gallery / Dogfood (no WebModelStore). -->
   <div
     v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.form-view"
     :class="[
       'choy-form-view relative rounded-lg bg-background text-foreground',

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <OVarCharField v-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
     v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.varchar-field"
     :class="props.class"
     :label="label"

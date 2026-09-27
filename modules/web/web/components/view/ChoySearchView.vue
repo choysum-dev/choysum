@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
 
   <div
     v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.search-view"
     :class="['choy-search-view flex flex-wrap items-center gap-2', props.class]"
   >

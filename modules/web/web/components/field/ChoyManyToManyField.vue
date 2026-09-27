@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
   <OManyToManyField v-else-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
     v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.many-to-many-field"
     :class="props.class"
     :label="label"

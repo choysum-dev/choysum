@@ -13,7 +13,7 @@ import type { ViewMode, ViewContainer } from './OViewScope.vue';
 
 export type { ViewMode, ViewContainer };
 
-defineOptions({ name: 'ChoyViewScope' });
+defineOptions({ name: 'ChoyViewScope', inheritAttrs: false });
 
 const props = withDefaults(
   defineProps<{

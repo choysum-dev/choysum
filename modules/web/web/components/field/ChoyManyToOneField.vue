@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
   <OManyToOneField v-else-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
     v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.many-to-one-field"
     :class="props.class"
     :label="label"
@@ -24,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
       <RelationCombobox
         v-model="model"
         :id="controlId"
-        :search="search!"
+        :search="chromeSearch"
         :search-key="searchKey"
         :selected-option="selectedOption"
         :page-size="pageSize"
@@ -99,6 +100,7 @@ const props = withDefaults(
 const attrs = useAttrs();
 const storeMode = computed(() => isChoyStoreFieldBinding(props));
 const storeBind = computed(() => ({ ...attrs, ...props }) as any);
+const chromeSearch = computed(() => props.search ?? (async () => []));
 
 const model = defineModel<string | null>({ default: null });
 
