@@ -373,6 +373,17 @@ func TestScanChoyKitTailwindCandidatesFiltersAndEdges(t *testing.T) {
 	if isChoyKitTailwindInputPath("/abs/web", "relative/only.css") {
 		t.Fatal("Rel mismatch must return false")
 	}
+	webRootCheck := t.TempDir()
+	lower := filepath.Join(webRootCheck, "custom", "choyThing.ts")
+	if err := os.MkdirAll(filepath.Dir(lower), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(lower, []byte(`export const c = "p-1"`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !isChoyKitTailwindInputPath(webRootCheck, lower) {
+		t.Fatal("unknown-dir choy* fallback must accept lowercase prefix")
+	}
 
 	webRoot := t.TempDir()
 	write := func(rel, body string) {

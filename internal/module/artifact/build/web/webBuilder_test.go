@@ -5324,10 +5324,17 @@ func TestAppendExactPinsFromPackageJSONMergesKitHost(t *testing.T) {
 	if !strings.Contains(logBuf.String(), "conflicting exact pins") || !strings.Contains(logBuf.String(), "shared") {
 		t.Fatalf("expected conflict warn for shared pin, got %q", logBuf.String())
 	}
+	// Trailing separator on module path must still resolve sibling modules/web.
+	builder.module.Path = domain + string(os.PathSeparator)
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("trailing-separator module path must still merge kit pins, got %d", len(opts))
+	}
 	// Domain-only empty pins still pick up kit host pins.
 	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	builder.module.Path = domain
 	opts = builder.appendExactPinsFromPackageJSON(nil)
 	if len(opts) != 1 {
 		t.Fatalf("kit host pins alone must still produce an option, got %d", len(opts))

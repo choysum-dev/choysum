@@ -182,9 +182,9 @@ func isChoyKitTailwindInputPath(webRoot, path string) bool {
 			strings.HasPrefix(base, "pagination") ||
 			strings.HasPrefix(base, "search")
 	default:
-		// Unknown directories may still hold kit files; Choy* naming is the safety
-		// net so new kit paths are not silently dropped from candidate scanning.
-		return strings.HasPrefix(base, "Choy")
+		// Unknown directories may still hold kit files; Choy*/choy* naming is the
+		// safety net so new kit paths are not silently dropped from candidate scanning.
+		return strings.HasPrefix(base, "Choy") || strings.HasPrefix(base, "choy")
 	}
 }
 

@@ -123,11 +123,22 @@ func TestUnmaskPascalCaseRawTextTagsTextNode(t *testing.T) {
 	root := &html.Node{Type: html.ElementNode, Data: "root"}
 	root.AppendChild(&html.Node{
 		Type: html.TextNode,
-		Data: `const t = "<` + vueRawTextMaskPrefix + `Textarea>"`,
+		Data: `const t = "<` + vueRawTextMaskPrefix + `Textarea>"; note ` + vueRawTextMaskPrefix + ` stays`,
 	})
 	unmaskPascalCaseRawTextTags(root)
-	if root.FirstChild.Data != `const t = "<Textarea>"` {
-		t.Fatalf("text node mask must be stripped, got %q", root.FirstChild.Data)
+	want := `const t = "<Textarea>"; note ` + vueRawTextMaskPrefix + ` stays`
+	if root.FirstChild.Data != want {
+		t.Fatalf("only tag sentinels must unmask, got %q", root.FirstChild.Data)
+	}
+	root.AppendChild(&html.Node{
+		Type: html.CommentNode,
+		Data: `use <` + vueRawTextMaskPrefix + `Textarea> and bare ` + vueRawTextMaskPrefix,
+	})
+	unmaskPascalCaseRawTextTags(root)
+	gotComment := root.FirstChild.NextSibling.Data
+	wantComment := `use <Textarea> and bare ` + vueRawTextMaskPrefix
+	if gotComment != wantComment {
+		t.Fatalf("comment sentinels only, got %q", gotComment)
 	}
 }
 

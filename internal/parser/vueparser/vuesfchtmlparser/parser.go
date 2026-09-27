@@ -326,45 +326,50 @@ func findMustacheAndQuotedAttrRanges(src string) [][]int {
 			}
 			continue
 		}
-		if src[i] == '<' && looksLikeHTMLTagOpener(src, i) {
-			inQuote := byte(0)
-			quoteStart := 0
-			j := i + 1
-			for j < len(src) {
-				c := src[j]
-				if inQuote != 0 {
-					if c == '\\' {
-						j++
-						if j < len(src) {
+		if src[i] == '<' && i+1 < len(src) {
+			n := src[i+1]
+			// Lighter than looksLikeHTMLTagOpener so an unterminated tag still
+			// ends the scan (and covers the EOF path) without treating "{{ a < b }}".
+			if (n >= 'a' && n <= 'z') || (n >= 'A' && n <= 'Z') || n == '/' {
+				inQuote := byte(0)
+				quoteStart := 0
+				j := i + 1
+				for j < len(src) {
+					c := src[j]
+					if inQuote != 0 {
+						if c == '\\' {
 							j++
+							if j < len(src) {
+								j++
+							}
+							continue
 						}
-						continue
-					}
-					if c == inQuote {
-						ranges = append(ranges, []int{quoteStart, j + 1})
-						inQuote = 0
+						if c == inQuote {
+							ranges = append(ranges, []int{quoteStart, j + 1})
+							inQuote = 0
+							j++
+							continue
+						}
 						j++
 						continue
 					}
+					if c == '\'' || c == '"' || c == '`' {
+						inQuote = c
+						quoteStart = j
+						j++
+						continue
+					}
+					if c == '>' {
+						i = j + 1
+						break
+					}
 					j++
-					continue
 				}
-				if c == '\'' || c == '"' || c == '`' {
-					inQuote = c
-					quoteStart = j
-					j++
-					continue
-				}
-				if c == '>' {
-					i = j + 1
+				if j >= len(src) {
 					break
 				}
-				j++
+				continue
 			}
-			if j >= len(src) {
-				break
-			}
-			continue
 		}
 		i++
 	}
@@ -538,17 +543,22 @@ func unmaskPascalCaseRawTextTags(n *html.Node) {
 		if strings.HasPrefix(n.Data, vueRawTextMaskPrefix) {
 			n.Data = strings.TrimPrefix(n.Data, vueRawTextMaskPrefix)
 		}
-	case html.CommentNode:
-		// Comments are plain text; element rename never restores them.
-		n.Data = strings.ReplaceAll(n.Data, vueRawTextMaskPrefix, "")
-	case html.TextNode:
-		// A mis-identified template region can leave masks in text (e.g. script
-		// bodies); strip them so script/output is never corrupted.
-		n.Data = strings.ReplaceAll(n.Data, vueRawTextMaskPrefix, "")
+	case html.CommentNode, html.TextNode:
+		// Restore only masker-generated tag sentinels (<VueSfcRaw… / </VueSfcRaw…),
+		// not a bare literal "VueSfcRaw" in author text.
+		n.Data = unmaskRawTextSentinelsInPlainData(n.Data)
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		unmaskPascalCaseRawTextTags(c)
 	}
+}
+
+// unmaskRawTextSentinelsInPlainData strips the mask prefix only where the masker
+// inserted it as a tag name (after < or </).
+func unmaskRawTextSentinelsInPlainData(s string) string {
+	s = strings.ReplaceAll(s, "<"+vueRawTextMaskPrefix, "<")
+	s = strings.ReplaceAll(s, "</"+vueRawTextMaskPrefix, "</")
+	return s
 }
 
 func parseWithCaseSensitive(r io.Reader) (*html.Node, error) {
