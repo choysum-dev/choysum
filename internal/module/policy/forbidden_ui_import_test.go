@@ -141,6 +141,9 @@ func TestIsForbiddenWebLibDeepPathPrefixLoop(t *testing.T) {
 		{"./web/web/lib/utils", true},
 		{"../@/web/web/lib/utils", true},
 		{"@/./web/web/lib/cn", true},
+		{"@choysum-dev/web/web/lib/utils", true},
+		{"@choysum-dev/web/web/lib", true},
+		{"@choysum-dev/web/web/components/view/OForm", false},
 		{"partner/web/web/lib/utils", false},
 	}
 	for _, tc := range cases {
@@ -174,9 +177,15 @@ func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 		{"../@/web/web/lib/utils", "web-lib-deep"},
 		{"@/../web/web/lib/utils", "web-lib-deep"},
 		{"web/web/lib", "web-lib-deep"},
+		{"@choysum-dev/web/web/lib/utils", "web-lib-deep"},
+		{"@choysum-dev/web/web/lib", "web-lib-deep"},
+		{"@choysum-dev/web/web/lib?raw", "web-lib-deep"},
 		// Embedded substring must not false-positive as kit web/web/lib.
 		{"@/partner/web/web/lib/utils", ""},
 		{"partner/web/web/lib/utils", ""},
+		{"@choysum-dev/web", ""},
+		{"@choysum-dev/web/index", ""},
+		{"@choysum-dev/web/web/components/view/OFormView", ""},
 		{"@/web", ""},
 		{"@/web/index", ""},
 		{"vue", ""},

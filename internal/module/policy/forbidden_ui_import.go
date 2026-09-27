@@ -267,8 +267,11 @@ func isForbiddenWebLibDeepPath(n string) bool {
 	// Caller passes a path already cleaned by normalizeImportPathSegments.
 	// Match the kit module's web/web/lib tree by leading segments only so
 	// unrelated paths that merely embed "/web/web/lib/" (e.g. partner's own
-	// tree) do not false-positive. Strip "@/", "../", and "./" in any order so
-	// specs like "../@/web/web/lib/utils" cannot evade the cutover ban.
+	// tree) do not false-positive. Strip "@/", "../", "./", and the published
+	// @choysum-dev/web/ package prefix in any order so specs like
+	// "../@/web/web/lib/utils" or "@choysum-dev/web/web/lib/utils" cannot evade
+	// the cutover ban. Package subpaths are module-root relative, so
+	// "@choysum-dev/web/web/lib" rewrites to "web/web/lib".
 	trimmed := n
 	for {
 		switch {
@@ -278,6 +281,8 @@ func isForbiddenWebLibDeepPath(n string) bool {
 			trimmed = trimmed[2:]
 		case strings.HasPrefix(trimmed, "@/"):
 			trimmed = trimmed[2:]
+		case strings.HasPrefix(trimmed, "@choysum-dev/web/"):
+			trimmed = "web/" + trimmed[len("@choysum-dev/web/"):]
 		default:
 			return trimmed == "web/web/lib" || strings.HasPrefix(trimmed, "web/web/lib/")
 		}
