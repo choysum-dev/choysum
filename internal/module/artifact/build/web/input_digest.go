@@ -228,10 +228,10 @@ func isChoyTailwindGeneratedKitPath(path string) bool {
 		return false
 	}
 	slash := filepath.ToSlash(path)
-	for _, prefix := range []string{"web/web/styles/", "choy_ui/web/styles/"} {
-		if strings.HasPrefix(slash, prefix) || strings.Contains(slash, "/"+prefix) {
-			return true
-		}
+	switch {
+	case strings.HasPrefix(slash, "web/web/styles/"), strings.Contains(slash, "/web/web/styles/"),
+		strings.HasPrefix(slash, "choy_ui/web/styles/"), strings.Contains(slash, "/choy_ui/web/styles/"):
+		return true
 	}
 	return false
 }

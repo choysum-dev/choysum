@@ -148,6 +148,9 @@ func maskPascalCaseRawTextTags(src string) string {
 	// <!-- <script> -->), then comment spans ignore "<!--" inside real blocks.
 	scriptStyle := findScriptStyleRanges(src)
 	comments := findHTMLCommentRanges(src, scriptStyle)
+	// Template open/close candidates must also ignore mustaches and quoted
+	// attribute values — a literal "</template>" there must not close the region.
+	protected := append(append([][]int{}, comments...), findMustacheAndQuotedAttrRanges(src)...)
 	inRange := func(pos int, ranges [][]int) bool {
 		for _, r := range ranges {
 			if pos >= r[0] && pos < r[1] {
@@ -157,7 +160,7 @@ func maskPascalCaseRawTextTags(src string) string {
 		return false
 	}
 	inScriptOrStyle := func(pos int) bool { return inRange(pos, scriptStyle) }
-	inComment := func(pos int) bool { return inRange(pos, comments) }
+	inProtected := func(pos int) bool { return inRange(pos, protected) }
 
 	var out strings.Builder
 	out.Grow(len(src) + 32)
@@ -170,8 +173,8 @@ func maskPascalCaseRawTextTags(src string) string {
 		}
 		openStart := i + openLoc[0]
 		openEnd := i + openLoc[1]
-		if inScriptOrStyle(openStart) || inComment(openStart) {
-			// Literal "<template" inside script/style/comment — copy through.
+		if inScriptOrStyle(openStart) || inProtected(openStart) {
+			// Literal "<template" inside script/style/comment/mustache/attr — copy through.
 			out.WriteString(src[i:openEnd])
 			i = openEnd
 			continue
@@ -212,7 +215,7 @@ func maskPascalCaseRawTextTags(src string) string {
 				openAt := pos + nextOpen[0]
 				nestedEnd := pos + nextOpen[1]
 				pos = nestedEnd
-				if inComment(openAt) {
+				if inProtected(openAt) {
 					continue
 				}
 				nestedTag := src[openAt:nestedEnd]
@@ -221,7 +224,7 @@ func maskPascalCaseRawTextTags(src string) string {
 				}
 				continue
 			}
-			if inComment(closeAt) {
+			if inProtected(closeAt) {
 				pos = closeEnd
 				continue
 			}
@@ -270,6 +273,74 @@ func findScriptStyleRanges(src string) [][]int {
 		}
 		ranges = append(ranges, []int{start, end})
 		searchFrom = end
+	}
+	return ranges
+}
+
+// findMustacheAndQuotedAttrRanges returns [start,end) spans that cannot hold a
+// real template tag: Vue mustaches {{ … }} and quoted attribute values inside
+// HTML tags. A literal "</template>" in those spans must not affect depth.
+func findMustacheAndQuotedAttrRanges(src string) [][]int {
+	var ranges [][]int
+	for i := 0; i < len(src); {
+		if i+1 < len(src) && src[i] == '{' && src[i+1] == '{' {
+			start := i
+			j := i + 2
+			for j+1 < len(src) {
+				if src[j] == '}' && src[j+1] == '}' {
+					ranges = append(ranges, []int{start, j + 2})
+					i = j + 2
+					break
+				}
+				j++
+			}
+			if j+1 >= len(src) {
+				ranges = append(ranges, []int{start, len(src)})
+				break
+			}
+			continue
+		}
+		if src[i] == '<' && looksLikeHTMLTagOpener(src, i) {
+			inQuote := byte(0)
+			quoteStart := 0
+			j := i + 1
+			for j < len(src) {
+				c := src[j]
+				if inQuote != 0 {
+					if c == '\\' {
+						j++
+						if j < len(src) {
+							j++
+						}
+						continue
+					}
+					if c == inQuote {
+						ranges = append(ranges, []int{quoteStart, j + 1})
+						inQuote = 0
+						j++
+						continue
+					}
+					j++
+					continue
+				}
+				if c == '\'' || c == '"' || c == '`' {
+					inQuote = c
+					quoteStart = j
+					j++
+					continue
+				}
+				if c == '>' {
+					i = j + 1
+					break
+				}
+				j++
+			}
+			if j >= len(src) {
+				break
+			}
+			continue
+		}
+		i++
 	}
 	return ranges
 }

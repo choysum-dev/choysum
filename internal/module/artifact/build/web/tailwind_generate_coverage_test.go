@@ -753,6 +753,28 @@ func TestResolveChoyKitModuleRootPrefersWeb(t *testing.T) {
 	}
 }
 
+func TestResolveChoyKitModuleRootFallsBackToChoyUI(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "choy_ui", "web", "styles")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Product web present but not (yet) a kit host: it must not shadow choy_ui.
+	if err := os.MkdirAll(filepath.Join(root, "web", "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got, err := resolveChoyKitModuleRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(got) != "choy_ui" {
+		t.Fatalf("resolveChoyKitModuleRoot = %q, want choy_ui fallback", got)
+	}
+}
+
 func TestEnsureChoyTailwindCSSIncompleteKit(t *testing.T) {
 	root := t.TempDir()
 	web := filepath.Join(root, "web", "web")

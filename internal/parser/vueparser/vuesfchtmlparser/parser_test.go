@@ -582,6 +582,44 @@ func TestMaskPascalCaseRawTextTagsNestedOpenBeforeCommentedClose(t *testing.T) {
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsLiteralCloseInMustacheAndAttr(t *testing.T) {
+	// Mustache: only assert masking — x/net/html still treats </template> in text
+	// as a real end tag, which is outside this helper's contract.
+	mustache := `<template>
+  <span>{{ '</template>' }}</span>
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 1</script>`
+	got := maskPascalCaseRawTextTags(mustache)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after mustache literal close must mask, got %q", got)
+	}
+
+	// Quoted attr: tokenizer keeps the value in attribute state, so full parse works.
+	src := `<template>
+  <div :title="'</template>'"><Textarea v-model="x" /></div>
+</template>
+<script setup>const x = 1</script>`
+	got = maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after attr literal close must mask, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script, got %d", len(scripts))
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea`) {
+		t.Fatalf("Textarea must survive attr literal close, got %q", rendered)
+	}
+}
+
 func TestFindHTMLCommentRangesUnclosedInHTMLContext(t *testing.T) {
 	src := `<template><!-- never closed
   <Textarea/>
