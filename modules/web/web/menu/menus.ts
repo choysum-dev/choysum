@@ -3,7 +3,7 @@
 
 import { type MenuItem } from '@/core/web/menu';
 import { defineMenu } from '@/core/web/resource';
-import { House } from '@element-plus/icons-vue';
+import { House } from 'lucide-vue-next';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _lt } = createTranslate('web', { scope: 'web/menu/menus' });

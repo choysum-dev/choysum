@@ -11,8 +11,6 @@ import { setupApp } from './app_setup';
 import App from './App.vue';
 
 import 'normalize.css/normalize.css';
-import 'element-plus/dist/index.css';
-import 'element-plus/theme-chalk/display.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import './styles/tokens.css';
 import './styles/preflight-policy.css';

@@ -68,7 +68,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: createAppRouter as any,
     createAppMenu: createAppMenu as any,
-    ElementPlus: { name: 'ElementPlus' } as any,
+    applyChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable', dark: false })) as any,
     baseUrl: '/',
     hasWindow: () => true,
   });
@@ -76,7 +76,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   expect(registerGlobalDirectives.calls.length).toBe(1);
   expect(registerGlobalDirectives.calls[0][0]).toBe(app);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
-  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
   expect(createAppRouter.calls.length).toBe(1);
   expect(createAppMenu.calls.length).toBe(1);
   expect(createTerminologyCatalogMerger.calls.length).toBe(1);
@@ -121,7 +121,6 @@ test('setupApp > skips browser i18n expose without window', () => {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: {} as any,
     baseUrl: '/',
     hasWindow: () => false,
   });
@@ -167,7 +166,6 @@ test('setupApp > resolves user timezone from auth store', () => {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: {} as any,
     baseUrl: '/',
     hasWindow: () => false,
   });
@@ -215,7 +213,6 @@ test('setupApp > falls back to identity timezone and swallows auth lookup failur
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: {} as any,
     baseUrl: '/',
     hasWindow: () => false,
   });
@@ -258,8 +255,8 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: {} as any,
     registerChoyGalleryRoute: (() => {}) as any,
+    applyChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable', dark: false })) as any,
     baseUrl: '/',
     hasWindow: () => false,
     _store: store,
@@ -358,9 +355,8 @@ test('setupApp > swallows auth errors while building request context timezone', 
   });
 });
 
-test('setupApp > updates Element Plus locale and legacy messages on locale change', async () => {
-  const elementLocale = { name: 'zh-CN' };
-  const app = makeApp(elementLocale);
+test('setupApp > loads legacy vue-i18n messages on locale change', async () => {
+  const app = makeApp();
   const mergeLocaleMessage = fnRecorder();
   const loadVueI18nMessages = asyncFnRecorder(async () => ({ legacy: 'messages' }));
   const i18nLocale = ref('en');
@@ -383,11 +379,9 @@ test('setupApp > updates Element Plus locale and legacy messages on locale chang
   });
 
   currentLocale.code = 'zh-CN';
-  currentLocale.elementLocale = elementLocale;
   await nextTick();
   await nextTick();
 
-  expect(app.config.globalProperties.$ELEMENT.locale).toEqual(elementLocale);
   expect(loadVueI18nMessages.calls.map(c => c[0])).toEqual(['zh-CN']);
   expect(mergeLocaleMessage.calls).toEqual([['zh-CN', { legacy: 'messages' }]]);
   expect(i18nLocale.value).toBe('zh-CN');
@@ -480,7 +474,7 @@ test('setupApp > uses production defaults for omitted deps', () => {
   const i18nLocale = ref('en');
   const exposeBrowserI18nOnWindow = fnRecorder();
 
-  // Omit baseUrl/hasWindow/ElementPlus/sourceMessages/piniaPlugin/timezone helpers/
+  // Omit baseUrl/hasWindow/sourceMessages/piniaPlugin/timezone helpers/
   // terminology project/notify/track so those `deps.x ?? default` arms execute.
   setupApp(app as any, {
     registerGlobalDirectives: fnRecorder() as any,
@@ -508,6 +502,6 @@ test('setupApp > uses production defaults for omitted deps', () => {
     createAppMenu: (() => ({})) as any,
   });
 
-  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
 });

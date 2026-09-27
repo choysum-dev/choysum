@@ -20,7 +20,7 @@ export const routes: RouteRecordRaw[] = [
 
   {
     path: '/',
-    component: () => import('../components/layout/OLayout.vue'),
+    component: () => import('../components/layout/ChoyShellLayout.vue'),
     name: 'Layout',
     props: {
       showSidebar: false,
@@ -45,7 +45,7 @@ export const routes: RouteRecordRaw[] = [
 
   {
     path: '/',
-    component: () => import('../components/layout/OLayout.vue'),
+    component: () => import('../components/layout/ChoyShellLayout.vue'),
     name: 'AppLayout',
     props: {
       showSidebar: true,

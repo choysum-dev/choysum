@@ -25,25 +25,26 @@ html {
 }
 
 body {
-  font-family: var(--el-font-family);
-  font-size: var(--el-font-size-base);
-  line-height: var(--el-line-height-base);
-  color: var(--el-text-color-primary);
+  font-family: var(--choy-font-family, var(--el-font-family, system-ui, sans-serif));
+  font-size: var(--choy-font-size-base, var(--el-font-size-base, 1rem));
+  line-height: var(--choy-line-height-base, var(--el-line-height-base, 1.5));
+  color: var(--choy-color-foreground, var(--el-text-color-primary, inherit));
+  background-color: var(--choy-color-background, transparent);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-  color: var(--el-color-primary);
+  color: var(--choy-color-primary, var(--el-color-primary, #2563eb));
   text-decoration: none;
-  transition: color var(--el-transition-duration);
+  transition: color var(--choy-motion-duration-fast, 150ms);
 
   &:hover {
-    color: var(--el-color-primary-light-3);
+    color: var(--choy-color-primary, var(--el-color-primary-light-3, #3b82f6));
   }
 
   &:active {
-    color: var(--el-color-primary-dark-2);
+    color: var(--choy-color-primary, var(--el-color-primary-dark-2, #1d4ed8));
   }
 }
 
