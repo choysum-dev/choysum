@@ -179,11 +179,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
-import '../styles/tokens.css';
 import '../styles/theme.override.css';
-import '../styles/preflight-policy.css';
-// Produced by web build (EnsureChoyTailwindCSS); not committed.
-import '../styles/choy-tailwind.generated.css';
 import ChoyBooleanField from '../components/field/ChoyBooleanField.vue';
 import ChoyDateField from '../components/field/ChoyDateField.vue';
 import ChoyHtmlField from '../components/field/ChoyHtmlField.vue';

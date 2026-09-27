@@ -84,11 +84,66 @@ func TestClassifyForbiddenUiImport(t *testing.T) {
 		{"vue", ""},
 		{"@/web/web/components/view/OFormView", ""},
 		{"element-plus", ""},
+		{"@/web", ""},
+		{"@/web/web/lib/utils", ""}, // cutover flag off
 	}
 	for _, tc := range cases {
 		if got := classifyForbiddenUiImport(tc.spec); got != tc.want {
 			t.Fatalf("classifyForbiddenUiImport(%q)=%q want %q", tc.spec, got, tc.want)
 		}
+	}
+}
+
+func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
+	prev := CutoverImportBans
+	CutoverImportBans = true
+	t.Cleanup(func() { CutoverImportBans = prev })
+
+	cases := []struct {
+		spec string
+		want string
+	}{
+		{"element-plus", "element-plus"},
+		{"element-plus/es/components/button", "element-plus"},
+		{"@element-plus/icons-vue", "element-plus"},
+		{"@/web/web/lib/utils", "web-lib-deep"},
+		{"@/web/web/lib/cn", "web-lib-deep"},
+		{"../web/web/lib/utils", "web-lib-deep"},
+		{"@/web", ""},
+		{"@/web/index", ""},
+		{"vue", ""},
+		{"reka-ui", "reka-ui"}, // still banned
+	}
+	for _, tc := range cases {
+		if got := classifyForbiddenUiImport(tc.spec); got != tc.want {
+			t.Fatalf("cutover classify(%q)=%q want %q", tc.spec, got, tc.want)
+		}
+	}
+}
+
+func TestAssertNoForbiddenUiImports_CutoverRejectsElementPlus(t *testing.T) {
+	prev := CutoverImportBans
+	CutoverImportBans = true
+	t.Cleanup(func() { CutoverImportBans = prev })
+
+	modulesPath := t.TempDir()
+	webDir := filepath.Join(modulesPath, "partner", "web")
+	if err := os.MkdirAll(webDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "partner", "package.json"), []byte(`{
+  "name": "@choysum-dev/partner",
+  "choysum": { "moduleName": "partner", "application": "partner" }
+}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src := "import { ElButton } from 'element-plus';\nexport const x = ElButton;\n"
+	if err := os.WriteFile(filepath.Join(webDir, "leak.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := AssertNoForbiddenUiImports(modulesPath, "partner")
+	if err == nil || !strings.Contains(err.Error(), "element-plus") {
+		t.Fatalf("expected element-plus ban under cutover, got %v", err)
 	}
 }
 

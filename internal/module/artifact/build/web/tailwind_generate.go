@@ -22,8 +22,8 @@ const ChoyTailwindBudget = 500 * time.Millisecond
 
 const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 
-// choyGalleryRootSelector scopes generated theme + utilities to the gallery root
-// so product ERP pages are not affected when the gallery stylesheet is imported.
+// choyGalleryRootSelector is retained for gallery-only CSS helpers and tests.
+// Cutover product builds emit unscoped theme+utilities for the main bundle.
 const choyGalleryRootSelector = ".choy-gallery-root"
 
 // maxTailwindCandidateLen rejects scanner leaks from multi-line TS/JS literals.
@@ -132,6 +132,76 @@ func ScanChoyKitTailwindCandidates(webRoot string) ([]string, error) {
 	sort.Strings(out)
 	return out, nil
 }
+
+// ScanChoyProductTailwindCandidates collects class candidates for the cutover
+// main-bundle CSS: kit-filtered files under the Choy host web/ tree, plus every
+// other installed module's web/ tree (domain Choy* usage).
+func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
+	modulesPath = strings.TrimSpace(modulesPath)
+	if modulesPath == "" {
+		return nil, nil
+	}
+	kitRoot, err := resolveChoyKitModuleRoot(modulesPath)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]struct{}{}
+	var out []string
+	add := func(list []string) {
+		for _, c := range list {
+			if _, ok := seen[c]; ok {
+				continue
+			}
+			seen[c] = struct{}{}
+			out = append(out, c)
+		}
+	}
+	if kitRoot != "" {
+		kitCandidates, err := ScanChoyKitTailwindCandidates(filepath.Join(kitRoot, "web"))
+		if err != nil {
+			return nil, err
+		}
+		add(kitCandidates)
+	}
+	entries, err := choyProductReadDir(modulesPath)
+	if err != nil {
+		return nil, err
+	}
+	kitName := ""
+	if kitRoot != "" {
+		kitName = filepath.Base(kitRoot)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if name == kitName || name == "" || strings.HasPrefix(name, ".") {
+			continue
+		}
+		webRoot := filepath.Join(modulesPath, name, "web")
+		st, err := os.Stat(webRoot)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, err
+		}
+		if !st.IsDir() {
+			continue
+		}
+		domainCandidates, err := ScanTailwindCandidates([]string{webRoot})
+		if err != nil {
+			return nil, err
+		}
+		add(domainCandidates)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// choyProductReadDir is os.ReadDir; tests replace it to force listing failures.
+var choyProductReadDir = os.ReadDir
 
 // isChoyKitTailwindInputPath reports whether path under webRoot is Choy kit input
 // (vendor/ui, internal engines, Choy* SFCs/helpers, gallery/dogfood pages, tokens CSS).
@@ -265,7 +335,8 @@ func isPlausibleTailwindCandidate(c string) bool {
 }
 
 // GenerateTailwindCSS loads dialect CSS, scans candidates, and returns theme +
-// utility CSS scoped to .choy-gallery-root (no Tailwind FullCSS preflight).
+// utility CSS for the product main bundle. Preflight (FullCSS) stays off while
+// Element Plus pages still load; PR9c may enable a controlled product reset.
 func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, dur time.Duration, err error) {
 	start := time.Now()
 	eng := tw.New()
@@ -281,10 +352,8 @@ func GenerateTailwindCSS(dialectCSS string, candidates []string) (css string, du
 	}
 	eng.Flush()
 	// ThemeCSS emits --color-* aliases from @theme; CSS() is utilities only.
-	// Scope both under the gallery root so imports do not restyle product pages.
-	theme := scopeChoyThemeCSS(eng.ThemeCSS())
-	utilities := scopeChoyUtilityCSS(eng.CSS(), choyGalleryRootSelector)
-	css = theme + utilities
+	// Emit unscoped so the main SPA bundle can consume Choy utilities.
+	css = eng.ThemeCSS() + eng.CSS()
 	return css, time.Since(start), nil
 }
 
@@ -595,8 +664,13 @@ func indexCSSBlockEnd(css string) int {
 }
 
 // GenerateChoyTailwindForModule scans a Choy kit module root and writes generated utilities CSS.
-// Emits theme aliases + utilities scoped to .choy-gallery-root (never FullCSS preflight).
+// Emits unscoped theme aliases + utilities for the product main bundle (never FullCSS preflight).
+// When modulesPath is non-empty, candidates also include every other module web/ tree.
 func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResult, error) {
+	return generateChoyTailwindForModule(moduleRoot, "")
+}
+
+func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwindGenerateResult, error) {
 	moduleRoot = strings.TrimSpace(moduleRoot)
 	if moduleRoot == "" {
 		return nil, fmt.Errorf("choy kit module root is empty")
@@ -609,7 +683,12 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 	}
 	dialectHash := sha256Hex(dialectBytes)
 
-	candidates, err := ScanChoyKitTailwindCandidates(webRoot)
+	var candidates []string
+	if strings.TrimSpace(modulesPath) != "" {
+		candidates, err = ScanChoyProductTailwindCandidates(modulesPath)
+	} else {
+		candidates, err = ScanChoyKitTailwindCandidates(webRoot)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -624,14 +703,13 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 	}
 
 	// Header omits wall-clock duration so identical inputs rewrite a stable file.
-	// Duration is returned on ChoyTailwindGenerateResult for gates. The output path
-	// is gitignored; callers must run this before bundling Gallery CSS imports.
+	// Duration is returned on ChoyTailwindGenerateResult for gates.
 	header := fmt.Sprintf(
 		"/* Generated by choysum web build (tailwind-go). Do not edit.\n"+
 			" * dialect=%s content=%s engine=%s candidates=%d\n"+
-			" * Isolation: theme+utilities scoped to %s (no Tailwind preflight).\n"+
+			" * Cutover: unscoped theme+utilities for main bundle (no Tailwind FullCSS preflight).\n"+
 			" */\n",
-		dialectHash[:12], contentHash[:12], choyTailwindGoModuleVersion(), len(candidates), choyGalleryRootSelector,
+		dialectHash[:12], contentHash[:12], choyTailwindGoModuleVersion(), len(candidates),
 	)
 	outPath := filepath.Join(webRoot, "styles", choyTailwindGeneratedCSSName)
 	if err := writeFileAtomicIfChanged(outPath, header+css); err != nil {
@@ -715,6 +793,7 @@ var (
 
 // EnsureChoyTailwindCSS finds the Choy kit under modulesPath and regenerates CSS.
 // Prefers modules/web when styles/theme.css is present; falls back to modules/choy_ui.
+// Candidate scan covers the kit surface plus every other module web/ tree.
 // No-op when neither kit root owns a dialect file.
 func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, error) {
 	modulesPath = strings.TrimSpace(modulesPath)
@@ -728,7 +807,7 @@ func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, err
 	if root == "" {
 		return nil, nil
 	}
-	return GenerateChoyTailwindForModule(root)
+	return generateChoyTailwindForModule(root, modulesPath)
 }
 
 // resolveChoyKitModuleRoot returns the module root that owns Choy styles/theme.css.
@@ -773,7 +852,8 @@ func resolveChoyKitModuleRoot(modulesPath string) (string, error) {
 	return "", nil
 }
 
-// TailwindInputDigest returns stable dialect and candidate hashes for the Choy kit under modulesPath.
+// TailwindInputDigest returns stable dialect and candidate hashes for Choy product CSS.
+// Candidates include the kit surface plus every installed module web/ tree.
 // Empty strings when the kit module is absent (no Tailwind inputs to invalidate).
 func TailwindInputDigest(modulesPath string) (dialectHash, contentHash string, err error) {
 	modulesPath = strings.TrimSpace(modulesPath)
@@ -796,7 +876,7 @@ func TailwindInputDigest(modulesPath string) (dialectHash, contentHash string, e
 		}
 		return "", "", err
 	}
-	candidates, err := ScanChoyKitTailwindCandidates(webRoot)
+	candidates, err := ScanChoyProductTailwindCandidates(modulesPath)
 	if err != nil {
 		return "", "", err
 	}

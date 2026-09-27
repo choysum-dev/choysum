@@ -22,6 +22,12 @@ const (
 	kitHostModuleCutover = "web"
 )
 
+// CutoverImportBans enables post-cutover domain import rules: ban element-plus /
+// @element-plus/*, and deep @/web/web/lib paths. Off by default during dual-stack
+// so domain modules that still import EP/O* keep typechecking; PR9z (or tests)
+// flips this on for the hard cut. Kit hosts remain fully exempt.
+var CutoverImportBans = false
+
 // isKitHostModule reports modules allowed to import reka-ui / vendor/ui / kit internals.
 // choy_ui is always a host (thin registration shell). web is a host only when the kit
 // tree actually lives under it (components/vendor/ui), so a stale rename cannot
@@ -230,7 +236,40 @@ func classifyForbiddenUiImport(spec string) string {
 	if isForbiddenChoyDeepPath(lower) {
 		return "choy_ui-deep"
 	}
+	if CutoverImportBans {
+		if rule := classifyCutoverForbiddenUiImport(lower); rule != "" {
+			return rule
+		}
+	}
 	return ""
+}
+
+// classifyCutoverForbiddenUiImport returns cutover-only rule ids (element-plus,
+// @/web deep lib). Public barrel imports from "@/web" (Choy*) stay allowed.
+func classifyCutoverForbiddenUiImport(lower string) string {
+	if lower == "element-plus" || strings.HasPrefix(lower, "element-plus/") {
+		return "element-plus"
+	}
+	if lower == "@element-plus/icons-vue" || strings.HasPrefix(lower, "@element-plus/") {
+		return "element-plus"
+	}
+	if isForbiddenWebLibDeepPath(lower) {
+		return "web-lib-deep"
+	}
+	return ""
+}
+
+func isForbiddenWebLibDeepPath(lower string) bool {
+	markers := []string{
+		"@/web/web/lib/",
+		"/web/web/lib/",
+	}
+	for _, m := range markers {
+		if strings.Contains(lower, m) {
+			return true
+		}
+	}
+	return false
 }
 
 func isForbiddenUIPath(lower string) bool {
@@ -261,10 +300,10 @@ func isForbiddenInternalPath(lower string) bool {
 }
 
 func isForbiddenChoyDeepPath(lower string) bool {
-	// Isolation: domain must not deep-import the choy_ui kit trees.
-	// After cutover, continue matching /components/vendor/ui via isForbiddenUIPath;
-	// extend @/web/web/{components/vendor,components/internal,lib} bans once O*
-	// deep imports are replaced by public Choy* barrels.
+	// Isolation + cutover: domain must not deep-import kit trees under choy_ui.
+	// vendor/ui and components/internal under @/web are covered by isForbiddenUIPath /
+	// isForbiddenInternalPath. @/web/web/lib deep paths are gated by CutoverImportBans
+	// (domain still deep-imports O* from @/web/web/components until PR9d–g).
 	markers := []string{
 		"@/choy_ui/",
 		"@choysum-dev/choy_ui/",

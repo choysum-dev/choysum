@@ -573,11 +573,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import '../styles/tokens.css';
 import '../styles/theme.override.css';
-import '../styles/preflight-policy.css';
-// Produced by web build (EnsureChoyTailwindCSS); not committed.
-import '../styles/choy-tailwind.generated.css';
 import {
   Badge,
   Button,

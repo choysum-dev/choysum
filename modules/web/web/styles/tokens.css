@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Choysum Choy UI tokens (frozen names; values tunable).
- * Isolation gallery uses these without Element Plus theme packages.
- * Tokens live on .choy-gallery-root and html.choy-gallery-token-scope so Reka
- * portals under body still resolve --choy-* without polluting product ERP pages
- * when the gallery is not mounted.
+ * Cutover: variables live on :root/html so the main SPA bundle can consume
+ * --choy-*. Gallery keep .choy-gallery-root / html.choy-gallery-token-scope
+ * for page chrome and Reka portals under body.
  */
 
+:root,
+html,
 .choy-gallery-root,
 html.choy-gallery-token-scope {
   --choy-color-primary: oklch(0.55 0.14 255);
@@ -65,6 +66,8 @@ html.choy-gallery-token-scope {
   line-height: 1.5;
 }
 
+html.dark,
+.dark,
 .choy-gallery-root.dark,
 html.choy-gallery-token-scope.dark {
   --choy-color-primary: oklch(0.7 0.12 255);
@@ -79,11 +82,15 @@ html.choy-gallery-token-scope.dark {
   --choy-color-ring: oklch(0.7 0.12 255);
 }
 
+html.dark,
+.dark,
 .choy-gallery-root.dark,
 html.choy-gallery-token-scope.dark {
   color-scheme: dark;
 }
 
+html[data-density='compact'],
+[data-density='compact'],
 .choy-gallery-root[data-density='compact'],
 html.choy-gallery-token-scope[data-density='compact'] {
   --choy-space-1: 0.2rem;
@@ -100,6 +107,8 @@ html.choy-gallery-token-scope[data-density='compact'] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root,
+  html,
   .choy-gallery-root,
   html.choy-gallery-token-scope {
     --choy-motion-duration-fast: 0ms;

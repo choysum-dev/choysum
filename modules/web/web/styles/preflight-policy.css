@@ -2,9 +2,9 @@
  * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
  * SPDX-License-Identifier: Apache-2.0
  *
- * Isolation-period CSS policy for choy_ui gallery.
- * Do not apply Tailwind preflight to product ERP pages that still load Element Plus.
- * Gallery scopes its own minimal reset below; generated utilities omit FullCSS preflight.
+ * Gallery-scoped minimal reset while Element Plus still owns product pages.
+ * Loaded from the main SPA bundle; Tailwind FullCSS preflight stays off until
+ * EP CSS is removed (PR9c). Generated utilities omit FullCSS preflight.
  */
 
 .choy-gallery-root,
