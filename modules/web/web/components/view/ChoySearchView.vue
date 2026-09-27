@@ -4,7 +4,12 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <OSearchView v-if="useStoreEngine" v-bind="(storeBind as any)" v-on="(storeListeners as any)">
+    <slot />
+  </OSearchView>
+
   <div
+    v-else
     data-anchor="choy.search-view"
     :class="['choy-search-view flex flex-wrap items-center gap-2', props.class]"
   >
@@ -28,6 +33,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed, useAttrs } from 'vue';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
+import { hasChoyStoreEngine } from '@/web/web/composables/choyStoreMode';
 import Input from '../vendor/ui/input/Input.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import type { ClassValue } from '../../lib/utils';
@@ -35,22 +44,45 @@ import {
   buildChoySearchQuery,
   type ChoySearchQuery,
 } from './searchViewHelpers';
+import OSearchView from './OSearchView.vue';
+
+defineOptions({ name: 'ChoySearchView', inheritAttrs: false });
 
 /**
- * Keyword search chrome. Emits a normalized ChoySearchQuery on submit.
- * Hosts decide which row fields to filter with filterRowsByKeyword.
+ * Search: store-bound mode hosts OSearchView; otherwise keyword chrome.
  */
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
     placeholder?: string;
     disabled?: boolean;
+    store?: WebModelStore<any>;
   }>(),
   {
     placeholder: 'Search…',
     disabled: false,
   },
 );
+
+const attrs = useAttrs();
+const pageStore = useOptionalPageStore();
+const useStoreEngine = computed(() => hasChoyStoreEngine(props.store, pageStore.value));
+
+const storeBind = computed(() => ({
+  ...attrs,
+  store: props.store ?? pageStore.value,
+  class: props.class,
+}));
+
+const storeListeners = computed(() => {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key.startsWith('on') && typeof value === 'function') {
+      out[key] = value;
+    }
+  }
+  return out;
+});
 
 const keyword = defineModel<string>('keyword', { default: '' });
 
@@ -63,13 +95,11 @@ function submit(): void {
     return;
   }
   const query = buildChoySearchQuery(keyword.value);
-  // Keep the bound input in sync with the normalized query.
   keyword.value = query.keyword;
   emit('query-update', query);
 }
 
 function onKeydown(event: KeyboardEvent): void {
-  // Confirming an IME candidate also fires Enter; don't submit half-composed text.
   if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) {
     return;
   }

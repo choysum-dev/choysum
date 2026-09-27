@@ -4,13 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <ODatetimeField v-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
+    v-else
     data-anchor="choy.datetime-field"
     :class="props.class"
     :label="label"
     :help="help"
-    :required="required"
-    :readonly="readonly"
+    :required="!!required"
+    :readonly="!!readonly"
     :disabled="disabled"
     :error="error"
     :name="name"
@@ -34,27 +36,39 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useAttrs } from 'vue';
 import Input from '../vendor/ui/input/Input.vue';
 import type { ClassValue } from '../../lib/utils';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
+import ODatetimeField from './ODatetimeField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
 
+defineOptions({ name: 'ChoyDatetimeField', inheritAttrs: false });
+
 /**
- * Datetime field via native datetime-local input (DatePicker is date-only).
- * Model is a string (typically `YYYY-MM-DDTHH:mm`) or null.
+ * Datetime field. Store+prop hosts ODatetimeField; otherwise native chrome.
  */
 const props = withDefaults(
   defineProps<
     ChoyFieldChromeProps & {
       class?: ClassValue;
+      store?: WebModelStore<any>;
+      prop?: string;
+      binding?: unknown;
+      mode?: string;
     }
   >(),
   { ...choyFieldChromeDefaults },
 );
+
+const attrs = useAttrs();
+const storeMode = computed(() => isChoyStoreFieldBinding(props));
+const storeBind = computed(() => ({ ...attrs, ...props }) as any);
 
 const model = defineModel<string | null>({ default: null });
 

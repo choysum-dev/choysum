@@ -4,13 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <OImageField v-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
+    v-else
     data-anchor="choy.image-field"
     :class="props.class"
     :label="label"
     :help="help"
-    :required="required"
-    :readonly="readonly"
+    :required="!!required"
+    :readonly="!!readonly"
     :disabled="disabled"
     :error="error || fileError"
     :name="name"
@@ -67,7 +69,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, useAttrs, watch } from 'vue';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
+import OImageField from './OImageField.vue';
 import type { ClassValue } from '../../lib/utils';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
@@ -113,10 +118,19 @@ const props = withDefaults(
   defineProps<
     ChoyFieldChromeProps & {
       class?: ClassValue;
+      store?: WebModelStore<any>;
+      prop?: string;
+      binding?: unknown;
     }
   >(),
   { ...choyFieldChromeDefaults },
 );
+
+defineOptions({ name: 'ChoyImageField', inheritAttrs: false });
+
+const attrs = useAttrs();
+const storeMode = computed(() => isChoyStoreFieldBinding(props));
+const storeBind = computed(() => ({ ...attrs, ...props }) as any);
 
 const model = defineModel<ChoyImageValue>({ default: null });
 const inputRef = ref<HTMLInputElement | null>(null);

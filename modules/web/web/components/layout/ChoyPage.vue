@@ -133,12 +133,15 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, useId } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
+import { provideOPageContext } from '../../composables/usePageContext';
+import type { WebModelStore } from '../../stores/modelStore';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 
 /**
  * Page chrome inside the layout main area (title, toolbar, body, loading).
+ * Optional `store` is provided to descendants via provideOPageContext (Form/List).
  * Slot visibility is read from `$slots` at render time (slots are not reactive).
  */
 const props = withDefaults(
@@ -151,6 +154,8 @@ const props = withDefaults(
     loading?: boolean;
     actionImport?: boolean;
     actionExport?: boolean;
+    /** Optional default screen store for ChoyFormView / ChoyListView / fields. */
+    store?: WebModelStore<any>;
   }>(),
   {
     title: '',
@@ -162,6 +167,8 @@ const props = withDefaults(
     actionExport: false,
   },
 );
+
+provideOPageContext({ store: () => props.store });
 
 const pageTitleId = useId();
 

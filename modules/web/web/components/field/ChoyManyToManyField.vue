@@ -4,13 +4,17 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <OManyToManyRefTagsField v-if="storeMode && widget === 'tags' && valueMode === 'ref'" v-bind="(storeBind as any)" />
+  <OManyToManyRefTreeField v-else-if="storeMode && widget === 'tree' && valueMode === 'ref'" v-bind="(storeBind as any)" />
+  <OManyToManyField v-else-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
+    v-else
     data-anchor="choy.many-to-many-field"
     :class="props.class"
     :label="label"
     :help="help"
-    :required="required"
-    :readonly="readonly"
+    :required="!!required"
+    :readonly="!!readonly"
     :disabled="disabled"
     :error="error"
     :name="name"
@@ -131,8 +135,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useAttrs } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import DataTable from '../internal/DataTable.vue';
 import RelationCombobox from '../internal/RelationCombobox.vue';
 import type {
@@ -144,22 +150,25 @@ import Badge from '../vendor/ui/badge/Badge.vue';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
+import OManyToManyField from './OManyToManyField.vue';
+import OManyToManyRefTagsField from './OManyToManyRefTagsField.vue';
+import OManyToManyRefTreeField from './OManyToManyRefTreeField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
+import type {
+  ChoyManyToManyTreeNode,
+  ChoyManyToManyWidget,
+} from './choyRelationFieldTypes';
 
-export type ChoyManyToManyWidget = 'tags' | 'list' | 'tree';
+defineOptions({ name: 'ChoyManyToManyField', inheritAttrs: false });
 
-export type ChoyManyToManyTreeNode = {
-  id: string;
-  label: string;
-  children?: ChoyManyToManyTreeNode[];
-};
+export type { ChoyManyToManyWidget, ChoyManyToManyTreeNode };
 
 /**
- * Many-to-many field with widget: tags | list | tree.
- * Model is an id list; host supplies search / options / tree nodes.
+ * Many-to-many field. Store+prop hosts O* (ref tags/tree when valueMode=ref).
+ * Chrome: id list + widget tags|list|tree.
  */
 const props = withDefaults(
   defineProps<
@@ -177,6 +186,11 @@ const props = withDefaults(
       /** tree widget */
       treeNodes?: ChoyManyToManyTreeNode[];
       placeholder?: string;
+      store?: WebModelStore<any>;
+      prop?: string;
+      binding?: unknown;
+      /** `ref` → RefTags/RefTree engines; default uses OManyToManyField. */
+      valueMode?: 'id' | 'ref';
     }
   >(),
   {
@@ -191,8 +205,13 @@ const props = withDefaults(
     height: 200,
     treeNodes: () => [],
     placeholder: 'Search…',
+    valueMode: 'id',
   },
 );
+
+const attrs = useAttrs();
+const storeMode = computed(() => isChoyStoreFieldBinding(props));
+const storeBind = computed(() => ({ ...attrs, ...props }) as any);
 
 const model = defineModel<string[]>({ default: () => [] });
 

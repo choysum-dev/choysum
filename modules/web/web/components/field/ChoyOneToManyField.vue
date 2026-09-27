@@ -4,13 +4,17 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <OOneToManyField v-if="storeMode" v-bind="(storeBind as any)">
+    <slot />
+  </OOneToManyField>
   <ChoyFieldBase
+    v-else
     data-anchor="choy.one-to-many-field"
     :class="props.class"
     :label="label"
     :help="help"
-    :required="required"
-    :readonly="readonly"
+    :required="!!required"
+    :readonly="!!readonly"
     :disabled="disabled"
     :error="error"
     :name="name"
@@ -84,8 +88,10 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends Record<string, unknown>">
-import { computed, ref } from 'vue';
+import { computed, ref, useAttrs } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { isChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import DataTable from '../internal/DataTable.vue';
 import type { DataTableRowId } from '../internal/dataTableHelpers';
 import type { ClassValue } from '../../lib/utils';
@@ -95,16 +101,17 @@ import DialogContent from '../vendor/ui/dialog/DialogContent.vue';
 import DialogDescription from '../vendor/ui/dialog/DialogDescription.vue';
 import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
+import OOneToManyField from './OOneToManyField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
+import type { ChoyOneToManyWidget } from './choyRelationFieldTypes';
 
-export type ChoyOneToManyWidget = 'list' | 'kanban';
+export type { ChoyOneToManyWidget };
 
 /**
- * One-to-many relation field. list → DataTable; kanban → card grid + dialog.
- * Host owns the row array via defineModel (no useField / child store).
+ * One-to-many field. Store+prop hosts OOneToManyField; otherwise chrome array model.
  */
 const props = withDefaults(
   defineProps<
@@ -120,6 +127,9 @@ const props = withDefaults(
       removable?: boolean;
       addLabel?: string;
       emptyLabel?: string;
+      store?: WebModelStore<any>;
+      prop?: string;
+      binding?: unknown;
     }
   >(),
   {
@@ -135,6 +145,10 @@ const props = withDefaults(
   },
 );
 
+const attrs = useAttrs();
+const storeMode = computed(() => isChoyStoreFieldBinding(props));
+const storeBind = computed(() => ({ ...attrs, ...props }) as any);
+
 const model = defineModel<T[]>({ default: () => [] });
 
 const emit = defineEmits<{
@@ -149,19 +163,19 @@ const dialogRow = ref<T | null>(null);
 
 function rowKey(row: T, index = 0): DataTableRowId {
   if (props.rowId) return props.rowId(row);
-  const id = (row as Record<string, unknown>).Id ?? (row as Record<string, unknown>).id;
+  const id = (row as any).Id ?? (row as any).id;
   if (id != null && String(id).trim() !== '') return String(id);
   return `__o2m_${index}`;
 }
 
 function rowTitle(row: T): string {
-  const v = (row as Record<string, unknown>)[props.titleField];
+  const v = (row as any)[props.titleField];
   return v == null || v === '' ? String(rowKey(row)) : String(v);
 }
 
 function rowSubtitle(row: T): string | undefined {
   if (!props.subtitleField) return undefined;
-  const v = (row as Record<string, unknown>)[props.subtitleField];
+  const v = (row as any)[props.subtitleField];
   return v == null || v === '' ? undefined : String(v);
 }
 
