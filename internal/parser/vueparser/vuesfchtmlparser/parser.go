@@ -124,10 +124,11 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 
 // pascalCaseRawTextTag matches Vue component tags whose local names collide with
 // HTML raw-text / RCDATA elements when lowercased by the tokenizer.
-// Includes common mixed-case spellings (TextArea, IFrame, …); the tokenizer is
-// case-insensitive, so those variants would otherwise swallow following blocks.
+// Includes common mixed-case and all-caps spellings (TextArea, TEXTAREA, …);
+// the tokenizer is case-insensitive, so those variants would otherwise swallow
+// following blocks. Lowercase HTML tags (textarea/script/…) stay unmasked.
 // Go regexp has no lookahead; the trailing delimiter is re-emitted by the replacer.
-var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|TextArea|Title|Style|Script|Noscript|NoScript|Iframe|IFrame|Noembed|NoEmbed|Noframes|NoFrames|Xmp|Plaintext|PlainText)([\s/>])`)
+var pascalCaseRawTextTag = regexp.MustCompile(`</?(Textarea|TextArea|TEXTAREA|Title|TITLE|Style|STYLE|Script|SCRIPT|Noscript|NoScript|NOSCRIPT|Iframe|IFrame|IFRAME|Noembed|NoEmbed|NOEMBED|Noframes|NoFrames|NOFRAMES|Xmp|XMP|Plaintext|PlainText|PLAINTEXT)([\s/>])`)
 
 var sfcTemplateOpen = regexp.MustCompile(`(?i)<template\b(?:[^>"']|"[^"]*"|'[^']*')*>`)
 var sfcTemplateClose = regexp.MustCompile(`(?i)</template\s*>`)

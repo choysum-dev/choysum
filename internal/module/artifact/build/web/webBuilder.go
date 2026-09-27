@@ -2300,6 +2300,13 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 			return
 		}
 		for name, ver := range got {
+			if prev, ok := pins[name]; ok && prev != ver &&
+				b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+				b.runtimeScope.Logger().Warn(
+					"conflicting exact pins; nearest module wins",
+					"module", logName, "package", name, "version", ver, "overridden", prev,
+				)
+			}
 			pins[name] = ver
 		}
 	}

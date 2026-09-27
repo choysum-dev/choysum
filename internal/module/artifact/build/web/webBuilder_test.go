@@ -5310,12 +5310,19 @@ func TestAppendExactPinsFromPackageJSONMergesKitHost(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"shared":"9.9.9","local-only":"1.2.3"}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	var logBuf bytes.Buffer
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	builder := &WebModuleBuilder{
-		module: &meta.Module{Name: "partner", Path: domain},
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{Name: "partner", Path: domain},
 	}
 	opts := builder.appendExactPinsFromPackageJSON(nil)
 	if len(opts) != 1 {
 		t.Fatalf("expected one WithBareImportPins option from kit+own merge, got %d", len(opts))
+	}
+	if !strings.Contains(logBuf.String(), "conflicting exact pins") || !strings.Contains(logBuf.String(), "shared") {
+		t.Fatalf("expected conflict warn for shared pin, got %q", logBuf.String())
 	}
 	// Domain-only empty pins still pick up kit host pins.
 	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{}}`), 0o644); err != nil {

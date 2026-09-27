@@ -460,6 +460,35 @@ func TestRenderNodeHandlesTextElementAndComment(t *testing.T) {
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsAllCaps(t *testing.T) {
+	src := `<template>
+  <TEXTAREA>typed</TEXTAREA>
+  <span id="after">ok</span>
+</template>
+<script setup>const t = "<textarea>"</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"TEXTAREA") {
+		t.Fatalf("all-caps TEXTAREA must mask, got %q", got)
+	}
+	if strings.Contains(got, `const t = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("lowercase textarea in script must stay unmasked, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const t = "<textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<TEXTAREA>`) || !strings.Contains(rendered, `id="after"`) {
+		t.Fatalf("TEXTAREA must not swallow nested markup, got %q", rendered)
+	}
+}
+
 func TestMaskPascalCaseRawTextTagsCommentDoesNotAffectDepth(t *testing.T) {
 	src := `<template>
   <!-- use <template> and <Textarea> here -->

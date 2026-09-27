@@ -68,7 +68,7 @@ func CheckForbiddenUiImports(input ForbiddenUiImportScanInput, parserResults []*
 	}
 	modulesPath := strings.TrimSpace(input.ModulesPath)
 	if modulesPath == "" {
-		modulesPath = filepath.Dir(moduleRoot)
+		modulesPath = filepath.Dir(filepath.Clean(moduleRoot))
 	}
 	if isKitHostModule(modulesPath, moduleName) {
 		return nil

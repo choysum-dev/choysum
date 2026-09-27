@@ -591,6 +591,18 @@ func TestCheckForbiddenUiImports_UnitBranches(t *testing.T) {
 	}}) != nil {
 		t.Fatal("web kit host with derived ModulesPath must be exempt")
 	}
+	// Trailing separator on ModuleRoot must still Clean to the parent modules path.
+	if CheckForbiddenUiImports(ForbiddenUiImportScanInput{
+		ModuleName: "web",
+		ModuleRoot: webRoot + string(os.PathSeparator),
+	}, []*parser.ParserResult{{
+		Path: filepath.Join(webRoot, "web", "a.ts"),
+		Imports: map[string]*parser.Import{
+			"X": {ModuleSpecText: "reka-ui", Line: 1, Column: 1},
+		},
+	}}) != nil {
+		t.Fatal("web kit host with trailing-separator ModuleRoot must be exempt")
+	}
 
 	root := "/modules/partner"
 	results := []*parser.ParserResult{
