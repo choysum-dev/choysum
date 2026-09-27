@@ -15,6 +15,7 @@ import 'element-plus/dist/index.css';
 import 'element-plus/theme-chalk/display.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import './styles/tokens.css';
+import './styles/theme.override.css';
 import './styles/preflight-policy.css';
 import './styles/index.scss';
 import './styles/choy-tailwind.generated.css';

@@ -68,8 +68,10 @@ func TestClassifyForbiddenUiImport(t *testing.T) {
 		{"@unovis/vue", "@unovis"},
 		{"@unovis/ts", "@unovis"},
 		{"ui/button", "ui/*"},
+		{"./ui/button", "ui/*"}, // leading ./ collapses into root-relative ui/*
 		{"../components/ui/button", "ui/*"},
 		{"../components/vendor/ui/button", "ui/*"},
+		{"./../components/vendor/ui/button", "ui/*"},
 		{"@/choy_ui/web/components/ui/button", "ui/*"},
 		{"@/choy_ui/web/components/vendor/ui/button", "ui/*"},
 		{"@/web/web/components/ui/button", "ui/*"},
@@ -113,6 +115,10 @@ func TestNormalizeImportPathSegments(t *testing.T) {
 		{"@/web/web/lib?raw", "@/web/web/lib"},
 		{"@/web/web/lib/utils?raw#frag", "@/web/web/lib/utils"},
 		{"?#only", ""},
+		// Leading ./ collapses, so relative specs can match root-relative kit bans.
+		{"./ui/button", "ui/button"},
+		{"./../components/vendor/ui/button", "../components/vendor/ui/button"},
+		{"./web/web/lib/utils", "web/web/lib/utils"},
 	}
 	for _, tc := range cases {
 		if got := normalizeImportPathSegments(tc.in); got != tc.want {
@@ -141,7 +147,11 @@ func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 		{"@/web/web/lib?raw", "web-lib-deep"},
 		{"@/web/web/components/../lib/utils", "web-lib-deep"},
 		{"../web/web/lib/utils", "web-lib-deep"},
+		{"./web/web/lib/utils", "web-lib-deep"},
 		{"web/web/lib", "web-lib-deep"},
+		// Embedded substring must not false-positive as kit web/web/lib.
+		{"@/partner/web/web/lib/utils", ""},
+		{"partner/web/web/lib/utils", ""},
 		{"@/web", ""},
 		{"@/web/index", ""},
 		{"vue", ""},

@@ -39,7 +39,6 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import '../styles/theme.override.css';
 import ChoyButton from '../components/layout/ChoyButton.vue';
 import ChoyCard from '../components/layout/ChoyCard.vue';
 import ChoyPage from '../components/layout/ChoyPage.vue';

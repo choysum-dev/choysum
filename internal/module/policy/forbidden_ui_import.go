@@ -265,10 +265,15 @@ func classifyCutoverForbiddenUiImport(lower string) string {
 
 func isForbiddenWebLibDeepPath(n string) bool {
 	// Caller passes a path already cleaned by normalizeImportPathSegments.
-	if strings.Contains(n, "/web/web/lib/") || strings.HasSuffix(n, "/web/web/lib") {
-		return true
+	// Match the kit module's web/web/lib tree by leading segments only so
+	// unrelated paths that merely embed "/web/web/lib/" (e.g. partner's own
+	// tree) do not false-positive. Strip a leading "@/", then any leading
+	// "../" runs left after Clean (e.g. "../web/web/lib/utils").
+	trimmed := strings.TrimPrefix(n, "@/")
+	for strings.HasPrefix(trimmed, "../") {
+		trimmed = trimmed[3:]
 	}
-	return n == "web/web/lib" || strings.HasPrefix(n, "web/web/lib/")
+	return trimmed == "web/web/lib" || strings.HasPrefix(trimmed, "web/web/lib/")
 }
 
 // normalizeImportPathSegments cleans "." / ".." segments and strips ?/# suffixes

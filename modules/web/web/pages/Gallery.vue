@@ -573,7 +573,6 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import '../styles/theme.override.css';
 import {
   Badge,
   Button,
