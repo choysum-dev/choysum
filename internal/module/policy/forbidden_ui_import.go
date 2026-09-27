@@ -267,13 +267,21 @@ func isForbiddenWebLibDeepPath(n string) bool {
 	// Caller passes a path already cleaned by normalizeImportPathSegments.
 	// Match the kit module's web/web/lib tree by leading segments only so
 	// unrelated paths that merely embed "/web/web/lib/" (e.g. partner's own
-	// tree) do not false-positive. Strip a leading "@/", then any leading
-	// "../" runs left after Clean (e.g. "../web/web/lib/utils").
-	trimmed := strings.TrimPrefix(n, "@/")
-	for strings.HasPrefix(trimmed, "../") {
-		trimmed = trimmed[3:]
+	// tree) do not false-positive. Strip "@/", "../", and "./" in any order so
+	// specs like "../@/web/web/lib/utils" cannot evade the cutover ban.
+	trimmed := n
+	for {
+		switch {
+		case strings.HasPrefix(trimmed, "../"):
+			trimmed = trimmed[3:]
+		case strings.HasPrefix(trimmed, "./"):
+			trimmed = trimmed[2:]
+		case strings.HasPrefix(trimmed, "@/"):
+			trimmed = trimmed[2:]
+		default:
+			return trimmed == "web/web/lib" || strings.HasPrefix(trimmed, "web/web/lib/")
+		}
 	}
-	return trimmed == "web/web/lib" || strings.HasPrefix(trimmed, "web/web/lib/")
 }
 
 // normalizeImportPathSegments cleans "." / ".." segments and strips ?/# suffixes

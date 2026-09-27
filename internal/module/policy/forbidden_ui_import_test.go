@@ -132,6 +132,24 @@ func TestNormalizeImportPathSegments(t *testing.T) {
 	}
 }
 
+func TestIsForbiddenWebLibDeepPathPrefixLoop(t *testing.T) {
+	// Direct cases that survive normalize or exercise the strip loop order.
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"./web/web/lib/utils", true},
+		{"../@/web/web/lib/utils", true},
+		{"@/./web/web/lib/cn", true},
+		{"partner/web/web/lib/utils", false},
+	}
+	for _, tc := range cases {
+		if got := isForbiddenWebLibDeepPath(tc.in); got != tc.want {
+			t.Fatalf("isForbiddenWebLibDeepPath(%q)=%v want %v", tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 	prev := CutoverImportBans
 	CutoverImportBans = true
@@ -153,6 +171,8 @@ func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 		{"@/web/web/components/../lib/utils", "web-lib-deep"},
 		{"../web/web/lib/utils", "web-lib-deep"},
 		{"./web/web/lib/utils", "web-lib-deep"},
+		{"../@/web/web/lib/utils", "web-lib-deep"},
+		{"@/../web/web/lib/utils", "web-lib-deep"},
 		{"web/web/lib", "web-lib-deep"},
 		// Embedded substring must not false-positive as kit web/web/lib.
 		{"@/partner/web/web/lib/utils", ""},

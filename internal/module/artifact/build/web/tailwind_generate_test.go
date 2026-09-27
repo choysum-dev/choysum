@@ -715,6 +715,43 @@ func TestScanChoyProductTailwindCandidatesFiltersSiblingKit(t *testing.T) {
 	}
 }
 
+func TestScanChoyProductTailwindCandidatesKitHostWithoutDialect(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	// Sibling owns vendor/ui but no styles/theme.css — still a kit host.
+	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
+	write("choy_ui/web/components/view/OFormView.vue", `<div class="no-dialect-ep-only"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "gap-2", "domain-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	if set["no-dialect-ep-only"] {
+		t.Fatalf("vendor/ui host without dialect must stay kit-filtered, got %v", got)
+	}
+}
+
 func TestScanChoyProductTailwindCandidatesDomainThemeCSSNotKitFiltered(t *testing.T) {
 	modules := t.TempDir()
 	write := func(rel, body string) {

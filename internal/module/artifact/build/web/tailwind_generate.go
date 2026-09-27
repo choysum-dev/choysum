@@ -212,23 +212,23 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 			if dialectStat.IsDir() {
 				return nil, fmt.Errorf("%s dialect %s is a directory, not a file", name, dialectPath)
 			}
-			// Same kit-host marker as policy.isKitHostModule: only a module that
-			// owns the vendor/ui tree is a kit host. A domain module that merely
-			// ships its own styles/theme.css keeps full domain scanning.
-			vendorUI, vErr := choyProductStat(filepath.Join(webRoot, "components", "vendor", "ui"))
-			if vErr != nil && !os.IsNotExist(vErr) {
-				return nil, vErr
-			}
-			if vErr == nil && vendorUI.IsDir() {
-				kitCandidates, err := choyScanKitCandidates(webRoot)
-				if err != nil {
-					return nil, err
-				}
-				add(kitCandidates)
-				continue
-			}
 		} else if !os.IsNotExist(dialectErr) {
 			return nil, dialectErr
+		}
+		// Same kit-host marker as policy.isKitHostModule: owning vendor/ui makes
+		// a module a kit host even without styles/theme.css. A domain module that
+		// merely ships a dialect keeps full domain scanning.
+		vendorUI, vErr := choyProductStat(filepath.Join(webRoot, "components", "vendor", "ui"))
+		if vErr != nil && !os.IsNotExist(vErr) {
+			return nil, vErr
+		}
+		if vErr == nil && vendorUI.IsDir() {
+			kitCandidates, err := choyScanKitCandidates(webRoot)
+			if err != nil {
+				return nil, err
+			}
+			add(kitCandidates)
+			continue
 		}
 		domainCandidates, err := choyScanDomainCandidates([]string{webRoot})
 		if err != nil {
