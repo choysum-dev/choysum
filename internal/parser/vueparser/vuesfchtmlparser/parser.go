@@ -206,25 +206,24 @@ func maskPascalCaseRawTextTags(src string) string {
 			}
 			closeAt := pos + nextClose[0]
 			closeEnd := pos + nextClose[1]
+			// Prefer a nested opener that precedes this close — even when the close
+			// sits inside a comment — so depth is not skipped past the opener.
+			if nextOpen != nil && pos+nextOpen[0] < closeAt {
+				openAt := pos + nextOpen[0]
+				nestedEnd := pos + nextOpen[1]
+				pos = nestedEnd
+				if inComment(openAt) {
+					continue
+				}
+				nestedTag := src[openAt:nestedEnd]
+				if !isSelfClosingHTMLOpenTag(nestedTag) {
+					depth++
+				}
+				continue
+			}
 			if inComment(closeAt) {
 				pos = closeEnd
 				continue
-			}
-			if nextOpen != nil {
-				openAt := pos + nextOpen[0]
-				if openAt < closeAt {
-					nestedEnd := pos + nextOpen[1]
-					if inComment(openAt) {
-						pos = nestedEnd
-						continue
-					}
-					nestedTag := src[openAt:nestedEnd]
-					pos = nestedEnd
-					if !isSelfClosingHTMLOpenTag(nestedTag) {
-						depth++
-					}
-					continue
-				}
 			}
 			depth--
 			if depth == 0 {

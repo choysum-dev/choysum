@@ -552,6 +552,36 @@ func TestMaskPascalCaseRawTextTagsCloseInsideCommentSkipped(t *testing.T) {
 	}
 }
 
+func TestMaskPascalCaseRawTextTagsNestedOpenBeforeCommentedClose(t *testing.T) {
+	// Nested <template> before a commented </template> must still increment depth;
+	// skipping the comment close first would close the root template too early.
+	src := `<template>
+  <template #header>h
+  <!-- </template> -->
+  </template>
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 1</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after nested slot must mask, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script, got %d", len(scripts))
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea`) || !strings.Contains(rendered, `#header`) {
+		t.Fatalf("nested slot + Textarea must survive, got %q", rendered)
+	}
+}
+
 func TestFindHTMLCommentRangesUnclosedInHTMLContext(t *testing.T) {
 	src := `<template><!-- never closed
   <Textarea/>
