@@ -21,7 +21,9 @@ SPDX-License-Identifier: Apache-2.0
         <slot name="aside" />
       </nav>
     </template>
-    <router-view />
+    <slot>
+      <router-view />
+    </slot>
     <template v-if="showFooter" #footer>
       <div class="px-4 py-2 text-xs text-foreground/60">
         <slot name="footer" />

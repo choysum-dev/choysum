@@ -92,4 +92,20 @@ describe('ChoyShellLayout', () => {
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     mounted.unmount();
   });
+
+  test('default slot overrides router-view fallback', async () => {
+    const mounted = mountApp(ChoyShellLayout as any, {
+      props: { showHeader: false },
+      slots: {
+        default: () => h('div', { 'data-test': 'custom-body' }, 'Custom'),
+      },
+      stubs: {
+        'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=custom-body]')?.textContent).toBe('Custom');
+    expect(mounted.q('[data-test=router-view]')).toBeNull();
+    mounted.unmount();
+  });
 });
