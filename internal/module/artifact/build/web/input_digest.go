@@ -211,9 +211,9 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 		default:
 			return nil
 		}
-		// Only the choy_ui kit's generated Tailwind output is derived from dialect +
+		// Only the kit's generated Tailwind output under styles/ is derived from dialect +
 		// candidates already hashed via TailwindInputDigest; hashing it would thrash
-		// digests. A same-named file in any other module is a real input.
+		// digests. A same-named file outside kit styles/ is a real input.
 		if isChoyTailwindGeneratedKitPath(path) {
 			return nil
 		}
@@ -222,18 +222,26 @@ func hashWebSourceTreeOpts(h io.Writer, root string, skipBuildDirs bool) error {
 }
 
 // isChoyTailwindGeneratedKitPath reports whether path is the kit's generated
-// utilities CSS under choy_ui/web (not a same-named file elsewhere).
+// utilities CSS under a kit host styles/ tree (not a same-named file elsewhere).
 func isChoyTailwindGeneratedKitPath(path string) bool {
 	if filepath.Base(path) != choyTailwindGeneratedCSSName {
 		return false
 	}
 	slash := filepath.ToSlash(path)
-	// Match absolute ("/…/choy_ui/web/…") and walk-root-relative
-	// ("choy_ui/web/…") paths, e.g. when modulesPath is ".".
-	if strings.HasPrefix(slash, "choy_ui/web/") {
+	// Only "<module>/web/styles/<name>" of the web/choy_ui kit hosts is derived
+	// output; require a directory boundary so modules like "myweb" are not matched.
+	return hasKitHostStylesSuffix(slash, "web/web/styles/"+choyTailwindGeneratedCSSName) ||
+		hasKitHostStylesSuffix(slash, "choy_ui/web/styles/"+choyTailwindGeneratedCSSName)
+}
+
+func hasKitHostStylesSuffix(slash, suffix string) bool {
+	if !strings.HasSuffix(slash, suffix) {
+		return false
+	}
+	if len(slash) == len(suffix) {
 		return true
 	}
-	return strings.Contains(slash, "/choy_ui/web/")
+	return slash[len(slash)-len(suffix)-1] == '/'
 }
 
 // readBuildInfo is debug.ReadBuildInfo; tests replace it to exercise digest versioning.

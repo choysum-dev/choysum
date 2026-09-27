@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ChoyMessage, useChoyMessage } from '@/choy_ui/web/composables/useChoyMessage';
+import { ChoyMessage, useChoyMessage } from '@/web/web/composables/useChoyMessage';
 import {
   clearToasts,
   useToastStore,
-} from '@/choy_ui/web/components/vendor/ui/toast/useToast';
+} from '@/web/web/components/vendor/ui/toast/useToast';
 // Pull a .vue import so the FE unit runner enables the Vue host bundle (resolves `vue`).
-import Toaster from '@/choy_ui/web/components/vendor/ui/toast/Toaster.vue';
+import Toaster from '@/web/web/components/vendor/ui/toast/Toaster.vue';
 
 void Toaster;
 

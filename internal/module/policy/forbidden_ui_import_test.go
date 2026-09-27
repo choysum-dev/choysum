@@ -10,6 +10,54 @@ import (
 	"testing"
 )
 
+func TestIsKitHostModuleEmptyModulesPath(t *testing.T) {
+	if isKitHostModule("", "web") {
+		t.Fatal("web without modulesPath must not be kit host")
+	}
+	if isKitHostModule("   ", "web") {
+		t.Fatal("blank modulesPath must not make web a kit host")
+	}
+	if !isKitHostModule("", "choy_ui") {
+		t.Fatal("choy_ui remains a kit host even without modulesPath")
+	}
+}
+
+func TestIsKitHostModuleStatErrorDoesNotExempt(t *testing.T) {
+	root := t.TempDir()
+	kitUI := filepath.Join(root, "web", "web", "components", "vendor", "ui")
+	if err := os.MkdirAll(kitUI, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	vendor := filepath.Join(root, "web", "web", "components", "vendor")
+	if err := os.Chmod(vendor, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(vendor, 0o755) })
+	_, statErr := os.Stat(kitUI)
+	_ = os.Chmod(vendor, 0o755)
+	if statErr == nil {
+		t.Skip("permission-denied kit Stat not observed on this runner (e.g. running as root)")
+	}
+	if err := os.Chmod(vendor, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	ok := isKitHostModule(root, "web")
+	_ = os.Chmod(vendor, 0o755)
+	if ok {
+		t.Fatal("stat failure must not make web a kit host")
+	}
+}
+
+func TestIsKitHostModuleMissingKitDir(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "web", "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if isKitHostModule(root, "web") {
+		t.Fatal("web without vendor/ui must not be kit host")
+	}
+}
+
 func TestClassifyForbiddenUiImport(t *testing.T) {
 	cases := []struct {
 		spec string

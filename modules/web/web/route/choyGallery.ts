@@ -2,16 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ChoysumWebApp } from '@/core/web/application';
-import { choyUiRoutes } from './routes';
+import { choyUiRoutes } from './choyGalleryRoutes';
 
 /**
  * Registers the Choy UI gallery under the authenticated layout without a menu entry.
  */
 export function setupRouter(app: ChoysumWebApp): void {
-  const router = app.router;
+  const router = app?.router;
+  if (!router || typeof router.hasRoute !== 'function' || typeof router.addRoute !== 'function') {
+    console.warn('[web] router is not ready; Choy gallery routes were skipped');
+    return;
+  }
   if (!router.hasRoute('AppLayout')) {
-    // Host web shell has not registered the layout yet (or never will).
-    console.warn('[choy_ui] AppLayout route is not registered; gallery routes were skipped');
+    console.warn('[web] AppLayout route is not registered; Choy gallery routes were skipped');
     return;
   }
   for (const route of choyUiRoutes) {
@@ -24,7 +27,7 @@ export function setupRouter(app: ChoysumWebApp): void {
 }
 
 /**
- * Public entry used by the web module bootstrap when choy_ui is installed.
+ * Public entry used when the kit host boots (product web and/or choy_ui shell).
  */
 export function registerChoyGalleryRoute(app: ChoysumWebApp): void {
   setupRouter(app);

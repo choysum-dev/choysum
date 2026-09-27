@@ -259,6 +259,7 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
     ElementPlus: {} as any,
+    registerChoyGalleryRoute: (() => {}) as any,
     baseUrl: '/',
     hasWindow: () => false,
     _store: store,

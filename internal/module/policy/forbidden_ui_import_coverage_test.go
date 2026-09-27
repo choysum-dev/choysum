@@ -245,7 +245,23 @@ export const x = DialogRoot;
 	}
 }
 
-func TestAssertNoForbiddenUiImports_RejectsWebModuleUntilCutover(t *testing.T) {
+func TestAssertNoForbiddenUiImports_AllowsWebModuleAsKitHost(t *testing.T) {
+	modulesPath := t.TempDir()
+	webDir := writePartnerWebModule(t, modulesPath, "web")
+	if err := os.MkdirAll(filepath.Join(webDir, "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := "import { DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n"
+	if err := os.WriteFile(filepath.Join(webDir, "leak.ts"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Kit source lives under modules/web; product web is the kit host and may import Reka.
+	if err := AssertNoForbiddenUiImports(modulesPath, "web"); err != nil {
+		t.Fatalf("web kit host must be exempt: %v", err)
+	}
+}
+
+func TestAssertNoForbiddenUiImports_RejectsWebWithoutKitTree(t *testing.T) {
 	modulesPath := t.TempDir()
 	webDir := writePartnerWebModule(t, modulesPath, "web")
 	src := "import { DialogRoot } from 'reka-ui';\nexport const x = DialogRoot;\n"
@@ -254,7 +270,7 @@ func TestAssertNoForbiddenUiImports_RejectsWebModuleUntilCutover(t *testing.T) {
 	}
 	err := AssertNoForbiddenUiImports(modulesPath, "web")
 	if err == nil || !strings.Contains(err.Error(), "reka-ui") {
-		t.Fatalf("product web must still be gated until cutover, got %v", err)
+		t.Fatalf("web without vendor/ui must stay gated, got %v", err)
 	}
 }
 
@@ -555,6 +571,37 @@ func TestCheckForbiddenUiImports_UnitBranches(t *testing.T) {
 		ModuleRoot: "/x",
 	}, nil) != nil {
 		t.Fatal("kit host")
+	}
+
+	// ModulesPath unset: derive from ModuleRoot so a web kit host still exempts.
+	webKit := t.TempDir()
+	webRoot := filepath.Join(webKit, "web")
+	if err := os.MkdirAll(filepath.Join(webRoot, "web", "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if CheckForbiddenUiImports(ForbiddenUiImportScanInput{
+		ModuleName: "web",
+		ModuleRoot: filepath.Join(webRoot),
+		// ModulesPath intentionally empty
+	}, []*parser.ParserResult{{
+		Path: filepath.Join(webRoot, "web", "a.ts"),
+		Imports: map[string]*parser.Import{
+			"X": {ModuleSpecText: "reka-ui", Line: 1, Column: 1},
+		},
+	}}) != nil {
+		t.Fatal("web kit host with derived ModulesPath must be exempt")
+	}
+	// Trailing separator on ModuleRoot must still Clean to the parent modules path.
+	if CheckForbiddenUiImports(ForbiddenUiImportScanInput{
+		ModuleName: "web",
+		ModuleRoot: webRoot + string(os.PathSeparator),
+	}, []*parser.ParserResult{{
+		Path: filepath.Join(webRoot, "web", "a.ts"),
+		Imports: map[string]*parser.Import{
+			"X": {ModuleSpecText: "reka-ui", Line: 1, Column: 1},
+		},
+	}}) != nil {
+		t.Fatal("web kit host with trailing-separator ModuleRoot must be exempt")
 	}
 
 	root := "/modules/partner"

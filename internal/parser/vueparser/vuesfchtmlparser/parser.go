@@ -5,6 +5,7 @@ package vuesfchtmlparser
 
 import (
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/antchfx/htmlquery"
@@ -94,10 +95,26 @@ func renderNode(w io.Writer, n *html.Node) error {
 }
 
 func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode *html.Node, styleNodes []*html.Node, err error) {
-	doc, err := parseWithCaseSensitive(r)
+	src, err := io.ReadAll(r)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	// x/net/html treats <textarea>/<title>/… as raw-text elements (case-insensitive).
+	// Vue product SFCs often put PascalCase component tags (e.g. <Textarea>) before
+	// <script setup>; without masking, the tokenizer swallows the script block.
+	// Masking is limited to unquoted text inside <template> so script/style string
+	// literals and attribute values keep literal "<Textarea>" unchanged.
+	// Fast path: the multi-pass masker is a no-op unless a non-lowercase
+	// raw-text-named tag is present (real <script>/<textarea> stay unmasked).
+	masked := string(src)
+	if sourceNeedsPascalCaseRawTextMask(masked) {
+		masked = maskPascalCaseRawTextTags(masked)
+	}
+	doc, err := vueSfcHTMLParse(strings.NewReader(masked))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	unmaskPascalCaseRawTextTags(doc)
 	scriptNodes = htmlquery.Find(doc, "//script")
 	templateNode = htmlquery.FindOne(doc, "//template")
 	styleNodes = htmlquery.Find(doc, "//style")
@@ -108,6 +125,479 @@ func ParseVueSfcToHtmlNode(r io.Reader) (scriptNodes []*html.Node, templateNode 
 
 	return scriptNodes, templateNode, styleNodes, nil
 
+}
+
+// pascalCaseRawTextTag matches tags whose local names collide with HTML raw-text
+// / RCDATA elements when lowercased by the tokenizer (case-insensitive).
+// replacePascalCaseRawTextTags leaves all-lowercase HTML tags untouched.
+// Go regexp has no lookahead; the trailing delimiter is re-emitted by the replacer.
+var pascalCaseRawTextTag = regexp.MustCompile(`(?i)</?(textarea|title|style|script|noscript|iframe|noembed|noframes|xmp|plaintext)([\s/>])`)
+
+var sfcTemplateOpen = regexp.MustCompile(`(?i)<template\b(?:[^>"']|"[^"]*"|'[^']*')*>`)
+var sfcTemplateClose = regexp.MustCompile(`(?i)</template\s*>`)
+
+// sfcScriptStyleBlock matches top-level <script>/<style> so a "<template>" literal
+// inside their source is never treated as the SFC template region.
+// Each opener is paired with its own closer (RE2 has no backreferences).
+// Opener attrs are quote-aware so a '>' inside a quoted value does not truncate the tag.
+var sfcScriptStyleBlock = regexp.MustCompile(`(?is)<script\b(?:[^>"']|"[^"]*"|'[^']*')*>.*?</script\s*>|<style\b(?:[^>"']|"[^"]*"|'[^']*')*>.*?</style\s*>`)
+
+const vueRawTextMaskPrefix = "VueSfcRaw"
+
+// vueSfcHTMLParse is the HTML parse step after masking; tests may override it.
+var vueSfcHTMLParse = parseWithCaseSensitive
+
+// sourceNeedsPascalCaseRawTextMask reports whether s contains a raw-text-named tag
+// that is not all-lowercase (those need masking; real HTML lowercase tags do not).
+func sourceNeedsPascalCaseRawTextMask(s string) bool {
+	for _, m := range pascalCaseRawTextTag.FindAllString(s, -1) {
+		if rawTextTagNameFromMatch(m) != strings.ToLower(rawTextTagNameFromMatch(m)) {
+			return true
+		}
+	}
+	return false
+}
+
+func rawTextTagNameFromMatch(m string) string {
+	body := m[:len(m)-1]
+	if strings.HasPrefix(body, "</") {
+		return body[2:]
+	}
+	return strings.TrimPrefix(body, "<")
+}
+func maskPascalCaseRawTextTags(src string) string {
+	// Script/style ranges ignore openers that sit inside HTML comments (e.g.
+	// <!-- <script> -->). Comment vs mustache/attr discovery is interleaved:
+	// seed ranges from a first comment pass let a "<!--" inside a quoted attr
+	// be ignored on the second comment pass; final mustache/attr discovery then
+	// skips the corrected comments so an unclosed "{{" inside <!-- … --> cannot
+	// run to EOF and hide later quoted attrs (including after a phantom <!--).
+	scriptStyle := findScriptStyleRanges(src)
+	comments := findHTMLCommentRanges(src, scriptStyle)
+	seed := findMustacheAndQuotedAttrRanges(src, comments)
+	skipForComments := append(append([][]int{}, scriptStyle...), seed...)
+	comments = findHTMLCommentRanges(src, skipForComments)
+	skipForMustache := append(append([][]int{}, scriptStyle...), comments...)
+	mustacheAttr := findMustacheAndQuotedAttrRanges(src, skipForMustache)
+	protected := append(append([][]int{}, comments...), mustacheAttr...)
+	inRange := func(pos int, ranges [][]int) bool {
+		for _, r := range ranges {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
+	inScriptOrStyle := func(pos int) bool { return inRange(pos, scriptStyle) }
+	inProtected := func(pos int) bool { return inRange(pos, protected) }
+
+	var out strings.Builder
+	out.Grow(len(src) + 32)
+	i := 0
+	for i < len(src) {
+		openLoc := sfcTemplateOpen.FindStringIndex(src[i:])
+		if openLoc == nil {
+			out.WriteString(src[i:])
+			break
+		}
+		openStart := i + openLoc[0]
+		openEnd := i + openLoc[1]
+		if inScriptOrStyle(openStart) || inProtected(openStart) {
+			// Literal "<template" inside script/style/comment/mustache/attr — copy through.
+			out.WriteString(src[i:openEnd])
+			i = openEnd
+			continue
+		}
+		openTag := src[openStart:openEnd]
+		if isSelfClosingHTMLOpenTag(openTag) {
+			out.WriteString(src[i:openEnd])
+			i = openEnd
+			continue
+		}
+		out.WriteString(src[i:openEnd])
+		bodyStart := openEnd
+		depth := 1
+		pos := bodyStart
+		for depth > 0 {
+			nextOpen := sfcTemplateOpen.FindStringIndex(src[pos:])
+			nextClose := sfcTemplateClose.FindStringIndex(src[pos:])
+			if nextClose == nil {
+				// Unbalanced depth (e.g. "<template" literal in an attribute) must
+				// not mask past the next script/style block — those bodies are
+				// TextNodes and cannot be repaired by unmaskPascalCaseRawTextTags.
+				end := len(src)
+				for _, r := range scriptStyle {
+					if r[0] >= bodyStart {
+						end = r[0]
+						break
+					}
+				}
+				out.WriteString(maskPascalCaseRawTextTagsOutsideQuotes(src[bodyStart:end]))
+				out.WriteString(src[end:])
+				return out.String()
+			}
+			closeAt := pos + nextClose[0]
+			closeEnd := pos + nextClose[1]
+			// Prefer a nested opener that precedes this close — even when the close
+			// sits inside a comment — so depth is not skipped past the opener.
+			if nextOpen != nil && pos+nextOpen[0] < closeAt {
+				openAt := pos + nextOpen[0]
+				nestedEnd := pos + nextOpen[1]
+				pos = nestedEnd
+				if inProtected(openAt) {
+					continue
+				}
+				nestedTag := src[openAt:nestedEnd]
+				if !isSelfClosingHTMLOpenTag(nestedTag) {
+					depth++
+				}
+				continue
+			}
+			if inProtected(closeAt) {
+				pos = closeEnd
+				continue
+			}
+			depth--
+			if depth == 0 {
+				out.WriteString(maskPascalCaseRawTextTagsOutsideQuotes(src[bodyStart:closeAt]))
+				out.WriteString(src[closeAt:closeEnd])
+				i = closeEnd
+				break
+			}
+			pos = closeEnd
+		}
+	}
+	return out.String()
+}
+
+// findScriptStyleRanges returns [start,end) spans of top-level <script>/<style>
+// blocks whose openers are not inside HTML comments. A commented opener such as
+// <!-- <script> --> must not pair with a later real </script> and swallow the
+// template between them. Comment markers inside real script/style bodies are
+// still ignored when comment ranges are computed (via findHTMLCommentRanges skip).
+func findScriptStyleRanges(src string) [][]int {
+	naiveComments := findHTMLCommentRanges(src, nil)
+	var ranges [][]int
+	inAccepted := func(pos int) bool {
+		for _, r := range ranges {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
+	inComment := func(pos int) bool {
+		for _, r := range naiveComments {
+			if pos >= r[0] && pos < r[1] {
+				// A marker inside an already-accepted script/style body is string
+				// content, not an HTML comment, so it must not hide a real block.
+				return !inAccepted(r[0])
+			}
+		}
+		return false
+	}
+	searchFrom := 0
+	for searchFrom < len(src) {
+		m := sfcScriptStyleBlock.FindStringIndex(src[searchFrom:])
+		if m == nil {
+			break
+		}
+		start := searchFrom + m[0]
+		end := searchFrom + m[1]
+		if inComment(start) {
+			// Reject this match and resume just past the false opener so a later
+			// real <script>/<style> can still be found.
+			searchFrom = start + 1
+			continue
+		}
+		ranges = append(ranges, []int{start, end})
+		searchFrom = end
+	}
+	return ranges
+}
+
+// findMustacheAndQuotedAttrRanges returns [start,end) spans that cannot hold a
+// real template tag: Vue mustaches {{ … }} and quoted attribute values inside
+// HTML tags. Positions inside skip (typically HTML comments) are ignored so an
+// unclosed "{{" there cannot run to EOF. A literal "</template>" in returned
+// spans must not affect depth.
+func findMustacheAndQuotedAttrRanges(src string, skip [][]int) [][]int {
+	inSkip := func(pos int) bool {
+		for _, r := range skip {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
+	var ranges [][]int
+	for i := 0; i < len(src); {
+		if inSkip(i) {
+			// Jump to the end of the covering skip span.
+			end := i + 1
+			for _, r := range skip {
+				if i >= r[0] && i < r[1] && r[1] > end {
+					end = r[1]
+				}
+			}
+			i = end
+			continue
+		}
+		if i+1 < len(src) && src[i] == '{' && src[i+1] == '{' {
+			start := i
+			j := i + 2
+			for j+1 < len(src) {
+				if src[j] == '}' && src[j+1] == '}' {
+					ranges = append(ranges, []int{start, j + 2})
+					i = j + 2
+					break
+				}
+				j++
+			}
+			if j+1 >= len(src) {
+				ranges = append(ranges, []int{start, len(src)})
+				break
+			}
+			continue
+		}
+		if src[i] == '<' && i+1 < len(src) {
+			n := src[i+1]
+			// Lighter than looksLikeHTMLTagOpener so an unterminated tag still
+			// ends the scan (and covers the EOF path) without treating "{{ a < b }}".
+			if (n >= 'a' && n <= 'z') || (n >= 'A' && n <= 'Z') || n == '/' {
+				inQuote := byte(0)
+				quoteStart := 0
+				j := i + 1
+				for j < len(src) {
+					c := src[j]
+					if inQuote != 0 {
+						if c == '\\' {
+							j++
+							if j < len(src) {
+								j++
+							}
+							continue
+						}
+						if c == inQuote {
+							ranges = append(ranges, []int{quoteStart, j + 1})
+							inQuote = 0
+							j++
+							continue
+						}
+						j++
+						continue
+					}
+					if c == '\'' || c == '"' || c == '`' {
+						inQuote = c
+						quoteStart = j
+						j++
+						continue
+					}
+					if c == '>' {
+						i = j + 1
+						break
+					}
+					j++
+				}
+				if j >= len(src) {
+					break
+				}
+				continue
+			}
+		}
+		i++
+	}
+	return ranges
+}
+
+// findHTMLCommentRanges returns [start,end) spans of <!-- … --> in HTML context.
+// Positions inside skip (typically script/style blocks) are ignored so a "<!--"
+// string literal there cannot open a comment through EOF. An unclosed comment
+// in HTML context still runs to EOF.
+func findHTMLCommentRanges(src string, skip [][]int) [][]int {
+	inSkip := func(pos int) bool {
+		for _, r := range skip {
+			if pos >= r[0] && pos < r[1] {
+				return true
+			}
+		}
+		return false
+	}
+	var ranges [][]int
+	for i := 0; i < len(src); {
+		start := strings.Index(src[i:], "<!--")
+		if start < 0 {
+			break
+		}
+		start += i
+		if inSkip(start) {
+			i = start + 4
+			continue
+		}
+		endRel := strings.Index(src[start+4:], "-->")
+		if endRel < 0 {
+			ranges = append(ranges, []int{start, len(src)})
+			break
+		}
+		end := start + 4 + endRel + 3
+		ranges = append(ranges, []int{start, end})
+		i = end
+	}
+	return ranges
+}
+
+// isSelfClosingHTMLOpenTag reports whether openTag (including trailing '>') ends with />.
+func isSelfClosingHTMLOpenTag(openTag string) bool {
+	if openTag == "" || openTag[len(openTag)-1] != '>' {
+		return false
+	}
+	inner := strings.TrimSpace(openTag[:len(openTag)-1])
+	return strings.HasSuffix(inner, "/")
+}
+
+// maskPascalCaseRawTextTagsOutsideQuotes rewrites PascalCase raw-text tags in a
+// template body, skipping only quoted attribute values inside tags. Apostrophes
+// in text (e.g. "User's") must not enter quote-skip mode.
+func maskPascalCaseRawTextTagsOutsideQuotes(s string) string {
+	var out strings.Builder
+	out.Grow(len(s) + 16)
+	inTag := false
+	segStart := 0
+	i := 0
+	for i < len(s) {
+		c := s[i]
+		switch {
+		case !inTag && c == '<' && strings.HasPrefix(s[i:], "<!--"):
+			// Comments are CommentNodes after parse; leave their text unmasked.
+			out.WriteString(replacePascalCaseRawTextTags(s[segStart:i]))
+			endRel := strings.Index(s[i+4:], "-->")
+			if endRel < 0 {
+				out.WriteString(s[i:])
+				return out.String()
+			}
+			end := i + 4 + endRel + 3
+			out.WriteString(s[i:end])
+			i = end
+			segStart = i
+		case c == '<':
+			if looksLikeHTMLTagOpener(s, i) {
+				inTag = true
+			}
+			i++
+		case c == '>':
+			inTag = false
+			i++
+		case inTag && (c == '\'' || c == '"' || c == '`'):
+			out.WriteString(replacePascalCaseRawTextTags(s[segStart:i]))
+			quote := c
+			k := i + 1
+			for k < len(s) {
+				if s[k] == '\\' {
+					k++
+					if k < len(s) {
+						k++
+					}
+					continue
+				}
+				if s[k] == quote {
+					k++
+					break
+				}
+				k++
+			}
+			out.WriteString(s[i:k])
+			i = k
+			segStart = i
+		default:
+			i++
+		}
+	}
+	out.WriteString(replacePascalCaseRawTextTags(s[segStart:]))
+	return out.String()
+}
+
+// looksLikeHTMLTagOpener reports whether s[start] begins a real tag ('<' plus a
+// name/'/'/'!' that reaches '>' before another '<', skipping quoted attrs).
+// Comparisons in text like `{{ a <b }}` must not enter inTag mode.
+func looksLikeHTMLTagOpener(s string, start int) bool {
+	if start < 0 || start >= len(s) || s[start] != '<' || start+1 >= len(s) {
+		return false
+	}
+	n := s[start+1]
+	if !((n >= 'a' && n <= 'z') || (n >= 'A' && n <= 'Z') || n == '/' || n == '!') {
+		return false
+	}
+	inQuote := byte(0)
+	for j := start + 1; j < len(s); j++ {
+		c := s[j]
+		if inQuote != 0 {
+			if c == '\\' {
+				j++
+				if j >= len(s) {
+					return false
+				}
+				continue
+			}
+			if c == inQuote {
+				inQuote = 0
+			}
+			continue
+		}
+		if c == '\'' || c == '"' || c == '`' {
+			inQuote = c
+			continue
+		}
+		if c == '<' {
+			return false
+		}
+		if c == '>' {
+			return true
+		}
+	}
+	return false
+}
+
+func replacePascalCaseRawTextTags(s string) string {
+	return pascalCaseRawTextTag.ReplaceAllStringFunc(s, func(m string) string {
+		delim := m[len(m)-1:]
+		body := m[:len(m)-1]
+		name := rawTextTagNameFromMatch(m)
+		// Real lowercase HTML raw-text/RCDATA tags must stay untouched.
+		if name == strings.ToLower(name) {
+			return m
+		}
+		if strings.HasPrefix(body, "</") {
+			return "</" + vueRawTextMaskPrefix + body[2:] + delim
+		}
+		return "<" + vueRawTextMaskPrefix + body[1:] + delim
+	})
+}
+
+func unmaskPascalCaseRawTextTags(n *html.Node) {
+	if n == nil {
+		return
+	}
+	switch n.Type {
+	case html.ElementNode:
+		if strings.HasPrefix(n.Data, vueRawTextMaskPrefix) {
+			n.Data = strings.TrimPrefix(n.Data, vueRawTextMaskPrefix)
+		}
+	case html.CommentNode, html.TextNode:
+		// Restore only masker-generated tag sentinels (<VueSfcRaw… / </VueSfcRaw…),
+		// not a bare literal "VueSfcRaw" in author text.
+		n.Data = unmaskRawTextSentinelsInPlainData(n.Data)
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		unmaskPascalCaseRawTextTags(c)
+	}
+}
+
+// unmaskRawTextSentinelsInPlainData strips the mask prefix only where the masker
+// inserted it as a tag name (after < or </).
+func unmaskRawTextSentinelsInPlainData(s string) string {
+	s = strings.ReplaceAll(s, "<"+vueRawTextMaskPrefix, "<")
+	s = strings.ReplaceAll(s, "</"+vueRawTextMaskPrefix, "</")
+	return s
 }
 
 func parseWithCaseSensitive(r io.Reader) (*html.Node, error) {

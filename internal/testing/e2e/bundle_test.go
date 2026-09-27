@@ -223,6 +223,57 @@ func TestBuildE2EBundleErrorPaths(t *testing.T) {
 	}
 }
 
+func TestBuildE2EBundleExactPinsError(t *testing.T) {
+	oldPath := e2eChoysumE2EPath
+	defer func() { e2eChoysumE2EPath = oldPath }()
+	e2ePathFile := filepath.Join(t.TempDir(), "choysume2e.js")
+	if err := os.WriteFile(e2ePathFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	e2eChoysumE2EPath = func() (string, error) { return e2ePathFile, nil }
+
+	root := t.TempDir()
+	webPkg := filepath.Join(root, "modules", "web")
+	if err := os.MkdirAll(webPkg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webPkg, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(root, "e.js")
+	if err := os.WriteFile(entry, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := BuildE2EBundle(E2EBundleOptions{RepoRoot: root, EntryPath: entry, CacheDir: t.TempDir()})
+	if err == nil || !strings.Contains(err.Error(), "exact pins") {
+		t.Fatalf("expected exact pins error, got %v", err)
+	}
+}
+
+func TestE2EExactPinsWithoutVue(t *testing.T) {
+	root := t.TempDir()
+	webPkg := filepath.Join(root, "modules", "web")
+	if err := os.MkdirAll(webPkg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webPkg, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13","local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pins, err := e2eExactPinsWithoutVue(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := pins["vue"]; ok {
+		t.Fatal("exact vue pin must be dropped for single-instance host")
+	}
+	if pins["local-only"] != "1.2.3" {
+		t.Fatalf("non-vue exact pins must remain, got %v", pins)
+	}
+	if _, err := e2eExactPinsWithoutVue(t.TempDir()); err != nil {
+		t.Fatalf("missing package.json is empty pins, not error: %v", err)
+	}
+}
+
 func TestBuildE2EBundleConnectProtobuf(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {

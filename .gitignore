@@ -83,4 +83,5 @@ tryon/
 modules/**/e2e/.generated/
 
 # Choy UI Tailwind utilities (written by web build EnsureChoyTailwindCSS)
+modules/web/web/styles/choy-tailwind.generated.css
 modules/choy_ui/web/styles/choy-tailwind.generated.css

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 )
 
@@ -62,5 +63,109 @@ console.log(ref, defineStore, createPinia, createI18n);
 		if ref != want {
 			t.Fatalf("bundle references %q, want only %s", ref, want)
 		}
+	}
+}
+
+func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
+	repoRoot, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pins, err := vueHostBareImportPins(repoRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pins["vue"] != choysummount.VuePackageVersion {
+		t.Fatalf("vue pin = %q want %q", pins["vue"], choysummount.VuePackageVersion)
+	}
+	want, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(want) == 0 {
+		t.Fatal("expected exact pins in modules/web/package.json")
+	}
+	for name, ver := range want {
+		if name == "vue" {
+			continue
+		}
+		if pins[name] != ver {
+			t.Fatalf("pin %q = %q want %q from package.json", name, pins[name], ver)
+		}
+	}
+}
+
+func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
+	empty, err := vueHostBareImportPins(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(empty) != 1 || empty["vue"] != choysummount.VuePackageVersion {
+		t.Fatalf("missing web package.json => host vue only, got %#v", empty)
+	}
+
+	root := t.TempDir()
+	webRoot := filepath.Join(root, "modules", "web")
+	if err := os.MkdirAll(webRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkg := `{
+  "peerDependencies": {
+    "vue": "9.9.9",
+    "@tanstack/vue-table": "8.21.3"
+  }
+}`
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(pkg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pins, err := vueHostBareImportPins(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pins["vue"] != choysummount.VuePackageVersion {
+		t.Fatalf("host vue must win over package.json, got %q", pins["vue"])
+	}
+	if pins["@tanstack/vue-table"] != "8.21.3" {
+		t.Fatalf("expected peer pin, got %#v", pins)
+	}
+
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vueHostBareImportPins(root); err == nil || !strings.Contains(err.Error(), "exact pins") {
+		t.Fatalf("expected exact pins error, got %v", err)
+	}
+}
+
+func TestBuildFrontendVueHostBundleExactPinsError(t *testing.T) {
+	root := t.TempDir()
+	webRoot := filepath.Join(root, "modules", "web")
+	if err := os.MkdirAll(webRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(root, "entry.js")
+	if err := os.WriteFile(entry, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prev := resolveChoysumMountSourcePath
+	mount := filepath.Join(t.TempDir(), "choysummount.js")
+	if err := os.WriteFile(mount, []byte("export {}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resolveChoysumMountSourcePath = func() (string, error) { return mount, nil }
+	t.Cleanup(func() { resolveChoysumMountSourcePath = prev })
+
+	_, err := BuildFrontendVueHostBundle(VueHostBundleOptions{
+		RepoRoot:              root,
+		EntryPath:             entry,
+		CacheDir:              t.TempDir(),
+		Outfile:               filepath.Join(t.TempDir(), "out.js"),
+		DisableDefaultFEStubs: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "exact pins") {
+		t.Fatalf("expected exact pins error from host bundle, got %v", err)
 	}
 }

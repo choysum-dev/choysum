@@ -118,17 +118,17 @@ func (b *WebModuleBuilder) BuildCtx(ctx context.Context) (*module.BuildResult, e
 	defer restore()
 
 	if res, err := ensureChoyTailwindCSS(b.resolvedRuntimeOptions().modulesPath); err != nil {
-		return nil, xfmt.Errorf("Error generating choy_ui Tailwind CSS: %w", err)
+		return nil, xfmt.Errorf("Error generating Choy kit Tailwind CSS: %w", err)
 	} else if res != nil && b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 		if res.Duration > ChoyTailwindBudget {
 			b.runtimeScope.Logger().Warn(
-				"choy_ui Tailwind generation exceeded soft budget",
+				"Choy kit Tailwind generation exceeded soft budget",
 				"duration", res.Duration.String(),
 				"budget", ChoyTailwindBudget.String(),
 			)
 		}
 		b.runtimeScope.Logger().Info(
-			"choy_ui Tailwind generated",
+			"Choy kit Tailwind generated",
 			"duration", res.Duration.String(),
 			"candidates", res.CandidateCount,
 			"output", res.OutputPath,
@@ -2253,6 +2253,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
+		webResolverOpts = b.appendExactPinsFromPackageJSON(webResolverOpts)
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2271,6 +2272,7 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 			esmresolver.WithModuleName(b.module.Name),
 			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
+		webResolverOpts = b.appendExactPinsFromPackageJSON(webResolverOpts)
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
@@ -2282,6 +2284,48 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 	}
 
 	return &buildOptions
+}
+
+func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Option) []esmresolver.Option {
+	if b == nil || b.module == nil || strings.TrimSpace(b.module.Path) == "" {
+		return opts
+	}
+	pins := map[string]string{}
+	mergePins := func(modulePath, logName string) {
+		got, err := esmresolver.ExactPinsFromPackageJSON(modulePath)
+		if err != nil {
+			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", logName, "error", err)
+			}
+			return
+		}
+		for name, ver := range got {
+			// The embedded host owns the Vue instance; never let a module-level
+			// exact pin override it (mirrors vueHostBareImportPins).
+			if name == "vue" {
+				continue
+			}
+			if prev, ok := pins[name]; ok && prev != ver &&
+				b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+				b.runtimeScope.Logger().Warn(
+					"conflicting exact pins; nearest module wins",
+					"module", logName, "package", name, "version", ver, "overridden", prev,
+				)
+			}
+			pins[name] = ver
+		}
+	}
+	// Kit host peers first so the built module's own exact pins win on conflict.
+	modulePath := filepath.Clean(strings.TrimSpace(b.module.Path))
+	kitHost := filepath.Join(filepath.Dir(modulePath), "web")
+	if kitHost != modulePath {
+		mergePins(kitHost, kitHost)
+	}
+	mergePins(modulePath, b.module.Name)
+	if len(pins) > 0 {
+		opts = append(opts, esmresolver.WithBareImportPins(pins))
+	}
+	return opts
 }
 
 func (b *WebModuleBuilder) entryPointImports() []string {

@@ -3,17 +3,18 @@
 
 import app from '@/web/web';
 import type { ChoysumWebApp } from '@/core/web/application';
-import { setupRouter } from './route';
+import { registerChoyGalleryRoute } from '@/web/web';
 
 /**
  * Registers the Choy UI gallery router with the shared web application.
+ * Kit source lives under modules/web; this shell only boots the routes.
  */
 export function setupApp(webApp: ChoysumWebApp): void {
-  setupRouter(webApp);
+  registerChoyGalleryRoute(webApp);
 }
 
 /**
- * Choy UI web application instance (gallery / dogfood only during isolation).
+ * Choy UI web application instance (gallery / dogfood registration host).
  */
 const choyUiApp: ChoysumWebApp = app.setup(setupApp);
 export default choyUiApp;

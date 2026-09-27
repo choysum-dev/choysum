@@ -1047,6 +1047,10 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 
 	moduleRef := &meta.Module{Name: "auth", Path: filepath.Join(modulesPath, "auth")}
 	entryPoint := filepath.Join(modulesPath, "auth", "web", "index.ts")
+	// Kit CSS is gitignored; gallery/dogfood pages import it via the web barrel.
+	if _, err := EnsureChoyTailwindCSS(modulesPath); err != nil {
+		t.Fatalf("EnsureChoyTailwindCSS: %v", err)
+	}
 	builder, ok := NewWebBuilder(testRuntimeScope, nil, moduleRef, entryPoint).(*WebModuleBuilder)
 	if !ok {
 		t.Fatal("expected NewWebBuilder to return *WebModuleBuilder")
@@ -4649,7 +4653,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		if _, err := builder.BuildCtx(context.Background()); err != nil {
 			t.Fatalf("BuildCtx: %v", err)
 		}
-		if !strings.Contains(logBuf.String(), "choy_ui Tailwind generated") {
+		if !strings.Contains(logBuf.String(), "Choy kit Tailwind generated") {
 			t.Fatalf("expected tailwind generate log, got %q", logBuf.String())
 		}
 		if _, err := os.Stat(filepath.Join(styles, "choy-tailwind.generated.css")); err != nil {
@@ -4704,10 +4708,10 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 			t.Fatalf("BuildCtx: %v", err)
 		}
 		logs := logBuf.String()
-		if !strings.Contains(logs, "choy_ui Tailwind generation exceeded soft budget") {
+		if !strings.Contains(logs, "Choy kit Tailwind generation exceeded soft budget") {
 			t.Fatalf("expected soft-budget warn log, got %q", logs)
 		}
-		if !strings.Contains(logs, "choy_ui Tailwind generated") {
+		if !strings.Contains(logs, "Choy kit Tailwind generated") {
 			t.Fatalf("expected tailwind generate info log, got %q", logs)
 		}
 	})
@@ -4744,7 +4748,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 			buildPlugin:    &buildTestPlugin{},
 		}
 		_, err := builder.BuildCtx(context.Background())
-		if err == nil || !strings.Contains(err.Error(), "Error generating choy_ui Tailwind CSS") {
+		if err == nil || !strings.Contains(err.Error(), "Error generating Choy kit Tailwind CSS") {
 			t.Fatalf("expected wrapped tailwind error, got %v", err)
 		}
 	})
@@ -5215,4 +5219,158 @@ func TestPersistModuleUiResourcesDeleteErrors(t *testing.T) {
 			t.Fatal("expected delete route action relations error")
 		}
 	})
+}
+
+func TestBuildOptionsExactPinsFromPackageJSON(t *testing.T) {
+	t.Run("applies exact pins on prebuild and build", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		pkg := `{"peerDependencies":{"@tanstack/vue-table":"8.21.3","reka-ui":"2.10.4"}}`
+		if err := os.WriteFile(filepath.Join(moduleRef.Path, "package.json"), []byte(pkg), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		plugin := &buildTestPlugin{}
+		builder := &WebModuleBuilder{
+			runtimeScope:   testRuntimeScope,
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			prebuildPlugin: plugin,
+			buildPlugin:    plugin,
+		}
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		for _, prebuild := range []bool{true, false} {
+			opts := builder.buildOptions(prebuild)
+			if opts == nil || len(opts.Plugins) == 0 {
+				t.Fatalf("prebuild=%v: expected plugins from exact pins path", prebuild)
+			}
+		}
+		if strings.Contains(logBuf.String(), "exact peer pins from package.json unavailable") {
+			t.Fatalf("expected package.json pins to be read, got warn %q", logBuf.String())
+		}
+	})
+
+	t.Run("warns when package.json pins are unreadable", func(t *testing.T) {
+		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
+			t.Fatalf("auto migrate failed: %v", err)
+		}
+		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
+		if err := os.Mkdir(filepath.Join(moduleRef.Path, "package.json"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		var logBuf bytes.Buffer
+		testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		plugin := &buildTestPlugin{}
+		builder := &WebModuleBuilder{
+			runtimeScope:   testRuntimeScope,
+			module:         moduleRef,
+			entryPoint:     entryPoint,
+			prebuildPlugin: plugin,
+			buildPlugin:    plugin,
+		}
+		for _, prebuild := range []bool{true, false} {
+			_ = builder.buildOptions(prebuild)
+		}
+		if !strings.Contains(logBuf.String(), "exact peer pins from package.json unavailable") {
+			t.Fatalf("expected pin warn log, got %q", logBuf.String())
+		}
+	})
+}
+
+func TestAppendExactPinsFromPackageJSONNilReceiver(t *testing.T) {
+	opts := []esmresolver.Option{esmresolver.WithTarget("es2020")}
+	var nilBuilder *WebModuleBuilder
+	got := nilBuilder.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("nil receiver must return opts unchanged, got %d", len(got))
+	}
+	empty := &WebModuleBuilder{}
+	got = empty.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("nil module must return opts unchanged, got %d", len(got))
+	}
+	blankPath := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: "  "}}
+	got = blankPath.appendExactPinsFromPackageJSON(opts)
+	if len(got) != len(opts) {
+		t.Fatalf("blank module path must return opts unchanged, got %d", len(got))
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONSkipsVue(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	if err := os.MkdirAll(domain, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: domain}}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 0 {
+		t.Fatalf("exact vue pin must be dropped for single-instance host, got %d opts", len(opts))
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13","local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("non-vue exact pins must still apply, got %d", len(opts))
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONMergesKitHost(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"reka-ui":"2.10.4","shared":"1.0.0"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"shared":"9.9.9","local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var logBuf bytes.Buffer
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	testRuntimeScope.log = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	builder := &WebModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.Module{Name: "partner", Path: domain},
+	}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("expected one WithBareImportPins option from kit+own merge, got %d", len(opts))
+	}
+	if !strings.Contains(logBuf.String(), "conflicting exact pins") || !strings.Contains(logBuf.String(), "shared") {
+		t.Fatalf("expected conflict warn for shared pin, got %q", logBuf.String())
+	}
+	// Trailing separator on module path must still resolve sibling modules/web.
+	builder.module.Path = domain + string(os.PathSeparator)
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("trailing-separator module path must still merge kit pins, got %d", len(opts))
+	}
+	// Whitespace-padded paths must TrimSpace before Clean/I/O.
+	builder.module.Path = "  " + domain + "  "
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("whitespace-padded module path must still merge kit pins, got %d", len(opts))
+	}
+	// Domain-only empty pins still pick up kit host pins.
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder.module.Path = domain
+	opts = builder.appendExactPinsFromPackageJSON(nil)
+	if len(opts) != 1 {
+		t.Fatalf("kit host pins alone must still produce an option, got %d", len(opts))
+	}
 }

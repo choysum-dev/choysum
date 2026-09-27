@@ -4,6 +4,8 @@
 package vuesfchtmlparser
 
 import (
+	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -36,6 +38,348 @@ func TestParseVueSfcToHtmlNodeRequiresScript(t *testing.T) {
 	_, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(`<template><div/></template>`))
 	if err == nil || !strings.Contains(err.Error(), "script node not found") {
 		t.Fatalf("expected missing script error, got %v", err)
+	}
+}
+
+func TestParseVueSfcTemplateFirstWithPascalTextarea(t *testing.T) {
+	// Product SFCs are template-first; <Textarea> must not eat the following script.
+	source := `<template><Textarea v-model="x" /></template>
+<script setup lang="ts">const x = 'ok'</script>`
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	if len(scripts) != 1 || templateNode == nil {
+		t.Fatalf("scripts=%d template=%v", len(scripts), templateNode)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea`) {
+		t.Fatalf("expected PascalCase Textarea preserved, got %q", rendered)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, "const x") {
+		t.Fatalf("expected script body, got %#v", scripts[0])
+	}
+}
+
+func TestParseVueSfcDoesNotMaskScriptOrAttributeLiterals(t *testing.T) {
+	source := `<template>
+  <div data-sample="<Textarea>" :title="'<Style>'">
+    <Textarea>body</Textarea>
+  </div>
+</template>
+<script setup lang="ts">
+const label = "<Textarea>";
+const other = '<Title>';
+</script>`
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	scriptText := scripts[0].FirstChild.Data
+	if strings.Contains(scriptText, vueRawTextMaskPrefix) {
+		t.Fatalf("script literals must not be masked, got %q", scriptText)
+	}
+	if !strings.Contains(scriptText, `const label = "<Textarea>"`) {
+		t.Fatalf("expected preserved Textarea string literal, got %q", scriptText)
+	}
+	if !strings.Contains(scriptText, `const other = '<Title>'`) {
+		t.Fatalf("expected preserved Title string literal, got %q", scriptText)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(rendered, vueRawTextMaskPrefix) {
+		t.Fatalf("template must unmask element names, got %q", rendered)
+	}
+	if !strings.Contains(rendered, `data-sample="<Textarea>"`) {
+		t.Fatalf("attribute value must stay unmasked, got %q", rendered)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `</Textarea>`) {
+		t.Fatalf("expected paired Textarea elements, got %q", rendered)
+	}
+}
+
+func TestParseVueSfcHTMLParseError(t *testing.T) {
+	prev := vueSfcHTMLParse
+	t.Cleanup(func() { vueSfcHTMLParse = prev })
+	vueSfcHTMLParse = func(r io.Reader) (*html.Node, error) {
+		return nil, errors.New("forced parse failure")
+	}
+	_, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(`<template/><script setup></script>`))
+	if err == nil || !strings.Contains(err.Error(), "forced parse failure") {
+		t.Fatalf("expected forced parse failure, got %v", err)
+	}
+}
+
+func TestUnmaskPascalCaseRawTextTagsNil(t *testing.T) {
+	unmaskPascalCaseRawTextTags(nil)
+}
+
+func TestUnmaskPascalCaseRawTextTagsTextNode(t *testing.T) {
+	root := &html.Node{Type: html.ElementNode, Data: "root"}
+	root.AppendChild(&html.Node{
+		Type: html.TextNode,
+		Data: `const t = "<` + vueRawTextMaskPrefix + `Textarea>"; note ` + vueRawTextMaskPrefix + ` stays`,
+	})
+	unmaskPascalCaseRawTextTags(root)
+	want := `const t = "<Textarea>"; note ` + vueRawTextMaskPrefix + ` stays`
+	if root.FirstChild.Data != want {
+		t.Fatalf("only tag sentinels must unmask, got %q", root.FirstChild.Data)
+	}
+	root.AppendChild(&html.Node{
+		Type: html.CommentNode,
+		Data: `use <` + vueRawTextMaskPrefix + `Textarea> and bare ` + vueRawTextMaskPrefix,
+	})
+	unmaskPascalCaseRawTextTags(root)
+	gotComment := root.FirstChild.NextSibling.Data
+	wantComment := `use <Textarea> and bare ` + vueRawTextMaskPrefix
+	if gotComment != wantComment {
+		t.Fatalf("comment sentinels only, got %q", gotComment)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsUnclosedTemplate(t *testing.T) {
+	src := `<template><Textarea />`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("expected mask in unclosed template, got %q", got)
+	}
+	src = `<div/><script>const x = "<Textarea>"</script>`
+	got = maskPascalCaseRawTextTags(src)
+	if strings.Contains(got, vueRawTextMaskPrefix) {
+		t.Fatalf("script outside template must not be masked, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsNestedSlotTemplates(t *testing.T) {
+	src := `<template>
+  <Shell>
+    <template #header><span/></template>
+    <Textarea v-model="x" />
+  </Shell>
+</template>
+<script setup>const x = "<Textarea>"</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("root-template Textarea must be masked, got %q", got)
+	}
+	if strings.Contains(got, `const x = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("script literal must stay unmasked, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const x = "<Textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsQuoteInTemplateAttr(t *testing.T) {
+	src := `<template data-sample="a > b">
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 'ok'</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea inside template with '>' in attr must mask, got %q", got)
+	}
+	if !strings.Contains(got, `data-sample="a > b"`) {
+		t.Fatalf("template opener attr must stay intact, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script, got %d", len(scripts))
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsOutsideQuotesEscapes(t *testing.T) {
+	// Escaped quote inside an attribute must not end the string early.
+	in := `<span title="say \"hi\""></span><Textarea/>`
+	got := maskPascalCaseRawTextTagsOutsideQuotes(in)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea outside quotes must mask, got %q", got)
+	}
+	if !strings.Contains(got, `title="say \"hi\""`) {
+		t.Fatalf("escaped quotes must stay intact, got %q", got)
+	}
+	// Lone trailing backslash inside an attribute is skipped safely (no panic
+	// and no truncation/rewrite of the copied text).
+	lone := `<div title="ok"><span title="x\`
+	got = maskPascalCaseRawTextTagsOutsideQuotes(lone)
+	if got != lone {
+		t.Fatalf("expected unchanged copy for trailing backslash, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsApostropheInText(t *testing.T) {
+	source := `<template>
+  <p>User's note</p>
+  <Textarea v-model="x" />
+</template>
+<script setup lang="ts">const x = 'ok'</script>`
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("apostrophe must not leave Textarea unmasked (script swallowed), scripts=%d", len(scripts))
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, "User's note") || !strings.Contains(rendered, `<Textarea`) {
+		t.Fatalf("expected apostrophe text + Textarea, got %q", rendered)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsBareLessThanInText(t *testing.T) {
+	source := `<template>
+  <p>{{ a < b }}'s note</p>
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 'ok'</script>`
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("bare '<' in text must not swallow script, scripts=%d", len(scripts))
+	}
+	got := maskPascalCaseRawTextTags(source)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after bare '<' must still mask, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsLessThanLetterInText(t *testing.T) {
+	// `{{ a <b <c }}` starts with '<'+'b' but hits another '<' before '>', so it is not a tag.
+	source := `<template>
+  <p>{{ a <b <c }}</p>
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 'ok'</script>`
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatalf("ParseVueSfcToHtmlNode: %v", err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("'<b <c' comparison must not swallow script, scripts=%d", len(scripts))
+	}
+	got := maskPascalCaseRawTextTags(source)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after '<b <c' comparison must still mask, got %q", got)
+	}
+	// Attribute values may contain '<' without breaking real tag detection.
+	attr := `<div title="a < b"><Textarea/></div>`
+	got = maskPascalCaseRawTextTagsOutsideQuotes(attr)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after attr with '<' must mask, got %q", got)
+	}
+}
+
+func TestLooksLikeHTMLTagOpenerEdges(t *testing.T) {
+	if looksLikeHTMLTagOpener("", 0) || looksLikeHTMLTagOpener("x", 0) || looksLikeHTMLTagOpener("<", 0) {
+		t.Fatal("empty / non-tag / lone '<' must be false")
+	}
+	if looksLikeHTMLTagOpener("<x", -1) || looksLikeHTMLTagOpener("<x", 99) {
+		t.Fatal("out-of-range start must be false")
+	}
+	if looksLikeHTMLTagOpener("{{ a < 3 }}", strings.IndexByte("{{ a < 3 }}", '<')) {
+		t.Fatal("'<' followed by space must be false")
+	}
+	if !looksLikeHTMLTagOpener("<div>", 0) || !looksLikeHTMLTagOpener("</div>", 0) || !looksLikeHTMLTagOpener("<!--x-->", 0) {
+		t.Fatal("normal open/close/comment openers must be true")
+	}
+	if looksLikeHTMLTagOpener("<b <c>", 0) {
+		t.Fatal("second '<' before '>' must be false")
+	}
+	if !looksLikeHTMLTagOpener(`<div title="a\\">`, 0) {
+		t.Fatal("escaped backslash in attr must still look like a tag")
+	}
+	if looksLikeHTMLTagOpener(`<div title="x\`, 0) {
+		t.Fatal("unclosed escaped attr must be false")
+	}
+	if looksLikeHTMLTagOpener("<div", 0) || looksLikeHTMLTagOpener("<div title='x'", 0) {
+		t.Fatal("tag never closed with '>' must be false")
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsSkipsScriptEmbeddedTemplate(t *testing.T) {
+	source := `<template><div/></template>
+<script setup lang="ts">
+const fixture = "<template><Textarea/></template>";
+</script>`
+	got := maskPascalCaseRawTextTags(source)
+	if strings.Contains(got, vueRawTextMaskPrefix) {
+		t.Fatalf("script-embedded template must not be masked, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `<template><Textarea/></template>`) {
+		t.Fatalf("script fixture corrupted: %q", scripts[0].FirstChild.Data)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsSelfClosingSlot(t *testing.T) {
+	source := `<template>
+  <Shell>
+    <template #header />
+    <Textarea v-model="x" />
+  </Shell>
+</template>
+<script setup>const x = "<Textarea>"</script>`
+	got := maskPascalCaseRawTextTags(source)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after self-closing slot must still mask, got %q", got)
+	}
+	if strings.Contains(got, `const x = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("script must stay unmasked after self-closing slot, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const x = "<Textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsTopLevelSelfClosingTemplate(t *testing.T) {
+	// A leading self-closing <template /> must be skipped so a later real
+	// template region is still masked.
+	src := `<template /><template><Textarea/></template><script setup></script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, `<template />`) {
+		t.Fatalf("self-closing template must be copied through, got %q", got)
+	}
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("following template body must still mask, got %q", got)
+	}
+}
+
+func TestIsSelfClosingHTMLOpenTagEdges(t *testing.T) {
+	if isSelfClosingHTMLOpenTag("") {
+		t.Fatal("empty tag is not self-closing")
+	}
+	if isSelfClosingHTMLOpenTag("<template") {
+		t.Fatal("tag without '>' is not self-closing")
+	}
+	if !isSelfClosingHTMLOpenTag("<template />") {
+		t.Fatal("expected self-closing template")
+	}
+	if isSelfClosingHTMLOpenTag("<template>") {
+		t.Fatal("open template must not count as self-closing")
 	}
 }
 
@@ -137,5 +481,395 @@ func TestRenderNodeHandlesTextElementAndComment(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("render output missing %q in %q", want, out)
 		}
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsAllCaps(t *testing.T) {
+	src := `<template>
+  <TEXTAREA>typed</TEXTAREA>
+  <TextAREA v-model="y" />
+  <span id="after">ok</span>
+</template>
+<script setup>const t = "<textarea>"</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"TEXTAREA") {
+		t.Fatalf("all-caps TEXTAREA must mask, got %q", got)
+	}
+	if !strings.Contains(got, vueRawTextMaskPrefix+"TextAREA") {
+		t.Fatalf("mixed-case TextAREA must mask, got %q", got)
+	}
+	if strings.Contains(got, `const t = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("lowercase textarea in script must stay unmasked, got %q", got)
+	}
+	if sourceNeedsPascalCaseRawTextMask(`<template/><script setup></script>`) {
+		t.Fatal("lowercase-only script tags must not need masking")
+	}
+	// Lowercase HTML tags inside template text must stay unmasked by the replacer.
+	mixed := maskPascalCaseRawTextTagsOutsideQuotes(`<textarea></textarea><TextAREA/>`)
+	if strings.Contains(mixed, vueRawTextMaskPrefix+"textarea") || !strings.Contains(mixed, `<textarea>`) {
+		t.Fatalf("lowercase textarea must stay, got %q", mixed)
+	}
+	if !strings.Contains(mixed, vueRawTextMaskPrefix+"TextAREA") {
+		t.Fatalf("mixed-case TextAREA must mask, got %q", mixed)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const t = "<textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<TEXTAREA>`) || !strings.Contains(rendered, `id="after"`) {
+		t.Fatalf("TEXTAREA must not swallow nested markup, got %q", rendered)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsCommentDoesNotAffectDepth(t *testing.T) {
+	src := `<template>
+  <!-- use <template> and <Textarea> here -->
+  <TextArea v-model="x" />
+</template>
+<script setup>const t = "<Textarea>"</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if strings.Contains(got, `<!-- use <`+vueRawTextMaskPrefix) {
+		t.Fatalf("comment body must stay unmasked, got %q", got)
+	}
+	if !strings.Contains(got, vueRawTextMaskPrefix+"TextArea") {
+		t.Fatalf("mixed-case TextArea outside comment must mask, got %q", got)
+	}
+	if strings.Contains(got, `const t = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("script literal must stay unmasked, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const t = "<Textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<!-- use <template> and <Textarea> here -->`) {
+		t.Fatalf("comment must round-trip unmasked, got %q", rendered)
+	}
+	if !strings.Contains(rendered, `<TextArea`) {
+		t.Fatalf("TextArea must round-trip, got %q", rendered)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsClampsBeforeScriptOnUnbalancedDepth(t *testing.T) {
+	// Attribute value looks like a nested <template> opener; depth never returns
+	// to zero, so the fallback must stop before <script>.
+	src := `<template><div data-x="<template>"></div><Textarea/>
+<script setup>const t = "<Textarea>"</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if strings.Contains(got, `const t = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("unbalanced template must not mask script, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const t = "<Textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsScriptUnclosedCommentDoesNotSkipTemplate(t *testing.T) {
+	// Script-first SFC: an unclosed "<!--" inside a script string must not open
+	// an HTML comment through EOF that skips masking the following template.
+	src := `<script setup>const note = "<!-- unclosed"</script>
+<template>
+  <Textarea>typed</Textarea>
+  <span id="after">ok</span>
+</template>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must still be masked, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `<!-- unclosed`) {
+		t.Fatalf("script string must stay intact, got %q", scripts[0].FirstChild.Data)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `id="after"`) {
+		t.Fatalf("non-self-closing Textarea must not swallow following markup, got %q", rendered)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsCloseInsideCommentSkipped(t *testing.T) {
+	// A </template> inside a comment must not close the SFC template region.
+	src := `<template>
+  <!-- </template> -->
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 1</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after comment-close must mask, got %q", got)
+	}
+	if strings.Contains(got, `<!-- </`+vueRawTextMaskPrefix) {
+		t.Fatalf("comment closer text must stay unmasked, got %q", got)
+	}
+	scripts, _, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script after real template close, got %d", len(scripts))
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsNestedOpenBeforeCommentedClose(t *testing.T) {
+	// Nested <template> before a commented </template> must still increment depth;
+	// skipping the comment close first would close the root template too early.
+	src := `<template>
+  <template #header>h
+  <!-- </template> -->
+  </template>
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 1</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after nested slot must mask, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script, got %d", len(scripts))
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea`) || !strings.Contains(rendered, `#header`) {
+		t.Fatalf("nested slot + Textarea must survive, got %q", rendered)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsLiteralCloseInMustacheAndAttr(t *testing.T) {
+	// Mustache: only assert masking — x/net/html still treats </template> in text
+	// as a real end tag, which is outside this helper's contract.
+	mustache := `<template>
+  <span>{{ '</template>' }}</span>
+  <Textarea v-model="x" />
+</template>
+<script setup>const x = 1</script>`
+	got := maskPascalCaseRawTextTags(mustache)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after mustache literal close must mask, got %q", got)
+	}
+
+	// Quoted attr: tokenizer keeps the value in attribute state, so full parse works.
+	src := `<template>
+  <div :title="'</template>'"><Textarea v-model="x" /></div>
+</template>
+<script setup>const x = 1</script>`
+	got = maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after attr literal close must mask, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script, got %d", len(scripts))
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea`) {
+		t.Fatalf("Textarea must survive attr literal close, got %q", rendered)
+	}
+}
+
+func TestFindMustacheAndQuotedAttrRangesEdges(t *testing.T) {
+	ranges := findMustacheAndQuotedAttrRanges(`before {{ unclosed`, nil)
+	if len(ranges) != 1 || ranges[0][1] != len(`before {{ unclosed`) {
+		t.Fatalf("unclosed mustache must span to EOF, got %v", ranges)
+	}
+	ranges = findMustacheAndQuotedAttrRanges(`<div title="a\"b">`, nil)
+	if len(ranges) != 1 {
+		t.Fatalf("escaped quote in attr must yield one range, got %v", ranges)
+	}
+	ranges = findMustacheAndQuotedAttrRanges(`<div title="unterminated`, nil)
+	if len(ranges) != 0 {
+		// Unclosed tag: no completed quoted span; scanner stops at EOF.
+		t.Fatalf("unterminated tag should not invent a closed range, got %v", ranges)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsScriptMustacheDoesNotHideTemplate(t *testing.T) {
+	// An unmatched "{{" inside script must not protect the later real <template>.
+	src := `<script setup>const OPEN = "{{";</script>
+<template>
+  <Textarea><span id="inner">x</span></Textarea>
+</template>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must still be masked, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsCommentMustacheDoesNotHideTemplate(t *testing.T) {
+	// A closed comment containing an unmatched "{{" must not protect past -->.
+	src := `<!-- {{ unclosed -->
+<template>
+  <Textarea><span id="inner">x</span></Textarea>
+</template>
+<script setup></script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must still be masked, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsCommentMustacheWithQuotedClose(t *testing.T) {
+	// Comment-skipped mustache discovery must still record later quoted attrs so
+	// title="</template>" does not close the region early.
+	src := `<!-- {{ unclosed -->
+<template>
+  <div title="</template>"><Textarea><span id="inner">x</span></Textarea></div>
+</template>
+<script setup></script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after comment+quoted close must mask, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scripts) != 1 {
+		t.Fatalf("expected script, got %d", len(scripts))
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `id="inner"`) {
+		t.Fatalf("nested markup must survive, got %q", rendered)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsCommentMarkerInAttr(t *testing.T) {
+	// A "<!--" inside a quoted attribute must not open a phantom comment that
+	// hides a later title="</template>" or nested Textarea.
+	src := `<template>
+  <div data-x="<!--" title="</template>"><Textarea><span id="inner">x</span></Textarea></div>
+</template>
+<script setup></script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after attr comment marker must mask, got %q", got)
+	}
+	_, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `id="inner"`) {
+		t.Fatalf("nested markup must survive, got %q", rendered)
+	}
+}
+
+func TestFindScriptStyleRangesCrossScriptCommentMarkers(t *testing.T) {
+	// "<!--" / "-->" split across script string literals must not hide a real
+	// middle <script> block from scriptStyle ranges.
+	src := `<script>const a = "<!--"</script>
+<script setup>const mid = 1</script>
+<script>const b = "-->"</script>
+<template><Textarea/></template>`
+	ranges := findScriptStyleRanges(src)
+	if len(ranges) < 3 {
+		t.Fatalf("expected three script ranges, got %v", ranges)
+	}
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must mask when middle script is kept, got %q", got)
+	}
+}
+
+func TestFindHTMLCommentRangesUnclosedInHTMLContext(t *testing.T) {
+	src := `<template><!-- never closed
+  <Textarea/>
+</template>
+<script setup></script>`
+	ranges := findHTMLCommentRanges(src, nil)
+	if len(ranges) != 1 || ranges[0][0] != strings.Index(src, "<!--") || ranges[0][1] != len(src) {
+		t.Fatalf("unclosed HTML comment must span to EOF, got %v", ranges)
+	}
+	got := maskPascalCaseRawTextTags(src)
+	// Real </template> sits inside the comment span; fallback clamps before script.
+	if strings.Contains(got, `<`+vueRawTextMaskPrefix+`script`) || strings.Contains(got, `</`+vueRawTextMaskPrefix+`script`) {
+		t.Fatalf("script block must not be rewritten, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsOutsideQuotesUnclosedComment(t *testing.T) {
+	in := `before <!-- unclosed <Textarea/> after`
+	got := maskPascalCaseRawTextTagsOutsideQuotes(in)
+	if got != in {
+		t.Fatalf("unclosed comment must copy remainder unchanged, got %q", got)
+	}
+	// Closed comment still leaves surrounding tags eligible for masking.
+	in = `<!-- note <Textarea/> --><Textarea/>`
+	got = maskPascalCaseRawTextTagsOutsideQuotes(in)
+	if strings.Contains(got, `<!-- note <`+vueRawTextMaskPrefix) {
+		t.Fatalf("closed comment body must stay unmasked, got %q", got)
+	}
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("Textarea after closed comment must mask, got %q", got)
+	}
+}
+
+func TestMaskPascalCaseRawTextTagsCommentedScriptOpenerDoesNotSwallowTemplate(t *testing.T) {
+	// A commented <script> must not pair with the real </script> and treat the
+	// template as script body (leaving <Textarea> unmasked so nested markup dies).
+	src := `<!-- <script> -->
+<template>
+  <Textarea><span id="inner">x</span></Textarea>
+</template>
+<script setup>const t = "<Textarea>"</script>`
+	got := maskPascalCaseRawTextTags(src)
+	if !strings.Contains(got, vueRawTextMaskPrefix+"Textarea") {
+		t.Fatalf("template Textarea must be masked, got %q", got)
+	}
+	if strings.Contains(got, `const t = "<`+vueRawTextMaskPrefix) {
+		t.Fatalf("real script literal must stay unmasked, got %q", got)
+	}
+	scripts, templateNode, _, err := ParseVueSfcToHtmlNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(scripts[0].FirstChild.Data, `const t = "<Textarea>"`) {
+		t.Fatalf("parsed script corrupted: %q", scripts[0].FirstChild.Data)
+	}
+	rendered, err := RenderVueSfcFromHtmlNode(templateNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered, `<Textarea>`) || !strings.Contains(rendered, `id="inner"`) {
+		t.Fatalf("Textarea must not swallow nested markup, got %q", rendered)
 	}
 }
