@@ -620,6 +620,22 @@ func TestMaskPascalCaseRawTextTagsLiteralCloseInMustacheAndAttr(t *testing.T) {
 	}
 }
 
+func TestFindMustacheAndQuotedAttrRangesEdges(t *testing.T) {
+	ranges := findMustacheAndQuotedAttrRanges(`before {{ unclosed`)
+	if len(ranges) != 1 || ranges[0][1] != len(`before {{ unclosed`) {
+		t.Fatalf("unclosed mustache must span to EOF, got %v", ranges)
+	}
+	ranges = findMustacheAndQuotedAttrRanges(`<div title="a\"b">`)
+	if len(ranges) != 1 {
+		t.Fatalf("escaped quote in attr must yield one range, got %v", ranges)
+	}
+	ranges = findMustacheAndQuotedAttrRanges(`<div title="unterminated`)
+	if len(ranges) != 0 {
+		// Unclosed tag: no completed quoted span; scanner stops at EOF.
+		t.Fatalf("unterminated tag should not invent a closed range, got %v", ranges)
+	}
+}
+
 func TestFindHTMLCommentRangesUnclosedInHTMLContext(t *testing.T) {
 	src := `<template><!-- never closed
   <Textarea/>
