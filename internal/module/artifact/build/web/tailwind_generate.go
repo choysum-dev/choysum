@@ -172,7 +172,7 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		kitName = filepath.Base(kitRoot)
 	}
 	for _, entry := range entries {
-		// Symlinked module roots report !IsDir(); let os.Stat(web/) decide.
+		// Symlinked module roots report !IsDir(); let os.Stat decide.
 		if !entry.IsDir() && entry.Type()&os.ModeSymlink == 0 {
 			continue
 		}
@@ -180,8 +180,22 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		if name == kitName || name == "" || strings.HasPrefix(name, ".") {
 			continue
 		}
-		webRoot := filepath.Join(modulesPath, name, "web")
-		st, err := os.Stat(webRoot)
+		// Resolve the module root first: a symlink to a regular file makes
+		// os.Stat(<root>/web) fail with ENOTDIR (not IsNotExist) and would
+		// abort the entire product scan.
+		modPath := filepath.Join(modulesPath, name)
+		mod, modErr := choyProductStat(modPath)
+		if modErr != nil {
+			if os.IsNotExist(modErr) {
+				continue
+			}
+			return nil, modErr
+		}
+		if !mod.IsDir() {
+			continue
+		}
+		webRoot := filepath.Join(modPath, "web")
+		st, err := choyProductStat(webRoot)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -190,6 +204,18 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		}
 		if !st.IsDir() {
 			continue
+		}
+		if _, dialectErr := choyProductStat(filepath.Join(webRoot, "styles", "theme.css")); dialectErr == nil {
+			// Sibling kit host (non-selected web/choy_ui) keeps kit filters so
+			// O*/EP-only utilities are not re-admitted into unscoped product CSS.
+			kitCandidates, err := ScanChoyKitTailwindCandidates(webRoot)
+			if err != nil {
+				return nil, err
+			}
+			add(kitCandidates)
+			continue
+		} else if dialectErr != nil && !os.IsNotExist(dialectErr) {
+			return nil, dialectErr
 		}
 		domainCandidates, err := ScanTailwindCandidates([]string{webRoot})
 		if err != nil {
@@ -203,6 +229,9 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 
 // choyProductReadDir is os.ReadDir; tests replace it to force listing failures.
 var choyProductReadDir = os.ReadDir
+
+// choyProductStat is os.Stat; tests replace it to force module/dialect Stat failures.
+var choyProductStat = os.Stat
 
 // isChoyKitTailwindInputPath reports whether path under webRoot is Choy kit input
 // (vendor/ui, internal engines, Choy* SFCs/helpers, gallery/dogfood pages, tokens CSS).

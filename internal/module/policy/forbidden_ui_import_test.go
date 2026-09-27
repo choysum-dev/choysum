@@ -127,8 +127,10 @@ func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 		want string
 	}{
 		{"element-plus", "element-plus"},
+		{"element-plus?raw", "element-plus"},
 		{"element-plus/es/components/button", "element-plus"},
 		{"@element-plus/icons-vue", "element-plus"},
+		{"@element-plus/icons-vue?raw", "element-plus"},
 		{"@/web/web/lib/utils", "web-lib-deep"},
 		{"@/web/web/lib/cn", "web-lib-deep"},
 		{"@/web/web/lib", "web-lib-deep"},

@@ -248,13 +248,14 @@ func classifyForbiddenUiImport(spec string) string {
 // classifyCutoverForbiddenUiImport returns cutover-only rule ids (element-plus,
 // @/web deep lib). Public barrel imports from "@/web" (Choy*) stay allowed.
 func classifyCutoverForbiddenUiImport(lower string) string {
-	if lower == "element-plus" || strings.HasPrefix(lower, "element-plus/") {
+	n := normalizeImportPathSegments(lower)
+	if n == "element-plus" || strings.HasPrefix(n, "element-plus/") {
 		return "element-plus"
 	}
-	if lower == "@element-plus/icons-vue" || strings.HasPrefix(lower, "@element-plus/") {
+	if n == "@element-plus/icons-vue" || strings.HasPrefix(n, "@element-plus/") {
 		return "element-plus"
 	}
-	if isForbiddenWebLibDeepPath(lower) {
+	if isForbiddenWebLibDeepPath(n) {
 		return "web-lib-deep"
 	}
 	return ""

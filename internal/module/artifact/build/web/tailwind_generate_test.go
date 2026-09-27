@@ -613,6 +613,14 @@ func TestScanChoyProductTailwindCandidatesFollowsSymlinkModule(t *testing.T) {
 	if err := os.Symlink(realMod, link); err != nil {
 		t.Skipf("symlink not available: %v", err)
 	}
+	// Symlink to a regular file must be skipped, not abort the scan with ENOTDIR.
+	fileTarget := filepath.Join(t.TempDir(), "not-a-module")
+	if err := os.WriteFile(fileTarget, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(fileTarget, filepath.Join(modules, "bogus")); err != nil {
+		t.Skipf("symlink not available: %v", err)
+	}
 	got, err := ScanChoyProductTailwindCandidates(modules)
 	if err != nil {
 		t.Fatal(err)
@@ -627,6 +635,114 @@ func TestScanChoyProductTailwindCandidatesFollowsSymlinkModule(t *testing.T) {
 	if !found {
 		t.Fatalf("symlinked module web/ must be scanned, got %v", got)
 	}
+}
+
+func TestScanChoyProductTailwindCandidatesFiltersSiblingKit(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
+	write("choy_ui/web/components/view/OFormView.vue", `<div class="sibling-ep-only"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
+
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string]bool{}
+	for _, c := range got {
+		set[c] = true
+	}
+	for _, want := range []string{"flex", "gap-2", "domain-util"} {
+		if !set[want] {
+			t.Fatalf("missing candidate %q in %v", want, got)
+		}
+	}
+	if set["sibling-ep-only"] {
+		t.Fatalf("sibling kit O*.vue must stay kit-filtered, got %v", got)
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("partner/web/pages/Home.vue", `<div class="gap-1"></div>`)
+	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
+	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="p-1"></div>`)
+
+	prev := choyProductStat
+	t.Cleanup(func() { choyProductStat = prev })
+
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "partner" {
+			return nil, os.ErrNotExist
+		}
+		return prev(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err != nil {
+		t.Fatalf("IsNotExist on module root must skip, got %v", err)
+	}
+
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		if filepath.Base(name) == "partner" {
+			return nil, errors.New("mod stat boom")
+		}
+		return prev(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "mod stat boom") {
+		t.Fatalf("expected module Stat error, got %v", err)
+	}
+
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		slash := filepath.ToSlash(name)
+		if strings.Contains(slash, "/choy_ui/web/styles/theme.css") {
+			return nil, errors.New("dialect boom")
+		}
+		return prev(name)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "dialect boom") {
+		t.Fatalf("expected dialect Stat error, got %v", err)
+	}
+
+	// Sibling kit ScanChoyKitTailwindCandidates error surfaces.
+	choyProductStat = prev
+	locked := filepath.Join(modules, "choy_ui", "web", "locked")
+	if err := os.MkdirAll(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "x.vue"), []byte(`<div class="x"></div>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil {
+		t.Log("sibling kit walk did not error on this runner")
+	}
+	_ = os.Chmod(locked, 0o755)
 }
 
 func TestScanChoyProductTailwindCandidatesIncludesDomain(t *testing.T) {
