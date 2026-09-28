@@ -22,6 +22,13 @@ test('pickAlternativeCompanyOptionValue: ignores current when the active company
   expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c1', '')).toBe('c2');
 });
 
+test('pickAlternativeCompanyOptionValue: ignores current when it is absent from the values snapshot', () => {
+  // Callers must pass current + values from one snapshot; a stray current must not
+  // be reused, and the pick must still come from the provided values list.
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c9', 'c1')).toBe('c2');
+  expect(pickAlternativeCompanyOptionValue(['c1'], 'c9', 'c1')).toBe('');
+});
+
 test('SwitchCompany draft guard: ignores JWT sync while panel is open', () => {
   const applied: Array<{ active: string; enabled: string[] }> = [];
   syncCompanyDraftsFromJwt({

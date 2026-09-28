@@ -60,20 +60,8 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     )
     .toBeGreaterThanOrEqual(2);
 
-  const selectState = await page.evaluate((sel: string) => {
-    const select = document.querySelector(sel) as HTMLSelectElement | null;
-    if (!select) return { current: '', values: [] as string[] };
-    return {
-      current: String(select.value || '').trim(),
-      // Skip disabled options: programmatic selection of them is a silent no-op.
-      values: Array.from(select.options)
-        .filter(opt => !opt.disabled)
-        .map(opt => String(opt.value || '').trim())
-        .filter(Boolean),
-    };
-  }, panelSelect);
-  // Read JWT active after the draft: an in-flight panel-open RefreshToken could
-  // otherwise leave `current` on the freshly-synced active company while `active` is stale.
+  // Read JWT active after options appear: an in-flight panel-open RefreshToken could
+  // otherwise leave the draft on the freshly-synced active company while `active` is stale.
   // Outer retries are instant, so wait here through a transient token rotation.
   // Use a bounded loop (not expect.poll) so the domain-specific error below can surface.
   let activeCompanyId = '';
@@ -87,13 +75,14 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   if (!activeCompanyId) {
     throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
   }
-  // Re-read both the draft and the option list after the JWT wait: a late
-  // panel-open RefreshToken can reset the select or replace its option set.
-  const afterWait = await page.evaluate((sel: string) => {
+  // One post-wait snapshot for both current and options — mixing pre/post-wait
+  // reads can pick a value that no longer exists and time out opaquely.
+  const selectSnapshot = await page.evaluate((sel: string) => {
     const select = document.querySelector(sel) as HTMLSelectElement | null;
     if (!select) return { current: '', values: [] as string[] };
     return {
       current: String(select.value || '').trim(),
+      // Skip disabled options: programmatic selection of them is a silent no-op.
       values: Array.from(select.options)
         .filter(opt => !opt.disabled)
         .map(opt => String(opt.value || '').trim())
@@ -101,8 +90,8 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     };
   }, panelSelect);
   const otherValue = pickAlternativeCompanyOptionValue(
-    afterWait.values.length ? afterWait.values : selectState.values,
-    afterWait.current,
+    selectSnapshot.values,
+    selectSnapshot.current,
     activeCompanyId
   );
   expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');
