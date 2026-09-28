@@ -32,6 +32,8 @@ test('isModuleInstalled: case-insensitive installed only', () => {
 test('formatModuleKanbanDate: empty and valid timestamps', () => {
   expect(formatModuleKanbanDate(undefined)).toBe('');
   expect(formatModuleKanbanDate(null)).toBe('');
+  expect(formatModuleKanbanDate(Number.NaN)).toBe('');
+  expect(formatModuleKanbanDate(Number.POSITIVE_INFINITY)).toBe('');
   // Epoch zero is a valid timestamp; do not treat it as empty.
   expect(formatModuleKanbanDate(0).length).toBeGreaterThan(0);
   expect(formatModuleKanbanDate('not-a-date')).toBe('not-a-date');

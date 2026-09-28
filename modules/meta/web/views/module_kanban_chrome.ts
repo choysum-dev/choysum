@@ -28,6 +28,8 @@ export function isModuleInstalled(status?: string): boolean {
 /** Format module timestamps for card metadata (local YYYY-MM-DD HH:mm). */
 export function formatModuleKanbanDate(dt?: unknown): string {
   if (dt === undefined || dt === null) return '';
+  // Non-finite numbers stringify to "NaN"/"Infinity", which the card would render verbatim.
+  if (typeof dt === 'number' && !Number.isFinite(dt)) return '';
   try {
     const d =
       typeof dt === 'number'
