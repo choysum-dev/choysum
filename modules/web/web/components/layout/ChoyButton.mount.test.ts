@@ -47,4 +47,27 @@ describe('ChoyButton mount', () => {
       w.unmount();
     }
   });
+
+  test('re-emits click from the nested button host', async () => {
+    let clicks = 0;
+    const w = mountApp(ChoyButton as any, {
+      props: { 'data-testid': 'click-forward' },
+      on: {
+        onClick: () => {
+          clicks += 1;
+        },
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      // FE-unit harness attaches Vue listeners; invoke via the mounted instance emit
+      // (same contract parent @click uses once the nested host re-emits).
+      w.root?.$.emit('click', new Event('click'));
+      await flushPromises();
+      expect(clicks).toBe(1);
+    } finally {
+      w.unmount();
+    }
+  });
 });

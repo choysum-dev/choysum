@@ -27,9 +27,18 @@ describe('ErrorView', () => {
     } as any);
     stubSfc(ChoyButton as any, {
       props: { type: String, variant: String },
-      setup: ((_props: any, { slots, attrs }: any) => {
+      emits: ['click'],
+      setup: ((_props: any, { slots, emit }: any) => {
         return () =>
-          h('button', { 'data-test': 'action', type: 'button', ...attrs }, slots.default?.());
+          h(
+            'button',
+            {
+              'data-test': 'action',
+              type: 'button',
+              onClick: (e: MouseEvent) => emit('click', e),
+            },
+            slots.default?.(),
+          );
       }) as any,
     } as any);
   });

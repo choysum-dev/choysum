@@ -807,8 +807,11 @@ func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T)
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "ChoyLayout") {
+  if !strings.Contains(content, "ChoyLayout") {
 		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
+	}
+	if strings.Contains(content, "components: {\n    Xpath,") || strings.Contains(content, "components: { Xpath }") {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
@@ -862,6 +865,9 @@ func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T
 
 	if !strings.Contains(content, "ChoyLayout") {
 		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
+	}
+	if strings.Contains(content, "components: {\n    Xpath,") || strings.Contains(content, "components: { Xpath }") {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
@@ -922,6 +928,9 @@ func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testin
 
 	if !strings.Contains(content, "ChoyLayout") {
 		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
+	}
+	if strings.Contains(content, "components: {\n    Xpath,") || strings.Contains(content, "components: { Xpath }") {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 

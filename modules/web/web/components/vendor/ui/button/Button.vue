@@ -29,6 +29,14 @@ const props = withDefaults(
   },
 );
 
+// Parent @click is an emit listener on this component (not a fallthrough attr) when
+// the root is another Vue component; re-emit from the native host click.
+const emit = defineEmits(['click']);
+
+function handleClick(event: Event) {
+  emit('click', event);
+}
+
 const variantClass: Record<ButtonVariant, string> = {
   default: 'bg-primary text-background hover:opacity-90',
   secondary: 'bg-muted text-foreground hover:opacity-90',
@@ -58,14 +66,25 @@ const classes = computed(() =>
 </script>
 
 <template>
-  <component
-    :is="as"
+  <button
+    v-if="as === 'button'"
     v-bind="$attrs"
     data-slot="button"
     :class="classes"
-    :disabled="as === 'button' ? disabled : undefined"
-    :aria-disabled="as !== 'button' && disabled ? true : undefined"
-    :type="as === 'button' ? type : undefined"
+    :disabled="disabled"
+    :type="type"
+    @click="handleClick"
+  >
+    <slot />
+  </button>
+  <component
+    :is="as"
+    v-else
+    v-bind="$attrs"
+    data-slot="button"
+    :class="classes"
+    :aria-disabled="disabled ? true : undefined"
+    @click="handleClick"
   >
     <slot />
   </component>

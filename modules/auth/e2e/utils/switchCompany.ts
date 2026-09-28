@@ -61,6 +61,9 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     .toBeGreaterThanOrEqual(2);
 
   const activeCompanyId = await readActiveCompanyIdFromAuth();
+  if (!activeCompanyId) {
+    throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
+  }
   const selectState = await page.evaluate(() => {
     const select = document.querySelector(
       '[data-testid="company-active-select"]'
