@@ -476,7 +476,15 @@ async function syncLanesFromController(): Promise<void> {
         ];
         continue;
       }
-      await Promise.all(laneList.map(l => controller.preloadLane(l.key).catch(() => undefined)));
+      await Promise.all(
+        laneList.map(l =>
+          controller.preloadLane(l.key).catch(error => {
+            // Keep the board usable, but leave a log trail for partial lane failures.
+            console.error(`Module kanban lane preload failed: ${l.key}`, error);
+            return undefined;
+          }),
+        ),
+      );
       choyLanes.value = laneList.map(lane => ({
         key: lane.key,
         label: laneLabel(lane),

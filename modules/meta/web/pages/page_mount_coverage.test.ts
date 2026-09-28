@@ -7,8 +7,8 @@ import ModuleDetail from './ModuleDetail.vue';
 import ModuleHistory from './ModuleHistory.vue';
 import ModuleList from './ModuleList.vue';
 import ModuleListTable from './ModuleListTable.vue';
+import { Settings } from 'lucide-vue-next';
 import { metaMenus } from '../menu/menus';
-import ModuleDetailView from '../views/ModuleDetailView.vue';
 
 const pages: Array<[string, any, string]> = [
   ['ModuleList', ModuleList, '/meta/modules'],
@@ -34,22 +34,7 @@ test('meta page mount: every ChoyPage host mounts under choysumMount', async () 
   }
 });
 
-test('meta ModuleDetailView mounts under choysumMount', async () => {
-  const wrapper = mount(ModuleDetailView as any, {
-    global: buildPageMountGlobal({ route: { path: '/meta/modules/1', fullPath: '/meta/modules/1' } }),
-  });
-  await flushPromises();
-  expect(
-    wrapper.find('[data-testid="fe-stub-child-view"]').exists() ||
-      wrapper.find('[data-anchor="choy.form-view"]').exists() ||
-      wrapper.text().length >= 0,
-  ).toBe(true);
-  wrapper.unmount();
-});
-
 test('meta menus: root icon is Lucide Settings component', () => {
   expect(metaMenus.length).toBeGreaterThan(0);
-  const icon = metaMenus[0]!.icon;
-  expect(icon === null || icon === undefined).toBe(false);
-  expect(typeof icon === 'function' || typeof icon === 'object').toBe(true);
+  expect(metaMenus[0]!.icon).toBe(Settings);
 });

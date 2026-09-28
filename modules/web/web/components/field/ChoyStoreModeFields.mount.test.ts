@@ -204,6 +204,45 @@ describe('Choy store-mode field hosts', () => {
     w.unmount();
   });
 
+  test('NumberField chrome commits draft and syncs host model changes', async () => {
+    const emitted: Array<number | null> = [];
+    let propsBag: Record<string, unknown> | null = null;
+    const w = mountApp(ChoyNumberField as any, {
+      reactiveProps: true,
+      props: {
+        label: 'Amount',
+        mode: 'float',
+        modelValue: 1,
+      },
+      on: {
+        'onUpdate:modelValue': (v: number | null) => {
+          emitted.push(v);
+          if (propsBag) propsBag.modelValue = v;
+        },
+      },
+    });
+    propsBag = w.props;
+    await flushPromises();
+
+    const input = w.q('input') as HTMLInputElement | null;
+    expect(input).not.toBeNull();
+    input!.value = '3.5';
+    input!.dispatchEvent(new Event('input', { bubbles: true }));
+    input!.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(emitted.at(-1)).toBe(3.5);
+    expect(input!.value).toBe('3.5');
+
+    // Host rewrite path: external model change while draft still looks different.
+    input!.value = 'x';
+    input!.dispatchEvent(new Event('input', { bubbles: true }));
+    propsBag.modelValue = 9;
+    await flushPromises();
+    expect(input!.value).toBe('9');
+
+    w.unmount();
+  });
+
   test('ManyToOne store mode uses Ref by default and record when valueMode=record', async () => {
     const refW = await mountField(ChoyManyToOneField, {
       store: fakeStore,

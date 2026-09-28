@@ -51,6 +51,9 @@ test('formatModuleOpSummary: string / message / code / object / throw', () => {
   expect(formatModuleOpSummary('ok')).toBe('ok');
   expect(formatModuleOpSummary({ message: 'm' })).toBe('m');
   expect(formatModuleOpSummary({ code: 'C1' })).toBe('C1');
+  // Empty/blank message must fall through to code (not short-circuit on key presence).
+  expect(formatModuleOpSummary({ message: '', code: 'C1' })).toBe('C1');
+  expect(formatModuleOpSummary({ message: '   ', code: 'C2' })).toBe('C2');
   expect(formatModuleOpSummary({ a: 1 })).toContain('a');
   const cyclic: any = {};
   cyclic.self = cyclic;

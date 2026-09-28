@@ -55,11 +55,16 @@ export function formatModuleKanbanDate(dt?: unknown): string {
 export function formatModuleOpSummary(summary: unknown): string {
   if (!summary) return '';
   if (typeof summary === 'string') return summary;
-  if (typeof summary === 'object' && summary !== null && 'message' in summary) {
-    return String((summary as { message?: unknown }).message ?? '');
-  }
-  if (typeof summary === 'object' && summary !== null && 'code' in summary) {
-    return String((summary as { code?: unknown }).code ?? '');
+  if (typeof summary === 'object' && summary !== null) {
+    const record = summary as Record<string, unknown>;
+    const message = record.message;
+    if (message !== undefined && message !== null && String(message).trim() !== '') {
+      return String(message);
+    }
+    const code = record.code;
+    if (code !== undefined && code !== null && String(code).trim() !== '') {
+      return String(code);
+    }
   }
   try {
     return JSON.stringify(summary);
