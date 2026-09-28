@@ -44,10 +44,13 @@ function handleClick(event: Event) {
 
 const attrs = useAttrs();
 
-/** Non-button hosts: aria-disabled + out of tab order when disabled (disabled: CSS never matches). */
-const nonButtonAttrs = computed(() =>
-  props.disabled ? { ...attrs, 'aria-disabled': true, tabindex: -1 } : attrs,
-);
+/** Non-button hosts: when disabled, drop href so middle-click/new-tab cannot navigate. */
+const nonButtonAttrs = computed(() => {
+  if (!props.disabled) return attrs;
+  const rest: Record<string, unknown> = { ...attrs };
+  delete rest.href;
+  return { ...rest, 'aria-disabled': true, tabindex: -1 };
+});
 
 const variantClass: Record<ButtonVariant, string> = {
   default: 'bg-primary text-background hover:opacity-90',

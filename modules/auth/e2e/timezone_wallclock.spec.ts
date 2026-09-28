@@ -40,11 +40,16 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
           if (!select) return false;
           const values = Array.from(select.options).map(opt => String(opt.value || ''));
           if (!values.includes(want)) return false;
-          select.value = want;
-          select.dispatchEvent(new Event('input', { bubbles: true }));
-          select.dispatchEvent(new Event('change', { bubbles: true }));
+          if (select.value !== want) {
+            select.value = want;
+            select.dispatchEvent(new Event('input', { bubbles: true }));
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          }
           // Let Vue flush watchers that may reset the draft before declaring success.
           await new Promise(resolve => setTimeout(resolve, 0));
+          if (select.value !== want) return false;
+          // Confirm the draft settles across a later tick before Save.
+          await new Promise(resolve => setTimeout(resolve, 50));
           return select.value === want;
         }, iana),
       { timeout: 15_000 }

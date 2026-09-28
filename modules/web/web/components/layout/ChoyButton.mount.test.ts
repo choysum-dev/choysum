@@ -96,6 +96,7 @@ describe('ChoyButton mount', () => {
       expect(host).not.toBeNull();
       expect(host?.getAttribute('aria-disabled')).toBe('true');
       expect(host?.getAttribute('tabindex')).toBe('-1');
+      expect(host?.getAttribute('href')).toBeNull();
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       const event = new Event('click', { cancelable: true });
@@ -123,6 +124,8 @@ describe('Button host click guard', () => {
     });
     try {
       await flushPromises();
+      const host = w.q('[data-testid="link-enabled"]') as HTMLElement | null;
+      expect(host?.getAttribute('href')).toBe('#nav');
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       const event = new Event('click', { cancelable: true });
@@ -156,6 +159,7 @@ describe('Button host click guard', () => {
       const host = w.q('[data-testid="link-disabled"]') as HTMLElement | null;
       expect(host?.getAttribute('aria-disabled')).toBe('true');
       expect(host?.getAttribute('tabindex')).toBe('-1');
+      expect(host?.getAttribute('href')).toBeNull();
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       const event = new Event('click', { cancelable: true });

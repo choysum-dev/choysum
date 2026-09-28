@@ -755,7 +755,7 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyWebShell(t *testing.T)
 	if !strings.Contains(content, "ChoyLayout") {
 		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
 	}
-	if strings.Contains(content, "components: {\n    Xpath,") || strings.Contains(content, "components: { Xpath }") {
+	if regexp.MustCompile(`components:\s*\{\s*Xpath\s*[,}]`).MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
@@ -810,7 +810,7 @@ func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T)
 	if !strings.Contains(content, "ChoyLayout") {
 		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
 	}
-	if strings.Contains(content, "components: {\n    Xpath,") || strings.Contains(content, "components: { Xpath }") {
+	if regexp.MustCompile(`components:\s*\{\s*Xpath\s*[,}]`).MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
@@ -866,7 +866,7 @@ func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T
 	if !strings.Contains(content, "ChoyLayout") {
 		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
 	}
-	if strings.Contains(content, "components: {\n    Xpath,") || strings.Contains(content, "components: { Xpath }") {
+	if regexp.MustCompile(`components:\s*\{\s*Xpath\s*[,}]`).MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
@@ -929,7 +929,7 @@ func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testin
 	if !strings.Contains(content, "ChoyLayout") {
 		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
 	}
-	if strings.Contains(content, "components: {\n    Xpath,") || strings.Contains(content, "components: { Xpath }") {
+	if regexp.MustCompile(`components:\s*\{\s*Xpath\s*[,}]`).MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
@@ -1083,7 +1083,7 @@ func TestPrebuildUpdatePrebuildResult_RealAuthChoyWebShellMerges(t *testing.T) {
 	if !strings.Contains(childResult.Content, "ChoyLayout") {
 		t.Fatalf("expected merged content to include ChoyLayout from parent, got:\n%s", childResult.Content)
 	}
-	if strings.Contains(childResult.Content, "components: {\n    Xpath,") || strings.Contains(childResult.Content, "components: { Xpath") {
+	if regexp.MustCompile(`components:\s*\{\s*Xpath\s*[,}]`).MatchString(childResult.Content) {
 		t.Fatalf("expected xpath placeholder to be replaced in merged content, got:\n%s", childResult.Content)
 	}
 }

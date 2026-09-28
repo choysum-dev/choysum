@@ -42,7 +42,7 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
  */
 async function pickOtherActiveCompanyOption(): Promise<void> {
   const panelSelect = '[data-testid="company-switch-panel"] [data-testid="company-active-select"]';
-  await expect(page.getByTestId('company-active-select')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator(panelSelect)).toBeVisible({ timeout: 10_000 });
 
   // Companies load async after the panel opens; wait until a non-current option exists.
   await expect
