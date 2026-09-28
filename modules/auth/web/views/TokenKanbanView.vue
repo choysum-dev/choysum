@@ -18,10 +18,11 @@ SPDX-License-Identifier: Apache-2.0
       v-model:lanes="choyLanes"
       :show-header="showHeader"
       :show-actions="true"
-      :readonly="movePending"
+      :readonly="movePending || loadMorePending"
       create-label="New"
       @card-click="onCardClick"
       @card-move="onCardMove"
+      @lane-load-more="onLaneLoadMore"
       @create="onCreate"
     >
       <template #search>
@@ -73,6 +74,20 @@ SPDX-License-Identifier: Apache-2.0
       <template #card-empty>
         <div class="empty-lane text-xs opacity-60">{{ _t('No tokens in this lane') }}</div>
       </template>
+
+      <template #lane-footer="{ remain, loadMore }">
+        <ChoyButton
+          v-if="remain > 0"
+          type="button"
+          variant="ghost"
+          size="sm"
+          class="w-full"
+          :disabled="loadMorePending"
+          @click="loadMore()"
+        >
+          {{ _t('Load more (%s remaining)', remain) }}
+        </ChoyButton>
+      </template>
     </ChoyKanbanView>
   </div>
 </template>
@@ -91,6 +106,7 @@ import {
   ChoyVirtualField,
   type ChoyKanbanCard,
   type ChoyKanbanLane,
+  type ChoyKanbanLoadMore,
   type ChoyKanbanMove,
 } from '@/web';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -112,6 +128,7 @@ const router = useRouter();
 const controller = createKanbanController(store as any);
 const choyLanes = ref<ChoyKanbanLane[]>([]);
 const movePending = ref(false);
+const loadMorePending = ref(false);
 let syncingLanes = false;
 let resyncPending = false;
 let searchSeq = 0;
@@ -157,6 +174,7 @@ async function syncLanesFromController(): Promise<void> {
       choyLanes.value = laneList.map(lane => ({
         key: lane.key,
         label: laneLabel(lane),
+        remain: controller.getLaneRemain(lane),
         cards: (controller.laneRecords.value[lane.key] || []).map((row, index) =>
           rowToCard(row as any, index, lane.key)
         ),
@@ -259,6 +277,23 @@ function openDetailFromCard(card: ChoyKanbanCard) {
  */
 function onCardClick(card: ChoyKanbanCard) {
   openDetailFromCard(card);
+}
+
+/**
+ * Fetch the next batch for a lane, then remap cards / remain counts.
+ */
+async function onLaneLoadMore(payload: ChoyKanbanLoadMore) {
+  if (loadMorePending.value || !payload?.laneKey) return;
+  loadMorePending.value = true;
+  try {
+    await controller.loadMoreLane(payload.laneKey);
+    await syncLanesFromController();
+  } catch (e) {
+    ChoyMessage.error(_t('Failed to load more tokens'));
+    console.error('Token kanban load-more failed:', e);
+  } finally {
+    loadMorePending.value = false;
+  }
 }
 
 /**

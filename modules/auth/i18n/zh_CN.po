@@ -856,7 +856,7 @@ msgctxt "web/components/layout/AuthHeader"
 msgid "User menu"
 msgstr "用户菜单"
 
-#: web/components/layout/SwitchCompany.vue:29
+#: web/components/layout/SwitchCompany.vue:32
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr "应用"
@@ -1146,22 +1146,22 @@ msgctxt "web/pages/Register"
 msgid "Email"
 msgstr "邮箱"
 
-#: web/pages/Register.vue:61
+#: web/pages/Register.vue:62
 msgctxt "web/pages/Register"
 msgid "Enter a valid email address"
 msgstr "请输入有效的邮箱地址"
 
-#: web/pages/Register.vue:22 web/pages/Register.vue:57
+#: web/pages/Register.vue:22 web/pages/Register.vue:58
 msgctxt "web/pages/Register"
 msgid "Enter email address"
 msgstr "请输入邮箱地址"
 
-#: web/pages/Register.vue:28 web/pages/Register.vue:71
+#: web/pages/Register.vue:28 web/pages/Register.vue:72
 msgctxt "web/pages/Register"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Register.vue:16 web/pages/Register.vue:39
+#: web/pages/Register.vue:16 web/pages/Register.vue:40
 msgctxt "web/pages/Register"
 msgid "Enter username"
 msgstr "请输入用户名"
@@ -1181,12 +1181,12 @@ msgctxt "web/pages/Register"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Register.vue:75
+#: web/pages/Register.vue:76
 msgctxt "web/pages/Register"
 msgid "Password must be at least 6 characters"
 msgstr "密码至少 6 个字符"
 
-#: web/pages/Register.vue:92
+#: web/pages/Register.vue:93
 msgctxt "web/pages/Register"
 msgid "Passwords do not match"
 msgstr "两次输入的密码不一致"
@@ -1196,7 +1196,7 @@ msgctxt "web/pages/Register"
 msgid "Privacy Policy"
 msgstr "隐私政策"
 
-#: web/pages/Register.vue:34 web/pages/Register.vue:88
+#: web/pages/Register.vue:34 web/pages/Register.vue:89
 msgctxt "web/pages/Register"
 msgid "Re-enter password"
 msgstr "请再次输入密码"
@@ -1216,17 +1216,17 @@ msgctxt "web/pages/Register"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/Register.vue:47
+#: web/pages/Register.vue:48
 msgctxt "web/pages/Register"
 msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"
 msgstr "用户名只能包含字母、数字、下划线、连字符和点"
 
-#: web/pages/Register.vue:43
+#: web/pages/Register.vue:44
 msgctxt "web/pages/Register"
 msgid "Username must be at least 3 characters"
 msgstr "用户名至少 3 个字符"
 
-#: web/pages/Register.vue:101
+#: web/pages/Register.vue:102
 msgctxt "web/pages/Register"
 msgid "You must agree to the Terms of Service and Privacy Policy"
 msgstr "您必须同意服务条款和隐私政策"
@@ -2081,7 +2081,7 @@ msgctxt "web/views/TokenFormView"
 msgid "Token Information"
 msgstr "令牌信息"
 
-#: web/views/TokenKanbanView.vue:64
+#: web/views/TokenKanbanView.vue:73
 msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr "全部"
@@ -2091,10 +2091,15 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr "过期"
 
-#: web/views/TokenKanbanView.vue:120 web/views/TokenKanbanView.vue:141
+#: web/views/TokenKanbanView.vue:131 web/views/TokenKanbanView.vue:152
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
 msgstr "看板加载失败"
+
+#: web/views/TokenKanbanView.vue:198
+msgctxt "web/views/TokenKanbanView"
+msgid "Failed to load more tokens"
+msgstr "加载更多令牌失败"
 
 #: web/views/TokenKanbanView.vue:25
 msgctxt "web/views/TokenKanbanView"
@@ -2111,7 +2116,12 @@ msgctxt "web/views/TokenKanbanView"
 msgid "List View"
 msgstr "列表视图"
 
-#: web/views/TokenKanbanView.vue:187
+#: web/views/TokenKanbanView.vue:61
+msgctxt "web/views/TokenKanbanView"
+msgid "Load more (%s remaining)"
+msgstr "加载更多（剩余 %s）"
+
+#: web/views/TokenKanbanView.vue:216
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr "移动失败；已刷新以恢复"
@@ -2121,12 +2131,12 @@ msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr "此列暂无令牌"
 
-#: web/views/TokenKanbanView.vue:200 web/views/TokenKanbanView.vue:202
+#: web/views/TokenKanbanView.vue:229 web/views/TokenKanbanView.vue:231
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr "未撤销"
 
-#: web/views/TokenKanbanView.vue:199 web/views/TokenKanbanView.vue:201
+#: web/views/TokenKanbanView.vue:228 web/views/TokenKanbanView.vue:230
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr "已撤销"

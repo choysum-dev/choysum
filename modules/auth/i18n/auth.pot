@@ -875,7 +875,7 @@ msgctxt "web/components/layout/AuthHeader"
 msgid "User menu"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:29
+#: web/components/layout/SwitchCompany.vue:32
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr ""
@@ -1169,25 +1169,25 @@ msgctxt "web/pages/Register"
 msgid "Email"
 msgstr ""
 
-#: web/pages/Register.vue:61
+#: web/pages/Register.vue:62
 msgctxt "web/pages/Register"
 msgid "Enter a valid email address"
 msgstr ""
 
 #: web/pages/Register.vue:22
-#: web/pages/Register.vue:57
+#: web/pages/Register.vue:58
 msgctxt "web/pages/Register"
 msgid "Enter email address"
 msgstr ""
 
 #: web/pages/Register.vue:28
-#: web/pages/Register.vue:71
+#: web/pages/Register.vue:72
 msgctxt "web/pages/Register"
 msgid "Enter password"
 msgstr ""
 
 #: web/pages/Register.vue:16
-#: web/pages/Register.vue:39
+#: web/pages/Register.vue:40
 msgctxt "web/pages/Register"
 msgid "Enter username"
 msgstr ""
@@ -1207,12 +1207,12 @@ msgctxt "web/pages/Register"
 msgid "Password"
 msgstr ""
 
-#: web/pages/Register.vue:75
+#: web/pages/Register.vue:76
 msgctxt "web/pages/Register"
 msgid "Password must be at least 6 characters"
 msgstr ""
 
-#: web/pages/Register.vue:92
+#: web/pages/Register.vue:93
 msgctxt "web/pages/Register"
 msgid "Passwords do not match"
 msgstr ""
@@ -1223,7 +1223,7 @@ msgid "Privacy Policy"
 msgstr ""
 
 #: web/pages/Register.vue:34
-#: web/pages/Register.vue:88
+#: web/pages/Register.vue:89
 msgctxt "web/pages/Register"
 msgid "Re-enter password"
 msgstr ""
@@ -1243,17 +1243,17 @@ msgctxt "web/pages/Register"
 msgid "Username"
 msgstr ""
 
-#: web/pages/Register.vue:47
+#: web/pages/Register.vue:48
 msgctxt "web/pages/Register"
 msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"
 msgstr ""
 
-#: web/pages/Register.vue:43
+#: web/pages/Register.vue:44
 msgctxt "web/pages/Register"
 msgid "Username must be at least 3 characters"
 msgstr ""
 
-#: web/pages/Register.vue:101
+#: web/pages/Register.vue:102
 msgctxt "web/pages/Register"
 msgid "You must agree to the Terms of Service and Privacy Policy"
 msgstr ""
@@ -2115,7 +2115,7 @@ msgctxt "web/views/TokenFormView"
 msgid "Token Information"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:64
+#: web/views/TokenKanbanView.vue:73
 msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr ""
@@ -2125,10 +2125,15 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:120
-#: web/views/TokenKanbanView.vue:141
+#: web/views/TokenKanbanView.vue:131
+#: web/views/TokenKanbanView.vue:152
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
+msgstr ""
+
+#: web/views/TokenKanbanView.vue:198
+msgctxt "web/views/TokenKanbanView"
+msgid "Failed to load more tokens"
 msgstr ""
 
 #: web/views/TokenKanbanView.vue:25
@@ -2146,7 +2151,12 @@ msgctxt "web/views/TokenKanbanView"
 msgid "List View"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:187
+#: web/views/TokenKanbanView.vue:61
+msgctxt "web/views/TokenKanbanView"
+msgid "Load more (%s remaining)"
+msgstr ""
+
+#: web/views/TokenKanbanView.vue:216
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr ""
@@ -2156,14 +2166,14 @@ msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:200
-#: web/views/TokenKanbanView.vue:202
+#: web/views/TokenKanbanView.vue:229
+#: web/views/TokenKanbanView.vue:231
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:199
-#: web/views/TokenKanbanView.vue:201
+#: web/views/TokenKanbanView.vue:228
+#: web/views/TokenKanbanView.vue:230
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr ""

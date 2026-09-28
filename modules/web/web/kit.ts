@@ -47,11 +47,14 @@ export {
 } from './components/view/paginationHelpers';
 export {
   applyChoyKanbanMove,
+  choyKanbanLaneRemain,
+  formatChoyKanbanLoadMoreLabel,
   groupRowsIntoChoyKanbanLanes,
   normalizeChoyKanbanLaneKey,
   resolveChoyKanbanCardId,
   type ChoyKanbanCard,
   type ChoyKanbanLane,
+  type ChoyKanbanLoadMore,
   type ChoyKanbanMove,
 } from './components/view/kanbanViewHelpers';
 export {
