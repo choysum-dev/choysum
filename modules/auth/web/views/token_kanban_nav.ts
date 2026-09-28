@@ -1,6 +1,26 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+export type TokenKanbanRow =
+  | { payload?: Record<string, unknown> | null; key?: string; kind?: string }
+  | Record<string, unknown>;
+
+/**
+ * Normalize controller RecordRow (`{ payload }`) or a raw model record into a
+ * payload object used for card fields / navigation.
+ */
+export function resolveTokenKanbanRowPayload(row: TokenKanbanRow | null | undefined): Record<string, unknown> {
+  if (!row || typeof row !== 'object') return {};
+  if ('payload' in row) {
+    const wrapped = (row as { payload?: unknown }).payload;
+    if (wrapped && typeof wrapped === 'object' && !Array.isArray(wrapped)) {
+      return wrapped as Record<string, unknown>;
+    }
+  }
+  // Raw record rows (no wrapper) carry Id / fields on the object itself.
+  return row as Record<string, unknown>;
+}
+
 /**
  * Resolve a navigable token record id from a kanban card payload.
  * Ignores Vue-key fallbacks (row key / array index) that are not record ids.
@@ -13,13 +33,10 @@ export function resolveTokenDetailId(payload: Record<string, unknown> | null | u
  * Stable card id for ChoyKanbanView. Prefers record Id, then row key, then a
  * lane-scoped synthetic id so indexes do not collide across lanes.
  */
-export function resolveTokenKanbanCardId(
-  row: { payload?: Record<string, unknown>; key?: string },
-  index: number,
-  laneKey: string,
-): string {
-  const payload = (row.payload ?? {}) as Record<string, unknown>;
-  const id = payload.Id ?? row.key;
+export function resolveTokenKanbanCardId(row: TokenKanbanRow, index: number, laneKey: string): string {
+  const payload = resolveTokenKanbanRowPayload(row);
+  const key = row && typeof row === 'object' && 'key' in row ? (row as { key?: string }).key : undefined;
+  const id = payload.Id ?? key;
   if (id != null && String(id).trim() !== '') {
     return String(id);
   }

@@ -118,7 +118,9 @@ import type { Lane } from '@/web/web/query/types';
 import {
   resolveTokenDetailId,
   resolveTokenKanbanCardId,
+  resolveTokenKanbanRowPayload,
   resolveTokenMoveRecordId,
+  type TokenKanbanRow,
 } from './token_kanban_nav';
 
 defineOptions({ name: 'TokenKanbanView' });
@@ -138,8 +140,8 @@ let resyncPending = false;
 let searchSeq = 0;
 let lastSearchQuery: ChoySearchQuery | null = null;
 
-function rowToCard(row: { payload?: Record<string, unknown>; key?: string }, index: number, laneKey: string): ChoyKanbanCard {
-  const payload = (row.payload ?? {}) as Record<string, unknown>;
+function rowToCard(row: TokenKanbanRow, index: number, laneKey: string): ChoyKanbanCard {
+  const payload = resolveTokenKanbanRowPayload(row);
   return {
     id: resolveTokenKanbanCardId(row, index, laneKey),
     title: String(payload.TokenType ?? payload.Id ?? ''),

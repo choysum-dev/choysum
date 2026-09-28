@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <Teleport to="body">
     <div
       v-if="visible"
-      class="o-preferences-dialog fixed inset-0 z-[100] flex items-center justify-center p-4"
+      class="o-preferences-dialog fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
       role="presentation"
       @click.self="visible = false"
     >

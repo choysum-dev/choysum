@@ -4,6 +4,7 @@
 import {
   resolveTokenDetailId,
   resolveTokenKanbanCardId,
+  resolveTokenKanbanRowPayload,
   resolveTokenMoveRecordId,
 } from './token_kanban_nav';
 
@@ -18,9 +19,39 @@ test('resolveTokenDetailId: ignores missing or blank Id', () => {
   expect(resolveTokenDetailId({ Id: '   ' })).toBe('');
 });
 
+test('resolveTokenKanbanRowPayload: unwraps RecordRow payload', () => {
+  expect(
+    resolveTokenKanbanRowPayload({
+      kind: 'record',
+      key: 'k1',
+      payload: { Id: 't1', TokenType: 'access' },
+    }),
+  ).toEqual({ Id: 't1', TokenType: 'access' });
+});
+
+test('resolveTokenKanbanRowPayload: accepts raw model records', () => {
+  expect(resolveTokenKanbanRowPayload({ Id: 't2', TokenType: 'refresh' })).toEqual({
+    Id: 't2',
+    TokenType: 'refresh',
+  });
+});
+
+test('resolveTokenKanbanRowPayload: empty or nullish payload falls back to row', () => {
+  expect(resolveTokenKanbanRowPayload({ kind: 'record', key: 'k', payload: null })).toEqual({
+    kind: 'record',
+    key: 'k',
+    payload: null,
+  });
+  expect(resolveTokenKanbanRowPayload(undefined)).toEqual({});
+});
+
 test('resolveTokenKanbanCardId: prefers payload Id then row key', () => {
   expect(resolveTokenKanbanCardId({ payload: { Id: 't1' } }, 0, 'lane-a')).toBe('t1');
   expect(resolveTokenKanbanCardId({ key: 'row-k', payload: {} }, 0, 'lane-a')).toBe('row-k');
+});
+
+test('resolveTokenKanbanCardId: reads Id from raw records', () => {
+  expect(resolveTokenKanbanCardId({ Id: 'raw-9', TokenType: 'access' }, 0, 'all')).toBe('raw-9');
 });
 
 test('resolveTokenKanbanCardId: scopes index fallback by lane', () => {
