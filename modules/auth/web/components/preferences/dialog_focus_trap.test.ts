@@ -148,6 +148,22 @@ test('isTabFocusable: rejects any negative tabindex on native controls', () => {
   expect(isTabFocusable(minusTwo)).toBe(false);
 });
 
+test('isTabFocusable: accepts summary and contenteditable hosts', () => {
+  const summary = document.createElement('summary');
+  document.body.appendChild(summary);
+  expect(isTabFocusable(summary)).toBe(true);
+
+  const editable = document.createElement('div');
+  editable.setAttribute('contenteditable', 'true');
+  document.body.appendChild(editable);
+  expect(isTabFocusable(editable)).toBe(true);
+
+  const notEditable = document.createElement('div');
+  notEditable.setAttribute('contenteditable', 'false');
+  document.body.appendChild(notEditable);
+  expect(isTabFocusable(notEditable)).toBe(false);
+});
+
 test('trapDialogTabKey wraps forward from last to first', () => {
   const { root, first, last } = mountDialog();
   last.focus();

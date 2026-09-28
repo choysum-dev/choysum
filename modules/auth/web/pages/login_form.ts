@@ -62,7 +62,8 @@ export function resolveLoginRedirect(
     try {
       decodedPath = decodeURIComponent(pathOnly);
     } catch {
-      decodedPath = pathOnly;
+      // Malformed percent-encoding can hide separators from encoded-path checks.
+      return '/';
     }
     if (
       url.origin !== expectedOrigin ||

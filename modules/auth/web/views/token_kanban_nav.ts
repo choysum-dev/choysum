@@ -63,7 +63,9 @@ export function resolveTokenMoveRecordId(
  */
 export function resolveTokenUsernameLabel(payload: Record<string, unknown> | null | undefined): string {
   const row = payload ?? {};
-  const user = row['UserId.Username'] ?? row.UserId;
+  const flat = row['UserId.Username'];
+  // A blank flattened label must not shadow a populated UserId relation.
+  const user = typeof flat === 'string' && flat.trim() !== '' ? flat : (row.UserId ?? flat);
   if (user && typeof user === 'object') {
     return String((user as { Username?: string }).Username ?? '');
   }
@@ -72,16 +74,17 @@ export function resolveTokenUsernameLabel(payload: Record<string, unknown> | nul
 
 /**
  * True when an optimistic card move must be discarded (resync) instead of
- * persisted: overlapping writes, synthetic card ids, or the flat "all" lane
- * that is not a controller group lane.
+ * persisted: overlapping writes/searches, synthetic card ids, or the flat
+ * "all" lane that is not a controller group lane.
  */
 export function shouldRestoreTokenKanbanMove(opts: {
   movePending: boolean;
+  searchPending?: boolean;
   recordId: string;
   fromLaneKey: string;
   controllerLaneKeys: ReadonlyArray<string>;
 }): boolean {
-  if (opts.movePending || !opts.recordId) return true;
+  if (opts.movePending || opts.searchPending || !opts.recordId) return true;
   return !opts.controllerLaneKeys.some((key) => key === opts.fromLaneKey);
 }
 

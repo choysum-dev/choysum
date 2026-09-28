@@ -57,8 +57,8 @@ test('resolveLoginRedirect: rejects percent-encoded separators that decode to //
   expect(resolveLoginRedirect('/ok%5cevil')).toBe('/');
 });
 
-test('resolveLoginRedirect: keeps path when decodeURIComponent throws', () => {
-  // Lone `%` is invalid percent-encoding; fail open to the encoded pathname checks.
+test('resolveLoginRedirect: rejects path when decodeURIComponent throws', () => {
+  // Malformed percent-encoding must fail closed (encoded checks alone are insufficient).
   expect(
     resolveLoginRedirect('/ok', {
       origin: 'http://localhost',
@@ -69,7 +69,8 @@ test('resolveLoginRedirect: keeps path when decodeURIComponent throws', () => {
         hash: '',
       }),
     }),
-  ).toBe('/%E0%A4%A');
+  ).toBe('/');
+  expect(resolveLoginRedirect('/%2f%2fevil.com%ZZ')).toBe('/');
 });
 
 test('isUnsafeLoginRedirectPath: flags protocol-relative, empty segments, slash, and ..', () => {

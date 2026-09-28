@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
       v-model:lanes="choyLanes"
       :show-header="showHeader"
       :show-actions="true"
-      :readonly="movePending || loadMorePending"
+      :readonly="movePending || loadMorePending || searchPending"
       :create-label="_t('New')"
       @card-click="onCardClick"
       @card-move="onCardMove"
@@ -82,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
           variant="ghost"
           size="sm"
           class="w-full"
-          :disabled="loadMorePending || movePending"
+          :disabled="loadMorePending || movePending || searchPending"
           @click="loadMore()"
         >
           {{ _t('Load more (%s remaining)', remain) }}
@@ -138,6 +138,8 @@ const controller = createKanbanController(store as any);
 const choyLanes = ref<ChoyKanbanLane[]>([]);
 const movePending = ref(false);
 const loadMorePending = ref(false);
+/** True while a search/group apply is in flight; blocks moves against stale lanes. */
+const searchPending = ref(false);
 let syncingLanes = false;
 let resyncPending = false;
 let searchSeq = 0;
@@ -245,6 +247,7 @@ onMounted(async () => {
 async function onSearch(query: ChoySearchQuery) {
   lastSearchQuery = query;
   const seq = ++searchSeq;
+  searchPending.value = true;
   try {
     await controller.apply({
       keyword: query.keyword,
@@ -257,6 +260,8 @@ async function onSearch(query: ChoySearchQuery) {
     if (seq !== searchSeq) return;
     ChoyMessage.error(_t('Failed to load kanban'));
     console.error('Token kanban search failed:', e);
+  } finally {
+    if (seq === searchSeq) searchPending.value = false;
   }
 }
 
@@ -295,7 +300,7 @@ function onCardClick(card: ChoyKanbanCard) {
  * Fetch the next batch for a lane, then remap cards / remain counts.
  */
 async function onLaneLoadMore(payload: ChoyKanbanLoadMore) {
-  if (loadMorePending.value || !payload?.laneKey) return;
+  if (loadMorePending.value || movePending.value || searchPending.value || !payload?.laneKey) return;
   loadMorePending.value = true;
   try {
     await controller.loadMoreLane(payload.laneKey);
@@ -322,6 +327,7 @@ async function onCardMove(move: ChoyKanbanMove) {
   if (
     shouldRestoreTokenKanbanMove({
       movePending: movePending.value,
+      searchPending: searchPending.value,
       recordId,
       fromLaneKey: move.fromLaneKey,
       controllerLaneKeys: controller.lanes.value.map(lane => lane.key),

@@ -50,13 +50,14 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { User } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
 import { ChoyButton, ChoyNotificationBell } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
+import { shouldResetAuthHeaderPopups } from './auth_header_popup_state';
 import SwitchCompany from './SwitchCompany.vue';
 import { dismissPopupOnEscape } from './popup_escape_focus';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
@@ -74,6 +75,18 @@ const userMenuRoot = ref<HTMLElement | null>(null);
 function closeUserMenu() {
   userMenuOpen.value = false;
 }
+
+function resetHeaderPopups() {
+  closeUserMenu();
+  preferencesVisible.value = false;
+}
+
+// AuthHeader stays mounted in the shell; clear popup refs on logout / token expiry.
+watch(isAuthenticated, (authed, wasAuthed) => {
+  if (shouldResetAuthHeaderPopups(Boolean(wasAuthed), Boolean(authed))) {
+    resetHeaderPopups();
+  }
+});
 
 function onDocumentClick(event: MouseEvent) {
   if (!userMenuOpen.value) return;
@@ -109,7 +122,7 @@ function openPreferences() {
 }
 
 function handleLogout() {
-  closeUserMenu();
+  resetHeaderPopups();
   router.push({ name: 'logout' });
 }
 

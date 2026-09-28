@@ -79,6 +79,8 @@ test('resolveTokenUsernameLabel: prefers UserId.Username then string UserId', ()
   expect(resolveTokenUsernameLabel({ 'UserId.Username': 'alice' })).toBe('alice');
   expect(resolveTokenUsernameLabel({ UserId: { Username: 'bob' } })).toBe('bob');
   expect(resolveTokenUsernameLabel({ UserId: 'user-42' })).toBe('user-42');
+  // Blank flattened label must fall through to the relation object.
+  expect(resolveTokenUsernameLabel({ 'UserId.Username': '  ', UserId: { Username: 'carol' } })).toBe('carol');
   // Relation object without Username must not stringify to "[object Object]".
   expect(resolveTokenUsernameLabel({ UserId: { Id: 'u1' } })).toBe('');
   expect(resolveTokenUsernameLabel({})).toBe('');
@@ -89,6 +91,15 @@ test('shouldRestoreTokenKanbanMove: pending, missing id, or unknown lane', () =>
   expect(
     shouldRestoreTokenKanbanMove({
       movePending: true,
+      recordId: 't1',
+      fromLaneKey: 'Revoked=false',
+      controllerLaneKeys: ['Revoked=false'],
+    }),
+  ).toBe(true);
+  expect(
+    shouldRestoreTokenKanbanMove({
+      movePending: false,
+      searchPending: true,
       recordId: 't1',
       fromLaneKey: 'Revoked=false',
       controllerLaneKeys: ['Revoked=false'],

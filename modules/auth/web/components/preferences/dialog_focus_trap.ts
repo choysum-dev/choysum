@@ -34,6 +34,10 @@ export function isTabFocusable(el: HTMLElement): boolean {
   if (NATIVE_FOCUSABLE.has(tag)) {
     return !disabled;
   }
+  // <summary> is natively tabbable inside <details>; contenteditable hosts are too.
+  if (tag === 'SUMMARY') return !disabled;
+  const editableAttr = el.getAttribute('contenteditable');
+  if (editableAttr !== null && editableAttr !== 'false') return true;
   // Custom controls: positive/zero tabindex only.
   if (tabindexAttr == null) return false;
   const n = Number(tabindexAttr);

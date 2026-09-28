@@ -196,9 +196,11 @@ watch(
   async open => {
     if (open) {
       lastFocused = document.activeElement as HTMLElement | null;
-      await openAndLoad();
+      // Focus the dialog before network work so keyboard users are not stuck
+      // on the trigger behind the backdrop while preferences load.
       await nextTick();
       dialogRef.value?.focus();
+      await openAndLoad();
       return;
     }
     lastFocused?.focus?.();
@@ -225,9 +227,9 @@ watch(timezone, value => {
 onMounted(async () => {
   if (!props.modelValue) return;
   lastFocused = document.activeElement as HTMLElement | null;
-  await openAndLoad();
   await nextTick();
   dialogRef.value?.focus();
+  await openAndLoad();
 });
 
 function resolveUserId(): string {

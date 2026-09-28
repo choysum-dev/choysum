@@ -67,7 +67,7 @@ import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoySearchView, Choy
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
 
-defineOptions({ name: 'TokenListView', inheritAttrs: true });
+defineOptions({ name: 'TokenListView', inheritAttrs: false });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenListView' });
 
 
