@@ -136,6 +136,7 @@ describe('kanbanViewHelpers', () => {
   test('formatChoyKanbanLoadMoreLabel uses normalized remain', () => {
     expect(formatChoyKanbanLoadMoreLabel(3)).toBe('Load more (3 remaining)');
     expect(formatChoyKanbanLoadMoreLabel(0)).toBe('Load more (0 remaining)');
+    expect(formatChoyKanbanLoadMoreLabel(2, (n) => `还有 ${n} 条`)).toBe('还有 2 条');
   });
 
   test('applyChoyKanbanMove preserves lane.remain', () => {

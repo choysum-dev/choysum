@@ -3,6 +3,7 @@
 
 import { ChoysumError } from '../error';
 import {
+  decodeLoginRedirectPath,
   formatLoginError,
   isUnsafeLoginRedirectPath,
   normalizeLoginRedirectOrigin,
@@ -55,6 +56,8 @@ test('resolveLoginRedirect: rejects percent-encoded separators that decode to //
   expect(resolveLoginRedirect('/%2F%2Fevil.com')).toBe('/');
   expect(resolveLoginRedirect('/ok%2f%2fevil')).toBe('/');
   expect(resolveLoginRedirect('/ok%5cevil')).toBe('/');
+  // Multiply-encoded separators survive a single decode pass.
+  expect(resolveLoginRedirect('/%252f%252fevil.example')).toBe('/');
 });
 
 test('resolveLoginRedirect: rejects path when decodeURIComponent throws', () => {
@@ -71,6 +74,14 @@ test('resolveLoginRedirect: rejects path when decodeURIComponent throws', () => 
     }),
   ).toBe('/');
   expect(resolveLoginRedirect('/%2f%2fevil.com%ZZ')).toBe('/');
+});
+
+test('decodeLoginRedirectPath: stabilizes after multi-pass decode', () => {
+  expect(decodeLoginRedirectPath('/auth/tokens')).toBe('/auth/tokens');
+  // Leading `/` plus decoded `%2f%2f` yields `///evil`, still protocol-relative-like.
+  expect(decodeLoginRedirectPath('/%252f%252fevil')).toBe('///evil');
+  expect(isUnsafeLoginRedirectPath(decodeLoginRedirectPath('/%252f%252fevil') || '')).toBe(true);
+  expect(decodeLoginRedirectPath('/%E0%A4%A')).toBeNull();
 });
 
 test('isUnsafeLoginRedirectPath: flags protocol-relative, empty segments, slash, and ..', () => {

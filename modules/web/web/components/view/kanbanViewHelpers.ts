@@ -35,10 +35,12 @@ export function choyKanbanLaneRemain(lane: Pick<ChoyKanbanLane, 'remain'> | null
   return Math.floor(n);
 }
 
-/** Default English load-more label for Choy kanban chrome. */
-export function formatChoyKanbanLoadMoreLabel(remain: number): string {
-  const n = choyKanbanLaneRemain({ remain });
-  return `Load more (${n} remaining)`;
+/** Default load-more label for Choy kanban chrome (host may localize via `format`). */
+export function formatChoyKanbanLoadMoreLabel(
+  remain: number,
+  format: (n: number) => string = (n) => `Load more (${n} remaining)`,
+): string {
+  return format(choyKanbanLaneRemain({ remain }));
 }
 
 export type ChoyKanbanMove = {

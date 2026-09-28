@@ -56,15 +56,11 @@ export function resolveLoginRedirect(
     const createUrl = deps?.createUrl || ((input: string, origin: string) => new URL(input, origin));
     const url = createUrl(redirect, base);
     const pathOnly = String(url.pathname || '');
-    // Percent-encoded separators (`%2f`, `%5c`) survive URL parsing; re-check the
-    // decoded path so a downstream consumer cannot re-interpret it as `//host`.
-    let decodedPath = pathOnly;
-    try {
-      decodedPath = decodeURIComponent(pathOnly);
-    } catch {
-      // Malformed percent-encoding can hide separators from encoded-path checks.
-      return '/';
-    }
+    // Percent-encoded separators (`%2f`, `%5c`, multiply-encoded `%252f`) survive
+    // URL parsing; re-check a fully decoded path so downstream re-decode cannot
+    // turn them into `//host`.
+    const decodedPath = decodeLoginRedirectPath(pathOnly);
+    if (decodedPath == null) return '/';
     if (
       url.origin !== expectedOrigin ||
       isUnsafeLoginRedirectPath(pathOnly) ||
@@ -76,6 +72,25 @@ export function resolveLoginRedirect(
   } catch {
     return '/';
   }
+}
+
+/**
+ * Decode a pathname until stable (up to 3 passes). Returns null when encoding
+ * is malformed so callers can fail closed.
+ */
+export function decodeLoginRedirectPath(path: string): string | null {
+  let decoded = path;
+  for (let pass = 0; pass < 3; pass++) {
+    let next: string;
+    try {
+      next = decodeURIComponent(decoded);
+    } catch {
+      return null;
+    }
+    if (next === decoded) return decoded;
+    decoded = next;
+  }
+  return decoded;
 }
 
 /**

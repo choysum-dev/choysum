@@ -74,6 +74,7 @@ import {
   resolvePreferenceLanguage,
   resolvePreferenceTimezone,
 } from './preferences_defaults';
+import { restoreDialogFocus } from './dialog_focus_restore';
 import { trapDialogTabKey } from './dialog_focus_trap';
 import { resolveLanguageCodeFromId } from './preferences_language';
 
@@ -203,7 +204,7 @@ watch(
       await openAndLoad();
       return;
     }
-    lastFocused?.focus?.();
+    restoreDialogFocus(lastFocused);
     lastFocused = null;
   }
 );
