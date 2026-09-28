@@ -5,25 +5,35 @@ import { mount, flushPromises } from '@choysum/test-utils';
 import Login from './Login.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-async function mountLogin(route?: { path?: string; query?: Record<string, string> }) {
+async function mountLogin(opts?: {
+  path?: string;
+  query?: Record<string, string>;
+}) {
+  const replaces: unknown[] = [];
   const wrapper = mount(Login as any, {
     global: buildPageMountGlobal({
-      route: { path: route?.path || '/login', query: route?.query || {} },
+      route: { path: opts?.path || '/login', query: opts?.query || {} },
+      router: {
+        replace: (to: unknown) => {
+          replaces.push(to);
+          return Promise.resolve(to);
+        },
+      },
     }),
   });
   await flushPromises();
-  return wrapper;
+  return { wrapper, replaces };
 }
 
 test('Login.vue mounts under choysumMount and runs script setup', async () => {
-  const wrapper = await mountLogin();
+  const { wrapper } = await mountLogin();
   expect(wrapper.find('.login-username').exists()).toBe(true);
   expect(wrapper.find('.login-password').exists()).toBe(true);
   wrapper.unmount();
 });
 
 test('Login.vue: empty submit keeps the form and shows field errors', async () => {
-  const wrapper = await mountLogin();
+  const { wrapper } = await mountLogin();
   const form = wrapper.find('form');
   expect(form.exists()).toBe(true);
   await form.trigger('submit');
@@ -33,7 +43,7 @@ test('Login.vue: empty submit keeps the form and shows field errors', async () =
 });
 
 test('Login.vue: successful submit redirects via query.redirect', async () => {
-  const wrapper = await mountLogin({ query: { redirect: '/auth/tokens' } });
+  const { wrapper, replaces } = await mountLogin({ query: { redirect: '/auth/tokens' } });
   const user = wrapper.find('.login-username');
   const pass = wrapper.find('.login-password');
   expect(user.exists()).toBe(true);
@@ -44,8 +54,9 @@ test('Login.vue: successful submit redirects via query.redirect', async () => {
   await pass.trigger('input');
   await wrapper.find('form').trigger('submit');
   await flushPromises();
-  // Auth stub marks authenticated: success must clear the error badge and field errors.
+  // Auth stub marks authenticated: success must clear errors and navigate.
   expect(wrapper.find('.login-error').exists()).toBe(false);
   expect(wrapper.find('.text-destructive').exists()).toBe(false);
+  expect(replaces).toEqual(['/auth/tokens']);
   wrapper.unmount();
 });

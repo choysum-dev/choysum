@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
         <div class="flex flex-col gap-1 text-sm">
           <span class="font-medium">{{ _t('Available Companies') }}</span>
           <div
-            class="o-switch-company__select flex min-h-[5.5rem] flex-col gap-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            class="o-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             data-testid="company-enabled-select"
           >
             <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">

@@ -313,7 +313,11 @@ async function onCardMove(move: ChoyKanbanMove) {
     choyLanes.value.flatMap(lane => lane.cards),
     move.cardId,
   );
-  if (!recordId) return;
+  if (!recordId) {
+    // Optimistic v-model move already mutated lanes; restore controller state.
+    await syncLanesFromController();
+    return;
+  }
   movePending.value = true;
   try {
     await controller.moveCard(recordId, move.fromLaneKey, move.toLaneKey, move.toIndex);
