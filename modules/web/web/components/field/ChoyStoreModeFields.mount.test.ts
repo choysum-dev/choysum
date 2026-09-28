@@ -508,6 +508,43 @@ describe('Choy store-mode field hosts', () => {
     expect(rows).toEqual([{ name: 'r1' }]);
     list.unmount();
     restoreSfc(OListView as any);
+
+    // Nullish payload.row must not emit the wrapper object as the row.
+    stubSfc(OListView as any, {
+      props: { store: null },
+      emits: ['row-click'],
+      setup: ((_props: any, { emit }: any) => {
+        return () =>
+          h('div', [
+            h('button', {
+              'data-test': 'emit-row-null',
+              onClick: () => emit('row-click', { row: null, rowIndex: 0 }),
+            }),
+            h('button', {
+              'data-test': 'emit-row-bare',
+              onClick: () => emit('row-click', { name: 'bare' }),
+            }),
+          ]);
+      }) as any,
+    });
+    const guardRows: unknown[] = [];
+    const listGuard = mountApp(ChoyListView as any, {
+      props: { store: fakeStore },
+      on: {
+        onRowClick: (row: unknown) => {
+          guardRows.push(row);
+        },
+      },
+    });
+    await flushPromises();
+    listGuard.click('[data-test=emit-row-null]');
+    await flushPromises();
+    expect(guardRows).toEqual([]);
+    listGuard.click('[data-test=emit-row-bare]');
+    await flushPromises();
+    expect(guardRows).toEqual([{ name: 'bare' }]);
+    listGuard.unmount();
+    restoreSfc(OListView as any);
     stubHost(OListView as any, 'o-list');
 
     const queries: Array<{ keyword: string }> = [];

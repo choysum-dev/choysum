@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div
     class="o-search-view"
+    :class="{ 'pointer-events-none select-none': disabled }"
     :inert="disabled || undefined"
     :aria-disabled="disabled ? 'true' : undefined"
   >

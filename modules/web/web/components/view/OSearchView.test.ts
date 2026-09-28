@@ -274,4 +274,20 @@ describe('OSearchView favorites defaults (single child load)', () => {
     expect(emitted['query-update']).toBeUndefined();
     unmount();
   });
+
+  test('disabled root sets inert, aria-disabled, and pointer-events fallback', async () => {
+    stubState.mountDefaults = [];
+    const { unmount, q } = mountSearchView({
+      store: makeStore(),
+      disabled: true,
+      initialEmit: false,
+    });
+    await flushPromises();
+    const root = q('.o-search-view')!;
+    expect(root.getAttribute('aria-disabled')).toBe('true');
+    expect(root.hasAttribute('inert')).toBe(true);
+    expect(root.classList.contains('pointer-events-none')).toBe(true);
+    expect(root.classList.contains('select-none')).toBe(true);
+    unmount();
+  });
 });

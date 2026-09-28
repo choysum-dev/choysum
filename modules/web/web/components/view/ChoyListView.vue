@@ -122,6 +122,9 @@ function onRowClick(row: T): void {
 
 /** OListView emits RowEventPayload; chrome consumers expect the row only. */
 function onStoreRowClick(payload: RowEventPayload<any>): void {
-  emit('row-click', (payload?.row ?? payload) as T);
+  const row =
+    payload && typeof payload === 'object' && 'row' in payload ? payload.row : payload;
+  if (row == null) return;
+  emit('row-click', row as T);
 }
 </script>
