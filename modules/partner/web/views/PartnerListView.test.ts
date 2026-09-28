@@ -15,7 +15,16 @@ test('PartnerListView.vue mounts under choysumMount and runs script setup', asyn
   expect(wrapper.element != null).toBe(true);
   expect(
     wrapper.find('[data-testid="fe-stub-child-view"]').exists() ||
-      wrapper.find('[data-testid="fe-stub-opage"]').exists(),
+      wrapper.find('[data-anchor="choy.page"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-choy-page"]').exists(),
   ).toBe(true);
+
+  // Exercise exposed row-click navigation (permission stub always allows).
+  const vm = wrapper.vm as { onRowClick?: (row: Record<string, unknown>) => void };
+  expect(typeof vm.onRowClick).toBe('function');
+  vm.onRowClick?.({ Id: 'ptn-cover-1' });
+  vm.onRowClick?.({ Id: '' });
+  await flushPromises();
+
   wrapper.unmount();
 });

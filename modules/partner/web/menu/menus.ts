@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { MenuItem } from '@/core/web/menu';
-import { UserFilled } from '@element-plus/icons-vue';
+import { Users } from 'lucide-vue-next';
 import { defineMenu } from '@/core/web/resource';
 import { partnerListMenuTitle, partnerRootMenuTitle } from './titles';
 
@@ -12,7 +12,7 @@ import { partnerListMenuTitle, partnerRootMenuTitle } from './titles';
 export const partnerMenus: MenuItem[] = [
   defineMenu('partner.menu.root', {
     title: partnerRootMenuTitle,
-    icon: UserFilled,
+    icon: Users,
     sequence: 40,
     children: [
       defineMenu('partner.menu.partner_list', {

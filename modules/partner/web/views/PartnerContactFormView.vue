@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     :store="store"
     :record-id="recordId"
     :initial-values="initialValues"
@@ -15,75 +15,78 @@ SPDX-License-Identifier: Apache-2.0
     v-on="$attrs"
   >
     <div class="pcfv-grid">
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Name" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="ContactRole" :selection="contactRoleOptions" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Name" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoySelectionField :store="store" prop="ContactRole" :selection="contactRoleOptions" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="AddressType" :selection="addressTypeOptions" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OManyToOneRefField
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoySelectionField :store="store" prop="AddressType" :selection="addressTypeOptions" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneField
             :store="store"
             prop="AddressId"
             :searchView="AddressListView"
             :search-view-title="_t('Select Address')"
             @value-click="onAddressValueClick"
           />
-        </el-col>
-      </el-row>
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Email" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Phone" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Email" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Phone" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Mobile" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OIntField :store="store" prop="Sequence" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Mobile" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyNumberField :store="store" prop="Sequence" mode="integer" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefault" widget="switch" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" widget="switch" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsDefault" widget="switch" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
+        </ChoyCol>
+      </ChoyGrid>
     </div>
-  </OFormView>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Address from '@/base/service/models/address';
-import { ElRow, ElCol } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import OIntField from '@/web/web/components/field/OIntField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import AddressListView from '@/base/web/views/AddressListView.vue';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  ChoyBooleanField,
+  ChoyCol,
+  ChoyFormView,
+  ChoyGrid,
+  ChoyManyToOneField,
+  ChoyNumberField,
+  ChoySelectionField,
+  ChoyVarcharField,
+  type ChoyViewMode as ViewMode,
+} from '@/web';
 
 defineOptions({ name: 'PartnerContactFormView', inheritAttrs: true });
 const { _t } = createTranslate('partner', { scope: 'web/views/PartnerContactFormView' });
@@ -122,7 +125,7 @@ const contactRoleOptions = ['general', 'billing', 'shipping', 'procurement', 'sa
 /**
  * Opens the selected address record from the contact form.
  */
-function onAddressValueClick(payload: ManyToOneRefValueClickPayload<Address>) {
+function onAddressValueClick(payload: ManyToOneValueClickPayload<Address>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
   void router.push({ name: 'AddressDetail', params: { id } });

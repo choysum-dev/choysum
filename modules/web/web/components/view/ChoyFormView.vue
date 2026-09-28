@@ -24,7 +24,9 @@ SPDX-License-Identifier: Apache-2.0
     <template v-if="$slots['header-right']" #header-right="slotData">
       <slot name="header-right" v-bind="slotData || {}" />
     </template>
-    <slot />
+    <template #default="slotData">
+      <slot v-bind="slotData || {}" />
+    </template>
   </OFormView>
 
   <!-- Chrome skeleton for Gallery / Dogfood (no WebModelStore). -->

@@ -5,8 +5,12 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <!-- Store id mode (default): OManyToOneRefField. Record mode: OManyToOneField. -->
-  <OManyToOneRefField v-if="storeMode && valueMode !== 'record'" v-bind="(storeBind as any)" />
-  <OManyToOneField v-else-if="storeMode" v-bind="(storeBind as any)" />
+  <OManyToOneRefField v-if="storeMode && valueMode !== 'record'" v-bind="(storeBind as any)">
+    <slot />
+  </OManyToOneRefField>
+  <OManyToOneField v-else-if="storeMode" v-bind="(storeBind as any)">
+    <slot />
+  </OManyToOneField>
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"

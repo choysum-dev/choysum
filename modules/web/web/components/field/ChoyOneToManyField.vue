@@ -4,7 +4,19 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OOneToManyField v-if="storeMode" v-bind="(storeBind as any)">
+  <OOneToManyKanbanField v-if="storeMode && widget === 'kanban'" v-bind="(storeBind as any)">
+    <template v-if="$slots.card" #card="slotData">
+      <slot name="card" v-bind="slotData || {}" />
+    </template>
+    <template v-if="$slots.toolbar" #toolbar="slotData">
+      <slot name="toolbar" v-bind="slotData || {}" />
+    </template>
+    <template v-if="$slots.empty" #empty="slotData">
+      <slot name="empty" v-bind="slotData || {}" />
+    </template>
+    <slot />
+  </OOneToManyKanbanField>
+  <OOneToManyField v-else-if="storeMode" v-bind="(storeBind as any)">
     <slot />
   </OOneToManyField>
   <ChoyFieldBase
@@ -103,6 +115,7 @@ import DialogDescription from '../vendor/ui/dialog/DialogDescription.vue';
 import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import OOneToManyField from './OOneToManyField.vue';
+import OOneToManyKanbanField from './OOneToManyKanbanField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,
@@ -114,7 +127,7 @@ export type { ChoyOneToManyWidget };
 defineOptions({ name: 'ChoyOneToManyField', inheritAttrs: false });
 
 /**
- * One-to-many field. Store+prop hosts OOneToManyField; otherwise chrome array model.
+ * One-to-many field. Store+prop hosts list or kanban O* engines; otherwise chrome array model.
  */
 const props = withDefaults(
   defineProps<

@@ -4,53 +4,55 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OListView
+  <ChoyListView
     ref="listRef"
     v-bind="$attrs"
     :store="store"
-    :searchView="OSearchView"
+    :searchView="ChoySearchView"
     :action-ids="{ create: partnerActions.create, delete: partnerActions.delete }"
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OVarCharField :store="store" prop="Name" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField :store="store" prop="Code" :vColumnProps="{ minWidth: 120 }" />
-    <OManyToOneRefField :store="store" prop="CompanyId" :vColumnProps="{ minWidth: 180 }" />
-    <OIntField :store="store" prop="CustomerRank" />
-    <OIntField :store="store" prop="SupplierRank" />
-    <OBooleanField :store="store" prop="IsActive" />
-    <ODateTimeField :store="store" prop="UpdatedAt" mode="datetime" :vColumnProps="{ minWidth: 160 }" />
-  </OListView>
+    <ChoyVarcharField :store="store" prop="Name" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyVarcharField :store="store" prop="Code" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyManyToOneField :store="store" prop="CompanyId" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyNumberField :store="store" prop="CustomerRank" mode="integer" />
+    <ChoyNumberField :store="store" prop="SupplierRank" mode="integer" />
+    <ChoyBooleanField :store="store" prop="IsActive" />
+    <ChoyDatetimeField :store="store" prop="UpdatedAt" mode="datetime" :vColumnProps="{ minWidth: 160 }" />
+  </ChoyListView>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Partner from '@/partner/service/models/partner';
-import OListView from '@/web/web/components/view/OListView.vue';
-import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OIntField from '@/web/web/components/field/OIntField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  ChoyBooleanField,
+  ChoyDatetimeField,
+  ChoyListView,
+  ChoyManyToOneField,
+  ChoyNumberField,
+  ChoySearchView,
+  ChoyVColumn,
+  ChoyVarcharField,
+} from '@/web';
 import { partnerActions, partnerOpenDetailAction } from './partner_actions';
+import { navigatePartnerDetail } from './partner_list_nav';
 
 defineOptions({ name: 'PartnerListView', inheritAttrs: true });
 const { _t } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
 
 /**
  * Props consumed by the partner list view.
- * `store` falls back to OPage provided store when omitted.
+ * `store` falls back to ChoyPage provided store when omitted.
  */
 const props = defineProps<{
   store?: WebModelStore<Partner>;
@@ -68,13 +70,10 @@ const { hasAction } = usePermission();
 /**
  * Opens the clicked partner row when the actor has detail access.
  */
-function onRowClick(payload: RowEventPayload<Partner>) {
-  if (!hasAction(partnerOpenDetailAction)) {
-    return;
-  }
-  router.push(`/partner/partners/${payload.row.Id}`);
+function onRowClick(row: Record<string, unknown>) {
+  navigatePartnerDetail(row, hasAction(partnerOpenDetailAction), (path) => router.push(path));
 }
 
-const { expose } = useListViewExpose<Partner>();
-defineExpose(expose);
+const { listRef, expose } = useListViewExpose<Partner>();
+defineExpose({ ...expose, onRowClick });
 </script>

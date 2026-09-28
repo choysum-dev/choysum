@@ -4,13 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Xpath expr="//el-tabs[@data-slot='partner-detail-tab-panels']" position="inside">
-    <el-tab-pane :label="_t('Identifiers and Commercial Extensions')" name="commercial_identifiers" data-region="partner-commercial-tab">
+  <Xpath :expr="PARTNER_DETAIL_TAB_PANELS_XPATH" position="inside">
+    <ChoyTab
+      value="commercial_identifiers"
+      :label="_t('Identifiers and Commercial Extensions')"
+      data-region="partner-commercial-tab"
+    >
       <div data-region="partner-commercial-panel">
         <div data-region="partner-identifier-section">
-          <OOneToManyKanbanField
+          <ChoyOneToManyField
             :store="store"
             :prop="'PartnerIdentifiers' as any"
+            widget="kanban"
             label=""
             :default-record="defaultIdentifierRecord"
             :editable="canEditIdentifiers()"
@@ -26,8 +31,8 @@ SPDX-License-Identifier: Apache-2.0
                 <div class="pcmv-identifier-card__title-row">
                   <div class="pcmv-identifier-card__title">{{ item?.IdentifierType || _t('Unnamed Type') }}</div>
                   <div class="pcmv-identifier-card__flags">
-                    <el-tag v-if="item?.IsPrimary" size="small" type="success">{{ _t('Primary') }}</el-tag>
-                    <el-tag v-if="item?.IsActive === false" size="small" type="info">{{ _t('Inactive') }}</el-tag>
+                    <span v-if="item?.IsPrimary" class="pcmv-flag pcmv-flag--success">{{ _t('Primary') }}</span>
+                    <span v-if="item?.IsActive === false" class="pcmv-flag pcmv-flag--muted">{{ _t('Inactive') }}</span>
                   </div>
                 </div>
                 <div class="pcmv-identifier-card__line">{{ _t('Value') }}: {{ item?.Value || '-' }}</div>
@@ -35,15 +40,15 @@ SPDX-License-Identifier: Apache-2.0
                 <div class="pcmv-identifier-card__meta">{{ _t('Valid From') }}: {{ formatDateTime(item?.ValidFrom) || '-' }}</div>
                 <div class="pcmv-identifier-card__meta">{{ _t('Valid To') }}: {{ formatDateTime(item?.ValidTo) || '-' }}</div>
                 <div v-if="editable || removable" class="pcmv-identifier-card__actions">
-                  <el-button v-if="editable" type="primary" text size="small" @click.stop="edit">{{ _t('Edit') }}</el-button>
-                  <el-button v-if="removable" type="danger" text size="small" @click.stop="remove">{{ _t('Delete') }}</el-button>
+                  <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
+                  <ChoyButton v-if="removable" variant="ghost" size="sm" @click.stop="remove">{{ _t('Delete') }}</ChoyButton>
                 </div>
               </div>
             </template>
-          </OOneToManyKanbanField>
+          </ChoyOneToManyField>
         </div>
       </div>
-    </el-tab-pane>
+    </ChoyTab>
   </Xpath>
 </template>
 
@@ -51,8 +56,12 @@ SPDX-License-Identifier: Apache-2.0
 import { defineComponent } from 'vue';
 import { Xpath } from '@/core/web';
 import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
-import { ElButton, ElTabPane, ElTag } from 'element-plus';
-import OOneToManyKanbanField from '@/web/web/components/field/OOneToManyKanbanField.vue';
+import {
+  ChoyButton,
+  ChoyOneToManyField,
+  ChoyTab,
+  PARTNER_DETAIL_TAB_PANELS_XPATH,
+} from '@/web';
 import PartnerIdentifierFormView from '@/partner_commercial/web/views/PartnerIdentifierFormView.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -66,10 +75,9 @@ export default defineComponent({
   extends: PartnerFormView,
   components: {
     Xpath,
-    ElButton,
-    ElTabPane,
-    ElTag,
-    OOneToManyKanbanField,
+    ChoyButton,
+    ChoyTab,
+    ChoyOneToManyField,
     PartnerIdentifierFormView,
   },
   /**
@@ -129,6 +137,7 @@ export default defineComponent({
       hasAction,
       partnerIdentifierActions,
       PartnerIdentifierFormView,
+      PARTNER_DETAIL_TAB_PANELS_XPATH,
       defaultIdentifierRecord,
       canEditIdentifiers,
       resolveCountryLabel,
@@ -157,7 +166,7 @@ export default defineComponent({
 .pcmv-identifier-card__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--choy-foreground, inherit);
 }
 
 .pcmv-identifier-card__flags {
@@ -165,10 +174,30 @@ export default defineComponent({
   gap: 6px;
 }
 
+.pcmv-flag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  padding: 0.125rem 0.5rem;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pcmv-flag--success {
+  background: color-mix(in oklab, var(--choy-success, #16a34a) 18%, transparent);
+  color: var(--choy-success, #16a34a);
+}
+
+.pcmv-flag--muted {
+  background: color-mix(in oklab, var(--choy-muted, #64748b) 18%, transparent);
+  color: var(--choy-muted-foreground, #64748b);
+}
+
 .pcmv-identifier-card__meta,
 .pcmv-identifier-card__line {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-muted-foreground, #64748b);
 }
 
 .pcmv-identifier-card__actions {
