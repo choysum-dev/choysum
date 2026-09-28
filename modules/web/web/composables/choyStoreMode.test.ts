@@ -62,6 +62,45 @@ describe('choyStoreMode', () => {
     w.unmount();
   });
 
+  test('storeBind omits chrome defineModel keys', async () => {
+    const pageStore = { modelName: 'auth.User' };
+    let bind: Record<string, unknown> = {};
+    const Probe = defineComponent({
+      props: {
+        prop: { type: String, required: true },
+        modelValue: { type: Array, default: () => [] },
+        modelModifiers: { type: Object, default: () => ({}) },
+        readonly: { type: Boolean, default: false },
+      },
+      setup(props) {
+        const { storeBind } = useChoyStoreFieldBinding(props as any, { class: 'x' });
+        bind = storeBind.value;
+        return () => h('div', { 'data-test': 'probe' });
+      },
+    });
+    const Host = defineComponent({
+      setup() {
+        provideOPageContext({ store: () => pageStore });
+        return () =>
+          h(Probe, {
+            prop: 'Lines',
+            modelValue: [{ Id: '1' }],
+            modelModifiers: { trim: true },
+            readonly: true,
+          });
+      },
+    });
+    const w = mountApp(Host);
+    await flushPromises();
+    expect(bind.store).toBe(pageStore);
+    expect(bind.prop).toBe('Lines');
+    expect(bind.readonly).toBe(true);
+    expect(bind.class).toBe('x');
+    expect('modelValue' in bind).toBe(false);
+    expect('modelModifiers' in bind).toBe(false);
+    w.unmount();
+  });
+
   test('splitChoyAttrsListeners strips on prefix for v-on object keys', () => {
     const onFoo = () => undefined;
     const onSelectionChange = () => undefined;

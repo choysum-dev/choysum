@@ -51,14 +51,16 @@ export function useChoyStoreFieldBinding(
   const pageStore = useOptionalPageStore();
   return {
     storeMode: computed(() => isChoyStoreFieldBinding(props, pageStore.value)),
-    storeBind: computed(
-      () =>
-        ({
-          ...attrs,
-          ...props,
-          store: props.store ?? pageStore.value,
-        }) as Record<string, unknown>,
-    ),
+    storeBind: computed(() => {
+      const bind: Record<string, unknown> = { ...attrs };
+      for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
+        // Chrome defineModel state must not clobber the store-bound O* engine.
+        if (key === 'modelValue' || key === 'modelModifiers') continue;
+        bind[key] = value;
+      }
+      bind.store = props.store ?? pageStore.value;
+      return bind;
+    }),
   };
 }
 

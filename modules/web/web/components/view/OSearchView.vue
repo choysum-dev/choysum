@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :class="{ 'pointer-events-none select-none': disabled }"
     :inert="disabled || undefined"
     :aria-disabled="disabled ? 'true' : undefined"
+    @keydown.capture="onDisabledKeydown"
   >
     <OSearch
       :store="store"
@@ -63,6 +64,13 @@ const effectivePlaceholder = computed(() => props.placeholder ?? _t('Search...')
 defineOptions({ name: 'OSearchView' });
 
 const emit = defineEmits<{ (e: 'query-update', payload: QueryUpdatePayload<T>): void }>();
+
+/** Without inert, pointer-events-none alone leaves keyboard focusable; block keys. */
+function onDisabledKeydown(event: KeyboardEvent): void {
+  if (!props.disabled) return;
+  event.preventDefault();
+  event.stopPropagation();
+}
 
 // Child-controlled data comes from props first, then store.queryState.
 const keywordForChild = computed<string | undefined>(() => {

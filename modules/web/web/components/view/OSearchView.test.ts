@@ -277,7 +277,7 @@ describe('OSearchView favorites defaults (single child load)', () => {
 
   test('disabled root sets inert, aria-disabled, and pointer-events fallback', async () => {
     stubState.mountDefaults = [];
-    const { unmount, q } = mountSearchView({
+    const { unmount, q, setupState } = mountSearchView({
       store: makeStore(),
       disabled: true,
       initialEmit: false,
@@ -288,6 +288,38 @@ describe('OSearchView favorites defaults (single child load)', () => {
     expect(root.hasAttribute('inert')).toBe(true);
     expect(root.classList.contains('pointer-events-none')).toBe(true);
     expect(root.classList.contains('select-none')).toBe(true);
+    // QJS has no KeyboardEvent; drive the capture handler directly.
+    let prevented = false;
+    let stopped = false;
+    setupState().onDisabledKeydown({
+      preventDefault: () => {
+        prevented = true;
+      },
+      stopPropagation: () => {
+        stopped = true;
+      },
+    });
+    expect(prevented).toBe(true);
+    expect(stopped).toBe(true);
+    unmount();
+  });
+
+  test('enabled root does not swallow keydown', async () => {
+    stubState.mountDefaults = [];
+    const { unmount, setupState } = mountSearchView({
+      store: makeStore(),
+      disabled: false,
+      initialEmit: false,
+    });
+    await flushPromises();
+    let prevented = false;
+    setupState().onDisabledKeydown({
+      preventDefault: () => {
+        prevented = true;
+      },
+      stopPropagation: () => undefined,
+    });
+    expect(prevented).toBe(false);
     unmount();
   });
 });
