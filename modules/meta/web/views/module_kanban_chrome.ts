@@ -25,7 +25,7 @@ export function isModuleInstalled(status?: string): boolean {
 
 /** Format module timestamps for card metadata (local YYYY-MM-DD HH:mm). */
 export function formatModuleKanbanDate(dt?: unknown): string {
-  if (!dt) return '';
+  if (dt === undefined || dt === null) return '';
   try {
     const d =
       typeof dt === 'number'
@@ -57,13 +57,10 @@ export function formatModuleOpSummary(summary: unknown): string {
   if (typeof summary === 'string') return summary;
   if (typeof summary === 'object' && summary !== null) {
     const record = summary as Record<string, unknown>;
-    const message = record.message;
-    if (message !== undefined && message !== null && String(message).trim() !== '') {
-      return String(message);
-    }
-    const code = record.code;
-    if (code !== undefined && code !== null && String(code).trim() !== '') {
-      return String(code);
+    for (const key of ['message', 'code'] as const) {
+      const value = record[key];
+      if (typeof value === 'string' && value.trim() !== '') return value;
+      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
     }
   }
   try {
@@ -99,6 +96,25 @@ export function captureDialogFocusTarget(
   const el = doc.activeElement as { focus?: () => void } | null;
   if (!el || typeof el.focus !== 'function') return null;
   return el as HTMLElement;
+}
+
+/**
+ * Sequence gate so a superseded PlanOperation response cannot overwrite a newer dialog.
+ */
+export function createPlanDialogSessionGate() {
+  let seq = 0;
+  return {
+    begin(): number {
+      seq += 1;
+      return seq;
+    },
+    invalidate(): void {
+      seq += 1;
+    },
+    isCurrent(requestSeq: number): boolean {
+      return requestSeq === seq;
+    },
+  };
 }
 
 /**

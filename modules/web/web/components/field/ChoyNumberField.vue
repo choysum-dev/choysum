@@ -4,9 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Store hosts: bigint / int / decimal O* engines; chrome keeps defineModel. -->
+  <!-- Store hosts: bigint / int / float(number) / decimal engines; chrome keeps defineModel. -->
   <OBigintField v-if="storeMode && mode === 'bigint'" v-bind="(storeBind as any)" />
   <OIntField v-else-if="storeMode && mode === 'integer'" v-bind="(storeBind as any)" />
+  <ONumberField v-else-if="storeMode && mode === 'float'" v-bind="(storeBind as any)" />
   <ODecimalField v-else-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
     v-else
@@ -54,6 +55,7 @@ import ChoyFieldBase from './ChoyFieldBase.vue';
 import OBigintField from './OBigintField.vue';
 import ODecimalField from './ODecimalField.vue';
 import OIntField from './OIntField.vue';
+import ONumberField from './ONumberField.vue';
 import {
   choyFieldChromeDefaults,
   parseChoyNumber,
@@ -89,7 +91,7 @@ const props = withDefaults(
   {
     ...choyFieldChromeDefaults,
     placeholder: '',
-    mode: 'float',
+    mode: 'decimal',
   },
 );
 

@@ -309,6 +309,7 @@ import {
 import { createModuleKanbanOpProgressHooks } from '../composables/moduleKanbanOpProgress';
 import {
   captureDialogFocusTarget,
+  createPlanDialogSessionGate,
   formatModuleKanbanDate,
   formatModuleOpSummary,
   isModuleInstalled,
@@ -379,6 +380,7 @@ const dialogVisible = ref(false);
 const dialogStep = ref<'plan' | 'progress' | 'result'>('plan');
 const planLoading = ref(false);
 const executeLoading = ref(false);
+const planDialogSession = createPlanDialogSessionGate();
 const plan = ref<PlanOperationResp | null>(null);
 const opStatus = ref<OpStatusResp | null>(null);
 const action = ref<ModuleAction>('install');
@@ -654,20 +656,24 @@ async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<
   dialogFocusRestore = captureDialogFocusTarget();
   dialogVisible.value = true;
   dialogStep.value = 'plan';
+  const requestSeq = planDialogSession.begin();
   planLoading.value = true;
   await nextTick();
   dialogRef.value?.focus();
   try {
-    plan.value = (await (moduleStore as any).PlanOperation({
+    const nextPlan = (await (moduleStore as any).PlanOperation({
       action: nextAction,
       moduleName: record.ModuleName,
       withDemo: nextAction === 'install' ? withDemo.value : false,
     })) as PlanOperationResp;
+    if (!planDialogSession.isCurrent(requestSeq)) return;
+    plan.value = nextPlan;
   } catch (error: any) {
+    if (!planDialogSession.isCurrent(requestSeq)) return;
     ChoyMessage.error(error?.message || _t('Failed to load plan'));
     closeDialog();
   } finally {
-    planLoading.value = false;
+    if (planDialogSession.isCurrent(requestSeq)) planLoading.value = false;
   }
 }
 
@@ -710,7 +716,9 @@ function onDialogClose() {
 }
 
 function closeDialog() {
+  planDialogSession.invalidate();
   dialogVisible.value = false;
+  planLoading.value = false;
   onDialogClose();
   const restore = dialogFocusRestore;
   dialogFocusRestore = null;

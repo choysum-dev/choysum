@@ -3,6 +3,7 @@
 
 import {
   captureDialogFocusTarget,
+  createPlanDialogSessionGate,
   formatModuleKanbanDate,
   formatModuleOpSummary,
   isModuleInstalled,
@@ -28,6 +29,9 @@ test('isModuleInstalled: case-insensitive installed only', () => {
 
 test('formatModuleKanbanDate: empty and valid timestamps', () => {
   expect(formatModuleKanbanDate(undefined)).toBe('');
+  expect(formatModuleKanbanDate(null)).toBe('');
+  // Epoch zero is a valid timestamp; do not treat it as empty.
+  expect(formatModuleKanbanDate(0).length).toBeGreaterThan(0);
   expect(formatModuleKanbanDate('not-a-date')).toBe('not-a-date');
   const formatted = formatModuleKanbanDate('2026-09-28T10:05:00Z');
   expect(formatted.length).toBeGreaterThan(10);
@@ -54,6 +58,10 @@ test('formatModuleOpSummary: string / message / code / object / throw', () => {
   // Empty/blank message must fall through to code (not short-circuit on key presence).
   expect(formatModuleOpSummary({ message: '', code: 'C1' })).toBe('C1');
   expect(formatModuleOpSummary({ message: '   ', code: 'C2' })).toBe('C2');
+  // Non-scalar message/code fall through to JSON.stringify (or the other scalar key).
+  expect(formatModuleOpSummary({ message: { nested: true }, code: 'C3' })).toBe('C3');
+  expect(formatModuleOpSummary({ message: { nested: true }, a: 1 })).toContain('nested');
+  expect(formatModuleOpSummary({ code: 42 })).toBe('42');
   expect(formatModuleOpSummary({ a: 1 })).toContain('a');
   const cyclic: any = {};
   cyclic.self = cyclic;
@@ -83,4 +91,16 @@ test('captureDialogFocusTarget / resolveModuleKanbanCardId', () => {
   expect(resolveModuleKanbanCardId(null)).toBe('');
   expect(resolveModuleKanbanCardId({})).toBe('');
   expect(resolveModuleKanbanCardId({ Id: { nested: true } })).toBe('');
+  expect(resolveModuleKanbanCardId({ Id: Number.NaN })).toBe('');
+});
+
+test('createPlanDialogSessionGate: ignore superseded plan responses', () => {
+  const gate = createPlanDialogSessionGate();
+  const first = gate.begin();
+  expect(gate.isCurrent(first)).toBe(true);
+  gate.invalidate();
+  expect(gate.isCurrent(first)).toBe(false);
+  const second = gate.begin();
+  expect(gate.isCurrent(first)).toBe(false);
+  expect(gate.isCurrent(second)).toBe(true);
 });

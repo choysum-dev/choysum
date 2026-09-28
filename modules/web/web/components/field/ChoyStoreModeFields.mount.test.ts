@@ -36,6 +36,7 @@ import ODateField from './ODateField.vue';
 import OIntField from './OIntField.vue';
 import ODecimalField from './ODecimalField.vue';
 import OBigintField from './OBigintField.vue';
+import ONumberField from './ONumberField.vue';
 import OJsonobjectField from './OJsonobjectField.vue';
 import OImageField from './OImageField.vue';
 import OVirtualField from './OVirtualField.vue';
@@ -52,7 +53,7 @@ const fakeStore = { modelName: 'auth.User', meta: { fields: {} } } as any;
 
 function stubHost(Comp: Component, testId: string) {
   stubSfc(Comp, {
-    props: { store: null, prop: String, valueMode: String, widget: String },
+    props: { store: null, prop: String, valueMode: String, widget: String, valueFormat: String },
     setup: ((props: any) => {
       return () =>
         h('div', {
@@ -60,6 +61,7 @@ function stubHost(Comp: Component, testId: string) {
           'data-prop': String(props.prop || ''),
           'data-value-mode': String(props.valueMode || ''),
           'data-widget': String(props.widget || ''),
+          'data-value-format': String(props.valueFormat || ''),
         });
     }) as any,
   });
@@ -76,6 +78,7 @@ describe('Choy store-mode field hosts', () => {
     OIntField,
     ODecimalField,
     OBigintField,
+    ONumberField,
     OJsonobjectField,
     OImageField,
     OVirtualField,
@@ -102,6 +105,7 @@ describe('Choy store-mode field hosts', () => {
     stubHost(OIntField as any, 'o-int');
     stubHost(ODecimalField as any, 'o-decimal');
     stubHost(OBigintField as any, 'o-bigint');
+    stubHost(ONumberField as any, 'o-number');
     stubHost(OJsonobjectField as any, 'o-json');
     stubHost(OImageField as any, 'o-image');
     stubHost(OVirtualField as any, 'o-virtual');
@@ -155,7 +159,7 @@ describe('Choy store-mode field hosts', () => {
     }
   });
 
-  test('NumberField store mode routes integer / bigint / decimal hosts', async () => {
+  test('NumberField store mode routes integer / bigint / decimal / float hosts', async () => {
     const intW = await mountField(ChoyNumberField, {
       store: fakeStore,
       prop: 'Padding',
@@ -186,8 +190,28 @@ describe('Choy store-mode field hosts', () => {
       prop: 'Factor',
       mode: 'float',
     });
-    expect(floatW.q('[data-test=o-decimal]')).not.toBeNull();
+    expect(floatW.q('[data-test=o-number]')).not.toBeNull();
+    expect(floatW.q('[data-test=o-decimal]')).toBeNull();
     floatW.unmount();
+
+    // Default mode is decimal so Decimal-typed domain fields stay on ODecimalField.
+    const defaultW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'Rounding',
+    });
+    expect(defaultW.q('[data-test=o-decimal]')).not.toBeNull();
+    defaultW.unmount();
+  });
+
+  test('DateField store mode passes date-only valueFormat', async () => {
+    const w = await mountField(ChoyDateField, {
+      store: fakeStore,
+      prop: 'Date',
+    });
+    const host = w.q('[data-test=o-date]');
+    expect(host).not.toBeNull();
+    expect(host?.getAttribute('data-value-format')).toBe('YYYY-MM-DD');
+    w.unmount();
   });
 
   test('NumberField chrome mode renders anchor and uses bigint inputmode', async () => {

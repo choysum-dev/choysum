@@ -13,5 +13,7 @@ export function resolveListRowRecordId(payload: unknown): string {
   const id = row?.Id;
   // Non-scalars stringify to "[object Object]" and would navigate to a bogus route.
   if (typeof id !== 'string' && typeof id !== 'number') return '';
+  // NaN / Infinity stringify to truthy text and would navigate to a bogus route.
+  if (typeof id === 'number' && !Number.isFinite(id)) return '';
   return String(id).trim();
 }

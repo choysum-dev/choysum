@@ -20,4 +20,6 @@ test('resolveListRowRecordId: blank or missing Id fails closed', () => {
   expect(resolveListRowRecordId({ row: {} })).toBe('');
   expect(resolveListRowRecordId({ Id: { nested: true } })).toBe('');
   expect(resolveListRowRecordId({ Id: ['x'] })).toBe('');
+  expect(resolveListRowRecordId({ Id: Number.NaN })).toBe('');
+  expect(resolveListRowRecordId({ Id: Number.POSITIVE_INFINITY })).toBe('');
 });

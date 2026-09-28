@@ -18,23 +18,28 @@ const pages: Array<[string, any, string]> = [
 ];
 
 test('meta page mount: every ChoyPage host mounts under choysumMount', async () => {
+  const failures: string[] = [];
   for (const [name, Comp, path] of pages) {
-    const wrapper = mount(Comp as any, {
-      global: buildPageMountGlobal({ route: { path, fullPath: path } }),
-    });
+    let wrapper: ReturnType<typeof mount> | null = null;
     try {
+      wrapper = mount(Comp as any, {
+        global: buildPageMountGlobal({ route: { path, fullPath: path } }),
+      });
       await flushPromises();
+      // Accept ChoyPage markers only (real anchor, dedicated stub, or ChildView path stub).
+      // fe-stub-opage would hide an incomplete OPage→ChoyPage migration.
       const ok =
         wrapper.find('[data-anchor="choy.page"]').exists() ||
-        wrapper.find('[data-testid="fe-stub-opage"]').exists() ||
         wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||
         wrapper.find('[data-testid="fe-stub-child-view"]').exists();
-      // expect() has no message arg in choysumtest; throw carries the page name.
-      if (!ok) throw new Error(`meta page mount failed: ${name}`);
+      if (!ok) failures.push(name);
+    } catch (error) {
+      failures.push(`${name}: ${(error as Error).message || String(error)}`);
     } finally {
-      wrapper.unmount();
+      wrapper?.unmount();
     }
   }
+  if (failures.length) throw new Error(`meta page mount failed: ${failures.join(', ')}`);
 });
 
 test('meta menus: root icon is Lucide Settings component', () => {

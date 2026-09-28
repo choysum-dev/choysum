@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ODateField v-if="storeMode" v-bind="(storeBind as any)" />
+  <ODateField v-if="storeMode" v-bind="(storeBind as any)" value-format="YYYY-MM-DD" />
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"
