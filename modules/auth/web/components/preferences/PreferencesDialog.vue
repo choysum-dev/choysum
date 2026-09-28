@@ -105,7 +105,7 @@ function onDialogKeydown(event: KeyboardEvent): void {
     visible.value = false;
     return;
   }
-  const root = dialogRef.value;
+  const root = dialogRef.value as HTMLElement | null;
   if (root) trapDialogTabKey(event, root);
 }
 

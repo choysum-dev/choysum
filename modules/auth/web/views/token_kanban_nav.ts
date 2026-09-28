@@ -37,8 +37,9 @@ export function resolveTokenKanbanCardId(row: TokenKanbanRow, index: number, lan
   const payload = resolveTokenKanbanRowPayload(row);
   const key = row && typeof row === 'object' && 'key' in row ? (row as { key?: string }).key : undefined;
   const id = payload.Id ?? key;
-  if (id != null && String(id).trim() !== '') {
-    return String(id);
+  const cardId = id == null ? '' : String(id).trim();
+  if (cardId !== '') {
+    return cardId;
   }
   return `${laneKey}-${index}`;
 }
@@ -62,7 +63,7 @@ export function resolveTokenMoveRecordId(
 export function resolveTokenUsernameLabel(payload: Record<string, unknown> | null | undefined): string {
   const row = payload ?? {};
   const user = row['UserId.Username'] ?? row.UserId;
-  if (user && typeof user === 'object' && 'Username' in (user as object)) {
+  if (user && typeof user === 'object') {
     return String((user as { Username?: string }).Username ?? '');
   }
   return String(user ?? '');

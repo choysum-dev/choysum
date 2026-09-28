@@ -49,6 +49,7 @@ test('resolveTokenKanbanRowPayload: empty or nullish payload falls back to row',
 test('resolveTokenKanbanCardId: prefers payload Id then row key', () => {
   expect(resolveTokenKanbanCardId({ payload: { Id: 't1' } }, 0, 'lane-a')).toBe('t1');
   expect(resolveTokenKanbanCardId({ key: 'row-k', payload: {} }, 0, 'lane-a')).toBe('row-k');
+  expect(resolveTokenKanbanCardId({ payload: { Id: '  padded  ' } }, 0, 'lane-a')).toBe('padded');
 });
 
 test('resolveTokenKanbanCardId: reads Id from raw records', () => {
@@ -74,6 +75,8 @@ test('resolveTokenUsernameLabel: prefers UserId.Username then string UserId', ()
   expect(resolveTokenUsernameLabel({ 'UserId.Username': 'alice' })).toBe('alice');
   expect(resolveTokenUsernameLabel({ UserId: { Username: 'bob' } })).toBe('bob');
   expect(resolveTokenUsernameLabel({ UserId: 'user-42' })).toBe('user-42');
+  // Relation object without Username must not stringify to "[object Object]".
+  expect(resolveTokenUsernameLabel({ UserId: { Id: 'u1' } })).toBe('');
   expect(resolveTokenUsernameLabel({})).toBe('');
   expect(resolveTokenUsernameLabel(null)).toBe('');
 });

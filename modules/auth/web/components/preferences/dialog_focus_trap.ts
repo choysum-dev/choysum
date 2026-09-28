@@ -4,7 +4,7 @@
 const NATIVE_FOCUSABLE = new Set(['A', 'BUTTON', 'TEXTAREA', 'INPUT', 'SELECT']);
 
 /** True when the element participates in Tab order inside a dialog. */
-function isTabFocusable(el: HTMLElement): boolean {
+export function isTabFocusable(el: HTMLElement): boolean {
   if (el.getAttribute('aria-hidden') === 'true') return false;
   if (typeof el.closest === 'function' && el.closest('[inert]')) return false;
 
@@ -12,6 +12,9 @@ function isTabFocusable(el: HTMLElement): boolean {
   if (tabindexAttr === '-1') return false;
 
   const tag = el.tagName;
+  const inputType = String(el.getAttribute('type') || (el as HTMLInputElement).type || '').toLowerCase();
+  if (tag === 'INPUT' && inputType === 'hidden') return false;
+
   const disabled =
     el.hasAttribute('disabled') || (el as HTMLButtonElement).disabled === true;
 

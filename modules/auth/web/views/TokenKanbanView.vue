@@ -325,9 +325,13 @@ async function onCardMove(move: ChoyKanbanMove) {
     await syncLanesFromController();
   } catch (e) {
     ChoyMessage.error(_t('Move failed; refreshed to recover'));
-    await applyCurrentQuery();
-    await syncLanesFromController();
     console.error('Token kanban move failed:', e);
+    try {
+      await applyCurrentQuery();
+    } catch (reloadError) {
+      console.error('Token kanban reload failed:', reloadError);
+    }
+    await syncLanesFromController();
   } finally {
     movePending.value = false;
   }
