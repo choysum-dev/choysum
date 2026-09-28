@@ -30,20 +30,20 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
   const dialog = p.locator('.o-preferences-dialog');
   await expect(dialog).toBeVisible({ timeout: 15_000 });
 
-  const tzSelect = dialog.locator('.el-form-item').nth(1).locator('.el-select');
-  await tzSelect.click();
-  const filterInput = tzSelect.locator('input');
-  await filterInput.fill(iana);
-  // Click the matching option in any open Element Plus dropdown (avoid :visible).
   await expect
     .poll(
       async () =>
         p.evaluate((want: string) => {
-          const opts = Array.from(document.querySelectorAll('.el-select-dropdown li, [role="option"]'));
-          const el = opts.find(o => String(o.textContent || '').trim() === want);
-          if (!el) return false;
-          el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-          return true;
+          const select = document.querySelector(
+            '.o-preferences-dialog [data-testid="preferences-timezone"]'
+          ) as HTMLSelectElement | null;
+          if (!select) return false;
+          const values = Array.from(select.options).map(opt => String(opt.value || ''));
+          if (!values.includes(want)) return false;
+          select.value = want;
+          select.dispatchEvent(new Event('input', { bubbles: true }));
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          return select.value === want;
         }, iana),
       { timeout: 15_000 }
     )

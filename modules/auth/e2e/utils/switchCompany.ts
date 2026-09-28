@@ -37,69 +37,41 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
 }
 
 /**
- * Pick a non-selected company option in the open active-company el-select.
- * Uses HTMLElement.click() so Element Plus Vue handlers run (MouseEvent dispatch is flaky).
+ * Pick a non-selected company option in the open active-company native select.
  */
 async function pickOtherActiveCompanyOption(): Promise<void> {
-  // Scope to the company panel: select uses teleported=false, so options live under the panel.
-  // Other page dropdowns must not skip opening this select.
-  const dropdownOpen = await page.evaluate(() => {
-    const panel = document.querySelector('[data-testid="company-switch-panel"]');
-    if (!panel) return false;
-    const select = panel.querySelector('[data-testid="company-active-select"]');
-    if (!select) return false;
-    if (select.getAttribute('aria-expanded') === 'true') return true;
-    if (select.querySelector('[aria-expanded="true"]')) return true;
-    const nodes = Array.from(panel.querySelectorAll('.el-select-dropdown')) as HTMLElement[];
-    return nodes.some(el => {
-      const style = window.getComputedStyle(el);
-      if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
-        return false;
-      }
-      const r = el.getBoundingClientRect();
-      if (r.width <= 0 || r.height <= 0) return false;
-      return !!el.querySelector('.el-select-dropdown__item, [role="option"]');
-    });
+  await expect(page.getByTestId('company-active-select')).toBeVisible({ timeout: 10_000 });
+
+  const otherValue = await page.evaluate(() => {
+    const select = document.querySelector(
+      '[data-testid="company-active-select"]'
+    ) as HTMLSelectElement | null;
+    if (!select) return '';
+    const current = String(select.value || '').trim();
+    const values = Array.from(select.options)
+      .map(opt => String(opt.value || '').trim())
+      .filter(Boolean);
+    const other = values.find(v => v !== current) || '';
+    if (!other) return '';
+    select.value = other;
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return select.value === other ? other : '';
   });
-  if (!dropdownOpen) {
-    await page.getByTestId('company-active-select').click();
-  }
+  expect(otherValue).not.toBe('');
 
   await expect
     .poll(
       async () =>
         page.evaluate(() => {
-          const panel = document.querySelector('[data-testid="company-switch-panel"]');
-          if (!panel) return 0;
-          const opts = Array.from(
-            panel.querySelectorAll(
-              '.el-select-dropdown__item, .el-select-dropdown li, [role="option"]'
-            )
-          ) as HTMLElement[];
-          return opts.length;
+          const select = document.querySelector(
+            '[data-testid="company-active-select"]'
+          ) as HTMLSelectElement | null;
+          return String(select?.value || '').trim();
         }),
-      { timeout: 10_000 }
+      { timeout: 5_000 }
     )
-    .toBeGreaterThanOrEqual(2);
-
-  // Never fall back to the last option: it may be the already-selected company and
-  // then Apply is a no-op while waits burn a full timeout.
-  const clicked = await page.evaluate(() => {
-    const panel = document.querySelector('[data-testid="company-switch-panel"]');
-    if (!panel) return false;
-    const opts = Array.from(
-      panel.querySelectorAll(
-        '.el-select-dropdown__item, .el-select-dropdown li, [role="option"]'
-      )
-    ) as HTMLElement[];
-    const target = opts.find(
-      o => !o.classList.contains('is-selected') && o.getAttribute('aria-selected') !== 'true'
-    );
-    if (!target) return false;
-    target.click();
-    return true;
-  });
-  expect(clicked).toBe(true);
+    .toBe(otherValue);
 }
 
 async function clickApplyButton(): Promise<void> {
@@ -118,8 +90,7 @@ async function clickApplyButton(): Promise<void> {
 /**
  * Open the company switcher, select another company, and wait until activeCompanyId changes.
  *
- * Retries the full open→select→apply path: Element Plus often swallows the first
- * apply click under CDP, and panel-open refreshToken can race with a thin click path.
+ * Retries the full open→select→apply path: panel-open refreshToken can race with a thin click path.
  *
  * Success is JWT activeCompanyId change (tokens are persisted; identity is not).
  */
@@ -131,7 +102,7 @@ export async function switchCompanyViaUI(): Promise<void> {
       const trigger = page.getByTestId('company-switch-trigger');
       await expect(trigger).toBeVisible();
 
-      // Presence alone is not enough: Element Plus may keep the panel mounted while hidden.
+      // Presence alone is not enough: the panel may stay mounted while hidden.
       const panel = page.getByTestId('company-switch-panel');
       const panelVisible = await panel.isVisible().catch(() => false);
       // If already open, an in-flight panel-open RefreshTokens may still complete later and
