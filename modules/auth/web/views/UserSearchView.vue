@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OSearchView
+  <ChoySearchView
     :store="store"
     :default-filters="[
       {
@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     ]"
     :default-groups="defaultGroups"
     :initial-emit="true"
-    @query-update="onQueryUpdate"
+    @query-update="onQueryUpdate as any"
   />
 </template>
 
@@ -23,7 +23,7 @@ SPDX-License-Identifier: Apache-2.0
 import type User from '@/auth/service/models/user/user';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { GroupBySpec, QueryUpdatePayload } from '@/web/web/query/types';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { ChoySearchView } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('auth', { scope: 'web/views/UserSearchView' });

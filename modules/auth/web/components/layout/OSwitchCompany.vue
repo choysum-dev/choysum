@@ -4,71 +4,67 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-popover
-    v-model:visible="visible"
-    placement="bottom-end"
-    trigger="click"
-    :teleported="true"
-    popper-class="o-switch-company__popover"
-    :popper-style="{ width: '320px' }"
-    @before-enter="ensureCompanies"
-  >
-    <template #reference>
-      <el-button text class="o-switch-company__trigger o-header__action-item" :aria-label="_t('Switch company')" data-testid="company-switch-trigger" @click.stop>
-        {{ currentCompanyLabel }}
-      </el-button>
-    </template>
+  <div ref="rootRef" class="relative">
+    <ChoyButton
+      variant="ghost"
+      size="sm"
+      class="o-switch-company__trigger o-header__action-item max-w-[12rem] truncate"
+      :aria-expanded="visible"
+      :aria-label="_t('Switch company')"
+      data-testid="company-switch-trigger"
+      @click.stop="togglePanel"
+    >
+      {{ currentCompanyLabel }}
+    </ChoyButton>
 
-    <div class="o-switch-company__panel" data-testid="company-switch-panel" @click.stop>
-      <el-form label-position="top" class="o-switch-company__form">
-        <el-form-item :label="_t('Current Company')">
-          <el-select
+    <div
+      v-if="visible"
+      class="absolute end-0 top-full z-50 mt-1 w-80 rounded-md border border-border bg-background p-3 shadow-lg"
+      data-testid="company-switch-panel"
+      @click.stop
+    >
+      <div class="o-switch-company__panel flex flex-col gap-3">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">{{ _t('Current Company') }}</span>
+          <select
             v-model="draftActiveCompanyId"
-            filterable
-            :teleported="false"
-            class="o-switch-company__select"
-            :placeholder="_t('Select company')"
+            class="o-switch-company__select rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             data-testid="company-active-select"
           >
-            <el-option v-for="c in companies" :key="c.Id" :label="c.DisplayName || c.Id" :value="c.Id" />
-          </el-select>
-        </el-form-item>
+            <option v-for="c in companies" :key="c.Id" :value="c.Id">{{ c.DisplayName || c.Id }}</option>
+          </select>
+        </label>
 
-        <el-form-item :label="_t('Available Companies')">
-          <el-select
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">{{ _t('Available Companies') }}</span>
+          <select
             v-model="draftEnabledCompanyIds"
             multiple
-            filterable
-            collapse-tags
-            collapse-tags-tooltip
-            :teleported="false"
-            class="o-switch-company__select"
-            :placeholder="_t('Select available companies')"
+            class="o-switch-company__select min-h-[5.5rem] rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             data-testid="company-enabled-select"
             @change="onEnabledChange"
-            @remove-tag="onRemoveEnabledTag"
           >
-            <el-option v-for="c in companies" :key="c.Id" :label="c.DisplayName || c.Id" :value="c.Id" />
-          </el-select>
-        </el-form-item>
+            <option v-for="c in companies" :key="'enabled-' + c.Id" :value="c.Id">{{ c.DisplayName || c.Id }}</option>
+          </select>
+        </label>
 
-        <div v-if="applyDisabledReason" class="o-switch-company__hint" data-testid="company-switch-hint">
+        <div v-if="applyDisabledReason" class="o-switch-company__hint text-xs text-foreground/60" data-testid="company-switch-hint">
           {{ applyDisabledReason }}
         </div>
 
-        <div class="o-switch-company__actions">
-          <el-button type="primary" size="small" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
+        <div class="o-switch-company__actions flex justify-end">
+          <ChoyButton size="sm" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
             {{ _t('Apply') }}
-          </el-button>
+          </ChoyButton>
         </div>
-      </el-form>
+      </div>
     </div>
-  </el-popover>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue';
-import { ElPopover, ElButton, ElForm, ElFormItem, ElSelect, ElOption } from 'element-plus';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { ChoyButton } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
@@ -92,8 +88,29 @@ function getGlobalCompanyStore(): any {
 }
 
 const visible = ref(false);
+const rootRef = ref<HTMLElement | null>(null);
 /** Guards async open-sync so a late refresh cannot reset an in-progress selection. */
 let panelOpenGeneration = 0;
+
+function togglePanel() {
+  visible.value = !visible.value;
+}
+
+function onDocumentClick(event: MouseEvent) {
+  if (!visible.value) return;
+  const root = rootRef.value;
+  if (root && !root.contains(event.target as Node)) {
+    visible.value = false;
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick);
+});
 
 const meta = computed(() => ((authStore.identity as any)?.metadata ?? {}) as any);
 const currentActiveCompanyId = computed(() => String(meta.value?.activeCompanyId ?? '').trim());
@@ -105,7 +122,6 @@ const liveAllowedCompanyIds = ref<string[]>([]);
 const allowedCompanyIds = computed(() => {
   const xs = Array.isArray(meta.value?.allowedCompanyIds) ? meta.value.allowedCompanyIds : [];
   const ids = xs.map((x: any) => String(x ?? '').trim()).filter(Boolean);
-  // Keep the current active/enabled companies and any freshly loaded user allowlist visible.
   const merged = new Set<string>(
     [...ids, ...liveAllowedCompanyIds.value, ...currentEnabledCompanyIds.value, currentActiveCompanyId.value].filter(Boolean)
   );
@@ -136,9 +152,6 @@ function setEq(a: string[], b: string[]): boolean {
 watch(
   [currentActiveCompanyId, currentEnabledCompanyIds],
   ([active, enabled]) => {
-    // Panel-open drafts are user-owned (seeded in the visible watcher). A token
-    // refresh while the popover is open must not clobber an in-progress selection,
-    // or isDirty/canApply flip back to "No changes to apply".
     syncCompanyDraftsFromJwt({
       panelVisible: visible.value,
       activeCompanyId: active,
@@ -165,18 +178,10 @@ function ensureActiveInEnabled(): void {
 }
 
 /**
- * Keep the current company in available companies after select changes (incl. backspace).
+ * Keep the current company in available companies after select changes.
  */
 function onEnabledChange(): void {
   ensureActiveInEnabled();
-}
-
-/**
- * Current company cannot leave the available set (server: active ∈ enabled).
- */
-function onRemoveEnabledTag(id: unknown): void {
-  if (String(id ?? '') !== draftActiveCompanyId.value) return;
-  void nextTick(() => ensureActiveInEnabled());
 }
 
 watch(
@@ -206,7 +211,7 @@ const fetchedSig = ref('');
 const labelsReady = ref(false);
 
 /**
- * Seed select options from allowed ids immediately so el-select does not drop draft values
+ * Seed select options from allowed ids immediately so selects do not drop draft values
  * while DisplayName rows are still loading.
  */
 function seedCompanyOptions(ids: string[]): void {
@@ -232,27 +237,23 @@ async function ensureCompanies(): Promise<void> {
   try {
     const companyStore = getGlobalCompanyStore();
     const rows = (await companyStore.Search(['Id', 'in', ids] as any, { fields: ['Id', 'DisplayName'], limit: 1000 } as any)) as any[];
-    // A newer ensureCompanies call owns fetchedSig; drop this stale response.
     if (fetchedSig.value !== sig) return;
 
     const out: CompanyRow[] = (rows || [])
       .map(r => ({ Id: String((r as any)?.Id ?? '').trim(), DisplayName: String((r as any)?.DisplayName ?? '').trim() }))
       .filter(r => !!r.Id);
 
-    // Preserve the current allowlist ordering; use latest ids in case the set grew mid-flight.
     const map = new Map(out.map(r => [r.Id, r] as const));
     companies.value = allowedCompanyIds.value.map(id => map.get(id) ?? { Id: id, DisplayName: '' });
     labelsReady.value = true;
   } catch {
     if (fetchedSig.value !== sig) return;
-    // Allow a later popover open (or metadata change) to retry the fetch.
     fetchedSig.value = '';
     seedCompanyOptions(allowedCompanyIds.value);
     labelsReady.value = true;
   }
 }
 
-// Prefetch labels for the header trigger; do not wait until the popover opens.
 watch(
   allowedCompanyIds,
   ids => {
@@ -283,7 +284,6 @@ async function syncAllowedCompaniesFromUser(): Promise<void> {
 
 /**
  * Re-sync drafts each time the panel opens, then refresh the allowlist in the background.
- * Do not reset drafts after the async refresh — that races with user selection and keeps Apply disabled.
  */
 watch(visible, async isOpen => {
   if (!isOpen) return;
@@ -303,7 +303,6 @@ watch(visible, async isOpen => {
   await syncAllowedCompaniesFromUser();
   if (openGen !== panelOpenGeneration || !visible.value) return;
 
-  // Expand labels for any newly discovered allowed companies without clobbering drafts.
   fetchedSig.value = '';
   await ensureCompanies();
 });
@@ -322,8 +321,6 @@ const currentCompanyLabel = computed(() => {
   if (!id) return _t('Company');
   const name = companyNameById.value.get(id);
   if (name) return name;
-  // Wait until the label fetch settles before falling back to the raw id.
-  // Do not use fetchedSig here: it is set before Search completes and would flash the id.
   return labelsReady.value ? id : _t('Company');
 });
 
@@ -376,42 +373,5 @@ async function apply(): Promise<void> {
 .o-switch-company__trigger {
   height: 36px;
   padding: 0 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--el-border-radius-base);
-  color: var(--el-text-color-regular);
-
-  &:hover {
-    color: var(--el-color-primary);
-    background-color: var(--el-color-primary-light-9);
-  }
-}
-
-.o-switch-company__panel {
-  padding: 8px;
-}
-
-.o-switch-company__actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.o-switch-company__hint {
-  margin: 0 0 8px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--el-text-color-secondary);
-}
-
-.o-switch-company__select {
-  width: 100%;
-}
-</style>
-
-<style lang="scss">
-/* Teleported popover: keep non-teleported select dropdowns visible and interactive. */
-.o-switch-company__popover {
-  overflow: visible;
 }
 </style>

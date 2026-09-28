@@ -4,19 +4,19 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :store="uiResourceGrantStore">
+  <ChoyPage :store="uiResourceGrantStore">
     <RoleUiResourceFormView
     />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import RoleUiResourceFormView from '@/auth/web/views/RoleUiResourceFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type RoleUiResource from '@/auth/service/models/role_ui_resource';
+import { ChoyPage } from '@/web';
 
 const route = useRoute();
 const uiResourceGrantStore = createStoreByModel<typeof RoleUiResource>('auth.RoleUiResource', {

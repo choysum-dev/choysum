@@ -4,104 +4,128 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Xpath expr="//div[@class='o-header__actions-primary']" position="inside">
-    <el-divider direction="vertical" class="o-header__action-divider" />
-    <el-button v-if="!isAuthenticated" text class="o-header__action-btn o-header__action-item" :aria-label="_t('Log in')" @click="handleLogin">
+  <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
+    <span class="mx-1 inline-block h-5 w-px bg-border" role="separator" />
+    <ChoyButton
+      v-if="!isAuthenticated"
+      variant="ghost"
+      size="sm"
+      :aria-label="_t('Log in')"
+      @click="handleLogin"
+    >
       {{ _t('Log In') }}
-    </el-button>
-    <el-button v-if="isAuthenticated" text class="o-header__action-btn o-header__action-item" :aria-label="_t('Notifications')" @click="handleNotificationClick">
-      <el-icon :size="20"><Bell /></el-icon>
-    </el-button>
+    </ChoyButton>
+    <ChoyButton
+      v-if="isAuthenticated"
+      variant="ghost"
+      size="sm"
+      :aria-label="_t('Notifications')"
+      @click="handleNotificationClick"
+    >
+      <Bell class="size-5" aria-hidden="true" />
+    </ChoyButton>
     <OSwitchCompany v-if="isAuthenticated" />
-    <el-dropdown v-if="isAuthenticated" trigger="click" class="o-header__action-item" placement="bottom-end">
-      <el-button text class="o-header__action-btn" :aria-label="_t('User menu')">
-        <el-icon :size="20"><User /></el-icon>
-      </el-button>
-      <template #dropdown>
-        <el-dropdown-menu>
-          <el-dropdown-item @click="openPreferences">{{ _t('Profile') }}</el-dropdown-item>
-          <el-dropdown-item @click="openPreferences">{{ _t('Settings') }}</el-dropdown-item>
-          <el-dropdown-item divided @click="handleLogout">{{ _t('Log Out') }}</el-dropdown-item>
-        </el-dropdown-menu>
-      </template>
-    </el-dropdown>
+    <div v-if="isAuthenticated" ref="userMenuRoot" class="relative">
+      <ChoyButton
+        variant="ghost"
+        size="sm"
+        :aria-expanded="userMenuOpen"
+        :aria-label="_t('User menu')"
+        @click.stop="userMenuOpen = !userMenuOpen"
+      >
+        <User class="size-5" aria-hidden="true" />
+      </ChoyButton>
+      <div
+        v-if="userMenuOpen"
+        class="absolute end-0 top-full z-50 mt-1 min-w-[10rem] rounded-md border border-border bg-background py-1 shadow-md"
+        role="menu"
+        @click.stop
+      >
+        <button type="button" class="block w-full px-3 py-1.5 text-start text-sm hover:bg-muted" role="menuitem" @click="onMenuProfile">
+          {{ _t('Profile') }}
+        </button>
+        <button type="button" class="block w-full px-3 py-1.5 text-start text-sm hover:bg-muted" role="menuitem" @click="onMenuSettings">
+          {{ _t('Settings') }}
+        </button>
+        <button type="button" class="block w-full px-3 py-1.5 text-start text-sm hover:bg-muted" role="menuitem" @click="onMenuLogout">
+          {{ _t('Log Out') }}
+        </button>
+      </div>
+    </div>
     <OPreferencesDialog v-if="isAuthenticated" v-model="preferencesVisible" />
   </Xpath>
 </template>
 
-<script lang="ts" _name="OHeader">
-import { defineComponent, computed, ref } from 'vue';
-import { Xpath } from '@/core/web';
-import OHeader from '@/web/web/components/layout/OHeader.vue';
-import { Bell, User } from '@element-plus/icons-vue';
-import { ElDivider, ElButton, ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { Bell, User } from 'lucide-vue-next';
+import { Xpath } from '@/core/web';
+import { ChoyButton } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
+import { createTranslate } from '@/web/web/i18n';
 import OSwitchCompany from './OSwitchCompany.vue';
 import OPreferencesDialog from '../preferences/OPreferencesDialog.vue';
-import { createTranslate } from '@/web/web/i18n';
 
-/**
- * Extend the shared header with auth-specific actions and menus.
- */
-export default defineComponent({
-  extends: OHeader,
-  components: {
-    Xpath,
-    Bell,
-    User,
-    ElDivider,
-    ElButton,
-    ElDropdown,
-    ElDropdownMenu,
-    ElDropdownItem,
-    OSwitchCompany,
-    OPreferencesDialog,
-  },
-  setup(props, ctx) {
-    const baseSetup = OHeader?.setup?.(props, ctx) || {};
-    const { _t } = createTranslate('auth', { scope: 'web/components/layout/OHeader' });
-    const router = useRouter();
-    const authStore = useAuthStore();
-    const isAuthenticated = computed(() => authStore.isAuthenticated);
-    const preferencesVisible = ref(false);
+defineOptions({ name: 'OHeader' });
 
-    function handleLogin() {
-      router.push({ name: 'login' });
-    }
+const emit = defineEmits<{ 'show-notifications': [] }>();
 
-    function handleNotificationClick() {
-      ctx.emit('show-notifications');
-    }
+const { _t } = createTranslate('auth', { scope: 'web/components/layout/OHeader' });
+const router = useRouter();
+const authStore = useAuthStore();
+const isAuthenticated = computed(() => authStore.isAuthenticated);
+const preferencesVisible = ref(false);
+const userMenuOpen = ref(false);
+const userMenuRoot = ref<HTMLElement | null>(null);
 
-    /** Profile and Settings open the same Preferences dialog (L13 / L18). */
-    function openPreferences() {
-      preferencesVisible.value = true;
-    }
+function closeUserMenu() {
+  userMenuOpen.value = false;
+}
 
-    function handleLogout() {
-      router.push({ name: 'logout' });
-    }
-
-    return {
-      ...baseSetup,
-      _t,
-      isAuthenticated,
-      preferencesVisible,
-      handleLogin,
-      handleNotificationClick,
-      openPreferences,
-      handleLogout,
-    };
-  },
-});
-</script>
-
-<style lang="scss" scoped>
-.o-header {
-  &__action-divider {
-    height: 20px;
-    margin: 0 4px;
+function onDocumentClick(event: MouseEvent) {
+  if (!userMenuOpen.value) return;
+  const root = userMenuRoot.value;
+  if (root && !root.contains(event.target as Node)) {
+    closeUserMenu();
   }
 }
-</style>
+
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick);
+});
+
+function handleLogin() {
+  router.push({ name: 'login' });
+}
+
+function handleNotificationClick() {
+  emit('show-notifications');
+}
+
+function openPreferences() {
+  preferencesVisible.value = true;
+  closeUserMenu();
+}
+
+function handleLogout() {
+  closeUserMenu();
+  router.push({ name: 'logout' });
+}
+
+function onMenuProfile() {
+  openPreferences();
+}
+
+function onMenuSettings() {
+  openPreferences();
+}
+
+function onMenuLogout() {
+  handleLogout();
+}
+</script>

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { type MenuItem } from '@/core/web/menu';
-import { UserFilled } from '@element-plus/icons-vue';
+import { UserRound } from 'lucide-vue-next';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -16,7 +16,7 @@ const { _lt } = createTranslate('auth', { scope: 'web/menu/menus' });
 export const authMenus: MenuItem[] = [
   defineMenu('auth.menu.root', {
     title: _lt('Access Control'),
-    icon: UserFilled,
+    icon: UserRound,
     sequence: 100,
     children: [
       defineMenu('auth.menu.user_list', {

@@ -4,72 +4,100 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OKanbanView
-    :store="store"
-    :show-header="showHeader"
-    :show-actions="true"
-    :show-paginate="true"
-    :searchView="OSearchView"
-    create-action="/auth/tokens/new"
-    @card-click="onCardClick"
-    @card-move="onCardMove"
-  >
-    <template #header-right>
-      <el-button-group>
-        <el-tooltip :content="_t('List View')" placement="top"> <el-button :icon="FormatListBulletedOutlined" @click="toList" /></el-tooltip>
-        <el-tooltip :content="_t('Kanban View')" placement="top"><el-button :icon="GridViewSharp" @click="toKanban" type="primary" /></el-tooltip>
-        <el-tooltip :content="_t('Icon View')" placement="top"><el-button :icon="BarChartOutlined" @click="toKanban" /></el-tooltip>
-      </el-button-group>
-    </template>
+  <div class="token-kanban-view">
+    <div class="sr-only" aria-hidden="true">
+      <ChoyVirtualField :store="store" prop="TokenType" />
+      <ChoyVirtualField :store="store" prop="ExpiresAt" />
+      <ChoyVirtualField :store="store" prop="Revoked" />
+      <ChoyVirtualField :store="store" prop="RevokedAt" />
+      <ChoyVirtualField :store="store" prop="UserId.Username" />
+      <ChoyVirtualField :store="store" prop="CreatedAt" />
+    </div>
 
-    <template #fields>
-      <!-- Register virtual fields so card slots can read record.X directly. -->
-      <OVirtualField :store="store" prop="TokenType" />
-      <OVirtualField :store="store" prop="ExpiresAt" />
-      <OVirtualField :store="store" prop="Revoked" />
-      <OVirtualField :store="store" prop="RevokedAt" />
-      <!-- Register nested relation fields used by the card body. -->
-      <OVirtualField :store="store" prop="UserId.Username" />
-      <OVirtualField :store="store" prop="CreatedAt" />
-    </template>
+    <ChoyKanbanView
+      v-model:lanes="choyLanes"
+      :show-header="showHeader"
+      :show-actions="true"
+      create-label="New"
+      @card-click="onCardClick"
+      @card-move="onCardMove"
+      @create="onCreate"
+    >
+      <template #search>
+        <ChoySearchView :store="store" @query-update="onSearch" />
+      </template>
 
-    <template #lane-header="{ lane }">
-      <div class="token-lane-header">
-        <span class="title">{{ laneLabel(lane) }}</span>
-        <span class="count">({{ lane.count ?? 0 }})</span>
-      </div>
-    </template>
-
-    <template #card="{ record }">
-      <div class="token-card" :class="{ revoked: record.Revoked }" @dblclick="openDetail(record)">
-        <div class="top-row">
-          <span class="token-type" :class="record.TokenType">{{ record.TokenType }}</span>
-          <OVarCharField :store="store" prop="UserId.Username" />
+      <template #user-actions>
+        <div class="flex items-center gap-1">
+          <ChoyButton variant="outline" size="sm" :title="_t('List View')" @click="toList">
+            <List class="size-4" aria-hidden="true" />
+          </ChoyButton>
+          <ChoyButton size="sm" :title="_t('Kanban View')" @click="toKanban">
+            <LayoutGrid class="size-4" aria-hidden="true" />
+          </ChoyButton>
+          <ChoyButton variant="outline" size="sm" :title="_t('Icon View')" @click="toKanban">
+            <BarChart3 class="size-4" aria-hidden="true" />
+          </ChoyButton>
         </div>
-        <div class="expires" :title="formatDate(record.ExpiresAt)">{{ _t('Expires') }}: {{ formatDate(record.ExpiresAt) }}</div>
-        <div class="revoked-info" v-if="record.Revoked">{{ _t('Revoked At') }}: {{ formatDate(record.RevokedAt) || '—' }}</div>
-      </div>
-    </template>
+      </template>
 
-    <template #card-empty="{ lane }">
-      <div class="empty-lane">{{ _t('No tokens in this lane') }}</div>
-    </template>
-  </OKanbanView>
+      <template #lane-header="{ lane }">
+        <div class="token-lane-header flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <span class="title">{{ laneLabel(lane) }}</span>
+          <span class="count text-foreground/60">({{ lane.cards.length }})</span>
+        </div>
+      </template>
+
+      <template #card="{ card }">
+        <div
+          class="token-card flex flex-col gap-1.5 text-xs"
+          :class="{ revoked: isRevokedCard(card) }"
+          @dblclick.stop="openDetailFromCard(card)"
+        >
+          <div class="top-row flex items-center justify-between gap-3">
+            <span class="token-type rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide" :class="tokenTypeClass(card)">
+              {{ tokenTypeLabel(card) }}
+            </span>
+            <span class="user text-foreground/70">{{ usernameLabel(card) }}</span>
+          </div>
+          <div class="expires text-foreground/80" :title="formatDate(expiresAt(card))">
+            {{ _t('Expires') }}: {{ formatDate(expiresAt(card)) }}
+          </div>
+          <div v-if="isRevokedCard(card)" class="revoked-info text-amber-700">
+            {{ _t('Revoked At') }}: {{ formatDate(revokedAt(card)) || '—' }}
+          </div>
+        </div>
+      </template>
+
+      <template #card-empty>
+        <div class="empty-lane text-xs opacity-60">{{ _t('No tokens in this lane') }}</div>
+      </template>
+    </ChoyKanbanView>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { BarChart3, LayoutGrid, List } from 'lucide-vue-next';
 import type Token from '@/auth/service/models/token';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import OKanbanView from '@/web/web/components/view/OKanbanView.vue';
-import { ElButton, ElTooltip, ElButtonGroup } from 'element-plus';
-import { FormatListBulletedOutlined, GridViewSharp, BarChartOutlined } from '@vicons/material';
-import type { ClientModelProps } from '@/core/rpc/types';
-import OVirtualField from '@/web/web/components/field/OVirtualField.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import {
+  ChoyButton,
+  ChoyKanbanView,
+  ChoyMessage,
+  ChoySearchView,
+  ChoyVirtualField,
+  type ChoyKanbanCard,
+  type ChoyKanbanLane,
+  type ChoyKanbanMove,
+} from '@/web';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import { createKanbanController } from '@/web/web/controllers/kanbanController';
+import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
+import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
+import type { Lane } from '@/web/web/query/types';
 
 defineOptions({ name: 'TokenKanbanView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
@@ -79,6 +107,63 @@ const store = resolvePageStore(props.store, 'TokenKanbanView');
 const { showHeader } = props;
 
 const router = useRouter();
+const controller = createKanbanController(store as any);
+const choyLanes = ref<ChoyKanbanLane[]>([]);
+let syncingLanes = false;
+
+/**
+ * Map controller lane rows into ChoyKanbanView lane/card models.
+ */
+async function syncLanesFromController(): Promise<void> {
+  if (syncingLanes) return;
+  syncingLanes = true;
+  try {
+    const laneList = controller.lanes.value;
+    await Promise.all(laneList.map(l => controller.preloadLane(l.key).catch(() => undefined)));
+    choyLanes.value = laneList.map(lane => ({
+      key: lane.key,
+      label: laneLabel(lane),
+      cards: (controller.laneRecords.value[lane.key] || []).map((row, index) => {
+        const payload = (row.payload ?? {}) as Record<string, unknown>;
+        return {
+          id: String(payload.Id ?? row.key ?? index),
+          title: String(payload.TokenType ?? payload.Id ?? ''),
+          laneKey: lane.key,
+          payload,
+        };
+      }),
+    }));
+  } finally {
+    syncingLanes = false;
+  }
+}
+
+watch(
+  () => controller.lanes.value,
+  () => {
+    void syncLanesFromController();
+  },
+  { deep: true }
+);
+
+onMounted(async () => {
+  await awaitFieldSelection(store, { requireNonEmpty: true });
+  await controller.apply({});
+  await syncLanesFromController();
+});
+
+/**
+ * Apply search / group changes after ChoySearchView (store engine) updates query state.
+ */
+async function onSearch(_query: ChoySearchQuery) {
+  const qs = ((store.state as any)?.queryState ?? {}) as Record<string, unknown>;
+  await controller.apply({
+    keyword: qs.keyword as string | undefined,
+    appliedFilters: (qs.appliedFilters || []) as any,
+    appliedGroups: qs.appliedGroups as any,
+  });
+  await syncLanesFromController();
+}
 
 /**
  * Navigate from kanban view back to the token list.
@@ -94,49 +179,86 @@ function toKanban() {
   router.push('/auth/tokens/kanban');
 }
 
-/**
- * Open the token detail page for the selected record.
- */
-function openDetail(rec: ClientModelProps<Token>) {
-  router.push(`/auth/tokens/${rec.Id}`);
+function onCreate() {
+  router.push('/auth/tokens/new');
+}
+
+function openDetailFromCard(card: ChoyKanbanCard) {
+  const id = String(card.payload?.Id ?? card.id);
+  if (id) router.push(`/auth/tokens/${id}`);
 }
 
 /**
  * Handle kanban card clicks by opening the record detail view.
  */
-function onCardClick(payload: { row: ClientModelProps<Token> }) {
-  openDetail(payload.row);
+function onCardClick(card: ChoyKanbanCard) {
+  openDetailFromCard(card);
 }
 
 /**
- * Reserve a hook for drag-and-drop side effects.
+ * Persist lane moves (Revoked field) via the kanban controller.
  */
-function onCardMove(e: { cardId: string; fromLane: string; toLane: string; index: number }) {
-  // The kanban component already persists Revoked changes.
-  void e;
+async function onCardMove(move: ChoyKanbanMove) {
+  try {
+    await controller.moveCard(move.cardId, move.fromLaneKey, move.toLaneKey, move.toIndex);
+    await syncLanesFromController();
+  } catch (e) {
+    ChoyMessage.error(_t('Move failed; refreshed to recover'));
+    await controller.apply({});
+    await syncLanesFromController();
+    console.error('Token kanban move failed:', e);
+  }
 }
 
-/**
- * Convert a kanban lane descriptor into a display label.
- */
-function laneLabel(lane: any): string {
-  // Convert Revoked=true/false lanes into human-readable labels.
-  const key = String(lane.key);
+function laneLabel(lane: Lane | ChoyKanbanLane): string {
+  const key = String((lane as Lane).key ?? (lane as ChoyKanbanLane).key);
+  const label = String((lane as Lane).label ?? (lane as ChoyKanbanLane).label ?? '');
   if (/Revoked=true/.test(key)) return _t('Revoked');
   if (/Revoked=false/.test(key)) return _t('Not Revoked');
-  // Fall back to the lane label when the key was not normalized.
-  if (lane.label === 'true') return _t('Revoked');
-  if (lane.label === 'false') return _t('Not Revoked');
-  return String(lane.label || lane.key);
+  if (label === 'true') return _t('Revoked');
+  if (label === 'false') return _t('Not Revoked');
+  return label || key;
+}
+
+function payloadOf(card: ChoyKanbanCard): Record<string, unknown> {
+  return (card.payload ?? {}) as Record<string, unknown>;
+}
+
+function tokenTypeLabel(card: ChoyKanbanCard): string {
+  return String(payloadOf(card).TokenType ?? '');
+}
+
+function tokenTypeClass(card: ChoyKanbanCard): string {
+  return String(payloadOf(card).TokenType ?? '').toLowerCase();
+}
+
+function usernameLabel(card: ChoyKanbanCard): string {
+  const user = payloadOf(card)['UserId.Username'] ?? payloadOf(card).UserId;
+  if (user && typeof user === 'object' && 'Username' in (user as object)) {
+    return String((user as { Username?: string }).Username ?? '');
+  }
+  return String(payloadOf(card)['UserId.Username'] ?? '');
+}
+
+function isRevokedCard(card: ChoyKanbanCard): boolean {
+  return Boolean(payloadOf(card).Revoked);
+}
+
+function expiresAt(card: ChoyKanbanCard): unknown {
+  return payloadOf(card).ExpiresAt;
+}
+
+function revokedAt(card: ChoyKanbanCard): unknown {
+  return payloadOf(card).RevokedAt;
 }
 
 /**
  * Format token timestamps for kanban card display.
  */
-function formatDate(dt: any): string {
+function formatDate(dt: unknown): string {
   if (!dt) return '';
   try {
-    const d = typeof dt === 'string' ? new Date(dt) : dt;
+    const d = typeof dt === 'string' ? new Date(dt) : dt instanceof Date ? dt : new Date(String(dt));
     if (!(d instanceof Date) || isNaN(d.getTime())) return String(dt).slice(0, 19);
     const y = d.getFullYear();
     const m = (d.getMonth() + 1).toString().padStart(2, '0');
@@ -151,88 +273,25 @@ function formatDate(dt: any): string {
 </script>
 
 <style scoped lang="scss">
-/* Token kanban styling aligned with the shared board look and feel. */
-.token-lane-header {
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--el-text-color-primary);
+.token-card {
+  cursor: grab;
 }
 
-.token-card {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 6px;
-  padding: 10px 12px 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-  background: var(--el-color-white);
-  transition:
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-  position: relative;
-  cursor: grab; /* Match the shared drag wrapper affordance. */
-}
-.token-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-.token-card:active {
-  transform: scale(0.98);
-}
 .token-card.revoked {
   opacity: 0.9;
-  background: #fff7f5;
 }
 
-.top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.token-type {
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-primary);
-}
 .token-type.access {
-  color: #409eff;
-  background: rgba(64, 158, 255, 0.12);
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.12);
 }
+
 .token-type.refresh {
-  color: #67c23a;
-  background: rgba(103, 194, 58, 0.12);
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
 }
 
-.user {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.expires {
-  color: var(--el-text-color-regular);
-  font-size: 12px;
-}
-.revoked-info {
-  color: #e67e22;
-  font-size: 12px;
-}
-
-.empty-lane {
-  opacity: 0.6;
-  font-size: 12px;
-  padding: 6px 0;
-  text-align: center;
+.token-type:not(.access):not(.refresh) {
+  background: color-mix(in oklab, var(--foreground, currentColor) 8%, transparent);
 }
 </style>

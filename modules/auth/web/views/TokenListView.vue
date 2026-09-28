@@ -4,61 +4,71 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OListView
-    ref="listRef"
-    v-bind="$attrs"
-    :store="store"
-    :searchView="OSearchView"
-    :show-header="showHeader"
-    :action-ids="{ create: tokenActions.create, delete: tokenActions.delete }"
-    :has-action="hasAction"
-    @row-click="onRowClick"
-  >
-    <template #header-right>
-      <el-button-group>
-        <el-tooltip :content="_t('List View')" placement="top"> <el-button :icon="FormatListBulletedOutlined" @click="toList" type="primary" /></el-tooltip>
-        <el-tooltip :content="_t('Kanban View')" placement="top"
-          ><el-button v-action="['auth.action.token_edit', 'auth.action.token_copy']" :icon="GridViewSharp" @click="toKanban"
-        /></el-tooltip>
-        <el-tooltip :content="_t('Icon View')" placement="top"
-          ><el-button v-action.disable.and="['auth.action.token_edit', 'auth.action.token_delete']" :icon="BarChartOutlined" @click="toKanban"
-        /></el-tooltip>
-      </el-button-group>
-    </template>
+  <div class="token-list-view">
+    <div v-if="showHeader" class="token-list-view__view-switch mb-2 flex justify-end">
+      <div class="flex items-center gap-1">
+        <ChoyButton size="sm" :title="_t('List View')" @click="toList">
+          <List class="size-4" aria-hidden="true" />
+        </ChoyButton>
+        <ChoyButton
+          v-action="['auth.action.token_edit', 'auth.action.token_copy']"
+          variant="outline"
+          size="sm"
+          :title="_t('Kanban View')"
+          @click="toKanban"
+        >
+          <LayoutGrid class="size-4" aria-hidden="true" />
+        </ChoyButton>
+        <ChoyButton
+          v-action.disable.and="['auth.action.token_edit', 'auth.action.token_delete']"
+          variant="outline"
+          size="sm"
+          :title="_t('Icon View')"
+          @click="toKanban"
+        >
+          <BarChart3 class="size-4" aria-hidden="true" />
+        </ChoyButton>
+      </div>
+    </div>
+    <ChoyListView
+      ref="listRef"
+      v-bind="$attrs"
+      :store="store"
+      :searchView="ChoySearchView"
+      :show-header="showHeader"
+      :action-ids="{ create: tokenActions.create, delete: tokenActions.delete }"
+      :has-action="hasAction"
+      @row-click="onRowClick"
+    >
+    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-
-    <OVarCharField prop="UserId.Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="TokenType" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ODateTimeField prop="ExpiresAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <OBooleanField :store="store" prop="Revoked" widget="checkbox" />
-    <ODateTimeField prop="RevokedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-  </OListView>
+    <ChoyVarcharField prop="UserId.Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyVarcharField prop="TokenType" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ChoyDatetimeField prop="ExpiresAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyBooleanField :store="store" prop="Revoked" widget="checkbox" />
+    <ChoyDatetimeField prop="RevokedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    </ChoyListView>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Token from '@/auth/service/models/token';
-import OListView from '@/web/web/components/view/OListView.vue';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import { ElButton, ElTooltip, ElButtonGroup } from 'element-plus';
-import { FormatListBulletedOutlined, GridViewSharp, BarChartOutlined } from '@vicons/material';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { BarChart3, LayoutGrid, List } from 'lucide-vue-next';
+import { ChoyButton } from '@/web';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'TokenListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenListView' });
+
 
 const router = useRouter();
 
@@ -80,8 +90,8 @@ const { hasAction } = usePermission();
 /**
  * Open the clicked token record in detail view.
  */
-function onRowClick(payload: RowEventPayload<Token>) {
-  router.push(`/auth/tokens/${payload.row.Id}`);
+function onRowClick(row: Record<string, unknown>) {
+  router.push(`/auth/tokens/${(row as any).Id}`);
 }
 
 /**

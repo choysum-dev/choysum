@@ -4,46 +4,41 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OListView
+  <ChoyListView
     ref="listRef"
     v-bind="$attrs"
     :store="store"
-    :searchView="OSearchView"
+    :searchView="ChoySearchView"
     :show-header="showHeader"
     :action-ids="{ create: roleActions.create, delete: roleActions.delete }"
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="Code" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="Description" :store="store" :vColumnProps="{ minWidth: 200 }" />
-    <OBooleanField :store="store" prop="IsActive" widget="checkbox" />
-    <OBooleanField :store="store" prop="IsSystem" widget="checkbox" />
-    <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-  </OListView>
+    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyVarcharField prop="Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyVarcharField prop="Code" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <ChoyVarcharField prop="Description" :store="store" :vColumnProps="{ minWidth: 200 }" />
+    <ChoyBooleanField :store="store" prop="IsActive" widget="checkbox" />
+    <ChoyBooleanField :store="store" prop="IsSystem" widget="checkbox" />
+    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+  </ChoyListView>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Role from '@/auth/service/models/role';
-import OListView from '@/web/web/components/view/OListView.vue';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'RoleListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleListView' });
+
 
 const router = useRouter();
 
@@ -65,8 +60,8 @@ const { hasAction } = usePermission();
 /**
  * Open the clicked role record in detail view.
  */
-function onRowClick(payload: RowEventPayload<Role>) {
-  router.push(`/auth/roles/${payload.row.Id}`);
+function onRowClick(row: Record<string, unknown>) {
+  router.push(`/auth/roles/${(row as any).Id}`);
 }
 
 const { listRef, expose } = useListViewExpose<Role>();

@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{
       create: fieldRuleActions.create,
@@ -15,67 +15,62 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <el-card shadow="never" class="frfv-card">
-      <template #header
-        ><div class="frfv-card__header"><span>{{ _t('Field Rule') }}</span></div></template
+    <ChoyCard :title="_t('Field Rule')" class="frfv-card">
+      <div
+        class="frfv-card__hint mb-3 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-sm"
+        role="alert"
       >
-      <el-alert
-        class="frfv-card__hint"
-        type="info"
-        :closable="false"
-        show-icon
-        :title="_t('Cross-role field rule editor')"
-        :description="
-          _t(
-            'Role is required. Pick exactly one scope: Field (+ Model), Model, Application, Logical Model (all host apps / all business fields on that short name), or leave all empty for Global.'
-          )
-        "
-      />
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneField
+        <p class="font-medium text-foreground">{{ _t('Cross-role field rule editor') }}</p>
+        <p class="mt-1 text-foreground/80">
+          {{
+            _t(
+              'Role is required. Pick exactly one scope: Field (+ Model), Model, Application, Logical Model (all host apps / all business fields on that short name), or leave all empty for Global.'
+            )
+          }}
+        </p>
+      </div>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyManyToOneField value-mode="record"
             :store="store"
             prop="RoleId"
             :search-view="RoleListView"
             :search-view-title="_t('Select Role')"
             @value-click="onRoleValueClick"
           />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="MetaApplicationId" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="MetaModelId" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="MetaFieldId" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OSelectionField :store="store" prop="LogicalModelName" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OSelectionField :store="store" prop="PermRead" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OSelectionField :store="store" prop="PermWrite" />
-        </el-col>
-      </el-row>
-    </el-card>
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneField :store="store" prop="MetaApplicationId" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneField :store="store" prop="MetaModelId" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneField :store="store" prop="MetaFieldId" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoySelectionField :store="store" prop="LogicalModelName" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoySelectionField :store="store" prop="PermRead" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoySelectionField :store="store" prop="PermWrite" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
 
-    <el-card shadow="never" class="frfv-card">
-      <template #header
-        ><div class="frfv-card__header"><span>{{ _t('System Information') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" />
-        </el-col>
-      </el-row>
-    </el-card>
-  </OFormView>
+    <ChoyCard :title="_t('System Information')" class="frfv-card">
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="CreatedAt" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="UpdatedAt" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
@@ -84,19 +79,13 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type RoleFieldRule from '@/auth/service/models/role_field_rule';
 import type Role from '@/auth/service/models/role';
-import { ElCard, ElRow, ElCol, ElAlert } from 'element-plus';
-
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import RoleListView from '@/auth/web/views/RoleListView.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoySelectionField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { roleIdFromValueClick } from '@/auth/web/views/role_value_click';
 
@@ -139,7 +128,7 @@ function onRoleValueClick(payload: ManyToOneValueClickPayload<Role>) {
 }
 .frfv-card__header {
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--choy-foreground, inherit);
 }
 .frfv-card__hint {
   margin-bottom: 12px;

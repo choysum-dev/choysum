@@ -4,45 +4,39 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OListView
+  <ChoyListView
     ref="listRef"
     v-bind="$attrs"
     :store="store"
-    :searchView="OSearchView"
+    :searchView="ChoySearchView"
     :action-ids="{ create: userActions.create, delete: userActions.delete }"
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OImageField prop="Avatar" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OManyToOneRefField :store="store" prop="CompanyId" />
-    <OVarCharField prop="Email" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField prop="Phone" :store="store" />
-    <OVarCharField prop="FullName" :store="store" />
-    <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-  </OListView>
+    <ChoyImageField prop="Avatar" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyVarcharField prop="Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyManyToOneField :store="store" prop="CompanyId" />
+    <ChoyVarcharField prop="Email" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyVarcharField prop="Phone" :store="store" />
+    <ChoyVarcharField prop="FullName" :store="store" />
+    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+  </ChoyListView>
 </template>
 
 <script setup lang="ts">
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type User from '@/auth/service/models/user/user';
-import OListView from '@/web/web/components/view/OListView.vue';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OImageField from '@/web/web/components/field/OImageField.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { ChoyDatetimeField, ChoyImageField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+
 
 const router = useRouter();
 
@@ -65,8 +59,8 @@ const { hasAction } = usePermission();
 /**
  * Open the clicked user record in detail view.
  */
-function onRowClick(payload: RowEventPayload<User>) {
-  router.push(`/auth/users/${payload.row.Id}`);
+function onRowClick(row: Record<string, unknown>) {
+  router.push(`/auth/users/${(row as any).Id}`);
 }
 
 const { listRef, expose } = useListViewExpose<User>();
