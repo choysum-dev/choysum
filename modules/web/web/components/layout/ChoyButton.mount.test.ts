@@ -95,6 +95,7 @@ describe('ChoyButton mount', () => {
       const host = w.q('[data-testid="click-disabled"]') as HTMLElement | null;
       expect(host).not.toBeNull();
       expect(host?.getAttribute('aria-disabled')).toBe('true');
+      expect(host?.getAttribute('tabindex')).toBe('-1');
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       const event = new Event('click', { cancelable: true });
@@ -109,6 +110,31 @@ describe('ChoyButton mount', () => {
 });
 
 describe('Button host click guard', () => {
+  test('enabled non-button host re-emits click', async () => {
+    let clicks = 0;
+    const w = mountApp(Button as any, {
+      props: { 'data-testid': 'link-enabled', as: 'a', href: '#nav' },
+      on: {
+        onClick: () => {
+          clicks += 1;
+        },
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
+      expect(typeof handleClick).toBe('function');
+      const event = new Event('click', { cancelable: true });
+      handleClick?.(event);
+      await flushPromises();
+      expect(clicks).toBe(1);
+      expect(event.defaultPrevented).toBe(false);
+    } finally {
+      w.unmount();
+    }
+  });
+
   test('disabled non-button host prevents default without emitting', async () => {
     let clicks = 0;
     const w = mountApp(Button as any, {
@@ -127,6 +153,9 @@ describe('Button host click guard', () => {
     });
     try {
       await flushPromises();
+      const host = w.q('[data-testid="link-disabled"]') as HTMLElement | null;
+      expect(host?.getAttribute('aria-disabled')).toBe('true');
+      expect(host?.getAttribute('tabindex')).toBe('-1');
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       const event = new Event('click', { cancelable: true });

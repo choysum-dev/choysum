@@ -44,9 +44,9 @@ function handleClick(event: Event) {
 
 const attrs = useAttrs();
 
-/** Non-button hosts: set aria-disabled only when disabled so caller attrs are kept. */
+/** Non-button hosts: aria-disabled + out of tab order when disabled (disabled: CSS never matches). */
 const nonButtonAttrs = computed(() =>
-  props.disabled ? { ...attrs, 'aria-disabled': true } : attrs,
+  props.disabled ? { ...attrs, 'aria-disabled': true, tabindex: -1 } : attrs,
 );
 
 const variantClass: Record<ButtonVariant, string> = {
