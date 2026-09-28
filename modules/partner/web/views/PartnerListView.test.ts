@@ -15,7 +15,8 @@ test('PartnerListView.vue mounts under choysumMount and runs script setup', asyn
   expect(wrapper.element != null).toBe(true);
   expect(
     wrapper.find('[data-testid="fe-stub-child-view"]').exists() ||
-      wrapper.find('[data-testid="fe-stub-opage"]').exists(),
+      wrapper.find('[data-anchor="choy.page"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-choy-page"]').exists(),
   ).toBe(true);
   wrapper.unmount();
 });

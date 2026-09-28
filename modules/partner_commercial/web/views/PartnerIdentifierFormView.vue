@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     :store="store"
     :record-id="recordId"
     :initial-values="initialValues"
@@ -15,65 +15,68 @@ SPDX-License-Identifier: Apache-2.0
     v-on="$attrs"
   >
     <div class="pcifv-grid">
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IdentifierType" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Value" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="IdentifierType" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Value" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OManyToOneRefField
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyManyToOneField
             :store="store"
             prop="CountryId"
             :searchView="CountryListView"
             :search-view-title="_t('Select Country')"
             @value-click="onCountryValueClick"
           />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IssuedBy" />
-        </el-col>
-      </el-row>
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="IssuedBy" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <ODateTimeField :store="store" prop="ValidFrom" mode="datetime" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <ODateTimeField :store="store" prop="ValidTo" mode="datetime" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="ValidFrom" mode="datetime" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="ValidTo" mode="datetime" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsPrimary" widget="switch" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" widget="switch" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsPrimary" widget="switch" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
+        </ChoyCol>
+      </ChoyGrid>
     </div>
-  </OFormView>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Country from '@/base/service/models/country';
-import { ElRow, ElCol } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import CountryListView from '@/base/web/views/CountryListView.vue';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  ChoyBooleanField,
+  ChoyCol,
+  ChoyDatetimeField,
+  ChoyFormView,
+  ChoyGrid,
+  ChoyManyToOneField,
+  ChoyVarcharField,
+  type ChoyViewMode as ViewMode,
+} from '@/web';
 
 defineOptions({ name: 'PartnerIdentifierFormView', inheritAttrs: true });
 const { _t } = createTranslate('partner_commercial', { scope: 'web/views/PartnerIdentifierFormView' });
@@ -102,7 +105,7 @@ const router = useRouter();
 /**
  * Opens the selected country record from the identifier form.
  */
-function onCountryValueClick(payload: ManyToOneRefValueClickPayload<Country>) {
+function onCountryValueClick(payload: ManyToOneValueClickPayload<Country>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
   void router.push({ name: 'CountryDetail', params: { id } });

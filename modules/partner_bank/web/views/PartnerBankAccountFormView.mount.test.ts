@@ -12,6 +12,11 @@ test('PartnerBankAccountFormView mount coverage', async () => {
     global: buildPageMountGlobal(),
   });
   await flushPromises();
-  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
+  expect(
+    wrapper.find('[data-anchor="choy.form-view"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-child-view"]').exists() ||
+      wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||
+      wrapper.find('[data-anchor="choy.page"]').exists(),
+  ).toBe(true);
   wrapper.unmount();
 });

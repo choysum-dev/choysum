@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     :store="store"
     :record-id="recordId"
     :initial-values="initialValues"
@@ -16,81 +16,84 @@ SPDX-License-Identifier: Apache-2.0
     v-on="$attrs"
   >
     <div class="pbafv-grid">
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OManyToOneRefField
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyManyToOneField
             :store="store"
             prop="BankId"
             :searchView="BankListView"
             :search-view-title="_t('Select Bank')"
             @value-click="onBankValueClick"
           />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="AccountName" />
-        </el-col>
-      </el-row>
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="AccountName" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="AccountNo" :visible="formViewMode !== 'display'" />
-          <OVarCharField :store="store" prop="AccountNoMasked" :visible="formViewMode === 'display'" :readonly="true" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="AccountType" :selection="accountTypeOptions" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="AccountNo" :visible="formViewMode !== 'display'" />
+          <ChoyVarcharField :store="store" prop="AccountNoMasked" :visible="formViewMode === 'display'" :readonly="true" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoySelectionField :store="store" prop="AccountType" :selection="accountTypeOptions" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IBAN" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="RoutingCode" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="IBAN" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="RoutingCode" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="AllowInbound" widget="switch" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="AllowOutbound" widget="switch" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="AllowInbound" widget="switch" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="AllowOutbound" widget="switch" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefaultInbound" widget="switch" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefaultOutbound" widget="switch" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsDefaultInbound" widget="switch" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsDefaultOutbound" widget="switch" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" widget="switch" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
+        </ChoyCol>
+      </ChoyGrid>
     </div>
-  </OFormView>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import type Bank from '@/base/service/models/bank';
-import { ElRow, ElCol } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import BankListView from '@/base/web/views/BankListView.vue';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  ChoyBooleanField,
+  ChoyCol,
+  ChoyFormView,
+  ChoyGrid,
+  ChoyManyToOneField,
+  ChoySelectionField,
+  ChoyVarcharField,
+  type ChoyViewMode as ViewMode,
+} from '@/web';
 
 defineOptions({ name: 'PartnerBankAccountFormView', inheritAttrs: true });
 const { _t } = createTranslate('partner_bank', { scope: 'web/views/PartnerBankAccountFormView' });
@@ -124,7 +127,7 @@ const accountTypeOptions = ['checking', 'savings', 'corporate', 'other'];
 /**
  * Opens the selected bank record from the bank account form.
  */
-function onBankValueClick(payload: ManyToOneRefValueClickPayload<Bank>) {
+function onBankValueClick(payload: ManyToOneValueClickPayload<Bank>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
   void router.push({ name: 'BankDetail', params: { id } });

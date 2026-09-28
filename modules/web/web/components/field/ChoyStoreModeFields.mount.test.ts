@@ -46,6 +46,7 @@ import OManyToManyField from './OManyToManyField.vue';
 import OManyToManyRefTagsField from './OManyToManyRefTagsField.vue';
 import OManyToManyRefTreeField from './OManyToManyRefTreeField.vue';
 import OOneToManyField from './OOneToManyField.vue';
+import OOneToManyKanbanField from './OOneToManyKanbanField.vue';
 import OStatInfo from '../view/OStatInfo.vue';
 import OVColumn from '../vtable/OVColumn.vue';
 
@@ -88,6 +89,7 @@ describe('Choy store-mode field hosts', () => {
     OManyToManyRefTagsField,
     OManyToManyRefTreeField,
     OOneToManyField,
+    OOneToManyKanbanField,
     OFormView,
     OListView,
     OSearchView,
@@ -115,6 +117,7 @@ describe('Choy store-mode field hosts', () => {
     stubHost(OManyToManyRefTagsField as any, 'o-m2m-tags');
     stubHost(OManyToManyRefTreeField as any, 'o-m2m-tree');
     stubHost(OOneToManyField as any, 'o-o2m');
+    stubHost(OOneToManyKanbanField as any, 'o-o2m-kanban');
     stubHost(OFormView as any, 'o-form');
     stubHost(OListView as any, 'o-list');
     stubHost(OSearchView as any, 'o-search');
@@ -557,6 +560,27 @@ describe('Choy store-mode field hosts', () => {
     });
     expect(searchListen.q('[data-test=o-search]')).not.toBeNull();
     searchListen.unmount();
+  });
+
+  test('OneToMany store mode routes list vs kanban hosts', async () => {
+    const listW = await mountField(ChoyOneToManyField, {
+      store: fakeStore,
+      prop: 'Contacts',
+      widget: 'list',
+    });
+    expect(listW.q('[data-test=o-o2m]')).not.toBeNull();
+    expect(listW.q('[data-test=o-o2m-kanban]')).toBeNull();
+    listW.unmount();
+
+    const kanbanW = await mountField(ChoyOneToManyField, {
+      store: fakeStore,
+      prop: 'Contacts',
+      widget: 'kanban',
+    });
+    expect(kanbanW.q('[data-test=o-o2m-kanban]')).not.toBeNull();
+    expect(kanbanW.q('[data-test=o-o2m]')).toBeNull();
+    expect(kanbanW.q('[data-test=o-o2m-kanban]')?.getAttribute('data-widget')).toBe('kanban');
+    kanbanW.unmount();
   });
 
   test('OneToMany chrome covers rowKey/title/subtitle helpers', async () => {

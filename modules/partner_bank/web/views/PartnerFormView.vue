@@ -4,12 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Xpath expr="//el-tabs[@data-slot='partner-detail-tab-panels']" position="inside">
-    <el-tab-pane :label="_t('Bank Accounts')" name="bank_accounts" data-region="partner-bank-tab">
+  <Xpath :expr="PARTNER_DETAIL_TAB_PANELS_XPATH" position="inside">
+    <ChoyTab value="bank_accounts" :label="_t('Bank Accounts')" data-region="partner-bank-tab">
       <div data-region="partner-bank-panel">
-        <OOneToManyKanbanField
+        <ChoyOneToManyField
           :store="store"
           prop="BankAccounts"
+          widget="kanban"
           label=""
           :default-record="defaultBankAccountRecord"
           :editable="canEditBankAccounts()"
@@ -26,9 +27,9 @@ SPDX-License-Identifier: Apache-2.0
               <div class="pbfv-bank-card__title-row">
                 <div class="pbfv-bank-card__title">{{ item?.AccountName || _t('Unnamed Account') }}</div>
                 <div class="pbfv-bank-card__flags">
-                  <el-tag v-if="item?.IsDefaultInbound" size="small" type="success">{{ _t('Default Inbound') }}</el-tag>
-                  <el-tag v-if="item?.IsDefaultOutbound" size="small" type="warning">{{ _t('Default Outbound') }}</el-tag>
-                  <el-tag v-if="item?.IsActive === false" size="small" type="info">{{ _t('Inactive') }}</el-tag>
+                  <span v-if="item?.IsDefaultInbound" class="pbfv-flag pbfv-flag--success">{{ _t('Default Inbound') }}</span>
+                  <span v-if="item?.IsDefaultOutbound" class="pbfv-flag pbfv-flag--warning">{{ _t('Default Outbound') }}</span>
+                  <span v-if="item?.IsActive === false" class="pbfv-flag pbfv-flag--muted">{{ _t('Inactive') }}</span>
                 </div>
               </div>
               <div class="pbfv-bank-card__meta">{{ _t('Bank') }}: {{ item?.BankNameSnapshot || '-' }}</div>
@@ -38,14 +39,14 @@ SPDX-License-Identifier: Apache-2.0
                 {{ _t('Inbound/Outbound') }}: {{ item?.AllowInbound ? _t('Yes') : _t('No') }}/{{ item?.AllowOutbound ? _t('Yes') : _t('No') }}
               </div>
               <div v-if="editable || removable" class="pbfv-bank-card__actions">
-                <el-button v-if="editable" type="primary" text size="small" @click.stop="edit">{{ _t('Edit') }}</el-button>
-                <el-button v-if="removable" type="danger" text size="small" @click.stop="remove">{{ _t('Delete') }}</el-button>
+                <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
+                <ChoyButton v-if="removable" variant="ghost" size="sm" @click.stop="remove">{{ _t('Delete') }}</ChoyButton>
               </div>
             </div>
           </template>
-        </OOneToManyKanbanField>
+        </ChoyOneToManyField>
       </div>
-    </el-tab-pane>
+    </ChoyTab>
   </Xpath>
 </template>
 
@@ -55,8 +56,12 @@ import { Xpath } from '@/core/web';
 import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
 import type Partner from '@/partner_bank/service/models/partner';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { ElButton, ElTabPane, ElTag } from 'element-plus';
-import OOneToManyKanbanField from '@/web/web/components/field/OOneToManyKanbanField.vue';
+import {
+  ChoyButton,
+  ChoyOneToManyField,
+  ChoyTab,
+  PARTNER_DETAIL_TAB_PANELS_XPATH,
+} from '@/web';
 import PartnerBankAccountFormView from '@/partner_bank/web/views/PartnerBankAccountFormView.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
@@ -70,10 +75,9 @@ export default defineComponent({
   extends: PartnerFormView,
   components: {
     Xpath,
-    ElButton,
-    ElTabPane,
-    ElTag,
-    OOneToManyKanbanField,
+    ChoyButton,
+    ChoyTab,
+    ChoyOneToManyField,
     PartnerBankAccountFormView,
   },
   /**
@@ -130,6 +134,7 @@ export default defineComponent({
       hasAction,
       bankAccountActions,
       PartnerBankAccountFormView,
+      PARTNER_DETAIL_TAB_PANELS_XPATH,
       defaultBankAccountRecord,
       canEditBankAccounts,
       getAccountTypeLabel,
@@ -157,7 +162,7 @@ export default defineComponent({
 .pbfv-bank-card__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--choy-foreground, inherit);
 }
 
 .pbfv-bank-card__flags {
@@ -165,10 +170,35 @@ export default defineComponent({
   gap: 6px;
 }
 
+.pbfv-flag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  padding: 0.125rem 0.5rem;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pbfv-flag--success {
+  background: color-mix(in oklab, var(--choy-success, #16a34a) 18%, transparent);
+  color: var(--choy-success, #16a34a);
+}
+
+.pbfv-flag--warning {
+  background: color-mix(in oklab, var(--choy-warning, #d97706) 18%, transparent);
+  color: var(--choy-warning, #d97706);
+}
+
+.pbfv-flag--muted {
+  background: color-mix(in oklab, var(--choy-muted, #64748b) 18%, transparent);
+  color: var(--choy-muted-foreground, #64748b);
+}
+
 .pbfv-bank-card__meta,
 .pbfv-bank-card__line {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--choy-muted-foreground, #64748b);
 }
 
 .pbfv-bank-card__actions {
