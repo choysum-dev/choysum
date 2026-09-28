@@ -68,3 +68,38 @@ export function resolveTokenUsernameLabel(payload: Record<string, unknown> | nul
   }
   return String(user ?? '');
 }
+
+/**
+ * True when an optimistic card move must be discarded (resync) instead of
+ * persisted: overlapping writes, synthetic card ids, or the flat "all" lane
+ * that is not a controller group lane.
+ */
+export function shouldRestoreTokenKanbanMove(opts: {
+  movePending: boolean;
+  recordId: string;
+  fromLaneKey: string;
+  controllerLaneKeys: ReadonlyArray<string>;
+}): boolean {
+  if (opts.movePending || !opts.recordId) return true;
+  return !opts.controllerLaneKeys.some((key) => key === opts.fromLaneKey);
+}
+
+/**
+ * Initial kanban load: prefer a first-frame search emit; otherwise apply an
+ * empty query. If a search arrives mid-flight, re-apply it so last writer wins.
+ */
+export async function finishInitialTokenKanbanLoad(opts: {
+  getLastSearchQuery: () => unknown;
+  applyEmpty: () => Promise<void>;
+  onSearch: (query: any) => Promise<void>;
+  syncLanes: () => Promise<void>;
+}): Promise<void> {
+  if (opts.getLastSearchQuery()) return;
+  await opts.applyEmpty();
+  const late = opts.getLastSearchQuery();
+  if (late) {
+    await opts.onSearch(late);
+    return;
+  }
+  await opts.syncLanes();
+}

@@ -116,11 +116,13 @@ import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
 import type { Lane } from '@/web/web/query/types';
 import {
+  finishInitialTokenKanbanLoad,
   resolveTokenDetailId,
   resolveTokenKanbanCardId,
   resolveTokenKanbanRowPayload,
   resolveTokenMoveRecordId,
   resolveTokenUsernameLabel,
+  shouldRestoreTokenKanbanMove,
   type TokenKanbanRow,
 } from './token_kanban_nav';
 
@@ -224,10 +226,13 @@ onMounted(async () => {
   try {
     await awaitFieldSelection(store, { requireNonEmpty: true });
     // Prefer the search view's first-frame emit when it arrives; otherwise load once.
-    if (!lastSearchQuery) {
-      await controller.apply({});
-      await syncLanesFromController();
-    }
+    // Re-check after the empty apply so a mid-flight query-update wins.
+    await finishInitialTokenKanbanLoad({
+      getLastSearchQuery: () => lastSearchQuery,
+      applyEmpty: () => controller.apply({}),
+      onSearch,
+      syncLanes: syncLanesFromController,
+    });
   } catch (e) {
     ChoyMessage.error(_t('Failed to load kanban'));
     console.error('Token kanban load failed:', e);
@@ -308,14 +313,20 @@ async function onLaneLoadMore(payload: ChoyKanbanLoadMore) {
  * Blocks overlapping moves while a write is in flight.
  */
 async function onCardMove(move: ChoyKanbanMove) {
-  if (movePending.value) return;
-  // Synthetic Vue keys (lane-index fallbacks) must not drive UpdateById.
+  // Synthetic Vue keys / flat "all" lane / overlapping writes must not persist;
+  // ChoyKanbanView already mutated v-model:lanes, so restore when skipping.
   const recordId = resolveTokenMoveRecordId(
     choyLanes.value.flatMap(lane => lane.cards),
     move.cardId,
   );
-  if (!recordId) {
-    // Optimistic v-model move already mutated lanes; restore controller state.
+  if (
+    shouldRestoreTokenKanbanMove({
+      movePending: movePending.value,
+      recordId,
+      fromLaneKey: move.fromLaneKey,
+      controllerLaneKeys: controller.lanes.value.map(lane => lane.key),
+    })
+  ) {
     await syncLanesFromController();
     return;
   }

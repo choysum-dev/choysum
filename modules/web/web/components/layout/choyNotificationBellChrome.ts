@@ -9,8 +9,9 @@ export function choyNotificationUnreadCount(count: unknown): number {
 
 /** Badge label for unread count (empty when zero; caps at 99+). */
 export function choyNotificationBadgeText(unreadCount: number): string {
-  if (unreadCount > 99) return '99+';
-  return unreadCount ? String(unreadCount) : '';
+  const n = choyNotificationUnreadCount(unreadCount);
+  if (n > 99) return '99+';
+  return n ? String(n) : '';
 }
 
 /** Accessible label for the chrome notification button. */

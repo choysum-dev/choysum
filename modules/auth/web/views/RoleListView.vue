@@ -35,6 +35,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveListRowRecordId } from './list_row_nav';
 
 defineOptions({ name: 'RoleListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleListView' });
@@ -61,7 +62,8 @@ const { hasAction } = usePermission();
  * Open the clicked role record in detail view.
  */
 function onRowClick(row: Record<string, unknown>) {
-  router.push(`/auth/roles/${(row as any).Id}`);
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/auth/roles/${id}`);
 }
 
 const { listRef, expose } = useListViewExpose<Role>();

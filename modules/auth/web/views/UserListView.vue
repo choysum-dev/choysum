@@ -36,6 +36,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyDatetimeField, ChoyImageField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveListRowRecordId } from './list_row_nav';
 
 
 const router = useRouter();
@@ -60,7 +61,8 @@ const { hasAction } = usePermission();
  * Open the clicked user record in detail view.
  */
 function onRowClick(row: Record<string, unknown>) {
-  router.push(`/auth/users/${(row as any).Id}`);
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/auth/users/${id}`);
 }
 
 const { listRef, expose } = useListViewExpose<User>();

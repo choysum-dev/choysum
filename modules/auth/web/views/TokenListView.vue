@@ -65,6 +65,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveListRowRecordId } from './list_row_nav';
 
 defineOptions({ name: 'TokenListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenListView' });
@@ -91,7 +92,8 @@ const { hasAction } = usePermission();
  * Open the clicked token record in detail view.
  */
 function onRowClick(row: Record<string, unknown>) {
-  router.push(`/auth/tokens/${(row as any).Id}`);
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/auth/tokens/${id}`);
 }
 
 /**

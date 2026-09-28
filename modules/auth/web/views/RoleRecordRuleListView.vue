@@ -38,6 +38,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoySelectionField, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveListRowRecordId } from './list_row_nav';
 
 defineOptions({ name: 'RoleRecordRuleListView', inheritAttrs: true });
 const { _lt } = createTranslate('auth', { scope: 'web/views/RoleRecordRuleListView' });
@@ -64,7 +65,8 @@ const { hasAction } = usePermission();
  * Open the clicked record-rule row in detail view.
  */
 function onRowClick(row: Record<string, unknown>) {
-  router.push(`/auth/record-rules/${(row as any).Id}`);
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/auth/record-rules/${id}`);
 }
 
 const { listRef, expose } = useListViewExpose<RoleRecordRule>();

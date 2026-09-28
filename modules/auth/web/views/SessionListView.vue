@@ -35,6 +35,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyDatetimeField, ChoyListView, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveListRowRecordId } from './list_row_nav';
 
 defineOptions({ name: 'SessionListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/SessionListView' });
@@ -61,7 +62,8 @@ const { hasAction } = usePermission();
  * Open the clicked session record in detail view.
  */
 function onRowClick(row: Record<string, unknown>) {
-  router.push(`/auth/sessions/${(row as any).Id}`);
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/auth/sessions/${id}`);
 }
 
 const { listRef, expose } = useListViewExpose<Session>();

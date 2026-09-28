@@ -24,6 +24,9 @@ test('choyNotificationBadgeText: empty, numeric, and 99+', () => {
   expect(choyNotificationBadgeText(3)).toBe('3');
   expect(choyNotificationBadgeText(99)).toBe('99');
   expect(choyNotificationBadgeText(100)).toBe('99+');
+  // Defensive: raw negatives / fractions are normalized before formatting.
+  expect(choyNotificationBadgeText(-3)).toBe('');
+  expect(choyNotificationBadgeText(2.2)).toBe('3');
 });
 
 test('choyNotificationAriaLabel: default and custom labels', () => {

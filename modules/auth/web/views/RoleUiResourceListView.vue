@@ -34,6 +34,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoySelectionField, ChoyVColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveListRowRecordId } from './list_row_nav';
 
 defineOptions({ name: 'RoleUiResourceListView', inheritAttrs: true });
 const { _lt } = createTranslate('auth', { scope: 'web/views/RoleUiResourceListView' });
@@ -60,7 +61,8 @@ const { hasAction } = usePermission();
  * Open the clicked UI-resource grant row in detail view.
  */
 function onRowClick(row: Record<string, unknown>) {
-  router.push(`/auth/ui-resource-grants/${(row as any).Id}`);
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/auth/ui-resource-grants/${id}`);
 }
 
 const { listRef, expose } = useListViewExpose<RoleUiResource>();

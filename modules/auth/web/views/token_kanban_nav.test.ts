@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  finishInitialTokenKanbanLoad,
   resolveTokenDetailId,
   resolveTokenKanbanCardId,
   resolveTokenKanbanRowPayload,
   resolveTokenMoveRecordId,
   resolveTokenUsernameLabel,
+  shouldRestoreTokenKanbanMove,
 } from './token_kanban_nav';
 
 test('resolveTokenDetailId: returns trimmed payload Id', () => {
@@ -79,4 +81,92 @@ test('resolveTokenUsernameLabel: prefers UserId.Username then string UserId', ()
   expect(resolveTokenUsernameLabel({ UserId: { Id: 'u1' } })).toBe('');
   expect(resolveTokenUsernameLabel({})).toBe('');
   expect(resolveTokenUsernameLabel(null)).toBe('');
+});
+
+test('shouldRestoreTokenKanbanMove: pending, missing id, or unknown lane', () => {
+  expect(
+    shouldRestoreTokenKanbanMove({
+      movePending: true,
+      recordId: 't1',
+      fromLaneKey: 'Revoked=false',
+      controllerLaneKeys: ['Revoked=false'],
+    }),
+  ).toBe(true);
+  expect(
+    shouldRestoreTokenKanbanMove({
+      movePending: false,
+      recordId: '',
+      fromLaneKey: 'Revoked=false',
+      controllerLaneKeys: ['Revoked=false'],
+    }),
+  ).toBe(true);
+  expect(
+    shouldRestoreTokenKanbanMove({
+      movePending: false,
+      recordId: 't1',
+      fromLaneKey: 'all',
+      controllerLaneKeys: [],
+    }),
+  ).toBe(true);
+  expect(
+    shouldRestoreTokenKanbanMove({
+      movePending: false,
+      recordId: 't1',
+      fromLaneKey: 'Revoked=false',
+      controllerLaneKeys: ['Revoked=false', 'Revoked=true'],
+    }),
+  ).toBe(false);
+});
+
+test('finishInitialTokenKanbanLoad: skips empty apply when search already landed', async () => {
+  const calls: string[] = [];
+  await finishInitialTokenKanbanLoad({
+    getLastSearchQuery: () => ({ keyword: 'x' }),
+    applyEmpty: async () => {
+      calls.push('empty');
+    },
+    onSearch: async () => {
+      calls.push('search');
+    },
+    syncLanes: async () => {
+      calls.push('sync');
+    },
+  });
+  expect(calls).toEqual([]);
+});
+
+test('finishInitialTokenKanbanLoad: re-applies late first-frame search', async () => {
+  const calls: string[] = [];
+  let late: { keyword: string } | null = null;
+  await finishInitialTokenKanbanLoad({
+    getLastSearchQuery: () => late,
+    applyEmpty: async () => {
+      calls.push('empty');
+      late = { keyword: 'hi' };
+    },
+    onSearch: async (q) => {
+      calls.push(`search:${q.keyword}`);
+    },
+    syncLanes: async () => {
+      calls.push('sync');
+    },
+  });
+  expect(calls).toEqual(['empty', 'search:hi']);
+});
+
+test('finishInitialTokenKanbanLoad: syncs when no search arrives', async () => {
+  const calls: string[] = [];
+  await finishInitialTokenKanbanLoad({
+    getLastSearchQuery: () => null,
+    applyEmpty: async () => {
+      calls.push('empty');
+    },
+    onSearch: async () => {
+      calls.push('search');
+    },
+    syncLanes: async () => {
+      calls.push('sync');
+    },
+  });
+  expect(calls).toEqual(['empty', 'sync']);
 });
