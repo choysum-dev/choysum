@@ -26,6 +26,7 @@ test('resolveLoginRedirect: defaults to / when query missing or blank', () => {
 test('resolveLoginRedirect: keeps same-origin relative paths', () => {
   expect(resolveLoginRedirect('/auth/tokens')).toBe('/auth/tokens');
   expect(resolveLoginRedirect('/web/?tab=1')).toBe('/web/?tab=1');
+  expect(resolveLoginRedirect('/web/#section')).toBe('/web/#section');
 });
 
 test('resolveLoginRedirect: rejects absolute and protocol-relative URLs', () => {
@@ -33,6 +34,11 @@ test('resolveLoginRedirect: rejects absolute and protocol-relative URLs', () => 
   expect(resolveLoginRedirect('http://evil.example')).toBe('/');
   expect(resolveLoginRedirect('//evil.example/path')).toBe('/');
   expect(resolveLoginRedirect('auth/tokens')).toBe('/');
+});
+
+test('resolveLoginRedirect: rejects backslash open-redirect payloads', () => {
+  expect(resolveLoginRedirect('/\\evil.example/phish')).toBe('/');
+  expect(resolveLoginRedirect('/\\\\evil.example')).toBe('/');
 });
 
 test('validateLoginForm: requires username and password', () => {

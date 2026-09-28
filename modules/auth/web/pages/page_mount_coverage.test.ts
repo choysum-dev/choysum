@@ -10,13 +10,8 @@ test('auth page mount: mounts real Login.vue under choysumMount', async () => {
     global: buildPageMountGlobal({ route: { path: '/login', query: {} } }),
   });
   await flushPromises();
-  const hasLoginChrome =
-    wrapper.text().includes('User Login') ||
-    wrapper.find('[data-anchor="choy.page"]').exists() ||
-    wrapper.find('.login-card').exists() ||
-    wrapper.find('[data-testid="fe-stub-opage"]').exists() ||
-    wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||
-    wrapper.find('[data-testid="fe-stub-child-view"]').exists();
-  expect(hasLoginChrome).toBe(true);
+  // Assert the real login affordances; generic stubs alone must not satisfy this test.
+  expect(wrapper.find('.login-username').exists()).toBe(true);
+  expect(wrapper.find('.login-password').exists()).toBe(true);
   wrapper.unmount();
 });
