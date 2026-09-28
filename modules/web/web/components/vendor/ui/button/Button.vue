@@ -58,8 +58,11 @@ const nonButtonAttrs = computed(() => {
     delete rest.rel;
     return { ...rest, 'aria-disabled': true, tabindex: -1 };
   }
-  if (rest.target === '_blank' && !rest.rel) {
-    rest.rel = 'noopener noreferrer';
+  if (rest.target === '_blank') {
+    const currentRel = String(rest.rel ?? '').trim();
+    if (!/\bnoopener\b/i.test(currentRel)) {
+      rest.rel = currentRel ? `${currentRel} noopener` : 'noopener noreferrer';
+    }
   }
   return rest;
 });

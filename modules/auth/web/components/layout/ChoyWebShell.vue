@@ -83,8 +83,10 @@ export default defineComponent({
     // extends merges options but does not run a script-setup parent's setup; call it here.
     // Only reuse plain object state (a returned render function is not setup state).
     const baseSetupFn = (ChoyWebShell as any)?.setup;
-    const baseSetupResult = typeof baseSetupFn === 'function' ? baseSetupFn(props, ctx) : null;
-    const baseSetup = reuseParentSetupState(baseSetupResult);
+    if (typeof baseSetupFn !== 'function') {
+      throw new Error('auth ChoyWebShell: base web ChoyWebShell exposes no setup() to merge');
+    }
+    const baseSetup = reuseParentSetupState(baseSetupFn(props, ctx));
     const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyWebShell' });
     const router = useRouter();
     const authStore = useAuthStore();

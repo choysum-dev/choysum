@@ -15,6 +15,14 @@ describe('reuseParentSetupState', () => {
     expect(reuseParentSetupState(nullProto)).toEqual({ showHeader: true });
   });
 
+  test('keeps objects whose prototype chain terminates immediately', () => {
+    // Simulate another realm's Object.prototype (not === local Object.prototype).
+    const foreignObjectProto = Object.create(null);
+    const foreignPlain: Record<string, unknown> = Object.create(foreignObjectProto);
+    foreignPlain.showHeader = true;
+    expect(reuseParentSetupState(foreignPlain)).toEqual({ showHeader: true });
+  });
+
   test('returns a shallow copy that does not alias the parent object', () => {
     const parent = { showHeader: true };
     const reused = reuseParentSetupState(parent);

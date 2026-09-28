@@ -68,6 +68,7 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   // JWT while the panel-open RefreshToken is still in flight, and a stale `active`
   // would make us pick the real active company (Apply = no-op).
   let activeCompanyId = '';
+  let lastReadErr: unknown;
   const deadline = Date.now() + 5_000;
   while (!activeCompanyId && Date.now() < deadline) {
     try {
@@ -77,16 +78,22 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
         const second = await readActiveCompanyIdFromAuth();
         if (second && second === first) {
           activeCompanyId = first;
+          break;
         }
-        continue;
       }
-    } catch {
-      // Transient evaluate/navigation failures must not abort the retry budget.
+    } catch (err) {
+      // Transient evaluate/navigation failures must not abort the retry budget,
+      // but keep the last one so a persistent failure is diagnosable below.
+      lastReadErr = err;
     }
     await page.waitForTimeout(100);
   }
   if (!activeCompanyId) {
-    throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
+    throw new Error(
+      `company switch: active company id unavailable; refusing to pick an option blindly${
+        lastReadErr ? ` (last token read failed: ${String(lastReadErr)})` : ''
+      }`
+    );
   }
   // One post-wait snapshot for both current and options — mixing pre/post-wait
   // reads can pick a value that no longer exists and time out opaquely.

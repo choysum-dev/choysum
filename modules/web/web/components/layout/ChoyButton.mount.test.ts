@@ -194,7 +194,7 @@ describe('Button host click guard', () => {
     }
   });
 
-  test('enabled blank-target host keeps an explicit rel', async () => {
+  test('enabled blank-target host keeps an explicit noopener rel', async () => {
     const w = mountApp(Button as any, {
       props: {
         'data-testid': 'link-blank-rel',
@@ -209,6 +209,26 @@ describe('Button host click guard', () => {
       await flushPromises();
       const host = w.q('[data-testid="link-blank-rel"]') as HTMLElement | null;
       expect(host?.getAttribute('rel')).toBe('noopener');
+    } finally {
+      w.unmount();
+    }
+  });
+
+  test('enabled blank-target host merges noopener into other rel tokens', async () => {
+    const w = mountApp(Button as any, {
+      props: {
+        'data-testid': 'link-blank-nofollow',
+        as: 'a',
+        href: 'https://example.com',
+        target: '_blank',
+        rel: 'nofollow',
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const host = w.q('[data-testid="link-blank-nofollow"]') as HTMLElement | null;
+      expect(host?.getAttribute('rel')).toBe('nofollow noopener');
     } finally {
       w.unmount();
     }

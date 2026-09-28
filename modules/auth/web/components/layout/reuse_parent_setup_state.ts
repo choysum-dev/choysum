@@ -22,7 +22,9 @@ export function reuseParentSetupState(result: unknown): Record<string, unknown> 
     return {};
   }
   const proto = Object.getPrototypeOf(result);
-  if (proto !== null && proto !== Object.prototype) {
+  // Realm-agnostic plain object: prototype is null or terminates immediately
+  // (cross-realm Object.prototype !== local Object.prototype).
+  if (proto !== null && Object.getPrototypeOf(proto) !== null) {
     return {};
   }
   // Shallow copy so later mutation of the returned record cannot alias parent state.
