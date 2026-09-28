@@ -17,5 +17,6 @@ export function choyNotificationBadgeText(unreadCount: number): string {
 /** Accessible label for the chrome notification button. */
 export function choyNotificationAriaLabel(label: string | undefined, unreadCount: number): string {
   const text = String(label || 'Notifications').trim() || 'Notifications';
-  return unreadCount ? `${text} (${unreadCount} unread)` : text;
+  const count = choyNotificationUnreadCount(unreadCount);
+  return count ? `${text} (${count} unread)` : text;
 }

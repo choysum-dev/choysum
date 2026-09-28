@@ -34,4 +34,7 @@ test('choyNotificationAriaLabel: default and custom labels', () => {
   expect(choyNotificationAriaLabel('Alerts', 0)).toBe('Alerts');
   expect(choyNotificationAriaLabel('Alerts', 4)).toBe('Alerts (4 unread)');
   expect(choyNotificationAriaLabel('  ', 2)).toBe('Notifications (2 unread)');
+  // Raw negatives / fractions are normalized to match badge text.
+  expect(choyNotificationAriaLabel('Alerts', -1)).toBe('Alerts');
+  expect(choyNotificationAriaLabel('Alerts', 2.2)).toBe('Alerts (3 unread)');
 });

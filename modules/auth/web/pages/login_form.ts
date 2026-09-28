@@ -92,9 +92,12 @@ export function isUnsafeLoginRedirectPath(path: string): boolean {
 }
 
 /** Normalize a base URL/origin string to `url.origin` for same-origin checks. */
-export function normalizeLoginRedirectOrigin(base: string): string {
+export function normalizeLoginRedirectOrigin(
+  base: string,
+  parseUrl: (input: string) => { origin: string } = (input) => new URL(input),
+): string {
   try {
-    const origin = new URL(base).origin;
+    const origin = parseUrl(base).origin;
     // Some engines yield an empty origin instead of throwing for bare strings.
     return origin || String(base);
   } catch {
@@ -151,9 +154,11 @@ export async function runLoginSubmit(opts: {
   setError: (message: string) => void;
 }): Promise<boolean> {
   if (opts.loading) return false;
+  // Clear any previous server error before re-validating so stale alerts
+  // never sit next to freshly surfaced field errors.
+  opts.setError('');
   if (!validateLoginForm(opts.form, opts.fieldErrors, opts.t)) return false;
   try {
-    opts.setError('');
     // Trim username only; password whitespace can be intentional.
     await opts.login(opts.form.username.trim(), opts.form.password, '', '', opts.rememberMe);
     return true;

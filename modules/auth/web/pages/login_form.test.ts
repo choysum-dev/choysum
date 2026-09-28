@@ -116,6 +116,11 @@ test('normalizeLoginRedirectOrigin: strips path and trailing slash', () => {
   expect(normalizeLoginRedirectOrigin('https://app.example/')).toBe('https://app.example');
   expect(normalizeLoginRedirectOrigin('https://app.example/app')).toBe('https://app.example');
   expect(normalizeLoginRedirectOrigin('not a url')).toBe('not a url');
+  expect(
+    normalizeLoginRedirectOrigin('https://app.example', () => {
+      throw new Error('bad url');
+    }),
+  ).toBe('https://app.example');
 });
 
 test('resolveLoginRedirectOrigin: uses window origin or localhost fallback', () => {
@@ -177,6 +182,7 @@ test('runLoginSubmit: skips while loading', async () => {
 
 test('runLoginSubmit: skips invalid form', async () => {
   let calls = 0;
+  const errors: string[] = [];
   const ok = await runLoginSubmit({
     loading: false,
     form: { username: '', password: '' },
@@ -187,10 +193,12 @@ test('runLoginSubmit: skips invalid form', async () => {
       calls += 1;
     },
     rememberMe: true,
-    setError: () => undefined,
+    setError: m => errors.push(m),
   });
   expect(ok).toBe(false);
   expect(calls).toBe(0);
+  // Stale server error is cleared even when field validation fails.
+  expect(errors).toEqual(['']);
 });
 
 test('runLoginSubmit: returns true on success and trims username', async () => {

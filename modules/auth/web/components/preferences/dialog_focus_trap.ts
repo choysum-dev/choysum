@@ -7,7 +7,10 @@ const NATIVE_FOCUSABLE = new Set(['A', 'BUTTON', 'TEXTAREA', 'INPUT', 'SELECT'])
 export function isTabFocusable(el: HTMLElement): boolean {
   if (el.getAttribute('aria-hidden') === 'true') return false;
   if (el.hasAttribute('hidden')) return false;
-  if (typeof el.closest === 'function' && (el.closest('[inert]') || el.closest('[hidden]'))) {
+  if (
+    typeof el.closest === 'function' &&
+    (el.closest('[inert]') || el.closest('[hidden]') || el.closest('[aria-hidden="true"]'))
+  ) {
     return false;
   }
 

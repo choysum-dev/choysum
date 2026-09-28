@@ -82,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
           variant="ghost"
           size="sm"
           class="w-full"
-          :disabled="loadMorePending"
+          :disabled="loadMorePending || movePending"
           @click="loadMore()"
         >
           {{ _t('Load more (%s remaining)', remain) }}
