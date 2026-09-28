@@ -33,7 +33,7 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
   await expect
     .poll(
       async () =>
-        p.evaluate((want: string) => {
+        p.evaluate(async (want: string) => {
           const select = document.querySelector(
             '.o-preferences-dialog [data-testid="preferences-timezone"]'
           ) as HTMLSelectElement | null;
@@ -43,6 +43,8 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
           select.value = want;
           select.dispatchEvent(new Event('input', { bubbles: true }));
           select.dispatchEvent(new Event('change', { bubbles: true }));
+          // Let Vue flush watchers that may reset the draft before declaring success.
+          await new Promise(resolve => setTimeout(resolve, 0));
           return select.value === want;
         }, iana),
       { timeout: 15_000 }

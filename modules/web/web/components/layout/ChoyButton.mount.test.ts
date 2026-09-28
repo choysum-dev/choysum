@@ -3,6 +3,7 @@
 
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyButton from './ChoyButton.vue';
+import Button from '../vendor/ui/button/Button.vue';
 
 describe('ChoyButton mount', () => {
   test('forwards data-testid and aria-label to the native button', async () => {
@@ -80,6 +81,7 @@ describe('ChoyButton mount', () => {
         'data-testid': 'click-disabled',
         disabled: true,
         as: 'a',
+        href: '#nav',
       },
       on: {
         onClick: () => {
@@ -95,9 +97,43 @@ describe('ChoyButton mount', () => {
       expect(host?.getAttribute('aria-disabled')).toBe('true');
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
-      handleClick?.(new Event('click'));
+      const event = new Event('click', { cancelable: true });
+      handleClick?.(event);
       await flushPromises();
       expect(clicks).toBe(0);
+      expect(event.defaultPrevented).toBe(true);
+    } finally {
+      w.unmount();
+    }
+  });
+});
+
+describe('Button host click guard', () => {
+  test('disabled non-button host prevents default without emitting', async () => {
+    let clicks = 0;
+    const w = mountApp(Button as any, {
+      props: {
+        'data-testid': 'link-disabled',
+        disabled: true,
+        as: 'a',
+        href: '#nav',
+      },
+      on: {
+        onClick: () => {
+          clicks += 1;
+        },
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
+      expect(typeof handleClick).toBe('function');
+      const event = new Event('click', { cancelable: true });
+      handleClick?.(event);
+      await flushPromises();
+      expect(clicks).toBe(0);
+      expect(event.defaultPrevented).toBe(true);
     } finally {
       w.unmount();
     }

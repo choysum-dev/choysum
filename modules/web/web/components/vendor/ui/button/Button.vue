@@ -34,7 +34,11 @@ const props = withDefaults(
 const emit = defineEmits(['click']);
 
 function handleClick(event: Event) {
-  if (props.disabled) return;
+  if (props.disabled) {
+    // Non-<button> hosts (e.g. <a href>) still navigate unless default is cancelled.
+    event.preventDefault();
+    return;
+  }
   emit('click', event);
 }
 

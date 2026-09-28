@@ -59,10 +59,6 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     )
     .toBeGreaterThanOrEqual(2);
 
-  const activeCompanyId = await readActiveCompanyIdFromAuth();
-  if (!activeCompanyId) {
-    throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
-  }
   const selectState = await page.evaluate((sel: string) => {
     const select = document.querySelector(sel) as HTMLSelectElement | null;
     if (!select) return { current: '', values: [] as string[] };
@@ -73,6 +69,12 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
         .filter(Boolean),
     };
   }, panelSelect);
+  // Read JWT active after the draft: an in-flight panel-open RefreshToken could
+  // otherwise leave `current` on the freshly-synced active company while `active` is stale.
+  const activeCompanyId = await readActiveCompanyIdFromAuth();
+  if (!activeCompanyId) {
+    throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
+  }
   const otherValue = pickAlternativeCompanyOptionValue(
     selectState.values,
     selectState.current,
