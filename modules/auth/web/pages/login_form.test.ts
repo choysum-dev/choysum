@@ -5,6 +5,7 @@ import { ChoysumError } from '../error';
 import {
   formatLoginError,
   resolveLoginRedirect,
+  resolveLoginRedirectOrigin,
   runLoginSubmit,
   validateLoginForm,
   type LoginFieldErrors,
@@ -41,6 +42,47 @@ test('resolveLoginRedirect: rejects backslash open-redirect payloads', () => {
   expect(resolveLoginRedirect('/\\\\evil.example')).toBe('/');
 });
 
+test('resolveLoginRedirect: rejects normalization that yields protocol-relative paths', () => {
+  expect(resolveLoginRedirect('/..//evil.example')).toBe('/');
+  expect(resolveLoginRedirect('/a/..//evil.com')).toBe('/');
+  expect(resolveLoginRedirect('/%2e%2e/%2e%2e//evil.com')).toBe('/');
+});
+
+test('resolveLoginRedirect: rejects off-origin URL results', () => {
+  expect(
+    resolveLoginRedirect('/ok', {
+      origin: 'http://localhost',
+      createUrl: () => ({
+        origin: 'https://evil.example',
+        pathname: '/ok',
+        search: '',
+        hash: '',
+      }),
+    }),
+  ).toBe('/');
+});
+
+test('resolveLoginRedirect: fails closed when URL construction throws', () => {
+  expect(
+    resolveLoginRedirect('/ok', {
+      createUrl: () => {
+        throw new Error('bad url');
+      },
+    }),
+  ).toBe('/');
+});
+
+test('resolveLoginRedirect: honors explicit origin override', () => {
+  expect(resolveLoginRedirect('/home', { origin: 'https://app.example' })).toBe('/home');
+});
+
+test('resolveLoginRedirectOrigin: uses window origin or localhost fallback', () => {
+  expect(resolveLoginRedirectOrigin({ windowOrigin: 'https://app.example' })).toBe('https://app.example');
+  expect(resolveLoginRedirectOrigin({ windowOrigin: '  ' })).toBe('http://localhost');
+  expect(resolveLoginRedirectOrigin({ windowOrigin: null })).toBe('http://localhost');
+  expect(resolveLoginRedirectOrigin()).toMatch(/^https?:\/\//);
+});
+
 test('validateLoginForm: requires username and password', () => {
   const form: LoginFormFields = { username: '', password: '' };
   const errors = emptyErrors();
@@ -60,6 +102,11 @@ test('validateLoginForm: accepts trimmed non-empty credentials', () => {
 test('formatLoginError: uses ChoysumError message', () => {
   const err = new ChoysumError({ domain: 'auth', code: 'INVALID_CREDENTIALS', message: 'bad creds' });
   expect(formatLoginError(err, 'fallback')).toBe('bad creds');
+});
+
+test('formatLoginError: falls back when ChoysumError message is empty', () => {
+  const err = new ChoysumError({ domain: 'auth', code: 'INVALID_CREDENTIALS', message: '' });
+  expect(formatLoginError(err, 'fallback')).toBe('fallback');
 });
 
 test('formatLoginError: falls back for unknown errors', () => {

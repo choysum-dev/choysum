@@ -885,13 +885,13 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:292
+#: web/components/layout/SwitchCompany.vue:300
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:259
-#: web/components/layout/SwitchCompany.vue:262
+#: web/components/layout/SwitchCompany.vue:267
+#: web/components/layout/SwitchCompany.vue:270
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr ""
@@ -901,17 +901,17 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:297
+#: web/components/layout/SwitchCompany.vue:305
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:295
+#: web/components/layout/SwitchCompany.vue:303
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:290
+#: web/components/layout/SwitchCompany.vue:298
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr ""
@@ -2115,7 +2115,7 @@ msgctxt "web/views/TokenFormView"
 msgid "Token Information"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:73
+#: web/views/TokenKanbanView.vue:77
 msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr ""
@@ -2125,13 +2125,13 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:131
-#: web/views/TokenKanbanView.vue:152
+#: web/views/TokenKanbanView.vue:135
+#: web/views/TokenKanbanView.vue:156
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:198
+#: web/views/TokenKanbanView.vue:202
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load more tokens"
 msgstr ""
@@ -2156,9 +2156,14 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Load more (%s remaining)"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:216
+#: web/views/TokenKanbanView.vue:226
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
+msgstr ""
+
+#: web/views/TokenKanbanView.vue:12
+msgctxt "web/views/TokenKanbanView"
+msgid "New"
 msgstr ""
 
 #: web/views/TokenKanbanView.vue:56
@@ -2166,14 +2171,14 @@ msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:229
-#: web/views/TokenKanbanView.vue:231
+#: web/views/TokenKanbanView.vue:239
+#: web/views/TokenKanbanView.vue:241
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:228
-#: web/views/TokenKanbanView.vue:230
+#: web/views/TokenKanbanView.vue:238
+#: web/views/TokenKanbanView.vue:240
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr ""

@@ -112,12 +112,20 @@ function onDocumentClick(event: MouseEvent) {
   }
 }
 
+function onDocumentKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && visible.value) {
+    visible.value = false;
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
+  document.addEventListener('keydown', onDocumentKeydown);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick);
+  document.removeEventListener('keydown', onDocumentKeydown);
 });
 
 const meta = computed(() => ((authStore.identity as any)?.metadata ?? {}) as any);

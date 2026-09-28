@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
       :show-header="showHeader"
       :show-actions="true"
       :readonly="movePending || loadMorePending"
-      create-label="New"
+      :create-label="_t('New')"
       @card-click="onCardClick"
       @card-move="onCardMove"
       @lane-load-more="onLaneLoadMore"
@@ -115,7 +115,11 @@ import { createKanbanController } from '@/web/web/controllers/kanbanController';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
 import type { Lane } from '@/web/web/query/types';
-import { resolveTokenDetailId } from './token_kanban_nav';
+import {
+  resolveTokenDetailId,
+  resolveTokenKanbanCardId,
+  resolveTokenMoveRecordId,
+} from './token_kanban_nav';
 
 defineOptions({ name: 'TokenKanbanView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
@@ -137,7 +141,7 @@ let lastSearchQuery: ChoySearchQuery | null = null;
 function rowToCard(row: { payload?: Record<string, unknown>; key?: string }, index: number, laneKey: string): ChoyKanbanCard {
   const payload = (row.payload ?? {}) as Record<string, unknown>;
   return {
-    id: String(payload.Id ?? row.key ?? index),
+    id: resolveTokenKanbanCardId(row, index, laneKey),
     title: String(payload.TokenType ?? payload.Id ?? ''),
     laneKey,
     payload,
@@ -302,9 +306,15 @@ async function onLaneLoadMore(payload: ChoyKanbanLoadMore) {
  */
 async function onCardMove(move: ChoyKanbanMove) {
   if (movePending.value) return;
+  // Synthetic Vue keys (lane-index fallbacks) must not drive UpdateById.
+  const recordId = resolveTokenMoveRecordId(
+    choyLanes.value.flatMap(lane => lane.cards),
+    move.cardId,
+  );
+  if (!recordId) return;
   movePending.value = true;
   try {
-    await controller.moveCard(move.cardId, move.fromLaneKey, move.toLaneKey, move.toIndex);
+    await controller.moveCard(recordId, move.fromLaneKey, move.toLaneKey, move.toIndex);
     await syncLanesFromController();
   } catch (e) {
     ChoyMessage.error(_t('Move failed; refreshed to recover'));

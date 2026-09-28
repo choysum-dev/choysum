@@ -13,27 +13,58 @@ export type LoginFieldErrors = {
   password: string;
 };
 
+export type ResolveLoginRedirectDeps = {
+  /** Override page origin (tests / non-browser hosts). */
+  origin?: string;
+  /** Override URL construction so failure paths are testable. */
+  createUrl?: (input: string, base: string) => { origin: string; pathname: string; search: string; hash: string };
+};
+
+/**
+ * Resolve the origin used when parsing relative login redirects.
+ * Empty / missing window origins fall back to `http://localhost`.
+ */
+export function resolveLoginRedirectOrigin(opts?: { windowOrigin?: string | null }): string {
+  const fromWindow =
+    opts && 'windowOrigin' in opts
+      ? opts.windowOrigin
+      : typeof window !== 'undefined'
+        ? window.location?.origin
+        : undefined;
+  const origin = String(fromWindow ?? '').trim();
+  return origin || 'http://localhost';
+}
+
 /**
  * Resolve the post-login destination from the route redirect query.
  * Only same-origin relative paths are accepted; absolute, protocol-relative,
- * and backslash-normalized payloads fall back to `/`.
+ * backslash, and normalization-induced `//host` payloads fall back to `/`.
  */
-export function resolveLoginRedirect(redirectQuery: string | undefined | null): string {
+export function resolveLoginRedirect(
+  redirectQuery: string | undefined | null,
+  deps?: ResolveLoginRedirectDeps,
+): string {
   const redirect = String(redirectQuery ?? '').trim();
   if (!redirect.startsWith('/') || redirect.startsWith('//') || redirect.includes('\\')) {
     return '/';
   }
   try {
-    // `new URL` also normalizes odd encodings; compare origin so off-site targets fail closed.
-    const base =
-      typeof window !== 'undefined' && window.location?.origin
-        ? window.location.origin
-        : 'http://localhost';
-    const url = new URL(redirect, base);
-    if (url.origin !== base) {
+    const base = deps?.origin || resolveLoginRedirectOrigin();
+    const createUrl = deps?.createUrl || ((input: string, origin: string) => new URL(input, origin));
+    const url = createUrl(redirect, base);
+    const pathOnly = String(url.pathname || '');
+    // Some engines leave `/..//host` uncollapsed; others normalize to `//host`.
+    // Reject both, and any pathname with empty segments (`//`) or `..` traversal.
+    if (
+      url.origin !== base ||
+      !pathOnly.startsWith('/') ||
+      pathOnly.startsWith('//') ||
+      pathOnly.includes('//') ||
+      /(^|\/)\.\.(\/|$)/.test(pathOnly)
+    ) {
       return '/';
     }
-    return `${url.pathname}${url.search}${url.hash}`;
+    return `${pathOnly}${url.search}${url.hash}`;
   } catch {
     return '/';
   }
@@ -67,7 +98,7 @@ export function validateLoginForm(
  */
 export function formatLoginError(err: unknown, fallback: string): string {
   if (err instanceof ChoysumError) {
-    return err.message;
+    return err.message || fallback;
   }
   console.error('Login flow failed:', err);
   return fallback;

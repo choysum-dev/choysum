@@ -866,12 +866,12 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr "可用公司"
 
-#: web/components/layout/SwitchCompany.vue:292
+#: web/components/layout/SwitchCompany.vue:300
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr "可选公司必须包含当前公司"
 
-#: web/components/layout/SwitchCompany.vue:259 web/components/layout/SwitchCompany.vue:262
+#: web/components/layout/SwitchCompany.vue:267 web/components/layout/SwitchCompany.vue:270
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr "公司"
@@ -881,17 +881,17 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr "当前公司"
 
-#: web/components/layout/SwitchCompany.vue:297
+#: web/components/layout/SwitchCompany.vue:305
 msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr "没有可应用的更改"
 
-#: web/components/layout/SwitchCompany.vue:295
+#: web/components/layout/SwitchCompany.vue:303
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr "仅有一家可选公司，无需应用"
 
-#: web/components/layout/SwitchCompany.vue:290
+#: web/components/layout/SwitchCompany.vue:298
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr "请选择当前公司"
@@ -2081,7 +2081,7 @@ msgctxt "web/views/TokenFormView"
 msgid "Token Information"
 msgstr "令牌信息"
 
-#: web/views/TokenKanbanView.vue:73
+#: web/views/TokenKanbanView.vue:77
 msgctxt "web/views/TokenKanbanView"
 msgid "All"
 msgstr "全部"
@@ -2091,12 +2091,12 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Expires"
 msgstr "过期"
 
-#: web/views/TokenKanbanView.vue:131 web/views/TokenKanbanView.vue:152
+#: web/views/TokenKanbanView.vue:135 web/views/TokenKanbanView.vue:156
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load kanban"
 msgstr "看板加载失败"
 
-#: web/views/TokenKanbanView.vue:198
+#: web/views/TokenKanbanView.vue:202
 msgctxt "web/views/TokenKanbanView"
 msgid "Failed to load more tokens"
 msgstr "加载更多令牌失败"
@@ -2121,22 +2121,27 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Load more (%s remaining)"
 msgstr "加载更多（剩余 %s）"
 
-#: web/views/TokenKanbanView.vue:216
+#: web/views/TokenKanbanView.vue:226
 msgctxt "web/views/TokenKanbanView"
 msgid "Move failed; refreshed to recover"
 msgstr "移动失败；已刷新以恢复"
+
+#: web/views/TokenKanbanView.vue:12
+msgctxt "web/views/TokenKanbanView"
+msgid "New"
+msgstr "新建"
 
 #: web/views/TokenKanbanView.vue:56
 msgctxt "web/views/TokenKanbanView"
 msgid "No tokens in this lane"
 msgstr "此列暂无令牌"
 
-#: web/views/TokenKanbanView.vue:229 web/views/TokenKanbanView.vue:231
+#: web/views/TokenKanbanView.vue:239 web/views/TokenKanbanView.vue:241
 msgctxt "web/views/TokenKanbanView"
 msgid "Not Revoked"
 msgstr "未撤销"
 
-#: web/views/TokenKanbanView.vue:228 web/views/TokenKanbanView.vue:230
+#: web/views/TokenKanbanView.vue:238 web/views/TokenKanbanView.vue:240
 msgctxt "web/views/TokenKanbanView"
 msgid "Revoked"
 msgstr "已撤销"
