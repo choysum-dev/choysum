@@ -82,6 +82,8 @@ test('decodeLoginRedirectPath: stabilizes after multi-pass decode', () => {
   expect(decodeLoginRedirectPath('/%252f%252fevil')).toBe('///evil');
   expect(isUnsafeLoginRedirectPath(decodeLoginRedirectPath('/%252f%252fevil') || '')).toBe(true);
   expect(decodeLoginRedirectPath('/%E0%A4%A')).toBeNull();
+  // Still changing after 3 passes: return the last decoded value (loop fallthrough).
+  expect(decodeLoginRedirectPath('/%252525252f')).toBe('/%252f');
 });
 
 test('isUnsafeLoginRedirectPath: flags protocol-relative, empty segments, slash, and ..', () => {
