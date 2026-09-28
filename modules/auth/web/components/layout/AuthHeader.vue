@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     >
       {{ _t('Log In') }}
     </ChoyButton>
-    <ONotificationBell v-if="isAuthenticated" />
+    <ChoyNotificationBell v-if="isAuthenticated" />
     <SwitchCompany v-if="isAuthenticated" />
     <div v-if="isAuthenticated" ref="userMenuRoot" class="relative">
       <ChoyButton
@@ -53,8 +53,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { User } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
-import { ChoyButton } from '@/web';
-import ONotificationBell from '@/web/web/components/layout/ONotificationBell.vue';
+import { ChoyButton, ChoyNotificationBell } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import SwitchCompany from './SwitchCompany.vue';
