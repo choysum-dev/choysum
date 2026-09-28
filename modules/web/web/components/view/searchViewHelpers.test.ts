@@ -66,14 +66,19 @@ describe('searchViewHelpers', () => {
   });
 
   test('choySearchQueryFromPayload adapts OSearchView payload', () => {
+    const appliedFilters = [{ children: [{ field: 'name', operator: '=', value: 'a' }] }];
+    const appliedGroups = [{ field: 'Revoked' }];
     expect(
       choySearchQueryFromPayload({
         keyword: '  hi  ',
-        appliedFilters: [{ children: [{ field: 'name', operator: '=', value: 'a' }] }],
+        appliedFilters,
+        appliedGroups,
       }),
     ).toEqual({
       keyword: 'hi',
       filters: [{ field: 'name', op: '=', value: 'a' }],
+      appliedFilters,
+      appliedGroups,
     });
   });
 

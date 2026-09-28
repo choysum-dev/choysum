@@ -12,11 +12,14 @@ SPDX-License-Identifier: Apache-2.0
       @click.self="visible = false"
     >
       <div
-        class="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-lg"
+        ref="dialogRef"
+        tabindex="-1"
+        class="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-lg outline-none"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
         @click.stop
+        @keydown.esc="visible = false"
       >
         <h2 :id="titleId" class="text-lg font-semibold">{{ _t('Edit Profile') }}</h2>
 
@@ -60,7 +63,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, useId, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useId, watch } from 'vue';
 import { ChoyButton, ChoyMessage } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
@@ -84,6 +87,8 @@ const i18nStore = useI18nStore();
 const userStore = createStoreByModel('auth.User');
 const languageStore = createStoreByModel('base.Language');
 const titleId = useId();
+const dialogRef = ref<HTMLElement | null>(null);
+let lastFocused: HTMLElement | null = null;
 
 const visible = computed({
   get: () => props.modelValue,
@@ -178,8 +183,15 @@ async function openAndLoad() {
 watch(
   () => props.modelValue,
   async open => {
-    if (!open) return;
-    await openAndLoad();
+    if (open) {
+      lastFocused = document.activeElement as HTMLElement | null;
+      await openAndLoad();
+      await nextTick();
+      dialogRef.value?.focus();
+      return;
+    }
+    lastFocused?.focus?.();
+    lastFocused = null;
   }
 );
 
@@ -199,10 +211,12 @@ watch(timezone, value => {
   }
 });
 
-onMounted(() => {
-  if (props.modelValue) {
-    void openAndLoad();
-  }
+onMounted(async () => {
+  if (!props.modelValue) return;
+  lastFocused = document.activeElement as HTMLElement | null;
+  await openAndLoad();
+  await nextTick();
+  dialogRef.value?.focus();
 });
 
 function resolveUserId(): string {

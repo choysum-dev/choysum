@@ -4,13 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage
-    :title="pageTitle"
-    :store="tokenStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns TokenType, Revoked.')"
-  >
+  <ChoyPage :title="pageTitle" :store="tokenStore">
     <TokenKanbanView />
   </ChoyPage>
 </template>

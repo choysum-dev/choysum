@@ -207,7 +207,7 @@ msgctxt "web/components/field/OBigintField"
 msgid "Must not be less than %s"
 msgstr ""
 
-#: web/components/field/OBinaryField.vue:71
+#: web/components/field/OBinaryField.vue:72
 msgctxt "web/components/field/OBinaryField"
 msgid "Drop file here or click to upload"
 msgstr ""
@@ -217,12 +217,12 @@ msgctxt "web/components/field/OBinaryField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/OBinaryField.vue:77
+#: web/components/field/OBinaryField.vue:78
 msgctxt "web/components/field/OBinaryField"
 msgid "Replace file"
 msgstr ""
 
-#: web/components/field/OBinaryField.vue:70
+#: web/components/field/OBinaryField.vue:71
 msgctxt "web/components/field/OBinaryField"
 msgid "Upload file"
 msgstr ""
@@ -392,7 +392,7 @@ msgctxt "web/components/field/OHtmlField"
 msgid "URL"
 msgstr ""
 
-#: web/components/field/OImageField.vue:87
+#: web/components/field/OImageField.vue:88
 msgctxt "web/components/field/OImageField"
 msgid "Drop image here or click to upload"
 msgstr ""
@@ -417,12 +417,12 @@ msgctxt "web/components/field/OImageField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/OImageField.vue:93
+#: web/components/field/OImageField.vue:94
 msgctxt "web/components/field/OImageField"
 msgid "Replace image"
 msgstr ""
 
-#: web/components/field/OImageField.vue:86
+#: web/components/field/OImageField.vue:87
 msgctxt "web/components/field/OImageField"
 msgid "Upload image"
 msgstr ""
@@ -601,7 +601,7 @@ msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTreeField.vue:96
+#: web/components/field/OManyToManyRefTreeField.vue:97
 msgctxt "web/components/field/OManyToManyRefTreeField"
 msgid "No data"
 msgstr ""
@@ -656,7 +656,7 @@ msgctxt "web/components/field/OManyToManyTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyTreeField.vue:96
+#: web/components/field/OManyToManyTreeField.vue:97
 msgctxt "web/components/field/OManyToManyTreeField"
 msgid "No data"
 msgstr ""
@@ -1039,7 +1039,7 @@ msgctxt "web/components/layout/ONotificationBell"
 msgid "Mark all read"
 msgstr ""
 
-#: web/components/layout/ONotificationBell.vue:68
+#: web/components/layout/ONotificationBell.vue:71
 msgctxt "web/components/layout/ONotificationBell"
 msgid "New notification"
 msgstr ""
@@ -1055,7 +1055,7 @@ msgctxt "web/components/layout/ONotificationBell"
 msgid "Notifications"
 msgstr ""
 
-#: web/components/layout/ONotificationBell.vue:66
+#: web/components/layout/ONotificationBell.vue:69
 msgctxt "web/components/layout/ONotificationBell"
 msgid "Update on %s (%s)"
 msgstr ""
@@ -1070,7 +1070,7 @@ msgctxt "web/components/page/OPage"
 msgid "Page loading"
 msgstr ""
 
-#: web/components/page/OPageIoMenu.vue:48
+#: web/components/page/OPageIoMenu.vue:49
 msgctxt "web/components/page/OPageIoMenu"
 msgid "Import and export"
 msgstr ""
@@ -1392,23 +1392,23 @@ msgctxt "web/components/view/OPagination"
 msgid "of %s"
 msgstr ""
 
-#: web/components/view/OSearchView.vue:33
+#: web/components/view/OSearchView.vue:36
 msgctxt "web/components/view/OSearchView"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:423
+#: web/components/view/search/OSearch.vue:427
 msgctxt "web/components/view/search/OSearch"
 msgid "Add at least one complete condition before confirming"
 msgstr ""
 
 #: web/components/view/search/OSearch.vue:111
-#: web/components/view/search/OSearch.vue:208
+#: web/components/view/search/OSearch.vue:212
 msgctxt "web/components/view/search/OSearch"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:203
+#: web/components/view/search/OSearch.vue:207
 msgctxt "web/components/view/search/OSearch"
 msgid "Confirm delete"
 msgstr ""
@@ -1423,17 +1423,17 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Custom group by"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:76
+#: web/components/view/search/OSearch.vue:80
 msgctxt "web/components/view/search/OSearch"
 msgid "Day"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:207
+#: web/components/view/search/OSearch.vue:211
 msgctxt "web/components/view/search/OSearch"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:202
+#: web/components/view/search/OSearch.vue:206
 msgctxt "web/components/view/search/OSearch"
 msgid "Delete favorite \"%s\"? This cannot be undone."
 msgstr ""
@@ -1443,7 +1443,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Delete favorite %s"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:188
+#: web/components/view/search/OSearch.vue:192
 msgctxt "web/components/view/search/OSearch"
 msgid "Edit favorite"
 msgstr ""
@@ -1453,12 +1453,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Edit favorite %s"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:111
+#: web/components/view/search/OSearch.vue:115
 msgctxt "web/components/view/search/OSearch"
 msgid "Edit filter"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:251
+#: web/components/view/search/OSearch.vue:255
 msgctxt "web/components/view/search/OSearch"
 msgid "Enter a favorite name"
 msgstr ""
@@ -1468,7 +1468,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Failed to load favorites"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:218
+#: web/components/view/search/OSearch.vue:222
 msgctxt "web/components/view/search/OSearch"
 msgid "Favorite deleted"
 msgstr ""
@@ -1478,12 +1478,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Favorite name"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:270
+#: web/components/view/search/OSearch.vue:274
 msgctxt "web/components/view/search/OSearch"
 msgid "Favorite saved"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:263
+#: web/components/view/search/OSearch.vue:267
 msgctxt "web/components/view/search/OSearch"
 msgid "Favorite updated"
 msgstr ""
@@ -1508,7 +1508,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Group: %s"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:74
+#: web/components/view/search/OSearch.vue:78
 msgctxt "web/components/view/search/OSearch"
 msgid "Month"
 msgstr ""
@@ -1518,7 +1518,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Name"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:111
+#: web/components/view/search/OSearch.vue:115
 msgctxt "web/components/view/search/OSearch"
 msgid "New filter"
 msgstr ""
@@ -1538,7 +1538,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Open search menu"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:73
+#: web/components/view/search/OSearch.vue:77
 msgctxt "web/components/view/search/OSearch"
 msgid "Quarter"
 msgstr ""
@@ -1558,7 +1558,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:188
+#: web/components/view/search/OSearch.vue:192
 msgctxt "web/components/view/search/OSearch"
 msgid "Save current filters"
 msgstr ""
@@ -1573,7 +1573,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Search"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:138
+#: web/components/view/search/OSearch.vue:142
 msgctxt "web/components/view/search/OSearch"
 msgid "Search..."
 msgstr ""
@@ -1598,12 +1598,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Use by default"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:75
+#: web/components/view/search/OSearch.vue:79
 msgctxt "web/components/view/search/OSearch"
 msgid "Week"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:72
+#: web/components/view/search/OSearch.vue:76
 msgctxt "web/components/view/search/OSearch"
 msgid "Year"
 msgstr ""
@@ -1760,33 +1760,33 @@ msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr ""
 
-#: web/composables/useListInlineEdit.ts:97
+#: web/composables/useListInlineEdit.ts:105
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "Discard"
 msgstr ""
 
-#: web/composables/useListInlineEdit.ts:96
+#: web/composables/useListInlineEdit.ts:104
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "Save"
 msgstr ""
 
-#: web/composables/useListInlineEdit.ts:92
+#: web/composables/useListInlineEdit.ts:100
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "Unsaved changes"
 msgstr ""
 
-#: web/composables/useListInlineEdit.ts:91
+#: web/composables/useListInlineEdit.ts:99
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "You have unsaved changes on the current row. Save before switching?"
 msgstr ""
 
-#: web/composables/useListInlineEdit.ts:142
-#: web/composables/useListInlineEdit.ts:175
+#: web/composables/useListInlineEdit.ts:150
+#: web/composables/useListInlineEdit.ts:183
 msgctxt "web/composables/useListInlineEdit@save"
 msgid "Failed to save row"
 msgstr ""
 
-#: web/composables/useListInlineEdit.ts:166
+#: web/composables/useListInlineEdit.ts:174
 msgctxt "web/composables/useListInlineEdit@save"
 msgid "Row saved"
 msgstr ""
@@ -2019,87 +2019,132 @@ msgctxt "web/menu/menus"
 msgid "Home"
 msgstr ""
 
-#: web/pages/ErrorView.vue:97
+#: web/pages/ErrorView.vue:69
 msgctxt "web/pages/ErrorView"
 msgid "Access denied"
 msgstr ""
 
-#: web/pages/ErrorView.vue:110
+#: web/pages/ErrorView.vue:80
 msgctxt "web/pages/ErrorView"
 msgid "An internal error occurred. Try again later or contact support."
 msgstr ""
 
-#: web/pages/ErrorView.vue:112
-#: web/pages/ErrorView.vue:125
-#: web/pages/ErrorView.vue:86
+#: web/pages/ErrorView.vue:63
+#: web/pages/ErrorView.vue:83
+#: web/pages/ErrorView.vue:94
 msgctxt "web/pages/ErrorView"
 msgid "Back to home"
 msgstr ""
 
-#: web/pages/ErrorView.vue:123
+#: web/pages/ErrorView.vue:92
 msgctxt "web/pages/ErrorView"
 msgid "Check that the URL is correct, or the page may have been moved or deleted."
 msgstr ""
 
-#: web/pages/ErrorView.vue:101
+#: web/pages/ErrorView.vue:71
 msgctxt "web/pages/ErrorView"
 msgid "Confirm you have access to this resource, or contact an administrator."
 msgstr ""
 
-#: web/pages/ErrorView.vue:94
+#: web/pages/ErrorView.vue:67
 msgctxt "web/pages/ErrorView"
 msgid "Contact administrator"
 msgstr ""
 
-#: web/pages/ErrorView.vue:126
-#: web/pages/ErrorView.vue:90
+#: web/pages/ErrorView.vue:65
+#: web/pages/ErrorView.vue:95
 msgctxt "web/pages/ErrorView"
 msgid "Go back"
 msgstr ""
 
-#: web/pages/ErrorView.vue:119
+#: web/pages/ErrorView.vue:90
 msgctxt "web/pages/ErrorView"
 msgid "Page not found"
 msgstr ""
 
-#: web/pages/ErrorView.vue:114
+#: web/pages/ErrorView.vue:85
 msgctxt "web/pages/ErrorView"
 msgid "Report a problem"
 msgstr ""
 
-#: web/pages/ErrorView.vue:113
+#: web/pages/ErrorView.vue:84
 msgctxt "web/pages/ErrorView"
 msgid "Retry"
 msgstr ""
 
-#: web/pages/ErrorView.vue:106
+#: web/pages/ErrorView.vue:77
 msgctxt "web/pages/ErrorView"
 msgid "Server error"
 msgstr ""
 
-#: web/pages/ErrorView.vue:120
+#: web/pages/ErrorView.vue:91
 msgctxt "web/pages/ErrorView"
 msgid "The page you requested does not exist"
 msgstr ""
 
-#: web/pages/ErrorView.vue:107
+#: web/pages/ErrorView.vue:78
 msgctxt "web/pages/ErrorView"
 msgid "The server encountered an error"
 msgstr ""
 
-#: web/pages/ErrorView.vue:82
+#: web/pages/ErrorView.vue:61
 msgctxt "web/pages/ErrorView"
 msgid "You are missing the required permission"
 msgstr ""
 
-#: web/pages/ErrorView.vue:80
+#: web/pages/ErrorView.vue:59
 msgctxt "web/pages/ErrorView"
 msgid "You are missing the required role"
 msgstr ""
 
-#: web/pages/ErrorView.vue:78
+#: web/pages/ErrorView.vue:57
 msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
+msgstr ""
+
+#: web/pages/HomeView.vue:12
+msgctxt "web/pages/HomeView"
+msgid "Choysum web shell is running on the Choy UI kit."
+msgstr ""
+
+#: web/pages/HomeView.vue:22
+msgctxt "web/pages/HomeView"
+msgid "Density"
+msgstr ""
+
+#: web/pages/HomeView.vue:29
+msgctxt "web/pages/HomeView"
+msgid "Domain modules still migrate onto Choy* in later cutover slices."
+msgstr ""
+
+#: web/pages/HomeView.vue:2
+msgctxt "web/pages/HomeView"
+msgid "Home"
+msgstr ""
+
+#: web/pages/HomeView.vue:27
+msgctxt "web/pages/HomeView"
+msgid "Next"
+msgstr ""
+
+#: web/pages/HomeView.vue:5
+msgctxt "web/pages/HomeView"
+msgid "Refresh"
+msgstr ""
+
+#: web/pages/HomeView.vue:15
+msgctxt "web/pages/HomeView"
+msgid "Status"
+msgstr ""
+
+#: web/pages/HomeView.vue:18
+msgctxt "web/pages/HomeView"
+msgid "Theme"
+msgstr ""
+
+#: web/pages/HomeView.vue:10
+msgctxt "web/pages/HomeView"
+msgid "Welcome"
 msgstr ""
 
 #: web/pages/TerminologyEditor.vue:4
@@ -2117,7 +2162,7 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Module (required for PO)"
 msgstr ""
 
-#: web/pages/TerminologyEditor.vue:105
+#: web/pages/TerminologyEditor.vue:117
 msgctxt "web/pages/TerminologyEditor"
 msgid "PO download failed"
 msgstr ""
@@ -2127,9 +2172,69 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Select an application to edit terminology"
 msgstr ""
 
-#: web/pages/TerminologyEditor.vue:83
+#: web/pages/TerminologyEditor.vue:95
 msgctxt "web/pages/TerminologyEditor"
 msgid "TranslationTerm store is not available for this application"
+msgstr ""
+
+#: web/pages/WelcomeView.vue:15
+msgctxt "web/pages/WelcomeView"
+msgid "Back"
+msgstr ""
+
+#: web/pages/WelcomeView.vue:23
+msgctxt "web/pages/WelcomeView"
+msgid "Build"
+msgstr ""
+
+#: web/pages/WelcomeView.vue:18
+msgctxt "web/pages/WelcomeView"
+msgid "Continue"
+msgstr ""
+
+#: web/pages/WelcomeView.vue:24
+msgctxt "web/pages/WelcomeView"
+msgid "Domain modules import Choy* from @/web."
+msgstr ""
+
+#: web/pages/WelcomeView.vue:19
+msgctxt "web/pages/WelcomeView"
+msgid "Explore"
+msgstr ""
+
+#: web/pages/WelcomeView.vue:3
+msgctxt "web/pages/WelcomeView"
+msgid "Get started"
+msgstr ""
+
+#: web/pages/WelcomeView.vue:21
+msgctxt "web/pages/WelcomeView"
+msgid "Go to home"
+msgstr ""
+
+#: web/pages/WelcomeView.vue:5
+msgctxt "web/pages/WelcomeView"
+msgid "Next-generation open-source ERP platform."
+msgstr ""
+
+#: web/pages/WelcomeView.vue:20
+msgctxt "web/pages/WelcomeView"
+msgid "Open menus and records through the Choy shell."
+msgstr ""
+
+#: web/pages/WelcomeView.vue:15
+msgctxt "web/pages/WelcomeView"
+msgid "Sign in"
+msgstr ""
+
+#: web/pages/WelcomeView.vue:16
+msgctxt "web/pages/WelcomeView"
+msgid "Use your account to access the workspace."
+msgstr ""
+
+#: web/pages/WelcomeView.vue:2
+msgctxt "web/pages/WelcomeView"
+msgid "Welcome to Choysum"
 msgstr ""
 
 #: web/query/utils/filter/operators.ts:29
@@ -2216,7 +2321,7 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr ""
 
-#: web/router/routes.ts:33
+#: web/router/routes.ts:34
 msgctxt "web/route/routes"
 msgid "Home"
 msgstr ""

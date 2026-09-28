@@ -15,15 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     >
       {{ _t('Log In') }}
     </ChoyButton>
-    <ChoyButton
-      v-if="isAuthenticated"
-      variant="ghost"
-      size="sm"
-      :aria-label="_t('Notifications')"
-      @click="handleNotificationClick"
-    >
-      <Bell class="size-5" aria-hidden="true" />
-    </ChoyButton>
+    <ONotificationBell v-if="isAuthenticated" />
     <SwitchCompany v-if="isAuthenticated" />
     <div v-if="isAuthenticated" ref="userMenuRoot" class="relative">
       <ChoyButton
@@ -59,17 +51,16 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Bell, User } from 'lucide-vue-next';
+import { User } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
 import { ChoyButton } from '@/web';
+import ONotificationBell from '@/web/web/components/layout/ONotificationBell.vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import SwitchCompany from './SwitchCompany.vue';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
 
 defineOptions({ name: 'AuthHeader' });
-
-const emit = defineEmits<{ 'show-notifications': [] }>();
 
 const { _t } = createTranslate('auth', { scope: 'web/components/layout/AuthHeader' });
 const router = useRouter();
@@ -101,10 +92,6 @@ onBeforeUnmount(() => {
 
 function handleLogin() {
   router.push({ name: 'login' });
-}
-
-function handleNotificationClick() {
-  emit('show-notifications');
 }
 
 function openPreferences() {

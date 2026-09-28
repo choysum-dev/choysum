@@ -18,6 +18,7 @@ SPDX-License-Identifier: Apache-2.0
       v-model:lanes="choyLanes"
       :show-header="showHeader"
       :show-actions="true"
+      :readonly="movePending"
       create-label="New"
       @card-click="onCardClick"
       @card-move="onCardMove"
@@ -109,29 +110,49 @@ const { showHeader } = props;
 const router = useRouter();
 const controller = createKanbanController(store as any);
 const choyLanes = ref<ChoyKanbanLane[]>([]);
+const movePending = ref(false);
 let syncingLanes = false;
+let searchSeq = 0;
+let lastSearchQuery: ChoySearchQuery | null = null;
+
+function rowToCard(row: { payload?: Record<string, unknown>; key?: string }, index: number, laneKey: string): ChoyKanbanCard {
+  const payload = (row.payload ?? {}) as Record<string, unknown>;
+  return {
+    id: String(payload.Id ?? row.key ?? index),
+    title: String(payload.TokenType ?? payload.Id ?? ''),
+    laneKey,
+    payload,
+  };
+}
 
 /**
  * Map controller lane rows into ChoyKanbanView lane/card models.
+ * When no group is applied, surface a single flat lane from search results.
  */
 async function syncLanesFromController(): Promise<void> {
   if (syncingLanes) return;
   syncingLanes = true;
   try {
     const laneList = controller.lanes.value;
+    if (!laneList.length) {
+      const rows =
+        controller.vm.result?.kind === 'search' ? ((controller.vm.result.rows as any[]) || []) : [];
+      choyLanes.value = [
+        {
+          key: 'all',
+          label: _t('All'),
+          cards: rows.map((row, index) => rowToCard(row, index, 'all')),
+        },
+      ];
+      return;
+    }
     await Promise.all(laneList.map(l => controller.preloadLane(l.key).catch(() => undefined)));
     choyLanes.value = laneList.map(lane => ({
       key: lane.key,
       label: laneLabel(lane),
-      cards: (controller.laneRecords.value[lane.key] || []).map((row, index) => {
-        const payload = (row.payload ?? {}) as Record<string, unknown>;
-        return {
-          id: String(payload.Id ?? row.key ?? index),
-          title: String(payload.TokenType ?? payload.Id ?? ''),
-          laneKey: lane.key,
-          payload,
-        };
-      }),
+      cards: (controller.laneRecords.value[lane.key] || []).map((row, index) =>
+        rowToCard(row as any, index, lane.key)
+      ),
     }));
   } finally {
     syncingLanes = false;
@@ -146,23 +167,59 @@ watch(
   { deep: true }
 );
 
-onMounted(async () => {
-  await awaitFieldSelection(store, { requireNonEmpty: true });
-  await controller.apply({});
-  await syncLanesFromController();
-});
-
 /**
- * Apply search / group changes after ChoySearchView (store engine) updates query state.
+ * Re-apply the last search payload (or current store query) after a failed move.
  */
-async function onSearch(_query: ChoySearchQuery) {
+async function applyCurrentQuery(): Promise<void> {
+  if (lastSearchQuery) {
+    await controller.apply({
+      keyword: lastSearchQuery.keyword,
+      appliedFilters: (lastSearchQuery.appliedFilters || []) as any,
+      appliedGroups: lastSearchQuery.appliedGroups as any,
+    });
+    return;
+  }
   const qs = ((store.state as any)?.queryState ?? {}) as Record<string, unknown>;
   await controller.apply({
     keyword: qs.keyword as string | undefined,
     appliedFilters: (qs.appliedFilters || []) as any,
     appliedGroups: qs.appliedGroups as any,
   });
-  await syncLanesFromController();
+}
+
+onMounted(async () => {
+  try {
+    await awaitFieldSelection(store, { requireNonEmpty: true });
+    // Prefer the search view's first-frame emit when it arrives; otherwise load once.
+    if (!lastSearchQuery) {
+      await controller.apply({});
+      await syncLanesFromController();
+    }
+  } catch (e) {
+    ChoyMessage.error(_t('Failed to load kanban'));
+    console.error('Token kanban load failed:', e);
+  }
+});
+
+/**
+ * Apply the emitted search query from ChoySearchView (store-bound payload).
+ */
+async function onSearch(query: ChoySearchQuery) {
+  lastSearchQuery = query;
+  const seq = ++searchSeq;
+  try {
+    await controller.apply({
+      keyword: query.keyword,
+      appliedFilters: (query.appliedFilters || []) as any,
+      appliedGroups: query.appliedGroups as any,
+    });
+    if (seq !== searchSeq) return;
+    await syncLanesFromController();
+  } catch (e) {
+    if (seq !== searchSeq) return;
+    ChoyMessage.error(_t('Failed to load kanban'));
+    console.error('Token kanban search failed:', e);
+  }
 }
 
 /**
@@ -197,16 +254,21 @@ function onCardClick(card: ChoyKanbanCard) {
 
 /**
  * Persist lane moves (Revoked field) via the kanban controller.
+ * Blocks overlapping moves while a write is in flight.
  */
 async function onCardMove(move: ChoyKanbanMove) {
+  if (movePending.value) return;
+  movePending.value = true;
   try {
     await controller.moveCard(move.cardId, move.fromLaneKey, move.toLaneKey, move.toIndex);
     await syncLanesFromController();
   } catch (e) {
     ChoyMessage.error(_t('Move failed; refreshed to recover'));
-    await controller.apply({});
+    await applyCurrentQuery();
     await syncLanesFromController();
     console.error('Token kanban move failed:', e);
+  } finally {
+    movePending.value = false;
   }
 }
 

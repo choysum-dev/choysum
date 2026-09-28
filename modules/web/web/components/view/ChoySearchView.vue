@@ -122,6 +122,7 @@ function onStoreQueryUpdate(payload: {
     value?: unknown;
     children?: ReadonlyArray<any> | null;
   }> | null;
+  appliedGroups?: ReadonlyArray<unknown> | null;
 }): void {
   const query = choySearchQueryFromPayload(payload ?? {});
   keyword.value = query.keyword;

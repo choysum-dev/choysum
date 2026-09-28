@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </transition>
 
-      <form class="flex flex-col gap-3" @keydown="handleKeyDown" @submit.prevent="handleRegister">
+      <form class="flex flex-col gap-3" @submit.prevent="handleRegister">
         <label class="flex flex-col gap-1 text-sm">
           <span>{{ _t('Username') }}</span>
           <input
@@ -226,7 +226,7 @@ function validateForm(): boolean {
  * Validate the registration form and create a new user session.
  */
 async function handleRegister() {
-  if (!validateForm()) return;
+  if (loading.value || !validateForm()) return;
 
   try {
     error.value = '';
@@ -244,14 +244,6 @@ async function handleRegister() {
   }
 }
 
-/**
- * Submit the form when Enter is pressed and terms are accepted.
- */
-function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Enter' && form.agreeTerms) {
-    handleRegister();
-  }
-}
 </script>
 
 <style lang="scss" scoped>

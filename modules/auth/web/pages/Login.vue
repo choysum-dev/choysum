@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </transition>
 
-      <form class="flex flex-col gap-3" @keydown="handleKeyDown" @submit.prevent="handleLogin">
+      <form class="flex flex-col gap-3" @submit.prevent="handleLogin">
         <label class="flex flex-col gap-1 text-sm">
           <span>{{ _t('Username') }}</span>
           <input
@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
             type="text"
             autocomplete="username"
             :placeholder="_t('Enter username')"
-            class="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            class="login-username rounded-md border border-border bg-background px-3 py-2 text-sm"
             :class="{ 'border-destructive': fieldErrors.username }"
           />
           <span v-if="fieldErrors.username" class="text-xs text-destructive">{{ fieldErrors.username }}</span>
@@ -42,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
             type="password"
             autocomplete="current-password"
             :placeholder="_t('Enter password')"
-            class="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            class="login-password rounded-md border border-border bg-background px-3 py-2 text-sm"
             :class="{ 'border-destructive': fieldErrors.password }"
           />
           <span v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password }}</span>
@@ -71,10 +71,10 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
-import { ChoysumError } from '../error';
 import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { runLoginAuthReady } from './login_auth_ready';
+import { resolveLoginRedirect, runLoginSubmit } from './login_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
@@ -106,8 +106,7 @@ const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRAT
  * Redirect the user to the requested destination after login.
  */
 function handleRedirect() {
-  const redirect = route.query.redirect?.toString() || '/';
-  router.replace(redirect);
+  router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
 }
 
 onMounted(async () => {
@@ -120,50 +119,23 @@ onMounted(async () => {
 });
 
 /**
- * Validate required fields before calling the auth store.
- */
-function validateForm(): boolean {
-  fieldErrors.username = '';
-  fieldErrors.password = '';
-  let ok = true;
-  if (!form.username.trim()) {
-    fieldErrors.username = _t('Enter username');
-    ok = false;
-  }
-  if (!form.password) {
-    fieldErrors.password = _t('Enter password');
-    ok = false;
-  }
-  return ok;
-}
-
-/**
  * Validate the form and start the login flow.
  */
 async function handleLogin() {
-  if (!validateForm()) return;
-
-  try {
-    error.value = '';
-    await authStore.login(form.username, form.password, '', '', form.rememberMe);
-    handleRedirect();
-  } catch (err) {
-    if (err instanceof ChoysumError) {
-      error.value = err.message;
-    } else {
-      error.value = _t('Login failed. Please try again later.');
-      console.error('Login flow failed:', err);
-    }
-  }
-}
-
-/**
- * Submit the form when the user presses Enter.
- */
-function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    handleLogin();
-  }
+  const ok = await runLoginSubmit({
+    loading: !!loading.value,
+    form,
+    fieldErrors,
+    t: _t,
+    loginFailedMessage: _t('Login failed. Please try again later.'),
+    login: (username, password, csrf, device, rememberMe) =>
+      authStore.login(username, password, csrf, device, rememberMe),
+    rememberMe: form.rememberMe,
+    setError: message => {
+      error.value = message;
+    },
+  });
+  if (ok) handleRedirect();
 }
 </script>
 
