@@ -4,7 +4,8 @@
 /**
  * Import extension components for their side effects.
  *
- * Importing AuthHeader.vue and App.vue activates their XPath-based UI extensions.
+ * Importing AuthHeader.vue (extends ChoyShellLayout) and App.vue activates
+ * their XPath-based UI extensions at web build time.
  */
 
 // Import side-effect extensions that augment shared layout components.

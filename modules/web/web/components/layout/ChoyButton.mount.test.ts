@@ -28,4 +28,23 @@ describe('ChoyButton mount', () => {
       w.unmount();
     }
   });
+
+  test('keeps framework data-anchor when attrs also pass data-anchor', async () => {
+    const w = mountApp(ChoyButton as any, {
+      props: {
+        'data-testid': 'anchor-stability',
+        'data-anchor': 'caller.override',
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+
+      const btn = w.q('[data-testid="anchor-stability"]') as HTMLButtonElement | null;
+      expect(btn).not.toBeNull();
+      expect(btn?.getAttribute('data-anchor')).toBe('choy.button');
+    } finally {
+      w.unmount();
+    }
+  });
 });

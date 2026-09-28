@@ -723,11 +723,14 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
   if (completion === 'reloaded') {
     await waitForModuleList(page);
   } else {
-    const reloadRow = dialog.locator('.status-row', { hasText: 'Reload' });
+    const reloadRow = dialog.locator('[data-testid="module-op-reload"]');
     if ((await reloadRow.count()) === 0) {
       throw new Error('expected reload status row to be present in reload-failed flow');
     }
-    await expect(reloadRow).toHaveText(/Trigger Failed/);
+    const reloadText = ((await reloadRow.textContent().catch(() => '')) || '').trim();
+    if (!/Trigger Failed/i.test(reloadText)) {
+      throw new Error(`expected reload row to include Trigger Failed, got=${reloadText}`);
+    }
 
     const resultTag = dialog.locator('[data-testid="module-op-result"]');
     const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();

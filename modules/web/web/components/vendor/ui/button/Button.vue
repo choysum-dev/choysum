@@ -60,12 +60,12 @@ const classes = computed(() =>
 <template>
   <component
     :is="as"
+    v-bind="$attrs"
     data-slot="button"
     :class="classes"
     :disabled="as === 'button' ? disabled : undefined"
     :aria-disabled="as !== 'button' && disabled ? true : undefined"
     :type="as === 'button' ? type : undefined"
-    v-bind="$attrs"
   >
     <slot />
   </component>

@@ -78,7 +78,7 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     select.dispatchEvent(new Event('change', { bubbles: true }));
     return select.value === other ? other : '';
   }, activeCompanyId);
-  expect(otherValue).not.toBe('');
+  expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');
 
   await expect
     .poll(

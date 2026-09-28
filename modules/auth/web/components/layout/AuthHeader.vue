@@ -49,12 +49,13 @@ SPDX-License-Identifier: Apache-2.0
   </Xpath>
 </template>
 
-<script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+<script lang="ts" _name="ChoyShellLayout">
+import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { User } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
 import { ChoyButton, ChoyNotificationBell } from '@/web';
+import ChoyShellLayout from '@/web/web/components/layout/ChoyShellLayout.vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import { shouldResetAuthHeaderPopups } from './auth_header_popup_state';
@@ -62,79 +63,109 @@ import SwitchCompany from './SwitchCompany.vue';
 import { dismissPopupOnEscape } from './popup_escape_focus';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
 
-defineOptions({ name: 'AuthHeader' });
+/**
+ * Extends the product shell so auth header actions merge into
+ * data-anchor="choy.shell.header-actions" at web build time.
+ */
+export default defineComponent({
+  name: 'ChoyShellLayout',
+  extends: ChoyShellLayout,
+  components: {
+    Xpath,
+    User,
+    ChoyButton,
+    ChoyNotificationBell,
+    SwitchCompany,
+    PreferencesDialog,
+  },
+  setup(props, ctx) {
+    const baseSetup = (ChoyShellLayout as any)?.setup?.(props, ctx) || {};
+    const { _t } = createTranslate('auth', { scope: 'web/components/layout/AuthHeader' });
+    const router = useRouter();
+    const authStore = useAuthStore();
+    const isAuthenticated = computed(() => authStore.isAuthenticated);
+    const preferencesVisible = ref(false);
+    const userMenuOpen = ref(false);
+    const userMenuRoot = ref<HTMLElement | null>(null);
 
-const { _t } = createTranslate('auth', { scope: 'web/components/layout/AuthHeader' });
-const router = useRouter();
-const authStore = useAuthStore();
-const isAuthenticated = computed(() => authStore.isAuthenticated);
-const preferencesVisible = ref(false);
-const userMenuOpen = ref(false);
-const userMenuRoot = ref<HTMLElement | null>(null);
+    function closeUserMenu() {
+      userMenuOpen.value = false;
+    }
 
-function closeUserMenu() {
-  userMenuOpen.value = false;
-}
+    function resetHeaderPopups() {
+      closeUserMenu();
+      preferencesVisible.value = false;
+    }
 
-function resetHeaderPopups() {
-  closeUserMenu();
-  preferencesVisible.value = false;
-}
+    // Shell stays mounted; clear popup refs on logout / token expiry.
+    watch(isAuthenticated, (authed, wasAuthed) => {
+      if (shouldResetAuthHeaderPopups(Boolean(wasAuthed), Boolean(authed))) {
+        resetHeaderPopups();
+      }
+    });
 
-// AuthHeader stays mounted in the shell; clear popup refs on logout / token expiry.
-watch(isAuthenticated, (authed, wasAuthed) => {
-  if (shouldResetAuthHeaderPopups(Boolean(wasAuthed), Boolean(authed))) {
-    resetHeaderPopups();
-  }
+    function onDocumentClick(event: MouseEvent) {
+      if (!userMenuOpen.value) return;
+      const root = userMenuRoot.value;
+      if (root && !root.contains(event.target as Node)) {
+        closeUserMenu();
+      }
+    }
+
+    function onDocumentKeydown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      const trigger = userMenuRoot.value?.querySelector<HTMLElement>('[data-testid="auth-user-menu-trigger"]');
+      dismissPopupOnEscape(userMenuOpen.value, closeUserMenu, trigger);
+    }
+
+    onMounted(() => {
+      document.addEventListener('click', onDocumentClick);
+      document.addEventListener('keydown', onDocumentKeydown);
+    });
+
+    onBeforeUnmount(() => {
+      document.removeEventListener('click', onDocumentClick);
+      document.removeEventListener('keydown', onDocumentKeydown);
+    });
+
+    function handleLogin() {
+      router.push({ name: 'login' });
+    }
+
+    function openPreferences() {
+      preferencesVisible.value = true;
+      closeUserMenu();
+    }
+
+    function handleLogout() {
+      resetHeaderPopups();
+      router.push({ name: 'logout' });
+    }
+
+    function onMenuProfile() {
+      openPreferences();
+    }
+
+    function onMenuSettings() {
+      openPreferences();
+    }
+
+    function onMenuLogout() {
+      handleLogout();
+    }
+
+    return {
+      ...baseSetup,
+      _t,
+      isAuthenticated,
+      preferencesVisible,
+      userMenuOpen,
+      userMenuRoot,
+      handleLogin,
+      onMenuProfile,
+      onMenuSettings,
+      onMenuLogout,
+    };
+  },
 });
-
-function onDocumentClick(event: MouseEvent) {
-  if (!userMenuOpen.value) return;
-  const root = userMenuRoot.value;
-  if (root && !root.contains(event.target as Node)) {
-    closeUserMenu();
-  }
-}
-
-function onDocumentKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape') return;
-  const trigger = userMenuRoot.value?.querySelector<HTMLElement>('[data-testid="auth-user-menu-trigger"]');
-  dismissPopupOnEscape(userMenuOpen.value, closeUserMenu, trigger);
-}
-
-onMounted(() => {
-  document.addEventListener('click', onDocumentClick);
-  document.addEventListener('keydown', onDocumentKeydown);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick);
-  document.removeEventListener('keydown', onDocumentKeydown);
-});
-
-function handleLogin() {
-  router.push({ name: 'login' });
-}
-
-function openPreferences() {
-  preferencesVisible.value = true;
-  closeUserMenu();
-}
-
-function handleLogout() {
-  resetHeaderPopups();
-  router.push({ name: 'logout' });
-}
-
-function onMenuProfile() {
-  openPreferences();
-}
-
-function onMenuSettings() {
-  openPreferences();
-}
-
-function onMenuLogout() {
-  handleLogout();
-}
 </script>

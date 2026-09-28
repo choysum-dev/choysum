@@ -265,6 +265,7 @@ SPDX-License-Identifier: Apache-2.0
                 <div
                   v-if="opStatus?.ReloadTriggered"
                   class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs"
+                  data-testid="module-op-reload"
                 >
                   <span class="font-semibold text-foreground">{{ _t('Reload:') }}</span>
                   <span class="value text-foreground/80">{{
