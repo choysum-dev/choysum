@@ -40,10 +40,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// Merged script asserts: component must appear inside `components: { ... }`, not only in template markup.
+// Merged script asserts: component keys inside `components: { ... }`, not template markup or values.
 var (
-	mergedComponentsChoyLayoutRe = regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`)
-	mergedComponentsXpathRe      = regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`)
+	// First key (`{ Key`) or later key (`, Key`); values like `Foo: ChoyLayout` do not match.
+	mergedComponentsChoyLayoutRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyLayout\s*[,}]`)
+	mergedComponentsXpathRe      = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)Xpath\s*[,}]`)
 )
 
 type testScope struct {
@@ -711,14 +712,23 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 }
 
 func TestMergedComponentsRegexes_MatchMidObjectKeys(t *testing.T) {
+	if !mergedComponentsChoyLayoutRe.MatchString("components: { ChoyLayout }") {
+		t.Fatal("expected ChoyLayout regex to match a first-object key")
+	}
 	if !mergedComponentsChoyLayoutRe.MatchString("components: { Foo, ChoyLayout }") {
 		t.Fatal("expected ChoyLayout regex to match a mid-object key")
+	}
+	if !mergedComponentsChoyLayoutRe.MatchString("components: { Foo, ChoyLayout, Bar }") {
+		t.Fatal("expected ChoyLayout regex to match a middle key among three")
 	}
 	if !mergedComponentsXpathRe.MatchString("components: {\n  Foo,\n  Xpath\n}") {
 		t.Fatal("expected Xpath regex to match a mid-object key")
 	}
 	if mergedComponentsXpathRe.MatchString("components: { Foo, ChoyLayout }") {
 		t.Fatal("expected Xpath regex not to match when Xpath is absent")
+	}
+	if mergedComponentsChoyLayoutRe.MatchString("components: { Foo: ChoyLayout }") {
+		t.Fatal("expected ChoyLayout regex not to match a value reference")
 	}
 }
 

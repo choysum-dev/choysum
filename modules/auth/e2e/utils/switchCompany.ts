@@ -64,13 +64,22 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   // otherwise leave the draft on the freshly-synced active company while `active` is stale.
   // Outer retries are instant, so wait here through a transient token rotation.
   // Use a bounded loop (not expect.poll) so the domain-specific error below can surface.
+  // Require two consecutive identical reads: a single read can return the pre-rotation
+  // JWT while the panel-open RefreshToken is still in flight, and a stale `active`
+  // would make us pick the real active company (Apply = no-op).
   let activeCompanyId = '';
   const deadline = Date.now() + 5_000;
   while (!activeCompanyId && Date.now() < deadline) {
-    activeCompanyId = await readActiveCompanyIdFromAuth();
-    if (!activeCompanyId) {
+    const first = await readActiveCompanyIdFromAuth();
+    if (first) {
       await page.waitForTimeout(100);
+      const second = await readActiveCompanyIdFromAuth();
+      if (second && second === first) {
+        activeCompanyId = first;
+      }
+      continue;
     }
+    await page.waitForTimeout(100);
   }
   if (!activeCompanyId) {
     throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
@@ -112,6 +121,9 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
             // Let Vue flush: a late panel-open RefreshToken can reset the draft
             // right after we assign it, which would otherwise pass this poll.
             await new Promise(resolve => setTimeout(resolve, 0));
+            if (String(select.value || '').trim() !== other) return '';
+            // Confirm the draft settles across a later tick before Apply.
+            await new Promise(resolve => setTimeout(resolve, 50));
             return String(select.value || '').trim();
           },
           { sel: panelSelect, other: otherValue }

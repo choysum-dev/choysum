@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { reactive, readonly } from 'vue';
 import { reuseParentSetupState } from './reuse_parent_setup_state.ts';
 
 describe('reuseParentSetupState', () => {
@@ -28,6 +29,11 @@ describe('reuseParentSetupState', () => {
       showHeader = true;
     }
     expect(reuseParentSetupState(new SetupBag())).toEqual({});
+  });
+
+  test('drops reactive and readonly proxies', () => {
+    expect(reuseParentSetupState(reactive({ showHeader: true }))).toEqual({});
+    expect(reuseParentSetupState(readonly({ showHeader: true }))).toEqual({});
   });
 
   test('throws when parent setup returns a Promise or thenable', () => {
