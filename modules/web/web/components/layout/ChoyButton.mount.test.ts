@@ -165,6 +165,8 @@ describe('Button host click guard', () => {
         disabled: true,
         as: 'a',
         href: '#nav',
+        to: '/elsewhere',
+        target: '_blank',
       },
       on: {
         onClick: () => {
@@ -179,6 +181,8 @@ describe('Button host click guard', () => {
       expect(host?.getAttribute('aria-disabled')).toBe('true');
       expect(host?.getAttribute('tabindex')).toBe('-1');
       expect(host?.getAttribute('href')).toBeNull();
+      expect(host?.getAttribute('to')).toBeNull();
+      expect(host?.getAttribute('target')).toBeNull();
       expect(host?.classList.contains('pointer-events-none')).toBe(true);
       expect(host?.classList.contains('opacity-50')).toBe(true);
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;

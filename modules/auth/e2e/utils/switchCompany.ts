@@ -105,7 +105,7 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     .poll(
       async () =>
         page.evaluate(
-          ({ sel, other }: { sel: string; other: string }) => {
+          async ({ sel, other }: { sel: string; other: string }) => {
             const select = document.querySelector(sel) as HTMLSelectElement | null;
             if (!select) return '';
             if (String(select.value || '').trim() !== other) {
@@ -113,6 +113,9 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
               select.dispatchEvent(new Event('input', { bubbles: true }));
               select.dispatchEvent(new Event('change', { bubbles: true }));
             }
+            // Let Vue flush: a late panel-open RefreshToken can reset the draft
+            // right after we assign it, which would otherwise pass this poll.
+            await new Promise(resolve => setTimeout(resolve, 0));
             return String(select.value || '').trim();
           },
           { sel: panelSelect, other: otherValue }

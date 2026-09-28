@@ -5,10 +5,10 @@
  * Keep only plain setup-state objects from a parent `setup` result.
  * A script-setup base returns a render function; spreading that would silently yield nothing.
  * Non-plain objects (Map/Set/class/Ref) are dropped so their internals cannot leak into setup.
- * Async parent setup is rejected: flattening a Promise would silently yield {} and break markup.
+ * Async parent setup (Promise or thenable) is rejected: flattening it would silently yield {}.
  */
 export function reuseParentSetupState(result: unknown): Record<string, unknown> {
-  if (result instanceof Promise) {
+  if (result && typeof (result as { then?: unknown }).then === 'function') {
     throw new Error('reuseParentSetupState: async parent setup is not supported');
   }
   if (!result || typeof result !== 'object' || Array.isArray(result)) {

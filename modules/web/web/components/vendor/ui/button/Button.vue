@@ -46,11 +46,14 @@ function handleClick(event: Event) {
 
 const attrs = useAttrs();
 
-/** Non-button hosts: when disabled, drop href so middle-click/new-tab cannot navigate. */
+/** Disabled non-button hosts: drop navigation targets so no path (middle-click, new tab,
+ *  or a component host's own click handler) can still navigate. */
 const nonButtonAttrs = computed(() => {
   if (!props.disabled) return attrs;
   const rest: Record<string, unknown> = { ...attrs };
   delete rest.href;
+  delete rest.to;
+  delete rest.target;
   return { ...rest, 'aria-disabled': true, tabindex: -1 };
 });
 

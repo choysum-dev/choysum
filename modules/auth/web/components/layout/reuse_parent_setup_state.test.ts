@@ -30,9 +30,16 @@ describe('reuseParentSetupState', () => {
     expect(reuseParentSetupState(new SetupBag())).toEqual({});
   });
 
-  test('throws when parent setup returns a Promise', () => {
+  test('throws when parent setup returns a Promise or thenable', () => {
     expect(() => reuseParentSetupState(Promise.resolve({ showHeader: true }))).toThrow(
       /async parent setup is not supported/
     );
+    const thenable = {
+      showHeader: true,
+      then(resolve: (v: unknown) => void) {
+        resolve({ showHeader: true });
+      },
+    };
+    expect(() => reuseParentSetupState(thenable)).toThrow(/async parent setup is not supported/);
   });
 });
