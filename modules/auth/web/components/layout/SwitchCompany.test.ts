@@ -2,6 +2,32 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isActiveCompanyEnabledLocked, syncCompanyDraftsFromJwt } from './o_switch_company_draft';
+import { pickAlternativeCompanyOptionValue } from './switch_company_option_pick';
+
+test('pickAlternativeCompanyOptionValue: keeps current when it is already a valid alternative', () => {
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c2', 'c1')).toBe('c2');
+});
+
+test('pickAlternativeCompanyOptionValue: picks another option when current matches active', () => {
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c1', 'c1')).toBe('c2');
+});
+
+test('pickAlternativeCompanyOptionValue: returns empty when no alternative exists', () => {
+  expect(pickAlternativeCompanyOptionValue(['c1'], 'c1', 'c1')).toBe('');
+  expect(pickAlternativeCompanyOptionValue([], '', 'c1')).toBe('');
+});
+
+test('pickAlternativeCompanyOptionValue: ignores current when the active company is unknown', () => {
+  // An empty active (JWT read failed) must not be treated as a valid alternative.
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c1', '')).toBe('c2');
+});
+
+test('pickAlternativeCompanyOptionValue: ignores current when it is absent from the values snapshot', () => {
+  // Callers must pass current + values from one snapshot; a stray current must not
+  // be reused, and the pick must still come from the provided values list.
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c9', 'c1')).toBe('c2');
+  expect(pickAlternativeCompanyOptionValue(['c1'], 'c9', 'c1')).toBe('');
+});
 
 test('SwitchCompany draft guard: ignores JWT sync while panel is open', () => {
   const applied: Array<{ active: string; enabled: string[] }> = [];

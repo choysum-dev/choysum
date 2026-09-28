@@ -53,8 +53,8 @@ import { KeepAlive } from 'vue';
 import ChoyLayout from './ChoyLayout.vue';
 
 /**
- * Product shell around ChoyLayout + router-view. Replaces the Element Plus
- * OLayout host for web-owned routes during cutover.
+ * Web product shell around ChoyLayout + router-view: brand bar,
+ * header-actions anchor, and KeepAlive-aware router host.
  */
 withDefaults(
   defineProps<{

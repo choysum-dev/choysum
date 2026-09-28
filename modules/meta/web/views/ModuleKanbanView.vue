@@ -69,10 +69,10 @@ SPDX-License-Identifier: Apache-2.0
 
       <template #card="{ card }">
         <div class="module-card flex flex-col gap-1.5 text-xs">
-          <div class="flex items-center justify-between gap-2">
-            <span class="text-sm font-semibold text-foreground">{{ recordField(card, 'ModuleName') }}</span>
+          <div class="module-card__title flex items-center justify-between gap-2">
+            <span class="name text-sm font-semibold text-foreground">{{ recordField(card, 'ModuleName') }}</span>
             <span
-              class="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium"
+              class="module-card__status shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium"
               :class="statusBadgeClass(String(payloadRecord(card).InstalledStatus ?? ''), payloadRecord(card).Available)"
             >
               {{ statusLabel(String(payloadRecord(card).InstalledStatus ?? ''), payloadRecord(card).Available) }}
@@ -132,13 +132,13 @@ SPDX-License-Identifier: Apache-2.0
     <Teleport to="body">
       <div
         v-if="dialogVisible"
-        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+        class="module-op-dialog-overlay fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
         role="presentation"
       >
         <div
           ref="dialogRef"
           tabindex="-1"
-          class="flex max-h-[90vh] w-full max-w-[680px] flex-col rounded-lg border border-border bg-background shadow-lg outline-none"
+          class="module-op-dialog flex max-h-[90vh] w-full max-w-[680px] flex-col rounded-lg border border-border bg-background shadow-lg outline-none"
           role="dialog"
           aria-modal="true"
           :aria-labelledby="dialogTitleId"
@@ -224,31 +224,53 @@ SPDX-License-Identifier: Apache-2.0
               </div>
               <div class="flex flex-col gap-2">
                 <div class="text-sm font-semibold text-foreground">{{ _t('Execution Status') }}</div>
-                <div class="flex flex-wrap items-center gap-2 text-xs text-foreground/80">
+                <div
+                  class="module-op-status-row status-row flex flex-wrap items-center gap-2 text-xs text-foreground/80"
+                >
                   <span class="font-semibold text-foreground">{{ _t('Status:') }}</span>
-                  <span class="rounded px-1.5 py-0.5 text-[11px] font-medium" :class="statusBadgeClass(opStatus?.status)">{{
-                    opStatus?.status || '—'
-                  }}</span>
+                  <span
+                    class="module-op-status-badge rounded px-1.5 py-0.5 text-[11px] font-medium"
+                    data-testid="module-op-status"
+                    :class="statusBadgeClass(opStatus?.status)"
+                    >{{ opStatus?.status || '—' }}</span
+                  >
                   <span class="font-semibold text-foreground">{{ _t('Result:') }}</span>
-                  <span class="rounded px-1.5 py-0.5 text-[11px] font-medium" :class="statusBadgeClass(opStatus?.resultStatus)">{{
-                    opStatus?.resultStatus || '—'
-                  }}</span>
+                  <span
+                    class="module-op-status-badge rounded px-1.5 py-0.5 text-[11px] font-medium"
+                    data-testid="module-op-result"
+                    :class="statusBadgeClass(opStatus?.resultStatus)"
+                    >{{ opStatus?.resultStatus || '—' }}</span
+                  >
                 </div>
-                <div v-if="opStatus?.summary" class="flex flex-wrap gap-2 text-xs">
+                <div v-if="opStatus?.summary" class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs">
                   <span class="font-semibold text-foreground">{{ _t('Summary:') }}</span>
-                  <span class="text-foreground/80">{{ formatSummary(opStatus?.summary) }}</span>
+                  <span class="value text-foreground/80">{{ formatSummary(opStatus?.summary) }}</span>
                 </div>
-                <div v-if="opStatus?.failureKind && opStatus?.failureKind !== 'NONE'" class="flex flex-wrap gap-2 text-xs">
+                <div
+                  v-if="opStatus?.failureKind && opStatus?.failureKind !== 'NONE'"
+                  class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs"
+                >
                   <span class="font-semibold text-foreground">{{ _t('Failure Kind:') }}</span>
-                  <span class="text-foreground/80">{{ opStatus?.failureKind }}</span>
+                  <span class="value text-foreground/80">{{ opStatus?.failureKind }}</span>
                 </div>
-                <div v-if="opStatus?.errorDomain || opStatus?.errorCode" class="flex flex-wrap gap-2 text-xs">
+                <div
+                  v-if="opStatus?.errorDomain || opStatus?.errorCode"
+                  class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs"
+                >
                   <span class="font-semibold text-foreground">{{ _t('Error:') }}</span>
-                  <span class="text-foreground/80">{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span>
+                  <span class="value text-foreground/80"
+                    >{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span
+                  >
                 </div>
-                <div v-if="opStatus?.ReloadTriggered" class="flex flex-wrap gap-2 text-xs">
+                <div
+                  v-if="opStatus?.ReloadTriggered"
+                  class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs"
+                  data-testid="module-op-reload"
+                >
                   <span class="font-semibold text-foreground">{{ _t('Reload:') }}</span>
-                  <span class="text-foreground/80">{{ opStatus?.ReloadFailed ? _t('Trigger Failed') : _t('Triggered') }}</span>
+                  <span class="value text-foreground/80">{{
+                    opStatus?.ReloadFailed ? _t('Trigger Failed') : _t('Triggered')
+                  }}</span>
                 </div>
               </div>
               <div v-if="dialogStep === 'progress'" class="border-t border-border pt-3 text-xs text-foreground/60">

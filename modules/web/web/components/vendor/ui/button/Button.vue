@@ -4,11 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useAttrs } from 'vue';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
 type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
+
+defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
   defineProps<{
@@ -26,6 +28,44 @@ const props = withDefaults(
     type: 'button',
   },
 );
+
+// Parent @click is an emit listener on this component (not a fallthrough attr) when
+// the root is another Vue component; re-emit from the native host click.
+const emit = defineEmits(['click']);
+
+function handleClick(event: Event) {
+  if (props.disabled) {
+    // Non-<button> hosts still navigate unless default is cancelled, and must not
+    // bubble to ancestor handlers the way a native disabled button would not.
+    // `as` may be a component whose `click` emit passes a non-DOM payload.
+    const e = event as Partial<Event> | undefined;
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    return;
+  }
+  emit('click', event);
+}
+
+const attrs = useAttrs();
+
+/** Non-button hosts: drop navigation targets when disabled; add noopener for _blank. */
+const nonButtonAttrs = computed(() => {
+  const rest: Record<string, unknown> = { ...attrs };
+  if (props.disabled) {
+    delete rest.href;
+    delete rest.to;
+    delete rest.target;
+    delete rest.rel;
+    return { ...rest, 'aria-disabled': true, tabindex: -1 };
+  }
+  if (rest.target === '_blank') {
+    const currentRel = String(rest.rel ?? '').trim();
+    if (!/\bnoopener\b/i.test(currentRel)) {
+      rest.rel = currentRel ? `${currentRel} noopener` : 'noopener noreferrer';
+    }
+  }
+  return rest;
+});
 
 const variantClass: Record<ButtonVariant, string> = {
   default: 'bg-primary text-background hover:opacity-90',
@@ -56,13 +96,24 @@ const classes = computed(() =>
 </script>
 
 <template>
-  <component
-    :is="as"
+  <button
+    v-if="as === 'button'"
+    v-bind="$attrs"
     data-slot="button"
     :class="classes"
-    :disabled="as === 'button' ? disabled : undefined"
-    :aria-disabled="as !== 'button' && disabled ? true : undefined"
-    :type="as === 'button' ? type : undefined"
+    :disabled="disabled"
+    :type="type"
+    @click="handleClick"
+  >
+    <slot />
+  </button>
+  <component
+    :is="as"
+    v-else
+    v-bind="nonButtonAttrs"
+    data-slot="button"
+    :class="[classes, disabled ? 'pointer-events-none opacity-50' : '']"
+    @click="handleClick"
   >
     <slot />
   </component>

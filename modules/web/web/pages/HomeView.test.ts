@@ -31,7 +31,8 @@ describe('HomeView', () => {
     });
     stubSfc(ChoyButton, {
       props: { type: String, variant: String },
-      setup: ((_props: any, { slots, attrs }: any) => {
+      emits: ['click'],
+      setup: ((_props: any, { slots, attrs, emit }: any) => {
         return () =>
           h(
             'button',
@@ -39,6 +40,7 @@ describe('HomeView', () => {
               'data-test': 'refresh',
               type: 'button',
               ...attrs,
+              onClick: (e: MouseEvent) => emit('click', e),
             },
             slots.default?.(),
           );

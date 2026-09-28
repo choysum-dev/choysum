@@ -826,33 +826,33 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#: web/components/layout/AuthHeader.vue:5
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:5
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log In"
 msgstr "登录"
 
-#: web/components/layout/AuthHeader.vue:21
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:21
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log Out"
 msgstr "退出登录"
 
-#: web/components/layout/AuthHeader.vue:4
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:4
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log in"
 msgstr "登录"
 
-#: web/components/layout/AuthHeader.vue:15
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:15
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr "个人资料"
 
-#: web/components/layout/AuthHeader.vue:18
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:18
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
 msgstr "设置"
 
-#: web/components/layout/AuthHeader.vue:10
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:10
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "User menu"
 msgstr "用户菜单"
 
@@ -2347,7 +2347,7 @@ msgstr "启用"
 #~ msgid "Token is required"
 #~ msgstr "令牌不能为空"
 
-#~ msgctxt "web/components/layout/AuthHeader"
+#~ msgctxt "web/components/layout/ChoyWebShell"
 #~ msgid "Notifications"
 #~ msgstr "通知"
 

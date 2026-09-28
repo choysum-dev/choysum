@@ -40,6 +40,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// Merged script asserts: component keys inside `components: { ... }`, not template markup or values.
+var (
+	// First key (`{ Key`) or later key (`, Key`); values like `Foo: ChoyLayout` do not match.
+	mergedComponentsChoyLayoutRe = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)ChoyLayout\s*[,}]`)
+	mergedComponentsXpathRe      = regexp.MustCompile(`components:\s*\{(?:\s*|[^}]*,\s*)Xpath\s*[,}]`)
+)
+
 type testScope struct {
 	ctx context.Context
 	cfg *config.Config
@@ -704,25 +711,50 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing.T) {
+func TestMergedComponentsRegexes_MatchMidObjectKeys(t *testing.T) {
+	if !mergedComponentsChoyLayoutRe.MatchString("components: { ChoyLayout }") {
+		t.Fatal("expected ChoyLayout regex to match a first-object key")
+	}
+	if !mergedComponentsChoyLayoutRe.MatchString("components: { Foo, ChoyLayout }") {
+		t.Fatal("expected ChoyLayout regex to match a mid-object key")
+	}
+	if !mergedComponentsChoyLayoutRe.MatchString("components: { Foo, ChoyLayout, Bar }") {
+		t.Fatal("expected ChoyLayout regex to match a middle key among three")
+	}
+	if !mergedComponentsXpathRe.MatchString("components: {\n  Foo,\n  Xpath\n}") {
+		t.Fatal("expected Xpath regex to match a mid-object key")
+	}
+	if mergedComponentsXpathRe.MatchString("components: { Foo, ChoyLayout }") {
+		t.Fatal("expected Xpath regex not to match when Xpath is absent")
+	}
+	if mergedComponentsChoyLayoutRe.MatchString("components: { Foo: ChoyLayout }") {
+		t.Fatal("expected ChoyLayout regex not to match a value reference")
+	}
+	// Value after a prior entry must not match either (key-vs-value guard).
+	if mergedComponentsChoyLayoutRe.MatchString("components: { Foo: Bar, Baz: ChoyLayout }") {
+		t.Fatal("expected ChoyLayout regex not to match a later entry's value reference")
+	}
+}
+
+func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyWebShell(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/modules/auth/web/components/layout/OHeader.vue"
-	parentPath := "/virtual/modules/web/web/components/layout/OHeader.vue"
+	childPath := "/virtual/modules/auth/web/components/layout/ChoyWebShell.vue"
+	parentPath := "/virtual/modules/web/web/components/layout/ChoyWebShell.vue"
 
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
 	}
 
-	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue"))
+	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyWebShell.vue"))
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
-	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue"))
+	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyWebShell.vue"))
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
@@ -730,11 +762,11 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(alias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -751,20 +783,16 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing
 		t.Fatalf("getScriptNode failed: %v", err)
 	}
 	content := htmlquery.InnerText(scriptNode)
-	var firstComp any
-	if len(childParsed.VueComponentsPropertys) > 0 && childParsed.VueComponentsPropertys[0] != nil {
-		firstComp = *childParsed.VueComponentsPropertys[0]
-	}
 
-	if !strings.Contains(content, "QuestionFilled") {
-		t.Fatalf("expected merged script to include QuestionFilled component, firstComp=%#v imports=%+v got:\n%s", firstComp, childParsed.Imports, content)
+	if !mergedComponentsChoyLayoutRe.MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
-	if !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected merged script to include icons-vue import for QuestionFilled, got:\n%s", content)
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *testing.T) {
+func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -776,16 +804,16 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *te
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyWebShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyWebShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
@@ -793,11 +821,11 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *te
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(alias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -811,15 +839,15 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *te
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "QuestionFilled") {
-		t.Fatalf("expected merged script to include QuestionFilled component, got:\n%s", content)
+	if !mergedComponentsChoyLayoutRe.MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
-	if !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected merged script to include icons-vue import for QuestionFilled, got:\n%s", content)
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *testing.T) {
+func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -831,16 +859,16 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyWebShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyWebShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
@@ -849,11 +877,11 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 	// '@/core/web' using ParseTsconfigPathAlias + ApplyPathAlias.
 	childParsed, err := p.Parse(map[string]string{}, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(map[string]string{}, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -867,15 +895,15 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "QuestionFilled") {
-		t.Fatalf("expected merged script to include QuestionFilled component, got:\n%s", content)
+	if !mergedComponentsChoyLayoutRe.MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
-	if !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected merged script to include icons-vue import for QuestionFilled, got:\n%s", content)
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t *testing.T) {
+func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -887,16 +915,16 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyWebShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyWebShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	tsconfigPath := filepath.Join(repoRoot, "modules", "tsconfig.json")
@@ -912,11 +940,11 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
 	childParsed, err := p.Parse(pathAlias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(pathAlias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -930,15 +958,15 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "QuestionFilled") {
-		t.Fatalf("expected merged script to include QuestionFilled component, got:\n%s", content)
+	if !mergedComponentsChoyLayoutRe.MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
-	if !strings.Contains(content, "icons-vue") {
-		t.Fatalf("expected merged script to include icons-vue import for QuestionFilled, got:\n%s", content)
+	if mergedComponentsXpathRe.MatchString(content) {
+		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
 
-func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) {
+func TestUpdateComponent_MergesAuthChoyWebShellIntoWeb(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -969,16 +997,16 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 		t.Fatalf("parse tsconfig alias failed: %v", err)
 	}
 
-	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "ChoyWebShell.vue")
+	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "ChoyWebShell.vue")
 
 	childContentBytes, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child OHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
 	parentContentBytes, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent OHeader failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	childContent := vueplugin.ResolveVueStylePath(string(childContentBytes), childPath, pathAlias)
@@ -986,11 +1014,11 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 
 	childParsed, err := b.parser.Parse(pathAlias, childPath, childContent)
 	if err != nil {
-		t.Fatalf("parse child OHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := b.parser.Parse(pathAlias, parentPath, parentContent)
 	if err != nil {
-		t.Fatalf("parse parent OHeader failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	buildResult := withParserResults(&module.BuildResult{}, childParsed, parentParsed)
@@ -998,35 +1026,22 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 		t.Fatalf("updateComponent failed: %v", err)
 	}
 
-	if childParsed.RawScriptNode == nil {
-		t.Fatal("expected child raw script node after update")
+	if childParsed.Content == "" {
+		t.Fatal("expected merged child content after update")
 	}
-	scriptText := htmlquery.InnerText(childParsed.RawScriptNode)
-	if !strings.Contains(scriptText, "QuestionFilled") {
-		t.Fatalf("expected merged child script to include QuestionFilled, got:\n%s", scriptText)
+	if !strings.Contains(childParsed.Content, "auth-user-menu-trigger") {
+		t.Fatalf("expected merged content to keep auth user menu testid, got:\n%s", childParsed.Content)
 	}
-	if !strings.Contains(scriptText, "icons-vue") {
-		t.Fatalf("expected merged child script to include icons-vue import, got:\n%s", scriptText)
+	// Child Xpath expr uses single quotes; double-quoted markup comes from the parent shell.
+	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
+		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
 	}
-
-	foundQuestionFilledComp := false
-	componentNames := make([]string, 0, len(childParsed.VueComponentsPropertys))
-	for _, node := range childParsed.VueComponentsPropertys {
-		if node == nil {
-			continue
-		}
-		componentNames = append(componentNames, strings.TrimSpace(node.ValueText))
-		if strings.TrimSpace(node.Name) == "QuestionFilled" || strings.TrimSpace(node.ValueText) == "QuestionFilled" {
-			foundQuestionFilledComp = true
-			break
-		}
-	}
-	if !foundQuestionFilledComp {
-		t.Fatalf("expected merged child components to include QuestionFilled, got names=%v script:\n%s", componentNames, scriptText)
+	if !mergedComponentsChoyLayoutRe.MatchString(childParsed.Content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", childParsed.Content)
 	}
 }
 
-func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFilled(t *testing.T) {
+func TestPrebuildUpdatePrebuildResult_RealAuthChoyWebShellMerges(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -1062,7 +1077,7 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 		t.Fatalf("prebuild failed: %v", err)
 	}
 
-	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "ChoyWebShell.vue")
 	var beforeChild *parser.ParserResult
 	for _, r := range parserResultsOf(prebuildResult) {
 		if r != nil && r.Path == childPath {
@@ -1092,10 +1107,17 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 		t.Fatalf("expected merged content for %s", childPath)
 	}
 
-	if !strings.Contains(childResult.Content, "QuestionFilled") {
-		t.Fatalf("expected merged content to include QuestionFilled, got:\n%s", childResult.Content)
+	if !strings.Contains(childResult.Content, "auth-user-menu-trigger") {
+		t.Fatalf("expected merged content to keep auth user menu testid, got:\n%s", childResult.Content)
 	}
-	if strings.Contains(childResult.Content, "components: {\n    Xpath,") || strings.Contains(childResult.Content, "components: { Xpath") {
+	// Child Xpath expr uses single quotes; double-quoted markup comes from the parent shell.
+	if !strings.Contains(childResult.Content, `data-anchor="choy.shell.header-actions"`) {
+		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childResult.Content)
+	}
+	if !mergedComponentsChoyLayoutRe.MatchString(childResult.Content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", childResult.Content)
+	}
+	if mergedComponentsXpathRe.MatchString(childResult.Content) {
 		t.Fatalf("expected xpath placeholder to be replaced in merged content, got:\n%s", childResult.Content)
 	}
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect, page } from '@choysum/e2e';
+import { pickAlternativeCompanyOptionValue } from '../../web/components/layout/switch_company_option_pick.ts';
 import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 
 /**
@@ -37,69 +38,110 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
 }
 
 /**
- * Pick a non-selected company option in the open active-company el-select.
- * Uses HTMLElement.click() so Element Plus Vue handlers run (MouseEvent dispatch is flaky).
+ * Pick a non-selected company option in the open active-company native select.
  */
 async function pickOtherActiveCompanyOption(): Promise<void> {
-  // Scope to the company panel: select uses teleported=false, so options live under the panel.
-  // Other page dropdowns must not skip opening this select.
-  const dropdownOpen = await page.evaluate(() => {
-    const panel = document.querySelector('[data-testid="company-switch-panel"]');
-    if (!panel) return false;
-    const select = panel.querySelector('[data-testid="company-active-select"]');
-    if (!select) return false;
-    if (select.getAttribute('aria-expanded') === 'true') return true;
-    if (select.querySelector('[aria-expanded="true"]')) return true;
-    const nodes = Array.from(panel.querySelectorAll('.el-select-dropdown')) as HTMLElement[];
-    return nodes.some(el => {
-      const style = window.getComputedStyle(el);
-      if (!style || style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
-        return false;
-      }
-      const r = el.getBoundingClientRect();
-      if (r.width <= 0 || r.height <= 0) return false;
-      return !!el.querySelector('.el-select-dropdown__item, [role="option"]');
-    });
-  });
-  if (!dropdownOpen) {
-    await page.getByTestId('company-active-select').click();
-  }
+  const panelSelect = '[data-testid="company-switch-panel"] [data-testid="company-active-select"]';
+  await expect(page.locator(panelSelect)).toBeVisible({ timeout: 10_000 });
 
+  // Companies load async after the panel opens; wait until a non-current option exists.
   await expect
     .poll(
       async () =>
-        page.evaluate(() => {
-          const panel = document.querySelector('[data-testid="company-switch-panel"]');
-          if (!panel) return 0;
-          const opts = Array.from(
-            panel.querySelectorAll(
-              '.el-select-dropdown__item, .el-select-dropdown li, [role="option"]'
-            )
-          ) as HTMLElement[];
-          return opts.length;
-        }),
+        page.evaluate((sel: string) => {
+          const select = document.querySelector(sel) as HTMLSelectElement | null;
+          if (!select) return 0;
+          return Array.from(select.options)
+            .filter(opt => !opt.disabled)
+            .map(opt => String(opt.value || '').trim())
+            .filter(Boolean).length;
+        }, panelSelect),
       { timeout: 10_000 }
     )
     .toBeGreaterThanOrEqual(2);
 
-  // Never fall back to the last option: it may be the already-selected company and
-  // then Apply is a no-op while waits burn a full timeout.
-  const clicked = await page.evaluate(() => {
-    const panel = document.querySelector('[data-testid="company-switch-panel"]');
-    if (!panel) return false;
-    const opts = Array.from(
-      panel.querySelectorAll(
-        '.el-select-dropdown__item, .el-select-dropdown li, [role="option"]'
-      )
-    ) as HTMLElement[];
-    const target = opts.find(
-      o => !o.classList.contains('is-selected') && o.getAttribute('aria-selected') !== 'true'
+  // Read JWT active after options appear: an in-flight panel-open RefreshToken could
+  // otherwise leave the draft on the freshly-synced active company while `active` is stale.
+  // Outer retries are instant, so wait here through a transient token rotation.
+  // Use a bounded loop (not expect.poll) so the domain-specific error below can surface.
+  // Require two consecutive identical reads: a single read can return the pre-rotation
+  // JWT while the panel-open RefreshToken is still in flight, and a stale `active`
+  // would make us pick the real active company (Apply = no-op).
+  let activeCompanyId = '';
+  let lastReadErr: unknown;
+  const deadline = Date.now() + 5_000;
+  while (!activeCompanyId && Date.now() < deadline) {
+    try {
+      const first = await readActiveCompanyIdFromAuth();
+      if (first) {
+        await page.waitForTimeout(100);
+        const second = await readActiveCompanyIdFromAuth();
+        if (second && second === first) {
+          activeCompanyId = first;
+          break;
+        }
+      }
+    } catch (err) {
+      // Transient evaluate/navigation failures must not abort the retry budget,
+      // but keep the last one so a persistent failure is diagnosable below.
+      lastReadErr = err;
+    }
+    await page.waitForTimeout(100);
+  }
+  if (!activeCompanyId) {
+    throw new Error(
+      `company switch: active company id unavailable; refusing to pick an option blindly${
+        lastReadErr ? ` (last token read failed: ${String(lastReadErr)})` : ''
+      }`
     );
-    if (!target) return false;
-    target.click();
-    return true;
-  });
-  expect(clicked).toBe(true);
+  }
+  // One post-wait snapshot for both current and options — mixing pre/post-wait
+  // reads can pick a value that no longer exists and time out opaquely.
+  const selectSnapshot = await page.evaluate((sel: string) => {
+    const select = document.querySelector(sel) as HTMLSelectElement | null;
+    if (!select) return { current: '', values: [] as string[] };
+    return {
+      current: String(select.value || '').trim(),
+      // Skip disabled options: programmatic selection of them is a silent no-op.
+      values: Array.from(select.options)
+        .filter(opt => !opt.disabled)
+        .map(opt => String(opt.value || '').trim())
+        .filter(Boolean),
+    };
+  }, panelSelect);
+  const otherValue = pickAlternativeCompanyOptionValue(
+    selectSnapshot.values,
+    selectSnapshot.current,
+    activeCompanyId
+  );
+  expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');
+
+  // Re-apply inside the poll: a late panel-open RefreshToken can reset the draft.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          async ({ sel, other }: { sel: string; other: string }) => {
+            const select = document.querySelector(sel) as HTMLSelectElement | null;
+            if (!select) return '';
+            if (String(select.value || '').trim() !== other) {
+              select.value = other;
+              select.dispatchEvent(new Event('input', { bubbles: true }));
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            // Let Vue flush: a late panel-open RefreshToken can reset the draft
+            // right after we assign it, which would otherwise pass this poll.
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (String(select.value || '').trim() !== other) return '';
+            // Confirm the draft settles across a later tick before Apply.
+            await new Promise(resolve => setTimeout(resolve, 50));
+            return String(select.value || '').trim();
+          },
+          { sel: panelSelect, other: otherValue }
+        ),
+      { timeout: 5_000 }
+    )
+    .toBe(otherValue);
 }
 
 async function clickApplyButton(): Promise<void> {
@@ -118,8 +160,7 @@ async function clickApplyButton(): Promise<void> {
 /**
  * Open the company switcher, select another company, and wait until activeCompanyId changes.
  *
- * Retries the full open→select→apply path: Element Plus often swallows the first
- * apply click under CDP, and panel-open refreshToken can race with a thin click path.
+ * Retries the full open→select→apply path: panel-open refreshToken can race with a thin click path.
  *
  * Success is JWT activeCompanyId change (tokens are persisted; identity is not).
  */
@@ -131,7 +172,7 @@ export async function switchCompanyViaUI(): Promise<void> {
       const trigger = page.getByTestId('company-switch-trigger');
       await expect(trigger).toBeVisible();
 
-      // Presence alone is not enough: Element Plus may keep the panel mounted while hidden.
+      // Presence alone is not enough: the panel may stay mounted while hidden.
       const panel = page.getByTestId('company-switch-panel');
       const panelVisible = await panel.isVisible().catch(() => false);
       // If already open, an in-flight panel-open RefreshTokens may still complete later and

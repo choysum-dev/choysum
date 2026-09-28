@@ -746,22 +746,22 @@ msgctxt "service/models/_sequence_next"
 msgid "Sequence not found for Code=%s"
 msgstr "未找到 Code=%s 的序列"
 
-#: service/models/_uom_convert.ts:56
+#: service/models/_uom_convert.ts:61
 msgctxt "service/models/_uom_convert"
 msgid "%s not found"
 msgstr "未找到 %s"
 
-#: service/models/_uom_convert.ts:51
+#: service/models/_uom_convert.ts:56
 msgctxt "service/models/_uom_convert"
 msgid "Invalid Amount"
 msgstr "金额无效"
 
-#: service/models/_uom_convert.ts:71
+#: service/models/_uom_convert.ts:76 service/models/_uom_convert.ts:81
 msgctxt "service/models/_uom_convert"
 msgid "UoM factor must be greater than 0"
 msgstr "计量单位换算系数必须大于 0"
 
-#: service/models/_uom_convert.ts:65
+#: service/models/_uom_convert.ts:69
 msgctxt "service/models/_uom_convert"
 msgid "UoMs must belong to the same category"
 msgstr "计量单位必须属于同一类别"
@@ -1091,130 +1091,65 @@ msgctxt "web/pages/AddressList"
 msgid "Address List"
 msgstr "地址列表"
 
-#: web/pages/AddressList.vue:2
-msgctxt "web/pages/AddressList"
-msgid "Upload a UTF-8 CSV with columns Label, Street1, Zip."
-msgstr "上传 UTF-8 CSV，列包括 Label、Street1、Zip。"
-
 #: web/pages/BankList.vue:13
 msgctxt "web/pages/BankList"
 msgid "Bank List"
 msgstr "银行列表"
-
-#: web/pages/BankList.vue:2
-msgctxt "web/pages/BankList"
-msgid "Upload a UTF-8 CSV with columns Name, Code, BIC, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code、BIC、IsActive。"
 
 #: web/pages/CityList.vue:13
 msgctxt "web/pages/CityList"
 msgid "City List"
 msgstr "城市列表"
 
-#: web/pages/CityList.vue:2
-msgctxt "web/pages/CityList"
-msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code、IsActive。"
-
 #: web/pages/CompanyList.vue:13
 msgctxt "web/pages/CompanyList"
 msgid "Company List"
 msgstr "公司列表"
-
-#: web/pages/CompanyList.vue:2
-msgctxt "web/pages/CompanyList"
-msgid "Upload a UTF-8 CSV with columns Name, Code."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code。"
 
 #: web/pages/CountryList.vue:13
 msgctxt "web/pages/CountryList"
 msgid "Country List"
 msgstr "国家/地区列表"
 
-#: web/pages/CountryList.vue:2
-msgctxt "web/pages/CountryList"
-msgid "Upload a UTF-8 CSV with columns Name, Code, PhonePrefix, ZipRequired, StateRequired, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code、PhonePrefix、ZipRequired、StateRequired、IsActive。"
-
 #: web/pages/CurrencyList.vue:13
 msgctxt "web/pages/CurrencyList"
 msgid "Currency List"
 msgstr "币种列表"
-
-#: web/pages/CurrencyList.vue:2
-msgctxt "web/pages/CurrencyList"
-msgid "Upload a UTF-8 CSV with columns Name, Code, Symbol, DecimalDigits, Rounding, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code、Symbol、DecimalDigits、Rounding、IsActive。"
 
 #: web/pages/ExchangeRateList.vue:13
 msgctxt "web/pages/ExchangeRateList"
 msgid "Exchange Rate List"
 msgstr "汇率列表"
 
-#: web/pages/ExchangeRateList.vue:2
-msgctxt "web/pages/ExchangeRateList"
-msgid "Upload a UTF-8 CSV with columns Date, Rate."
-msgstr "上传 UTF-8 CSV，列包括 Date、Rate。"
-
 #: web/pages/LanguageList.vue:13
 msgctxt "web/pages/LanguageList"
 msgid "Language List"
 msgstr "语言列表"
-
-#: web/pages/LanguageList.vue:2
-msgctxt "web/pages/LanguageList"
-msgid "Upload a UTF-8 CSV with columns Name, Code, Direction, DecimalSeparator, ThousandSeparator, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code、Direction、DecimalSeparator、ThousandSeparator、IsActive。"
 
 #: web/pages/SequenceIdempotencyList.vue:13
 msgctxt "web/pages/SequenceIdempotencyList"
 msgid "Sequence Idempotency List"
 msgstr "序列幂等列表"
 
-#: web/pages/SequenceIdempotencyList.vue:2
-msgctxt "web/pages/SequenceIdempotencyList"
-msgid "Upload a UTF-8 CSV with columns IdempotencyKey, Count, DryRun, RangeStart, RangeEnd."
-msgstr "上传 UTF-8 CSV，列包括 IdempotencyKey、Count、DryRun、RangeStart、RangeEnd。"
-
 #: web/pages/SequenceList.vue:13
 msgctxt "web/pages/SequenceList"
 msgid "Sequence List"
 msgstr "序列列表"
-
-#: web/pages/SequenceList.vue:2
-msgctxt "web/pages/SequenceList"
-msgid "Upload a UTF-8 CSV with columns Name, Code, Prefix, Suffix, Padding, NextNumber, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code、Prefix、Suffix、Padding、NextNumber、IsActive。"
 
 #: web/pages/StateList.vue:13
 msgctxt "web/pages/StateList"
 msgid "State List"
 msgstr "州/省列表"
 
-#: web/pages/StateList.vue:2
-msgctxt "web/pages/StateList"
-msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code、IsActive。"
-
 #: web/pages/UoMCategoryList.vue:13
 msgctxt "web/pages/UoMCategoryList"
 msgid "Unit of Measure Category List"
 msgstr "计量单位类别列表"
 
-#: web/pages/UoMCategoryList.vue:2
-msgctxt "web/pages/UoMCategoryList"
-msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Code、IsActive。"
-
 #: web/pages/UoMList.vue:13
 msgctxt "web/pages/UoMList"
 msgid "Unit of Measure List"
 msgstr "计量单位列表"
-
-#: web/pages/UoMList.vue:2
-msgctxt "web/pages/UoMList"
-msgid "Upload a UTF-8 CSV with columns Name, Symbol, IsReference, Factor, Rounding, IsActive."
-msgstr "上传 UTF-8 CSV，列包括 Name、Symbol、IsReference、Factor、Rounding、IsActive。"
 
 #: web/route/routes.ts:52
 msgctxt "web/route/routes"
@@ -1416,287 +1351,287 @@ msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr "计量单位列表"
 
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:34
 msgctxt "web/views/AddressFormView"
 msgid "Address"
 msgstr "地址"
 
-#: web/views/AddressFormView.vue:4
+#: web/views/AddressFormView.vue:3
 msgctxt "web/views/AddressFormView"
 msgid "Address Information"
 msgstr "地址信息"
 
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:34
 msgctxt "web/views/AddressFormView"
 msgid "Copy Address"
 msgstr "复制地址"
 
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:34
 msgctxt "web/views/AddressFormView"
 msgid "Create Address"
 msgstr "新建地址"
 
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:34
 msgctxt "web/views/AddressFormView"
 msgid "Delete Address"
 msgstr "删除地址"
 
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:34
 msgctxt "web/views/AddressFormView"
 msgid "Edit Address"
 msgstr "编辑地址"
 
-#: web/views/AddressFormView.vue:18
+#: web/views/AddressFormView.vue:16
 msgctxt "web/views/AddressFormView"
 msgid "Select City"
 msgstr "选择城市"
 
-#: web/views/AddressFormView.vue:9
+#: web/views/AddressFormView.vue:7
 msgctxt "web/views/AddressFormView"
 msgid "Select Country"
 msgstr "选择国家/地区"
 
-#: web/views/AddressFormView.vue:17
+#: web/views/AddressFormView.vue:15
 msgctxt "web/views/AddressFormView"
 msgid "Select State/Province"
 msgstr "选择州/省"
 
-#: web/views/AddressListView.vue:21
+#: web/views/AddressListView.vue:17
 msgctxt "web/views/AddressListView"
 msgid "Address"
 msgstr "地址"
 
-#: web/views/AddressListView.vue:21
+#: web/views/AddressListView.vue:17
 msgctxt "web/views/AddressListView"
 msgid "Copy Address"
 msgstr "复制地址"
 
-#: web/views/AddressListView.vue:21
+#: web/views/AddressListView.vue:17
 msgctxt "web/views/AddressListView"
 msgid "Create Address"
 msgstr "新建地址"
 
-#: web/views/AddressListView.vue:21
+#: web/views/AddressListView.vue:17
 msgctxt "web/views/AddressListView"
 msgid "Delete Address"
 msgstr "删除地址"
 
-#: web/views/AddressListView.vue:21
+#: web/views/AddressListView.vue:17
 msgctxt "web/views/AddressListView"
 msgid "Edit Address"
 msgstr "编辑地址"
 
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:25
 msgctxt "web/views/BankFormView"
 msgid "Bank"
 msgstr "银行"
 
-#: web/views/BankFormView.vue:4
+#: web/views/BankFormView.vue:3
 msgctxt "web/views/BankFormView"
 msgid "Bank Information"
 msgstr "银行信息"
 
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:25
 msgctxt "web/views/BankFormView"
 msgid "Copy Bank"
 msgstr "复制银行"
 
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:25
 msgctxt "web/views/BankFormView"
 msgid "Create Bank"
 msgstr "新建银行"
 
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:25
 msgctxt "web/views/BankFormView"
 msgid "Delete Bank"
 msgstr "删除银行"
 
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:25
 msgctxt "web/views/BankFormView"
 msgid "Edit Bank"
 msgstr "编辑银行"
 
-#: web/views/BankFormView.vue:24
+#: web/views/BankFormView.vue:20
 msgctxt "web/views/BankFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/BankFormView.vue:12
+#: web/views/BankFormView.vue:10
 msgctxt "web/views/BankFormView"
 msgid "Select Address"
 msgstr "选择地址"
 
-#: web/views/BankFormView.vue:11
+#: web/views/BankFormView.vue:9
 msgctxt "web/views/BankFormView"
 msgid "Select Country"
 msgstr "选择国家/地区"
 
-#: web/views/BankListView.vue:22
+#: web/views/BankListView.vue:17
 msgctxt "web/views/BankListView"
 msgid "Bank"
 msgstr "银行"
 
-#: web/views/BankListView.vue:22
+#: web/views/BankListView.vue:17
 msgctxt "web/views/BankListView"
 msgid "Copy Bank"
 msgstr "复制银行"
 
-#: web/views/BankListView.vue:22
+#: web/views/BankListView.vue:17
 msgctxt "web/views/BankListView"
 msgid "Create Bank"
 msgstr "新建银行"
 
-#: web/views/BankListView.vue:22
+#: web/views/BankListView.vue:17
 msgctxt "web/views/BankListView"
 msgid "Delete Bank"
 msgstr "删除银行"
 
-#: web/views/BankListView.vue:22
+#: web/views/BankListView.vue:17
 msgctxt "web/views/BankListView"
 msgid "Edit Bank"
 msgstr "编辑银行"
 
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:26
 msgctxt "web/views/CityFormView"
 msgid "City"
 msgstr "城市"
 
-#: web/views/CityFormView.vue:4
+#: web/views/CityFormView.vue:3
 msgctxt "web/views/CityFormView"
 msgid "City Information"
 msgstr "城市信息"
 
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:26
 msgctxt "web/views/CityFormView"
 msgid "Copy City"
 msgstr "复制城市"
 
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:26
 msgctxt "web/views/CityFormView"
 msgid "Create City"
 msgstr "新建城市"
 
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:26
 msgctxt "web/views/CityFormView"
 msgid "Delete City"
 msgstr "删除城市"
 
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:26
 msgctxt "web/views/CityFormView"
 msgid "Edit City"
 msgstr "编辑城市"
 
-#: web/views/CityFormView.vue:25
+#: web/views/CityFormView.vue:21
 msgctxt "web/views/CityFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/CityFormView.vue:11
+#: web/views/CityFormView.vue:9
 msgctxt "web/views/CityFormView"
 msgid "Select Country"
 msgstr "选择国家/地区"
 
-#: web/views/CityFormView.vue:12
+#: web/views/CityFormView.vue:10
 msgctxt "web/views/CityFormView"
 msgid "Select State/Province"
 msgstr "选择州/省"
 
-#: web/views/CityListView.vue:22
+#: web/views/CityListView.vue:17
 msgctxt "web/views/CityListView"
 msgid "City"
 msgstr "城市"
 
-#: web/views/CityListView.vue:22
+#: web/views/CityListView.vue:17
 msgctxt "web/views/CityListView"
 msgid "Copy City"
 msgstr "复制城市"
 
-#: web/views/CityListView.vue:22
+#: web/views/CityListView.vue:17
 msgctxt "web/views/CityListView"
 msgid "Create City"
 msgstr "新建城市"
 
-#: web/views/CityListView.vue:22
+#: web/views/CityListView.vue:17
 msgctxt "web/views/CityListView"
 msgid "Delete City"
 msgstr "删除城市"
 
-#: web/views/CityListView.vue:22
+#: web/views/CityListView.vue:17
 msgctxt "web/views/CityListView"
 msgid "Edit City"
 msgstr "编辑城市"
 
-#: web/views/CompanyFormView.vue:5
+#: web/views/CompanyFormView.vue:3
 msgctxt "web/views/CompanyFormView"
 msgid "Basic Information"
 msgstr "基本信息"
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:38
 msgctxt "web/views/CompanyFormView"
 msgid "Company"
 msgstr "公司"
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:38
 msgctxt "web/views/CompanyFormView"
 msgid "Copy Company"
 msgstr "复制公司"
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:38
 msgctxt "web/views/CompanyFormView"
 msgid "Create Company"
 msgstr "新建公司"
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:38
 msgctxt "web/views/CompanyFormView"
 msgid "Delete Company"
 msgstr "删除公司"
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:38
 msgctxt "web/views/CompanyFormView"
 msgid "Edit Company"
 msgstr "编辑公司"
 
-#: web/views/CompanyFormView.vue:26
+#: web/views/CompanyFormView.vue:21
 msgctxt "web/views/CompanyFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/CompanyFormView.vue:18
+#: web/views/CompanyFormView.vue:14
 msgctxt "web/views/CompanyFormView"
 msgid "Select Currency"
 msgstr "选择币种"
 
-#: web/views/CompanyFormView.vue:23
+#: web/views/CompanyFormView.vue:19
 msgctxt "web/views/CompanyFormView"
 msgid "Select Parent Company"
 msgstr "选择上级公司"
 
-#: web/views/CompanyFormView.vue:15
+#: web/views/CompanyFormView.vue:11
 msgctxt "web/views/CompanyFormView"
 msgid "Select a time zone"
 msgstr "选择时区"
 
-#: web/views/CompanyListView.vue:27
+#: web/views/CompanyListView.vue:22
 msgctxt "web/views/CompanyListView"
 msgid "Company"
 msgstr "公司"
 
-#: web/views/CompanyListView.vue:27
+#: web/views/CompanyListView.vue:22
 msgctxt "web/views/CompanyListView"
 msgid "Copy Company"
 msgstr "复制公司"
 
-#: web/views/CompanyListView.vue:27
+#: web/views/CompanyListView.vue:22
 msgctxt "web/views/CompanyListView"
 msgid "Create Company"
 msgstr "新建公司"
 
-#: web/views/CompanyListView.vue:27
+#: web/views/CompanyListView.vue:22
 msgctxt "web/views/CompanyListView"
 msgid "Delete Company"
 msgstr "删除公司"
 
-#: web/views/CompanyListView.vue:27
+#: web/views/CompanyListView.vue:22
 msgctxt "web/views/CompanyListView"
 msgid "Edit Company"
 msgstr "编辑公司"
@@ -1706,57 +1641,57 @@ msgctxt "web/views/CompanyListView"
 msgid "Name"
 msgstr "名称"
 
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:21
 msgctxt "web/views/CountryFormView"
 msgid "Copy Country"
 msgstr "复制国家/地区"
 
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:21
 msgctxt "web/views/CountryFormView"
 msgid "Country"
 msgstr "国家/地区"
 
-#: web/views/CountryFormView.vue:4
+#: web/views/CountryFormView.vue:3
 msgctxt "web/views/CountryFormView"
 msgid "Country Information"
 msgstr "国家/地区信息"
 
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:21
 msgctxt "web/views/CountryFormView"
 msgid "Create Country"
 msgstr "新建国家/地区"
 
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:21
 msgctxt "web/views/CountryFormView"
 msgid "Delete Country"
 msgstr "删除国家/地区"
 
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:21
 msgctxt "web/views/CountryFormView"
 msgid "Edit Country"
 msgstr "编辑国家/地区"
 
-#: web/views/CountryFormView.vue:21
+#: web/views/CountryFormView.vue:16
 msgctxt "web/views/CountryFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/CountryFormView.vue:11
+#: web/views/CountryFormView.vue:9
 msgctxt "web/views/CountryFormView"
 msgid "Select Currency"
 msgstr "选择币种"
 
-#: web/views/CountryListView.vue:22
+#: web/views/CountryListView.vue:17
 msgctxt "web/views/CountryListView"
 msgid "Copy Country"
 msgstr "复制国家/地区"
 
-#: web/views/CountryListView.vue:22
+#: web/views/CountryListView.vue:17
 msgctxt "web/views/CountryListView"
 msgid "Country"
 msgstr "国家/地区"
 
-#: web/views/CountryListView.vue:22
+#: web/views/CountryListView.vue:17
 msgctxt "web/views/CountryListView"
 msgid "Create Country"
 msgstr "新建国家/地区"
@@ -1766,517 +1701,569 @@ msgctxt "web/views/CountryListView"
 msgid "Currency"
 msgstr "币种"
 
-#: web/views/CountryListView.vue:22
+#: web/views/CountryListView.vue:17
 msgctxt "web/views/CountryListView"
 msgid "Delete Country"
 msgstr "删除国家/地区"
 
-#: web/views/CountryListView.vue:22
+#: web/views/CountryListView.vue:17
 msgctxt "web/views/CountryListView"
 msgid "Edit Country"
 msgstr "编辑国家/地区"
 
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:20
 msgctxt "web/views/CurrencyFormView"
 msgid "Copy Currency"
 msgstr "复制币种"
 
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:20
 msgctxt "web/views/CurrencyFormView"
 msgid "Create Currency"
 msgstr "新建币种"
 
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:20
 msgctxt "web/views/CurrencyFormView"
 msgid "Currency"
 msgstr "币种"
 
-#: web/views/CurrencyFormView.vue:4
+#: web/views/CurrencyFormView.vue:3
 msgctxt "web/views/CurrencyFormView"
 msgid "Currency Information"
 msgstr "币种信息"
 
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:20
 msgctxt "web/views/CurrencyFormView"
 msgid "Delete Currency"
 msgstr "删除币种"
 
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:20
 msgctxt "web/views/CurrencyFormView"
 msgid "Edit Currency"
 msgstr "编辑币种"
 
-#: web/views/CurrencyFormView.vue:20
+#: web/views/CurrencyFormView.vue:15
 msgctxt "web/views/CurrencyFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/CurrencyListView.vue:23
+#: web/views/CurrencyListView.vue:17
 msgctxt "web/views/CurrencyListView"
 msgid "Copy Currency"
 msgstr "复制币种"
 
-#: web/views/CurrencyListView.vue:23
+#: web/views/CurrencyListView.vue:17
 msgctxt "web/views/CurrencyListView"
 msgid "Create Currency"
 msgstr "新建币种"
 
-#: web/views/CurrencyListView.vue:23
+#: web/views/CurrencyListView.vue:17
 msgctxt "web/views/CurrencyListView"
 msgid "Currency"
 msgstr "币种"
 
-#: web/views/CurrencyListView.vue:23
+#: web/views/CurrencyListView.vue:17
 msgctxt "web/views/CurrencyListView"
 msgid "Delete Currency"
 msgstr "删除币种"
 
-#: web/views/CurrencyListView.vue:23
+#: web/views/CurrencyListView.vue:17
 msgctxt "web/views/CurrencyListView"
 msgid "Edit Currency"
 msgstr "编辑币种"
 
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:32
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Copy Exchange Rate"
 msgstr "复制汇率"
 
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:32
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Create Exchange Rate"
 msgstr "新建汇率"
 
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:32
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Delete Exchange Rate"
 msgstr "删除汇率"
 
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:32
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Edit Exchange Rate"
 msgstr "编辑汇率"
 
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:32
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Exchange Rate"
 msgstr "汇率"
 
-#: web/views/ExchangeRateFormView.vue:4
+#: web/views/ExchangeRateFormView.vue:3
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Exchange Rate Information"
 msgstr "汇率信息"
 
-#: web/views/ExchangeRateFormView.vue:25
+#: web/views/ExchangeRateFormView.vue:21
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/ExchangeRateFormView.vue:7
+#: web/views/ExchangeRateFormView.vue:5
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Select Company"
 msgstr "选择公司"
 
-#: web/views/ExchangeRateFormView.vue:6
+#: web/views/ExchangeRateFormView.vue:4
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Select Currency"
 msgstr "选择币种"
 
-#: web/views/ExchangeRateListView.vue:23
+#: web/views/ExchangeRateListView.vue:17
 msgctxt "web/views/ExchangeRateListView"
 msgid "Copy Exchange Rate"
 msgstr "复制汇率"
 
-#: web/views/ExchangeRateListView.vue:23
+#: web/views/ExchangeRateListView.vue:17
 msgctxt "web/views/ExchangeRateListView"
 msgid "Create Exchange Rate"
 msgstr "新建汇率"
 
-#: web/views/ExchangeRateListView.vue:23
+#: web/views/ExchangeRateListView.vue:17
 msgctxt "web/views/ExchangeRateListView"
 msgid "Delete Exchange Rate"
 msgstr "删除汇率"
 
-#: web/views/ExchangeRateListView.vue:23
+#: web/views/ExchangeRateListView.vue:17
 msgctxt "web/views/ExchangeRateListView"
 msgid "Edit Exchange Rate"
 msgstr "编辑汇率"
 
-#: web/views/ExchangeRateListView.vue:23
+#: web/views/ExchangeRateListView.vue:17
 msgctxt "web/views/ExchangeRateListView"
 msgid "Exchange Rate"
 msgstr "汇率"
 
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:21
 msgctxt "web/views/LanguageFormView"
 msgid "Copy Language"
 msgstr "复制语言"
 
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:21
 msgctxt "web/views/LanguageFormView"
 msgid "Create Language"
 msgstr "新建语言"
 
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:21
 msgctxt "web/views/LanguageFormView"
 msgid "Delete Language"
 msgstr "删除语言"
 
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:21
 msgctxt "web/views/LanguageFormView"
 msgid "Edit Language"
 msgstr "编辑语言"
 
-#: web/views/LanguageFormView.vue:15
+#: web/views/LanguageFormView.vue:12
 msgctxt "web/views/LanguageFormView"
 msgid "Format"
 msgstr "格式"
 
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:21
 msgctxt "web/views/LanguageFormView"
 msgid "Language"
 msgstr "语言"
 
-#: web/views/LanguageFormView.vue:4
+#: web/views/LanguageFormView.vue:3
 msgctxt "web/views/LanguageFormView"
 msgid "Language Information"
 msgstr "语言信息"
 
-#: web/views/LanguageFormView.vue:21
+#: web/views/LanguageFormView.vue:16
 msgctxt "web/views/LanguageFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/LanguageListView.vue:22
+#: web/views/LanguageListView.vue:17
 msgctxt "web/views/LanguageListView"
 msgid "Copy Language"
 msgstr "复制语言"
 
-#: web/views/LanguageListView.vue:22
+#: web/views/LanguageListView.vue:17
 msgctxt "web/views/LanguageListView"
 msgid "Create Language"
 msgstr "新建语言"
 
-#: web/views/LanguageListView.vue:22
+#: web/views/LanguageListView.vue:17
 msgctxt "web/views/LanguageListView"
 msgid "Delete Language"
 msgstr "删除语言"
 
-#: web/views/LanguageListView.vue:22
+#: web/views/LanguageListView.vue:17
 msgctxt "web/views/LanguageListView"
 msgid "Edit Language"
 msgstr "编辑语言"
 
-#: web/views/LanguageListView.vue:22
+#: web/views/LanguageListView.vue:17
 msgctxt "web/views/LanguageListView"
 msgid "Language"
 msgstr "语言"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:21
 msgctxt "web/views/SequenceFormView"
 msgid "Copy Sequence"
 msgstr "复制序列"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:21
 msgctxt "web/views/SequenceFormView"
 msgid "Create Sequence"
 msgstr "新建序列"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:21
 msgctxt "web/views/SequenceFormView"
 msgid "Delete Sequence"
 msgstr "删除序列"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:21
 msgctxt "web/views/SequenceFormView"
 msgid "Edit Sequence"
 msgstr "编辑序列"
 
-#: web/views/SequenceFormView.vue:22
+#: web/views/SequenceFormView.vue:16
 msgctxt "web/views/SequenceFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/SequenceFormView.vue:8
+#: web/views/SequenceFormView.vue:6
 msgctxt "web/views/SequenceFormView"
 msgid "Select Company"
 msgstr "选择公司"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:21
 msgctxt "web/views/SequenceFormView"
 msgid "Sequence"
 msgstr "序列"
 
-#: web/views/SequenceFormView.vue:4
+#: web/views/SequenceFormView.vue:3
 msgctxt "web/views/SequenceFormView"
 msgid "Sequence Configuration"
 msgstr "序列配置"
 
-#: web/views/SequenceIdempotencyFormView.vue:34
+#: web/views/SequenceIdempotencyFormView.vue:26
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Copy Sequence Idempotency Record"
 msgstr "复制序列幂等记录"
 
-#: web/views/SequenceIdempotencyFormView.vue:34
+#: web/views/SequenceIdempotencyFormView.vue:26
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Create Sequence Idempotency Record"
 msgstr "创建序列幂等记录"
 
-#: web/views/SequenceIdempotencyFormView.vue:34
+#: web/views/SequenceIdempotencyFormView.vue:26
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Delete Sequence Idempotency Record"
 msgstr "删除序列幂等记录"
 
-#: web/views/SequenceIdempotencyFormView.vue:34
+#: web/views/SequenceIdempotencyFormView.vue:26
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Edit Sequence Idempotency Record"
 msgstr "编辑序列幂等记录"
 
-#: web/views/SequenceIdempotencyFormView.vue:12
+#: web/views/SequenceIdempotencyFormView.vue:10
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Select Company"
 msgstr "选择公司"
 
-#: web/views/SequenceIdempotencyFormView.vue:11
+#: web/views/SequenceIdempotencyFormView.vue:9
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Select Sequence"
 msgstr "选择序列"
 
-#: web/views/SequenceIdempotencyFormView.vue:34 web/views/SequenceIdempotencyFormView.vue:9
+#: web/views/SequenceIdempotencyFormView.vue:26 web/views/SequenceIdempotencyFormView.vue:8
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/views/SequenceIdempotencyListView.vue:25
+#: web/views/SequenceIdempotencyListView.vue:17
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Copy Sequence Idempotency Record"
 msgstr "复制序列幂等记录"
 
-#: web/views/SequenceIdempotencyListView.vue:25
+#: web/views/SequenceIdempotencyListView.vue:17
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Create Sequence Idempotency Record"
 msgstr "创建序列幂等记录"
 
-#: web/views/SequenceIdempotencyListView.vue:25
+#: web/views/SequenceIdempotencyListView.vue:17
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Delete Sequence Idempotency Record"
 msgstr "删除序列幂等记录"
 
-#: web/views/SequenceIdempotencyListView.vue:25
+#: web/views/SequenceIdempotencyListView.vue:17
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Edit Sequence Idempotency Record"
 msgstr "编辑序列幂等记录"
 
-#: web/views/SequenceIdempotencyListView.vue:25
+#: web/views/SequenceIdempotencyListView.vue:17
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/views/SequenceListView.vue:24
+#: web/views/SequenceListView.vue:17
 msgctxt "web/views/SequenceListView"
 msgid "Copy Sequence"
 msgstr "复制序列"
 
-#: web/views/SequenceListView.vue:24
+#: web/views/SequenceListView.vue:17
 msgctxt "web/views/SequenceListView"
 msgid "Create Sequence"
 msgstr "新建序列"
 
-#: web/views/SequenceListView.vue:24
+#: web/views/SequenceListView.vue:17
 msgctxt "web/views/SequenceListView"
 msgid "Delete Sequence"
 msgstr "删除序列"
 
-#: web/views/SequenceListView.vue:24
+#: web/views/SequenceListView.vue:17
 msgctxt "web/views/SequenceListView"
 msgid "Edit Sequence"
 msgstr "编辑序列"
 
-#: web/views/SequenceListView.vue:24
+#: web/views/SequenceListView.vue:17
 msgctxt "web/views/SequenceListView"
 msgid "Sequence"
 msgstr "序列"
 
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:21
 msgctxt "web/views/StateFormView"
 msgid "Copy State"
 msgstr "复制州/省"
 
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:21
 msgctxt "web/views/StateFormView"
 msgid "Create State"
 msgstr "新建州/省"
 
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:21
 msgctxt "web/views/StateFormView"
 msgid "Delete State"
 msgstr "删除州/省"
 
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:21
 msgctxt "web/views/StateFormView"
 msgid "Edit State"
 msgstr "编辑州/省"
 
-#: web/views/StateFormView.vue:20
+#: web/views/StateFormView.vue:16
 msgctxt "web/views/StateFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/StateFormView.vue:8
+#: web/views/StateFormView.vue:6
 msgctxt "web/views/StateFormView"
 msgid "Select Country"
 msgstr "选择国家/地区"
 
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:21
 msgctxt "web/views/StateFormView"
 msgid "State"
 msgstr "州/省"
 
-#: web/views/StateFormView.vue:4
+#: web/views/StateFormView.vue:3
 msgctxt "web/views/StateFormView"
 msgid "State/Province Information"
 msgstr "州/省信息"
 
-#: web/views/StateListView.vue:22
+#: web/views/StateListView.vue:17
 msgctxt "web/views/StateListView"
 msgid "Copy State"
 msgstr "复制州/省"
 
-#: web/views/StateListView.vue:22
+#: web/views/StateListView.vue:17
 msgctxt "web/views/StateListView"
 msgid "Create State"
 msgstr "新建州/省"
 
-#: web/views/StateListView.vue:22
+#: web/views/StateListView.vue:17
 msgctxt "web/views/StateListView"
 msgid "Delete State"
 msgstr "删除州/省"
 
-#: web/views/StateListView.vue:22
+#: web/views/StateListView.vue:17
 msgctxt "web/views/StateListView"
 msgid "Edit State"
 msgstr "编辑州/省"
 
-#: web/views/StateListView.vue:22
+#: web/views/StateListView.vue:17
 msgctxt "web/views/StateListView"
 msgid "State"
 msgstr "州/省"
 
-#: web/views/UoMCategoryFormView.vue:29
+#: web/views/UoMCategoryFormView.vue:26
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Copy Unit of Measure Category"
 msgstr "复制计量单位类别"
 
-#: web/views/UoMCategoryFormView.vue:29
+#: web/views/UoMCategoryFormView.vue:26
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Create Unit of Measure Category"
 msgstr "新建计量单位类别"
 
-#: web/views/UoMCategoryFormView.vue:29
+#: web/views/UoMCategoryFormView.vue:26
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Delete Unit of Measure Category"
 msgstr "删除计量单位类别"
 
-#: web/views/UoMCategoryFormView.vue:29
+#: web/views/UoMCategoryFormView.vue:26
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Edit Unit of Measure Category"
 msgstr "编辑计量单位类别"
 
-#: web/views/UoMCategoryFormView.vue:18
+#: web/views/UoMCategoryFormView.vue:15
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/UoMCategoryFormView.vue:29 web/views/UoMCategoryFormView.vue:4
+#: web/views/UoMCategoryFormView.vue:26 web/views/UoMCategoryFormView.vue:3
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
 
-#: web/views/UoMCategoryListView.vue:21
+#: web/views/UoMCategoryListView.vue:17
 msgctxt "web/views/UoMCategoryListView"
 msgid "Copy Unit of Measure Category"
 msgstr "复制计量单位类别"
 
-#: web/views/UoMCategoryListView.vue:21
+#: web/views/UoMCategoryListView.vue:17
 msgctxt "web/views/UoMCategoryListView"
 msgid "Create Unit of Measure Category"
 msgstr "新建计量单位类别"
 
-#: web/views/UoMCategoryListView.vue:21
+#: web/views/UoMCategoryListView.vue:17
 msgctxt "web/views/UoMCategoryListView"
 msgid "Delete Unit of Measure Category"
 msgstr "删除计量单位类别"
 
-#: web/views/UoMCategoryListView.vue:21
+#: web/views/UoMCategoryListView.vue:17
 msgctxt "web/views/UoMCategoryListView"
 msgid "Edit Unit of Measure Category"
 msgstr "编辑计量单位类别"
 
-#: web/views/UoMCategoryListView.vue:21
+#: web/views/UoMCategoryListView.vue:17
 msgctxt "web/views/UoMCategoryListView"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
 
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:21
 msgctxt "web/views/UoMFormView"
 msgid "Copy Unit of Measure"
 msgstr "复制计量单位"
 
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:21
 msgctxt "web/views/UoMFormView"
 msgid "Create Unit of Measure"
 msgstr "新建计量单位"
 
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:21
 msgctxt "web/views/UoMFormView"
 msgid "Delete Unit of Measure"
 msgstr "删除计量单位"
 
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:21
 msgctxt "web/views/UoMFormView"
 msgid "Edit Unit of Measure"
 msgstr "编辑计量单位"
 
-#: web/views/UoMFormView.vue:21
+#: web/views/UoMFormView.vue:16
 msgctxt "web/views/UoMFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/UoMFormView.vue:8
+#: web/views/UoMFormView.vue:6
 msgctxt "web/views/UoMFormView"
 msgid "Select Category"
 msgstr "选择类别"
 
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:21
 msgctxt "web/views/UoMFormView"
 msgid "Unit of Measure"
 msgstr "计量单位"
 
-#: web/views/UoMFormView.vue:4
+#: web/views/UoMFormView.vue:3
 msgctxt "web/views/UoMFormView"
 msgid "Unit of Measure Information"
 msgstr "计量单位信息"
 
-#: web/views/UoMListView.vue:23
+#: web/views/UoMListView.vue:17
 msgctxt "web/views/UoMListView"
 msgid "Copy Unit of Measure"
 msgstr "复制计量单位"
 
-#: web/views/UoMListView.vue:23
+#: web/views/UoMListView.vue:17
 msgctxt "web/views/UoMListView"
 msgid "Create Unit of Measure"
 msgstr "新建计量单位"
 
-#: web/views/UoMListView.vue:23
+#: web/views/UoMListView.vue:17
 msgctxt "web/views/UoMListView"
 msgid "Delete Unit of Measure"
 msgstr "删除计量单位"
 
-#: web/views/UoMListView.vue:23
+#: web/views/UoMListView.vue:17
 msgctxt "web/views/UoMListView"
 msgid "Edit Unit of Measure"
 msgstr "编辑计量单位"
 
-#: web/views/UoMListView.vue:23
+#: web/views/UoMListView.vue:17
 msgctxt "web/views/UoMListView"
 msgid "Unit of Measure"
 msgstr "计量单位"
+
+#~ msgctxt "web/pages/AddressList"
+#~ msgid "Upload a UTF-8 CSV with columns Label, Street1, Zip."
+#~ msgstr "上传 UTF-8 CSV，列包括 Label、Street1、Zip。"
+
+#~ msgctxt "web/pages/BankList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, BIC, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code、BIC、IsActive。"
+
+#~ msgctxt "web/pages/CityList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code、IsActive。"
+
+#~ msgctxt "web/pages/CompanyList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code。"
+
+#~ msgctxt "web/pages/CountryList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, PhonePrefix, ZipRequired, StateRequired, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code、PhonePrefix、ZipRequired、StateRequired、IsActive。"
+
+#~ msgctxt "web/pages/CurrencyList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, Symbol, DecimalDigits, Rounding, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code、Symbol、DecimalDigits、Rounding、IsActive。"
+
+#~ msgctxt "web/pages/ExchangeRateList"
+#~ msgid "Upload a UTF-8 CSV with columns Date, Rate."
+#~ msgstr "上传 UTF-8 CSV，列包括 Date、Rate。"
+
+#~ msgctxt "web/pages/LanguageList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, Direction, DecimalSeparator, ThousandSeparator, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code、Direction、DecimalSeparator、ThousandSeparator、IsActive。"
+
+#~ msgctxt "web/pages/SequenceIdempotencyList"
+#~ msgid "Upload a UTF-8 CSV with columns IdempotencyKey, Count, DryRun, RangeStart, RangeEnd."
+#~ msgstr "上传 UTF-8 CSV，列包括 IdempotencyKey、Count、DryRun、RangeStart、RangeEnd。"
+
+#~ msgctxt "web/pages/SequenceList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, Prefix, Suffix, Padding, NextNumber, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code、Prefix、Suffix、Padding、NextNumber、IsActive。"
+
+#~ msgctxt "web/pages/StateList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code、IsActive。"
+
+#~ msgctxt "web/pages/UoMCategoryList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Code, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Code、IsActive。"
+
+#~ msgctxt "web/pages/UoMList"
+#~ msgid "Upload a UTF-8 CSV with columns Name, Symbol, IsReference, Factor, Rounding, IsActive."
+#~ msgstr "上传 UTF-8 CSV，列包括 Name、Symbol、IsReference、Factor、Rounding、IsActive。"

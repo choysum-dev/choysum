@@ -5,13 +5,14 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Button
-    data-anchor="choy.button"
+    v-bind="{ ...$attrs, 'data-anchor': 'choy.button' }"
     :variant="props.variant"
     :size="props.size"
     :as="props.as"
     :class="props.class"
     :disabled="props.disabled"
     :type="props.type"
+    @click="handleClick"
   >
     <slot />
   </Button>
@@ -27,7 +28,12 @@ type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
 /**
  * Public L1 button for custom pages (login, dogfood). Wraps L2 ui/button so
  * domain modules never import vendor/ui directly.
+ *
+ * Declares click so parent @click is an emit listener (nested Button is a
+ * component root; attrs onClick would not reach the native element).
  */
+defineOptions({ name: 'ChoyButton', inheritAttrs: false });
+
 const props = withDefaults(
   defineProps<{
     variant?: ButtonVariant;
@@ -44,4 +50,17 @@ const props = withDefaults(
     type: 'button',
   },
 );
+
+const emit = defineEmits(['click']);
+
+function handleClick(event: Event) {
+  if (props.disabled) {
+    // Nested Button / component hosts may emit a non-DOM click payload.
+    const e = event as Partial<Event> | undefined;
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    return;
+  }
+  emit('click', event);
+}
 </script>

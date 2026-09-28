@@ -33,7 +33,11 @@ SPDX-License-Identifier: Apache-2.0
         <form class="o-preferences-dialog__form flex flex-col gap-4" @submit.prevent="handleSave">
           <label class="flex flex-col gap-1 text-sm">
             <span class="font-medium">{{ _t('Language') }}</span>
-            <select v-model="languageCode" class="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+            <select
+              v-model="languageCode"
+              class="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              data-testid="preferences-language"
+            >
               <option v-for="opt in languageOptions" :key="opt.Code" :value="opt.Code">{{ opt.Name }}</option>
             </select>
             <div v-if="languageFromSession" class="o-preferences-dialog__hint text-xs text-foreground/60">
@@ -43,7 +47,11 @@ SPDX-License-Identifier: Apache-2.0
 
           <label class="flex flex-col gap-1 text-sm">
             <span class="font-medium">{{ _t('Timezone') }}</span>
-            <select v-model="timezone" class="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+            <select
+              v-model="timezone"
+              class="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              data-testid="preferences-timezone"
+            >
               <option value="">{{ _t('Select timezone') }}</option>
               <option v-for="tz in timezoneOptions" :key="tz.value" :value="tz.value">{{ tz.label }}</option>
             </select>

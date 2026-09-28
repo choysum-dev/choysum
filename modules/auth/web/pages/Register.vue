@@ -80,7 +80,7 @@ SPDX-License-Identifier: Apache-2.0
           <span v-if="fieldErrors.confirmPassword" class="text-xs text-destructive">{{ fieldErrors.confirmPassword }}</span>
         </label>
 
-        <label class="flex items-start gap-2 text-sm">
+        <label class="flex items-start gap-2 text-sm" data-testid="register-terms">
           <input v-model="form.agreeTerms" type="checkbox" class="mt-0.5 size-4 rounded border-border" @change="validateAgreeTermsField" />
           <span>
             {{ _t('I have read and agree to') }}
