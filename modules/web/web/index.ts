@@ -30,7 +30,12 @@ export { default as ChoyChartView } from './components/view/ChoyChartView.vue';
 export { default as ChoySearchView } from './components/view/ChoySearchView.vue';
 export { default as ChoyPagination } from './components/view/ChoyPagination.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';
+export { default as ChoyViewScope } from './components/view/ChoyViewScope.vue';
+export { default as ChoyButtonBox } from './components/view/ChoyButtonBox.vue';
+export { default as ChoyStatInfo } from './components/view/ChoyStatInfo.vue';
+export { default as ChoyVColumn } from './components/vtable/ChoyVColumn.vue';
 export type { ChoyBreadcrumbItem } from './components/view/ChoyBreadcrumb.vue';
+export type { ViewMode as ChoyViewMode, ViewContainer as ChoyViewContainer } from './components/view/ChoyViewScope.vue';
 export {
   buildChoySearchQuery,
   filterRowsByKeyword,
@@ -133,8 +138,11 @@ export type { ChoyBinaryValue } from './components/field/ChoyBinaryField.vue';
 export type { ChoyImageValue } from './components/field/ChoyImageField.vue';
 export type { ChoyTranslationRow } from './components/field/ChoyFieldTranslationsDialog.vue';
 export type { ChoyCompanyValueRow } from './components/field/ChoyFieldCompanyValuesDialog.vue';
-export type { ChoyManyToManyWidget, ChoyManyToManyTreeNode } from './components/field/ChoyManyToManyField.vue';
-export type { ChoyOneToManyWidget } from './components/field/ChoyOneToManyField.vue';
+export type {
+  ChoyManyToManyWidget,
+  ChoyManyToManyTreeNode,
+  ChoyOneToManyWidget,
+} from './components/field/choyRelationFieldTypes';
 
 export { default as ChoyChatter } from './components/chatter/ChoyChatter.vue';
 export { default as ChoyChatterComposer } from './components/chatter/ChoyChatterComposer.vue';

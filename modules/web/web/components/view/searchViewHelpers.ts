@@ -38,6 +38,51 @@ export function buildChoySearchQuery(
   };
 }
 
+type FilterTreeNode = {
+  field?: unknown;
+  operator?: unknown;
+  value?: unknown;
+  children?: ReadonlyArray<FilterTreeNode> | null;
+};
+
+/** Flattens OSearchView ConditionGroup trees into Choy chrome filter rows. */
+export function flattenChoySearchFilters(
+  groups: ReadonlyArray<FilterTreeNode> | FilterTreeNode | null | undefined,
+): ChoySearchFilter[] {
+  const out: ChoySearchFilter[] = [];
+  const walk = (nodes: ReadonlyArray<FilterTreeNode>): void => {
+    for (const node of nodes) {
+      if (!node || typeof node !== 'object') continue;
+      // Empty children must not hide a leaf field (serialized Condition with children: []).
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        walk(node.children);
+        continue;
+      }
+      const field = String(node.field ?? '').trim();
+      if (!field) continue;
+      out.push({
+        field,
+        op: String(node.operator ?? '').trim(),
+        value: String(node.value ?? ''),
+      });
+    }
+  };
+  if (groups == null) return out;
+  walk(Array.isArray(groups) ? groups : [groups]);
+  return out;
+}
+
+/** Adapts OSearchView query-update payload to the chrome ChoySearchQuery shape. */
+export function choySearchQueryFromPayload(payload: {
+  keyword?: string | null;
+  appliedFilters?: ReadonlyArray<FilterTreeNode> | FilterTreeNode | null;
+}): ChoySearchQuery {
+  return buildChoySearchQuery(
+    payload?.keyword,
+    flattenChoySearchFilters(payload?.appliedFilters),
+  );
+}
+
 /**
  * Case-insensitive substring filter over the listed string fields.
  * Blank keyword returns all rows. Only primitive string/number/boolean cells

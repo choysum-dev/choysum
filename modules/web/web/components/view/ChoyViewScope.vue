@@ -9,28 +9,28 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { toRef, provide } from 'vue';
+import type { ViewMode, ViewContainer } from './OViewScope.vue';
 import {
   VIEW_MODE_KEY,
   VIEW_CONTAINER_KEY,
   FIELD_PREFIX_KEY,
 } from './viewScopeKeys';
 
-export type ViewMode = 'display' | 'edit' | 'create';
-export type ViewContainer = 'Form' | 'List' | 'Kanban';
+export type { ViewMode, ViewContainer };
 
-defineOptions({ name: 'OViewScope' });
+defineOptions({ name: 'ChoyViewScope', inheritAttrs: false });
 
 const props = withDefaults(
   defineProps<{
     viewMode?: ViewMode;
     container?: ViewContainer;
-    fieldPrefix?: string; // Optional shared prefix for list or nested fields.
+    fieldPrefix?: string;
   }>(),
   {
     viewMode: 'edit',
     container: 'Form',
     fieldPrefix: undefined,
-  }
+  },
 );
 
 const modeRef = toRef(props, 'viewMode');

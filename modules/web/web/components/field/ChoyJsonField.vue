@@ -4,13 +4,16 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <OJsonobjectField v-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
+    v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.json-field"
     :class="props.class"
     :label="label"
     :help="help"
-    :required="required"
-    :readonly="readonly"
+    :required="!!required"
+    :readonly="!!readonly"
     :disabled="disabled"
     :error="fieldError"
     :name="name"
@@ -44,10 +47,13 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useAttrs, watch } from 'vue';
 import Textarea from '../vendor/ui/textarea/Textarea.vue';
 import type { ClassValue } from '../../lib/utils';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
+import OJsonobjectField from './OJsonobjectField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,
@@ -59,8 +65,10 @@ import {
   type ChoyJsonValue,
 } from './jsonFieldHelpers';
 
+defineOptions({ name: 'ChoyJsonField', inheritAttrs: false });
+
 /**
- * JSON object (optional array) field. Edit via textarea; display via pretty &lt;pre&gt;.
+ * JSON field. Store+prop hosts OJsonobjectField; otherwise textarea chrome.
  */
 const props = withDefaults(
   defineProps<
@@ -68,6 +76,9 @@ const props = withDefaults(
       class?: ClassValue;
       placeholder?: string;
       nullable?: boolean;
+      store?: WebModelStore<any>;
+      prop?: string;
+      binding?: unknown;
       allowArray?: boolean;
       rows?: number;
     }
@@ -80,6 +91,9 @@ const props = withDefaults(
     rows: 8,
   },
 );
+
+const attrs = useAttrs();
+const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
 
 const model = defineModel<ChoyJsonValue>({ default: null });
 

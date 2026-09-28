@@ -4,7 +4,33 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <!-- Store-bound engine: host OFormView (controller / onchange / field provides). -->
+  <OFormView v-if="useStoreEngine" v-bind="(storeBind as any)" v-on="(storeListeners as any)">
+    <template v-if="$slots.breadcrumb" #breadcrumb="slotData">
+      <slot name="breadcrumb" v-bind="slotData || {}" />
+    </template>
+    <template v-if="$slots['system-actions']" #system-actions="slotData">
+      <slot name="system-actions" v-bind="slotData || {}" />
+    </template>
+    <template v-if="$slots['user-actions']" #user-actions="slotData">
+      <slot name="user-actions" v-bind="slotData || {}" />
+    </template>
+    <template v-if="$slots.statusbar" #statusbar="slotData">
+      <slot name="statusbar" v-bind="slotData || {}" />
+    </template>
+    <template v-if="$slots['button-box']" #button-box="slotData">
+      <slot name="button-box" v-bind="slotData || {}" />
+    </template>
+    <template v-if="$slots['header-right']" #header-right="slotData">
+      <slot name="header-right" v-bind="slotData || {}" />
+    </template>
+    <slot />
+  </OFormView>
+
+  <!-- Chrome skeleton for Gallery / Dogfood (no WebModelStore). -->
   <div
+    v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.form-view"
     :class="[
       'choy-form-view relative rounded-lg bg-background text-foreground',
@@ -80,11 +106,21 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed, useAttrs } from 'vue';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
+import {
+  hasChoyStoreEngine,
+  splitChoyAttrsListeners,
+} from '@/web/web/composables/choyStoreMode';
+import OFormView from './OFormView.vue';
+
+defineOptions({ name: 'ChoyFormView', inheritAttrs: false });
+
 /**
- * Form view chrome skeleton. Slots and action-bar regions only; store,
- * validation, and record CRUD are not wired here yet.
+ * Form view: store-bound mode hosts OFormView; otherwise Gallery/Dogfood chrome.
  */
-withDefaults(
+const props = withDefaults(
   defineProps<{
     title?: string;
     showHeader?: boolean;
@@ -92,6 +128,18 @@ withDefaults(
     showMessages?: boolean;
     loading?: boolean;
     embedded?: boolean;
+    store?: WebModelStore<any>;
+    recordId?: string;
+    initialValues?: Record<string, unknown>;
+    viewMode?: 'display' | 'edit' | 'create';
+    createAction?: unknown;
+    actionIds?: Record<string, string | undefined>;
+    hasAction?: (actionId: string | undefined) => boolean;
+    onchangeSessionId?: string;
+    onchangeDebounceMs?: number;
+    onchangeImmediateFirst?: boolean;
+    submitHandler?: unknown;
+    resolveRecordIdFromRoute?: boolean;
   }>(),
   {
     title: '',
@@ -102,4 +150,32 @@ withDefaults(
     embedded: false,
   },
 );
+
+const attrs = useAttrs();
+const pageStore = useOptionalPageStore();
+const useStoreEngine = computed(() => hasChoyStoreEngine(props.store, pageStore.value));
+
+const splitAttrs = computed(() => splitChoyAttrsListeners(attrs as Record<string, unknown>));
+
+const storeBind = computed(() => ({
+  ...splitAttrs.value.bind,
+  store: props.store ?? pageStore.value,
+  recordId: props.recordId,
+  initialValues: props.initialValues,
+  viewMode: props.viewMode,
+  embedded: props.embedded,
+  showHeader: props.showHeader,
+  showActions: props.showActions,
+  showMessages: props.showMessages,
+  createAction: props.createAction,
+  actionIds: props.actionIds,
+  hasAction: props.hasAction,
+  onchangeSessionId: props.onchangeSessionId,
+  onchangeDebounceMs: props.onchangeDebounceMs,
+  onchangeImmediateFirst: props.onchangeImmediateFirst,
+  submitHandler: props.submitHandler,
+  resolveRecordIdFromRoute: props.resolveRecordIdFromRoute,
+}));
+
+const storeListeners = computed(() => splitAttrs.value.listeners);
 </script>

@@ -4,13 +4,16 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <OSelectionField v-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
+    v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.selection-field"
     :class="props.class"
     :label="label"
     :help="help"
-    :required="required"
-    :readonly="readonly"
+    :required="!!required"
+    :readonly="!!readonly"
     :disabled="disabled"
     :error="error"
     :name="name"
@@ -41,21 +44,26 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useAttrs } from 'vue';
 import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
 import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
 import type { ClassValue } from '../../lib/utils';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
+import OSelectionField from './OSelectionField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,
   type ChoySelectionOption,
 } from './fieldHelpers';
 
+defineOptions({ name: 'ChoySelectionField', inheritAttrs: false });
+
 /**
- * Single-select dropdown field.
+ * Single-select dropdown. Store+prop hosts OSelectionField; otherwise chrome.
  */
 const props = withDefaults(
   defineProps<
@@ -63,6 +71,9 @@ const props = withDefaults(
       class?: ClassValue;
       placeholder?: string;
       options?: ChoySelectionOption[];
+      store?: WebModelStore<any>;
+      prop?: string;
+      binding?: unknown;
     }
   >(),
   {
@@ -71,6 +82,9 @@ const props = withDefaults(
     options: () => [],
   },
 );
+
+const attrs = useAttrs();
+const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
 
 const model = defineModel<string | null>({ default: null });
 

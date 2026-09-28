@@ -4,14 +4,29 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Virtual field registers value only; no DOM. -->
+  <OVirtualField v-if="storeMode" v-bind="(storeBind as any)" />
+  <!-- Chrome: virtual field registers value only; no DOM. -->
 </template>
 
 <script setup lang="ts">
+import { useAttrs } from 'vue';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
+import OVirtualField from './OVirtualField.vue';
+
+defineOptions({ name: 'ChoyVirtualField', inheritAttrs: false });
+
 /**
- * Virtual field: holds a model value for forms without rendering DOM.
- * Hosts may still bind v-model for computed/derived values.
+ * Virtual field: store+prop hosts OVirtualField; otherwise holds v-model only.
  */
-defineOptions({ inheritAttrs: false });
+const props = defineProps<{
+  store?: WebModelStore<any>;
+  prop?: string;
+  binding?: unknown;
+}>();
+
+const attrs = useAttrs();
+const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
+
 defineModel<unknown>({ default: null });
 </script>

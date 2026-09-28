@@ -4,16 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OSearch
-    :store="store"
-    :placeholder="effectivePlaceholder"
-    :current-keyword="keywordForChild"
-    :current-applied-filters="appliedFiltersForChild"
-    :current-applied-groups="appliedGroupsForChild"
-    :default-filters="codeDefaultFilters"
-    @query-update="onQueryUpdate"
-    @defaults-ready="onDefaultsReady"
-  />
+  <div
+    class="o-search-view"
+    :class="{ 'pointer-events-none select-none': disabled }"
+    :inert="disabled || undefined"
+    :aria-disabled="disabled ? 'true' : undefined"
+    @keydown.capture="onDisabledKeydown"
+  >
+    <OSearch
+      :store="store"
+      :placeholder="effectivePlaceholder"
+      :current-keyword="keywordForChild"
+      :current-applied-filters="appliedFiltersForChild"
+      :current-applied-groups="appliedGroupsForChild"
+      :default-filters="codeDefaultFilters"
+      @query-update="onQueryUpdate"
+      @defaults-ready="onDefaultsReady"
+    />
+  </div>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
@@ -33,6 +41,8 @@ const props = withDefaults(
   defineProps<{
     store: WebModelStore<T>;
     placeholder?: string;
+    /** When true, blocks pointer/keyboard interaction with the search chrome. */
+    disabled?: boolean;
     // Controlled overrides take precedence over store.state.queryState.
     keyword?: string;
     appliedFilters?: ConditionGroup[];
@@ -44,6 +54,7 @@ const props = withDefaults(
     initialEmit?: boolean; // Control whether the first-frame emit happens here.
   }>(),
   {
+    disabled: false,
     initialEmit: true,
   }
 );
@@ -53,6 +64,13 @@ const effectivePlaceholder = computed(() => props.placeholder ?? _t('Search...')
 defineOptions({ name: 'OSearchView' });
 
 const emit = defineEmits<{ (e: 'query-update', payload: QueryUpdatePayload<T>): void }>();
+
+/** Without inert, pointer-events-none alone leaves keyboard focusable; block keys. */
+function onDisabledKeydown(event: KeyboardEvent): void {
+  if (!props.disabled) return;
+  event.preventDefault();
+  event.stopPropagation();
+}
 
 // Child-controlled data comes from props first, then store.queryState.
 const keywordForChild = computed<string | undefined>(() => {
