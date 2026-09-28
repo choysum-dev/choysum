@@ -62,11 +62,42 @@ describe('ChoyButton mount', () => {
     try {
       await flushPromises();
       // Cover handleClick itself (Codecov); parent @click receives the re-emitted event.
+      // DOM click is unreliable in the FE-unit harness for SFC @click wiring.
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       handleClick?.(new Event('click'));
       await flushPromises();
       expect(clicks).toBe(1);
+    } finally {
+      w.unmount();
+    }
+  });
+
+  test('handleClick suppresses emit when disabled', async () => {
+    let clicks = 0;
+    const w = mountApp(ChoyButton as any, {
+      props: {
+        'data-testid': 'click-disabled',
+        disabled: true,
+        as: 'a',
+      },
+      on: {
+        onClick: () => {
+          clicks += 1;
+        },
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const host = w.q('[data-testid="click-disabled"]') as HTMLElement | null;
+      expect(host).not.toBeNull();
+      expect(host?.getAttribute('aria-disabled')).toBe('true');
+      const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
+      expect(typeof handleClick).toBe('function');
+      handleClick?.(new Event('click'));
+      await flushPromises();
+      expect(clicks).toBe(0);
     } finally {
       w.unmount();
     }

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect, page } from '@choysum/e2e';
-import { pickAlternativeCompanyOptionValue } from '../../web/components/layout/switch_company_option_pick';
+import { pickAlternativeCompanyOptionValue } from '../../web/components/layout/switch_company_option_pick.ts';
 import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 
 /**

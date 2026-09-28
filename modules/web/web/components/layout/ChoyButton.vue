@@ -55,6 +55,7 @@ const props = withDefaults(
 const emit = defineEmits(['click']);
 
 function handleClick(event: Event) {
+  if (props.disabled) return;
   emit('click', event);
 }
 </script>
