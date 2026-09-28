@@ -45,6 +45,7 @@ import {
   ChoyVarcharField,
 } from '@/web';
 import { partnerActions, partnerOpenDetailAction } from './partner_actions';
+import { navigatePartnerDetail } from './partner_list_nav';
 
 defineOptions({ name: 'PartnerListView', inheritAttrs: true });
 const { _t } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
@@ -69,15 +70,10 @@ const { hasAction } = usePermission();
 /**
  * Opens the clicked partner row when the actor has detail access.
  */
-function onRowClick(row: Partner) {
-  if (!hasAction(partnerOpenDetailAction)) {
-    return;
-  }
-  const id = String((row as { Id?: string })?.Id || '').trim();
-  if (!id) return;
-  router.push(`/partner/partners/${id}`);
+function onRowClick(row: Record<string, unknown>) {
+  navigatePartnerDetail(row, hasAction(partnerOpenDetailAction), (path) => router.push(path));
 }
 
 const { listRef, expose } = useListViewExpose<Partner>();
-defineExpose(expose);
+defineExpose({ ...expose, onRowClick });
 </script>

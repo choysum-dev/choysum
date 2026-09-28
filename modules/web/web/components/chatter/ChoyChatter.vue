@@ -136,6 +136,7 @@ const storeFollowerCount = ref(0);
 const storeFollowersLoading = ref(false);
 const storePosting = ref(false);
 const storePostError = ref<string | null>(null);
+let followersGeneration = 0;
 
 const currentUserIdResolved = computed(() => {
   if (props.currentUserId != null && String(props.currentUserId).trim() !== '') {
@@ -153,24 +154,45 @@ const currentUserNameResolved = computed(() => {
   return String((authStore.currentUser as { Name?: string } | null)?.Name || '').trim();
 });
 
+function isPostingContextCurrent(targetModel: string, targetResId: string): boolean {
+  return (
+    postingModel.value === targetModel &&
+    postingResId.value === targetResId &&
+    String(props.model || '') === targetModel &&
+    String(props.resId || '') === targetResId
+  );
+}
+
 async function refreshFollowers(): Promise<void> {
   if (!props.bindStore) return;
+  const generation = ++followersGeneration;
   const threadModel = String(props.model || '').trim();
   const threadResId = String(props.resId || '').trim();
+  const userId = currentUserIdResolved.value;
   if (!threadModel || !threadResId) {
+    if (generation !== followersGeneration) return;
     storeFollowing.value = false;
     storeFollowerCount.value = 0;
+    storeFollowersLoading.value = false;
     return;
   }
   storeFollowersLoading.value = true;
   try {
     const rows = await followerStore.SearchByRecord(threadModel, threadResId, ['UserId']);
+    if (generation !== followersGeneration) return;
     storeFollowerCount.value = rows.length;
     storeFollowing.value = rows.some(
-      (row) => String(row?.UserId || '').trim() === currentUserIdResolved.value,
+      (row) => String(row?.UserId || '').trim() === userId,
     );
+  } catch {
+    if (generation !== followersGeneration) return;
+    // Defined failure state: clear follow snapshot so the bar does not keep stale data.
+    storeFollowing.value = false;
+    storeFollowerCount.value = 0;
   } finally {
-    storeFollowersLoading.value = false;
+    if (generation === followersGeneration) {
+      storeFollowersLoading.value = false;
+    }
   }
 }
 
@@ -241,23 +263,35 @@ async function onPost(body: string): Promise<void> {
   if (props.bindStore) {
     const text = body.trim();
     if (!text || storePosting.value || props.disabled) return;
+    const targetModel = String(props.model || '');
+    const targetResId = String(props.resId || '');
     storePosting.value = true;
     storePostError.value = null;
-    postingModel.value = String(props.model || '');
-    postingResId.value = String(props.resId || '');
+    postingModel.value = targetModel;
+    postingResId.value = targetResId;
     try {
       await messageStore.Post({
-        Model: props.model,
-        ResId: String(props.resId || ''),
+        Model: targetModel,
+        ResId: targetResId,
         Body: text,
       });
-      composerRef.value?.clear();
-      await refreshTimeline();
+      // Only clear / refresh when still on the posting context (A→B→A guard).
+      if (isPostingContextCurrent(targetModel, targetResId)) {
+        composerRef.value?.clear();
+        await refreshTimeline();
+      }
     } catch (err) {
-      storePostError.value =
-        err instanceof Error && err.message.trim() ? err.message : 'Failed to post comment';
+      if (isPostingContextCurrent(targetModel, targetResId)) {
+        storePostError.value =
+          err instanceof Error && err.message.trim() ? err.message : 'Failed to post comment';
+      }
     } finally {
-      storePosting.value = false;
+      if (isPostingContextCurrent(targetModel, targetResId)) {
+        storePosting.value = false;
+      } else if (postingModel.value === null && postingResId.value === null) {
+        // Context switched mid-flight; drop the orphan posting flag.
+        storePosting.value = false;
+      }
     }
     return;
   }
@@ -271,6 +305,8 @@ async function onFollow(): Promise<void> {
     try {
       await followerStore.Follow({ Model: props.model, ResId: String(props.resId || '') });
       await refreshFollowers();
+    } catch {
+      // Leave prior follow snapshot; loading cleared below.
     } finally {
       storeFollowersLoading.value = false;
     }
@@ -286,6 +322,8 @@ async function onUnfollow(): Promise<void> {
     try {
       await followerStore.Unfollow({ Model: props.model, ResId: String(props.resId || '') });
       await refreshFollowers();
+    } catch {
+      // Leave prior follow snapshot; loading cleared below.
     } finally {
       storeFollowersLoading.value = false;
     }

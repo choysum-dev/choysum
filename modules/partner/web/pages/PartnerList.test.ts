@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import Partner from './Partner.vue';
+import PartnerList from './PartnerList.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('PartnerList page coverage: mounts real Partner.vue under choysumMount', async () => {
-  const wrapper = mount(Partner as any, {
-    global: buildPageMountGlobal({ route: { path: '/partner/1', fullPath: '/partner/1' } }),
+test('PartnerList.vue mounts under choysumMount and runs script setup', async () => {
+  const wrapper = mount(PartnerList as any, {
+    global: buildPageMountGlobal({
+      route: { path: '/partner/partners', fullPath: '/partner/partners' },
+    }),
   });
   await flushPromises();
   expect(

@@ -5,9 +5,16 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <OOneToManyKanbanField v-if="storeMode && widget === 'kanban'" v-bind="(storeBind as any)">
-    <template v-for="(_, name) in $slots" #[name]="slotData">
-      <slot :name="name" v-bind="slotData || {}" />
+    <template v-if="$slots.card" #card="slotData">
+      <slot name="card" v-bind="slotData || {}" />
     </template>
+    <template v-if="$slots.toolbar" #toolbar="slotData">
+      <slot name="toolbar" v-bind="slotData || {}" />
+    </template>
+    <template v-if="$slots.empty" #empty="slotData">
+      <slot name="empty" v-bind="slotData || {}" />
+    </template>
+    <slot />
   </OOneToManyKanbanField>
   <OOneToManyField v-else-if="storeMode" v-bind="(storeBind as any)">
     <slot />
