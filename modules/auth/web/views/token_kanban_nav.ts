@@ -54,3 +54,16 @@ export function resolveTokenMoveRecordId(
   const card = cards.find(c => c.id === moveCardId);
   return resolveTokenDetailId(card?.payload);
 }
+
+/**
+ * Username shown on a kanban card. Prefers `UserId.Username`, then a nested
+ * UserId.Username object field, then a plain string UserId.
+ */
+export function resolveTokenUsernameLabel(payload: Record<string, unknown> | null | undefined): string {
+  const row = payload ?? {};
+  const user = row['UserId.Username'] ?? row.UserId;
+  if (user && typeof user === 'object' && 'Username' in (user as object)) {
+    return String((user as { Username?: string }).Username ?? '');
+  }
+  return String(user ?? '');
+}

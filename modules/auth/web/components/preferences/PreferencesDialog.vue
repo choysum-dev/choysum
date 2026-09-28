@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         aria-modal="true"
         :aria-labelledby="titleId"
         @click.stop
-        @keydown.esc="visible = false"
+        @keydown="onDialogKeydown"
       >
         <h2 :id="titleId" class="text-lg font-semibold">{{ _t('Edit Profile') }}</h2>
 
@@ -74,6 +74,7 @@ import {
   resolvePreferenceLanguage,
   resolvePreferenceTimezone,
 } from './preferences_defaults';
+import { trapDialogTabKey } from './dialog_focus_trap';
 import { resolveLanguageCodeFromId } from './preferences_language';
 
 defineOptions({ name: 'PreferencesDialog' });
@@ -97,6 +98,16 @@ const visible = computed({
     if (!v) emit('closed');
   },
 });
+
+/** Escape dismisses; Tab stays inside the dialog until it closes. */
+function onDialogKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    visible.value = false;
+    return;
+  }
+  const root = dialogRef.value;
+  if (root) trapDialogTabKey(event, root);
+}
 
 const currentUser = computed(() => authStore.currentUser as any);
 const displayName = computed(() => {

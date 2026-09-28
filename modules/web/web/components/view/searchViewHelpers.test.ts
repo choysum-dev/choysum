@@ -80,6 +80,13 @@ describe('searchViewHelpers', () => {
       appliedFilters,
       appliedGroups,
     });
+    // Singleton filter tree object is preserved as a one-element appliedFilters array.
+    const solo = { children: [{ field: 'code', operator: '=', value: 'x' }] };
+    expect(choySearchQueryFromPayload({ keyword: '', appliedFilters: solo })).toEqual({
+      keyword: '',
+      filters: [{ field: 'code', op: '=', value: 'x' }],
+      appliedFilters: [solo],
+    });
   });
 
   test('filterRowsByKeyword matches listed fields', () => {

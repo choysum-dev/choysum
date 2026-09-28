@@ -88,6 +88,8 @@ export function choySearchQueryFromPayload(payload: {
   );
   if (Array.isArray(payload?.appliedFilters)) {
     query.appliedFilters = [...payload.appliedFilters];
+  } else if (payload?.appliedFilters && typeof payload.appliedFilters === 'object') {
+    query.appliedFilters = [payload.appliedFilters];
   }
   if (Array.isArray(payload?.appliedGroups)) {
     query.appliedGroups = [...payload.appliedGroups];

@@ -6,6 +6,7 @@ import {
   resolveTokenKanbanCardId,
   resolveTokenKanbanRowPayload,
   resolveTokenMoveRecordId,
+  resolveTokenUsernameLabel,
 } from './token_kanban_nav';
 
 test('resolveTokenDetailId: returns trimmed payload Id', () => {
@@ -67,4 +68,12 @@ test('resolveTokenMoveRecordId: requires a real payload Id', () => {
   expect(resolveTokenMoveRecordId(cards, 'Revoked=true-0')).toBe('');
   expect(resolveTokenMoveRecordId(cards, 'tok-9')).toBe('tok-9');
   expect(resolveTokenMoveRecordId(cards, 'missing')).toBe('');
+});
+
+test('resolveTokenUsernameLabel: prefers UserId.Username then string UserId', () => {
+  expect(resolveTokenUsernameLabel({ 'UserId.Username': 'alice' })).toBe('alice');
+  expect(resolveTokenUsernameLabel({ UserId: { Username: 'bob' } })).toBe('bob');
+  expect(resolveTokenUsernameLabel({ UserId: 'user-42' })).toBe('user-42');
+  expect(resolveTokenUsernameLabel({})).toBe('');
+  expect(resolveTokenUsernameLabel(null)).toBe('');
 });

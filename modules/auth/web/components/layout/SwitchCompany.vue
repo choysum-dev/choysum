@@ -75,6 +75,7 @@ import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
+import { dismissPopupOnEscape } from './popup_escape_focus';
 import { syncCompanyDraftsFromJwt } from './o_switch_company_draft';
 
 defineOptions({ name: 'SwitchCompany' });
@@ -113,9 +114,9 @@ function onDocumentClick(event: MouseEvent) {
 }
 
 function onDocumentKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && visible.value) {
-    visible.value = false;
-  }
+  if (event.key !== 'Escape') return;
+  const trigger = rootRef.value?.querySelector<HTMLElement>('[data-testid="company-switch-trigger"]');
+  dismissPopupOnEscape(visible.value, () => { visible.value = false; }, trigger);
 }
 
 onMounted(() => {

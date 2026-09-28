@@ -23,6 +23,7 @@ SPDX-License-Identifier: Apache-2.0
         size="sm"
         :aria-expanded="userMenuOpen"
         :aria-label="_t('User menu')"
+        data-testid="auth-user-menu-trigger"
         @click.stop="userMenuOpen = !userMenuOpen"
       >
         <User class="size-5" aria-hidden="true" />
@@ -57,6 +58,7 @@ import { ChoyButton, ChoyNotificationBell } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import SwitchCompany from './SwitchCompany.vue';
+import { dismissPopupOnEscape } from './popup_escape_focus';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
 
 defineOptions({ name: 'AuthHeader' });
@@ -82,9 +84,9 @@ function onDocumentClick(event: MouseEvent) {
 }
 
 function onDocumentKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && userMenuOpen.value) {
-    closeUserMenu();
-  }
+  if (event.key !== 'Escape') return;
+  const trigger = userMenuRoot.value?.querySelector<HTMLElement>('[data-testid="auth-user-menu-trigger"]');
+  dismissPopupOnEscape(userMenuOpen.value, closeUserMenu, trigger);
 }
 
 onMounted(() => {

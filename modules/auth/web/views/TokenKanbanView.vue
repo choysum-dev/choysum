@@ -120,6 +120,7 @@ import {
   resolveTokenKanbanCardId,
   resolveTokenKanbanRowPayload,
   resolveTokenMoveRecordId,
+  resolveTokenUsernameLabel,
   type TokenKanbanRow,
 } from './token_kanban_nav';
 
@@ -355,11 +356,7 @@ function tokenTypeClass(card: ChoyKanbanCard): string {
 }
 
 function usernameLabel(card: ChoyKanbanCard): string {
-  const user = payloadOf(card)['UserId.Username'] ?? payloadOf(card).UserId;
-  if (user && typeof user === 'object' && 'Username' in (user as object)) {
-    return String((user as { Username?: string }).Username ?? '');
-  }
-  return String(payloadOf(card)['UserId.Username'] ?? '');
+  return resolveTokenUsernameLabel(payloadOf(card));
 }
 
 function isRevokedCard(card: ChoyKanbanCard): boolean {
