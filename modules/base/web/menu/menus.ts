@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { type MenuItem } from '@/core/web/menu';
-import { OfficeBuilding, School } from '@element-plus/icons-vue';
+import { Building2, School } from 'lucide-vue-next';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -11,7 +11,7 @@ const { _lt } = createTranslate('base', { scope: 'web/menu/menus' });
 export const baseMenus: MenuItem[] = [
   defineMenu('base.menu.root', {
     title: _lt('Master Data'),
-    icon: OfficeBuilding,
+    icon: Building2,
     sequence: 20,
     children: [
       defineMenu('base.menu.company', { title: _lt('Company Management'), icon: School, path: '/base/companies', sequence: 10 }),

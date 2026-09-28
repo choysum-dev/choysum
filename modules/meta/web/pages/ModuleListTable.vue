@@ -4,21 +4,21 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="moduleStore"
   >
     <ModuleListView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import ModuleListView from '../views/ModuleListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'MetaModuleListTablePage' });
 

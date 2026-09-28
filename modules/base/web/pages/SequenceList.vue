@@ -4,25 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="sequenceStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, Prefix, Suffix, Padding, NextNumber, IsActive.')"
+    :action-import="true"
+    :action-export="true"
   >
     <SequenceListView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import SequenceListView from '../views/SequenceListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type Sequence from '@/base/service/models/sequence';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'SequenceListPage' });
 

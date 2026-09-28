@@ -4,40 +4,35 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OListView
+  <ChoyListView
     ref="listRef"
     v-bind="$attrs"
     :store="store"
-    :searchView="OSearchView"
+    :searchView="ChoySearchView"
     :action-ids="{ create: stateActions.create, delete: stateActions.delete }"
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" />
-    <OVarCharField :store="store" prop="Code" />
-    <OManyToOneField :store="store" prop="CountryId"><OVarCharField :store="store" prop="CountryId.Name" /></OManyToOneField>
-    <OBooleanField :store="store" prop="IsActive" />
-  </OListView>
+    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyVarcharField :store="store" prop="Name" />
+    <ChoyVarcharField :store="store" prop="Code" />
+    <ChoyManyToOneField :store="store" prop="CountryId"><ChoyVarcharField :store="store" prop="CountryId.Name" /></ChoyManyToOneField>
+    <ChoyBooleanField :store="store" prop="IsActive" />
+  </ChoyListView>
 </template>
 
 <script setup lang="ts">
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type State from '@/base/service/models/state';
 import { useRouter } from 'vue-router';
-import OListView from '@/web/web/components/view/OListView.vue';
-import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveListRowRecordId } from './list_row_nav';
+import { ChoyBooleanField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 
 defineOptions({ name: 'StateListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/StateListView' });
@@ -46,8 +41,9 @@ const store = resolvePageStore(props.store, 'StateListView');
 const stateActions = defineModelActions('base.State', { entityTitle: _lt('State') });
 const { hasAction } = usePermission();
 const router = useRouter();
-function onRowClick(payload: RowEventPayload<State>) {
-  router.push(`/base/states/${payload.row.Id}`);
+function onRowClick(row: Record<string, unknown>) {
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/base/states/${id}`);
 }
 const { listRef, expose } = useListViewExpose<State>();
 defineExpose(expose);

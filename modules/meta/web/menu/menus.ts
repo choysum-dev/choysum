@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { type MenuItem } from '@/core/web/menu';
-import { Setting } from '@element-plus/icons-vue';
+import { Settings } from 'lucide-vue-next';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -11,7 +11,7 @@ const { _lt } = createTranslate('meta', { scope: 'web/menu/menus' });
 export const metaMenus: MenuItem[] = [
   defineMenu('meta.menu.root', {
     title: _lt('Module Management'),
-    icon: Setting,
+    icon: Settings,
     sequence: 60,
     children: [
       defineMenu('meta.menu.module_board', {

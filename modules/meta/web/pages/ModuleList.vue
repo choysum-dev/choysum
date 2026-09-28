@@ -4,22 +4,22 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="indexStore"
   >
     <ModuleKanbanView :module-store="moduleStore" />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import ModuleKanbanView from '../views/ModuleKanbanView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
 import type MetaModule from '@/meta/service/models/module';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'MetaModuleListPage' });
 

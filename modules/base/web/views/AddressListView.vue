@@ -4,43 +4,39 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OListView
+  <ChoyListView
     ref="listRef"
     v-bind="$attrs"
     :store="store"
-    :searchView="OSearchView"
+    :searchView="ChoySearchView"
     :action-ids="{ create: addressActions.create, delete: addressActions.delete }"
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Label" />
-    <OVarCharField :store="store" prop="Street1" />
-    <OVarCharField :store="store" prop="Zip" />
-    <OManyToOneField :store="store" prop="CountryId"><OVarCharField :store="store" prop="CountryId.Name" /></OManyToOneField>
-    <OManyToOneField :store="store" prop="StateId"
-      ><OVarCharField :store="store" prop="StateId.Name"
-    /></OManyToOneField>
-    <OManyToOneField :store="store" prop="CityId"><OVarCharField :store="store" prop="CityId.Name" /></OManyToOneField>
-  </OListView>
+    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyVarcharField :store="store" prop="Label" />
+    <ChoyVarcharField :store="store" prop="Street1" />
+    <ChoyVarcharField :store="store" prop="Zip" />
+    <ChoyManyToOneField :store="store" prop="CountryId"><ChoyVarcharField :store="store" prop="CountryId.Name" /></ChoyManyToOneField>
+    <ChoyManyToOneField :store="store" prop="StateId"
+      ><ChoyVarcharField :store="store" prop="StateId.Name"
+    /></ChoyManyToOneField>
+    <ChoyManyToOneField :store="store" prop="CityId"><ChoyVarcharField :store="store" prop="CityId.Name" /></ChoyManyToOneField>
+  </ChoyListView>
 </template>
 
 <script setup lang="ts">
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Address from '@/base/service/models/address';
 import { useRouter } from 'vue-router';
-import OListView from '@/web/web/components/view/OListView.vue';
-import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveListRowRecordId } from './list_row_nav';
+import { ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
 
 defineOptions({ name: 'AddressListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressListView' });
@@ -49,8 +45,9 @@ const store = resolvePageStore(props.store, 'AddressListView');
 const addressActions = defineModelActions('base.Address', { entityTitle: _lt('Address') });
 const { hasAction } = usePermission();
 const router = useRouter();
-function onRowClick(payload: RowEventPayload<Address>) {
-  router.push(`/base/addresses/${payload.row.Id}`);
+function onRowClick(row: Record<string, unknown>) {
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/base/addresses/${id}`);
 }
 const { listRef, expose } = useListViewExpose<Address>();
 defineExpose(expose);

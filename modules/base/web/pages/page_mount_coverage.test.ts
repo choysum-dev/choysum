@@ -10,6 +10,6 @@ test('base page mount: mounts real Currency.vue under choysumMount', async () =>
     global: buildPageMountGlobal({ route: { path: '/base/currency/1', fullPath: '/base/currency/1' } }),
   });
   await flushPromises();
-  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
+  expect(wrapper.find('[data-anchor="choy.page"]').exists() || wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-choy-page"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
   wrapper.unmount();
 });

@@ -4,18 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :store="languageStore">
+  <ChoyPage :store="languageStore">
     <LanguageFormView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import LanguageFormView from '../views/LanguageFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Language from '@/base/service/models/language';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'LanguagePage' });
 

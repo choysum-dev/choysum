@@ -4,221 +4,303 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OKanbanView
-    :store="store"
-    :show-header="showHeader"
-    :show-actions="false"
-    :show-paginate="true"
-    :searchView="OSearchView"
-    :keyword-fields="keywordFields"
-    @card-click="onCardClick"
-  >
-    <template #header-right>
-      <el-button-group>
-        <el-tooltip :content="_t('Board View')" placement="top">
-          <el-button :icon="GridViewSharp" @click="toKanban" type="primary" />
-        </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_list')" :content="_t('List View')" placement="top">
-          <el-button :icon="FormatListBulletedOutlined" @click="toList" />
-        </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_history')" :content="_t('Operation History')" placement="top">
-          <el-button :icon="HistoryOutlined" @click="toHistory" />
-        </el-tooltip>
-        <el-tooltip v-if="hasAction(moduleSyncIndexAction)" :content="_t('Sync Index')" placement="top">
-          <el-button :icon="Refresh" :loading="syncLoading" @click="onSyncIndex" />
-        </el-tooltip>
-      </el-button-group>
-    </template>
-    <template #fields>
-      <OVirtualField :store="store" prop="ModuleName" />
-      <OVirtualField :store="store" prop="Version" />
-      <OVirtualField :store="store" prop="LocalVersion" />
-      <OVirtualField :store="store" prop="RegistryVersion" />
-      <OVirtualField :store="store" prop="InstalledStatus" />
-      <OVirtualField :store="store" prop="InstalledVersion" />
-      <OVirtualField :store="store" prop="Available" />
-      <OVirtualField :store="store" prop="OriginTypes" />
-      <OVirtualField :store="store" prop="LastSyncAt" />
-      <OVirtualField :store="store" prop="ManifestJson" />
-    </template>
+  <div class="module-kanban-view">
+    <div class="sr-only" aria-hidden="true">
+      <ChoyVirtualField :store="store" prop="ModuleName" />
+      <ChoyVirtualField :store="store" prop="Version" />
+      <ChoyVirtualField :store="store" prop="LocalVersion" />
+      <ChoyVirtualField :store="store" prop="RegistryVersion" />
+      <ChoyVirtualField :store="store" prop="InstalledStatus" />
+      <ChoyVirtualField :store="store" prop="InstalledVersion" />
+      <ChoyVirtualField :store="store" prop="Available" />
+      <ChoyVirtualField :store="store" prop="OriginTypes" />
+      <ChoyVirtualField :store="store" prop="LastSyncAt" />
+      <ChoyVirtualField :store="store" prop="ManifestJson" />
+    </div>
 
-    <template #card="{ record }">
-      <div class="module-card">
-        <div class="module-card__title">
-          <span class="name">{{ record.ModuleName }}</span>
-          <el-tag size="small" :type="statusTagType(record.InstalledStatus, record.Available)">{{
-            statusLabel(record.InstalledStatus, record.Available)
-          }}</el-tag>
-        </div>
-        <div class="module-card__meta">
-          <span class="version">{{ _t('Local:') }} {{ record.LocalVersion || '—' }}</span>
-          <span class="category">{{ _t('Registry:') }} {{ record.RegistryVersion || '—' }}</span>
-        </div>
-        <div class="module-card__meta">
-          <span class="version">{{ _t('Display:') }} {{ record.Version || '—' }}</span>
-          <span class="category">{{ _t('Installed:') }} {{ record.InstalledVersion || '—' }}</span>
-        </div>
-        <div class="module-card__meta">
-          <span class="app">{{ _t('Origin:') }} {{ record.OriginTypes || record.OriginType || 'local' }}</span>
-          <span class="updated">{{ _t('Synced:') }} {{ formatDate(record.LastSyncAt) || '—' }}</span>
-        </div>
-        <div class="module-card__desc">{{ manifestSummary(record.ManifestJson) || _t('No description') }}</div>
-        <div class="module-card__actions">
-          <el-button
-            size="small"
-            type="primary"
-            plain
-            @click.stop="onActionClick('install', record)"
-            v-if="!isInstalled(record.InstalledStatus) && hasAction(moduleInstallAction)"
-            :disabled="record.Available === false"
+    <ChoyKanbanView
+      v-model:lanes="choyLanes"
+      :show-header="showHeader"
+      :show-actions="true"
+      :readonly="true"
+      @card-click="onCardClick"
+    >
+      <template #system-actions />
+
+      <template #user-actions>
+        <div class="flex items-center gap-1">
+          <ChoyButton size="sm" :title="_t('Board View')" @click="toKanban">
+            <LayoutGrid class="size-4" aria-hidden="true" />
+          </ChoyButton>
+          <ChoyButton
+            v-if="canRoute('meta.route.module_list')"
+            variant="outline"
+            size="sm"
+            :title="_t('List View')"
+            @click="toList"
           >
-            {{ _t('Install') }}
-          </el-button>
-          <el-button
-            v-if="isInstalled(record.InstalledStatus) && hasAction(moduleUpgradeAction)"
-            size="small"
-            type="warning"
-            plain
-            @click.stop="onActionClick('upgrade', record)"
+            <List class="size-4" aria-hidden="true" />
+          </ChoyButton>
+          <ChoyButton
+            v-if="canRoute('meta.route.module_history')"
+            variant="outline"
+            size="sm"
+            :title="_t('Operation History')"
+            @click="toHistory"
           >
-            {{ _t('Upgrade') }}
-          </el-button>
-          <el-button
-            v-if="isInstalled(record.InstalledStatus) && hasAction(moduleUninstallAction)"
-            size="small"
-            type="danger"
-            plain
-            @click.stop="onActionClick('uninstall', record)"
+            <History class="size-4" aria-hidden="true" />
+          </ChoyButton>
+          <ChoyButton
+            v-if="hasAction(moduleSyncIndexAction)"
+            variant="outline"
+            size="sm"
+            :title="_t('Sync Index')"
+            :disabled="syncLoading"
+            @click="onSyncIndex"
           >
-            {{ _t('Uninstall') }}
-          </el-button>
-        </div>
-      </div>
-    </template>
-
-    <template #card-empty>
-      <div class="module-card__empty">{{ _t('No modules') }}</div>
-    </template>
-  </OKanbanView>
-
-  <el-dialog v-model="dialogVisible" width="680px" :close-on-click-modal="false" @close="onDialogClose">
-    <template #header>
-      <span>{{ dialogTitle }}</span>
-    </template>
-
-    <div v-if="dialogStep === 'plan'" class="module-dialog">
-      <el-skeleton v-if="planLoading" :rows="6" animated />
-      <template v-else>
-        <el-alert v-if="plan?.blockers?.length" type="error" :closable="false" show-icon :title="_t('Resolve blockers before continuing')" />
-        <el-alert v-else type="info" :closable="false" show-icon :title="_t('Confirm the impact of this operation')" />
-
-        <div class="module-dialog__section">
-          <div class="section-title">{{ _t('Affected Modules') }}</div>
-          <ul class="section-list">
-            <li v-for="item in plan?.affectedModules || []" :key="item.moduleName">
-              <span class="item-name">{{ item.moduleName }}</span>
-              <span class="item-meta">{{ item.currentVersion || '—' }}</span>
-              <span class="item-meta">{{ item.targetVersion || '' }}</span>
-              <span class="item-reason">{{ item.reason || '' }}</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="module-dialog__section" v-if="plan?.risks?.length">
-          <div class="section-title">{{ _t('Risks') }}</div>
-          <ul class="section-list">
-            <li v-for="risk in plan?.risks" :key="risk.code">
-              <el-tag size="small" type="warning">{{ risk.code }}</el-tag>
-              <span class="item-desc">{{ risk.message || '' }}</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="module-dialog__section" v-if="plan?.blockers?.length">
-          <div class="section-title">{{ _t('Blockers') }}</div>
-          <ul class="section-list">
-            <li v-for="blocker in plan?.blockers" :key="blocker.code">
-              <el-tag size="small" type="danger">{{ blocker.code }}</el-tag>
-              <span class="item-desc">{{ blocker.message || '' }}</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="module-dialog__section" v-if="action === 'install'">
-          <el-checkbox v-model="withDemo">{{ _t('Include demo data') }}</el-checkbox>
+            <RefreshCw class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
+          </ChoyButton>
         </div>
       </template>
-    </div>
 
-    <div v-else class="module-dialog">
-      <div class="module-dialog__section">
-        <el-alert type="info" :closable="false" show-icon :title="_t('Operation in progress, please wait')" v-if="dialogStep === 'progress'" />
-        <el-alert v-else :type="resultAlertType" :closable="false" show-icon :title="resultTitle" />
-      </div>
-      <div class="module-dialog__section">
-        <div class="section-title">{{ _t('Execution Status') }}</div>
-        <div class="status-row">
-          <span class="label">{{ _t('Status:') }}</span>
-          <el-tag size="small" :type="statusTagType(opStatus?.status)">{{ opStatus?.status || '—' }}</el-tag>
-          <span class="label">{{ _t('Result:') }}</span>
-          <el-tag size="small" :type="resultTagType(opStatus?.resultStatus)">{{ opStatus?.resultStatus || '—' }}</el-tag>
-        </div>
-        <div class="status-row" v-if="opStatus?.summary">
-          <span class="label">{{ _t('Summary:') }}</span>
-          <span class="value">{{ formatSummary(opStatus?.summary) }}</span>
-        </div>
-        <div class="status-row" v-if="opStatus?.failureKind && opStatus?.failureKind !== 'NONE'">
-          <span class="label">{{ _t('Failure Kind:') }}</span>
-          <span class="value">{{ opStatus?.failureKind }}</span>
-        </div>
-        <div class="status-row" v-if="opStatus?.errorDomain || opStatus?.errorCode">
-          <span class="label">{{ _t('Error:') }}</span>
-          <span class="value">{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span>
-        </div>
-        <div class="status-row" v-if="opStatus?.ReloadTriggered">
-          <span class="label">{{ _t('Reload:') }}</span>
-          <span class="value">{{ opStatus?.ReloadFailed ? _t('Trigger Failed') : _t('Triggered') }}</span>
-        </div>
-      </div>
-      <div class="module-dialog__section" v-if="dialogStep === 'progress'">
-        <el-divider />
-        <div class="progress-note">{{ _t('Do not refresh; status updates automatically.') }}</div>
-      </div>
-    </div>
+      <template #search>
+        <ChoySearchView :store="store" @query-update="onSearch" />
+      </template>
 
-    <template #footer>
-      <el-button @click="dialogVisible = false" :disabled="planLoading">{{ _t('Cancel') }}</el-button>
-      <el-button
-        v-if="dialogStep === 'plan'"
-        type="primary"
-        :loading="planLoading || executeLoading"
-        :disabled="!!plan?.blockers?.length"
-        @click="submitOperation"
+      <template #card="{ card }">
+        <div class="module-card flex flex-col gap-1.5 text-xs">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-sm font-semibold text-foreground">{{ recordField(card, 'ModuleName') }}</span>
+            <span
+              class="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium"
+              :class="statusBadgeClass(String(payloadRecord(card).InstalledStatus ?? ''), payloadRecord(card).Available)"
+            >
+              {{ statusLabel(String(payloadRecord(card).InstalledStatus ?? ''), payloadRecord(card).Available) }}
+            </span>
+          </div>
+          <div class="flex justify-between gap-3 text-foreground/70">
+            <span>{{ _t('Local:') }} {{ recordField(card, 'LocalVersion') || '—' }}</span>
+            <span>{{ _t('Registry:') }} {{ recordField(card, 'RegistryVersion') || '—' }}</span>
+          </div>
+          <div class="flex justify-between gap-3 text-foreground/70">
+            <span>{{ _t('Display:') }} {{ recordField(card, 'Version') || '—' }}</span>
+            <span>{{ _t('Installed:') }} {{ recordField(card, 'InstalledVersion') || '—' }}</span>
+          </div>
+          <div class="flex justify-between gap-3 text-foreground/70">
+            <span>{{ _t('Origin:') }} {{ recordField(card, 'OriginTypes') || recordField(card, 'OriginType') || 'local' }}</span>
+            <span>{{ _t('Synced:') }} {{ formatDate(recordField(card, 'LastSyncAt')) || '—' }}</span>
+          </div>
+          <div class="min-h-[2rem] text-foreground/80">
+            {{ manifestSummary(recordField(card, 'ManifestJson')) || _t('No description') }}
+          </div>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <ChoyButton
+              v-if="!isInstalled(String(recordField(card, 'InstalledStatus') || '')) && hasAction(moduleInstallAction)"
+              size="sm"
+              variant="outline"
+              :disabled="recordField(card, 'Available') === false"
+              @click.stop="onActionClick('install', payloadRecord(card))"
+            >
+              {{ _t('Install') }}
+            </ChoyButton>
+            <ChoyButton
+              v-if="isInstalled(String(recordField(card, 'InstalledStatus') || '')) && hasAction(moduleUpgradeAction)"
+              size="sm"
+              variant="outline"
+              @click.stop="onActionClick('upgrade', payloadRecord(card))"
+            >
+              {{ _t('Upgrade') }}
+            </ChoyButton>
+            <ChoyButton
+              v-if="isInstalled(String(recordField(card, 'InstalledStatus') || '')) && hasAction(moduleUninstallAction)"
+              size="sm"
+              variant="outline"
+              class="text-destructive hover:text-destructive"
+              @click.stop="onActionClick('uninstall', payloadRecord(card))"
+            >
+              {{ _t('Uninstall') }}
+            </ChoyButton>
+          </div>
+        </div>
+      </template>
+
+      <template #card-empty>
+        <div class="text-xs opacity-60">{{ _t('No modules') }}</div>
+      </template>
+    </ChoyKanbanView>
+
+    <Teleport to="body">
+      <div
+        v-if="dialogVisible"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+        role="presentation"
+        @click.self="closeDialog"
       >
-        {{ _t('Confirm') }}
-      </el-button>
-      <el-button v-else type="primary" @click="dialogVisible = false">{{ _t('Done') }}</el-button>
-    </template>
-  </el-dialog>
+        <div
+          ref="dialogRef"
+          tabindex="-1"
+          class="flex max-h-[90vh] w-full max-w-[680px] flex-col rounded-lg border border-border bg-background shadow-lg outline-none"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="dialogTitleId"
+          @click.stop
+          @keydown="onDialogKeydown"
+        >
+          <div class="border-b border-border px-6 py-4">
+            <h2 :id="dialogTitleId" class="text-lg font-semibold text-foreground">{{ dialogTitle }}</h2>
+          </div>
+
+          <div class="flex-1 overflow-y-auto px-6 py-4">
+            <div v-if="dialogStep === 'plan'" class="flex flex-col gap-3">
+              <div v-if="planLoading" class="flex flex-col gap-2">
+                <div v-for="n in 6" :key="n" class="h-4 animate-pulse rounded bg-muted" />
+              </div>
+              <template v-else>
+                <div
+                  v-if="plan?.blockers?.length"
+                  class="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                >
+                  {{ _t('Resolve blockers before continuing') }}
+                </div>
+                <div
+                  v-else
+                  class="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground"
+                >
+                  {{ _t('Confirm the impact of this operation') }}
+                </div>
+
+                <div class="flex flex-col gap-2">
+                  <div class="text-sm font-semibold text-foreground">{{ _t('Affected Modules') }}</div>
+                  <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-xs text-foreground/80">
+                    <li v-for="item in plan?.affectedModules || []" :key="item.moduleName" class="flex flex-wrap items-center gap-2">
+                      <span class="font-semibold">{{ item.moduleName }}</span>
+                      <span class="text-foreground/60">{{ item.currentVersion || '—' }}</span>
+                      <span class="text-foreground/60">{{ item.targetVersion || '' }}</span>
+                      <span class="text-primary">{{ item.reason || '' }}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div v-if="plan?.risks?.length" class="flex flex-col gap-2">
+                  <div class="text-sm font-semibold text-foreground">{{ _t('Risks') }}</div>
+                  <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-xs">
+                    <li v-for="risk in plan?.risks" :key="risk.code" class="flex flex-wrap items-center gap-2">
+                      <span class="rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">{{
+                        risk.code
+                      }}</span>
+                      <span class="text-foreground/70">{{ risk.message || '' }}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div v-if="plan?.blockers?.length" class="flex flex-col gap-2">
+                  <div class="text-sm font-semibold text-foreground">{{ _t('Blockers') }}</div>
+                  <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-xs">
+                    <li v-for="blocker in plan?.blockers" :key="blocker.code" class="flex flex-wrap items-center gap-2">
+                      <span class="rounded bg-destructive/15 px-1.5 py-0.5 text-[11px] font-medium text-destructive">{{
+                        blocker.code
+                      }}</span>
+                      <span class="text-foreground/70">{{ blocker.message || '' }}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <label v-if="action === 'install'" class="flex cursor-pointer items-center gap-2 text-sm">
+                  <input v-model="withDemo" type="checkbox" class="size-4 rounded border-border" />
+                  {{ _t('Include demo data') }}
+                </label>
+              </template>
+            </div>
+
+            <div v-else class="flex flex-col gap-3">
+              <div
+                class="rounded-md border px-3 py-2 text-sm"
+                :class="resultAlertBoxClass"
+              >
+                {{
+                  dialogStep === 'progress'
+                    ? _t('Operation in progress, please wait')
+                    : resultTitle
+                }}
+              </div>
+              <div class="flex flex-col gap-2">
+                <div class="text-sm font-semibold text-foreground">{{ _t('Execution Status') }}</div>
+                <div class="flex flex-wrap items-center gap-2 text-xs text-foreground/80">
+                  <span class="font-semibold text-foreground">{{ _t('Status:') }}</span>
+                  <span class="rounded px-1.5 py-0.5 text-[11px] font-medium" :class="statusBadgeClass(opStatus?.status)">{{
+                    opStatus?.status || '—'
+                  }}</span>
+                  <span class="font-semibold text-foreground">{{ _t('Result:') }}</span>
+                  <span class="rounded px-1.5 py-0.5 text-[11px] font-medium" :class="statusBadgeClass(opStatus?.resultStatus)">{{
+                    opStatus?.resultStatus || '—'
+                  }}</span>
+                </div>
+                <div v-if="opStatus?.summary" class="flex flex-wrap gap-2 text-xs">
+                  <span class="font-semibold text-foreground">{{ _t('Summary:') }}</span>
+                  <span class="text-foreground/80">{{ formatSummary(opStatus?.summary) }}</span>
+                </div>
+                <div v-if="opStatus?.failureKind && opStatus?.failureKind !== 'NONE'" class="flex flex-wrap gap-2 text-xs">
+                  <span class="font-semibold text-foreground">{{ _t('Failure Kind:') }}</span>
+                  <span class="text-foreground/80">{{ opStatus?.failureKind }}</span>
+                </div>
+                <div v-if="opStatus?.errorDomain || opStatus?.errorCode" class="flex flex-wrap gap-2 text-xs">
+                  <span class="font-semibold text-foreground">{{ _t('Error:') }}</span>
+                  <span class="text-foreground/80">{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span>
+                </div>
+                <div v-if="opStatus?.ReloadTriggered" class="flex flex-wrap gap-2 text-xs">
+                  <span class="font-semibold text-foreground">{{ _t('Reload:') }}</span>
+                  <span class="text-foreground/80">{{ opStatus?.ReloadFailed ? _t('Trigger Failed') : _t('Triggered') }}</span>
+                </div>
+              </div>
+              <div v-if="dialogStep === 'progress'" class="border-t border-border pt-3 text-xs text-foreground/60">
+                {{ _t('Do not refresh; status updates automatically.') }}
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 border-t border-border px-6 py-4">
+            <ChoyButton type="button" variant="outline" :disabled="planLoading" @click="closeDialog">{{ _t('Cancel') }}</ChoyButton>
+            <ChoyButton
+              v-if="dialogStep === 'plan'"
+              type="button"
+              :disabled="!!plan?.blockers?.length || planLoading || executeLoading"
+              @click="submitOperation"
+            >
+              {{ _t('Confirm') }}
+            </ChoyButton>
+            <ChoyButton v-else type="button" @click="closeDialog">{{ _t('Done') }}</ChoyButton>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { History, LayoutGrid, List, RefreshCw } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModule from '@/meta/service/models/module';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
-import OKanbanView from '@/web/web/components/view/OKanbanView.vue';
-import OVirtualField from '@/web/web/components/field/OVirtualField.vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
-import { ElTag, ElDialog, ElButton, ElAlert, ElDivider, ElCheckbox, ElSkeleton, ElMessage, ElTooltip, ElButtonGroup } from 'element-plus';
-import { useRouter } from 'vue-router';
 import type { ClientModelProps } from '@/core/rpc/types';
-import { FormatListBulletedOutlined, GridViewSharp, HistoryOutlined } from '@vicons/material';
-import { Refresh } from '@element-plus/icons-vue';
 import { defineAction } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  ChoyButton,
+  ChoyKanbanView,
+  ChoyMessage,
+  ChoySearchView,
+  ChoyVirtualField,
+  type ChoyKanbanCard,
+  type ChoyKanbanLane,
+} from '@/web';
+import { createKanbanController } from '@/web/web/controllers/kanbanController';
+import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
+import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
+import type { Lane } from '@/web/web/query/types';
 import {
   createModuleOpProgressSession,
   type ModuleOpStatusSnapshot,
@@ -229,21 +311,27 @@ defineOptions({ name: 'ModuleKanbanView' });
 
 const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView' });
 
-/**
- * Props consumed by the module kanban view and its backing stores.
- */
-const props = withDefaults(defineProps<{ store?: WebModelStore<MetaModuleIndex>; moduleStore: WebModelStore<MetaModule>; showHeader?: boolean }>(), {
-  showHeader: true,
-});
+const props = withDefaults(
+  defineProps<{ store?: WebModelStore<MetaModuleIndex>; moduleStore: WebModelStore<MetaModule>; showHeader?: boolean }>(),
+  { showHeader: true },
+);
 const store = resolvePageStore(props.store, 'ModuleKanbanView');
 const { showHeader } = props;
 const moduleStore = props.moduleStore;
 
-// Keep keyword search on persisted fields only; computed/derived fields require
-// explicit backend @Search handlers and can break list queries.
 const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
 
 const router = useRouter();
+const controller = createKanbanController(store as any);
+const choyLanes = ref<ChoyKanbanLane[]>([]);
+let syncingLanes = false;
+let resyncPending = false;
+let searchSeq = 0;
+let lastSearchQuery: ChoySearchQuery | null = null;
+
+const dialogTitleId = useId();
+const dialogRef = ref<HTMLElement | null>(null);
+
 const moduleInstallAction = defineAction('meta.action.module_install', {
   title: _lt('Install Module'),
   requires: [{ model: 'meta.MetaModule', method: 'RequestInstall' }],
@@ -262,35 +350,8 @@ const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
 });
 const { canRoute, hasAction } = usePermission();
 
-/**
- * Routes back to the module kanban board.
- */
-function toKanban() {
-  router.push('/meta/modules');
-}
-
-/**
- * Routes to the table-based module list.
- */
-function toList() {
-  router.push('/meta/modules/list');
-}
-
-/**
- * Routes to the module management history page.
- */
-function toHistory() {
-  router.push('/meta/modules/history');
-}
-
-/**
- * Module actions exposed by the kanban toolbar and cards.
- */
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 
-/**
- * Plan response returned before a module action is executed.
- */
 type PlanOperationResp = {
   baseRevision: string;
   affectedModules: Array<{ moduleName: string; reason?: string; currentVersion?: string; targetVersion?: string }>;
@@ -298,9 +359,6 @@ type PlanOperationResp = {
   blockers: Array<{ code: string; level: string; message?: string; params?: Record<string, any> }>;
 };
 
-/**
- * Operation status snapshot returned while a module action is executing.
- */
 type OpStatusResp = ModuleOpStatusSnapshot;
 
 const dialogVisible = ref(false);
@@ -324,73 +382,182 @@ const opProgress = createModuleOpProgressSession(
       dialogStep.value = step;
     },
     warn: (message) => {
-      ElMessage.warning(message);
+      ChoyMessage.warning(message);
     },
     error: (message) => {
-      ElMessage.error(message);
+      ChoyMessage.error(message);
     },
     messages: {
       jobStillRunning: () => _t('Job is still running in the background; refresh later'),
       serviceRestarting: () => _t('Service is restarting; status will retry automatically'),
       failedToGetStatus: () => _t('Failed to get status'),
     },
-  })
+  }),
 );
 
-/**
- * Builds the current dialog title from the selected module action.
- */
 const dialogTitle = computed(() => {
-  const actionLabel = action.value === 'install' ? _t('Install Module') : action.value === 'uninstall' ? _t('Uninstall Module') : _t('Upgrade Module');
+  const actionLabel =
+    action.value === 'install' ? _t('Install Module') : action.value === 'uninstall' ? _t('Uninstall Module') : _t('Upgrade Module');
   return `${actionLabel} · ${targetModule.value?.ModuleName || ''}`.trim();
 });
 
-/**
- * Maps the latest operation snapshot to the dialog headline.
- */
 const resultTitle = computed(() => {
   if (!opStatus.value) return _t('Completed');
   if (opStatus.value.resultStatus === 'FAILED') return _t('Operation Failed');
   return opStatus.value.ReloadFailed ? _t('Succeeded but reload failed') : _t('Operation Succeeded');
 });
 
-/**
- * Maps the latest operation snapshot to the dialog alert tone.
- */
-const resultAlertType = computed(() => {
-  if (!opStatus.value) return 'info';
-  if (opStatus.value.resultStatus === 'FAILED') return 'error';
-  return opStatus.value.ReloadFailed ? 'warning' : 'success';
+const resultAlertBoxClass = computed(() => {
+  if (dialogStep.value === 'progress') {
+    return 'border-border bg-muted/40 text-foreground';
+  }
+  if (!opStatus.value) return 'border-border bg-muted/40 text-foreground';
+  if (opStatus.value.resultStatus === 'FAILED') {
+    return 'border-destructive/40 bg-destructive/10 text-destructive';
+  }
+  if (opStatus.value.ReloadFailed) {
+    return 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100';
+  }
+  return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100';
 });
 
-/**
- * Chooses the result tag style for the operation status summary.
- */
-const resultTagType = (status?: string) => {
-  if (status === 'SUCCEEDED') return 'success';
-  if (status === 'FAILED') return 'danger';
-  return 'info';
-};
-
-/**
- * Chooses the visual tag type for module and operation statuses.
- */
-function statusTagType(status?: string, available?: boolean) {
-  if (available === false) return 'danger';
-  const val = String(status || '').toLowerCase();
-  if (val === 'installed') return 'success';
-  if (val === 'uninstalled') return 'info';
-  if (val === 'disabled') return 'warning';
-  if (val === 'broken') return 'danger';
-  if (val === 'succeeded') return 'success';
-  if (val === 'failed') return 'danger';
-  if (val === 'dispatching' || val === 'queued') return 'warning';
-  return 'info';
+function rowToCard(row: unknown, index: number, laneKey: string): ChoyKanbanCard {
+  const payload = resolveRowPayload(row);
+  const id = String(payload.Id ?? payload.ModuleName ?? `${laneKey}-${index}`);
+  return {
+    id,
+    title: String(payload.ModuleName ?? id),
+    laneKey,
+    payload,
+  };
 }
 
-/**
- * Maps raw status values to the labels shown on the module board.
- */
+function resolveRowPayload(row: unknown): Record<string, unknown> {
+  if (!row || typeof row !== 'object') return {};
+  const bag = row as Record<string, unknown>;
+  const payload = bag.payload;
+  if (payload && typeof payload === 'object') return payload as Record<string, unknown>;
+  return bag;
+}
+
+async function syncLanesFromController(): Promise<void> {
+  if (syncingLanes) {
+    resyncPending = true;
+    return;
+  }
+  syncingLanes = true;
+  try {
+    do {
+      resyncPending = false;
+      const laneList = controller.lanes.value;
+      if (!laneList.length) {
+        const rows =
+          controller.vm.result?.kind === 'search' ? ((controller.vm.result.rows as any[]) || []) : [];
+        choyLanes.value = [
+          {
+            key: 'all',
+            label: _t('All'),
+            cards: rows.map((row, index) => rowToCard(row, index, 'all')),
+          },
+        ];
+        continue;
+      }
+      await Promise.all(laneList.map(l => controller.preloadLane(l.key).catch(() => undefined)));
+      choyLanes.value = laneList.map(lane => ({
+        key: lane.key,
+        label: laneLabel(lane),
+        remain: controller.getLaneRemain(lane),
+        cards: (controller.laneRecords.value[lane.key] || []).map((row, index) => rowToCard(row, index, lane.key)),
+      }));
+    } while (resyncPending);
+  } finally {
+    syncingLanes = false;
+  }
+}
+
+watch(
+  () => controller.lanes.value,
+  () => {
+    void syncLanesFromController();
+  },
+  { deep: true },
+);
+
+onMounted(async () => {
+  try {
+    await (store as any).RequestSync({ IfStale: true });
+  } catch {
+    // sync unavailable — silently skip, page remains usable
+  }
+  try {
+    await awaitFieldSelection(store, { requireNonEmpty: true });
+    await controller.setKeywordFields(keywordFields);
+    await controller.apply({ keywordFields });
+    await syncLanesFromController();
+  } catch (e) {
+    ChoyMessage.error(_t('Failed to load kanban'));
+    console.error('Module kanban load failed:', e);
+  }
+});
+
+async function onSearch(query: ChoySearchQuery) {
+  lastSearchQuery = query;
+  const seq = ++searchSeq;
+  try {
+    await controller.apply({
+      keyword: query.keyword,
+      appliedFilters: (query.appliedFilters || []) as any,
+      appliedGroups: query.appliedGroups as any,
+      keywordFields,
+    });
+    if (seq !== searchSeq) return;
+    await syncLanesFromController();
+  } catch (e) {
+    if (seq !== searchSeq) return;
+    ChoyMessage.error(_t('Failed to load kanban'));
+    console.error('Module kanban search failed:', e);
+  }
+}
+
+function toKanban() {
+  router.push('/meta/modules');
+}
+
+function toList() {
+  router.push('/meta/modules/list');
+}
+
+function toHistory() {
+  router.push('/meta/modules/history');
+}
+
+function payloadOf(card: ChoyKanbanCard): Record<string, unknown> {
+  return (card.payload ?? {}) as Record<string, unknown>;
+}
+
+function payloadRecord(card: ChoyKanbanCard): ClientModelProps<MetaModuleIndex> {
+  return payloadOf(card) as ClientModelProps<MetaModuleIndex>;
+}
+
+function recordField(card: ChoyKanbanCard, field: string): unknown {
+  return payloadOf(card)[field];
+}
+
+function onCardClick(card: ChoyKanbanCard) {
+  const id = String(payloadOf(card).Id ?? '').trim();
+  if (id) router.push(`/meta/modules/${id}`);
+}
+
+function statusBadgeClass(status?: string, available?: boolean): string {
+  if (available === false) return 'bg-destructive/15 text-destructive';
+  const val = String(status || '').toLowerCase();
+  if (val === 'installed' || val === 'succeeded') return 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200';
+  if (val === 'uninstalled') return 'bg-muted text-foreground/70';
+  if (val === 'disabled' || val === 'dispatching' || val === 'queued') return 'bg-amber-500/15 text-amber-900 dark:text-amber-100';
+  if (val === 'broken' || val === 'failed') return 'bg-destructive/15 text-destructive';
+  return 'bg-muted text-foreground/70';
+}
+
 function statusLabel(status?: string, available?: boolean) {
   if (available === false) return _t('Unavailable');
   const val = String(status || '').toLowerCase();
@@ -405,20 +572,14 @@ function statusLabel(status?: string, available?: boolean) {
   return status || _t('Unknown');
 }
 
-/**
- * Reports whether a module record is currently installed.
- */
 function isInstalled(status?: string) {
   return String(status || '').toLowerCase() === 'installed';
 }
 
-/**
- * Formats module timestamps for card metadata display.
- */
-function formatDate(dt?: any) {
+function formatDate(dt?: unknown) {
   if (!dt) return '';
   try {
-    const d = typeof dt === 'string' ? new Date(dt) : dt;
+    const d = typeof dt === 'string' ? new Date(dt) : dt instanceof Date ? dt : new Date(String(dt));
     if (!(d instanceof Date) || isNaN(d.getTime())) return String(dt).slice(0, 19);
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -431,14 +592,15 @@ function formatDate(dt?: any) {
   }
 }
 
-/**
- * Condenses the operation summary payload into display text.
- */
-function formatSummary(summary: any) {
+function formatSummary(summary: unknown) {
   if (!summary) return '';
   if (typeof summary === 'string') return summary;
-  if (summary.message) return summary.message;
-  if (summary.code) return summary.code;
+  if (typeof summary === 'object' && summary !== null && 'message' in summary) {
+    return String((summary as { message?: unknown }).message ?? '');
+  }
+  if (typeof summary === 'object' && summary !== null && 'code' in summary) {
+    return String((summary as { code?: unknown }).code ?? '');
+  }
   try {
     return JSON.stringify(summary);
   } catch {
@@ -446,16 +608,6 @@ function formatSummary(summary: any) {
   }
 }
 
-/**
- * Opens the module detail route for the selected kanban card.
- */
-function onCardClick(payload: { row: ClientModelProps<MetaModuleIndex> }) {
-  router.push(`/meta/modules/${payload.row.Id}`);
-}
-
-/**
- * Opens the operation dialog and loads the execution plan for a module action.
- */
 async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<MetaModuleIndex>) {
   resetDialog();
   action.value = nextAction;
@@ -471,16 +623,13 @@ async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<
       withDemo: nextAction === 'install' ? withDemo.value : false,
     })) as PlanOperationResp;
   } catch (error: any) {
-    ElMessage.error(error?.message || _t('Failed to load plan'));
+    ChoyMessage.error(error?.message || _t('Failed to load plan'));
     dialogVisible.value = false;
   } finally {
     planLoading.value = false;
   }
 }
 
-/**
- * Dispatches the selected module action and watches its job status (C1 tip + fallback).
- */
 async function submitOperation() {
   if (!targetModule.value) return;
   executeLoading.value = true;
@@ -502,13 +651,10 @@ async function submitOperation() {
       errorDomain: 'CLIENT',
       errorCode: 'REQUEST_FAILED',
     } as OpStatusResp;
-    ElMessage.error(error?.message || _t('Operation request failed'));
+    ChoyMessage.error(error?.message || _t('Operation request failed'));
   }
 }
 
-/**
- * Resets dialog state before a new module action starts.
- */
 function resetDialog() {
   plan.value = null;
   opStatus.value = null;
@@ -518,54 +664,47 @@ function resetDialog() {
   opProgress.stop();
 }
 
-/**
- * Stops tip/poll when the dialog is dismissed.
- */
 function onDialogClose() {
   opProgress.stop();
 }
 
-/**
- * Extracts a short module summary from the manifest payload.
- */
-function manifestSummary(raw: any) {
+function closeDialog() {
+  dialogVisible.value = false;
+  onDialogClose();
+}
+
+function onDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeDialog();
+}
+
+function manifestSummary(raw: unknown) {
   if (!raw || typeof raw !== 'object') return '';
-  const text = raw.short_desc || raw.shortDesc || raw.summary || raw.description || raw.name || '';
+  const obj = raw as Record<string, unknown>;
+  const text = obj.short_desc || obj.shortDesc || obj.summary || obj.description || obj.name || '';
   return typeof text === 'string' ? text : '';
 }
 
 const syncLoading = ref(false);
 
-/**
- * Triggers a forced module index sync from the kanban toolbar.
- */
 async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
     const jobId = await (store as any).RequestSync({ Force: true, IfStale: false });
-    ElMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
+    ChoyMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
   } catch (error: any) {
-    ElMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
+    ChoyMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
   } finally {
     syncLoading.value = false;
   }
 }
 
+function laneLabel(lane: Lane | ChoyKanbanLane): string {
+  return String((lane as Lane).label ?? (lane as ChoyKanbanLane).label ?? (lane as Lane).key ?? '');
+}
+
 onBeforeUnmount(() => {
   opProgress.stop();
-});
-
-/**
- * Silently triggers a stale-aware index refresh on kanban entry.
- * Failures are suppressed to avoid blocking page usability.
- */
-onMounted(async () => {
-  try {
-    await (store as any).RequestSync({ IfStale: true });
-  } catch {
-    // sync unavailable — silently skip, page remains usable
-  }
 });
 
 defineExpose({
@@ -580,129 +719,3 @@ defineExpose({
   targetModule,
 });
 </script>
-
-<style scoped lang="scss">
-.module-card {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
-  padding: 12px 14px 10px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--el-color-white);
-  transition:
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-}
-.module-card:hover {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-}
-
-.module-card__title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.module-card__meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.module-card__desc {
-  font-size: 12px;
-  color: var(--el-text-color-regular);
-  min-height: 34px;
-}
-
-.module-card__actions {
-  display: flex;
-  gap: 8px;
-}
-
-.module-card__empty {
-  opacity: 0.6;
-  font-size: 12px;
-  text-align: center;
-  padding: 8px 0;
-}
-
-.module-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.module-dialog__section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.section-title {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.section-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-}
-
-.section-list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--el-text-color-regular);
-}
-
-.item-name {
-  font-weight: 600;
-}
-
-.item-meta {
-  color: var(--el-text-color-secondary);
-}
-
-.item-reason {
-  color: var(--el-color-primary);
-}
-
-.item-desc {
-  color: var(--el-text-color-secondary);
-}
-
-.status-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--el-text-color-regular);
-  flex-wrap: wrap;
-}
-
-.label {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.value {
-  color: var(--el-text-color-regular);
-}
-
-.progress-note {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-</style>

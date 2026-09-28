@@ -4,41 +4,35 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{ create: cityActions.create, edit: cityActions.edit, copy: cityActions.copy, delete: cityActions.delete }"
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <el-card shadow="never" class="bfv-card">
-      <template #header
-        ><div class="bfv-card__header"><span>{{ _t('City Information') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" /></el-col>
-      </el-row>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField
+    <ChoyCard :title="_t('City Information')" class="bfv-card"><ChoyGrid :cols="12">
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Code" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
+      </ChoyGrid>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="4"><ChoyManyToOneField
             :store="store"
             prop="CountryId"
             :search-view="CountryListView"
             :search-view-title="_t('Select Country')"
             @value-click="onCountryValueClick"
-        /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField
+        /></ChoyCol>
+        <ChoyCol :span="4"><ChoyManyToOneField
             :store="store"
             prop="StateId"
             :search-view="StateListView"
             :search-view-title="_t('Select State/Province')"
             @value-click="onStateValueClick"
-        /></el-col>
-      </el-row>
-    </el-card>
-  </OFormView>
+        /></ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
@@ -49,19 +43,15 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type City from '@/base/service/models/city';
 import type Country from '@/base/service/models/country';
 import type State from '@/base/service/models/state';
-import { ElCard, ElRow, ElCol } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import CountryListView from './CountryListView.vue';
 import StateListView from './StateListView.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoyVarcharField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'CityFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CityFormView' });
@@ -92,9 +82,5 @@ function onStateValueClick(payload: ManyToOneValueClickPayload<State>) {
 <style scoped>
 .bfv-card {
   margin-bottom: 14px;
-}
-.bfv-card__header {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 </style>

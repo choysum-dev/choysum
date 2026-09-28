@@ -4,25 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="countryStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, PhonePrefix, ZipRequired, StateRequired, IsActive.')"
+    :action-import="true"
+    :action-export="true"
   >
     <CountryListView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import CountryListView from '../views/CountryListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type Country from '@/base/service/models/country';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'CountryListPage' });
 

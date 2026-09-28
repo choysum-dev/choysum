@@ -4,34 +4,29 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{ create: sequenceActions.create, edit: sequenceActions.edit, copy: sequenceActions.copy, delete: sequenceActions.delete }"
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <el-card shadow="never" class="bfv-card">
-      <template #header
-        ><div class="bfv-card__header"><span>{{ _t('Sequence Configuration') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField :store="store" prop="CompanyId" :search-view="CompanyListView" :search-view-title="_t('Select Company')"
-        /></el-col>
-      </el-row>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="6"><OVarCharField :store="store" prop="Prefix" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OVarCharField :store="store" prop="Suffix" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OIntField :store="store" prop="Padding" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OBigintField :store="store" prop="NextNumber" /></el-col>
-      </el-row>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="IsActive" /></el-col>
-      </el-row>
-    </el-card>
-  </OFormView>
+    <ChoyCard :title="_t('Sequence Configuration')" class="bfv-card"><ChoyGrid :cols="12">
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyManyToOneField :store="store" prop="CompanyId" :search-view="CompanyListView" :search-view-title="_t('Select Company')"
+        /></ChoyCol>
+      </ChoyGrid>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="3"><ChoyVarcharField :store="store" prop="Prefix" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyVarcharField :store="store" prop="Suffix" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="Padding" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="NextNumber" /></ChoyCol>
+      </ChoyGrid>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="3"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
@@ -39,19 +34,13 @@ import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Sequence from '@/base/service/models/sequence';
-import { ElCard, ElRow, ElCol } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OIntField from '@/web/web/components/field/OIntField.vue';
-import OBigintField from '@/web/web/components/field/OBigintField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import CompanyListView from './CompanyListView.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoyNumberField, ChoyVarcharField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'SequenceFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceFormView' });
@@ -69,9 +58,5 @@ const { recordId, viewMode, showHeader, createAction } = props;
 <style scoped>
 .bfv-card {
   margin-bottom: 14px;
-}
-.bfv-card__header {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 </style>

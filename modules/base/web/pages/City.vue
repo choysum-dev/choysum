@@ -4,18 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :store="cityStore">
+  <ChoyPage :store="cityStore">
     <CityFormView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import CityFormView from '../views/CityFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type City from '@/base/service/models/city';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'CityPage' });
 

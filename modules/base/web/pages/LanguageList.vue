@@ -4,25 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="languageStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns Name, Code, Direction, DecimalSeparator, ThousandSeparator, IsActive.')"
+    :action-import="true"
+    :action-export="true"
   >
     <LanguageListView />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import LanguageListView from '../views/LanguageListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type Language from '@/base/service/models/language';
+import { ChoyPage } from '@/web';
 
 defineOptions({ name: 'LanguageListPage' });
 

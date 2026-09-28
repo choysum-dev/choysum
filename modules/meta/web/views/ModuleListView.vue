@@ -4,69 +4,91 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OListView
-    ref="listRef"
-    v-bind="$attrs"
-    :store="store"
-    :searchView="OSearchView"
-    :show-header="showHeader"
-    :action-ids="{ delete: moduleIndexActions.delete }"
-    :has-action="hasAction"
-    @row-click="onRowClick"
-  >
-    <template #header-right>
-      <el-button-group>
-        <el-tooltip v-if="canRoute('meta.route.module_board')" :content="_t('Board View')" placement="top">
-          <el-button :icon="GridViewSharp" @click="toKanban" />
-        </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_list')" :content="_t('List View')" placement="top">
-          <el-button :icon="FormatListBulletedOutlined" @click="toList" type="primary" />
-        </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_history')" :content="_t('Operation History')" placement="top">
-          <el-button :icon="HistoryOutlined" @click="toHistory" />
-        </el-tooltip>
-        <el-tooltip v-if="hasAction(moduleSyncIndexAction)" :content="_t('Sync Index')" placement="top">
-          <el-button :icon="Refresh" :loading="syncLoading" @click="onSyncIndex" />
-        </el-tooltip>
-      </el-button-group>
-    </template>
-
-    <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="InstalledStatus" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <OVarCharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
-    <ODateTimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-  </OListView>
+  <div class="module-list-view">
+    <div v-if="showHeader" class="mb-2 flex justify-end">
+      <div class="flex items-center gap-1">
+        <ChoyButton
+          v-if="canRoute('meta.route.module_board')"
+          variant="outline"
+          size="sm"
+          :title="_t('Board View')"
+          @click="toKanban"
+        >
+          <LayoutGrid class="size-4" aria-hidden="true" />
+        </ChoyButton>
+        <ChoyButton size="sm" :title="_t('List View')" @click="toList">
+          <List class="size-4" aria-hidden="true" />
+        </ChoyButton>
+        <ChoyButton
+          v-if="canRoute('meta.route.module_history')"
+          variant="outline"
+          size="sm"
+          :title="_t('Operation History')"
+          @click="toHistory"
+        >
+          <History class="size-4" aria-hidden="true" />
+        </ChoyButton>
+        <ChoyButton
+          v-if="hasAction(moduleSyncIndexAction)"
+          variant="outline"
+          size="sm"
+          :title="_t('Sync Index')"
+          :disabled="syncLoading"
+          @click="onSyncIndex"
+        >
+          <RefreshCw class="size-4" :class="{ 'animate-spin': syncLoading }" aria-hidden="true" />
+        </ChoyButton>
+      </div>
+    </div>
+    <ChoyListView
+      ref="listRef"
+      v-bind="$attrs"
+      :store="store"
+      :searchView="ChoySearchView"
+      :show-header="showHeader"
+      :action-ids="{ delete: moduleIndexActions.delete }"
+      :has-action="hasAction"
+      @row-click="onRowClick"
+    >
+      <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+      <ChoyVarcharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
+      <ChoyVarcharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+      <ChoyVarcharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+      <ChoyVarcharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+      <ChoyVarcharField prop="InstalledStatus" :store="store" :vColumnProps="{ minWidth: 120 }" />
+      <ChoyVarcharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+      <ChoyBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
+      <ChoyVarcharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+      <ChoyVarcharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
+      <ChoyDatetimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    </ChoyListView>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { History, LayoutGrid, List, RefreshCw } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
-import OListView from '@/web/web/components/view/OListView.vue';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import { ElButton, ElTooltip, ElButtonGroup, ElMessage } from 'element-plus';
-import { FormatListBulletedOutlined, GridViewSharp, HistoryOutlined } from '@vicons/material';
-import { Refresh } from '@element-plus/icons-vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  ChoyBooleanField,
+  ChoyButton,
+  ChoyDatetimeField,
+  ChoyListView,
+  ChoyMessage,
+  ChoySearchView,
+  ChoyVColumn,
+  ChoyVarcharField,
+} from '@/web';
+import { resolveListRowRecordId } from './list_row_nav';
 
-defineOptions({ name: 'ModuleListView', inheritAttrs: true });
+defineOptions({ name: 'ModuleListView', inheritAttrs: false });
 
 const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleListView' });
 
@@ -79,7 +101,7 @@ const props = withDefaults(
   }>(),
   {
     showHeader: true,
-  }
+  },
 );
 
 const store = resolvePageStore(props.store, 'ModuleListView');
@@ -95,14 +117,15 @@ const { canRoute, hasAction } = usePermission();
 
 const syncLoading = ref(false);
 const autoSyncTriggered = ref(false);
+
 async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
     const jobId = await (store as any).RequestSync({ Force: true, IfStale: false });
-    ElMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
+    ChoyMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
   } catch (error: any) {
-    ElMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
+    ChoyMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
   } finally {
     syncLoading.value = false;
   }
@@ -117,11 +140,12 @@ watch(
     if (rows.length > 0) return;
     autoSyncTriggered.value = true;
     void onSyncIndex();
-  }
+  },
 );
 
-function onRowClick(payload: RowEventPayload<MetaModuleIndex>) {
-  router.push(`/meta/modules/${payload.row.Id}`);
+function onRowClick(row: Record<string, unknown>) {
+  const id = resolveListRowRecordId(row);
+  if (id) router.push(`/meta/modules/${id}`);
 }
 
 function toKanban() {
