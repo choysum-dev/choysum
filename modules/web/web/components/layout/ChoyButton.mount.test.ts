@@ -14,16 +14,18 @@ describe('ChoyButton mount', () => {
       },
       slots: { default: () => 'Acme' },
     });
-    await flushPromises();
+    try {
+      await flushPromises();
 
-    const btn = w.q('[data-testid="company-switch-trigger"]') as HTMLButtonElement | null;
-    expect(btn).not.toBeNull();
-    expect(btn?.tagName.toLowerCase()).toBe('button');
-    expect(btn?.getAttribute('aria-label')).toBe('Switch company');
-    expect(btn?.getAttribute('aria-expanded')).toBe('false');
-    expect(btn?.getAttribute('data-anchor')).toBe('choy.button');
-    expect((btn?.textContent || '').trim()).toBe('Acme');
-
-    w.unmount();
+      const btn = w.q('[data-testid="company-switch-trigger"]') as HTMLButtonElement | null;
+      expect(btn).not.toBeNull();
+      expect(btn?.tagName.toLowerCase()).toBe('button');
+      expect(btn?.getAttribute('aria-label')).toBe('Switch company');
+      expect(btn?.getAttribute('aria-expanded')).toBe('false');
+      expect(btn?.getAttribute('data-anchor')).toBe('choy.button');
+      expect((btn?.textContent || '').trim()).toBe('Acme');
+    } finally {
+      w.unmount();
+    }
   });
 });

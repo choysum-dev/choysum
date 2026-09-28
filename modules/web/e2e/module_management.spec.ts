@@ -134,7 +134,7 @@ async function clearSearchFilters(page: Page) {
  * Applies a module-name search so the board can focus on a specific card.
  */
 async function searchModuleCard(page: Page, moduleName: string) {
-  const searchInput = page.locator('.choy-kanban-view .o-search__input');
+  const searchInput = page.locator('[data-anchor="choy.kanban-view"] .o-search__input');
   if (!(await searchInput.count())) {
     return;
   }
@@ -356,7 +356,7 @@ async function pageNavEpoch(page: Page): Promise<string> {
  */
 async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000): Promise<OperationTerminalStatus> {
   const dialog = page.locator('.module-op-dialog');
-  const statusTag = dialog.locator('.module-op-status-row .module-op-status-badge').first();
+  const statusTag = dialog.locator('[data-testid="module-op-status"]');
   const startURL = String(await page.url());
   const startEpoch = await pageNavEpoch(page);
 
@@ -406,7 +406,7 @@ async function waitForOperationCompletion(page: Page) {
   }
 
   if (completion !== 'succeeded') {
-    const resultTag = dialog.locator('.module-op-status-row .module-op-status-badge').nth(1);
+    const resultTag = dialog.locator('[data-testid="module-op-result"]');
     const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
     const resultSuffix = resultText ? `, result ${resultText}` : '';
     throw new Error(`module operation finished with status ${completion}${resultSuffix}`);
@@ -430,9 +430,9 @@ async function waitForOperationFailure(page: Page) {
     throw new Error('expected failed operation result, but page reloaded before terminal status could be read');
   }
 
-  const statusTag = dialog.locator('.module-op-status-row .module-op-status-badge').first();
+  const statusTag = dialog.locator('[data-testid="module-op-status"]');
   const statusText = ((await statusTag.textContent().catch(() => '')) || '').trim().toLowerCase();
-  const resultTag = dialog.locator('.module-op-status-row .module-op-status-badge').nth(1);
+  const resultTag = dialog.locator('[data-testid="module-op-result"]');
   const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
   const failedByStatus = completion === 'failed' || completion === 'cancelled' || statusText === 'failed' || statusText === 'cancelled';
   const failedByResult = /FAILED/i.test(resultText);
@@ -729,7 +729,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
     }
     await expect(reloadRow).toHaveText(/Trigger Failed/);
 
-    const resultTag = dialog.locator('.module-op-status-row .module-op-status-badge').nth(1);
+    const resultTag = dialog.locator('[data-testid="module-op-result"]');
     const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
     if (/FAILED/i.test(resultText)) {
       throw new Error(`expected successful operation before reload failure, got result=${resultText}`);
@@ -951,7 +951,7 @@ test('meta module management: kanban lazy sync does not block page', async () =>
   // onMounted hook triggers a stale-aware RequestSync for registry then local.
   // The test asserts the page remains interactive: the search input is usable,
   // and module cards are visible.
-  const searchInput = page.locator('.choy-kanban-view .o-search__input');
+  const searchInput = page.locator('[data-anchor="choy.kanban-view"] .o-search__input');
   await expect(searchInput).toBeVisible({ timeout: 15000 });
 
   const cards = page.locator('.module-card');
@@ -1030,7 +1030,7 @@ test('meta module management: kanban usable when registry sync fails', async () 
     }
 
     // The board remains interactive despite registry sync failures.
-    const searchInput = page.locator('.choy-kanban-view .o-search__input');
+    const searchInput = page.locator('[data-anchor="choy.kanban-view"] .o-search__input');
     if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill('e2e_fixture');
       await searchInput.press('Enter');

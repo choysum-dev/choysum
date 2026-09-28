@@ -59,7 +59,8 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     )
     .toBeGreaterThanOrEqual(2);
 
-  const otherValue = await page.evaluate(() => {
+  const activeCompanyId = await readActiveCompanyIdFromAuth();
+  const otherValue = await page.evaluate((active: string) => {
     const select = document.querySelector(
       '[data-testid="company-active-select"]'
     ) as HTMLSelectElement | null;
@@ -68,13 +69,15 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     const values = Array.from(select.options)
       .map(opt => String(opt.value || '').trim())
       .filter(Boolean);
-    const other = values.find(v => v !== current) || '';
+    // Exclude both the select's current value and the JWT active company so a
+    // stale/unselected control cannot re-pick the already-active company.
+    const other = values.find(v => v !== current && v !== active) || '';
     if (!other) return '';
     select.value = other;
     select.dispatchEvent(new Event('input', { bubbles: true }));
     select.dispatchEvent(new Event('change', { bubbles: true }));
     return select.value === other ? other : '';
-  });
+  }, activeCompanyId);
   expect(otherValue).not.toBe('');
 
   await expect

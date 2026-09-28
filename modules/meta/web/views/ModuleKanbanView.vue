@@ -230,12 +230,14 @@ SPDX-License-Identifier: Apache-2.0
                   <span class="font-semibold text-foreground">{{ _t('Status:') }}</span>
                   <span
                     class="module-op-status-badge rounded px-1.5 py-0.5 text-[11px] font-medium"
+                    data-testid="module-op-status"
                     :class="statusBadgeClass(opStatus?.status)"
                     >{{ opStatus?.status || '—' }}</span
                   >
                   <span class="font-semibold text-foreground">{{ _t('Result:') }}</span>
                   <span
                     class="module-op-status-badge rounded px-1.5 py-0.5 text-[11px] font-medium"
+                    data-testid="module-op-result"
                     :class="statusBadgeClass(opStatus?.resultStatus)"
                     >{{ opStatus?.resultStatus || '—' }}</span
                   >
