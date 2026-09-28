@@ -118,6 +118,23 @@ describe('ChoyButton mount', () => {
       w.unmount();
     }
   });
+
+  test('disabled handleClick tolerates non-Event payload', async () => {
+    const w = mountApp(ChoyButton as any, {
+      props: { 'data-testid': 'click-disabled-payload', disabled: true, as: 'a' },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const handleClick = w.setupState()?.handleClick as ((e?: unknown) => void) | undefined;
+      expect(typeof handleClick).toBe('function');
+      expect(() => handleClick?.(undefined)).not.toThrow();
+      expect(() => handleClick?.({})).not.toThrow();
+      expect(() => handleClick?.('click')).not.toThrow();
+    } finally {
+      w.unmount();
+    }
+  });
 });
 
 describe('Button host click guard', () => {
@@ -199,6 +216,23 @@ describe('Button host click guard', () => {
       expect(clicks).toBe(0);
       expect(event.defaultPrevented).toBe(true);
       expect(stopped).toBe(true);
+    } finally {
+      w.unmount();
+    }
+  });
+
+  test('disabled handleClick tolerates non-Event payload', async () => {
+    const w = mountApp(Button as any, {
+      props: { 'data-testid': 'link-disabled-payload', disabled: true, as: 'a' },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const handleClick = w.setupState()?.handleClick as ((e?: unknown) => void) | undefined;
+      expect(typeof handleClick).toBe('function');
+      expect(() => handleClick?.(undefined)).not.toThrow();
+      expect(() => handleClick?.({})).not.toThrow();
+      expect(() => handleClick?.('click')).not.toThrow();
     } finally {
       w.unmount();
     }

@@ -37,8 +37,10 @@ function handleClick(event: Event) {
   if (props.disabled) {
     // Non-<button> hosts still navigate unless default is cancelled, and must not
     // bubble to ancestor handlers the way a native disabled button would not.
-    event.preventDefault();
-    event.stopPropagation();
+    // `as` may be a component whose `click` emit passes a non-DOM payload.
+    const e = event as Partial<Event> | undefined;
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
     return;
   }
   emit('click', event);

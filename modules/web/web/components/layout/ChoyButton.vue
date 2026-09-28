@@ -5,8 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Button
-    v-bind="$attrs"
-    data-anchor="choy.button"
+    v-bind="{ ...$attrs, 'data-anchor': 'choy.button' }"
     :variant="props.variant"
     :size="props.size"
     :as="props.as"
@@ -56,8 +55,10 @@ const emit = defineEmits(['click']);
 
 function handleClick(event: Event) {
   if (props.disabled) {
-    event.preventDefault();
-    event.stopPropagation();
+    // Nested Button / component hosts may emit a non-DOM click payload.
+    const e = event as Partial<Event> | undefined;
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
     return;
   }
   emit('click', event);
