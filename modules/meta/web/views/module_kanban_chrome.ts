@@ -103,8 +103,6 @@ export function captureDialogFocusTarget(
 
 /**
  * Navigable record id from a kanban card payload. Blank ids fail closed.
+ * Shares scalar fail-closed rules with list row navigation.
  */
-export function resolveModuleKanbanCardId(payload: unknown): string {
-  if (!payload || typeof payload !== 'object') return '';
-  return String((payload as { Id?: unknown }).Id ?? '').trim();
-}
+export { resolveListRowRecordId as resolveModuleKanbanCardId } from './list_row_nav';

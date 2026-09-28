@@ -79,6 +79,8 @@ test('captureDialogFocusTarget / resolveModuleKanbanCardId', () => {
   const el = { focus() {} } as unknown as HTMLElement;
   expect(captureDialogFocusTarget({ activeElement: el } as any)).toBe(el);
   expect(resolveModuleKanbanCardId({ Id: '  m1  ' })).toBe('m1');
+  expect(resolveModuleKanbanCardId({ Id: 9 })).toBe('9');
   expect(resolveModuleKanbanCardId(null)).toBe('');
   expect(resolveModuleKanbanCardId({})).toBe('');
+  expect(resolveModuleKanbanCardId({ Id: { nested: true } })).toBe('');
 });

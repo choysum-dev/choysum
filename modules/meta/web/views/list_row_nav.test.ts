@@ -5,6 +5,7 @@ import { resolveListRowRecordId } from './list_row_nav';
 
 test('resolveListRowRecordId: reads Id from a raw row', () => {
   expect(resolveListRowRecordId({ Id: '  mod-1  ' })).toBe('mod-1');
+  expect(resolveListRowRecordId({ Id: 7 })).toBe('7');
 });
 
 test('resolveListRowRecordId: unwraps { row } payloads', () => {
@@ -17,4 +18,6 @@ test('resolveListRowRecordId: blank or missing Id fails closed', () => {
   expect(resolveListRowRecordId({})).toBe('');
   expect(resolveListRowRecordId({ Id: '   ' })).toBe('');
   expect(resolveListRowRecordId({ row: {} })).toBe('');
+  expect(resolveListRowRecordId({ Id: { nested: true } })).toBe('');
+  expect(resolveListRowRecordId({ Id: ['x'] })).toBe('');
 });

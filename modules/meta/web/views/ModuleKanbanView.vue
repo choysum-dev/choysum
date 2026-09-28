@@ -577,6 +577,11 @@ async function onSearch(query: ChoySearchQuery) {
   }
   try {
     await syncLanesFromController();
+  } catch (e) {
+    if (seq === searchSeq) {
+      ChoyMessage.error(_t('Failed to load kanban'));
+      console.error('Module kanban lane sync failed:', e);
+    }
   } finally {
     if (seq === searchSeq) searchPending.value = false;
   }

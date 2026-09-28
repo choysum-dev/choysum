@@ -10,5 +10,8 @@ export function resolveListRowRecordId(payload: unknown): string {
   const bag = payload as { row?: unknown; Id?: unknown };
   const row =
     bag.row && typeof bag.row === 'object' ? (bag.row as { Id?: unknown }) : bag;
-  return String(row?.Id ?? '').trim();
+  const id = row?.Id;
+  // Non-scalars stringify to "[object Object]" and would navigate to a bogus route.
+  if (typeof id !== 'string' && typeof id !== 'number') return '';
+  return String(id).trim();
 }

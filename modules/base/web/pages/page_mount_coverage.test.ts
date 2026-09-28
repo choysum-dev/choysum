@@ -66,15 +66,18 @@ test('base page mount: every ChoyPage host mounts under choysumMount', async () 
     const wrapper = mount(Comp as any, {
       global: buildPageMountGlobal({ route: { path, fullPath: path } }),
     });
-    await flushPromises();
-    const ok =
-      wrapper.find('[data-anchor="choy.page"]').exists() ||
-      wrapper.find('[data-testid="fe-stub-opage"]').exists() ||
-      wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||
-      wrapper.find('[data-testid="fe-stub-child-view"]').exists();
-    expect(ok).toBe(true);
-    if (!ok) throw new Error(`page mount failed: ${name}`);
-    wrapper.unmount();
+    try {
+      await flushPromises();
+      const ok =
+        wrapper.find('[data-anchor="choy.page"]').exists() ||
+        wrapper.find('[data-testid="fe-stub-opage"]').exists() ||
+        wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||
+        wrapper.find('[data-testid="fe-stub-child-view"]').exists();
+      // expect() has no message arg in choysumtest; throw carries the page name.
+      if (!ok) throw new Error(`base page mount failed: ${name}`);
+    } finally {
+      wrapper.unmount();
+    }
   }
 });
 

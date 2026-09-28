@@ -230,7 +230,7 @@ describe('Choy store-mode field hosts', () => {
     input!.dispatchEvent(new Event('input', { bubbles: true }));
     input!.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();
-    expect(emitted.at(-1)).toBe(3.5);
+    expect(emitted[emitted.length - 1]).toBe(3.5);
     expect(input!.value).toBe('3.5');
 
     // Host rewrite path: external model change while draft still looks different.
