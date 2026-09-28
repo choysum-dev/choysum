@@ -102,11 +102,18 @@ describe('ChoyButton mount', () => {
       expect(host?.classList.contains('opacity-50')).toBe(true);
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
-      const event = new Event('click', { cancelable: true });
+      const event = new Event('click', { cancelable: true, bubbles: true });
+      let stopped = false;
+      const origStop = event.stopPropagation.bind(event);
+      event.stopPropagation = () => {
+        stopped = true;
+        origStop();
+      };
       handleClick?.(event);
       await flushPromises();
       expect(clicks).toBe(0);
       expect(event.defaultPrevented).toBe(true);
+      expect(stopped).toBe(true);
     } finally {
       w.unmount();
     }
@@ -133,11 +140,18 @@ describe('Button host click guard', () => {
       expect(host?.classList.contains('opacity-50')).toBe(false);
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
-      const event = new Event('click', { cancelable: true });
+      const event = new Event('click', { cancelable: true, bubbles: true });
+      let stopped = false;
+      const origStop = event.stopPropagation.bind(event);
+      event.stopPropagation = () => {
+        stopped = true;
+        origStop();
+      };
       handleClick?.(event);
       await flushPromises();
       expect(clicks).toBe(1);
       expect(event.defaultPrevented).toBe(false);
+      expect(stopped).toBe(false);
     } finally {
       w.unmount();
     }
@@ -169,11 +183,18 @@ describe('Button host click guard', () => {
       expect(host?.classList.contains('opacity-50')).toBe(true);
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
-      const event = new Event('click', { cancelable: true });
+      const event = new Event('click', { cancelable: true, bubbles: true });
+      let stopped = false;
+      const origStop = event.stopPropagation.bind(event);
+      event.stopPropagation = () => {
+        stopped = true;
+        origStop();
+      };
       handleClick?.(event);
       await flushPromises();
       expect(clicks).toBe(0);
       expect(event.defaultPrevented).toBe(true);
+      expect(stopped).toBe(true);
     } finally {
       w.unmount();
     }

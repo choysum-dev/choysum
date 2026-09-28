@@ -35,8 +35,10 @@ const emit = defineEmits(['click']);
 
 function handleClick(event: Event) {
   if (props.disabled) {
-    // Non-<button> hosts (e.g. <a href>) still navigate unless default is cancelled.
+    // Non-<button> hosts still navigate unless default is cancelled, and must not
+    // bubble to ancestor handlers the way a native disabled button would not.
     event.preventDefault();
+    event.stopPropagation();
     return;
   }
   emit('click', event);

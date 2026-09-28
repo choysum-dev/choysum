@@ -57,6 +57,7 @@ const emit = defineEmits(['click']);
 function handleClick(event: Event) {
   if (props.disabled) {
     event.preventDefault();
+    event.stopPropagation();
     return;
   }
   emit('click', event);
