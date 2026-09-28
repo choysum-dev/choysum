@@ -826,153 +826,153 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#: web/components/layout/OHeader.vue:5
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:5
+msgctxt "web/components/layout/AuthHeader"
 msgid "Log In"
 msgstr "登录"
 
-#: web/components/layout/OHeader.vue:19
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:19
+msgctxt "web/components/layout/AuthHeader"
 msgid "Log Out"
 msgstr "退出登录"
 
-#: web/components/layout/OHeader.vue:4
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:4
+msgctxt "web/components/layout/AuthHeader"
 msgid "Log in"
 msgstr "登录"
 
-#: web/components/layout/OHeader.vue:7
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:7
+msgctxt "web/components/layout/AuthHeader"
 msgid "Notifications"
 msgstr "通知"
 
-#: web/components/layout/OHeader.vue:17
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:17
+msgctxt "web/components/layout/AuthHeader"
 msgid "Profile"
 msgstr "个人资料"
 
-#: web/components/layout/OHeader.vue:18
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:18
+msgctxt "web/components/layout/AuthHeader"
 msgid "Settings"
 msgstr "设置"
 
-#: web/components/layout/OHeader.vue:12
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:12
+msgctxt "web/components/layout/AuthHeader"
 msgid "User menu"
 msgstr "用户菜单"
 
-#: web/components/layout/OSwitchCompany.vue:29
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:29
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr "应用"
 
-#: web/components/layout/OSwitchCompany.vue:17
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:17
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr "可用公司"
 
-#: web/components/layout/OSwitchCompany.vue:289
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:289
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr "可选公司必须包含当前公司"
 
-#: web/components/layout/OSwitchCompany.vue:254 web/components/layout/OSwitchCompany.vue:259
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:254 web/components/layout/SwitchCompany.vue:259
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr "公司"
 
-#: web/components/layout/OSwitchCompany.vue:11
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:11
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr "当前公司"
 
-#: web/components/layout/OSwitchCompany.vue:294
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:294
+msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr "没有可应用的更改"
 
-#: web/components/layout/OSwitchCompany.vue:292
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:292
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr "仅有一家可选公司，无需应用"
 
-#: web/components/layout/OSwitchCompany.vue:287
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:287
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr "请选择当前公司"
 
-#: web/components/layout/OSwitchCompany.vue:18
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:18
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Select available companies"
 msgstr "选择可用公司"
 
-#: web/components/layout/OSwitchCompany.vue:12
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:12
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Select company"
 msgstr "选择公司"
 
-#: web/components/layout/OSwitchCompany.vue:4
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:4
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr "切换公司"
 
-#: web/components/preferences/OPreferencesDialog.vue:30
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:30
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/preferences/OPreferencesDialog.vue:156 web/components/preferences/OPreferencesDialog.vue:165
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:156 web/components/preferences/PreferencesDialog.vue:165
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr "无法更新偏好设置：缺少用户 ID"
 
-#: web/components/preferences/OPreferencesDialog.vue:2
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:2
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Edit Profile"
 msgstr "编辑个人资料"
 
-#: web/components/preferences/OPreferencesDialog.vue:200
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:200
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
 
-#: web/components/preferences/OPreferencesDialog.vue:178
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:178
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Invalid or inactive language"
 msgstr "无效或未启用的语言"
 
-#: web/components/preferences/OPreferencesDialog.vue:11
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:11
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Language"
 msgstr "语言"
 
-#: web/components/preferences/OPreferencesDialog.vue:197
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:197
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
 
-#: web/components/preferences/OPreferencesDialog.vue:20
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:20
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Select timezone"
 msgstr "选择时区"
 
-#: web/components/preferences/OPreferencesDialog.vue:24
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:24
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Suggested from your browser"
 msgstr "根据浏览器建议"
 
-#: web/components/preferences/OPreferencesDialog.vue:19
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:19
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Timezone"
 msgstr "时区"
 
-#: web/components/preferences/OPreferencesDialog.vue:31
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:31
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Update preferences"
 msgstr "更新偏好设置"
 
-#: web/components/preferences/OPreferencesDialog.vue:16
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:16
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr "当前使用会话语言"
 

@@ -71,7 +71,9 @@ import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
 import { syncCompanyDraftsFromJwt } from './o_switch_company_draft';
 
-const { _t } = createTranslate('auth', { scope: 'web/components/layout/OSwitchCompany' });
+defineOptions({ name: 'SwitchCompany' });
+
+const { _t } = createTranslate('auth', { scope: 'web/components/layout/SwitchCompany' });
 
 type CompanyRow = { Id: string; DisplayName?: string };
 

@@ -845,155 +845,155 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:5
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:5
+msgctxt "web/components/layout/AuthHeader"
 msgid "Log In"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:19
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:19
+msgctxt "web/components/layout/AuthHeader"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:4
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:4
+msgctxt "web/components/layout/AuthHeader"
 msgid "Log in"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:7
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:7
+msgctxt "web/components/layout/AuthHeader"
 msgid "Notifications"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:17
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:17
+msgctxt "web/components/layout/AuthHeader"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:18
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:18
+msgctxt "web/components/layout/AuthHeader"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:12
-msgctxt "web/components/layout/OHeader"
+#: web/components/layout/AuthHeader.vue:12
+msgctxt "web/components/layout/AuthHeader"
 msgid "User menu"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:29
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:29
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Apply"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:17
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:17
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:289
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:289
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Available companies must include the current company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:254
-#: web/components/layout/OSwitchCompany.vue:259
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:254
+#: web/components/layout/SwitchCompany.vue:259
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:11
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:11
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Current Company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:294
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:294
+msgctxt "web/components/layout/SwitchCompany"
 msgid "No changes to apply"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:292
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:292
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Only one company is available; nothing to apply"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:287
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:287
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Select a current company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:18
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:18
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Select available companies"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:12
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:12
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Select company"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:4
-msgctxt "web/components/layout/OSwitchCompany"
+#: web/components/layout/SwitchCompany.vue:4
+msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:30
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:30
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:156
-#: web/components/preferences/OPreferencesDialog.vue:165
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:156
+#: web/components/preferences/PreferencesDialog.vue:165
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:2
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:2
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Edit Profile"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:200
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:200
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:178
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:178
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Invalid or inactive language"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:11
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:11
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Language"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:197
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:197
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:20
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:20
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Select timezone"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:24
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:24
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Suggested from your browser"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:19
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:19
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Timezone"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:31
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:31
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Update preferences"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:16
-msgctxt "web/components/preferences/OPreferencesDialog"
+#: web/components/preferences/PreferencesDialog.vue:16
+msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr ""
 

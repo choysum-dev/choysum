@@ -73,12 +73,12 @@ import {
 } from './preferences_defaults';
 import { resolveLanguageCodeFromId } from './preferences_language';
 
-defineOptions({ name: 'OPreferencesDialog' });
+defineOptions({ name: 'PreferencesDialog' });
 
 const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [boolean]; closed: [] }>();
 
-const { _t } = createTranslate('auth', { scope: 'web/components/preferences/OPreferencesDialog' });
+const { _t } = createTranslate('auth', { scope: 'web/components/preferences/PreferencesDialog' });
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
 const userStore = createStoreByModel('auth.User');

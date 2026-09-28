@@ -4,11 +4,11 @@
 /**
  * Import extension components for their side effects.
  *
- * Importing OHeader.vue and App.vue activates their XPath-based UI extensions.
+ * Importing AuthHeader.vue and App.vue activates their XPath-based UI extensions.
  */
 
 // Import side-effect extensions that augment shared layout components.
-import './components/layout/OHeader.vue';
+import './components/layout/AuthHeader.vue';
 import './App.vue';
 
 // Import auth-scoped error helpers.

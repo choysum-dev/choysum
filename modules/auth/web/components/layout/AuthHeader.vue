@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
     >
       <Bell class="size-5" aria-hidden="true" />
     </ChoyButton>
-    <OSwitchCompany v-if="isAuthenticated" />
+    <SwitchCompany v-if="isAuthenticated" />
     <div v-if="isAuthenticated" ref="userMenuRoot" class="relative">
       <ChoyButton
         variant="ghost"
@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
         </button>
       </div>
     </div>
-    <OPreferencesDialog v-if="isAuthenticated" v-model="preferencesVisible" />
+    <PreferencesDialog v-if="isAuthenticated" v-model="preferencesVisible" />
   </Xpath>
 </template>
 
@@ -64,14 +64,14 @@ import { Xpath } from '@/core/web';
 import { ChoyButton } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
-import OSwitchCompany from './OSwitchCompany.vue';
-import OPreferencesDialog from '../preferences/OPreferencesDialog.vue';
+import SwitchCompany from './SwitchCompany.vue';
+import PreferencesDialog from '../preferences/PreferencesDialog.vue';
 
-defineOptions({ name: 'OHeader' });
+defineOptions({ name: 'AuthHeader' });
 
 const emit = defineEmits<{ 'show-notifications': [] }>();
 
-const { _t } = createTranslate('auth', { scope: 'web/components/layout/OHeader' });
+const { _t } = createTranslate('auth', { scope: 'web/components/layout/AuthHeader' });
 const router = useRouter();
 const authStore = useAuthStore();
 const isAuthenticated = computed(() => authStore.isAuthenticated);
