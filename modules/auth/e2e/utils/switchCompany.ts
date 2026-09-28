@@ -42,6 +42,23 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
 async function pickOtherActiveCompanyOption(): Promise<void> {
   await expect(page.getByTestId('company-active-select')).toBeVisible({ timeout: 10_000 });
 
+  // Companies load async after the panel opens; wait until a non-current option exists.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const select = document.querySelector(
+            '[data-testid="company-active-select"]'
+          ) as HTMLSelectElement | null;
+          if (!select) return 0;
+          return Array.from(select.options)
+            .map(opt => String(opt.value || '').trim())
+            .filter(Boolean).length;
+        }),
+      { timeout: 10_000 }
+    )
+    .toBeGreaterThanOrEqual(2);
+
   const otherValue = await page.evaluate(() => {
     const select = document.querySelector(
       '[data-testid="company-active-select"]'

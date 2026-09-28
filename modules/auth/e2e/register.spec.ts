@@ -51,7 +51,7 @@ async function runRegisterOnce(baseURL: string): Promise<void> {
 
   await page.evaluate(() => {
     const input = document.querySelector(
-      'form input[type="checkbox"], label input[type="checkbox"]'
+      '[data-testid="register-terms"] input[type="checkbox"]'
     ) as HTMLInputElement | null;
     if (!input) throw new Error('register: terms checkbox not found');
     if (!input.checked) input.click();
@@ -61,7 +61,7 @@ async function runRegisterOnce(baseURL: string): Promise<void> {
       input.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
-  await expect(page.locator('form input[type="checkbox"], label input[type="checkbox"]').first()).toBeChecked({
+  await expect(page.locator('[data-testid="register-terms"] input[type="checkbox"]')).toBeChecked({
     timeout: 10_000,
   });
 

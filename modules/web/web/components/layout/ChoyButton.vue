@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <Button
     data-anchor="choy.button"
+    v-bind="$attrs"
     :variant="props.variant"
     :size="props.size"
     :as="props.as"
@@ -28,6 +29,8 @@ type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
  * Public L1 button for custom pages (login, dogfood). Wraps L2 ui/button so
  * domain modules never import vendor/ui directly.
  */
+defineOptions({ name: 'ChoyButton', inheritAttrs: false });
+
 const props = withDefaults(
   defineProps<{
     variant?: ButtonVariant;

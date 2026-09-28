@@ -356,7 +356,7 @@ async function pageNavEpoch(page: Page): Promise<string> {
  */
 async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000): Promise<OperationTerminalStatus> {
   const dialog = page.locator('.module-op-dialog');
-  const statusTag = dialog.locator('.status-row .module-op-status-badge').first();
+  const statusTag = dialog.locator('.module-op-status-row .module-op-status-badge').first();
   const startURL = String(await page.url());
   const startEpoch = await pageNavEpoch(page);
 
@@ -406,7 +406,7 @@ async function waitForOperationCompletion(page: Page) {
   }
 
   if (completion !== 'succeeded') {
-    const resultTag = dialog.locator('.status-row .module-op-status-badge').nth(1);
+    const resultTag = dialog.locator('.module-op-status-row .module-op-status-badge').nth(1);
     const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
     const resultSuffix = resultText ? `, result ${resultText}` : '';
     throw new Error(`module operation finished with status ${completion}${resultSuffix}`);
@@ -430,9 +430,9 @@ async function waitForOperationFailure(page: Page) {
     throw new Error('expected failed operation result, but page reloaded before terminal status could be read');
   }
 
-  const statusTag = dialog.locator('.status-row .module-op-status-badge').first();
+  const statusTag = dialog.locator('.module-op-status-row .module-op-status-badge').first();
   const statusText = ((await statusTag.textContent().catch(() => '')) || '').trim().toLowerCase();
-  const resultTag = dialog.locator('.status-row .module-op-status-badge').nth(1);
+  const resultTag = dialog.locator('.module-op-status-row .module-op-status-badge').nth(1);
   const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
   const failedByStatus = completion === 'failed' || completion === 'cancelled' || statusText === 'failed' || statusText === 'cancelled';
   const failedByResult = /FAILED/i.test(resultText);
@@ -729,7 +729,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
     }
     await expect(reloadRow).toHaveText(/Trigger Failed/);
 
-    const resultTag = dialog.locator('.status-row .module-op-status-badge').nth(1);
+    const resultTag = dialog.locator('.module-op-status-row .module-op-status-badge').nth(1);
     const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
     if (/FAILED/i.test(resultText)) {
       throw new Error(`expected successful operation before reload failure, got result=${resultText}`);

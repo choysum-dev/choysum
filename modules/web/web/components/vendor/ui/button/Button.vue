@@ -10,6 +10,8 @@ import { cn, type ClassValue } from '../../../../lib/utils';
 type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
 
+defineOptions({ inheritAttrs: false });
+
 const props = withDefaults(
   defineProps<{
     variant?: ButtonVariant;
@@ -63,6 +65,7 @@ const classes = computed(() =>
     :disabled="as === 'button' ? disabled : undefined"
     :aria-disabled="as !== 'button' && disabled ? true : undefined"
     :type="as === 'button' ? type : undefined"
+    v-bind="$attrs"
   >
     <slot />
   </component>

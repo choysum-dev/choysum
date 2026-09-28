@@ -224,7 +224,9 @@ SPDX-License-Identifier: Apache-2.0
               </div>
               <div class="flex flex-col gap-2">
                 <div class="text-sm font-semibold text-foreground">{{ _t('Execution Status') }}</div>
-                <div class="status-row flex flex-wrap items-center gap-2 text-xs text-foreground/80">
+                <div
+                  class="module-op-status-row status-row flex flex-wrap items-center gap-2 text-xs text-foreground/80"
+                >
                   <span class="font-semibold text-foreground">{{ _t('Status:') }}</span>
                   <span
                     class="module-op-status-badge rounded px-1.5 py-0.5 text-[11px] font-medium"
@@ -238,24 +240,30 @@ SPDX-License-Identifier: Apache-2.0
                     >{{ opStatus?.resultStatus || '—' }}</span
                   >
                 </div>
-                <div v-if="opStatus?.summary" class="status-row flex flex-wrap gap-2 text-xs">
+                <div v-if="opStatus?.summary" class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs">
                   <span class="font-semibold text-foreground">{{ _t('Summary:') }}</span>
                   <span class="value text-foreground/80">{{ formatSummary(opStatus?.summary) }}</span>
                 </div>
                 <div
                   v-if="opStatus?.failureKind && opStatus?.failureKind !== 'NONE'"
-                  class="status-row flex flex-wrap gap-2 text-xs"
+                  class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs"
                 >
                   <span class="font-semibold text-foreground">{{ _t('Failure Kind:') }}</span>
                   <span class="value text-foreground/80">{{ opStatus?.failureKind }}</span>
                 </div>
-                <div v-if="opStatus?.errorDomain || opStatus?.errorCode" class="status-row flex flex-wrap gap-2 text-xs">
+                <div
+                  v-if="opStatus?.errorDomain || opStatus?.errorCode"
+                  class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs"
+                >
                   <span class="font-semibold text-foreground">{{ _t('Error:') }}</span>
                   <span class="value text-foreground/80"
                     >{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span
                   >
                 </div>
-                <div v-if="opStatus?.ReloadTriggered" class="status-row flex flex-wrap gap-2 text-xs">
+                <div
+                  v-if="opStatus?.ReloadTriggered"
+                  class="module-op-detail-row status-row flex flex-wrap gap-2 text-xs"
+                >
                   <span class="font-semibold text-foreground">{{ _t('Reload:') }}</span>
                   <span class="value text-foreground/80">{{
                     opStatus?.ReloadFailed ? _t('Trigger Failed') : _t('Triggered')

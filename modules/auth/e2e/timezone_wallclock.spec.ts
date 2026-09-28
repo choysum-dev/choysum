@@ -22,7 +22,7 @@ async function waitForDatetimeCell(p: Page): Promise<string> {
 }
 
 async function setUserTimezoneViaPreferences(p: Page, iana: string) {
-  const userMenu = p.getByRole('button', { name: /User menu|用户菜单/i });
+  const userMenu = p.getByTestId('auth-user-menu-trigger');
   await expect(userMenu).toBeVisible({ timeout: 20_000 });
   await userMenu.click();
   await p.getByRole('menuitem', { name: /Settings|Profile|设置|个人资料/i }).first().click();
