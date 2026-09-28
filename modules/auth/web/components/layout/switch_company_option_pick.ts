@@ -16,7 +16,9 @@ export function pickAlternativeCompanyOptionValue(
   const cur = String(current || '').trim();
   const act = String(active || '').trim();
   const opts = values.map(v => String(v || '').trim()).filter(Boolean);
-  if (cur && cur !== act && opts.includes(cur)) {
+  // Only reuse the current draft when the JWT active company is known; an empty
+  // active (e.g. token read failed) would otherwise make the switch a no-op.
+  if (act && cur && cur !== act && opts.includes(cur)) {
     return cur;
   }
   return opts.find(v => v !== cur && v !== act) || '';

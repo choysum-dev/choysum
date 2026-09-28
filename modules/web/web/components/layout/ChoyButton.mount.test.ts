@@ -48,7 +48,7 @@ describe('ChoyButton mount', () => {
     }
   });
 
-  test('re-emits click from the nested button host', async () => {
+  test('handleClick re-emits click to parent listeners', async () => {
     let clicks = 0;
     const w = mountApp(ChoyButton as any, {
       props: { 'data-testid': 'click-forward' },
@@ -61,9 +61,10 @@ describe('ChoyButton mount', () => {
     });
     try {
       await flushPromises();
-      // FE-unit harness attaches Vue listeners; invoke via the mounted instance emit
-      // (same contract parent @click uses once the nested host re-emits).
-      w.root?.$.emit('click', new Event('click'));
+      // Cover handleClick itself (Codecov); parent @click receives the re-emitted event.
+      const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
+      expect(typeof handleClick).toBe('function');
+      handleClick?.(new Event('click'));
       await flushPromises();
       expect(clicks).toBe(1);
     } finally {

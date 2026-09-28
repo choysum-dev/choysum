@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useAttrs } from 'vue';
 import { cn, type ClassValue } from '../../../../lib/utils';
 
 type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
@@ -36,6 +36,13 @@ const emit = defineEmits(['click']);
 function handleClick(event: Event) {
   emit('click', event);
 }
+
+const attrs = useAttrs();
+
+/** Non-button hosts: set aria-disabled only when disabled so caller attrs are kept. */
+const nonButtonAttrs = computed(() =>
+  props.disabled ? { ...attrs, 'aria-disabled': true } : attrs,
+);
 
 const variantClass: Record<ButtonVariant, string> = {
   default: 'bg-primary text-background hover:opacity-90',
@@ -80,10 +87,9 @@ const classes = computed(() =>
   <component
     :is="as"
     v-else
-    v-bind="$attrs"
+    v-bind="nonButtonAttrs"
     data-slot="button"
     :class="classes"
-    :aria-disabled="disabled ? true : undefined"
     @click="handleClick"
   >
     <slot />

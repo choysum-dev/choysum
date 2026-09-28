@@ -807,7 +807,7 @@ func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T)
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-  if !strings.Contains(content, "ChoyLayout") {
+	if !strings.Contains(content, "ChoyLayout") {
 		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
 	}
 	if strings.Contains(content, "components: {\n    Xpath,") || strings.Contains(content, "components: { Xpath }") {

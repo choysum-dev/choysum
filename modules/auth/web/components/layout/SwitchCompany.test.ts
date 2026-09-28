@@ -17,9 +17,9 @@ test('pickAlternativeCompanyOptionValue: returns empty when no alternative exist
   expect(pickAlternativeCompanyOptionValue([], '', 'c1')).toBe('');
 });
 
-test('pickAlternativeCompanyOptionValue: prefers current over other candidates when already alternative', () => {
-  // Two options; JWT active moved to c1 while select still shows c2.
-  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c2', 'c1')).toBe('c2');
+test('pickAlternativeCompanyOptionValue: ignores current when the active company is unknown', () => {
+  // An empty active (JWT read failed) must not be treated as a valid alternative.
+  expect(pickAlternativeCompanyOptionValue(['c1', 'c2'], 'c1', '')).toBe('c2');
 });
 
 test('SwitchCompany draft guard: ignores JWT sync while panel is open', () => {

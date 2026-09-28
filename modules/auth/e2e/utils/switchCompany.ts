@@ -41,21 +41,20 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
  * Pick a non-selected company option in the open active-company native select.
  */
 async function pickOtherActiveCompanyOption(): Promise<void> {
+  const panelSelect = '[data-testid="company-switch-panel"] [data-testid="company-active-select"]';
   await expect(page.getByTestId('company-active-select')).toBeVisible({ timeout: 10_000 });
 
   // Companies load async after the panel opens; wait until a non-current option exists.
   await expect
     .poll(
       async () =>
-        page.evaluate(() => {
-          const select = document.querySelector(
-            '[data-testid="company-active-select"]'
-          ) as HTMLSelectElement | null;
+        page.evaluate((sel: string) => {
+          const select = document.querySelector(sel) as HTMLSelectElement | null;
           if (!select) return 0;
           return Array.from(select.options)
             .map(opt => String(opt.value || '').trim())
             .filter(Boolean).length;
-        }),
+        }, panelSelect),
       { timeout: 10_000 }
     )
     .toBeGreaterThanOrEqual(2);
@@ -64,10 +63,8 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   if (!activeCompanyId) {
     throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
   }
-  const selectState = await page.evaluate(() => {
-    const select = document.querySelector(
-      '[data-testid="company-active-select"]'
-    ) as HTMLSelectElement | null;
+  const selectState = await page.evaluate((sel: string) => {
+    const select = document.querySelector(sel) as HTMLSelectElement | null;
     if (!select) return { current: '', values: [] as string[] };
     return {
       current: String(select.value || '').trim(),
@@ -75,7 +72,7 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
         .map(opt => String(opt.value || '').trim())
         .filter(Boolean),
     };
-  });
+  }, panelSelect);
   const otherValue = pickAlternativeCompanyOptionValue(
     selectState.values,
     selectState.current,
@@ -83,29 +80,28 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   );
   expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');
 
-  const applied = await page.evaluate((other: string) => {
-    const select = document.querySelector(
-      '[data-testid="company-active-select"]'
-    ) as HTMLSelectElement | null;
-    if (!select) return '';
-    if (String(select.value || '').trim() !== other) {
-      select.value = other;
-      select.dispatchEvent(new Event('input', { bubbles: true }));
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    return select.value === other ? other : '';
-  }, otherValue);
+  const applied = await page.evaluate(
+    ({ sel, other }: { sel: string; other: string }) => {
+      const select = document.querySelector(sel) as HTMLSelectElement | null;
+      if (!select) return '';
+      if (String(select.value || '').trim() !== other) {
+        select.value = other;
+        select.dispatchEvent(new Event('input', { bubbles: true }));
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      return select.value === other ? other : '';
+    },
+    { sel: panelSelect, other: otherValue }
+  );
   expect(applied, 'company switch: failed to apply alternative company option').toBe(otherValue);
 
   await expect
     .poll(
       async () =>
-        page.evaluate(() => {
-          const select = document.querySelector(
-            '[data-testid="company-active-select"]'
-          ) as HTMLSelectElement | null;
+        page.evaluate((sel: string) => {
+          const select = document.querySelector(sel) as HTMLSelectElement | null;
           return String(select?.value || '').trim();
-        }),
+        }, panelSelect),
       { timeout: 5_000 }
     )
     .toBe(otherValue);
