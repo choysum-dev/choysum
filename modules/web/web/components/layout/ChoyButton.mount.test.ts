@@ -174,6 +174,46 @@ describe('Button host click guard', () => {
     }
   });
 
+  test('enabled blank-target host gets noopener when rel is absent', async () => {
+    const w = mountApp(Button as any, {
+      props: {
+        'data-testid': 'link-blank',
+        as: 'a',
+        href: 'https://example.com',
+        target: '_blank',
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const host = w.q('[data-testid="link-blank"]') as HTMLElement | null;
+      expect(host?.getAttribute('target')).toBe('_blank');
+      expect(host?.getAttribute('rel')).toBe('noopener noreferrer');
+    } finally {
+      w.unmount();
+    }
+  });
+
+  test('enabled blank-target host keeps an explicit rel', async () => {
+    const w = mountApp(Button as any, {
+      props: {
+        'data-testid': 'link-blank-rel',
+        as: 'a',
+        href: 'https://example.com',
+        target: '_blank',
+        rel: 'noopener',
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const host = w.q('[data-testid="link-blank-rel"]') as HTMLElement | null;
+      expect(host?.getAttribute('rel')).toBe('noopener');
+    } finally {
+      w.unmount();
+    }
+  });
+
   test('disabled non-button host prevents default without emitting', async () => {
     let clicks = 0;
     const w = mountApp(Button as any, {
@@ -184,6 +224,7 @@ describe('Button host click guard', () => {
         href: '#nav',
         to: '/elsewhere',
         target: '_blank',
+        rel: 'noopener',
       },
       on: {
         onClick: () => {
@@ -200,6 +241,7 @@ describe('Button host click guard', () => {
       expect(host?.getAttribute('href')).toBeNull();
       expect(host?.getAttribute('to')).toBeNull();
       expect(host?.getAttribute('target')).toBeNull();
+      expect(host?.getAttribute('rel')).toBeNull();
       expect(host?.classList.contains('pointer-events-none')).toBe(true);
       expect(host?.classList.contains('opacity-50')).toBe(true);
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;

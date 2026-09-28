@@ -70,14 +70,18 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   let activeCompanyId = '';
   const deadline = Date.now() + 5_000;
   while (!activeCompanyId && Date.now() < deadline) {
-    const first = await readActiveCompanyIdFromAuth();
-    if (first) {
-      await page.waitForTimeout(100);
-      const second = await readActiveCompanyIdFromAuth();
-      if (second && second === first) {
-        activeCompanyId = first;
+    try {
+      const first = await readActiveCompanyIdFromAuth();
+      if (first) {
+        await page.waitForTimeout(100);
+        const second = await readActiveCompanyIdFromAuth();
+        if (second && second === first) {
+          activeCompanyId = first;
+        }
+        continue;
       }
-      continue;
+    } catch {
+      // Transient evaluate/navigation failures must not abort the retry budget.
     }
     await page.waitForTimeout(100);
   }

@@ -25,5 +25,6 @@ export function reuseParentSetupState(result: unknown): Record<string, unknown> 
   if (proto !== null && proto !== Object.prototype) {
     return {};
   }
-  return result as Record<string, unknown>;
+  // Shallow copy so later mutation of the returned record cannot alias parent state.
+  return { ...(result as Record<string, unknown>) };
 }

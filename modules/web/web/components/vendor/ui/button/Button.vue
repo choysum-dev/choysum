@@ -48,15 +48,20 @@ function handleClick(event: Event) {
 
 const attrs = useAttrs();
 
-/** Disabled non-button hosts: drop navigation targets so no path (middle-click, new tab,
- *  or a component host's own click handler) can still navigate. */
+/** Non-button hosts: drop navigation targets when disabled; add noopener for _blank. */
 const nonButtonAttrs = computed(() => {
-  if (!props.disabled) return attrs;
   const rest: Record<string, unknown> = { ...attrs };
-  delete rest.href;
-  delete rest.to;
-  delete rest.target;
-  return { ...rest, 'aria-disabled': true, tabindex: -1 };
+  if (props.disabled) {
+    delete rest.href;
+    delete rest.to;
+    delete rest.target;
+    delete rest.rel;
+    return { ...rest, 'aria-disabled': true, tabindex: -1 };
+  }
+  if (rest.target === '_blank' && !rest.rel) {
+    rest.rel = 'noopener noreferrer';
+  }
+  return rest;
 });
 
 const variantClass: Record<ButtonVariant, string> = {

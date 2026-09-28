@@ -15,6 +15,14 @@ describe('reuseParentSetupState', () => {
     expect(reuseParentSetupState(nullProto)).toEqual({ showHeader: true });
   });
 
+  test('returns a shallow copy that does not alias the parent object', () => {
+    const parent = { showHeader: true };
+    const reused = reuseParentSetupState(parent);
+    reused.showHeader = false;
+    expect(parent.showHeader).toBe(true);
+    expect(reused).not.toBe(parent);
+  });
+
   test('drops render functions and non-objects', () => {
     expect(reuseParentSetupState(() => null)).toEqual({});
     expect(reuseParentSetupState(null)).toEqual({});
