@@ -9,6 +9,9 @@ describe('reuseParentSetupState', () => {
       showHeader: true,
       label: 'x',
     });
+    const nullProto: Record<string, unknown> = Object.create(null);
+    nullProto.showHeader = true;
+    expect(reuseParentSetupState(nullProto)).toEqual({ showHeader: true });
   });
 
   test('drops render functions and non-objects', () => {
@@ -17,5 +20,13 @@ describe('reuseParentSetupState', () => {
     expect(reuseParentSetupState(undefined)).toEqual({});
     expect(reuseParentSetupState('state')).toEqual({});
     expect(reuseParentSetupState([{ a: 1 }])).toEqual({});
+  });
+
+  test('drops non-plain objects such as Map and class instances', () => {
+    expect(reuseParentSetupState(new Map([['a', 1]]))).toEqual({});
+    class SetupBag {
+      showHeader = true;
+    }
+    expect(reuseParentSetupState(new SetupBag())).toEqual({});
   });
 });

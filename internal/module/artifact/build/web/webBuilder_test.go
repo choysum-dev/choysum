@@ -752,8 +752,8 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyWebShell(t *testing.T)
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "ChoyLayout") {
-		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
+	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
 	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
@@ -807,8 +807,8 @@ func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T)
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "ChoyLayout") {
-		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
+	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
 	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
@@ -863,8 +863,8 @@ func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "ChoyLayout") {
-		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
+	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
 	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
@@ -926,8 +926,8 @@ func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testin
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !strings.Contains(content, "ChoyLayout") {
-		t.Fatalf("expected merged script to include ChoyLayout from parent template, got:\n%s", content)
+	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
 	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
@@ -1004,8 +1004,8 @@ func TestUpdateComponent_MergesAuthChoyWebShellIntoWeb(t *testing.T) {
 	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
 		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
 	}
-	if !strings.Contains(childParsed.Content, "ChoyLayout") {
-		t.Fatalf("expected merged content to include ChoyLayout from parent, got:\n%s", childParsed.Content)
+	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(childParsed.Content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", childParsed.Content)
 	}
 }
 
@@ -1082,8 +1082,8 @@ func TestPrebuildUpdatePrebuildResult_RealAuthChoyWebShellMerges(t *testing.T) {
 	if !strings.Contains(childResult.Content, `data-anchor="choy.shell.header-actions"`) {
 		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childResult.Content)
 	}
-	if !strings.Contains(childResult.Content, "ChoyLayout") {
-		t.Fatalf("expected merged content to include ChoyLayout from parent, got:\n%s", childResult.Content)
+	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(childResult.Content) {
+		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", childResult.Content)
 	}
 	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(childResult.Content) {
 		t.Fatalf("expected xpath placeholder to be replaced in merged content, got:\n%s", childResult.Content)
