@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Initializes the web module module.
+ * Web module install hook and public `@/web` barrel (Choy* UI kit).
+ * Does not re-export the web app instance (avoids domain ↔ app cycles).
  */
 export function init() {}
+
+export * from './web/kit';

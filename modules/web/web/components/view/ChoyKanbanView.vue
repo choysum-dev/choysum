@@ -72,6 +72,29 @@ SPDX-License-Identifier: Apache-2.0
           >
             <slot name="card-empty" :lane="lane">No cards</slot>
           </div>
+          <div
+            v-if="$slots['lane-footer'] || choyKanbanLaneRemain(lane) > 0"
+            class="choy-kanban-view__lane-footer pt-1"
+          >
+            <slot
+              name="lane-footer"
+              :lane="lane"
+              :remain="choyKanbanLaneRemain(lane)"
+              :load-more="() => onLaneLoadMore(lane)"
+            >
+              <ChoyButton
+                v-if="choyKanbanLaneRemain(lane) > 0"
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="w-full"
+                data-testid="choy-kanban-load-more"
+                @click="onLaneLoadMore(lane)"
+              >
+                {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane)) }}
+              </ChoyButton>
+            </slot>
+          </div>
         </div>
       </div>
       <div
@@ -90,14 +113,18 @@ import type { ClassValue } from '../../lib/utils';
 import ChoyButton from '../layout/ChoyButton.vue';
 import {
   applyChoyKanbanMove,
+  choyKanbanLaneRemain,
+  formatChoyKanbanLoadMoreLabel,
   type ChoyKanbanCard,
   type ChoyKanbanLane,
+  type ChoyKanbanLoadMore,
   type ChoyKanbanMove,
 } from './kanbanViewHelpers';
 
 /**
  * Kanban board chrome: lanes + cards with HTML5 drag-and-drop.
  * Host owns lane state via v-model:lanes (no page store).
+ * When a lane sets `remain > 0`, default load-more chrome emits `lane-load-more`.
  */
 const props = withDefaults(
   defineProps<{
@@ -120,6 +147,7 @@ const lanes = defineModel<ChoyKanbanLane[]>('lanes', { default: () => [] });
 const emit = defineEmits<{
   'card-click': [card: ChoyKanbanCard];
   'card-move': [move: ChoyKanbanMove];
+  'lane-load-more': [payload: ChoyKanbanLoadMore];
   create: [];
 }>();
 
@@ -179,5 +207,10 @@ function dropOnLane(toLaneKey: string, toIndex: number, event: DragEvent): void 
 
 function onCreate(): void {
   emit('create');
+}
+
+function onLaneLoadMore(lane: ChoyKanbanLane): void {
+  if (choyKanbanLaneRemain(lane) <= 0) return;
+  emit('lane-load-more', { laneKey: lane.key });
 }
 </script>

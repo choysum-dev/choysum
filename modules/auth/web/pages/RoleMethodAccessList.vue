@@ -4,25 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage
+  <ChoyPage
     :title="pageTitle"
     :store="methodAccessStore"
-    action-import
-    action-export
-    :action-import-upload-hint="_t('Upload a UTF-8 CSV with columns LogicalModelName, Mode, Source.')"
+    :action-import="true"
+    :action-export="true"
   >
     <RoleMethodAccessListView selection-mode="multiple" />
-  </OPage>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import OPage from '@/web/web/components/page/OPage.vue';
 import RoleMethodAccessListView from '@/auth/web/views/RoleMethodAccessListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type RoleMethodAccess from '@/auth/service/models/role_method_access';
+import { ChoyPage } from '@/web';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/RoleMethodAccessList' });
 const pageTitle = _t('Method Access List');

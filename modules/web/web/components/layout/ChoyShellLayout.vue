@@ -11,9 +11,11 @@ SPDX-License-Identifier: Apache-2.0
     class="min-h-screen"
   >
     <template v-if="showHeader" #header>
-      <div class="flex h-12 items-center justify-between gap-3 px-4 text-sm">
+      <div class="flex h-12 items-center gap-3 px-4 text-sm">
         <span class="font-semibold tracking-tight">Choysum</span>
-        <slot name="header-actions" />
+        <div data-anchor="choy.shell.header-actions" class="ms-auto flex items-center gap-1">
+          <slot name="header-actions" />
+        </div>
       </div>
     </template>
     <template v-if="showSidebar && $slots.aside" #aside>

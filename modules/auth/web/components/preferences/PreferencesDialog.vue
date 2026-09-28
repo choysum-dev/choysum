@@ -4,51 +4,67 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="_t('Edit Profile')"
-    width="520px"
-    append-to-body
-    destroy-on-close
-    class="o-preferences-dialog"
-    @closed="emit('closed')"
-  >
-    <div v-if="currentUser" class="o-preferences-dialog__header">
-      <div class="o-preferences-dialog__identity">
-        <div class="o-preferences-dialog__name">{{ displayName }}</div>
-        <div class="o-preferences-dialog__email">{{ currentUser.Email || '' }}</div>
+  <Teleport to="body">
+    <div
+      v-if="visible"
+      class="o-preferences-dialog fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+      role="presentation"
+      @click.self="visible = false"
+    >
+      <div
+        ref="dialogRef"
+        tabindex="-1"
+        class="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-lg outline-none"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        @click.stop
+        @keydown="onDialogKeydown"
+      >
+        <h2 :id="titleId" class="text-lg font-semibold">{{ _t('Edit Profile') }}</h2>
+
+        <div v-if="currentUser" class="o-preferences-dialog__header mb-4 mt-3">
+          <div class="o-preferences-dialog__identity">
+            <div class="o-preferences-dialog__name font-semibold text-foreground">{{ displayName }}</div>
+            <div class="o-preferences-dialog__email text-sm text-foreground/70">{{ currentUser.Email || '' }}</div>
+          </div>
+        </div>
+
+        <form class="o-preferences-dialog__form flex flex-col gap-4" @submit.prevent="handleSave">
+          <label class="flex flex-col gap-1 text-sm">
+            <span class="font-medium">{{ _t('Language') }}</span>
+            <select v-model="languageCode" class="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+              <option v-for="opt in languageOptions" :key="opt.Code" :value="opt.Code">{{ opt.Name }}</option>
+            </select>
+            <div v-if="languageFromSession" class="o-preferences-dialog__hint text-xs text-foreground/60">
+              {{ _t('Using current session language') }}
+            </div>
+          </label>
+
+          <label class="flex flex-col gap-1 text-sm">
+            <span class="font-medium">{{ _t('Timezone') }}</span>
+            <select v-model="timezone" class="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+              <option value="">{{ _t('Select timezone') }}</option>
+              <option v-for="tz in timezoneOptions" :key="tz.value" :value="tz.value">{{ tz.label }}</option>
+            </select>
+            <div v-if="timezoneFromBrowser" class="o-preferences-dialog__hint text-xs text-foreground/60">
+              {{ _t('Suggested from your browser') }}
+            </div>
+          </label>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+            <ChoyButton type="submit" :disabled="saving">{{ _t('Update preferences') }}</ChoyButton>
+          </div>
+        </form>
       </div>
     </div>
-
-    <el-form label-position="top" class="o-preferences-dialog__form" @submit.prevent>
-      <el-form-item :label="_t('Language')">
-        <el-select v-model="languageCode" filterable style="width: 100%">
-          <el-option v-for="opt in languageOptions" :key="opt.Code" :label="opt.Name" :value="opt.Code" />
-        </el-select>
-        <div v-if="languageFromSession" class="o-preferences-dialog__hint">
-          {{ _t('Using current session language') }}
-        </div>
-      </el-form-item>
-      <el-form-item :label="_t('Timezone')">
-        <el-select v-model="timezone" filterable clearable style="width: 100%" :placeholder="_t('Select timezone')">
-          <el-option v-for="tz in timezoneOptions" :key="tz.value" :label="tz.label" :value="tz.value" />
-        </el-select>
-        <div v-if="timezoneFromBrowser" class="o-preferences-dialog__hint">
-          {{ _t('Suggested from your browser') }}
-        </div>
-      </el-form-item>
-    </el-form>
-
-    <template #footer>
-      <el-button @click="visible = false">{{ _t('Cancel') }}</el-button>
-      <el-button type="primary" :loading="saving" native-type="button" @click="handleSave">{{ _t('Update preferences') }}</el-button>
-    </template>
-  </el-dialog>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { ElButton, ElDialog, ElForm, ElFormItem, ElMessage, ElOption, ElSelect } from 'element-plus';
+import { computed, nextTick, onMounted, ref, useId, watch } from 'vue';
+import { ChoyButton, ChoyMessage } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { useI18nStore, langToUiKey, afterLocaleChange, softLocaleRemount } from '@/web/web/stores/i18nStore';
@@ -58,23 +74,41 @@ import {
   resolvePreferenceLanguage,
   resolvePreferenceTimezone,
 } from './preferences_defaults';
+import { restoreDialogFocus } from './dialog_focus_restore';
+import { trapDialogTabKey } from './dialog_focus_trap';
 import { resolveLanguageCodeFromId } from './preferences_language';
 
-defineOptions({ name: 'OPreferencesDialog' });
+defineOptions({ name: 'PreferencesDialog' });
 
 const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [boolean]; closed: [] }>();
 
-const { _t } = createTranslate('auth', { scope: 'web/components/preferences/OPreferencesDialog' });
+const { _t } = createTranslate('auth', { scope: 'web/components/preferences/PreferencesDialog' });
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
 const userStore = createStoreByModel('auth.User');
 const languageStore = createStoreByModel('base.Language');
+const titleId = useId();
+const dialogRef = ref<HTMLElement | null>(null);
+let lastFocused: HTMLElement | null = null;
 
 const visible = computed({
   get: () => props.modelValue,
-  set: v => emit('update:modelValue', v),
+  set: v => {
+    emit('update:modelValue', v);
+    if (!v) emit('closed');
+  },
 });
+
+/** Escape dismisses; Tab stays inside the dialog until it closes. */
+function onDialogKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    visible.value = false;
+    return;
+  }
+  const root = dialogRef.value as HTMLElement | null;
+  if (root) trapDialogTabKey(event, root);
+}
 
 const currentUser = computed(() => authStore.currentUser as any);
 const displayName = computed(() => {
@@ -85,7 +119,7 @@ const displayName = computed(() => {
 
 const languageCode = ref('');
 const savedLanguageCode = ref('');
-const timezone = ref<string | null>(null);
+const timezone = ref('');
 const languageFromSession = ref(false);
 const timezoneFromBrowser = ref(false);
 const languageOptions = ref<Array<{ Code: string; Name: string }>>([]);
@@ -111,10 +145,12 @@ async function loadTimezoneOptions() {
     const fields = await (userStore as any).FieldsGet?.(['Timezone']);
     const selection = fields?.Timezone?.selection || fields?.fields?.Timezone?.selection;
     if (Array.isArray(selection)) {
-      timezoneOptions.value = selection.map((item: any) => ({
-        value: String(item.value ?? item.Value ?? ''),
-        label: String(item.label ?? item.Label ?? item.value ?? ''),
-      })).filter((item: { value: string }) => !!item.value);
+      timezoneOptions.value = selection
+        .map((item: any) => ({
+          value: String(item.value ?? item.Value ?? ''),
+          label: String(item.label ?? item.Label ?? item.value ?? ''),
+        }))
+        .filter((item: { value: string }) => !!item.value);
       return;
     }
   } catch {
@@ -136,16 +172,14 @@ async function syncLanguageFromUser() {
 function applyTimezoneFromUserOrBrowser() {
   const allowed = timezoneOptions.value.map(opt => opt.value);
   const resolved = resolvePreferenceTimezone(currentUser.value?.Timezone, detectBrowserTimezone(), allowed);
-  timezone.value = resolved.timezone;
+  timezone.value = resolved.timezone ?? '';
   timezoneFromBrowser.value = resolved.fromBrowser;
-  // Ensure a suggested IANA id remains selectable even if FieldsGet returned nothing.
   if (resolved.fromBrowser && resolved.timezone && !allowed.includes(resolved.timezone)) {
     timezoneOptions.value = [{ value: resolved.timezone, label: resolved.timezone }, ...timezoneOptions.value];
   }
 }
 
 async function openAndLoad() {
-  // Prefer a fresh Browse so User.Id / Language / Timezone are present for save.
   if (authStore.isAuthenticated) {
     try {
       await authStore.loadUser(true);
@@ -161,8 +195,17 @@ async function openAndLoad() {
 watch(
   () => props.modelValue,
   async open => {
-    if (!open) return;
-    await openAndLoad();
+    if (open) {
+      lastFocused = document.activeElement as HTMLElement | null;
+      // Focus the dialog before network work so keyboard users are not stuck
+      // on the trigger behind the backdrop while preferences load.
+      await nextTick();
+      dialogRef.value?.focus();
+      await openAndLoad();
+      return;
+    }
+    restoreDialogFocus(lastFocused);
+    lastFocused = null;
   }
 );
 
@@ -182,10 +225,12 @@ watch(timezone, value => {
   }
 });
 
-onMounted(() => {
-  if (props.modelValue) {
-    void openAndLoad();
-  }
+onMounted(async () => {
+  if (!props.modelValue) return;
+  lastFocused = document.activeElement as HTMLElement | null;
+  await nextTick();
+  dialogRef.value?.focus();
+  await openAndLoad();
 });
 
 function resolveUserId(): string {
@@ -195,7 +240,7 @@ function resolveUserId(): string {
 async function handleSave() {
   let userId = resolveUserId();
   if (!userId) {
-    ElMessage.error(_t('Cannot update preferences: missing user id'));
+    ChoyMessage.error(_t('Cannot update preferences: missing user id'));
     return;
   }
   saving.value = true;
@@ -236,32 +281,12 @@ async function handleSave() {
     i18nStore.setDisplayOverrides((authStore.currentUser as any)?.Preferences?.display ?? null);
     await authStore.refreshToken(true);
     await afterLocaleChange({ remount: softLocaleRemount });
-    ElMessage.success(_t('Preferences updated'));
+    ChoyMessage.success(_t('Preferences updated'));
     visible.value = false;
   } catch (err: any) {
-    ElMessage.error(String(err?.message || err || _t('Failed to update preferences')));
+    ChoyMessage.error(String(err?.message || err || _t('Failed to update preferences')));
   } finally {
     saving.value = false;
   }
 }
 </script>
-
-<style scoped>
-.o-preferences-dialog__header {
-  margin-bottom: 16px;
-}
-.o-preferences-dialog__name {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-.o-preferences-dialog__email {
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-}
-.o-preferences-dialog__hint {
-  margin-top: 6px;
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-  line-height: 1.4;
-}
-</style>

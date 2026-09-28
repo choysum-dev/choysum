@@ -14,6 +14,10 @@ export type ChoySearchFilter = {
 export type ChoySearchQuery = {
   keyword: string;
   filters: ChoySearchFilter[];
+  /** Present when store-bound OSearchView emits the full query payload. */
+  appliedFilters?: unknown[];
+  /** Present when store-bound OSearchView emits group-by specs. */
+  appliedGroups?: unknown[];
 };
 
 /** Trims keyword text; null/undefined become ''. */
@@ -76,11 +80,21 @@ export function flattenChoySearchFilters(
 export function choySearchQueryFromPayload(payload: {
   keyword?: string | null;
   appliedFilters?: ReadonlyArray<FilterTreeNode> | FilterTreeNode | null;
+  appliedGroups?: ReadonlyArray<unknown> | null;
 }): ChoySearchQuery {
-  return buildChoySearchQuery(
+  const query = buildChoySearchQuery(
     payload?.keyword,
     flattenChoySearchFilters(payload?.appliedFilters),
   );
+  if (Array.isArray(payload?.appliedFilters)) {
+    query.appliedFilters = [...payload.appliedFilters];
+  } else if (payload?.appliedFilters && typeof payload.appliedFilters === 'object') {
+    query.appliedFilters = [payload.appliedFilters];
+  }
+  if (Array.isArray(payload?.appliedGroups)) {
+    query.appliedGroups = [...payload.appliedGroups];
+  }
+  return query;
 }
 
 /**

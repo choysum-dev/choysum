@@ -5,13 +5,58 @@ import { mount, flushPromises } from '@choysum/test-utils';
 import Login from './Login.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('Login.vue mounts under choysumMount and runs script setup', async () => {
+async function mountLogin(opts?: {
+  path?: string;
+  query?: Record<string, string>;
+}) {
+  const replaces: unknown[] = [];
   const wrapper = mount(Login as any, {
-    global: buildPageMountGlobal({ route: { path: '/login', query: {} } }),
+    global: buildPageMountGlobal({
+      route: { path: opts?.path || '/login', query: opts?.query || {} },
+      router: {
+        replace: (to: unknown) => {
+          replaces.push(to);
+          return Promise.resolve(to);
+        },
+      },
+    }),
   });
   await flushPromises();
-  // Stub OPage + Element Plus still render register affordance from Login script.
-  expect(wrapper.text().includes('User Login') || wrapper.find('.login-card').exists() || wrapper.element != null).toBe(true);
-  expect(wrapper.find('[data-testid="fe-stub-opage"]').exists() || wrapper.find('[data-testid="fe-stub-child-view"]').exists()).toBe(true);
+  return { wrapper, replaces };
+}
+
+test('Login.vue mounts under choysumMount and runs script setup', async () => {
+  const { wrapper } = await mountLogin();
+  expect(wrapper.find('.login-username').exists()).toBe(true);
+  expect(wrapper.find('.login-password').exists()).toBe(true);
+  wrapper.unmount();
+});
+
+test('Login.vue: empty submit keeps the form and shows field errors', async () => {
+  const { wrapper } = await mountLogin();
+  const form = wrapper.find('form');
+  expect(form.exists()).toBe(true);
+  await form.trigger('submit');
+  await flushPromises();
+  expect(wrapper.text().includes('Enter username') || wrapper.find('.text-destructive').exists()).toBe(true);
+  wrapper.unmount();
+});
+
+test('Login.vue: successful submit redirects via query.redirect', async () => {
+  const { wrapper, replaces } = await mountLogin({ query: { redirect: '/auth/tokens' } });
+  const user = wrapper.find('.login-username');
+  const pass = wrapper.find('.login-password');
+  expect(user.exists()).toBe(true);
+  expect(pass.exists()).toBe(true);
+  (user.element as HTMLInputElement).value = 'admin';
+  await user.trigger('input');
+  (pass.element as HTMLInputElement).value = 'secret';
+  await pass.trigger('input');
+  await wrapper.find('form').trigger('submit');
+  await flushPromises();
+  // Auth stub marks authenticated: success must clear errors and navigate.
+  expect(wrapper.find('.login-error').exists()).toBe(false);
+  expect(wrapper.find('.text-destructive').exists()).toBe(false);
+  expect(replaces).toEqual(['/auth/tokens']);
   wrapper.unmount();
 });

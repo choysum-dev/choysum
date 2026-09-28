@@ -201,7 +201,7 @@ msgctxt "web/components/field/OBigintField"
 msgid "Must not be less than %s"
 msgstr "不得小于 %s"
 
-#: web/components/field/OBinaryField.vue:71
+#: web/components/field/OBinaryField.vue:72
 msgctxt "web/components/field/OBinaryField"
 msgid "Drop file here or click to upload"
 msgstr "拖放文件到此处，或点击上传"
@@ -211,12 +211,12 @@ msgctxt "web/components/field/OBinaryField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/OBinaryField.vue:77
+#: web/components/field/OBinaryField.vue:78
 msgctxt "web/components/field/OBinaryField"
 msgid "Replace file"
 msgstr "替换文件"
 
-#: web/components/field/OBinaryField.vue:70
+#: web/components/field/OBinaryField.vue:71
 msgctxt "web/components/field/OBinaryField"
 msgid "Upload file"
 msgstr "上传文件"
@@ -386,7 +386,7 @@ msgctxt "web/components/field/OHtmlField"
 msgid "URL"
 msgstr "URL"
 
-#: web/components/field/OImageField.vue:87
+#: web/components/field/OImageField.vue:88
 msgctxt "web/components/field/OImageField"
 msgid "Drop image here or click to upload"
 msgstr "拖放图片到此处，或点击上传"
@@ -411,12 +411,12 @@ msgctxt "web/components/field/OImageField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/OImageField.vue:93
+#: web/components/field/OImageField.vue:94
 msgctxt "web/components/field/OImageField"
 msgid "Replace image"
 msgstr "替换图片"
 
-#: web/components/field/OImageField.vue:86
+#: web/components/field/OImageField.vue:87
 msgctxt "web/components/field/OImageField"
 msgid "Upload image"
 msgstr "上传图片"
@@ -586,7 +586,7 @@ msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr "searchList 未配置，无法打开选择器"
 
-#: web/components/field/OManyToManyRefTreeField.vue:96
+#: web/components/field/OManyToManyRefTreeField.vue:97
 msgctxt "web/components/field/OManyToManyRefTreeField"
 msgid "No data"
 msgstr "暂无数据"
@@ -641,7 +641,7 @@ msgctxt "web/components/field/OManyToManyTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr "searchList 未配置，无法打开选择器"
 
-#: web/components/field/OManyToManyTreeField.vue:96
+#: web/components/field/OManyToManyTreeField.vue:97
 msgctxt "web/components/field/OManyToManyTreeField"
 msgid "No data"
 msgstr "暂无数据"
@@ -1021,7 +1021,7 @@ msgctxt "web/components/layout/ONotificationBell"
 msgid "Mark all read"
 msgstr "全部标为已读"
 
-#: web/components/layout/ONotificationBell.vue:68
+#: web/components/layout/ONotificationBell.vue:71
 msgctxt "web/components/layout/ONotificationBell"
 msgid "New notification"
 msgstr "新通知"
@@ -1036,7 +1036,7 @@ msgctxt "web/components/layout/ONotificationBell"
 msgid "Notifications"
 msgstr "通知"
 
-#: web/components/layout/ONotificationBell.vue:66
+#: web/components/layout/ONotificationBell.vue:69
 msgctxt "web/components/layout/ONotificationBell"
 msgid "Update on %s (%s)"
 msgstr "%s (%s) 有更新"
@@ -1051,7 +1051,7 @@ msgctxt "web/components/page/OPage"
 msgid "Page loading"
 msgstr "页面加载中"
 
-#: web/components/page/OPageIoMenu.vue:48
+#: web/components/page/OPageIoMenu.vue:49
 msgctxt "web/components/page/OPageIoMenu"
 msgid "Import and export"
 msgstr "导入与导出"
@@ -1366,22 +1366,22 @@ msgctxt "web/components/view/OPagination"
 msgid "of %s"
 msgstr "共 %s 条"
 
-#: web/components/view/OSearchView.vue:33
+#: web/components/view/OSearchView.vue:36
 msgctxt "web/components/view/OSearchView"
 msgid "Search..."
 msgstr "搜索…"
 
-#: web/components/view/search/OSearch.vue:423
+#: web/components/view/search/OSearch.vue:427
 msgctxt "web/components/view/search/OSearch"
 msgid "Add at least one complete condition before confirming"
 msgstr "确认前请至少添加一条完整条件"
 
-#: web/components/view/search/OSearch.vue:111 web/components/view/search/OSearch.vue:208
+#: web/components/view/search/OSearch.vue:111 web/components/view/search/OSearch.vue:212
 msgctxt "web/components/view/search/OSearch"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/view/search/OSearch.vue:203
+#: web/components/view/search/OSearch.vue:207
 msgctxt "web/components/view/search/OSearch"
 msgid "Confirm delete"
 msgstr "确认删除"
@@ -1396,17 +1396,17 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Custom group by"
 msgstr "自定义分组"
 
-#: web/components/view/search/OSearch.vue:76
+#: web/components/view/search/OSearch.vue:80
 msgctxt "web/components/view/search/OSearch"
 msgid "Day"
 msgstr "日"
 
-#: web/components/view/search/OSearch.vue:207
+#: web/components/view/search/OSearch.vue:211
 msgctxt "web/components/view/search/OSearch"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/view/search/OSearch.vue:202
+#: web/components/view/search/OSearch.vue:206
 msgctxt "web/components/view/search/OSearch"
 msgid "Delete favorite \"%s\"? This cannot be undone."
 msgstr "删除收藏「%s」？此操作无法撤销。"
@@ -1416,7 +1416,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Delete favorite %s"
 msgstr "删除收藏 %s"
 
-#: web/components/view/search/OSearch.vue:188
+#: web/components/view/search/OSearch.vue:192
 msgctxt "web/components/view/search/OSearch"
 msgid "Edit favorite"
 msgstr "编辑收藏"
@@ -1426,12 +1426,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Edit favorite %s"
 msgstr "编辑收藏 %s"
 
-#: web/components/view/search/OSearch.vue:111
+#: web/components/view/search/OSearch.vue:115
 msgctxt "web/components/view/search/OSearch"
 msgid "Edit filter"
 msgstr "编辑过滤器"
 
-#: web/components/view/search/OSearch.vue:251
+#: web/components/view/search/OSearch.vue:255
 msgctxt "web/components/view/search/OSearch"
 msgid "Enter a favorite name"
 msgstr "请输入收藏名称"
@@ -1441,7 +1441,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Failed to load favorites"
 msgstr "加载收藏失败"
 
-#: web/components/view/search/OSearch.vue:218
+#: web/components/view/search/OSearch.vue:222
 msgctxt "web/components/view/search/OSearch"
 msgid "Favorite deleted"
 msgstr "收藏已删除"
@@ -1451,12 +1451,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Favorite name"
 msgstr "收藏名称"
 
-#: web/components/view/search/OSearch.vue:270
+#: web/components/view/search/OSearch.vue:274
 msgctxt "web/components/view/search/OSearch"
 msgid "Favorite saved"
 msgstr "收藏已保存"
 
-#: web/components/view/search/OSearch.vue:263
+#: web/components/view/search/OSearch.vue:267
 msgctxt "web/components/view/search/OSearch"
 msgid "Favorite updated"
 msgstr "收藏已更新"
@@ -1481,7 +1481,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Group: %s"
 msgstr "分组：%s"
 
-#: web/components/view/search/OSearch.vue:74
+#: web/components/view/search/OSearch.vue:78
 msgctxt "web/components/view/search/OSearch"
 msgid "Month"
 msgstr "月"
@@ -1491,7 +1491,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/view/search/OSearch.vue:111
+#: web/components/view/search/OSearch.vue:115
 msgctxt "web/components/view/search/OSearch"
 msgid "New filter"
 msgstr "新建过滤器"
@@ -1511,7 +1511,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Open search menu"
 msgstr "打开搜索菜单"
 
-#: web/components/view/search/OSearch.vue:73
+#: web/components/view/search/OSearch.vue:77
 msgctxt "web/components/view/search/OSearch"
 msgid "Quarter"
 msgstr "季度"
@@ -1531,7 +1531,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/search/OSearch.vue:188
+#: web/components/view/search/OSearch.vue:192
 msgctxt "web/components/view/search/OSearch"
 msgid "Save current filters"
 msgstr "保存当前筛选"
@@ -1546,7 +1546,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Search"
 msgstr "搜索"
 
-#: web/components/view/search/OSearch.vue:138
+#: web/components/view/search/OSearch.vue:142
 msgctxt "web/components/view/search/OSearch"
 msgid "Search..."
 msgstr "搜索…"
@@ -1571,12 +1571,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Use by default"
 msgstr "设为默认"
 
-#: web/components/view/search/OSearch.vue:75
+#: web/components/view/search/OSearch.vue:79
 msgctxt "web/components/view/search/OSearch"
 msgid "Week"
 msgstr "周"
 
-#: web/components/view/search/OSearch.vue:72
+#: web/components/view/search/OSearch.vue:76
 msgctxt "web/components/view/search/OSearch"
 msgid "Year"
 msgstr "年"
@@ -1726,32 +1726,32 @@ msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr "未配置"
 
-#: web/composables/useListInlineEdit.ts:97
+#: web/composables/useListInlineEdit.ts:105
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/composables/useListInlineEdit.ts:96
+#: web/composables/useListInlineEdit.ts:104
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "Save"
 msgstr "保存"
 
-#: web/composables/useListInlineEdit.ts:92
+#: web/composables/useListInlineEdit.ts:100
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "Unsaved changes"
 msgstr "未保存的更改"
 
-#: web/composables/useListInlineEdit.ts:91
+#: web/composables/useListInlineEdit.ts:99
 msgctxt "web/composables/useListInlineEdit@promptDirtySwitch"
 msgid "You have unsaved changes on the current row. Save before switching?"
 msgstr "当前行有未保存的更改。切换前是否保存？"
 
-#: web/composables/useListInlineEdit.ts:142 web/composables/useListInlineEdit.ts:175
+#: web/composables/useListInlineEdit.ts:150 web/composables/useListInlineEdit.ts:183
 msgctxt "web/composables/useListInlineEdit@save"
 msgid "Failed to save row"
 msgstr "保存行失败"
 
-#: web/composables/useListInlineEdit.ts:166
+#: web/composables/useListInlineEdit.ts:174
 msgctxt "web/composables/useListInlineEdit@save"
 msgid "Row saved"
 msgstr "行已保存"
@@ -1981,85 +1981,130 @@ msgctxt "web/menu/menus"
 msgid "Home"
 msgstr "首页"
 
-#: web/pages/ErrorView.vue:97
+#: web/pages/ErrorView.vue:69
 msgctxt "web/pages/ErrorView"
 msgid "Access denied"
 msgstr "权限不足"
 
-#: web/pages/ErrorView.vue:110
+#: web/pages/ErrorView.vue:80
 msgctxt "web/pages/ErrorView"
 msgid "An internal error occurred. Try again later or contact support."
 msgstr "系统发生了内部错误，请稍后重试或联系技术支持。"
 
-#: web/pages/ErrorView.vue:112 web/pages/ErrorView.vue:125 web/pages/ErrorView.vue:86
+#: web/pages/ErrorView.vue:63 web/pages/ErrorView.vue:83 web/pages/ErrorView.vue:94
 msgctxt "web/pages/ErrorView"
 msgid "Back to home"
 msgstr "返回首页"
 
-#: web/pages/ErrorView.vue:123
+#: web/pages/ErrorView.vue:92
 msgctxt "web/pages/ErrorView"
 msgid "Check that the URL is correct, or the page may have been moved or deleted."
 msgstr "请检查 URL 是否正确，或者该页面可能已被移动或删除。"
 
-#: web/pages/ErrorView.vue:101
+#: web/pages/ErrorView.vue:71
 msgctxt "web/pages/ErrorView"
 msgid "Confirm you have access to this resource, or contact an administrator."
 msgstr "请确认您拥有访问此资源的权限，或联系系统管理员获取帮助。"
 
-#: web/pages/ErrorView.vue:94
+#: web/pages/ErrorView.vue:67
 msgctxt "web/pages/ErrorView"
 msgid "Contact administrator"
 msgstr "联系管理员"
 
-#: web/pages/ErrorView.vue:126 web/pages/ErrorView.vue:90
+#: web/pages/ErrorView.vue:65 web/pages/ErrorView.vue:95
 msgctxt "web/pages/ErrorView"
 msgid "Go back"
 msgstr "返回上一页"
 
-#: web/pages/ErrorView.vue:119
+#: web/pages/ErrorView.vue:90
 msgctxt "web/pages/ErrorView"
 msgid "Page not found"
 msgstr "页面未找到"
 
-#: web/pages/ErrorView.vue:114
+#: web/pages/ErrorView.vue:85
 msgctxt "web/pages/ErrorView"
 msgid "Report a problem"
 msgstr "报告问题"
 
-#: web/pages/ErrorView.vue:113
+#: web/pages/ErrorView.vue:84
 msgctxt "web/pages/ErrorView"
 msgid "Retry"
 msgstr "重试"
 
-#: web/pages/ErrorView.vue:106
+#: web/pages/ErrorView.vue:77
 msgctxt "web/pages/ErrorView"
 msgid "Server error"
 msgstr "服务器错误"
 
-#: web/pages/ErrorView.vue:120
+#: web/pages/ErrorView.vue:91
 msgctxt "web/pages/ErrorView"
 msgid "The page you requested does not exist"
 msgstr "您访问的页面不存在"
 
-#: web/pages/ErrorView.vue:107
+#: web/pages/ErrorView.vue:78
 msgctxt "web/pages/ErrorView"
 msgid "The server encountered an error"
 msgstr "服务器遇到了一个错误"
 
-#: web/pages/ErrorView.vue:82
+#: web/pages/ErrorView.vue:61
 msgctxt "web/pages/ErrorView"
 msgid "You are missing the required permission"
 msgstr "您缺少所需访问权限"
 
-#: web/pages/ErrorView.vue:80
+#: web/pages/ErrorView.vue:59
 msgctxt "web/pages/ErrorView"
 msgid "You are missing the required role"
 msgstr "您缺少所需角色权限"
 
-#: web/pages/ErrorView.vue:78
+#: web/pages/ErrorView.vue:57
 msgctxt "web/pages/ErrorView"
 msgid "You do not have permission to access this page"
 msgstr "您没有权限访问此页面"
+
+#: web/pages/HomeView.vue:12
+msgctxt "web/pages/HomeView"
+msgid "Choysum web shell is running on the Choy UI kit."
+msgstr "Choysum Web Shell 正运行在 Choy UI kit 上。"
+
+#: web/pages/HomeView.vue:22
+msgctxt "web/pages/HomeView"
+msgid "Density"
+msgstr "密度"
+
+#: web/pages/HomeView.vue:29
+msgctxt "web/pages/HomeView"
+msgid "Domain modules still migrate onto Choy* in later cutover slices."
+msgstr "领域模块将在后续切换切片中继续迁移到 Choy*。"
+
+#: web/pages/HomeView.vue:2
+msgctxt "web/pages/HomeView"
+msgid "Home"
+msgstr "首页"
+
+#: web/pages/HomeView.vue:27
+msgctxt "web/pages/HomeView"
+msgid "Next"
+msgstr "下一步"
+
+#: web/pages/HomeView.vue:5
+msgctxt "web/pages/HomeView"
+msgid "Refresh"
+msgstr "刷新"
+
+#: web/pages/HomeView.vue:15
+msgctxt "web/pages/HomeView"
+msgid "Status"
+msgstr "状态"
+
+#: web/pages/HomeView.vue:18
+msgctxt "web/pages/HomeView"
+msgid "Theme"
+msgstr "主题"
+
+#: web/pages/HomeView.vue:10
+msgctxt "web/pages/HomeView"
+msgid "Welcome"
+msgstr "欢迎"
 
 #: web/pages/TerminologyEditor.vue:4
 msgctxt "web/pages/TerminologyEditor"
@@ -2076,7 +2121,7 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Module (required for PO)"
 msgstr "模块（下载 PO 必填）"
 
-#: web/pages/TerminologyEditor.vue:105
+#: web/pages/TerminologyEditor.vue:117
 msgctxt "web/pages/TerminologyEditor"
 msgid "PO download failed"
 msgstr "PO 下载失败"
@@ -2086,10 +2131,70 @@ msgctxt "web/pages/TerminologyEditor"
 msgid "Select an application to edit terminology"
 msgstr "请选择应用以编辑术语"
 
-#: web/pages/TerminologyEditor.vue:83
+#: web/pages/TerminologyEditor.vue:95
 msgctxt "web/pages/TerminologyEditor"
 msgid "TranslationTerm store is not available for this application"
 msgstr "该应用不可用 TranslationTerm 存储"
+
+#: web/pages/WelcomeView.vue:15
+msgctxt "web/pages/WelcomeView"
+msgid "Back"
+msgstr "返回"
+
+#: web/pages/WelcomeView.vue:23
+msgctxt "web/pages/WelcomeView"
+msgid "Build"
+msgstr "构建"
+
+#: web/pages/WelcomeView.vue:18
+msgctxt "web/pages/WelcomeView"
+msgid "Continue"
+msgstr "继续"
+
+#: web/pages/WelcomeView.vue:24
+msgctxt "web/pages/WelcomeView"
+msgid "Domain modules import Choy* from @/web."
+msgstr "领域模块从 @/web 导入 Choy*。"
+
+#: web/pages/WelcomeView.vue:19
+msgctxt "web/pages/WelcomeView"
+msgid "Explore"
+msgstr "探索"
+
+#: web/pages/WelcomeView.vue:3
+msgctxt "web/pages/WelcomeView"
+msgid "Get started"
+msgstr "开始使用"
+
+#: web/pages/WelcomeView.vue:21
+msgctxt "web/pages/WelcomeView"
+msgid "Go to home"
+msgstr "前往首页"
+
+#: web/pages/WelcomeView.vue:5
+msgctxt "web/pages/WelcomeView"
+msgid "Next-generation open-source ERP platform."
+msgstr "下一代开源 ERP 平台。"
+
+#: web/pages/WelcomeView.vue:20
+msgctxt "web/pages/WelcomeView"
+msgid "Open menus and records through the Choy shell."
+msgstr "通过 Choy Shell 打开菜单与记录。"
+
+#: web/pages/WelcomeView.vue:15
+msgctxt "web/pages/WelcomeView"
+msgid "Sign in"
+msgstr "登录"
+
+#: web/pages/WelcomeView.vue:16
+msgctxt "web/pages/WelcomeView"
+msgid "Use your account to access the workspace."
+msgstr "使用你的账户访问工作区。"
+
+#: web/pages/WelcomeView.vue:2
+msgctxt "web/pages/WelcomeView"
+msgid "Welcome to Choysum"
+msgstr "欢迎使用 Choysum"
 
 #: web/query/utils/filter/operators.ts:29 web/query/utils/filter/operators.ts:68
 msgctxt "web/query/utils/filter/operators"
@@ -2161,7 +2266,7 @@ msgctxt "web/query/utils/filter/operators"
 msgid "Not in"
 msgstr "不属于"
 
-#: web/router/routes.ts:33
+#: web/router/routes.ts:34
 msgctxt "web/route/routes"
 msgid "Home"
 msgstr "首页"

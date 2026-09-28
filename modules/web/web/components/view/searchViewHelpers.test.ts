@@ -66,14 +66,26 @@ describe('searchViewHelpers', () => {
   });
 
   test('choySearchQueryFromPayload adapts OSearchView payload', () => {
+    const appliedFilters = [{ children: [{ field: 'name', operator: '=', value: 'a' }] }];
+    const appliedGroups = [{ field: 'Revoked' }];
     expect(
       choySearchQueryFromPayload({
         keyword: '  hi  ',
-        appliedFilters: [{ children: [{ field: 'name', operator: '=', value: 'a' }] }],
+        appliedFilters,
+        appliedGroups,
       }),
     ).toEqual({
       keyword: 'hi',
       filters: [{ field: 'name', op: '=', value: 'a' }],
+      appliedFilters,
+      appliedGroups,
+    });
+    // Singleton filter tree object is preserved as a one-element appliedFilters array.
+    const solo = { children: [{ field: 'code', operator: '=', value: 'x' }] };
+    expect(choySearchQueryFromPayload({ keyword: '', appliedFilters: solo })).toEqual({
+      keyword: '',
+      filters: [{ field: 'code', op: '=', value: 'x' }],
+      appliedFilters: [solo],
     });
   });
 

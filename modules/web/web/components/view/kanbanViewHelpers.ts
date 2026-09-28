@@ -17,7 +17,31 @@ export type ChoyKanbanLane = {
   key: string;
   label: string;
   cards: ChoyKanbanCard[];
+  /**
+   * Unloaded records still available for this lane. When > 0, ChoyKanbanView
+   * shows load-more chrome (host handles `lane-load-more` and updates lanes).
+   */
+  remain?: number;
 };
+
+export type ChoyKanbanLoadMore = {
+  laneKey: string;
+};
+
+/** Normalize lane.remain to a non-negative integer (invalid → 0). */
+export function choyKanbanLaneRemain(lane: Pick<ChoyKanbanLane, 'remain'> | null | undefined): number {
+  const n = Number(lane?.remain ?? 0);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.floor(n);
+}
+
+/** Default load-more label for Choy kanban chrome (host may localize via `format`). */
+export function formatChoyKanbanLoadMoreLabel(
+  remain: number,
+  format: (n: number) => string = (n) => `Load more (${n} remaining)`,
+): string {
+  return format(choyKanbanLaneRemain({ remain }));
+}
 
 export type ChoyKanbanMove = {
   cardId: string;

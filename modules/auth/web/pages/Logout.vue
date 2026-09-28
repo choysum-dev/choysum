@@ -4,57 +4,52 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :loading="loading" class="logout-page-container">
-    <el-card class="logout-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <h3>{{ _t('Sign Out') }}</h3>
-        </div>
-      </template>
-      <div class="logout-view">
+  <ChoyPage :loading="loading" width="narrow" :padding="false" class="logout-page-container mx-auto w-full max-w-lg">
+    <ChoyCard :title="_t('Sign Out')" class="logout-card w-full">
+      <div class="logout-view flex flex-col items-center gap-4 py-4 text-center">
         <transition name="fade" mode="out-in">
-          <el-result
-            v-if="logoutSuccess"
-            key="success"
-            icon="success"
-            :title="_t('Signed Out Successfully')"
-            :sub-title="redirectSubtitle"
-          >
-            <template #extra>
-              <el-button type="primary" @click="navigateToLogin">{{ _t('Log In Again') }}</el-button>
-              <el-button @click="navigateToHome">{{ _t('Back to Home') }}</el-button>
-            </template>
-          </el-result>
+          <div v-if="logoutSuccess" key="success" class="flex flex-col items-center gap-3">
+            <CheckCircle2 class="size-12 text-emerald-600" aria-hidden="true" />
+            <h4 class="text-lg font-semibold">{{ _t('Signed Out Successfully') }}</h4>
+            <p class="max-w-md text-sm text-foreground/70">{{ redirectSubtitle }}</p>
+            <div class="flex flex-wrap justify-center gap-2 pt-2">
+              <ChoyButton @click="navigateToLogin">{{ _t('Log In Again') }}</ChoyButton>
+              <ChoyButton variant="outline" @click="navigateToHome">{{ _t('Back to Home') }}</ChoyButton>
+            </div>
+          </div>
 
-          <el-result v-else-if="error" key="error" icon="error" :title="_t('Sign-out Failed')" :sub-title="error">
-            <template #extra>
-              <el-button type="primary" @click="retryLogout">{{ _t('Retry') }}</el-button>
-              <el-button @click="navigateToHome">{{ _t('Back to Home') }}</el-button>
-              <el-button @click="navigateToLogin">{{ _t('Back to Login') }}</el-button>
-            </template>
-          </el-result>
+          <div v-else-if="error" key="error" class="flex flex-col items-center gap-3">
+            <XCircle class="size-12 text-destructive" aria-hidden="true" />
+            <h4 class="text-lg font-semibold">{{ _t('Sign-out Failed') }}</h4>
+            <p class="max-w-md text-sm text-foreground/70">{{ error }}</p>
+            <div class="flex flex-wrap justify-center gap-2 pt-2">
+              <ChoyButton @click="retryLogout">{{ _t('Retry') }}</ChoyButton>
+              <ChoyButton variant="outline" @click="navigateToHome">{{ _t('Back to Home') }}</ChoyButton>
+              <ChoyButton variant="outline" @click="navigateToLogin">{{ _t('Back to Login') }}</ChoyButton>
+            </div>
+          </div>
 
-          <el-result
-            v-else
-            key="loading"
-            icon="info"
-            :title="_t('Signing Out')"
-            :sub-title="_t('Please wait while your account is being signed out securely...')"
-          />
+          <div v-else key="loading" class="flex flex-col items-center gap-3">
+            <Loader2 class="size-12 animate-spin text-foreground/50" aria-hidden="true" />
+            <h4 class="text-lg font-semibold">{{ _t('Signing Out') }}</h4>
+            <p class="max-w-md text-sm text-foreground/70">
+              {{ _t('Please wait while your account is being signed out securely...') }}
+            </p>
+          </div>
         </transition>
       </div>
-    </el-card>
-  </OPage>
+    </ChoyCard>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
+import { CheckCircle2, Loader2, XCircle } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/auth';
 import { ChoysumError } from '../error';
-import OPage from '@/web/web/components/page/OPage.vue';
-import { ElResult, ElButton, ElCard } from 'element-plus';
+import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Logout' });
@@ -132,51 +127,9 @@ function retryLogout() {
 
 <style lang="scss" scoped>
 .logout-page-container {
-  &.o-page--with-padding {
-    padding: 0;
-  }
-
-  :deep(.o-page__body) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-  }
-}
-
-.logout-card {
-  width: 100%;
-  max-width: 500px;
-}
-
-.card-header {
-  text-align: center;
-  h3 {
-    margin: 0;
-    font-size: var(--el-font-size-large);
-    font-weight: var(--el-font-weight-bold);
-  }
-}
-
-.logout-view {
-  text-align: center;
-
-  :deep(.el-result__icon) {
-    margin-block-end: var(--el-margin-large, 20px);
-  }
-
-  :deep(.el-result__title) {
-    margin-block-start: 0;
-  }
-
-  :deep(.el-result__subtitle) {
-    margin-block-start: var(--el-margin-small, 10px);
-    max-width: 500px;
-    margin-inline: auto;
-  }
-
-  :deep(.el-button) {
-    margin: var(--el-margin-extra-small, 5px);
-  }
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
 }
 </style>

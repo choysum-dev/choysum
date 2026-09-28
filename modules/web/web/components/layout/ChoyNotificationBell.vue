@@ -4,7 +4,11 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <!-- Product/inbox mode: host the dual-stack ONotificationBell engine. -->
+  <ONotificationBell v-if="useInboxEngine" :class="props.class" />
+
   <div
+    v-else
     data-anchor="choy.notification-bell"
     :class="cn('choy-notification-bell relative inline-flex', props.class)"
   >
@@ -39,36 +43,31 @@ import { computed } from 'vue';
 import Badge from '../vendor/ui/badge/Badge.vue';
 import Button from '../vendor/ui/button/Button.vue';
 import { cn, type ClassValue } from '../../lib/utils';
+import ONotificationBell from './ONotificationBell.vue';
+import {
+  choyNotificationAriaLabel,
+  choyNotificationBadgeText,
+  choyNotificationUnreadCount,
+} from './choyNotificationBellChrome';
+import { isChoyNotificationInboxMode } from './choyNotificationBellMode';
 
 /**
- * Simplified notification bell. No inbox API in PR3 — optional count badge only.
+ * Notification bell: omit `count` to host ONotificationBell (inbox);
+ * pass `count` for chrome-only badge demos (Gallery).
  */
-const props = withDefaults(
-  defineProps<{
-    class?: ClassValue;
-    count?: number;
-    label?: string;
-  }>(),
-  {
-    count: 0,
-    label: 'Notifications',
-  },
-);
+const props = defineProps<{
+  class?: ClassValue;
+  /** When set (including 0), render chrome badge instead of the inbox engine. */
+  count?: number;
+  label?: string;
+}>();
 
 const emit = defineEmits<{
   click: [];
 }>();
 
-const unreadCount = computed(() => {
-  const count = Number(props.count);
-  return Number.isFinite(count) && count > 0 ? Math.max(1, Math.ceil(count)) : 0;
-});
-
-const badgeText = computed(() =>
-  unreadCount.value > 99 ? '99+' : unreadCount.value ? String(unreadCount.value) : '',
-);
-
-const ariaLabel = computed(() =>
-  unreadCount.value ? `${props.label} (${unreadCount.value} unread)` : props.label,
-);
+const useInboxEngine = computed(() => isChoyNotificationInboxMode(props.count));
+const unreadCount = computed(() => choyNotificationUnreadCount(props.count));
+const badgeText = computed(() => choyNotificationBadgeText(unreadCount.value));
+const ariaLabel = computed(() => choyNotificationAriaLabel(props.label, unreadCount.value));
 </script>

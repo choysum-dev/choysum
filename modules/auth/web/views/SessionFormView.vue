@@ -4,61 +4,55 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{ create: sessionActions.create, edit: sessionActions.edit, copy: sessionActions.copy, delete: sessionActions.delete }"
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <el-card shadow="never" class="sfv-card">
-      <template #header
-        ><div class="sfv-card__header"><span>{{ _t('Session Information') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneField
+    <ChoyCard :title="_t('Session Information')" class="sfv-card">
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyManyToOneField value-mode="record"
             :store="store"
             prop="UserId"
             :search-view="UserListView"
             :search-view-title="_t('Select User')"
             @value-click="onUserValueClick"
           />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="AccessTokenId" />
-        </el-col>
-        <el-col :span="24">
-          <OTextField :store="store" prop="DeviceInfo" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="IpAddress" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="ExpiresAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="LastActivityAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Status" />
-        </el-col>
-      </el-row>
-    </el-card>
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="AccessTokenId" />
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <ChoyTextField :store="store" prop="DeviceInfo" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="IpAddress" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="ExpiresAt" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="LastActivityAt" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Status" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
 
-    <el-card shadow="never" class="sfv-card">
-      <template #header
-        ><div class="sfv-card__header"><span>{{ _t('System Information') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" />
-        </el-col>
-      </el-row>
-    </el-card>
-  </OFormView>
+    <ChoyCard :title="_t('System Information')" class="sfv-card">
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="CreatedAt" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="UpdatedAt" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
@@ -67,19 +61,14 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Session from '@/auth/service/models/session';
 import type User from '@/auth/service/models/user/user';
-import { ElCard, ElRow, ElCol } from 'element-plus';
 
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OTextField from '@/web/web/components/field/OTextField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import UserListView from '@/auth/web/views/UserListView.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoyTextField, ChoyVarcharField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SessionFormView', inheritAttrs: true });
@@ -121,6 +110,6 @@ function onUserValueClick(payload: ManyToOneValueClickPayload<User>) {
 }
 .sfv-card__header {
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--choy-foreground, inherit);
 }
 </style>

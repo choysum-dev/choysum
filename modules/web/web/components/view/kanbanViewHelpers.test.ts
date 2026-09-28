@@ -3,6 +3,8 @@
 
 import {
   applyChoyKanbanMove,
+  choyKanbanLaneRemain,
+  formatChoyKanbanLoadMoreLabel,
   groupRowsIntoChoyKanbanLanes,
   normalizeChoyKanbanLaneKey,
   resolveChoyKanbanCardId,
@@ -121,6 +123,45 @@ describe('kanbanViewHelpers', () => {
       toIndex: 2,
     });
     expect(next![0]!.cards.map(c => c.id)).toEqual(['2', '1', '3']);
+  });
+
+  test('choyKanbanLaneRemain normalizes remain counts', () => {
+    expect(choyKanbanLaneRemain(undefined)).toBe(0);
+    expect(choyKanbanLaneRemain({ remain: 0 })).toBe(0);
+    expect(choyKanbanLaneRemain({ remain: -3 })).toBe(0);
+    expect(choyKanbanLaneRemain({ remain: 4.8 })).toBe(4);
+    expect(choyKanbanLaneRemain({ remain: Number.NaN })).toBe(0);
+  });
+
+  test('formatChoyKanbanLoadMoreLabel uses normalized remain', () => {
+    expect(formatChoyKanbanLoadMoreLabel(3)).toBe('Load more (3 remaining)');
+    expect(formatChoyKanbanLoadMoreLabel(0)).toBe('Load more (0 remaining)');
+    expect(formatChoyKanbanLoadMoreLabel(2, (n) => `还有 ${n} 条`)).toBe('还有 2 条');
+  });
+
+  test('applyChoyKanbanMove preserves lane.remain', () => {
+    const lanes = [
+      {
+        key: 'draft',
+        label: 'Draft',
+        remain: 5,
+        cards: [{ id: '1', title: 'A', laneKey: 'draft' }],
+      },
+      {
+        key: 'done',
+        label: 'Done',
+        remain: 2,
+        cards: [{ id: '2', title: 'B', laneKey: 'done' }],
+      },
+    ];
+    const next = applyChoyKanbanMove(lanes, {
+      cardId: '1',
+      fromLaneKey: 'draft',
+      toLaneKey: 'done',
+      toIndex: 0,
+    });
+    expect(next![0]!.remain).toBe(5);
+    expect(next![1]!.remain).toBe(2);
   });
 
   test('applyChoyKanbanMove returns null for no-op and missing refs', () => {

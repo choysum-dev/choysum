@@ -4,118 +4,115 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{ create: userActions.create, edit: userActions.edit, copy: userActions.copy, delete: userActions.delete }"
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <el-card shadow="never" class="ufv-card">
-      <template #header
-        ><div class="ufv-card__header"><span>{{ _t('Account Information') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OImageField :store="store" prop="Avatar" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Username" :rules="requiredRules" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Email" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Phone" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="IsActive" widget="switch" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="FirstName" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="LastName" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="FullName" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="LanguageId" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OSelectionField
+    <ChoyCard :title="_t('Account Information')" class="ufv-card">
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyImageField :store="store" prop="Avatar" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Username" :rules="requiredRules" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Email" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Phone" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="FirstName" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="LastName" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="FullName" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneField :store="store" prop="LanguageId" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoySelectionField
             :store="store"
             prop="Timezone"
             :placeholder="_t('Select a time zone')"
             :select-props="{ filterable: true, allowCreate: false }"
           />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OJsonobjectField :store="store" prop="Preferences" />
-        </el-col>
-      </el-row>
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyJsonField :store="store" prop="Preferences" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="LastLogin" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" />
-        </el-col>
-      </el-row>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="LastLogin" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="CreatedAt" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="UpdatedAt" />
+        </ChoyCol>
+      </ChoyGrid>
 
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
-          <OManyToManyRefTagsField
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="12">
+          <ChoyManyToManyField widget="tags" value-mode="ref"
             :store="store"
             prop="CompanyIds"
             :label="_t('Accessible Companies')"
             :search-list="CompanyListView"
             :search-view-title="_t('Select Company')"
             :tag-label-field="['Name', 'DisplayName', 'Code', 'Id']"
-            @tag-click="onCompanyTagClick"
+            @tag-click="onCompanyTagClick as any"
           />
-        </el-col>
-      </el-row>
-    </el-card>
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
 
-    <el-tabs model-value="roles" type="card" class="ufv-tabs">
-      <el-tab-pane :label="_t('Roles')" name="roles">
-        <OManyToManyField :store="store" prop="Roles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
-          <OCharField :store="store" prop="Roles.Id" />
-          <OVarCharField :store="store" prop="Roles.Name" />
-          <ODateTimeField :store="store" prop="Roles.CreatedAt" />
-        </OManyToManyField>
-      </el-tab-pane>
+    <ChoyTabs v-model="userDetailTab">
+      <ChoyTab :label="_t('Roles')" value="roles">
+        <ChoyManyToManyField :store="store" prop="Roles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
+          <ChoyVarcharField :store="store" prop="Roles.Id" />
+          <ChoyVarcharField :store="store" prop="Roles.Name" />
+          <ChoyDatetimeField :store="store" prop="Roles.CreatedAt" />
+        </ChoyManyToManyField>
+      </ChoyTab>
 
-      <el-tab-pane :label="_t('Sessions')" name="sessions">
-        <OOneToManyField :store="store" prop="Sessions" label="">
-          <OCharField :store="store" prop="Sessions.Id" />
-          <OVarCharField :store="store" prop="Sessions.Status" />
-          <ODateTimeField :store="store" prop="Sessions.LastActivityAt" />
-          <ODateTimeField :store="store" prop="Sessions.CreatedAt" />
-        </OOneToManyField>
-      </el-tab-pane>
+      <ChoyTab :label="_t('Sessions')" value="sessions">
+        <ChoyOneToManyField :store="store" prop="Sessions" label="">
+          <ChoyVarcharField :store="store" prop="Sessions.Id" />
+          <ChoyVarcharField :store="store" prop="Sessions.Status" />
+          <ChoyDatetimeField :store="store" prop="Sessions.LastActivityAt" />
+          <ChoyDatetimeField :store="store" prop="Sessions.CreatedAt" />
+        </ChoyOneToManyField>
+      </ChoyTab>
 
-      <el-tab-pane :label="_t('Tokens')" name="tokens">
-        <OOneToManyField :store="store" prop="Tokens" label="">
-          <OCharField :store="store" prop="Tokens.Id" />
-          <OVarCharField :store="store" prop="Tokens.TokenType" />
-          <ODateTimeField :store="store" prop="Tokens.CreatedAt" />
-        </OOneToManyField>
-      </el-tab-pane>
-    </el-tabs>
-  </OFormView>
+      <ChoyTab :label="_t('Tokens')" value="tokens">
+        <ChoyOneToManyField :store="store" prop="Tokens" label="">
+          <ChoyVarcharField :store="store" prop="Tokens.Id" />
+          <ChoyVarcharField :store="store" prop="Tokens.TokenType" />
+          <ChoyDatetimeField :store="store" prop="Tokens.CreatedAt" />
+        </ChoyOneToManyField>
+      </ChoyTab>
+    </ChoyTabs>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel } from '@/core/rpc';
@@ -123,32 +120,21 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 
 import type User from '@/auth/service/models/user/user';
 import type Company from '@/base/service/models/company';
-import { ElCard, ElRow, ElCol, ElTabs, ElTabPane } from 'element-plus';
 
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import OCharField from '@/web/web/components/field/OCharField.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
-import OImageField from '@/web/web/components/field/OImageField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OOneToManyField from '@/web/web/components/field/OOneToManyField.vue';
-import OManyToManyField from '@/web/web/components/field/OManyToManyField.vue';
 import RoleListView from '@/auth/web/views/RoleListView.vue';
 import CompanyListView from '@/base/web/views/CompanyListView.vue';
-import OJsonobjectField from '@/web/web/components/field/OJsonobjectField.vue';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
 import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
-import OManyToManyRefTagsField from '@/web/web/components/field/OManyToManyRefTagsField.vue';
 import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UserFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/UserFormView' });
+const userDetailTab = ref('roles');
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
@@ -194,12 +180,5 @@ function onCompanyTagClick(payload: RefTagClickPayload<Company>) {
 <style scoped>
 .ufv-card {
   margin-bottom: 14px;
-}
-.ufv-card__header {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-.ufv-tabs {
-  --el-tabs-header-height: 42px;
 }
 </style>

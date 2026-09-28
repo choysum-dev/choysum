@@ -4,96 +4,87 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{ create: roleActions.create, edit: roleActions.edit, copy: roleActions.copy, delete: roleActions.delete }"
     :has-action="hasAction"
     v-on="$attrs"
   >
     <template #button-box>
-      <OButtonBox>
-        <OStatInfo :store="store" prop="Users" :label="_t('Users')" :icon="User" @click="activeTab = 'users'" />
-        <OStatInfo
+      <ChoyButtonBox>
+        <ChoyStatInfo :store="store" prop="Users" :label="_t('Users')" :icon="User" @click="activeTab = 'users'" />
+        <ChoyStatInfo
           :store="store"
           prop="ImpliedRoles"
           :label="_t('Included Roles')"
-          :icon="Connection"
+          :icon="GitBranch"
           @click="activeTab = 'implied_roles'"
         />
-        <OStatInfo :store="store" prop="RecordRules" :label="_t('Record Rules')" :icon="Operation" @click="openRecordRules" />
-      </OButtonBox>
+        <ChoyStatInfo :store="store" prop="RecordRules" :label="_t('Record Rules')" :icon="Settings" @click="openRecordRules" />
+      </ChoyButtonBox>
     </template>
 
-    <el-card shadow="never" class="rfv-card">
-      <template #header
-        ><div class="rfv-card__header"><span>{{ _t('Basic Information') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Name" :rules="requiredRules" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="DisplayName" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Code" :rules="requiredRules" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="IsActive" widget="checkbox" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="IsSystem" widget="checkbox" />
-        </el-col>
-        <el-col :span="24">
-          <OVarCharField :store="store" prop="Description" />
-        </el-col>
-      </el-row>
-    </el-card>
+    <ChoyCard :title="_t('Basic Information')" class="rfv-card">
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="DisplayName" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsActive" widget="checkbox" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyBooleanField :store="store" prop="IsSystem" widget="checkbox" />
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <ChoyVarcharField :store="store" prop="Description" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
 
-    <el-card shadow="never" class="rfv-card">
-      <template #header
-        ><div class="rfv-card__header"><span>{{ _t('System Information') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" />
-        </el-col>
-      </el-row>
-    </el-card>
+    <ChoyCard :title="_t('System Information')" class="rfv-card">
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="CreatedAt" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyDatetimeField :store="store" prop="UpdatedAt" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
 
-    <el-card shadow="never" class="rfv-card">
-      <template #header
-        ><div class="rfv-card__header"><span>{{ _t('Related Data') }}</span></div></template
-      >
-      <el-tabs v-model="activeTab" type="card" class="rfv-tabs">
-        <el-tab-pane :label="_t('Users')" name="users">
-          <OManyToManyField :store="store" prop="Users" label="" :search-list="UserListView" :search-view-title="_t('Select User')">
-            <OCharField :store="store" prop="Users.Id" />
-            <OVarCharField :store="store" prop="Users.Username" />
-            <OVarCharField :store="store" prop="Users.FullName" />
-          </OManyToManyField>
-        </el-tab-pane>
-        <el-tab-pane :label="_t('Included Roles')" name="implied_roles">
-          <OManyToManyField :store="store" prop="ImpliedRoles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
-            <OVarCharField :store="store" prop="ImpliedRoles.Name" />
-            <OVarCharField :store="store" prop="ImpliedRoles.Code" />
-          </OManyToManyField>
-        </el-tab-pane>
-        <el-tab-pane :label="_t('UI Resource Access')" name="ui_permissions">
-          <p class="rfv-advanced__hint">
+    <ChoyCard :title="_t('Related Data')" class="rfv-card">
+      <ChoyTabs v-model="activeTab">
+        <ChoyTab :label="_t('Users')" value="users">
+          <ChoyManyToManyField :store="store" prop="Users" label="" :search-list="UserListView" :search-view-title="_t('Select User')">
+            <ChoyVarcharField :store="store" prop="Users.Id" />
+            <ChoyVarcharField :store="store" prop="Users.Username" />
+            <ChoyVarcharField :store="store" prop="Users.FullName" />
+          </ChoyManyToManyField>
+        </ChoyTab>
+        <ChoyTab :label="_t('Included Roles')" value="implied_roles">
+          <ChoyManyToManyField :store="store" prop="ImpliedRoles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
+            <ChoyVarcharField :store="store" prop="ImpliedRoles.Name" />
+            <ChoyVarcharField :store="store" prop="ImpliedRoles.Code" />
+          </ChoyManyToManyField>
+        </ChoyTab>
+        <ChoyTab :label="_t('UI Resource Access')" value="ui_permissions">
+          <p class="mb-3 text-sm leading-relaxed text-foreground/70">
             {{
               _t(
                 'Primary path: check resources in this tree. Checking a resource uniformly derives Method allow for its Requires (UI-Option-A; no read/write split). Advanced → UI Resource Details is a manual bypass only.'
               )
             }}
           </p>
-          <p class="rfv-advanced__hint rfv-advanced__hint--tight">
+          <p class="mb-2 text-sm leading-relaxed text-foreground/70">
             {{ _t('Click a node label to inspect Requires → derived RPCs (checkbox still controls the grant).') }}
           </p>
-          <OManyToManyRefTreeField
+          <ChoyManyToManyField widget="tree" value-mode="ref"
             :store="store"
             prop="AccessUiResourceIds"
             :label="_t('Accessible UI Resources')"
@@ -117,19 +108,17 @@ SPDX-License-Identifier: Apache-2.0
                 :class="{ 'is-inspected': isInspectedUiResourceRow(inspectedUiResourceId, row) }"
                 @click.stop="inspectUiResource(row)"
               >
-                <el-icon class="rfv-ui-resource-node__icon">
-                  <component :is="resolveUiResourceTypeIcon(row?.Type)" />
-                </el-icon>
+                <component :is="resolveUiResourceTypeIcon(row?.Type)" class="size-3.5 shrink-0 text-foreground/60" aria-hidden="true" />
                 <span class="rfv-ui-resource-node__label">{{ resolveUiResourceLabel(row, label) }}</span>
               </button>
             </template>
-          </OManyToManyRefTreeField>
+          </ChoyManyToManyField>
           <div v-if="inspectedUiResource" class="rfv-ui-requires">
             <div class="rfv-ui-requires__title">
               {{ _t('Requires → derived Method RPCs') }}
               <span class="rfv-ui-requires__resource">{{ inspectedUiResourceLabel }}</span>
             </div>
-            <p class="rfv-advanced__hint rfv-advanced__hint--tight">
+            <p class="mb-2 text-sm leading-relaxed text-foreground/70">
               {{
                 _t(
                   'Under UI-Option-A, these RPCs are uniformly Method-allow when this resource is granted (unless a manual Method deny brakes them). Record/Field rules are not derived from UI.'
@@ -145,85 +134,118 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('No Requires on this resource — granting it does not derive Method access.') }}
             </p>
           </div>
-        </el-tab-pane>
+        </ChoyTab>
 
-        <el-tab-pane :label="_t('Advanced Mode')" name="advanced">
-          <p class="rfv-advanced__hint">
+        <ChoyTab :label="_t('Advanced Mode')" value="advanced">
+          <p class="mb-3 text-sm leading-relaxed text-foreground/70">
             {{
               _t(
                 'Configure record/field/RPC grants under deny-default. The UI resource tree does not derive Record or Field rules; Advanced is the main place for data and method access.'
               )
             }}
           </p>
-          <el-collapse v-model="advancedPanels" class="rfv-advanced" accordion>
-            <el-collapse-item name="record_rules" :title="_t('Record Rules')">
-              <el-alert
-                class="rfv-rr-alert"
-                type="info"
-                :closable="false"
-                show-icon
-                :title="_t('This form only edits rules for this role')"
-                :description="
-                  _t(
-                    'OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong under Access Control → Access Rules, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience.'
-                  )
-                "
-              />
-              <p class="rfv-advanced__hint rfv-advanced__hint--tight">
-                {{ _t('Without a matching grant, records are invisible or not writable (deny-default).') }}
-              </p>
-              <OOneToManyField :store="store" prop="RecordRules" label="" :default-record="defaultRecordRule">
-                <OSelectionField :store="store" prop="RecordRules.Kind" />
-                <OManyToOneRefField :store="store" prop="RecordRules.MetaApplicationId" />
-                <OManyToOneRefField :store="store" prop="RecordRules.MetaModelId" />
-                <OJsonobjectField :store="store" prop="RecordRules.Condition" :allow-array="true" />
-                <OBooleanField :store="store" prop="RecordRules.PermRead" />
-                <OBooleanField :store="store" prop="RecordRules.PermWrite" />
-                <OBooleanField :store="store" prop="RecordRules.PermCreate" />
-                <OBooleanField :store="store" prop="RecordRules.PermDelete" />
-              </OOneToManyField>
-            </el-collapse-item>
+          <div class="rfv-advanced mt-1 space-y-2">
+            <details class="rounded-md border border-border" :open="advancedPanels === 'record_rules'">
+              <summary
+                class="cursor-pointer select-none px-3 py-2 text-sm font-medium"
+                @click.prevent="toggleAdvancedPanel('record_rules')"
+              >
+                {{ _t('Record Rules') }}
+              </summary>
+              <div class="border-t border-border px-3 py-3">
+                <div
+                  class="mb-2.5 rounded-md border border-info/40 bg-info/10 px-3 py-2 text-sm"
+                  role="alert"
+                >
+                  <p class="font-medium text-foreground">{{ _t('This form only edits rules for this role') }}</p>
+                  <p class="mt-1 text-foreground/80">
+                    {{
+                      _t(
+                        'OneToMany rows are always bound to the current role. All-users or cross-role Record/Field/Method/UI rules belong under Access Control → Access Rules, not here. Model/Application empty means scope-global (all models), which is not the same as all-users audience.'
+                      )
+                    }}
+                  </p>
+                </div>
+                <p class="mb-2 text-sm leading-relaxed text-foreground/70">
+                  {{ _t('Without a matching grant, records are invisible or not writable (deny-default).') }}
+                </p>
+                <ChoyOneToManyField :store="store" prop="RecordRules" label="" :default-record="defaultRecordRule">
+                  <ChoySelectionField :store="store" prop="RecordRules.Kind" />
+                  <ChoyManyToOneField :store="store" prop="RecordRules.MetaApplicationId" />
+                  <ChoyManyToOneField :store="store" prop="RecordRules.MetaModelId" />
+                  <ChoyJsonField :store="store" prop="RecordRules.Condition" :allow-array="true" />
+                  <ChoyBooleanField :store="store" prop="RecordRules.PermRead" />
+                  <ChoyBooleanField :store="store" prop="RecordRules.PermWrite" />
+                  <ChoyBooleanField :store="store" prop="RecordRules.PermCreate" />
+                  <ChoyBooleanField :store="store" prop="RecordRules.PermDelete" />
+                </ChoyOneToManyField>
+              </div>
+            </details>
 
-            <el-collapse-item name="field_rules" :title="_t('Field Rules')">
-              <p class="rfv-advanced__hint rfv-advanced__hint--tight">
-                {{ _t('Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes.') }}
-              </p>
-              <OOneToManyField :store="store" prop="FieldRules" label="">
-                <OManyToOneRefField :store="store" prop="FieldRules.MetaApplicationId" />
-                <OManyToOneRefField :store="store" prop="FieldRules.MetaModelId" />
-                <OManyToOneRefField :store="store" prop="FieldRules.MetaFieldId" />
-                <OSelectionField :store="store" prop="FieldRules.PermRead" />
-                <OSelectionField :store="store" prop="FieldRules.PermWrite" />
-              </OOneToManyField>
-            </el-collapse-item>
+            <details class="rounded-md border border-border" :open="advancedPanels === 'field_rules'">
+              <summary
+                class="cursor-pointer select-none px-3 py-2 text-sm font-medium"
+                @click.prevent="toggleAdvancedPanel('field_rules')"
+              >
+                {{ _t('Field Rules') }}
+              </summary>
+              <div class="border-t border-border px-3 py-3">
+                <p class="mb-2 text-sm leading-relaxed text-foreground/70">
+                  {{ _t('Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes.') }}
+                </p>
+                <ChoyOneToManyField :store="store" prop="FieldRules" label="">
+                  <ChoyManyToOneField :store="store" prop="FieldRules.MetaApplicationId" />
+                  <ChoyManyToOneField :store="store" prop="FieldRules.MetaModelId" />
+                  <ChoyManyToOneField :store="store" prop="FieldRules.MetaFieldId" />
+                  <ChoySelectionField :store="store" prop="FieldRules.PermRead" />
+                  <ChoySelectionField :store="store" prop="FieldRules.PermWrite" />
+                </ChoyOneToManyField>
+              </div>
+            </details>
 
-            <el-collapse-item name="method_accesses" :title="_t('Method Access')">
-              <p class="rfv-advanced__hint rfv-advanced__hint--tight">
-                {{ _t('RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake.') }}
-              </p>
-              <OOneToManyField :store="store" prop="MethodAccesses" label="" :default-record="defaultMethodAccess">
-                <OManyToOneRefField :store="store" prop="MethodAccesses.MetaApplicationId" />
-                <OManyToOneRefField :store="store" prop="MethodAccesses.MetaModelId" />
-                <OManyToOneRefField :store="store" prop="MethodAccesses.MetaServiceId" />
-                <OSelectionField :store="store" prop="MethodAccesses.Mode" />
-              </OOneToManyField>
-            </el-collapse-item>
+            <details class="rounded-md border border-border" :open="advancedPanels === 'method_accesses'">
+              <summary
+                class="cursor-pointer select-none px-3 py-2 text-sm font-medium"
+                @click.prevent="toggleAdvancedPanel('method_accesses')"
+              >
+                {{ _t('Method Access') }}
+              </summary>
+              <div class="border-t border-border px-3 py-3">
+                <p class="mb-2 text-sm leading-relaxed text-foreground/70">
+                  {{ _t('RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake.') }}
+                </p>
+                <ChoyOneToManyField :store="store" prop="MethodAccesses" label="" :default-record="defaultMethodAccess">
+                  <ChoyManyToOneField :store="store" prop="MethodAccesses.MetaApplicationId" />
+                  <ChoyManyToOneField :store="store" prop="MethodAccesses.MetaModelId" />
+                  <ChoyManyToOneField :store="store" prop="MethodAccesses.MetaServiceId" />
+                  <ChoySelectionField :store="store" prop="MethodAccesses.Mode" />
+                </ChoyOneToManyField>
+              </div>
+            </details>
 
-            <el-collapse-item name="ui_resources" :title="_t('UI Resource Details (manual bypass)')">
-              <p class="rfv-advanced__hint rfv-advanced__hint--tight">
-                {{ _t('Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants.') }}
-              </p>
-              <OOneToManyField :store="store" prop="UiResources" label="">
-                <OSelectionField :store="store" prop="UiResources.Mode" />
-                <OManyToOneRefField :store="store" prop="UiResources.MetaApplicationId" />
-                <OManyToOneRefField :store="store" prop="UiResources.MetaUiResourceId" />
-              </OOneToManyField>
-            </el-collapse-item>
-          </el-collapse>
-        </el-tab-pane>
-      </el-tabs>
-    </el-card>
-  </OFormView>
+            <details class="rounded-md border border-border" :open="advancedPanels === 'ui_resources'">
+              <summary
+                class="cursor-pointer select-none px-3 py-2 text-sm font-medium"
+                @click.prevent="toggleAdvancedPanel('ui_resources')"
+              >
+                {{ _t('UI Resource Details (manual bypass)') }}
+              </summary>
+              <div class="border-t border-border px-3 py-3">
+                <p class="mb-2 text-sm leading-relaxed text-foreground/70">
+                  {{ _t('Secondary to the UI Resource Access tree above. Prefer the tree for day-to-day grants.') }}
+                </p>
+                <ChoyOneToManyField :store="store" prop="UiResources" label="">
+                  <ChoySelectionField :store="store" prop="UiResources.Mode" />
+                  <ChoyManyToOneField :store="store" prop="UiResources.MetaApplicationId" />
+                  <ChoyManyToOneField :store="store" prop="UiResources.MetaUiResourceId" />
+                </ChoyOneToManyField>
+              </div>
+            </details>
+          </div>
+        </ChoyTab>
+      </ChoyTabs>
+    </ChoyCard>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
@@ -232,29 +254,16 @@ import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Role from '@/auth/service/models/role';
 
-import { ElCard, ElRow, ElCol, ElTabs, ElTabPane, ElCollapse, ElCollapseItem, ElIcon, ElAlert } from 'element-plus';
-import { Menu as MenuIcon, Connection, Operation, QuestionFilled, User } from '@element-plus/icons-vue';
+import { CircleHelp, GitBranch, Menu, Settings, User } from 'lucide-vue-next';
 
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OButtonBox from '@/web/web/components/view/OButtonBox.vue';
-import OStatInfo from '@/web/web/components/view/OStatInfo.vue';
-import OCharField from '@/web/web/components/field/OCharField.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OManyToManyField from '@/web/web/components/field/OManyToManyField.vue';
-import OManyToManyRefTreeField from '@/web/web/components/field/OManyToManyRefTreeField.vue';
-import OOneToManyField from '@/web/web/components/field/OOneToManyField.vue';
-import OJsonobjectField from '@/web/web/components/field/OJsonobjectField.vue';
-import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
-import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
 import UserListView from './UserListView.vue';
 import RoleListView from './RoleListView.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { useI18n } from 'vue-i18n';
+import { ChoyBooleanField, ChoyButtonBox, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyStatInfo, ChoyTab, ChoyTabs, ChoyVarcharField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';
 import { selectInspectedUiResource, getInspectedUiResourceId, getInspectedUiResourceRequires, isInspectedUiResourceRow } from '@/auth/web/views/role_ui_requires_explain';
@@ -301,13 +310,13 @@ function resolveUiResourceLabel(row?: UiResourceRow, label?: string) {
 function resolveUiResourceTypeIcon(type?: string) {
   switch (type) {
     case 'MENU':
-      return MenuIcon;
+      return Menu;
     case 'ROUTE':
-      return Connection;
+      return GitBranch;
     case 'ACTION':
-      return Operation;
+      return Settings;
     default:
-      return QuestionFilled;
+      return CircleHelp;
   }
 }
 
@@ -332,6 +341,10 @@ const defaultMethodAccess: Record<string, any> = { Mode: 'allow' };
 const activeTab = ref('users');
 const advancedPanels = ref('');
 
+function toggleAdvancedPanel(name: string) {
+  advancedPanels.value = advancedPanels.value === name ? '' : name;
+}
+
 function openRecordRules() {
   activeTab.value = 'advanced';
   advancedPanels.value = 'record_rules';
@@ -346,6 +359,7 @@ defineExpose({
   activeTab,
   advancedPanels,
   openRecordRules,
+  toggleAdvancedPanel,
   resolveUiResourceTypeIcon,
   resolveUiResourceLabel,
 });
@@ -354,32 +368,6 @@ defineExpose({
 <style scoped>
 .rfv-card {
   margin-bottom: 14px;
-}
-.rfv-card__header {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-.rfv-tabs {
-  --el-tabs-header-height: 42px;
-}
-
-.rfv-advanced {
-  margin-top: 4px;
-}
-
-.rfv-advanced__hint {
-  margin: 0 0 12px;
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.rfv-advanced__hint--tight {
-  margin-bottom: 8px;
-}
-
-.rfv-rr-alert {
-  margin-bottom: 10px;
 }
 
 .rfv-ui-resource-node {
@@ -399,21 +387,16 @@ defineExpose({
 }
 
 .rfv-ui-resource-node.is-inspected {
-  background: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
-}
-
-.rfv-ui-resource-node__icon {
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
+  background: color-mix(in oklch, var(--choy-color-primary) 12%, transparent);
+  color: var(--choy-color-primary);
 }
 
 .rfv-ui-requires {
   margin-top: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--el-border-color-lighter);
+  border: 1px solid var(--choy-color-border);
   border-radius: 6px;
-  background: var(--el-fill-color-blank);
+  background: var(--choy-color-background);
 }
 
 .rfv-ui-requires__title {
@@ -425,7 +408,7 @@ defineExpose({
 .rfv-ui-requires__resource {
   margin-left: 8px;
   font-weight: 500;
-  color: var(--el-text-color-regular);
+  color: var(--choy-color-foreground);
 }
 
 .rfv-ui-requires__list {
@@ -438,6 +421,6 @@ defineExpose({
 .rfv-ui-requires__empty {
   margin: 0;
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: color-mix(in oklch, var(--choy-color-foreground) 70%, transparent);
 }
 </style>

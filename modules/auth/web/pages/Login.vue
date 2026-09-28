@@ -4,42 +4,66 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage :loading="loading" class="login-page-container">
-    <el-card class="login-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <h3>{{ _t('User Login') }}</h3>
-        </div>
-      </template>
-
+  <ChoyPage :loading="loading" width="narrow" :padding="false" class="login-page-container mx-auto w-full max-w-md">
+    <ChoyCard :title="_t('User Login')" class="login-card w-full">
       <transition name="fade">
-        <el-alert v-if="error" :title="error" type="error" :closable="true" @close="error = ''" />
+        <div
+          v-if="error"
+          class="login-error mb-4 flex items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          <span>{{ error }}</span>
+          <button type="button" class="text-destructive/80 hover:text-destructive" :aria-label="_t('Close')" @click="error = ''">
+            ×
+          </button>
+        </div>
       </transition>
 
-      <el-form ref="loginForm" :model="form" :rules="rules" label-position="top" @keydown="handleKeyDown" @submit.prevent="handleLogin">
-        <el-form-item prop="username" :label="_t('Username')">
-          <el-input v-model="form.username" :placeholder="_t('Enter username')" :prefix-icon="User" autocomplete="username" />
-        </el-form-item>
+      <form class="flex flex-col gap-3" @submit.prevent="handleLogin">
+        <label class="flex flex-col gap-1 text-sm">
+          <span>{{ _t('Username') }}</span>
+          <input
+            v-model="form.username"
+            name="username"
+            type="text"
+            autocomplete="username"
+            :placeholder="_t('Enter username')"
+            class="login-username rounded-md border border-border bg-background px-3 py-2 text-sm"
+            :class="{ 'border-destructive': fieldErrors.username }"
+          />
+          <span v-if="fieldErrors.username" class="text-xs text-destructive">{{ fieldErrors.username }}</span>
+        </label>
 
-        <el-form-item prop="password" :label="_t('Password')">
-          <el-input v-model="form.password" :placeholder="_t('Enter password')" :prefix-icon="Lock" type="password" autocomplete="current-password" show-password />
-        </el-form-item>
+        <label class="flex flex-col gap-1 text-sm">
+          <span>{{ _t('Password') }}</span>
+          <input
+            v-model="form.password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            :placeholder="_t('Enter password')"
+            class="login-password rounded-md border border-border bg-background px-3 py-2 text-sm"
+            :class="{ 'border-destructive': fieldErrors.password }"
+          />
+          <span v-if="fieldErrors.password" class="text-xs text-destructive">{{ fieldErrors.password }}</span>
+        </label>
 
-        <div class="login-options">
-          <el-checkbox v-model="form.rememberMe">{{ _t('Remember me') }}</el-checkbox>
-        </div>
+        <label class="login-options flex items-center gap-2 text-sm">
+          <input v-model="form.rememberMe" type="checkbox" class="size-4 rounded border-border" />
+          <span>{{ _t('Remember me') }}</span>
+        </label>
 
-        <el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">{{ _t('Log In') }}</el-button>
-        </el-form-item>
+        <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
+          {{ loading ? _t('Log In') + '…' : _t('Log In') }}
+        </ChoyButton>
 
-        <div v-if="showRegisterLink" class="register-link">
+        <div v-if="showRegisterLink" class="register-link text-center text-sm text-foreground/70">
           {{ _t("Don't have an account?") }}
-          <router-link to="/register">{{ _t('Register now') }}</router-link>
+          <router-link to="/register" class="text-primary hover:underline">{{ _t('Register now') }}</router-link>
         </div>
-      </el-form>
-    </el-card>
-  </OPage>
+      </form>
+    </ChoyCard>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
@@ -47,13 +71,10 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
-import { ChoysumError } from '../error';
-import OPage from '@/web/web/components/page/OPage.vue';
-import { ElForm, ElFormItem, ElInput, ElButton, ElCheckbox, ElAlert, ElCard } from 'element-plus';
-import { User, Lock } from '@element-plus/icons-vue';
-import type { FormRules } from 'element-plus';
+import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { runLoginAuthReady } from './login_auth_ready';
+import { resolveLoginRedirect, runLoginSubmit } from './login_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
@@ -71,30 +92,13 @@ const route = useRoute();
 const authStore = useAuthStore();
 const { loading, isAuthenticated } = storeToRefs(authStore);
 
-const loginForm = ref();
 const form = reactive<LoginFormData>({
   username: '',
   password: '',
   rememberMe: true,
 });
 
-const rules = computed<FormRules<LoginFormData>>(() => ({
-  username: [
-    {
-      required: true,
-      message: _t('Enter username'),
-      trigger: 'blur',
-    },
-  ],
-  password: [
-    {
-      required: true,
-      message: _t('Enter password'),
-      trigger: 'blur',
-    },
-  ],
-}));
-
+const fieldErrors = reactive({ username: '', password: '' });
 const error = ref('');
 const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false);
 
@@ -102,13 +106,10 @@ const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRAT
  * Redirect the user to the requested destination after login.
  */
 function handleRedirect() {
-  const redirect = route.query.redirect?.toString() || '/';
-  router.replace(redirect);
+  router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
 }
 
 onMounted(async () => {
-  // Ensure auth initialization runs so stale tokens (e.g. from a previous
-  // database reset) are cleared before the user submits the login form.
   await runLoginAuthReady({
     ensureAuthReady: () => authStore.ensureAuthReady(),
     getRoutePath: () => route.path,
@@ -121,92 +122,32 @@ onMounted(async () => {
  * Validate the form and start the login flow.
  */
 async function handleLogin() {
-  if (!loginForm.value) return;
-
-  try {
-    await loginForm.value.validate();
-    error.value = '';
-
-    await authStore.login(form.username, form.password, '', '', form.rememberMe);
-
-    handleRedirect();
-  } catch (err) {
-    if (err instanceof ChoysumError) {
-      // Show translated message; keep machine code on the error object for FE routing.
-      error.value = err.message;
-    } else {
-      error.value = _t('Login failed. Please try again later.');
-      console.error('Login flow failed:', err);
-    }
-  }
-}
-
-/**
- * Submit the form when the user presses Enter.
- */
-function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    handleLogin();
-  }
+  const ok = await runLoginSubmit({
+    loading: !!loading.value,
+    form,
+    fieldErrors,
+    t: _t,
+    loginFailedMessage: _t('Login failed. Please try again later.'),
+    login: (username, password, csrf, device, rememberMe) =>
+      authStore.login(username, password, csrf, device, rememberMe),
+    rememberMe: form.rememberMe,
+    setError: message => {
+      error.value = message;
+    },
+  });
+  if (ok) handleRedirect();
 }
 </script>
 
 <style lang="scss" scoped>
 .login-page-container {
-  &.o-page--with-padding {
-    padding: 0;
-  }
-
-  :deep(.o-page__body) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-  }
-}
-
-.login-card {
-  width: 100%;
-  max-width: 400px;
-}
-
-.card-header {
-  text-align: center;
-  h3 {
-    margin: 0;
-    font-size: var(--el-font-size-large);
-    font-weight: var(--el-font-weight-bold);
-  }
-}
-
-.login-options {
   display: flex;
-  justify-content: space-between;
-  margin-block-end: var(--el-margin-base, 16px);
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
 }
 
-.submit-button {
-  width: 100%;
-}
-
-.register-link {
-  text-align: center;
-  margin-block-start: var(--el-margin-base, 16px);
-  font-size: var(--el-font-size-small, 14px);
-  color: var(--el-text-color-secondary);
-
-  a {
-    color: var(--el-color-primary);
-    text-decoration: none;
-    margin-inline-start: var(--el-margin-small, 4px);
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-:deep(.el-alert) {
-  margin-block-end: var(--el-margin-medium, 20px);
+.register-link :deep(a) {
+  margin-inline-start: 0.25rem;
 }
 </style>
