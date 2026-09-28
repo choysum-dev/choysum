@@ -72,6 +72,20 @@ test('isTabFocusable: rejects aria-hidden controls', () => {
   expect(isTabFocusable(btn)).toBe(false);
 });
 
+test('isTabFocusable: rejects hidden attribute on element or ancestor', () => {
+  const hiddenBtn = document.createElement('button');
+  hiddenBtn.setAttribute('hidden', '');
+  document.body.appendChild(hiddenBtn);
+  expect(isTabFocusable(hiddenBtn)).toBe(false);
+
+  const host = document.createElement('div');
+  host.setAttribute('hidden', '');
+  const nested = document.createElement('button');
+  host.appendChild(nested);
+  document.body.appendChild(host);
+  expect(isTabFocusable(nested)).toBe(false);
+});
+
 test('isTabFocusable: rejects controls under inert ancestors', () => {
   const host = document.createElement('div');
   host.setAttribute('inert', '');

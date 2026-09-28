@@ -36,7 +36,8 @@ export function resolveTokenDetailId(payload: Record<string, unknown> | null | u
 export function resolveTokenKanbanCardId(row: TokenKanbanRow, index: number, laneKey: string): string {
   const payload = resolveTokenKanbanRowPayload(row);
   const key = row && typeof row === 'object' && 'key' in row ? (row as { key?: string }).key : undefined;
-  const id = payload.Id ?? key;
+  // A blank payload Id must fall back to the row key (Vue key), not a synthetic index.
+  const id = String(payload.Id ?? '').trim() || key;
   const cardId = id == null ? '' : String(id).trim();
   if (cardId !== '') {
     return cardId;

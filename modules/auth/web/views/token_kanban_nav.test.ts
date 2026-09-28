@@ -52,6 +52,8 @@ test('resolveTokenKanbanCardId: prefers payload Id then row key', () => {
   expect(resolveTokenKanbanCardId({ payload: { Id: 't1' } }, 0, 'lane-a')).toBe('t1');
   expect(resolveTokenKanbanCardId({ key: 'row-k', payload: {} }, 0, 'lane-a')).toBe('row-k');
   expect(resolveTokenKanbanCardId({ payload: { Id: '  padded  ' } }, 0, 'lane-a')).toBe('padded');
+  // Blank / whitespace Id is treated as missing so the stable row key wins.
+  expect(resolveTokenKanbanCardId({ key: 'row-k', payload: { Id: '   ' } }, 0, 'lane-a')).toBe('row-k');
 });
 
 test('resolveTokenKanbanCardId: reads Id from raw records', () => {

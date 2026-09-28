@@ -13,17 +13,25 @@ describe('ChoyNotificationBell mount', () => {
 
   function stubInboxEngine() {
     stubSfc(ONotificationBell as any, {
-      setup() {
-        return () => h('div', { 'data-testid': 'inbox-engine' });
+      setup(_props: unknown, ctx: { attrs: Record<string, unknown> }) {
+        return () =>
+          h('div', {
+            'data-testid': 'inbox-engine',
+            class: ctx.attrs.class,
+          });
       },
     });
   }
 
   test('omitted count hosts the inbox engine', async () => {
     stubInboxEngine();
-    const wrapper = mountApp(ChoyNotificationBell as any);
+    const wrapper = mountApp(ChoyNotificationBell as any, {
+      props: { class: 'ms-2' },
+    });
     await flushPromises();
-    expect(wrapper.q('[data-testid="inbox-engine"]')).not.toBeNull();
+    const inbox = wrapper.q('[data-testid="inbox-engine"]');
+    expect(inbox).not.toBeNull();
+    expect(String(inbox?.getAttribute('class') || '').includes('ms-2')).toBe(true);
     expect(wrapper.q('[data-anchor="choy.notification-bell"]')).toBeNull();
     wrapper.unmount();
   });

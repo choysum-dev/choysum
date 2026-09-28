@@ -4,6 +4,7 @@
 import { ChoysumError } from '../error';
 import {
   formatLoginError,
+  isUnsafeLoginRedirectPath,
   normalizeLoginRedirectOrigin,
   resolveLoginRedirect,
   resolveLoginRedirectOrigin,
@@ -47,6 +48,37 @@ test('resolveLoginRedirect: rejects normalization that yields protocol-relative 
   expect(resolveLoginRedirect('/..//evil.example')).toBe('/');
   expect(resolveLoginRedirect('/a/..//evil.com')).toBe('/');
   expect(resolveLoginRedirect('/%2e%2e/%2e%2e//evil.com')).toBe('/');
+});
+
+test('resolveLoginRedirect: rejects percent-encoded separators that decode to // or \\', () => {
+  expect(resolveLoginRedirect('/%2f%2fevil.com')).toBe('/');
+  expect(resolveLoginRedirect('/%2F%2Fevil.com')).toBe('/');
+  expect(resolveLoginRedirect('/ok%2f%2fevil')).toBe('/');
+  expect(resolveLoginRedirect('/ok%5cevil')).toBe('/');
+});
+
+test('resolveLoginRedirect: keeps path when decodeURIComponent throws', () => {
+  // Lone `%` is invalid percent-encoding; fail open to the encoded pathname checks.
+  expect(
+    resolveLoginRedirect('/ok', {
+      origin: 'http://localhost',
+      createUrl: () => ({
+        origin: 'http://localhost',
+        pathname: '/%E0%A4%A',
+        search: '',
+        hash: '',
+      }),
+    }),
+  ).toBe('/%E0%A4%A');
+});
+
+test('isUnsafeLoginRedirectPath: flags protocol-relative, empty segments, slash, and ..', () => {
+  expect(isUnsafeLoginRedirectPath('/ok')).toBe(false);
+  expect(isUnsafeLoginRedirectPath('//evil')).toBe(true);
+  expect(isUnsafeLoginRedirectPath('/a//b')).toBe(true);
+  expect(isUnsafeLoginRedirectPath('/a\\b')).toBe(true);
+  expect(isUnsafeLoginRedirectPath('/../x')).toBe(true);
+  expect(isUnsafeLoginRedirectPath('relative')).toBe(true);
 });
 
 test('resolveLoginRedirect: rejects off-origin URL results', () => {

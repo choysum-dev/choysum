@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <!-- Product/inbox mode: host the dual-stack ONotificationBell engine. -->
-  <ONotificationBell v-if="useInboxEngine" />
+  <ONotificationBell v-if="useInboxEngine" :class="props.class" />
 
   <div
     v-else

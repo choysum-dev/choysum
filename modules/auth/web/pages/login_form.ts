@@ -56,14 +56,18 @@ export function resolveLoginRedirect(
     const createUrl = deps?.createUrl || ((input: string, origin: string) => new URL(input, origin));
     const url = createUrl(redirect, base);
     const pathOnly = String(url.pathname || '');
-    // Some engines leave `/..//host` uncollapsed; others normalize to `//host`.
-    // Reject both, and any pathname with empty segments (`//`) or `..` traversal.
+    // Percent-encoded separators (`%2f`, `%5c`) survive URL parsing; re-check the
+    // decoded path so a downstream consumer cannot re-interpret it as `//host`.
+    let decodedPath = pathOnly;
+    try {
+      decodedPath = decodeURIComponent(pathOnly);
+    } catch {
+      decodedPath = pathOnly;
+    }
     if (
       url.origin !== expectedOrigin ||
-      !pathOnly.startsWith('/') ||
-      pathOnly.startsWith('//') ||
-      pathOnly.includes('//') ||
-      /(^|\/)\.\.(\/|$)/.test(pathOnly)
+      isUnsafeLoginRedirectPath(pathOnly) ||
+      isUnsafeLoginRedirectPath(decodedPath)
     ) {
       return '/';
     }
@@ -71,6 +75,20 @@ export function resolveLoginRedirect(
   } catch {
     return '/';
   }
+}
+
+/**
+ * True when a path is not a safe same-document relative redirect target.
+ * Covers protocol-relative (`//`), empty segments, backslash, and `..` traversal.
+ */
+export function isUnsafeLoginRedirectPath(path: string): boolean {
+  return (
+    !path.startsWith('/') ||
+    path.startsWith('//') ||
+    path.includes('//') ||
+    path.includes('\\') ||
+    /(^|\/)\.\.(\/|$)/.test(path)
+  );
 }
 
 /** Normalize a base URL/origin string to `url.origin` for same-origin checks. */

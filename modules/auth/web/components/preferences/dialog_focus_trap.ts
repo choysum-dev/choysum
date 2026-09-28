@@ -6,7 +6,10 @@ const NATIVE_FOCUSABLE = new Set(['A', 'BUTTON', 'TEXTAREA', 'INPUT', 'SELECT'])
 /** True when the element participates in Tab order inside a dialog. */
 export function isTabFocusable(el: HTMLElement): boolean {
   if (el.getAttribute('aria-hidden') === 'true') return false;
-  if (typeof el.closest === 'function' && el.closest('[inert]')) return false;
+  if (el.hasAttribute('hidden')) return false;
+  if (typeof el.closest === 'function' && (el.closest('[inert]') || el.closest('[hidden]'))) {
+    return false;
+  }
 
   const tabindexAttr = el.getAttribute('tabindex');
   if (tabindexAttr != null) {
