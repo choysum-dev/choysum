@@ -47,6 +47,7 @@ SPDX-License-Identifier: Apache-2.0
                 type="checkbox"
                 class="size-4 rounded border-border"
                 :value="c.Id"
+                :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
                 @change="onEnabledChange"
               />
               <span>{{ c.DisplayName || c.Id }}</span>
@@ -76,7 +77,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
 import { dismissPopupOnEscape } from './popup_escape_focus';
-import { syncCompanyDraftsFromJwt } from './o_switch_company_draft';
+import { isActiveCompanyEnabledLocked, syncCompanyDraftsFromJwt } from './o_switch_company_draft';
 
 defineOptions({ name: 'SwitchCompany' });
 

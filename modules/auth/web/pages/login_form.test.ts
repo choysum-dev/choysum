@@ -4,6 +4,7 @@
 import { ChoysumError } from '../error';
 import {
   formatLoginError,
+  normalizeLoginRedirectOrigin,
   resolveLoginRedirect,
   resolveLoginRedirectOrigin,
   runLoginSubmit,
@@ -74,6 +75,15 @@ test('resolveLoginRedirect: fails closed when URL construction throws', () => {
 
 test('resolveLoginRedirect: honors explicit origin override', () => {
   expect(resolveLoginRedirect('/home', { origin: 'https://app.example' })).toBe('/home');
+  // Trailing slash / path on the override must not fail closed for same-origin paths.
+  expect(resolveLoginRedirect('/home', { origin: 'https://app.example/' })).toBe('/home');
+  expect(resolveLoginRedirect('/home', { origin: 'https://app.example/app' })).toBe('/home');
+});
+
+test('normalizeLoginRedirectOrigin: strips path and trailing slash', () => {
+  expect(normalizeLoginRedirectOrigin('https://app.example/')).toBe('https://app.example');
+  expect(normalizeLoginRedirectOrigin('https://app.example/app')).toBe('https://app.example');
+  expect(normalizeLoginRedirectOrigin('not a url')).toBe('not a url');
 });
 
 test('resolveLoginRedirectOrigin: uses window origin or localhost fallback', () => {

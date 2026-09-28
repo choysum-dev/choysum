@@ -50,13 +50,16 @@ export function resolveLoginRedirect(
   }
   try {
     const base = deps?.origin || resolveLoginRedirectOrigin();
+    // Compare against a normalized origin so a caller-supplied base with a
+    // trailing slash or path cannot fail closed for a valid redirect.
+    const expectedOrigin = normalizeLoginRedirectOrigin(base);
     const createUrl = deps?.createUrl || ((input: string, origin: string) => new URL(input, origin));
     const url = createUrl(redirect, base);
     const pathOnly = String(url.pathname || '');
     // Some engines leave `/..//host` uncollapsed; others normalize to `//host`.
     // Reject both, and any pathname with empty segments (`//`) or `..` traversal.
     if (
-      url.origin !== base ||
+      url.origin !== expectedOrigin ||
       !pathOnly.startsWith('/') ||
       pathOnly.startsWith('//') ||
       pathOnly.includes('//') ||
@@ -67,6 +70,17 @@ export function resolveLoginRedirect(
     return `${pathOnly}${url.search}${url.hash}`;
   } catch {
     return '/';
+  }
+}
+
+/** Normalize a base URL/origin string to `url.origin` for same-origin checks. */
+export function normalizeLoginRedirectOrigin(base: string): string {
+  try {
+    const origin = new URL(base).origin;
+    // Some engines yield an empty origin instead of throwing for bare strings.
+    return origin || String(base);
+  } catch {
+    return String(base);
   }
 }
 

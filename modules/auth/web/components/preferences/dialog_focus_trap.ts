@@ -9,7 +9,11 @@ export function isTabFocusable(el: HTMLElement): boolean {
   if (typeof el.closest === 'function' && el.closest('[inert]')) return false;
 
   const tabindexAttr = el.getAttribute('tabindex');
-  if (tabindexAttr === '-1') return false;
+  if (tabindexAttr != null) {
+    // Any negative tabindex removes the element from the tab order.
+    const parsed = Number(tabindexAttr);
+    if (Number.isFinite(parsed) && parsed < 0) return false;
+  }
 
   const tag = el.tagName;
   const inputType = String(el.getAttribute('type') || (el as HTMLInputElement).type || '').toLowerCase();

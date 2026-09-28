@@ -14,3 +14,16 @@ export function syncCompanyDraftsFromJwt(opts: {
   if (opts.panelVisible) return;
   opts.apply(opts.activeCompanyId, opts.enabledCompanyIds);
 }
+
+/**
+ * The active company must stay in the enabled set; lock its checkbox so users
+ * cannot uncheck a value that `ensureActiveInEnabled` would immediately restore.
+ */
+export function isActiveCompanyEnabledLocked(
+  companyId: string,
+  draftActiveCompanyId: string,
+): boolean {
+  const active = String(draftActiveCompanyId ?? '').trim();
+  if (!active) return false;
+  return String(companyId ?? '').trim() === active;
+}

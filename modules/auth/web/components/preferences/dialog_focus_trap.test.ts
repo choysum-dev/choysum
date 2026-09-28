@@ -113,6 +113,18 @@ test('isTabFocusable: custom tabindex and plain elements', () => {
   expect(isTabFocusable(plain)).toBe(false);
 });
 
+test('isTabFocusable: rejects any negative tabindex on native controls', () => {
+  const minusOne = document.createElement('button');
+  minusOne.setAttribute('tabindex', '-1');
+  document.body.appendChild(minusOne);
+  expect(isTabFocusable(minusOne)).toBe(false);
+
+  const minusTwo = document.createElement('button');
+  minusTwo.setAttribute('tabindex', '-2');
+  document.body.appendChild(minusTwo);
+  expect(isTabFocusable(minusTwo)).toBe(false);
+});
+
 test('trapDialogTabKey wraps forward from last to first', () => {
   const { root, first, last } = mountDialog();
   last.focus();
