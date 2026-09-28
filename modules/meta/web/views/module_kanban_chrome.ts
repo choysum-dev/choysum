@@ -27,7 +27,14 @@ export function isModuleInstalled(status?: string): boolean {
 export function formatModuleKanbanDate(dt?: unknown): string {
   if (!dt) return '';
   try {
-    const d = typeof dt === 'string' ? new Date(dt) : dt instanceof Date ? dt : new Date(String(dt));
+    const d =
+      typeof dt === 'number'
+        ? new Date(dt)
+        : typeof dt === 'string'
+          ? new Date(dt)
+          : dt instanceof Date
+            ? dt
+            : new Date(String(dt));
     if (!(d instanceof Date) || isNaN(d.getTime())) return String(dt).slice(0, 19);
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -36,7 +43,11 @@ export function formatModuleKanbanDate(dt?: unknown): string {
     const mm = String(d.getMinutes()).padStart(2, '0');
     return `${y}-${m}-${day} ${hh}:${mm}`;
   } catch {
-    return String(dt).slice(0, 19);
+    try {
+      return String(dt).slice(0, 19);
+    } catch {
+      return '';
+    }
   }
 }
 

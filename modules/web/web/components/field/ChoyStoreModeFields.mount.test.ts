@@ -180,6 +180,28 @@ describe('Choy store-mode field hosts', () => {
     });
     expect(decW.q('[data-test=o-decimal]')).not.toBeNull();
     decW.unmount();
+
+    const floatW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'Factor',
+      mode: 'float',
+    });
+    expect(floatW.q('[data-test=o-decimal]')).not.toBeNull();
+    floatW.unmount();
+  });
+
+  test('NumberField chrome mode renders anchor and uses bigint inputmode', async () => {
+    const w = await mountField(ChoyNumberField, {
+      label: 'Count',
+      mode: 'bigint',
+      modelValue: 42,
+    });
+    const root = w.q('[data-anchor="choy.number-field"]');
+    expect(root).not.toBeNull();
+    expect(w.q('[data-test=o-bigint]')).toBeNull();
+    const input = w.q('input') as HTMLInputElement | null;
+    expect(input?.getAttribute('inputmode')).toBe('numeric');
+    w.unmount();
   });
 
   test('ManyToOne store mode uses Ref by default and record when valueMode=record', async () => {

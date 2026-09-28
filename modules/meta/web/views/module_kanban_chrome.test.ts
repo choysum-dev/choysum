@@ -31,6 +31,19 @@ test('formatModuleKanbanDate: empty and valid timestamps', () => {
   expect(formatModuleKanbanDate('not-a-date')).toBe('not-a-date');
   const formatted = formatModuleKanbanDate('2026-09-28T10:05:00Z');
   expect(formatted.length).toBeGreaterThan(10);
+  const fromEpoch = formatModuleKanbanDate(Date.UTC(2026, 8, 28, 10, 5));
+  expect(fromEpoch.length).toBeGreaterThan(10);
+  const fromDate = formatModuleKanbanDate(new Date(Date.UTC(2026, 8, 28, 10, 5)));
+  expect(fromDate.length).toBeGreaterThan(10);
+  const boom = {
+    toString() {
+      throw new Error('boom');
+    },
+    valueOf() {
+      throw new Error('boom');
+    },
+  };
+  expect(formatModuleKanbanDate(boom)).toBe('');
 });
 
 test('formatModuleOpSummary: string / message / code / object / throw', () => {
