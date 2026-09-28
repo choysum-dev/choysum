@@ -97,7 +97,7 @@ const classes = computed(() =>
     v-else
     v-bind="nonButtonAttrs"
     data-slot="button"
-    :class="classes"
+    :class="[classes, disabled ? 'pointer-events-none opacity-50' : '']"
     @click="handleClick"
   >
     <slot />

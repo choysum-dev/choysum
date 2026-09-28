@@ -52,6 +52,7 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
           const select = document.querySelector(sel) as HTMLSelectElement | null;
           if (!select) return 0;
           return Array.from(select.options)
+            .filter(opt => !opt.disabled)
             .map(opt => String(opt.value || '').trim())
             .filter(Boolean).length;
         }, panelSelect),
@@ -64,7 +65,9 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     if (!select) return { current: '', values: [] as string[] };
     return {
       current: String(select.value || '').trim(),
+      // Skip disabled options: programmatic selection of them is a silent no-op.
       values: Array.from(select.options)
+        .filter(opt => !opt.disabled)
         .map(opt => String(opt.value || '').trim())
         .filter(Boolean),
     };
@@ -82,28 +85,23 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   );
   expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');
 
-  const applied = await page.evaluate(
-    ({ sel, other }: { sel: string; other: string }) => {
-      const select = document.querySelector(sel) as HTMLSelectElement | null;
-      if (!select) return '';
-      if (String(select.value || '').trim() !== other) {
-        select.value = other;
-        select.dispatchEvent(new Event('input', { bubbles: true }));
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-      return select.value === other ? other : '';
-    },
-    { sel: panelSelect, other: otherValue }
-  );
-  expect(applied, 'company switch: failed to apply alternative company option').toBe(otherValue);
-
+  // Re-apply inside the poll: a late panel-open RefreshToken can reset the draft.
   await expect
     .poll(
       async () =>
-        page.evaluate((sel: string) => {
-          const select = document.querySelector(sel) as HTMLSelectElement | null;
-          return String(select?.value || '').trim();
-        }, panelSelect),
+        page.evaluate(
+          ({ sel, other }: { sel: string; other: string }) => {
+            const select = document.querySelector(sel) as HTMLSelectElement | null;
+            if (!select) return '';
+            if (String(select.value || '').trim() !== other) {
+              select.value = other;
+              select.dispatchEvent(new Event('input', { bubbles: true }));
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return String(select.value || '').trim();
+          },
+          { sel: panelSelect, other: otherValue }
+        ),
       { timeout: 5_000 }
     )
     .toBe(otherValue);

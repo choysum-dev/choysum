@@ -97,6 +97,9 @@ describe('ChoyButton mount', () => {
       expect(host?.getAttribute('aria-disabled')).toBe('true');
       expect(host?.getAttribute('tabindex')).toBe('-1');
       expect(host?.getAttribute('href')).toBeNull();
+      // disabled: Tailwind variants do not match non-button hosts; classes are explicit.
+      expect(host?.classList.contains('pointer-events-none')).toBe(true);
+      expect(host?.classList.contains('opacity-50')).toBe(true);
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       const event = new Event('click', { cancelable: true });
@@ -126,6 +129,8 @@ describe('Button host click guard', () => {
       await flushPromises();
       const host = w.q('[data-testid="link-enabled"]') as HTMLElement | null;
       expect(host?.getAttribute('href')).toBe('#nav');
+      expect(host?.classList.contains('pointer-events-none')).toBe(false);
+      expect(host?.classList.contains('opacity-50')).toBe(false);
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       const event = new Event('click', { cancelable: true });
@@ -160,6 +165,8 @@ describe('Button host click guard', () => {
       expect(host?.getAttribute('aria-disabled')).toBe('true');
       expect(host?.getAttribute('tabindex')).toBe('-1');
       expect(host?.getAttribute('href')).toBeNull();
+      expect(host?.classList.contains('pointer-events-none')).toBe(true);
+      expect(host?.classList.contains('opacity-50')).toBe(true);
       const handleClick = w.setupState()?.handleClick as ((e: Event) => void) | undefined;
       expect(typeof handleClick).toBe('function');
       const event = new Event('click', { cancelable: true });
