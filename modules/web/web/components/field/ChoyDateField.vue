@@ -4,7 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <ODateField v-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
+    v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.date-field"
     :class="props.class"
     :label="label"
@@ -32,16 +35,22 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { useAttrs } from 'vue';
 import DatePicker from '../internal/DatePicker.vue';
 import type { ClassValue } from '../../lib/utils';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
+import ODateField from './ODateField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
 
+defineOptions({ name: 'ChoyDateField', inheritAttrs: false });
+
 /**
- * Date field (YYYY-MM-DD) wrapping the L3 DatePicker.
+ * Date field (YYYY-MM-DD). Store+prop hosts ODateField; otherwise L3 DatePicker chrome.
  */
 const props = withDefaults(
   defineProps<
@@ -49,6 +58,11 @@ const props = withDefaults(
       class?: ClassValue;
       placeholder?: string;
       clearable?: boolean;
+      store?: WebModelStore<any>;
+      prop?: string;
+      binding?: unknown;
+      rules?: unknown[];
+      vColumnProps?: Record<string, unknown>;
     }
   >(),
   {
@@ -57,6 +71,9 @@ const props = withDefaults(
     clearable: true,
   },
 );
+
+const attrs = useAttrs();
+const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
 
 const model = defineModel<string | null>({ default: null });
 </script>

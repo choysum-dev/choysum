@@ -19,8 +19,8 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyGrid :cols="12">
         <ChoyCol :span="3"><ChoyVarcharField :store="store" prop="Prefix" /></ChoyCol>
         <ChoyCol :span="3"><ChoyVarcharField :store="store" prop="Suffix" /></ChoyCol>
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="Padding" /></ChoyCol>
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="NextNumber" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="Padding" mode="integer" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="NextNumber" mode="bigint" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
         <ChoyCol :span="3"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>

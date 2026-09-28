@@ -134,7 +134,6 @@ SPDX-License-Identifier: Apache-2.0
         v-if="dialogVisible"
         class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
         role="presentation"
-        @click.self="closeDialog"
       >
         <div
           ref="dialogRef"
@@ -277,7 +276,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { History, LayoutGrid, List, RefreshCw } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -286,6 +285,8 @@ import type MetaModuleIndex from '@/meta/service/models/module_index';
 import type { ClientModelProps } from '@/core/rpc/types';
 import { defineAction } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { restoreDialogFocus } from '@/auth/web/components/preferences/dialog_focus_restore';
+import { trapDialogTabKey } from '@/auth/web/components/preferences/dialog_focus_trap';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -306,6 +307,16 @@ import {
   type ModuleOpStatusSnapshot,
 } from '../composables/useModuleOpProgress';
 import { createModuleKanbanOpProgressHooks } from '../composables/moduleKanbanOpProgress';
+import {
+  captureDialogFocusTarget,
+  formatModuleKanbanDate,
+  formatModuleOpSummary,
+  isModuleInstalled,
+  manifestSummaryText,
+  moduleStatusBadgeClass,
+  resolveModuleKanbanCardId,
+  shouldRecoverStaleKanbanSearch,
+} from './module_kanban_chrome';
 
 defineOptions({ name: 'ModuleKanbanView' });
 
@@ -327,10 +338,13 @@ const choyLanes = ref<ChoyKanbanLane[]>([]);
 let syncingLanes = false;
 let resyncPending = false;
 let searchSeq = 0;
+let searchInFlight = 0;
 let lastSearchQuery: ChoySearchQuery | null = null;
+const searchPending = ref(false);
 
 const dialogTitleId = useId();
 const dialogRef = ref<HTMLElement | null>(null);
+let dialogFocusRestore: HTMLElement | null = null;
 
 const moduleInstallAction = defineAction('meta.action.module_install', {
   title: _lt('Install Module'),
@@ -503,6 +517,8 @@ onMounted(async () => {
 async function onSearch(query: ChoySearchQuery) {
   lastSearchQuery = query;
   const seq = ++searchSeq;
+  searchInFlight++;
+  searchPending.value = true;
   try {
     await controller.apply({
       keyword: query.keyword,
@@ -510,12 +526,51 @@ async function onSearch(query: ChoySearchQuery) {
       appliedGroups: query.appliedGroups as any,
       keywordFields,
     });
-    if (seq !== searchSeq) return;
-    await syncLanesFromController();
   } catch (e) {
-    if (seq !== searchSeq) return;
-    ChoyMessage.error(_t('Failed to load kanban'));
-    console.error('Module kanban search failed:', e);
+    if (seq === searchSeq) {
+      ChoyMessage.error(_t('Failed to load kanban'));
+      console.error('Module kanban search failed:', e);
+    }
+  } finally {
+    searchInFlight--;
+  }
+
+  if (
+    shouldRecoverStaleKanbanSearch({
+      completedSeq: seq,
+      latestSeq: searchSeq,
+      inFlight: searchInFlight,
+    }) &&
+    lastSearchQuery
+  ) {
+    const recoverSeq = searchSeq;
+    try {
+      await controller.apply({
+        keyword: lastSearchQuery.keyword,
+        appliedFilters: (lastSearchQuery.appliedFilters || []) as any,
+        appliedGroups: lastSearchQuery.appliedGroups as any,
+        keywordFields,
+      });
+      if (recoverSeq === searchSeq) await syncLanesFromController();
+    } catch (e) {
+      if (recoverSeq === searchSeq) {
+        ChoyMessage.error(_t('Failed to load kanban'));
+        console.error('Module kanban search recover failed:', e);
+      }
+    } finally {
+      if (searchInFlight === 0) searchPending.value = false;
+    }
+    return;
+  }
+
+  if (seq !== searchSeq) {
+    if (searchInFlight === 0) searchPending.value = false;
+    return;
+  }
+  try {
+    await syncLanesFromController();
+  } finally {
+    if (seq === searchSeq) searchPending.value = false;
   }
 }
 
@@ -544,18 +599,12 @@ function recordField(card: ChoyKanbanCard, field: string): unknown {
 }
 
 function onCardClick(card: ChoyKanbanCard) {
-  const id = String(payloadOf(card).Id ?? '').trim();
+  const id = resolveModuleKanbanCardId(payloadOf(card));
   if (id) router.push(`/meta/modules/${id}`);
 }
 
 function statusBadgeClass(status?: string, available?: boolean): string {
-  if (available === false) return 'bg-destructive/15 text-destructive';
-  const val = String(status || '').toLowerCase();
-  if (val === 'installed' || val === 'succeeded') return 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200';
-  if (val === 'uninstalled') return 'bg-muted text-foreground/70';
-  if (val === 'disabled' || val === 'dispatching' || val === 'queued') return 'bg-amber-500/15 text-amber-900 dark:text-amber-100';
-  if (val === 'broken' || val === 'failed') return 'bg-destructive/15 text-destructive';
-  return 'bg-muted text-foreground/70';
+  return moduleStatusBadgeClass(status, available);
 }
 
 function statusLabel(status?: string, available?: boolean) {
@@ -573,39 +622,15 @@ function statusLabel(status?: string, available?: boolean) {
 }
 
 function isInstalled(status?: string) {
-  return String(status || '').toLowerCase() === 'installed';
+  return isModuleInstalled(status);
 }
 
 function formatDate(dt?: unknown) {
-  if (!dt) return '';
-  try {
-    const d = typeof dt === 'string' ? new Date(dt) : dt instanceof Date ? dt : new Date(String(dt));
-    if (!(d instanceof Date) || isNaN(d.getTime())) return String(dt).slice(0, 19);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${y}-${m}-${day} ${hh}:${mm}`;
-  } catch {
-    return String(dt).slice(0, 19);
-  }
+  return formatModuleKanbanDate(dt);
 }
 
 function formatSummary(summary: unknown) {
-  if (!summary) return '';
-  if (typeof summary === 'string') return summary;
-  if (typeof summary === 'object' && summary !== null && 'message' in summary) {
-    return String((summary as { message?: unknown }).message ?? '');
-  }
-  if (typeof summary === 'object' && summary !== null && 'code' in summary) {
-    return String((summary as { code?: unknown }).code ?? '');
-  }
-  try {
-    return JSON.stringify(summary);
-  } catch {
-    return String(summary);
-  }
+  return formatModuleOpSummary(summary);
 }
 
 async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<MetaModuleIndex>) {
@@ -613,9 +638,12 @@ async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<
   action.value = nextAction;
   targetModule.value = record;
   withDemo.value = false;
+  dialogFocusRestore = captureDialogFocusTarget();
   dialogVisible.value = true;
   dialogStep.value = 'plan';
   planLoading.value = true;
+  await nextTick();
+  dialogRef.value?.focus();
   try {
     plan.value = (await (moduleStore as any).PlanOperation({
       action: nextAction,
@@ -624,7 +652,7 @@ async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<
     })) as PlanOperationResp;
   } catch (error: any) {
     ChoyMessage.error(error?.message || _t('Failed to load plan'));
-    dialogVisible.value = false;
+    closeDialog();
   } finally {
     planLoading.value = false;
   }
@@ -671,18 +699,29 @@ function onDialogClose() {
 function closeDialog() {
   dialogVisible.value = false;
   onDialogClose();
+  const restore = dialogFocusRestore;
+  dialogFocusRestore = null;
+  restoreDialogFocus(restore);
 }
 
 function onDialogKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') closeDialog();
+  if (event.key === 'Escape') {
+    closeDialog();
+    return;
+  }
+  const root = dialogRef.value;
+  if (root) trapDialogTabKey(event, root as HTMLElement);
 }
 
 function manifestSummary(raw: unknown) {
-  if (!raw || typeof raw !== 'object') return '';
-  const obj = raw as Record<string, unknown>;
-  const text = obj.short_desc || obj.shortDesc || obj.summary || obj.description || obj.name || '';
-  return typeof text === 'string' ? text : '';
+  return manifestSummaryText(raw);
 }
+
+watch(dialogVisible, async (open) => {
+  if (!open) return;
+  await nextTick();
+  dialogRef.value?.focus();
+});
 
 const syncLoading = ref(false);
 

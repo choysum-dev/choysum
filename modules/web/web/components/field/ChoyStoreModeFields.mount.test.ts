@@ -16,6 +16,8 @@ import ChoyTextField from './ChoyTextField.vue';
 import ChoyBooleanField from './ChoyBooleanField.vue';
 import ChoySelectionField from './ChoySelectionField.vue';
 import ChoyDatetimeField from './ChoyDatetimeField.vue';
+import ChoyDateField from './ChoyDateField.vue';
+import ChoyNumberField from './ChoyNumberField.vue';
 import ChoyJsonField from './ChoyJsonField.vue';
 import ChoyImageField from './ChoyImageField.vue';
 import ChoyVirtualField from './ChoyVirtualField.vue';
@@ -30,6 +32,10 @@ import OTextField from './OTextField.vue';
 import OBooleanField from './OBooleanField.vue';
 import OSelectionField from './OSelectionField.vue';
 import ODatetimeField from './ODatetimeField.vue';
+import ODateField from './ODateField.vue';
+import OIntField from './OIntField.vue';
+import ODecimalField from './ODecimalField.vue';
+import OBigintField from './OBigintField.vue';
 import OJsonobjectField from './OJsonobjectField.vue';
 import OImageField from './OImageField.vue';
 import OVirtualField from './OVirtualField.vue';
@@ -66,6 +72,10 @@ describe('Choy store-mode field hosts', () => {
     OBooleanField,
     OSelectionField,
     ODatetimeField,
+    ODateField,
+    OIntField,
+    ODecimalField,
+    OBigintField,
     OJsonobjectField,
     OImageField,
     OVirtualField,
@@ -88,6 +98,10 @@ describe('Choy store-mode field hosts', () => {
     stubHost(OBooleanField as any, 'o-boolean');
     stubHost(OSelectionField as any, 'o-selection');
     stubHost(ODatetimeField as any, 'o-datetime');
+    stubHost(ODateField as any, 'o-date');
+    stubHost(OIntField as any, 'o-int');
+    stubHost(ODecimalField as any, 'o-decimal');
+    stubHost(OBigintField as any, 'o-bigint');
     stubHost(OJsonobjectField as any, 'o-json');
     stubHost(OImageField as any, 'o-image');
     stubHost(OVirtualField as any, 'o-virtual');
@@ -126,6 +140,7 @@ describe('Choy store-mode field hosts', () => {
       [ChoyBooleanField, 'o-boolean'],
       [ChoySelectionField, 'o-selection'],
       [ChoyDatetimeField, 'o-datetime'],
+      [ChoyDateField, 'o-date'],
       [ChoyJsonField, 'o-json'],
       [ChoyImageField, 'o-image'],
       [ChoyVirtualField, 'o-virtual'],
@@ -138,6 +153,33 @@ describe('Choy store-mode field hosts', () => {
       expect(host?.getAttribute('data-prop')).toBe('Name');
       w.unmount();
     }
+  });
+
+  test('NumberField store mode routes integer / bigint / decimal hosts', async () => {
+    const intW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'Padding',
+      mode: 'integer',
+    });
+    expect(intW.q('[data-test=o-int]')).not.toBeNull();
+    expect(intW.q('[data-test=o-decimal]')).toBeNull();
+    intW.unmount();
+
+    const bigW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'NextNumber',
+      mode: 'bigint',
+    });
+    expect(bigW.q('[data-test=o-bigint]')).not.toBeNull();
+    bigW.unmount();
+
+    const decW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'Rate',
+      mode: 'decimal',
+    });
+    expect(decW.q('[data-test=o-decimal]')).not.toBeNull();
+    decW.unmount();
   });
 
   test('ManyToOne store mode uses Ref by default and record when valueMode=record', async () => {

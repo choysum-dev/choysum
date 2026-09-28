@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Symbol" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
-        <ChoyCol :span="4"><ChoyNumberField :store="store" prop="DecimalDigits" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyNumberField :store="store" prop="DecimalDigits" mode="integer" /></ChoyCol>
         <ChoyCol :span="4"><ChoyNumberField :store="store" prop="Rounding" /></ChoyCol>
         <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
       </ChoyGrid>

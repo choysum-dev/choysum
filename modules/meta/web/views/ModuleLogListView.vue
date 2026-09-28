@@ -24,8 +24,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyVarcharField prop="ErrorCode" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoyJsonField prop="SummaryJson" :store="store" :vColumnProps="{ minWidth: 220 }" />
     <ChoyJsonField prop="LastErrorJson" :store="store" :vColumnProps="{ minWidth: 220 }" />
-    <ChoyNumberField prop="Attempt" :label="_t('Attempts')" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoyNumberField prop="MaxAttempts" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ChoyNumberField prop="Attempt" mode="integer" :label="_t('Attempts')" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ChoyNumberField prop="MaxAttempts" mode="integer" :store="store" :vColumnProps="{ minWidth: 100 }" />
   </ChoyListView>
 </template>
 

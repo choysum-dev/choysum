@@ -4,7 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <!-- Store hosts: bigint / int / decimal O* engines; chrome keeps defineModel. -->
+  <OBigintField v-if="storeMode && mode === 'bigint'" v-bind="(storeBind as any)" />
+  <OIntField v-else-if="storeMode && mode === 'integer'" v-bind="(storeBind as any)" />
+  <ODecimalField v-else-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
+    v-else
+    v-bind="($attrs as any)"
     data-anchor="choy.number-field"
     :class="props.class"
     :label="label"
@@ -28,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-invalid="ariaInvalid || invalidDraft || undefined"
         :aria-required="ariaRequired"
         :aria-describedby="ariaDescribedby"
-        :inputmode="mode === 'integer' ? 'numeric' : 'decimal'"
+        :inputmode="mode === 'integer' || mode === 'bigint' ? 'numeric' : 'decimal'"
         @update:model-value="onDraftInput"
         @change="commitDraft"
         @blur="commitDraft"
@@ -39,10 +45,15 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, useAttrs, watch } from 'vue';
 import Input from '../vendor/ui/input/Input.vue';
 import type { ClassValue } from '../../lib/utils';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
+import OBigintField from './OBigintField.vue';
+import ODecimalField from './ODecimalField.vue';
+import OIntField from './OIntField.vue';
 import {
   choyFieldChromeDefaults,
   parseChoyNumber,
@@ -50,16 +61,25 @@ import {
   type ChoyFieldChromeProps,
 } from './fieldHelpers';
 
+defineOptions({ name: 'ChoyNumberField', inheritAttrs: false });
+
+type ChoyNumberMode = 'integer' | 'float' | 'decimal' | 'bigint';
+
 /**
- * Numeric field. Model is `number | null`; input text is parsed on blur/commit.
- * Always uses a text input so partial/invalid entries are not coerced to ''.
+ * Numeric field. Store+prop hosts OInt / ODecimal / OBigint by `mode`.
+ * Chrome model is `number | null` (bigint chrome is text-backed via draft only).
  */
 const props = withDefaults(
   defineProps<
     ChoyFieldChromeProps & {
       class?: ClassValue;
       placeholder?: string;
-      mode?: 'integer' | 'float' | 'decimal';
+      mode?: ChoyNumberMode;
+      store?: WebModelStore<any>;
+      prop?: string;
+      binding?: unknown;
+      rules?: unknown[];
+      vColumnProps?: Record<string, unknown>;
     }
   >(),
   {
@@ -68,6 +88,9 @@ const props = withDefaults(
     mode: 'float',
   },
 );
+
+const attrs = useAttrs();
+const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
 
 const model = defineModel<number | null>({ default: null });
 const draft = ref(
@@ -81,22 +104,25 @@ const invalidDraft = ref(false);
  * `String(1e-22)` is exponential and `parseChoyNumber` rejects it, but the host
  * number is still a valid float/decimal.
  */
-function isHostNumberCompatibleWithMode(
-  value: number,
-  mode: 'integer' | 'float' | 'decimal',
-): boolean {
+function isHostNumberCompatibleWithMode(value: number, mode: ChoyNumberMode): boolean {
   if (!Number.isFinite(value)) {
     return false;
   }
-  if (mode === 'integer') {
+  if (mode === 'integer' || mode === 'bigint') {
     return Number.isSafeInteger(value);
   }
   return Number.isSafeInteger(Math.trunc(value));
 }
 
+/** Chrome parse mode collapses bigint onto integer digit rules. */
+function chromeParseMode(mode: ChoyNumberMode): 'integer' | 'float' | 'decimal' {
+  return mode === 'bigint' ? 'integer' : mode;
+}
+
 watch(model, (next) => {
   const expected = next === null || next === undefined ? '' : String(next);
-  const parsed = parseChoyNumber(draft.value, props.mode);
+  const parseMode = chromeParseMode(props.mode);
+  const parsed = parseChoyNumber(draft.value, parseMode);
   const draftInvalid = draft.value.trim() !== '' && parsed === null;
   if (parsed !== next || draftInvalid) {
     draft.value = expected;
@@ -151,7 +177,8 @@ function commitDraft(): void {
     invalidDraft.value = false;
     return;
   }
-  const parsed = parseChoyNumber(draft.value, props.mode);
+  const parseMode = chromeParseMode(props.mode);
+  const parsed = parseChoyNumber(draft.value, parseMode);
   if (parsed === null) {
     // Keep the draft so the user can correct invalid input; leave the model unchanged,
     // but mark the control invalid so it cannot look committed.
@@ -160,7 +187,7 @@ function commitDraft(): void {
   }
   invalidDraft.value = false;
   model.value = parsed;
-  draft.value = resolveChoyNumberDraftText(parsed, text, props.mode);
+  draft.value = resolveChoyNumberDraftText(parsed, text, parseMode);
 }
 
 function onKeydown(event: KeyboardEvent): void {

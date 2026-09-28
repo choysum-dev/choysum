@@ -23,10 +23,10 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="IdempotencyKey" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="Count" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="Count" mode="integer" /></ChoyCol>
         <ChoyCol :span="3"><ChoyBooleanField :store="store" prop="DryRun" /></ChoyCol>
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="RangeStart" /></ChoyCol>
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="RangeEnd" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="RangeStart" mode="bigint" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="RangeEnd" mode="bigint" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
         <ChoyCol :span="6"><ChoyVarcharField :store="store" prop="CodeSnapshot" /></ChoyCol>

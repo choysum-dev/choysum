@@ -19,10 +19,10 @@ SPDX-License-Identifier: Apache-2.0
       ><ChoyVarcharField :store="store" prop="SequenceId.Name"
     /></ChoyManyToOneField>
     <ChoyVarcharField :store="store" prop="IdempotencyKey" />
-    <ChoyNumberField :store="store" prop="Count" />
+    <ChoyNumberField :store="store" prop="Count" mode="integer" />
     <ChoyBooleanField :store="store" prop="DryRun" />
-    <ChoyNumberField :store="store" prop="RangeStart" />
-    <ChoyNumberField :store="store" prop="RangeEnd" />
+    <ChoyNumberField :store="store" prop="RangeStart" mode="bigint" />
+    <ChoyNumberField :store="store" prop="RangeEnd" mode="bigint" />
     <ChoyDatetimeField :store="store" prop="ExpiresAt" />
   </ChoyListView>
 </template>

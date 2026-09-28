@@ -16,7 +16,12 @@ SPDX-License-Identifier: Apache-2.0
         >
           <LayoutGrid class="size-4" aria-hidden="true" />
         </ChoyButton>
-        <ChoyButton size="sm" :title="_t('List View')" @click="toList">
+        <ChoyButton
+          v-if="canRoute('meta.route.module_list')"
+          size="sm"
+          :title="_t('List View')"
+          @click="toList"
+        >
           <List class="size-4" aria-hidden="true" />
         </ChoyButton>
         <ChoyButton

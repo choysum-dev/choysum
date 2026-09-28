@@ -29,7 +29,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="DateFormat" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="TimeFormat" /></ChoyCol>
-        <ChoyCol :span="4"><ChoyNumberField :store="store" prop="FirstDayOfWeek" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyNumberField :store="store" prop="FirstDayOfWeek" mode="integer" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoySelectionField :store="store" prop="CurrencySymbolPosition" /></ChoyCol>
