@@ -730,6 +730,10 @@ func TestMergedComponentsRegexes_MatchMidObjectKeys(t *testing.T) {
 	if mergedComponentsChoyLayoutRe.MatchString("components: { Foo: ChoyLayout }") {
 		t.Fatal("expected ChoyLayout regex not to match a value reference")
 	}
+	// Value after a prior entry must not match either (key-vs-value guard).
+	if mergedComponentsChoyLayoutRe.MatchString("components: { Foo: Bar, Baz: ChoyLayout }") {
+		t.Fatal("expected ChoyLayout regex not to match a later entry's value reference")
+	}
 }
 
 func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyWebShell(t *testing.T) {
