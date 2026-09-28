@@ -37,6 +37,8 @@ test('formatModuleKanbanDate: empty and valid timestamps', () => {
   // Epoch zero is a valid timestamp; do not treat it as empty.
   expect(formatModuleKanbanDate(0).length).toBeGreaterThan(0);
   expect(formatModuleKanbanDate('not-a-date')).toBe('not-a-date');
+  // Structured non-date payloads must not render as "[object Object]".
+  expect(formatModuleKanbanDate({ seconds: 1 })).toBe('');
   const formatted = formatModuleKanbanDate('2026-09-28T10:05:00Z');
   expect(formatted.length).toBeGreaterThan(10);
   const fromEpoch = formatModuleKanbanDate(Date.UTC(2026, 8, 28, 10, 5));
@@ -70,6 +72,16 @@ test('formatModuleOpSummary: string / message / code / object / throw', () => {
   const cyclic: any = {};
   cyclic.self = cyclic;
   expect(formatModuleOpSummary(cyclic)).toContain('[object');
+  const hostile: any = {
+    toString() {
+      throw new Error('boom');
+    },
+    valueOf() {
+      throw new Error('boom');
+    },
+  };
+  hostile.self = hostile;
+  expect(formatModuleOpSummary(hostile)).toBe('');
 });
 
 test('manifestSummaryText: prefers short_desc then fallbacks', () => {
@@ -114,6 +126,8 @@ test('resolveModuleKanbanCardKey: fail-closed id then ModuleName then synthetic'
   expect(resolveModuleKanbanCardKey({ Id: { nested: true }, ModuleName: ' core ' }, 'lane', 2)).toBe(
     'core',
   );
+  // ModuleName on a { row } wrapper must unwrap like Id resolution.
+  expect(resolveModuleKanbanCardKey({ row: { ModuleName: ' wrapped ' } }, 'lane', 4)).toBe('wrapped');
   expect(resolveModuleKanbanCardKey({ Id: Number.NaN }, 'lane', 3)).toBe('lane-3');
   expect(resolveModuleKanbanCardKey({}, 'installed', 1)).toBe('installed-1');
 });

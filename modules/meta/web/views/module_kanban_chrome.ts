@@ -39,7 +39,10 @@ export function formatModuleKanbanDate(dt?: unknown): string {
           : dt instanceof Date
             ? dt
             : new Date(String(dt));
-    if (!(d instanceof Date) || isNaN(d.getTime())) return String(dt).slice(0, 19);
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) {
+      // Keep raw string fragments; avoid rendering "[object Object]" for structured payloads.
+      return typeof dt === 'string' ? dt.slice(0, 19) : '';
+    }
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -68,9 +71,13 @@ export function formatModuleOpSummary(summary: unknown): string {
     }
   }
   try {
-    return JSON.stringify(summary);
+    return JSON.stringify(summary) ?? String(summary);
   } catch {
-    return String(summary);
+    try {
+      return String(summary);
+    } catch {
+      return '';
+    }
   }
 }
 
@@ -174,7 +181,10 @@ export function resolveModuleKanbanCardKey(
   const id = resolveListRowRecordId(payload);
   if (id) return id;
   if (payload && typeof payload === 'object') {
-    const name = (payload as { ModuleName?: unknown }).ModuleName;
+    const bag = payload as { row?: unknown; ModuleName?: unknown };
+    const record =
+      bag.row && typeof bag.row === 'object' ? (bag.row as { ModuleName?: unknown }) : bag;
+    const name = record.ModuleName;
     if (typeof name === 'string' && name.trim() !== '') return name.trim();
   }
   return `${laneKey}-${index}`;

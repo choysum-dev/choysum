@@ -763,6 +763,7 @@ function laneLabel(lane: Lane | ChoyKanbanLane): string {
 }
 
 onBeforeUnmount(() => {
+  planDialogSession.invalidate();
   opProgress.stop();
 });
 
