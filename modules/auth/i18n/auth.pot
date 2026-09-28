@@ -845,33 +845,33 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/AuthHeader.vue:5
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:5
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log In"
 msgstr ""
 
-#: web/components/layout/AuthHeader.vue:21
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:21
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/AuthHeader.vue:4
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:4
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Log in"
 msgstr ""
 
-#: web/components/layout/AuthHeader.vue:15
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:15
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/AuthHeader.vue:18
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:18
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "Settings"
 msgstr ""
 
-#: web/components/layout/AuthHeader.vue:10
-msgctxt "web/components/layout/AuthHeader"
+#: web/components/layout/ChoyWebShell.vue:10
+msgctxt "web/components/layout/ChoyWebShell"
 msgid "User menu"
 msgstr ""
 

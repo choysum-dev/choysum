@@ -3,10 +3,10 @@
 
 import { defineComponent, h, onActivated, ref } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ChoyShellLayout from './ChoyShellLayout.vue';
+import ChoyWebShell from './ChoyWebShell.vue';
 import ChoyLayout from './ChoyLayout.vue';
 
-describe('ChoyShellLayout', () => {
+describe('ChoyWebShell', () => {
   beforeEach(() => {
     stubSfc(ChoyLayout, {
       props: {
@@ -41,7 +41,7 @@ describe('ChoyShellLayout', () => {
   });
 
   test('defaults to header only and renders router-view', async () => {
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
       },
@@ -59,7 +59,7 @@ describe('ChoyShellLayout', () => {
   });
 
   test('renders aside and footer chrome when enabled', async () => {
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: true, showSidebar: true, showFooter: true },
       slots: {
         'header-actions': () => h('button', { 'data-test': 'header-action' }, 'A'),
@@ -81,7 +81,7 @@ describe('ChoyShellLayout', () => {
   });
 
   test('skips empty aside chrome when showSidebar lacks aside slot', async () => {
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: true, showSidebar: true, showFooter: false },
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
@@ -95,7 +95,7 @@ describe('ChoyShellLayout', () => {
   });
 
   test('skips empty footer chrome when showFooter lacks footer slot', async () => {
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: true, showSidebar: false, showFooter: true },
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
@@ -109,7 +109,7 @@ describe('ChoyShellLayout', () => {
   });
 
   test('hides header chrome when showHeader is false', async () => {
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: false, showSidebar: false, showFooter: false },
       stubs: {
         'router-view': { setup: () => () => h('div', { 'data-test': 'router-view' }) },
@@ -122,7 +122,7 @@ describe('ChoyShellLayout', () => {
   });
 
   test('default slot overrides router-view fallback', async () => {
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: false },
       slots: {
         default: () => h('div', { 'data-test': 'custom-body' }, 'Custom'),
@@ -144,7 +144,7 @@ describe('ChoyShellLayout', () => {
     });
 
     function mountWithMeta(keepAlive: boolean) {
-      return mountApp(ChoyShellLayout as any, {
+      return mountApp(ChoyWebShell as any, {
         props: { showHeader: false },
         stubs: {
           'router-view': {
@@ -172,7 +172,7 @@ describe('ChoyShellLayout', () => {
   });
 
   test('skips rendering when router-view has no matched Component', async () => {
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: false },
       stubs: {
         'router-view': {
@@ -198,7 +198,7 @@ describe('ChoyShellLayout', () => {
       name: 'NoMetaPage',
       setup: () => () => h('div', { 'data-test': 'page' }, 'ok'),
     });
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: false },
       stubs: {
         'router-view': {
@@ -237,7 +237,7 @@ describe('ChoyShellLayout', () => {
       },
     });
 
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: false },
       stubs: {
         'router-view': {
@@ -285,7 +285,7 @@ describe('ChoyShellLayout', () => {
       },
     });
 
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: false },
       stubs: {
         'router-view': {
@@ -336,7 +336,7 @@ describe('ChoyShellLayout', () => {
       route: { meta: { keepAlive: true }, name: 'Cached', path: '/cached', fullPath: '/cached' },
     });
 
-    const mounted = mountApp(ChoyShellLayout as any, {
+    const mounted = mountApp(ChoyWebShell as any, {
       props: { showHeader: false },
       stubs: {
         'router-view': {

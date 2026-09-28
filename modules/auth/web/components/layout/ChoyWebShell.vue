@@ -49,13 +49,13 @@ SPDX-License-Identifier: Apache-2.0
   </Xpath>
 </template>
 
-<script lang="ts" _name="ChoyShellLayout">
+<script lang="ts" _name="ChoyWebShell">
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { User } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
 import { ChoyButton, ChoyNotificationBell } from '@/web';
-import ChoyShellLayout from '@/web/web/components/layout/ChoyShellLayout.vue';
+import ChoyWebShell from '@/web/web/components/layout/ChoyWebShell.vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import { shouldResetAuthHeaderPopups } from './auth_header_popup_state';
@@ -68,8 +68,8 @@ import PreferencesDialog from '../preferences/PreferencesDialog.vue';
  * data-anchor="choy.shell.header-actions" at web build time.
  */
 export default defineComponent({
-  name: 'ChoyShellLayout',
-  extends: ChoyShellLayout,
+  name: 'ChoyWebShell',
+  extends: ChoyWebShell,
   components: {
     Xpath,
     User,
@@ -79,8 +79,8 @@ export default defineComponent({
     PreferencesDialog,
   },
   setup(props, ctx) {
-    const baseSetup = (ChoyShellLayout as any)?.setup?.(props, ctx) || {};
-    const { _t } = createTranslate('auth', { scope: 'web/components/layout/AuthHeader' });
+    const baseSetup = (ChoyWebShell as any)?.setup?.(props, ctx) || {};
+    const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyWebShell' });
     const router = useRouter();
     const authStore = useAuthStore();
     const isAuthenticated = computed(() => authStore.isAuthenticated);

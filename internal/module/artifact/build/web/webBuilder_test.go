@@ -704,25 +704,25 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 	}
 }
 
-func TestGetScriptNode_InjectsParentLayout_ForRealAuthHeader(t *testing.T) {
+func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyWebShell(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/modules/auth/web/components/layout/AuthHeader.vue"
-	parentPath := "/virtual/modules/web/web/components/layout/ChoyShellLayout.vue"
+	childPath := "/virtual/modules/auth/web/components/layout/ChoyWebShell.vue"
+	parentPath := "/virtual/modules/web/web/components/layout/ChoyWebShell.vue"
 
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
 	}
 
-	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "AuthHeader.vue"))
+	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyWebShell.vue"))
 	if err != nil {
-		t.Fatalf("read child AuthHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
-	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyShellLayout.vue"))
+	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyWebShell.vue"))
 	if err != nil {
-		t.Fatalf("read parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: "/virtual/modules/auth"})
@@ -730,11 +730,11 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthHeader(t *testing.T) {
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child AuthHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(alias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -772,16 +772,16 @@ func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T)
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "AuthHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyShellLayout.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyWebShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyWebShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child AuthHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
@@ -789,11 +789,11 @@ func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T)
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child AuthHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(alias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -824,16 +824,16 @@ func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "AuthHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyShellLayout.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyWebShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyWebShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child AuthHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
@@ -842,11 +842,11 @@ func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T
 	// '@/core/web' using ParseTsconfigPathAlias + ApplyPathAlias.
 	childParsed, err := p.Parse(map[string]string{}, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child AuthHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(map[string]string{}, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -877,16 +877,16 @@ func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testin
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "AuthHeader.vue")
-	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyShellLayout.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "ChoyWebShell.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "ChoyWebShell.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child AuthHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
 	parentContent, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	tsconfigPath := filepath.Join(repoRoot, "modules", "tsconfig.json")
@@ -902,11 +902,11 @@ func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testin
 	p := defaultparser.NewVueParser(testRuntimeScope, &meta.Module{Path: filepath.Join(repoRoot, "modules", "auth")})
 	childParsed, err := p.Parse(pathAlias, childPath, string(childContent))
 	if err != nil {
-		t.Fatalf("parse child AuthHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := p.Parse(pathAlias, parentPath, string(parentContent))
 	if err != nil {
-		t.Fatalf("parse parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	if childParsed == nil || childParsed.VueComponent == nil {
@@ -925,7 +925,7 @@ func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testin
 	}
 }
 
-func TestUpdateComponent_MergesAuthHeaderIntoChoyShellLayout(t *testing.T) {
+func TestUpdateComponent_MergesAuthChoyWebShellIntoWeb(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -956,16 +956,16 @@ func TestUpdateComponent_MergesAuthHeaderIntoChoyShellLayout(t *testing.T) {
 		t.Fatalf("parse tsconfig alias failed: %v", err)
 	}
 
-	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "AuthHeader.vue")
-	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "ChoyShellLayout.vue")
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "ChoyWebShell.vue")
+	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "ChoyWebShell.vue")
 
 	childContentBytes, err := os.ReadFile(childPath)
 	if err != nil {
-		t.Fatalf("read child AuthHeader failed: %v", err)
+		t.Fatalf("read child ChoyWebShell failed: %v", err)
 	}
 	parentContentBytes, err := os.ReadFile(parentPath)
 	if err != nil {
-		t.Fatalf("read parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("read parent ChoyWebShell failed: %v", err)
 	}
 
 	childContent := vueplugin.ResolveVueStylePath(string(childContentBytes), childPath, pathAlias)
@@ -973,11 +973,11 @@ func TestUpdateComponent_MergesAuthHeaderIntoChoyShellLayout(t *testing.T) {
 
 	childParsed, err := b.parser.Parse(pathAlias, childPath, childContent)
 	if err != nil {
-		t.Fatalf("parse child AuthHeader failed: %v", err)
+		t.Fatalf("parse child ChoyWebShell failed: %v", err)
 	}
 	parentParsed, err := b.parser.Parse(pathAlias, parentPath, parentContent)
 	if err != nil {
-		t.Fatalf("parse parent ChoyShellLayout failed: %v", err)
+		t.Fatalf("parse parent ChoyWebShell failed: %v", err)
 	}
 
 	buildResult := withParserResults(&module.BuildResult{}, childParsed, parentParsed)
@@ -999,7 +999,7 @@ func TestUpdateComponent_MergesAuthHeaderIntoChoyShellLayout(t *testing.T) {
 	}
 }
 
-func TestPrebuildUpdatePrebuildResult_RealAuthHeaderMergesIntoChoyShellLayout(t *testing.T) {
+func TestPrebuildUpdatePrebuildResult_RealAuthChoyWebShellMerges(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -1035,7 +1035,7 @@ func TestPrebuildUpdatePrebuildResult_RealAuthHeaderMergesIntoChoyShellLayout(t 
 		t.Fatalf("prebuild failed: %v", err)
 	}
 
-	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "AuthHeader.vue")
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "ChoyWebShell.vue")
 	var beforeChild *parser.ParserResult
 	for _, r := range parserResultsOf(prebuildResult) {
 		if r != nil && r.Path == childPath {
