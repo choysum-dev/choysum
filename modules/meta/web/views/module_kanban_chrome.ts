@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { resolveListRowRecordId } from './list_row_nav';
+
 /**
  * Status badge Tailwind classes for module kanban cards and op dialogs.
  */
@@ -118,7 +120,60 @@ export function createPlanDialogSessionGate() {
 }
 
 /**
+ * Coalesce overlapping lane syncs: waiters resume after the in-flight pass (and any
+ * follow-up resync) finishes, instead of resolving immediately.
+ */
+export function createLaneSyncGate() {
+  let syncing = false;
+  let pending = false;
+  let waiters: Array<() => void> = [];
+  return {
+    /** @returns 'run' when this caller owns the sync loop; 'waited' after draining. */
+    async enter(): Promise<'run' | 'waited'> {
+      if (syncing) {
+        pending = true;
+        await new Promise<void>(resolve => {
+          waiters.push(resolve);
+        });
+        return 'waited';
+      }
+      syncing = true;
+      return 'run';
+    },
+    beginPass(): void {
+      pending = false;
+    },
+    shouldResync(): boolean {
+      return pending;
+    },
+    leave(): void {
+      syncing = false;
+      const queued = waiters;
+      waiters = [];
+      for (const resolve of queued) resolve();
+    },
+  };
+}
+
+/**
  * Navigable record id from a kanban card payload. Blank ids fail closed.
  * Shares scalar fail-closed rules with list row navigation.
  */
-export { resolveListRowRecordId as resolveModuleKanbanCardId } from './list_row_nav';
+export const resolveModuleKanbanCardId = resolveListRowRecordId;
+
+/**
+ * Stable kanban card key: prefer fail-closed record id, then ModuleName, else lane+index.
+ */
+export function resolveModuleKanbanCardKey(
+  payload: unknown,
+  laneKey: string,
+  index: number,
+): string {
+  const id = resolveListRowRecordId(payload);
+  if (id) return id;
+  if (payload && typeof payload === 'object') {
+    const name = (payload as { ModuleName?: unknown }).ModuleName;
+    if (typeof name === 'string' && name.trim() !== '') return name.trim();
+  }
+  return `${laneKey}-${index}`;
+}

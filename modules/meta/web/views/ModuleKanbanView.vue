@@ -309,6 +309,7 @@ import {
 import { createModuleKanbanOpProgressHooks } from '../composables/moduleKanbanOpProgress';
 import {
   captureDialogFocusTarget,
+  createLaneSyncGate,
   createPlanDialogSessionGate,
   formatModuleKanbanDate,
   formatModuleOpSummary,
@@ -316,6 +317,7 @@ import {
   manifestSummaryText,
   moduleStatusBadgeClass,
   resolveModuleKanbanCardId,
+  resolveModuleKanbanCardKey,
   shouldRecoverStaleKanbanSearch,
 } from './module_kanban_chrome';
 
@@ -336,8 +338,7 @@ const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
 const router = useRouter();
 const controller = createKanbanController(store as any);
 const choyLanes = ref<ChoyKanbanLane[]>([]);
-let syncingLanes = false;
-let resyncPending = false;
+const laneSyncGate = createLaneSyncGate();
 let searchSeq = 0;
 let searchInFlight = 0;
 let lastSearchQuery: ChoySearchQuery | null = null;
@@ -439,7 +440,7 @@ const resultAlertBoxClass = computed(() => {
 
 function rowToCard(row: unknown, index: number, laneKey: string): ChoyKanbanCard {
   const payload = resolveRowPayload(row);
-  const id = String(payload.Id ?? payload.ModuleName ?? `${laneKey}-${index}`);
+  const id = resolveModuleKanbanCardKey(payload, laneKey, index);
   return {
     id,
     title: String(payload.ModuleName ?? id),
@@ -457,14 +458,10 @@ function resolveRowPayload(row: unknown): Record<string, unknown> {
 }
 
 async function syncLanesFromController(): Promise<void> {
-  if (syncingLanes) {
-    resyncPending = true;
-    return;
-  }
-  syncingLanes = true;
+  if ((await laneSyncGate.enter()) === 'waited') return;
   try {
     do {
-      resyncPending = false;
+      laneSyncGate.beginPass();
       const laneList = controller.lanes.value;
       if (!laneList.length) {
         const rows =
@@ -493,9 +490,9 @@ async function syncLanesFromController(): Promise<void> {
         remain: controller.getLaneRemain(lane),
         cards: (controller.laneRecords.value[lane.key] || []).map((row, index) => rowToCard(row, index, lane.key)),
       }));
-    } while (resyncPending);
+    } while (laneSyncGate.shouldResync());
   } finally {
-    syncingLanes = false;
+    laneSyncGate.leave();
   }
 }
 
@@ -554,6 +551,7 @@ async function onSearch(query: ChoySearchQuery) {
     lastSearchQuery
   ) {
     const recoverSeq = searchSeq;
+    searchInFlight++;
     try {
       await controller.apply({
         keyword: lastSearchQuery.keyword,
@@ -568,6 +566,7 @@ async function onSearch(query: ChoySearchQuery) {
         console.error('Module kanban search recover failed:', e);
       }
     } finally {
+      searchInFlight--;
       if (searchInFlight === 0) searchPending.value = false;
     }
     return;

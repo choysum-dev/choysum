@@ -299,7 +299,19 @@ export function parseChoyNumber(
       return null;
     }
     const n = Number(text);
-    return Number.isSafeInteger(n) ? n : null;
+    if (!Number.isSafeInteger(n)) {
+      return null;
+    }
+    // Number() silently rounds past MAX_SAFE_INTEGER (e.g. 9007199254740993 → …992).
+    // Reject when the digit text is not exactly representable as that number.
+    try {
+      if (BigInt(text) !== BigInt(n)) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+    return n;
   }
   if (!/^[+-]?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
     return null;

@@ -3,6 +3,7 @@
 
 import {
   captureDialogFocusTarget,
+  createLaneSyncGate,
   createPlanDialogSessionGate,
   formatModuleKanbanDate,
   formatModuleOpSummary,
@@ -10,6 +11,7 @@ import {
   manifestSummaryText,
   moduleStatusBadgeClass,
   resolveModuleKanbanCardId,
+  resolveModuleKanbanCardKey,
   shouldRecoverStaleKanbanSearch,
 } from './module_kanban_chrome';
 
@@ -103,4 +105,30 @@ test('createPlanDialogSessionGate: ignore superseded plan responses', () => {
   const second = gate.begin();
   expect(gate.isCurrent(first)).toBe(false);
   expect(gate.isCurrent(second)).toBe(true);
+});
+
+test('resolveModuleKanbanCardKey: fail-closed id then ModuleName then synthetic', () => {
+  expect(resolveModuleKanbanCardKey({ Id: '  m1  ' }, 'lane', 0)).toBe('m1');
+  expect(resolveModuleKanbanCardKey({ Id: { nested: true }, ModuleName: ' core ' }, 'lane', 2)).toBe(
+    'core',
+  );
+  expect(resolveModuleKanbanCardKey({ Id: Number.NaN }, 'lane', 3)).toBe('lane-3');
+  expect(resolveModuleKanbanCardKey({}, 'installed', 1)).toBe('installed-1');
+});
+
+test('createLaneSyncGate: waiters drain after owner leave', async () => {
+  const gate = createLaneSyncGate();
+  expect(await gate.enter()).toBe('run');
+  let waited = false;
+  const waiter = gate.enter().then(mode => {
+    waited = true;
+    expect(mode).toBe('waited');
+  });
+  expect(gate.shouldResync()).toBe(true);
+  gate.beginPass();
+  expect(gate.shouldResync()).toBe(false);
+  expect(waited).toBe(false);
+  gate.leave();
+  await waiter;
+  expect(waited).toBe(true);
 });

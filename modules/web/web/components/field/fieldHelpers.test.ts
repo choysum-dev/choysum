@@ -123,6 +123,8 @@ describe('fieldHelpers', () => {
     expect(parseChoyNumber('-3', 'integer')).toBe(-3);
     expect(parseChoyNumber('12.5', 'integer')).toBeNull();
     expect(parseChoyNumber('9007199254740994', 'integer')).toBeNull();
+    // Past MAX_SAFE_INTEGER but rounded Number is still "safe" — must still reject.
+    expect(parseChoyNumber('9007199254740993', 'integer')).toBeNull();
     expect(parseChoyNumber('12.5', 'float')).toBe(12.5);
     expect(parseChoyNumber('12.50', 'decimal')).toBe(12.5);
     expect(parseChoyNumber('+12.5', 'decimal')).toBe(12.5);
