@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect, page } from '@choysum/e2e';
+import { pickAlternativeCompanyOptionValue } from '../../web/components/layout/switch_company_option_pick';
 import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 
 /**
@@ -60,25 +61,38 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
     .toBeGreaterThanOrEqual(2);
 
   const activeCompanyId = await readActiveCompanyIdFromAuth();
-  const otherValue = await page.evaluate((active: string) => {
+  const selectState = await page.evaluate(() => {
+    const select = document.querySelector(
+      '[data-testid="company-active-select"]'
+    ) as HTMLSelectElement | null;
+    if (!select) return { current: '', values: [] as string[] };
+    return {
+      current: String(select.value || '').trim(),
+      values: Array.from(select.options)
+        .map(opt => String(opt.value || '').trim())
+        .filter(Boolean),
+    };
+  });
+  const otherValue = pickAlternativeCompanyOptionValue(
+    selectState.values,
+    selectState.current,
+    activeCompanyId
+  );
+  expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');
+
+  const applied = await page.evaluate((other: string) => {
     const select = document.querySelector(
       '[data-testid="company-active-select"]'
     ) as HTMLSelectElement | null;
     if (!select) return '';
-    const current = String(select.value || '').trim();
-    const values = Array.from(select.options)
-      .map(opt => String(opt.value || '').trim())
-      .filter(Boolean);
-    // Exclude both the select's current value and the JWT active company so a
-    // stale/unselected control cannot re-pick the already-active company.
-    const other = values.find(v => v !== current && v !== active) || '';
-    if (!other) return '';
-    select.value = other;
-    select.dispatchEvent(new Event('input', { bubbles: true }));
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    if (String(select.value || '').trim() !== other) {
+      select.value = other;
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
     return select.value === other ? other : '';
-  }, activeCompanyId);
-  expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');
+  }, otherValue);
+  expect(applied, 'company switch: failed to apply alternative company option').toBe(otherValue);
 
   await expect
     .poll(
