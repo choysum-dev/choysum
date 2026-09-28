@@ -228,8 +228,10 @@ func isChoyTailwindGeneratedKitPath(path string) bool {
 		return false
 	}
 	slash := filepath.ToSlash(path)
-	// Only "<module>/web/styles/<name>" of the web/choy_ui kit hosts is derived
+	// Only "<module>/web/styles/<name>" of the web kit host is derived
 	// output; require a directory boundary so modules like "myweb" are not matched.
+	// Legacy choy_ui paths stay recognized so leftover generated files do not
+	// invalidate digests during cutover cleanups.
 	return hasKitHostStylesSuffix(slash, "web/web/styles/"+choyTailwindGeneratedCSSName) ||
 		hasKitHostStylesSuffix(slash, "choy_ui/web/styles/"+choyTailwindGeneratedCSSName)
 }

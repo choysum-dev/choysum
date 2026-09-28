@@ -207,10 +207,9 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		}
 		dialectPath := filepath.Join(webRoot, "styles", "theme.css")
 		if dialectStat, dialectErr := choyProductStat(dialectPath); dialectErr == nil {
-			// resolveChoyKitModuleRoot hard-errors for web/choy_ui directory
-			// dialects; keep the same for those kit names here. An unrelated
-			// sibling with a stray directory at styles/theme.css must not abort
-			// the whole product scan.
+			// resolveChoyKitModuleRoot hard-errors for a web directory dialect;
+			// keep the same for that kit name here. An unrelated sibling with a
+			// stray directory at styles/theme.css must not abort the product scan.
 			if dialectStat.IsDir() && name == "web" {
 				return nil, fmt.Errorf("%s dialect %s is a directory, not a file", name, dialectPath)
 			}
@@ -723,9 +722,8 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 
 // modulesPathForKitRoot returns the parent modules directory for product scans.
 // Prefer a parent literally named "modules"; also accept a non-standard parent
-// name when that parent resolves to any Choy kit root (web or choy_ui), so
-// Generate(choy_ui) still product-scans when resolve prefers web. Isolated
-// temp kit fixtures (no resolvable sibling kit tree) stay kit-only.
+// name when that parent resolves to the web kit root. Isolated temp kit
+// fixtures (no resolvable sibling kit tree) stay kit-only.
 func modulesPathForKitRoot(moduleRoot string) string {
 	root := filepath.Clean(strings.TrimSpace(moduleRoot))
 	if root == "" || root == "." {
@@ -739,9 +737,7 @@ func modulesPathForKitRoot(moduleRoot string) string {
 		return parent
 	}
 	if resolved, err := resolveChoyKitModuleRoot(parent); err == nil && resolved != "" {
-		// Accept either recognized kit module under the custom parent, even when
-		// resolve prefers the other root; preferred-root selection stays in
-		// generateChoyTailwindForModule.
+		// Accept the web kit module under the custom parent.
 		for _, name := range []string{"web"} {
 			if filepath.Clean(filepath.Join(parent, name)) == root {
 				return parent
@@ -757,7 +753,7 @@ func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwin
 		return nil, fmt.Errorf("choy kit module root is empty")
 	}
 	// Keep dialect/output on the same kit root the product scan and
-	// TailwindInputDigest resolve (prefer web over choy_ui), so hashes converge.
+	// TailwindInputDigest resolve (modules/web), so hashes converge.
 	if mp := strings.TrimSpace(modulesPath); mp != "" {
 		resolved, err := resolveChoyKitModuleRoot(mp)
 		if err != nil {
@@ -884,9 +880,9 @@ var (
 )
 
 // EnsureChoyTailwindCSS finds the Choy kit under modulesPath and regenerates CSS.
-// Prefers modules/web when styles/theme.css is present; falls back to modules/choy_ui.
+// Kit host is modules/web when styles/theme.css is present.
 // Candidate scan covers the kit surface plus every other module web/ tree.
-// No-op when neither kit root owns a dialect file.
+// No-op when the web kit root does not own a dialect file.
 func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, error) {
 	modulesPath = strings.TrimSpace(modulesPath)
 	if modulesPath == "" {

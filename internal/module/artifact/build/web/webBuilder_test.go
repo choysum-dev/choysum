@@ -4623,7 +4623,7 @@ func TestBuildPipelineHelpers(t *testing.T) {
 }
 
 func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
-	t.Run("logs successful generate when choy_ui present", func(t *testing.T) {
+	t.Run("logs successful generate when web kit present", func(t *testing.T) {
 		testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 		if err := testRuntimeScope.db.AutoMigrate(&meta.Module{}, &meta.Application{}); err != nil {
 			t.Fatalf("auto migrate failed: %v", err)
@@ -4639,7 +4639,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		}
 
 		modulesPath := filepath.Join(t.TempDir(), "modules")
-		choyWeb := filepath.Join(modulesPath, "choy_ui", "web")
+		choyWeb := filepath.Join(modulesPath, "web", "web")
 		styles := filepath.Join(choyWeb, "styles")
 		pages := filepath.Join(choyWeb, "pages")
 		for _, dir := range []string{styles, pages} {
@@ -4743,7 +4743,7 @@ func TestBuildCtx_ChoyTailwindHook(t *testing.T) {
 		moduleRef, entryPoint := setupBuildPipelineTestFiles(t, testRuntimeScope, "export const answer = 42\n")
 
 		modulesPath := filepath.Join(t.TempDir(), "modules")
-		styles := filepath.Join(modulesPath, "choy_ui", "web", "styles")
+		styles := filepath.Join(modulesPath, "web", "web", "styles")
 		if err := os.MkdirAll(styles, 0o755); err != nil {
 			t.Fatal(err)
 		}

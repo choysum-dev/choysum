@@ -62,7 +62,7 @@ SPDX-License-Identifier: Apache-2.0
             :value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
             @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLTextAreaElement).value)"
-          />
+          ></textarea>
           <input
             v-else-if="item.type === 'date'"
             class="o-properties-control"
