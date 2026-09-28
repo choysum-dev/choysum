@@ -104,20 +104,24 @@ test('runLoginSubmit: skips invalid form', async () => {
   expect(calls).toBe(0);
 });
 
-test('runLoginSubmit: returns true on success', async () => {
+test('runLoginSubmit: returns true on success and trims username', async () => {
   const errors: string[] = [];
+  const seen: string[] = [];
   const ok = await runLoginSubmit({
     loading: false,
-    form: { username: 'admin', password: 'secret' },
+    form: { username: '  admin  ', password: 'secret' },
     fieldErrors: emptyErrors(),
     t,
     loginFailedMessage: 'Login failed. Please try again later.',
-    login: async () => undefined,
+    login: async (username, password) => {
+      seen.push(username, password);
+    },
     rememberMe: false,
     setError: m => errors.push(m),
   });
   expect(ok).toBe(true);
   expect(errors).toEqual(['']);
+  expect(seen).toEqual(['admin', 'secret']);
 });
 
 test('runLoginSubmit: maps failures to setError', async () => {

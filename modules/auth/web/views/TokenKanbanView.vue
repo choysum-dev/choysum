@@ -99,6 +99,7 @@ import { createKanbanController } from '@/web/web/controllers/kanbanController';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
 import type { Lane } from '@/web/web/query/types';
+import { resolveTokenDetailId } from './token_kanban_nav';
 
 defineOptions({ name: 'TokenKanbanView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
@@ -248,7 +249,8 @@ function onCreate() {
 }
 
 function openDetailFromCard(card: ChoyKanbanCard) {
-  const id = String(card.payload?.Id ?? card.id);
+  // `rowToCard` may fall back to row key/index for Vue keys; only route on a real record Id.
+  const id = resolveTokenDetailId(card.payload as Record<string, unknown> | undefined);
   if (id) router.push(`/auth/tokens/${id}`);
 }
 

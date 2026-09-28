@@ -35,18 +35,24 @@ SPDX-License-Identifier: Apache-2.0
           </select>
         </label>
 
-        <label class="flex flex-col gap-1 text-sm">
+        <div class="flex flex-col gap-1 text-sm">
           <span class="font-medium">{{ _t('Available Companies') }}</span>
-          <select
-            v-model="draftEnabledCompanyIds"
-            multiple
-            class="o-switch-company__select min-h-[5.5rem] rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+          <div
+            class="o-switch-company__select flex min-h-[5.5rem] flex-col gap-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             data-testid="company-enabled-select"
-            @change="onEnabledChange"
           >
-            <option v-for="c in companies" :key="'enabled-' + c.Id" :value="c.Id">{{ c.DisplayName || c.Id }}</option>
-          </select>
-        </label>
+            <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
+              <input
+                v-model="draftEnabledCompanyIds"
+                type="checkbox"
+                class="size-4 rounded border-border"
+                :value="c.Id"
+                @change="onEnabledChange"
+              />
+              <span>{{ c.DisplayName || c.Id }}</span>
+            </label>
+          </div>
+        </div>
 
         <div v-if="applyDisabledReason" class="o-switch-company__hint text-xs text-foreground/60" data-testid="company-switch-hint">
           {{ applyDisabledReason }}

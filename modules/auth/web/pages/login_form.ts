@@ -91,7 +91,8 @@ export async function runLoginSubmit(opts: {
   if (!validateLoginForm(opts.form, opts.fieldErrors, opts.t)) return false;
   try {
     opts.setError('');
-    await opts.login(opts.form.username, opts.form.password, '', '', opts.rememberMe);
+    // Trim username only; password whitespace can be intentional.
+    await opts.login(opts.form.username.trim(), opts.form.password, '', '', opts.rememberMe);
     return true;
   } catch (err) {
     opts.setError(formatLoginError(err, opts.loginFailedMessage));
