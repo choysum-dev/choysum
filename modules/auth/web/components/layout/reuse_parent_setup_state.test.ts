@@ -29,4 +29,10 @@ describe('reuseParentSetupState', () => {
     }
     expect(reuseParentSetupState(new SetupBag())).toEqual({});
   });
+
+  test('throws when parent setup returns a Promise', () => {
+    expect(() => reuseParentSetupState(Promise.resolve({ showHeader: true }))).toThrow(
+      /async parent setup is not supported/
+    );
+  });
 });

@@ -87,9 +87,15 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   if (!activeCompanyId) {
     throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
   }
+  // Re-read the draft after the JWT wait: a late panel-open RefreshToken can
+  // reset the select, so a stale `current` could pick the already-applied value.
+  const currentAfterWait = await page.evaluate((sel: string) => {
+    const select = document.querySelector(sel) as HTMLSelectElement | null;
+    return String(select?.value || '').trim();
+  }, panelSelect);
   const otherValue = pickAlternativeCompanyOptionValue(
     selectState.values,
-    selectState.current,
+    currentAfterWait,
     activeCompanyId
   );
   expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');

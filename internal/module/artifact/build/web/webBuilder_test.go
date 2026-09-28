@@ -40,6 +40,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// Merged script asserts: component must appear inside `components: { ... }`, not only in template markup.
+var (
+	mergedComponentsChoyLayoutRe = regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`)
+	mergedComponentsXpathRe      = regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`)
+)
+
 type testScope struct {
 	ctx context.Context
 	cfg *config.Config
@@ -704,6 +710,18 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 	}
 }
 
+func TestMergedComponentsRegexes_MatchMidObjectKeys(t *testing.T) {
+	if !mergedComponentsChoyLayoutRe.MatchString("components: { Foo, ChoyLayout }") {
+		t.Fatal("expected ChoyLayout regex to match a mid-object key")
+	}
+	if !mergedComponentsXpathRe.MatchString("components: {\n  Foo,\n  Xpath\n}") {
+		t.Fatal("expected Xpath regex to match a mid-object key")
+	}
+	if mergedComponentsXpathRe.MatchString("components: { Foo, ChoyLayout }") {
+		t.Fatal("expected Xpath regex not to match when Xpath is absent")
+	}
+}
+
 func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyWebShell(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
@@ -752,10 +770,10 @@ func TestGetScriptNode_InjectsParentLayout_ForRealAuthChoyWebShell(t *testing.T)
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(content) {
+	if !mergedComponentsChoyLayoutRe.MatchString(content) {
 		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
-	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(content) {
+	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
@@ -807,10 +825,10 @@ func TestGetScriptNode_InjectsParentLayout_WithRelativeModulesPath(t *testing.T)
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(content) {
+	if !mergedComponentsChoyLayoutRe.MatchString(content) {
 		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
-	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(content) {
+	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
@@ -863,10 +881,10 @@ func TestGetScriptNode_InjectsParentLayout_ResolvesAliasViaTsconfig(t *testing.T
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(content) {
+	if !mergedComponentsChoyLayoutRe.MatchString(content) {
 		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
-	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(content) {
+	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
@@ -926,10 +944,10 @@ func TestGetScriptNode_InjectsParentLayout_WithRuntimeTsconfigAliasMap(t *testin
 	}
 	content := htmlquery.InnerText(scriptNode)
 
-	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(content) {
+	if !mergedComponentsChoyLayoutRe.MatchString(content) {
 		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", content)
 	}
-	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(content) {
+	if mergedComponentsXpathRe.MatchString(content) {
 		t.Fatalf("expected xpath placeholder to be replaced, got:\n%s", content)
 	}
 }
@@ -1004,7 +1022,7 @@ func TestUpdateComponent_MergesAuthChoyWebShellIntoWeb(t *testing.T) {
 	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
 		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
 	}
-	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(childParsed.Content) {
+	if !mergedComponentsChoyLayoutRe.MatchString(childParsed.Content) {
 		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", childParsed.Content)
 	}
 }
@@ -1082,10 +1100,10 @@ func TestPrebuildUpdatePrebuildResult_RealAuthChoyWebShellMerges(t *testing.T) {
 	if !strings.Contains(childResult.Content, `data-anchor="choy.shell.header-actions"`) {
 		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childResult.Content)
 	}
-	if !regexp.MustCompile(`components:\s*\{[^}]*\bChoyLayout\b`).MatchString(childResult.Content) {
+	if !mergedComponentsChoyLayoutRe.MatchString(childResult.Content) {
 		t.Fatalf("expected merged script to register ChoyLayout from parent, got:\n%s", childResult.Content)
 	}
-	if regexp.MustCompile(`components:\s*\{[^}]*\bXpath\b`).MatchString(childResult.Content) {
+	if mergedComponentsXpathRe.MatchString(childResult.Content) {
 		t.Fatalf("expected xpath placeholder to be replaced in merged content, got:\n%s", childResult.Content)
 	}
 }
