@@ -4,23 +4,19 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{ create: uomCategoryActions.create, edit: uomCategoryActions.edit, copy: uomCategoryActions.copy, delete: uomCategoryActions.delete }"
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <el-card shadow="never" class="bfv-card">
-      <template #header
-        ><div class="bfv-card__header"><span>{{ _t('Unit of Measure Category') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" /></el-col>
-      </el-row>
-    </el-card>
-  </OFormView>
+    <ChoyCard :title="_t('Unit of Measure Category')" class="bfv-card"><ChoyGrid :cols="12">
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Code" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
@@ -28,15 +24,12 @@ import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type UoMCategory from '@/base/service/models/uom_category';
-import { ElCard, ElRow, ElCol } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyVarcharField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'UoMCategoryFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMCategoryFormView' });
@@ -60,9 +53,5 @@ const { recordId, viewMode, showHeader, createAction } = props;
 <style scoped>
 .bfv-card {
   margin-bottom: 14px;
-}
-.bfv-card__header {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 </style>

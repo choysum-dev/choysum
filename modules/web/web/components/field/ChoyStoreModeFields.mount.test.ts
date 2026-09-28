@@ -16,6 +16,8 @@ import ChoyTextField from './ChoyTextField.vue';
 import ChoyBooleanField from './ChoyBooleanField.vue';
 import ChoySelectionField from './ChoySelectionField.vue';
 import ChoyDatetimeField from './ChoyDatetimeField.vue';
+import ChoyDateField from './ChoyDateField.vue';
+import ChoyNumberField from './ChoyNumberField.vue';
 import ChoyJsonField from './ChoyJsonField.vue';
 import ChoyImageField from './ChoyImageField.vue';
 import ChoyVirtualField from './ChoyVirtualField.vue';
@@ -30,6 +32,11 @@ import OTextField from './OTextField.vue';
 import OBooleanField from './OBooleanField.vue';
 import OSelectionField from './OSelectionField.vue';
 import ODatetimeField from './ODatetimeField.vue';
+import ODateField from './ODateField.vue';
+import OIntField from './OIntField.vue';
+import ODecimalField from './ODecimalField.vue';
+import OBigintField from './OBigintField.vue';
+import ONumberField from './ONumberField.vue';
 import OJsonobjectField from './OJsonobjectField.vue';
 import OImageField from './OImageField.vue';
 import OVirtualField from './OVirtualField.vue';
@@ -46,7 +53,7 @@ const fakeStore = { modelName: 'auth.User', meta: { fields: {} } } as any;
 
 function stubHost(Comp: Component, testId: string) {
   stubSfc(Comp, {
-    props: { store: null, prop: String, valueMode: String, widget: String },
+    props: { store: null, prop: String, valueMode: String, widget: String, valueFormat: String },
     setup: ((props: any) => {
       return () =>
         h('div', {
@@ -54,6 +61,7 @@ function stubHost(Comp: Component, testId: string) {
           'data-prop': String(props.prop || ''),
           'data-value-mode': String(props.valueMode || ''),
           'data-widget': String(props.widget || ''),
+          'data-value-format': String(props.valueFormat || ''),
         });
     }) as any,
   });
@@ -66,6 +74,11 @@ describe('Choy store-mode field hosts', () => {
     OBooleanField,
     OSelectionField,
     ODatetimeField,
+    ODateField,
+    OIntField,
+    ODecimalField,
+    OBigintField,
+    ONumberField,
     OJsonobjectField,
     OImageField,
     OVirtualField,
@@ -88,6 +101,11 @@ describe('Choy store-mode field hosts', () => {
     stubHost(OBooleanField as any, 'o-boolean');
     stubHost(OSelectionField as any, 'o-selection');
     stubHost(ODatetimeField as any, 'o-datetime');
+    stubHost(ODateField as any, 'o-date');
+    stubHost(OIntField as any, 'o-int');
+    stubHost(ODecimalField as any, 'o-decimal');
+    stubHost(OBigintField as any, 'o-bigint');
+    stubHost(ONumberField as any, 'o-number');
     stubHost(OJsonobjectField as any, 'o-json');
     stubHost(OImageField as any, 'o-image');
     stubHost(OVirtualField as any, 'o-virtual');
@@ -126,6 +144,7 @@ describe('Choy store-mode field hosts', () => {
       [ChoyBooleanField, 'o-boolean'],
       [ChoySelectionField, 'o-selection'],
       [ChoyDatetimeField, 'o-datetime'],
+      [ChoyDateField, 'o-date'],
       [ChoyJsonField, 'o-json'],
       [ChoyImageField, 'o-image'],
       [ChoyVirtualField, 'o-virtual'],
@@ -138,6 +157,114 @@ describe('Choy store-mode field hosts', () => {
       expect(host?.getAttribute('data-prop')).toBe('Name');
       w.unmount();
     }
+  });
+
+  test('NumberField store mode routes integer / bigint / decimal / float hosts', async () => {
+    const intW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'Padding',
+      mode: 'integer',
+    });
+    expect(intW.q('[data-test=o-int]')).not.toBeNull();
+    expect(intW.q('[data-test=o-decimal]')).toBeNull();
+    intW.unmount();
+
+    const bigW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'NextNumber',
+      mode: 'bigint',
+    });
+    expect(bigW.q('[data-test=o-bigint]')).not.toBeNull();
+    bigW.unmount();
+
+    const decW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'Rate',
+      mode: 'decimal',
+    });
+    expect(decW.q('[data-test=o-decimal]')).not.toBeNull();
+    decW.unmount();
+
+    const floatW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'Factor',
+      mode: 'float',
+    });
+    expect(floatW.q('[data-test=o-number]')).not.toBeNull();
+    expect(floatW.q('[data-test=o-decimal]')).toBeNull();
+    floatW.unmount();
+
+    // Default mode is decimal so Decimal-typed domain fields stay on ODecimalField.
+    const defaultW = await mountField(ChoyNumberField, {
+      store: fakeStore,
+      prop: 'Rounding',
+    });
+    expect(defaultW.q('[data-test=o-decimal]')).not.toBeNull();
+    defaultW.unmount();
+  });
+
+  test('DateField store mode passes date-only valueFormat', async () => {
+    const w = await mountField(ChoyDateField, {
+      store: fakeStore,
+      prop: 'Date',
+    });
+    const host = w.q('[data-test=o-date]');
+    expect(host).not.toBeNull();
+    expect(host?.getAttribute('data-value-format')).toBe('YYYY-MM-DD');
+    w.unmount();
+  });
+
+  test('NumberField chrome mode renders anchor and uses bigint inputmode', async () => {
+    const w = await mountField(ChoyNumberField, {
+      label: 'Count',
+      mode: 'bigint',
+      modelValue: 42,
+    });
+    const root = w.q('[data-anchor="choy.number-field"]');
+    expect(root).not.toBeNull();
+    expect(w.q('[data-test=o-bigint]')).toBeNull();
+    const input = w.q('input') as HTMLInputElement | null;
+    expect(input?.getAttribute('inputmode')).toBe('numeric');
+    w.unmount();
+  });
+
+  test('NumberField chrome commits draft and syncs host model changes', async () => {
+    const emitted: Array<number | null> = [];
+    let propsBag: Record<string, unknown> | null = null;
+    const w = mountApp(ChoyNumberField as any, {
+      reactiveProps: true,
+      props: {
+        label: 'Amount',
+        mode: 'float',
+        modelValue: 1,
+      },
+      on: {
+        'onUpdate:modelValue': (v: number | null) => {
+          emitted.push(v);
+          if (propsBag) propsBag.modelValue = v;
+        },
+      },
+    });
+    propsBag = w.props;
+    await flushPromises();
+
+    const input = w.q('input') as HTMLInputElement | null;
+    expect(input).not.toBeNull();
+    input!.value = '3.5';
+    input!.dispatchEvent(new Event('input', { bubbles: true }));
+    input!.dispatchEvent(new Event('blur', { bubbles: true }));
+    await flushPromises();
+    expect(emitted[emitted.length - 1]).toBe(3.5);
+    expect(input!.value).toBe('3.5');
+
+    // Host rewrite path: external model change while draft still looks different.
+    input!.value = 'x';
+    input!.dispatchEvent(new Event('input', { bubbles: true }));
+    propsBag.modelValue = 9;
+    await flushPromises();
+    expect(input!.value).toBe('9');
+
+    w.unmount();
   });
 
   test('ManyToOne store mode uses Ref by default and record when valueMode=record', async () => {

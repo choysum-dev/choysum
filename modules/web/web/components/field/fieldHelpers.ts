@@ -299,6 +299,7 @@ export function parseChoyNumber(
       return null;
     }
     const n = Number(text);
+    // Reject values Number cannot represent exactly (incl. past MAX_SAFE_INTEGER).
     return Number.isSafeInteger(n) ? n : null;
   }
   if (!/^[+-]?(\d+(\.\d+)?|\.\d+)$/.test(text)) {

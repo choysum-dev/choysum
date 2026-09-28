@@ -4,38 +4,33 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{ create: countryActions.create, edit: countryActions.edit, copy: countryActions.copy, delete: countryActions.delete }"
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <el-card shadow="never" class="bfv-card">
-      <template #header
-        ><div class="bfv-card__header"><span>{{ _t('Country Information') }}</span></div></template
-      >
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="PhonePrefix" /></el-col>
-      </el-row>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField
+    <ChoyCard :title="_t('Country Information')" class="bfv-card"><ChoyGrid :cols="12">
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="PhonePrefix" /></ChoyCol>
+      </ChoyGrid>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="4"><ChoyManyToOneField
             :store="store"
             prop="DefaultCurrencyId"
             :search-view="CurrencyListView"
             :search-view-title="_t('Select Currency')"
-        /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="ZipRequired" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="StateRequired" /></el-col>
-      </el-row>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" /></el-col>
-        <el-col :xs="24"><OTextField :store="store" prop="AddressFormat" /></el-col>
-      </el-row>
-    </el-card>
-  </OFormView>
+        /></ChoyCol>
+        <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="ZipRequired" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="StateRequired" /></ChoyCol>
+      </ChoyGrid>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
+        <ChoyCol :span="12"><ChoyTextField :store="store" prop="AddressFormat" /></ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
@@ -43,18 +38,13 @@ import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Country from '@/base/service/models/country';
-import { ElCard, ElRow, ElCol } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OTextField from '@/web/web/components/field/OTextField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import CurrencyListView from './CurrencyListView.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoyTextField, ChoyVarcharField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'CountryFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CountryFormView' });
@@ -72,9 +62,5 @@ const { recordId, viewMode, showHeader, createAction } = props;
 <style scoped>
 .bfv-card {
   margin-bottom: 14px;
-}
-.bfv-card__header {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 </style>

@@ -4,107 +4,85 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OFormView
+  <ChoyFormView
     v-bind="{ store, recordId, viewMode, showHeader }"
     :action-ids="{ edit: moduleIndexActions.edit, copy: moduleIndexActions.copy, delete: moduleIndexActions.delete }"
     :has-action="hasAction"
   >
-    <el-card shadow="never" class="mdd-card">
-      <template #header>
-        <div class="mdd-card__header"><span>{{ _t('Basic Information') }}</span></div>
-      </template>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="ModuleName" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="Version" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="InstalledStatus" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="InstalledVersion" />
-        </el-col>
-      </el-row>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OBooleanField :store="store" prop="Available" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="OriginType" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="OriginRef" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="LocalPath" />
-        </el-col>
-      </el-row>
-    </el-card>
+    <ChoyCard :title="_t('Basic Information')" class="mdd-card"><ChoyGrid :cols="12">
+        <ChoyCol :span="3">
+          <ChoyVarcharField :store="store" prop="ModuleName" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyVarcharField :store="store" prop="Version" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyVarcharField :store="store" prop="InstalledStatus" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyVarcharField :store="store" prop="InstalledVersion" />
+        </ChoyCol>
+      </ChoyGrid>
+      <ChoyGrid :cols="12">
+        <ChoyCol :span="3">
+          <ChoyBooleanField :store="store" prop="Available" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyVarcharField :store="store" prop="OriginType" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyVarcharField :store="store" prop="OriginRef" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyVarcharField :store="store" prop="LocalPath" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
 
-    <el-card shadow="never" class="mdd-card">
-      <template #header>
-        <div class="mdd-card__header"><span>{{ _t('Sync Information') }}</span></div>
-      </template>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <ODateTimeField :store="store" prop="LastSyncAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <ODateTimeField :store="store" prop="LastBatchSyncAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="SyncRevision" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OTextField :store="store" prop="LastErrorMessage" />
-        </el-col>
-      </el-row>
-    </el-card>
+    <ChoyCard :title="_t('Sync Information')" class="mdd-card"><ChoyGrid :cols="12">
+        <ChoyCol :span="3">
+          <ChoyDatetimeField :store="store" prop="LastSyncAt" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyDatetimeField :store="store" prop="LastBatchSyncAt" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyVarcharField :store="store" prop="SyncRevision" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyTextField :store="store" prop="LastErrorMessage" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
 
-    <el-card shadow="never" class="mdd-card">
-      <template #header>
-        <div class="mdd-card__header"><span>Manifest</span></div>
-      </template>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="24">
-          <OJsonobjectField :store="store" prop="ManifestJson" label="ManifestJson" />
-        </el-col>
-      </el-row>
-    </el-card>
+    <ChoyCard title="Manifest" class="mdd-card"><ChoyGrid :cols="12">
+        <ChoyCol :span="12">
+          <ChoyJsonField :store="store" prop="ManifestJson" label="ManifestJson" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
 
-    <el-card shadow="never" class="mdd-card">
-      <template #header>
-        <div class="mdd-card__header"><span>{{ _t('Timestamps') }}</span></div>
-      </template>
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <ODateTimeField :store="store" prop="CreatedAt" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" />
-        </el-col>
-      </el-row>
-    </el-card>
-  </OFormView>
+    <ChoyCard :title="_t('Timestamps')" class="mdd-card"><ChoyGrid :cols="12">
+        <ChoyCol :span="3">
+          <ChoyDatetimeField :store="store" prop="CreatedAt" />
+        </ChoyCol>
+        <ChoyCol :span="3">
+          <ChoyDatetimeField :store="store" prop="UpdatedAt" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoyCard>
+  </ChoyFormView>
 </template>
 
 <script setup lang="ts">
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleIndex from '@/meta/service/models/module_index';
-import { ElCard, ElRow, ElCol } from 'element-plus';
-import OFormView from '@/web/web/components/view/OFormView.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OTextField from '@/web/web/components/field/OTextField.vue';
-import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
-import OJsonobjectField from '@/web/web/components/field/OJsonobjectField.vue';
-import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyTextField, ChoyVarcharField } from '@/web';
+import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'ModuleDetailView', inheritAttrs: true });
 
@@ -131,9 +109,5 @@ const { hasAction } = usePermission();
 <style scoped>
 .mdd-card {
   margin-bottom: 14px;
-}
-.mdd-card__header {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 </style>
