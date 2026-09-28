@@ -211,20 +211,19 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 			// dialects; keep the same for those kit names here. An unrelated
 			// sibling with a stray directory at styles/theme.css must not abort
 			// the whole product scan.
-			if dialectStat.IsDir() && (name == "web" || name == "choy_ui") {
+			if dialectStat.IsDir() && name == "web" {
 				return nil, fmt.Errorf("%s dialect %s is a directory, not a file", name, dialectPath)
 			}
 		} else if !os.IsNotExist(dialectErr) {
 			return nil, dialectErr
 		}
-		// Kit hosts: choy_ui is always a host (policy.isKitHostModule), and any
-		// module that owns vendor/ui is a host even without styles/theme.css.
-		// A domain module that merely ships a dialect keeps full domain scanning.
+		// Kit hosts: web owns vendor/ui (policy.isKitHostModule). A domain module
+		// that merely ships a dialect keeps full domain scanning.
 		vendorUI, vErr := choyProductStat(filepath.Join(webRoot, "components", "vendor", "ui"))
 		if vErr != nil && !os.IsNotExist(vErr) {
 			return nil, vErr
 		}
-		if name == "choy_ui" || (vErr == nil && vendorUI.IsDir()) {
+		if name == "web" && vErr == nil && vendorUI.IsDir() {
 			kitCandidates, err := choyScanKitCandidates(webRoot)
 			if err != nil {
 				return nil, fmt.Errorf("scan module %s kit candidates under %s: %w", name, webRoot, err)
@@ -743,7 +742,7 @@ func modulesPathForKitRoot(moduleRoot string) string {
 		// Accept either recognized kit module under the custom parent, even when
 		// resolve prefers the other root; preferred-root selection stays in
 		// generateChoyTailwindForModule.
-		for _, name := range []string{"web", "choy_ui"} {
+		for _, name := range []string{"web"} {
 			if filepath.Clean(filepath.Join(parent, name)) == root {
 				return parent
 			}
@@ -904,9 +903,9 @@ func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, err
 }
 
 // resolveChoyKitModuleRoot returns the module root that owns Choy styles/theme.css.
-// Prefers web when it has a dialect file; falls back to choy_ui.
+// Uses modules/web when it has a dialect file (or hosts vendor/ui without dialect error path).
 func resolveChoyKitModuleRoot(modulesPath string) (string, error) {
-	for _, name := range []string{"web", "choy_ui"} {
+	for _, name := range []string{"web"} {
 		root := filepath.Join(modulesPath, name)
 		webRoot := filepath.Join(root, "web")
 		st, err := os.Stat(webRoot)

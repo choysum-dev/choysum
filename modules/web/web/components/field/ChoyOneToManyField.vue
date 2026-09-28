@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OOneToManyKanbanField v-if="storeMode && widget === 'kanban'" v-bind="(storeBind as any)">
+  <OneToManyKanbanField v-if="storeMode && widget === 'kanban'" v-bind="(storeBind as any)">
     <template v-if="$slots.card" #card="slotData">
       <slot name="card" v-bind="slotData || {}" />
     </template>
@@ -15,10 +15,10 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="empty" v-bind="slotData || {}" />
     </template>
     <slot />
-  </OOneToManyKanbanField>
-  <OOneToManyField v-else-if="storeMode" v-bind="(storeBind as any)">
+  </OneToManyKanbanField>
+  <OneToManyField v-else-if="storeMode" v-bind="(storeBind as any)">
     <slot />
-  </OOneToManyField>
+  </OneToManyField>
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"
@@ -114,8 +114,8 @@ import DialogContent from '../vendor/ui/dialog/DialogContent.vue';
 import DialogDescription from '../vendor/ui/dialog/DialogDescription.vue';
 import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
-import OOneToManyField from './OOneToManyField.vue';
-import OOneToManyKanbanField from './OOneToManyKanbanField.vue';
+import OneToManyField from './OneToManyField.vue';
+import OneToManyKanbanField from './OneToManyKanbanField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,

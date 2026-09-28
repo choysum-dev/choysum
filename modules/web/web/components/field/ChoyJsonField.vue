@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OJsonobjectField v-if="storeMode" v-bind="(storeBind as any)" />
+  <JsonobjectField v-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"
@@ -53,7 +53,7 @@ import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
-import OJsonobjectField from './OJsonobjectField.vue';
+import JsonobjectField from './JsonobjectField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,

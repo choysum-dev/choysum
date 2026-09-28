@@ -4,9 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OManyToManyRefTagsField v-if="storeMode && widget === 'tags' && valueMode === 'ref'" v-bind="(storeBind as any)" />
-  <OManyToManyRefTreeField v-else-if="storeMode && widget === 'tree' && valueMode === 'ref'" v-bind="(storeBind as any)" />
-  <OManyToManyField v-else-if="storeMode" v-bind="(storeBind as any)" />
+  <ManyToManyRefTagsField v-if="storeMode && widget === 'tags' && valueMode === 'ref'" v-bind="(storeBind as any)" />
+  <ManyToManyRefTreeField v-else-if="storeMode && widget === 'tree' && valueMode === 'ref'" v-bind="(storeBind as any)" />
+  <ManyToManyField v-else-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"
@@ -151,9 +151,9 @@ import Badge from '../vendor/ui/badge/Badge.vue';
 import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
-import OManyToManyField from './OManyToManyField.vue';
-import OManyToManyRefTagsField from './OManyToManyRefTagsField.vue';
-import OManyToManyRefTreeField from './OManyToManyRefTreeField.vue';
+import ManyToManyField from './ManyToManyField.vue';
+import ManyToManyRefTagsField from './ManyToManyRefTagsField.vue';
+import ManyToManyRefTreeField from './ManyToManyRefTreeField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,

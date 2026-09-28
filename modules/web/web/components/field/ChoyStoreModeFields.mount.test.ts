@@ -24,31 +24,31 @@ import ChoyVirtualField from './ChoyVirtualField.vue';
 import ChoyManyToOneField from './ChoyManyToOneField.vue';
 import ChoyManyToManyField from './ChoyManyToManyField.vue';
 import ChoyOneToManyField from './ChoyOneToManyField.vue';
-import OFormView from '../view/OFormView.vue';
-import OListView from '../view/OListView.vue';
-import OSearchView from '../view/OSearchView.vue';
-import OVarCharField from './OVarCharField.vue';
-import OTextField from './OTextField.vue';
-import OBooleanField from './OBooleanField.vue';
-import OSelectionField from './OSelectionField.vue';
-import ODatetimeField from './ODatetimeField.vue';
-import ODateField from './ODateField.vue';
-import OIntField from './OIntField.vue';
-import ODecimalField from './ODecimalField.vue';
-import OBigintField from './OBigintField.vue';
-import ONumberField from './ONumberField.vue';
-import OJsonobjectField from './OJsonobjectField.vue';
-import OImageField from './OImageField.vue';
-import OVirtualField from './OVirtualField.vue';
-import OManyToOneField from './OManyToOneField.vue';
-import OManyToOneRefField from './OManyToOneRefField.vue';
-import OManyToManyField from './OManyToManyField.vue';
-import OManyToManyRefTagsField from './OManyToManyRefTagsField.vue';
-import OManyToManyRefTreeField from './OManyToManyRefTreeField.vue';
-import OOneToManyField from './OOneToManyField.vue';
-import OOneToManyKanbanField from './OOneToManyKanbanField.vue';
-import OStatInfo from '../view/OStatInfo.vue';
-import OVColumn from '../vtable/OVColumn.vue';
+import FormView from '../view/FormView.vue';
+import ListView from '../view/ListView.vue';
+import SearchView from '../view/SearchView.vue';
+import VarCharField from './VarCharField.vue';
+import TextField from './TextField.vue';
+import BooleanField from './BooleanField.vue';
+import SelectionField from './SelectionField.vue';
+import DatetimeField from './DatetimeField.vue';
+import DateField from './DateField.vue';
+import IntField from './IntField.vue';
+import DecimalField from './DecimalField.vue';
+import BigintField from './BigintField.vue';
+import NumberField from './NumberField.vue';
+import JsonobjectField from './JsonobjectField.vue';
+import ImageField from './ImageField.vue';
+import VirtualField from './VirtualField.vue';
+import ManyToOneField from './ManyToOneField.vue';
+import ManyToOneRefField from './ManyToOneRefField.vue';
+import ManyToManyField from './ManyToManyField.vue';
+import ManyToManyRefTagsField from './ManyToManyRefTagsField.vue';
+import ManyToManyRefTreeField from './ManyToManyRefTreeField.vue';
+import OneToManyField from './OneToManyField.vue';
+import OneToManyKanbanField from './OneToManyKanbanField.vue';
+import StatInfo from '../view/StatInfo.vue';
+import VColumn from '../vtable/VColumn.vue';
 
 const fakeStore = { modelName: 'auth.User', meta: { fields: {} } } as any;
 
@@ -70,59 +70,59 @@ function stubHost(Comp: Component, testId: string) {
 
 describe('Choy store-mode field hosts', () => {
   const stubs: any[] = [
-    OVarCharField,
-    OTextField,
-    OBooleanField,
-    OSelectionField,
-    ODatetimeField,
-    ODateField,
-    OIntField,
-    ODecimalField,
-    OBigintField,
-    ONumberField,
-    OJsonobjectField,
-    OImageField,
-    OVirtualField,
-    OManyToOneField,
-    OManyToOneRefField,
-    OManyToManyField,
-    OManyToManyRefTagsField,
-    OManyToManyRefTreeField,
-    OOneToManyField,
-    OOneToManyKanbanField,
-    OFormView,
-    OListView,
-    OSearchView,
-    OStatInfo,
-    OVColumn,
+    VarCharField,
+    TextField,
+    BooleanField,
+    SelectionField,
+    DatetimeField,
+    DateField,
+    IntField,
+    DecimalField,
+    BigintField,
+    NumberField,
+    JsonobjectField,
+    ImageField,
+    VirtualField,
+    ManyToOneField,
+    ManyToOneRefField,
+    ManyToManyField,
+    ManyToManyRefTagsField,
+    ManyToManyRefTreeField,
+    OneToManyField,
+    OneToManyKanbanField,
+    FormView,
+    ListView,
+    SearchView,
+    StatInfo,
+    VColumn,
   ];
 
   beforeEach(() => {
-    stubHost(OVarCharField as any, 'o-varchar');
-    stubHost(OTextField as any, 'o-text');
-    stubHost(OBooleanField as any, 'o-boolean');
-    stubHost(OSelectionField as any, 'o-selection');
-    stubHost(ODatetimeField as any, 'o-datetime');
-    stubHost(ODateField as any, 'o-date');
-    stubHost(OIntField as any, 'o-int');
-    stubHost(ODecimalField as any, 'o-decimal');
-    stubHost(OBigintField as any, 'o-bigint');
-    stubHost(ONumberField as any, 'o-number');
-    stubHost(OJsonobjectField as any, 'o-json');
-    stubHost(OImageField as any, 'o-image');
-    stubHost(OVirtualField as any, 'o-virtual');
-    stubHost(OManyToOneField as any, 'o-m2o');
-    stubHost(OManyToOneRefField as any, 'o-m2o-ref');
-    stubHost(OManyToManyField as any, 'o-m2m');
-    stubHost(OManyToManyRefTagsField as any, 'o-m2m-tags');
-    stubHost(OManyToManyRefTreeField as any, 'o-m2m-tree');
-    stubHost(OOneToManyField as any, 'o-o2m');
-    stubHost(OOneToManyKanbanField as any, 'o-o2m-kanban');
-    stubHost(OFormView as any, 'o-form');
-    stubHost(OListView as any, 'o-list');
-    stubHost(OSearchView as any, 'o-search');
-    stubHost(OStatInfo as any, 'o-stat');
-    stubHost(OVColumn as any, 'o-vcolumn');
+    stubHost(VarCharField as any, 'o-varchar');
+    stubHost(TextField as any, 'o-text');
+    stubHost(BooleanField as any, 'o-boolean');
+    stubHost(SelectionField as any, 'o-selection');
+    stubHost(DatetimeField as any, 'o-datetime');
+    stubHost(DateField as any, 'o-date');
+    stubHost(IntField as any, 'o-int');
+    stubHost(DecimalField as any, 'o-decimal');
+    stubHost(BigintField as any, 'o-bigint');
+    stubHost(NumberField as any, 'o-number');
+    stubHost(JsonobjectField as any, 'o-json');
+    stubHost(ImageField as any, 'o-image');
+    stubHost(VirtualField as any, 'o-virtual');
+    stubHost(ManyToOneField as any, 'o-m2o');
+    stubHost(ManyToOneRefField as any, 'o-m2o-ref');
+    stubHost(ManyToManyField as any, 'o-m2m');
+    stubHost(ManyToManyRefTagsField as any, 'o-m2m-tags');
+    stubHost(ManyToManyRefTreeField as any, 'o-m2m-tree');
+    stubHost(OneToManyField as any, 'o-o2m');
+    stubHost(OneToManyKanbanField as any, 'o-o2m-kanban');
+    stubHost(FormView as any, 'o-form');
+    stubHost(ListView as any, 'o-list');
+    stubHost(SearchView as any, 'o-search');
+    stubHost(StatInfo as any, 'o-stat');
+    stubHost(VColumn as any, 'o-vcolumn');
   });
 
   afterEach(() => {
@@ -197,7 +197,7 @@ describe('Choy store-mode field hosts', () => {
     expect(floatW.q('[data-test=o-decimal]')).toBeNull();
     floatW.unmount();
 
-    // Default mode is decimal so Decimal-typed domain fields stay on ODecimalField.
+    // Default mode is decimal so Decimal-typed domain fields stay on DecimalField.
     const defaultW = await mountField(ChoyNumberField, {
       store: fakeStore,
       prop: 'Rounding',
@@ -376,8 +376,8 @@ describe('Choy store-mode field hosts', () => {
     w.unmount();
   });
 
-  test('FormView store mode forwards named slots to OFormView', async () => {
-    stubSfc(OFormView, {
+  test('FormView store mode forwards named slots to FormView', async () => {
+    stubSfc(FormView, {
       props: { store: null },
       setup: ((_p: any, { slots }: any) => {
         return () =>
@@ -412,8 +412,8 @@ describe('Choy store-mode field hosts', () => {
       expect(w.q('[data-test=slot-bbox]')).not.toBeNull();
       w.unmount();
     } finally {
-      restoreSfc(OFormView as any);
-      stubHost(OFormView as any, 'o-form');
+      restoreSfc(FormView as any);
+      stubHost(FormView as any, 'o-form');
     }
   });
 
@@ -521,7 +521,7 @@ describe('Choy store-mode field hosts', () => {
 
     // Undeclared on* attrs forward via v-on once (keys stripped for toHandlers).
     const loadHits: unknown[] = [];
-    stubSfc(OFormView as any, {
+    stubSfc(FormView as any, {
       props: { store: null },
       emits: ['load-success'],
       setup: ((_props: any, { emit }: any) => {
@@ -545,8 +545,8 @@ describe('Choy store-mode field hosts', () => {
     await flushPromises();
     expect(loadHits).toEqual([{ ok: true }]);
     formListen.unmount();
-    restoreSfc(OFormView as any);
-    stubHost(OFormView as any, 'o-form');
+    restoreSfc(FormView as any);
+    stubHost(FormView as any, 'o-form');
 
     const listListen = await mountField(ChoyListView, {
       store: fakeStore,
@@ -634,7 +634,7 @@ describe('Choy store-mode field hosts', () => {
 
   test('store List/Search forward engine events and Search bind props', async () => {
     const rows: unknown[] = [];
-    stubSfc(OListView as any, {
+    stubSfc(ListView as any, {
       props: { store: null },
       emits: ['row-click'],
       setup: ((_props: any, { emit }: any) => {
@@ -658,10 +658,10 @@ describe('Choy store-mode field hosts', () => {
     await flushPromises();
     expect(rows).toEqual([{ name: 'r1' }]);
     list.unmount();
-    restoreSfc(OListView as any);
+    restoreSfc(ListView as any);
 
     // Nullish payload.row must not emit the wrapper object as the row.
-    stubSfc(OListView as any, {
+    stubSfc(ListView as any, {
       props: { store: null },
       emits: ['row-click'],
       setup: ((_props: any, { emit }: any) => {
@@ -695,12 +695,12 @@ describe('Choy store-mode field hosts', () => {
     await flushPromises();
     expect(guardRows).toEqual([{ name: 'bare' }]);
     listGuard.unmount();
-    restoreSfc(OListView as any);
-    stubHost(OListView as any, 'o-list');
+    restoreSfc(ListView as any);
+    stubHost(ListView as any, 'o-list');
 
     const queries: Array<{ keyword: string }> = [];
     let seenBind: Record<string, unknown> = {};
-    stubSfc(OSearchView as any, {
+    stubSfc(SearchView as any, {
       props: { store: null, placeholder: String, disabled: Boolean },
       emits: ['query-update'],
       setup: ((props: any, { emit }: any) => {
@@ -743,8 +743,8 @@ describe('Choy store-mode field hosts', () => {
     expect(queries[0]?.keyword).toBe('acme');
     expect((queries[0] as any)?.filters?.length).toBe(1);
     search.unmount();
-    restoreSfc(OSearchView as any);
-    stubHost(OSearchView as any, 'o-search');
+    restoreSfc(SearchView as any);
+    stubHost(SearchView as any, 'o-search');
   });
 
   test('ViewScope / ButtonBox / StatInfo / VColumn mount', async () => {
@@ -792,7 +792,7 @@ describe('Choy store-mode field hosts', () => {
     expect(stat.q('[data-test=o-stat]')).not.toBeNull();
     stat.unmount();
 
-    stubSfc(OVColumn as any, {
+    stubSfc(VColumn as any, {
       setup: ((_props: any, { slots }: any) => {
         return () =>
           h(
@@ -826,13 +826,13 @@ describe('Choy store-mode field hosts', () => {
     expect(col.q('[data-test=cell]')?.getAttribute('data-id')).toBe('1');
     col.unmount();
 
-    // No consumer default slot → do not forward an empty slot to OVColumn.
+    // No consumer default slot → do not forward an empty slot to VColumn.
     const bare = mountApp(ChoyVColumn as any, { props: { label: 'Name' } });
     await flushPromises();
     expect(bare.q('[data-test=o-vcolumn]')?.getAttribute('data-has-slot')).toBe('0');
     bare.unmount();
-    restoreSfc(OVColumn as any);
-    stubHost(OVColumn as any, 'o-vcolumn');
+    restoreSfc(VColumn as any);
+    stubHost(VColumn as any, 'o-vcolumn');
   });
 
   test('field chrome forwards attrs when inheritAttrs is false', async () => {

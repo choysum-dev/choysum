@@ -3,32 +3,36 @@
 
 import { h, createApp } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { flushPromises } from '@/web/web/__tests__/mountApp';
+import { flushPromises, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import App from './App.vue';
+import ChoyConfirmHost from './components/layout/ChoyConfirmHost.vue';
+import Toaster from './components/vendor/ui/toast/Toaster.vue';
 import { useI18nStore } from './stores';
 
 describe('App', () => {
-  test('wraps router-view in Element Plus config provider for dual-stack locale', async () => {
+  test('mounts router-view with toaster and confirm host', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     useI18nStore().localeCode = 'en';
+
+    stubSfc(Toaster as any, {
+      name: 'Toaster',
+      setup() {
+        return () => h('div', { 'data-test': 'toaster' });
+      },
+    });
+    stubSfc(ChoyConfirmHost as any, {
+      name: 'ChoyConfirmHost',
+      setup() {
+        return () => h('div', { 'data-test': 'confirm-host' });
+      },
+    });
 
     const errors: string[] = [];
     const el = document.createElement('div');
     document.body.appendChild(el);
     const app = createApp(App as any);
     app.use(pinia);
-    app.component('el-config-provider', {
-      props: { locale: null, size: String },
-      setup(props: any, { slots }: any) {
-        return () =>
-          h(
-            'div',
-            { 'data-test': 'ep-config', 'data-size': String(props.size || '') },
-            slots.default?.(),
-          );
-      },
-    });
     app.component('router-view', {
       setup() {
         return () => h('div', { 'data-test': 'router-view' });
@@ -42,9 +46,12 @@ describe('App', () => {
 
     expect(errors).toEqual([]);
     expect(el.querySelector('.choy-app')).not.toBeNull();
-    expect(el.querySelector('[data-test=ep-config]')?.getAttribute('data-size')).toBe('default');
     expect(el.querySelector('[data-test=router-view]')).not.toBeNull();
+    expect(el.querySelector('[data-test=toaster]')).not.toBeNull();
+    expect(el.querySelector('[data-test=confirm-host]')).not.toBeNull();
     app.unmount();
     el.remove();
+    restoreSfc(Toaster as any);
+    restoreSfc(ChoyConfirmHost as any);
   });
 });

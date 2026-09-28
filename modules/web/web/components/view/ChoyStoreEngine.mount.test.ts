@@ -6,8 +6,8 @@ import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests_
 import ChoyPage from '../layout/ChoyPage.vue';
 import ChoyFormView from './ChoyFormView.vue';
 import ChoyListView from './ChoyListView.vue';
-import { useOPageContext } from '@/web/web/composables/usePageContext';
-import OFormView from './OFormView.vue';
+import { usePageContext } from '@/web/web/composables/usePageContext';
+import FormView from './FormView.vue';
 
 const fakeStore = {
   modelName: 'auth.User',
@@ -19,7 +19,7 @@ describe('Choy store engine', () => {
     let seen: unknown = undefined;
     const Probe = defineComponent({
       setup() {
-        const ctx = useOPageContext();
+        const ctx = usePageContext();
         seen = ctx?.store.value;
         return () => h('div', { 'data-test': 'probe' });
       },
@@ -37,8 +37,8 @@ describe('Choy store engine', () => {
     wrapper.unmount();
   });
 
-  test('ChoyFormView store mode hosts OFormView root class', async () => {
-    stubSfc(OFormView, {
+  test('ChoyFormView store mode hosts FormView root class', async () => {
+    stubSfc(FormView, {
       props: { store: null },
       setup: ((_props: any, { slots }: any) => {
         return () =>
@@ -57,7 +57,7 @@ describe('Choy store engine', () => {
       expect(wrapper.q('.choy-form-view')).toBeNull();
       wrapper.unmount();
     } finally {
-      restoreSfc(OFormView);
+      restoreSfc(FormView);
     }
   });
 
@@ -112,7 +112,7 @@ describe('Choy store engine', () => {
     let seen: unknown = undefined;
     const Probe = defineComponent({
       setup() {
-        const ctx = useOPageContext();
+        const ctx = usePageContext();
         seen = ctx?.store.value;
         return () => h('div', { 'data-test': 'nested-probe' });
       },

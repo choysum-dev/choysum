@@ -360,10 +360,14 @@ func TestScanForbiddenUiImportsOnDisk_EdgeInputs(t *testing.T) {
 		t.Fatalf("empty input: got %v %v", v, err)
 	}
 	modulesPath := t.TempDir()
+	webRoot := filepath.Join(modulesPath, "web")
+	if err := os.MkdirAll(filepath.Join(webRoot, "web", "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if v, err := ScanForbiddenUiImportsOnDisk(ForbiddenUiImportScanInput{
 		ModulesPath: modulesPath,
-		ModuleName:  "choy_ui",
-		ModuleRoot:  filepath.Join(modulesPath, "choy_ui"),
+		ModuleName:  "web",
+		ModuleRoot:  webRoot,
 	}); err != nil || v != nil {
 		t.Fatalf("kit host: got %v %v", v, err)
 	}
@@ -548,7 +552,12 @@ func TestCheckForbiddenUiImportsOnDisk_EmptyAndAlias(t *testing.T) {
 	if err := CheckForbiddenUiImportsOnDisk(t.TempDir(), "", nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := CheckForbiddenUiImportsOnDisk(t.TempDir(), "choy_ui", nil); err != nil {
+	// web is exempt only when the kit tree exists under modules/web.
+	webHost := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(webHost, "web", "web", "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckForbiddenUiImportsOnDisk(webHost, "web", nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -566,9 +575,14 @@ func TestCheckForbiddenUiImports_UnitBranches(t *testing.T) {
 	if CheckForbiddenUiImports(ForbiddenUiImportScanInput{}, nil) != nil {
 		t.Fatal("empty input")
 	}
+	webKitHost := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(webKitHost, "web", "web", "components", "vendor", "ui"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if CheckForbiddenUiImports(ForbiddenUiImportScanInput{
-		ModuleName: "choy_ui",
-		ModuleRoot: "/x",
+		ModulesPath: webKitHost,
+		ModuleName:  "web",
+		ModuleRoot:  filepath.Join(webKitHost, "web"),
 	}, nil) != nil {
 		t.Fatal("kit host")
 	}

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Pure image limit helpers. Mount upload/display wiring lives in OImageField.test.ts.
+ * Pure image limit helpers. Mount upload/display wiring lives in ImageField.test.ts.
  */
 
 import { DEFAULT_GLOBAL_MAX_UPLOAD_BYTES } from '@/core/service/orm/upload_limits';

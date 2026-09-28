@@ -9,7 +9,7 @@ import type { ListViewLoadExpose, SelectionExpose } from '@/web/web/components/v
  * @template T Model type.
  */
 export function useListViewExpose<T>() {
-  // Create the ref bound to <OListView ref="listRef">.
+  // Create the ref bound to <ListView ref="listRef">.
   const listRef = ref<(SelectionExpose<T> & ListViewLoadExpose) | null>(null);
 
   // Proxy computed values that already handle null checks.

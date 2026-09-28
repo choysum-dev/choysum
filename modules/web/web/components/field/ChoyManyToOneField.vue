@@ -5,12 +5,12 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <!-- Store id mode (default): OManyToOneRefField. Record mode: OManyToOneField. -->
-  <OManyToOneRefField v-if="storeMode && valueMode !== 'record'" v-bind="(storeBind as any)">
+  <ManyToOneRefField v-if="storeMode && valueMode !== 'record'" v-bind="(storeBind as any)">
     <slot />
-  </OManyToOneRefField>
-  <OManyToOneField v-else-if="storeMode" v-bind="(storeBind as any)">
+  </ManyToOneRefField>
+  <ManyToOneField v-else-if="storeMode" v-bind="(storeBind as any)">
     <slot />
-  </OManyToOneField>
+  </ManyToOneField>
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"
@@ -59,8 +59,8 @@ import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
-import OManyToOneField from './OManyToOneField.vue';
-import OManyToOneRefField from './OManyToOneRefField.vue';
+import ManyToOneField from './ManyToOneField.vue';
+import ManyToOneRefField from './ManyToOneRefField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,

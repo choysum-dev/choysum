@@ -1,0 +1,100 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+/**
+ * FE unit stub for `reka-ui`.
+ * Real Reka primitives pull in browser-only APIs that throw in QuickJS
+ * (`TypeError: not a function`). Passthrough slot hosts keep Dialog / Toast /
+ * Combobox / Calendar mounts usable in FE unit tests.
+ */
+import { defineComponent, h } from 'vue';
+
+function stub(name) {
+  return defineComponent({
+    name,
+    inheritAttrs: false,
+    setup(_, { slots, attrs }) {
+      return () =>
+        h(
+          'div',
+          { 'data-reka-stub': name, ...attrs },
+          [
+            slots.default ? slots.default() : null,
+            slots.trigger ? slots.trigger() : null,
+            slots.content ? slots.content() : null,
+          ],
+        );
+    },
+  });
+}
+
+export const CalendarCell = stub('CalendarCell');
+export const CalendarCellTrigger = stub('CalendarCellTrigger');
+export const CalendarGrid = stub('CalendarGrid');
+export const CalendarGridBody = stub('CalendarGridBody');
+export const CalendarGridHead = stub('CalendarGridHead');
+export const CalendarGridRow = stub('CalendarGridRow');
+export const CalendarHeadCell = stub('CalendarHeadCell');
+export const CalendarHeader = stub('CalendarHeader');
+export const CalendarHeading = stub('CalendarHeading');
+export const CalendarNext = stub('CalendarNext');
+export const CalendarPrev = stub('CalendarPrev');
+export const CalendarRoot = stub('CalendarRoot');
+export const CheckboxIndicator = stub('CheckboxIndicator');
+export const CheckboxRoot = stub('CheckboxRoot');
+export const ComboboxAnchor = stub('ComboboxAnchor');
+export const ComboboxContent = stub('ComboboxContent');
+export const ComboboxEmpty = stub('ComboboxEmpty');
+export const ComboboxInput = stub('ComboboxInput');
+export const ComboboxItem = stub('ComboboxItem');
+export const ComboboxPortal = stub('ComboboxPortal');
+export const ComboboxRoot = stub('ComboboxRoot');
+export const ComboboxViewport = stub('ComboboxViewport');
+export const DialogClose = stub('DialogClose');
+export const DialogContent = stub('DialogContent');
+export const DialogDescription = stub('DialogDescription');
+export const DialogOverlay = stub('DialogOverlay');
+export const DialogPortal = stub('DialogPortal');
+export const DialogRoot = stub('DialogRoot');
+export const DialogTitle = stub('DialogTitle');
+export const DialogTrigger = stub('DialogTrigger');
+export const DropdownMenuContent = stub('DropdownMenuContent');
+export const DropdownMenuItem = stub('DropdownMenuItem');
+export const DropdownMenuPortal = stub('DropdownMenuPortal');
+export const DropdownMenuRoot = stub('DropdownMenuRoot');
+export const DropdownMenuTrigger = stub('DropdownMenuTrigger');
+export const PopoverContent = stub('PopoverContent');
+export const PopoverPortal = stub('PopoverPortal');
+export const PopoverRoot = stub('PopoverRoot');
+export const PopoverTrigger = stub('PopoverTrigger');
+export const ScrollAreaRoot = stub('ScrollAreaRoot');
+export const ScrollAreaScrollbar = stub('ScrollAreaScrollbar');
+export const ScrollAreaThumb = stub('ScrollAreaThumb');
+export const ScrollAreaViewport = stub('ScrollAreaViewport');
+export const SelectContent = stub('SelectContent');
+export const SelectIcon = stub('SelectIcon');
+export const SelectItem = stub('SelectItem');
+export const SelectItemIndicator = stub('SelectItemIndicator');
+export const SelectItemText = stub('SelectItemText');
+export const SelectPortal = stub('SelectPortal');
+export const SelectRoot = stub('SelectRoot');
+export const SelectTrigger = stub('SelectTrigger');
+export const SelectValue = stub('SelectValue');
+export const SelectViewport = stub('SelectViewport');
+export const SwitchRoot = stub('SwitchRoot');
+export const SwitchThumb = stub('SwitchThumb');
+export const TabsContent = stub('TabsContent');
+export const TabsList = stub('TabsList');
+export const TabsRoot = stub('TabsRoot');
+export const TabsTrigger = stub('TabsTrigger');
+export const ToastClose = stub('ToastClose');
+export const ToastDescription = stub('ToastDescription');
+export const ToastProvider = stub('ToastProvider');
+export const ToastRoot = stub('ToastRoot');
+export const ToastTitle = stub('ToastTitle');
+export const ToastViewport = stub('ToastViewport');
+export const TooltipContent = stub('TooltipContent');
+export const TooltipPortal = stub('TooltipPortal');
+export const TooltipProvider = stub('TooltipProvider');
+export const TooltipRoot = stub('TooltipRoot');
+export const TooltipTrigger = stub('TooltipTrigger');

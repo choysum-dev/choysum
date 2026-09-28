@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Product/inbox mode: host the dual-stack ONotificationBell engine. -->
-  <ONotificationBell v-if="useInboxEngine" :class="props.class" />
+  <!-- Product/inbox mode: host the dual-stack NotificationBell engine. -->
+  <NotificationBell v-if="useInboxEngine" :class="props.class" />
 
   <div
     v-else
@@ -43,7 +43,7 @@ import { computed } from 'vue';
 import Badge from '../vendor/ui/badge/Badge.vue';
 import Button from '../vendor/ui/button/Button.vue';
 import { cn, type ClassValue } from '../../lib/utils';
-import ONotificationBell from './ONotificationBell.vue';
+import NotificationBell from './NotificationBell.vue';
 import {
   choyNotificationAriaLabel,
   choyNotificationBadgeText,
@@ -52,7 +52,7 @@ import {
 import { isChoyNotificationInboxMode } from './choyNotificationBellMode';
 
 /**
- * Notification bell: omit `count` to host ONotificationBell (inbox);
+ * Notification bell: omit `count` to host NotificationBell (inbox);
  * pass `count` for chrome-only badge demos (Gallery).
  */
 const props = defineProps<{

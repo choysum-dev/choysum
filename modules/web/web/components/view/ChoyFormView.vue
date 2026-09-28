@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Store-bound engine: host OFormView (controller / onchange / field provides). -->
-  <OFormView v-if="useStoreEngine" v-bind="(storeBind as any)" v-on="(storeListeners as any)">
+  <!-- Store-bound engine: host FormView (controller / onchange / field provides). -->
+  <FormView v-if="useStoreEngine" v-bind="(storeBind as any)" v-on="(storeListeners as any)">
     <template v-if="$slots.breadcrumb" #breadcrumb="slotData">
       <slot name="breadcrumb" v-bind="slotData || {}" />
     </template>
@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
     <template #default="slotData">
       <slot v-bind="slotData || {}" />
     </template>
-  </OFormView>
+  </FormView>
 
   <!-- Chrome skeleton for Gallery / Dogfood (no WebModelStore). -->
   <div
@@ -115,7 +115,7 @@ import {
   hasChoyStoreEngine,
   splitChoyAttrsListeners,
 } from '@/web/web/composables/choyStoreMode';
-import OFormView from './OFormView.vue';
+import FormView from './FormView.vue';
 
 defineOptions({ name: 'ChoyFormView', inheritAttrs: false });
 

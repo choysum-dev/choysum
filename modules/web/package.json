@@ -10,12 +10,9 @@
   "type": "module",
   "main": "index.ts",
   "peerDependencies": {
-    "@element-plus/icons-vue": "^2.3.2",
-    "@vicons/material": "^0.13.0",
     "@vueuse/core": "^14.3.0",
     "async-validator": "^4.2.5",
     "dayjs": "^1.11.21",
-    "element-plus": "^2.14.1",
     "lru-cache": "^11.5.1",
     "nprogress": "^0.2.0",
     "pinia": "^3.0.4",
@@ -35,9 +32,7 @@
     "@tanstack/vue-virtual": "3.13.39",
     "@internationalized/date": "3.12.4",
     "@unovis/vue": "1.7.0",
-    "@unovis/ts": "1.7.0",
-    "echarts": "^6.1.0",
-    "vue-echarts": "^8.0.1"
+    "@unovis/ts": "1.7.0"
   },
   "choysum": {
     "moduleName": "web",

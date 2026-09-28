@@ -4,15 +4,15 @@
 import { h } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyNotificationBell from './ChoyNotificationBell.vue';
-import ONotificationBell from './ONotificationBell.vue';
+import NotificationBell from './NotificationBell.vue';
 
 describe('ChoyNotificationBell mount', () => {
   afterEach(() => {
-    restoreSfc(ONotificationBell as any);
+    restoreSfc(NotificationBell as any);
   });
 
   function stubInboxEngine() {
-    stubSfc(ONotificationBell as any, {
+    stubSfc(NotificationBell as any, {
       setup(_props: unknown, ctx: { attrs: Record<string, unknown> }) {
         return () =>
           h('div', {

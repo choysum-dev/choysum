@@ -5,14 +5,15 @@
  * S2 list inline edit state: one row draft, explicit Save / Discard, no blur RPC.
  *
  * form-root / table view-mode are NOT provided here — callers must inject them
- * under the table only (see OListInlineEditScope) so header/search fields stay isolated.
+ * under the table only (see ListInlineEditScope) so header/search fields stay isolated.
  */
 
 import { computed, provide, ref, type Ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ChoyMessage } from '../composables/useChoyMessage';
+import { confirmChoyChoice } from '../composables/confirmChoyAction';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
+import type { ViewMode } from '@/web/web/components/view/ViewScope.vue';
 import { provideOnchange, useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import {
   cloneRowDraft,
@@ -30,6 +31,7 @@ import { createTranslate } from '@/web/web/i18n';
 export type UseListInlineEditDeps = {
   provideOnchange?: typeof provideOnchange;
   useProvidedOnchange?: typeof useProvidedOnchange;
+  confirmChoyChoice?: typeof confirmChoyChoice;
 };
 
 export function useListInlineEdit<T extends BaseModel>(opts: {
@@ -42,17 +44,18 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
   const { _t } = createTranslate('web', { scope: opts.translateScope ?? 'web/composables/useListInlineEdit' });
   const resolveProvideOnchange = opts.deps?.provideOnchange ?? provideOnchange;
   const resolveUseProvidedOnchange = opts.deps?.useProvidedOnchange ?? useProvidedOnchange;
+  const resolveConfirmChoyChoice = opts.deps?.confirmChoyChoice ?? confirmChoyChoice;
 
   const editingRowId = ref<string | null>(null);
   const editingDraft = ref<Record<string, any> | null>(null);
   const editingOriginal = ref<Record<string, any> | null>(null);
   const saving = ref(false);
-  /** Table-scoped view mode; provide via OListInlineEditScope, not list root. */
+  /** Table-scoped view mode; provide via ListInlineEditScope, not list root. */
   const tableViewMode = ref<ViewMode>('display');
 
   const isEditing = computed(() => editingRowId.value != null);
 
-  // Row id gate for OFieldBase; safe list-wide (edit UI still requires table form-root).
+  // Row id gate for FieldBase; safe list-wide (edit UI still requires table form-root).
   provide('list-editing-row-id', editingRowId);
 
   const formRoot = {
@@ -95,22 +98,18 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
   }
 
   async function promptDirtySwitch(): Promise<'save' | 'discard' | 'cancel'> {
-    try {
-      await ElMessageBox.confirm(
-        _t('You have unsaved changes on the current row. Save before switching?'),
-        _t('Unsaved changes'),
-        {
-          distinguishCancelAndClose: true,
-          confirmButtonText: _t('Save'),
-          cancelButtonText: _t('Discard'),
-          type: 'warning',
-        }
-      );
-      return 'save';
-    } catch (action) {
-      if (action === 'cancel') return 'discard';
-      return 'cancel';
-    }
+    const choice = await resolveConfirmChoyChoice(
+      _t('You have unsaved changes on the current row. Save before switching?'),
+      _t('Unsaved changes'),
+      {
+        distinguishCancelAndClose: true,
+        confirmText: _t('Save'),
+        cancelText: _t('Discard'),
+      }
+    );
+    if (choice === 'confirm') return 'save';
+    if (choice === 'cancel') return 'discard';
+    return 'cancel';
   }
 
   function exitEdit() {
@@ -147,7 +146,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
       }
       // Do not persist when onchange reported validation / compute errors.
       if (flushHadError) {
-        ElMessage.error(_t('Failed to save row'));
+        ChoyMessage.error(_t('Failed to save row'));
         return false;
       }
       // Onchange flush may clear the draft; exit edit so list-editing-row-id / Save UI do not linger.
@@ -171,7 +170,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
         return true;
       }
       await opts.store.UpdateById(editingRowId.value, payload as any);
-      ElMessage.success(_t('Row saved'));
+      ChoyMessage.success(_t('Row saved'));
       exitEdit();
       try {
         await opts.onSaved?.();
@@ -180,7 +179,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
       }
       return true;
     } catch (e: any) {
-      ElMessage.error(_t('Failed to save row'));
+      ChoyMessage.error(_t('Failed to save row'));
       throw e;
     } finally {
       saving.value = false;

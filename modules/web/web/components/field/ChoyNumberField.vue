@@ -5,10 +5,10 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <!-- Store hosts: bigint / int / float(number) / decimal engines; chrome keeps defineModel. -->
-  <OBigintField v-if="storeMode && mode === 'bigint'" v-bind="(storeBind as any)" />
-  <OIntField v-else-if="storeMode && mode === 'integer'" v-bind="(storeBind as any)" />
-  <ONumberField v-else-if="storeMode && mode === 'float'" v-bind="(storeBind as any)" />
-  <ODecimalField v-else-if="storeMode" v-bind="(storeBind as any)" />
+  <BigintField v-if="storeMode && mode === 'bigint'" v-bind="(storeBind as any)" />
+  <IntField v-else-if="storeMode && mode === 'integer'" v-bind="(storeBind as any)" />
+  <NumberField v-else-if="storeMode && mode === 'float'" v-bind="(storeBind as any)" />
+  <DecimalField v-else-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"
@@ -52,10 +52,10 @@ import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
-import OBigintField from './OBigintField.vue';
-import ODecimalField from './ODecimalField.vue';
-import OIntField from './OIntField.vue';
-import ONumberField from './ONumberField.vue';
+import BigintField from './BigintField.vue';
+import DecimalField from './DecimalField.vue';
+import IntField from './IntField.vue';
+import NumberField from './NumberField.vue';
 import {
   choyFieldChromeDefaults,
   parseChoyNumber,

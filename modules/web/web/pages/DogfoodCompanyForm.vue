@@ -279,16 +279,15 @@ const currencyId = ref<string | null>('usd');
 const currencyOption = ref<RelationOption | null>(CURRENCIES[0] ?? null);
 const htmlNotes = ref<string | null>('<p>Dogfood <em>HTML</em> notes.</p>');
 const metaJson = ref<ChoyJsonValue>({ source: 'dogfood', version: 1 });
-const propItems: ResolvedPropertyItem[] = [
+const propItems = [
   { name: 'segment', type: 'char', string: 'Segment', value: 'enterprise' },
   {
     name: 'tier',
-    type: 'selection',
     string: 'Tier',
     selection: [['bronze', 'Bronze'], ['silver', 'Silver'], ['gold', 'Gold']],
     value: 'silver',
   },
-];
+] as any;
 const propsMap = ref<PropertiesMap>(
   Object.assign(Object.create(null), { segment: 'enterprise', tier: 'silver' }),
 );

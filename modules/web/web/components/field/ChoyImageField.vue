@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OImageField v-if="storeMode" v-bind="(storeBind as any)" />
+  <ImageField v-if="storeMode" v-bind="(storeBind as any)" />
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"
@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, onBeforeUnmount, ref, useAttrs, watch } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
-import OImageField from './OImageField.vue';
+import ImageField from './ImageField.vue';
 import type { ClassValue } from '../../lib/utils';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';

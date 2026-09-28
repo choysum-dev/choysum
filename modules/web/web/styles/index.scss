@@ -6,7 +6,6 @@
 // ============================================
 @forward './variables.scss'; // Load variable definitions first
 @forward './tokens.scss'; // Sass token variables
-@forward './element.scss'; // Load Element Plus styles next
 @forward './transitions.scss'; // Load transition animation styles
 @forward './a11y.scss'; // Load accessibility
 

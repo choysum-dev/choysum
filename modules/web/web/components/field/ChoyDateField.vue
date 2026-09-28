@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ODateField v-if="storeMode" v-bind="(storeBind as any)" value-format="YYYY-MM-DD" />
+  <DateField v-if="storeMode" v-bind="(storeBind as any)" value-format="YYYY-MM-DD" />
   <ChoyFieldBase
     v-else
     v-bind="($attrs as any)"
@@ -41,7 +41,7 @@ import type { ClassValue } from '../../lib/utils';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
 import ChoyFieldBase from './ChoyFieldBase.vue';
-import ODateField from './ODateField.vue';
+import DateField from './DateField.vue';
 import {
   choyFieldChromeDefaults,
   type ChoyFieldChromeProps,

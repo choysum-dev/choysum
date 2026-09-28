@@ -16,8 +16,6 @@ import (
 
 func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 	stubs := feUnitStubPaths{
-		ElementPlus:         "ep",
-		Icons:               "icons",
 		Router:              "router",
 		PageMount:           "pm",
 		OPage:               "opage",
@@ -29,36 +27,34 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		Scope:               "scope",
 		Permission:          "perm",
 		PageComposable:      "pageComp",
-		Vicons:              "vicons",
-		VueEcharts:          "vchart",
 		Vuedraggable:        "drag",
-		Echarts:             "echarts",
 		TipTapVue3:          "tiptap-vue3",
 		TipTapStarterKit:    "tiptap-starter",
 		TipTapExtensionLink: "tiptap-link",
 		DOMPurify:           "dompurify",
 		UnovisVue:           "unovis-vue",
 		UnovisTs:            "unovis-ts",
+		RekaUI:              "reka-ui",
+		LucideVueNext:       "lucide",
 	}
 	for _, tt := range []struct {
 		path string
 		want string
 		ok   bool
 	}{
-		{"element-plus", "ep", true},
-		{"@element-plus/icons-vue", "icons", true},
-		{"@vicons/material", "vicons", true},
 		{"vue-router", "router", true},
 		{"@choysum/page-mount", "pm", true},
-		{"vue-echarts", "vchart", true},
 		{"vuedraggable", "drag", true},
-		{"echarts/core", "echarts", true},
 		{"@tiptap/vue-3", "tiptap-vue3", true},
 		{"@tiptap/starter-kit", "tiptap-starter", true},
 		{"@tiptap/extension-link", "tiptap-link", true},
 		{"dompurify", "dompurify", true},
 		{"@unovis/vue", "unovis-vue", true},
 		{"@unovis/ts", "unovis-ts", true},
+		{"reka-ui", "reka-ui", true},
+		{"lucide-vue-next", "lucide", true},
+		{"element-plus", "", false},
+		{"echarts/core", "", false},
 		{"other", "", false},
 	} {
 		got, ok := feUnitPackageStubPath(tt.path, stubs)
@@ -74,11 +70,14 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		p, joined, importer, want string
 		ok                        bool
 	}{
-		{"@/web/web/components/OPage.vue", "/x/OPage.vue", page, "opage", true},
-		{"@/web/web/components/OPage.vue", "/x/OPage.vue", "", "opage", true},
+		{"@/web/web/components/page/Page.vue", "/x/Page.vue", page, "opage", true},
+		{"@/web/web/components/page/Page.vue", "/x/Page.vue", "", "opage", true},
+		{"@/web/web/components/page/OPage.vue", "/x/OPage.vue", page, "opage", true},
+		{"@/web/web/components/layout/ChoyPage.vue", "/x/ChoyPage.vue", page, "child", true},
 		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", page, "child", true},
 		{"./OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.test.ts", "", false},
 		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", "/other.ts", "", false},
+		{"./Page.vue", "/repo/modules/web/web/components/page/Page.vue", "/repo/modules/web/web/components/page/Page.mapping.test.ts", "", false},
 		{"./OPage.vue", "/repo/modules/web/web/components/page/OPage.vue", "/repo/modules/web/web/components/page/OPage.mapping.test.ts", "", false},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", page, "child", true},
 		{"./PartnerListView.vue", "/x/PartnerListView.vue", page, "child", true},
@@ -180,7 +179,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 
 	// Drive FE stub OnResolve callbacks without network by invoking Setup on a capture PluginBuild.
-	var pkgCB, opageCB, childViewCB func(api.OnResolveArgs) (api.OnResolveResult, error)
+	var pkgCB, pageCB, childViewCB func(api.OnResolveArgs) (api.OnResolveResult, error)
 	var pathCBs []func(api.OnResolveArgs) (api.OnResolveResult, error)
 	esbuildBuild = func(opts api.BuildOptions) api.BuildResult {
 		pb := api.PluginBuild{
@@ -192,10 +191,10 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 			OnDispose:      func(func()) {},
 			OnResolve: func(o api.OnResolveOptions, cb func(api.OnResolveArgs) (api.OnResolveResult, error)) {
 				switch o.Filter {
-				case `^(element-plus|@element-plus/icons-vue|@vicons/material|vue-router|@choysum/page-mount|vue-echarts|vuedraggable|echarts(/.*)?|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts)$`:
+				case `^(vue-router|@choysum/page-mount|vuedraggable|@tiptap/vue-3|@tiptap/starter-kit|@tiptap/extension-link|dompurify|@unovis/vue|@unovis/ts|reka-ui|lucide-vue-next)$`:
 					pkgCB = cb
-				case `OPage\.vue$`:
-					opageCB = cb
+				case `(?:^|/)(?:OPage|Page)\.vue$`:
+					pageCB = cb
 				case `(FormView|ListView|KanbanView)\.vue$`:
 					childViewCB = cb
 				case `.*`:
@@ -221,26 +220,30 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	}
 	esbuildBuild = prevBuild
 
-	if pkgCB == nil || opageCB == nil || childViewCB == nil || len(pathCBs) == 0 {
+	if pkgCB == nil || pageCB == nil || childViewCB == nil || len(pathCBs) == 0 {
 		t.Fatal("expected FE stub OnResolve callbacks to be registered")
 	}
-	for _, path := range []string{"element-plus", "@element-plus/icons-vue", "vue-router", "@choysum/page-mount"} {
+	for _, path := range []string{"vue-router", "@choysum/page-mount", "vuedraggable", "dompurify"} {
 		res, err := pkgCB(api.OnResolveArgs{Path: path})
 		if err != nil || res.Path == "" {
 			t.Fatalf("package stub %q: %#v err=%v", path, res, err)
 		}
 	}
-	opageRes, err := opageCB(api.OnResolveArgs{Path: "./OPage.vue", Importer: "/modules/auth/web/pages/Login.vue"})
-	if err != nil || !strings.HasSuffix(opageRes.Path, "OPage.stub.vue") {
-		t.Fatalf("opage stub: %#v err=%v", opageRes, err)
+	pageRes, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/pages/TerminologyEditor.vue"})
+	if err != nil || !strings.HasSuffix(pageRes.Path, "OPage.stub.vue") {
+		t.Fatalf("page stub: %#v err=%v", pageRes, err)
 	}
-	opageSkip, err := opageCB(api.OnResolveArgs{Path: "./OPage.vue", Importer: "/modules/web/web/components/page/OPage.mapping.test.ts"})
-	if err != nil || opageSkip.Path != "" {
-		t.Fatalf("opage skip for mapping test: %#v err=%v", opageSkip, err)
+	legacyPageRes, err := pageCB(api.OnResolveArgs{Path: "./OPage.vue", Importer: "/modules/auth/web/pages/Login.vue"})
+	if err != nil || !strings.HasSuffix(legacyPageRes.Path, "OPage.stub.vue") {
+		t.Fatalf("legacy OPage stub: %#v err=%v", legacyPageRes, err)
 	}
-	opageSkipVue, err := opageCB(api.OnResolveArgs{Path: "./OPage.vue", Importer: "/modules/web/web/components/page/OPageIoMenu.vue"})
-	if err != nil || opageSkipVue.Path != "" {
-		t.Fatalf("opage skip for web component SFC: %#v err=%v", opageSkipVue, err)
+	pageSkip, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/components/page/Page.mapping.test.ts"})
+	if err != nil || pageSkip.Path != "" {
+		t.Fatalf("page skip for mapping test: %#v err=%v", pageSkip, err)
+	}
+	pageSkipVue, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/components/page/PageIoMenu.vue"})
+	if err != nil || pageSkipVue.Path != "" {
+		t.Fatalf("page skip for web component SFC: %#v err=%v", pageSkipVue, err)
 	}
 	childRes, err := childViewCB(api.OnResolveArgs{Path: "@/web/web/components/view/OFormView.vue", Importer: "/modules/partner_commercial/web/views/PartnerIdentifierFormView.vue"})
 	if err != nil || !strings.HasSuffix(childRes.Path, "ChildView.stub.vue") {
@@ -250,7 +253,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	if err != nil || childSkip.Path != "" {
 		t.Fatalf("child view skip for web unit test: %#v err=%v", childSkip, err)
 	}
-	var pathHit, opageFromPage, opageFromTest bool
+	var pathHit, pageFromPage, pageFromTest bool
 	for _, pathCB := range pathCBs {
 		pathRes, err := pathCB(api.OnResolveArgs{
 			Path:       "@/web/web/stores/registry",
@@ -263,27 +266,27 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 		if strings.HasSuffix(pathRes.Path, "store_registry.js") {
 			pathHit = true
 		}
-		pageOPage, err := pathCB(api.OnResolveArgs{
-			Path:       "@/web/web/components/page/OPage.vue",
-			Importer:   "/modules/auth/web/pages/Login.vue",
+		pagePage, err := pathCB(api.OnResolveArgs{
+			Path:       "@/web/web/components/page/Page.vue",
+			Importer:   "/modules/web/web/pages/TerminologyEditor.vue",
 			ResolveDir: dir,
 		})
 		if err != nil {
-			t.Fatalf("opage from page err: %v", err)
+			t.Fatalf("page from page err: %v", err)
 		}
-		if strings.HasSuffix(pageOPage.Path, "OPage.stub.vue") {
-			opageFromPage = true
+		if strings.HasSuffix(pagePage.Path, "OPage.stub.vue") {
+			pageFromPage = true
 		}
-		testOPage, err := pathCB(api.OnResolveArgs{
-			Path:       "./OPage.vue",
-			Importer:   "/modules/web/web/components/page/OPage.mapping.test.ts",
+		testPage, err := pathCB(api.OnResolveArgs{
+			Path:       "./Page.vue",
+			Importer:   "/modules/web/web/components/page/Page.mapping.test.ts",
 			ResolveDir: "/modules/web/web/components/page",
 		})
 		if err != nil {
-			t.Fatalf("opage from test err: %v", err)
+			t.Fatalf("page from test err: %v", err)
 		}
-		if testOPage.Path == "" {
-			opageFromTest = true
+		if testPage.Path == "" {
+			pageFromTest = true
 		}
 		// Relative join branch + miss path.
 		miss, err := pathCB(api.OnResolveArgs{Path: "./nope.ts", Importer: "/x.ts", ResolveDir: dir})
@@ -295,11 +298,11 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	if !pathHit {
 		t.Fatal("expected FE path stub to resolve registry")
 	}
-	if !opageFromPage {
-		t.Fatal("expected OPage stub for page/view importers")
+	if !pageFromPage {
+		t.Fatal("expected Page stub for page/view importers")
 	}
-	if !opageFromTest {
-		t.Fatal("expected real OPage for FE unit test importers")
+	if !pageFromTest {
+		t.Fatal("expected real Page for FE unit test importers")
 	}
 }
 

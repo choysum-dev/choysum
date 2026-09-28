@@ -27,7 +27,7 @@ export function resolveUserFilterUserId(userId: unknown): string {
 }
 
 /**
- * Convert a UserFilter row into a NamedFilter for OSearch menus / first-frame defaults.
+ * Convert a UserFilter row into a NamedFilter for Search menus / first-frame defaults.
  */
 export function userFilterToNamedFilter(row: UserFilterRow, selected = false): NamedFilter {
   return {

@@ -4,15 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Store-bound engine: host OListView (search, selection, OVColumn/ChoyVColumn slots). -->
-  <OListView
+  <!-- Store-bound engine: host ListView (search, selection, OVColumn/ChoyVColumn slots). -->
+  <ListView
     v-if="useStoreEngine"
     v-bind="(storeBind as any)"
     v-on="(storeListeners as any)"
     @row-click="onStoreRowClick"
   >
     <slot />
-  </OListView>
+  </ListView>
 
   <!-- Chrome: host-supplied columns + data (Gallery / Dogfood). -->
   <div
@@ -59,7 +59,7 @@ import DataTable from '../internal/DataTable.vue';
 import type { DataTableRowId } from '../internal/dataTableHelpers';
 import type { ClassValue } from '../../lib/utils';
 import type { RowEventPayload } from './listViewTypes';
-import OListView from './OListView.vue';
+import ListView from './ListView.vue';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
@@ -120,7 +120,7 @@ function onRowClick(row: T): void {
   emit('row-click', row);
 }
 
-/** OListView emits RowEventPayload; chrome consumers expect the row only. */
+/** ListView emits RowEventPayload; chrome consumers expect the row only. */
 function onStoreRowClick(payload: RowEventPayload<any>): void {
   const row =
     payload && typeof payload === 'object' && 'row' in payload ? payload.row : payload;

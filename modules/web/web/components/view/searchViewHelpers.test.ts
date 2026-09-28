@@ -65,7 +65,7 @@ describe('searchViewHelpers', () => {
     ).toEqual([{ field: 'code', op: '=', value: 'x' }]);
   });
 
-  test('choySearchQueryFromPayload adapts OSearchView payload', () => {
+  test('choySearchQueryFromPayload adapts SearchView payload', () => {
     const appliedFilters = [{ children: [{ field: 'name', operator: '=', value: 'a' }] }];
     const appliedGroups = [{ field: 'Revoked' }];
     expect(

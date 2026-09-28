@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ComputedRef, Ref } from 'vue';
-import type { RowEventHandlerParams } from 'element-plus';
 import type { ClientModel } from '@/core/rpc';
 
 export interface SelectionExpose<T = any> {
@@ -17,6 +16,6 @@ export interface ListViewLoadExpose {
 export type RowEventPayload<T = any> = {
   row: ClientModel<T>;
   rowIndex: number;
-  rowKey: RowEventHandlerParams['rowKey'];
+  rowKey: string | number | undefined;
   event: MouseEvent | Event;
 };

@@ -4,8 +4,8 @@
 import type { InjectionKey } from 'vue';
 
 /**
- * Optional nav sources for OSearch default-favorite naming and scopeKey.
- * When provided, OSearch skips breadcrumb / menu / route setup hooks.
+ * Optional nav sources for Search default-favorite naming and scopeKey.
+ * When provided, Search skips breadcrumb / menu / route setup hooks.
  */
 export type OSearchNavContext = {
   breadcrumbStore?: { breadcrumbStack: Array<{ title?: string; titleText?: any }> } | null;

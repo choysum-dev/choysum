@@ -62,13 +62,11 @@ test('language_format (P2): datetime uses user timezone; date does not shift cal
   expect(formatDateTime(calendar, config, { type: 'date', timeZone: 'America/New_York' })).toBe('2024-07-01');
 });
 
-test('language_format (P2): T2.4: catalog still exposes Element/dayjs package names; missing format falls back safely', () => {
+test('language_format (P2): T2.4: catalog still exposes dayjs package names; missing format falls back safely', () => {
   const zh = SUPPORTED_LOCALES['zh-CN'];
-  expect(zh.elementLocaleCode).toBe('zh-cn');
   expect(zh.dayjsLocaleCode).toBe('zh-cn');
 
   const sparse = SUPPORTED_LOCALES.el;
-  expect(sparse.elementLocaleCode).toBe('el');
   expect(sparse.numberFormat).toBeUndefined();
 
   const resolved = resolveFormatConfig(sparse.numberFormat, sparse.dateTimeFormat, null, null);

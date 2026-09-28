@@ -1,8 +1,22 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { provide, inject, ref, shallowRef, isRef, type Ref } from 'vue';
-import type { Column } from 'element-plus';
+import { provide, inject, ref, shallowRef, isRef, type Ref, type VNodeChild } from 'vue';
+
+/** Column definition previously backed by Element Plus TableV2. */
+export type Column = {
+  key?: string | number;
+  dataKey?: string;
+  title?: string;
+  width?: number;
+  minWidth?: number;
+  align?: 'left' | 'center' | 'right';
+  fixed?: 'left' | 'right' | boolean;
+  sortable?: boolean;
+  headerCellRenderer?: (props?: any) => VNodeChild;
+  cellRenderer?: (props: { rowData: any; rowIndex: number; column?: Column }) => VNodeChild;
+  [key: string]: any;
+};
 
 /**
  * Row-selection modes supported by virtual tables.
@@ -84,11 +98,11 @@ export function useVTableSelection(keyGetter: (row: any) => string | number | un
 }
 
 /**
- * Column registry shared by OVTable column components.
+ * Column registry shared by VTable column components.
  */
 export type ColumnRegistry = {
-  columns: Ref<import('element-plus').Column[]>;
-  register: (c: import('element-plus').Column) => () => void;
+  columns: Ref<Column[]>;
+  register: (c: Column) => () => void;
 };
 const VTABLE_COLREG_KEY = Symbol('ovtable:col-reg');
 
@@ -96,8 +110,8 @@ const VTABLE_COLREG_KEY = Symbol('ovtable:col-reg');
  * Provides a column registry for nested table column components.
  */
 export function useVTableProvideColumnRegistry(): ColumnRegistry {
-  const columns = ref<import('element-plus').Column[]>([]);
-  function register(col: import('element-plus').Column) {
+  const columns = ref<Column[]>([]);
+  function register(col: Column) {
     columns.value.push(col);
     return () => {
       const i = columns.value.indexOf(col);
@@ -156,7 +170,7 @@ export function useVTableUseBuildContext(): VTableBuildContext {
 /**
  * Internal metadata attached to columns for width semantics.
  */
-export type OVColumnMeta = {
+export type VColumnMeta = {
   widthSpec?: { type: 'percent'; ratio: number } | { type: 'flex'; weight: number } | { type: 'auto' };
 };
 const OV_META_KEY = Symbol('ov:col-meta');
@@ -164,7 +178,7 @@ const OV_META_KEY = Symbol('ov:col-meta');
 /**
  * Stores internal width metadata on a table column.
  */
-export function setOVColumnMeta(col: Column, meta: OVColumnMeta) {
+export function setVColumnMeta(col: Column, meta: VColumnMeta) {
   const anyCol = col as unknown as Record<PropertyKey, any>;
   anyCol[OV_META_KEY] = { ...(anyCol[OV_META_KEY] || {}), ...meta };
 }
@@ -172,6 +186,6 @@ export function setOVColumnMeta(col: Column, meta: OVColumnMeta) {
 /**
  * Reads internal width metadata from a table column.
  */
-export function getOVColumnMeta(col: Column): OVColumnMeta | undefined {
+export function getVColumnMeta(col: Column): VColumnMeta | undefined {
   return (col as unknown as Record<PropertyKey, any>)[OV_META_KEY];
 }

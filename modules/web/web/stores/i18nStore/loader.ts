@@ -5,26 +5,6 @@ import { SUPPORTED_LOCALES } from './locales';
 import { SupportedLocale } from './types';
 
 /**
- * Dynamically import the Element Plus locale bundle.
- */
-export async function loadElementLocale(locale: string): Promise<any> {
-  try {
-    const localeConfig = SUPPORTED_LOCALES[locale as SupportedLocale];
-
-    if (localeConfig?.importElement) {
-      // Use the import hook defined by the locale config.
-      return (await localeConfig.importElement()).default;
-    }
-
-    // Fall back to English.
-    return (await SUPPORTED_LOCALES.en.importElement!()).default;
-  } catch (e) {
-    console.warn(`Failed to load Element Plus locale for ${locale}, falling back to English`);
-    return (await import('element-plus/es/locale/lang/en')).default;
-  }
-}
-
-/**
  * Dynamically import the DayJS locale bundle.
  */
 export async function loadDayjsLocale(locale: string): Promise<void> {

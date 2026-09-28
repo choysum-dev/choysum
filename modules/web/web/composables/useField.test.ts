@@ -5,7 +5,7 @@ import { defineComponent, h, provide, ref } from 'vue';
 
 import { mountApp } from '@/web/web/__tests__/mountApp';
 import { useField } from '@/web/web/composables/useField';
-import type { ViewContainer, ViewMode } from '@/web/web/components/view/OViewScope.vue';
+import type { ViewContainer, ViewMode } from '@/web/web/components/view/ViewScope.vue';
 
 function mountFieldEnv(opts: {
   viewContainer?: ViewContainer;

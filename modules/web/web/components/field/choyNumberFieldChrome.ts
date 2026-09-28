@@ -23,7 +23,7 @@ export function isChoyNumberHostCompatibleWithMode(
 
 /**
  * Chrome parse mode collapses bigint onto integer digit rules.
- * Undefined mode defaults to decimal (matches store-mode ODecimalField fallback).
+ * Undefined mode defaults to decimal (matches store-mode DecimalField fallback).
  */
 export function resolveChoyNumberChromeParseMode(
   mode?: ChoyNumberMode,

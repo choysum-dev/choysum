@@ -209,12 +209,11 @@ export default defineComponent({
       postError.value = null;
       schedule(() => {
         entries.value = [
-          ...entries.value,
+          ...(entries.value as any[]),
           {
             kind: 'message',
             id: `m_${Date.now()}`,
             at: Date.now(),
-            type: 'comment',
             body,
             authorUid: currentUserId.value,
           },

@@ -7,8 +7,6 @@ import "strings"
 
 // feUnitStubPaths holds absolute paths to FE unit stub files under testdata/stubs.
 type feUnitStubPaths struct {
-	ElementPlus         string
-	Icons               string
 	Router              string
 	PageMount           string
 	OPage               string
@@ -20,32 +18,23 @@ type feUnitStubPaths struct {
 	Scope               string
 	Permission          string
 	PageComposable      string
-	Vicons              string
-	VueEcharts          string
 	Vuedraggable        string
-	Echarts             string
 	TipTapVue3          string
 	TipTapStarterKit    string
 	TipTapExtensionLink string
 	DOMPurify           string
 	UnovisVue           string
 	UnovisTs            string
+	RekaUI              string
+	LucideVueNext       string
 }
 
 func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bool) {
 	switch importPath {
-	case "element-plus":
-		return stubs.ElementPlus, true
-	case "@element-plus/icons-vue":
-		return stubs.Icons, true
-	case "@vicons/material":
-		return stubs.Vicons, true
 	case "vue-router":
 		return stubs.Router, true
 	case "@choysum/page-mount":
 		return stubs.PageMount, true
-	case "vue-echarts":
-		return stubs.VueEcharts, true
 	case "vuedraggable":
 		return stubs.Vuedraggable, true
 	case "@tiptap/vue-3":
@@ -60,12 +49,26 @@ func feUnitPackageStubPath(importPath string, stubs feUnitStubPaths) (string, bo
 		return stubs.UnovisVue, true
 	case "@unovis/ts":
 		return stubs.UnovisTs, true
+	case "reka-ui":
+		return stubs.RekaUI, true
+	case "lucide-vue-next":
+		return stubs.LucideVueNext, true
 	default:
-		if importPath == "echarts" || strings.HasPrefix(importPath, "echarts/") {
-			return stubs.Echarts, true
-		}
 		return "", false
 	}
+}
+
+// feUnitPageShellImport reports whether p or joined refers to the page shell SFC
+// (Page.vue or legacy OPage.vue), not ChoyPage.vue.
+func feUnitPageShellImport(p, joined string) bool {
+	for _, s := range []string{p, joined} {
+		s = strings.ReplaceAll(s, "\\", "/")
+		if strings.HasSuffix(s, "/Page.vue") || strings.HasSuffix(s, "/OPage.vue") ||
+			s == "Page.vue" || s == "OPage.vue" {
+			return true
+		}
+	}
+	return false
 }
 
 // feUnitPathStubPath resolves product import paths to FE unit stubs.
@@ -74,9 +77,9 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 	isPageOrView := strings.HasSuffix(importer, ".vue") &&
 		(strings.Contains(importer, "/web/pages/") || strings.Contains(importer, "/web/views/"))
 	// vueplugin/path-alias resolves sometimes omit Importer; treat that like product page
-	// so ChildView/OPage path stubs still apply for Currency-style mounts.
+	// so ChildView/Page path stubs still apply for Currency-style mounts.
 	stubProductChildren := isPageOrView || importer == ""
-	// FE unit tests under web/web/components must see real SFCs (OPage.mapping, OVColumn, …).
+	// FE unit tests under web/web/components must see real SFCs (Page.mapping, OVColumn, …).
 	isWebComponentUnit := strings.Contains(importer, "/web/web/components/") &&
 		(strings.Contains(importer, ".test.ts") || strings.Contains(importer, ".spec.ts") ||
 			strings.HasSuffix(importer, ".vue"))
@@ -86,7 +89,7 @@ func feUnitPathStubPath(p, joined, importer string, stubs feUnitStubPaths) (stri
 		if isWebComponentUnit || !stubProductChildren {
 			return "", false
 		}
-		if strings.Contains(p, "OPage.vue") || strings.Contains(joined, "OPage.vue") {
+		if feUnitPageShellImport(p, joined) {
 			return stubs.OPage, true
 		}
 		if strings.HasSuffix(p, ".vue") || strings.Contains(joined, ".vue") {

@@ -19,7 +19,7 @@ export type AppliedGroupMenuItem = {
 };
 
 /**
- * Menu/tree helpers for OSearch "Group by" — keeps grouping UI out of the main component body.
+ * Menu/tree helpers for Search "Group by" — keeps grouping UI out of the main component body.
  */
 export function useSearchGrouping(opts: {
   store: WebModelStore<any>;

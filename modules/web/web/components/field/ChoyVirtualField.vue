@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OVirtualField v-if="storeMode" v-bind="(storeBind as any)" />
+  <VirtualField v-if="storeMode" v-bind="(storeBind as any)" />
   <!-- Chrome: virtual field registers value only; no DOM. -->
 </template>
 
@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 import { useAttrs } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
-import OVirtualField from './OVirtualField.vue';
+import VirtualField from './VirtualField.vue';
 
 defineOptions({ name: 'ChoyVirtualField', inheritAttrs: false });
 

@@ -13,7 +13,7 @@ import { loginAsE2EAdmin } from '../../auth/e2e/utils/login.ts';
  * display without editing FE source catalog constants.
  *
  * Mutation uses gRPC-Web UpdateById (same admin write path as the Language form Save)
- * to avoid OFormView Edit races where beginEdit() no-ops while original is still null.
+ * to avoid FormView Edit races where beginEdit() no-ops while original is still null.
  */
 
 type BasePbModule = {

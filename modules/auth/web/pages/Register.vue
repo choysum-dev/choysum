@@ -91,7 +91,11 @@ SPDX-License-Identifier: Apache-2.0
         </label>
         <span v-if="fieldErrors.agreeTerms" class="-mt-2 text-xs text-destructive">{{ fieldErrors.agreeTerms }}</span>
 
-        <ChoyButton type="submit" class="submit-button w-full" :disabled="loading || !form.agreeTerms">
+        <ChoyButton
+          type="submit"
+          class="submit-button w-full"
+          :disabled="loading || !form.agreeTerms"
+        >
           {{ _t('Create Account') }}
         </ChoyButton>
 

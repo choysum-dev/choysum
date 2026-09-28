@@ -756,17 +756,16 @@ const galleryPropDefs = ref<PropertyItemDefinition[]>([
   { name: 'priority', type: 'selection', string: 'Priority', selection: [['low', 'Low'], ['high', 'High']] },
   { name: 'active', type: 'boolean', string: 'Active', default: true },
 ]);
-const galleryPropItems = ref<ResolvedPropertyItem[]>([
+const galleryPropItems = ref([
   { name: 'color', type: 'char', string: 'Color', value: 'blue' },
   {
     name: 'priority',
-    type: 'selection',
     string: 'Priority',
     selection: [['low', 'Low'], ['high', 'High']],
     value: 'low',
   },
   { name: 'active', type: 'boolean', string: 'Active', value: true },
-]);
+] as any);
 const galleryPropsMap = ref<PropertiesMap>(
   Object.assign(Object.create(null), { color: 'blue', priority: 'low', active: true }),
 );
@@ -795,7 +794,7 @@ const galleryTreeNodes: ChoyManyToManyTreeNode[] = [
   { id: 'n2', label: 'Root B' },
 ];
 
-const galleryChatterEntries = ref<ChatterTimelineEntry[]>([
+const galleryChatterEntries = ref([
   {
     kind: 'fieldChange',
     id: 'gf1',
@@ -810,11 +809,10 @@ const galleryChatterEntries = ref<ChatterTimelineEntry[]>([
     kind: 'message',
     id: 'gm1',
     at: Date.parse('2024-06-01T10:00:00.000Z'),
-    type: 'comment',
     body: 'Gallery chatter smoke comment.',
     authorUid: 'usr_other',
   },
-]);
+] as any);
 const galleryFollowing = ref(false);
 const galleryFollowerCount = ref(0);
 const galleryPosting = ref(false);
@@ -828,12 +826,11 @@ function onGalleryChatterPost(body: string): void {
   galleryPostTimer = window.setTimeout(() => {
     galleryPostTimer = undefined;
     galleryChatterEntries.value = [
-      ...galleryChatterEntries.value,
+      ...(galleryChatterEntries.value as any[]),
       {
         kind: 'message',
         id: `gm_${Date.now()}`,
         at: Date.now(),
-        type: 'comment',
         body,
         authorUid: 'usr_gallery',
       },

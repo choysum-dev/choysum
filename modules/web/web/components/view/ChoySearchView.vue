@@ -4,14 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OSearchView
+  <SearchView
     v-if="useStoreEngine"
     v-bind="(storeBind as any)"
     v-on="(storeListeners as any)"
     @query-update="onStoreQueryUpdate"
   >
     <slot />
-  </OSearchView>
+  </SearchView>
 
   <div
     v-else
@@ -54,7 +54,7 @@ import {
   choySearchQueryFromPayload,
   type ChoySearchQuery,
 } from './searchViewHelpers';
-import OSearchView from './OSearchView.vue';
+import SearchView from './SearchView.vue';
 
 defineOptions({ name: 'ChoySearchView', inheritAttrs: false });
 
@@ -113,7 +113,7 @@ function onKeydown(event: KeyboardEvent): void {
   submit();
 }
 
-/** Adapt OSearchView QueryUpdatePayload to the chrome ChoySearchQuery shape. */
+/** Adapt SearchView QueryUpdatePayload to the chrome ChoySearchQuery shape. */
 function onStoreQueryUpdate(payload: {
   keyword?: string | null;
   appliedFilters?: ReadonlyArray<{

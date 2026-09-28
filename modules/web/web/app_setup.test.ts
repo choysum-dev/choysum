@@ -6,12 +6,10 @@ import { setupApp, type SetupAppDeps } from './app_setup';
 import { notifyComposerMessagesChanged } from './i18n';
 import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
-function makeApp(elementLocale: Record<string, unknown> = { name: 'en' }) {
+function makeApp() {
   return {
     config: {
-      globalProperties: {
-        $ELEMENT: { locale: elementLocale },
-      },
+      globalProperties: {},
     },
     usePlugin: fnRecorder(),
   };
@@ -30,7 +28,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   const createTerminologyCatalogMerger = fnRecorder(() => fnRecorder());
   const pinia = { name: 'pinia' };
   const createPinia = () => ({ use: () => pinia }) as any;
-  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const currentLocale = reactive({ code: 'en' });
   const lastTerminologyLoad = ref<unknown>(null);
   const i18nLocale = ref('en');
   const mergeLocaleMessage = fnRecorder();
@@ -69,7 +67,6 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: createAppRouter as any,
     createAppMenu: createAppMenu as any,
-    ElementPlus: { name: 'ElementPlus' } as any,
     applyChoyThemePreference: applyTheme as any,
     readChoyThemePreference: (() => ({ theme: 'dark', density: 'compact' })) as any,
     baseUrl: '/',
@@ -80,7 +77,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   expect(registerGlobalDirectives.calls[0][0]).toBe(app);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
   expect(applyTheme.calls).toEqual([[{ theme: 'dark', density: 'compact' }]]);
-  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
   expect(createAppRouter.calls.length).toBe(1);
   expect(createAppMenu.calls.length).toBe(1);
   expect(createTerminologyCatalogMerger.calls.length).toBe(1);
@@ -94,7 +91,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
 
 test('setupApp > skips browser i18n expose without window', () => {
   const exposeBrowserI18nOnWindow = fnRecorder();
-  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const currentLocale = reactive({ code: 'en' });
   const i18nLocale = ref('en');
 
   setupApp(makeApp() as any, {
@@ -134,7 +131,7 @@ test('setupApp > skips browser i18n expose without window', () => {
 
 test('setupApp > resolves user timezone from auth store', () => {
   let userTimeZoneResolver: (() => string | null) | undefined;
-  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const currentLocale = reactive({ code: 'en' });
   const i18nLocale = ref('en');
 
   setupApp(makeApp() as any, {
@@ -179,7 +176,7 @@ test('setupApp > resolves user timezone from auth store', () => {
 
 test('setupApp > falls back to identity timezone and swallows auth lookup failures', () => {
   let userTimeZoneResolver: (() => string | null) | undefined;
-  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const currentLocale = reactive({ code: 'en' });
   const i18nLocale = ref('en');
 
   setupApp(makeApp() as any, {
@@ -225,7 +222,7 @@ test('setupApp > falls back to identity timezone and swallows auth lookup failur
 });
 
 function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {}): SetupAppDeps {
-  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const currentLocale = reactive({ code: 'en' });
   const lastTerminologyLoad = ref<unknown>(null);
   const i18nLocale = ref('en');
   const store = {
@@ -259,7 +256,6 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
     trackComposerMessageRevision: ((v: unknown) => v) as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: { name: 'ElementPlus' } as any,
     registerChoyGalleryRoute: (() => {}) as any,
     applyChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable', dark: false })) as any,
     readChoyThemePreference: (() => ({ theme: 'light', density: 'comfortable' })) as any,
@@ -283,7 +279,6 @@ test('setupApp > builds request context with terminology lang and resolved tz', 
     },
   });
   (deps as any)._store.currentLocale.code = 'zh-CN';
-  (deps as any)._store.currentLocale.elementLocale = { name: 'zh-CN' };
 
   setupApp(makeApp() as any, deps);
 
@@ -361,13 +356,12 @@ test('setupApp > swallows auth errors while building request context timezone', 
   });
 });
 
-test('setupApp > updates Element Plus locale and legacy messages on locale change', async () => {
-  const elementLocale = { name: 'zh-CN' };
-  const app = makeApp(elementLocale);
+test('setupApp > updates vue-i18n locale and legacy messages on locale change', async () => {
+  const app = makeApp();
   const mergeLocaleMessage = fnRecorder();
   const loadVueI18nMessages = asyncFnRecorder(async () => ({ legacy: 'messages' }));
   const i18nLocale = ref('en');
-  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const currentLocale = reactive({ code: 'en' });
   const store = {
     currentLocale,
     terminologyLang: 'en_US',
@@ -386,11 +380,9 @@ test('setupApp > updates Element Plus locale and legacy messages on locale chang
   });
 
   currentLocale.code = 'zh-CN';
-  currentLocale.elementLocale = elementLocale;
   await nextTick();
   await nextTick();
 
-  expect(app.config.globalProperties.$ELEMENT.locale).toEqual(elementLocale);
   expect(loadVueI18nMessages.calls.map(c => c[0])).toEqual(['zh-CN']);
   expect(mergeLocaleMessage.calls).toEqual([['zh-CN', { legacy: 'messages' }]]);
   expect(i18nLocale.value).toBe('zh-CN');
@@ -403,7 +395,7 @@ test('setupApp > warns when legacy locale messages fail to load', async () => {
     warns.push(args);
   };
   try {
-    const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+    const currentLocale = reactive({ code: 'en' });
     const i18nLocale = ref('en');
     const loadVueI18nMessages = asyncFnRecorder(async () => {
       throw new Error('network');
@@ -424,7 +416,6 @@ test('setupApp > warns when legacy locale messages fail to load', async () => {
     });
 
     currentLocale.code = 'zh-CN';
-    currentLocale.elementLocale = { name: 'zh-CN' };
     await nextTick();
     await nextTick();
 
@@ -440,7 +431,7 @@ test('setupApp > merges terminology catalog updates from the i18n store', async 
   const mergeLocaleMessage = fnRecorder();
   const terminologyMerger = fnRecorder();
   const lastTerminologyLoad = ref<unknown>(null);
-  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const currentLocale = reactive({ code: 'en' });
   const i18nLocale = ref('en');
   const store = {
     currentLocale,
@@ -470,7 +461,6 @@ test('setupApp > merges terminology catalog updates from the i18n store', async 
 
   lastTerminologyLoad.value = { auth: { menu: { Users: '用户' } } };
   currentLocale.code = 'zh-CN';
-  currentLocale.elementLocale = { name: 'zh-CN' };
   await nextTick();
 
   expect(terminologyMerger.calls).toEqual([[{ auth: { menu: { Users: '用户' } } }, 'zh-CN']]);
@@ -479,12 +469,10 @@ test('setupApp > merges terminology catalog updates from the i18n store', async 
 
 test('setupApp > uses production defaults for omitted deps', () => {
   const app = makeApp();
-  const currentLocale = reactive({ code: 'en', elementLocale: { name: 'en' } });
+  const currentLocale = reactive({ code: 'en' });
   const i18nLocale = ref('en');
   const exposeBrowserI18nOnWindow = fnRecorder();
 
-  // Omit baseUrl/hasWindow/ElementPlus/sourceMessages/piniaPlugin/timezone helpers/
-  // terminology project/notify/track so those `deps.x ?? default` arms execute.
   setupApp(app as any, {
     registerGlobalDirectives: fnRecorder() as any,
     createPinia: (() => {
@@ -509,9 +497,8 @@ test('setupApp > uses production defaults for omitted deps', () => {
     exposeBrowserI18nOnWindow: exposeBrowserI18nOnWindow as any,
     createAppRouter: (() => ({})) as any,
     createAppMenu: (() => ({})) as any,
-    ElementPlus: { name: 'ElementPlus' } as any,
   });
 
-  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu', 'element-plus']);
+  expect(pluginNames(app)).toEqual(['pinia', 'i18n', 'router', 'menu']);
   expect(exposeBrowserI18nOnWindow.calls.length).toBe(1);
 });

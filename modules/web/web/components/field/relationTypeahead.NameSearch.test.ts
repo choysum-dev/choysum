@@ -6,18 +6,18 @@
  * Pure visibility + quick-create helpers: nameCreateVisibility.test.ts, nameCreateQuickCreate.test.ts.
  */
 
-import { computed, h, nextTick, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, ref } from 'vue';
+import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createPinia, setActivePinia } from 'pinia';
-import { ElButton, ElDialog, ElMessage, ElSelectV2, ElTag } from 'element-plus';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import OFieldBase from './OFieldBase.vue';
-import OManyToOneField from './OManyToOneField.vue';
-import OManyToOneRefField from './OManyToOneRefField.vue';
-import OManyToManyTagsField from './OManyToManyTagsField.vue';
-import OManyToManyRefTagsField from './OManyToManyRefTagsField.vue';
+import FieldBase from './FieldBase.vue';
+import ManyToOneField from './ManyToOneField.vue';
+import ManyToOneRefField from './ManyToOneRefField.vue';
+import ManyToManyTagsField from './ManyToManyTagsField.vue';
+import ManyToManyRefTagsField from './ManyToManyRefTagsField.vue';
 
 function makeM2OBinding(relationStore: any): UseField {
   const value = ref<any>(null);
@@ -72,12 +72,43 @@ function makeM2MBinding(relationStore: any): UseField {
   } as any;
 }
 
-const epSfcs = [ElSelectV2, ElDialog, ElButton, ElTag];
-const origElMessageError = ElMessage.error;
+const origChoyMessageError = ChoyMessage.error;
+
+const ElSelectV2Stub = defineComponent({
+  name: 'ElSelectV2Stub',
+  inheritAttrs: false,
+  props: {
+    remoteMethod: { type: Function, default: undefined },
+    modelValue: { type: [String, Number, Object, Array, null] as any, default: undefined },
+    options: { type: Array, default: undefined },
+    loading: { type: Boolean, default: false },
+  },
+  setup(props: any, { slots }: any) {
+    return () =>
+      h('div', { class: 'select-stub' }, [
+        h('button', {
+          type: 'button',
+          'data-test': 'trigger-remote',
+          onClick: () => props.remoteMethod?.('  alice  '),
+        }),
+        h('button', {
+          type: 'button',
+          'data-test': 'trigger-remote-null',
+          onClick: () => props.remoteMethod?.(null),
+        }),
+        h('button', {
+          type: 'button',
+          'data-test': 'trigger-remote-empty',
+          onClick: () => props.remoteMethod?.(''),
+        }),
+        slots.footer?.(),
+      ]);
+  },
+});
 
 function installFieldBaseStub() {
-  stubSfc(OFieldBase as any, {
-    name: 'OFieldBase',
+  stubSfc(FieldBase as any, {
+    name: 'FieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: true },
@@ -101,71 +132,6 @@ function installFieldBaseStub() {
           slots.edit?.({ fieldValue, record: { Id: '1' } }),
           slots.display?.({ fieldValue, record: { Id: '1' } }),
         ]);
-    },
-  });
-}
-
-function installEpStubs() {
-  stubSfc(ElSelectV2 as any, {
-    name: 'ElSelectV2',
-    inheritAttrs: false,
-    props: {
-      remoteMethod: { type: Function, default: undefined },
-      modelValue: { type: [String, Number, Object, Array, null] as any, default: undefined },
-      options: { type: Array, default: undefined },
-      loading: { type: Boolean, default: false },
-    },
-    setup(props: any, { slots }: any) {
-      return () =>
-        h('div', { class: 'select-stub' }, [
-          h('button', {
-            type: 'button',
-            'data-test': 'trigger-remote',
-            onClick: () => props.remoteMethod?.('  alice  '),
-          }),
-          h('button', {
-            type: 'button',
-            'data-test': 'trigger-remote-null',
-            onClick: () => props.remoteMethod?.(null),
-          }),
-          h('button', {
-            type: 'button',
-            'data-test': 'trigger-remote-empty',
-            onClick: () => props.remoteMethod?.(''),
-          }),
-          slots.footer?.(),
-        ]);
-    },
-  });
-  stubSfc(ElDialog as any, {
-    name: 'ElDialog',
-    props: ['modelValue', 'title'],
-    setup(_: any, { slots }: any) {
-      return () => h('div', { class: 'el-dialog' }, [slots.default?.(), slots.footer?.()]);
-    },
-  });
-  stubSfc(ElButton as any, {
-    name: 'ElButton',
-    inheritAttrs: false,
-    emits: ['click'],
-    setup(_: any, { slots, emit, attrs }: any) {
-      return () =>
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'el-btn',
-            ...attrs,
-            onClick: (e: any) => emit('click', e),
-          },
-          slots.default?.()
-        );
-    },
-  });
-  stubSfc(ElTag as any, {
-    name: 'ElTag',
-    setup(_: any, { slots }: any) {
-      return () => h('span', { class: 'el-tag' }, slots.default?.());
     },
   });
 }
@@ -213,28 +179,30 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     setActivePinia(pinia);
     seedCreatePermission();
     msgError = fnRecorder();
-    (ElMessage as any).error = msgError;
+    ChoyMessage.error = msgError as typeof ChoyMessage.error;
     installFieldBaseStub();
-    installEpStubs();
   });
 
   afterEach(() => {
-    (ElMessage as any).error = origElMessageError;
-    restoreSfc(OFieldBase as any);
-    for (const c of epSfcs) restoreSfc(c as any);
+    ChoyMessage.error = origChoyMessageError;
+    restoreSfc(FieldBase as any);
   });
 
   function mountField(Comp: any, props: Record<string, unknown>) {
     return mountApp(Comp, {
       props: { renderMode: 'form', ...props },
       plugins: [pinia],
+      stubs: {
+        'el-select-v2': ElSelectV2Stub,
+        ElSelectV2: ElSelectV2Stub,
+      },
     });
   }
 
-  test('OManyToOneField NameSearch trims keyword and uses pageSize fields', async () => {
+  test('ManyToOneField NameSearch trims keyword and uses pageSize fields', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 'p1', DisplayName: 'Alice' }]);
     const Search = fnRecorder();
-    const m = mountField(OManyToOneField, {
+    const m = mountField(ManyToOneField, {
       binding: makeM2OBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       pageSize: 15,
     });
@@ -258,8 +226,8 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     m.unmount();
   });
 
-  test('OManyToOneField remote search is a no-op without relationStore', async () => {
-    const missing = mountField(OManyToOneField, {
+  test('ManyToOneField remote search is a no-op without relationStore', async () => {
+    const missing = mountField(ManyToOneField, {
       binding: makeM2OBinding(undefined),
     });
     await clickRemote(missing);
@@ -268,10 +236,10 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     missing.unmount();
   });
 
-  test('OManyToOneRefField NameSearch mirrors M2O wiring', async () => {
+  test('ManyToOneRefField NameSearch mirrors M2O wiring', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 'p1', DisplayName: 'Alice' }]);
     const Search = fnRecorder();
-    const m = mountField(OManyToOneRefField, {
+    const m = mountField(ManyToOneRefField, {
       binding: makeM2OBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       pageSize: 12,
     });
@@ -291,11 +259,11 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     m.unmount();
   });
 
-  test('OManyToOneRefField remote search is a no-op without relationStore', async () => {
+  test('ManyToOneRefField remote search is a no-op without relationStore', async () => {
     const warn = console.warn;
     console.warn = () => {};
     try {
-      const missing = mountField(OManyToOneRefField, {
+      const missing = mountField(ManyToOneRefField, {
         binding: makeM2OBinding(undefined),
       });
       await clickRemote(missing);
@@ -307,10 +275,10 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     }
   });
 
-  test('OManyToManyTagsField NameSearch uses conditions and label fields', async () => {
+  test('ManyToManyTagsField NameSearch uses conditions and label fields', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 't1', DisplayName: 'Alice' }]);
     const Search = fnRecorder();
-    const m = mountField(OManyToManyTagsField, {
+    const m = mountField(ManyToManyTagsField, {
       binding: makeM2MBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       suggestLimit: 8,
     });
@@ -335,10 +303,10 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     m.unmount();
   });
 
-  test('OManyToManyRefTagsField NameSearch uses hydration fields', async () => {
+  test('ManyToManyRefTagsField NameSearch uses hydration fields', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 't1', DisplayName: 'Alice' }]);
     const Search = fnRecorder(async () => []);
-    const m = mountField(OManyToManyRefTagsField, {
+    const m = mountField(ManyToManyRefTagsField, {
       binding: makeM2MBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       suggestLimit: 9,
     });
@@ -376,7 +344,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       NameCreate: NameCreateM2O,
       fullModelName: 'partner.Partner',
     });
-    const m2o = mountField(OManyToOneField, {
+    const m2o = mountField(ManyToOneField, {
       binding: bindingM2O,
       allowCreate: true,
       nameField: 'Code',
@@ -409,7 +377,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       NameCreate: NameCreateRef,
       fullModelName: 'partner.Partner',
     });
-    const m2oRef = mountField(OManyToOneRefField, {
+    const m2oRef = mountField(ManyToOneRefField, {
       binding: bindingRef,
       allowCreate: true,
     });
@@ -430,7 +398,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       NameCreate: NameCreateTags,
       fullModelName: 'partner.Partner',
     });
-    const tags = mountField(OManyToManyTagsField, {
+    const tags = mountField(ManyToManyTagsField, {
       binding: bindingTags,
       allowCreate: true,
     });
@@ -458,7 +426,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       Search: fnRecorder(async () => []),
       fullModelName: 'partner.Partner',
     });
-    const refTags = mountField(OManyToManyRefTagsField, {
+    const refTags = mountField(ManyToManyRefTagsField, {
       binding: bindingRefTags,
       allowCreate: true,
       nameField: 'Title',
@@ -473,10 +441,10 @@ describe('relation typeahead NameSearch / NameCreate', () => {
 
   test('Create entry hidden when allowCreate is false or unset', async () => {
     for (const [Comp, testId, makeBinding] of [
-      [OManyToOneField, 'o-m2o-name-create', makeM2OBinding],
-      [OManyToOneRefField, 'o-m2o-name-create', makeM2OBinding],
-      [OManyToManyTagsField, 'o-m2m-name-create', makeM2MBinding],
-      [OManyToManyRefTagsField, 'o-m2m-name-create', makeM2MBinding],
+      [ManyToOneField, 'o-m2o-name-create', makeM2OBinding],
+      [ManyToOneRefField, 'o-m2o-name-create', makeM2OBinding],
+      [ManyToManyTagsField, 'o-m2m-name-create', makeM2MBinding],
+      [ManyToManyRefTagsField, 'o-m2m-name-create', makeM2MBinding],
     ] as const) {
       for (const allowCreate of [undefined, false] as const) {
         const m = mountField(Comp, {

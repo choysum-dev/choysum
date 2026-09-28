@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Shared provide/inject keys for OViewScope and ChoyViewScope.
+ * Shared provide/inject keys for ViewScope and ChoyViewScope.
  * Kept as string literals so legacy inject('view-mode') call sites still match.
  */
 export const VIEW_MODE_KEY = 'view-mode';

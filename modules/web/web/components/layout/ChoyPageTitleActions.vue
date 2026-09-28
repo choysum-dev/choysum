@@ -12,8 +12,11 @@ SPDX-License-Identifier: Apache-2.0
       v-if="hasIoMenu"
       :action-import="actionImport"
       :action-export="actionExport"
-      @import="emit('import')"
-      @export="emit('export')"
+      :action-import-upload-hint="actionImportUploadHint"
+      :action-import-column-mapping="actionImportColumnMapping"
+      :action-list-ref="actionListRef"
+      :action-company-id="actionCompanyId"
+      :store="store"
     />
     <slot />
   </div>
@@ -21,6 +24,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import ChoyPageIoMenu from './ChoyPageIoMenu.vue';
+import type { PageIoMenuListRef } from '../page/PageIoMenu.vue';
 
 /**
  * Shared title-actions row for ChoyPage (header and fallback title layouts).
@@ -29,10 +33,10 @@ defineProps<{
   hasIoMenu: boolean;
   actionImport: boolean;
   actionExport: boolean;
-}>();
-
-const emit = defineEmits<{
-  import: [];
-  export: [];
+  actionImportUploadHint?: string;
+  actionImportColumnMapping?: Record<string, string>;
+  actionListRef?: PageIoMenuListRef | null;
+  actionCompanyId?: string;
+  store?: { storeId?: string; fullModelName?: string; state?: { result?: { total?: number } } };
 }>();
 </script>

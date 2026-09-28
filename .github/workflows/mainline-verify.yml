@@ -102,6 +102,8 @@ jobs:
           python3 scripts/ci/go_test_shards.py check
           python3 scripts/ci/forbid_core_engine_imports_test.py
           python3 scripts/ci/forbid_core_engine_imports.py
+          python3 scripts/ci/forbid_legacy_ui_imports_test.py
+          python3 scripts/ci/forbid_legacy_ui_imports.py
 
       - name: Install Chromium for e2e unit coverage
         if: ${{ matrix.chromium == 'true' }}

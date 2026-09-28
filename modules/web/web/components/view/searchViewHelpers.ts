@@ -14,9 +14,9 @@ export type ChoySearchFilter = {
 export type ChoySearchQuery = {
   keyword: string;
   filters: ChoySearchFilter[];
-  /** Present when store-bound OSearchView emits the full query payload. */
+  /** Present when store-bound SearchView emits the full query payload. */
   appliedFilters?: unknown[];
-  /** Present when store-bound OSearchView emits group-by specs. */
+  /** Present when store-bound SearchView emits group-by specs. */
   appliedGroups?: unknown[];
 };
 
@@ -49,7 +49,7 @@ type FilterTreeNode = {
   children?: ReadonlyArray<FilterTreeNode> | null;
 };
 
-/** Flattens OSearchView ConditionGroup trees into Choy chrome filter rows. */
+/** Flattens SearchView ConditionGroup trees into Choy chrome filter rows. */
 export function flattenChoySearchFilters(
   groups: ReadonlyArray<FilterTreeNode> | FilterTreeNode | null | undefined,
 ): ChoySearchFilter[] {
@@ -76,7 +76,7 @@ export function flattenChoySearchFilters(
   return out;
 }
 
-/** Adapts OSearchView query-update payload to the chrome ChoySearchQuery shape. */
+/** Adapts SearchView query-update payload to the chrome ChoySearchQuery shape. */
 export function choySearchQueryFromPayload(payload: {
   keyword?: string | null;
   appliedFilters?: ReadonlyArray<FilterTreeNode> | FilterTreeNode | null;

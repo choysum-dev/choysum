@@ -16,69 +16,75 @@ import {
 } from 'vue';
 
 /** List/kanban surface used by page title Import/Export actions. */
-export type OPageActionTarget = {
+export type PageActionTarget = {
   selectedItems?: { value?: Array<{ Id?: string }> } | Array<{ Id?: string }> | null;
   refresh?: () => Promise<void> | void;
 };
 
-/** Default screen-level store and optional primary view action target from `OPage`. */
-export type OPageContext = {
+/** Default screen-level store and optional primary view action target from `Page`. */
+export type PageContext = {
   store: ComputedRef<unknown | null>;
-  actionTarget: ShallowRef<OPageActionTarget | null>;
-  registerActionTarget: (target: OPageActionTarget) => void;
-  unregisterActionTarget: (target: OPageActionTarget) => void;
+  actionTarget: ShallowRef<PageActionTarget | null>;
+  registerActionTarget: (target: PageActionTarget) => void;
+  unregisterActionTarget: (target: PageActionTarget) => void;
 };
 
 /** Stable across `vi.resetModules()` so provide/inject still match in unit tests. */
-export const OPageContextKey: InjectionKey<OPageContext> = Symbol.for('choysum.oPageContext');
+export const PageContextKey: InjectionKey<PageContext> = Symbol.for('choysum.oPageContext');
 
-export function provideOPageContext(options: { store: MaybeRefOrGetter<unknown | null | undefined> }) {
+export function providePageContext(options: { store: MaybeRefOrGetter<unknown | null | undefined> }) {
   const store = computed(() => (toValue(options.store) ?? null) as unknown | null);
-  const actionTarget = shallowRef<OPageActionTarget | null>(null);
+  const actionTarget = shallowRef<PageActionTarget | null>(null);
 
-  function registerActionTarget(target: OPageActionTarget) {
+  function registerActionTarget(target: PageActionTarget) {
     actionTarget.value = target;
   }
 
-  function unregisterActionTarget(target: OPageActionTarget) {
+  function unregisterActionTarget(target: PageActionTarget) {
     if (actionTarget.value === target) {
       actionTarget.value = null;
     }
   }
 
-  const ctx: OPageContext = {
+  const ctx: PageContext = {
     store,
     actionTarget,
     registerActionTarget,
     unregisterActionTarget,
   };
-  provide(OPageContextKey, ctx);
+  provide(PageContextKey, ctx);
   return ctx;
 }
 
-export function useOPageContext(): OPageContext | null {
-  return inject(OPageContextKey, null);
+export function usePageContext(): PageContext | null {
+  return inject(PageContextKey, null);
 }
 
-/** Reactive page store (null when OPage did not provide one). */
+export const provideOPageContext = providePageContext;
+export const useOPageContext = usePageContext;
+export type OPageContext = PageContext;
+export type OPageActionTarget = PageActionTarget;
+export const OPageContextKey = PageContextKey;
+
+/** Reactive page store (null when Page did not provide one). */
 export function useOptionalPageStore<T = unknown>(): ComputedRef<T | null> {
-  const ctx = inject(OPageContextKey, null);
+  const ctx = inject(PageContextKey, null);
   return computed(() => (ctx?.store.value ?? null) as T | null);
 }
 
 /**
- * Resolve store from an explicit prop, else from `OPage` provided store.
+ * Resolve store from an explicit prop, else from `Page` provided store.
  * Prefer for setup-time bindings used throughout a view.
  */
 export function resolvePageStore<T>(propStore: T | null | undefined, label = 'component'): T {
   if (propStore !== undefined && propStore !== null) {
     return propStore;
   }
-  const pageStore = inject(OPageContextKey, null)?.store.value as T | null | undefined;
+  const pageStore = inject(PageContextKey, null)?.store.value as T | null | undefined;
   if (pageStore !== undefined && pageStore !== null) {
     return pageStore;
   }
-  throw new Error(`${label} requires a store: pass :store or set OPage :store`);
+  throw new Error(`${label} requires a store: pass :store or set Page :store`);
 }
 
 /**
@@ -104,10 +110,10 @@ export function useResolvedOptionalPageStore<T>(
  */
 export function useRegisterPageActionTarget(options: {
   store: unknown;
-  target: OPageActionTarget;
+  target: PageActionTarget;
   enabled?: MaybeRefOrGetter<boolean | undefined>;
 }) {
-  const ctx = inject(OPageContextKey, null);
+  const ctx = inject(PageContextKey, null);
   let registered = false;
 
   onMounted(() => {
