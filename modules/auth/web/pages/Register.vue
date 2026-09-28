@@ -112,6 +112,7 @@ import { useAuthStore } from '../stores/auth';
 import { ChoysumError } from '../error';
 import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { resolveLoginRedirect } from './login_form';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Register' });
 
@@ -232,8 +233,7 @@ async function handleRegister() {
     error.value = '';
     await authStore.register(form.username, form.email, form.password, form.fullName ? { fullName: form.fullName } : {});
     await authStore.login(form.username, form.password);
-    const redirect = route.query.redirect?.toString() || '/';
-    router.replace(redirect);
+    router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
   } catch (err) {
     if (err instanceof ChoysumError) {
       error.value = err.message;

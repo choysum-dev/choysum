@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
       <transition name="fade">
         <div
           v-if="error"
-          class="mb-4 flex items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          class="login-error mb-4 flex items-start justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
           role="alert"
         >
           <span>{{ error }}</span>

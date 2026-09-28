@@ -82,12 +82,20 @@ function onDocumentClick(event: MouseEvent) {
   }
 }
 
+function onDocumentKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && userMenuOpen.value) {
+    closeUserMenu();
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
+  document.addEventListener('keydown', onDocumentKeydown);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick);
+  document.removeEventListener('keydown', onDocumentKeydown);
 });
 
 function handleLogin() {

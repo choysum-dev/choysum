@@ -15,10 +15,15 @@ export type LoginFieldErrors = {
 
 /**
  * Resolve the post-login destination from the route redirect query.
+ * Only same-origin relative paths are accepted; absolute and protocol-relative
+ * URLs fall back to `/` so `?redirect=` cannot bounce users off-site.
  */
 export function resolveLoginRedirect(redirectQuery: string | undefined | null): string {
   const redirect = String(redirectQuery ?? '').trim();
-  return redirect || '/';
+  if (redirect.startsWith('/') && !redirect.startsWith('//')) {
+    return redirect;
+  }
+  return '/';
 }
 
 /**

@@ -50,7 +50,8 @@ test('Login.vue: successful submit redirects via query.redirect', async () => {
   await pass.trigger('input');
   await wrapper.find('form').trigger('submit');
   await flushPromises();
-  // Auth stub marks authenticated; redirect helper runs without throwing.
-  expect(wrapper.find('form').exists()).toBe(true);
+  // Auth stub marks authenticated: success must clear the error badge and field errors.
+  expect(wrapper.find('.login-error').exists()).toBe(false);
+  expect(wrapper.find('.text-destructive').exists()).toBe(false);
   wrapper.unmount();
 });

@@ -112,6 +112,7 @@ const controller = createKanbanController(store as any);
 const choyLanes = ref<ChoyKanbanLane[]>([]);
 const movePending = ref(false);
 let syncingLanes = false;
+let resyncPending = false;
 let searchSeq = 0;
 let lastSearchQuery: ChoySearchQuery | null = null;
 
@@ -130,30 +131,36 @@ function rowToCard(row: { payload?: Record<string, unknown>; key?: string }, ind
  * When no group is applied, surface a single flat lane from search results.
  */
 async function syncLanesFromController(): Promise<void> {
-  if (syncingLanes) return;
+  if (syncingLanes) {
+    resyncPending = true;
+    return;
+  }
   syncingLanes = true;
   try {
-    const laneList = controller.lanes.value;
-    if (!laneList.length) {
-      const rows =
-        controller.vm.result?.kind === 'search' ? ((controller.vm.result.rows as any[]) || []) : [];
-      choyLanes.value = [
-        {
-          key: 'all',
-          label: _t('All'),
-          cards: rows.map((row, index) => rowToCard(row, index, 'all')),
-        },
-      ];
-      return;
-    }
-    await Promise.all(laneList.map(l => controller.preloadLane(l.key).catch(() => undefined)));
-    choyLanes.value = laneList.map(lane => ({
-      key: lane.key,
-      label: laneLabel(lane),
-      cards: (controller.laneRecords.value[lane.key] || []).map((row, index) =>
-        rowToCard(row as any, index, lane.key)
-      ),
-    }));
+    do {
+      resyncPending = false;
+      const laneList = controller.lanes.value;
+      if (!laneList.length) {
+        const rows =
+          controller.vm.result?.kind === 'search' ? ((controller.vm.result.rows as any[]) || []) : [];
+        choyLanes.value = [
+          {
+            key: 'all',
+            label: _t('All'),
+            cards: rows.map((row, index) => rowToCard(row, index, 'all')),
+          },
+        ];
+        continue;
+      }
+      await Promise.all(laneList.map(l => controller.preloadLane(l.key).catch(() => undefined)));
+      choyLanes.value = laneList.map(lane => ({
+        key: lane.key,
+        label: laneLabel(lane),
+        cards: (controller.laneRecords.value[lane.key] || []).map((row, index) =>
+          rowToCard(row as any, index, lane.key)
+        ),
+      }));
+    } while (resyncPending);
   } finally {
     syncingLanes = false;
   }
