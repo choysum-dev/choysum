@@ -59,6 +59,7 @@ import ChoyWebShell from '@/web/web/components/layout/ChoyWebShell.vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import { shouldResetAuthHeaderPopups } from './auth_header_popup_state';
+import { reuseParentSetupState } from './reuse_parent_setup_state';
 import SwitchCompany from './SwitchCompany.vue';
 import { dismissPopupOnEscape } from './popup_escape_focus';
 import PreferencesDialog from '../preferences/PreferencesDialog.vue';
@@ -79,7 +80,11 @@ export default defineComponent({
     PreferencesDialog,
   },
   setup(props, ctx) {
-    const baseSetup = (ChoyWebShell as any)?.setup?.(props, ctx) || {};
+    // extends merges options but does not run a script-setup parent's setup; call it here.
+    // Only reuse plain object state (a returned render function is not setup state).
+    const baseSetupFn = (ChoyWebShell as any)?.setup;
+    const baseSetupResult = typeof baseSetupFn === 'function' ? baseSetupFn(props, ctx) : null;
+    const baseSetup = reuseParentSetupState(baseSetupResult);
     const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyWebShell' });
     const router = useRouter();
     const authStore = useAuthStore();

@@ -74,7 +74,11 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
   }, panelSelect);
   // Read JWT active after the draft: an in-flight panel-open RefreshToken could
   // otherwise leave `current` on the freshly-synced active company while `active` is stale.
-  const activeCompanyId = await readActiveCompanyIdFromAuth();
+  // Outer retries are instant, so poll here through a transient token rotation.
+  let activeCompanyId = '';
+  await expect
+    .poll(async () => (activeCompanyId = await readActiveCompanyIdFromAuth()), { timeout: 5_000 })
+    .not.toBe('');
   if (!activeCompanyId) {
     throw new Error('company switch: active company id unavailable; refusing to pick an option blindly');
   }

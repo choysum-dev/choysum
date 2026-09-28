@@ -1000,8 +1000,9 @@ func TestUpdateComponent_MergesAuthChoyWebShellIntoWeb(t *testing.T) {
 	if !strings.Contains(childParsed.Content, "auth-user-menu-trigger") {
 		t.Fatalf("expected merged content to keep auth user menu testid, got:\n%s", childParsed.Content)
 	}
-	if !strings.Contains(childParsed.Content, "choy.shell.header-actions") {
-		t.Fatalf("expected merged content to include shell header-actions anchor, got:\n%s", childParsed.Content)
+	// Child Xpath expr uses single quotes; double-quoted markup comes from the parent shell.
+	if !strings.Contains(childParsed.Content, `data-anchor="choy.shell.header-actions"`) {
+		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childParsed.Content)
 	}
 	if !strings.Contains(childParsed.Content, "ChoyLayout") {
 		t.Fatalf("expected merged content to include ChoyLayout from parent, got:\n%s", childParsed.Content)
@@ -1077,8 +1078,9 @@ func TestPrebuildUpdatePrebuildResult_RealAuthChoyWebShellMerges(t *testing.T) {
 	if !strings.Contains(childResult.Content, "auth-user-menu-trigger") {
 		t.Fatalf("expected merged content to keep auth user menu testid, got:\n%s", childResult.Content)
 	}
-	if !strings.Contains(childResult.Content, "choy.shell.header-actions") {
-		t.Fatalf("expected merged content to include shell header-actions anchor, got:\n%s", childResult.Content)
+	// Child Xpath expr uses single quotes; double-quoted markup comes from the parent shell.
+	if !strings.Contains(childResult.Content, `data-anchor="choy.shell.header-actions"`) {
+		t.Fatalf("expected merged content to include the parent shell header-actions anchor, got:\n%s", childResult.Content)
 	}
 	if !strings.Contains(childResult.Content, "ChoyLayout") {
 		t.Fatalf("expected merged content to include ChoyLayout from parent, got:\n%s", childResult.Content)
