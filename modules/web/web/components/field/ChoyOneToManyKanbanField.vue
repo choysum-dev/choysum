@@ -142,7 +142,7 @@ import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rp
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { deepClonePreserve } from '@/core/utils/clone';
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
-import ViewScope from '@/web/web/components/view/ChoyViewScope.vue';
+import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import {
   type FormChildSubmitApi,
   type FormChildSubmitApiRegistration,

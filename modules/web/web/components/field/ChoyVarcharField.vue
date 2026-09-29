@@ -46,7 +46,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 // Non-numeric varchar aggregates are narrowed to count_distinct.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
-import { useBufferedCommit, CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 

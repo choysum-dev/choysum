@@ -142,7 +142,7 @@ import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
-import ViewScope from '@/web/web/components/view/ChoyViewScope.vue';
+import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { registerFieldPath, unregisterFieldPath, pathsToFieldSelection, ensureRootId } from '@/web/web/query/utils/registry/field';

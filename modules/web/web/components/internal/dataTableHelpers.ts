@@ -29,6 +29,23 @@ export function nextDataTableSort(
   return null;
 }
 
+/** Server-mode header click: same cycle as nextDataTableSort, plus emit payload. */
+export function nextServerDataTableSort(
+  current: DataTableSortState,
+  columnId: string,
+): {
+  sorting: { id: string; desc: boolean }[];
+  field: string;
+  direction?: DataTableSortDir;
+} {
+  const next = nextDataTableSort(current, columnId);
+  return {
+    field: columnId,
+    sorting: next ? [{ id: next.id, desc: next.desc }] : [],
+    direction: next ? (next.desc ? 'desc' : 'asc') : undefined,
+  };
+}
+
 /** Lexicographic / numeric compare for a single accessor. */
 export function compareDataTableValues(a: unknown, b: unknown): number {
   if (a == null && b == null) {

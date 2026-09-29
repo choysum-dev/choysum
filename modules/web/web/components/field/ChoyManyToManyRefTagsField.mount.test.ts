@@ -226,7 +226,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     restoreSfc(ChoyViewScope as any);
   });
 
-  function mountField(props: Record<string, unknown>, on?: Record<string, unknown>) {
+  function mountField(props: Record<string, unknown>, on?: Record<string, (...args: any[]) => void>) {
     return mountApp(ChoyManyToManyRefTagsField as any, {
       props: { renderMode: 'form', ...props },
       on,
@@ -424,7 +424,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     m.click('[data-test="remote"]');
     await flushPromises();
     expect(NameSearch.calls.length).toBe(1);
-    const domain = NameSearch.calls[0]?.[1];
+    const domain = NameSearch.calls[0]?.[1] as { And?: unknown } | undefined;
     // excludePicked + external + onchange → And
     expect(domain && typeof domain === 'object' && domain.And).toBeTruthy();
 

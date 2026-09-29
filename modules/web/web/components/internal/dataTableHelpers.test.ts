@@ -10,6 +10,7 @@ import {
   mapDataTableSelectionKeys,
   mergeDataTableControlledSelection,
   nextDataTableSort,
+  nextServerDataTableSort,
   normalizeDataTableRowId,
   pruneDataTableSelection,
   resolveDataTableRowId,
@@ -29,6 +30,29 @@ describe('dataTableHelpers', () => {
     expect(nextDataTableSort({ id: 'name', desc: false }, 'age')).toEqual({
       id: 'age',
       desc: false,
+    });
+  });
+
+  test('server sort emit cycles asc → desc → clear', () => {
+    expect(nextServerDataTableSort(null, 'name')).toEqual({
+      field: 'name',
+      sorting: [{ id: 'name', desc: false }],
+      direction: 'asc',
+    });
+    expect(nextServerDataTableSort({ id: 'name', desc: false }, 'name')).toEqual({
+      field: 'name',
+      sorting: [{ id: 'name', desc: true }],
+      direction: 'desc',
+    });
+    expect(nextServerDataTableSort({ id: 'name', desc: true }, 'name')).toEqual({
+      field: 'name',
+      sorting: [],
+      direction: undefined,
+    });
+    expect(nextServerDataTableSort({ id: 'name', desc: false }, 'age')).toEqual({
+      field: 'age',
+      sorting: [{ id: 'age', desc: false }],
+      direction: 'asc',
     });
   });
 

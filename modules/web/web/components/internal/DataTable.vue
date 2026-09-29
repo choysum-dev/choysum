@@ -152,6 +152,7 @@ import {
   mapDataTableSelectionKeys,
   mergeDataTableControlledSelection,
   nextDataTableSort,
+  nextServerDataTableSort,
   normalizeDataTableRowId,
   pruneDataTableSelection,
   resolveDataTableRowId,
@@ -461,16 +462,17 @@ function onHeaderClick(columnId: string, canSort: boolean): void {
   if (!canSort || !props.enableSorting || columnId === '__select') {
     return;
   }
-  if (props.sortingMode === 'server') {
-    // Match legacy list host: each header click requests ascending server order.
-    sorting.value = [{ id: columnId, desc: false }];
-    emit('sort-change', { field: columnId, direction: 'asc' });
-    return;
-  }
   const current =
     sorting.value[0] != null
       ? { id: sorting.value[0].id, desc: !!sorting.value[0].desc }
       : null;
+  if (props.sortingMode === 'server') {
+    // Same cycle as client sort (none → asc → desc → none); host owns row order.
+    const next = nextServerDataTableSort(current, columnId);
+    sorting.value = next.sorting;
+    emit('sort-change', { field: next.field, direction: next.direction });
+    return;
+  }
   const next = nextDataTableSort(current, columnId);
   sorting.value = next ? [{ id: next.id, desc: next.desc }] : [];
 }

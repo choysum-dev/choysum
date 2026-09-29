@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-search">
     <div class="choy-search__main" @click="focusInput">
-      <span :content="_t('Search')" placement="top">
+      <span>
         <ChoyButton
           size="sm"
           variant="ghost"
