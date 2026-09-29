@@ -325,9 +325,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 // modules/web/package.json so FE unit bundles resolve Choy kit peers
 // (TanStack Table, Reka, …) instead of floating esm.sh majors.
 func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
-	pins := map[string]string{
-		"vue": choysummount.VuePackageVersion,
-	}
+	pins := choysummount.VueBareImportPins()
 	webPins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
 	if err != nil {
 		return nil, xfmt.Errorf("vue host bundle: exact pins from modules/web: %w", err)
@@ -336,7 +334,7 @@ func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
 		return pins, nil
 	}
 	for name, ver := range webPins {
-		if name == "vue" {
+		if name == "vue" || strings.HasPrefix(name, "@vue/") {
 			continue // host Vue pin wins for single-instance correctness
 		}
 		pins[name] = ver

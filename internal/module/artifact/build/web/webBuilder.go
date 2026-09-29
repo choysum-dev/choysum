@@ -28,6 +28,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/parser/vueparser"
 	"github.com/choysum-dev/choysum/internal/parser/vueparser/vuesfchtmlparser"
 	"github.com/choysum-dev/choysum/internal/vueplugin"
+	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -2290,7 +2291,9 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 	if b == nil || b.module == nil || strings.TrimSpace(b.module.Path) == "" {
 		return opts
 	}
-	pins := map[string]string{}
+	// Seed with the host Vue pin so reka-ui / floating-ui peers cannot float a
+	// second runtime (duplicate Vue → renderSlot TypeError reading 'ce').
+	pins := choysummount.VueBareImportPins()
 	mergePins := func(modulePath, logName string) {
 		got, err := esmresolver.ExactPinsFromPackageJSON(modulePath)
 		if err != nil {
@@ -2302,7 +2305,7 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		for name, ver := range got {
 			// The embedded host owns the Vue instance; never let a module-level
 			// exact pin override it (mirrors vueHostBareImportPins).
-			if name == "vue" {
+			if name == "vue" || strings.HasPrefix(name, "@vue/") {
 				continue
 			}
 			if prev, ok := pins[name]; ok && prev != ver &&
@@ -2322,9 +2325,7 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		mergePins(kitHost, kitHost)
 	}
 	mergePins(modulePath, b.module.Name)
-	if len(pins) > 0 {
-		opts = append(opts, esmresolver.WithBareImportPins(pins))
-	}
+	opts = append(opts, esmresolver.WithBareImportPins(pins))
 	return opts
 }
 

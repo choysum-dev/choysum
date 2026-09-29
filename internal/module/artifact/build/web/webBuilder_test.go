@@ -32,6 +32,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/internal/vueplugin"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysummount"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -5333,8 +5334,15 @@ func TestAppendExactPinsFromPackageJSONSkipsVue(t *testing.T) {
 	}
 	builder := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: domain}}
 	opts := builder.appendExactPinsFromPackageJSON(nil)
-	if len(opts) != 0 {
-		t.Fatalf("exact vue pin must be dropped for single-instance host, got %d opts", len(opts))
+	if len(opts) != 1 {
+		t.Fatalf("host vue pins must always apply, got %d opts", len(opts))
+	}
+	r := esmresolver.New(opts...)
+	if got := r.BareImportPin("vue"); got != choysummount.VuePackageVersion {
+		t.Fatalf("vue pin = %q want host %q (module vue must not win)", got, choysummount.VuePackageVersion)
+	}
+	if got := r.BareImportPin("@vue/runtime-core"); got != choysummount.VuePackageVersion {
+		t.Fatalf("@vue/runtime-core pin = %q want %q", got, choysummount.VuePackageVersion)
 	}
 	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"3.5.13","local-only":"1.2.3"}}`), 0o644); err != nil {
 		t.Fatal(err)
@@ -5342,6 +5350,13 @@ func TestAppendExactPinsFromPackageJSONSkipsVue(t *testing.T) {
 	opts = builder.appendExactPinsFromPackageJSON(nil)
 	if len(opts) != 1 {
 		t.Fatalf("non-vue exact pins must still apply, got %d", len(opts))
+	}
+	r = esmresolver.New(opts...)
+	if r.BareImportPin("local-only") != "1.2.3" {
+		t.Fatalf("expected local-only pin, got %q", r.BareImportPin("local-only"))
+	}
+	if r.BareImportPin("vue") != choysummount.VuePackageVersion {
+		t.Fatalf("host vue must still win, got %q", r.BareImportPin("vue"))
 	}
 }
 

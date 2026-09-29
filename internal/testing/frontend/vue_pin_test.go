@@ -100,8 +100,8 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(empty) != 1 || empty["vue"] != choysummount.VuePackageVersion {
-		t.Fatalf("missing web package.json => host vue only, got %#v", empty)
+	if len(empty) != 5 || empty["vue"] != choysummount.VuePackageVersion {
+		t.Fatalf("missing web package.json => host vue pins only, got %#v", empty)
 	}
 
 	root := t.TempDir()
