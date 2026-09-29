@@ -211,6 +211,25 @@ describe('ImageField mount wiring', () => {
     m.unmount();
   });
 
+  test('rejects non-raster image uploads such as SVG', async () => {
+    ChoyMessage.error = ((msg: string) => {
+      messageErrors.push(String(msg));
+      return 0;
+    }) as typeof ChoyMessage.error;
+    const binding = makeBinding();
+    const m = mountField(binding);
+    const svg = new File([new Uint8Array(12)], 'icon.svg', { type: 'image/svg+xml' });
+    await pickFile(m, svg);
+    expect(messageErrors[0]).toMatch(/raster/i);
+    expect(binding.fieldRef().value).toBeNull();
+    // octet-stream + non-raster extension also rejected.
+    messageErrors.length = 0;
+    const weird = new File([new Uint8Array(8)], 'icon.svg', { type: 'application/octet-stream' });
+    await pickFile(m, weird);
+    expect(messageErrors[0]).toMatch(/raster/i);
+    m.unmount();
+  });
+
   test('resolves object id and preview urls for existing attachments', async () => {
     const binding = makeBinding({
       value: { attachmentObjectId: '  obj-img  ', kind: 'set' },

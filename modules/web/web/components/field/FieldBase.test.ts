@@ -401,4 +401,43 @@ describe('FieldBase list-editing-row-id gate', () => {
     expect(m.q('.edit-stub')).toBeTruthy();
     m.unmount();
   });
+
+  test('evaluates client rules and registers with form validators', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Name' });
+    binding.__value.value = '';
+    const m = mountApp(FieldBase as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('need value'));
+              else cb();
+            },
+          },
+        ],
+      },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    expect(m.q('.choy-field-base__error')?.textContent).toContain('need value');
+    expect(validators.size).toBe(1);
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('need value');
+    binding.__value.value = 'ok';
+    await flushPromises();
+    expect(await validate()).toBe('');
+    expect(m.q('.choy-field-base__error')).toBeFalsy();
+    m.unmount();
+    expect(validators.size).toBe(0);
+  });
 });

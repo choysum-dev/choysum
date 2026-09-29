@@ -275,6 +275,29 @@ describe('ChoyPageIoMenu', () => {
     mounted.unmount();
   });
 
+  test('warns when import/export is clicked without a resolvable model/store', async () => {
+    const { ChoyMessage } = await import('@/web/web/composables/useChoyMessage');
+    const origWarn = ChoyMessage.warning;
+    const warnings: string[] = [];
+    ChoyMessage.warning = ((msg: string) => {
+      warnings.push(String(msg));
+    }) as typeof ChoyMessage.warning;
+    try {
+      const mounted = mountMenu({
+        actionImport: true,
+        actionExport: true,
+      });
+      await flushPromises();
+      mounted.click('[data-testid=page-io-menu-import]');
+      mounted.click('[data-testid=page-io-menu-export]');
+      await flushPromises();
+      expect(warnings.length).toBe(2);
+      expect(warnings[0]).toMatch(/model\/store/i);
+    } finally {
+      ChoyMessage.warning = origWarn;
+    }
+  });
+
   test('skips panels when store lacks fullModelName', async () => {
     const mounted = mountMenu({
       actionImport: true,

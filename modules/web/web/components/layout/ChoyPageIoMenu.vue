@@ -52,6 +52,7 @@ import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { useRecordIoMenu } from '@/web/web/composables/useRecordIoMenu';
+import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import type { PageIoMenuItem, RecordIoConfig } from '@/web/web/composables/recordIoTypes';
 import type { RecordExportListRef } from '@/web/web/composables/useRecordExportScope';
 import { useResolvedOptionalPageStore, usePageContext } from '@/web/web/composables/usePageContext';
@@ -148,14 +149,21 @@ const importShellConfig = computed<RecordIoConfig>(() => ({
   },
 }));
 
+function openPanel(kind: 'import' | 'export') {
+  const enabled = kind === 'import' ? importEnabled.value : exportEnabled.value;
+  if (!enabled) {
+    // Entries stay reachable from action flags; fail loudly when the panel cannot open.
+    ChoyMessage.warning(_t('No model/store available for this action.'));
+    return;
+  }
+  if (kind === 'import') importOpen.value = true;
+  else exportOpen.value = true;
+}
+
 const { items: configItems } = useRecordIoMenu({
   config: menuConfig,
-  openImport: () => {
-    importOpen.value = true;
-  },
-  openExport: () => {
-    exportOpen.value = true;
-  },
+  openImport: () => openPanel('import'),
+  openExport: () => openPanel('export'),
 });
 
 const visibleItems = computed(() => {

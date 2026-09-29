@@ -207,7 +207,27 @@ function resolveFieldLimits() {
   });
 }
 
+const RASTER_IMAGE_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/bmp',
+  'image/avif',
+]);
+const RASTER_IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|bmp|avif)$/i;
+
+function isRasterImage(file: UploadRawFile): boolean {
+  const type = String(file.type || '').toLowerCase();
+  if (type && type !== 'application/octet-stream') return RASTER_IMAGE_TYPES.has(type);
+  return RASTER_IMAGE_EXT_RE.test(String(file.name || ''));
+}
+
 async function validateSelectedImageFile(file: UploadRawFile): Promise<boolean> {
+  if (!isRasterImage(file)) {
+    ChoyMessage.error(_t('Only raster image files are supported.'));
+    return false;
+  }
   return reportImageFieldValidation(file, resolveFieldLimits(), message => ChoyMessage.error(message));
 }
 

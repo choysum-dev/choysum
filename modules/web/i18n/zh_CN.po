@@ -181,22 +181,22 @@ msgctxt "web/components/field/DecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/FieldBase.vue:175
+#: web/components/field/FieldBase.vue:179
 msgctxt "web/components/field/FieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/FieldBase.vue:175
+#: web/components/field/FieldBase.vue:179
 msgctxt "web/components/field/FieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/FieldBase.vue:168
+#: web/components/field/FieldBase.vue:172
 msgctxt "web/components/field/FieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/FieldBase.vue:168
+#: web/components/field/FieldBase.vue:172
 msgctxt "web/components/field/FieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -276,7 +276,7 @@ msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translations saved"
 msgstr "翻译已保存"
 
-#: web/components/field/ChoyImageField.vue:98
+#: web/components/field/ChoyImageField.vue:118
 msgctxt "web/components/field/ImageField"
 msgid "Drop image here or click to upload"
 msgstr "拖放图片到此处，或点击上传"
@@ -296,17 +296,22 @@ msgctxt "web/components/field/ImageField"
 msgid "Image width exceeds maximum (%s px)"
 msgstr "图片宽度超过上限（%s 像素）"
 
+#: web/components/field/ChoyImageField.vue:108
+msgctxt "web/components/field/ImageField"
+msgid "Only raster image files are supported."
+msgstr "仅支持栅格图片文件。"
+
 #: web/components/field/ChoyImageField.vue:19
 msgctxt "web/components/field/ImageField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyImageField.vue:104
+#: web/components/field/ChoyImageField.vue:124
 msgctxt "web/components/field/ImageField"
 msgid "Replace image"
 msgstr "替换图片"
 
-#: web/components/field/ChoyImageField.vue:97
+#: web/components/field/ChoyImageField.vue:117
 msgctxt "web/components/field/ImageField"
 msgid "Upload image"
 msgstr "上传图片"
@@ -771,22 +776,27 @@ msgctxt "web/components/layout/ChoyNotificationBell"
 msgid "Update on %s (%s)"
 msgstr "%s (%s) 有更新"
 
-#: web/components/layout/ChoyPageIoMenu.vue:52
+#: web/components/layout/ChoyPageIoMenu.vue:53
 msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "Import and export"
 msgstr "导入与导出"
 
-#: web/components/view/ChoyFormView.vue:560
+#: web/components/layout/ChoyPageIoMenu.vue:111
+msgctxt "web/components/layout/ChoyPageIoMenu"
+msgid "No model/store available for this action."
+msgstr "此操作没有可用的模型/存储。"
+
+#: web/components/view/ChoyFormView.vue:573
 msgctxt "web/components/view/FormView"
 msgid "Are you sure you want to delete the current record? This action cannot be undone."
 msgstr "确定要删除当前记录吗？此操作无法撤销。"
 
-#: web/components/view/ChoyFormView.vue:37 web/components/view/ChoyFormView.vue:51 web/components/view/ChoyFormView.vue:562
+#: web/components/view/ChoyFormView.vue:37 web/components/view/ChoyFormView.vue:51 web/components/view/ChoyFormView.vue:575
 msgctxt "web/components/view/FormView"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/view/ChoyFormView.vue:560
+#: web/components/view/ChoyFormView.vue:573
 msgctxt "web/components/view/FormView"
 msgid "Confirm delete"
 msgstr "确认删除"
@@ -796,22 +806,22 @@ msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr "复制"
 
-#: web/components/view/ChoyFormView.vue:427 web/components/view/ChoyFormView.vue:476
+#: web/components/view/ChoyFormView.vue:440 web/components/view/ChoyFormView.vue:489
 msgctxt "web/components/view/FormView"
 msgid "Created successfully"
 msgstr "创建成功"
 
-#: web/components/view/ChoyFormView.vue:27 web/components/view/ChoyFormView.vue:561
+#: web/components/view/ChoyFormView.vue:27 web/components/view/ChoyFormView.vue:574
 msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/view/ChoyFormView.vue:604
+#: web/components/view/ChoyFormView.vue:617
 msgctxt "web/components/view/FormView"
 msgid "Delete failed"
 msgstr "删除失败"
 
-#: web/components/view/ChoyFormView.vue:47
+#: web/components/view/ChoyFormView.vue:48
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr "详情"
@@ -826,17 +836,17 @@ msgctxt "web/components/view/FormView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/ChoyFormView.vue:497
+#: web/components/view/ChoyFormView.vue:510
 msgctxt "web/components/view/FormView"
 msgid "Operation failed"
 msgstr "操作失败"
 
-#: web/components/view/ChoyFormView.vue:312
+#: web/components/view/ChoyFormView.vue:317 web/components/view/ChoyFormView.vue:324
 msgctxt "web/components/view/FormView"
 msgid "Please fix the errors in the form first"
 msgstr "请先修正表单中的错误"
 
-#: web/components/view/ChoyFormView.vue:571
+#: web/components/view/ChoyFormView.vue:584
 msgctxt "web/components/view/FormView"
 msgid "Record deleted"
 msgstr "记录已删除"
@@ -846,12 +856,12 @@ msgctxt "web/components/view/FormView"
 msgid "Refresh"
 msgstr "刷新"
 
-#: web/components/view/ChoyFormView.vue:540
+#: web/components/view/ChoyFormView.vue:553
 msgctxt "web/components/view/FormView"
 msgid "Refresh failed"
 msgstr "刷新失败"
 
-#: web/components/view/ChoyFormView.vue:537
+#: web/components/view/ChoyFormView.vue:550
 msgctxt "web/components/view/FormView"
 msgid "Refreshed"
 msgstr "已刷新"
@@ -861,17 +871,17 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:157
+#: web/components/view/ChoyFormView.vue:158
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/ChoyFormView.vue:427 web/components/view/ChoyFormView.vue:476
+#: web/components/view/ChoyFormView.vue:440 web/components/view/ChoyFormView.vue:489
 msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr "保存成功"
 
-#: web/components/view/ChoyFormView.vue:157
+#: web/components/view/ChoyFormView.vue:158
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."

@@ -138,7 +138,7 @@ SPDX-License-Identifier: Apache-2.0
         />
       </template>
     </template>
-    <p v-if="serverError" class="choy-field-base__error" role="alert">{{ serverError }}</p>
+    <p v-if="displayError" class="choy-field-base__error" role="alert">{{ displayError }}</p>
     <FieldTranslationsDialog
       v-if="showTranslateAction"
       v-model="translationsOpen"
@@ -221,9 +221,9 @@ SPDX-License-Identifier: Apache-2.0
   <!-- INLINE mode -->
   <div v-else-if="effectiveRenderMode === 'inline'" class="choy-field-base__inline" v-show="visibleInline">
     <div
-      v-if="showInlineError && serverError"
+      v-if="showInlineError && displayError"
       class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error"
-      :title="serverError"
+      :title="displayError"
     >
       <template v-if="effectiveEditInline">
         <slot
@@ -313,8 +313,12 @@ import type { TermReference } from '@/core/service/i18n';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
-import { computed, inject, onMounted, ref, watch } from 'vue';
+import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
+import {
+  FIELD_CLIENT_VALIDATORS_KEY,
+  firstRuleError,
+} from '@/web/web/composables/fieldClientValidation';
 import { CircleAlert, CircleHelp, Languages, Building2 } from 'lucide-vue-next';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
@@ -590,7 +594,6 @@ function serverErrorForRow(row: any, rowIndex?: number): string | undefined {
   return undefined;
 }
 
-/* Server errors are shown via dedicated alert nodes; client rules are not run on a form item. */
 /* ===================== Unified onchange handling (automatic mode) ===================== */
 function createOnchangeHandlers() {
   const usedStore: any = binding.store || binding.relationStore;
@@ -732,6 +735,47 @@ watch(
       fieldErrors.value.delete(String(binding.prop));
     }
   }
+);
+
+/* Server errors are shown via dedicated alert nodes; client rules also gate submit. */
+const fieldClientValidators = inject(FIELD_CLIENT_VALIDATORS_KEY, null);
+const clientRuleError = ref('');
+const displayError = computed(() => serverError.value || clientRuleError.value || undefined);
+
+async function evaluateClientRules(): Promise<string> {
+  if (!binding.env.isEditMode || readonlyForm.value || !visibleForm.value) {
+    clientRuleError.value = '';
+    return '';
+  }
+  const message = await firstRuleError(props.rules, rawValueForm().value);
+  clientRuleError.value = message;
+  return message;
+}
+
+const clientValidatorKey = computed(() => String(inputName.value || binding.prop || ''));
+
+onMounted(() => {
+  const map = fieldClientValidators;
+  const key = clientValidatorKey.value;
+  if (map && key) {
+    map.set(key, evaluateClientRules);
+  }
+});
+
+onBeforeUnmount(() => {
+  const map = fieldClientValidators;
+  const key = clientValidatorKey.value;
+  if (map && key) {
+    map.delete(key);
+  }
+});
+
+watch(
+  () => [rawValueForm().value, props.rules, binding.env.isEditMode, readonlyForm.value, visibleForm.value] as const,
+  () => {
+    void evaluateClientRules();
+  },
+  { immediate: true, deep: true }
 );
 
 /* Slot type declarations */

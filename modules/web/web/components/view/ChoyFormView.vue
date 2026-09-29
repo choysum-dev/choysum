@@ -89,6 +89,7 @@ SPDX-License-Identifier: Apache-2.0
 // =============================
 import { ref, computed, provide, inject, watch, toRaw, nextTick, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
+import { FIELD_CLIENT_VALIDATORS_KEY } from '@/web/web/composables/fieldClientValidation';
 import { confirmChoyAction, confirmChoyChoice } from '../../composables/confirmChoyAction';
 import type { ClientModel, BaseModel, Updateable, Insertable } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -277,6 +278,10 @@ provide('view-mode', viewMode);
 provide('view-container', viewContainer);
 provide('field-errors', fieldErrors);
 
+// Client-side RuleItem validators registered by FieldBase (replaces el-form-item).
+const fieldClientValidators = new Map<string, () => Promise<string>>();
+provide(FIELD_CLIENT_VALIDATORS_KEY, fieldClientValidators);
+
 // =============================
 // Section 11: Onchange controller (session scoped)
 // =============================
@@ -396,6 +401,14 @@ async function validateForm() {
   if (fieldErrors.value.size > 0) {
     if (resolvedShowMessages.value) ChoyMessage.error(_t('Please fix the errors in the form first'));
     return false;
+  }
+  // Run FieldBase-registered client RuleItem validators (required/format/range).
+  for (const validate of fieldClientValidators.values()) {
+    const message = await validate();
+    if (message) {
+      if (resolvedShowMessages.value) ChoyMessage.error(_t('Please fix the errors in the form first'));
+      return false;
+    }
   }
   return true;
 }

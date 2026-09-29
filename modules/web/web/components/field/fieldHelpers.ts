@@ -338,16 +338,32 @@ export function resolveChoyNumberDraftText(
 }
 
 
-/** Binary attachment value: metadata plus optional File for upload. */
+/** Attachment envelope written by ChoyBinaryField (kind: 'set' | 'clear' | 'noop'). */
 export type ChoyBinaryValue = {
-  name: string;
-  size: number;
+  kind?: 'set' | 'clear' | 'noop' | string;
+  fileName?: string;
+  originalFileName?: string;
+  proposedFileName?: string;
+  proposedContentType?: string;
+  clientContentType?: string;
+  displayName?: string;
+  downloadUrl?: string;
   file?: File;
+  /** Legacy plain-value shape still accepted for host-provided values. */
+  name?: string;
+  size?: number;
 } | null;
 
-/** Image field value with optional preview URL. */
+/** Attachment envelope written by ChoyImageField (`previewUrl` is a blob/data URL). */
 export type ChoyImageValue = {
+  kind?: 'set' | 'clear' | 'noop' | string;
+  fileName?: string;
+  previewUrl?: string;
+  thumbnailUrl?: string;
+  downloadUrl?: string;
+  displayName?: string;
+  file?: File;
+  /** Legacy plain-value shape still accepted for host-provided values. */
   name?: string;
   url?: string;
-  file?: File;
 } | null;
