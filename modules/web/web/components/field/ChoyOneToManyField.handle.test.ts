@@ -11,6 +11,7 @@ import ChoyOneToManyField from './ChoyOneToManyField.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 
 function makeBinding(opts: {
   items?: any[];
@@ -96,6 +97,7 @@ describe('ChoyOneToManyField handle column', () => {
     restoreSfc(ChoyTableColumn as any);
     restoreSfc(ChoyTableHost as any);
     restoreSfc(ChoyViewScope as any);
+    restoreSfc(ChoyButton as any);
     capturedHandleApi.current = null;
   });
 
@@ -198,5 +200,164 @@ describe('ChoyOneToManyField handle column', () => {
     await nextTick();
     expect(m.q('.ov-column-handle')).toBeTruthy();
     m.unmount();
+  });
+
+  test('Add row / Delete / display height and defaultRecord hydrate keys', async () => {
+    installStubs();
+    const scrollToRow = fnRecorder();
+    stubSfc(ChoyTableHost as any, {
+      name: 'ChoyTableHost',
+      props: { data: Array, tableHeight: Number },
+      setup(props: any, { slots, expose }: any) {
+        capturedHandleApi.current = inject(LIST_HANDLE_API_KEY, null);
+        expose({ scrollToRow });
+        return () =>
+          h(
+            'div',
+            {
+              class: 'ov-table-stub',
+              'data-height': String(props.tableHeight ?? ''),
+              'data-rows': String((props.data || []).length),
+            },
+            slots.default?.()
+          );
+      },
+    });
+
+    const items = ref([{ Id: '1', Name: 'a', __rowKey: '1' }]);
+    const fieldValue = ref(items.value.slice());
+    const insertItem = fnRecorder((row: any) => {
+      items.value = [...items.value, row];
+      fieldValue.value = items.value.slice();
+    });
+    const removeItemAt = fnRecorder((i: number) => {
+      items.value = items.value.filter((_: any, idx: number) => idx !== i);
+      fieldValue.value = items.value.slice();
+    });
+    const binding: UseField = {
+      env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+      prop: 'Lines',
+      meta: { type: 'oneToMany', typeAnnotation: '' } as any,
+      fieldRef: () => fieldValue as any,
+      fieldRefOf: () => fieldValue as any,
+      recordRef: () => computed(() => ({ Id: 'parent' })) as any,
+      registerFields: () => {},
+      relationStore: {
+        fieldsMetadata: { Sequence: { id: '2', type: 'int', typeAnnotation: '', isReadonly: false } },
+      } as any,
+      asMutableArray: () => ({
+        getItems: () => items.value,
+        insertItem,
+        removeItemAt,
+      }),
+      store: undefined,
+      asView: () => ({ fieldValue: () => fieldValue }) as any,
+    } as any;
+
+    const m = mountApp(ChoyOneToManyField as any, {
+      props: {
+        binding,
+        showHandle: false,
+        defaultRecord: () => ({ Name: 'new', __rowKey: 'seed-new' }),
+        minTableHeight: 80,
+        maxTableHeight: 400,
+      },
+    });
+    await nextTick();
+    const ss = m.setupState();
+    expect(ss).toBeTruthy();
+    await ss.handleAddItem();
+    await flushPromises();
+    expect(insertItem.calls.length).toBe(1);
+    expect(insertItem.calls[0]?.[0]?.Name).toBe('new');
+    expect(Object.prototype.propertyIsEnumerable.call(insertItem.calls[0]?.[0], '__rowKey')).toBe(false);
+    expect(scrollToRow.calls.length).toBe(1);
+
+    ss.onRemove(0);
+    expect(removeItemAt.calls.length).toBe(1);
+    m.unmount();
+
+    // Display mode covers tableHeightDisplay.
+    restoreSfc(FieldBase as any);
+    stubSfc(FieldBase as any, {
+      name: 'FieldBase',
+      props: { binding: { type: Object, required: true } },
+      setup(_: any, { slots }: any) {
+        return () => h('div', { class: 'field-base-stub' }, slots.display?.({}));
+      },
+    });
+    const displayItems = ref([{ Id: 'd1' }, { Id: 'd2' }]);
+    const displayBinding: UseField = {
+      env: { isForm: true, isEditMode: false, viewMode: 'display', fieldPrefix: null },
+      prop: 'Lines',
+      meta: { type: 'oneToMany' } as any,
+      fieldRef: () => displayItems as any,
+      fieldRefOf: () => displayItems as any,
+      recordRef: () => computed(() => ({ Id: 'p' })) as any,
+      registerFields: () => {},
+      relationStore: { fieldsMetadata: {} } as any,
+      asMutableArray: () => ({
+        getItems: () => displayItems.value,
+        insertItem: fnRecorder(),
+        removeItemAt: fnRecorder(),
+      }),
+      store: undefined,
+      asView: () => ({ fieldValue: () => displayItems }) as any,
+    } as any;
+    const d = mountApp(ChoyOneToManyField as any, {
+      props: {
+        binding: displayBinding,
+        minTableHeight: 50,
+        maxTableHeight: 300,
+        rowHeightDisplay: 40,
+      },
+    });
+    await nextTick();
+    expect(d.q('.ov-table-stub')?.getAttribute('data-rows')).toBe('2');
+    expect(d.q('.ov-table-stub')?.getAttribute('data-height')).toBeTruthy();
+    d.unmount();
+
+    // ensureArrayInitialized when fieldRef is not an array.
+    restoreSfc(FieldBase as any);
+    installStubs();
+    stubSfc(ChoyTableHost as any, {
+      name: 'ChoyTableHost',
+      props: { data: Array, tableHeight: Number },
+      setup(_: any, { expose }: any) {
+        expose({ scrollToRow: fnRecorder() });
+        return () => h('div', { class: 'ov-table-stub' });
+      },
+    });
+    const nullItems = ref<any>(null);
+    const ensureInsert = fnRecorder((row: any) => {
+      if (!Array.isArray(nullItems.value)) nullItems.value = [];
+      nullItems.value = [...nullItems.value, row];
+    });
+    const ensureBinding: UseField = {
+      env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+      prop: 'Lines',
+      meta: { type: 'oneToMany' } as any,
+      fieldRef: () => nullItems as any,
+      fieldRefOf: () => nullItems as any,
+      recordRef: () => computed(() => ({})) as any,
+      registerFields: () => {},
+      relationStore: { fieldsMetadata: {} } as any,
+      asMutableArray: () => ({
+        getItems: () => (Array.isArray(nullItems.value) ? nullItems.value : []),
+        insertItem: ensureInsert,
+        removeItemAt: fnRecorder(),
+      }),
+      store: undefined,
+      asView: () => ({ fieldValue: () => nullItems }) as any,
+    } as any;
+    const e = mountApp(ChoyOneToManyField as any, {
+      props: { binding: ensureBinding, defaultRecord: { Name: 'from-obj' } },
+    });
+    await nextTick();
+    await e.setupState().handleAddItem();
+    await flushPromises();
+    expect(Array.isArray(nullItems.value)).toBe(true);
+    expect(ensureInsert.calls.length).toBe(1);
+    e.unmount();
   });
 });

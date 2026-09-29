@@ -153,7 +153,8 @@ function installStubs() {
       const fieldValue = () => (p.binding as UseField).fieldRef();
       const rootRef = (p.binding as UseField).recordRef() as any;
       const root = rootRef && typeof rootRef === 'object' && 'value' in rootRef ? rootRef.value : rootRef;
-      const record = (p.binding as any)._slotRecord ?? root;
+      const record =
+        (p.binding as any)._slotRecord !== undefined ? (p.binding as any)._slotRecord : root;
       return () =>
         h('div', { class: 'ob' }, [
           slots.edit?.({ fieldValue, record }),
@@ -580,6 +581,100 @@ describe('ChoyManyToOneField mount coverage', () => {
     m.unmount();
   });
 
+  test('normalizeRowRef accepts function/ref records and misses unknown nested ids', async () => {
+    const NameSearch = fnRecorder(async () => []);
+    const line = { Id: 'L1' };
+    const { binding } = makeBinding({
+      prop: 'Lines.PartnerId',
+      record: { Id: 'root', Lines: [line] },
+      slotRecord: () => ({ value: line }),
+      relationStore: { NameSearch, fullModelName: 'partner.Partner' },
+    });
+    lastOnchangeResult.value = {
+      condition: [{ field: 'Lines(id=L1).PartnerId', condition: ['A', '=', 1] }],
+    };
+    const m = mountField({ binding });
+    m.click('[data-test="remote"]');
+    await flushPromises();
+    expect(NameSearch.calls.length).toBe(1);
+    m.unmount();
+
+    const NameSearch2 = fnRecorder(async () => []);
+    const { binding: b2 } = makeBinding({
+      prop: 'Lines.PartnerId',
+      record: { Id: 'root', Lines: [{ Id: 'L1' }] },
+      slotRecord: null,
+      relationStore: { NameSearch: NameSearch2, fullModelName: 'partner.Partner' },
+    });
+    lastOnchangeResult.value = {
+      condition: [{ field: 'Lines(id=L1).PartnerId', condition: ['A', '=', 1] }],
+    };
+    const m2 = mountField({ binding: b2 });
+    m2.click('[data-test="remote"]');
+    await flushPromises();
+    // null slot row skips nested id-path keys; NameSearch still runs (domain may be leaf-matched).
+    expect(NameSearch2.calls.length).toBe(1);
+    m2.unmount();
+
+    const NameSearch3 = fnRecorder(async () => []);
+    const { binding: b3 } = makeBinding({
+      prop: 'Lines.PartnerId',
+      record: { Id: 'root', Lines: [{ Id: 'L1' }] },
+      slotRecord: () => {
+        throw new Error('boom');
+      },
+      relationStore: { NameSearch: NameSearch3, fullModelName: 'partner.Partner' },
+    });
+    lastOnchangeResult.value = {
+      condition: [{ field: 'Lines(id=L1).PartnerId', condition: ['A', '=', 1] }],
+    };
+    const m3 = mountField({ binding: b3 });
+    m3.click('[data-test="remote"]');
+    await flushPromises();
+    expect(NameSearch3.calls.length).toBe(1);
+    m3.unmount();
+  });
+
+  test('display keydown with blank id is ignored; auto clickable follows listener', async () => {
+    const onValueClick = fnRecorder();
+    const { binding } = makeBinding({
+      value: { Id: '   ', DisplayName: 'BlankId' },
+      relationStore: { NameSearch: fnRecorder(async () => []), fullModelName: 'partner.Partner' },
+    });
+    const m = mountField({ binding, valueClickable: true }, { onValueClick });
+    await nextTick();
+    const display = m.q('.choy-field-display-text') as HTMLElement;
+    display.click();
+    expect(onValueClick.calls.length).toBe(0);
+    // QJS has no KeyboardEvent; invoke setup handlers with a plain event-like object.
+    const ss = m.setupState();
+    expect(ss?.onDisplayValueKeydown).toBeTruthy();
+    const fakeEvt = { key: 'Enter', preventDefault: fnRecorder() };
+    ss.onDisplayValueKeydown({ Id: '   ', DisplayName: 'BlankId' }, fakeEvt);
+    expect(onValueClick.calls.length).toBe(0);
+    // preventDefault runs before the blank-id guard.
+    expect(fakeEvt.preventDefault.calls.length).toBe(1);
+    ss.onDisplayValueKeydown({ Id: 'k1', DisplayName: 'K' }, fakeEvt);
+    expect(onValueClick.calls.length).toBe(1);
+    expect(fakeEvt.preventDefault.calls.length).toBe(2);
+    ss.onDisplayValueKeydown({ Id: 'k1', DisplayName: 'K' }, { key: ' ', preventDefault: fnRecorder() });
+    expect(onValueClick.calls.length).toBe(2);
+    ss.onDisplayValueKeydown({ Id: 'k1', DisplayName: 'K' }, { key: 'a', preventDefault: fnRecorder() });
+    expect(onValueClick.calls.length).toBe(2);
+    m.unmount();
+
+    const auto = fnRecorder();
+    const { binding: b2 } = makeBinding({
+      value: { Id: 'auto1', DisplayName: 'Auto' },
+      relationStore: { NameSearch: fnRecorder(async () => []), fullModelName: 'partner.Partner' },
+    });
+    const m2 = mountField({ binding: b2, valueClickable: 'auto' }, { onValueClick: auto });
+    await nextTick();
+    (m2.q('.choy-field-display-text') as HTMLElement).click();
+    expect(auto.calls.length).toBe(1);
+    m2.unmount();
+  });
+
   test('confirmPick unwraps ref-shaped selectedItem.value', async () => {
     const { binding, value } = makeBinding({
       relationStore: { NameSearch: fnRecorder(async () => []), fullModelName: 'partner.Partner' },
@@ -594,6 +689,25 @@ describe('ChoyManyToOneField mount coverage', () => {
     m.click('[data-test="dialog-ok"]');
     await nextTick();
     expect(value.value).toEqual({ Id: 'wrap', DisplayName: 'Wrapped' });
+    m.unmount();
+  });
+
+  test('buildLastLevelKeys clears when intermediate chain node is an array', async () => {
+    const NameSearch = fnRecorder(async () => []);
+    const nested = { Id: 'N1' };
+    const { binding } = makeBinding({
+      prop: 'Lines.Nested.PartnerId',
+      record: { Id: 'root', Lines: [{ Id: 'L1', Nested: nested }] },
+      slotRecord: nested,
+      relationStore: { NameSearch, fullModelName: 'partner.Partner' },
+    });
+    lastOnchangeResult.value = {
+      condition: [{ field: 'Lines.Nested(id=N1).PartnerId', condition: ['A', '=', 1] }],
+    };
+    const m = mountField({ binding });
+    m.click('[data-test="remote"]');
+    await flushPromises();
+    expect(NameSearch.calls.length).toBe(1);
     m.unmount();
   });
 });
