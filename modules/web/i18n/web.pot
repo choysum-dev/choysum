@@ -97,32 +97,32 @@ msgctxt "web.model.UserFilter.fields"
 msgid "User"
 msgstr ""
 
-#: web/components/field/ChoyBigintField.vue:253
+#: web/components/field/ChoyBigintField.vue:254
 msgctxt "web/components/field/BigintField"
 msgid "Cannot be empty"
 msgstr ""
 
-#: web/components/field/ChoyBigintField.vue:268
+#: web/components/field/ChoyBigintField.vue:269
 msgctxt "web/components/field/BigintField"
 msgid "Exceeds safe integer range"
 msgstr ""
 
-#: web/components/field/ChoyBigintField.vue:265
+#: web/components/field/ChoyBigintField.vue:266
 msgctxt "web/components/field/BigintField"
 msgid "Must be a valid integer"
 msgstr ""
 
-#: web/components/field/ChoyBigintField.vue:258
+#: web/components/field/ChoyBigintField.vue:259
 msgctxt "web/components/field/BigintField"
 msgid "Must be an integer"
 msgstr ""
 
-#: web/components/field/ChoyBigintField.vue:267
+#: web/components/field/ChoyBigintField.vue:268
 msgctxt "web/components/field/BigintField"
 msgid "Must not be greater than %s"
 msgstr ""
 
-#: web/components/field/ChoyBigintField.vue:266
+#: web/components/field/ChoyBigintField.vue:267
 msgctxt "web/components/field/BigintField"
 msgid "Must not be less than %s"
 msgstr ""
@@ -147,7 +147,7 @@ msgctxt "web/components/field/BinaryField"
 msgid "Upload file"
 msgstr ""
 
-#: web/components/field/ChoyBooleanField.vue:206
+#: web/components/field/ChoyBooleanField.vue:191
 msgctxt "web/components/field/BooleanField"
 msgid "Clear"
 msgstr ""
@@ -317,17 +317,17 @@ msgctxt "web/components/field/ImageField"
 msgid "Upload image"
 msgstr ""
 
-#: web/components/field/ChoyIntField.vue:185
+#: web/components/field/ChoyIntField.vue:186
 msgctxt "web/components/field/IntField"
 msgid "Cannot be empty"
 msgstr ""
 
-#: web/components/field/ChoyIntField.vue:188
+#: web/components/field/ChoyIntField.vue:189
 msgctxt "web/components/field/IntField"
 msgid "Must be an integer"
 msgstr ""
 
-#: web/components/field/ChoyIntField.vue:191
+#: web/components/field/ChoyIntField.vue:192
 msgctxt "web/components/field/IntField"
 msgid "Range %s ~ %s"
 msgstr ""
@@ -676,17 +676,17 @@ msgctxt "web/components/field/PropertiesDefinitionEditor"
 msgid "Selection JSON"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesField.vue:143
+#: web/components/field/ChoyPropertiesField.vue:149
 msgctxt "web/components/field/PropertiesField"
 msgid "%s properties"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesField.vue:133
+#: web/components/field/ChoyPropertiesField.vue:139
 msgctxt "web/components/field/PropertiesField"
 msgid "No"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesField.vue:133
+#: web/components/field/ChoyPropertiesField.vue:139
 msgctxt "web/components/field/PropertiesField"
 msgid "Yes"
 msgstr ""
@@ -716,17 +716,17 @@ msgctxt "web/components/field/StatusbarField"
 msgid "Value must be a string"
 msgstr ""
 
-#: web/components/field/ChoyTextField.vue:163
+#: web/components/field/ChoyTextField.vue:161
 msgctxt "web/components/field/TextField"
 msgid "Cannot be empty"
 msgstr ""
 
-#: web/components/field/ChoyTextField.vue:168
+#: web/components/field/ChoyTextField.vue:166
 msgctxt "web/components/field/TextField"
 msgid "Length must not exceed %s"
 msgstr ""
 
-#: web/components/field/ChoyTextField.vue:165
+#: web/components/field/ChoyTextField.vue:163
 msgctxt "web/components/field/TextField"
 msgid "Must be a string"
 msgstr ""
@@ -736,19 +736,24 @@ msgctxt "web/components/field/TimeField"
 msgid "Invalid time value"
 msgstr ""
 
-#: web/components/field/ChoyVarcharField.vue:173
+#: web/components/field/ChoyVarcharField.vue:172
 msgctxt "web/components/field/VarCharField"
 msgid "Length must not exceed %s"
 msgstr ""
 
-#: web/components/field/ChoyVarcharField.vue:168
+#: web/components/field/ChoyVarcharField.vue:167
 msgctxt "web/components/field/VarCharField"
 msgid "Value is required"
 msgstr ""
 
-#: web/components/field/ChoyVarcharField.vue:170
+#: web/components/field/ChoyVarcharField.vue:169
 msgctxt "web/components/field/VarCharField"
 msgid "Value must be a string"
+msgstr ""
+
+#: web/components/internal/ChoyTableHost.vue:12
+msgctxt "web/components/internal/ChoyTableHost"
+msgid "No data"
 msgstr ""
 
 #: web/components/layout/ChoyNotificationBell.vue:28
@@ -787,19 +792,19 @@ msgctxt "web/components/layout/ChoyPageIoMenu"
 msgid "Import and export"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:556
+#: web/components/view/ChoyFormView.vue:560
 msgctxt "web/components/view/FormView"
 msgid "Are you sure you want to delete the current record? This action cannot be undone."
 msgstr ""
 
 #: web/components/view/ChoyFormView.vue:37
 #: web/components/view/ChoyFormView.vue:51
-#: web/components/view/ChoyFormView.vue:558
+#: web/components/view/ChoyFormView.vue:562
 msgctxt "web/components/view/FormView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:556
+#: web/components/view/ChoyFormView.vue:560
 msgctxt "web/components/view/FormView"
 msgid "Confirm delete"
 msgstr ""
@@ -809,24 +814,24 @@ msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:423
-#: web/components/view/ChoyFormView.vue:472
+#: web/components/view/ChoyFormView.vue:427
+#: web/components/view/ChoyFormView.vue:476
 msgctxt "web/components/view/FormView"
 msgid "Created successfully"
 msgstr ""
 
 #: web/components/view/ChoyFormView.vue:27
-#: web/components/view/ChoyFormView.vue:557
+#: web/components/view/ChoyFormView.vue:561
 msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:600
+#: web/components/view/ChoyFormView.vue:604
 msgctxt "web/components/view/FormView"
 msgid "Delete failed"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:43
+#: web/components/view/ChoyFormView.vue:47
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
@@ -841,17 +846,17 @@ msgctxt "web/components/view/FormView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:493
+#: web/components/view/ChoyFormView.vue:497
 msgctxt "web/components/view/FormView"
 msgid "Operation failed"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:308
+#: web/components/view/ChoyFormView.vue:312
 msgctxt "web/components/view/FormView"
 msgid "Please fix the errors in the form first"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:567
+#: web/components/view/ChoyFormView.vue:571
 msgctxt "web/components/view/FormView"
 msgid "Record deleted"
 msgstr ""
@@ -861,12 +866,12 @@ msgctxt "web/components/view/FormView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:536
+#: web/components/view/ChoyFormView.vue:540
 msgctxt "web/components/view/FormView"
 msgid "Refresh failed"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:533
+#: web/components/view/ChoyFormView.vue:537
 msgctxt "web/components/view/FormView"
 msgid "Refreshed"
 msgstr ""
@@ -877,28 +882,28 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:153
+#: web/components/view/ChoyFormView.vue:157
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:423
-#: web/components/view/ChoyFormView.vue:472
+#: web/components/view/ChoyFormView.vue:427
+#: web/components/view/ChoyFormView.vue:476
 msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:153
+#: web/components/view/ChoyFormView.vue:157
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:574
+#: web/components/view/ChoyListView.vue:589
 msgctxt "web/components/view/ListView"
 msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:576
+#: web/components/view/ChoyListView.vue:591
 msgctxt "web/components/view/ListView"
 msgid "Cancel"
 msgstr ""
@@ -908,12 +913,12 @@ msgctxt "web/components/view/ListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:574
+#: web/components/view/ChoyListView.vue:589
 msgctxt "web/components/view/ListView"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:575
+#: web/components/view/ChoyListView.vue:590
 msgctxt "web/components/view/ListView"
 msgid "Delete"
 msgstr ""
@@ -923,7 +928,7 @@ msgctxt "web/components/view/ListView"
 msgid "Delete (%s)"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:607
+#: web/components/view/ChoyListView.vue:622
 msgctxt "web/components/view/ListView"
 msgid "Delete failed"
 msgstr ""
@@ -933,32 +938,32 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:211
+#: web/components/view/ChoyListView.vue:214
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:472
+#: web/components/view/ChoyListView.vue:475
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:280
+#: web/components/view/ChoyListView.vue:283
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:555
+#: web/components/view/ChoyListView.vue:570
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:280
+#: web/components/view/ChoyListView.vue:283
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:547
+#: web/components/view/ChoyListView.vue:562
 msgctxt "web/components/view/ListView"
 msgid "List data refreshed"
 msgstr ""
@@ -983,12 +988,12 @@ msgctxt "web/components/view/ListView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:593
+#: web/components/view/ChoyListView.vue:608
 msgctxt "web/components/view/ListView"
 msgid "Selected records are missing valid IDs"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:598
+#: web/components/view/ChoyListView.vue:613
 msgctxt "web/components/view/ListView"
 msgid "Successfully deleted %s record(s)"
 msgstr ""
@@ -1003,7 +1008,7 @@ msgctxt "web/components/view/Pagination"
 msgid "of %s"
 msgstr ""
 
-#: web/components/view/ChoySearchView.vue:63
+#: web/components/view/ChoySearchView.vue:57
 msgctxt "web/components/view/SearchView"
 msgid "Search..."
 msgstr ""
@@ -1179,11 +1184,6 @@ msgctxt "web/components/view/search/Search"
 msgid "Save current filters…"
 msgstr ""
 
-#: web/components/view/search/Search.vue:4
-msgctxt "web/components/view/search/Search"
-msgid "Search"
-msgstr ""
-
 #: web/components/view/search/Search.vue:135
 msgctxt "web/components/view/search/Search"
 msgid "Search..."
@@ -1294,29 +1294,25 @@ msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Value"
 msgstr ""
 
-#: web/components/view/search/SearchFilterGroup.vue:13
+#: web/components/view/search/SearchFilterGroup.vue:16
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Add condition"
 msgstr ""
 
-#: web/components/view/search/SearchFilterGroup.vue:14
+#: web/components/view/search/SearchFilterGroup.vue:17
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Add group"
 msgstr ""
 
 #: web/components/view/search/SearchFilterGroup.vue:5
+#: web/components/view/search/SearchFilterGroup.vue:6
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Group relation"
 msgstr ""
 
-#: web/components/view/search/SearchFilterGroup.vue:15
+#: web/components/view/search/SearchFilterGroup.vue:18
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Remove group"
-msgstr ""
-
-#: web/components/internal/ChoyTableHost.vue:32
-msgctxt "web/components/internal/ChoyTableHost"
-msgid "No data"
 msgstr ""
 
 #: web/composables/search/useGroupingOptions.ts:17

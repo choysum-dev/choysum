@@ -70,34 +70,61 @@ def is_forbidden_o_vue(spec: str) -> bool:
 
 
 def strip_comments(text: str) -> list[tuple[int, str]]:
-    """Return (original_line_no, code) pairs with // and /* */ removed."""
+    """Return (original_line_no, code) pairs with comments removed, string-aware."""
     lines_out: list[tuple[int, str]] = []
     in_block = False
     for i, line in enumerate(text.splitlines(), start=1):
-        code = line
-        if in_block:
-            end = code.find("*/")
-            if end == -1:
+        out: list[str] = []
+        j = 0
+        quote: str | None = None
+        while j < len(line):
+            ch = line[j]
+            nxt = line[j + 1] if j + 1 < len(line) else ""
+            if in_block:
+                if ch == "*" and nxt == "/":
+                    in_block = False
+                    j += 2
+                    continue
+                j += 1
                 continue
-            code, in_block = code[end + 2 :], False
-        while "/*" in code:
-            start = code.find("/*")
-            end = code.find("*/", start + 2)
-            if end == -1:
-                code, in_block = code[:start], True
+            if quote is not None:
+                if ch == "\\" and j + 1 < len(line):
+                    out.append(line[j : j + 2])
+                    j += 2
+                    continue
+                if ch == quote:
+                    quote = None
+                out.append(ch)
+                j += 1
+                continue
+            if ch in ("'", '"', "`"):
+                quote = ch
+                out.append(ch)
+                j += 1
+                continue
+            if ch == "/" and nxt == "/":
                 break
-            code = code[:start] + code[end + 2 :]
-        code = code.split("//", 1)[0]
-        lines_out.append((i, code))
+            if ch == "/" and nxt == "*":
+                in_block = True
+                j += 2
+                continue
+            out.append(ch)
+            j += 1
+        lines_out.append((i, "".join(out)))
     return lines_out
 
 
 def iter_scan_files(modules_root: Path) -> list[Path]:
     out: list[Path] = []
+    modules_root = modules_root.resolve()
     for path in modules_root.rglob("*"):
         if not path.is_file() or path.suffix not in SCAN_SUFFIXES:
             continue
-        if any(part in SKIP_DIR_NAMES for part in path.parts):
+        try:
+            rel_parts = path.resolve().relative_to(modules_root).parts
+        except ValueError:
+            continue
+        if any(part in SKIP_DIR_NAMES for part in rel_parts):
             continue
         out.append(path)
     return sorted(out)

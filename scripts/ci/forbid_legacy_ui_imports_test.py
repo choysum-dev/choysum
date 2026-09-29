@@ -75,6 +75,47 @@ class ForbidLegacyUiImportsTest(unittest.TestCase):
             rules = {v[3] for v in violations}
             self.assertEqual(rules, {"element-plus", "echarts", "o-star-vue"})
 
+    def test_iter_scan_files_ignores_ancestor_skip_dir_names(self):
+        """Checkout under …/dist/… must not skip the entire modules tree."""
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            # Simulate repo checked out under a directory named "dist".
+            modules = pathlib.Path(tmp) / "dist" / "choysum" / "modules"
+            app = modules / "partner" / "web"
+            app.mkdir(parents=True)
+            bad = app / "leak.ts"
+            bad.write_text("import { ElButton } from 'element-plus';\n", encoding="utf-8")
+            files = mod.iter_scan_files(modules)
+            self.assertEqual([p.resolve() for p in files], [bad.resolve()])
+            violations = mod.scan(modules)
+            self.assertEqual(len(violations), 1)
+            self.assertEqual(violations[0][3], "element-plus")
+
+    def test_strip_comments_preserves_url_before_import(self):
+        mod = load_mod()
+        text = (
+            "const u = 'https://example.com/x'; import { ElButton } from 'element-plus';\n"
+            'const v = "https://cdn.example/a"; import Chart from "vue-echarts";\n'
+            "const w = `https://x`; // real comment\n"
+            "import Ok from 'vue'; // trailing\n"
+            "/* block */ import { ElIcon } from '@element-plus/icons-vue';\n"
+        )
+        lines = dict(mod.strip_comments(text))
+        self.assertIn("element-plus", lines[1])
+        self.assertIn("vue-echarts", lines[2])
+        self.assertIn("`https://x`", lines[3])
+        self.assertNotIn("real comment", lines[3])
+        self.assertIn("from 'vue'", lines[4])
+        self.assertNotIn("trailing", lines[4])
+        self.assertIn("@element-plus/icons-vue", lines[5])
+        # scan_file still sees the banned imports after string-aware strip.
+        with tempfile.TemporaryDirectory() as tmp:
+            p = pathlib.Path(tmp) / "x.ts"
+            p.write_text(text, encoding="utf-8")
+            hits = mod.scan_file(p)
+            rules = {h[2] for h in hits}
+            self.assertEqual(rules, {"element-plus", "echarts"})
+
 
 if __name__ == "__main__":
     unittest.main()
