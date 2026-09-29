@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
  * reading/writing the active row draft via list-wide provides.
  */
 import { computed, provide } from 'vue';
-import type { ViewMode } from '@/web/web/components/view/ViewScope.vue';
+import type { ViewMode } from '@/web/web/components/view/ChoyViewScope.vue';
 
 defineOptions({ name: 'ListInlineEditScope' });
 

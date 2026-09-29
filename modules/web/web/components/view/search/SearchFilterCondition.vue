@@ -60,24 +60,23 @@ import { useInjectedFilterEditorBindings } from '@/web/web/composables/search/us
 import { createTranslate } from '@/web/web/i18n';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 
-import CharField from '@/web/web/components/field/CharField.vue';
-import VarCharField from '@/web/web/components/field/VarCharField.vue';
-import TextField from '@/web/web/components/field/TextField.vue';
-import IntField from '@/web/web/components/field/IntField.vue';
-import BigintField from '@/web/web/components/field/BigintField.vue';
-import NumberField from '@/web/web/components/field/NumberField.vue';
-import DecimalField from '@/web/web/components/field/DecimalField.vue';
-import MonetaryField from '@/web/web/components/field/MonetaryField.vue';
-import BooleanField from '@/web/web/components/field/BooleanField.vue';
-import DateField from '@/web/web/components/field/DateField.vue';
-import TimeField from '@/web/web/components/field/TimeField.vue';
-import DatetimeField from '@/web/web/components/field/DatetimeField.vue';
-import JsonobjectField from '@/web/web/components/field/JsonobjectField.vue';
-import ManyToOneField from '@/web/web/components/field/ManyToOneField.vue';
-import ManyToOneRefField from '@/web/web/components/field/ManyToOneRefField.vue';
-import BinaryField from '@/web/web/components/field/BinaryField.vue';
-import ImageField from '@/web/web/components/field/ImageField.vue';
-import SelectionField from '@/web/web/components/field/SelectionField.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';
+import ChoyIntField from '@/web/web/components/field/ChoyIntField.vue';
+import ChoyBigintField from '@/web/web/components/field/ChoyBigintField.vue';
+import ChoyNumberField from '@/web/web/components/field/ChoyNumberField.vue';
+import ChoyDecimalField from '@/web/web/components/field/ChoyDecimalField.vue';
+import ChoyMonetaryField from '@/web/web/components/field/ChoyMonetaryField.vue';
+import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
+import ChoyDateField from '@/web/web/components/field/ChoyDateField.vue';
+import ChoyTimeField from '@/web/web/components/field/ChoyTimeField.vue';
+import ChoyDatetimeField from '@/web/web/components/field/ChoyDatetimeField.vue';
+import ChoyJsonField from '@/web/web/components/field/ChoyJsonField.vue';
+import ChoyManyToOneField from '@/web/web/components/field/ChoyManyToOneField.vue';
+import ChoyManyToOneRefField from '@/web/web/components/field/ChoyManyToOneRefField.vue';
+import ChoyBinaryField from '@/web/web/components/field/ChoyBinaryField.vue';
+import ChoyImageField from '@/web/web/components/field/ChoyImageField.vue';
+import ChoySelectionField from '@/web/web/components/field/ChoySelectionField.vue';
 
 defineOptions({ name: 'SearchFilterCondition' });
 
@@ -106,46 +105,44 @@ const isRelationValueField = computed(() => fieldType.value === 'manytoone' || f
 const fieldComponent = computed(() => {
   switch (fieldType.value) {
     case 'char':
-      return CharField;
     case 'varchar':
-      return VarCharField;
-    case 'text':
-      return TextField;
     case 'html':
-      // Search filter uses plaintext entry (char); Form uses HtmlField.
-      return CharField;
+      // Search filter uses plaintext entry for html; Form uses ChoyHtmlField.
+      return ChoyVarcharField;
+    case 'text':
+      return ChoyTextField;
     case 'int':
-      return IntField;
+      return ChoyIntField;
     case 'bigint':
-      return BigintField;
+      return ChoyBigintField;
     case 'number':
-      return NumberField;
+      return ChoyNumberField;
     case 'decimal':
-      return DecimalField;
+      return ChoyDecimalField;
     case 'monetary':
-      return MonetaryField;
+      return ChoyMonetaryField;
     case 'boolean':
-      return BooleanField;
+      return ChoyBooleanField;
     case 'date':
-      return DateField;
+      return ChoyDateField;
     case 'time':
-      return TimeField;
+      return ChoyTimeField;
     case 'datetime':
-      return DatetimeField;
+      return ChoyDatetimeField;
     case 'jsonobject':
-      return JsonobjectField;
+      return ChoyJsonField;
     case 'manytoone':
-      return ManyToOneField;
+      return ChoyManyToOneField;
     case 'manytooneref':
-      return ManyToOneRefField;
+      return ChoyManyToOneRefField;
     case 'binary':
-      return BinaryField;
+      return ChoyBinaryField;
     case 'image':
-      return ImageField;
+      return ChoyImageField;
     case 'selection':
-      return SelectionField;
+      return ChoySelectionField;
     default:
-      return VarCharField;
+      return ChoyVarcharField;
   }
 });
 
@@ -170,7 +167,9 @@ const valuePlaceholder = computed(() => {
 });
 
 const extraProps = computed(() => {
-  if (fieldType.value !== 'manytoone' && fieldType.value !== 'manytooneref') return {};
+  if (fieldType.value !== 'manytoone' && fieldType.value !== 'manytooneref') {
+    return {};
+  }
   return {
     toView: (raw: any) => {
       if (raw == null) return null;

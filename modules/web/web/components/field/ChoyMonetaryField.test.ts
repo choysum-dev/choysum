@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Mount wiring for MonetaryField. Pure format/scale helpers live in omonetary_helpers.test.ts.
+ * Mount wiring for MonetaryField. Pure format/scale helpers live in monetaryHelpers.test.ts.
  */
 
 import { computed, defineComponent, h, nextTick, provide, reactive, ref } from 'vue';
@@ -11,7 +11,7 @@ import Decimal from '@/core/utils/decimal';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
-import MonetaryField from './MonetaryField.vue';
+import MonetaryField from './ChoyMonetaryField.vue';
 
 function makeBinding(
   record: Record<string, unknown>,

@@ -17,9 +17,9 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
     <ChoyVarcharField prop="RoleId.Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyManyToOneField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyManyToOneField prop="MetaModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ChoyManyToOneField prop="MetaServiceId" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyManyToOneRefField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyManyToOneRefField prop="MetaModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyManyToOneRefField prop="MetaServiceId" :store="store" :vColumnProps="{ minWidth: 180 }" />
     <ChoySelectionField prop="LogicalModelName" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoySelectionField prop="Mode" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <ChoySelectionField prop="Source" :store="store" :vColumnProps="{ minWidth: 100 }" />
@@ -35,7 +35,7 @@ import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
-import { ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoySelectionField, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoySelectionField, ChoyVColumn, ChoyVarcharField, ChoyManyToOneRefField} from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
 

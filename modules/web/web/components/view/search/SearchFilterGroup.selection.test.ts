@@ -7,7 +7,7 @@ import { createFieldsGetHelpers, FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/w
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { flushPromises, fnRecorder, mountApp, stub, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
 import SearchFilterGroup from './SearchFilterGroup.vue';
-import SelectionField from '@/web/web/components/field/SelectionField.vue';
+import SelectionField from '@/web/web/components/field/ChoySelectionField.vue';
 
 describe('SearchFilterGroup selection filter (T4.5)', () => {
   afterEach(() => {

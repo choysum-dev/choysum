@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { TerminologyLoadResult } from './terminology_loader';
+import type { TerminologyLoadResult } from './terminologyLoader';
 
 function hasCatalogContent(value: unknown): boolean {
   if (typeof value === 'string') {

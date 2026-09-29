@@ -5,7 +5,7 @@ import { h, nextTick } from 'vue';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import PropertiesDefinitionEditor from './PropertiesDefinitionEditor.vue';
+import ChoyPropertiesDefinitionEditor from './ChoyPropertiesDefinitionEditor.vue';
 
 function installChoyButtonStub() {
   stubSfc(ChoyButton as any, {
@@ -43,7 +43,7 @@ function setInputValue(root: Element, selector: string, value: string) {
   el!.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-describe('PropertiesDefinitionEditor', () => {
+describe('ChoyPropertiesDefinitionEditor', () => {
   beforeEach(() => {
     installChoyButtonStub();
   });
@@ -63,7 +63,7 @@ describe('PropertiesDefinitionEditor', () => {
     const Create = fnRecorder(async () => ({ Id: 'new' }));
     const store = { Search, UpdateById, Create } as any;
 
-    const mounted = mountApp(PropertiesDefinitionEditor as any, {
+    const mounted = mountApp(ChoyPropertiesDefinitionEditor as any, {
       props: {
         application: 'partner',
         targetModel: 'Partner',
@@ -100,7 +100,7 @@ describe('PropertiesDefinitionEditor', () => {
     const UpdateById = fnRecorder(async () => ({}));
     const store = { Search, Create, UpdateById } as any;
 
-    const mounted = mountApp(PropertiesDefinitionEditor as any, {
+    const mounted = mountApp(ChoyPropertiesDefinitionEditor as any, {
       props: {
         application: 'project',
         targetModel: 'Task',
@@ -141,7 +141,7 @@ describe('PropertiesDefinitionEditor', () => {
     const UpdateById = fnRecorder(async () => ({}));
     const store = { Search, Create, UpdateById } as any;
 
-    const mounted = mountApp(PropertiesDefinitionEditor as any, {
+    const mounted = mountApp(ChoyPropertiesDefinitionEditor as any, {
       props: {
         application: 'partner',
         targetModel: 'Partner',

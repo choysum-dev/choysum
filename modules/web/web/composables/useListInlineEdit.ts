@@ -13,7 +13,7 @@ import { ChoyMessage } from '../composables/useChoyMessage';
 import { confirmChoyChoice } from '../composables/confirmChoyAction';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import type { ViewMode } from '@/web/web/components/view/ViewScope.vue';
+import type { ViewMode } from '@/web/web/components/view/ChoyViewScope.vue';
 import { provideOnchange, useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import {
   cloneRowDraft,

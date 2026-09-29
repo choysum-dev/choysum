@@ -18,8 +18,8 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
       <ChoyGrid :cols="12">
         <ChoyCol :span="3"><ChoyBooleanField :store="store" prop="IsReference" /></ChoyCol>
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="Factor" /></ChoyCol>
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="Rounding" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyDecimalField :store="store" prop="Factor" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyDecimalField :store="store" prop="Rounding" /></ChoyCol>
         <ChoyCol :span="3"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
       </ChoyGrid>
     </ChoyCard>
@@ -36,7 +36,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoyNumberField, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDecimalField, ChoyFormView, ChoyGrid, ChoyVarcharField, ChoyManyToOneField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'UoMFormView', inheritAttrs: true });

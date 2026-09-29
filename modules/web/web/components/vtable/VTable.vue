@@ -59,7 +59,7 @@ import {
   useVTableSelection,
   useVTableProvideColumnRegistry,
   useVTableProvideBuildContext,
-  type Column,
+  type Column
 } from '@/web/web/composables/useVTable';
 import { createTranslate } from '@/web/web/i18n';
 

@@ -7,7 +7,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
-import PropertiesField from './PropertiesField.vue';
+import PropertiesField from './ChoyPropertiesField.vue';
 
 function makeBinding(opts: {
   map?: Record<string, unknown> | null;

@@ -6,28 +6,28 @@ import { ref, computed, shallowRef } from 'vue';
 import { isClient } from '@vueuse/core';
 import dayjs from 'dayjs';
 import { SUPPORTED_LOCALES } from './locales';
-import { DEFAULT_ACTIVE_UI_KEYS } from './active_ui_keys';
+import { DEFAULT_ACTIVE_UI_KEYS } from './activeUiKeys';
 import { SupportedLocale, DateTimeFormatType } from './types';
 import { detectBestUiKey, updateDocumentDirection, formatDateTime, formatNumber, formatCurrency, getDateTimeFormats, getNumberFormats } from './utils';
 import { loadDayjsLocale, loadVueI18nMessages } from './loader';
 import { uiKeyToLang, langToUiKey } from './lang';
-import { fetchWebTranslations, type TerminologyLoadResult } from './terminology_loader';
-import { afterLocaleChange } from './locale_remount';
+import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyLoader';
+import { afterLocaleChange } from './localeRemount';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
   resolveFormatConfig,
   type DisplayFormatOverrides,
   type LanguageFormatOverlay,
-} from './language_format';
+} from './languageFormat';
 
 // Re-export types for external consumers.
 export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
 export { uiKeyToLang, langToUiKey } from './lang';
-export { fetchWebTranslations } from './terminology_loader';
+export { fetchWebTranslations } from './terminologyLoader';
 
-export { componentHintFromScope } from './component_hint';
-export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './locale_remount';
+export { componentHintFromScope } from './componentHint';
+export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
 export {
   resolveFormatConfig,
   formatNumberFromConfig,
@@ -37,9 +37,9 @@ export {
   applyGrouping,
   type DisplayFormatOverrides,
   type LanguageFormatOverlay,
-} from './language_format';
+} from './languageFormat';
 
-export type { TerminologyLoadResult } from './terminology_loader';
+export type { TerminologyLoadResult } from './terminologyLoader';
 export type { SupportedLocale };
 
 /**

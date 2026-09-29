@@ -49,7 +49,7 @@ test('web shell _lt bindings: mounts FormView so detailsTitle _lt runs', async (
     fallbackWarn: false,
     messages: { en: {} },
   });
-  const mod = await import('../components/view/FormView.vue');
+  const mod = await import('../components/view/ChoyFormView.vue');
   const handle = mountApp(mod.default as any, {
     props: { store: fakeStore },
     plugins: [i18n],

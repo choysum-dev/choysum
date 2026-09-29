@@ -15,13 +15,13 @@ import {
   stubSfc,
   type MountAppResult,
 } from '@/web/web/__tests__/mountApp';
-import PageIoMenu from './PageIoMenu.vue';
+import ChoyPageIoMenu from '@/web/web/components/layout/ChoyPageIoMenu.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
 
-describe('PageIoMenu', () => {
+describe('ChoyPageIoMenu', () => {
   const menuSfcs = [DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger];
 
   function installMenuStubs() {
@@ -136,7 +136,7 @@ describe('PageIoMenu', () => {
   });
 
   function mountMenu(props: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) {
-    return mountApp(PageIoMenu as any, {
+    return mountApp(ChoyPageIoMenu as any, {
       props,
       stubs: { Setting: true },
       ...extra,
@@ -308,7 +308,7 @@ describe('PageIoMenu', () => {
     const mounted = mountApp(Host as any, {
       slots: {
         default: () =>
-          h(PageIoMenu as any, {
+          h(ChoyPageIoMenu as any, {
             actionImport: true,
             actionExport: true,
           }),

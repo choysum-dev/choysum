@@ -4,7 +4,7 @@
 import { defineComponent, h, nextTick, onMounted } from 'vue';
 
 import { flushPromises, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
-import SearchView from './SearchView.vue';
+import SearchView from './ChoySearchView.vue';
 import Search from '@/web/web/components/view/search/Search.vue';
 
 const stubState = {

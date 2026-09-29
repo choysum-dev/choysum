@@ -15,7 +15,7 @@ import { registerFieldPath, unregisterFieldPath } from '@/web/web/query/utils/re
 import { registerMetric, unregisterMetric } from '@/web/web/query/utils/registry/metric';
 import type { MetricSpec } from '@/web/web/query/utils/registry/metric';
 import { ComponentScopeManager } from '@/web/web/stores/storeScopeManager/component';
-import type { ViewMode, ViewContainer } from '@/web/web/components/view/ViewScope.vue';
+import type { ViewMode, ViewContainer } from '@/web/web/components/view/ChoyViewScope.vue';
 
 /* ===================== Environment and core helpers ===================== */
 

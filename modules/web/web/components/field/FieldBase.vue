@@ -165,7 +165,7 @@ SPDX-License-Identifier: Apache-2.0
   </div>
 
   <!-- TABLE mode -->
-  <VColumn
+  <ChoyVColumn
     v-else-if="effectiveRenderMode === 'table' && columnVisible"
     :prop="String(binding.prop)"
     :label="resolvedLabel"
@@ -226,7 +226,7 @@ SPDX-License-Identifier: Apache-2.0
         </template>
       </div>
     </div>
-  </VColumn>
+  </ChoyVColumn>
 
   <!-- INLINE mode -->
   <div v-else-if="effectiveRenderMode === 'inline'" class="o-field-base__inline" v-show="visibleInline">
@@ -320,7 +320,7 @@ SPDX-License-Identifier: Apache-2.0
 import type { RuleItem } from 'async-validator';
 import type { BaseModel } from '@/core/rpc';
 import type { TermReference } from '@/core/service/i18n';
-import VColumn from '@/web/web/components/vtable/VColumn.vue';
+import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
 import { computed, inject, onMounted, ref, watch } from 'vue';
@@ -331,8 +331,8 @@ import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 import { resolveFieldHelp } from '@/web/web/composables/resolveFieldHelp';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
-import FieldTranslationsDialog from './FieldTranslationsDialog.vue';
-import FieldCompanyValuesDialog from './FieldCompanyValuesDialog.vue';
+import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
+import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 
 /** Native form-item chrome attrs (Element Plus FormItemProps removed). */
 export type FormItemProps = Record<string, unknown>;
@@ -342,7 +342,7 @@ export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
 
 defineOptions({ name: 'OFieldBase' });
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/OFieldBase' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/FieldBase' });
 
 const props = withDefaults(
   defineProps<{
@@ -550,7 +550,7 @@ function unwrapRecord(row: any): any {
   return row;
 }
 
-// Inject the field error map from OFormView
+// Inject the field error map from the form view
 const fieldErrors = inject<Ref<Map<string, string>> | null>('field-errors', null);
 
 // Standalone List S2: only the active editing row may enter table edit mode.

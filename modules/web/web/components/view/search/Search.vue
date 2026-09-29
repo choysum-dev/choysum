@@ -235,10 +235,10 @@ import {
   modelIdentityFromStore,
   pickDefaultFavoriteName,
   routeTitleFromLocation,
-  stableTitleSource,
+  stableTitleSource
 } from '@/web/web/composables/search/defaultFavoriteName';
 import { trySetupHook } from '@/web/web/composables/search/trySetupHook';
-import { OSearchNavContextKey } from '@/web/web/composables/search/oSearchNavContext';
+import { SearchNavContextKey } from '@/web/web/composables/search/searchNavContext';
 import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
 import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
 import { createTranslate } from '@/web/web/i18n';
@@ -257,7 +257,7 @@ import PopoverTrigger from '@/web/web/components/vendor/ui/popover/PopoverTrigge
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/Search' });
 
 /** Captured in setup so click handlers never call inject()-based APIs. */
-const navCtx = inject(OSearchNavContextKey, null);
+const navCtx = inject(SearchNavContextKey, null);
 const breadcrumbStore = navCtx
   ? (navCtx.breadcrumbStore ?? null)
   : trySetupHook(() => useBreadcrumbStore());

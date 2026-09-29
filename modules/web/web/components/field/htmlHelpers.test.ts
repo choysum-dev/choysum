@@ -72,7 +72,17 @@ describe('htmlHelpers', () => {
   test('sanitizeHtmlForClient handles null and empty', () => {
     const purify = createTestPurify();
     expect(sanitizeHtmlForClient(null, { purify })).toBe('');
+    expect(sanitizeHtmlForClient(undefined, { purify })).toBe('');
     expect(sanitizeHtmlForClient('', { purify })).toBe('');
+  });
+
+  test('sanitizeHtmlForClient installs afterSanitizeAttributes hooks once', () => {
+    const purify = createTestPurify();
+    expect(sanitizeHtmlForClient('HOOK', { purify })).toBe('noopener noreferrer');
+    const afterFirst = purify.hooks.length;
+    expect(afterFirst).toBe(1);
+    sanitizeHtmlForClient('HOOK', { purify });
+    expect(purify.hooks.length).toBe(afterFirst);
   });
 
   test('sanitizeHtmlForClient strips tags when purify.sanitize is missing', () => {

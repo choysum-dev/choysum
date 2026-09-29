@@ -5,7 +5,7 @@ import { computed, h, ref } from 'vue';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import BinaryField from './BinaryField.vue';
+import BinaryField from './ChoyBinaryField.vue';
 import FieldBase from './FieldBase.vue';
 
 function makeBinding(opts?: { value?: unknown }): any {

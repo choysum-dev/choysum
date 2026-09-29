@@ -56,12 +56,12 @@ import {
   ChoySearchView,
   ChoyTextField,
   ChoyVarcharField,
-  ChoyVColumn,
+  ChoyVColumn
 } from '@/web';
 import { createStoreByModel, listRegisteredModelNames } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
-import { downloadTerminologyPo } from '@/web/web/stores/i18nStore/po_download';
+import { downloadTerminologyPo } from '@/web/web/stores/i18nStore/poDownload';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import type { WebModelStore } from '@/web/web/stores/modelStore';

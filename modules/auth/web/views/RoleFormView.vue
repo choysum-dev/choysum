@@ -84,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
           <p class="mb-2 text-sm leading-relaxed text-foreground/70">
             {{ _t('Click a node label to inspect Requires → derived RPCs (checkbox still controls the grant).') }}
           </p>
-          <ChoyManyToManyField widget="tree" value-mode="ref"
+          <ChoyManyToManyRefTreeField
             :store="store"
             prop="AccessUiResourceIds"
             :label="_t('Accessible UI Resources')"
@@ -112,7 +112,7 @@ SPDX-License-Identifier: Apache-2.0
                 <span class="rfv-ui-resource-node__label">{{ resolveUiResourceLabel(row, label) }}</span>
               </button>
             </template>
-          </ChoyManyToManyField>
+          </ChoyManyToManyRefTreeField>
           <div v-if="inspectedUiResource" class="rfv-ui-requires">
             <div class="rfv-ui-requires__title">
               {{ _t('Requires → derived Method RPCs') }}
@@ -171,8 +171,8 @@ SPDX-License-Identifier: Apache-2.0
                 </p>
                 <ChoyOneToManyField :store="store" prop="RecordRules" label="" :default-record="defaultRecordRule">
                   <ChoySelectionField :store="store" prop="RecordRules.Kind" />
-                  <ChoyManyToOneField :store="store" prop="RecordRules.MetaApplicationId" />
-                  <ChoyManyToOneField :store="store" prop="RecordRules.MetaModelId" />
+                  <ChoyManyToOneRefField :store="store" prop="RecordRules.MetaApplicationId" />
+                  <ChoyManyToOneRefField :store="store" prop="RecordRules.MetaModelId" />
                   <ChoyJsonField :store="store" prop="RecordRules.Condition" :allow-array="true" />
                   <ChoyBooleanField :store="store" prop="RecordRules.PermRead" />
                   <ChoyBooleanField :store="store" prop="RecordRules.PermWrite" />
@@ -194,9 +194,9 @@ SPDX-License-Identifier: Apache-2.0
                   {{ _t('Field visibility under deny-default. Leave Application/Model/Field empty for wider scopes.') }}
                 </p>
                 <ChoyOneToManyField :store="store" prop="FieldRules" label="">
-                  <ChoyManyToOneField :store="store" prop="FieldRules.MetaApplicationId" />
-                  <ChoyManyToOneField :store="store" prop="FieldRules.MetaModelId" />
-                  <ChoyManyToOneField :store="store" prop="FieldRules.MetaFieldId" />
+                  <ChoyManyToOneRefField :store="store" prop="FieldRules.MetaApplicationId" />
+                  <ChoyManyToOneRefField :store="store" prop="FieldRules.MetaModelId" />
+                  <ChoyManyToOneRefField :store="store" prop="FieldRules.MetaFieldId" />
                   <ChoySelectionField :store="store" prop="FieldRules.PermRead" />
                   <ChoySelectionField :store="store" prop="FieldRules.PermWrite" />
                 </ChoyOneToManyField>
@@ -215,9 +215,9 @@ SPDX-License-Identifier: Apache-2.0
                   {{ _t('RPC allow/deny under deny-default. New rows default to allow; use deny as an explicit brake.') }}
                 </p>
                 <ChoyOneToManyField :store="store" prop="MethodAccesses" label="" :default-record="defaultMethodAccess">
-                  <ChoyManyToOneField :store="store" prop="MethodAccesses.MetaApplicationId" />
-                  <ChoyManyToOneField :store="store" prop="MethodAccesses.MetaModelId" />
-                  <ChoyManyToOneField :store="store" prop="MethodAccesses.MetaServiceId" />
+                  <ChoyManyToOneRefField :store="store" prop="MethodAccesses.MetaApplicationId" />
+                  <ChoyManyToOneRefField :store="store" prop="MethodAccesses.MetaModelId" />
+                  <ChoyManyToOneRefField :store="store" prop="MethodAccesses.MetaServiceId" />
                   <ChoySelectionField :store="store" prop="MethodAccesses.Mode" />
                 </ChoyOneToManyField>
               </div>
@@ -236,8 +236,8 @@ SPDX-License-Identifier: Apache-2.0
                 </p>
                 <ChoyOneToManyField :store="store" prop="UiResources" label="">
                   <ChoySelectionField :store="store" prop="UiResources.Mode" />
-                  <ChoyManyToOneField :store="store" prop="UiResources.MetaApplicationId" />
-                  <ChoyManyToOneField :store="store" prop="UiResources.MetaUiResourceId" />
+                  <ChoyManyToOneRefField :store="store" prop="UiResources.MetaApplicationId" />
+                  <ChoyManyToOneRefField :store="store" prop="UiResources.MetaUiResourceId" />
                 </ChoyOneToManyField>
               </div>
             </details>
@@ -262,7 +262,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { useI18n } from 'vue-i18n';
-import { ChoyBooleanField, ChoyButtonBox, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyStatInfo, ChoyTab, ChoyTabs, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyButtonBox, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyStatInfo, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTreeField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';

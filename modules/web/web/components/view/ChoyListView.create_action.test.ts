@@ -13,10 +13,10 @@ import { h } from 'vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ListView from './ListView.vue';
-import Pagination from './Pagination.vue';
+import ChoyListView from './ChoyListView.vue';
+import ListPagination from './ListPagination.vue';
 import VTable from '@/web/web/components/vtable/VTable.vue';
-import VColumn from '@/web/web/components/vtable/VColumn.vue';
+import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
 
 function makeStore() {
@@ -69,12 +69,12 @@ function stubListChrome() {
       return () => h('div', { 'data-stub': 'VTable' }, slots.default?.());
     },
   });
-  stubSfc(VColumn, {
-    name: 'VColumn',
+  stubSfc(ChoyVColumn, {
+    name: 'ChoyVColumn',
     setup: () => () => null,
   });
-  stubSfc(Pagination, {
-    name: 'Pagination',
+  stubSfc(ListPagination, {
+    name: 'ListPagination',
     setup: () => () => h('div', { 'data-stub': 'Pagination' }),
   });
   stubSfc(ListInlineEditScope, {
@@ -87,8 +87,8 @@ function stubListChrome() {
 
 function restoreListChrome() {
   restoreSfc(VTable);
-  restoreSfc(VColumn);
-  restoreSfc(Pagination);
+  restoreSfc(ChoyVColumn);
+  restoreSfc(ListPagination);
   restoreSfc(ListInlineEditScope);
 }
 
@@ -110,7 +110,7 @@ describe('ListView create action', () => {
       route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
       router: { push },
     });
-    const { unmount, el, root } = mountApp(ListView as any, {
+    const { unmount, el, root } = mountApp(ChoyListView as any, {
       props: {
         store: makeStore(),
         createAction: '/partner/partners/new',
@@ -148,7 +148,7 @@ describe('ListView create action', () => {
       route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
       router: { push },
     });
-    const { unmount, el, root } = mountApp(ListView as any, {
+    const { unmount, el, root } = mountApp(ChoyListView as any, {
       props: {
         store: makeStore(),
         createAction: '/partner/partners/new',
@@ -182,7 +182,7 @@ describe('ListView create action', () => {
       route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
       router: { push },
     });
-    const { unmount, el, root } = mountApp(ListView as any, {
+    const { unmount, el, root } = mountApp(ChoyListView as any, {
       props: {
         store: makeStore(),
         createAction: '',

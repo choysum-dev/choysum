@@ -70,6 +70,7 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		p, joined, importer, want string
 		ok                        bool
 	}{
+		// Legacy Page.vue / OPage.vue still stub for product pages; ChoyPage is a normal child.
 		{"@/web/web/components/page/Page.vue", "/x/Page.vue", page, "opage", true},
 		{"@/web/web/components/page/Page.vue", "/x/Page.vue", "", "opage", true},
 		{"@/web/web/components/page/OPage.vue", "/x/OPage.vue", page, "opage", true},
@@ -77,8 +78,8 @@ func TestFeUnitPackageAndPathStubMatchers(t *testing.T) {
 		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", page, "child", true},
 		{"./OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.vue", "/repo/modules/web/web/components/chatter/OChatterMessageItem.test.ts", "", false},
 		{"@/web/web/components/layout/OHeader.vue", "/x/OHeader.vue", "/other.ts", "", false},
-		{"./Page.vue", "/repo/modules/web/web/components/page/Page.vue", "/repo/modules/web/web/components/page/Page.mapping.test.ts", "", false},
-		{"./OPage.vue", "/repo/modules/web/web/components/page/OPage.vue", "/repo/modules/web/web/components/page/OPage.mapping.test.ts", "", false},
+		{"./Page.vue", "/repo/modules/web/web/components/layout/Page.vue", "/repo/modules/web/web/components/layout/ChoyPageIoMenu.test.ts", "", false},
+		{"./OPage.vue", "/repo/modules/web/web/components/layout/OPage.vue", "/repo/modules/web/web/components/layout/ChoyPage.storeContext.mount.test.ts", "", false},
 		{"./PartnerFormView.vue", "/x/PartnerFormView.vue", page, "child", true},
 		{"./PartnerListView.vue", "/x/PartnerListView.vue", page, "child", true},
 		{"./ModuleKanbanView.vue", "/x/ModuleKanbanView.vue", view, "child", true},
@@ -237,11 +238,11 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	if err != nil || !strings.HasSuffix(legacyPageRes.Path, "OPage.stub.vue") {
 		t.Fatalf("legacy OPage stub: %#v err=%v", legacyPageRes, err)
 	}
-	pageSkip, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/components/page/Page.mapping.test.ts"})
+	pageSkip, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/components/layout/ChoyPageIoMenu.test.ts"})
 	if err != nil || pageSkip.Path != "" {
-		t.Fatalf("page skip for mapping test: %#v err=%v", pageSkip, err)
+		t.Fatalf("page skip for layout unit test: %#v err=%v", pageSkip, err)
 	}
-	pageSkipVue, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/components/page/PageIoMenu.vue"})
+	pageSkipVue, err := pageCB(api.OnResolveArgs{Path: "./Page.vue", Importer: "/modules/web/web/components/layout/ChoyPageIoMenu.vue"})
 	if err != nil || pageSkipVue.Path != "" {
 		t.Fatalf("page skip for web component SFC: %#v err=%v", pageSkipVue, err)
 	}
@@ -249,7 +250,7 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 	if err != nil || !strings.HasSuffix(childRes.Path, "ChildView.stub.vue") {
 		t.Fatalf("child view stub: %#v err=%v", childRes, err)
 	}
-	childSkip, err := childViewCB(api.OnResolveArgs{Path: "./OFormView.vue", Importer: "/modules/web/web/components/view/OFormView.route_reload.test.ts"})
+	childSkip, err := childViewCB(api.OnResolveArgs{Path: "./ChoyFormView.vue", Importer: "/modules/web/web/components/view/ChoyFormView.route_reload.test.ts"})
 	if err != nil || childSkip.Path != "" {
 		t.Fatalf("child view skip for web unit test: %#v err=%v", childSkip, err)
 	}
@@ -279,8 +280,8 @@ func TestBuildFrontendVueHostBundle_FEStubsAndExtras(t *testing.T) {
 		}
 		testPage, err := pathCB(api.OnResolveArgs{
 			Path:       "./Page.vue",
-			Importer:   "/modules/web/web/components/page/Page.mapping.test.ts",
-			ResolveDir: "/modules/web/web/components/page",
+			Importer:   "/modules/web/web/components/layout/ChoyPageIoMenu.test.ts",
+			ResolveDir: "/modules/web/web/components/layout",
 		})
 		if err != nil {
 			t.Fatalf("page from test err: %v", err)

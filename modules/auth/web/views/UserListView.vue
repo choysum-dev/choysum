@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyImageField prop="Avatar" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoyVarcharField prop="Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyManyToOneField :store="store" prop="CompanyId" />
+    <ChoyManyToOneRefField :store="store" prop="CompanyId" />
     <ChoyVarcharField prop="Email" :store="store" :vColumnProps="{ minWidth: 180 }" />
     <ChoyVarcharField prop="Phone" :store="store" />
     <ChoyVarcharField prop="FullName" :store="store" />
@@ -34,7 +34,7 @@ import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
-import { ChoyDatetimeField, ChoyImageField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyDatetimeField, ChoyImageField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField, ChoyManyToOneRefField} from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
 

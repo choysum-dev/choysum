@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { uiKeyToLang, langToUiKey } from './lang';
-import { fetchWebTranslations } from './terminology_loader';
+import { fetchWebTranslations } from './terminologyLoader';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 describe('uiKeyToLang / langToUiKey', () => {

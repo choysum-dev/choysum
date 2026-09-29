@@ -6,7 +6,7 @@
  * Uses core/web/application to create the app and register Pinia and router plugins.
  */
 import { createApp } from '@/core/web/application';
-import { setupApp } from './app_setup';
+import { setupApp } from './appSetup';
 
 import App from './App.vue';
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { nextTick, reactive, ref } from 'vue';
-import { setupApp, type SetupAppDeps } from './app_setup';
+import { setupApp, type SetupAppDeps } from './appSetup';
 import { notifyComposerMessagesChanged } from './i18n';
 import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 

@@ -107,7 +107,7 @@ import {
   type ChoyKanbanCard,
   type ChoyKanbanLane,
   type ChoyKanbanLoadMore,
-  type ChoyKanbanMove,
+  type ChoyKanbanMove
 } from '@/web';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
@@ -123,7 +123,7 @@ import {
   resolveTokenMoveRecordId,
   resolveTokenUsernameLabel,
   shouldRestoreTokenKanbanMove,
-  type TokenKanbanRow,
+  type TokenKanbanRow
 } from './token_kanban_nav';
 
 defineOptions({ name: 'TokenKanbanView' });

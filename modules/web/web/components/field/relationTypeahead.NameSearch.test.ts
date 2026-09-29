@@ -14,10 +14,9 @@ import type { UseField } from '@/web/web/composables/useField';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
-import ManyToOneField from './ManyToOneField.vue';
-import ManyToOneRefField from './ManyToOneRefField.vue';
-import ManyToManyTagsField from './ManyToManyTagsField.vue';
-import ManyToManyRefTagsField from './ManyToManyRefTagsField.vue';
+import ChoyManyToOneField from './ChoyManyToOneField.vue';
+import ChoyManyToOneRefField from './ChoyManyToOneRefField.vue';
+import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
 
 function makeM2OBinding(relationStore: any): UseField {
   const value = ref<any>(null);
@@ -199,10 +198,10 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     });
   }
 
-  test('ManyToOneField NameSearch trims keyword and uses pageSize fields', async () => {
+  test('ChoyManyToOneField NameSearch trims keyword and uses pageSize fields', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 'p1', DisplayName: 'Alice' }]);
     const Search = fnRecorder();
-    const m = mountField(ManyToOneField, {
+    const m = mountField(ChoyManyToOneField, {
       binding: makeM2OBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       pageSize: 15,
     });
@@ -226,8 +225,8 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     m.unmount();
   });
 
-  test('ManyToOneField remote search is a no-op without relationStore', async () => {
-    const missing = mountField(ManyToOneField, {
+  test('ChoyManyToOneField remote search is a no-op without relationStore', async () => {
+    const missing = mountField(ChoyManyToOneField, {
       binding: makeM2OBinding(undefined),
     });
     await clickRemote(missing);
@@ -236,10 +235,10 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     missing.unmount();
   });
 
-  test('ManyToOneRefField NameSearch mirrors M2O wiring', async () => {
+  test('ChoyManyToOneRefField NameSearch mirrors M2O wiring', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 'p1', DisplayName: 'Alice' }]);
     const Search = fnRecorder();
-    const m = mountField(ManyToOneRefField, {
+    const m = mountField(ChoyManyToOneRefField, {
       binding: makeM2OBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       pageSize: 12,
     });
@@ -259,11 +258,11 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     m.unmount();
   });
 
-  test('ManyToOneRefField remote search is a no-op without relationStore', async () => {
+  test('ChoyManyToOneRefField remote search is a no-op without relationStore', async () => {
     const warn = console.warn;
     console.warn = () => {};
     try {
-      const missing = mountField(ManyToOneRefField, {
+      const missing = mountField(ChoyManyToOneRefField, {
         binding: makeM2OBinding(undefined),
       });
       await clickRemote(missing);
@@ -275,38 +274,11 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     }
   });
 
-  test('ManyToManyTagsField NameSearch uses conditions and label fields', async () => {
-    const NameSearch = fnRecorder(async () => [{ Id: 't1', DisplayName: 'Alice' }]);
-    const Search = fnRecorder();
-    const m = mountField(ManyToManyTagsField, {
-      binding: makeM2MBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
-      suggestLimit: 8,
-    });
 
-    await clickRemote(m);
-    expect(NameSearch.calls.length).toBe(1);
-    const [keyword, condition, options] = NameSearch.calls[0]!;
-    expect(keyword).toBe('alice');
-    expect(condition).toEqual([]);
-    expect((options as any).limit).toBe(8);
-    fieldsContain((options as any).fields, 'Id', 'DisplayName');
-    expect(Search.calls.length).toBe(0);
-
-    NameSearch.mockClear();
-    await clickRemote(m, '[data-test="trigger-remote-empty"]');
-    expect(NameSearch.calls[0]?.[0]).toBe('');
-    expect((NameSearch.calls[0]?.[2] as any)?.limit).toBe(8);
-
-    NameSearch.mockClear();
-    await clickRemote(m, '[data-test="trigger-remote-null"]');
-    expect(NameSearch.calls[0]?.[0]).toBe('');
-    m.unmount();
-  });
-
-  test('ManyToManyRefTagsField NameSearch uses hydration fields', async () => {
+  test('ChoyManyToManyRefTagsField NameSearch uses hydration fields', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 't1', DisplayName: 'Alice' }]);
     const Search = fnRecorder(async () => []);
-    const m = mountField(ManyToManyRefTagsField, {
+    const m = mountField(ChoyManyToManyRefTagsField, {
       binding: makeM2MBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       suggestLimit: 9,
     });
@@ -344,7 +316,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       NameCreate: NameCreateM2O,
       fullModelName: 'partner.Partner',
     });
-    const m2o = mountField(ManyToOneField, {
+    const m2o = mountField(ChoyManyToOneField, {
       binding: bindingM2O,
       allowCreate: true,
       nameField: 'Code',
@@ -377,7 +349,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       NameCreate: NameCreateRef,
       fullModelName: 'partner.Partner',
     });
-    const m2oRef = mountField(ManyToOneRefField, {
+    const m2oRef = mountField(ChoyManyToOneRefField, {
       binding: bindingRef,
       allowCreate: true,
     });
@@ -387,33 +359,6 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     expect(NameCreateRef.calls[0]).toEqual(['alice', undefined, undefined]);
     expect(bindingRef.fieldRef().value).toEqual({ Id: 'r1', DisplayName: 'alice', Name: 'alice' });
     m2oRef.unmount();
-
-    const NameCreateTags = fnRecorder(async (name: string) => ({
-      Id: 't9',
-      DisplayName: name,
-      Name: name,
-    }));
-    const bindingTags = makeM2MBinding({
-      NameSearch: fnRecorder(async () => []),
-      NameCreate: NameCreateTags,
-      fullModelName: 'partner.Partner',
-    });
-    const tags = mountField(ManyToManyTagsField, {
-      binding: bindingTags,
-      allowCreate: true,
-    });
-    await clickRemote(tags);
-    findCreate(tags, 'o-m2m-name-create')!.click();
-    await flushPromises();
-    expect(NameCreateTags.calls[0]).toEqual(['alice', undefined, undefined]);
-    expect(bindingTags.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['t9']);
-
-    NameCreateTags.mockImplementation(async () => ({ Id: 't9', DisplayName: 'alice', Name: 'alice' }));
-    await clickRemote(tags);
-    findCreate(tags, 'o-m2m-name-create')!.click();
-    await flushPromises();
-    expect(bindingTags.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['t9']);
-    tags.unmount();
 
     const NameCreateRefTags = fnRecorder(async (name: string) => ({
       Id: 'rt1',
@@ -426,7 +371,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       Search: fnRecorder(async () => []),
       fullModelName: 'partner.Partner',
     });
-    const refTags = mountField(ManyToManyRefTagsField, {
+    const refTags = mountField(ChoyManyToManyRefTagsField, {
       binding: bindingRefTags,
       allowCreate: true,
       nameField: 'Title',
@@ -441,10 +386,9 @@ describe('relation typeahead NameSearch / NameCreate', () => {
 
   test('Create entry hidden when allowCreate is false or unset', async () => {
     for (const [Comp, testId, makeBinding] of [
-      [ManyToOneField, 'o-m2o-name-create', makeM2OBinding],
-      [ManyToOneRefField, 'o-m2o-name-create', makeM2OBinding],
-      [ManyToManyTagsField, 'o-m2m-name-create', makeM2MBinding],
-      [ManyToManyRefTagsField, 'o-m2m-name-create', makeM2MBinding],
+      [ChoyManyToOneField, 'o-m2o-name-create', makeM2OBinding],
+      [ChoyManyToOneRefField, 'o-m2o-name-create', makeM2OBinding],
+      [ChoyManyToManyRefTagsField, 'o-m2m-name-create', makeM2MBinding],
     ] as const) {
       for (const allowCreate of [undefined, false] as const) {
         const m = mountField(Comp, {

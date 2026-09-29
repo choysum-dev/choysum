@@ -20,10 +20,32 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCard title="Partner" data-region="partner-detail-header">
           <ChoyGrid :cols="12">
             <ChoyCol :span="6">
-              <ChoyVarcharField v-model="name" label="Name" name="Name" required />
+              <ChoyFieldBase label="Name" name="Name" required>
+                <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                  <Input
+                    :id="controlId"
+                    v-model="name"
+                    name="Name"
+                    :aria-invalid="ariaInvalid"
+                    :aria-required="ariaRequired"
+                    :aria-describedby="ariaDescribedby"
+                  />
+                </template>
+              </ChoyFieldBase>
             </ChoyCol>
             <ChoyCol :span="6">
-              <ChoyVarcharField v-model="email" label="Email" name="Email" />
+              <ChoyFieldBase label="Email" name="Email">
+                <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                  <Input
+                    :id="controlId"
+                    v-model="email"
+                    name="Email"
+                    :aria-invalid="ariaInvalid"
+                    :aria-required="ariaRequired"
+                    :aria-describedby="ariaDescribedby"
+                  />
+                </template>
+              </ChoyFieldBase>
             </ChoyCol>
           </ChoyGrid>
         </ChoyCard>
@@ -40,7 +62,19 @@ SPDX-License-Identifier: Apache-2.0
                 <code class="text-xs">//*[@data-anchor='partner.detail.tab-panels']</code>
                 with position=inside to inject more ChoyTab panes.
               </p>
-              <ChoyTextField v-model="notes" label="Notes" name="Notes" class="mt-3" />
+              <ChoyFieldBase label="Notes" name="Notes" class="mt-3">
+                <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                  <Textarea
+                    :id="controlId"
+                    v-model="notes"
+                    name="Notes"
+                    :rows="4"
+                    :aria-invalid="ariaInvalid"
+                    :aria-required="ariaRequired"
+                    :aria-describedby="ariaDescribedby"
+                  />
+                </template>
+              </ChoyFieldBase>
             </ChoyTab>
             <ChoyTab value="contacts" label="Contacts" data-region="partner-contacts-tab">
               <p class="text-sm text-muted-foreground">Contacts placeholder (isolation).</p>
@@ -81,15 +115,16 @@ import ChoyGrid from '../components/layout/ChoyGrid.vue';
 import ChoyPage from '../components/layout/ChoyPage.vue';
 import ChoyTab from '../components/layout/ChoyTab.vue';
 import ChoyTabs from '../components/layout/ChoyTabs.vue';
-import ChoyTextField from '../components/field/ChoyTextField.vue';
-import ChoyVarcharField from '../components/field/ChoyVarcharField.vue';
+import ChoyFieldBase from '../components/field/ChoyFieldBase.vue';
+import Input from '../components/vendor/ui/input/Input.vue';
+import Textarea from '../components/vendor/ui/textarea/Textarea.vue';
 import ChoyChatter from '../components/chatter/ChoyChatter.vue';
 import type { ChatterTimelineEntry } from '../components/chatter/chatterTypes';
 import { mergeChatterTimeline } from '../components/chatter/mergeChatterTimeline';
 import Toaster from '../components/vendor/ui/toast/Toaster.vue';
 import {
   applyChoyThemePreference,
-  readChoyThemePreference,
+  readChoyThemePreference
 } from '../composables/applyChoyThemePreference';
 
 /**
@@ -106,8 +141,9 @@ export default defineComponent({
     ChoyPage,
     ChoyTab,
     ChoyTabs,
-    ChoyTextField,
-    ChoyVarcharField,
+    ChoyFieldBase,
+    Input,
+    Textarea,
     ChoyChatter,
     Toaster,
   },

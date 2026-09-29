@@ -16,8 +16,8 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Symbol" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
-        <ChoyCol :span="4"><ChoyNumberField :store="store" prop="DecimalDigits" mode="integer" /></ChoyCol>
-        <ChoyCol :span="4"><ChoyNumberField :store="store" prop="Rounding" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyIntField :store="store" prop="DecimalDigits" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyDecimalField :store="store" prop="Rounding" /></ChoyCol>
         <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
       </ChoyGrid>
     </ChoyCard>
@@ -33,7 +33,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyNumberField, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDecimalField, ChoyFormView, ChoyGrid, ChoyVarcharField, ChoyIntField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'CurrencyFormView', inheritAttrs: true });

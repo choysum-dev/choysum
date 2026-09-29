@@ -4,10 +4,10 @@
 import { shouldDeferKanbanFirstFrame, shouldDeferViewFirstFrame } from './kanbanFirstFrame';
 
 test('shouldDeferViewFirstFrame > is true only when searchView is the SearchView component reference', () => {
-  const oSearchView = { name: 'SearchView' };
+  const oSearchView = { name: 'ChoySearchView' };
   expect(shouldDeferViewFirstFrame(oSearchView, oSearchView)).toBe(true);
   expect(shouldDeferKanbanFirstFrame(oSearchView, oSearchView)).toBe(true);
-  expect(shouldDeferViewFirstFrame({ name: 'SearchView' }, oSearchView)).toBe(false);
+  expect(shouldDeferViewFirstFrame({ name: 'ChoySearchView' }, oSearchView)).toBe(false);
   expect(shouldDeferViewFirstFrame(undefined, oSearchView)).toBe(false);
 });
 

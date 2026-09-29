@@ -3,7 +3,7 @@
 
 import Decimal from '@/core/utils/decimal';
 // Import pure formatters only — i18nStore/index pulls Pinia persist(localStorage).
-import { formatCurrencyFromConfig, formatFixedDecimalString } from '@/web/web/stores/i18nStore/language_format';
+import { formatCurrencyFromConfig, formatFixedDecimalString } from '@/web/web/stores/i18nStore/languageFormat';
 import {
   asMonetaryDecimal,
   clampMonetaryValue,
@@ -21,9 +21,9 @@ import {
   resolveCurrencyValue,
   resolveMonetaryScaleFromRecord,
   validateMonetaryValue,
-} from './omonetary_helpers';
+} from './monetaryHelpers';
 
-test('omonetary_helpers currency resolution > reads path / sibling currency and digits/code/symbol', () => {
+test('monetaryHelpers currency resolution > reads path / sibling currency and digits/code/symbol', () => {
   expect(getByPath({ a: { b: 1 } }, 'a.b')).toBe(1);
   expect(getByPath(null, 'a')).toBeNull();
   expect(resolveCurrencyValue(null, 'CurrencyId', 'Amount')).toBeUndefined();
@@ -61,7 +61,7 @@ test('omonetary_helpers currency resolution > reads path / sibling currency and 
   expect(resolveMonetaryScaleFromRecord(boom, 'CurrencyId', 'Amount', 7)).toBe(7);
 });
 
-test('omonetary_helpers display and parse > formats with symbol preferred over code, and Language position/spacing', () => {
+test('monetaryHelpers display and parse > formats with symbol preferred over code, and Language position/spacing', () => {
   expect(formatMonetaryDisplayText(null, { scale: 2, roundingMode: Decimal.ROUND_HALF_UP, currency: null })).toBe('');
   expect(formatMonetaryDisplayText('bad', { scale: 2, roundingMode: Decimal.ROUND_HALF_UP, currency: null })).toBe('');
 
@@ -173,7 +173,7 @@ test('omonetary_helpers display and parse > formats with symbol preferred over c
   ).toBe('$12.3');
 });
 
-test('omonetary_helpers display and parse > parses, clamps, validates, and compares', () => {
+test('monetaryHelpers display and parse > parses, clamps, validates, and compares', () => {
   expect(asMonetaryDecimal(null)).toBeNull();
   expect(asMonetaryDecimal('x')).toBeNull();
   expect(asMonetaryDecimal(new Decimal(1))!.eq(1)).toBe(true);
@@ -237,7 +237,7 @@ test('omonetary_helpers display and parse > parses, clamps, validates, and compa
   expect(validateMonetaryValue('1.23', 2, bounds, t)).toBeNull();
 });
 
-test('omonetary_helpers aggregate display > resolves metrics aliases and unique top-level agg keys', () => {
+test('monetaryHelpers aggregate display > resolves metrics aliases and unique top-level agg keys', () => {
   expect(leafOfPath('a.b.Amount')).toBe('Amount');
   expect(leafOfPath('')).toBe('');
   expect(resolveAggregateDisplayValue('raw', null, { bindingProp: 'Amount' })).toBe('raw');
@@ -306,7 +306,7 @@ test('omonetary_helpers aggregate display > resolves metrics aliases and unique 
   expect(resolveAggregateDisplayValue(null, { Amount__count: null }, { bindingProp: 'line.Amount' })).toBeNull();
 });
 
-test('omonetary_helpers aggregate display > builds currency sibling registration paths', () => {
+test('monetaryHelpers aggregate display > builds currency sibling registration paths', () => {
   expect(currencyFieldPaths('Amount', undefined)).toEqual([]);
   expect(currencyFieldPaths('', 'CurrencyId')).toEqual([]);
   expect(currencyFieldPaths('Amount', 'CurrencyId')).toEqual([

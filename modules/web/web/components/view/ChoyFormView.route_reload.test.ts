@@ -12,7 +12,7 @@ const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 import type { App } from 'vue';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
-import FormView from './FormView.vue';
+import FormView from './ChoyFormView.vue';
 
 const NoopLoading = {
   install(app: App) {

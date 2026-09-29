@@ -19,7 +19,7 @@ import { collectChangedPaths } from '@/core/utils/diff';
 import type { RelationType } from '@/core/utils/diff';
 import { deepClonePreserve as deepClone } from '@/core/utils/clone';
 import type { OnchangeResult } from '@/core/service/api/onchange';
-import type { ViewMode, ViewContainer } from '@/web/web/components/view/ViewScope.vue';
+import type { ViewMode, ViewContainer } from '@/web/web/components/view/ChoyViewScope.vue';
 /* ============================= Type definitions ============================= */
 
 export interface OnchangeFlushPayload {

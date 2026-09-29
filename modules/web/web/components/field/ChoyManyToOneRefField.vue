@@ -74,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
         @click="onDisplayValueClick(fieldValue().value as any, $event)"
         @keydown="onDisplayValueKeydown(fieldValue().value as any, $event)"
       >
-        {{ getDisplayLabel(fieldValue().value as any) }}
+        {{ getDisplayLabel(fieldValue().value) }}
       </span>
     </template>
   </FieldBase>
@@ -82,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
   <Dialog v-model:open="dialogVisible">
     <DialogContent class="o-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
       <DialogTitle>{{ effectiveSearchViewTitle }}</DialogTitle>
-      <ViewScope view-mode="display" :container="'List'">
+      <ChoyViewScope view-mode="display" :container="'List'">
       <component
         v-if="searchView && relationStore"
         :is="searchView"
@@ -96,7 +96,7 @@ SPDX-License-Identifier: Apache-2.0
         :condition="dialogEffectiveConditions"
         style="margin-top: -10px"
       />
-    </ViewScope>
+    </ChoyViewScope>
       <div class="dialog-footer">
         <ChoyButton @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton @click="confirmPick">{{ _t('OK') }}</ChoyButton>
@@ -105,8 +105,8 @@ SPDX-License-Identifier: Apache-2.0
   </Dialog>
 </template>
 
-<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel> | null | undefined>, V = FieldPathType<T, P>">
-import { ref, shallowRef, computed, onMounted, onBeforeUnmount, inject, Ref, getCurrentInstance } from 'vue';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount, inject, Ref, watch, getCurrentInstance } from 'vue';
 import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
 import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
 import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
@@ -115,14 +115,14 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createStoreByModel } from '@/web/web/stores/registry';
 import type { WritableComputedRef, Component } from 'vue';
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
-import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
-// Narrow aggregation types to count_distinct only.
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
-import ViewScope from '@/web/web/components/view/ViewScope.vue';
+import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
+import ViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
@@ -131,12 +131,11 @@ import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreate
 import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
 import { usePermission } from '@/auth/web/composables/usePermission';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToOneField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToOneRefField' });
 
-type RelationValue = Extract<V, { Id: any }>;
-type OptionType = { value: RelationValue; label: string };
+type OptionType = { value: V; label: string };
 
-defineOptions({ name: 'ManyToOneField', inheritAttrs: false });
+defineOptions({ name: 'ManyToOneRefField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -179,12 +178,13 @@ const props = withDefaults(
     strategy?: 'live' | 'idle' | 'blur';
     idleDelay?: number;
     commitOnBlur?: boolean;
-    // Only count_distinct is supported for foreign-key Id deduplication.
     agg?: NarrowAggProp<NonNumericAggFns>;
-    // Added render mode and inline error support.
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
     valueClickable?: boolean | 'auto';
+
+    // Ref-specific props.
+    targetModel?: string;
   }>(),
   {
     rules: () => [],
@@ -219,11 +219,23 @@ const binding = (props.binding ??
   useField<T, P, V>({
     store: props.store as WebModelStore<T>,
     prop: props.prop as P,
-    // Forward agg to useField.
     agg: props.agg,
   })) as UseField<T, V>;
-const relationStore = binding.relationStore as WebModelStore<any> | undefined;
-binding.registerFields(`${binding.prop}.DisplayName`);
+
+// Resolve the relation store dynamically.
+const relationStore = computed(() => {
+  if (binding.relationStore) return binding.relationStore as WebModelStore<any>;
+
+  const target = props.targetModel || binding.meta?.relationModel;
+  if (target) {
+    try {
+      return createStoreByModel(target);
+    } catch (e) {
+      console.warn(`[ManyToOneRefField] Failed to create store for model '${target}'`, e);
+    }
+  }
+  return undefined;
+});
 
 const toView = (raw: any) => (raw ?? null) as V | null;
 const fromView = (v: V | null) => (v ?? null) as any;
@@ -239,7 +251,7 @@ const showNameCreateEntry = computed(() =>
   shouldShowNameCreateEntry({
     allowCreate: props.allowCreate === true,
     hasKeyword: isSearching.value,
-    relationQualifiedName: relationStore?.fullModelName,
+    relationQualifiedName: relationStore.value?.fullModelName,
     createActionId: props.createActionId,
     hasAction,
   })
@@ -250,7 +262,7 @@ const creatingName = ref(false);
 async function onNameCreate(getter: () => WritableComputedRef<V | null>) {
   await runNameCreateQuickCreate({
     busy: creatingName,
-    store: relationStore,
+    store: relationStore.value,
     keyword: searchQuery.value,
     nameField: props.nameField,
     failedMessage: _t('Create failed'),
@@ -273,28 +285,28 @@ const isValueClickable = computed<boolean>(() => {
   return hasValueClickListener.value;
 });
 
-function asRelationValue(item: any): RelationValue | null {
-  if (!item || typeof item !== 'object') return null;
-  if (!('Id' in item)) return null;
-  return item as RelationValue;
-}
-
-function toOption(item: RelationValue): OptionType {
+function toOption(item: V): OptionType {
   return { value: item, label: ((item as any)?.DisplayName as string) || '' };
 }
+
 function upsertOption(item?: V | null) {
-  const relation = asRelationValue(item);
-  if (!relation) return;
-  const idx = options.value.findIndex(o => o.value.Id === relation.Id);
-  const opt = toOption(relation);
+  if (!item) return;
+  // Guard against unexpected string ids for extra robustness.
+  if (typeof item !== 'object') return;
+
+  const idx = options.value.findIndex(o => (o.value as any).Id === (item as any).Id);
+  const opt = toOption(item);
   if (idx >= 0) options.value.splice(idx, 1, opt);
   else options.value.unshift(opt);
 }
+
 function composeOptionsForValue(val?: V | null): OptionType[] {
-  const relation = asRelationValue(val);
-  if (!relation) return options.value;
-  const head = toOption(relation);
-  const exists = options.value.findIndex(o => o.value.Id === relation.Id);
+  if (!val) return options.value;
+  // If val is a string id, keep the existing options list unchanged.
+  if (typeof val !== 'object') return options.value;
+
+  const head = toOption(val);
+  const exists = options.value.findIndex(o => (o.value as any).Id === (val as any).Id);
   if (exists < 0) return [head, ...options.value];
   const merged = options.value.slice();
   merged.splice(exists, 1, head);
@@ -304,26 +316,48 @@ function optionsFor(val?: V | null): OptionType[] {
   return isSearching.value ? options.value : composeOptionsForValue(val);
 }
 
-function getDisplayId(val: any): string {
-  const id = val?.Id;
-  if (id == null) return '';
-  return String(id).trim();
+// Enhanced display-label resolution.
+function getDisplayLabel(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'object' && val.DisplayName) return val.DisplayName;
+
+  // Handle bare id strings.
+  if (typeof val === 'string') {
+    // First try the loaded option list.
+    const opt = options.value.find(o => (o.value as any).Id === val);
+    if (opt) return opt.label;
+
+    // Fall back to the raw id and let the watcher hydrate it asynchronously.
+    return val;
+  }
+
+  return '';
 }
 
-function getDisplayLabel(val: any): string {
-  if (!val || typeof val !== 'object') return '';
-  if (val.DisplayName != null) return String(val.DisplayName);
-  if (val.Name != null) return String(val.Name);
-  if (val.Title != null) return String(val.Title);
-  const label = val.Code ?? val.Id;
-  return label == null ? '' : String(label);
+function getDisplayId(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'object') {
+    const id = val.Id;
+    return id == null ? '' : String(id).trim();
+  }
+  if (typeof val === 'string') return val.trim();
+  return '';
+}
+
+function resolveDisplayItem(val: any): any | null {
+  if (val && typeof val === 'object') return val;
+  if (typeof val === 'string') {
+    const opt = options.value.find(o => String((o.value as any)?.Id ?? '') === val);
+    return opt?.value || null;
+  }
+  return null;
 }
 
 function onDisplayValueClick(val: any, event: MouseEvent) {
   if (!isValueClickable.value) return;
   const id = getDisplayId(val);
   if (!id) return;
-  emit('value-click', { id, item: val && typeof val === 'object' ? val : null, label: getDisplayLabel(val), source: 'display', event });
+  emit('value-click', { id, item: resolveDisplayItem(val), label: getDisplayLabel(val), source: 'display', event });
 }
 
 function onDisplayValueKeydown(val: any, event: KeyboardEvent) {
@@ -332,11 +366,34 @@ function onDisplayValueKeydown(val: any, event: KeyboardEvent) {
   event.preventDefault();
   const id = getDisplayId(val);
   if (!id) return;
-  emit('value-click', { id, item: val && typeof val === 'object' ? val : null, label: getDisplayLabel(val), source: 'display', event });
+  emit('value-click', { id, item: resolveDisplayItem(val), label: getDisplayLabel(val), source: 'display', event });
 }
 
+// Watch bare id strings and hydrate their display names.
+watch(
+  () => {
+    const val = binding.fieldRef().value;
+    return val;
+  },
+  val => {
+    if (typeof val === 'string' && val && relationStore.value) {
+      // Load only when the display label has not been hydrated yet.
+      const label = getDisplayLabel(val);
+      if (label === val) {
+        // No display label is available yet, so fetch it now.
+        relationStore.value
+          .Browse(val)
+          .then((res: any) => {
+            if (res) upsertOption(res);
+          })
+          .catch(() => {});
+      }
+    }
+  },
+  { immediate: true }
+);
+
 const onchangeCtrl = useProvidedOnchange();
-// Use the cumulative onchange result injected by FormView.
 const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(null));
 
 function toArray<T>(v: T | T[] | undefined | null): T[] {
@@ -345,8 +402,6 @@ function toArray<T>(v: T | T[] | undefined | null): T[] {
 }
 
 const externalConditions = computed<QueryCondition<any>[]>(() => toArray(props.condition));
-
-// Read the root record through the injected form-root only.
 const rootRecord = computed<any>(() => binding.recordRef().value as any);
 
 const baseField = computed(() => String(binding.prop));
@@ -502,16 +557,13 @@ async function handleRemoteSearch(query: string, recordRef?: any) {
 
     const final: QueryCondition<any> | [] = parts.length === 0 ? ([] as any) : parts.length === 1 ? parts[0] : ({ And: parts } as any);
 
-    const result = (await relationStore?.NameSearch(String(query ?? '').trim(), final as any, {
+    const result = (await relationStore.value?.NameSearch(String(query ?? '').trim(), final as any, {
       fields: ['Id', 'DisplayName'],
       limit: props.pageSize ?? 20,
       ...buildRelationConditionSource(props.store as any, binding.prop),
     })) as V[] | undefined;
 
-    options.value = (result ?? [])
-      .map(asRelationValue)
-      .filter((item): item is RelationValue => Boolean(item))
-      .map(toOption);
+    options.value = (result ?? []).map(toOption);
   } finally {
     loading.value = false;
   }
@@ -527,7 +579,7 @@ function onDropdownVisibleChange(_visible: boolean) {
 }
 
 function openSearchDialog(target?: () => WritableComputedRef<V | null>, recordRef?: any) {
-  if (!relationStore) return;
+  if (!relationStore.value) return;
   pendingTarget.value = target ?? null;
   dialogRowRef.value = recordRef ?? null;
   dialogVisible.value = true;

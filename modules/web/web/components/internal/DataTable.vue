@@ -137,7 +137,7 @@ import {
   useVueTable,
   type ColumnDef,
   type RowSelectionState,
-  type SortingState,
+  type SortingState
 } from '@tanstack/vue-table';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { cn, type ClassValue } from '../../lib/utils';
@@ -153,7 +153,7 @@ import {
   normalizeDataTableRowId,
   pruneDataTableSelection,
   resolveDataTableRowId,
-  type DataTableRowId,
+  type DataTableRowId
 } from './dataTableHelpers';
 
 /**

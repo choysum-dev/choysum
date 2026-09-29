@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { detectBrowserTimezone, isIanaTimezone, resolveRequestTimezone } from './request_timezone';
+import { detectBrowserTimezone, isIanaTimezone, resolveRequestTimezone } from './requestTimezone';
 
 test('isIanaTimezone: accepts known zones and rejects empty/invalid', () => {
   expect(isIanaTimezone('UTC')).toBe(true);

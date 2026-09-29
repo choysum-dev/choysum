@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit>
-      <ViewScope :view-mode="binding.env.viewMode" :container="'Kanban'" :field-prefix="String(prop)">
+      <ChoyViewScope :view-mode="binding.env.viewMode" :container="'Kanban'" :field-prefix="String(prop)">
         <div class="o-otm-kanban">
           <div v-if="showToolbar" class="o-otm-kanban__toolbar">
             <slot name="toolbar" :items="getItems()" :add="handleAddItem" :editable="editable">
@@ -63,11 +63,11 @@ SPDX-License-Identifier: Apache-2.0
             </div>
           </div>
         </div>
-      </ViewScope>
+      </ChoyViewScope>
     </template>
 
     <template #display>
-      <ViewScope view-mode="display" :container="'Kanban'" :field-prefix="String(prop)">
+      <ChoyViewScope view-mode="display" :container="'Kanban'" :field-prefix="String(prop)">
         <div class="o-otm-kanban">
           <div class="o-otm-kanban__board" :style="boardStyle">
             <template v-if="getItems().length > 0">
@@ -98,7 +98,7 @@ SPDX-License-Identifier: Apache-2.0
             </div>
           </div>
         </div>
-      </ViewScope>
+      </ChoyViewScope>
     </template>
   </FieldBase>
 
@@ -142,26 +142,26 @@ import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rp
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { deepClonePreserve } from '@/core/utils/clone';
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
-import ViewScope from '@/web/web/components/view/ViewScope.vue';
+import ViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import {
-  type OFormChildSubmitApi,
-  type OFormChildSubmitApiRegistration,
-  type OFormSubmitOutcome,
-  type OFormSubmitHandler,
-  type OFormSubmitHandlerContext,
+  type FormChildSubmitApi,
+  type FormChildSubmitApiRegistration,
+  type FormSubmitOutcome,
+  type FormSubmitHandler,
+  type FormSubmitHandlerContext
 } from '@/web/web/components/view/formViewTypes';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/OOneToManyKanbanField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/OneToManyKanbanField' });
 
 defineOptions({ name: 'OneToManyKanbanField', inheritAttrs: false });
 
 type IsAny<TA> = 0 extends 1 & TA ? true : false;
 type DialogMode = 'create' | 'edit' | 'display';
-const O_FORM_CHILD_SUBMIT_API_REGISTER_KEY = 'o-form-child-submit-api-register';
-const O_FORM_EMBEDDED_CONTEXT_KEY = 'o-form-embedded-context';
+const FORM_CHILD_SUBMIT_API_REGISTER_KEY = 'form-child-submit-api-register';
+const FORM_EMBEDDED_CONTEXT_KEY = 'form-embedded-context';
 
 const props = withDefaults(
   defineProps<{
@@ -270,7 +270,7 @@ const dialogIndex = ref(-1);
 const dialogDraft = ref<Record<string, any>>({});
 const dialogFormKey = ref(0);
 const dialogFormRef = ref<{ submit?: () => Promise<unknown>; getFormData?: () => unknown } | null>(null);
-const dialogRegisteredFormApis = new Map<string, OFormChildSubmitApi>();
+const dialogRegisteredFormApis = new Map<string, FormChildSubmitApi>();
 const activeDialogFormToken = ref<string | null>(null);
 const dialogFormMode = computed(() => (dialogMode.value === 'display' ? 'display' : 'create'));
 const dialogTitleText = computed(() => {
@@ -279,7 +279,7 @@ const dialogTitleText = computed(() => {
   return effectiveDisplayDialogTitle.value;
 });
 
-provide(O_FORM_CHILD_SUBMIT_API_REGISTER_KEY, (registration: OFormChildSubmitApiRegistration) => {
+provide(FORM_CHILD_SUBMIT_API_REGISTER_KEY, (registration: FormChildSubmitApiRegistration) => {
   const token = String(registration?.token || '').trim();
   if (!token) return;
 
@@ -296,9 +296,9 @@ provide(O_FORM_CHILD_SUBMIT_API_REGISTER_KEY, (registration: OFormChildSubmitApi
     activeDialogFormToken.value = lastToken;
   }
 });
-provide<boolean>(O_FORM_EMBEDDED_CONTEXT_KEY, true);
+provide<boolean>(FORM_EMBEDDED_CONTEXT_KEY, true);
 
-function getRegisteredDialogFormApi(): OFormChildSubmitApi | null {
+function getRegisteredDialogFormApi(): FormChildSubmitApi | null {
   const token = activeDialogFormToken.value;
   if (!token) return null;
   return dialogRegisteredFormApis.get(token) || null;
@@ -441,7 +441,7 @@ function handleDialogCancel() {
   dialogVisible.value = false;
 }
 
-const dialogFormSubmitHandler: OFormSubmitHandler<any> = async (ctx: OFormSubmitHandlerContext<any>) => {
+const dialogFormSubmitHandler: FormSubmitHandler<any> = async (ctx: FormSubmitHandlerContext<any>) => {
   return {
     handled: true,
     record: deepClonePreserve((ctx.formData || {}) as any),
@@ -464,7 +464,7 @@ async function handleDialogSubmit() {
 
   const submitResult = await formRef.submit();
   if (submitResult && typeof submitResult === 'object' && 'ok' in submitResult) {
-    const outcome = submitResult as OFormSubmitOutcome<any>;
+    const outcome = submitResult as FormSubmitOutcome<any>;
     if (!outcome.ok) return;
     const payload = (outcome.record || outcome.formData || dialogDraft.value || {}) as Record<string, any>;
     handleDialogSave(payload);

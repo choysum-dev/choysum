@@ -95,7 +95,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
 import { normalizeTreeRefId as normalizeRefId } from './treeRefId';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyRefTreeField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyRefTreeField' });
 
 defineOptions({ name: 'ManyToManyRefTreeField', inheritAttrs: false });
 

@@ -7,10 +7,10 @@ import type { InjectionKey } from 'vue';
  * Optional nav sources for Search default-favorite naming and scopeKey.
  * When provided, Search skips breadcrumb / menu / route setup hooks.
  */
-export type OSearchNavContext = {
+export type SearchNavContext = {
   breadcrumbStore?: { breadcrumbStack: Array<{ title?: string; titleText?: any }> } | null;
   menuStore?: { activeMenu: { title?: string; titleText?: any } | null } | null;
   route?: { path?: string; meta?: Record<string, unknown> } | null;
 };
 
-export const OSearchNavContextKey: InjectionKey<OSearchNavContext> = Symbol('OSearchNavContext');
+export const SearchNavContextKey: InjectionKey<SearchNavContext> = Symbol('SearchNavContext');

@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" />
             </ChoyCol>
             <ChoyCol :span="3">
-              <ChoyManyToOneField
+              <ChoyManyToOneRefField
                 :store="store"
                 prop="CompanyId"
                 :searchView="CompanyListView"
@@ -50,13 +50,13 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCard :title="_t('Commercial Basics')" class="pfv-card" data-region="partner-section-commercial-basics">
           <ChoyGrid :cols="12">
             <ChoyCol :span="3">
-              <ChoyNumberField :store="store" prop="CustomerRank" mode="integer" />
+              <ChoyIntField :store="store" prop="CustomerRank" />
             </ChoyCol>
             <ChoyCol :span="3">
-              <ChoyNumberField :store="store" prop="SupplierRank" mode="integer" />
+              <ChoyIntField :store="store" prop="SupplierRank" />
             </ChoyCol>
             <ChoyCol :span="3">
-              <ChoyManyToOneField
+              <ChoyManyToOneRefField
                 :store="store"
                 prop="LanguageId"
                 :searchView="LanguageListView"
@@ -64,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
               />
             </ChoyCol>
             <ChoyCol :span="3">
-              <ChoyManyToOneField
+              <ChoyManyToOneRefField
                 :store="store"
                 prop="CurrencyId"
                 :searchView="CurrencyListView"
@@ -74,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyGrid>
           <ChoyGrid :cols="12">
             <ChoyCol :span="3">
-              <ChoyManyToOneField
+              <ChoyManyToOneRefField
                 :store="store"
                 prop="CountryId"
                 :searchView="CountryListView"
@@ -107,7 +107,6 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyManyToOneField
                 :store="store"
                 prop="DefaultContactId"
-                value-mode="record"
                 :readonly="true"
                 @value-click="onDefaultContactValueClick"
               >
@@ -118,7 +117,6 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyManyToOneField
                 :store="store"
                 prop="DefaultBillingAddressId"
-                value-mode="record"
                 :readonly="true"
                 @value-click="onDefaultBillingAddressValueClick"
               >
@@ -129,7 +127,6 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyManyToOneField
                 :store="store"
                 prop="DefaultShippingAddressId"
-                value-mode="record"
                 :readonly="true"
                 @value-click="onDefaultShippingAddressValueClick"
               >
@@ -149,10 +146,9 @@ SPDX-License-Identifier: Apache-2.0
         >
           <ChoyTab value="contacts" :label="_t('Contacts and Addresses')" data-region="partner-tab-contacts">
             <div data-region="partner-panel-contacts">
-              <ChoyOneToManyField
+              <ChoyOneToManyKanbanField
                 :store="store"
                 prop="Contacts"
-                widget="kanban"
                 label=""
                 :default-record="defaultContactRecord"
                 :editable="canEditContacts()"
@@ -182,7 +178,7 @@ SPDX-License-Identifier: Apache-2.0
                     </div>
                   </div>
                 </template>
-              </ChoyOneToManyField>
+              </ChoyOneToManyKanbanField>
             </div>
           </ChoyTab>
         </ChoyTabs>
@@ -219,14 +215,15 @@ import {
   ChoyDatetimeField,
   ChoyFormView,
   ChoyGrid,
+  ChoyIntField,
   ChoyManyToOneField,
-  ChoyNumberField,
-  ChoyOneToManyField,
+  ChoyManyToOneRefField,
+  ChoyOneToManyKanbanField,
   ChoyTab,
   ChoyTabs,
   ChoyVarcharField,
   PARTNER_DETAIL_TAB_PANELS_ANCHOR,
-  type ChoyViewMode as ViewMode,
+  type ChoyViewMode as ViewMode
 } from '@/web';
 import { partnerActions } from './partner_actions';
 

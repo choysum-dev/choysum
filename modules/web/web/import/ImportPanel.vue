@@ -94,7 +94,7 @@ import {
   previewImport,
   runImport,
   type ImportFieldNode,
-  type ImportReport,
+  type ImportReport
 } from '@/core/web/import';
 import { uploadImportCsv } from '@/core/web/import/upload_csv';
 import { createTranslate } from '@/web/web/i18n';

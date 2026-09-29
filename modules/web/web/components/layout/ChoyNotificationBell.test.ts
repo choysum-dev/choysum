@@ -18,7 +18,7 @@ import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
-import NotificationBell from './NotificationBell.vue';
+import NotificationBell from './ChoyNotificationBell.vue';
 
 describe('NotificationBell', () => {
   const rows = ref<Array<{ Id?: string; Model?: string; ResId?: string; IsRead?: boolean; CreatedAt?: string }>>([]);

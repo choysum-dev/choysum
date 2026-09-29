@@ -4,7 +4,7 @@
 import { h, nextTick, reactive, toRef } from 'vue';
 
 import { createTermReference } from '@/core/service/i18n';
-import { OSearchNavContextKey } from '@/web/web/composables/search/oSearchNavContext';
+import { SearchNavContextKey } from '@/web/web/composables/search/searchNavContext';
 import { UseUserFiltersKey } from '@/web/web/composables/search/useUserFilters';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import Search from './Search.vue';
@@ -164,7 +164,7 @@ function mountSearch() {
       placeholder: 'Find…',
     },
     provide: {
-      [OSearchNavContextKey as symbol]: {
+      [SearchNavContextKey as symbol]: {
         breadcrumbStore: breadcrumbState,
         menuStore: menuState,
         route: routeState,

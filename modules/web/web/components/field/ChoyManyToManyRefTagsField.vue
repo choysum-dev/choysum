@@ -107,7 +107,7 @@ SPDX-License-Identifier: Apache-2.0
   <Dialog v-model:open="dialogVisible">
     <DialogContent class="o-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
       <DialogTitle>{{ effectiveSearchViewTitle }}</DialogTitle>
-      <ViewScope view-mode="display">
+      <ChoyViewScope view-mode="display">
       <component
         v-if="searchList && relationStore"
         :is="searchList"
@@ -119,7 +119,7 @@ SPDX-License-Identifier: Apache-2.0
         :forced-condition="effectiveConditions"
         style="margin-top: -10px"
       />
-    </ViewScope>
+    </ChoyViewScope>
       <div class="dialog-footer">
         <ChoyButton @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton @click="confirmPicker">{{ _t('OK') }}</ChoyButton>
@@ -142,7 +142,7 @@ import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
-import ViewScope from '@/web/web/components/view/ViewScope.vue';
+import ViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { registerFieldPath, unregisterFieldPath, pathsToFieldSelection, ensureRootId } from '@/web/web/query/utils/registry/field';
@@ -152,7 +152,7 @@ import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreate
 import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
 import { usePermission } from '@/auth/web/composables/usePermission';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyRefTagsField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyRefTagsField' });
 
 defineOptions({ name: 'ManyToManyRefTagsField', inheritAttrs: false });
 

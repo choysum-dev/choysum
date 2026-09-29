@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import ChoyPageIoMenu from './ChoyPageIoMenu.vue';
-import type { PageIoMenuListRef } from '../page/PageIoMenu.vue';
+import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
 
 /**
  * Shared title-actions row for ChoyPage (header and fallback title layouts).

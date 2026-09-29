@@ -12,7 +12,7 @@ import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
 import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
 import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import FieldCompanyValuesDialog from './FieldCompanyValuesDialog.vue';
+import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 
 const DEFAULT_COMPANY_ROWS = [
   { Id: 'comp_main', DisplayName: 'Main Company' },

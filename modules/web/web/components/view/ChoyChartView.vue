@@ -279,7 +279,7 @@ import {
   VisLine,
   VisSingleContainer,
   VisStackedBar,
-  VisXYContainer,
+  VisXYContainer
 } from '@unovis/vue';
 import { Donut, GroupedBar, Line, StackedBar } from '@unovis/ts';
 import type { ClassValue } from '../../lib/utils';
@@ -287,7 +287,7 @@ import { cn } from '../../lib/utils';
 import ChoyButton from '../layout/ChoyButton.vue';
 import {
   ChartContainer,
-  ChartLegendContent,
+  ChartLegendContent
 } from '../vendor/ui/chart';
 import {
   availableChartTypes,
@@ -296,7 +296,7 @@ import {
   type ChoyChartKind,
   type ChoyChartSeries,
   type ChoyChartSort,
-  type ChoyChartSpec,
+  type ChoyChartSpec
 } from './chart/chartTypeAdapter';
 import {
   chartSpecToPieRows,
@@ -308,7 +308,7 @@ import {
   resolveStackedXyClickTarget,
   sortChartCategories,
   type ChoyChartItemClickPayload,
-  type ChoyChartMetricOption,
+  type ChoyChartMetricOption
 } from './chartViewHelpers';
 
 /**

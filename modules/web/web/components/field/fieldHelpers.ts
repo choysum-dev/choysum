@@ -336,3 +336,18 @@ export function resolveChoyNumberDraftText(
   }
   return normalized;
 }
+
+
+/** Binary attachment value: metadata plus optional File for upload. */
+export type ChoyBinaryValue = {
+  name: string;
+  size: number;
+  file?: File;
+} | null;
+
+/** Image field value with optional preview URL. */
+export type ChoyImageValue = {
+  name?: string;
+  url?: string;
+  file?: File;
+} | null;

@@ -318,7 +318,7 @@ import {
   ChoySearchView,
   ChoyVirtualField,
   type ChoyKanbanCard,
-  type ChoyKanbanLane,
+  type ChoyKanbanLane
 } from '@/web';
 import { createKanbanController } from '@/web/web/controllers/kanbanController';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
@@ -326,7 +326,7 @@ import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelper
 import type { Lane } from '@/web/web/query/types';
 import {
   createModuleOpProgressSession,
-  type ModuleOpStatusSnapshot,
+  type ModuleOpStatusSnapshot
 } from '../composables/useModuleOpProgress';
 import { createModuleKanbanOpProgressHooks } from '../composables/moduleKanbanOpProgress';
 import {
@@ -340,7 +340,7 @@ import {
   moduleStatusBadgeClass,
   resolveModuleKanbanCardId,
   resolveModuleKanbanCardKey,
-  shouldRecoverStaleKanbanSearch,
+  shouldRecoverStaleKanbanSearch
 } from './module_kanban_chrome';
 
 defineOptions({ name: 'ModuleKanbanView' });

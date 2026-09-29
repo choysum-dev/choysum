@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCol :span="4"><ChoyDateField :store="store" prop="Date" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
-        <ChoyCol :span="4"><ChoyNumberField :store="store" prop="Rate" :rules="requiredRules"
+        <ChoyCol :span="4"><ChoyDecimalField :store="store" prop="Rate" :rules="requiredRules"
         /></ChoyCol>
       </ChoyGrid>
     </ChoyCard>
@@ -50,7 +50,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyCard, ChoyCol, ChoyDateField, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoyNumberField } from '@/web';
+import { ChoyCard, ChoyCol, ChoyDateField, ChoyDecimalField, ChoyFormView, ChoyGrid, ChoyManyToOneField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'ExchangeRateFormView', inheritAttrs: true });

@@ -20,7 +20,7 @@ import { computed } from 'vue';
 import ExportPanel from './ExportPanel.vue';
 import {
   useRecordExportScope,
-  type RecordExportListRef,
+  type RecordExportListRef
 } from '@/web/web/composables/useRecordExportScope';
 
 defineOptions({ name: 'RecordExportShell' });

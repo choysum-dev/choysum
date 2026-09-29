@@ -7,10 +7,10 @@ import type { UseField } from '@/web/web/composables/useField';
 import { LIST_HANDLE_API_KEY } from '@/web/web/composables/useListHandleReorder';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
-import OneToManyField from './OneToManyField.vue';
-import VColumn from '@/web/web/components/vtable/VColumn.vue';
+import ChoyOneToManyField from './ChoyOneToManyField.vue';
+import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import VTable from '@/web/web/components/vtable/VTable.vue';
-import ViewScope from '@/web/web/components/view/ViewScope.vue';
+import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 
 function makeBinding(opts: {
   items?: any[];
@@ -67,8 +67,8 @@ function installStubs() {
         ]);
     },
   });
-  stubSfc(VColumn as any, {
-    name: 'VColumn',
+  stubSfc(ChoyVColumn as any, {
+    name: 'ChoyVColumn',
     props: { type: String, colKey: String },
     setup(props: any) {
       const cls = props.type === 'handle' ? 'ov-column-handle' : 'ov-column-stub';
@@ -82,27 +82,27 @@ function installStubs() {
       return () => h('div', { class: 'ov-table-stub' }, slots.default?.());
     },
   });
-  stubSfc(ViewScope as any, {
-    name: 'ViewScope',
+  stubSfc(ChoyViewScope as any, {
+    name: 'ChoyViewScope',
     setup(_: any, { slots }: any) {
       return () => h('div', { class: 'view-scope-stub' }, slots.default?.());
     },
   });
 }
 
-describe('OOneToManyField handle column', () => {
+describe('ChoyOneToManyField handle column', () => {
   afterEach(() => {
     restoreSfc(FieldBase as any);
-    restoreSfc(VColumn as any);
+    restoreSfc(ChoyVColumn as any);
     restoreSfc(VTable as any);
-    restoreSfc(ViewScope as any);
+    restoreSfc(ChoyViewScope as any);
     capturedHandleApi.current = null;
   });
 
   test('shows handle column in edit mode when Sequence metadata exists', async () => {
     installStubs();
     const { binding } = makeBinding({});
-    const m = mountApp(OneToManyField as any, {
+    const m = mountApp(ChoyOneToManyField as any, {
       props: { binding, showHandle: true },
       stubs: {
         'el-button': defineComponent({
@@ -121,7 +121,7 @@ describe('OOneToManyField handle column', () => {
   test('hides handle column when showHandle is false or metadata lacks Sequence', async () => {
     installStubs();
     const noMeta = makeBinding({ sequenceMeta: false });
-    const w1 = mountApp(OneToManyField as any, {
+    const w1 = mountApp(ChoyOneToManyField as any, {
       props: { binding: noMeta.binding, showHandle: true },
       stubs: {
         'el-button': defineComponent({
@@ -136,7 +136,7 @@ describe('OOneToManyField handle column', () => {
     w1.unmount();
 
     const withMeta = makeBinding({});
-    const w2 = mountApp(OneToManyField as any, {
+    const w2 = mountApp(ChoyOneToManyField as any, {
       props: { binding: withMeta.binding, showHandle: false },
       stubs: {
         'el-button': defineComponent({
@@ -155,7 +155,7 @@ describe('OOneToManyField handle column', () => {
     installStubs();
     capturedHandleApi.current = null;
     const { binding, fieldValue } = makeBinding({});
-    const m = mountApp(OneToManyField as any, {
+    const m = mountApp(ChoyOneToManyField as any, {
       props: { binding, showHandle: true },
       stubs: {
         'el-button': defineComponent({
@@ -184,7 +184,7 @@ describe('OOneToManyField handle column', () => {
   test('shows handle column with explicit handleField prop', async () => {
     installStubs();
     const { binding } = makeBinding({});
-    const m = mountApp(OneToManyField as any, {
+    const m = mountApp(ChoyOneToManyField as any, {
       props: { binding, showHandle: true, handleField: 'Sequence' },
       stubs: {
         'el-button': defineComponent({

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Mount wiring for DecimalField. Pure format/scale helpers live in odecimal_helpers.test.ts.
+ * Mount wiring for DecimalField. Pure format/scale helpers live in decimalHelpers.test.ts.
  */
 
 import { computed, defineComponent, h, nextTick, provide, reactive, ref } from 'vue';
@@ -10,7 +10,7 @@ import Decimal from '@/core/utils/decimal';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import DecimalField from './DecimalField.vue';
+import ChoyDecimalField from './ChoyDecimalField.vue';
 import FieldBase from './FieldBase.vue';
 
 function makeBinding(
@@ -82,7 +82,7 @@ function setInput(el: HTMLInputElement, value: string) {
 function mountField(binding: any, props: Record<string, unknown> = {}, baseMode: 'slots' | 'rules' = 'slots') {
   lastBaseProps.current = null;
   installFieldBaseStub(baseMode);
-  return mountApp(DecimalField as any, {
+  return mountApp(ChoyDecimalField as any, {
     props: {
       binding,
       renderMode: 'form',
@@ -215,7 +215,7 @@ describe('DecimalField mount wiring', () => {
         provide('view-mode', ref('edit'));
         provide('form-root', { draft });
         return () =>
-          h(DecimalField as any, {
+          h(ChoyDecimalField as any, {
             store: {} as any,
             prop: 'Amount',
             renderMode: 'form',

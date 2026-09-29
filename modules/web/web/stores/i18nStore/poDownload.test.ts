@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { downloadTerminologyPo } from './po_download';
+import { downloadTerminologyPo } from './poDownload';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 describe('downloadTerminologyPo', () => {

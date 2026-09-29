@@ -118,7 +118,7 @@ import {
   type ChoyKanbanCard,
   type ChoyKanbanLane,
   type ChoyKanbanLoadMore,
-  type ChoyKanbanMove,
+  type ChoyKanbanMove
 } from './kanbanViewHelpers';
 
 /**

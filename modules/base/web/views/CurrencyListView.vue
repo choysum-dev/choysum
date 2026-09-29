@@ -18,8 +18,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyVarcharField :store="store" prop="Name" />
     <ChoyVarcharField :store="store" prop="Code" />
     <ChoyVarcharField :store="store" prop="Symbol" />
-    <ChoyNumberField :store="store" prop="DecimalDigits" mode="integer" />
-    <ChoyNumberField :store="store" prop="Rounding" />
+    <ChoyIntField :store="store" prop="DecimalDigits" />
+    <ChoyDecimalField :store="store" prop="Rounding" />
     <ChoyBooleanField :store="store" prop="IsActive" />
   </ChoyListView>
 </template>
@@ -34,7 +34,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { ChoyBooleanField, ChoyListView, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyVColumn, ChoyVarcharField, ChoyIntField} from '@/web';
 
 defineOptions({ name: 'CurrencyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CurrencyListView' });

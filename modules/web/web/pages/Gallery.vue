@@ -108,7 +108,7 @@ SPDX-License-Identifier: Apache-2.0
               <CardDescription>Main-path chrome with Varchar / Date / Boolean</CardDescription>
             </CardHeader>
             <CardContent>
-              <ChoyFormView title="Demo record" :show-actions="true">
+              <GalleryFormShell title="Demo record" :show-actions="true">
                 <template #breadcrumb>
                   <ChoyBreadcrumb :items="[{ label: 'Gallery' }, { label: 'Demo record' }]" />
                 </template>
@@ -119,11 +119,44 @@ SPDX-License-Identifier: Apache-2.0
                   <ChoyButton size="sm" variant="ghost">Action</ChoyButton>
                 </template>
                 <div class="flex flex-col gap-3">
-                  <ChoyVarcharField v-model="galleryName" label="Name" name="name" />
-                  <ChoyDateField v-model="galleryDate" label="Date" name="date" />
-                  <ChoyBooleanField v-model="galleryActive" label="Active" widget="switch" />
+                  <ChoyFieldBase label="Name" name="name">
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <Input
+                        :id="controlId"
+                        v-model="galleryName"
+                        name="name"
+                        :aria-invalid="ariaInvalid"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                      />
+                    </template>
+                  </ChoyFieldBase>
+                  <ChoyFieldBase label="Date" name="date">
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <DatePicker
+                        :id="controlId"
+                        v-model="galleryDate"
+                        placeholder="Pick a date"
+                        clearable
+                        :aria-invalid="ariaInvalid"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                      />
+                    </template>
+                  </ChoyFieldBase>
+                  <ChoyFieldBase label="Active">
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <Switch
+                        :id="controlId"
+                        v-model="galleryActive"
+                        :aria-invalid="ariaInvalid"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                      />
+                    </template>
+                  </ChoyFieldBase>
                 </div>
-              </ChoyFormView>
+              </GalleryFormShell>
             </CardContent>
           </Card>
 
@@ -131,25 +164,24 @@ SPDX-License-Identifier: Apache-2.0
             <CardHeader>
               <CardTitle>List + Search</CardTitle>
               <CardDescription>
-                ChoyListView / SearchView; selected {{ galleryListSelection.length }}
+                DataTable / ChoySearchView; selected {{ galleryListSelection.length }}
               </CardDescription>
             </CardHeader>
             <CardContent class="flex flex-col gap-3">
-              <ChoyListView
-                v-model:row-selection="galleryListSelection"
-                :columns="galleryListColumns"
-                :data="galleryListRows"
-                :row-id="demoRowId"
-                :height="200"
-              >
-                <template #search>
-                  <ChoySearchView
-                    v-model:keyword="galleryListKeyword"
-                    placeholder="Filter names…"
-                    @query-update="onGalleryListSearch"
-                  />
-                </template>
-              </ChoyListView>
+              <div class="flex flex-col gap-3">
+                <ChoySearchView
+                  v-model:keyword="galleryListKeyword"
+                  placeholder="Filter names…"
+                  @query-update="onGalleryListSearch"
+                />
+                <DataTable
+                  v-model:row-selection="galleryListSelection"
+                  :columns="galleryListColumns"
+                  :data="galleryListRows"
+                  :row-id="demoRowId"
+                  :height="200"
+                />
+              </div>
               <ChoyPagination
                 v-model:page="galleryListPage"
                 v-model:page-size="galleryListPageSize"
@@ -218,7 +250,26 @@ SPDX-License-Identifier: Apache-2.0
             </CardHeader>
             <CardContent class="flex flex-col gap-4">
               <ChoyHtmlField v-model="galleryHtml" label="Notes (HTML)" name="html" />
-              <ChoyJsonField v-model="galleryJson" label="Meta (JSON)" name="json" />
+              <ChoyFieldBase
+                label="Meta (JSON)"
+                name="json"
+                :error="galleryJsonParseError"
+              >
+                <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                  <Textarea
+                    :id="controlId"
+                    v-model="galleryJsonDraft"
+                    name="json"
+                    placeholder="Enter a JSON object"
+                    :rows="8"
+                    class="font-mono text-xs"
+                    :aria-invalid="ariaInvalid || !!galleryJsonParseError || undefined"
+                    :aria-required="ariaRequired"
+                    :aria-describedby="ariaDescribedby"
+                    @blur="commitGalleryJsonDraft"
+                  />
+                </template>
+              </ChoyFieldBase>
             </CardContent>
           </Card>
 
@@ -227,12 +278,66 @@ SPDX-License-Identifier: Apache-2.0
               <CardTitle>Properties</CardTitle>
             </CardHeader>
             <CardContent class="flex flex-col gap-4">
-              <ChoyPropertiesField
-                v-model="galleryPropsMap"
-                label="Dynamic props"
-                :items="galleryPropItems"
-              />
-              <ChoyPropertiesDefinitionEditor
+              <ChoyFieldBase label="Dynamic props">
+                <template #default>
+                  <div class="flex flex-col gap-3">
+                    <div
+                      v-if="galleryRenderableProps.length === 0"
+                      class="rounded-md border border-dashed border-border px-3 py-4 text-sm text-foreground/50"
+                    >
+                      No properties defined
+                    </div>
+                    <div
+                      v-for="item in galleryRenderableProps"
+                      :key="item.name"
+                      class="flex flex-col gap-1"
+                    >
+                      <label class="text-sm font-medium text-foreground">
+                        {{ item.string || item.name }}
+                      </label>
+                      <Checkbox
+                        v-if="item.type === 'boolean'"
+                        :model-value="galleryPropBool(galleryReadProp(item.name))"
+                        @update:model-value="gallerySetProp(item.name, $event === true)"
+                      />
+                      <Input
+                        v-else-if="item.type === 'integer' || item.type === 'float'"
+                        :model-value="galleryPropString(galleryReadProp(item.name))"
+                        type="number"
+                        @update:model-value="gallerySetPropNumber(item.name, $event, item.type === 'integer')"
+                      />
+                      <Textarea
+                        v-else-if="item.type === 'text'"
+                        :model-value="galleryPropString(galleryReadProp(item.name))"
+                        :rows="3"
+                        @update:model-value="gallerySetProp(item.name, $event)"
+                      />
+                      <Select
+                        v-else-if="item.type === 'selection'"
+                        :model-value="(galleryReadProp(item.name) as string | null) ?? null"
+                        @update:model-value="gallerySetProp(item.name, $event)"
+                      >
+                        <SelectTrigger class="w-full" placeholder="Select…" />
+                        <SelectContent>
+                          <SelectItem
+                            v-for="opt in gallerySelectionOptions(item.selection)"
+                            :key="opt.value"
+                            :value="opt.value"
+                          >
+                            {{ opt.label }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        v-else
+                        :model-value="galleryPropString(galleryReadProp(item.name))"
+                        @update:model-value="gallerySetProp(item.name, $event)"
+                      />
+                    </div>
+                  </div>
+                </template>
+              </ChoyFieldBase>
+              <PropertiesDefinitionDraftEditor
                 :items="galleryPropDefs"
                 @saved="onGalleryPropDefsSaved"
               />
@@ -248,14 +353,12 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyOneToManyField
                 v-model="galleryO2MRows"
                 label="Lines (list)"
-                widget="list"
                 :columns="galleryO2MColumns"
                 title-field="Title"
               />
-              <ChoyOneToManyField
+              <ChoyOneToManyKanbanField
                 v-model="galleryO2MRows"
                 label="Lines (kanban)"
-                widget="kanban"
                 title-field="Title"
                 subtitle-field="Note"
               />
@@ -271,7 +374,6 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyManyToManyField
                 v-model="galleryM2MIds"
                 label="Tags"
-                widget="tags"
                 search-key="gallery.m2m"
                 :search="searchPartners"
                 :options="partnerCatalog"
@@ -279,7 +381,6 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyManyToManyField
                 v-model="galleryM2MIds"
                 label="List"
-                widget="list"
                 search-key="gallery.m2m"
                 :search="searchPartners"
                 :options="partnerCatalog"
@@ -288,7 +389,6 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyManyToManyField
                 v-model="galleryM2MTreeIds"
                 label="Tree"
-                widget="tree"
                 :tree-nodes="galleryTreeNodes"
               />
             </CardContent>
@@ -619,7 +719,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-  toast,
+  toast
 } from '../components/vendor/ui';
 import ChoyButton from '../components/layout/ChoyButton.vue';
 import ChoyCard from '../components/layout/ChoyCard.vue';
@@ -630,39 +730,44 @@ import ChoyNotificationBell from '../components/layout/ChoyNotificationBell.vue'
 import ChoyPage from '../components/layout/ChoyPage.vue';
 import ChoyTab from '../components/layout/ChoyTab.vue';
 import ChoyTabs from '../components/layout/ChoyTabs.vue';
-import ChoyFormView from '../components/view/ChoyFormView.vue';
-import ChoyListView from '../components/view/ChoyListView.vue';
+import GalleryFormShell from './GalleryFormShell.vue';
 import ChoyKanbanView from '../components/view/ChoyKanbanView.vue';
 import ChoyChartView from '../components/view/ChoyChartView.vue';
 import ChoySearchView from '../components/view/ChoySearchView.vue';
 import ChoyPagination from '../components/view/ChoyPagination.vue';
 import ChoyBreadcrumb from '../components/view/ChoyBreadcrumb.vue';
-import ChoyVarcharField from '../components/field/ChoyVarcharField.vue';
-import ChoyDateField from '../components/field/ChoyDateField.vue';
-import ChoyBooleanField from '../components/field/ChoyBooleanField.vue';
+import ChoyFieldBase from '../components/field/ChoyFieldBase.vue';
 import ChoyHtmlField from '../components/field/ChoyHtmlField.vue';
-import ChoyJsonField from '../components/field/ChoyJsonField.vue';
-import ChoyPropertiesField from '../components/field/ChoyPropertiesField.vue';
-import ChoyPropertiesDefinitionEditor from '../components/field/ChoyPropertiesDefinitionEditor.vue';
+import PropertiesDefinitionDraftEditor from '../components/field/PropertiesDefinitionDraftEditor.vue';
 import ChoyOneToManyField from '../components/field/ChoyOneToManyField.vue';
 import ChoyManyToManyField from '../components/field/ChoyManyToManyField.vue';
 import {
   groupRowsIntoChoyKanbanLanes,
   type ChoyKanbanLane,
-  type ChoyKanbanMove,
+  type ChoyKanbanMove
 } from '../components/view/kanbanViewHelpers';
 import type {
   ChoyChartItemClickPayload,
-  ChoyChartMetricOption,
+  ChoyChartMetricOption
 } from '../components/view/chartViewHelpers';
 import type { ChoyChartKind, ChoyChartSeries, ChoyChartSort } from '../components/view/chart/chartTypeAdapter';
-import type { ChoyJsonValue } from '../components/field/jsonFieldHelpers';
-import type { PropertiesMap } from '../components/field/propertiesHelpers';
+import {
+  normalizeChoyJsonIncoming,
+  stringifyChoyJson,
+  tryParseChoyJson,
+  type ChoyJsonValue
+} from '../components/field/jsonFieldHelpers';
+import {
+  filterRenderablePropertyItems,
+  normalizeSelectionOptions,
+  writePropertyValue,
+  type PropertiesMap
+} from '../components/field/propertiesHelpers';
 import type { PropertyItemDefinition, ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
-import type { ChoyManyToManyTreeNode } from '../components/field/ChoyManyToManyField.vue';
+import type { ChoyManyToManyTreeNode } from '../components/field/choyRelationFieldTypes';
 import {
   filterRowsByKeyword,
-  type ChoySearchQuery,
+  type ChoySearchQuery
 } from '../components/view/searchViewHelpers';
 import { choyPageOffset, clampChoyPage, choyTotalPages } from '../components/view/paginationHelpers';
 import DataTable from '../components/internal/DataTable.vue';
@@ -672,7 +777,7 @@ import { ChoyMessage } from '../composables/useChoyMessage';
 import {
   persistChoyThemePreference,
   readChoyThemePreference,
-  resolveChoyThemePreference,
+  resolveChoyThemePreference
 } from '../composables/applyChoyThemePreference';
 import ChoyChatter from '../components/chatter/ChoyChatter.vue';
 import type { ChatterTimelineEntry } from '../components/chatter/chatterTypes';
@@ -751,6 +856,29 @@ const galleryChartClickLabel = ref('(none)');
 
 const galleryHtml = ref<string | null>('<p>Hello <strong>Choy</strong> HTML</p>');
 const galleryJson = ref<ChoyJsonValue>({ region: 'APAC', tier: 1 });
+const galleryJsonDraft = ref(stringifyChoyJson(normalizeChoyJsonIncoming(galleryJson.value)));
+const galleryJsonParseError = ref('');
+watch(
+  () => galleryJson.value,
+  (next) => {
+    const pretty = stringifyChoyJson(normalizeChoyJsonIncoming(next));
+    const check = tryParseChoyJson(galleryJsonDraft.value, { allowArray: false, nullable: true });
+    if (check.ok && stringifyChoyJson(check.value) === pretty) return;
+    galleryJsonDraft.value = pretty;
+    galleryJsonParseError.value = '';
+  },
+);
+function commitGalleryJsonDraft(): void {
+  const result = tryParseChoyJson(galleryJsonDraft.value, { allowArray: false, nullable: true });
+  if (!result.ok) {
+    galleryJsonParseError.value = result.error;
+    return;
+  }
+  galleryJsonParseError.value = '';
+  galleryJson.value = result.value;
+  galleryJsonDraft.value = stringifyChoyJson(result.value);
+}
+
 const galleryPropDefs = ref<PropertyItemDefinition[]>([
   { name: 'color', type: 'char', string: 'Color', default: 'blue' },
   { name: 'priority', type: 'selection', string: 'Priority', selection: [['low', 'Low'], ['high', 'High']] },
@@ -769,6 +897,50 @@ const galleryPropItems = ref([
 const galleryPropsMap = ref<PropertiesMap>(
   Object.assign(Object.create(null), { color: 'blue', priority: 'low', active: true }),
 );
+
+const galleryRenderableProps = computed(
+  () => filterRenderablePropertyItems(galleryPropItems.value ?? []).renderable,
+);
+function galleryReadProp(name: string): unknown {
+  const map = galleryPropsMap.value || Object.create(null);
+  if (Object.prototype.hasOwnProperty.call(map, name)) {
+    return map[name];
+  }
+  const item = (galleryPropItems.value ?? []).find((i) => i?.name === name);
+  if (!item) return undefined;
+  if (Object.prototype.hasOwnProperty.call(item, 'value')) return item.value;
+  if (Object.prototype.hasOwnProperty.call(item, 'default')) return item.default;
+  return undefined;
+}
+function gallerySetProp(name: string, value: unknown): void {
+  galleryPropsMap.value = writePropertyValue(
+    galleryPropItems.value ?? [],
+    galleryPropsMap.value,
+    name,
+    value,
+  );
+}
+function galleryPropString(v: unknown): string {
+  return v == null ? '' : String(v);
+}
+function galleryPropBool(v: unknown): boolean {
+  return v === true;
+}
+function gallerySetPropNumber(name: string, raw: string, integer: boolean): void {
+  const text = String(raw ?? '').trim();
+  if (!text) {
+    gallerySetProp(name, null);
+    return;
+  }
+  const n = Number(text);
+  if (!Number.isFinite(n)) return;
+  gallerySetProp(name, integer ? Math.trunc(n) : n);
+}
+function gallerySelectionOptions(
+  selection: ResolvedPropertyItem['selection'],
+): ReturnType<typeof normalizeSelectionOptions> {
+  return normalizeSelectionOptions(selection);
+}
 
 type O2MRow = { Id: string; Title: string; Note?: string };
 const galleryO2MRows = ref<O2MRow[]>([

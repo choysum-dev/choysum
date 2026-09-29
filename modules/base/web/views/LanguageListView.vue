@@ -34,7 +34,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { ChoyBooleanField, ChoyListView, ChoySearchView, ChoySelectionField, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyListView, ChoySearchView, ChoySelectionField, ChoyVColumn, ChoyVarcharField} from '@/web';
 
 defineOptions({ name: 'LanguageListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/LanguageListView' });

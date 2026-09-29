@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { afterLocaleChange, resolveLocaleRemountMode } from './locale_remount';
+import { afterLocaleChange, resolveLocaleRemountMode } from './localeRemount';
 import { fnRecorder } from '@/web/web/__tests__/mountApp';
 
 describe('afterLocaleChange', () => {

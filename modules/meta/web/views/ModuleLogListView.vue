@@ -24,8 +24,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyVarcharField prop="ErrorCode" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoyJsonField prop="SummaryJson" :store="store" :vColumnProps="{ minWidth: 220 }" />
     <ChoyJsonField prop="LastErrorJson" :store="store" :vColumnProps="{ minWidth: 220 }" />
-    <ChoyNumberField prop="Attempt" mode="integer" :label="_t('Attempts')" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoyNumberField prop="MaxAttempts" mode="integer" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ChoyIntField prop="Attempt" :label="_t('Attempts')" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ChoyIntField prop="MaxAttempts" :store="store" :vColumnProps="{ minWidth: 100 }" />
   </ChoyListView>
 </template>
 
@@ -37,7 +37,7 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyDatetimeField, ChoyJsonField, ChoyListView, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyDatetimeField, ChoyJsonField, ChoyListView, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField, ChoyIntField} from '@/web';
 
 defineOptions({ name: 'ModuleLogListView', inheritAttrs: true });
 

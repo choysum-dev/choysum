@@ -11,7 +11,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
-import ImageField from './ImageField.vue';
+import ImageField from './ChoyImageField.vue';
 
 function makeFile(size: number, type = 'image/png'): File {
   return new File([new Uint8Array(size)], 'photo.png', { type });

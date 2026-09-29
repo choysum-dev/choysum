@@ -12,10 +12,10 @@ import { createTermReference } from '@/core/service/i18n';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import VColumn from '@/web/web/components/vtable/VColumn.vue';
+import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import FieldBase from './FieldBase.vue';
-import FieldCompanyValuesDialog from './FieldCompanyValuesDialog.vue';
-import FieldTranslationsDialog from './FieldTranslationsDialog.vue';
+import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
+import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 
 function makeBinding(
   meta?: {
@@ -71,7 +71,7 @@ const dialogSfcs = [FieldTranslationsDialog, FieldCompanyValuesDialog];
 function restoreAll() {
   restoreSfc(ChoyButton as any);
   for (const Comp of dialogSfcs) restoreSfc(Comp as any);
-  restoreSfc(VColumn as any);
+  restoreSfc(ChoyVColumn as any);
 }
 
 function installUiStubs() {
@@ -337,8 +337,8 @@ describe('FieldBase list-editing-row-id gate', () => {
   });
 
   function installOvColumnStub(row: Record<string, unknown>) {
-    stubSfc(VColumn as any, {
-      name: 'VColumn',
+    stubSfc(ChoyVColumn as any, {
+      name: 'ChoyVColumn',
       props: ['prop', 'label', 'vColumnProps'],
       setup(_p: any, { slots }: any) {
         return () => h('div', { class: 'ov-column-stub' }, slots.default?.({ row, $index: 0 }));

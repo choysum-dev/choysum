@@ -80,7 +80,7 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import {
   detectBrowserTimezone,
   resolvePreferenceLanguage,
-  resolvePreferenceTimezone,
+  resolvePreferenceTimezone
 } from './preferences_defaults';
 import { restoreDialogFocus } from './dialog_focus_restore';
 import { trapDialogTabKey } from './dialog_focus_trap';

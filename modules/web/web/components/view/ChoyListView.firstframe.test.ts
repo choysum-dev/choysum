@@ -5,13 +5,13 @@ import { defineComponent, h, markRaw } from 'vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ListView from './ListView.vue';
-import SearchView from './SearchView.vue';
+import ChoyListView from './ChoyListView.vue';
+import ChoySearchView from './ChoySearchView.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
 import ViewContainer from '@/web/web/components/view/ViewContainer.vue';
-import Pagination from './Pagination.vue';
+import ListPagination from './ListPagination.vue';
 import VTable from '@/web/web/components/vtable/VTable.vue';
-import VColumn from '@/web/web/components/vtable/VColumn.vue';
+import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 
 function makeStore(search?: ReturnType<typeof fnRecorder>) {
   return {
@@ -55,17 +55,17 @@ function stubListChrome() {
     name: 'VTable',
     setup: () => () => h('div', { 'data-stub': 'VTable' }),
   });
-  stubSfc(VColumn, {
-    name: 'VColumn',
+  stubSfc(ChoyVColumn, {
+    name: 'ChoyVColumn',
     setup: () => () => null,
   });
-  stubSfc(Pagination, {
-    name: 'Pagination',
+  stubSfc(ListPagination, {
+    name: 'ListPagination',
     setup: () => () => h('div', { 'data-stub': 'Pagination' }),
   });
   // Keep SearchView identity for shouldDeferViewFirstFrame; render a silent stub.
-  stubSfc(SearchView, {
-    name: 'SearchView',
+  stubSfc(ChoySearchView, {
+    name: 'ChoySearchView',
     setup: () => () => h('div', { 'data-stub': 'SearchView' }),
   });
 }
@@ -74,9 +74,9 @@ function restoreListChrome() {
   restoreSfc(ViewContainer);
   restoreSfc(ListInlineEditScope);
   restoreSfc(VTable);
-  restoreSfc(VColumn);
-  restoreSfc(Pagination);
-  restoreSfc(SearchView);
+  restoreSfc(ChoyVColumn);
+  restoreSfc(ListPagination);
+  restoreSfc(ChoySearchView);
 }
 
 describe('ListView first-frame load', () => {
@@ -91,11 +91,11 @@ describe('ListView first-frame load', () => {
   test('skips mount apply when first-frame should defer to SearchView', async () => {
     const search = fnRecorder(async () => []);
     const { plugins } = buildPageMountGlobal();
-    const { unmount } = mountApp(ListView as any, {
+    const { unmount } = mountApp(ChoyListView as any, {
       props: {
         store: makeStore(search),
         // Same component reference ListView closes over as SearchView.
-        searchView: SearchView,
+        searchView: ChoySearchView,
         showPaginate: false,
         refreshAction: false,
         deleteAction: false,
@@ -117,7 +117,7 @@ describe('ListView first-frame load', () => {
       })
     );
     const { plugins } = buildPageMountGlobal();
-    const { unmount } = mountApp(ListView as any, {
+    const { unmount } = mountApp(ChoyListView as any, {
       props: {
         store: makeStore(search),
         searchView: SearchStub,
@@ -136,7 +136,7 @@ describe('ListView first-frame load', () => {
   test('runs mount apply when first-frame should not defer', async () => {
     const search = fnRecorder(async () => []);
     const { plugins } = buildPageMountGlobal();
-    const { unmount } = mountApp(ListView as any, {
+    const { unmount } = mountApp(ChoyListView as any, {
       props: {
         store: makeStore(search),
         showPaginate: false,

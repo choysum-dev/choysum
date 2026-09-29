@@ -4,163 +4,368 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyFieldBase
-    data-anchor="choy.properties-field"
-    :class="props.class"
+  <FieldBase
+    :binding="binding"
     :label="label"
-    :help="help"
+    :rules="rules"
+    :formItemProps="formItemProps"
+    :vColumnProps="vColumnProps"
+    :toView="toView"
+    :fromView="fromView"
     :required="required"
     :readonly="readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
     :visible="visible"
+    :cellVisible="cellVisible"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
+    v-bind="$attrs"
   >
-    <template #default>
-      <div class="choy-properties-field flex flex-col gap-3">
+    <template #edit="{ fieldValue }">
+      <div v-if="isTableLike" class="o-properties-summary" data-testid="o-properties-summary">
+        {{ summaryText(fieldValue().value) }}
+      </div>
+      <div v-else class="o-properties-form" data-testid="o-properties-form">
+        <div v-if="!renderableItems.length" class="o-properties-empty" data-testid="o-properties-empty" />
         <div
-          v-if="renderable.length === 0"
-          class="rounded-md border border-dashed border-border px-3 py-4 text-sm text-foreground/50"
-        >
-          No properties defined
-        </div>
-        <div
-          v-for="item in renderable"
+          v-for="item in renderableItems"
           :key="item.name"
-          class="flex flex-col gap-1"
+          class="o-properties-item"
+          :data-name="item.name"
+          :data-type="item.type"
+          :data-readonly="item.readonly ? '1' : '0'"
         >
-          <label class="text-sm font-medium text-foreground">
-            {{ item.string || item.name }}
-          </label>
-          <Checkbox
+          <label class="o-properties-item__label" :for="controlId(item)">{{ itemLabel(item) }}</label>
+          <input
+            type="checkbox"
             v-if="item.type === 'boolean'"
-            :model-value="asBool(readValue(item.name))"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="onCheckbox(item.name, $event)"
+            class="o-properties-control"
+            :id="controlId(item)"
+            :checked="asBoolean(itemValue(fieldValue().value, item))"
+            :disabled="!!item.readonly"
+            @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).checked)"
           />
-          <Input
+          <input
             v-else-if="item.type === 'integer' || item.type === 'float'"
-            :model-value="asString(readValue(item.name))"
+            class="o-properties-control"
+            :id="controlId(item)"
             type="number"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="onNumber(item.name, $event, item.type === 'integer')"
+            :value="asNumber(itemValue(fieldValue().value, item)) ?? ''"
+            :disabled="!!item.readonly"
+            :step="item.type === 'integer' ? 1 : 'any'"
+            @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value))"
           />
-          <Textarea
+          <textarea
             v-else-if="item.type === 'text'"
-            :model-value="asString(readValue(item.name))"
-            :rows="3"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="setValue(item.name, $event)"
+            class="o-properties-control"
+            :id="controlId(item)"
+            rows="3"
+            :value="asString(itemValue(fieldValue().value, item))"
+            :disabled="!!item.readonly"
+            @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLTextAreaElement).value)"
+          ></textarea>
+          <input
+            v-else-if="item.type === 'date'"
+            class="o-properties-control"
+            :id="controlId(item)"
+            type="date"
+            :value="asString(itemValue(fieldValue().value, item))"
+            :disabled="!!item.readonly"
+            @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
           />
-          <Select
+          <input
+            v-else-if="item.type === 'datetime'"
+            class="o-properties-control"
+            :id="controlId(item)"
+            type="datetime-local"
+            :value="datetimePickerValue(itemValue(fieldValue().value, item))"
+            :disabled="!!item.readonly"
+            @change="onDatetimeWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
+          />
+          <select
             v-else-if="item.type === 'selection'"
-            :model-value="(readValue(item.name) as string | null) ?? null"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="setValue(item.name, $event)"
+            class="o-properties-control"
+            :id="controlId(item)"
+            :value="asString(itemValue(fieldValue().value, item))"
+            :disabled="!!item.readonly"
+            @change="onItemWrite(fieldValue, item.name, ($event.target as HTMLSelectElement).value)"
           >
-            <SelectTrigger class="w-full" placeholder="Select…" />
-            <SelectContent>
-              <SelectItem
-                v-for="opt in normalizeSelectionOptions(item.selection)"
-                :key="opt.value"
-                :value="opt.value"
-              >
-                {{ opt.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
+            <option
+              v-for="opt in selectionOptions(item)"
+              :key="opt.value"
+              :value="opt.value"
+            >
+              {{ opt.label }}
+            </option>
+          </select>
+          <input
             v-else
-            :model-value="asString(readValue(item.name))"
-            :disabled="disabled || readonly || item.readonly === true"
-            @update:model-value="setValue(item.name, $event)"
+            class="o-properties-control"
+            :id="controlId(item)"
+            :value="asString(itemValue(fieldValue().value, item))"
+            :disabled="!!item.readonly"
+            @input="onItemWrite(fieldValue, item.name, ($event.target as HTMLInputElement).value)"
           />
         </div>
       </div>
     </template>
-  </ChoyFieldBase>
+
+    <template #display="{ fieldValue }">
+      <span v-if="isTableLike" class="o-properties-summary" data-testid="o-properties-summary">
+        {{ summaryText(fieldValue().value) }}
+      </span>
+      <div v-else class="o-properties-form o-properties-form--display" data-testid="o-properties-form">
+        <div v-if="!renderableItems.length" class="o-properties-empty" data-testid="o-properties-empty" />
+        <div
+          v-for="item in renderableItems"
+          :key="item.name"
+          class="o-properties-item o-properties-item--display"
+          :data-name="item.name"
+        >
+          <span class="o-properties-item__label">{{ itemLabel(item) }}</span>
+          <span class="o-properties-item__value">{{ displayItemValue(fieldValue().value, item) }}</span>
+        </div>
+      </div>
+    </template>
+  </FieldBase>
 </template>
 
-<script setup lang="ts">
-import { computed } from 'vue';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, Record<string, any> | null | undefined>, V = FieldPathType<T, P>">
+import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
-import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
-import Input from '../vendor/ui/input/Input.vue';
-import Textarea from '../vendor/ui/textarea/Textarea.vue';
-import Select from '../vendor/ui/select/Select.vue';
-import SelectContent from '../vendor/ui/select/SelectContent.vue';
-import SelectItem from '../vendor/ui/select/SelectItem.vue';
-import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
-import type { ClassValue } from '../../lib/utils';
-import ChoyFieldBase from './ChoyFieldBase.vue';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { RuleItem } from 'async-validator';
+import { computed, ref, watch, type WritableComputedRef } from 'vue';
+import { useField } from '@/web/web/composables/useField';
+import type { UseField } from '@/web/web/composables/useField';
+import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import { createTranslate } from '@/web/web/i18n';
 import {
-  choyFieldChromeDefaults,
-  type ChoyFieldChromeProps,
-} from './fieldHelpers';
-import {
+  countSchemaMapIntersection,
   filterRenderablePropertyItems,
   normalizeSelectionOptions,
+  propertiesFieldKey,
+  propertyDatetimeFromPicker,
+  propertyDatetimeToPicker,
   writePropertyValue,
-  type PropertiesMap,
+  type PropertiesMap
 } from './propertiesHelpers';
 
-/**
- * Dynamic properties map field. Host injects resolved `items` (no ResolveProperties RPC).
- */
+const { _t } = createTranslate('web', { scope: 'web/components/field/PropertiesField' });
+
+defineOptions({ name: 'ChoyPropertiesField' });
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
 const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      items?: ResolvedPropertyItem[];
-    }
-  >(),
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    binding?: UseField<T, V>;
+
+    label?: string;
+    rules?: RuleItem[];
+
+    /** Optional unsaved parent container id override (PP4 B1 re-resolve). */
+    containerId?: string | null;
+
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+
+    formItemProps?: Partial<FormItemProps>;
+    vColumnProps?: {
+      width?: number | string;
+      minWidth?: number;
+      align?: 'left' | 'center' | 'right';
+      fixed?: 'left' | 'right';
+      sortable?: boolean;
+    };
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+  }>(),
   {
-    ...choyFieldChromeDefaults,
-    items: () => [],
-  },
+    rules: () => [],
+    required: false,
+    readonly: false,
+    visible: true,
+    cellVisible: true,
+    formItemProps: () => ({}),
+    vColumnProps: () => ({}),
+    renderMode: 'auto',
+    showInlineError: false,
+  }
 );
 
-const model = defineModel<PropertiesMap>({ default: () => Object.create(null) });
+const binding = (props.binding ??
+  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
-const renderable = computed(() => filterRenderablePropertyItems(props.items ?? []).renderable);
+const isTableLike = computed(() => {
+  const mode = props.renderMode;
+  if (mode === 'table' || mode === 'inline') return true;
+  if (mode === 'form') return false;
+  return binding.env?.isForm === false;
+});
 
-function readValue(name: string): unknown {
-  const map = model.value || Object.create(null);
-  if (Object.prototype.hasOwnProperty.call(map, name)) {
-    return map[name];
+const toView = (raw: any): PropertiesMap => {
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return Object.create(null);
+  // Copy own keys onto a null-prototype object so names like "__proto__" survive.
+  const out: PropertiesMap = Object.create(null);
+  for (const key of Object.keys(raw as object)) {
+    out[key] = (raw as Record<string, unknown>)[key];
   }
-  // Match buildFullPropertiesMap: prefer item.value, then item.default.
-  const item = (props.items ?? []).find(i => i?.name === name);
-  if (!item) return undefined;
+  return out;
+};
+const fromView = (v: PropertiesMap) => v as unknown as V;
+
+const resolvedItems = ref<ResolvedPropertyItem[]>([]);
+const schemaNames = computed(() => resolvedItems.value.map(i => i.name).filter(Boolean));
+const renderableItems = computed(() => filterRenderablePropertyItems(resolvedItems.value).renderable);
+let resolveGeneration = 0;
+
+function itemLabel(item: ResolvedPropertyItem): string {
+  return String(item.string || item.name);
+}
+
+function controlId(item: ResolvedPropertyItem): string {
+  return `o-properties-${propertiesFieldKey(binding.prop, props.prop)}-${item.name}`;
+}
+
+function selectionOptions(item: ResolvedPropertyItem) {
+  return normalizeSelectionOptions(item.selection);
+}
+
+function itemValue(map: unknown, item: ResolvedPropertyItem): unknown {
+  const m = toView(map);
+  if (Object.prototype.hasOwnProperty.call(m, item.name)) return m[item.name];
   if (Object.prototype.hasOwnProperty.call(item, 'value')) return item.value;
   if (Object.prototype.hasOwnProperty.call(item, 'default')) return item.default;
   return undefined;
 }
 
-function setValue(name: string, value: unknown): void {
-  model.value = writePropertyValue(props.items ?? [], model.value, name, value);
-}
-
-function asString(v: unknown): string {
-  return v == null ? '' : String(v);
-}
-
-function asBool(v: unknown): boolean {
+function asBoolean(v: unknown): boolean {
   return v === true;
 }
-
-function onCheckbox(name: string, value: boolean | 'indeterminate'): void {
-  setValue(name, value === true);
+function asNumber(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+function asString(v: unknown): string {
+  if (v == null) return '';
+  return String(v);
 }
 
-function onNumber(name: string, raw: string, integer: boolean): void {
-  const text = String(raw ?? '').trim();
-  if (!text) {
-    setValue(name, null);
+function datetimePickerValue(raw: unknown): Date | null {
+  return propertyDatetimeToPicker(raw);
+}
+
+function displayItemValue(map: unknown, item: ResolvedPropertyItem): string {
+  const v = itemValue(map, item);
+  if (v == null) return '';
+  if (item.type === 'boolean') return v === true ? _t('Yes') : _t('No');
+  if (item.type === 'selection') {
+    const opt = selectionOptions(item).find(o => o.value === v);
+    return opt?.label ?? String(v);
+  }
+  return String(v);
+}
+
+function summaryText(map: unknown): string {
+  const n = countSchemaMapIntersection(schemaNames.value, map);
+  return n > 0 ? _t('%s properties', n) : '';
+}
+
+function onItemWrite(
+  fieldValue: () => WritableComputedRef<any> | { value: any },
+  name: string,
+  value: unknown
+) {
+  const cur = fieldValue().value;
+  fieldValue().value = writePropertyValue(resolvedItems.value, cur, name, value);
+}
+
+function onDatetimeWrite(
+  fieldValue: () => WritableComputedRef<any> | { value: any },
+  name: string,
+  value: unknown
+) {
+  onItemWrite(fieldValue, name, propertyDatetimeFromPicker(value));
+}
+
+async function reloadResolved() {
+  const generation = ++resolveGeneration;
+  const store = (binding.store ?? props.store) as WebModelStore<T> | undefined;
+  const fieldName = propertiesFieldKey(binding.prop, props.prop, '');
+  if (!store || !fieldName || typeof (store as any).ResolveProperties !== 'function') {
+    // Sync bail-out: generation cannot advance between ++ and here.
+    resolvedItems.value = [];
     return;
   }
-  const n = Number(text);
-  if (!Number.isFinite(n)) return;
-  setValue(name, integer ? Math.trunc(n) : n);
+  const record = binding.recordRef?.()?.value ?? {};
+  const map = toView(binding.fieldRef?.()?.value);
+  const payload = { ...(record as any), [fieldName]: map };
+  const opts =
+    props.containerId !== undefined ? { containerId: props.containerId } : undefined;
+  try {
+    const items = await (store as any).ResolveProperties(payload, fieldName, opts);
+    if (generation !== resolveGeneration) return;
+    const list = Array.isArray(items) ? (items as ResolvedPropertyItem[]) : [];
+    const { skipped } = filterRenderablePropertyItems(list);
+    for (const item of skipped) {
+      // Historical dirty Definition types: skip without breaking the form.
+      console.warn(`[OPropertiesField] skipping unsupported property type '${item.type}' (${item.name})`);
+    }
+    resolvedItems.value = list;
+  } catch (e) {
+    if (generation !== resolveGeneration) return;
+    console.warn('[OPropertiesField] ResolveProperties failed', e);
+    resolvedItems.value = [];
+  }
 }
+
+watch(
+  () => [
+    binding.recordRef?.()?.value,
+    binding.fieldRef?.()?.value,
+    props.containerId,
+    binding.prop,
+    props.store,
+    isTableLike.value,
+  ],
+  () => {
+    void reloadResolved();
+  },
+  { deep: true, immediate: true }
+);
 </script>
+
+<style scoped lang="scss">
+.o-properties-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.o-properties-item {
+  display: grid;
+  grid-template-columns: minmax(96px, 28%) 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.o-properties-item__label {
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+}
+.o-properties-control {
+  width: 100%;
+}
+.o-properties-summary {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.o-properties-empty {
+  min-height: 4px;
+}
+</style>

@@ -3,7 +3,7 @@
 
 export { createTranslate } from '@/core/service/i18n';
 export type { TermReference } from '@/core/service/i18n';
-export { installBrowserI18nBridge, exposeBrowserI18nOnWindow } from './browser_bridge';
+export { installBrowserI18nBridge, exposeBrowserI18nOnWindow } from './browserBridge';
 export {
   getGlobalComposer,
   notifyComposerMessagesChanged,

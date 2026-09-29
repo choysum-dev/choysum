@@ -7,7 +7,7 @@ import VueJsonPretty from 'vue-json-pretty';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
-import JsonobjectField from './JsonobjectField.vue';
+import JsonobjectField from './ChoyJsonField.vue';
 /* el-stubs-for-typecheck */
 const ElInput: any = { name: "ElInput" };
 

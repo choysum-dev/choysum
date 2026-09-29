@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, defineComponent, inject, type Component } from 'vue';
+import { h, defineComponent, inject, ref, computed, type Component } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyPage from '../layout/ChoyPage.vue';
 import ChoyFormView from '../view/ChoyFormView.vue';
 import ChoyListView from '../view/ChoyListView.vue';
 import ChoySearchView from '../view/ChoySearchView.vue';
+import ListView from '../view/ChoyListView.vue';
+import Search from '../view/search/Search.vue';
 import ChoyViewScope from '../view/ChoyViewScope.vue';
 import ChoyButtonBox from '../view/ChoyButtonBox.vue';
 import ChoyStatInfo from '../view/ChoyStatInfo.vue';
@@ -17,112 +19,116 @@ import ChoyBooleanField from './ChoyBooleanField.vue';
 import ChoySelectionField from './ChoySelectionField.vue';
 import ChoyDatetimeField from './ChoyDatetimeField.vue';
 import ChoyDateField from './ChoyDateField.vue';
+import ChoyIntField from './ChoyIntField.vue';
+import ChoyBigintField from './ChoyBigintField.vue';
+import ChoyDecimalField from './ChoyDecimalField.vue';
 import ChoyNumberField from './ChoyNumberField.vue';
 import ChoyJsonField from './ChoyJsonField.vue';
 import ChoyImageField from './ChoyImageField.vue';
 import ChoyVirtualField from './ChoyVirtualField.vue';
 import ChoyManyToOneField from './ChoyManyToOneField.vue';
+import ChoyManyToOneRefField from './ChoyManyToOneRefField.vue';
 import ChoyManyToManyField from './ChoyManyToManyField.vue';
+import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
+import ChoyManyToManyRefTreeField from './ChoyManyToManyRefTreeField.vue';
 import ChoyOneToManyField from './ChoyOneToManyField.vue';
-import FormView from '../view/FormView.vue';
-import ListView from '../view/ListView.vue';
-import SearchView from '../view/SearchView.vue';
-import VarCharField from './VarCharField.vue';
-import TextField from './TextField.vue';
-import BooleanField from './BooleanField.vue';
-import SelectionField from './SelectionField.vue';
-import DatetimeField from './DatetimeField.vue';
-import DateField from './DateField.vue';
-import IntField from './IntField.vue';
-import DecimalField from './DecimalField.vue';
-import BigintField from './BigintField.vue';
-import NumberField from './NumberField.vue';
-import JsonobjectField from './JsonobjectField.vue';
-import ImageField from './ImageField.vue';
-import VirtualField from './VirtualField.vue';
-import ManyToOneField from './ManyToOneField.vue';
-import ManyToOneRefField from './ManyToOneRefField.vue';
-import ManyToManyField from './ManyToManyField.vue';
-import ManyToManyRefTagsField from './ManyToManyRefTagsField.vue';
-import ManyToManyRefTreeField from './ManyToManyRefTreeField.vue';
-import OneToManyField from './OneToManyField.vue';
-import OneToManyKanbanField from './OneToManyKanbanField.vue';
-import StatInfo from '../view/StatInfo.vue';
-import VColumn from '../vtable/VColumn.vue';
+import ChoyOneToManyKanbanField from './ChoyOneToManyKanbanField.vue';
+import FieldBase from './FieldBase.vue';
 
 const fakeStore = { modelName: 'auth.User', meta: { fields: {} } } as any;
 
-function stubHost(Comp: Component, testId: string) {
-  stubSfc(Comp, {
-    props: { store: null, prop: String, valueMode: String, widget: String, valueFormat: String },
+const STORE_FIELD_BASE_TEST_ID = 'store-field-base';
+
+function stubStoreFieldBase() {
+  stubSfc(FieldBase, {
+    props: { binding: { type: Object, required: false }, label: String },
     setup: ((props: any) => {
       return () =>
         h('div', {
-          'data-test': testId,
-          'data-prop': String(props.prop || ''),
-          'data-value-mode': String(props.valueMode || ''),
-          'data-widget': String(props.widget || ''),
-          'data-value-format': String(props.valueFormat || ''),
+          'data-test': STORE_FIELD_BASE_TEST_ID,
+          'data-prop': String(props.binding?.prop ?? ''),
         });
     }) as any,
   });
 }
 
+function stubHost(Comp: Component, testId: string) {
+  stubSfc(Comp, {
+    props: { store: null, prop: String },
+    setup: ((props: any) => {
+      return () =>
+        h('div', {
+          'data-test': testId,
+          'data-prop': String(props.prop || ''),
+        });
+    }) as any,
+  });
+}
+
+function installFieldBaseEditStub() {
+  stubSfc(FieldBase as any, {
+    props: { binding: { type: Object, required: false } },
+    setup(p: any, { slots }: any) {
+      const fieldValue = () => (p.binding as any).fieldRef();
+      return () => h('div', { 'data-test': 'field-base-edit' }, slots.edit?.({ fieldValue }));
+    },
+  });
+}
+
+function makeFloatBinding(initial: number | null) {
+  const value = ref<number | null>(initial);
+  return {
+    env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+    prop: 'Amount',
+    meta: { type: 'float' } as any,
+    fieldRef: () => value as any,
+    fieldRefOf: () => value as any,
+    recordRef: () => computed(() => ({})) as any,
+    registerFields: () => {},
+    store: undefined,
+    asView: () => ({ fieldValue: () => value }) as any,
+  };
+}
+
+function makeO2MKanbanBinding(items: Record<string, unknown>[]) {
+  const list = ref(items.slice());
+  return {
+    env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+    prop: 'Contacts',
+    meta: { type: 'oneToMany' } as any,
+    fieldRef: () => list as any,
+    fieldRefOf: () => list as any,
+    recordRef: () => computed(() => ({ Id: '1' })) as any,
+    registerFields: () => {},
+    asMutableArray: () => ({
+      getItems: () => list.value,
+      insertItem: (row: Record<string, unknown>) => {
+        list.value = [...list.value, row];
+      },
+      removeItemAt: () => {},
+    }),
+    store: undefined,
+    asView: () => ({ fieldValue: () => list }) as any,
+  };
+}
+
 describe('Choy store-mode field hosts', () => {
   const stubs: any[] = [
-    VarCharField,
-    TextField,
-    BooleanField,
-    SelectionField,
-    DatetimeField,
-    DateField,
-    IntField,
-    DecimalField,
-    BigintField,
-    NumberField,
-    JsonobjectField,
-    ImageField,
-    VirtualField,
-    ManyToOneField,
-    ManyToOneRefField,
-    ManyToManyField,
-    ManyToManyRefTagsField,
-    ManyToManyRefTreeField,
-    OneToManyField,
-    OneToManyKanbanField,
-    FormView,
+    FieldBase,
     ListView,
-    SearchView,
-    StatInfo,
-    VColumn,
+    ChoyFormView,
+    ChoyListView,
+    ChoySearchView,
+    ChoyStatInfo,
+    ChoyVColumn,
   ];
 
   beforeEach(() => {
-    stubHost(VarCharField as any, 'o-varchar');
-    stubHost(TextField as any, 'o-text');
-    stubHost(BooleanField as any, 'o-boolean');
-    stubHost(SelectionField as any, 'o-selection');
-    stubHost(DatetimeField as any, 'o-datetime');
-    stubHost(DateField as any, 'o-date');
-    stubHost(IntField as any, 'o-int');
-    stubHost(DecimalField as any, 'o-decimal');
-    stubHost(BigintField as any, 'o-bigint');
-    stubHost(NumberField as any, 'o-number');
-    stubHost(JsonobjectField as any, 'o-json');
-    stubHost(ImageField as any, 'o-image');
-    stubHost(VirtualField as any, 'o-virtual');
-    stubHost(ManyToOneField as any, 'o-m2o');
-    stubHost(ManyToOneRefField as any, 'o-m2o-ref');
-    stubHost(ManyToManyField as any, 'o-m2m');
-    stubHost(ManyToManyRefTagsField as any, 'o-m2m-tags');
-    stubHost(ManyToManyRefTreeField as any, 'o-m2m-tree');
-    stubHost(OneToManyField as any, 'o-o2m');
-    stubHost(OneToManyKanbanField as any, 'o-o2m-kanban');
-    stubHost(FormView as any, 'o-form');
+    stubStoreFieldBase();
+    stubHost(ChoyFormView as any, 'o-form');
     stubHost(ListView as any, 'o-list');
-    stubHost(SearchView as any, 'o-search');
-    stubHost(StatInfo as any, 'o-stat');
-    stubHost(VColumn as any, 'o-vcolumn');
+    stubHost(ChoyStatInfo as any, 'o-stat');
+    stubHost(ChoyVColumn as any, 'o-vcolumn');
   });
 
   afterEach(() => {
@@ -140,196 +146,115 @@ describe('Choy store-mode field hosts', () => {
     return wrapper;
   }
 
-  test('scalar fields host O* when store+prop set', async () => {
-    const cases: Array<[any, string]> = [
-      [ChoyVarcharField, 'o-varchar'],
-      [ChoyTextField, 'o-text'],
-      [ChoyBooleanField, 'o-boolean'],
-      [ChoySelectionField, 'o-selection'],
-      [ChoyDatetimeField, 'o-datetime'],
-      [ChoyDateField, 'o-date'],
-      [ChoyJsonField, 'o-json'],
-      [ChoyImageField, 'o-image'],
-      [ChoyVirtualField, 'o-virtual'],
-      [ChoyOneToManyField, 'o-o2m'],
+  test('scalar fields bind FieldBase when store+prop set', async () => {
+    const merged: any[] = [
+      ChoyVarcharField,
+      ChoyTextField,
+      ChoyBooleanField,
+      ChoySelectionField,
+      ChoyDatetimeField,
+      ChoyDateField,
+      ChoyJsonField,
+      ChoyImageField,
     ];
-    for (const [Comp, id] of cases) {
+    for (const Comp of merged) {
       const w = await mountField(Comp, { store: fakeStore, prop: 'Name' });
-      const host = w.q(`[data-test=${id}]`);
+      const host = w.q(`[data-test=${STORE_FIELD_BASE_TEST_ID}]`);
       expect(host).not.toBeNull();
       expect(host?.getAttribute('data-prop')).toBe('Name');
       w.unmount();
     }
+    const virtualW = await mountField(ChoyVirtualField, { store: fakeStore, prop: 'Name' });
+    expect(virtualW.q(`[data-test=${STORE_FIELD_BASE_TEST_ID}]`)).toBeNull();
+    virtualW.unmount();
+    const o2mW = await mountField(ChoyOneToManyField, { store: fakeStore, prop: 'Contacts' });
+    const o2mHost = o2mW.q(`[data-test=${STORE_FIELD_BASE_TEST_ID}]`);
+    expect(o2mHost).not.toBeNull();
+    expect(o2mHost?.getAttribute('data-prop')).toBe('Contacts');
+    o2mW.unmount();
   });
 
-  test('NumberField store mode routes integer / bigint / decimal / float hosts', async () => {
-    const intW = await mountField(ChoyNumberField, {
-      store: fakeStore,
-      prop: 'Padding',
-      mode: 'integer',
-    });
-    expect(intW.q('[data-test=o-int]')).not.toBeNull();
-    expect(intW.q('[data-test=o-decimal]')).toBeNull();
-    intW.unmount();
-
-    const bigW = await mountField(ChoyNumberField, {
-      store: fakeStore,
-      prop: 'NextNumber',
-      mode: 'bigint',
-    });
-    expect(bigW.q('[data-test=o-bigint]')).not.toBeNull();
-    bigW.unmount();
-
-    const decW = await mountField(ChoyNumberField, {
-      store: fakeStore,
-      prop: 'Rate',
-      mode: 'decimal',
-    });
-    expect(decW.q('[data-test=o-decimal]')).not.toBeNull();
-    decW.unmount();
-
-    const floatW = await mountField(ChoyNumberField, {
-      store: fakeStore,
-      prop: 'Factor',
-      mode: 'float',
-    });
-    expect(floatW.q('[data-test=o-number]')).not.toBeNull();
-    expect(floatW.q('[data-test=o-decimal]')).toBeNull();
-    floatW.unmount();
-
-    // Default mode is decimal so Decimal-typed domain fields stay on DecimalField.
-    const defaultW = await mountField(ChoyNumberField, {
-      store: fakeStore,
-      prop: 'Rounding',
-    });
-    expect(defaultW.q('[data-test=o-decimal]')).not.toBeNull();
-    defaultW.unmount();
+  test('parallel numeric fields bind FieldBase when store+prop set', async () => {
+    const numeric: Array<[Component, string]> = [
+      [ChoyIntField, 'Padding'],
+      [ChoyBigintField, 'NextNumber'],
+      [ChoyDecimalField, 'Rate'],
+      [ChoyNumberField, 'Factor'],
+    ];
+    for (const [Comp, prop] of numeric) {
+      const w = await mountField(Comp, { store: fakeStore, prop });
+      const host = w.q(`[data-test=${STORE_FIELD_BASE_TEST_ID}]`);
+      expect(host).not.toBeNull();
+      expect(host?.getAttribute('data-prop')).toBe(prop);
+      w.unmount();
+    }
   });
 
-  test('DateField store mode passes date-only valueFormat', async () => {
+  test('DateField store mode binds FieldBase for the prop', async () => {
     const w = await mountField(ChoyDateField, {
       store: fakeStore,
       prop: 'Date',
     });
-    const host = w.q('[data-test=o-date]');
+    const host = w.q(`[data-test=${STORE_FIELD_BASE_TEST_ID}]`);
     expect(host).not.toBeNull();
-    expect(host?.getAttribute('data-value-format')).toBe('YYYY-MM-DD');
+    expect(host?.getAttribute('data-prop')).toBe('Date');
     w.unmount();
   });
 
-  test('NumberField chrome mode renders anchor and uses bigint inputmode', async () => {
-    const w = await mountField(ChoyNumberField, {
-      label: 'Count',
-      mode: 'bigint',
-      modelValue: 42,
+  test('ChoyBigintField edit input uses numeric inputmode', async () => {
+    restoreSfc(FieldBase as any);
+    const binding = makeFloatBinding(42);
+    installFieldBaseEditStub();
+    const w = mountApp(ChoyBigintField as any, {
+      props: { binding, renderMode: 'form' },
     });
-    const root = w.q('[data-anchor="choy.number-field"]');
-    expect(root).not.toBeNull();
-    expect(w.q('[data-test=o-bigint]')).toBeNull();
+    await flushPromises();
     const input = w.q('input') as HTMLInputElement | null;
     expect(input?.getAttribute('inputmode')).toBe('numeric');
     w.unmount();
+    restoreSfc(FieldBase as any);
+    stubStoreFieldBase();
   });
 
-  test('NumberField chrome commits draft and syncs host model changes', async () => {
-    const emitted: Array<number | null> = [];
-    let propsBag: Record<string, unknown> | null = null;
+  test('ChoyNumberField commits buffered float edits on blur', async () => {
+    restoreSfc(FieldBase as any);
+    const binding = makeFloatBinding(1);
+    installFieldBaseEditStub();
     const w = mountApp(ChoyNumberField as any, {
-      reactiveProps: true,
-      props: {
-        label: 'Amount',
-        mode: 'float',
-        modelValue: 1,
-      },
-      on: {
-        'onUpdate:modelValue': (v: number | null) => {
-          emitted.push(v);
-          if (propsBag) propsBag.modelValue = v;
-        },
-      },
+      props: { binding, renderMode: 'form', bufferStrategy: 'live', commitOnBlur: true },
     });
-    propsBag = w.props;
     await flushPromises();
-
     const input = w.q('input') as HTMLInputElement | null;
     expect(input).not.toBeNull();
     input!.value = '3.5';
     input!.dispatchEvent(new Event('input', { bubbles: true }));
     input!.dispatchEvent(new Event('blur', { bubbles: true }));
     await flushPromises();
-    expect(emitted[emitted.length - 1]).toBe(3.5);
-    expect(input!.value).toBe('3.5');
-
-    // Host rewrite path: external model change while draft still looks different.
-    input!.value = 'x';
-    input!.dispatchEvent(new Event('input', { bubbles: true }));
-    propsBag.modelValue = 9;
-    await flushPromises();
-    expect(input!.value).toBe('9');
-
+    expect(binding.fieldRef().value).toBe(3.5);
     w.unmount();
+    restoreSfc(FieldBase as any);
+    stubStoreFieldBase();
   });
 
-  test('ManyToOne store mode uses Ref by default and record when valueMode=record', async () => {
-    const refW = await mountField(ChoyManyToOneField, {
-      store: fakeStore,
-      prop: 'CompanyId',
-    });
-    const refHost = refW.q('[data-test=o-m2o-ref]');
-    expect(refHost).not.toBeNull();
-    expect(refHost?.getAttribute('data-prop')).toBe('CompanyId');
-    expect(refW.q('[data-test=o-m2o]')).toBeNull();
-    refW.unmount();
-
-    const recW = await mountField(ChoyManyToOneField, {
-      store: fakeStore,
-      prop: 'CompanyId',
-      valueMode: 'record',
-    });
-    const recHost = recW.q('[data-test=o-m2o]');
-    expect(recHost).not.toBeNull();
-    expect(recHost?.getAttribute('data-prop')).toBe('CompanyId');
-    expect(recHost?.getAttribute('data-value-mode')).toBe('record');
-    expect(recW.q('[data-test=o-m2o-ref]')).toBeNull();
-    recW.unmount();
+  test('parallel relation fields bind FieldBase when store+prop set', async () => {
+    const relation: Array<[any, string]> = [
+      [ChoyManyToOneField, 'CompanyId'],
+      [ChoyManyToOneRefField, 'CurrencyId'],
+      [ChoyManyToManyField, 'RoleIds'],
+      [ChoyManyToManyRefTagsField, 'TagIds'],
+      [ChoyManyToManyRefTreeField, 'CategoryIds'],
+      [ChoyOneToManyKanbanField, 'Contacts'],
+    ];
+    for (const [Comp, prop] of relation) {
+      const w = await mountField(Comp, { store: fakeStore, prop });
+      const host = w.q(`[data-test=${STORE_FIELD_BASE_TEST_ID}]`);
+      expect(host).not.toBeNull();
+      expect(host?.getAttribute('data-prop')).toBe(prop);
+      w.unmount();
+    }
   });
 
-  test('ManyToOne chrome mode renders without search via noop resolver', async () => {
-    const w = await mountField(ChoyManyToOneField, { label: 'Company' });
-    expect(w.q('[data-anchor="choy.many-to-one-field"]')).not.toBeNull();
-    expect(w.q('[data-test=o-m2o-ref]')).toBeNull();
-    w.unmount();
-  });
-
-  test('ManyToMany store mode routes ref tags/tree and default OManyToMany', async () => {
-    const defW = await mountField(ChoyManyToManyField, {
-      store: fakeStore,
-      prop: 'RoleIds',
-      widget: 'list',
-    });
-    expect(defW.q('[data-test=o-m2m]')).not.toBeNull();
-    defW.unmount();
-
-    const tagsW = await mountField(ChoyManyToManyField, {
-      store: fakeStore,
-      prop: 'RoleIds',
-      widget: 'tags',
-      valueMode: 'ref',
-    });
-    expect(tagsW.q('[data-test=o-m2m-tags]')).not.toBeNull();
-    tagsW.unmount();
-
-    const treeW = await mountField(ChoyManyToManyField, {
-      store: fakeStore,
-      prop: 'RoleIds',
-      widget: 'tree',
-      valueMode: 'ref',
-    });
-    expect(treeW.q('[data-test=o-m2m-tree]')).not.toBeNull();
-    treeW.unmount();
-  });
-
-  test('Form/List/Search store mode hosts O* engines', async () => {
+  test('Form/List/Search store mode hosts store engines', async () => {
     const form = await mountField(ChoyFormView, { store: fakeStore });
     expect(form.q('[data-test=o-form]')).not.toBeNull();
     form.unmount();
@@ -343,12 +268,13 @@ describe('Choy store-mode field hosts', () => {
     search.unmount();
   });
 
-  test('FormView chrome forwards attrs and named slot chrome paths', async () => {
+  test('Gallery form shell forwards attrs and named slot chrome paths', async () => {
+    const GalleryFormShell = (await import('../../pages/GalleryFormShell.vue')).default;
     const Host = defineComponent({
       setup() {
         return () =>
           h(
-            ChoyFormView,
+            GalleryFormShell,
             { title: 'T', 'data-test': 'form-chrome', class: 'extra-class' } as any,
             {
               breadcrumb: () => h('span', { 'data-test': 'crumb' }),
@@ -377,7 +303,7 @@ describe('Choy store-mode field hosts', () => {
   });
 
   test('FormView store mode forwards named slots to FormView', async () => {
-    stubSfc(FormView, {
+    stubSfc(ChoyFormView, {
       props: { store: null },
       setup: ((_p: any, { slots }: any) => {
         return () =>
@@ -395,7 +321,7 @@ describe('Choy store-mode field hosts', () => {
         setup() {
           return () =>
             h(
-              ChoyFormView,
+              ChoyFormView as any,
               { store: fakeStore },
               {
                 breadcrumb: () => h('span', 'b'),
@@ -412,12 +338,12 @@ describe('Choy store-mode field hosts', () => {
       expect(w.q('[data-test=slot-bbox]')).not.toBeNull();
       w.unmount();
     } finally {
-      restoreSfc(FormView as any);
-      stubHost(FormView as any, 'o-form');
+      restoreSfc(ChoyFormView as any);
+      stubHost(ChoyFormView as any, 'o-form');
     }
   });
 
-  test('SearchView chrome submit and ListView chrome paths', async () => {
+  test('SearchView chrome submit paths', async () => {
     const queries: Array<{ keyword: string }> = [];
     const sw = mountApp(ChoySearchView as any, {
       props: { keyword: 'hello' },
@@ -492,36 +418,9 @@ describe('Choy store-mode field hosts', () => {
     sd.unmount();
     sw.unmount();
 
-    const rowClicks: unknown[] = [];
-    const lw = mountApp(ChoyListView as any, {
-      props: {
-        columns: [{ accessorKey: 'name', header: 'Name' }],
-        data: [{ name: 'a' }],
-      },
-      on: {
-        onRowClick: (row: unknown) => {
-          rowClicks.push(row);
-        },
-      },
-      slots: {
-        header: () => h('span', { 'data-test': 'list-header' }),
-        search: () => h('span', { 'data-test': 'list-search' }),
-      },
-    });
-    await flushPromises();
-    expect(lw.q('[data-anchor="choy.list-view"]')).not.toBeNull();
-    expect(lw.q('[data-test=list-header]')).not.toBeNull();
-    expect(lw.q('[data-test=list-search]')).not.toBeNull();
-    const listState = lw.setupState();
-    listState?.onRowSelection?.(['1']);
-    listState?.onRowClick?.({ name: 'a' });
-    await flushPromises();
-    expect(rowClicks.length).toBeGreaterThan(0);
-    lw.unmount();
-
     // Undeclared on* attrs forward via v-on once (keys stripped for toHandlers).
     const loadHits: unknown[] = [];
-    stubSfc(FormView as any, {
+    stubSfc(ChoyFormView as any, {
       props: { store: null },
       emits: ['load-success'],
       setup: ((_props: any, { emit }: any) => {
@@ -545,8 +444,8 @@ describe('Choy store-mode field hosts', () => {
     await flushPromises();
     expect(loadHits).toEqual([{ ok: true }]);
     formListen.unmount();
-    restoreSfc(FormView as any);
-    stubHost(FormView as any, 'o-form');
+    restoreSfc(ChoyFormView as any);
+    stubHost(ChoyFormView as any, 'o-form');
 
     const listListen = await mountField(ChoyListView, {
       store: fakeStore,
@@ -562,151 +461,63 @@ describe('Choy store-mode field hosts', () => {
     searchListen.unmount();
   });
 
-  test('OneToMany store mode routes list vs kanban hosts', async () => {
-    const listW = await mountField(ChoyOneToManyField, {
-      store: fakeStore,
-      prop: 'Contacts',
-      widget: 'list',
-    });
-    expect(listW.q('[data-test=o-o2m]')).not.toBeNull();
-    expect(listW.q('[data-test=o-o2m-kanban]')).toBeNull();
-    listW.unmount();
-
-    const kanbanW = await mountField(ChoyOneToManyField, {
-      store: fakeStore,
-      prop: 'Contacts',
-      widget: 'kanban',
-    });
-    expect(kanbanW.q('[data-test=o-o2m-kanban]')).not.toBeNull();
-    expect(kanbanW.q('[data-test=o-o2m]')).toBeNull();
-    expect(kanbanW.q('[data-test=o-o2m-kanban]')?.getAttribute('data-widget')).toBe('kanban');
-    kanbanW.unmount();
-  });
-
-  test('OneToMany chrome covers rowKey/title/subtitle helpers', async () => {
-    const model = [
-      { Id: '1', Name: 'Alpha', Note: 'n1' },
-      { Name: '', Note: '' },
-    ];
-    const w = mountApp(ChoyOneToManyField as any, {
+  test('ChoyOneToManyKanbanField renders card title and subtitle from binding', async () => {
+    restoreSfc(FieldBase as any);
+    const binding = makeO2MKanbanBinding([
+      { Id: '1', Name: 'Alpha', Email: 'n1' },
+      { Name: '', Email: '' },
+    ]);
+    installFieldBaseEditStub();
+    const w = mountApp(ChoyOneToManyKanbanField as any, {
       props: {
-        modelValue: model,
-        widget: 'kanban',
-        titleField: 'Name',
-        subtitleField: 'Note',
+        binding,
+        renderMode: 'form',
+        cardTitleField: 'Name',
+        cardSubtitleField: 'Email',
         editable: true,
       },
     });
     await flushPromises();
-    expect(w.q('[data-anchor="choy.one-to-many-field"]')).not.toBeNull();
     expect(w.text()).toContain('Alpha');
     expect(w.text()).toContain('n1');
-    // Custom rowId path + empty subtitle early-return.
-    const w2 = mountApp(ChoyOneToManyField as any, {
-      props: {
-        modelValue: [{ Name: 'Beta' }],
-        widget: 'kanban',
-        titleField: 'Name',
-        rowId: (row: { Name: string }) => `k-${row.Name}`,
-      },
-    });
-    await flushPromises();
-    expect(w2.text()).toContain('Beta');
-    w2.unmount();
     w.unmount();
+    restoreSfc(FieldBase as any);
+    stubStoreFieldBase();
   });
 
-  test('field prop under ChoyPage store hosts O* without explicit store prop', async () => {
+  test('field prop under ChoyPage store hosts engines without explicit store prop', async () => {
     const Host = defineComponent({
       setup() {
         return () =>
-          h(ChoyPage, { store: fakeStore, title: 'Page' }, () =>
-            h(ChoyVarcharField, { prop: 'Name' }),
+          h(ChoyPage as any, { store: fakeStore, title: 'Page' }, () =>
+            h(ChoyVarcharField as any, { prop: 'Name' }),
           );
       },
     });
     const w = mountApp(Host);
     await flushPromises();
-    expect(w.q('[data-test=o-varchar]')).not.toBeNull();
+    expect(w.q(`[data-test=${STORE_FIELD_BASE_TEST_ID}]`)).not.toBeNull();
     expect(w.q('[data-anchor="choy.varchar-field"]')).toBeNull();
     w.unmount();
   });
 
   test('store List/Search forward engine events and Search bind props', async () => {
-    const rows: unknown[] = [];
-    stubSfc(ListView as any, {
-      props: { store: null },
-      emits: ['row-click'],
-      setup: ((_props: any, { emit }: any) => {
-        return () =>
-          h('button', {
-            'data-test': 'emit-row',
-            onClick: () => emit('row-click', { row: { name: 'r1' }, rowIndex: 0 }),
-          });
-      }) as any,
+    // ChoyListView is the store engine (no host unwrap). Store mode mounts the list itself.
+    const list = await mountField(ChoyListView, {
+      store: fakeStore,
+      onSelectionChange: () => undefined,
     });
-    const list = mountApp(ChoyListView as any, {
-      props: { store: fakeStore },
-      on: {
-        onRowClick: (row: unknown) => {
-          rows.push(row);
-        },
-      },
-    });
-    await flushPromises();
-    list.click('[data-test=emit-row]');
-    await flushPromises();
-    expect(rows).toEqual([{ name: 'r1' }]);
+    expect(list.q('[data-test=o-list]')).not.toBeNull();
     list.unmount();
-    restoreSfc(ListView as any);
-
-    // Nullish payload.row must not emit the wrapper object as the row.
-    stubSfc(ListView as any, {
-      props: { store: null },
-      emits: ['row-click'],
-      setup: ((_props: any, { emit }: any) => {
-        return () =>
-          h('div', [
-            h('button', {
-              'data-test': 'emit-row-null',
-              onClick: () => emit('row-click', { row: null, rowIndex: 0 }),
-            }),
-            h('button', {
-              'data-test': 'emit-row-bare',
-              onClick: () => emit('row-click', { name: 'bare' }),
-            }),
-          ]);
-      }) as any,
-    });
-    const guardRows: unknown[] = [];
-    const listGuard = mountApp(ChoyListView as any, {
-      props: { store: fakeStore },
-      on: {
-        onRowClick: (row: unknown) => {
-          guardRows.push(row);
-        },
-      },
-    });
-    await flushPromises();
-    listGuard.click('[data-test=emit-row-null]');
-    await flushPromises();
-    expect(guardRows).toEqual([]);
-    listGuard.click('[data-test=emit-row-bare]');
-    await flushPromises();
-    expect(guardRows).toEqual([{ name: 'bare' }]);
-    listGuard.unmount();
-    restoreSfc(ListView as any);
-    stubHost(ListView as any, 'o-list');
 
     const queries: Array<{ keyword: string }> = [];
     let seenBind: Record<string, unknown> = {};
-    stubSfc(SearchView as any, {
-      props: { store: null, placeholder: String, disabled: Boolean },
+    stubSfc(Search as any, {
+      props: { store: null, placeholder: String },
       emits: ['query-update'],
       setup: ((props: any, { emit }: any) => {
         seenBind = {
           placeholder: props.placeholder,
-          disabled: props.disabled,
         };
         return () =>
           h('button', {
@@ -717,7 +528,6 @@ describe('Choy store-mode field hosts', () => {
                 appliedFilters: [{ children: [{ field: 'name', operator: '=', value: 'a' }] }],
               };
               emit('query-update', payload);
-              props.onQueryUpdate?.(payload);
             },
           });
       }) as any,
@@ -736,15 +546,13 @@ describe('Choy store-mode field hosts', () => {
     });
     await flushPromises();
     expect(seenBind.placeholder).toBe('Find…');
-    expect(seenBind.disabled).toBe(true);
     search.click('[data-test=emit-query]');
     await flushPromises();
     expect(queries.length).toBeGreaterThan(0);
     expect(queries[0]?.keyword).toBe('acme');
     expect((queries[0] as any)?.filters?.length).toBe(1);
     search.unmount();
-    restoreSfc(SearchView as any);
-    stubHost(SearchView as any, 'o-search');
+    restoreSfc(Search as any);
   });
 
   test('ViewScope / ButtonBox / StatInfo / VColumn mount', async () => {
@@ -792,7 +600,7 @@ describe('Choy store-mode field hosts', () => {
     expect(stat.q('[data-test=o-stat]')).not.toBeNull();
     stat.unmount();
 
-    stubSfc(VColumn as any, {
+    stubSfc(ChoyVColumn as any, {
       setup: ((_props: any, { slots }: any) => {
         return () =>
           h(
@@ -831,17 +639,8 @@ describe('Choy store-mode field hosts', () => {
     await flushPromises();
     expect(bare.q('[data-test=o-vcolumn]')?.getAttribute('data-has-slot')).toBe('0');
     bare.unmount();
-    restoreSfc(VColumn as any);
-    stubHost(VColumn as any, 'o-vcolumn');
+    restoreSfc(ChoyVColumn as any);
+    stubHost(ChoyVColumn as any, 'o-vcolumn');
   });
 
-  test('field chrome forwards attrs when inheritAttrs is false', async () => {
-    const w = await mountField(ChoyVarcharField, {
-      label: 'Name',
-      'data-test': 'varchar-chrome',
-    });
-    const root = w.q('[data-anchor="choy.varchar-field"]') as HTMLElement | null;
-    expect(root?.getAttribute('data-test')).toBe('varchar-chrome');
-    w.unmount();
-  });
 });

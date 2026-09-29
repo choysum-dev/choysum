@@ -12,10 +12,10 @@ import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { providePageContext } from '@/web/web/composables/usePageContext';
-import ListView from './ListView.vue';
-import Pagination from './Pagination.vue';
+import ChoyListView from './ChoyListView.vue';
+import ListPagination from './ListPagination.vue';
 import VTable from '@/web/web/components/vtable/VTable.vue';
-import VColumn from '@/web/web/components/vtable/VColumn.vue';
+import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
 
 function makeStore(extra?: Record<string, unknown>) {
@@ -53,12 +53,12 @@ function stubListChrome() {
       return () => h('div', { 'data-stub': 'VTable' }, [slots.default?.(), slots.empty?.()]);
     },
   });
-  stubSfc(VColumn, {
-    name: 'VColumn',
-    setup: () => () => h('div', { 'data-stub': 'VColumn' }),
+  stubSfc(ChoyVColumn, {
+    name: 'ChoyVColumn',
+    setup: () => () => h('div', { 'data-stub': 'ChoyVColumn' }),
   });
-  stubSfc(Pagination, {
-    name: 'Pagination',
+  stubSfc(ListPagination, {
+    name: 'ListPagination',
     setup: () => () => h('div', { 'data-stub': 'Pagination' }),
   });
   stubSfc(ListInlineEditScope, {
@@ -71,8 +71,8 @@ function stubListChrome() {
 
 function restoreListChrome() {
   restoreSfc(VTable);
-  restoreSfc(VColumn);
-  restoreSfc(Pagination);
+  restoreSfc(ChoyVColumn);
+  restoreSfc(ListPagination);
   restoreSfc(ListInlineEditScope);
 }
 
@@ -87,7 +87,7 @@ describe('ListView', () => {
 
   test('hides handle column when not editable', async () => {
     const { plugins } = buildPageMountGlobal();
-    const { unmount, qa, root } = mountApp(ListView as any, {
+    const { unmount, qa, root } = mountApp(ChoyListView as any, {
       props: {
         store: makeStore(),
         editable: false,
@@ -102,13 +102,13 @@ describe('ListView', () => {
     await flushPromises();
     expect(root).toBeTruthy();
     // Handle VColumn is gated by showHandleColumn; without editable it should not mount.
-    expect(qa('[data-stub="VColumn"]').length).toBe(0);
+    expect(qa('[data-stub="ChoyVColumn"]').length).toBe(0);
     unmount();
   });
 
   test('exposes load and selectedItems', async () => {
     const { plugins } = buildPageMountGlobal();
-    const { unmount, root } = mountApp(ListView as any, {
+    const { unmount, root } = mountApp(ChoyListView as any, {
       props: {
         store: makeStore(),
         showPaginate: false,
@@ -138,7 +138,7 @@ describe('ListView', () => {
       plugins,
       slots: {
         default: () =>
-          h(ListView as any, {
+          h(ChoyListView as any, {
             showHeader: false,
             showActions: false,
             showPaginate: false,

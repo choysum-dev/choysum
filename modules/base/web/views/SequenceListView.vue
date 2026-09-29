@@ -20,8 +20,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyManyToOneField :store="store" prop="CompanyId"><ChoyVarcharField :store="store" prop="CompanyId.Name" /></ChoyManyToOneField>
     <ChoyVarcharField :store="store" prop="Prefix" />
     <ChoyVarcharField :store="store" prop="Suffix" />
-    <ChoyNumberField :store="store" prop="Padding" mode="integer" />
-    <ChoyNumberField :store="store" prop="NextNumber" mode="bigint" />
+    <ChoyIntField :store="store" prop="Padding" />
+    <ChoyBigintField :store="store" prop="NextNumber" />
     <ChoyBooleanField :store="store" prop="IsActive" />
   </ChoyListView>
 </template>
@@ -36,7 +36,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { ChoyBooleanField, ChoyListView, ChoyManyToOneField, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyListView, ChoyManyToOneField, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField, ChoyIntField, ChoyBigintField} from '@/web';
 
 defineOptions({ name: 'SequenceListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceListView' });

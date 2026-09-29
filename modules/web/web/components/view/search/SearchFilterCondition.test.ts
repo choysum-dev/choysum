@@ -7,65 +7,63 @@ import { flushPromises, fnRecorder, mountApp, stub, stubSfc, restoreSfc } from '
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import SearchFilterCondition from './SearchFilterCondition.vue';
 
-import CharField from '@/web/web/components/field/CharField.vue';
-import VarCharField from '@/web/web/components/field/VarCharField.vue';
-import TextField from '@/web/web/components/field/TextField.vue';
-import IntField from '@/web/web/components/field/IntField.vue';
-import BigintField from '@/web/web/components/field/BigintField.vue';
-import NumberField from '@/web/web/components/field/NumberField.vue';
-import DecimalField from '@/web/web/components/field/DecimalField.vue';
-import MonetaryField from '@/web/web/components/field/MonetaryField.vue';
-import BooleanField from '@/web/web/components/field/BooleanField.vue';
-import DateField from '@/web/web/components/field/DateField.vue';
-import TimeField from '@/web/web/components/field/TimeField.vue';
-import DatetimeField from '@/web/web/components/field/DatetimeField.vue';
-import JsonobjectField from '@/web/web/components/field/JsonobjectField.vue';
-import ManyToOneField from '@/web/web/components/field/ManyToOneField.vue';
-import ManyToOneRefField from '@/web/web/components/field/ManyToOneRefField.vue';
-import BinaryField from '@/web/web/components/field/BinaryField.vue';
-import ImageField from '@/web/web/components/field/ImageField.vue';
-import SelectionField from '@/web/web/components/field/SelectionField.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';
+import ChoyIntField from '@/web/web/components/field/ChoyIntField.vue';
+import ChoyBigintField from '@/web/web/components/field/ChoyBigintField.vue';
+import ChoyNumberField from '@/web/web/components/field/ChoyNumberField.vue';
+import ChoyDecimalField from '@/web/web/components/field/ChoyDecimalField.vue';
+import ChoyMonetaryField from '@/web/web/components/field/ChoyMonetaryField.vue';
+import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
+import ChoyDateField from '@/web/web/components/field/ChoyDateField.vue';
+import ChoyTimeField from '@/web/web/components/field/ChoyTimeField.vue';
+import ChoyDatetimeField from '@/web/web/components/field/ChoyDatetimeField.vue';
+import ChoyJsonField from '@/web/web/components/field/ChoyJsonField.vue';
+import ChoyManyToOneField from '@/web/web/components/field/ChoyManyToOneField.vue';
+import ChoyManyToOneRefField from '@/web/web/components/field/ChoyManyToOneRefField.vue';
+import ChoyBinaryField from '@/web/web/components/field/ChoyBinaryField.vue';
+import ChoyImageField from '@/web/web/components/field/ChoyImageField.vue';
+import ChoySelectionField from '@/web/web/components/field/ChoySelectionField.vue';
+
 
 const fieldSfcs = [
-  CharField,
-  VarCharField,
-  TextField,
-  IntField,
-  BigintField,
-  NumberField,
-  DecimalField,
-  MonetaryField,
-  BooleanField,
-  DateField,
-  TimeField,
-  DatetimeField,
-  JsonobjectField,
-  ManyToOneField,
-  ManyToOneRefField,
-  BinaryField,
-  ImageField,
-  SelectionField,
+  ChoyVarcharField,
+  ChoyTextField,
+  ChoyIntField,
+  ChoyBigintField,
+  ChoyNumberField,
+  ChoyDecimalField,
+  ChoyMonetaryField,
+  ChoyBooleanField,
+  ChoyDateField,
+  ChoyTimeField,
+  ChoyDatetimeField,
+  ChoyJsonField,
+  ChoyManyToOneField,
+  ChoyManyToOneRefField,
+  ChoyBinaryField,
+  ChoyImageField,
+  ChoySelectionField,
 ];
 
 const fieldStubClass: Array<[any, string]> = [
-  [CharField, 'f-char'],
-  [VarCharField, 'f-varchar'],
-  [TextField, 'f-text'],
-  [IntField, 'f-int'],
-  [BigintField, 'f-bigint'],
-  [NumberField, 'f-number'],
-  [DecimalField, 'f-decimal'],
-  [MonetaryField, 'f-monetary'],
-  [BooleanField, 'f-bool'],
-  [DateField, 'f-date'],
-  [TimeField, 'f-time'],
-  [DatetimeField, 'f-dt'],
-  [JsonobjectField, 'f-json'],
-  [ManyToOneField, 'f-m2o'],
-  [ManyToOneRefField, 'f-m2oref'],
-  [BinaryField, 'f-bin'],
-  [ImageField, 'f-img'],
-  [SelectionField, 'f-selection'],
+  [ChoyVarcharField, 'f-varchar'],
+  [ChoyTextField, 'f-text'],
+  [ChoyIntField, 'f-int'],
+  [ChoyBigintField, 'f-bigint'],
+  [ChoyNumberField, 'f-number'],
+  [ChoyDecimalField, 'f-decimal'],
+  [ChoyMonetaryField, 'f-monetary'],
+  [ChoyBooleanField, 'f-bool'],
+  [ChoyDateField, 'f-date'],
+  [ChoyTimeField, 'f-time'],
+  [ChoyDatetimeField, 'f-dt'],
+  [ChoyJsonField, 'f-json'],
+  [ChoyManyToOneField, 'f-m2o'],
+  [ChoyManyToOneRefField, 'f-m2oref'],
+  [ChoyBinaryField, 'f-bin'],
+  [ChoyImageField, 'f-img'],
+  [ChoySelectionField, 'f-selection'],
 ];
 
 function installFieldStubs() {
@@ -296,7 +294,7 @@ describe('SearchFilterCondition', () => {
 
   test('maps every field type to a value editor and placeholder', async () => {
     const types: Array<[string, string, string]> = [
-      ['Char', 'char', 'f-char'],
+      ['Char', 'char', 'f-varchar'],
       ['Text', 'text', 'f-text'],
       ['Int', 'int', 'f-int'],
       ['Big', 'bigint', 'f-bigint'],
@@ -310,7 +308,7 @@ describe('SearchFilterCondition', () => {
       ['Ref', 'manytooneref', 'f-m2oref'],
       ['Bin', 'binary', 'f-bin'],
       ['Img', 'image', 'f-img'],
-      ['Html', 'html', 'f-char'],
+      ['Html', 'html', 'f-varchar'],
       ['Unk', 'weird', 'f-varchar'],
     ];
     const fieldsMetadata: Record<string, any> = Object.fromEntries(

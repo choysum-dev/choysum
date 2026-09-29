@@ -8,7 +8,7 @@ import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
-import SelectionField from './SelectionField.vue';
+import SelectionField from './ChoySelectionField.vue';
 
 function makeBinding(opts: {
   prop?: string;

@@ -3,7 +3,7 @@
 
 import { defineComponent, h, inject } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
-import ViewScope from './ViewScope.vue';
+import ChoyViewScope from './ChoyViewScope.vue';
 import {
   FIELD_PREFIX_KEY,
   VIEW_CONTAINER_KEY,
@@ -27,7 +27,7 @@ describe('ViewScope shared keys', () => {
       setup() {
         return () =>
           h(
-            ViewScope,
+            ChoyViewScope,
             { viewMode: 'display', container: 'List', fieldPrefix: 'Lines' },
             () => h(Probe),
           );

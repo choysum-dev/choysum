@@ -15,7 +15,7 @@ import {
   toSegmentedOptions,
   toStatusbarView,
   validateStatusbarValue,
-} from './ostatusbar_helpers';
+} from './statusbarHelpers';
 import { asyncFnRecorder, fnRecorder } from '@/web/web/__tests__/mountApp';
 
 const meta = [

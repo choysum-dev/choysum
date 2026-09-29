@@ -12,7 +12,7 @@ import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
 import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
 import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import FieldTranslationsDialog from './FieldTranslationsDialog.vue';
+import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 
 const DEFAULT_LANGS = [
   { Code: 'en_US', Name: 'English (US)' },

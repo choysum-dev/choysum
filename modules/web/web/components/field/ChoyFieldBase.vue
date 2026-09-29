@@ -82,7 +82,7 @@ import TooltipTrigger from '../vendor/ui/tooltip/TooltipTrigger.vue';
 import {
   choyFieldChromeDefaults,
   resolveChoyFieldVisible,
-  type ChoyFieldChromeProps,
+  type ChoyFieldChromeProps
 } from './fieldHelpers';
 
 /**

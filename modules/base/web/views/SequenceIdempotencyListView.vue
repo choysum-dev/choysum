@@ -19,10 +19,10 @@ SPDX-License-Identifier: Apache-2.0
       ><ChoyVarcharField :store="store" prop="SequenceId.Name"
     /></ChoyManyToOneField>
     <ChoyVarcharField :store="store" prop="IdempotencyKey" />
-    <ChoyNumberField :store="store" prop="Count" mode="integer" />
+    <ChoyIntField :store="store" prop="Count" />
     <ChoyBooleanField :store="store" prop="DryRun" />
-    <ChoyNumberField :store="store" prop="RangeStart" mode="bigint" />
-    <ChoyNumberField :store="store" prop="RangeEnd" mode="bigint" />
+    <ChoyBigintField :store="store" prop="RangeStart" />
+    <ChoyBigintField :store="store" prop="RangeEnd" />
     <ChoyDatetimeField :store="store" prop="ExpiresAt" />
   </ChoyListView>
 </template>
@@ -37,7 +37,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField, ChoyIntField, ChoyBigintField} from '@/web';
 
 defineOptions({ name: 'SequenceIdempotencyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceIdempotencyListView' });

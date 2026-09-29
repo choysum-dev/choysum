@@ -86,7 +86,10 @@ export type {
 export { default as ChoyFieldBase } from './components/field/ChoyFieldBase.vue';
 export { default as ChoyVarcharField } from './components/field/ChoyVarcharField.vue';
 export { default as ChoyTextField } from './components/field/ChoyTextField.vue';
+export { default as ChoyIntField } from './components/field/ChoyIntField.vue';
+export { default as ChoyBigintField } from './components/field/ChoyBigintField.vue';
 export { default as ChoyNumberField } from './components/field/ChoyNumberField.vue';
+export { default as ChoyDecimalField } from './components/field/ChoyDecimalField.vue';
 export { default as ChoyMonetaryField } from './components/field/ChoyMonetaryField.vue';
 export { default as ChoyBooleanField } from './components/field/ChoyBooleanField.vue';
 export { default as ChoySelectionField } from './components/field/ChoySelectionField.vue';
@@ -95,8 +98,12 @@ export { default as ChoyDateField } from './components/field/ChoyDateField.vue';
 export { default as ChoyDatetimeField } from './components/field/ChoyDatetimeField.vue';
 export { default as ChoyTimeField } from './components/field/ChoyTimeField.vue';
 export { default as ChoyManyToOneField } from './components/field/ChoyManyToOneField.vue';
+export { default as ChoyManyToOneRefField } from './components/field/ChoyManyToOneRefField.vue';
 export { default as ChoyManyToManyField } from './components/field/ChoyManyToManyField.vue';
+export { default as ChoyManyToManyRefTagsField } from './components/field/ChoyManyToManyRefTagsField.vue';
+export { default as ChoyManyToManyRefTreeField } from './components/field/ChoyManyToManyRefTreeField.vue';
 export { default as ChoyOneToManyField } from './components/field/ChoyOneToManyField.vue';
+export { default as ChoyOneToManyKanbanField } from './components/field/ChoyOneToManyKanbanField.vue';
 export { default as ChoyBinaryField } from './components/field/ChoyBinaryField.vue';
 export { default as ChoyImageField } from './components/field/ChoyImageField.vue';
 export { default as ChoyHtmlField } from './components/field/ChoyHtmlField.vue';
@@ -134,8 +141,8 @@ export {
   writePropertyValue,
   type PropertiesMap,
 } from './components/field/propertiesHelpers';
-export type { ChoyBinaryValue } from './components/field/ChoyBinaryField.vue';
-export type { ChoyImageValue } from './components/field/ChoyImageField.vue';
+export type { ChoyBinaryValue } from './components/field/fieldHelpers';
+export type { ChoyImageValue } from './components/field/fieldHelpers';
 export type { ChoyTranslationRow } from './components/field/ChoyFieldTranslationsDialog.vue';
 export type { ChoyCompanyValueRow } from './components/field/ChoyFieldCompanyValuesDialog.vue';
 export type {

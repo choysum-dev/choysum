@@ -140,18 +140,18 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, useId } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import {
-  provideOPageContext,
-  useOptionalPageStore,
+  providePageContext,
+  useOptionalPageStore
 } from '../../composables/usePageContext';
 import type { WebModelStore } from '../../stores/modelStore';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
-import type { PageIoMenuListRef } from '../page/PageIoMenu.vue';
+import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 
 /**
  * Page chrome inside the layout main area (title, toolbar, body, loading).
- * Optional `store` is provided to descendants via provideOPageContext (Form/List).
+ * Optional `store` is provided to descendants via providePageContext (Form/List).
  * Slot visibility is read from `$slots` at render time (slots are not reactive).
  */
 const props = withDefaults(
@@ -187,7 +187,7 @@ const props = withDefaults(
 );
 
 const parentPageStore = useOptionalPageStore();
-provideOPageContext({ store: () => props.store ?? parentPageStore.value });
+providePageContext({ store: () => props.store ?? parentPageStore.value });
 
 const pageTitleId = useId();
 

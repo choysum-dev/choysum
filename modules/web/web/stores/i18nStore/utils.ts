@@ -6,7 +6,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { SUPPORTED_LOCALES } from './locales';
 import { DateTimeFormatType, SupportedLocale } from './types';
-import { formatCurrencyFromConfig, formatNumberFromConfig } from './language_format';
+import { formatCurrencyFromConfig, formatNumberFromConfig } from './languageFormat';
 import { formatUtcInTimeZone, getUserTimeZone, parseUtc } from '@/web/web/utils/datetime';
 
 // Enable the relative time plugin.

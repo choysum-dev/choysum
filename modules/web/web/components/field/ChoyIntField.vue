@@ -8,17 +8,23 @@ SPDX-License-Identifier: Apache-2.0
     :binding="binding"
     :label="label"
     :rules="mergedRules"
+    :formItemProps="formItemProps"
+    :vColumnProps="vColumnProps"
     :toView="toView"
     :fromView="fromView"
+    :required="required"
+    :readonly="readonly"
+    :visible="visible"
+    :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue }">
-      <ONumberCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" />
+      <OIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="o-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="o-field-display-text">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
     </template>
   </FieldBase>
 </template>
@@ -31,29 +37,41 @@ import { ref, watch, computed, defineComponent, h } from 'vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import type { AggProp } from '@/web/web/composables/useField';
-import FieldBase from './FieldBase.vue';
+import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { scope: 'web/components/field/NumberField' });
+const { _t } = createTranslate('web', { scope: 'web/components/field/IntField' });
 
-defineOptions({ name: 'NumberField' });
+defineOptions({ name: 'ChoyIntField' });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
 type FieldType = number | null;
+type ViewType = FieldType;
 
 const props = withDefaults(
   defineProps<{
     store?: WebModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
+
     label?: string;
     rules?: RuleItem[];
-    nullable?: boolean;
+
     min?: number;
     max?: number;
+    nullable?: boolean;
     placeholder?: string;
+
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+
+    formItemProps?: Partial<FormItemProps>;
+    vColumnProps?: Record<string, any>;
+
     bufferStrategy?: CommitStrategy;
     bufferIdleDelay?: number;
     commitOnBlur?: boolean;
@@ -64,9 +82,18 @@ const props = withDefaults(
   }>(),
   {
     rules: () => [],
+    min: Number.MIN_SAFE_INTEGER,
+    max: Number.MAX_SAFE_INTEGER,
     nullable: true,
+    placeholder: '',
+    required: false,
+    readonly: false,
+    visible: true,
+    cellVisible: true,
+    formItemProps: () => ({}),
+    vColumnProps: () => ({}),
     bufferStrategy: 'idle',
-    bufferIdleDelay: 300,
+    bufferIdleDelay: 260,
     commitOnBlur: true,
     renderMode: 'auto',
     showInlineError: false,
@@ -74,44 +101,47 @@ const props = withDefaults(
 );
 
 // Binding with agg forwarded to useField.
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const binding = (props.binding ??
+  useField<T, P, V>({
+    store: props.store as WebModelStore<T>,
+    prop: props.prop as P,
+    agg: props.agg,
+  })) as UseField<T, V>;
 
-const toView = (raw: any): FieldType => (raw === '' || raw == null ? null : typeof raw === 'number' && Number.isFinite(raw) ? raw : null);
-const fromView = (v: FieldType) => v as V;
-
-function toDisplayText(v: any) {
-  return v == null ? '' : String(v);
-}
-
-function isIntermediateInput(s: string | null): boolean {
-  if (s == null) return false;
-  if (s === '-' || s === '.' || s === '-.') return true;
-  if (/^-?\d+\.$/.test(s)) return true;
-  return false;
-}
+const toView = (raw: any): ViewType => {
+  if (raw == null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+};
+const fromView = (v: ViewType) => v as unknown as V;
 
 function parseStrict(s: string): number | null {
-  if (s === '' || s == null) return null;
+  if (!/^[-]?\d+$/.test(s)) return null;
   const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  return Number.isSafeInteger(n) ? n : null;
+}
+function clampValue(n: number): number {
+  if (n < props.min!) n = props.min!;
+  if (n > props.max!) n = props.max!;
+  return n;
+}
+function isIntermediateInput(s: string | null): boolean {
+  return s === '' || s === '-';
 }
 
 const bufferOptions = computed(() => ({
   strategy: props.bufferStrategy!,
   idleDelay: props.bufferIdleDelay,
   commitOnBlur: props.commitOnBlur,
-  normalize: (v: number | null) => {
+  normalize: (v: FieldType) => {
     if (v == null) return null;
-    let n = v;
-    if (props.min !== undefined && n < props.min) n = props.min;
-    if (props.max !== undefined && n > props.max) n = props.max;
-    return n;
+    return clampValue(v);
   },
-  equals: (a: number | null, b: number | null) => a === b,
+  equals: (a: FieldType, b: FieldType) => a === b,
 }));
 
-const ONumberCell = defineComponent({
-  name: 'ONumberCell',
+const OIntCell = defineComponent({
+  name: 'OIntCell',
   props: {
     fieldValue: { type: Function, required: true },
     options: { type: Object, required: true },
@@ -124,9 +154,10 @@ const ONumberCell = defineComponent({
     const modelRef = computed<FieldType>({
       get: () => (p.fieldValue as any)().value,
       set: v => {
-        (p.fieldValue as any)().value = v as any;
+        (p.fieldValue as any)().value = v;
       },
     });
+
     const editingRaw = ref<string | null>(null);
     watch(
       () => modelRef.value,
@@ -136,6 +167,7 @@ const ONumberCell = defineComponent({
       },
       { immediate: true }
     );
+
     const buffer = useBufferedCommit<FieldType>(
       () => modelRef.value,
       v => {
@@ -143,48 +175,35 @@ const ONumberCell = defineComponent({
       },
       p.options as any
     );
+
     function onInput(raw: string) {
-      if (raw === '' && p.nullable) {
-        editingRaw.value = null;
-        buffer.setEditing(null);
-        return;
-      }
-      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) return;
+      if (!/^[-]?\d*$/.test(raw)) return;
       editingRaw.value = raw;
-      if (isIntermediateInput(raw)) return;
+      if (raw === '' || raw === '-') return;
       const n = parseStrict(raw);
       if (n == null) return;
-      buffer.setEditing(n);
+      buffer.setEditing(clampValue(n));
     }
     function onBlur() {
       const raw = editingRaw.value;
-      if (raw == null) {
+      if (raw == null || raw === '' || raw === '-') {
         if (p.nullable) buffer.setEditing(null);
         buffer.onBlur();
         return;
       }
-      if (isIntermediateInput(raw)) {
-        const final = parseStrict(raw.replace(/\.$/, ''));
-        if (final == null) {
-          if (p.nullable) buffer.setEditing(null);
-        } else {
-          buffer.setEditing(final);
-        }
-        buffer.onBlur();
-        return;
-      }
       const n = parseStrict(raw);
-      if (n != null) buffer.setEditing(n);
+      if (n != null) buffer.setEditing(clampValue(n));
       buffer.onBlur();
     }
+
     return () =>
       h('input', {
         ...attrs,
-        class: 'o-input o-number-input',
-        value: editingRaw.value ?? '',
+        class: 'o-input o-int-input',
+        modelValue: editingRaw.value,
         placeholder: p.placeholder,
-        inputmode: 'decimal',
-        onInput: (e: Event) => onInput((e.target as HTMLInputElement).value),
+        inputmode: 'numeric',
+        'onUpdate:modelValue': (val: any) => onInput(val),
         onBlur,
       });
   },
@@ -193,34 +212,31 @@ const ONumberCell = defineComponent({
 const internalRule = {
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) {
-      return props.nullable ? cb() : cb(new Error(_t('Value is required')));
+      if (props.nullable) return cb();
+      return cb(new Error(_t('Cannot be empty')));
     }
-    if (typeof value !== 'number' || !Number.isFinite(value)) return cb(new Error(_t('Value must be a number')));
-    if (props.min !== undefined && value < props.min) return cb(new Error(_t('Value must be at least %s', props.min)));
-    if (props.max !== undefined && value > props.max) return cb(new Error(_t('Value must be at most %s', props.max)));
+    if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
+      return cb(new Error(_t('Must be an integer')));
+    }
+    if (value < props.min! || value > props.max!) {
+      return cb(new Error(_t('Range %s ~ %s', props.min, props.max)));
+    }
     cb();
   },
-  trigger: 'blur',
 } as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
 <style scoped lang="scss">
 .o-field-display-text {
-  line-height: 32px;
+  line-height: var(--el-component-size-base, 32px);
   padding: 0 11px;
-  text-align: right;
-  display: inline-block;
-  max-width: 100%;
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.o-number-input {
-  :deep(.el-input__inner) {
-    text-align: right;
-  }
-  :deep(.el-input__wrapper input) {
-    text-align: right;
-  } /* Compatible with the newer Element Plus input structure. */
+.o-input {
+  width: 100%;
 }
 </style>

@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     <div class="pbafv-grid">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
-          <ChoyManyToOneField
+          <ChoyManyToOneRefField
             :store="store"
             prop="BankId"
             :searchView="BankListView"
@@ -92,8 +92,7 @@ import {
   ChoyManyToOneField,
   ChoySelectionField,
   ChoyVarcharField,
-  type ChoyViewMode as ViewMode,
-} from '@/web';
+  type ChoyViewMode as ViewMode,  ChoyManyToOneRefField} from '@/web';
 
 defineOptions({ name: 'PartnerBankAccountFormView', inheritAttrs: true });
 const { _t } = createTranslate('partner_bank', { scope: 'web/views/PartnerBankAccountFormView' });

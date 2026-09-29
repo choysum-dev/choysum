@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyTabs v-model="activeTab">
         <ChoyTab value="form" label="Form">
           <ChoyCard class="mt-4">
-            <ChoyFormView title="Company" :loading="formLoading">
+            <GalleryFormShell title="Company" :loading="formLoading">
               <template #breadcrumb>
                 <ChoyBreadcrumb
                   :items="[
@@ -19,7 +19,23 @@ SPDX-License-Identifier: Apache-2.0
                 />
               </template>
               <template #statusbar>
-                <ChoyStatusbarField v-model="state" :options="STATE_OPTIONS" label="" />
+                <div
+                  class="choy-statusbar-field flex flex-wrap gap-1"
+                  role="group"
+                  aria-label="State"
+                >
+                  <ChoyButton
+                    v-for="opt in STATE_OPTIONS"
+                    :key="opt.value"
+                    type="button"
+                    size="sm"
+                    :variant="state === opt.value ? 'default' : 'outline'"
+                    :aria-pressed="state === opt.value"
+                    @click="state = opt.value"
+                  >
+                    {{ opt.label }}
+                  </ChoyButton>
+                </div>
               </template>
               <template #system-actions>
                 <ChoyButton
@@ -39,16 +55,26 @@ SPDX-License-Identifier: Apache-2.0
 
               <ChoyGrid :cols="12" class="gap-4">
                 <ChoyCol :span="6">
-                  <ChoyVarcharField
-                    v-model="name"
+                  <ChoyFieldBase
                     label="Name"
                     name="name"
                     required
                     help="Legal or trading name."
-                  />
+                  >
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <Input
+                        :id="controlId"
+                        v-model="name"
+                        name="name"
+                        :aria-invalid="ariaInvalid"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                      />
+                    </template>
+                  </ChoyFieldBase>
                 </ChoyCol>
                 <ChoyCol :span="6">
-                  <ChoyManyToOneField
+                  <ChoyManyToOneRefField
                     v-model="currencyId"
                     label="Currency"
                     name="currency_id"
@@ -59,55 +85,157 @@ SPDX-License-Identifier: Apache-2.0
                   />
                 </ChoyCol>
                 <ChoyCol :span="4">
-                  <ChoyDateField v-model="founded" label="Founded" name="founded" />
+                  <ChoyFieldBase label="Founded" name="founded">
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <DatePicker
+                        :id="controlId"
+                        v-model="founded"
+                        placeholder="Pick a date"
+                        clearable
+                        :aria-invalid="ariaInvalid"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                      />
+                    </template>
+                  </ChoyFieldBase>
                 </ChoyCol>
                 <ChoyCol :span="4">
-                  <ChoySelectionField
-                    v-model="partnerType"
-                    label="Type"
-                    name="partner_type"
-                    :options="TYPE_OPTIONS"
-                  />
+                  <ChoyFieldBase label="Type" name="partner_type">
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <Select v-model="partnerType">
+                        <SelectTrigger
+                          :id="controlId"
+                          placeholder="Select type"
+                          :aria-invalid="ariaInvalid"
+                          :aria-required="ariaRequired"
+                          :aria-describedby="ariaDescribedby"
+                        />
+                        <SelectContent>
+                          <SelectItem
+                            v-for="opt in TYPE_OPTIONS"
+                            :key="opt.value"
+                            :value="opt.value"
+                          >
+                            {{ opt.label }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </template>
+                  </ChoyFieldBase>
                 </ChoyCol>
                 <ChoyCol :span="4">
-                  <ChoyBooleanField
-                    v-model="active"
-                    label="Active"
-                    name="active"
-                    widget="switch"
-                  />
+                  <ChoyFieldBase label="Active" name="active">
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <Switch
+                        :id="controlId"
+                        v-model="active"
+                        :aria-invalid="ariaInvalid"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                      />
+                    </template>
+                  </ChoyFieldBase>
                 </ChoyCol>
                 <ChoyCol :span="6">
-                  <ChoyMonetaryField
-                    v-model="capital"
+                  <ChoyFieldBase
                     label="Share capital"
                     name="capital"
-                    :currency="monetaryCurrency"
-                    :precision="2"
-                  />
+                    :error="capitalInvalidDraft ? 'Invalid amount' : ''"
+                  >
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <Input
+                        :id="controlId"
+                        :model-value="capitalDisplay"
+                        name="capital"
+                        inputmode="decimal"
+                        :aria-invalid="ariaInvalid || capitalInvalidDraft || undefined"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                        @update:model-value="onCapitalInput"
+                        @focus="onCapitalFocus"
+                        @blur="onCapitalBlur"
+                        @keydown="onCapitalKeydown"
+                      />
+                    </template>
+                  </ChoyFieldBase>
                 </ChoyCol>
                 <ChoyCol :span="12">
-                  <ChoyTextField v-model="notes" label="Notes" name="notes" />
+                  <ChoyFieldBase label="Notes" name="notes">
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <Textarea
+                        :id="controlId"
+                        v-model="notes"
+                        name="notes"
+                        :rows="4"
+                        :aria-invalid="ariaInvalid"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                      />
+                    </template>
+                  </ChoyFieldBase>
                 </ChoyCol>
                 <ChoyCol :span="12">
                   <ChoyHtmlField v-model="htmlNotes" label="HTML notes" name="html_notes" />
                 </ChoyCol>
                 <ChoyCol :span="6">
-                  <ChoyJsonField v-model="metaJson" label="Meta JSON" name="meta" />
+                  <ChoyFieldBase label="Meta JSON" name="meta" :error="metaJsonParseError">
+                    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
+                      <Textarea
+                        :id="controlId"
+                        v-model="metaJsonDraft"
+                        name="meta"
+                        :rows="8"
+                        class="font-mono text-xs"
+                        :aria-invalid="ariaInvalid || !!metaJsonParseError || undefined"
+                        :aria-required="ariaRequired"
+                        :aria-describedby="ariaDescribedby"
+                        @blur="commitMetaJsonDraft"
+                      />
+                    </template>
+                  </ChoyFieldBase>
                 </ChoyCol>
                 <ChoyCol :span="6">
-                  <ChoyPropertiesField
-                    v-model="propsMap"
-                    label="Properties"
-                    name="properties"
-                    :items="propItems"
-                  />
+                  <ChoyFieldBase label="Properties" name="properties">
+                    <template #default>
+                      <div class="flex flex-col gap-3">
+                        <div
+                          v-for="item in renderablePropItems"
+                          :key="item.name"
+                          class="flex flex-col gap-1"
+                        >
+                          <label class="text-sm font-medium text-foreground">
+                            {{ item.string || item.name }}
+                          </label>
+                          <Input
+                            v-if="item.type === 'char'"
+                            :model-value="propAsString(readPropValue(item.name))"
+                            @update:model-value="setPropValue(item.name, $event)"
+                          />
+                          <Select
+                            v-else-if="item.type === 'selection'"
+                            :model-value="(readPropValue(item.name) as string | null) ?? null"
+                            @update:model-value="setPropValue(item.name, $event)"
+                          >
+                            <SelectTrigger class="w-full" placeholder="Select…" />
+                            <SelectContent>
+                              <SelectItem
+                                v-for="opt in normalizeSelectionOptions(item.selection)"
+                                :key="opt.value"
+                                :value="opt.value"
+                              >
+                                {{ opt.label }}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </template>
+                  </ChoyFieldBase>
                 </ChoyCol>
                 <ChoyCol :span="12">
                   <ChoyOneToManyField
                     v-model="contactLines"
                     label="Contacts"
-                    widget="list"
                     :columns="contactColumns"
                     title-field="Title"
                     subtitle-field="Role"
@@ -117,14 +245,13 @@ SPDX-License-Identifier: Apache-2.0
                   <ChoyManyToManyField
                     v-model="tagIds"
                     label="Currency tags"
-                    widget="tags"
                     search-key="dogfood.currency.tags"
                     :search="searchCurrencies"
                     :options="CURRENCIES"
                   />
                 </ChoyCol>
               </ChoyGrid>
-            </ChoyFormView>
+            </GalleryFormShell>
           </ChoyCard>
         </ChoyTab>
 
@@ -136,28 +263,27 @@ SPDX-License-Identifier: Apache-2.0
 
         <ChoyTab value="list" label="List">
           <ChoyCard class="mt-4" title="Companies">
-            <ChoyListView
-              v-model:row-selection="listSelection"
-              :columns="listColumns"
-              :data="pageRows"
-              :row-id="companyRowId"
-              :height="280"
-              @row-click="onRowClick"
-            >
-              <template #search>
+                        <div class="flex flex-col gap-3">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-foreground/70">
+                  Selected {{ listSelection.length }} · showing {{ pageRows.length }} of
+                  {{ total }}
+                </p>
                 <ChoySearchView
                   v-model:keyword="searchKeyword"
                   placeholder="Filter by name or country…"
                   @query-update="onSearch"
                 />
-              </template>
-              <template #header>
-                <p class="text-sm text-foreground/70">
-                  Selected {{ listSelection.length }} · showing {{ pageRows.length }} of
-                  {{ total }}
-                </p>
-              </template>
-            </ChoyListView>
+              </div>
+              <DataTable
+                v-model:row-selection="listSelection"
+                :columns="listColumns"
+                :data="pageRows"
+                :row-id="companyRowId"
+                :height="280"
+                @row-click="onRowClick"
+              />
+            </div>
             <div class="mt-3 flex justify-end">
               <ChoyPagination v-model:page="page" v-model:page-size="pageSize" :total="total" />
             </div>
@@ -177,25 +303,39 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
-import ChoyBooleanField from '../components/field/ChoyBooleanField.vue';
-import ChoyDateField from '../components/field/ChoyDateField.vue';
+import ChoyFieldBase from '../components/field/ChoyFieldBase.vue';
 import ChoyHtmlField from '../components/field/ChoyHtmlField.vue';
-import ChoyJsonField from '../components/field/ChoyJsonField.vue';
 import ChoyManyToManyField from '../components/field/ChoyManyToManyField.vue';
 import ChoyManyToOneField from '../components/field/ChoyManyToOneField.vue';
-import ChoyMonetaryField from '../components/field/ChoyMonetaryField.vue';
 import ChoyOneToManyField from '../components/field/ChoyOneToManyField.vue';
-import ChoyPropertiesField from '../components/field/ChoyPropertiesField.vue';
-import ChoySelectionField from '../components/field/ChoySelectionField.vue';
-import ChoyStatusbarField from '../components/field/ChoyStatusbarField.vue';
-import ChoyTextField from '../components/field/ChoyTextField.vue';
-import ChoyVarcharField from '../components/field/ChoyVarcharField.vue';
+import Input from '../components/vendor/ui/input/Input.vue';
+import Textarea from '../components/vendor/ui/textarea/Textarea.vue';
+import Switch from '../components/vendor/ui/switch/Switch.vue';
+import Select from '../components/vendor/ui/select/Select.vue';
+import SelectContent from '../components/vendor/ui/select/SelectContent.vue';
+import SelectItem from '../components/vendor/ui/select/SelectItem.vue';
+import SelectTrigger from '../components/vendor/ui/select/SelectTrigger.vue';
 import type { RelationOption } from '../components/internal/relationComboboxHelpers';
-import type { ChoyJsonValue } from '../components/field/jsonFieldHelpers';
-import type { PropertiesMap } from '../components/field/propertiesHelpers';
-import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
+import {
+  normalizeChoyJsonIncoming,
+  stringifyChoyJson,
+  tryParseChoyJson,
+  type ChoyJsonValue
+} from '../components/field/jsonFieldHelpers';
+import {
+  filterRenderablePropertyItems,
+  normalizeSelectionOptions,
+  writePropertyValue,
+  type PropertiesMap
+} from '../components/field/propertiesHelpers';
+import {
+  formatChoyMonetary,
+  parseChoyNumber,
+  resolveChoyMonetaryPrecision,
+  roundChoyDecimal
+} from '../components/field/fieldHelpers';
 import ChoyButton from '../components/layout/ChoyButton.vue';
 import ChoyCard from '../components/layout/ChoyCard.vue';
 import ChoyCol from '../components/layout/ChoyCol.vue';
@@ -205,23 +345,24 @@ import ChoyTab from '../components/layout/ChoyTab.vue';
 import ChoyTabs from '../components/layout/ChoyTabs.vue';
 import Toaster from '../components/vendor/ui/toast/Toaster.vue';
 import ChoyBreadcrumb from '../components/view/ChoyBreadcrumb.vue';
-import ChoyFormView from '../components/view/ChoyFormView.vue';
+import GalleryFormShell from './GalleryFormShell.vue';
 import ChoyKanbanView from '../components/view/ChoyKanbanView.vue';
-import ChoyListView from '../components/view/ChoyListView.vue';
+import DataTable from '../components/internal/DataTable.vue';
+import DatePicker from '../components/internal/DatePicker.vue';
 import ChoyPagination from '../components/view/ChoyPagination.vue';
 import ChoySearchView from '../components/view/ChoySearchView.vue';
 import {
   groupRowsIntoChoyKanbanLanes,
-  type ChoyKanbanLane,
+  type ChoyKanbanLane
 } from '../components/view/kanbanViewHelpers';
 import {
   choyPageOffset,
   choyTotalPages,
-  clampChoyPage,
+  clampChoyPage
 } from '../components/view/paginationHelpers';
 import {
   filterRowsByKeyword,
-  type ChoySearchQuery,
+  type ChoySearchQuery
 } from '../components/view/searchViewHelpers';
 import { ChoyMessage } from '../composables/useChoyMessage';
 
@@ -279,6 +420,29 @@ const currencyId = ref<string | null>('usd');
 const currencyOption = ref<RelationOption | null>(CURRENCIES[0] ?? null);
 const htmlNotes = ref<string | null>('<p>Dogfood <em>HTML</em> notes.</p>');
 const metaJson = ref<ChoyJsonValue>({ source: 'dogfood', version: 1 });
+const metaJsonDraft = ref(stringifyChoyJson(normalizeChoyJsonIncoming(metaJson.value)));
+const metaJsonParseError = ref('');
+watch(
+  () => metaJson.value,
+  (next) => {
+    const pretty = stringifyChoyJson(normalizeChoyJsonIncoming(next));
+    const check = tryParseChoyJson(metaJsonDraft.value, { allowArray: false, nullable: true });
+    if (check.ok && stringifyChoyJson(check.value) === pretty) return;
+    metaJsonDraft.value = pretty;
+    metaJsonParseError.value = '';
+  },
+);
+function commitMetaJsonDraft(): void {
+  const result = tryParseChoyJson(metaJsonDraft.value, { allowArray: false, nullable: true });
+  if (!result.ok) {
+    metaJsonParseError.value = result.error;
+    return;
+  }
+  metaJsonParseError.value = '';
+  metaJson.value = result.value;
+  metaJsonDraft.value = stringifyChoyJson(result.value);
+}
+
 const propItems = [
   { name: 'segment', type: 'char', string: 'Segment', value: 'enterprise' },
   {
@@ -291,6 +455,108 @@ const propItems = [
 const propsMap = ref<PropertiesMap>(
   Object.assign(Object.create(null), { segment: 'enterprise', tier: 'silver' }),
 );
+const renderablePropItems = computed(
+  () => filterRenderablePropertyItems(propItems ?? []).renderable,
+);
+function readPropValue(name: string): unknown {
+  const map = propsMap.value || Object.create(null);
+  if (Object.prototype.hasOwnProperty.call(map, name)) {
+    return map[name];
+  }
+  const item = (propItems ?? []).find((i: { name?: string }) => i?.name === name);
+  if (!item) return undefined;
+  if (Object.prototype.hasOwnProperty.call(item, 'value')) return item.value;
+  if (Object.prototype.hasOwnProperty.call(item, 'default')) return item.default;
+  return undefined;
+}
+function setPropValue(name: string, value: unknown): void {
+  propsMap.value = writePropertyValue(propItems ?? [], propsMap.value, name, value);
+}
+function propAsString(v: unknown): string {
+  return v == null ? '' : String(v);
+}
+
+const capitalFocused = ref(false);
+const capitalEdited = ref(false);
+const capitalInvalidDraft = ref(false);
+const capitalDraft = ref('');
+const monetaryCurrency = computed(() => String(currencyId.value ?? '').trim().toUpperCase());
+const capitalDisplay = computed(() => {
+  if (capitalFocused.value || capitalEdited.value) {
+    return capitalDraft.value;
+  }
+  return formatChoyMonetary(capital.value, {
+    precision: 2,
+    currency: monetaryCurrency.value,
+  });
+});
+watch(capital, (next) => {
+  const parsedDraft = parseChoyNumber(capitalDraft.value, 'decimal');
+  if (
+    capitalFocused.value &&
+    parsedDraft !== null &&
+    next !== null &&
+    parsedDraft === next
+  ) {
+    return;
+  }
+  capitalEdited.value = false;
+  capitalInvalidDraft.value = false;
+  capitalDraft.value = next === null || next === undefined ? '' : String(next);
+});
+function onCapitalFocus(): void {
+  capitalFocused.value = true;
+  if (!capitalEdited.value) {
+    capitalDraft.value =
+      capital.value === null || capital.value === undefined ? '' : String(capital.value);
+  }
+}
+function onCapitalBlur(): void {
+  capitalFocused.value = false;
+  commitCapitalDraft();
+}
+function commitCapitalDraft(): void {
+  if (!capitalEdited.value) {
+    capitalDraft.value =
+      capital.value === null || capital.value === undefined ? '' : String(capital.value);
+    return;
+  }
+  const text = capitalDraft.value.trim();
+  if (!text) {
+    capital.value = null;
+    capitalDraft.value = '';
+    capitalEdited.value = false;
+    capitalInvalidDraft.value = false;
+    return;
+  }
+  if (parseChoyNumber(capitalDraft.value, 'decimal') === null) {
+    capitalEdited.value = true;
+    capitalInvalidDraft.value = true;
+    return;
+  }
+  const rounded = roundChoyDecimal(capitalDraft.value, resolveChoyMonetaryPrecision(2));
+  if (!rounded) {
+    capitalEdited.value = true;
+    capitalInvalidDraft.value = true;
+    return;
+  }
+  capital.value = rounded.value;
+  capitalDraft.value = rounded.text;
+  capitalEdited.value = false;
+  capitalInvalidDraft.value = false;
+}
+function onCapitalInput(value: string): void {
+  capitalEdited.value = true;
+  capitalInvalidDraft.value = false;
+  capitalDraft.value = value;
+}
+function onCapitalKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) {
+    return;
+  }
+  event.preventDefault();
+  commitCapitalDraft();
+}
 
 type ContactLine = { Id: string; Title: string; Role?: string };
 const contactLines = ref<ContactLine[]>([
@@ -329,11 +595,6 @@ const appliedQuery = ref<ChoySearchQuery>({ keyword: '', filters: [] });
 const listSelection = ref<Array<string | number>>([]);
 const page = ref(1);
 const pageSize = ref(10);
-
-const monetaryCurrency = computed(() => {
-  // No currency selected → no suffix; don't imply USD on the amount.
-  return String(currencyId.value ?? '').trim().toUpperCase();
-});
 
 const listColumns: ColumnDef<CompanyRow, unknown>[] = [
   { accessorKey: 'name', header: 'Name', size: 180 },

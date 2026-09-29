@@ -89,7 +89,7 @@ import {
   ChoyMessage,
   ChoySearchView,
   ChoyVColumn,
-  ChoyVarcharField,
+  ChoyVarcharField
 } from '@/web';
 import { resolveListRowRecordId } from './list_row_nav';
 

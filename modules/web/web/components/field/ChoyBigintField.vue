@@ -51,7 +51,7 @@ import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/BigintField' });
 
-defineOptions({ name: 'BigintField' });
+defineOptions({ name: 'ChoyBigintField' });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 

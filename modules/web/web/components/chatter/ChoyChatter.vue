@@ -50,7 +50,7 @@ import { computed, ref, watch } from 'vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import {
   useInjectedFollowerStore,
-  useInjectedMessageStore,
+  useInjectedMessageStore
 } from '@/web/web/composables/chatter/chatterStores';
 import { useInjectedChatterTimeline } from '@/web/web/composables/chatter/useChatterTimeline';
 import { useInjectedChatterThreadTips } from '@/web/web/composables/chatter/useChatterThreadTips';

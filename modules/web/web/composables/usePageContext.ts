@@ -30,7 +30,7 @@ export type PageContext = {
 };
 
 /** Stable across `vi.resetModules()` so provide/inject still match in unit tests. */
-export const PageContextKey: InjectionKey<PageContext> = Symbol.for('choysum.oPageContext');
+export const PageContextKey: InjectionKey<PageContext> = Symbol.for('choysum.pageContext');
 
 export function providePageContext(options: { store: MaybeRefOrGetter<unknown | null | undefined> }) {
   const store = computed(() => (toValue(options.store) ?? null) as unknown | null);
@@ -59,12 +59,6 @@ export function providePageContext(options: { store: MaybeRefOrGetter<unknown | 
 export function usePageContext(): PageContext | null {
   return inject(PageContextKey, null);
 }
-
-export const provideOPageContext = providePageContext;
-export const useOPageContext = usePageContext;
-export type OPageContext = PageContext;
-export type OPageActionTarget = PageActionTarget;
-export const OPageContextKey = PageContextKey;
 
 /** Reactive page store (null when Page did not provide one). */
 export function useOptionalPageStore<T = unknown>(): ComputedRef<T | null> {

@@ -19,7 +19,7 @@ import {
   notifyComposerMessagesChanged,
   trackComposerMessageRevision,
 } from './i18n';
-import { detectBrowserTimezone, resolveRequestTimezone } from './utils/request_timezone';
+import { detectBrowserTimezone, resolveRequestTimezone } from './utils/requestTimezone';
 import { setUserTimeZoneResolver } from './utils/datetime';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { registerChoyGalleryRoute } from './route/choyGallery';

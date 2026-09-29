@@ -5,11 +5,11 @@ import { Comment, Fragment, Text, defineComponent, h, markRaw, nextTick, provide
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
-import StatInfo from './StatInfo.vue';
-import ButtonBox from './ButtonBox.vue';
-import { resolveStatDisplayValue, slotHasContent } from './ostatinfo_helpers';
+import ChoyStatInfo from './ChoyStatInfo.vue';
+import ChoyButtonBox from './ChoyButtonBox.vue';
+import { resolveStatDisplayValue, slotHasContent } from './statInfoHelpers';
 
-describe('ostatinfo_helpers', () => {
+describe('statInfoHelpers', () => {
   test('prefers explicit value over relation length', () => {
     expect(resolveStatDisplayValue({ value: 3, relationValue: [1, 2] })).toBe(3);
     expect(resolveStatDisplayValue({ value: 0, relationValue: [1] })).toBe(0);
@@ -57,7 +57,7 @@ describe('StatInfo', () => {
 
   test('renders value and label; emits click', async () => {
     const onClick = fnRecorder();
-    const { unmount, q, setupState } = mountApp(StatInfo as any, {
+    const { unmount, q, setupState } = mountApp(ChoyStatInfo as any, {
       props: { value: 5, label: 'Users' },
       ...withRouter({ on: { onClick } }),
     });
@@ -77,7 +77,7 @@ describe('StatInfo', () => {
         setup: () => () => h('span', { class: 'icon-stub' }),
       })
     );
-    const { unmount, q } = mountApp(StatInfo as any, {
+    const { unmount, q } = mountApp(ChoyStatInfo as any, {
       props: { value: 1, label: 'Users', icon: IconStub },
       ...withRouter(),
       stubs: {
@@ -101,7 +101,7 @@ describe('StatInfo', () => {
           draft: { Users: [{ Id: '1' }, { Id: '2' }] },
         });
         return () =>
-          h(StatInfo as any, {
+          h(ChoyStatInfo as any, {
             store: { storeId: 's' },
             prop: 'Users',
             label: 'Users',
@@ -116,14 +116,14 @@ describe('StatInfo', () => {
   });
 
   test('shows explicit value when only store or only prop is set', () => {
-    const a = mountApp(StatInfo as any, {
+    const a = mountApp(ChoyStatInfo as any, {
       props: { store: { storeId: 's' }, label: 'Users', value: 1 },
       ...withRouter(),
     });
     expect(a.q('.o-stat-info__value')?.textContent).toBe('1');
     a.unmount();
 
-    const b = mountApp(StatInfo as any, {
+    const b = mountApp(ChoyStatInfo as any, {
       props: { prop: 'Users', label: 'Users', value: 1 },
       ...withRouter(),
     });
@@ -136,7 +136,7 @@ describe('StatInfo', () => {
       setup() {
         provide('form-root', { draft: { Users: undefined } });
         return () =>
-          h(StatInfo as any, {
+          h(ChoyStatInfo as any, {
             store: { storeId: 's' },
             prop: 'Users',
             label: 'Users',
@@ -152,7 +152,7 @@ describe('StatInfo', () => {
 
   test('router.push(to) after emit on click', async () => {
     const onClick = fnRecorder();
-    const { unmount, setupState } = mountApp(StatInfo as any, {
+    const { unmount, setupState } = mountApp(ChoyStatInfo as any, {
       props: { value: 1, label: 'Go', to: { name: 'users' } },
       ...withRouter({ on: { onClick } }),
     });
@@ -163,7 +163,7 @@ describe('StatInfo', () => {
   });
 
   test('does not render when visible=false; ignores click when disabled', async () => {
-    const hidden = mountApp(StatInfo as any, {
+    const hidden = mountApp(ChoyStatInfo as any, {
       props: { value: 1, label: 'X', visible: false },
       ...withRouter(),
     });
@@ -171,7 +171,7 @@ describe('StatInfo', () => {
     hidden.unmount();
 
     const onClick = fnRecorder();
-    const disabled = mountApp(StatInfo as any, {
+    const disabled = mountApp(ChoyStatInfo as any, {
       props: { value: 1, label: 'X', disabled: true, to: { name: 'users' } },
       ...withRouter({ on: { onClick } }),
     });
@@ -188,14 +188,14 @@ describe('ButtonBox', () => {
       setup() {
         return () =>
           h('div', { class: 'host' }, [
-            h(ButtonBox as any),
-            h(ButtonBox as any, null, { default: () => h(StatInfo as any, { value: 1, label: 'A' }) }),
+            h(ChoyButtonBox as any),
+            h(ChoyButtonBox as any, null, { default: () => h(ChoyStatInfo as any, { value: 1, label: 'A' }) }),
           ]);
       },
     });
     const { plugins } = buildPageMountGlobal();
     const { unmount, q, qa } = mountApp(Host, { plugins });
-    expect(qa('.o-button-box').length).toBe(1);
+    expect(qa('.choy-button-box').length).toBe(1);
     expect(q('.o-stat-info__value')?.textContent).toBe('1');
     unmount();
   });
@@ -206,18 +206,19 @@ describe('ButtonBox', () => {
       setup() {
         return () =>
           h('div', { class: 'host' }, [
-            h(ButtonBox as any, null, {
-              default: () => (show.value ? h(StatInfo as any, { value: 1, label: 'A' }) : null),
+            h(ChoyButtonBox as any, null, {
+              default: () => (show.value ? h(ChoyStatInfo as any, { value: 1, label: 'A' }) : null),
             }),
           ]);
       },
     });
     const { plugins } = buildPageMountGlobal();
     const { unmount, q } = mountApp(Host, { plugins });
-    expect(q('.o-button-box')).toBeFalsy();
+    expect(q('.choy-button-box')).toBeFalsy();
     show.value = true;
     await nextTick();
-    expect(q('.o-button-box')).toBeTruthy();
+    await flushPromises();
+    expect(q('.choy-button-box')).toBeTruthy();
     expect(q('.o-stat-info__value')?.textContent).toBe('1');
     unmount();
   });

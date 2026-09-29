@@ -122,7 +122,7 @@ import {
   CalendarHeading,
   CalendarNext,
   CalendarPrev,
-  CalendarRoot,
+  CalendarRoot
 } from 'reka-ui';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { CalendarDate } from '@internationalized/date';
@@ -135,7 +135,7 @@ import {
   clearDatePickerValue,
   formatDatePickerValue,
   parseDatePickerValue,
-  todayDatePickerValue,
+  todayDatePickerValue
 } from './datePickerHelpers';
 
 /** Matches formatDatePickerValue's supported YYYY-MM-DD year range. */

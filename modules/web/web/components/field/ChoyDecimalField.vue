@@ -46,7 +46,7 @@ import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/us
 import Decimal, { isDecimal, toDecimalRounding, type DecimalRound } from '@/core/utils/decimal';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
-import { formatODecimalDisplayText, resolveODecimalEditScale, resolveODecimalCellScale } from './odecimal_helpers';
+import { formatDecimalDisplayText, resolveDecimalEditScale, resolveDecimalCellScale } from './decimalHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/DecimalField' });
 
@@ -180,7 +180,7 @@ function resolveFixedScaleFrom(obj: any): number | undefined {
 
 // Edit/validate: fixed scale when declared, otherwise NUMERIC soft max (18).
 function resolveEditScaleFrom(obj: any): number {
-  return resolveODecimalEditScale(resolveFixedScaleFrom(obj));
+  return resolveDecimalEditScale(resolveFixedScaleFrom(obj));
 }
 
 /* ================== Aggregate value resolution (display-mode fallback) ================== */
@@ -299,7 +299,7 @@ function toDisplayText(v: any, getFixedScale: () => number | undefined) {
   } catch {
     // Pinia / i18n may be unavailable in isolated mounts; fall back to plain text.
   }
-  return formatODecimalDisplayText(d, fixedScale, effectiveRound.value, {
+  return formatDecimalDisplayText(d, fixedScale, effectiveRound.value, {
     numberFormat,
     formatFixedDecimalString,
   });
@@ -365,7 +365,7 @@ const ODecimalCell = defineComponent({
     );
 
     function currentScale(): number {
-      return resolveODecimalCellScale((p.options as any)?.getScale);
+      return resolveDecimalCellScale((p.options as any)?.getScale);
     }
 
     function onInput(raw: string) {

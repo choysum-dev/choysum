@@ -8,10 +8,10 @@ import {
   formatFixedDecimalString,
   parseGrouping,
   resolveFormatConfig,
-} from './language_format';
+} from './languageFormat';
 import { formatDateTime, formatNumber } from './utils';
 
-test('language_format (P2): T2.2: formatNumber uses Language separators and Grouping, not catalog hardcoding', () => {
+test('languageFormat (P2): T2.2: formatNumber uses Language separators and Grouping, not catalog hardcoding', () => {
   const language = {
     DecimalSeparator: ',',
     ThousandSeparator: '.',
@@ -29,7 +29,7 @@ test('language_format (P2): T2.2: formatNumber uses Language separators and Grou
   expect(resolved.numberFormat.thousandsSeparator).toBe('.');
 });
 
-test('language_format (P2): T2.3: Preferences.display.dateFormat overrides Language; unset keeps Language', () => {
+test('languageFormat (P2): T2.3: Preferences.display.dateFormat overrides Language; unset keeps Language', () => {
   const language = {
     DateFormat: 'YYYY-MM-DD',
     TimeFormat: 'HH:mm:ss',
@@ -46,7 +46,7 @@ test('language_format (P2): T2.3: Preferences.display.dateFormat overrides Langu
   expect(formatDateTime(date, without.dateTimeFormat, { type: 'date' })).toBe('2026-01-02');
 });
 
-test('language_format (P2): datetime uses user timezone; date does not shift calendar day', () => {
+test('languageFormat (P2): datetime uses user timezone; date does not shift calendar day', () => {
   const config = { shortDate: 'YYYY-MM-DD', shortTime: 'HH:mm:ss' };
   const utcInstant = '2024-06-30T16:00:00.000Z'; // 2024-07-01 00:00 Shanghai
 
@@ -62,7 +62,7 @@ test('language_format (P2): datetime uses user timezone; date does not shift cal
   expect(formatDateTime(calendar, config, { type: 'date', timeZone: 'America/New_York' })).toBe('2024-07-01');
 });
 
-test('language_format (P2): T2.4: catalog still exposes dayjs package names; missing format falls back safely', () => {
+test('languageFormat (P2): T2.4: catalog still exposes dayjs package names; missing format falls back safely', () => {
   const zh = SUPPORTED_LOCALES['zh-CN'];
   expect(zh.dayjsLocaleCode).toBe('zh-cn');
 
@@ -74,12 +74,12 @@ test('language_format (P2): T2.4: catalog still exposes dayjs package names; mis
   expect(formatNumber(1234.5, 'el', resolved.numberFormat, { digits: 1 })).toBe('1,234.5');
 });
 
-test('language_format (P2): parseGrouping accepts Odoo-style [3,0]', () => {
+test('languageFormat (P2): parseGrouping accepts Odoo-style [3,0]', () => {
   expect(parseGrouping('[3,0]')).toEqual([3, 0]);
   expect(parseGrouping([3, 2, 0])).toEqual([3, 2, 0]);
 });
 
-test('language_format (P2): formats fixed decimal strings without Number conversion', () => {
+test('languageFormat (P2): formats fixed decimal strings without Number conversion', () => {
   expect(
     formatFixedDecimalString('1234567.890000000000000000', {
       thousandsSeparator: '.',
@@ -89,7 +89,7 @@ test('language_format (P2): formats fixed decimal strings without Number convers
   ).toBe('1.234.567,890000000000000000');
 });
 
-test('language_format (P2): formats currency from a pre-quantized string without Number conversion', () => {
+test('languageFormat (P2): formats currency from a pre-quantized string without Number conversion', () => {
   expect(
     formatCurrencyFromConfig(
       '9007199254740993.12',
@@ -106,7 +106,7 @@ test('language_format (P2): formats currency from a pre-quantized string without
   ).toBe('USD 9,007,199,254,740,993.12');
 });
 
-test('language_format (P2): pads currency string fractional digits to decimalDigits without Number conversion', () => {
+test('languageFormat (P2): pads currency string fractional digits to decimalDigits without Number conversion', () => {
   expect(
     formatCurrencyFromConfig('1.2', {
       thousandsSeparator: ',',
@@ -141,7 +141,7 @@ test('language_format (P2): pads currency string fractional digits to decimalDig
   ).toBe('1.2345');
 });
 
-test('language_format (P2): covers ensureDecimalDigitsString edge cases for currency formatting', () => {
+test('languageFormat (P2): covers ensureDecimalDigitsString edge cases for currency formatting', () => {
   expect(formatCurrencyFromConfig('  ', { decimalDigits: 2 }, 'USD')).toBe('USD');
   expect(formatCurrencyFromConfig('', { decimalDigits: 2 })).toBe('');
 

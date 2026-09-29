@@ -9,11 +9,12 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { toRef, provide } from 'vue';
-import type { ViewMode, ViewContainer } from './ViewScope.vue';
 import {
   VIEW_MODE_KEY,
   VIEW_CONTAINER_KEY,
   FIELD_PREFIX_KEY,
+  type ViewMode,
+  type ViewContainer
 } from './viewScopeKeys';
 
 export type { ViewMode, ViewContainer };

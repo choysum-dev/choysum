@@ -32,7 +32,7 @@ import type { ClassValue } from '../../lib/utils';
 import {
   ChoyTabsContextKey,
   createChoyTabsContext,
-  type ChoyTabRegistration,
+  type ChoyTabRegistration
 } from './choyTabsContext';
 import { nextChoyTabSelection } from './choyTabsSelection';
 

@@ -33,7 +33,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { ChoyBooleanField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField} from '@/web';
 
 defineOptions({ name: 'BankListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/BankListView' });

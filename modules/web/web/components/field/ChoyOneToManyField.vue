@@ -4,241 +4,288 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OneToManyKanbanField v-if="storeMode && widget === 'kanban'" v-bind="(storeBind as any)">
-    <template v-if="$slots.card" #card="slotData">
-      <slot name="card" v-bind="slotData || {}" />
-    </template>
-    <template v-if="$slots.toolbar" #toolbar="slotData">
-      <slot name="toolbar" v-bind="slotData || {}" />
-    </template>
-    <template v-if="$slots.empty" #empty="slotData">
-      <slot name="empty" v-bind="slotData || {}" />
-    </template>
-    <slot />
-  </OneToManyKanbanField>
-  <OneToManyField v-else-if="storeMode" v-bind="(storeBind as any)">
-    <slot />
-  </OneToManyField>
-  <ChoyFieldBase
-    v-else
-    v-bind="($attrs as any)"
-    data-anchor="choy.one-to-many-field"
-    :class="props.class"
+  <FieldBase
+    v-bind="$attrs"
+    :binding="binding"
     :label="label"
-    :help="help"
-    :required="!!required"
-    :readonly="!!readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
+    :rules="rules"
+    :formItemProps="formItemProps"
+    :required="required"
+    :readonly="readonly"
     :visible="visible"
+    :cellVisible="cellVisible"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
   >
-    <template #default>
-      <div class="choy-one-to-many-field flex flex-col gap-2">
-        <div v-if="!readonly && !disabled" class="flex flex-wrap gap-2">
-          <ChoyButton size="sm" @click="onAdd">{{ addLabel }}</ChoyButton>
-          <slot name="actions" />
-        </div>
-
-        <DataTable
-          v-if="widget === 'list'"
-          :columns="columns"
-          :data="model"
-          :row-id="rowKey"
-          :height="height"
-          :enable-row-selection="false"
-          :enable-sorting="true"
-          @row-click="onRowClick"
-        />
-
-        <div
-          v-else
-          class="grid gap-2"
-          :style="{ gridTemplateColumns: 'repeat(auto-fill, minmax(10rem, 1fr))' }"
-        >
-          <div
-            v-for="(row, index) in model"
-            :key="String(rowKey(row, index))"
-            class="rounded-md border border-border bg-background p-3 shadow-sm"
-            @click="onCardClick(row)"
+    <template #edit>
+      <ChoyViewScope :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
+        <div class="o-one-to-many__table" :style="{ height: tableHeightPxEdit }" tabindex="-1">
+          <VTable
+            ref="ovTableRef"
+            :data="getItems()"
+            :row-key="'__rowKey'"
+            :row-height="rowHeightEditRes"
+            :header-height="headerHeight"
+            :table-height="tableHeightEdit"
+            :store="store"
+            :base-index="1"
           >
-            <div class="text-sm font-medium">{{ rowTitle(row) }}</div>
-            <div v-if="rowSubtitle(row)" class="mt-1 text-xs text-foreground/60">
-              {{ rowSubtitle(row) }}
-            </div>
-            <div v-if="removable && !readonly && !disabled" class="mt-2">
-              <ChoyButton
-                size="sm"
-                variant="ghost"
-                @click.stop="onRemove(row)"
-              >
-                Remove
-              </ChoyButton>
-            </div>
-          </div>
-          <div
-            v-if="model.length === 0"
-            class="col-span-full rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-foreground/50"
-          >
-            {{ emptyLabel }}
-          </div>
+            <ChoyVColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
+            <ChoyVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
+            <slot />
+            <ChoyVColumn :label="_t('Actions')" :width="60">
+              <template #default="{ $index }">
+                <ChoyButton size="sm" variant="destructive" @click="onRemove($index)">{{ _t('Delete') }}</ChoyButton>
+              </template>
+            </ChoyVColumn>
+          </VTable>
         </div>
-
-        <Dialog v-model:open="dialogOpen">
-          <DialogContent>
-            <DialogTitle>{{ dialogTitle }}</DialogTitle>
-            <DialogDescription>One-to-many card detail (host may replace via slots).</DialogDescription>
-            <slot name="dialog" :row="dialogRow">
-              <pre class="max-h-60 overflow-auto rounded-md bg-muted/30 p-2 text-xs">{{
-                dialogRow ? JSON.stringify(dialogRow, null, 2) : ''
-              }}</pre>
-            </slot>
-          </DialogContent>
-        </Dialog>
-      </div>
+        <div class="o-one-to-many-actions">
+          <ChoyButton size="sm" variant="link" @click="handleAddItem">{{ _t('Add row') }}</ChoyButton>
+        </div>
+      </ChoyViewScope>
     </template>
-  </ChoyFieldBase>
+    <template #display>
+      <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
+        <div class="o-one-to-many__table" :style="{ height: tableHeightPxDisplay }">
+          <VTable
+            :data="getItems()"
+            :row-key="'__rowKey'"
+            :row-height="rowHeightDisplayRes"
+            :header-height="headerHeight"
+            :table-height="tableHeightDisplay"
+            :store="store"
+            :base-index="1"
+          >
+            <ChoyVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
+            <slot />
+          </VTable>
+        </div>
+      </ChoyViewScope>
+    </template>
+  </FieldBase>
 </template>
 
-<script setup lang="ts" generic="T extends Record<string, unknown>">
-import { computed, ref, useAttrs } from 'vue';
-import type { ColumnDef } from '@tanstack/vue-table';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel>[]>, V = FieldPathType<T, P>">
+import { computed, nextTick, ref, watch, onMounted, provide } from 'vue';
+import type { RuleItem } from 'async-validator';
+import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
-import DataTable from '../internal/DataTable.vue';
-import type { DataTableRowId } from '../internal/dataTableHelpers';
-import type { ClassValue } from '../../lib/utils';
-import ChoyButton from '../layout/ChoyButton.vue';
-import Dialog from '../vendor/ui/dialog/Dialog.vue';
-import DialogContent from '../vendor/ui/dialog/DialogContent.vue';
-import DialogDescription from '../vendor/ui/dialog/DialogDescription.vue';
-import DialogTitle from '../vendor/ui/dialog/DialogTitle.vue';
-import ChoyFieldBase from './ChoyFieldBase.vue';
-import OneToManyField from './OneToManyField.vue';
-import OneToManyKanbanField from './OneToManyKanbanField.vue';
-import {
-  choyFieldChromeDefaults,
-  type ChoyFieldChromeProps,
-} from './fieldHelpers';
-import type { ChoyOneToManyWidget } from './choyRelationFieldTypes';
+import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import VTable from '@/web/web/components/vtable/VTable.vue';
+import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import { useField } from '@/web/web/composables/useField';
+import type { UseField } from '@/web/web/composables/useField';
+import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
+import { createTranslate } from '@/web/web/i18n';
+import { hasHandleField } from '@/web/web/composables/listRowEdit';
+import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
 
-export type { ChoyOneToManyWidget };
+const { _t } = createTranslate('web', { scope: 'web/components/field/OneToManyField' });
 
-defineOptions({ name: 'ChoyOneToManyField', inheritAttrs: false });
+defineOptions({ name: 'OneToManyField', inheritAttrs: false });
 
-/**
- * One-to-many field. Store+prop hosts list or kanban O* engines; otherwise chrome array model.
- */
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
 const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      widget?: ChoyOneToManyWidget;
-      columns?: ColumnDef<T, unknown>[];
-      rowId?: (row: T) => DataTableRowId;
-      titleField?: string;
-      subtitleField?: string;
-      height?: number;
-      editable?: boolean;
-      removable?: boolean;
-      addLabel?: string;
-      emptyLabel?: string;
-      store?: WebModelStore<any>;
-      prop?: string;
-      binding?: unknown;
-    }
-  >(),
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    binding?: UseField<T, V>;
+    label?: string;
+    rules?: RuleItem[];
+    formItemProps?: Partial<FormItemProps>;
+    showIndex?: boolean;
+    defaultRecord?: Record<string, any> | (() => Record<string, any>);
+
+    rowHeightEdit?: number; // Row height in edit mode.
+    rowHeightDisplay?: number; // Row height in display mode.
+
+    headerHeight?: number;
+    minTableHeight?: number;
+    maxTableHeight?: number;
+
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+
+    strategy?: 'live' | 'idle' | 'blur';
+    idleDelay?: number;
+    commitOnBlur?: boolean;
+    /** Sequence field for drag handle; default Sequence. */
+    handleField?: string;
+    /** Show handle when relation metadata includes handleField. */
+    showHandle?: boolean;
+    // Added render mode and inline error support.
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+  }>(),
   {
-    ...choyFieldChromeDefaults,
-    widget: 'list',
-    columns: () => [],
-    titleField: 'Title',
-    height: 220,
-    editable: true,
-    removable: true,
-    addLabel: 'Add',
-    emptyLabel: 'No rows',
-  },
+    rules: () => [],
+    formItemProps: () => ({}),
+    showIndex: true,
+
+    rowHeightEdit: 60,
+    rowHeightDisplay: 40,
+
+    defaultRecord: () => ({}),
+    minTableHeight: 120,
+    maxTableHeight: 360,
+    required: false,
+    readonly: false,
+    visible: true,
+    cellVisible: true,
+    strategy: 'live',
+    idleDelay: 200,
+    commitOnBlur: true,
+    handleField: 'Sequence',
+    showHandle: true,
+    renderMode: 'auto',
+    showInlineError: false,
+  }
 );
 
-const attrs = useAttrs();
-const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
+// Field binding.
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+binding.registerFields(`${binding.prop}.DisplayName`);
 
-const model = defineModel<T[]>({ default: () => [] });
+const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();
+const store = props.store;
 
-const emit = defineEmits<{
-  'add-click': [];
-  'card-click': [row: T];
-  'edit-request': [row: T];
-  'remove-request': [row: T];
-}>();
+const showHandleColumn = computed(
+  () => props.showHandle !== false && hasHandleField(binding.relationStore, props.handleField)
+);
 
-const dialogOpen = ref(false);
-const dialogRow = ref<T | null>(null);
+const o2mHandleEnabled = computed(() => showHandleColumn.value && binding.env.isEditMode);
 
-function rowKey(row: T, index = 0): DataTableRowId {
-  if (props.rowId) return props.rowId(row);
-  const record = row as Record<string, unknown>;
-  const id = record.Id ?? record.id;
-  if (id != null && String(id).trim() !== '') return String(id);
-  return `__o2m_${index}`;
+const o2mHandleReorder = useListHandleReorder({
+  rows: () => getItems(),
+  enabled: o2mHandleEnabled,
+  handleField: props.handleField,
+  onReorder: rows => {
+    // Replace array order in one write; Sequence values were already renumbered 1..n.
+    (binding.fieldRef() as { value: any }).value = rows.slice();
+  },
+});
+
+// Clear ambient list-editing-row-id so parent S2 list ids cannot gate nested line cells.
+provide('list-editing-row-id', ref(null));
+provide(LIST_HANDLE_API_KEY, o2mHandleReorder);
+
+// Row height for edit and display modes.
+const rowHeightEditRes = computed(() => props.rowHeightEdit!);
+const rowHeightDisplayRes = computed(() => props.rowHeightDisplay!);
+
+// Table height for edit and display modes.
+const tableHeightEdit = computed(() => {
+  const body = (getItems().length || 0) * (rowHeightEditRes.value || 40);
+  const total = body + (props.headerHeight || 48);
+  return Math.max(props.minTableHeight!, Math.min(props.maxTableHeight!, total));
+});
+const tableHeightDisplay = computed(() => {
+  const body = (getItems().length || 0) * (rowHeightDisplayRes.value || 40);
+  const total = body + (props.headerHeight || 48);
+  return Math.max(props.minTableHeight!, Math.min(props.maxTableHeight!, total));
+});
+const tableHeightPxEdit = computed(() => `${tableHeightEdit.value}px`);
+const tableHeightPxDisplay = computed(() => `${tableHeightDisplay.value}px`);
+const ovTableRef = ref<InstanceType<typeof VTable> | null>(null);
+
+// Read the row-key seed without relying on generic field properties.
+function readRowKeySeed(row: unknown): string | number | undefined {
+  if (!row || typeof row !== 'object') return undefined;
+  const r = row as Record<string, any>;
+  return r.__rowKey ?? r.Id;
 }
 
-function rowTitle(row: T): string {
-  const field = props.titleField || '';
-  const v = (row as Record<string, unknown>)[field];
-  return v == null || v === '' ? String(rowKey(row)) : String(v);
+// Define a non-enumerable __rowKey.
+function defineHiddenRowKey(obj: any, key: string, val?: any) {
+  if (!obj || typeof obj !== 'object') return;
+  try {
+    const hasOwn = Object.prototype.hasOwnProperty.call(obj, key);
+    const enumerable = hasOwn ? Object.prototype.propertyIsEnumerable.call(obj, key) : false;
+    if (!hasOwn) {
+      Object.defineProperty(obj, key, {
+        value: String(val ?? Math.random().toString(36).slice(2)),
+        enumerable: false,
+        configurable: false,
+        writable: true,
+      });
+      return;
+    }
+    if (enumerable) {
+      const v = val ?? obj[key];
+      delete obj[key];
+      Object.defineProperty(obj, key, {
+        value: String(v ?? Math.random().toString(36).slice(2)),
+        enumerable: false,
+        configurable: false,
+        writable: true,
+      });
+    }
+  } catch {}
 }
 
-function rowSubtitle(row: T): string | undefined {
-  const field = props.subtitleField;
-  if (!field) return undefined;
-  const v = (row as Record<string, unknown>)[field];
-  return v == null || v === '' ? undefined : String(v);
-}
-
-const dialogTitle = computed(() => (dialogRow.value ? rowTitle(dialogRow.value) : 'Row'));
-
-let blankRowSeq = 0;
-
-function canEdit(): boolean {
-  return props.editable && !props.readonly && !props.disabled;
-}
-
-function onAdd(): void {
-  if (canEdit() && props.widget === 'kanban') {
-    // Kanban self-inserts; skip add-click so hosts do not append a second row.
-    const generatedId = `new_${Date.now()}_${blankRowSeq++}`;
-    const blank = {
-      ...(props.titleField === 'Id' ? {} : { [props.titleField]: 'New row' }),
-      Id: generatedId,
-    } as unknown as T;
-    model.value = [...model.value, blank];
-    dialogRow.value = blank;
-    dialogOpen.value = true;
-    return;
+// Ensure existing and future rows all have a hidden __rowKey.
+function hydrateRowKeys() {
+  const arr = getItems() || [];
+  for (const row of arr) {
+    if (!row) continue;
+    const seed = readRowKeySeed(row);
+    defineHiddenRowKey(row, '__rowKey', seed);
   }
-  emit('add-click');
 }
 
-function onCardClick(row: T): void {
-  emit('card-click', row);
-  if (!canEdit()) return;
-  dialogRow.value = row;
-  dialogOpen.value = true;
-  emit('edit-request', row);
+// Ensure the collection exists before adding rows on new records.
+function ensureArrayInitialized() {
+  const refVal = binding.fieldRef() as any;
+  if (!Array.isArray(refVal.value)) {
+    refVal.value = [];
+  }
 }
 
-function onRemove(row: T): void {
-  emit('remove-request', row);
-  if (!props.removable || props.readonly || props.disabled) return;
-  const index = model.value.indexOf(row);
-  if (index < 0) return;
-  model.value = model.value.filter((_, i) => i !== index);
+// Remove a row.
+function onRemove(i: number) {
+  removeItemAt(i);
 }
 
-function onRowClick(row: T): void {
-  emit('card-click', row);
-  if (canEdit()) emit('edit-request', row);
+// Add a row.
+async function handleAddItem() {
+  ensureArrayInitialized();
+  const targetIndex = getItems().length;
+  insertItem(makeDefaultItem());
+  await nextTick();
+  ovTableRef.value?.scrollToRow?.(targetIndex, 'end');
 }
+
+// Build the default new row.
+function makeDefaultItem(): Record<string, any> {
+  const rec = typeof props.defaultRecord === 'function' ? (props.defaultRecord as any)() : props.defaultRecord;
+  const row = { ...(rec || {}) };
+  const seed = readRowKeySeed(row) ?? Math.random().toString(36).slice(2);
+  defineHiddenRowKey(row, '__rowKey', seed);
+  return row;
+}
+
+// Keep row keys hydrated.
+onMounted(hydrateRowKeys);
+watch(
+  () => getItems().length,
+  () => hydrateRowKeys(),
+  { immediate: true }
+);
 </script>
+
+<style scoped>
+.o-one-to-many__table {
+  width: 100%;
+  min-width: 0;
+}
+.o-one-to-many-actions {
+  display: flex;
+  align-items: center;
+  padding-inline-start: 60px;
+  padding-block: 6px;
+}
+</style>

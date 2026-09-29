@@ -17,7 +17,7 @@ export type DecimalNumberFormat = {
  * - fixed scale present → quantize + pad with toFixed(scale)
  * - no fixed scale → significant digits via toString() (no trailing-zero pad)
  */
-export function formatODecimalDisplayText(
+export function formatDecimalDisplayText(
   d: Decimal,
   fixedScale: number | undefined,
   round: Decimal.Rounding,
@@ -45,7 +45,7 @@ export function formatODecimalDisplayText(
 }
 
 /** Edit/validate scale: declared fixed scale, else DB soft max (NUMERIC scale 18). */
-export function resolveODecimalEditScale(fixedScale: number | undefined): number {
+export function resolveDecimalEditScale(fixedScale: number | undefined): number {
   if (typeof fixedScale === 'number' && Number.isInteger(fixedScale) && fixedScale >= 0 && fixedScale <= 18) {
     return fixedScale;
   }
@@ -53,7 +53,7 @@ export function resolveODecimalEditScale(fixedScale: number | undefined): number
 }
 
 /** Cell edit scale: prefer getScale() when in 0..18, else DB soft max 18. */
-export function resolveODecimalCellScale(getScale?: () => number): number {
+export function resolveDecimalCellScale(getScale?: () => number): number {
   try {
     const n = typeof getScale === 'function' ? getScale() : undefined;
     if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 18) return n;
