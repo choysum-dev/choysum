@@ -91,7 +91,11 @@ SPDX-License-Identifier: Apache-2.0
         </label>
         <span v-if="fieldErrors.agreeTerms" class="-mt-2 text-xs text-destructive">{{ fieldErrors.agreeTerms }}</span>
 
-        <ChoyButton type="submit" class="submit-button w-full" :disabled="loading || !form.agreeTerms">
+        <ChoyButton
+          type="submit"
+          class="submit-button w-full"
+          :disabled="loading || !form.agreeTerms"
+        >
           {{ _t('Create Account') }}
         </ChoyButton>
 
@@ -246,14 +250,10 @@ async function handleRegister() {
 
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .register-page-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100%;
+  display: flex;align-items: center;justify-content: center;min-height: 100%;
 }
-
 .login-link :deep(a) {
   margin-inline-start: 0.25rem;
 }

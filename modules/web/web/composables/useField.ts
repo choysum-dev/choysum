@@ -15,7 +15,7 @@ import { registerFieldPath, unregisterFieldPath } from '@/web/web/query/utils/re
 import { registerMetric, unregisterMetric } from '@/web/web/query/utils/registry/metric';
 import type { MetricSpec } from '@/web/web/query/utils/registry/metric';
 import { ComponentScopeManager } from '@/web/web/stores/storeScopeManager/component';
-import type { ViewMode, ViewContainer } from '@/web/web/components/view/OViewScope.vue';
+import type { ViewMode, ViewContainer } from '@/web/web/components/view/ChoyViewScope.vue';
 
 /* ===================== Environment and core helpers ===================== */
 
@@ -93,7 +93,7 @@ export interface UseField<T = any, V = any> {
     getItems: () => Item[];
   };
 
-  // Compatibility placeholder currently maintained by OFormView.
+  // Compatibility placeholder currently maintained by FormView.
   emitOnchange?: (fieldPaths?: string | string[], opts?: { withCompute?: boolean; maxIterations?: number }) => Promise<null>;
 }
 
@@ -152,7 +152,7 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
   const currentTargetStore = () => (suppressFieldRegistration === true ? resolveAltStore() : store);
   const currentTargetStoreId = () => currentTargetStore()?.storeId;
 
-  // View context provided by OViewScope or OFormView.
+  // View context provided by ViewScope or FormView.
   const viewContainer = inject<Ref<ViewContainer>>('view-container', ref<ViewContainer>('Form'));
   const viewModeRef = inject<Ref<ViewMode>>('view-mode', ref<ViewMode>('display'));
   const fieldPrefixRef = inject<Ref<string | null>>('field-prefix', ref<string | null>(null));

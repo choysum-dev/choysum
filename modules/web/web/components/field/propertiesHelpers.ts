@@ -7,11 +7,20 @@ import {
   type ResolvedPropertyItem,
 } from '@/core/service/orm/model/properties_types';
 
+import {
+  formatUtcIso,
+  getUserTimeZone,
+  userWallDateToUtc,
+  utcToUserWallDate,
+} from '@/web/web/utils/datetime';
+
 export type PropertiesMap = Record<string, unknown>;
 
 export type PropertySelectionOption = { value: string; label: string };
 
-/** Resolve the properties field name for DOM ids (empty fallback when resolving). */
+export const PROPERTY_DATETIME_STORAGE_FORMAT = 'YYYY-MM-DD[T]HH:mm:ss.SSSZ';
+
+/** Resolve the properties field name for RPC / DOM ids (empty fallback when resolving). */
 export function propertiesFieldKey(
   bindingProp: unknown,
   propsProp: unknown,
@@ -20,7 +29,52 @@ export function propertiesFieldKey(
   return String(bindingProp || propsProp || fallback);
 }
 
-/** Keep only V1-renderable items; unknown types are skipped. */
+/** Convert stored date (ISO midnight or YYYY-MM-DD) to native date input value. */
+export function propertyDateToInput(raw: unknown): string {
+  if (raw == null || raw === '') return '';
+  if (raw instanceof Date) {
+    if (Number.isNaN(raw.getTime())) return '';
+    const y = raw.getUTCFullYear();
+    const m = String(raw.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(raw.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(raw).trim();
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+  return m ? m[1]! : '';
+}
+
+/** Convert native date input (YYYY-MM-DD) to stored UTC midnight ISO. */
+export function propertyDateFromInput(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  const s = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  return `${s}T00:00:00Z`;
+}
+
+/** Convert stored UTC datetime to a picker Date (user wall-clock carrier). */
+export function propertyDatetimeToPicker(
+  raw: unknown,
+  tz: string = getUserTimeZone(),
+): Date | null {
+  if (raw == null || raw === '') return null;
+  if (raw instanceof Date) return utcToUserWallDate(raw, tz);
+  if (typeof raw === 'string' || typeof raw === 'number') return utcToUserWallDate(raw, tz);
+  return null;
+}
+
+/** Convert picker Date/value to stored UTC ISO string. */
+export function propertyDatetimeFromPicker(
+  value: unknown,
+  tz: string = getUserTimeZone(),
+): string | null {
+  if (value == null || value === '') return null;
+  const wall = value instanceof Date ? value : new Date(value as any);
+  const utc = userWallDateToUtc(wall, tz);
+  return utc ? formatUtcIso(utc, PROPERTY_DATETIME_STORAGE_FORMAT) : null;
+}
+
+/** Keep only V1-renderable items; unknown types are skipped (caller may warn). */
 export function filterRenderablePropertyItems(items: ResolvedPropertyItem[]): {
   renderable: ResolvedPropertyItem[];
   skipped: ResolvedPropertyItem[];
@@ -62,14 +116,17 @@ export function countSchemaMapIntersection(schemaNames: string[], map: unknown):
   return n;
 }
 
+/**
+ * Build a full replace map for schema keys.
+ * Non-V1 schema items keep previous values so a UI that cannot render them does not drop them.
+ */
 export function buildFullPropertiesMap(items: ResolvedPropertyItem[], previous: unknown): PropertiesMap {
   const prev = normalizePropertiesMap(previous);
+  // null-prototype so schema names like "__proto__" become own data keys (matches BE write).
   const next: PropertiesMap = Object.create(null);
   for (const item of items) {
     if (!item?.name) continue;
     if (!PROPERTIES_V1_TYPES.has(String(item.type))) {
-      // Preserve values for schema items this UI cannot render, otherwise the
-      // next write drops them from the persisted properties map.
       if (Object.prototype.hasOwnProperty.call(prev, item.name)) {
         next[item.name] = prev[item.name];
       }
@@ -86,7 +143,7 @@ export function buildFullPropertiesMap(items: ResolvedPropertyItem[], previous: 
   return next;
 }
 
-/** Write one key into a full replace map (schema keys only). */
+/** Write one key into a full replace map (V1 schema keys only). */
 export function writePropertyValue(
   items: ResolvedPropertyItem[],
   previous: unknown,

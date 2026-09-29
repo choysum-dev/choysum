@@ -13,14 +13,14 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
 
     <ChoyVarcharField :store="store" prop="Name" :vColumnProps="{ minWidth: 180 }" />
     <ChoyVarcharField :store="store" prop="Code" :vColumnProps="{ minWidth: 120 }" />
-    <ChoyManyToOneField :store="store" prop="CompanyId" :vColumnProps="{ minWidth: 180 }" />
-    <ChoyNumberField :store="store" prop="CustomerRank" mode="integer" />
-    <ChoyNumberField :store="store" prop="SupplierRank" mode="integer" />
+    <ChoyManyToOneRefField :store="store" prop="CompanyId" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyIntField :store="store" prop="CustomerRank" />
+    <ChoyIntField :store="store" prop="SupplierRank" />
     <ChoyBooleanField :store="store" prop="IsActive" />
     <ChoyDatetimeField :store="store" prop="UpdatedAt" mode="datetime" :vColumnProps="{ minWidth: 160 }" />
   </ChoyListView>
@@ -41,9 +41,8 @@ import {
   ChoyManyToOneField,
   ChoyNumberField,
   ChoySearchView,
-  ChoyVColumn,
-  ChoyVarcharField,
-} from '@/web';
+  ChoyTableColumn,
+  ChoyVarcharField,  ChoyIntField, ChoyManyToOneRefField} from '@/web';
 import { partnerActions, partnerOpenDetailAction } from './partner_actions';
 import { navigatePartnerDetail } from './partner_list_nav';
 

@@ -1,30 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
-import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyNotificationBell from './ChoyNotificationBell.vue';
-import ONotificationBell from './ONotificationBell.vue';
 
 describe('ChoyNotificationBell mount', () => {
-  afterEach(() => {
-    restoreSfc(ONotificationBell as any);
-  });
-
-  function stubInboxEngine() {
-    stubSfc(ONotificationBell as any, {
-      setup(_props: unknown, ctx: { attrs: Record<string, unknown> }) {
-        return () =>
-          h('div', {
-            'data-testid': 'inbox-engine',
-            class: ctx.attrs.class,
-          });
-      },
-    });
-  }
-
   test('omitted count hosts the inbox engine', async () => {
-    stubInboxEngine();
     const wrapper = mountApp(ChoyNotificationBell as any, {
       props: { class: 'ms-2' },
     });
@@ -37,7 +18,6 @@ describe('ChoyNotificationBell mount', () => {
   });
 
   test('explicit count renders chrome badge and aria label', async () => {
-    stubInboxEngine();
     const wrapper = mountApp(ChoyNotificationBell as any, {
       props: { count: 3, label: 'Alerts' },
     });
@@ -54,7 +34,6 @@ describe('ChoyNotificationBell mount', () => {
   });
 
   test('count over 99 shows 99+ badge text', async () => {
-    stubInboxEngine();
     const wrapper = mountApp(ChoyNotificationBell as any, { props: { count: 120 } });
     await flushPromises();
     expect(wrapper.text().includes('99+')).toBe(true);
@@ -62,7 +41,6 @@ describe('ChoyNotificationBell mount', () => {
   });
 
   test('count 0 keeps chrome without a badge numeral', async () => {
-    stubInboxEngine();
     const wrapper = mountApp(ChoyNotificationBell as any, { props: { count: 0 } });
     await flushPromises();
     expect(wrapper.q('[data-anchor="choy.notification-bell"]')).not.toBeNull();

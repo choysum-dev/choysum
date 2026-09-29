@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  PROPERTY_DEFINITION_V1_TYPE_OPTIONS,
   buildDefinitionScopeCondition,
   definitionItemsToDrafts,
   draftsToDefinitionItems,
@@ -10,6 +11,7 @@ import {
 
 describe('propertiesDefinitionHelpers', () => {
   test('emptyDraftItem defaults to char', () => {
+    expect(PROPERTY_DEFINITION_V1_TYPE_OPTIONS).toContain('char');
     expect(emptyDraftItem().type).toBe('char');
   });
 
@@ -65,6 +67,14 @@ describe('propertiesDefinitionHelpers', () => {
     const drafts = definitionItemsToDrafts([{ name: 'c', type: 'selection', selection }]);
     expect(drafts).toHaveLength(1);
     expect(drafts[0]!.selectionText).toBe('');
+
+    const circ: any[] = [];
+    circ.push(circ);
+    expect(definitionItemsToDrafts([{ name: 'c2', type: 'selection', selection: circ }])[0]?.selectionText).toBe(
+      '',
+    );
+    expect(definitionItemsToDrafts([{ name: 'notyped' }])[0]?.type).toBe('char');
+    expect(definitionItemsToDrafts([{ name: 'emptytype', type: '' }])[0]?.type).toBe('char');
   });
 
   test('definitionItemsToDrafts / draftsToDefinitionItems round-trip', () => {

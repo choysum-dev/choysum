@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
       <RoleRecordRuleAudienceHints />
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
-          <ChoyManyToOneField value-mode="record"
+          <ChoyManyToOneField
             :store="store"
             prop="RoleId"
             :search-view="RoleListView"
@@ -31,10 +31,10 @@ SPDX-License-Identifier: Apache-2.0
           <ChoySelectionField :store="store" prop="Kind" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyManyToOneField :store="store" prop="MetaApplicationId" />
+          <ChoyManyToOneRefField :store="store" prop="MetaApplicationId" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyManyToOneField :store="store" prop="MetaModelId" />
+          <ChoyManyToOneRefField :store="store" prop="MetaModelId" />
         </ChoyCol>
         <ChoyCol :span="12">
           <ChoyJsonField :store="store" prop="Condition" :allow-array="true" />
@@ -80,7 +80,7 @@ import RoleRecordRuleAudienceHints from '@/auth/web/views/RoleRecordRuleAudience
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToOneField, ChoySelectionField } from '@/web';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToOneField, ChoySelectionField, ChoyManyToOneRefField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { roleIdFromValueClick } from '@/auth/web/views/role_value_click';

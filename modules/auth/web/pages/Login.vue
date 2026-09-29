@@ -139,14 +139,10 @@ async function handleLogin() {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .login-page-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100%;
+  display: flex;align-items: center;justify-content: center;min-height: 100%;
 }
-
 .register-link :deep(a) {
   margin-inline-start: 0.25rem;
 }

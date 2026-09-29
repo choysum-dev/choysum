@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
-          <ChoyManyToOneField
+          <ChoyManyToOneRefField
             :store="store"
             prop="CountryId"
             :searchView="CountryListView"
@@ -75,8 +75,7 @@ import {
   ChoyGrid,
   ChoyManyToOneField,
   ChoyVarcharField,
-  type ChoyViewMode as ViewMode,
-} from '@/web';
+  type ChoyViewMode as ViewMode,  ChoyManyToOneRefField} from '@/web';
 
 defineOptions({ name: 'PartnerIdentifierFormView', inheritAttrs: true });
 const { _t } = createTranslate('partner_commercial', { scope: 'web/views/PartnerIdentifierFormView' });

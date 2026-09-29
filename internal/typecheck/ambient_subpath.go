@@ -21,8 +21,6 @@ func buildSubpathStubs() string {
 	stubs := []string{
 		"dayjs/locale/*",
 		"dayjs/plugin/*",
-		"element-plus/es/locale/lang/*",
-		"@element-plus/icons-vue",
 		"nprogress",
 	}
 	var b strings.Builder
@@ -71,36 +69,6 @@ declare module "kysely/helpers/sqlite" {
 declare module "kysely/helpers/mssql" {
   export const jsonArrayFrom: any;
   export const jsonObjectFrom: any;
-}
-
-declare module "echarts/core" {
-  export const use: (...args: any[]) => void;
-}
-
-declare module "echarts/charts" {
-  export const BarChart: any;
-  export const LineChart: any;
-  export const PieChart: any;
-}
-
-declare module "echarts/components" {
-  export const TitleComponent: any;
-  export const TooltipComponent: any;
-  export const LegendComponent: any;
-  export const GridComponent: any;
-}
-
-declare module "echarts/renderers" {
-  export const SVGRenderer: any;
-}
-
-declare module "element-plus/es/components/table-v2/src/row" {
-	export type RowEventHandlerParams = any;
-}
-
-declare module "element-plus/es/components/table-v2/src/types" {
-	export type RowEventHandlerParams = import("element-plus/es/components/table-v2/src/row").RowEventHandlerParams;
-	export type KeyType = string | number;
 }
 
 declare module "fast-deep-equal" {

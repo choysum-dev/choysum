@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
       <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <div v-if="showActions" class="flex flex-wrap gap-2">
           <slot name="system-actions">
-            <ChoyButton v-if="!readonly" size="sm" @click="onCreate">{{ createLabel }}</ChoyButton>
+            <ChoyButton v-if="!effectiveReadonly" size="sm" @click="onCreate">{{ createLabel }}</ChoyButton>
           </slot>
           <slot name="user-actions" />
         </div>
@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </div>
       <div v-if="$slots.search" class="shrink-0">
-        <slot name="search" />
+        <slot name="search" :on-query-update="engine.applySearch" />
       </div>
     </div>
 
@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
       :style="{ minHeight: '12rem' }"
     >
       <div
-        v-for="lane in lanes"
+        v-for="lane in displayLanes"
         :key="lane.key"
         class="choy-kanban-view__lane flex w-64 shrink-0 flex-col rounded-md border border-border bg-muted/30"
         @dragover="onLaneDragOver"
@@ -51,7 +51,7 @@ SPDX-License-Identifier: Apache-2.0
             :key="card.id"
             class="choy-kanban-view__card cursor-pointer rounded-md border border-border bg-background p-3 shadow-sm"
             :class="{ 'opacity-60': dragCardId === card.id }"
-            :draggable="!readonly"
+            :draggable="!effectiveReadonly"
             :data-card-id="card.id"
             @click="onCardClick(card)"
             @dragstart="onDragStart(card, $event)"
@@ -81,6 +81,7 @@ SPDX-License-Identifier: Apache-2.0
               :lane="lane"
               :remain="choyKanbanLaneRemain(lane)"
               :load-more="() => onLaneLoadMore(lane)"
+              :busy="boardBusy"
             >
               <ChoyButton
                 v-if="choyKanbanLaneRemain(lane) > 0"
@@ -89,6 +90,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 class="w-full"
                 data-testid="choy-kanban-load-more"
+                :disabled="boardBusy"
                 @click="onLaneLoadMore(lane)"
               >
                 {{ formatChoyKanbanLoadMoreLabel(choyKanbanLaneRemain(lane)) }}
@@ -110,7 +112,11 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { ClassValue } from '../../lib/utils';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { Lane } from '@/web/web/query/types';
 import ChoyButton from '../layout/ChoyButton.vue';
+import { resolvePageStore, useOptionalPageStore } from '@/web/web/composables/usePageContext';
+import { useChoyKanbanStoreEngine } from '@/web/web/composables/useChoyKanbanStoreEngine';
 import {
   applyChoyKanbanMove,
   choyKanbanLaneRemain,
@@ -118,31 +124,45 @@ import {
   type ChoyKanbanCard,
   type ChoyKanbanLane,
   type ChoyKanbanLoadMore,
-  type ChoyKanbanMove,
+  type ChoyKanbanMove
 } from './kanbanViewHelpers';
 
 /**
- * Kanban board chrome: lanes + cards with HTML5 drag-and-drop.
- * Host owns lane state via v-model:lanes (no page store).
- * When a lane sets `remain > 0`, default load-more chrome emits `lane-load-more`.
+ * Store-bound kanban board. Requires :store or a page-provided store.
+ * Owns createKanbanController, lane sync, search apply, load-more, and move persist.
  */
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
+    store?: WebModelStore<any>;
     showHeader?: boolean;
     showActions?: boolean;
     createLabel?: string;
     readonly?: boolean;
+    keywordFields?: string[];
+    titleField?: string;
+    flatLaneLabel?: string;
+    laneLabel?: (lane: Pick<ChoyKanbanLane, 'key' | 'label'> | Lane) => string;
+    mapRowToCard?: (row: unknown, index: number, laneKey: string) => ChoyKanbanCard;
+    resolveMoveRecordId?: (
+      cards: ReadonlyArray<ChoyKanbanCard>,
+      moveCardId: string,
+    ) => string;
+    beforeBootstrap?: () => Promise<void>;
+    autoBootstrap?: boolean;
+    onLoadError?: (error: unknown) => void;
+    onSearchError?: (error: unknown) => void;
+    onLoadMoreError?: (error: unknown) => void;
+    onMoveError?: (error: unknown) => void;
   }>(),
   {
     showHeader: true,
     showActions: true,
     createLabel: 'New',
     readonly: false,
+    autoBootstrap: true,
   },
 );
-
-const lanes = defineModel<ChoyKanbanLane[]>('lanes', { default: () => [] });
 
 const emit = defineEmits<{
   'card-click': [card: ChoyKanbanCard];
@@ -151,17 +171,48 @@ const emit = defineEmits<{
   create: [];
 }>();
 
+const pageStore = useOptionalPageStore<WebModelStore<any>>();
+const boundStore = resolvePageStore(props.store ?? pageStore.value, 'ChoyKanbanView');
+
+const engine = useChoyKanbanStoreEngine({
+  store: boundStore,
+  keywordFields: () => props.keywordFields,
+  titleField: () => props.titleField,
+  flatLaneLabel: () => props.flatLaneLabel,
+  laneLabel: props.laneLabel,
+  mapRowToCard: props.mapRowToCard,
+  resolveMoveRecordId: props.resolveMoveRecordId,
+  beforeBootstrap: props.beforeBootstrap,
+  autoBootstrap: props.autoBootstrap,
+  onLoadError: props.onLoadError,
+  onSearchError: props.onSearchError,
+  onLoadMoreError: props.onLoadMoreError,
+  onMoveError: props.onMoveError,
+});
+
+const displayLanes = computed({
+  get(): ChoyKanbanLane[] {
+    return engine.lanes.value;
+  },
+  set(next: ChoyKanbanLane[]) {
+    engine.lanes.value = next;
+  },
+});
+
+const boardBusy = computed(() => engine.boardBusy.value);
+const effectiveReadonly = computed(() => props.readonly || boardBusy.value);
+
 const dragCardId = ref<string | null>(null);
 const dragFromLane = ref<string | null>(null);
 
-const laneCount = computed(() => lanes.value.length);
+const laneCount = computed(() => displayLanes.value.length);
 
 function onCardClick(card: ChoyKanbanCard): void {
   emit('card-click', card);
 }
 
 function onDragStart(card: ChoyKanbanCard, event: DragEvent): void {
-  if (props.readonly) {
+  if (effectiveReadonly.value) {
     event.preventDefault();
     return;
   }
@@ -179,7 +230,7 @@ function onDragEnd(): void {
 }
 
 function onLaneDragOver(event: DragEvent): void {
-  if (props.readonly || !dragCardId.value) return;
+  if (effectiveReadonly.value || !dragCardId.value) return;
   event.preventDefault();
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move';
@@ -188,20 +239,23 @@ function onLaneDragOver(event: DragEvent): void {
 
 function dropOnLane(toLaneKey: string, toIndex: number, event: DragEvent): void {
   event.preventDefault();
-  if (props.readonly) return;
+  if (effectiveReadonly.value) return;
   const cardId = dragCardId.value || event.dataTransfer?.getData('text/plain');
   const fromLaneKey = dragFromLane.value;
   if (!cardId || !fromLaneKey) return;
 
   const move: ChoyKanbanMove = { cardId, fromLaneKey, toLaneKey, toIndex };
-  const next = applyChoyKanbanMove(lanes.value, move);
+  const next = applyChoyKanbanMove(displayLanes.value, move);
   if (!next) return;
-  lanes.value = next;
-  // `toIndex` above is the pre-removal drop index; report the card's real final
-  // index so hosts persisting order match ChoyKanbanMove's post-move contract.
-  const finalLane = next.find(l => l.key === toLaneKey);
-  const finalIndex = finalLane ? finalLane.cards.findIndex(c => c.id === cardId) : toIndex;
-  emit('card-move', { ...move, toIndex: finalIndex < 0 ? toIndex : finalIndex });
+  displayLanes.value = next;
+  const finalLane = next.find((l) => l.key === toLaneKey);
+  const finalIndex = finalLane ? finalLane.cards.findIndex((c) => c.id === cardId) : toIndex;
+  const finalized: ChoyKanbanMove = {
+    ...move,
+    toIndex: finalIndex < 0 ? toIndex : finalIndex,
+  };
+  emit('card-move', finalized);
+  void engine.persistMove(finalized);
   onDragEnd();
 }
 
@@ -211,6 +265,15 @@ function onCreate(): void {
 
 function onLaneLoadMore(lane: ChoyKanbanLane): void {
   if (choyKanbanLaneRemain(lane) <= 0) return;
-  emit('lane-load-more', { laneKey: lane.key });
+  const payload = { laneKey: lane.key };
+  emit('lane-load-more', payload);
+  void engine.onLaneLoadMore(payload);
 }
+
+defineExpose({
+  bootstrap: () => engine.bootstrap(),
+  applySearch: engine.applySearch,
+  syncLanes: () => engine.syncLanesFromController(),
+  boardBusy,
+});
 </script>

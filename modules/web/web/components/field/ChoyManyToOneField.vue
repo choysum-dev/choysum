@@ -4,112 +4,596 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Store id mode (default): OManyToOneRefField. Record mode: OManyToOneField. -->
-  <OManyToOneRefField v-if="storeMode && valueMode !== 'record'" v-bind="(storeBind as any)">
-    <slot />
-  </OManyToOneRefField>
-  <OManyToOneField v-else-if="storeMode" v-bind="(storeBind as any)">
-    <slot />
-  </OManyToOneField>
-  <ChoyFieldBase
-    v-else
-    v-bind="($attrs as any)"
-    data-anchor="choy.many-to-one-field"
-    :class="props.class"
+  <FieldBase
+    v-bind="$attrs"
+    :binding="binding"
     :label="label"
-    :help="help"
-    :required="!!required"
-    :readonly="!!readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
+    :rules="rules"
+    :formItemProps="formItemProps"
+    :vColumnProps="vColumnProps"
+    :toView="toView"
+    :fromView="fromView"
+    :required="required"
+    :readonly="readonly"
     :visible="visible"
+    :cellVisible="cellVisible"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
   >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <RelationCombobox
-        v-model="model"
-        :id="controlId"
-        :search="chromeSearch"
-        :search-key="searchKey"
-        :selected-option="selectedOption"
-        :page-size="pageSize"
-        :search-more="searchMore"
-        :placeholder="placeholder"
-        :disabled="disabled || !!readonly"
-        :clearable="clearable && !readonly"
-        :aria-invalid="ariaInvalid"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
-        @search-more="emit('search-more', $event)"
-        @search-error="emit('search-error', $event)"
-        @select="emit('select', $event)"
-      />
+    <template #edit="{ fieldValue, record }">
+      <div class="choy-many-to-one-select" :style="{ width: width || '100%' }">
+        <RelationCombobox
+          :model-value="comboboxId(fieldValue().value)"
+          :selected-option="selectedOptionFor(fieldValue().value)"
+          :search="makeRelationSearch(record)"
+          :search-key="relationSearchKey"
+          :clearable="clearable"
+          :placeholder="effectivePlaceholder"
+          :page-size="pageSize"
+          :search-more="Boolean(searchView)"
+          @select="(opt) => onComboboxSelect(fieldValue, opt)"
+          @search-more="(q) => onSearchMore(fieldValue, record, q)"
+        />
+        <div
+          v-if="showNameCreateEntry"
+          class="choy-m2o__more choy-m2o__more--clickable"
+          role="button"
+          tabindex="0"
+          data-testid="choy-m2o-name-create"
+          @click.stop="onNameCreate(fieldValue)"
+          @keydown.enter.stop="onNameCreate(fieldValue)"
+          @keydown.space.prevent.stop="onNameCreate(fieldValue)"
+        >
+          {{ nameCreateLabel }}
+        </div>
+      </div>
     </template>
-  </ChoyFieldBase>
+    <template #display="{ fieldValue }">
+      <span
+        class="choy-field-display-text"
+        :class="{ 'choy-field-display-text--clickable': isValueClickable }"
+        :role="isValueClickable ? 'button' : undefined"
+        :tabindex="isValueClickable ? 0 : undefined"
+        @click="onDisplayValueClick(fieldValue().value as any, $event)"
+        @keydown="onDisplayValueKeydown(fieldValue().value as any, $event)"
+      >
+        {{ getDisplayLabel(fieldValue().value as any) }}
+      </span>
+    </template>
+  </FieldBase>
+
+  <Dialog v-model:open="dialogVisible">
+    <DialogContent class="choy-relation-picker-dialog" :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }">
+      <DialogTitle>{{ effectiveSearchViewTitle }}</DialogTitle>
+      <ChoyViewScope view-mode="display" :container="'List'">
+      <component
+        v-if="searchView && relationStore"
+        :is="searchView"
+        ref="searchViewRef"
+        :store="relationStore"
+        :show-actions="false"
+        :selection-mode="'single'"
+        :click-to-select="true"
+        :height-mode="'viewport'"
+        :viewportGap="250"
+        :condition="dialogEffectiveConditions"
+        style="margin-top: -10px"
+      />
+    </ChoyViewScope>
+      <div class="dialog-footer">
+        <ChoyButton @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
+        <ChoyButton @click="confirmPick">{{ _t('OK') }}</ChoyButton>
+      </div>
+    </DialogContent>
+  </Dialog>
 </template>
 
-<script setup lang="ts">
-import { computed, useAttrs } from 'vue';
-import RelationCombobox from '../internal/RelationCombobox.vue';
-import type {
-  RelationNameSearchFn,
-  RelationOption,
-} from '../internal/relationComboboxHelpers';
-import type { ClassValue } from '../../lib/utils';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel> | null | undefined>, V = FieldPathType<T, P>">
+import { ref, computed, inject, Ref, getCurrentInstance } from 'vue';
+import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
+import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
+import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import { ChoyMessage } from '../../composables/useChoyMessage';
+import type { RuleItem } from 'async-validator';
+import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
-import ChoyFieldBase from './ChoyFieldBase.vue';
-import OManyToOneField from './OManyToOneField.vue';
-import OManyToOneRefField from './OManyToOneRefField.vue';
+import type { WritableComputedRef, Component } from 'vue';
+import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import { useField } from '@/web/web/composables/useField';
+import type { UseField } from '@/web/web/composables/useField';
+import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
+// Narrow aggregation types to count_distinct only.
+import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
+import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
+import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
+import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
+import { createTranslate } from '@/web/web/i18n';
+import type { ValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
+import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
+import { usePermission } from '@/auth/web/composables/usePermission';
+import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
 import {
-  choyFieldChromeDefaults,
-  type ChoyFieldChromeProps,
-} from './fieldHelpers';
+  mapNameSearchRows,
+  type RelationOption,
+} from '@/web/web/components/internal/relationComboboxHelpers';
 
-defineOptions({ name: 'ChoyManyToOneField', inheritAttrs: false });
+const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToOneField' });
 
-/**
- * Many-to-one field. Store+prop hosts Ref (id) or record O* engines via valueMode.
- * Chrome mode uses RelationCombobox + v-model id.
- */
-const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      placeholder?: string;
-      search?: RelationNameSearchFn;
-      searchKey?: string;
-      selectedOption?: RelationOption | null;
-      pageSize?: number;
-      searchMore?: boolean;
-      clearable?: boolean;
-      store?: WebModelStore<any>;
-      prop?: string;
-      binding?: unknown;
-      /** `id` → OManyToOneRefField; `record` → OManyToOneField. Default `id`. */
-      valueMode?: 'id' | 'record';
-    }
-  >(),
-  {
-    ...choyFieldChromeDefaults,
-    placeholder: 'Search…',
-    selectedOption: null,
-    pageSize: 20,
-    searchMore: true,
-    clearable: true,
-    valueMode: 'id',
-  },
-);
+type RelationValue = Extract<V, { Id: any }>;
 
-const attrs = useAttrs();
-const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
-const chromeSearch = computed(() => props.search ?? (async () => []));
+defineOptions({ name: 'ManyToOneField', inheritAttrs: false });
 
-const model = defineModel<string | null>({ default: null });
+type IsAny<T> = 0 extends 1 & T ? true : false;
 
 const emit = defineEmits<{
-  'search-more': [query: string];
-  'search-error': [message: string | null];
-  select: [option: RelationOption | null];
+  (e: 'value-click', payload: ValueClickPayload<any>): void;
 }>();
+
+const props = withDefaults(
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    binding?: UseField<T, V>;
+    label?: string;
+    rules?: RuleItem[];
+    clearable?: boolean;
+    placeholder?: string;
+    pageSize?: number;
+    formItemProps?: Partial<FormItemProps>;
+    vColumnProps?: Record<string, any>;
+    selectProps?: Record<string, unknown>;
+    width?: string;
+    searchView?: Component;
+    searchViewTitle?: string;
+    searchViewWidth?: string | number;
+
+    /** Quick-create via NameCreate (PR-P2-M1). Default false (opt-in); gated by create UI action. */
+    allowCreate?: boolean;
+    /** Target model write field for NameCreate; omit → BE uses Name. */
+    nameField?: string;
+    /** Override create UI action id; '' skips ACL (see namecreate-design D6). */
+    createActionId?: string;
+
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+
+    condition?: QueryCondition<any> | QueryCondition<any>[];
+
+    strategy?: 'live' | 'idle' | 'blur';
+    idleDelay?: number;
+    commitOnBlur?: boolean;
+    // Only count_distinct is supported for foreign-key Id deduplication.
+    agg?: NarrowAggProp<NonNumericAggFns>;
+    // Added render mode and inline error support.
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+    valueClickable?: boolean | 'auto';
+  }>(),
+  {
+    rules: () => [],
+    clearable: true,
+    placeholder: '',
+    pageSize: 20,
+    formItemProps: () => ({}),
+    vColumnProps: () => ({}),
+    selectProps: () => ({}),
+    width: '100%',
+    searchViewTitle: '',
+    searchViewWidth: '70%',
+    allowCreate: false,
+    required: false,
+    readonly: false,
+    visible: true,
+    cellVisible: true,
+    condition: undefined,
+    strategy: 'idle',
+    idleDelay: 180,
+    commitOnBlur: true,
+    renderMode: 'auto',
+    showInlineError: false,
+    valueClickable: 'auto',
+  }
+);
+
+const effectivePlaceholder = computed(() => props.placeholder || _t('Please select...'));
+const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Select record'));
+
+const binding = (props.binding ??
+  useField<T, P, V>({
+    store: props.store as WebModelStore<T>,
+    prop: props.prop as P,
+    // Forward agg to useField.
+    agg: props.agg,
+  })) as UseField<T, V>;
+const relationStore = binding.relationStore as WebModelStore<any> | undefined;
+binding.registerFields(`${binding.prop}.DisplayName`);
+
+const toView = (raw: any) => (raw ?? null) as V | null;
+const fromView = (v: V | null) => (v ?? null) as any;
+
+const searchQuery = ref('');
+const isSearching = computed(() => trimSearchKeyword(searchQuery.value).length > 0);
+const vm = getCurrentInstance();
+const relationSearchKey = computed(
+  () => `${(relationStore as any)?.storeId || relationStore?.fullModelName || ''}:${String(binding.prop)}`
+);
+
+const { hasAction } = usePermission();
+const showNameCreateEntry = computed(() =>
+  shouldShowNameCreateEntry({
+    allowCreate: props.allowCreate === true,
+    hasKeyword: isSearching.value,
+    relationQualifiedName: relationStore?.fullModelName,
+    createActionId: props.createActionId,
+    hasAction,
+  })
+);
+const nameCreateLabel = computed(() => _t('Create "%s"', trimSearchKeyword(searchQuery.value)));
+const creatingName = ref(false);
+
+async function onNameCreate(getter: () => WritableComputedRef<V | null>) {
+  await runNameCreateQuickCreate({
+    busy: creatingName,
+    store: relationStore,
+    keyword: searchQuery.value,
+    nameField: props.nameField,
+    failedMessage: _t('Create failed'),
+    onError: message => ChoyMessage.error(message),
+    onSuccess: row => {
+      onUpdate(getter, row as V);
+      searchQuery.value = '';
+    },
+  });
+}
+
+const hasValueClickListener = computed<boolean>(() => {
+  const p = (vm?.vnode.props || {}) as Record<string, any>;
+  return Boolean(p.onValueClick || p['onValue-click']);
+});
+
+const isValueClickable = computed<boolean>(() => {
+  if (props.valueClickable === true) return true;
+  if (props.valueClickable === false) return false;
+  return hasValueClickListener.value;
+});
+
+function asRelationValue(item: any): RelationValue | null {
+  if (!item || typeof item !== 'object') return null;
+  if (!('Id' in item)) return null;
+  return item as RelationValue;
+}
+
+function comboboxId(val: any): string | null {
+  const id = val?.Id;
+  if (id == null) return null;
+  const s = String(id).trim();
+  return s || null;
+}
+
+function selectedOptionFor(val: any): RelationOption | null {
+  const id = comboboxId(val);
+  if (!id) return null;
+  return { id, label: getDisplayLabel(val), raw: val };
+}
+
+function getDisplayId(val: any): string {
+  const id = val?.Id;
+  if (id == null) return '';
+  return String(id).trim();
+}
+
+function getDisplayLabel(val: any): string {
+  if (!val || typeof val !== 'object') return '';
+  if (val.DisplayName != null) return String(val.DisplayName);
+  if (val.Name != null) return String(val.Name);
+  if (val.Title != null) return String(val.Title);
+  const label = val.Code ?? val.Id;
+  return label == null ? '' : String(label);
+}
+
+function onDisplayValueClick(val: any, event: MouseEvent) {
+  if (!isValueClickable.value) return;
+  const id = getDisplayId(val);
+  if (!id) return;
+  emit('value-click', { id, item: val && typeof val === 'object' ? val : null, label: getDisplayLabel(val), source: 'display', event });
+}
+
+function onDisplayValueKeydown(val: any, event: KeyboardEvent) {
+  if (!isValueClickable.value) return;
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  const id = getDisplayId(val);
+  if (!id) return;
+  emit('value-click', { id, item: val && typeof val === 'object' ? val : null, label: getDisplayLabel(val), source: 'display', event });
+}
+
+const onchangeCtrl = useProvidedOnchange();
+// Use the cumulative onchange result injected by FormView.
+const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(null));
+
+function toArray<T>(v: T | T[] | undefined | null): T[] {
+  if (v == null) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+const externalConditions = computed<QueryCondition<any>[]>(() => toArray(props.condition));
+
+// Read the root record through the injected form-root only.
+const rootRecord = computed<any>(() => binding.recordRef().value as any);
+
+const baseField = computed(() => String(binding.prop));
+const segs = computed(() => baseField.value.split('.').filter(Boolean));
+const leafField = computed(() => segs.value[segs.value.length - 1]);
+const chainBeforeLeaf = computed(() => segs.value.slice(0, segs.value.length - 1));
+
+function normalizeRowRef(rowRef: any): any | null {
+  try {
+    if (!rowRef) return null;
+    if (typeof rowRef === 'function') {
+      const v = rowRef();
+      return v && typeof v === 'object' && 'value' in v ? (v as any).value : v;
+    }
+    if (typeof rowRef === 'object' && 'value' in rowRef) return (rowRef as any).value;
+    return rowRef;
+  } catch {
+    return null;
+  }
+}
+
+type LevelSel = { key: string; id?: string; idx?: number };
+function findSelectorsChain(root: any, chain: string[], targetId: string | number | null | undefined): LevelSel[] | null {
+  if (!root || !Array.isArray(chain) || !chain.length || targetId == null) return null;
+  const sid = String(targetId);
+
+  function dfs(node: any, depth: number, acc: LevelSel[]): LevelSel[] | null {
+    if (depth >= chain.length) return null;
+    const key = chain[depth];
+    const slot = node?.[key];
+
+    if (Array.isArray(slot)) {
+      for (let i = 0; i < slot.length; i++) {
+        const row = slot[i];
+        const nextAcc = acc.concat([{ key, id: row?.Id != null ? String(row.Id) : undefined, idx: i }]);
+        if (depth === chain.length - 1) {
+          if (row && String(row?.Id ?? '') === sid) return nextAcc;
+        } else {
+          const hit = dfs(row, depth + 1, nextAcc);
+          if (hit) return hit;
+        }
+      }
+      return null;
+    }
+
+    if (slot && typeof slot === 'object') {
+      return dfs(slot, depth + 1, acc);
+    }
+
+    return null;
+  }
+
+  return dfs(root, 0, []);
+}
+
+function buildFullChainKeys(row: any): string[] {
+  const out: string[] = [];
+  const leaf = leafField.value;
+  const chain = chainBeforeLeaf.value;
+  if (!rootRecord.value || !chain.length) return out;
+
+  const rowId = row?.Id ?? null;
+  const selChain = findSelectorsChain(rootRecord.value, chain, rowId);
+  if (!selChain) return out;
+
+  const idPath = selChain.map(s => (s.id != null ? `${s.key}(id=${s.id})` : s.idx != null ? `${s.key}[${s.idx}]` : s.key)).join('.') + `.${leaf}`;
+  out.push(idPath);
+
+  const idxPath = selChain.map(s => (s.idx != null ? `${s.key}[${s.idx}]` : s.id != null ? `${s.key}(id=${s.id})` : s.key)).join('.') + `.${leaf}`;
+  if (idxPath !== idPath) out.push(idxPath);
+
+  return out;
+}
+
+function buildLastLevelKeys(row: any): string[] {
+  const out: string[] = [];
+  const leaf = leafField.value;
+  const chain = chainBeforeLeaf.value;
+  if (!chain.length) return out;
+
+  const lastIdx = chain.length - 1;
+  const lastKey = chain[lastIdx];
+  const head = chain.slice(0, lastIdx).join('.');
+  const headDot = head ? head + '.' : '';
+
+  const rowId = row?.Id ?? null;
+  if (rowId != null) out.push(`${headDot}${lastKey}(id=${String(rowId)}).${leaf}`);
+
+  let idx: number | null = null;
+  try {
+    let node: any = rootRecord.value;
+    for (let i = 0; i < lastIdx; i++) {
+      node = node?.[chain[i]];
+      if (Array.isArray(node)) {
+        node = null;
+        break;
+      }
+    }
+    const arr = Array.isArray(node?.[lastKey]) ? (node[lastKey] as any[]) : Array.isArray(node) ? (node as any[]) : null;
+    if (arr) {
+      const idStr = rowId != null ? String(rowId) : null;
+      const pos = idStr != null ? arr.findIndex(x => String(x?.Id ?? '') === idStr) : arr.findIndex(x => x === row);
+      if (pos >= 0) idx = pos;
+    }
+  } catch {}
+  if (idx != null) out.push(`${headDot}${lastKey}[${idx}].${leaf}`);
+
+  return out;
+}
+
+function pickOnchangeConditions(rowRef?: any): QueryCondition<any>[] {
+  const raw = lastOnchangeResult.value?.condition || [];
+  if (!Array.isArray(raw) || !raw.length) return [];
+
+  const chain = chainBeforeLeaf.value;
+  if (!chain.length) {
+    const key = baseField.value;
+    return raw
+      .filter((c: any) => c && c.field === key)
+      .map((c: any) => c.condition)
+      .filter(Boolean);
+  }
+
+  const row = normalizeRowRef(rowRef);
+  if (!row) return [];
+  const keys = new Set<string>([...buildFullChainKeys(row), ...buildLastLevelKeys(row)]);
+  if (!keys.size) return [];
+  return raw
+    .filter((c: any) => c && typeof c.field === 'string' && keys.has(c.field))
+    .map((c: any) => c.condition)
+    .filter(Boolean);
+}
+
+const dialogVisible = ref(false);
+const searchViewRef = ref<SelectionExpose<any> | null>(null);
+const pendingTarget = ref<null | (() => WritableComputedRef<V | null>)>(null);
+const dialogRowRef = ref<any | null>(null);
+
+const dialogEffectiveConditions = computed<QueryCondition<any> | []>(() => {
+  const parts: QueryCondition<any>[] = [...externalConditions.value, ...pickOnchangeConditions(dialogRowRef.value)];
+  if (parts.length === 0) return [] as any;
+  if (parts.length === 1) return parts[0] as any;
+  return { And: parts } as any;
+});
+
+async function relationSearch(query: string, opts: { limit: number }, recordRef?: any): Promise<RelationOption[]> {
+  searchQuery.value = query ?? '';
+  const parts: QueryCondition<any>[] = [];
+  parts.push(...externalConditions.value);
+  parts.push(...pickOnchangeConditions(recordRef));
+
+  const final: QueryCondition<any> | [] = parts.length === 0 ? ([] as any) : parts.length === 1 ? parts[0] : ({ And: parts } as any);
+
+  const result = (await relationStore?.NameSearch(String(query ?? '').trim(), final as any, {
+    fields: ['Id', 'DisplayName'],
+    limit: opts.limit ?? props.pageSize ?? 20,
+    ...buildRelationConditionSource(props.store as any, binding.prop),
+  })) as V[] | undefined;
+
+  return mapNameSearchRows(result ?? []);
+}
+
+function makeRelationSearch(recordRef?: any) {
+  return (query: string, opts: { limit: number }) => relationSearch(query, opts, recordRef);
+}
+
+function onUpdate(getter: () => WritableComputedRef<V | null>, v: V | null) {
+  getter().value = (v ?? null) as any;
+}
+
+function onComboboxSelect(getter: () => WritableComputedRef<V | null>, opt: RelationOption | null) {
+  if (!opt) {
+    onUpdate(getter, null);
+    searchQuery.value = '';
+    return;
+  }
+  const raw = opt.raw;
+  if (raw && typeof raw === 'object' && asRelationValue(raw)) {
+    onUpdate(getter, raw as V);
+  } else {
+    onUpdate(getter, { Id: opt.id, DisplayName: opt.label } as V);
+  }
+  searchQuery.value = '';
+}
+
+function onSearchMore(
+  target: () => WritableComputedRef<V | null>,
+  recordRef: any,
+  query: string
+) {
+  searchQuery.value = query ?? '';
+  openSearchDialog(target, recordRef);
+}
+
+function openSearchDialog(target?: () => WritableComputedRef<V | null>, recordRef?: any) {
+  if (!relationStore) return;
+  pendingTarget.value = target ?? null;
+  dialogRowRef.value = recordRef ?? null;
+  dialogVisible.value = true;
+}
+
+async function confirmPick() {
+  try {
+    const expose = searchViewRef.value as any;
+    const unwrap = (v: any) => (v && typeof v === 'object' && 'value' in v ? v.value : v);
+    const selFromSingle = unwrap(expose?.selectedItem);
+    const selFromMulti = unwrap(expose?.selectedItems);
+    const sel = selFromSingle ?? (Array.isArray(selFromMulti) ? selFromMulti[0] : null);
+    const selId = sel?.Id;
+    if (!selId) {
+      dialogVisible.value = false;
+      return;
+    }
+    const record = sel as V;
+    const setter = pendingTarget.value;
+    if (setter) setter().value = record as any;
+  } finally {
+    dialogVisible.value = false;
+  }
+}
 </script>
+
+<style scoped>
+.choy-form-field {
+  margin-bottom: var(--choy-form-field-margin-bottom, 18px);
+}
+.choy-many-to-one-select {
+  width: 100%;
+}
+.choy-field-display-text {
+  color: var(--el-text-color-regular);
+  word-break: break-all;
+}
+.choy-field-display-text--clickable {
+  cursor: pointer;
+  color: var(--el-color-primary);
+  transition: color 0.16s ease;
+}
+.choy-field-display-text--clickable:hover {
+  color: var(--el-color-primary-dark-2);
+}
+.choy-field-display-text--clickable:focus-visible {
+  outline: 2px solid var(--el-color-primary-light-7);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.choy-m2o__more {
+  text-align: center;
+}
+.choy-m2o__more--clickable {
+  display: block;
+  width: 100%;
+  padding: 5px 12px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--el-color-primary);
+  background: transparent;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.choy-m2o__more--clickable:hover {
+  background-color: var(--el-fill-color-light);
+}
+.choy-m2o__more--clickable:active {
+  background-color: var(--el-fill-color-lighter);
+}
+.choy-m2o__more--clickable:focus,
+.choy-m2o__more--clickable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--el-color-primary-light-7) inset;
+  border-radius: 2px;
+}
+</style>

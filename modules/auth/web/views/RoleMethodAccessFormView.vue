@@ -31,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
-          <ChoyManyToOneField value-mode="record"
+          <ChoyManyToOneField
             :store="store"
             prop="RoleId"
             :search-view="RoleListView"
@@ -40,13 +40,13 @@ SPDX-License-Identifier: Apache-2.0
           />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyManyToOneField :store="store" prop="MetaApplicationId" />
+          <ChoyManyToOneRefField :store="store" prop="MetaApplicationId" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyManyToOneField :store="store" prop="MetaModelId" />
+          <ChoyManyToOneRefField :store="store" prop="MetaModelId" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyManyToOneField :store="store" prop="MetaServiceId" />
+          <ChoyManyToOneRefField :store="store" prop="MetaServiceId" />
         </ChoyCol>
         <ChoyCol :span="6">
           <ChoySelectionField :store="store" prop="LogicalModelName" />
@@ -87,7 +87,7 @@ import RoleListView from '@/auth/web/views/RoleListView.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToOneField, ChoySelectionField } from '@/web';
+import { ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToOneField, ChoySelectionField, ChoyManyToOneRefField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { roleIdFromValueClick } from '@/auth/web/views/role_value_click';

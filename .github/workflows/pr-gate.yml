@@ -92,6 +92,27 @@ jobs:
           python3 scripts/ci/forbid_core_engine_imports_test.py
           python3 scripts/ci/forbid_core_engine_imports.py
 
+  forbid-legacy-ui-imports:
+    name: pr / forbid-legacy-ui-imports
+    needs:
+      - discover-impact
+    if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Forbid Element Plus / echarts / O*.vue after Choy cutover
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/forbid_legacy_ui_imports_test.py
+          python3 scripts/ci/forbid_legacy_ui_imports.py
+
   build-choysum-cli:
     name: pr / build-choysum-cli
     if: >-

@@ -12,10 +12,9 @@ SPDX-License-Identifier: Apache-2.0
     >
       <div data-region="partner-commercial-panel">
         <div data-region="partner-identifier-section">
-          <ChoyOneToManyField
+          <ChoyOneToManyKanbanField
             :store="store"
             :prop="'PartnerIdentifiers' as any"
-            widget="kanban"
             label=""
             :default-record="defaultIdentifierRecord"
             :editable="canEditIdentifiers()"
@@ -45,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
               </div>
             </template>
-          </ChoyOneToManyField>
+          </ChoyOneToManyKanbanField>
         </div>
       </div>
     </ChoyTab>
@@ -60,8 +59,7 @@ import {
   ChoyButton,
   ChoyOneToManyField,
   ChoyTab,
-  PARTNER_DETAIL_TAB_PANELS_XPATH,
-} from '@/web';
+  PARTNER_DETAIL_TAB_PANELS_XPATH,  ChoyOneToManyKanbanField} from '@/web';
 import PartnerIdentifierFormView from '@/partner_commercial/web/views/PartnerIdentifierFormView.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';

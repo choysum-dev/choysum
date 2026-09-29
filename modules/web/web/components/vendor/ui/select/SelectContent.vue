@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 import {
   SelectContent,
   SelectPortal,
-  SelectViewport,
+  SelectViewport
 } from 'reka-ui';
 import { cn, type ClassValue } from '../../../../lib/utils';
 

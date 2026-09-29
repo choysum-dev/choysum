@@ -46,7 +46,7 @@ import ChoyButton from '../layout/ChoyButton.vue';
 import type { ClassValue } from '../../lib/utils';
 import {
   clampChoyPage,
-  choyTotalPages,
+  choyTotalPages
 } from './paginationHelpers';
 
 /**

@@ -5,8 +5,8 @@ import { computed, type ComputedRef } from 'vue';
 import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 
 /**
- * Detects whether a Choy field/view should host the store-bound O* engine.
- * Chrome / Dogfood paths omit store+prop and keep defineModel APIs.
+ * Detects whether a Choy field should bind to a WebModelStore engine.
+ * Field chrome (`defineModel`) remains for FE unit mounts that omit store+prop.
  * `pageStore` covers fields under a store-backed ChoyPage that only pass `prop`.
  */
 export function isChoyStoreFieldBinding(
@@ -39,7 +39,7 @@ type ChoyStoreFieldProps = {
 } & Record<string, unknown>;
 
 /**
- * Shared field-host binding: store-mode flag plus props forwarded to the O* engine.
+ * Shared field binding: store-mode flag plus props forwarded to the store engine.
  */
 export function useChoyStoreFieldBinding(
   props: ChoyStoreFieldProps,
@@ -54,7 +54,7 @@ export function useChoyStoreFieldBinding(
     storeBind: computed(() => {
       const bind: Record<string, unknown> = { ...attrs };
       for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
-        // Chrome defineModel state must not clobber the store-bound O* engine.
+        // Chrome defineModel state must not clobber the store-bound engine.
         if (key === 'modelValue' || key === 'modelModifiers') continue;
         bind[key] = value;
       }

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ref, type Ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ChoyMessage } from '../composables/useChoyMessage';
+import { confirmChoyAction, confirmChoyChoice } from '../composables/confirmChoyAction';
 import type { OnchangeFlushPayload } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -141,15 +142,13 @@ export function useOnchangeAggregation(options?: { showMessages?: boolean }) {
     const blockingMsg = msgs.find((m: any) => m.blocking);
     if (blockingMsg) {
       try {
-        await ElMessageBox.confirm(blockingMsg.message, blockingMsg.title || _t('Notice'), {
-          confirmButtonText: _t('Continue'),
-          cancelButtonText: _t('Cancel'),
-          type: blockingMsg.level === 'error' ? 'error' : 'warning',
+        await confirmChoyAction(blockingMsg.message, blockingMsg.title || _t('Notice'), {
+          confirmText: _t('Continue'),
+          cancelText: _t('Cancel'),
           distinguishCancelAndClose: true,
-          closeOnClickModal: false,
         });
       } catch (action) {
-        if (action === 'cancel') ElMessage.info(_t('Operation cancelled'));
+        if (action === 'cancel') ChoyMessage.info(_t('Operation cancelled'));
       }
       return;
     }
@@ -162,9 +161,9 @@ export function useOnchangeAggregation(options?: { showMessages?: boolean }) {
     if (firstMsg) {
       const text = firstMsg.field ? `${firstMsg.field}: ${firstMsg.message}` : firstMsg.message;
       const typeMap = {
-        error: () => ElMessage.error({ message: text, duration: 5000, showClose: true, grouping: true }),
-        warn: () => ElMessage.warning({ message: text, duration: 3000, showClose: true, grouping: true }),
-        info: () => ElMessage.info({ message: text, duration: 2000, showClose: true, grouping: true }),
+        error: () => ChoyMessage.error(text, { duration: 5000 }),
+        warn: () => ChoyMessage.warning(text, { duration: 3000 }),
+        info: () => ChoyMessage.info(text, { duration: 2000 }),
       } as const;
       // @ts-expect-error index signature constrained to known keys
       typeMap[firstMsg.level]?.();

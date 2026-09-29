@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, h, inject, provide, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-
+import { ChoyMessage } from '../composables/useChoyMessage';
 import {
   disposeOnchange,
   provideOnchange,
@@ -11,9 +10,9 @@ import {
 import { useListInlineEdit, type UseListInlineEditDeps } from '@/web/web/composables/useListInlineEdit';
 import { fnRecorder, flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 
-const origConfirm = ElMessageBox.confirm;
-const origSuccess = ElMessage.success;
-const origError = ElMessage.error;
+const origSuccess = ChoyMessage.success;
+const origError = ChoyMessage.error;
+const confirmMock = fnRecorder(async () => 'confirm' as const);
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -51,7 +50,10 @@ function mountInline(opts?: {
         store,
         enabled,
         onSaved: opts?.onSaved,
-        deps: opts?.deps,
+        deps: {
+          ...opts?.deps,
+          confirmChoyChoice: confirmMock as any,
+        },
       });
 
       const HeaderProbe = defineComponent({
@@ -98,24 +100,22 @@ function mountInline(opts?: {
 }
 
 describe('useListInlineEdit', () => {
-  const confirm = fnRecorder(async () => true as any);
+  const confirm = confirmMock;
   const success = fnRecorder();
   const error = fnRecorder();
 
   beforeEach(() => {
     confirm.mockReset();
-    confirm.mockImplementation(async () => true);
+    confirm.mockImplementation(async () => 'confirm');
     success.mockReset();
     error.mockReset();
-    (ElMessageBox as any).confirm = confirm;
-    (ElMessage as any).success = success;
-    (ElMessage as any).error = error;
+    ChoyMessage.success = success as any;
+    ChoyMessage.error = error as any;
   });
 
   afterEach(() => {
-    (ElMessageBox as any).confirm = origConfirm;
-    (ElMessage as any).success = origSuccess;
-    (ElMessage as any).error = origError;
+    ChoyMessage.success = origSuccess;
+    ChoyMessage.error = origError;
   });
 
   test('rejects enterEdit when disabled, non-record, or missing id', async () => {
@@ -207,22 +207,18 @@ describe('useListInlineEdit', () => {
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
 
-    confirm.mockImplementation(async () => true);
+    confirm.mockImplementation(async () => 'confirm');
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(true);
     expect(api.editingRowId.value).toBe('2');
 
     await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } });
     api.editingDraft.value!.Name = 'D';
-    confirm.mockImplementation(async () => {
-      throw 'cancel';
-    });
+    confirm.mockImplementation(async () => 'cancel');
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '3', Name: 'E' } })).toBe(true);
     expect(api.editingRowId.value).toBe('3');
 
     api.editingDraft.value!.Name = 'F';
-    confirm.mockImplementation(async () => {
-      throw 'close';
-    });
+    confirm.mockImplementation(async () => 'dismiss');
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '4', Name: 'G' } })).toBe(false);
     expect(api.editingRowId.value).toBe('3');
     unmount();
@@ -236,7 +232,7 @@ describe('useListInlineEdit', () => {
     });
     await api.enterEdit({ kind: 'record', payload: { Id: '1', Name: 'A' } });
     api.editingDraft.value!.Name = 'B';
-    confirm.mockImplementation(async () => true);
+    confirm.mockImplementation(async () => 'confirm');
     await expectRejects(() => api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } }), 'fail');
     unmount();
   });
@@ -325,7 +321,7 @@ describe('useListInlineEdit', () => {
     confirm.mockImplementation(async () => {
       // Clear draft so save() returns false without throwing.
       api.editingDraft.value = null;
-      return true;
+      return 'confirm';
     });
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(false);
     expect(api.editingRowId.value).toBe('1');
@@ -497,7 +493,7 @@ describe('useListInlineEdit', () => {
     flush.mockImplementation(async () => {
       api.editingDraft.value = null;
     });
-    confirm.mockImplementation(async () => true);
+    confirm.mockImplementation(async () => 'confirm');
     expect(await api.enterEdit({ kind: 'record', payload: { Id: '2', Name: 'C' } })).toBe(true);
     expect(UpdateById.calls.length).toBe(0);
     expect(api.editingRowId.value).toBe('2');

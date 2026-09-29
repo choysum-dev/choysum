@@ -144,7 +144,7 @@ func TestEnsureChoyTailwindCSSNoopWhenMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 	if res != nil {
-		t.Fatalf("expected nil result when choy_ui absent, got %#v", res)
+		t.Fatalf("expected nil result when web kit absent, got %#v", res)
 	}
 }
 
@@ -329,7 +329,7 @@ func TestEnsureChoyTailwindCSSRejectsDirectoryThemePath(t *testing.T) {
 func TestTailwindInputDigestStableAndSensitive(t *testing.T) {
 	root := t.TempDir()
 	modules := filepath.Join(root, "modules")
-	web := filepath.Join(modules, "choy_ui", "web")
+	web := filepath.Join(modules, "web", "web")
 	styles := filepath.Join(web, "styles")
 	pages := filepath.Join(web, "pages")
 	if err := os.MkdirAll(styles, 0o755); err != nil {
@@ -396,7 +396,7 @@ func TestTailwindInputDigestStableAndSensitive(t *testing.T) {
 
 	// web as a file → no-op (aligned with EnsureChoyTailwindCSS).
 	fileRoot := t.TempDir()
-	webFile := filepath.Join(fileRoot, "choy_ui", "web")
+	webFile := filepath.Join(fileRoot, "web", "web")
 	if err := os.MkdirAll(filepath.Dir(webFile), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +410,7 @@ func TestTailwindInputDigestStableAndSensitive(t *testing.T) {
 
 	// dialect path is a directory → broken kit (same as EnsureChoyTailwindCSS).
 	dirRoot := t.TempDir()
-	stylesDir := filepath.Join(dirRoot, "choy_ui", "web", "styles")
+	stylesDir := filepath.Join(dirRoot, "web", "web", "styles")
 	if err := os.MkdirAll(stylesDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -603,7 +603,7 @@ func TestModulesPathForKitRoot(t *testing.T) {
 	if got != want {
 		t.Fatalf("custom modules dir => %q, got %q", want, got)
 	}
-	// Both kit roots under a custom parent: non-preferred choy_ui still maps to parent.
+	// Legacy choy_ui under a custom parent is not a kit root after cutover.
 	choyUI := filepath.Join(custom, "apps", "choy_ui")
 	if err := os.MkdirAll(filepath.Join(choyUI, "web", "styles"), 0o755); err != nil {
 		t.Fatal(err)
@@ -611,8 +611,8 @@ func TestModulesPathForKitRoot(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(choyUI, "web", "styles", "theme.css"), []byte(`@theme{ --x: 1; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := modulesPathForKitRoot(choyUI); got != want {
-		t.Fatalf("custom dir choy_ui (web preferred) => %q, got %q", want, got)
+	if got := modulesPathForKitRoot(choyUI); got != "" {
+		t.Fatalf("custom dir choy_ui (not a kit) => empty, got %q", got)
 	}
 	// Sibling without dialect must not make an arbitrary parent a modules root.
 	other := filepath.Join(custom, "apps", "partner")
@@ -647,10 +647,10 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	write("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="underline"></div>`)
-	// Non-preferred kit root still present; generate must resolve to web.
+	// Stray legacy kit tree must not divert generate away from web.
 	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
 
-	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "choy_ui"))
+	res, err := GenerateChoyTailwindForModule(filepath.Join(modules, "web"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -662,10 +662,10 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 		t.Fatalf("exported Generate contentHash %q must match TailwindInputDigest %q", res.ContentHash, contentHash)
 	}
 	if res.DialectHash != dialectHash {
-		t.Fatalf("Generate via choy_ui root must use preferred web dialect hash %q, got %q", dialectHash, res.DialectHash)
+		t.Fatalf("Generate via web root must use web dialect hash %q, got %q", dialectHash, res.DialectHash)
 	}
 	if !strings.HasSuffix(filepath.ToSlash(res.OutputPath), "/web/web/styles/"+choyTailwindGeneratedCSSName) {
-		t.Fatalf("output must land under preferred web kit, got %s", res.OutputPath)
+		t.Fatalf("output must land under web kit, got %s", res.OutputPath)
 	}
 	data, err := os.ReadFile(res.OutputPath)
 	if err != nil {
@@ -675,8 +675,7 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 		t.Fatalf("product scan via Generate must include domain utility:\n%s", data)
 	}
 
-	// Custom modules-dir name with both kit roots: Generate(choy_ui) must still
-	// product-scan and match TailwindInputDigest on the preferred web dialect.
+	// Custom modules-dir name: Generate(web) product-scans and matches digest.
 	customParent := filepath.Join(root, "apps")
 	cwrite := func(rel, body string) {
 		t.Helper()
@@ -691,8 +690,7 @@ func TestGenerateChoyTailwindForModuleMatchesProductDigest(t *testing.T) {
 	cwrite("web/web/styles/theme.css", `@theme { --color-primary: var(--choy-color-primary); }`)
 	cwrite("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
 	cwrite("partner/web/pages/Home.vue", `<div class="overline"></div>`)
-	cwrite("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
-	cres, err := GenerateChoyTailwindForModule(filepath.Join(customParent, "choy_ui"))
+	cres, err := GenerateChoyTailwindForModule(filepath.Join(customParent, "web"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -776,6 +774,8 @@ func TestScanChoyProductTailwindCandidatesFiltersSiblingKit(t *testing.T) {
 	}
 	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	write("web/web/components/view/OFormView.vue", `<div class="kit-ep-only"></div>`)
+	// Legacy choy_ui tree is a domain sibling after cutover (full scan, including O*).
 	write("choy_ui/web/styles/theme.css", `@theme { --color-primary: blue; }`)
 	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
 	write("choy_ui/web/components/view/OFormView.vue", `<div class="sibling-ep-only"></div>`)
@@ -789,13 +789,13 @@ func TestScanChoyProductTailwindCandidatesFiltersSiblingKit(t *testing.T) {
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "gap-2", "domain-util"} {
+	for _, want := range []string{"flex", "gap-2", "domain-util", "sibling-ep-only"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	if set["sibling-ep-only"] {
-		t.Fatalf("sibling kit O*.vue must stay kit-filtered, got %v", got)
+	if set["kit-ep-only"] {
+		t.Fatalf("web kit O*.vue must stay kit-filtered, got %v", got)
 	}
 }
 
@@ -813,7 +813,8 @@ func TestScanChoyProductTailwindCandidatesKitHostWithoutDialect(t *testing.T) {
 	}
 	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
-	// Sibling owns vendor/ui but no styles/theme.css — still a kit host.
+	write("web/web/components/view/OFormView.vue", `<div class="kit-ep-only"></div>`)
+	// Sibling owns vendor/ui but is not named web — domain scan (includes O*).
 	write("choy_ui/web/components/vendor/ui/Button.vue", `<div class="gap-2"></div>`)
 	write("choy_ui/web/components/view/OFormView.vue", `<div class="no-dialect-ep-only"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
@@ -826,13 +827,13 @@ func TestScanChoyProductTailwindCandidatesKitHostWithoutDialect(t *testing.T) {
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "gap-2", "domain-util"} {
+	for _, want := range []string{"flex", "gap-2", "domain-util", "no-dialect-ep-only"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
 	}
-	if set["no-dialect-ep-only"] {
-		t.Fatalf("vendor/ui host without dialect must stay kit-filtered, got %v", got)
+	if set["kit-ep-only"] {
+		t.Fatalf("web kit O*.vue must stay kit-filtered, got %v", got)
 	}
 }
 
@@ -850,7 +851,7 @@ func TestScanChoyProductTailwindCandidatesChoyUIShellWithoutVendorUI(t *testing.
 	}
 	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
 	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
-	// Thin choy_ui shell: no vendor/ui, but still a kit host by name.
+	// Thin legacy shell: domain scan includes pages and O*.vue classes.
 	write("choy_ui/web/pages/Shell.vue", `<div class="shell-util"></div>`)
 	write("choy_ui/web/components/view/OFormView.vue", `<div class="shell-ep-only"></div>`)
 	write("partner/web/pages/Home.vue", `<div class="domain-util"></div>`)
@@ -863,13 +864,10 @@ func TestScanChoyProductTailwindCandidatesChoyUIShellWithoutVendorUI(t *testing.
 	for _, c := range got {
 		set[c] = true
 	}
-	for _, want := range []string{"flex", "domain-util"} {
+	for _, want := range []string{"flex", "domain-util", "shell-util", "shell-ep-only"} {
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
-	}
-	if set["shell-ep-only"] {
-		t.Fatalf("choy_ui shell without vendor/ui must kit-filter O*.vue, got %v", got)
 	}
 }
 
@@ -904,6 +902,167 @@ func TestScanChoyProductTailwindCandidatesDomainThemeCSSNotKitFiltered(t *testin
 		if !set[want] {
 			t.Fatalf("missing candidate %q in %v", want, got)
 		}
+	}
+}
+
+
+func TestIndexCSSOpenBracePartials(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		css  string
+		want int
+	}{
+		{name: "escaped quote stays inside string", css: `"ab\"c" {`, want: 8},
+		{name: "unterminated block comment", css: `/* no end {`, want: -1},
+		{name: "single-quoted then brace", css: `'x' {`, want: 4},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := indexCSSOpenBrace(tc.css, len(tc.css))
+			if got != tc.want {
+				t.Fatalf("indexCSSOpenBrace(%q)=%d want %d", tc.css, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestScanChoyProductTailwindCandidatesWebDirectoryDialectErrors(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+	// web kit dialect must be a file; a directory aborts the product scan.
+	if err := os.MkdirAll(filepath.Join(modules, "web", "web", "styles", "theme.css"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "directory, not a file") {
+		t.Fatalf("expected web directory dialect error, got %v", err)
+	}
+}
+
+type twFakeFileInfo struct {
+	name  string
+	isDir bool
+}
+
+func (f twFakeFileInfo) Name() string       { return f.name }
+func (f twFakeFileInfo) Size() int64        { return 0 }
+func (f twFakeFileInfo) Mode() os.FileMode  { if f.isDir { return os.ModeDir }; return 0 }
+func (f twFakeFileInfo) ModTime() time.Time { return time.Time{} }
+func (f twFakeFileInfo) IsDir() bool        { return f.isDir }
+func (f twFakeFileInfo) Sys() any           { return nil }
+
+type twFakeDirEntry struct {
+	name  string
+	isDir bool
+}
+
+func (e twFakeDirEntry) Name() string               { return e.name }
+func (e twFakeDirEntry) IsDir() bool                { return e.isDir }
+func (e twFakeDirEntry) Type() os.FileMode          { if e.isDir { return os.ModeDir }; return 0 }
+func (e twFakeDirEntry) Info() (os.FileInfo, error) { return twFakeFileInfo{e.name, e.isDir}, nil }
+
+// resolveChoyKitModuleRoot uses os.Stat, so an empty modules dir yields no kit.
+// Hooks below invent a "web" module so the product-loop name=="web" branches run.
+func TestScanChoyProductTailwindCandidatesWebModuleLoopHooks(t *testing.T) {
+	modules := t.TempDir()
+	prevRead := choyProductReadDir
+	prevStat := choyProductStat
+	prevKit := choyScanKitCandidates
+	t.Cleanup(func() {
+		choyProductReadDir = prevRead
+		choyProductStat = prevStat
+		choyScanKitCandidates = prevKit
+	})
+
+	choyProductReadDir = func(string) ([]os.DirEntry, error) {
+		return []os.DirEntry{twFakeDirEntry{name: "web", isDir: true}}, nil
+	}
+
+	// Directory dialect on a module named "web" aborts the product scan.
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		slash := filepath.ToSlash(name)
+		base := filepath.Base(name)
+		switch {
+		case strings.HasSuffix(slash, "/web/web/styles/theme.css"):
+			return twFakeFileInfo{name: "theme.css", isDir: true}, nil
+		case base == "web" || strings.HasSuffix(slash, "/web/web"):
+			return twFakeFileInfo{name: base, isDir: true}, nil
+		default:
+			return nil, os.ErrNotExist
+		}
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "directory, not a file") {
+		t.Fatalf("expected hooked web directory dialect error, got %v", err)
+	}
+
+	// Kit-host path: web + vendor/ui dir → scan kit candidates then continue.
+	choyProductStat = func(name string) (os.FileInfo, error) {
+		slash := filepath.ToSlash(name)
+		base := filepath.Base(name)
+		switch {
+		case strings.Contains(slash, "/components/vendor/ui"):
+			return twFakeFileInfo{name: "ui", isDir: true}, nil
+		case strings.HasSuffix(slash, "/web/web/styles/theme.css"):
+			return twFakeFileInfo{name: "theme.css", isDir: false}, nil
+		case base == "web" || strings.HasSuffix(slash, "/web/web"):
+			return twFakeFileInfo{name: base, isDir: true}, nil
+		default:
+			return nil, os.ErrNotExist
+		}
+	}
+	choyScanKitCandidates = func(string) ([]string, error) {
+		return nil, errors.New("hooked kit candidates boom")
+	}
+	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "hooked kit candidates boom") {
+		t.Fatalf("expected hooked kit scan error, got %v", err)
+	}
+	choyScanKitCandidates = func(string) ([]string, error) {
+		return []string{"hooked-kit-class"}, nil
+	}
+	got, err := ScanChoyProductTailwindCandidates(modules)
+	if err != nil {
+		t.Fatalf("kit-host success path: %v", err)
+	}
+	if len(got) != 1 || got[0] != "hooked-kit-class" {
+		t.Fatalf("expected hooked kit candidates, got %v", got)
+	}
+}
+
+func TestTailwindInputDigestDialectReadFileNotExist(t *testing.T) {
+	modules := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(modules, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("web/web/styles/theme.css", `@theme { --color-primary: red; }`)
+	write("web/web/components/vendor/ui/Button.vue", `<div class="flex"></div>`)
+
+	prev := choyReadFile
+	t.Cleanup(func() { choyReadFile = prev })
+	choyReadFile = func(string) ([]byte, error) {
+		return nil, os.ErrNotExist
+	}
+	d, c, err := TailwindInputDigest(modules)
+	if err != nil || d != "" || c != "" {
+		t.Fatalf("ReadFile NotExist => empty hashes, got %q %q %v", d, c, err)
 	}
 }
 
@@ -1006,7 +1165,7 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 		t.Fatalf("expected dialect Stat error, got %v", err)
 	}
 
-	// Sibling kit error surfaces: directory dialect is deterministic (unlike chmod 000).
+	// Legacy sibling directory dialect must not abort the product scan.
 	choyProductStat = prev
 	siblingDialect := filepath.Join(modules, "choy_ui", "web", "styles", "theme.css")
 	if err := os.Remove(siblingDialect); err != nil && !os.IsNotExist(err) {
@@ -1015,27 +1174,17 @@ func TestScanChoyProductTailwindCandidatesStatErrors(t *testing.T) {
 	if err := os.MkdirAll(siblingDialect, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "is a directory") {
-		t.Fatalf("expected directory dialect error for sibling kit, got %v", err)
+	if _, err := ScanChoyProductTailwindCandidates(modules); err != nil {
+		t.Fatalf("legacy sibling directory dialect must be ignored, got %v", err)
 	}
 
-	// Restore dialect file, then force sibling kit scan error via hook.
+	// Restore dialect file. Legacy siblings use domain scan (not kit scan).
 	if err := os.RemoveAll(siblingDialect); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(siblingDialect, []byte(`@theme { --color-primary: blue; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	choyScanKitCandidates = func(webRoot string) ([]string, error) {
-		if strings.Contains(filepath.ToSlash(webRoot), "/choy_ui/web") {
-			return nil, errors.New("sibling kit scan boom")
-		}
-		return prevScan(webRoot)
-	}
-	if _, err := ScanChoyProductTailwindCandidates(modules); err == nil || !strings.Contains(err.Error(), "sibling kit scan boom") {
-		t.Fatalf("expected sibling kit scan error, got %v", err)
-	}
-	choyScanKitCandidates = prevScan
 
 	// vendor/ui Stat non-IsNotExist error surfaces for dialect-bearing siblings.
 	choyProductStat = func(name string) (os.FileInfo, error) {

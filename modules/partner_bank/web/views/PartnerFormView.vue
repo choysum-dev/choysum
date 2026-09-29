@@ -7,10 +7,9 @@ SPDX-License-Identifier: Apache-2.0
   <Xpath :expr="PARTNER_DETAIL_TAB_PANELS_XPATH" position="inside">
     <ChoyTab value="bank_accounts" :label="_t('Bank Accounts')" data-region="partner-bank-tab">
       <div data-region="partner-bank-panel">
-        <ChoyOneToManyField
+        <ChoyOneToManyKanbanField
           :store="store"
           prop="BankAccounts"
-          widget="kanban"
           label=""
           :default-record="defaultBankAccountRecord"
           :editable="canEditBankAccounts()"
@@ -44,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
               </div>
             </div>
           </template>
-        </ChoyOneToManyField>
+        </ChoyOneToManyKanbanField>
       </div>
     </ChoyTab>
   </Xpath>
@@ -60,8 +59,7 @@ import {
   ChoyButton,
   ChoyOneToManyField,
   ChoyTab,
-  PARTNER_DETAIL_TAB_PANELS_XPATH,
-} from '@/web';
+  PARTNER_DETAIL_TAB_PANELS_XPATH,  ChoyOneToManyKanbanField} from '@/web';
 import PartnerBankAccountFormView from '@/partner_bank/web/views/PartnerBankAccountFormView.vue';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';

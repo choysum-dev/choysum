@@ -55,7 +55,7 @@ export function resolveFieldLabel(options: ResolveFieldLabelOptions): string {
   if (fromFieldsGet) {
     const msgid = metaMsgid(options.meta);
     // BE `_t` miss / wrong request lang often echoes the English msgid into FieldsGet.string.
-    // That must not block FE Gateway translateTerm(stringText) (e.g. OSelectionField always ensures FieldsGet).
+    // That must not block FE Gateway translateTerm(stringText) (e.g. SelectionField always ensures FieldsGet).
     const isMsgidEcho = !!options.meta?.stringText && !!msgid && fromFieldsGet === msgid;
     if (!isMsgidEcho) {
       return fromFieldsGet;

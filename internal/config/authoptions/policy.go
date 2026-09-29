@@ -53,6 +53,8 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 				{Model: "auth.Token", Ops: []string{"create", "read"}},
 				{Model: "auth.Session", Ops: []string{"create", "read"}},
 				{Model: "base.Company", Ops: []string{"read"}},
+				// extractUserMetadata resolves User.LanguageId → terminology Code.
+				{Model: "base.Language", Ops: []string{"read"}},
 				{Model: "document.AttachmentBinding", Ops: []string{"read"}},
 			},
 			SkipFieldRule: true,
@@ -65,6 +67,8 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 				{Model: "auth.User", Ops: []string{"read"}},
 				{Model: "auth.Token", Ops: []string{"create", "read"}},
 				{Model: "base.Company", Ops: []string{"read"}},
+				// Same LanguageId → Code enrichment as Login.
+				{Model: "base.Language", Ops: []string{"read"}},
 				{Model: "document.AttachmentBinding", Ops: []string{"read"}},
 			},
 			SkipFieldRule: true,

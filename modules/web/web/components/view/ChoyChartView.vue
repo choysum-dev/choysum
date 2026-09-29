@@ -27,7 +27,8 @@ SPDX-License-Identifier: Apache-2.0
             v-if="showRefresh"
             size="sm"
             variant="outline"
-            @click="emit('refresh')"
+            :disabled="boardBusy"
+            @click="onRefresh"
           >
             {{ refreshLabel }}
           </ChoyButton>
@@ -35,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
         <slot name="user-actions" />
       </div>
       <div class="min-w-0 flex-1">
-        <slot name="search" />
+        <slot name="search" :on-query-update="onSearch" />
       </div>
       <slot name="header-right" />
     </div>
@@ -47,12 +48,12 @@ SPDX-License-Identifier: Apache-2.0
     >
       <slot
         name="metric-switcher"
-        :metrics="metrics"
+        :metrics="resolvedMetrics"
         :current="localMetric"
         :change="selectMetric"
       >
         <label
-          v-if="metrics.length"
+          v-if="resolvedMetrics.length"
           class="flex items-center gap-2 text-xs text-muted-foreground"
         >
           Metric
@@ -63,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
             @change="selectMetric(($event.target as HTMLSelectElement).value)"
           >
             <option
-              v-for="m in metrics"
+              v-for="m in resolvedMetrics"
               :key="m.alias"
               :value="m.alias"
             >
@@ -253,24 +254,24 @@ SPDX-License-Identifier: Apache-2.0
       </div>
 
       <div
-        v-if="loading && !error"
+        v-if="boardBusy && !errorText"
         class="absolute inset-0 flex items-center justify-center bg-background/60 text-sm text-muted-foreground"
       >
         Loading…
       </div>
       <div
-        v-else-if="error"
+        v-else-if="errorText"
         class="absolute inset-0 flex items-center justify-center bg-background/70 text-sm text-destructive"
         role="alert"
       >
-        {{ error }}
+        {{ errorText }}
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import {
   VisArea,
   VisAxis,
@@ -279,16 +280,25 @@ import {
   VisLine,
   VisSingleContainer,
   VisStackedBar,
-  VisXYContainer,
+  VisXYContainer
 } from '@unovis/vue';
 import { Donut, GroupedBar, Line, StackedBar } from '@unovis/ts';
 import type { ClassValue } from '../../lib/utils';
 import { cn } from '../../lib/utils';
+import type { BaseModel } from '@/core/rpc';
+import type { GroupBySpec, QueryCondition } from '@/core/service/api/query';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { OrderByState } from '@/web/web/query/state';
+import type { ChoySearchQuery } from './searchViewHelpers';
 import ChoyButton from '../layout/ChoyButton.vue';
 import {
   ChartContainer,
-  ChartLegendContent,
+  ChartLegendContent
 } from '../vendor/ui/chart';
+import { createChartController } from '@/web/web/controllers/chartController';
+import { resolvePageStore } from '@/web/web/composables/usePageContext';
+import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
+import { exportMetrics } from '@/web/web/query/utils/registry/metric';
 import {
   availableChartTypes,
   CHOY_CHART_DEFAULT_PALETTE,
@@ -296,7 +306,7 @@ import {
   type ChoyChartKind,
   type ChoyChartSeries,
   type ChoyChartSort,
-  type ChoyChartSpec,
+  type ChoyChartSpec
 } from './chart/chartTypeAdapter';
 import {
   chartSpecToPieRows,
@@ -308,17 +318,22 @@ import {
   resolveStackedXyClickTarget,
   sortChartCategories,
   type ChoyChartItemClickPayload,
-  type ChoyChartMetricOption,
+  type ChoyChartMetricOption
 } from './chartViewHelpers';
+import { groupRowsToChartSeries } from './chartStoreHelpers';
 
 /**
- * Isolation ChartView: host-owned categories/series; Unovis render (no ECharts).
+ * Store-bound chart view. Requires :store or a page-provided store.
+ * Owns createChartController and maps grouped snapshots into Unovis series.
  */
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
-    categories?: string[];
-    seriesMatrix?: ChoyChartSeries[];
+    store?: WebModelStore<any>;
+    defaultGroups?: GroupBySpec<any> | GroupBySpec<any>[];
+    keywordFields?: string[];
+    forcedCondition?: QueryCondition<any> | QueryCondition<any>[];
+    orderBy?: OrderByState[];
     metrics?: ChoyChartMetricOption[];
     metricAlias?: string;
     chartTypes?: ChoyChartKind[];
@@ -328,8 +343,6 @@ const props = withDefaults(
     sort?: ChoyChartSort;
     groupDepth?: number;
     palette?: string[];
-    loading?: boolean;
-    error?: string | null;
     emptyLabel?: string;
     showHeader?: boolean;
     showActions?: boolean;
@@ -338,10 +351,12 @@ const props = withDefaults(
     refreshLabel?: string;
     showCreate?: boolean;
     showRefresh?: boolean;
+    autoBootstrap?: boolean;
+    beforeBootstrap?: () => Promise<void>;
+    onLoadError?: (error: unknown) => void;
+    onSearchError?: (error: unknown) => void;
   }>(),
   {
-    categories: () => [],
-    seriesMatrix: () => [],
     metrics: () => [],
     metricAlias: '',
     chartTypes: () => ['bar', 'line', 'pie'],
@@ -349,9 +364,7 @@ const props = withDefaults(
     stacked: true,
     stackMode: 'absolute',
     sort: 'none',
-    groupDepth: 1,
-    loading: false,
-    error: null,
+    groupDepth: 0,
     emptyLabel: 'No data or grouping not configured',
     showHeader: true,
     showActions: true,
@@ -360,6 +373,7 @@ const props = withDefaults(
     refreshLabel: 'Refresh',
     showCreate: false,
     showRefresh: true,
+    autoBootstrap: true,
   },
 );
 
@@ -371,28 +385,140 @@ const emit = defineEmits<{
   'chart-item-click': [payload: ChoyChartItemClickPayload];
   refresh: [];
   create: [];
+  'query-update': [query: ChoySearchQuery];
 }>();
+
+const store = resolvePageStore(props.store, 'ChoyChartView');
+const controller = createChartController(store as WebModelStore<BaseModel>);
+
+const categories = ref<string[]>([]);
+const seriesMatrix = ref<ChoyChartSeries[]>([]);
+const registryMetrics = ref<ChoyChartMetricOption[]>([]);
 
 const localStacked = ref(props.stacked);
 const localSort = ref<ChoyChartSort>(props.sort);
 const localChartType = ref<ChoyChartKind>(props.chartType);
-const localMetric = ref(props.metricAlias);
+const localMetric = ref(props.metricAlias || 'count');
+
+const boardBusy = computed(() => !!controller.vm.loading);
+const errorText = computed(() => {
+  const err = controller.vm.error;
+  if (err == null) return null;
+  if (err instanceof Error) return err.message || String(err);
+  return String(err);
+});
+
+const resolvedMetrics = computed(() => {
+  if (props.metrics.length) return props.metrics;
+  return registryMetrics.value;
+});
+
+function normalizeDefaultGroups(): Array<GroupBySpec<any>> | undefined {
+  const g = props.defaultGroups;
+  if (!g) return undefined;
+  return Array.isArray(g) ? g : [g];
+}
+
+function initMetricOptions(): void {
+  const metas = exportMetrics(store.storeId) || [];
+  const arr: ChoyChartMetricOption[] = metas.map((m) => ({
+    alias: m.alias || `${m.field}_${m.agg}`,
+    label: m.alias || `${m.field}:${m.agg}`,
+  }));
+  if (!arr.find((m) => m.alias === 'count')) {
+    arr.unshift({ alias: 'count', label: 'Count' });
+  }
+  registryMetrics.value = arr;
+  const preferred = props.metricAlias;
+  if (preferred && arr.some((m) => m.alias === preferred)) {
+    localMetric.value = preferred;
+  } else if (!arr.some((m) => m.alias === localMetric.value)) {
+    localMetric.value = arr[0]?.alias || 'count';
+  }
+}
+
+function rebuildFromSnapshot(): void {
+  const snap = controller.vm.result;
+  const rows = snap?.kind === 'group' ? ((snap.rows as any[]) || []) : [];
+  const metricLabel =
+    resolvedMetrics.value.find((m) => m.alias === localMetric.value)?.label ||
+    localMetric.value ||
+    'Value';
+  const mapped = groupRowsToChartSeries(rows, {
+    metricAlias: localMetric.value,
+    metricLabel,
+    groupDepth: props.groupDepth,
+  });
+  categories.value = mapped.categories;
+  seriesMatrix.value = mapped.seriesMatrix;
+}
+
+async function applyQuery(overrides?: {
+  keyword?: string;
+  appliedFilters?: any[];
+  appliedGroups?: Array<GroupBySpec<any>>;
+}): Promise<void> {
+  await controller.apply({
+    appliedGroups: overrides?.appliedGroups,
+    appliedFilters: overrides?.appliedFilters,
+    defaultGroups: normalizeDefaultGroups(),
+    keyword: overrides?.keyword ?? (store.state as any)?.queryState?.keyword,
+    keywordFields: props.keywordFields,
+    forcedCondition: props.forcedCondition as any,
+    orderBy: props.orderBy,
+  });
+  rebuildFromSnapshot();
+}
+
+async function bootstrap(): Promise<void> {
+  if (props.beforeBootstrap) await props.beforeBootstrap();
+  await awaitFieldSelection(store, { requireNonEmpty: false });
+  initMetricOptions();
+  try {
+    await applyQuery();
+  } catch (error) {
+    props.onLoadError?.(error);
+  }
+}
+
+async function onRefresh(): Promise<void> {
+  emit('refresh');
+  try {
+    await applyQuery({
+      appliedGroups: (store.state as any)?.queryState?.appliedGroups as any,
+      keyword: (store.state as any)?.queryState?.keyword,
+    });
+  } catch (error) {
+    props.onLoadError?.(error);
+  }
+}
+
+function onSearch(query: ChoySearchQuery): void {
+  emit('query-update', query);
+  void applyQuery({
+    keyword: query.keyword,
+    appliedFilters: query.appliedFilters as any,
+    appliedGroups: query.appliedGroups as any,
+  }).catch((error) => {
+    props.onSearchError?.(error);
+  });
+}
 
 watch(
   () => props.stacked,
-  v => {
+  (v) => {
     localStacked.value = v;
   },
 );
 watch(
   () => props.sort,
-  v => {
+  (v) => {
     localSort.value = v;
   },
 );
 watch(
   () => props.chartType,
-  v => {
+  (v) => {
     const next = availableTypes.value.includes(v) ? v : availableTypes.value[0];
     if (!next) {
       localChartType.value = v;
@@ -408,20 +534,20 @@ watch(
 );
 watch(
   () => props.metricAlias,
-  v => {
-    const known = props.metrics.some(m => m.alias === v);
-    const next = known ? v : props.metrics[0]?.alias ?? v;
+  (v) => {
+    if (!v) return;
+    const known = resolvedMetrics.value.some((m) => m.alias === v);
+    const next = known ? v : resolvedMetrics.value[0]?.alias ?? v;
     localMetric.value = next;
     if (next !== v) {
       emit('metric-change', next);
     }
   },
-  { immediate: true },
 );
 watch(
-  () => props.metrics,
-  metrics => {
-    const known = metrics.some(m => m.alias === localMetric.value);
+  resolvedMetrics,
+  (metrics) => {
+    const known = metrics.some((m) => m.alias === localMetric.value);
     if (known) return;
     const next = metrics[0]?.alias;
     if (!next || next === localMetric.value) return;
@@ -430,23 +556,31 @@ watch(
   },
   { deep: true },
 );
+watch(localMetric, () => {
+  rebuildFromSnapshot();
+});
+watch(
+  () => controller.vm.result,
+  () => {
+    rebuildFromSnapshot();
+  },
+);
 
 const supportCtx = computed(() => ({
-  groupDepth: props.groupDepth,
+  groupDepth: Math.max(1, props.groupDepth + 1),
   stacked: localStacked.value,
-  seriesCount: props.seriesMatrix.length,
-  metricAlias: localMetric.value || props.metrics[0]?.alias || 'count',
+  seriesCount: seriesMatrix.value.length,
+  metricAlias: localMetric.value || resolvedMetrics.value[0]?.alias || 'count',
 }));
 
 const availableTypes = computed(() => {
   const supported = new Set(availableChartTypes(supportCtx.value));
-  // Preserve host-declared order; dedupe and keep allowlist semantics.
-  return [...new Set(props.chartTypes)].filter(t => supported.has(t));
+  return [...new Set(props.chartTypes)].filter((t) => supported.has(t));
 });
 
 watch(
   availableTypes,
-  types => {
+  (types) => {
     if (!types.includes(localChartType.value) && types.length) {
       localChartType.value = types[0]!;
       emit('chart-type-change', localChartType.value);
@@ -456,58 +590,55 @@ watch(
 );
 
 const metricLabel = computed(() => {
-  const hit = props.metrics.find(m => m.alias === localMetric.value);
+  const hit = resolvedMetrics.value.find((m) => m.alias === localMetric.value);
   return hit?.label || localMetric.value || 'Value';
 });
 
 const stackedDisabled = computed(
-  () => localChartType.value === 'pie' || props.seriesMatrix.length <= 1,
+  () => localChartType.value === 'pie' || seriesMatrix.value.length <= 1,
 );
 
 const sortDisabled = computed(() => localChartType.value === 'pie');
 
 const prepared = computed(() => {
-  let categories = props.categories.slice();
-  let seriesMatrix = props.seriesMatrix.map(s => ({
+  let cats = categories.value.slice();
+  let matrix = seriesMatrix.value.map((s) => ({
     name: s.name,
     data: (s.data || []).slice(),
   }));
-  let categoryOrder = categories.map((_, idx) => idx);
+  let categoryOrder = cats.map((_, idx) => idx);
   const percent =
     localStacked.value &&
     props.stackMode === 'percent' &&
     localChartType.value !== 'pie' &&
-    seriesMatrix.length > 1;
-  // Sort on raw totals first; percent columns all sum to 100 and would no-op sort.
+    matrix.length > 1;
   if (!sortDisabled.value && localSort.value !== 'none') {
-    const sorted = sortChartCategories(categories, seriesMatrix, localSort.value);
-    categories = sorted.categories;
-    seriesMatrix = sorted.seriesMatrix;
+    const sorted = sortChartCategories(cats, matrix, localSort.value);
+    cats = sorted.categories;
+    matrix = sorted.seriesMatrix;
     categoryOrder = sorted.order;
   }
   if (percent) {
-    seriesMatrix = normalizeSeriesToPercent(categories, seriesMatrix);
+    matrix = normalizeSeriesToPercent(cats, matrix);
   }
-  return { categories, seriesMatrix, percent, categoryOrder };
+  return { categories: cats, seriesMatrix: matrix, percent, categoryOrder };
 });
 
 const spec = computed<ChoyChartSpec | null>(() => {
-  // Never render a kind that the data context or the host allowlist rejects.
   if (!availableTypes.value.includes(localChartType.value)) return null;
   const adapter = resolveChartAdapter(localChartType.value);
   if (!adapter) return null;
   if (!adapter.supports(supportCtx.value)) return null;
-  const { categories, seriesMatrix, percent } = prepared.value;
-  if (!categories.length || !seriesMatrix.length) return null;
+  const { categories: cats, seriesMatrix: matrix, percent } = prepared.value;
+  if (!cats.length || !matrix.length) return null;
   const built = adapter.build({
-    categories,
-    seriesMatrix,
+    categories: cats,
+    seriesMatrix: matrix,
     metricLabel: metricLabel.value,
     stacked: localStacked.value,
     palette: props.palette,
     percent,
   });
-  // Pie drops non-positive slices; an all-zero dataset must show empty state.
   if (built.kind === 'pie' && !built.slices?.length) return null;
   return built;
 });
@@ -517,13 +648,13 @@ const pieRows = computed(() => (spec.value?.kind === 'pie' ? chartSpecToPieRows(
 
 const xyYAccessors = computed(() => {
   if (!spec.value) return [];
-  return spec.value.series.map(s => (d: Record<string, string | number>) => Number(d[s.key]) || 0);
+  return spec.value.series.map((s) => (d: Record<string, string | number>) => Number(d[s.key]) || 0);
 });
 
 const xyColors = computed(() => {
   if (!spec.value) return [];
   return spec.value.series.map(
-    s => spec.value!.config[s.key]?.color || CHOY_CHART_DEFAULT_PALETTE[0],
+    (s) => spec.value!.config[s.key]?.color || CHOY_CHART_DEFAULT_PALETTE[0],
   );
 });
 
@@ -538,15 +669,13 @@ function xTickFormat(v: number): string {
   const raw = Number(v);
   if (!cats.length || !Number.isFinite(raw)) return '';
   const idx = Math.round(raw);
-  // Fractional ticks round onto a neighbour and duplicate labels; out-of-range
-  // ticks must not print raw numbers either.
   if (Math.abs(raw - idx) > 1e-6 || idx < 0 || idx >= cats.length) return '';
   return cats[idx]!;
 }
 
 function selectMetric(alias: string): void {
   if (alias === localMetric.value) return;
-  if (props.metrics.length > 0 && !props.metrics.some(m => m.alias === alias)) return;
+  if (resolvedMetrics.value.length > 0 && !resolvedMetrics.value.some((m) => m.alias === alias)) return;
   localMetric.value = alias;
   emit('metric-change', alias);
 }
@@ -569,7 +698,6 @@ function selectSort(next: ChoyChartSort): void {
   emit('sort-change', next);
 }
 
-/** Unovis VisEventCallback: (datum, event, index, elements). */
 type UnovisClickEvent = MouseEvent | PointerEvent | TouchEvent | WheelEvent;
 
 function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
@@ -577,8 +705,6 @@ function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
   const idx = Number.isFinite(categoryIdx) ? Math.round(categoryIdx) : -1;
   const category = spec.value.categories[idx];
   if (idx < 0 || category == null) return;
-  // Stacked/grouped event indexes can be stale or out of range: never emit a
-  // series index that has no matching series.
   const resolvedSeriesIdx =
     seriesIdx != null &&
     Number.isFinite(seriesIdx) &&
@@ -588,7 +714,6 @@ function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
       : undefined;
   const series =
     resolvedSeriesIdx == null ? undefined : spec.value.series[resolvedSeriesIdx];
-  // Map sorted plot position back to the host's original categories index.
   const originIdx = prepared.value.categoryOrder[idx] ?? idx;
   emit('chart-item-click', {
     chartType: spec.value.kind,
@@ -601,9 +726,6 @@ function emitXyClick(categoryIdx: number, seriesIdx: number | undefined): void {
   });
 }
 
-/**
- * StackedBar click: datum is mapped with stackIndex + original row; index is category.
- */
 function onStackedBarClick(
   d: (XyRow & { stackIndex?: number }) | undefined,
   _event: UnovisClickEvent,
@@ -619,10 +741,6 @@ function onStackedBarClick(
   emitXyClick(idx, seriesIdx);
 }
 
-/**
- * GroupedBar click: datum is the XY row; index is the flattened bar element index
- * (category * seriesCount + series). Prefer row.index for category.
- */
 function onGroupedBarClick(
   d: XyRow,
   _event: UnovisClickEvent,
@@ -638,10 +756,6 @@ function onGroupedBarClick(
   emitXyClick(categoryIdx, seriesIdx);
 }
 
-/**
- * Line path click: datum is the transformed series polyline (not a category row).
- * Map pointer X within the SVG to the nearest category; third arg is series index.
- */
 function onLineClick(
   _data: unknown,
   event: UnovisClickEvent,
@@ -660,10 +774,7 @@ function onLineClick(
         : null;
   const clientX = resolveClickClientX(ev);
   if (!svg || clientX == null) return;
-  // The clicked path spans the data x-domain more tightly than the full SVG
-  // box (which also covers axis gutters).
   const rect = (target instanceof Element ? target : svg).getBoundingClientRect();
-  // Zero/negative width (hidden tab, pre-layout) makes clientX meaningless.
   if (rect.width <= 0) return;
   const rel = (clientX - rect.left) / rect.width;
   const categoryIdx = resolveLineClickCategory(rel, rows.length);
@@ -677,10 +788,6 @@ function onLineClick(
   emitXyClick(categoryIdx, si);
 }
 
-/**
- * Donut segment click: datum is DonutArcDatum; original row is d.data.
- * Match by unique key first; name/index only when no key is present.
- */
 function onPieSegmentClick(d: {
   data?: { key?: string; name?: string };
   index?: number;
@@ -693,9 +800,9 @@ function onPieSegmentClick(d: {
   const clickedKey = d?.data?.key ?? d?.key;
   const clickedName = d?.data?.name ?? d?.name;
   let idx =
-    clickedKey != null ? slices.findIndex(sl => sl.key === clickedKey) : -1;
+    clickedKey != null ? slices.findIndex((sl) => sl.key === clickedKey) : -1;
   if (idx < 0 && clickedKey == null && clickedName != null) {
-    idx = slices.findIndex(sl => sl.name === clickedName);
+    idx = slices.findIndex((sl) => sl.name === clickedName);
   }
   if (idx < 0) {
     idx =
@@ -710,7 +817,6 @@ function onPieSegmentClick(d: {
     typeof slice.categoryIndex === 'number' && Number.isFinite(slice.categoryIndex)
       ? Math.round(slice.categoryIndex)
       : idx;
-  // Single-series pie: slices are categories. Multi-series: slices are series totals.
   const multiSeries = current.series.length > 1;
   emit('chart-item-click', {
     chartType: 'pie',
@@ -735,4 +841,20 @@ const lineEvents = computed(() => ({
 const donutEvents = computed(() => ({
   [Donut.selectors.segment]: { click: onPieSegmentClick },
 }));
+
+onMounted(() => {
+  if (!props.autoBootstrap) {
+    initMetricOptions();
+    return;
+  }
+  void bootstrap().catch((error) => props.onLoadError?.(error));
+});
+
+defineExpose({
+  bootstrap,
+  applyQuery,
+  rebuildFromSnapshot,
+  boardBusy,
+  controller,
+});
 </script>

@@ -45,7 +45,7 @@ import ChoyCard from '@/web/web/components/layout/ChoyCard.vue';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
 import {
   applyChoyThemePreference,
-  readChoyThemePreference,
+  readChoyThemePreference
 } from '@/web/web/composables/applyChoyThemePreference';
 import { createTranslate } from '@/web/web/i18n';
 

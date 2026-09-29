@@ -19,8 +19,8 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyGrid :cols="12">
         <ChoyCol :span="3"><ChoyVarcharField :store="store" prop="Prefix" /></ChoyCol>
         <ChoyCol :span="3"><ChoyVarcharField :store="store" prop="Suffix" /></ChoyCol>
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="Padding" mode="integer" /></ChoyCol>
-        <ChoyCol :span="3"><ChoyNumberField :store="store" prop="NextNumber" mode="bigint" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyIntField :store="store" prop="Padding" /></ChoyCol>
+        <ChoyCol :span="3"><ChoyBigintField :store="store" prop="NextNumber" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
         <ChoyCol :span="3"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
@@ -39,7 +39,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoyNumberField, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyManyToOneField, ChoyNumberField, ChoyVarcharField, ChoyIntField, ChoyBigintField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'SequenceFormView', inheritAttrs: true });

@@ -29,7 +29,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="DateFormat" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="TimeFormat" /></ChoyCol>
-        <ChoyCol :span="4"><ChoyNumberField :store="store" prop="FirstDayOfWeek" mode="integer" /></ChoyCol>
+        <ChoyCol :span="4"><ChoyIntField :store="store" prop="FirstDayOfWeek" /></ChoyCol>
       </ChoyGrid>
       <ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoySelectionField :store="store" prop="CurrencySymbolPosition" /></ChoyCol>
@@ -49,7 +49,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
-import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyNumberField, ChoySelectionField, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyFormView, ChoyGrid, ChoyNumberField, ChoySelectionField, ChoyVarcharField, ChoyIntField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 
 defineOptions({ name: 'LanguageFormView', inheritAttrs: true });

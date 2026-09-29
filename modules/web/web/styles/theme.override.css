@@ -4,11 +4,9 @@
 
 /**
  * Module theme overrides — variables only (no utility classes).
- * Loaded after tokens and index.scss so site/brand can remint --choy-* /
- * --el-* without forking L2; generated utilities stay last.
+ * Loaded after tokens and index.css so site/brand can remint --choy-*
+ * without forking L2; generated utilities stay last.
  */
-:root,
-.choy-gallery-root,
-html.choy-gallery-token-scope {
+:root {
   /* Example (commented): --choy-color-primary: oklch(0.55 0.18 250); */
 }

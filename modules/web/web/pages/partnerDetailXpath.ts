@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Partner-style IMD extension contract (PR7 dogfood).
- * Keep in sync with DogfoodPartnerFormXpath.vue and cutover partner_bank expr.
+ * Partner-style IMD extension contract.
+ * Keep in sync with cutover partner_bank expr and partner detail tab panels.
  */
 export const PARTNER_DETAIL_TAB_PANELS_ANCHOR = 'partner.detail.tab-panels';
 

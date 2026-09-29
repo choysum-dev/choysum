@@ -1,12 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, computed } from 'vue';
+import { h, computed, type VNode } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
-import { ElMenu, ElSubMenu, ElMenuItem, ElIcon, ElEmpty } from 'element-plus';
-import { QuestionFilled } from '@element-plus/icons-vue';
-import { BookmarkBorderOutlined } from '@vicons/material';
+import { Bookmark, CircleHelp } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import { useMenuStore } from '../stores/menuStore';
 import type { MenuItem } from '@/core/web/menu';
@@ -92,17 +90,14 @@ export function useMenu() {
   /**
    * Renders a menu icon node, optionally falling back to a default icon.
    */
-  const renderIcon = (icon: any, useDefault = false, defaultIcon: any = QuestionFilled) => {
-    if (!icon && useDefault) {
-      return h(ElIcon, {}, () => h(defaultIcon));
-    } else if (!icon) {
-      return null;
-    }
-    return h(ElIcon, {}, () => h(icon));
+  const renderIcon = (icon: any, useDefault = false, defaultIcon: any = CircleHelp): VNode | null => {
+    const resolved = icon || (useDefault ? defaultIcon : null);
+    if (!resolved) return null;
+    return h('span', { class: 'choy-menu__icon inline-flex shrink-0' }, [h(resolved)]);
   };
 
   /**
-   * Renders a menu tree into Element Plus menu items.
+   * Renders a menu tree into semantic list items.
    */
   const renderMenuItems = (
     menuItems: MenuItem[],
@@ -114,13 +109,13 @@ export function useMenu() {
       defaultIcon?: any;
       useDefaultIcon?: boolean;
     } = {}
-  ) => {
+  ): VNode[] => {
     const {
       onItemClick = item => navigateTo(item),
       onItemSelect,
       onSubMenuOpen,
       onSubMenuClose,
-      defaultIcon = BookmarkBorderOutlined,
+      defaultIcon = Bookmark,
       useDefaultIcon = false,
     } = options;
 
@@ -129,45 +124,65 @@ export function useMenu() {
       .map(item => {
         const hasChildren = item.children && item.children.length > 0;
         const isActive = activeMenu.value?.id === item.id;
-        const props = {
-          index: item.id || '',
-          key: item.id || item.path,
-          disabled: item.disabled,
-        };
+        const itemId = item.id || item.path || '';
 
         if (hasChildren) {
+          const expanded = isExpanded(item.id);
           return h(
-            ElSubMenu,
+            'li',
             {
-              ...props,
-              class: { 'is-expanded': isExpanded(item.id) },
-              onOpen: () => onSubMenuOpen?.(item.id || ''),
-              onClose: () => onSubMenuClose?.(item.id || ''),
+              key: itemId,
+              class: ['choy-menu__sub', { 'is-expanded': expanded }],
+              role: 'none',
             },
-            {
-              title: () => [
-                renderIcon(item.icon, useDefaultIcon, defaultIcon),
-                h('span', {}, translateTerm(composer, item.titleText, item.title)),
-              ],
-              default: () => renderMenuItems(item.children || [], options),
-            }
+            [
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'choy-menu__sub-title',
+                  'aria-expanded': expanded ? 'true' : 'false',
+                  disabled: item.disabled || undefined,
+                  onClick: () => {
+                    if (expanded) onSubMenuClose?.(item.id || '');
+                    else onSubMenuOpen?.(item.id || '');
+                  },
+                },
+                [
+                  renderIcon(item.icon, useDefaultIcon, defaultIcon),
+                  h('span', {}, translateTerm(composer, item.titleText, item.title)),
+                ]
+              ),
+              expanded
+                ? h(
+                    'ul',
+                    { class: 'choy-menu__sub-list', role: 'group' },
+                    renderMenuItems(item.children || [], options)
+                  )
+                : null,
+            ]
           );
         }
 
         return h(
-          ElMenuItem,
-          {
-            ...props,
-            class: { 'is-active': isActive },
-            onClick: () => onItemClick(item),
-            onSelect: () => onItemSelect?.(item.id || '', item),
-          },
-          {
-            default: () => [
+          'li',
+          { key: itemId, role: 'none' },
+          h(
+            'button',
+            {
+              type: 'button',
+              class: ['choy-menu__item', { 'is-active': isActive }],
+              disabled: item.disabled || undefined,
+              onClick: () => {
+                onItemClick(item);
+                onItemSelect?.(item.id || '', item);
+              },
+            },
+            [
               renderIcon(item.icon, useDefaultIcon, defaultIcon),
               h('span', {}, translateTerm(composer, item.titleText, item.title)),
-            ],
-          }
+            ]
+          )
         );
       });
   };
@@ -199,8 +214,6 @@ export function useMenu() {
     } = {}
   ) => {
     const {
-      defaultActive = activeMenu.value?.id,
-      uniqueOpened = true,
       className = '',
       onItemClick,
       onItemSelect,
@@ -209,7 +222,6 @@ export function useMenu() {
       defaultIcon,
       useDefaultIcon = false,
       emptyText = _tMenu('No menus available'),
-      menuProps = {},
     } = options;
 
     const displayItems = computed(() => {
@@ -221,30 +233,23 @@ export function useMenu() {
     });
 
     if (!displayItems.value.length) {
-      return h(ElEmpty, { description: emptyText });
+      return h('p', { class: 'choy-menu__empty' }, emptyText);
     }
 
     return h(
-      ElMenu,
+      'ul',
       {
-        defaultActive,
-        collapse: false,
-        collapseTransition: false,
-        uniqueOpened,
-        class: className ? `o-menu ${className}` : 'o-menu',
-        ...menuProps,
+        class: className ? `choy-menu ${className}` : 'choy-menu',
+        role: 'menu',
       },
-      {
-        default: () =>
-          renderMenuItems(displayItems.value, {
-            onItemClick,
-            onItemSelect,
-            onSubMenuOpen,
-            onSubMenuClose,
-            defaultIcon,
-            useDefaultIcon,
-          }),
-      }
+      renderMenuItems(displayItems.value, {
+        onItemClick,
+        onItemSelect,
+        onSubMenuOpen,
+        onSubMenuClose,
+        defaultIcon,
+        useDefaultIcon,
+      })
     );
   };
 
@@ -257,7 +262,7 @@ export function useMenu() {
       className?: string;
     } = {}
   ) => {
-    const { onItemClick, className = 'o-app-menu' } = options;
+    const { onItemClick, className = 'choy-app-menu' } = options;
     return renderMenu({
       items: menuStore.getMenus(),
       defaultActive: activeMenu.value?.id,
@@ -280,11 +285,17 @@ export function useMenu() {
       defaultIcon?: any;
     } = {}
   ) => {
-    const { uniqueOpened = false, onItemClick, onSubMenuOpen, onSubMenuClose, useDefaultIcon = true, defaultIcon = BookmarkBorderOutlined } = options;
+    const {
+      onItemClick,
+      onSubMenuOpen,
+      onSubMenuClose,
+      useDefaultIcon = true,
+      defaultIcon = Bookmark,
+    } = options;
 
     return renderMenu({
       defaultActive: activeMenu.value?.id,
-      uniqueOpened,
+      uniqueOpened: false,
       onItemClick: onItemClick || (item => navigateTo(item)),
       onSubMenuOpen,
       onSubMenuClose,

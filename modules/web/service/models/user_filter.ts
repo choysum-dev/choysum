@@ -11,7 +11,7 @@ const { _lt } = createTranslate('web', { scope: 'web.model.UserFilter.fields' })
 const { _t } = createTranslate('web', { scope: 'web.model.UserFilter' });
 
 /**
- * Persisted Favorites filter for OSearch (Owner Application = web).
+ * Persisted Favorites filter for Search (Owner Application = web).
  *
  * Align modern Odoo ir.filters: Name is not unique; multiple IsDefault rows are
  * allowed (FE picks newest). ScopeKey is stored as written (FE normalizes routes).

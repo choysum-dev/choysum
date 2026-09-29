@@ -6,18 +6,15 @@
  * Uses core/web/application to create the app and register Pinia and router plugins.
  */
 import { createApp } from '@/core/web/application';
-import { setupApp } from './app_setup';
+import { setupApp } from './appSetup';
 
 import App from './App.vue';
 
 import 'normalize.css/normalize.css';
-// Dual-stack: O* views / TerminologyEditor still need Element Plus until full Choy cutover.
-import 'element-plus/dist/index.css';
-import 'element-plus/theme-chalk/display.css';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import './styles/tokens.css';
 import './styles/preflight-policy.css';
-import './styles/index.scss';
+import './styles/index.css';
 import './styles/theme.override.css';
 import './styles/choy-tailwind.generated.css';
 

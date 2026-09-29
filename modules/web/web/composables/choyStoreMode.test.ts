@@ -9,7 +9,7 @@ import {
   splitChoyAttrsListeners,
   useChoyStoreFieldBinding,
 } from './choyStoreMode';
-import { provideOPageContext } from './usePageContext';
+import { providePageContext } from './usePageContext';
 
 describe('choyStoreMode', () => {
   test('isChoyStoreFieldBinding requires store+prop or binding', () => {
@@ -51,7 +51,7 @@ describe('choyStoreMode', () => {
     });
     const Host = defineComponent({
       setup() {
-        provideOPageContext({ store: () => pageStore });
+        providePageContext({ store: () => pageStore });
         return () => h(Probe, { prop: 'Name' });
       },
     });
@@ -80,7 +80,7 @@ describe('choyStoreMode', () => {
     });
     const Host = defineComponent({
       setup() {
-        provideOPageContext({ store: () => pageStore });
+        providePageContext({ store: () => pageStore });
         return () =>
           h(Probe, {
             prop: 'Lines',

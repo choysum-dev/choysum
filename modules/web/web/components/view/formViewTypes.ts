@@ -3,16 +3,16 @@
 
 import type { BaseModel, ClientModel, Insertable, Updateable } from '@/core/rpc';
 
-export type OFormSubmitMode = 'create' | 'edit';
+export type FormSubmitMode = 'create' | 'edit';
 
-export type OFormSubmitHandlerContext<T extends BaseModel> = {
-  mode: OFormSubmitMode;
+export type FormSubmitHandlerContext<T extends BaseModel> = {
+  mode: FormSubmitMode;
   data: Insertable<T> | Updateable<T>;
   formData: Partial<ClientModel<T>>;
   defaultSubmit: () => Promise<Partial<ClientModel<T>> | null>;
 };
 
-export type OFormSubmitHandlerResult<T extends BaseModel> =
+export type FormSubmitHandlerResult<T extends BaseModel> =
   | boolean
   | {
       handled?: boolean;
@@ -22,30 +22,30 @@ export type OFormSubmitHandlerResult<T extends BaseModel> =
     }
   | void;
 
-export type OFormSubmitHandler<T extends BaseModel> = (
-  ctx: OFormSubmitHandlerContext<T>
-) => Promise<OFormSubmitHandlerResult<T>> | OFormSubmitHandlerResult<T>;
+export type FormSubmitHandler<T extends BaseModel> = (
+  ctx: FormSubmitHandlerContext<T>
+) => Promise<FormSubmitHandlerResult<T>> | FormSubmitHandlerResult<T>;
 
-export type OFormSubmitFailureReason = 'loading' | 'validate-failed' | 'before-submit-canceled' | 'error';
+export type FormSubmitFailureReason = 'loading' | 'validate-failed' | 'before-submit-canceled' | 'error';
 
-export type OFormSubmitOutcome<T extends BaseModel> = {
+export type FormSubmitOutcome<T extends BaseModel> = {
   ok: boolean;
-  mode: OFormSubmitMode;
+  mode: FormSubmitMode;
   handledByHandler: boolean;
   record: Partial<ClientModel<T>> | null;
   formData: Partial<ClientModel<T>> | null;
-  reason?: OFormSubmitFailureReason;
+  reason?: FormSubmitFailureReason;
   error?: Error;
 };
 
-export type OFormChildSubmitApi = {
+export type FormChildSubmitApi = {
   submit: () => Promise<unknown>;
   getFormData: () => unknown;
 };
 
-export type OFormChildSubmitApiRegistration = {
+export type FormChildSubmitApiRegistration = {
   token: string;
-  api: OFormChildSubmitApi | null;
+  api: FormChildSubmitApi | null;
 };
 
-export type OFormChildSubmitApiRegister = (registration: OFormChildSubmitApiRegistration) => void;
+export type FormChildSubmitApiRegister = (registration: FormChildSubmitApiRegistration) => void;

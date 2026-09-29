@@ -4,186 +4,218 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <!-- Store hosts: bigint / int / float(number) / decimal engines; chrome keeps defineModel. -->
-  <OBigintField v-if="storeMode && mode === 'bigint'" v-bind="(storeBind as any)" />
-  <OIntField v-else-if="storeMode && mode === 'integer'" v-bind="(storeBind as any)" />
-  <ONumberField v-else-if="storeMode && mode === 'float'" v-bind="(storeBind as any)" />
-  <ODecimalField v-else-if="storeMode" v-bind="(storeBind as any)" />
-  <ChoyFieldBase
-    v-else
-    v-bind="($attrs as any)"
-    data-anchor="choy.number-field"
-    :class="props.class"
+  <FieldBase
+    :binding="binding"
     :label="label"
-    :help="help"
-    :required="required"
-    :readonly="readonly"
-    :disabled="disabled"
-    :error="error || (invalidDraft ? 'Invalid number' : '')"
-    :name="name"
-    :visible="visible"
+    :rules="mergedRules"
+    :toView="toView"
+    :fromView="fromView"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
+    v-bind="$attrs"
   >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <Input
-        :id="controlId"
-        :model-value="draft"
-        type="text"
-        :name="name || undefined"
-        :placeholder="placeholder"
-        :disabled="disabled"
-        :readonly="readonly"
-        :aria-invalid="ariaInvalid || invalidDraft || undefined"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
-        :inputmode="chromeInputMode"
-        @update:model-value="onDraftInput"
-        @change="commitDraft"
-        @blur="commitDraft"
-        @keydown="onKeydown"
-      />
+    <template #edit="{ fieldValue }">
+      <ONumberCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" />
     </template>
-  </ChoyFieldBase>
+    <template #display="{ fieldValue }">
+      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+    </template>
+  </FieldBase>
 </template>
 
-<script setup lang="ts">
-import { computed, ref, useAttrs, watch } from 'vue';
-import Input from '../vendor/ui/input/Input.vue';
-import type { ClassValue } from '../../lib/utils';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, number | null>, V = FieldPathType<T, P>">
+import type { RuleItem } from 'async-validator';
+import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
-import ChoyFieldBase from './ChoyFieldBase.vue';
-import OBigintField from './OBigintField.vue';
-import ODecimalField from './ODecimalField.vue';
-import OIntField from './OIntField.vue';
-import ONumberField from './ONumberField.vue';
-import {
-  choyFieldChromeDefaults,
-  parseChoyNumber,
-  resolveChoyNumberDraftText,
-  type ChoyFieldChromeProps,
-} from './fieldHelpers';
-import {
-  isChoyNumberHostCompatibleWithMode,
-  resolveChoyNumberChromeParseMode,
-  resolveChoyNumberInputMode,
-  type ChoyNumberMode,
-} from './choyNumberFieldChrome';
+import { ref, watch, computed, defineComponent, h } from 'vue';
+import { useField } from '@/web/web/composables/useField';
+import type { UseField } from '@/web/web/composables/useField';
+import type { AggProp } from '@/web/web/composables/useField';
+import FieldBase from './FieldBase.vue';
+import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { createTranslate } from '@/web/web/i18n';
 
-defineOptions({ name: 'ChoyNumberField', inheritAttrs: false });
+const { _t } = createTranslate('web', { scope: 'web/components/field/NumberField' });
 
-/**
- * Numeric field. Store+prop hosts OInt / ODecimal / OBigint by `mode`.
- * Chrome model is `number | null` (bigint chrome is text-backed via draft only).
- */
+defineOptions({ name: 'ChoyNumberField' });
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+type FieldType = number | null;
+
 const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      placeholder?: string;
-      mode?: ChoyNumberMode;
-      store?: WebModelStore<any>;
-      prop?: string;
-      binding?: unknown;
-      rules?: unknown[];
-      vColumnProps?: Record<string, unknown>;
-    }
-  >(),
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    binding?: UseField<T, V>;
+    label?: string;
+    rules?: RuleItem[];
+    nullable?: boolean;
+    min?: number;
+    max?: number;
+    placeholder?: string;
+    bufferStrategy?: CommitStrategy;
+    bufferIdleDelay?: number;
+    commitOnBlur?: boolean;
+    // Aggregate support.
+    agg?: AggProp;
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+  }>(),
   {
-    ...choyFieldChromeDefaults,
-    placeholder: '',
-    mode: 'decimal',
-  },
-);
-
-const attrs = useAttrs();
-const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
-
-const model = defineModel<number | null>({ default: null });
-const draft = ref(
-  model.value === null || model.value === undefined ? '' : String(model.value),
-);
-/** True when commit kept an unparsed draft while the host model is unchanged. */
-const invalidDraft = ref(false);
-
-const chromeInputMode = computed(() => resolveChoyNumberInputMode(props.mode));
-
-watch(model, (next) => {
-  const expected = next === null || next === undefined ? '' : String(next);
-  const parseMode = resolveChoyNumberChromeParseMode(props.mode);
-  const parsed = parseChoyNumber(draft.value, parseMode);
-  const draftInvalid = draft.value.trim() !== '' && parsed === null;
-  if (parsed !== next || draftInvalid) {
-    draft.value = expected;
-    invalidDraft.value =
-      next !== null &&
-      next !== undefined &&
-      !isChoyNumberHostCompatibleWithMode(next, props.mode);
+    rules: () => [],
+    nullable: true,
+    bufferStrategy: 'idle',
+    bufferIdleDelay: 300,
+    commitOnBlur: true,
+    renderMode: 'auto',
+    showInlineError: false,
   }
+);
+
+// Binding with agg forwarded to useField.
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+
+const toView = (raw: any): FieldType => (raw === '' || raw == null ? null : typeof raw === 'number' && Number.isFinite(raw) ? raw : null);
+const fromView = (v: FieldType) => v as V;
+
+function toDisplayText(v: any) {
+  return v == null ? '' : String(v);
+}
+
+function isIntermediateInput(s: string | null): boolean {
+  if (s == null) return false;
+  if (s === '-' || s === '.' || s === '-.') return true;
+  if (/^-?\d+\.$/.test(s)) return true;
+  return false;
+}
+
+function parseStrict(s: string): number | null {
+  if (s === '' || s == null) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+const bufferOptions = computed(() => ({
+  strategy: props.bufferStrategy!,
+  idleDelay: props.bufferIdleDelay,
+  commitOnBlur: props.commitOnBlur,
+  normalize: (v: number | null) => {
+    if (v == null) return null;
+    let n = v;
+    if (props.min !== undefined && n < props.min) n = props.min;
+    if (props.max !== undefined && n > props.max) n = props.max;
+    return n;
+  },
+  equals: (a: number | null, b: number | null) => a === b,
+}));
+
+const ONumberCell = defineComponent({
+  name: 'ONumberCell',
+  props: {
+    fieldValue: { type: Function, required: true },
+    options: { type: Object, required: true },
+    placeholder: String,
+    nullable: Boolean,
+    min: Number,
+    max: Number,
+  },
+  setup(p, { attrs }) {
+    const modelRef = computed<FieldType>({
+      get: () => (p.fieldValue as any)().value,
+      set: v => {
+        (p.fieldValue as any)().value = v as any;
+      },
+    });
+    const editingRaw = ref<string | null>(null);
+    watch(
+      () => modelRef.value,
+      nv => {
+        if (isIntermediateInput(editingRaw.value)) return;
+        editingRaw.value = nv == null ? null : String(nv);
+      },
+      { immediate: true }
+    );
+    const buffer = useBufferedCommit<FieldType>(
+      () => modelRef.value,
+      v => {
+        modelRef.value = v;
+      },
+      p.options as any
+    );
+    function onInput(raw: string) {
+      if (raw === '' && p.nullable) {
+        editingRaw.value = null;
+        buffer.setEditing(null);
+        return;
+      }
+      if (!/^[-]?\d*(\.\d*)?$/.test(raw)) return;
+      editingRaw.value = raw;
+      if (isIntermediateInput(raw)) return;
+      const n = parseStrict(raw);
+      if (n == null) return;
+      buffer.setEditing(n);
+    }
+    function onBlur() {
+      const raw = editingRaw.value;
+      if (raw == null) {
+        if (p.nullable) buffer.setEditing(null);
+        buffer.onBlur();
+        return;
+      }
+      if (isIntermediateInput(raw)) {
+        const final = parseStrict(raw.replace(/\.$/, ''));
+        if (final == null) {
+          if (p.nullable) buffer.setEditing(null);
+        } else {
+          buffer.setEditing(final);
+        }
+        buffer.onBlur();
+        return;
+      }
+      const n = parseStrict(raw);
+      if (n != null) buffer.setEditing(n);
+      buffer.onBlur();
+    }
+    return () =>
+      h('input', {
+        ...attrs,
+        class: 'choy-input choy-number-input',
+        value: editingRaw.value ?? '',
+        placeholder: p.placeholder,
+        inputmode: 'decimal',
+        onInput: (e: Event) => onInput((e.target as HTMLInputElement).value),
+        onBlur,
+      });
+  },
 });
 
-watch(
-  () => props.mode,
-  () => {
-    // On mount or after a mode switch, show the host text and flag it when the
-    // mode cannot accept that host number (e.g. model 12.5 under integer). Do
-    // not rewrite the host — the user (or host) must correct it.
-    const host = model.value;
-    draft.value = host === null || host === undefined ? '' : String(host);
-    invalidDraft.value =
-      host !== null &&
-      host !== undefined &&
-      !isChoyNumberHostCompatibleWithMode(host, props.mode);
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
+    if (value == null) {
+      return props.nullable ? cb() : cb(new Error(_t('Value is required')));
+    }
+    if (typeof value !== 'number' || !Number.isFinite(value)) return cb(new Error(_t('Value must be a number')));
+    if (props.min !== undefined && value < props.min) return cb(new Error(_t('Value must be at least %s', props.min)));
+    if (props.max !== undefined && value > props.max) return cb(new Error(_t('Value must be at most %s', props.max)));
+    cb();
   },
-  { immediate: true },
-);
-
-function onDraftInput(value: string | number): void {
-  // Guard like the monetary/datetime fields: some browsers still emit updates
-  // while the underlying input is readonly or disabled.
-  if (props.readonly || props.disabled) {
-    return;
-  }
-  draft.value = String(value ?? '');
-  invalidDraft.value = false;
-}
-
-function commitDraft(): void {
-  if (props.readonly || props.disabled) {
-    return;
-  }
-  const hostText =
-    model.value === null || model.value === undefined ? '' : String(model.value);
-  // Focus/blur alone must not flag a host value whose shortest form is exponential
-  // (e.g. `1e-22`) as invalid; only real edits can be unparseable.
-  if (draft.value === hostText) {
-    return;
-  }
-  const text = draft.value.trim();
-  if (!text) {
-    model.value = null;
-    draft.value = '';
-    invalidDraft.value = false;
-    return;
-  }
-  const parseMode = resolveChoyNumberChromeParseMode(props.mode);
-  const parsed = parseChoyNumber(draft.value, parseMode);
-  if (parsed === null) {
-    // Keep the draft so the user can correct invalid input; leave the model unchanged,
-    // but mark the control invalid so it cannot look committed.
-    invalidDraft.value = true;
-    return;
-  }
-  invalidDraft.value = false;
-  model.value = parsed;
-  draft.value = resolveChoyNumberDraftText(parsed, text, parseMode);
-}
-
-function onKeydown(event: KeyboardEvent): void {
-  // Confirming an IME candidate also fires Enter; don't commit half-composed text.
-  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) {
-    return;
-  }
-  event.preventDefault();
-  commitDraft();
-}
+  trigger: 'blur',
+} as RuleItem;
+const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
+
+<style scoped>
+.choy-field-display-text {
+  line-height: 32px;padding: 0 11px;text-align: right;display: inline-block;max-width: 100%;overflow: hidden;text-overflow: ellipsis;
+}
+.choy-number-input {
+  /* Compatible with the newer Element Plus input structure. */
+}
+.choy-number-input :deep(.el-input__inner) {
+  text-align: right;
+}
+.choy-number-input :deep(.el-input__wrapper input) {
+  text-align: right;
+}
+</style>

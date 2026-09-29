@@ -5,7 +5,7 @@ import { defineComponent, h } from 'vue';
 
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import {
-  provideOPageContext,
+  providePageContext,
   resolvePageStore,
   useOptionalPageStore,
   useRegisterPageActionTarget,
@@ -24,7 +24,7 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        provideOPageContext({ store });
+        providePageContext({ store });
         return () => h(Child);
       },
     });
@@ -33,7 +33,7 @@ describe('usePageContext', () => {
     unmount();
   });
 
-  test('provides store to default-slot content (OPage page pattern)', () => {
+  test('provides store to default-slot content (Page page pattern)', () => {
     const store = { storeId: 'slot-store' };
     let seen: unknown = null;
     const Child = defineComponent({
@@ -44,7 +44,7 @@ describe('usePageContext', () => {
     });
     const PageShell = defineComponent({
       setup(_, { slots }) {
-        provideOPageContext({ store });
+        providePageContext({ store });
         return () => h('div', slots.default?.());
       },
     });
@@ -70,7 +70,7 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        provideOPageContext({ store: pageStore });
+        providePageContext({ store: pageStore });
         return () => h(Child);
       },
     });
@@ -107,7 +107,7 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        provideOPageContext({ store: pageStore });
+        providePageContext({ store: pageStore });
         return () => h(Child);
       },
     });
@@ -119,7 +119,7 @@ describe('usePageContext', () => {
   test('registers and unregisters a page action target', async () => {
     const store = { storeId: 'page' };
     const target = { refresh: () => undefined, selectedItems: [] as Array<{ Id?: string }> };
-    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    let ctx: ReturnType<typeof providePageContext> | null = null;
     const Child = defineComponent({
       setup() {
         useRegisterPageActionTarget({ store, target });
@@ -128,7 +128,7 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        ctx = provideOPageContext({ store });
+        ctx = providePageContext({ store });
         return () => h(Child);
       },
     });
@@ -143,7 +143,7 @@ describe('usePageContext', () => {
     const pageStore = { storeId: 'page' };
     const viewStore = { storeId: 'other' };
     const target = { refresh: () => undefined };
-    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    let ctx: ReturnType<typeof providePageContext> | null = null;
     const Child = defineComponent({
       setup() {
         useRegisterPageActionTarget({ store: viewStore, target });
@@ -152,7 +152,7 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        ctx = provideOPageContext({ store: pageStore });
+        ctx = providePageContext({ store: pageStore });
         return () => h(Child);
       },
     });
@@ -164,7 +164,7 @@ describe('usePageContext', () => {
   test('respects enabled false to opt out of registration', () => {
     const store = { storeId: 'page' };
     const target = { refresh: () => undefined };
-    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    let ctx: ReturnType<typeof providePageContext> | null = null;
     const Child = defineComponent({
       setup() {
         useRegisterPageActionTarget({ store, target, enabled: false });
@@ -173,7 +173,7 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        ctx = provideOPageContext({ store });
+        ctx = providePageContext({ store });
         return () => h(Child);
       },
     });
@@ -186,7 +186,7 @@ describe('usePageContext', () => {
     const pageStore = { storeId: 'page' };
     const viewStore = { storeId: 'other' };
     const target = { refresh: () => undefined };
-    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    let ctx: ReturnType<typeof providePageContext> | null = null;
     const Child = defineComponent({
       setup() {
         useRegisterPageActionTarget({ store: viewStore, target, enabled: true });
@@ -195,7 +195,7 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        ctx = provideOPageContext({ store: pageStore });
+        ctx = providePageContext({ store: pageStore });
         return () => h(Child);
       },
     });
@@ -208,10 +208,10 @@ describe('usePageContext', () => {
     const store = { storeId: 'page' };
     const kept = { refresh: () => undefined };
     const other = { refresh: () => undefined };
-    let ctx: ReturnType<typeof provideOPageContext> | null = null;
+    let ctx: ReturnType<typeof providePageContext> | null = null;
     const Parent = defineComponent({
       setup() {
-        ctx = provideOPageContext({ store });
+        ctx = providePageContext({ store });
         return () => h('div');
       },
     });
@@ -232,7 +232,7 @@ describe('usePageContext', () => {
     });
     const Parent = defineComponent({
       setup() {
-        provideOPageContext({ store: () => undefined });
+        providePageContext({ store: () => undefined });
         return () => h(Child);
       },
     });

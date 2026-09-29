@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyCard :title="_t('Session Information')" class="sfv-card">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
-          <ChoyManyToOneField value-mode="record"
+          <ChoyManyToOneField
             :store="store"
             prop="UserId"
             :search-view="UserListView"

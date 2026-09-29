@@ -114,7 +114,7 @@ import {
   ComboboxItem,
   ComboboxPortal,
   ComboboxRoot,
-  ComboboxViewport,
+  ComboboxViewport
 } from 'reka-ui';
 import { cn, type ClassValue } from '../../lib/utils';
 import Button from '../vendor/ui/button/Button.vue';
@@ -124,7 +124,7 @@ import {
   runRelationNameSearch,
   upsertRelationOption,
   type RelationNameSearchFn,
-  type RelationOption,
+  type RelationOption
 } from './relationComboboxHelpers';
 
 /**

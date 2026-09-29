@@ -55,7 +55,7 @@ SPDX-License-Identifier: Apache-2.0
       :has-action="hasAction"
       @row-click="onRowClick"
     >
-      <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+      <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
       <ChoyVarcharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
       <ChoyVarcharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
       <ChoyVarcharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
@@ -88,8 +88,8 @@ import {
   ChoyListView,
   ChoyMessage,
   ChoySearchView,
-  ChoyVColumn,
-  ChoyVarcharField,
+  ChoyTableColumn,
+  ChoyVarcharField
 } from '@/web';
 import { resolveListRowRecordId } from './list_row_nav';
 

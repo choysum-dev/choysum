@@ -45,7 +45,7 @@ function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptio
 
 /**
  * Domain/shell toast facade over the L2 toast store.
- * Host pages must mount `<Toaster />` (Gallery / Dogfood already do).
+ * Host pages must mount `<Toaster />` (product `App.vue` already does).
  */
 export const ChoyMessage = {
   success(title: string, options?: ChoyMessageOptions): number {

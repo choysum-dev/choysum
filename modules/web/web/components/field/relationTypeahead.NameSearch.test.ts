@@ -6,18 +6,18 @@
  * Pure visibility + quick-create helpers: nameCreateVisibility.test.ts, nameCreateQuickCreate.test.ts.
  */
 
-import { computed, h, nextTick, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, ref } from 'vue';
+import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createPinia, setActivePinia } from 'pinia';
-import { ElButton, ElDialog, ElMessage, ElSelectV2, ElTag } from 'element-plus';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import OFieldBase from './OFieldBase.vue';
-import OManyToOneField from './OManyToOneField.vue';
-import OManyToOneRefField from './OManyToOneRefField.vue';
-import OManyToManyTagsField from './OManyToManyTagsField.vue';
-import OManyToManyRefTagsField from './OManyToManyRefTagsField.vue';
+import FieldBase from './FieldBase.vue';
+import ChoyManyToOneField from './ChoyManyToOneField.vue';
+import ChoyManyToOneRefField from './ChoyManyToOneRefField.vue';
+import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
+import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
 
 function makeM2OBinding(relationStore: any): UseField {
   const value = ref<any>(null);
@@ -72,12 +72,42 @@ function makeM2MBinding(relationStore: any): UseField {
   } as any;
 }
 
-const epSfcs = [ElSelectV2, ElDialog, ElButton, ElTag];
-const origElMessageError = ElMessage.error;
+const origChoyMessageError = ChoyMessage.error;
+
+const RelationComboboxStub = defineComponent({
+  name: 'RelationComboboxStub',
+  inheritAttrs: false,
+  props: {
+    search: { type: Function, default: undefined },
+    pageSize: { type: Number, default: 20 },
+    searchMore: { type: Boolean, default: true },
+  },
+  emits: ['update:modelValue', 'select', 'search-more'],
+  setup(props: any) {
+    return () =>
+      h('div', { class: 'select-stub' }, [
+        h('button', {
+          type: 'button',
+          'data-test': 'trigger-remote',
+          onClick: () => props.search?.('  alice  ', { limit: props.pageSize }),
+        }),
+        h('button', {
+          type: 'button',
+          'data-test': 'trigger-remote-null',
+          onClick: () => props.search?.(null, { limit: props.pageSize }),
+        }),
+        h('button', {
+          type: 'button',
+          'data-test': 'trigger-remote-empty',
+          onClick: () => props.search?.('', { limit: props.pageSize }),
+        }),
+      ]);
+  },
+});
 
 function installFieldBaseStub() {
-  stubSfc(OFieldBase as any, {
-    name: 'OFieldBase',
+  stubSfc(FieldBase as any, {
+    name: 'FieldBase',
     inheritAttrs: false,
     props: {
       binding: { type: Object, required: true },
@@ -101,71 +131,6 @@ function installFieldBaseStub() {
           slots.edit?.({ fieldValue, record: { Id: '1' } }),
           slots.display?.({ fieldValue, record: { Id: '1' } }),
         ]);
-    },
-  });
-}
-
-function installEpStubs() {
-  stubSfc(ElSelectV2 as any, {
-    name: 'ElSelectV2',
-    inheritAttrs: false,
-    props: {
-      remoteMethod: { type: Function, default: undefined },
-      modelValue: { type: [String, Number, Object, Array, null] as any, default: undefined },
-      options: { type: Array, default: undefined },
-      loading: { type: Boolean, default: false },
-    },
-    setup(props: any, { slots }: any) {
-      return () =>
-        h('div', { class: 'select-stub' }, [
-          h('button', {
-            type: 'button',
-            'data-test': 'trigger-remote',
-            onClick: () => props.remoteMethod?.('  alice  '),
-          }),
-          h('button', {
-            type: 'button',
-            'data-test': 'trigger-remote-null',
-            onClick: () => props.remoteMethod?.(null),
-          }),
-          h('button', {
-            type: 'button',
-            'data-test': 'trigger-remote-empty',
-            onClick: () => props.remoteMethod?.(''),
-          }),
-          slots.footer?.(),
-        ]);
-    },
-  });
-  stubSfc(ElDialog as any, {
-    name: 'ElDialog',
-    props: ['modelValue', 'title'],
-    setup(_: any, { slots }: any) {
-      return () => h('div', { class: 'el-dialog' }, [slots.default?.(), slots.footer?.()]);
-    },
-  });
-  stubSfc(ElButton as any, {
-    name: 'ElButton',
-    inheritAttrs: false,
-    emits: ['click'],
-    setup(_: any, { slots, emit, attrs }: any) {
-      return () =>
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'el-btn',
-            ...attrs,
-            onClick: (e: any) => emit('click', e),
-          },
-          slots.default?.()
-        );
-    },
-  });
-  stubSfc(ElTag as any, {
-    name: 'ElTag',
-    setup(_: any, { slots }: any) {
-      return () => h('span', { class: 'el-tag' }, slots.default?.());
     },
   });
 }
@@ -213,28 +178,28 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     setActivePinia(pinia);
     seedCreatePermission();
     msgError = fnRecorder();
-    (ElMessage as any).error = msgError;
+    ChoyMessage.error = msgError as typeof ChoyMessage.error;
     installFieldBaseStub();
-    installEpStubs();
   });
 
   afterEach(() => {
-    (ElMessage as any).error = origElMessageError;
-    restoreSfc(OFieldBase as any);
-    for (const c of epSfcs) restoreSfc(c as any);
+    ChoyMessage.error = origChoyMessageError;
+    restoreSfc(FieldBase as any);
+    restoreSfc(RelationCombobox as any);
   });
 
   function mountField(Comp: any, props: Record<string, unknown>) {
+    stubSfc(RelationCombobox as any, RelationComboboxStub as any);
     return mountApp(Comp, {
       props: { renderMode: 'form', ...props },
       plugins: [pinia],
     });
   }
 
-  test('OManyToOneField NameSearch trims keyword and uses pageSize fields', async () => {
+  test('ChoyManyToOneField NameSearch trims keyword and uses pageSize fields', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 'p1', DisplayName: 'Alice' }]);
     const Search = fnRecorder();
-    const m = mountField(OManyToOneField, {
+    const m = mountField(ChoyManyToOneField, {
       binding: makeM2OBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       pageSize: 15,
     });
@@ -258,8 +223,8 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     m.unmount();
   });
 
-  test('OManyToOneField remote search is a no-op without relationStore', async () => {
-    const missing = mountField(OManyToOneField, {
+  test('ChoyManyToOneField remote search is a no-op without relationStore', async () => {
+    const missing = mountField(ChoyManyToOneField, {
       binding: makeM2OBinding(undefined),
     });
     await clickRemote(missing);
@@ -268,10 +233,10 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     missing.unmount();
   });
 
-  test('OManyToOneRefField NameSearch mirrors M2O wiring', async () => {
+  test('ChoyManyToOneRefField NameSearch mirrors M2O wiring', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 'p1', DisplayName: 'Alice' }]);
     const Search = fnRecorder();
-    const m = mountField(OManyToOneRefField, {
+    const m = mountField(ChoyManyToOneRefField, {
       binding: makeM2OBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       pageSize: 12,
     });
@@ -291,11 +256,11 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     m.unmount();
   });
 
-  test('OManyToOneRefField remote search is a no-op without relationStore', async () => {
+  test('ChoyManyToOneRefField remote search is a no-op without relationStore', async () => {
     const warn = console.warn;
     console.warn = () => {};
     try {
-      const missing = mountField(OManyToOneRefField, {
+      const missing = mountField(ChoyManyToOneRefField, {
         binding: makeM2OBinding(undefined),
       });
       await clickRemote(missing);
@@ -307,38 +272,11 @@ describe('relation typeahead NameSearch / NameCreate', () => {
     }
   });
 
-  test('OManyToManyTagsField NameSearch uses conditions and label fields', async () => {
-    const NameSearch = fnRecorder(async () => [{ Id: 't1', DisplayName: 'Alice' }]);
-    const Search = fnRecorder();
-    const m = mountField(OManyToManyTagsField, {
-      binding: makeM2MBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
-      suggestLimit: 8,
-    });
 
-    await clickRemote(m);
-    expect(NameSearch.calls.length).toBe(1);
-    const [keyword, condition, options] = NameSearch.calls[0]!;
-    expect(keyword).toBe('alice');
-    expect(condition).toEqual([]);
-    expect((options as any).limit).toBe(8);
-    fieldsContain((options as any).fields, 'Id', 'DisplayName');
-    expect(Search.calls.length).toBe(0);
-
-    NameSearch.mockClear();
-    await clickRemote(m, '[data-test="trigger-remote-empty"]');
-    expect(NameSearch.calls[0]?.[0]).toBe('');
-    expect((NameSearch.calls[0]?.[2] as any)?.limit).toBe(8);
-
-    NameSearch.mockClear();
-    await clickRemote(m, '[data-test="trigger-remote-null"]');
-    expect(NameSearch.calls[0]?.[0]).toBe('');
-    m.unmount();
-  });
-
-  test('OManyToManyRefTagsField NameSearch uses hydration fields', async () => {
+  test('ChoyManyToManyRefTagsField NameSearch uses hydration fields', async () => {
     const NameSearch = fnRecorder(async () => [{ Id: 't1', DisplayName: 'Alice' }]);
     const Search = fnRecorder(async () => []);
-    const m = mountField(OManyToManyRefTagsField, {
+    const m = mountField(ChoyManyToManyRefTagsField, {
       binding: makeM2MBinding({ NameSearch, Search, fullModelName: 'partner.Partner' }),
       suggestLimit: 9,
     });
@@ -376,13 +314,13 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       NameCreate: NameCreateM2O,
       fullModelName: 'partner.Partner',
     });
-    const m2o = mountField(OManyToOneField, {
+    const m2o = mountField(ChoyManyToOneField, {
       binding: bindingM2O,
       allowCreate: true,
       nameField: 'Code',
     });
     await clickRemote(m2o);
-    const createM2O = findCreate(m2o, 'o-m2o-name-create');
+    const createM2O = findCreate(m2o, 'choy-m2o-name-create');
     expect(createM2O).toBeTruthy();
     expect((createM2O!.textContent || '').includes('alice')).toBe(true);
     createM2O!.click();
@@ -394,7 +332,7 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       throw new Error('denied');
     });
     await clickRemote(m2o);
-    findCreate(m2o, 'o-m2o-name-create')!.click();
+    findCreate(m2o, 'choy-m2o-name-create')!.click();
     await flushPromises();
     expect(msgError.calls.some(c => c[0] === 'denied')).toBe(true);
     m2o.unmount();
@@ -409,43 +347,16 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       NameCreate: NameCreateRef,
       fullModelName: 'partner.Partner',
     });
-    const m2oRef = mountField(OManyToOneRefField, {
+    const m2oRef = mountField(ChoyManyToOneRefField, {
       binding: bindingRef,
       allowCreate: true,
     });
     await clickRemote(m2oRef);
-    findCreate(m2oRef, 'o-m2o-name-create')!.click();
+    findCreate(m2oRef, 'choy-m2o-name-create')!.click();
     await flushPromises();
     expect(NameCreateRef.calls[0]).toEqual(['alice', undefined, undefined]);
     expect(bindingRef.fieldRef().value).toEqual({ Id: 'r1', DisplayName: 'alice', Name: 'alice' });
     m2oRef.unmount();
-
-    const NameCreateTags = fnRecorder(async (name: string) => ({
-      Id: 't9',
-      DisplayName: name,
-      Name: name,
-    }));
-    const bindingTags = makeM2MBinding({
-      NameSearch: fnRecorder(async () => []),
-      NameCreate: NameCreateTags,
-      fullModelName: 'partner.Partner',
-    });
-    const tags = mountField(OManyToManyTagsField, {
-      binding: bindingTags,
-      allowCreate: true,
-    });
-    await clickRemote(tags);
-    findCreate(tags, 'o-m2m-name-create')!.click();
-    await flushPromises();
-    expect(NameCreateTags.calls[0]).toEqual(['alice', undefined, undefined]);
-    expect(bindingTags.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['t9']);
-
-    NameCreateTags.mockImplementation(async () => ({ Id: 't9', DisplayName: 'alice', Name: 'alice' }));
-    await clickRemote(tags);
-    findCreate(tags, 'o-m2m-name-create')!.click();
-    await flushPromises();
-    expect(bindingTags.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['t9']);
-    tags.unmount();
 
     const NameCreateRefTags = fnRecorder(async (name: string) => ({
       Id: 'rt1',
@@ -458,13 +369,13 @@ describe('relation typeahead NameSearch / NameCreate', () => {
       Search: fnRecorder(async () => []),
       fullModelName: 'partner.Partner',
     });
-    const refTags = mountField(OManyToManyRefTagsField, {
+    const refTags = mountField(ChoyManyToManyRefTagsField, {
       binding: bindingRefTags,
       allowCreate: true,
       nameField: 'Title',
     });
     await clickRemote(refTags);
-    findCreate(refTags, 'o-m2m-name-create')!.click();
+    findCreate(refTags, 'choy-m2m-name-create')!.click();
     await flushPromises();
     expect(NameCreateRefTags.calls[0]).toEqual(['alice', undefined, { nameField: 'Title' }]);
     expect(bindingRefTags.fieldRef().value.map((r: any) => r.Id ?? r)).toEqual(['rt1']);
@@ -473,10 +384,9 @@ describe('relation typeahead NameSearch / NameCreate', () => {
 
   test('Create entry hidden when allowCreate is false or unset', async () => {
     for (const [Comp, testId, makeBinding] of [
-      [OManyToOneField, 'o-m2o-name-create', makeM2OBinding],
-      [OManyToOneRefField, 'o-m2o-name-create', makeM2OBinding],
-      [OManyToManyTagsField, 'o-m2m-name-create', makeM2MBinding],
-      [OManyToManyRefTagsField, 'o-m2m-name-create', makeM2MBinding],
+      [ChoyManyToOneField, 'choy-m2o-name-create', makeM2OBinding],
+      [ChoyManyToOneRefField, 'choy-m2o-name-create', makeM2OBinding],
+      [ChoyManyToManyRefTagsField, 'choy-m2m-name-create', makeM2MBinding],
     ] as const) {
       for (const allowCreate of [undefined, false] as const) {
         const m = mountField(Comp, {

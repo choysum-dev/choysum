@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyVarcharField :store="store" prop="FullName" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyManyToOneField :store="store" prop="LanguageId" />
+          <ChoyManyToOneRefField :store="store" prop="LanguageId" />
         </ChoyCol>
         <ChoyCol :span="6">
           <ChoySelectionField
@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
           />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyManyToOneField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
+          <ChoyManyToOneRefField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
         </ChoyCol>
         <ChoyCol :span="6">
           <ChoyJsonField :store="store" prop="Preferences" />
@@ -69,7 +69,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <ChoyGrid :cols="12">
         <ChoyCol :span="12">
-          <ChoyManyToManyField widget="tags" value-mode="ref"
+          <ChoyManyToManyRefTagsField
             :store="store"
             prop="CompanyIds"
             :label="_t('Accessible Companies')"
@@ -128,7 +128,7 @@ import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTagsField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 

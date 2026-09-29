@@ -11,7 +11,7 @@ import dayjs, { type Dayjs, type ConfigType } from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { detectBrowserTimezone, resolveRequestTimezone } from './request_timezone';
+import { detectBrowserTimezone, resolveRequestTimezone } from './requestTimezone';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);

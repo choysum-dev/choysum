@@ -14,12 +14,12 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
     <ChoyVarcharField prop="RoleId.Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoySelectionField prop="Mode" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoyManyToOneField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyManyToOneField prop="MetaUiResourceId" :store="store" :vColumnProps="{ minWidth: 200 }" />
+    <ChoyManyToOneRefField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyManyToOneRefField prop="MetaUiResourceId" :store="store" :vColumnProps="{ minWidth: 200 }" />
     <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </ChoyListView>
 </template>
@@ -32,7 +32,7 @@ import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
-import { ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoySelectionField, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyDatetimeField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoySelectionField, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneRefField} from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
 

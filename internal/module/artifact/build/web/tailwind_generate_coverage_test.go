@@ -343,7 +343,7 @@ func TestEnsureChoyTailwindCSSEmptyAndStatError(t *testing.T) {
 	}
 
 	root := t.TempDir()
-	styles := filepath.Join(root, "choy_ui", "web", "styles")
+	styles := filepath.Join(root, "web", "web", "styles")
 	if err := os.MkdirAll(styles, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -419,7 +419,7 @@ func TestGenerateChoyTailwindForModuleScanFailure(t *testing.T) {
 func TestTailwindInputDigestPathGuards(t *testing.T) {
 	// web/ present but theme.css missing → empty hashes (NotExist on ReadFile).
 	root := t.TempDir()
-	web := filepath.Join(root, "choy_ui", "web")
+	web := filepath.Join(root, "web", "web")
 	if err := os.MkdirAll(filepath.Join(web, "styles"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +430,7 @@ func TestTailwindInputDigestPathGuards(t *testing.T) {
 
 	// Non-NotExist Stat(webRoot) error (permission denied on parent).
 	blocked := t.TempDir()
-	parent := filepath.Join(blocked, "choy_ui")
+	parent := filepath.Join(blocked, "web")
 	if err := os.MkdirAll(parent, 0o000); err != nil {
 		t.Fatal(err)
 	}
@@ -449,7 +449,7 @@ func TestTailwindInputDigestErrors(t *testing.T) {
 	}
 
 	root := t.TempDir()
-	styles := filepath.Join(root, "choy_ui", "web", "styles")
+	styles := filepath.Join(root, "web", "web", "styles")
 	if err := os.MkdirAll(styles, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -474,7 +474,7 @@ func TestTailwindInputDigestErrors(t *testing.T) {
 	}
 
 	// Scan error: unreadable candidate file under kit gallery pages.
-	pages := filepath.Join(root, "choy_ui", "web", "pages")
+	pages := filepath.Join(root, "web", "web", "pages")
 	if err := os.MkdirAll(pages, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -688,7 +688,7 @@ func TestIndexCSSBlockEndQuotesEscapes(t *testing.T) {
 
 func TestEnsureChoyTailwindCSSWebNotDir(t *testing.T) {
 	root := t.TempDir()
-	web := filepath.Join(root, "choy_ui", "web")
+	web := filepath.Join(root, "web", "web")
 	if err := os.MkdirAll(filepath.Dir(web), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -703,7 +703,7 @@ func TestEnsureChoyTailwindCSSWebNotDir(t *testing.T) {
 
 func TestEnsureChoyTailwindCSSWebStatError(t *testing.T) {
 	root := t.TempDir()
-	parent := filepath.Join(root, "choy_ui")
+	parent := filepath.Join(root, "web")
 	if err := os.MkdirAll(parent, 0o000); err != nil {
 		t.Fatal(err)
 	}
@@ -762,7 +762,7 @@ func TestResolveChoyKitModuleRootFallsBackToChoyUI(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "theme.css"), []byte(`@theme { --color-primary: red; }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Product web present but not (yet) a kit host: it must not shadow choy_ui.
+	// Product web present but not a kit host: legacy choy_ui alone is not a kit.
 	if err := os.MkdirAll(filepath.Join(root, "web", "web"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -770,8 +770,8 @@ func TestResolveChoyKitModuleRootFallsBackToChoyUI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filepath.Base(got) != "choy_ui" {
-		t.Fatalf("resolveChoyKitModuleRoot = %q, want choy_ui fallback", got)
+	if got != "" {
+		t.Fatalf("resolveChoyKitModuleRoot = %q, want empty without web dialect", got)
 	}
 }
 

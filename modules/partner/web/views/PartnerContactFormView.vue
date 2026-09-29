@@ -29,7 +29,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoySelectionField :store="store" prop="AddressType" :selection="addressTypeOptions" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyManyToOneField
+          <ChoyManyToOneRefField
             :store="store"
             prop="AddressId"
             :searchView="AddressListView"
@@ -53,7 +53,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyVarcharField :store="store" prop="Mobile" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyNumberField :store="store" prop="Sequence" mode="integer" />
+          <ChoyIntField :store="store" prop="Sequence" />
         </ChoyCol>
       </ChoyGrid>
 
@@ -85,8 +85,7 @@ import {
   ChoyNumberField,
   ChoySelectionField,
   ChoyVarcharField,
-  type ChoyViewMode as ViewMode,
-} from '@/web';
+  type ChoyViewMode as ViewMode,  ChoyIntField, ChoyManyToOneRefField} from '@/web';
 
 defineOptions({ name: 'PartnerContactFormView', inheritAttrs: true });
 const { _t } = createTranslate('partner', { scope: 'web/views/PartnerContactFormView' });

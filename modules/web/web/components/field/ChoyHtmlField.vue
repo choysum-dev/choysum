@@ -99,7 +99,7 @@ import type { ClassValue } from '../../lib/utils';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import {
   choyFieldChromeDefaults,
-  type ChoyFieldChromeProps,
+  type ChoyFieldChromeProps
 } from './fieldHelpers';
 import { htmlToPlaintext, normalizeHtmlForStore, resolveChoyHtmlLinkHref, sanitizeHtmlForClient } from './htmlHelpers';
 import { htmlEditorChain, htmlEditorSetContent } from './tiptapHtmlCommands';

@@ -4,63 +4,64 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OPage>
+  <ChoyPage>
     <div class="terminology-toolbar">
-      <el-select
-        v-model="selectedApp"
-        filterable
-        clearable
-        :placeholder="_t('Application')"
+      <select
+        :value="selectedApp"
+        :aria-label="_t('Application')"
         style="width: 220px"
-        @change="onApplicationChange"
+        @change="onSelectChange"
       >
-        <el-option v-for="app in applications" :key="app" :label="app" :value="app" />
-      </el-select>
-      <el-input
+        <option value="">{{ _t('Application') }}</option>
+        <option v-for="app in applications" :key="app" :value="app">{{ app }}</option>
+      </select>
+      <input
         v-model="moduleFilter"
-        clearable
         :placeholder="_t('Module (required for PO)')"
         style="width: 220px"
       />
-      <el-button type="primary" :disabled="!canDownloadPo" :loading="downloading" @click="onDownloadPo">
+      <ChoyButton :disabled="!canDownloadPo || downloading" @click="onDownloadPo">
         {{ _t('Download PO') }}
-      </el-button>
+      </ChoyButton>
     </div>
 
-    <OListView
+    <ChoyListView
       v-if="termStore"
       :store="termStore"
       editable
-      :searchView="OSearchView"
+      :searchView="ChoySearchView"
       :action-ids="{}"
     >
-      <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-      <OVarCharField :store="termStore" prop="Module" :readonly="true" />
-      <OVarCharField :store="termStore" prop="Lang" :readonly="true" />
-      <OVarCharField :store="termStore" prop="Scope" :readonly="true" />
-      <OTextField :store="termStore" prop="Src" :readonly="true" />
-      <OTextField :store="termStore" prop="Value" />
-      <OVarCharField :store="termStore" prop="Kind" :readonly="true" />
-      <OVarCharField :store="termStore" prop="Source" :readonly="true" />
-    </OListView>
-    <el-empty v-else :description="_t('Select an application to edit terminology')" />
-  </OPage>
+      <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
+      <ChoyVarcharField :store="termStore" prop="Module" :readonly="true" />
+      <ChoyVarcharField :store="termStore" prop="Lang" :readonly="true" />
+      <ChoyVarcharField :store="termStore" prop="Scope" :readonly="true" />
+      <ChoyTextField :store="termStore" prop="Src" :readonly="true" />
+      <ChoyTextField :store="termStore" prop="Value" />
+      <ChoyVarcharField :store="termStore" prop="Kind" :readonly="true" />
+      <ChoyVarcharField :store="termStore" prop="Source" :readonly="true" />
+    </ChoyListView>
+    <div v-else class="terminology-empty">{{ _t('Select an application to edit terminology') }}</div>
+  </ChoyPage>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ChoyMessage } from '../composables/useChoyMessage';
 import { useRoute } from 'vue-router';
-import OPage from '@/web/web/components/page/OPage.vue';
-import OListView from '@/web/web/components/view/OListView.vue';
-import OSearchView from '@/web/web/components/view/OSearchView.vue';
-import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
-import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
-import OTextField from '@/web/web/components/field/OTextField.vue';
+import {
+  ChoyButton,
+  ChoyListView,
+  ChoyPage,
+  ChoySearchView,
+  ChoyTextField,
+  ChoyVarcharField,
+  ChoyTableColumn
+} from '@/web';
 import { createStoreByModel, listRegisteredModelNames } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
-import { downloadTerminologyPo } from '@/web/web/stores/i18nStore/po_download';
+import { downloadTerminologyPo } from '@/web/web/stores/i18nStore/poDownload';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -127,9 +128,13 @@ function wrapStoreForReload(store: WebModelStore<any>): WebModelStore<any> {
   return store;
 }
 
-function onApplicationChange(appName?: string) {
-  const app = String(appName ?? selectedApp.value).trim();
-  selectedApp.value = app;
+function onSelectChange(e: Event) {
+  selectedApp.value = (e.target as HTMLSelectElement).value;
+  onApplicationChange();
+}
+
+function onApplicationChange() {
+  const app = selectedApp.value.trim();
   termStore.value = null;
   moduleFilter.value = '';
   if (!app) return;
@@ -141,7 +146,9 @@ function onApplicationChange(appName?: string) {
     });
     termStore.value = wrapStoreForReload(store);
   } catch (err: any) {
-    ElMessage.error(err?.message || _t('TranslationTerm store is not available for this application'));
+    ChoyMessage.error(
+      err?.message || _t('TranslationTerm store is not available for this application'),
+    );
   }
 }
 
@@ -163,7 +170,7 @@ async function onDownloadPo() {
     // Some browsers cancel the download if the blob URL is revoked synchronously.
     setTimeout(() => URL.revokeObjectURL(url), 0);
   } catch (err: any) {
-    ElMessage.error(err?.message || _t('PO download failed'));
+    ChoyMessage.error(err?.message || _t('PO download failed'));
   } finally {
     downloading.value = false;
   }
@@ -178,8 +185,12 @@ onMounted(() => {
 .terminology-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 12px;
   align-items: center;
-  margin-bottom: 16px;
+}
+.terminology-empty {
+  color: var(--muted-foreground, #64748b);
+  padding: 24px 0;
 }
 </style>

@@ -4,131 +4,299 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div
-    data-anchor="choy.properties-definition-editor"
-    :class="['choy-properties-definition-editor flex flex-col gap-3', props.class]"
-  >
-    <div
-      v-for="(draft, index) in drafts"
-      :key="index"
-      class="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-2"
-    >
-      <Input v-model="draft.name" placeholder="name" :disabled="disabled" />
-      <Select v-model="draft.type" :disabled="disabled">
-        <SelectTrigger class="w-full" placeholder="type" />
-        <SelectContent>
-          <SelectItem
-            v-for="t in PROPERTY_DEFINITION_V1_TYPE_OPTIONS"
-            :key="t"
-            :value="t"
-          >
-            {{ t }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
-      <Input v-model="draft.string" placeholder="label" :disabled="disabled" />
-      <Input v-model="draft.default" placeholder="default" :disabled="disabled" />
-      <label class="flex items-center gap-2 text-sm sm:col-span-2">
-        <Checkbox
-          :model-value="draft.readonly"
-          :disabled="disabled"
-          @update:model-value="draft.readonly = $event === true"
-        />
-        Readonly
-      </label>
-      <Textarea
-        v-if="draft.type === 'selection'"
-        v-model="draft.selectionText"
-        class="font-mono text-xs sm:col-span-2"
-        :rows="3"
-        placeholder='[["a","A"],["b","B"]]'
-        :disabled="disabled"
-      />
-      <div class="sm:col-span-2">
-        <ChoyButton size="sm" variant="outline" :disabled="disabled" @click="removeRow(index)">
-          Remove
-        </ChoyButton>
-      </div>
+  <div class="choy-properties-definition-editor" data-testid="choy-properties-definition-editor">
+    <div class="choy-properties-definition-editor__toolbar">
+      <ChoyButton
+        size="sm"
+        :disabled="readonly || saving || loading || !canSave"
+        data-testid="choy-properties-definition-save"
+        @click="onSave"
+      >
+        {{ _t('Save') }}
+      </ChoyButton>
+      <ChoyButton size="sm" :disabled="readonly || saving || loading" data-testid="choy-properties-definition-add" @click="onAdd">
+        {{ _t('Add property') }}
+      </ChoyButton>
+      <span v-if="loadError" class="choy-properties-definition-editor__error" data-testid="choy-properties-definition-error">
+        {{ loadError }}
+      </span>
+      <span v-else-if="saveError" class="choy-properties-definition-editor__error" data-testid="choy-properties-definition-save-error">
+        {{ saveError }}
+      </span>
     </div>
-    <p v-if="error" class="text-sm text-danger">{{ error }}</p>
-    <div class="flex flex-wrap gap-2">
-      <ChoyButton size="sm" variant="outline" :disabled="disabled" @click="addRow">Add property</ChoyButton>
-      <ChoyButton size="sm" :disabled="disabled" @click="onSave">Save definition</ChoyButton>
+
+    <div v-if="!drafts.length" class="choy-properties-definition-editor__empty" data-testid="choy-properties-definition-empty">
+      {{ _t('No properties defined') }}
+    </div>
+
+    <div
+      v-for="(item, index) in drafts"
+      :key="index"
+      class="choy-properties-definition-editor__row"
+      :data-index="index"
+    >
+      <input
+        v-model="item.name"
+        size="small"
+        :disabled="readonly"
+        :placeholder="_t('Name')"
+        data-testid="choy-properties-definition-name"
+      />
+      <select v-model="item.type" size="small" :disabled="readonly" data-testid="choy-properties-definition-type">
+        <option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
+      </select>
+      <input
+        v-model="item.string"
+        size="small"
+        :disabled="readonly"
+        :placeholder="_t('Label')"
+        data-testid="choy-properties-definition-string"
+      />
+      <input
+        v-model="item.default"
+        size="small"
+        :disabled="readonly"
+        :placeholder="_t('Default')"
+        data-testid="choy-properties-definition-default"
+      />
+      <input type="checkbox"
+        v-model="item.readonly"
+        size="small"
+        :disabled="readonly"
+        data-testid="choy-properties-definition-readonly"
+      />
+      <textarea
+        v-if="item.type === 'selection'"
+        v-model="item.selectionText"
+        class="choy-properties-definition-editor__selection"
+        rows="3"
+        :disabled="readonly"
+        :placeholder="_t('Selection JSON')"
+        data-testid="choy-properties-definition-selection"
+      ></textarea>      <ChoyButton
+        size="sm"
+        variant="destructive"
+        :disabled="readonly"
+        data-testid="choy-properties-definition-remove"
+        @click="onRemove(index)"
+      >
+        {{ _t('Remove') }}
+      </ChoyButton>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import type { PropertyItemDefinition } from '@/core/service/orm/model/properties_types';
-import Checkbox from '../vendor/ui/checkbox/Checkbox.vue';
-import Input from '../vendor/ui/input/Input.vue';
-import Textarea from '../vendor/ui/textarea/Textarea.vue';
-import Select from '../vendor/ui/select/Select.vue';
-import SelectContent from '../vendor/ui/select/SelectContent.vue';
-import SelectItem from '../vendor/ui/select/SelectItem.vue';
-import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
-import type { ClassValue } from '../../lib/utils';
-import ChoyButton from '../layout/ChoyButton.vue';
+import { computed, ref, watch } from 'vue';
+import { createTranslate } from '@/web/web/i18n';
+import { createStoreByModel } from '@/web/web/stores/registry';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import {
   PROPERTY_DEFINITION_V1_TYPE_OPTIONS,
+  buildDefinitionScopeCondition,
   definitionItemsToDrafts,
   draftsToDefinitionItems,
   emptyDraftItem,
-  type DefinitionEditorDraftItem,
+  type DefinitionEditorDraftItem
 } from './propertiesDefinitionHelpers';
 
-/**
- * Edit a PropertyDefinition item list as drafts. Emits `saved` with validated items.
- * Host performs Create/Update RPC (none in isolation).
- */
+defineOptions({ name: 'ChoyPropertiesDefinitionEditor' });
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/PropertiesDefinitionEditor' });
+
 const props = withDefaults(
   defineProps<{
-    class?: ClassValue;
-    items?: PropertyItemDefinition[];
-    disabled?: boolean;
+    application: string;
+    targetModel: string;
+    propertiesField: string;
+    containerModel?: string | null;
+    containerId?: string | null;
+    readonly?: boolean;
+    /** Optional pre-built store (tests). */
+    store?: WebModelStore<any> | null;
   }>(),
   {
-    items: () => [],
-    disabled: false,
-  },
+    containerModel: null,
+    containerId: null,
+    readonly: false,
+    store: null,
+  }
 );
 
 const emit = defineEmits<{
-  saved: [items: PropertyItemDefinition[]];
+  saved: [payload: { id: string; definition: unknown[] }];
 }>();
 
-const drafts = ref<DefinitionEditorDraftItem[]>(definitionItemsToDrafts(props.items));
-const error = ref('');
+const typeOptions = PROPERTY_DEFINITION_V1_TYPE_OPTIONS;
+const drafts = ref<DefinitionEditorDraftItem[]>([]);
+const definitionId = ref<string | null>(null);
+const loading = ref(false);
+const saving = ref(false);
+const loadError = ref('');
+const saveError = ref('');
+let reloadSeq = 0;
 
-watch(
-  () => props.items,
-  (next, prev) => {
-    // A parent re-render can pass a brand-new array with identical content;
-    // only re-seed when the normalized draft content actually changed.
-    const nextDrafts = definitionItemsToDrafts(next);
-    const prevDrafts = definitionItemsToDrafts(prev);
-    if (JSON.stringify(nextDrafts) === JSON.stringify(prevDrafts)) return;
-    drafts.value = nextDrafts;
-    error.value = '';
-  },
+const canSave = computed(
+  () =>
+    Boolean(String(props.application || '').trim()) &&
+    Boolean(String(props.targetModel || '').trim()) &&
+    Boolean(String(props.propertiesField || '').trim())
 );
 
-function addRow(): void {
+function resolveStore(): WebModelStore<any> | null {
+  if (props.store) return props.store;
+  const app = String(props.application || '').trim();
+  if (!app) return null;
+  try {
+    return createStoreByModel(`${app}.PropertyDefinition`);
+  } catch (e) {
+    loadError.value = e instanceof Error ? e.message : String(e);
+    return null;
+  }
+}
+
+async function reload() {
+  const seq = ++reloadSeq;
+  loadError.value = '';
+  saveError.value = '';
+  definitionId.value = null;
+  drafts.value = [];
+  if (!canSave.value) return;
+
+  const store = resolveStore();
+  if (!store || typeof (store as any).Search !== 'function') {
+    if (seq === reloadSeq && !loadError.value) {
+      loadError.value = _t('PropertyDefinition store is unavailable');
+    }
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const And = buildDefinitionScopeCondition({
+      targetModel: props.targetModel,
+      propertiesField: props.propertiesField,
+      containerModel: props.containerModel,
+      containerId: props.containerId,
+    });
+    const rows = await (store as any).Search(
+      { And },
+      { fields: ['Id', 'Definition', 'TargetModel', 'PropertiesField', 'ContainerModel', 'ContainerId'], limit: 1 }
+    );
+    if (seq !== reloadSeq) return;
+    const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+    if (row) {
+      definitionId.value = String(row.Id || '').trim() || null;
+      drafts.value = definitionItemsToDrafts(row.Definition);
+    } else {
+      definitionId.value = null;
+      drafts.value = [];
+    }
+  } catch (e) {
+    if (seq !== reloadSeq) return;
+    loadError.value = e instanceof Error ? e.message : String(e);
+    console.warn('[ChoyPropertiesDefinitionEditor] load failed', e);
+  } finally {
+    if (seq === reloadSeq) {
+      loading.value = false;
+    }
+  }
+}
+
+function onAdd() {
+  if (loading.value || saving.value || props.readonly) return;
   drafts.value = [...drafts.value, emptyDraftItem()];
 }
 
-function removeRow(index: number): void {
+function onRemove(index: number) {
   drafts.value = drafts.value.filter((_, i) => i !== index);
 }
 
-function onSave(): void {
+async function onSave() {
+  saveError.value = '';
+  if (props.readonly || loading.value || saving.value || !canSave.value) return;
+  const store = resolveStore();
+  if (!store) {
+    saveError.value = _t('PropertyDefinition store is unavailable');
+    return;
+  }
+
+  let definition: unknown[];
   try {
-    const items = draftsToDefinitionItems(drafts.value);
-    error.value = '';
-    emit('saved', items);
+    definition = draftsToDefinitionItems(drafts.value);
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e);
+    saveError.value = e instanceof Error ? e.message : String(e);
+    return;
+  }
+
+  const payload: Record<string, unknown> = {
+    TargetModel: String(props.targetModel).trim(),
+    PropertiesField: String(props.propertiesField).trim(),
+    ContainerModel:
+      props.containerModel == null || props.containerModel === '' ? null : String(props.containerModel),
+    ContainerId: props.containerId == null || props.containerId === '' ? null : String(props.containerId),
+    Definition: definition,
+  };
+
+  saving.value = true;
+  try {
+    if (definitionId.value) {
+      await (store as any).UpdateById(definitionId.value, { Definition: definition });
+      emit('saved', { id: definitionId.value, definition });
+    } else {
+      const created = await (store as any).Create(payload);
+      const id = String(created?.Id || '').trim();
+      definitionId.value = id || null;
+      emit('saved', { id, definition });
+    }
+    await reload();
+  } catch (e) {
+    saveError.value = e instanceof Error ? e.message : String(e);
+    console.warn('[ChoyPropertiesDefinitionEditor] save failed', e);
+  } finally {
+    saving.value = false;
   }
 }
+
+watch(
+  () => [
+    props.application,
+    props.targetModel,
+    props.propertiesField,
+    props.containerModel,
+    props.containerId,
+    props.store,
+  ],
+  () => {
+    void reload();
+  },
+  { immediate: true }
+);
+
+defineExpose({ reload, drafts, definitionId });
 </script>
+
+<style scoped>
+.choy-properties-definition-editor {
+  display: flex;flex-direction: column;gap: 8px;width: 100%;
+}
+.choy-properties-definition-editor__toolbar {
+  display: flex;flex-wrap: wrap;gap: 8px;align-items: center;
+}
+.choy-properties-definition-editor__row {
+  display: grid;grid-template-columns: minmax(80px, 1fr) 110px minmax(80px, 1fr) minmax(80px, 1fr) auto minmax(120px, 1.4fr) auto;gap: 6px;align-items: start;
+}
+.choy-properties-definition-editor__selection {
+  width: 100%;
+  min-height: 4.5em;
+  resize: vertical;
+  font: inherit;
+}
+.choy-properties-definition-editor__empty {
+  color: var(--el-text-color-secondary);font-size: 13px;
+}
+.choy-properties-definition-editor__error {
+  color: var(--el-color-danger);font-size: 13px;
+}
+</style>

@@ -6,7 +6,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { SUPPORTED_LOCALES } from './locales';
 import { DateTimeFormatType, SupportedLocale } from './types';
-import { formatCurrencyFromConfig, formatNumberFromConfig } from './language_format';
+import { formatCurrencyFromConfig, formatNumberFromConfig } from './languageFormat';
 import { formatUtcInTimeZone, getUserTimeZone, parseUtc } from '@/web/web/utils/datetime';
 
 // Enable the relative time plugin.
@@ -68,26 +68,26 @@ export function updateDocumentDirection(textDirection: string) {
   const docStyle = document.documentElement.style;
 
   // Base direction variables.
-  docStyle.setProperty('--o-direction', textDirection);
-  docStyle.setProperty('--o-start', isRtl ? 'right' : 'left');
-  docStyle.setProperty('--o-end', isRtl ? 'left' : 'right');
-  docStyle.setProperty('--o-text-align', isRtl ? 'right' : 'left');
+  docStyle.setProperty('--choy-direction', textDirection);
+  docStyle.setProperty('--choy-start', isRtl ? 'right' : 'left');
+  docStyle.setProperty('--choy-end', isRtl ? 'left' : 'right');
+  docStyle.setProperty('--choy-text-align', isRtl ? 'right' : 'left');
 
   // Transform and positioning variables.
-  docStyle.setProperty('--o-transform-direction', isRtl ? '100%' : '-100%');
-  docStyle.setProperty('--o-direction-transform-factor', isRtl ? '1' : '-1');
+  docStyle.setProperty('--choy-transform-direction', isRtl ? '100%' : '-100%');
+  docStyle.setProperty('--choy-direction-transform-factor', isRtl ? '1' : '-1');
 
   // Inline direction variables.
-  docStyle.setProperty('--o-direction-inset-start', isRtl ? 'right' : 'left');
-  docStyle.setProperty('--o-direction-inset-end', isRtl ? 'left' : 'right');
+  docStyle.setProperty('--choy-direction-inset-start', isRtl ? 'right' : 'left');
+  docStyle.setProperty('--choy-direction-inset-end', isRtl ? 'left' : 'right');
 
   // Animation variables.
-  docStyle.setProperty('--o-direction-rotate', isRtl ? '180deg' : '0deg');
-  docStyle.setProperty('--o-direction-flip', isRtl ? '-1' : '1');
+  docStyle.setProperty('--choy-direction-rotate', isRtl ? '180deg' : '0deg');
+  docStyle.setProperty('--choy-direction-flip', isRtl ? '-1' : '1');
 
   // Border direction variables.
-  docStyle.setProperty('--o-border-start-width', '1px');
-  docStyle.setProperty('--o-border-end-width', '1px');
+  docStyle.setProperty('--choy-border-start-width', '1px');
+  docStyle.setProperty('--choy-border-end-width', '1px');
 }
 
 /**

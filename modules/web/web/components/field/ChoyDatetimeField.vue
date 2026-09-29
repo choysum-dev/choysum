@@ -4,101 +4,261 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ODatetimeField v-if="storeMode" v-bind="(storeBind as any)" />
-  <ChoyFieldBase
-    v-else
-    v-bind="($attrs as any)"
-    data-anchor="choy.datetime-field"
-    :class="props.class"
+  <FieldBase
+    :binding="binding"
     :label="label"
-    :help="help"
-    :required="!!required"
-    :readonly="!!readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
+    :rules="mergedRules"
+    :formItemProps="formItemProps"
+    :vColumnProps="vColumnProps"
+    :toView="toView"
+    :fromView="fromView"
+    :required="required"
+    :readonly="readonly"
     :visible="visible"
+    :cellVisible="cellVisible"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
+    v-bind="$attrs"
   >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <Input
-        :id="controlId"
-        type="datetime-local"
-        :model-value="displayValue"
-        :name="name || undefined"
-        :disabled="disabled"
-        :readonly="readonly"
-        :aria-invalid="ariaInvalid"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
-        @update:model-value="onInput"
-      />
+    <template #edit="{ fieldValue }">
+      <ChoyDatetimeCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="datePickerProps" v-bind="$attrs" />
     </template>
-  </ChoyFieldBase>
+    <template #display="{ fieldValue }">
+      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+    </template>
+  </FieldBase>
 </template>
 
-<script setup lang="ts">
-import { computed, useAttrs } from 'vue';
-import Input from '../vendor/ui/input/Input.vue';
-import type { ClassValue } from '../../lib/utils';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | Date>, V = FieldPathType<T, P>">
+import { computed, defineComponent, h, type PropType } from 'vue';
+import type { RuleItem } from 'async-validator';
+import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
-import ChoyFieldBase from './ChoyFieldBase.vue';
-import ODatetimeField from './ODatetimeField.vue';
+import { useField } from '@/web/web/composables/useField';
+import type { UseField } from '@/web/web/composables/useField';
+// Narrow aggregation types to count_distinct only.
+import type { NarrowAggProp, TemporalAggFns } from '@/web/web/composables/useField';
+import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { createTranslate } from '@/web/web/i18n';
 import {
-  choyFieldChromeDefaults,
-  type ChoyFieldChromeProps,
-} from './fieldHelpers';
+  formatUtcIso,
+  getUserTimeZone,
+  parseUtc,
+  userWallDateToUtc,
+  utcToUserWallDate
+} from '@/web/web/utils/datetime';
+dayjs.extend(customParseFormat);
 
-defineOptions({ name: 'ChoyDatetimeField', inheritAttrs: false });
+const { _t } = createTranslate('web', { scope: 'web/components/field/DatetimeField' });
 
-/**
- * Datetime field. Store+prop hosts ODatetimeField; otherwise native chrome.
- */
+defineOptions({ name: 'ChoyDatetimeField' });
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+type FieldType = Date | null;
+
 const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      store?: WebModelStore<any>;
-      prop?: string;
-      binding?: unknown;
-      mode?: string;
-    }
-  >(),
-  { ...choyFieldChromeDefaults },
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    binding?: UseField<T, V>;
+    label?: string;
+    rules?: RuleItem[];
+    displayFormat?: string;
+    valueFormat?: string;
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+    datePickerProps?: Record<string, unknown>;
+    formItemProps?: Partial<FormItemProps>;
+    vColumnProps?: {
+      width?: number | string;
+      minWidth?: number;
+      align?: 'left' | 'center' | 'right';
+      fixed?: 'left' | 'right';
+      sortable?: boolean;
+    };
+
+    bufferStrategy?: CommitStrategy;
+    bufferIdleDelay?: number;
+    commitOnBlur?: boolean;
+    // Temporal fields currently support count_distinct only.
+    agg?: NarrowAggProp<TemporalAggFns>;
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+  }>(),
+  {
+    rules: () => [],
+    displayFormat: 'YYYY-MM-DD HH:mm:ss',
+    valueFormat: 'YYYY-MM-DD[T]HH:mm:ss.SSSZ',
+    required: false,
+    readonly: false,
+    visible: true,
+    cellVisible: true,
+    datePickerProps: () => ({}),
+    formItemProps: () => ({}),
+    vColumnProps: () => ({}),
+    bufferStrategy: 'live',
+    bufferIdleDelay: 150,
+    commitOnBlur: true,
+    renderMode: 'auto',
+    showInlineError: false,
+  }
 );
 
-const attrs = useAttrs();
-const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
-const model = defineModel<string | null>({ default: null });
+const displayFormat = computed(() => props.displayFormat || 'YYYY-MM-DD HH:mm:ss');
+const storageFormat = computed(() => props.valueFormat || 'YYYY-MM-DD[T]HH:mm:ss.SSSZ');
 
-/** Native `datetime-local` only accepts `YYYY-MM-DDTHH:mm[:ss]`. */
-const displayValue = computed(() => {
-  const normalized = String(model.value ?? '')
-    .trim()
-    .replace(' ', 'T');
-  return normalized.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?/)?.[0] ?? '';
+function padFractionToSSS(input: string): string {
+  return input.replace(/(T\d{2}:\d{2}:\d{2}\.)(\d{1,2})(?=(Z|[+-]\d{2}:\d{2})$)/, (_m, p1, frac) => p1 + (frac + '000').slice(0, 3));
+}
+
+function parseFlexible(s: string): dayjs.Dayjs | null {
+  let m = parseUtc(s, storageFormat.value, true);
+  if (m.isValid()) return m;
+
+  const padded = padFractionToSSS(s);
+  if (padded !== s) {
+    m = parseUtc(padded, storageFormat.value, true);
+    if (m.isValid()) return m;
+  }
+
+  const candidates = ['YYYY-MM-DD[T]HH:mm:ssZ', 'YYYY-MM-DD[T]HH:mm:ss.SSSZ', 'YYYY-MM-DD[T]HH:mm:ss[Z]', 'YYYY-MM-DD[T]HH:mm:ss.SSS[Z]'];
+  for (const f of candidates) {
+    m = parseUtc(s, f, true);
+    if (m.isValid()) return m;
+    if (padded !== s) {
+      m = parseUtc(padded, f, true);
+      if (m.isValid()) return m;
+    }
+  }
+
+  m = parseUtc(s);
+  return m.isValid() ? m : null;
+}
+
+const toView = (raw: any): FieldType => {
+  if (raw == null) return null;
+  if (raw instanceof Date) {
+    return utcToUserWallDate(raw, getUserTimeZone());
+  }
+  if (typeof raw === 'string') {
+    const m = parseFlexible(raw);
+    return m ? utcToUserWallDate(m.toDate(), getUserTimeZone()) : null;
+  }
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : utcToUserWallDate(d, getUserTimeZone());
+};
+
+const fromView = (v: FieldType) => {
+  if (v == null) return null as any;
+  const utc = userWallDateToUtc(v instanceof Date ? v : new Date(v), getUserTimeZone());
+  if (!utc) return null as any;
+  return (formatUtcIso(utc, storageFormat.value) ?? null) as unknown as V;
+};
+
+const toDisplayText = (v: FieldType) => {
+  if (!v) return '';
+  // fieldValue is a user-TZ wall-carrier Date from toView; format local components as-is.
+  const m = dayjs(v);
+  return m.isValid() ? m.format(displayFormat.value) : '';
+};
+
+function normalizeToDate(v: any): FieldType {
+  return v instanceof Date ? (isNaN(v.getTime()) ? null : v) : v ? new Date(v) : null;
+}
+
+function isValidValue(value: any): boolean {
+  if (value == null || value === '') return true;
+  if (value instanceof Date) return dayjs(value).isValid();
+  if (typeof value === 'string') return !!parseFlexible(value);
+  return dayjs(new Date(value)).isValid();
+}
+
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
+    if (!isValidValue(value)) return cb(new Error(_t('Invalid date time')));
+    cb();
+  },
+} as RuleItem;
+const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
+
+function sameDate(a: Date | null, b: Date | null) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.getTime() === b.getTime();
+}
+
+const bufferOptions = computed(() => ({
+  strategy: props.bufferStrategy!,
+  idleDelay: props.bufferIdleDelay,
+  commitOnBlur: props.commitOnBlur,
+  normalize: (v: FieldType) => (v && !isNaN(v.getTime()) ? v : null),
+  equals: (a: FieldType, b: FieldType) => sameDate(a, b),
+}));
+
+const ChoyDatetimeCell = defineComponent({
+  name: 'ChoyDatetimeCell',
+  props: {
+    fieldValue: { type: Function as PropType<() => { value: any }>, required: true },
+    options: { type: Object as PropType<any>, required: true },
+    displayFormat: { type: String, required: true },
+    pickerProps: { type: Object as PropType<Record<string, any>>, default: () => ({}) },
+  },
+  setup(p, { attrs }) {
+    const modelRef = computed<FieldType>({
+      get: () => (p.fieldValue as any)().value,
+      set: v => {
+        (p.fieldValue as any)().value = v;
+      },
+    });
+    const buffer = useBufferedCommit<FieldType>(
+      () => modelRef.value,
+      v => {
+        modelRef.value = v;
+      },
+      p.options
+    );
+    return () => {
+      const current = buffer.editingValue.value;
+      // datetime-local wants local wall clock without timezone suffix.
+      const value =
+        current instanceof Date && !isNaN(current.getTime())
+          ? dayjs(current).format('YYYY-MM-DDTHH:mm')
+          : '';
+      return h('input', {
+        ...attrs,
+        ...(p.pickerProps || {}),
+        type: 'datetime-local',
+        class: 'choy-date-picker',
+        value,
+        onInput: (e: Event) => {
+          const raw = (e.target as HTMLInputElement).value;
+          buffer.setEditing(raw ? normalizeToDate(raw) : null);
+        },
+        onBlur: () => buffer.onBlur(),
+      });
+    };
+  },
 });
-
-/** Truncates text to the minute precision a native `datetime-local` often reports. */
-function toInputPrecision(text: string): string {
-  return String(text ?? '')
-    .trim()
-    .replace(' ', 'T')
-    .slice(0, 16);
-}
-
-function onInput(value: string): void {
-  // Browsers may ignore `readonly` on native datetime-local inputs, so guard the update too.
-  if (props.readonly || props.disabled) {
-    return;
-  }
-  // Don't echo a no-op pick back into the host model: a value like
-  // `2026-09-23T10:30:45Z` must not become `...T10:30` when the user re-picks
-  // the same minute (native inputs often omit seconds).
-  if (value !== '' && toInputPrecision(value) === toInputPrecision(displayValue.value)) {
-    return;
-  }
-  model.value = value === '' ? null : value;
-}
 </script>
+
+<style scoped>
+.choy-field-display-text {
+  line-height: var(--el-component-size-base, 32px);
+  color: var(--el-text-color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 11px;
+}
+.choy-date-picker {
+  width: 100%;
+}
+</style>

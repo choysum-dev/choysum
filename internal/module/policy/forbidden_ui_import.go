@@ -16,43 +16,37 @@ import (
 )
 
 const (
-	// kitHostModuleIsolation is the module that owns L2 vendor/ui during isolation.
-	kitHostModuleIsolation = "choy_ui"
-	// kitHostModuleCutover is the module that owns the kit after choy_ui merges into web.
+	// kitHostModuleCutover is the module that owns the kit (vendor/ui under web).
 	// Keep the relative tree as web/components/vendor/ui (do not rename vendor/ui again).
 	kitHostModuleCutover = "web"
 )
 
 // CutoverImportBans enables post-cutover domain import rules: ban element-plus /
-// @element-plus/*, and deep @/web/web/lib paths. Off by default during dual-stack
-// so domain modules that still import EP/O* keep typechecking; PR9z (or tests)
-// flips this on for the hard cut. Kit hosts remain fully exempt.
-var CutoverImportBans = false
+// @element-plus/*, echarts / vue-echarts, and deep @/web/web/lib paths.
+// On after the hard cut; kit hosts remain fully exempt. Tests may flip this off
+// temporarily to assert dual-stack classification behavior.
+var CutoverImportBans = true
 
 // isKitHostModule reports modules allowed to import reka-ui / vendor/ui / kit internals.
-// choy_ui is always a host (thin registration shell). web is a host only when the kit
-// tree actually lives under it (components/vendor/ui), so a stale rename cannot
-// silently disable the domain-module import ban.
+// Only web is a kit host, and only when the kit tree lives under it
+// (components/vendor/ui), so a stale rename cannot silently disable the
+// domain-module import ban.
 func isKitHostModule(modulesPath, moduleName string) bool {
-	switch strings.TrimSpace(moduleName) {
-	case kitHostModuleIsolation:
-		return true
-	case kitHostModuleCutover:
-		if strings.TrimSpace(modulesPath) == "" {
-			return false
-		}
-		kitDir := filepath.Join(modulesPath, kitHostModuleCutover, "web", "components", "vendor", "ui")
-		st, err := os.Stat(kitDir)
-		if err != nil {
-			// Only a confirmed directory proves web still hosts the kit; any stat
-			// failure (including EACCES on an ancestor) must not silently disable
-			// the domain-module import ban.
-			return false
-		}
-		return st.IsDir()
-	default:
+	if strings.TrimSpace(moduleName) != kitHostModuleCutover {
 		return false
 	}
+	if strings.TrimSpace(modulesPath) == "" {
+		return false
+	}
+	kitDir := filepath.Join(modulesPath, kitHostModuleCutover, "web", "components", "vendor", "ui")
+	st, err := os.Stat(kitDir)
+	if err != nil {
+		// Only a confirmed directory proves web still hosts the kit; any stat
+		// failure (including EACCES on an ancestor) must not silently disable
+		// the domain-module import ban.
+		return false
+	}
+	return st.IsDir()
 }
 
 // ForbiddenUiImportViolation is one forbidden kit/primitive import in a domain web tree.
@@ -248,7 +242,7 @@ func classifyForbiddenUiImport(spec string) string {
 }
 
 // classifyCutoverForbiddenUiImport returns cutover-only rule ids (element-plus,
-// @/web deep lib). Public barrel imports from "@/web" (Choy*) stay allowed.
+// echarts, @/web deep lib). Public barrel imports from "@/web" (Choy*) stay allowed.
 // lower is already normalized by classifyForbiddenUiImport.
 func classifyCutoverForbiddenUiImport(lower string) string {
 	if lower == "element-plus" || strings.HasPrefix(lower, "element-plus/") {
@@ -256,6 +250,12 @@ func classifyCutoverForbiddenUiImport(lower string) string {
 	}
 	if lower == "@element-plus/icons-vue" || strings.HasPrefix(lower, "@element-plus/") {
 		return "element-plus"
+	}
+	if lower == "echarts" || strings.HasPrefix(lower, "echarts/") {
+		return "echarts"
+	}
+	if lower == "vue-echarts" || strings.HasPrefix(lower, "vue-echarts/") {
+		return "echarts"
 	}
 	if isForbiddenWebLibDeepPath(lower) {
 		return "web-lib-deep"

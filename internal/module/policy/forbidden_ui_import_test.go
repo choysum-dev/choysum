@@ -17,8 +17,8 @@ func TestIsKitHostModuleEmptyModulesPath(t *testing.T) {
 	if isKitHostModule("   ", "web") {
 		t.Fatal("blank modulesPath must not make web a kit host")
 	}
-	if !isKitHostModule("", "choy_ui") {
-		t.Fatal("choy_ui remains a kit host even without modulesPath")
+	if isKitHostModule("", "choy_ui") {
+		t.Fatal("choy_ui must not be a kit host after cutover")
 	}
 }
 
@@ -59,6 +59,10 @@ func TestIsKitHostModuleMissingKitDir(t *testing.T) {
 }
 
 func TestClassifyForbiddenUiImport(t *testing.T) {
+	prev := CutoverImportBans
+	CutoverImportBans = false
+	t.Cleanup(func() { CutoverImportBans = prev })
+
 	cases := []struct {
 		spec string
 		want string
@@ -167,6 +171,11 @@ func TestClassifyForbiddenUiImportCutoverBans(t *testing.T) {
 		{"element-plus/es/components/button", "element-plus"},
 		{"@element-plus/icons-vue", "element-plus"},
 		{"@element-plus/icons-vue?raw", "element-plus"},
+		{"echarts", "echarts"},
+		{"echarts/core", "echarts"},
+		{"echarts/charts?raw", "echarts"},
+		{"vue-echarts", "echarts"},
+		{"vue-echarts/dist/index", "echarts"},
 		{"@/web/web/lib/utils", "web-lib-deep"},
 		{"@/web/web/lib/cn", "web-lib-deep"},
 		{"@/web/web/lib", "web-lib-deep"},
@@ -431,15 +440,15 @@ import Button from '@/choy_ui/web/components/vendor/ui/button/Button.vue';
 	}
 }
 
-func TestAssertNoForbiddenUiImports_AllowsChoyUIModule(t *testing.T) {
+func TestAssertNoForbiddenUiImports_AllowsWebKitHostModule(t *testing.T) {
 	modulesPath := t.TempDir()
-	webDir := filepath.Join(modulesPath, "choy_ui", "web", "components", "vendor", "ui")
+	webDir := filepath.Join(modulesPath, "web", "web", "components", "vendor", "ui")
 	if err := os.MkdirAll(webDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(modulesPath, "choy_ui", "package.json"), []byte(`{
-  "name": "@choysum-dev/choy_ui",
-  "choysum": { "moduleName": "choy_ui", "application": "choy_ui" }
+	if err := os.WriteFile(filepath.Join(modulesPath, "web", "package.json"), []byte(`{
+  "name": "@choysum-dev/web",
+  "choysum": { "moduleName": "web", "application": "web" }
 }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -447,8 +456,8 @@ func TestAssertNoForbiddenUiImports_AllowsChoyUIModule(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(webDir, "Dialog.ts"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := AssertNoForbiddenUiImports(modulesPath, "choy_ui"); err != nil {
-		t.Fatalf("choy_ui must be exempt: %v", err)
+	if err := AssertNoForbiddenUiImports(modulesPath, "web"); err != nil {
+		t.Fatalf("web kit host must be exempt: %v", err)
 	}
 }
 

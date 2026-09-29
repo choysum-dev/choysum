@@ -4,76 +4,219 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OTextField v-if="storeMode" v-bind="(storeBind as any)" />
-  <ChoyFieldBase
-    v-else
-    v-bind="($attrs as any)"
-    data-anchor="choy.text-field"
-    :class="props.class"
+  <FieldBase
+    :binding="binding"
     :label="label"
-    :help="help"
-    :required="!!required"
-    :readonly="!!readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
+    :rules="mergedRules"
+    :formItemProps="formItemProps"
+    :vColumnProps="vColumnProps"
+    :toView="toView"
+    :fromView="fromView"
+    :required="required"
+    :readonly="readonly"
     :visible="visible"
+    :cellVisible="cellVisible"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
+    v-bind="$attrs"
   >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <Textarea
-        :id="controlId"
-        v-model="model"
-        :name="name || undefined"
+    <template #edit="{ fieldValue }">
+      <OTextCell
+        :field-value="fieldValue"
+        :options="bufferOptions"
         :placeholder="placeholder"
         :rows="rows"
-        :disabled="disabled"
-        :readonly="readonly"
-        :aria-invalid="ariaInvalid"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
+        :autosize="autosize"
+        :maxlength="maxLength ?? undefined"
+        :show-word-limit="showWordLimit && !!maxLength"
+        v-bind="$attrs"
       />
     </template>
-  </ChoyFieldBase>
+
+    <template #display="{ fieldValue }">
+      <div class="choy-textfield-display">{{ toDisplayText(fieldValue().value) }}</div>
+    </template>
+  </FieldBase>
 </template>
 
-<script setup lang="ts">
-import { useAttrs } from 'vue';
-import Textarea from '../vendor/ui/textarea/Textarea.vue';
-import type { ClassValue } from '../../lib/utils';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
+import type { RuleItem } from 'async-validator';
+import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
-import ChoyFieldBase from './ChoyFieldBase.vue';
-import OTextField from './OTextField.vue';
-import {
-  choyFieldChromeDefaults,
-  type ChoyFieldChromeProps,
-} from './fieldHelpers';
+import { computed, defineComponent, h } from 'vue';
+import { useField } from '@/web/web/composables/useField';
+import type { UseField } from '@/web/web/composables/useField';
+// Narrow aggregation types to count_distinct only.
+import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
+import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import { createTranslate } from '@/web/web/i18n';
 
-defineOptions({ name: 'ChoyTextField', inheritAttrs: false });
+const { _t } = createTranslate('web', { scope: 'web/components/field/TextField' });
 
-/**
- * Multi-line string field. Store+prop hosts OTextField; otherwise chrome v-model.
- */
+defineOptions({ name: 'ChoyTextField' });
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+type ViewType = string | null;
+
 const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      placeholder?: string;
-      rows?: number;
-      store?: WebModelStore<any>;
-      prop?: string;
-      binding?: unknown;
-    }
-  >(),
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    binding?: UseField<T, V>;
+
+    label?: string;
+    rules?: RuleItem[];
+
+    maxLength?: number; // Optional length limit for text input.
+    nullable?: boolean; // Empty strings map to null by default.
+    trimOnBlur?: 'none' | 'both';
+    placeholder?: string;
+
+    rows?: number;
+    autosize?: boolean | { minRows?: number; maxRows?: number };
+    showWordLimit?: boolean;
+
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+
+    formItemProps?: Partial<FormItemProps>;
+    vColumnProps?: {
+      width?: number | string;
+      minWidth?: number;
+      align?: 'left' | 'center' | 'right';
+      fixed?: 'left' | 'right';
+      sortable?: boolean;
+    };
+    bufferStrategy?: CommitStrategy;
+    bufferIdleDelay?: number;
+    commitOnBlur?: boolean;
+    // Only count_distinct is supported for text fields.
+    agg?: NarrowAggProp<NonNumericAggFns>;
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+  }>(),
   {
-    ...choyFieldChromeDefaults,
+    rules: () => [],
+    nullable: true,
+    trimOnBlur: 'none',
     placeholder: '',
     rows: 4,
-  },
+    autosize: () => ({ minRows: 3, maxRows: 10 }),
+    showWordLimit: true,
+
+    required: false,
+    readonly: false,
+    visible: true,
+    cellVisible: true,
+
+    formItemProps: () => ({}),
+    vColumnProps: () => ({}),
+
+    bufferStrategy: 'blur',
+    bufferIdleDelay: 400,
+    commitOnBlur: true,
+    renderMode: 'auto',
+    showInlineError: false,
+  }
 );
 
-const attrs = useAttrs();
-const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
-const model = defineModel<string>({ default: '' });
+const toView = (raw: any): ViewType => (raw == null ? null : String(raw));
+const fromView = (v: ViewType) => v as unknown as V;
+const toDisplayText = (v: ViewType) => (v == null ? '' : String(v));
+
+function strLen(s: string) {
+  return Array.from(s).length;
+}
+function cutToLen(s: string, max?: number) {
+  if (!max || max < 0) return s;
+  const arr = Array.from(s);
+  return arr.slice(0, max).join('');
+}
+
+// Use the configurable buffer strategy from props.
+const bufferOptions = computed(() => ({
+  strategy: props.bufferStrategy!,
+  idleDelay: props.bufferIdleDelay,
+  commitOnBlur: props.commitOnBlur,
+  normalize: (v: string | null) => {
+    if (v == null) return null;
+    let s = String(v);
+    if (props.trimOnBlur === 'both') s = s.trim();
+    s = cutToLen(s, props.maxLength);
+    if (s === '' && props.nullable) return null;
+    return s;
+  },
+  equals: (a: string | null, b: string | null) => a === b,
+}));
+
+const OTextCell = defineComponent({
+  name: 'OTextCell',
+  props: {
+    fieldValue: { type: Function, required: true },
+    options: { type: Object, required: true },
+    placeholder: String,
+    rows: Number,
+    autosize: [Boolean, Object],
+    maxlength: [Number, String],
+    showWordLimit: Boolean,
+  },
+  setup(p, { attrs }) {
+    const modelRef = computed<ViewType>({
+      get: () => (p.fieldValue as any)().value,
+      set: v => {
+        (p.fieldValue as any)().value = v;
+      },
+    });
+    const buffer = useBufferedCommit<ViewType>(
+      () => modelRef.value,
+      v => {
+        modelRef.value = v;
+      },
+      p.options as any
+    );
+    const onBlur = () => buffer.onBlur();
+    return () =>
+      h('textarea', {
+        ...attrs,
+        class: 'choy-textarea',
+        placeholder: p.placeholder,
+        rows: p.rows ?? 3,
+        maxlength: p.maxlength,
+        value: buffer.editingValue.value ?? '',
+        onInput: (e: Event) => buffer.setEditing((e.target as HTMLTextAreaElement).value ?? ''),
+        onBlur,
+      });
+  },
+});
+
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
+    if (value == null) {
+      if (props.nullable) return cb();
+      return cb(new Error(_t('Cannot be empty')));
+    }
+    if (typeof value !== 'string') return cb(new Error(_t('Must be a string')));
+    if (props.maxLength != null) {
+      const n = strLen(value);
+      if (n > props.maxLength) return cb(new Error(_t('Length must not exceed %s', props.maxLength)));
+    }
+    cb();
+  },
+} as RuleItem;
+const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
+
+<style scoped>
+.choy-textarea {
+  width: 100%;
+}
+.choy-textfield-display {
+  white-space: pre-wrap;word-break: break-word;line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);padding: 0 11px;
+}
+</style>

@@ -22,7 +22,7 @@ const ChoyTailwindBudget = 500 * time.Millisecond
 
 const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 
-// choyGalleryRootSelector is retained for gallery-only CSS helpers and tests.
+// choyGalleryRootSelector is retained for CSS scoping unit helpers/tests only.
 // Cutover product builds emit unscoped theme+utilities for the main bundle.
 const choyGalleryRootSelector = ".choy-gallery-root"
 
@@ -207,24 +207,22 @@ func ScanChoyProductTailwindCandidates(modulesPath string) ([]string, error) {
 		}
 		dialectPath := filepath.Join(webRoot, "styles", "theme.css")
 		if dialectStat, dialectErr := choyProductStat(dialectPath); dialectErr == nil {
-			// resolveChoyKitModuleRoot hard-errors for web/choy_ui directory
-			// dialects; keep the same for those kit names here. An unrelated
-			// sibling with a stray directory at styles/theme.css must not abort
-			// the whole product scan.
-			if dialectStat.IsDir() && (name == "web" || name == "choy_ui") {
+			// resolveChoyKitModuleRoot hard-errors for a web directory dialect;
+			// keep the same for that kit name here. An unrelated sibling with a
+			// stray directory at styles/theme.css must not abort the product scan.
+			if dialectStat.IsDir() && name == "web" {
 				return nil, fmt.Errorf("%s dialect %s is a directory, not a file", name, dialectPath)
 			}
 		} else if !os.IsNotExist(dialectErr) {
 			return nil, dialectErr
 		}
-		// Kit hosts: choy_ui is always a host (policy.isKitHostModule), and any
-		// module that owns vendor/ui is a host even without styles/theme.css.
-		// A domain module that merely ships a dialect keeps full domain scanning.
+		// Kit hosts: web owns vendor/ui (policy.isKitHostModule). A domain module
+		// that merely ships a dialect keeps full domain scanning.
 		vendorUI, vErr := choyProductStat(filepath.Join(webRoot, "components", "vendor", "ui"))
 		if vErr != nil && !os.IsNotExist(vErr) {
 			return nil, vErr
 		}
-		if name == "choy_ui" || (vErr == nil && vendorUI.IsDir()) {
+		if name == "web" && vErr == nil && vendorUI.IsDir() {
 			kitCandidates, err := choyScanKitCandidates(webRoot)
 			if err != nil {
 				return nil, fmt.Errorf("scan module %s kit candidates under %s: %w", name, webRoot, err)
@@ -254,6 +252,9 @@ var choyScanKitCandidates = ScanChoyKitTailwindCandidates
 // choyScanDomainCandidates is ScanTailwindCandidates; tests replace it to force domain-scan errors.
 var choyScanDomainCandidates = ScanTailwindCandidates
 
+// choyReadFile is os.ReadFile; tests replace it to force dialect read failures in TailwindInputDigest.
+var choyReadFile = os.ReadFile
+
 // isChoyKitTailwindInputPath reports whether path under webRoot is Choy kit input
 // (vendor/ui, internal engines, Choy* SFCs/helpers, gallery/dogfood pages, tokens CSS).
 func isChoyKitTailwindInputPath(webRoot, path string) bool {
@@ -280,6 +281,9 @@ func isChoyKitTailwindInputPath(webRoot, path string) bool {
 	case strings.HasPrefix(slash, "composables/"):
 		return strings.Contains(base, "Choy") || strings.Contains(base, "choy")
 	case strings.HasPrefix(slash, "pages/"):
+		// Product Gallery/Dogfood pages are gone; keep these names so kit
+		// Tailwind fixture tests that write temporary Gallery/Dogfood SFCs
+		// still contribute candidates.
 		return base == "Gallery.vue" ||
 			strings.HasPrefix(base, "Dogfood") ||
 			strings.HasPrefix(base, "partnerDetail") ||
@@ -724,9 +728,8 @@ func GenerateChoyTailwindForModule(moduleRoot string) (*ChoyTailwindGenerateResu
 
 // modulesPathForKitRoot returns the parent modules directory for product scans.
 // Prefer a parent literally named "modules"; also accept a non-standard parent
-// name when that parent resolves to any Choy kit root (web or choy_ui), so
-// Generate(choy_ui) still product-scans when resolve prefers web. Isolated
-// temp kit fixtures (no resolvable sibling kit tree) stay kit-only.
+// name when that parent resolves to the web kit root. Isolated temp kit
+// fixtures (no resolvable sibling kit tree) stay kit-only.
 func modulesPathForKitRoot(moduleRoot string) string {
 	root := filepath.Clean(strings.TrimSpace(moduleRoot))
 	if root == "" || root == "." {
@@ -740,10 +743,8 @@ func modulesPathForKitRoot(moduleRoot string) string {
 		return parent
 	}
 	if resolved, err := resolveChoyKitModuleRoot(parent); err == nil && resolved != "" {
-		// Accept either recognized kit module under the custom parent, even when
-		// resolve prefers the other root; preferred-root selection stays in
-		// generateChoyTailwindForModule.
-		for _, name := range []string{"web", "choy_ui"} {
+		// Accept the web kit module under the custom parent.
+		for _, name := range []string{"web"} {
 			if filepath.Clean(filepath.Join(parent, name)) == root {
 				return parent
 			}
@@ -758,7 +759,7 @@ func generateChoyTailwindForModule(moduleRoot, modulesPath string) (*ChoyTailwin
 		return nil, fmt.Errorf("choy kit module root is empty")
 	}
 	// Keep dialect/output on the same kit root the product scan and
-	// TailwindInputDigest resolve (prefer web over choy_ui), so hashes converge.
+	// TailwindInputDigest resolve (modules/web), so hashes converge.
 	if mp := strings.TrimSpace(modulesPath); mp != "" {
 		resolved, err := resolveChoyKitModuleRoot(mp)
 		if err != nil {
@@ -885,9 +886,9 @@ var (
 )
 
 // EnsureChoyTailwindCSS finds the Choy kit under modulesPath and regenerates CSS.
-// Prefers modules/web when styles/theme.css is present; falls back to modules/choy_ui.
+// Kit host is modules/web when styles/theme.css is present.
 // Candidate scan covers the kit surface plus every other module web/ tree.
-// No-op when neither kit root owns a dialect file.
+// No-op when the web kit root does not own a dialect file.
 func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, error) {
 	modulesPath = strings.TrimSpace(modulesPath)
 	if modulesPath == "" {
@@ -904,9 +905,9 @@ func EnsureChoyTailwindCSS(modulesPath string) (*ChoyTailwindGenerateResult, err
 }
 
 // resolveChoyKitModuleRoot returns the module root that owns Choy styles/theme.css.
-// Prefers web when it has a dialect file; falls back to choy_ui.
+// Uses modules/web when it has a dialect file (or hosts vendor/ui without dialect error path).
 func resolveChoyKitModuleRoot(modulesPath string) (string, error) {
-	for _, name := range []string{"web", "choy_ui"} {
+	for _, name := range []string{"web"} {
 		root := filepath.Join(modulesPath, name)
 		webRoot := filepath.Join(root, "web")
 		st, err := os.Stat(webRoot)
@@ -962,7 +963,7 @@ func TailwindInputDigest(modulesPath string) (dialectHash, contentHash string, e
 	}
 	webRoot := filepath.Join(root, "web")
 	dialectPath := filepath.Join(webRoot, "styles", "theme.css")
-	dialectBytes, err := os.ReadFile(dialectPath)
+	dialectBytes, err := choyReadFile(dialectPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", "", nil

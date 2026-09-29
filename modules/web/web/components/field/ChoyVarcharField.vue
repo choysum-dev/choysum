@@ -4,75 +4,222 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <OVarCharField v-if="storeMode" v-bind="(storeBind as any)" />
-  <ChoyFieldBase
-    v-else
-    v-bind="($attrs as any)"
-    data-anchor="choy.varchar-field"
-    :class="props.class"
+  <FieldBase
+    :binding="binding"
     :label="label"
-    :help="help"
-    :required="!!required"
-    :readonly="!!readonly"
-    :disabled="disabled"
-    :error="error"
-    :name="name"
+    :rules="mergedRules"
+    :formItemProps="formItemProps"
+    :vColumnProps="vColumnProps"
+    :toView="toView"
+    :fromView="fromView"
+    :required="required"
+    :readonly="readonly"
     :visible="visible"
+    :cellVisible="cellVisible"
+    :renderMode="renderMode"
+    :showInlineError="showInlineError"
+    v-bind="$attrs"
   >
-    <template #default="{ controlId, ariaInvalid, ariaRequired, ariaDescribedby }">
-      <Input
-        :id="controlId"
-        v-model="model"
-        :name="name || undefined"
+    <!-- Reuse the slot-provided fieldValue for both form and row rendering. -->
+    <template #edit="{ fieldValue }">
+      <OVarCharCell
+        :field-value="fieldValue"
+        :options="bufferOptions"
         :placeholder="placeholder"
-        :disabled="disabled"
-        :readonly="!!readonly"
-        :aria-invalid="ariaInvalid"
-        :aria-required="ariaRequired"
-        :aria-describedby="ariaDescribedby"
+        :maxlength="effectiveMaxLength ?? undefined"
+        :show-word-limit="showWordLimit"
+        v-bind="$attrs"
       />
     </template>
-  </ChoyFieldBase>
+    <template #display="{ fieldValue }">
+      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+    </template>
+  </FieldBase>
 </template>
 
-<script setup lang="ts">
-import { useAttrs } from 'vue';
-import Input from '../vendor/ui/input/Input.vue';
-import type { ClassValue } from '../../lib/utils';
+<script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
+import type { RuleItem } from 'async-validator';
+import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { useChoyStoreFieldBinding } from '@/web/web/composables/choyStoreMode';
-import ChoyFieldBase from './ChoyFieldBase.vue';
-import OVarCharField from './OVarCharField.vue';
-import {
-  choyFieldChromeDefaults,
-  type ChoyFieldChromeProps,
-} from './fieldHelpers';
+import { computed, defineComponent, h } from 'vue';
+import { useField } from '@/web/web/composables/useField';
+import type { UseField } from '@/web/web/composables/useField';
+// Non-numeric varchar aggregates are narrowed to count_distinct.
+import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
+import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
+import { createTranslate } from '@/web/web/i18n';
 
-defineOptions({ name: 'ChoyVarcharField', inheritAttrs: false });
+const { _t } = createTranslate('web', { scope: 'web/components/field/VarCharField' });
+
+defineOptions({ name: 'ChoyVarcharField' });
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+type ViewType = string | null;
 
 const props = withDefaults(
-  defineProps<
-    ChoyFieldChromeProps & {
-      class?: ClassValue;
-      placeholder?: string;
-      store?: WebModelStore<any>;
-      prop?: string;
-      binding?: unknown;
-      rules?: unknown[];
-      vColumnProps?: Record<string, unknown>;
-      maxLength?: number;
-      nullable?: boolean;
-      renderMode?: string;
-    }
-  >(),
+  defineProps<{
+    store?: WebModelStore<T>;
+    prop?: P | (IsAny<T> extends true ? string : never);
+    binding?: UseField<T, V>;
+
+    label?: string;
+    rules?: RuleItem[];
+
+    maxLength?: number;
+    nullable?: boolean;
+    trimOnBlur?: 'none' | 'both';
+    placeholder?: string;
+    showWordLimit?: boolean;
+
+    required?: FieldStateExpr<T, V>;
+    readonly?: FieldStateExpr<T, V>;
+    visible?: FieldStateExpr<T, V>;
+    cellVisible?: FieldStateExpr<T, V>;
+
+    formItemProps?: Partial<FormItemProps>;
+    vColumnProps?: {
+      width?: number | string;
+      minWidth?: number;
+      align?: 'left' | 'center' | 'right';
+      fixed?: 'left' | 'right';
+      sortable?: boolean;
+    };
+    bufferStrategy?: CommitStrategy;
+    bufferIdleDelay?: number;
+    commitOnBlur?: boolean;
+    // Only count_distinct is supported for varchar aggregates.
+    agg?: NarrowAggProp<NonNumericAggFns>;
+    renderMode?: 'auto' | 'form' | 'table' | 'inline';
+    showInlineError?: boolean;
+  }>(),
   {
-    ...choyFieldChromeDefaults,
+    rules: () => [],
+    nullable: true,
+    trimOnBlur: 'none',
     placeholder: '',
-  },
+    showWordLimit: true,
+
+    required: false,
+    readonly: false,
+    visible: true,
+    cellVisible: true,
+
+    formItemProps: () => ({}),
+    vColumnProps: () => ({}),
+
+    bufferStrategy: 'idle',
+    bufferIdleDelay: 360,
+    commitOnBlur: true,
+    renderMode: 'auto',
+    showInlineError: false,
+  }
 );
 
-const attrs = useAttrs();
-const { storeMode, storeBind } = useChoyStoreFieldBinding(props as any, attrs as Record<string, unknown>);
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const metaSize = computed<number | undefined>(() => binding.meta?.size as any);
+const effectiveMaxLength = computed(() => props.maxLength ?? metaSize.value ?? undefined);
 
-const model = defineModel<string>({ default: '' });
+const toView = (raw: any): ViewType => (raw == null ? null : String(raw));
+const fromView = (v: ViewType) => v as unknown as V;
+const toDisplayText = (v: ViewType) => (v == null ? '' : String(v));
+
+function strLen(s: string) {
+  return Array.from(s).length;
+}
+function cutToLen(s: string, max?: number) {
+  if (!max || max < 0) return s;
+  const arr = Array.from(s);
+  return arr.slice(0, max).join('');
+}
+
+/**
+ * Delay buffered-commit creation until the cell component has access to fieldValue.
+ */
+const bufferOptions = computed(() => ({
+  strategy: props.bufferStrategy!,
+  idleDelay: props.bufferIdleDelay,
+  commitOnBlur: props.commitOnBlur,
+  normalize: (v: string | null) => {
+    if (v == null) return null;
+    let s = String(v);
+    if (props.trimOnBlur === 'both') s = s.trim();
+    s = cutToLen(s, effectiveMaxLength.value);
+    if (s === '' && props.nullable) return null;
+    return s;
+  },
+  equals: (a: string | null, b: string | null) => a === b,
+}));
+
+/**
+ * Internal cell component with per-cell buffering backed by FieldBase fieldValue.
+ */
+const OVarCharCell = defineComponent({
+  name: 'OVarCharCell',
+  props: {
+    fieldValue: { type: Function, required: true }, // () => WritableComputedRef<ViewType>
+    options: { type: Object, required: true },
+    placeholder: String,
+    maxlength: [Number, String],
+    showWordLimit: Boolean,
+  },
+  setup(p, { attrs }) {
+    // Adapt useBufferedCommit to the slot-provided getter and setter.
+    const modelRef = computed<ViewType>({
+      get: () => (p.fieldValue as any)().value,
+      set: v => {
+        (p.fieldValue as any)().value = v as any;
+      },
+    });
+
+    const buffer = useBufferedCommit<ViewType>(
+      () => modelRef.value,
+      v => {
+        modelRef.value = v;
+      },
+      p.options as any
+    );
+
+    function onBlur() {
+      // trimOnBlur is already handled inside normalize.
+      buffer.onBlur();
+    }
+
+    return () =>
+      h('input', {
+        ...attrs,
+        class: 'choy-input',
+        placeholder: p.placeholder,
+        maxlength: p.maxlength,
+        value: buffer.editingValue.value ?? '',
+        onInput: (e: Event) => buffer.setEditing((e.target as HTMLInputElement).value ?? ''),
+        onBlur,
+      });
+  },
+});
+
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
+    if (value == null) {
+      if (props.nullable) return cb();
+      return cb(new Error(_t('Value is required')));
+    }
+    if (typeof value !== 'string') return cb(new Error(_t('Value must be a string')));
+    const n = strLen(value);
+    const N = effectiveMaxLength.value;
+    if (N != null && n > N) return cb(new Error(_t('Length must not exceed %s', N)));
+    cb();
+  },
+} as RuleItem;
+const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
+
+<style scoped>
+.choy-field-display-text {
+  line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;padding: 0 11px;
+}
+.choy-input {
+  width: 100%;
+}
+</style>

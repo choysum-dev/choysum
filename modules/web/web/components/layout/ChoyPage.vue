@@ -53,8 +53,11 @@ SPDX-License-Identifier: Apache-2.0
               :has-io-menu="hasIoMenu"
               :action-import="actionImport"
               :action-export="actionExport"
-              @import="emit('import')"
-              @export="emit('export')"
+              :action-import-upload-hint="actionImportUploadHint"
+              :action-import-column-mapping="actionImportColumnMapping"
+              :action-list-ref="actionListRef"
+              :action-company-id="actionCompanyId"
+              :store="store"
             >
               <slot name="title-actions" />
             </ChoyPageTitleActions>
@@ -76,8 +79,11 @@ SPDX-License-Identifier: Apache-2.0
               :has-io-menu="hasIoMenu"
               :action-import="actionImport"
               :action-export="actionExport"
-              @import="emit('import')"
-              @export="emit('export')"
+              :action-import-upload-hint="actionImportUploadHint"
+              :action-import-column-mapping="actionImportColumnMapping"
+              :action-list-ref="actionListRef"
+              :action-company-id="actionCompanyId"
+              :store="store"
             >
               <slot name="title-actions" />
             </ChoyPageTitleActions>
@@ -134,17 +140,18 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, useId } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import {
-  provideOPageContext,
-  useOptionalPageStore,
+  providePageContext,
+  useOptionalPageStore
 } from '../../composables/usePageContext';
 import type { WebModelStore } from '../../stores/modelStore';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
+import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 
 /**
  * Page chrome inside the layout main area (title, toolbar, body, loading).
- * Optional `store` is provided to descendants via provideOPageContext (Form/List).
+ * Optional `store` is provided to descendants via providePageContext (Form/List).
  * Slot visibility is read from `$slots` at render time (slots are not reactive).
  */
 const props = withDefaults(
@@ -157,6 +164,14 @@ const props = withDefaults(
     loading?: boolean;
     actionImport?: boolean;
     actionExport?: boolean;
+    /** Optional CSV upload hint forwarded to PageIoMenu. */
+    actionImportUploadHint?: string;
+    /** Optional import column mapping forwarded to PageIoMenu. */
+    actionImportColumnMapping?: Record<string, string>;
+    /** List/kanban view ref for export scope and import refresh. */
+    actionListRef?: PageIoMenuListRef | null;
+    /** Optional company override for import/export panels. */
+    actionCompanyId?: string;
     /** Optional default screen store for ChoyFormView / ChoyListView / fields. */
     store?: WebModelStore<any>;
   }>(),
@@ -172,7 +187,7 @@ const props = withDefaults(
 );
 
 const parentPageStore = useOptionalPageStore();
-provideOPageContext({ store: () => props.store ?? parentPageStore.value });
+providePageContext({ store: () => props.store ?? parentPageStore.value });
 
 const pageTitleId = useId();
 
@@ -192,9 +207,4 @@ const widthClass = computed(() => {
       return '';
   }
 });
-
-const emit = defineEmits<{
-  import: [];
-  export: [];
-}>();
 </script>

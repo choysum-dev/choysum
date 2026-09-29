@@ -13,14 +13,14 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
     <ChoyManyToOneField :store="store" prop="CurrencyId"
       ><ChoyVarcharField :store="store" prop="CurrencyId.Name"
     /></ChoyManyToOneField>
     <ChoyManyToOneField :store="store" prop="CompanyId"><ChoyVarcharField :store="store" prop="CompanyId.Name" /></ChoyManyToOneField>
     <ChoyDateField :store="store" prop="Date" />
-    <ChoyNumberField :store="store" prop="Rate" />
+    <ChoyDecimalField :store="store" prop="Rate" />
   </ChoyListView>
 </template>
 
@@ -34,7 +34,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { ChoyDateField, ChoyListView, ChoyManyToOneField, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyDateField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneField} from '@/web';
 
 defineOptions({ name: 'ExchangeRateListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/ExchangeRateListView' });
