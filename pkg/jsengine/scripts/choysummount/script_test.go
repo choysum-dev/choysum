@@ -76,7 +76,7 @@ func TestVuePackageVersionMatchesWebKit(t *testing.T) {
 	pkgPath := filepath.Join(repoRoot, "modules", "web", "package.json")
 	data, err := os.ReadFile(pkgPath)
 	if err != nil {
-		t.Fatalf("read %s: %v (fallback const is only valid when kit package.json is present)", pkgPath, err)
+		t.Fatalf("read %s: %v", pkgPath, err)
 	}
 	var pkg struct {
 		Dependencies     map[string]string `json:"dependencies"`
@@ -95,9 +95,25 @@ func TestVuePackageVersionMatchesWebKit(t *testing.T) {
 		ver = peerVue
 	}
 	if ver != VuePackageVersion {
-		t.Fatalf("modules/web exact vue = %q, choysummount.VuePackageVersion = %q; keep them identical (kit package.json is SSOT)", ver, VuePackageVersion)
+		t.Fatalf("VuePackageVersion=%q out of date vs modules/web vue=%q; run: go generate ./pkg/jsengine/scripts/choysummount/...", VuePackageVersion, ver)
 	}
 	if strings.ContainsAny(ver, "^~*<>=| ") {
 		t.Fatalf("modules/web vue must be an exact pin for host SSOT, got %q", ver)
+	}
+
+	bootPath := filepath.Join(repoRoot, "internal", "bootstrap", "web", "package.json")
+	bootData, err := os.ReadFile(bootPath)
+	if err != nil {
+		t.Fatalf("read bootstrap: %v", err)
+	}
+	var boot struct {
+		Dependencies map[string]string `json:"dependencies"`
+	}
+	if err := json.Unmarshal(bootData, &boot); err != nil {
+		t.Fatal(err)
+	}
+	bootVue := strings.TrimPrefix(strings.TrimSpace(boot.Dependencies["vue"]), "v")
+	if bootVue != VuePackageVersion {
+		t.Fatalf("bootstrap web vue=%q out of date; run: go generate ./pkg/jsengine/scripts/choysummount/...", bootVue)
 	}
 }

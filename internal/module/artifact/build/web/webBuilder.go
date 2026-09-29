@@ -2295,7 +2295,8 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 	kitHost := filepath.Join(filepath.Dir(modulePath), "web")
 
 	// Vue SSOT: exact "vue" from modules/web/package.json (kit host). Domain
-	// modules cannot override. Fallback: choysummount.VuePackageVersion.
+	// modules cannot override. Fallback: generated VuePackageVersion
+	// (go generate ./pkg/jsengine/scripts/choysummount/...).
 	vueSource := modulePath
 	if kitHost != modulePath {
 		vueSource = kitHost

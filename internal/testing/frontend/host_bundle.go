@@ -323,7 +323,7 @@ func BuildFrontendVueHostBundle(opts VueHostBundleOptions) (*BundleResult, error
 
 // vueHostBareImportPins merges exact versions from modules/web/package.json
 // with a single Vue instance pin. Exact "vue" in that package.json is the
-// SSOT; choysummount.VuePackageVersion is only the fallback when missing.
+// SSOT; generated VuePackageVersion is only the fallback when missing.
 func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
 	webPins, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
 	if err != nil {

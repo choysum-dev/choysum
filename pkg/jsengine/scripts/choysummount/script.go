@@ -14,12 +14,9 @@ var MinimalDOMScript string
 //go:embed choysummount.js
 var ChoysumMountScript string
 
-// VuePackageVersion is the fallback Vue runtime pin when modules/web/package.json
-// has no exact "vue" peer/dependency. Keep it identical to that exact pin when
-// present (see TestVuePackageVersionMatchesWebKit).
-const VuePackageVersion = "3.5.38"
+//go:generate go run gen_vue_version.go
 
-// VueBareImportPins returns pins for [VuePackageVersion] (fallback host).
+// VueBareImportPins returns pins for [VuePackageVersion] (generated fallback).
 func VueBareImportPins() map[string]string {
 	return VueBareImportPinsFor(VuePackageVersion)
 }
