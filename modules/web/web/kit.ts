@@ -30,7 +30,7 @@ export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue'
 export { default as ChoyViewScope } from './components/view/ChoyViewScope.vue';
 export { default as ChoyButtonBox } from './components/view/ChoyButtonBox.vue';
 export { default as ChoyStatInfo } from './components/view/ChoyStatInfo.vue';
-export { default as ChoyVColumn } from './components/vtable/ChoyVColumn.vue';
+export { default as ChoyTableColumn } from './components/table/ChoyTableColumn.vue';
 export type { ChoyBreadcrumbItem } from './components/view/ChoyBreadcrumb.vue';
 export type { ViewMode as ChoyViewMode, ViewContainer as ChoyViewContainer } from './components/view/ChoyViewScope.vue';
 export {

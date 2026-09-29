@@ -14,7 +14,7 @@ import {
   ChoySearchView,
   ChoyTextField,
   ChoyVarcharField,
-  ChoyVColumn,
+  ChoyTableColumn,
 } from '@/web';
 import TerminologyEditor from './TerminologyEditor.vue';
 
@@ -23,7 +23,7 @@ const heavySfcs = [
   ChoyListView,
   ChoyVarcharField,
   ChoyTextField,
-  ChoyVColumn,
+  ChoyTableColumn,
   ChoySearchView,
   ChoyButton,
 ];
@@ -83,7 +83,7 @@ describe('TerminologyEditor page', () => {
         return () => h('div', { class: 'choy-list-view', 'data-test': 'list' }, slots.default?.());
       },
     } as any);
-    for (const Comp of [ChoyVarcharField, ChoyTextField, ChoyVColumn, ChoySearchView]) {
+    for (const Comp of [ChoyVarcharField, ChoyTextField, ChoyTableColumn, ChoySearchView]) {
       stubSfc(Comp as any, {
         name: (Comp as any).name || 'HeavyField',
         setup: () => () => null,

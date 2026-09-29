@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     :action-ids="{ delete: moduleLogActions.delete }"
     :has-action="hasAction"
   >
-    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
     <ChoyVarcharField prop="ModuleName" :label="_t('Module')" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoyVarcharField prop="Action" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <ChoyVarcharField prop="ResultStatus" :label="_t('Result')" :store="store" :vColumnProps="{ minWidth: 120 }" />
@@ -37,7 +37,7 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyDatetimeField, ChoyJsonField, ChoyListView, ChoyNumberField, ChoySearchView, ChoyVColumn, ChoyVarcharField, ChoyIntField} from '@/web';
+import { ChoyDatetimeField, ChoyJsonField, ChoyListView, ChoyNumberField, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyIntField} from '@/web';
 
 defineOptions({ name: 'ModuleLogListView', inheritAttrs: true });
 

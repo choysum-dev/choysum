@@ -15,7 +15,7 @@ import { providePageContext } from '@/web/web/composables/usePageContext';
 import ChoyListView from './ChoyListView.vue';
 import ListPagination from './ListPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
-import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
 
 function makeStore(extra?: Record<string, unknown>) {
@@ -53,9 +53,9 @@ function stubListChrome() {
       return () => h('div', { 'data-stub': 'ChoyTableHost' }, [slots.default?.(), slots.empty?.()]);
     },
   });
-  stubSfc(ChoyVColumn, {
-    name: 'ChoyVColumn',
-    setup: () => () => h('div', { 'data-stub': 'ChoyVColumn' }),
+  stubSfc(ChoyTableColumn, {
+    name: 'ChoyTableColumn',
+    setup: () => () => h('div', { 'data-stub': 'ChoyTableColumn' }),
   });
   stubSfc(ListPagination, {
     name: 'ListPagination',
@@ -71,7 +71,7 @@ function stubListChrome() {
 
 function restoreListChrome() {
   restoreSfc(ChoyTableHost);
-  restoreSfc(ChoyVColumn);
+  restoreSfc(ChoyTableColumn);
   restoreSfc(ListPagination);
   restoreSfc(ListInlineEditScope);
 }
@@ -102,7 +102,7 @@ describe('ListView', () => {
     await flushPromises();
     expect(root).toBeTruthy();
     // Handle VColumn is gated by showHandleColumn; without editable it should not mount.
-    expect(qa('[data-stub="ChoyVColumn"]').length).toBe(0);
+    expect(qa('[data-stub="ChoyTableColumn"]').length).toBe(0);
     unmount();
   });
 

@@ -12,7 +12,7 @@ import Search from '../view/search/Search.vue';
 import ChoyViewScope from '../view/ChoyViewScope.vue';
 import ChoyButtonBox from '../view/ChoyButtonBox.vue';
 import ChoyStatInfo from '../view/ChoyStatInfo.vue';
-import ChoyVColumn from '../vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '../table/ChoyTableColumn.vue';
 import ChoyVarcharField from './ChoyVarcharField.vue';
 import ChoyTextField from './ChoyTextField.vue';
 import ChoyBooleanField from './ChoyBooleanField.vue';
@@ -120,7 +120,7 @@ describe('Choy store-mode field hosts', () => {
     ChoyListView,
     ChoySearchView,
     ChoyStatInfo,
-    ChoyVColumn,
+    ChoyTableColumn,
   ];
 
   beforeEach(() => {
@@ -128,7 +128,7 @@ describe('Choy store-mode field hosts', () => {
     stubHost(ChoyFormView as any, 'o-form');
     stubHost(ListView as any, 'o-list');
     stubHost(ChoyStatInfo as any, 'o-stat');
-    stubHost(ChoyVColumn as any, 'o-vcolumn');
+    stubHost(ChoyTableColumn as any, 'o-vcolumn');
   });
 
   afterEach(() => {
@@ -600,7 +600,7 @@ describe('Choy store-mode field hosts', () => {
     expect(stat.q('[data-test=o-stat]')).not.toBeNull();
     stat.unmount();
 
-    stubSfc(ChoyVColumn as any, {
+    stubSfc(ChoyTableColumn as any, {
       setup: ((_props: any, { slots }: any) => {
         return () =>
           h(
@@ -621,7 +621,7 @@ describe('Choy store-mode field hosts', () => {
     const ColHost = defineComponent({
       setup() {
         return () =>
-          h(ChoyVColumn as any, null, {
+          h(ChoyTableColumn as any, null, {
             default: (slotProps: any) =>
               h('span', { 'data-test': 'cell', 'data-id': String(slotProps?.row?.Id ?? '') }),
           });
@@ -635,12 +635,12 @@ describe('Choy store-mode field hosts', () => {
     col.unmount();
 
     // No consumer default slot → do not forward an empty slot to VColumn.
-    const bare = mountApp(ChoyVColumn as any, { props: { label: 'Name' } });
+    const bare = mountApp(ChoyTableColumn as any, { props: { label: 'Name' } });
     await flushPromises();
     expect(bare.q('[data-test=o-vcolumn]')?.getAttribute('data-has-slot')).toBe('0');
     bare.unmount();
-    restoreSfc(ChoyVColumn as any);
-    stubHost(ChoyVColumn as any, 'o-vcolumn');
+    restoreSfc(ChoyTableColumn as any);
+    stubHost(ChoyTableColumn as any, 'o-vcolumn');
   });
 
 });

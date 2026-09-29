@@ -3,7 +3,7 @@
 
 import { provide, inject, ref, shallowRef, isRef, type Ref, type VNodeChild } from 'vue';
 
-/** Column definition registered by ChoyVColumn for ChoyTableHost / DataTable. */
+/** Column definition registered by ChoyTableColumn for ChoyTableHost / DataTable. */
 export type Column = {
   key?: string | number;
   dataKey?: string;
@@ -24,7 +24,7 @@ export type Column = {
 export type SelectionMode = 'multiple' | 'single';
 
 /**
- * Manages row selection state for ChoyTableHost (checkbox columns via ChoyVColumn).
+ * Manages row selection state for ChoyTableHost (checkbox columns via ChoyTableColumn).
  */
 export function useVTableSelection(keyGetter: (row: any) => string | number | undefined | null, mode: SelectionMode = 'multiple') {
   const selected = ref<Set<string | number>>(new Set());
@@ -98,7 +98,7 @@ export function useVTableSelection(keyGetter: (row: any) => string | number | un
 }
 
 /**
- * Column registry shared by ChoyVColumn under ChoyTableHost.
+ * Column registry shared by ChoyTableColumn under ChoyTableHost.
  */
 export type ColumnRegistry = {
   columns: Ref<Column[]>;
@@ -130,7 +130,7 @@ export function useVTableUseColumnRegistry(): ColumnRegistry | null {
 }
 
 /**
- * Build context shared by ChoyVColumn (selection, index base, store).
+ * Build context shared by ChoyTableColumn (selection, index base, store).
  */
 export type VTableBuildContext = {
   selectionApi?: ReturnType<typeof useVTableSelection>;
@@ -147,7 +147,7 @@ type VTableBuildContextInput = {
 const VTABLE_BUILDCTX_KEY = Symbol('ovtable:build-ctx');
 
 /**
- * Provides build context for nested ChoyVColumn components.
+ * Provides build context for nested ChoyTableColumn components.
  */
 export function useVTableProvideBuildContext(ctx: VTableBuildContextInput): VTableBuildContext {
   const normalized: VTableBuildContext = {

@@ -16,7 +16,7 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import ChoyListView from './ChoyListView.vue';
 import ListPagination from './ListPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
-import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
 
 function makeStore() {
@@ -69,8 +69,8 @@ function stubListChrome() {
       return () => h('div', { 'data-stub': 'ChoyTableHost' }, slots.default?.());
     },
   });
-  stubSfc(ChoyVColumn, {
-    name: 'ChoyVColumn',
+  stubSfc(ChoyTableColumn, {
+    name: 'ChoyTableColumn',
     setup: () => () => null,
   });
   stubSfc(ListPagination, {
@@ -87,7 +87,7 @@ function stubListChrome() {
 
 function restoreListChrome() {
   restoreSfc(ChoyTableHost);
-  restoreSfc(ChoyVColumn);
+  restoreSfc(ChoyTableColumn);
   restoreSfc(ListPagination);
   restoreSfc(ListInlineEditScope);
 }

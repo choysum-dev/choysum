@@ -11,7 +11,7 @@ import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.v
 import ViewContainer from '@/web/web/components/view/ViewContainer.vue';
 import ListPagination from './ListPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
-import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 
 function makeStore(search?: ReturnType<typeof fnRecorder>) {
   return {
@@ -55,8 +55,8 @@ function stubListChrome() {
     name: 'ChoyTableHost',
     setup: () => () => h('div', { 'data-stub': 'ChoyTableHost' }),
   });
-  stubSfc(ChoyVColumn, {
-    name: 'ChoyVColumn',
+  stubSfc(ChoyTableColumn, {
+    name: 'ChoyTableColumn',
     setup: () => () => null,
   });
   stubSfc(ListPagination, {
@@ -74,7 +74,7 @@ function restoreListChrome() {
   restoreSfc(ViewContainer);
   restoreSfc(ListInlineEditScope);
   restoreSfc(ChoyTableHost);
-  restoreSfc(ChoyVColumn);
+  restoreSfc(ChoyTableColumn);
   restoreSfc(ListPagination);
   restoreSfc(ChoySearchView);
 }

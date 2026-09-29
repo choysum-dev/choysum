@@ -13,8 +13,8 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
     <ChoyVarcharField :store="store" prop="Label" />
     <ChoyVarcharField :store="store" prop="Street1" />
     <ChoyVarcharField :store="store" prop="Zip" />
@@ -36,7 +36,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyVColumn, ChoyVarcharField} from '@/web';
+import { ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyTableColumn, ChoyVarcharField} from '@/web';
 
 defineOptions({ name: 'AddressListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressListView' });

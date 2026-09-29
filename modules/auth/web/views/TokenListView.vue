@@ -40,8 +40,8 @@ SPDX-License-Identifier: Apache-2.0
       :has-action="hasAction"
       @row-click="onRowClick"
     >
-    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
 
     <ChoyVarcharField prop="UserId.Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ChoyVarcharField prop="TokenType" :store="store" :vColumnProps="{ minWidth: 100 }" />
@@ -63,7 +63,7 @@ import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
-import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoySearchView, ChoyVColumn, ChoyVarcharField } from '@/web';
+import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
 

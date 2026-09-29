@@ -165,7 +165,7 @@ SPDX-License-Identifier: Apache-2.0
   </div>
 
   <!-- TABLE mode -->
-  <ChoyVColumn
+  <ChoyTableColumn
     v-else-if="effectiveRenderMode === 'table' && columnVisible"
     :prop="String(binding.prop)"
     :label="resolvedLabel"
@@ -226,7 +226,7 @@ SPDX-License-Identifier: Apache-2.0
         </template>
       </div>
     </div>
-  </ChoyVColumn>
+  </ChoyTableColumn>
 
   <!-- INLINE mode -->
   <div v-else-if="effectiveRenderMode === 'inline'" class="o-field-base__inline" v-show="visibleInline">
@@ -320,7 +320,7 @@ SPDX-License-Identifier: Apache-2.0
 import type { RuleItem } from 'async-validator';
 import type { BaseModel } from '@/core/rpc';
 import type { TermReference } from '@/core/service/i18n';
-import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
 import { computed, inject, onMounted, ref, watch } from 'vue';

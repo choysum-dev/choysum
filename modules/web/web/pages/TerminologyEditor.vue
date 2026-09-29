@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
       :searchView="ChoySearchView"
       :action-ids="{}"
     >
-      <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+      <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
       <ChoyVarcharField :store="termStore" prop="Module" :readonly="true" />
       <ChoyVarcharField :store="termStore" prop="Lang" :readonly="true" />
       <ChoyVarcharField :store="termStore" prop="Scope" :readonly="true" />
@@ -56,7 +56,7 @@ import {
   ChoySearchView,
   ChoyTextField,
   ChoyVarcharField,
-  ChoyVColumn
+  ChoyTableColumn
 } from '@/web';
 import { createStoreByModel, listRegisteredModelNames } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';

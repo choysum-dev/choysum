@@ -30,14 +30,14 @@ SPDX-License-Identifier: Apache-2.0
             :store="store"
             :base-index="1"
           >
-            <ChoyVColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
-            <ChoyVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
+            <ChoyTableColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
+            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
             <slot />
-            <ChoyVColumn :label="_t('Actions')" :width="60">
+            <ChoyTableColumn :label="_t('Actions')" :width="60">
               <template #default="{ $index }">
                 <ChoyButton size="sm" variant="destructive" @click="onRemove($index)">{{ _t('Delete') }}</ChoyButton>
               </template>
-            </ChoyVColumn>
+            </ChoyTableColumn>
           </ChoyTableHost>
         </div>
         <div class="o-one-to-many-actions">
@@ -57,7 +57,7 @@ SPDX-License-Identifier: Apache-2.0
             :store="store"
             :base-index="1"
           >
-            <ChoyVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
+            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
             <slot />
           </ChoyTableHost>
         </div>
@@ -73,7 +73,7 @@ import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rp
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
-import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';

@@ -8,7 +8,7 @@ import { LIST_HANDLE_API_KEY } from '@/web/web/composables/useListHandleReorder'
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import FieldBase from './FieldBase.vue';
 import ChoyOneToManyField from './ChoyOneToManyField.vue';
-import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 
@@ -67,8 +67,8 @@ function installStubs() {
         ]);
     },
   });
-  stubSfc(ChoyVColumn as any, {
-    name: 'ChoyVColumn',
+  stubSfc(ChoyTableColumn as any, {
+    name: 'ChoyTableColumn',
     props: { type: String, colKey: String },
     setup(props: any) {
       const cls = props.type === 'handle' ? 'ov-column-handle' : 'ov-column-stub';
@@ -93,7 +93,7 @@ function installStubs() {
 describe('ChoyOneToManyField handle column', () => {
   afterEach(() => {
     restoreSfc(FieldBase as any);
-    restoreSfc(ChoyVColumn as any);
+    restoreSfc(ChoyTableColumn as any);
     restoreSfc(ChoyTableHost as any);
     restoreSfc(ChoyViewScope as any);
     capturedHandleApi.current = null;

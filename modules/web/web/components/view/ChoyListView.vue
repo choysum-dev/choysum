@@ -96,9 +96,9 @@ SPDX-License-Identifier: Apache-2.0
           @row-click="onRowClick"
           @sort-change="onTableSortChange"
         >
-          <ChoyVColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
+          <ChoyTableColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
           <!-- Automatically inject the leading group column in grouped mode -->
-          <ChoyVColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
+          <ChoyTableColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
             <template #default="{ row }">
               <div v-if="row?.kind === 'group'" class="o-group-cell" :style="{ paddingLeft: `${row.depth * 16}px` }">
                 <span class="o-group-cell__caret" :class="{ expanded: isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
@@ -108,7 +108,7 @@ SPDX-License-Identifier: Apache-2.0
               <div v-else-if="row?.kind === 'more'" class="o-more-cell">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
               <span v-else></span>
             </template>
-          </ChoyVColumn>
+          </ChoyTableColumn>
           <slot />
           <template #empty>
             <slot name="empty">
@@ -132,7 +132,7 @@ import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ListPagination from './ListPagination.vue';
-import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { useVTableSelection } from '@/web/web/composables/useVTable';
 // Search view type: must accept store and emit query-update
 import type { Component } from 'vue';

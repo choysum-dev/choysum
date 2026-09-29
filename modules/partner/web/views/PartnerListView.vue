@@ -13,8 +13,8 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
 
     <ChoyVarcharField :store="store" prop="Name" :vColumnProps="{ minWidth: 180 }" />
     <ChoyVarcharField :store="store" prop="Code" :vColumnProps="{ minWidth: 120 }" />
@@ -41,7 +41,7 @@ import {
   ChoyManyToOneField,
   ChoyNumberField,
   ChoySearchView,
-  ChoyVColumn,
+  ChoyTableColumn,
   ChoyVarcharField,  ChoyIntField, ChoyManyToOneRefField} from '@/web';
 import { partnerActions, partnerOpenDetailAction } from './partner_actions';
 import { navigatePartnerDetail } from './partner_list_nav';

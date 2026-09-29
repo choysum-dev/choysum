@@ -4,7 +4,7 @@
 import { defineComponent, h, nextTick, provide, ref } from 'vue';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
-import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
 import {
   useVTableProvideBuildContext,
@@ -42,7 +42,7 @@ function mountHandleColumn(opts?: { enabled?: boolean; width?: number; colKey?: 
       } else if (opts?.type == null || opts?.type === 'handle') {
         columnProps.vColumnProps = { align: 'center' };
       }
-      return () => h(ChoyVColumn, columnProps);
+      return () => h(ChoyTableColumn, columnProps);
     },
   });
 

@@ -13,8 +13,8 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     @row-click="onRowClick"
   >
-    <ChoyVColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyVColumn type="index" :vColumnProps="{ align: 'right' }" />
+    <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
     <ChoyManyToOneField :store="store" prop="CurrencyId"
       ><ChoyVarcharField :store="store" prop="CurrencyId.Name"
     /></ChoyManyToOneField>
@@ -34,7 +34,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveListRowRecordId } from './list_row_nav';
-import { ChoyDateField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyVColumn, ChoyVarcharField, ChoyManyToOneField} from '@/web';
+import { ChoyDateField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneField} from '@/web';
 
 defineOptions({ name: 'ExchangeRateListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/ExchangeRateListView' });

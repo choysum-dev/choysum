@@ -7,7 +7,7 @@ import type { Column } from '@/web/web/composables/useVTable';
 const DEFAULT_COLUMN_SIZE = 150;
 
 /**
- * Maps ChoyVColumn registry entries (legacy Column) to TanStack ColumnDef for DataTable.
+ * Maps ChoyTableColumn registry entries (legacy Column) to TanStack ColumnDef for DataTable.
  * Cell/header renderers stay on the Column so slot-built VNodes keep working.
  */
 export function columnsToColumnDefs<T extends Record<string, unknown>>(

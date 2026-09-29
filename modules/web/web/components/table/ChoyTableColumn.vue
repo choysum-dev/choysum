@@ -13,10 +13,10 @@ import { useVTableUseColumnRegistry, useVTableUseBuildContext, setVColumnMeta, t
 import type { VColumnMeta } from '@/web/web/composables/useVTable';
 import { LIST_HANDLE_API_KEY, type ListHandleReorderApi } from '@/web/web/composables/useListHandleReorder';
 
-defineOptions({ name: 'ChoyVColumn' });
+defineOptions({ name: 'ChoyTableColumn' });
 
 let uid = 0;
-const genKey = () => `__choyvcol_${++uid}`;
+const genKey = () => `__choytablecol_${++uid}`;
 
 const props = withDefaults(
   defineProps<{

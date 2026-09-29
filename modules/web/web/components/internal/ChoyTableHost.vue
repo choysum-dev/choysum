@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div class="choy-table-host" :style="{ height: tableHeight ? `${tableHeight}px` : undefined }">
-    <!-- Hidden slot used only for ChoyVColumn registration. -->
+    <!-- Hidden slot used only for ChoyTableColumn registration. -->
     <div class="choy-table-host__registrars" aria-hidden="true">
       <slot />
     </div>
