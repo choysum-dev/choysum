@@ -83,7 +83,7 @@ SPDX-License-Identifier: Apache-2.0
     <div class="o-list__table" ref="tableWrapRef" :style="{ height: tablePxHeight }">
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
       <ListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
-        <VTable
+        <ChoyTableHost
           :data="tableItems"
           :row-key="computedRowKey"
           :row-height="effectiveRowHeight"
@@ -115,7 +115,7 @@ SPDX-License-Identifier: Apache-2.0
               <div class="ovtable__empty">{{ _t('No data') }}</div>
             </slot>
           </template>
-        </VTable>
+        </ChoyTableHost>
       </ListInlineEditScope>
     </div>
   </ViewContainer>
@@ -130,7 +130,7 @@ import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
-import VTable from '@/web/web/components/vtable/VTable.vue';
+import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ListPagination from './ListPagination.vue';
 import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import { useVTableSelection } from '@/web/web/composables/useVTable';
@@ -161,8 +161,7 @@ import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
 import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import { createTranslate } from '@/web/web/i18n';
-import type { SelectionExpose, RowEventPayload } from '@/web/web/components/view/listViewTypes';
-import type { RowEventHandlerParams } from '@/web/web/components/vtable/VTable.vue';
+import type { SelectionExpose, RowEventPayload, RowEventHandlerParams } from '@/web/web/components/view/listViewTypes';
 import { resolvePageStore, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';

@@ -19,3 +19,11 @@ export type RowEventPayload<T = any> = {
   rowKey: string | number | undefined;
   event: MouseEvent | Event;
 };
+
+/** Payload from ChoyTableHost / list table row interactions. */
+export type RowEventHandlerParams = {
+  rowData: any;
+  rowIndex: number;
+  rowKey?: string | number;
+  event?: Event;
+};

@@ -9,7 +9,7 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import FieldBase from './FieldBase.vue';
 import ChoyOneToManyField from './ChoyOneToManyField.vue';
 import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
-import VTable from '@/web/web/components/vtable/VTable.vue';
+import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 
 function makeBinding(opts: {
@@ -75,8 +75,8 @@ function installStubs() {
       return () => h('div', { class: cls, 'data-type': props.type, 'data-key': props.colKey });
     },
   });
-  stubSfc(VTable as any, {
-    name: 'VTable',
+  stubSfc(ChoyTableHost as any, {
+    name: 'ChoyTableHost',
     setup(_: any, { slots }: any) {
       capturedHandleApi.current = inject(LIST_HANDLE_API_KEY, null);
       return () => h('div', { class: 'ov-table-stub' }, slots.default?.());
@@ -94,7 +94,7 @@ describe('ChoyOneToManyField handle column', () => {
   afterEach(() => {
     restoreSfc(FieldBase as any);
     restoreSfc(ChoyVColumn as any);
-    restoreSfc(VTable as any);
+    restoreSfc(ChoyTableHost as any);
     restoreSfc(ChoyViewScope as any);
     capturedHandleApi.current = null;
   });

@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     <template #edit>
       <ChoyViewScope v-if="!allowRowEdit" view-mode="display" :container="'List'" :field-prefix="String(prop)">
         <div class="o-many-to-many__table" :style="{ height: tableHeightPxEdit }" tabindex="-1">
-          <VTable
+          <ChoyTableHost
             ref="ovTableRef"
             :data="getItems()"
             :row-key="'__rowKey'"
@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
                 <ChoyButton size="sm" variant="destructive" @click="onRemove($index)">{{ _t('Delete') }}</ChoyButton>
               </template>
             </ChoyVColumn>
-          </VTable>
+          </ChoyTableHost>
         </div>
         <div class="o-many-to-many-actions">
           <ChoyButton v-if="searchList" size="sm" variant="link" @click="openPicker">{{ _t('Add row') }}</ChoyButton>
@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
       <template v-else>
         <ChoyViewScope :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
           <div class="o-many-to-many__table" :style="{ height: tableHeightPxEdit }" tabindex="-1">
-            <VTable
+            <ChoyTableHost
               ref="ovTableRef"
               :data="getItems()"
               :row-key="'__rowKey'"
@@ -65,7 +65,7 @@ SPDX-License-Identifier: Apache-2.0
                   <ChoyButton size="sm" variant="destructive" @click="onRemove($index)">{{ _t('Delete') }}</ChoyButton>
                 </template>
               </ChoyVColumn>
-            </VTable>
+            </ChoyTableHost>
           </div>
           <div class="o-many-to-many-actions">
             <ChoyButton v-if="searchList" size="sm" variant="link" @click="openPicker">{{ _t('Add row') }}</ChoyButton>
@@ -78,7 +78,7 @@ SPDX-License-Identifier: Apache-2.0
     <template #display>
       <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
         <div class="o-many-to-many__table" :style="{ height: tableHeightPxDisplay }">
-          <VTable
+          <ChoyTableHost
             :data="getItems()"
             :row-key="'__rowKey'"
             :row-height="rowHeightDisplayRes"
@@ -89,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
           >
             <ChoyVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
             <slot />
-          </VTable>
+          </ChoyTableHost>
         </div>
       </ChoyViewScope>
     </template>
@@ -130,8 +130,8 @@ import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import FieldBase, { type FieldStateExpr, type FormItemProps } from './FieldBase.vue';
-import VTable from '@/web/web/components/vtable/VTable.vue';
-import VColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
+import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
+import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import ViewScope from '@/web/web/components/view/ChoyViewScope.vue';
@@ -253,7 +253,7 @@ const tableHeightPxDisplay = computed(() => `${tableHeightDisplay.value}px`);
 
 const dialogVisible = ref(false);
 const searchViewRef = ref<SelectionExpose<any> | null>(null);
-const ovTableRef = ref<InstanceType<typeof VTable> | null>(null);
+const ovTableRef = ref<InstanceType<typeof ChoyTableHost> | null>(null);
 
 // Read the row-key seed.
 function readRowKeySeed(row: unknown): string | number | undefined {

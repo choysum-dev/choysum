@@ -3,7 +3,7 @@
 
 import { provide, inject, ref, shallowRef, isRef, type Ref, type VNodeChild } from 'vue';
 
-/** Column definition previously backed by Element Plus TableV2. */
+/** Column definition registered by ChoyVColumn for ChoyTableHost / DataTable. */
 export type Column = {
   key?: string | number;
   dataKey?: string;
@@ -19,12 +19,12 @@ export type Column = {
 };
 
 /**
- * Row-selection modes supported by virtual tables.
+ * Row-selection modes supported by list / relation tables.
  */
 export type SelectionMode = 'multiple' | 'single';
 
 /**
- * Manages row selection state for virtual tables.
+ * Manages row selection state for ChoyTableHost (checkbox columns via ChoyVColumn).
  */
 export function useVTableSelection(keyGetter: (row: any) => string | number | undefined | null, mode: SelectionMode = 'multiple') {
   const selected = ref<Set<string | number>>(new Set());
@@ -98,7 +98,7 @@ export function useVTableSelection(keyGetter: (row: any) => string | number | un
 }
 
 /**
- * Column registry shared by VTable column components.
+ * Column registry shared by ChoyVColumn under ChoyTableHost.
  */
 export type ColumnRegistry = {
   columns: Ref<Column[]>;
@@ -130,7 +130,7 @@ export function useVTableUseColumnRegistry(): ColumnRegistry | null {
 }
 
 /**
- * Build context shared by virtual table columns.
+ * Build context shared by ChoyVColumn (selection, index base, store).
  */
 export type VTableBuildContext = {
   selectionApi?: ReturnType<typeof useVTableSelection>;
@@ -147,7 +147,7 @@ type VTableBuildContextInput = {
 const VTABLE_BUILDCTX_KEY = Symbol('ovtable:build-ctx');
 
 /**
- * Provides build context for virtual table columns.
+ * Provides build context for nested ChoyVColumn components.
  */
 export function useVTableProvideBuildContext(ctx: VTableBuildContextInput): VTableBuildContext {
   const normalized: VTableBuildContext = {
@@ -161,7 +161,7 @@ export function useVTableProvideBuildContext(ctx: VTableBuildContextInput): VTab
 }
 
 /**
- * Injects the current virtual table build context.
+ * Injects the current table build context.
  */
 export function useVTableUseBuildContext(): VTableBuildContext {
   return inject<VTableBuildContext>(VTABLE_BUILDCTX_KEY, {});

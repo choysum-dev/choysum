@@ -117,12 +117,14 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </div>
       <div
-        v-if="!rows.length"
+        v-if="showEmpty && !rows.length"
         role="row"
         aria-rowindex="2"
         class="flex h-full items-center justify-center text-sm text-foreground/50"
       >
-        <div role="gridcell">No data</div>
+        <div role="gridcell">
+          <slot name="empty">No data</slot>
+        </div>
       </div>
     </div>
   </div>
@@ -171,19 +173,29 @@ const props = withDefaults(
     height?: number;
     estimateSize?: number;
     enableSorting?: boolean;
+    /**
+     * client: reorder rows in the table.
+     * server: header clicks emit sort-change; data order is host-owned.
+     */
+    sortingMode?: 'client' | 'server';
     enableRowSelection?: boolean;
+    /** When false, host renders its own empty state. */
+    showEmpty?: boolean;
   }>(),
   {
     height: 280,
     estimateSize: 36,
     enableSorting: true,
+    sortingMode: 'client',
     enableRowSelection: true,
+    showEmpty: true,
   },
 );
 
 const emit = defineEmits<{
   'update:rowSelection': [ids: DataTableRowId[]];
   'row-click': [row: T];
+  'sort-change': [payload: { field: string; direction?: 'asc' | 'desc' }];
 }>();
 
 const sorting = ref<SortingState>([]);
@@ -309,6 +321,9 @@ const table = useVueTable({
   },
   get enableSorting() {
     return props.enableSorting;
+  },
+  get manualSorting() {
+    return props.sortingMode === 'server';
   },
   defaultColumn,
   getCoreRowModel: getCoreRowModel(),
@@ -446,6 +461,12 @@ function onHeaderClick(columnId: string, canSort: boolean): void {
   if (!canSort || !props.enableSorting || columnId === '__select') {
     return;
   }
+  if (props.sortingMode === 'server') {
+    // Match legacy list host: each header click requests ascending server order.
+    sorting.value = [{ id: columnId, desc: false }];
+    emit('sort-change', { field: columnId, direction: 'asc' });
+    return;
+  }
   const current =
     sorting.value[0] != null
       ? { id: sorting.value[0].id, desc: !!sorting.value[0].desc }
@@ -453,6 +474,15 @@ function onHeaderClick(columnId: string, canSort: boolean): void {
   const next = nextDataTableSort(current, columnId);
   sorting.value = next ? [{ id: next.id, desc: next.desc }] : [];
 }
+
+function scrollToRow(index: number, align?: 'start' | 'center' | 'end' | 'auto'): void {
+  if (!Number.isFinite(index) || index < 0) {
+    return;
+  }
+  virtualizer.value.scrollToIndex(index, { align: align ?? 'auto' });
+}
+
+defineExpose({ scrollToRow });
 
 const allSelected = computed(() => {
   if (table.getIsAllPageRowsSelected()) {

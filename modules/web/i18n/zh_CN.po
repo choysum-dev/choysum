@@ -1290,8 +1290,8 @@ msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Remove group"
 msgstr "移除分组"
 
-#: web/components/vtable/VTable.vue:21
-msgctxt "web/components/vtable/VTable"
+#: web/components/internal/ChoyTableHost.vue:32
+msgctxt "web/components/internal/ChoyTableHost"
 msgid "No data"
 msgstr "暂无数据"
 

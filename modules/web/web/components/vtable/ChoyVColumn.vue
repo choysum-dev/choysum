@@ -159,7 +159,7 @@ function buildColumn(): Column {
 
   // Parse width semantics.
   const widthSpec = getWidthSpecFromProps();
-  // Apply pixel widths immediately and let VTable normalize the others.
+  // Apply pixel widths immediately; percent/flex/auto stay in metadata.
   if (widthSpec?.type === 'px') colProps.width = widthSpec.value;
 
   // Build the column definition.
@@ -313,7 +313,7 @@ function buildColumn(): Column {
     };
   }
 
-  // Persist percentage, flex, and auto width semantics in metadata for VTable.
+  // Persist percentage, flex, and auto width semantics for the table host.
   if (widthSpec && widthSpec.type !== 'px') {
     const meta: VColumnMeta =
       widthSpec.type === 'percent'

@@ -4,7 +4,7 @@
 /**
  * ListView create-action under QJS.
  * KanbanView paints New via ElButton mount stubs; ListView often yields an empty
- * mount root even with VTable/VColumn stubSfc'd (inline-edit scope / first-frame).
+ * mount root even with ChoyTableHost/VColumn stubSfc'd (inline-edit scope / first-frame).
  * Prefer New-button clicks when painted; otherwise keep progressive density on
  * empty createAction + mounted expose surface.
  */
@@ -15,7 +15,7 @@ import { buildPageMountGlobal } from '@choysum/page-mount';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyListView from './ChoyListView.vue';
 import ListPagination from './ListPagination.vue';
-import VTable from '@/web/web/components/vtable/VTable.vue';
+import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
 
@@ -63,10 +63,10 @@ function findNewButton(el: HTMLElement) {
 }
 
 function stubListChrome() {
-  stubSfc(VTable, {
-    name: 'VTable',
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
     setup(_p: any, { slots }: any) {
-      return () => h('div', { 'data-stub': 'VTable' }, slots.default?.());
+      return () => h('div', { 'data-stub': 'ChoyTableHost' }, slots.default?.());
     },
   });
   stubSfc(ChoyVColumn, {
@@ -86,7 +86,7 @@ function stubListChrome() {
 }
 
 function restoreListChrome() {
-  restoreSfc(VTable);
+  restoreSfc(ChoyTableHost);
   restoreSfc(ChoyVColumn);
   restoreSfc(ListPagination);
   restoreSfc(ListInlineEditScope);

@@ -3,7 +3,7 @@
 
 /**
  * Dense QJS subset of ListView behaviors. Main suite mocked createListController
- * and drove VTable emits; here we use a real controller + stubbed table chrome
+ * and drove table emits; here we use a real controller + stubbed table chrome
  * and assert expose/action-target / handle visibility contracts.
  */
 
@@ -14,7 +14,7 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import { providePageContext } from '@/web/web/composables/usePageContext';
 import ChoyListView from './ChoyListView.vue';
 import ListPagination from './ListPagination.vue';
-import VTable from '@/web/web/components/vtable/VTable.vue';
+import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyVColumn from '@/web/web/components/vtable/ChoyVColumn.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
 
@@ -46,11 +46,11 @@ function makeStore(extra?: Record<string, unknown>) {
 }
 
 function stubListChrome() {
-  stubSfc(VTable, {
-    name: 'VTable',
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
     emits: ['row-click', 'selection-change', 'sort-change'],
     setup(_p: any, { slots }: any) {
-      return () => h('div', { 'data-stub': 'VTable' }, [slots.default?.(), slots.empty?.()]);
+      return () => h('div', { 'data-stub': 'ChoyTableHost' }, [slots.default?.(), slots.empty?.()]);
     },
   });
   stubSfc(ChoyVColumn, {
@@ -70,7 +70,7 @@ function stubListChrome() {
 }
 
 function restoreListChrome() {
-  restoreSfc(VTable);
+  restoreSfc(ChoyTableHost);
   restoreSfc(ChoyVColumn);
   restoreSfc(ListPagination);
   restoreSfc(ListInlineEditScope);
