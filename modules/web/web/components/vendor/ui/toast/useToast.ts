@@ -91,7 +91,7 @@ export function clearToasts(): void {
 }
 
 /**
- * Reactive toast list for the gallery Toaster host.
+ * Reactive toast list for the Toaster host.
  */
 export function useToastStore() {
   return toasts;

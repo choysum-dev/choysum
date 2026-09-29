@@ -169,6 +169,10 @@ import { Plus, RefreshCw, Trash2 } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
+/**
+ * Store-only list engine. Requires :store or a page-provided store
+ * (resolvePageStore); there is no chrome-only dual-mode path.
+ */
 const { _t } = createTranslate('web', { scope: 'web/components/view/ListView' });
 
 const props = withDefaults(

@@ -2,16 +2,6 @@
  * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
  * SPDX-License-Identifier: Apache-2.0
  *
- * Gallery-scoped minimal reset while Element Plus still owns product pages.
- * Loaded from the main SPA bundle; Tailwind FullCSS preflight stays off until
- * EP CSS is removed (PR9c). Generated utilities omit FullCSS preflight.
+ * Optional extra preflight hooks. Product box-sizing / body reset live in
+ * index.css; Tailwind FullCSS preflight stays off for the generated utilities.
  */
-
-.choy-gallery-root,
-.choy-gallery-root * {
-  box-sizing: border-box;
-}
-
-.choy-gallery-root {
-  min-height: 100vh;
-}

@@ -124,6 +124,10 @@ import type {
 
 defineOptions({ name: 'ChoyFormView' });
 
+/**
+ * Store-only form engine. Requires :store or a page-provided store
+ * (resolvePageStore); there is no chrome-only dual-mode path.
+ */
 const { _t, _lt } = createTranslate('web', { scope: 'web/components/view/FormView' });
 const detailsTitle = _lt('Details');
 

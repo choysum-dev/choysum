@@ -22,7 +22,7 @@ const ChoyTailwindBudget = 500 * time.Millisecond
 
 const choyTailwindGeneratedCSSName = "choy-tailwind.generated.css"
 
-// choyGalleryRootSelector is retained for gallery-only CSS helpers and tests.
+// choyGalleryRootSelector is retained for CSS scoping unit helpers/tests only.
 // Cutover product builds emit unscoped theme+utilities for the main bundle.
 const choyGalleryRootSelector = ".choy-gallery-root"
 
@@ -278,6 +278,9 @@ func isChoyKitTailwindInputPath(webRoot, path string) bool {
 	case strings.HasPrefix(slash, "composables/"):
 		return strings.Contains(base, "Choy") || strings.Contains(base, "choy")
 	case strings.HasPrefix(slash, "pages/"):
+		// Product Gallery/Dogfood pages are gone; keep these names so kit
+		// Tailwind fixture tests that write temporary Gallery/Dogfood SFCs
+		// still contribute candidates.
 		return base == "Gallery.vue" ||
 			strings.HasPrefix(base, "Dogfood") ||
 			strings.HasPrefix(base, "partnerDetail") ||

@@ -6,7 +6,7 @@ import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 
 /**
  * Detects whether a Choy field should bind to a WebModelStore engine.
- * Gallery / Dogfood paths omit store+prop and keep defineModel chrome.
+ * Field chrome (`defineModel`) remains for FE unit mounts that omit store+prop.
  * `pageStore` covers fields under a store-backed ChoyPage that only pass `prop`.
  */
 export function isChoyStoreFieldBinding(

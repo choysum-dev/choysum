@@ -160,7 +160,7 @@ import {
 
 /**
  * L3 virtual data table (TanStack Table + virtualizer).
- * Not a public Choy* export — consumed by List / Gallery dogfood.
+ * Not a public Choy* export — consumed by List and related kit hosts.
  */
 const props = withDefaults(
   defineProps<{

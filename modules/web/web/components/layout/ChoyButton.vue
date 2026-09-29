@@ -26,7 +26,7 @@ type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructiv
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
 
 /**
- * Public L1 button for custom pages (login, dogfood). Wraps L2 ui/button so
+ * Public L1 button for custom pages (login and domain shells). Wraps L2 ui/button so
  * domain modules never import vendor/ui directly.
  *
  * Declares click so parent @click is an emit listener (nested Button is a

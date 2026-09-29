@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Gallery-only barrel for vendored L2 primitives under components/vendor/ui
+ * Internal barrel for vendored L2 primitives under components/vendor/ui
+ * (not a public Choy* kit surface — domain code imports from `@/web`).
  * (not exported from the public web entry).
  */
 export { default as Badge } from './badge/Badge.vue';

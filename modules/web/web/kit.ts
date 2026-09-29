@@ -7,8 +7,6 @@
  * Never import ui/*, internal/*, Reka, Unovis, or TanStack from domain code.
  */
 
-export { registerChoyGalleryRoute, setupRouter as setupChoyGalleryRouter, choyUiRoutes } from './route/choyGallery';
-
 export { default as ChoyLayout } from './components/layout/ChoyLayout.vue';
 export { default as ChoyPage } from './components/layout/ChoyPage.vue';
 export { default as ChoyPageIoMenu } from './components/layout/ChoyPageIoMenu.vue';
@@ -90,6 +88,7 @@ export type {
   ChoyChartItemClickPayload,
   ChoyChartMetricOption,
 } from './components/view/chartViewHelpers';
+export { groupRowsToChartSeries } from './components/view/chartStoreHelpers';
 
 export { default as ChoyFieldBase } from './components/field/ChoyFieldBase.vue';
 export { default as ChoyVarcharField } from './components/field/ChoyVarcharField.vue';

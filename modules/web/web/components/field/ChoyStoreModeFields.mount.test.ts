@@ -268,40 +268,6 @@ describe('Choy store-mode field hosts', () => {
     search.unmount();
   });
 
-  test('Gallery form shell forwards attrs and named slot chrome paths', async () => {
-    const GalleryFormShell = (await import('../../pages/GalleryFormShell.vue')).default;
-    const Host = defineComponent({
-      setup() {
-        return () =>
-          h(
-            GalleryFormShell,
-            { title: 'T', 'data-test': 'form-chrome', class: 'extra-class' } as any,
-            {
-              breadcrumb: () => h('span', { 'data-test': 'crumb' }),
-              'system-actions': () => h('span', { 'data-test': 'sys' }),
-              'user-actions': () => h('span', { 'data-test': 'usr' }),
-              statusbar: () => h('span', { 'data-test': 'status' }),
-              'button-box': () => h('span', { 'data-test': 'bbox' }),
-              'header-right': () => h('span', { 'data-test': 'right' }),
-              default: () => h('span', 'body'),
-            },
-          );
-      },
-    });
-    const w = mountApp(Host);
-    await flushPromises();
-    const root = w.q('[data-anchor="choy.form-view"]') as HTMLElement | null;
-    expect(root).not.toBeNull();
-    expect(root?.getAttribute('data-test')).toBe('form-chrome');
-    expect(w.q('[data-test=crumb]')).not.toBeNull();
-    expect(w.q('[data-test=sys]')).not.toBeNull();
-    expect(w.q('[data-test=usr]')).not.toBeNull();
-    expect(w.q('[data-test=status]')).not.toBeNull();
-    expect(w.q('[data-test=bbox]')).not.toBeNull();
-    expect(w.q('[data-test=right]')).not.toBeNull();
-    w.unmount();
-  });
-
   test('FormView store mode forwards named slots to FormView', async () => {
     stubSfc(ChoyFormView, {
       props: { store: null },
@@ -343,79 +309,13 @@ describe('Choy store-mode field hosts', () => {
     }
   });
 
-  test('SearchView chrome submit paths', async () => {
-    const queries: Array<{ keyword: string }> = [];
+  test('SearchView store mount; Form/List/Search forward host listeners', async () => {
     const sw = mountApp(ChoySearchView as any, {
-      props: { keyword: 'hello' },
-      on: {
-        onQueryUpdate: (q: { keyword: string }) => {
-          queries.push(q);
-        },
-      },
+      props: { store: fakeStore, keyword: 'hello', initialEmit: false },
     });
     await flushPromises();
     expect(sw.q('[data-anchor="choy.search-view"]')).not.toBeNull();
-    // QJS has no KeyboardEvent; drive the same handlers the template binds.
-    const searchState = sw.setupState();
-    searchState.submit();
-    await flushPromises();
-    expect(queries.length).toBeGreaterThan(0);
-    expect(queries[0]?.keyword).toBe('hello');
-
-    const beforeKey = queries.length;
-    searchState.onKeydown({
-      key: 'Enter',
-      isComposing: false,
-      keyCode: 13,
-      preventDefault() {},
-    });
-    await flushPromises();
-    expect(queries.length).toBeGreaterThan(beforeKey);
-
-    // Ignored composing / non-Enter keydowns.
-    const beforeIgnored = queries.length;
-    searchState.onKeydown({
-      key: 'Enter',
-      isComposing: true,
-      keyCode: 13,
-      preventDefault() {},
-    });
-    searchState.onKeydown({
-      key: 'Enter',
-      isComposing: false,
-      keyCode: 229,
-      preventDefault() {},
-    });
-    searchState.onKeydown({
-      key: 'a',
-      isComposing: false,
-      keyCode: 65,
-      preventDefault() {},
-    });
-    await flushPromises();
-    expect(queries.length).toBe(beforeIgnored);
-
-    // Cover disabled early-return.
-    const beforeDisabled = queries.length;
-    const sd = mountApp(ChoySearchView as any, {
-      props: { disabled: true, keyword: 'x' },
-      on: {
-        onQueryUpdate: (q: { keyword: string }) => {
-          queries.push(q);
-        },
-      },
-    });
-    await flushPromises();
-    sd.setupState().submit();
-    sd.setupState().onKeydown({
-      key: 'Enter',
-      isComposing: false,
-      keyCode: 13,
-      preventDefault() {},
-    });
-    await flushPromises();
-    expect(queries.length).toBe(beforeDisabled);
-    sd.unmount();
+    expect(sw.q('[data-test=choy-search]')).not.toBeNull();
     sw.unmount();
 
     // Undeclared on* attrs forward via v-on once (keys stripped for toHandlers).

@@ -22,7 +22,6 @@ import {
 import { detectBrowserTimezone, resolveRequestTimezone } from './utils/requestTimezone';
 import { setUserTimeZoneResolver } from './utils/datetime';
 import { useAuthStore } from '@/auth/web/stores/auth';
-import { registerChoyGalleryRoute } from './route/choyGallery';
 import {
   applyChoyThemePreference,
   readChoyThemePreference,
@@ -48,7 +47,6 @@ export type SetupAppDeps = {
   trackComposerMessageRevision?: typeof trackComposerMessageRevision;
   createAppRouter?: typeof createAppRouter;
   createAppMenu?: typeof createAppMenu;
-  registerChoyGalleryRoute?: typeof registerChoyGalleryRoute;
   applyChoyThemePreference?: typeof applyChoyThemePreference;
   readChoyThemePreference?: typeof readChoyThemePreference;
   baseUrl?: string;
@@ -177,8 +175,4 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
 
   const menuPlugin = makeMenu();
   app.usePlugin('menu', menuPlugin);
-
-  // Gallery / dogfood routes live under this module; registration is idempotent.
-  const registerGallery = pickDep(deps.registerChoyGalleryRoute, registerChoyGalleryRoute);
-  registerGallery(app);
 }
