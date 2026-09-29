@@ -306,7 +306,7 @@ describe('OSearch behavior', () => {
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
 
     const before = (m.emitted['query-update'] || []).length;
-    m.qa('button')[0]!.dispatchEvent(new Event('click', { bubbles: true }));
+    m.qa('.choy-search__leading-btn')[0]!.dispatchEvent(new Event('click', { bubbles: true }));
     await nextTick();
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(before);
     m.unmount();
