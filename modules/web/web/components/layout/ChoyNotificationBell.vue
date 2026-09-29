@@ -60,7 +60,7 @@ SPDX-License-Identifier: Apache-2.0
           <DropdownMenuItem
             v-for="row in rows"
             :key="String(row.Id)"
-            :class="{ 'is-unread bg-primary/10': row.IsRead !== true }"
+            :class="row.IsRead !== true ? 'is-unread bg-primary/10' : undefined"
             @select="() => handleItemClick(row)"
           >
             <div class="flex min-w-64 flex-col gap-1">

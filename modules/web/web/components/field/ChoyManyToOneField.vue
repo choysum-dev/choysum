@@ -50,8 +50,12 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <template #display="{ fieldValue }">
       <span
-        class="choy-field-display-text break-all whitespace-normal p-0 leading-[inherit] text-foreground"
-        :class="{ 'choy-field-display-text--clickable cursor-pointer text-primary transition-colors hover:text-primary-dark focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-muted': isValueClickable }"
+        class="choy-field-display-text break-all whitespace-normal p-0 leading-[inherit]"
+        :class="
+          isValueClickable
+            ? 'choy-field-display-text--clickable cursor-pointer text-primary transition-colors hover:text-primary-dark focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-muted'
+            : 'text-foreground'
+        "
         :role="isValueClickable ? 'button' : undefined"
         :tabindex="isValueClickable ? 0 : undefined"
         @click="onDisplayValueClick(fieldValue().value as any, $event)"
