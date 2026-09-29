@@ -222,7 +222,7 @@ SPDX-License-Identifier: Apache-2.0
   <div v-else-if="effectiveRenderMode === 'inline'" class="choy-field-base__inline inline-flex items-center gap-1" v-show="visibleInline">
     <div
       v-if="showInlineError && displayError"
-      class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error"
+      class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error inline-flex items-center gap-1.5"
       :title="displayError"
     >
       <template v-if="effectiveEditInline">

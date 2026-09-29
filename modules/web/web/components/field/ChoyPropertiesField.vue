@@ -113,12 +113,12 @@ SPDX-License-Identifier: Apache-2.0
       <span v-if="isTableLike" class="truncate text-[13px] text-foreground" data-testid="choy-properties-summary">
         {{ summaryText(fieldValue().value) }}
       </span>
-      <div v-else class="choy-properties-form choy-properties-form--display" data-testid="choy-properties-form">
+      <div v-else class="choy-properties-form choy-properties-form--display flex w-full flex-col gap-2" data-testid="choy-properties-form">
         <div v-if="!renderableItems.length" class="min-h-1" data-testid="choy-properties-empty" />
         <div
           v-for="item in renderableItems"
           :key="item.name"
-          class="choy-properties-item choy-properties-item--display"
+          class="choy-properties-item choy-properties-item--display grid grid-cols-[minmax(96px,28%)_1fr] items-center gap-2"
           :data-name="item.name"
         >
           <span class="text-[13px] text-foreground">{{ itemLabel(item) }}</span>

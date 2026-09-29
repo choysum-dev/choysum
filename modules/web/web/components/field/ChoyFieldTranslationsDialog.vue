@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
             <div class="choy-field-translations-dialog__control">
               <input
                 v-model="row.value"
-                class="choy-field-translations-dialog__input box-border w-full min-w-0"
+                class="choy-field-translations-dialog__input box-border min-h-8 w-full min-w-0 rounded-md border border-border bg-background px-2.5 py-1 text-foreground"
                 :maxlength="maxLength ?? undefined"
               />
               <div v-if="row.code === 'en_US'" class="choy-field-translations-dialog__hint mt-1 text-xs leading-snug text-muted-foreground">

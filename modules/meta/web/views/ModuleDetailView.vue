@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     :action-ids="{ edit: moduleIndexActions.edit, copy: moduleIndexActions.copy, delete: moduleIndexActions.delete }"
     :has-action="hasAction"
   >
-    <ChoyCard :title="_t('Basic Information')" class="mdd-card mb-3.5"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Basic Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="3">
           <ChoyVarcharField :store="store" prop="ModuleName" />
         </ChoyCol>
@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard :title="_t('Sync Information')" class="mdd-card mb-3.5"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Sync Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="3">
           <ChoyDatetimeField :store="store" prop="LastSyncAt" />
         </ChoyCol>
@@ -55,14 +55,14 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard title="Manifest" class="mdd-card mb-3.5"><ChoyGrid :cols="12">
+    <ChoyCard title="Manifest" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="12">
           <ChoyJsonField :store="store" prop="ManifestJson" label="ManifestJson" />
         </ChoyCol>
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard :title="_t('Timestamps')" class="mdd-card mb-3.5"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Timestamps')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="3">
           <ChoyDatetimeField :store="store" prop="CreatedAt" />
         </ChoyCol>

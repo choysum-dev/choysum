@@ -464,7 +464,7 @@ function highlightSuggestion(label: string): string {
   let out = '';
   while (pos >= 0) {
     out += escapeHtml(raw.slice(cursor, pos));
-    out += `<span class="choy-m2m-tags__suggestion-hit text-primary">${escapeHtml(raw.slice(pos, pos + needle.length))}</span>`;
+    out += `<span class="choy-m2m-tags__suggestion-hit text-primary font-semibold">${escapeHtml(raw.slice(pos, pos + needle.length))}</span>`;
     cursor = pos + needle.length;
     pos = lower.indexOf(needle, cursor);
   }

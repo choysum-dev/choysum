@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
         <label
           v-else
           class="choy-binary-upload box-border block w-full"
-          :class="{ 'choy-binary-upload--drag': uploadDrag }"
+          :class="{ 'choy-binary-upload--drag min-h-[126px] cursor-pointer rounded-xl border border-dashed border-border bg-muted px-4 py-5 hover:border-primary hover:bg-primary-subtle': uploadDrag }"
           @dragover.prevent="onUploadDragOver"
           @drop.prevent="onNativeFileDrop($event, fieldValue, onFieldChange)"
         >

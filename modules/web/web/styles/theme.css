@@ -28,6 +28,7 @@
   --color-success-subtle: var(--choy-color-success-subtle);
   --color-warning-subtle: var(--choy-color-warning-subtle);
   --color-danger-subtle: var(--choy-color-danger-subtle);
+  --color-info-subtle: var(--choy-color-info-subtle);
 
   --radius-sm: var(--choy-radius-sm);
   --radius-md: var(--choy-radius-md);
