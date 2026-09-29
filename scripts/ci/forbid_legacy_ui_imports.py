@@ -47,7 +47,7 @@ SKIP_DIR_NAMES = {
 
 # Product vue/css must not reference legacy Element Plus CSS vars / selectors.
 EL_CSS_VAR_RE = re.compile(r"--el-[a-z0-9-]+")
-EL_CSS_SEL_RE = re.compile(r"(?<![\w-])\.el-[a-zA-Z][\w-]*")
+EL_CSS_SEL_RE = re.compile(r"\.el-[a-zA-Z][\w-]*")
 
 FORBIDDEN_PACKAGE_PREFIXES = (
     "element-plus",

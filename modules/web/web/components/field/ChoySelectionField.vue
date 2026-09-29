@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ displayLabelFor(record, fieldValue().value) }}</span>
+      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ displayLabelFor(record, fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>

@@ -246,7 +246,9 @@ class ForbidLegacyUiImportsTest(unittest.TestCase):
             bad_css = styles / "leak.css"
             bad_css.write_text(
                 ".z { border-color: var(--el-border-color-light); }\n"
-                ".el-upload { display: block; }\n",
+                ".el-upload { display: block; }\n"
+                "button.el-button { margin: 0; }\n"
+                ".toolbar.el-button { padding: 0; }\n",
                 encoding="utf-8",
             )
             good = app / "Ok.vue"
@@ -264,12 +266,16 @@ class ForbidLegacyUiImportsTest(unittest.TestCase):
 
             css_hits = mod.scan_file(bad_css)
             self.assertEqual({h[2] for h in css_hits}, {"el-css-var", "el-css-sel"})
-            self.assertEqual({h[1] for h in css_hits}, {"--el-border-color-light", ".el-upload"})
+            self.assertEqual(
+                {h[1] for h in css_hits},
+                {"--el-border-color-light", ".el-upload", ".el-button"},
+            )
 
             self.assertEqual(mod.scan_file(good), [])
 
             violations = mod.scan(root)
-            self.assertEqual(len(violations), 4)
+            # vue: var + sel; css: var + .el-upload + two compound .el-button hits
+            self.assertEqual(len(violations), 6)
 
 
 if __name__ == "__main__":

@@ -68,7 +68,7 @@ ul {
 
 @media (prefers-contrast: more) {
   :focus-visible {
-    outline: 4px solid #000 !important;
+    outline: 4px solid var(--choy-color-foreground, CanvasText) !important;
     outline-offset: 2px !important;
   }
 
