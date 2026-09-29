@@ -14,6 +14,7 @@ import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.v
 import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
+import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
 
 const searchExpose = {
   selectedItem: null as any,
@@ -28,19 +29,23 @@ const SearchViewStub = defineComponent({
   },
 });
 
-const ElSelectV2Stub = defineComponent({
-  name: 'ElSelectV2Stub',
+const RelationComboboxStub = defineComponent({
+  name: 'RelationComboboxStub',
   inheritAttrs: false,
   props: {
-    remoteMethod: { type: Function, default: undefined },
-    modelValue: { type: [String, Number, Object, Array, null] as any, default: undefined },
-    options: { type: Array, default: () => [] },
-    clearable: { type: Boolean, default: false },
-    loading: { type: Boolean, default: false },
+    modelValue: { type: [String, null] as any, default: null },
+    search: { type: Function, default: undefined },
+    searchKey: { type: String, default: '' },
+    selectedOption: { type: Object, default: null },
+    clearable: { type: Boolean, default: true },
     placeholder: { type: String, default: '' },
+    pageSize: { type: Number, default: 20 },
+    searchMore: { type: Boolean, default: true },
+    disabled: { type: Boolean, default: false },
   },
-  emits: ['update:modelValue', 'visible-change'],
-  setup(props: any, { slots, emit }: any) {
+  emits: ['update:modelValue', 'select', 'search-more', 'search-error'],
+  setup(props: any, { emit }: any) {
+    const lastOptions = ref<any[]>([]);
     return () =>
       h(
         'div',
@@ -48,36 +53,64 @@ const ElSelectV2Stub = defineComponent({
           class: 'select-stub',
           'data-clearable': props.clearable ? '1' : '0',
           'data-placeholder': String(props.placeholder || ''),
-          'data-options': String((props.options || []).length),
-          'data-labels': (props.options || []).map((o: any) => o?.label ?? '').join('|'),
+          'data-model': String(props.modelValue ?? ''),
+          'data-options': String(lastOptions.value.length),
+          'data-labels': lastOptions.value.map((o: any) => o?.label ?? '').join('|'),
+          'data-selected-label': String(props.selectedOption?.label ?? ''),
         },
         [
           h('button', {
             type: 'button',
             'data-test': 'remote',
-            onClick: () => props.remoteMethod?.('  bob  '),
+            onClick: async () => {
+              const rows = (await props.search?.('  bob  ', { limit: props.pageSize })) || [];
+              lastOptions.value = Array.isArray(rows) ? rows : [];
+            },
           }),
           h('button', {
             type: 'button',
             'data-test': 'remote-empty',
-            onClick: () => props.remoteMethod?.(''),
+            onClick: async () => {
+              const rows = (await props.search?.('', { limit: props.pageSize })) || [];
+              lastOptions.value = Array.isArray(rows) ? rows : [];
+            },
           }),
           h('button', {
             type: 'button',
             'data-test': 'pick',
-            onClick: () => emit('update:modelValue', { Id: 'picked', DisplayName: 'Picked' }),
+            onClick: () => {
+              const opt = { id: 'picked', label: 'Picked', raw: { Id: 'picked', DisplayName: 'Picked' } };
+              emit('update:modelValue', 'picked');
+              emit('select', opt);
+            },
           }),
           h('button', {
             type: 'button',
             'data-test': 'clear',
-            onClick: () => emit('update:modelValue', null),
+            onClick: () => {
+              emit('update:modelValue', null);
+              emit('select', null);
+            },
           }),
           h('button', {
             type: 'button',
             'data-test': 'visible-close',
-            onClick: () => emit('visible-change', false),
+            onClick: () => {
+              // Mimic combobox close clearing the typeahead keyword on the host.
+            },
           }),
-          slots.footer?.(),
+          props.searchMore
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'choy-m2o__more choy-m2o__more--clickable',
+                  'data-testid': 'choy-relation-search-more',
+                  onClick: () => emit('search-more', 'bob'),
+                },
+                'Search more'
+              )
+            : null,
         ]
       );
   },
@@ -246,18 +279,16 @@ describe('ChoyManyToOneField mount coverage', () => {
     restoreSfc(DialogTitle as any);
     restoreSfc(ChoyButton as any);
     restoreSfc(ChoyViewScope as any);
+    restoreSfc(RelationCombobox as any);
   });
 
   function mountField(props: Record<string, unknown>, on?: Record<string, (...args: any[]) => void>) {
+    stubSfc(RelationCombobox as any, RelationComboboxStub as any);
     return mountApp(ChoyManyToOneField as any, {
       props: { renderMode: 'form', ...props },
       on,
       plugins: [pinia],
       provide: { lastOnchangeResult },
-      stubs: {
-        'el-select-v2': ElSelectV2Stub,
-        ElSelectV2: ElSelectV2Stub,
-      },
     });
   }
 
@@ -315,9 +346,9 @@ describe('ChoyManyToOneField mount coverage', () => {
     });
     const m = mountField({ binding, pageSize: 8 });
     await nextTick();
-    // Idle: current value composed into options.
-    expect(m.q('.select-stub')?.getAttribute('data-options')).toBe('1');
-    expect(m.q('.select-stub')?.getAttribute('data-labels')).toBe('Current');
+    // Idle: selected option seeds the combobox label.
+    expect(m.q('.select-stub')?.getAttribute('data-selected-label')).toBe('Current');
+    expect(m.q('.select-stub')?.getAttribute('data-model')).toBe('cur');
 
     m.click('[data-test="remote"]');
     await flushPromises();
@@ -329,16 +360,10 @@ describe('ChoyManyToOneField mount coverage', () => {
     expect(m.q('.select-stub')?.getAttribute('data-options')).toBe('2');
     expect(m.q('.select-stub')?.getAttribute('data-labels')).toBe('Alice|Bob');
 
-    m.click('[data-test="visible-close"]');
-    await nextTick();
-    // Clearing search restores compose-with-current-value path.
-    expect(m.q('.select-stub')?.getAttribute('data-labels') || '').toContain('Current');
-
     m.click('[data-test="pick"]');
     await nextTick();
     expect(value.value).toEqual({ Id: 'picked', DisplayName: 'Picked' });
-    // Upsert replaces / prepends into options.
-    expect(m.q('.select-stub')?.getAttribute('data-labels') || '').toContain('Picked');
+    expect(m.q('.select-stub')?.getAttribute('data-selected-label') || '').toContain('Picked');
 
     m.click('[data-test="clear"]');
     await nextTick();
@@ -355,12 +380,10 @@ describe('ChoyManyToOneField mount coverage', () => {
     m.click('[data-test="remote"]');
     await flushPromises();
     await nextTick();
-    m.click('[data-test="visible-close"]');
-    await nextTick();
     m.click('[data-test="pick"]');
     await nextTick();
     expect(value.value?.DisplayName).toBe('Picked');
-    expect(m.q('.select-stub')?.getAttribute('data-labels') || '').toContain('Picked');
+    expect(m.q('.select-stub')?.getAttribute('data-selected-label') || '').toContain('Picked');
     m.unmount();
   });
 
@@ -399,9 +422,7 @@ describe('ChoyManyToOneField mount coverage', () => {
     await nextTick();
     expect(m.q('.dialog')?.getAttribute('data-open')).toBe('0');
 
-    const more = Array.from(m.el.querySelectorAll('.choy-m2o__more') || []).find(el =>
-      (el.textContent || '').toLowerCase().includes('search')
-    ) as HTMLElement | undefined;
+    const more = m.q('[data-testid="choy-relation-search-more"]') as HTMLElement | null;
     expect(more).toBeTruthy();
     more!.click();
     await nextTick();
@@ -442,9 +463,7 @@ describe('ChoyManyToOneField mount coverage', () => {
     const { binding } = makeBinding({ relationStore: undefined });
     const m = mountField({ binding, searchView: SearchViewStub });
     await nextTick();
-    const more = Array.from(m.el.querySelectorAll('.choy-m2o__more') || []).find(el =>
-      (el.textContent || '').toLowerCase().includes('search')
-    ) as HTMLElement | undefined;
+    const more = m.q('[data-testid="choy-relation-search-more"]') as HTMLElement | null;
     more?.click();
     await nextTick();
     expect(m.q('.dialog')?.getAttribute('data-open')).toBe('0');
@@ -553,9 +572,7 @@ describe('ChoyManyToOneField mount coverage', () => {
       condition: { Or: [['A', '=', 1]] },
     });
     await nextTick();
-    const more = Array.from(m.el.querySelectorAll('.choy-m2o__more') || []).find(el =>
-      (el.textContent || '').toLowerCase().includes('search')
-    ) as HTMLElement;
+    const more = m.q('[data-testid="choy-relation-search-more"]') as HTMLElement;
     more.click();
     await nextTick();
     expect(m.q('.search-view-stub')).toBeTruthy();
@@ -680,9 +697,7 @@ describe('ChoyManyToOneField mount coverage', () => {
       relationStore: { NameSearch: fnRecorder(async () => []), fullModelName: 'partner.Partner' },
     });
     const m = mountField({ binding, searchView: SearchViewStub });
-    const more = Array.from(m.el.querySelectorAll('.choy-m2o__more') || []).find(el =>
-      (el.textContent || '').toLowerCase().includes('search')
-    ) as HTMLElement;
+    const more = m.q('[data-testid="choy-relation-search-more"]') as HTMLElement;
     more.click();
     await nextTick();
     searchExpose.selectedItem = { value: { Id: 'wrap', DisplayName: 'Wrapped' } };

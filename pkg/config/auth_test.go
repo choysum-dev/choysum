@@ -62,9 +62,15 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if login == nil || !login.SkipAuthentication || !login.SkipMethodAccess || !login.SkipCompanyFilter || !login.SkipFieldRule {
 		t.Fatalf("unexpected login policy: %#v", login)
 	}
+	if !entryAllowsModelOp(login.RecordRuleAllow, "base.Language", "read") {
+		t.Fatalf("expected Login recordRuleAllow to include base.Language:read, got %#v", login.RecordRuleAllow)
+	}
 	refresh := cfg.GrpcEntryPolicy["auth.User/RefreshTokens"]
 	if refresh == nil || !refresh.SkipAuthentication || !refresh.SkipMethodAccess || !refresh.SkipCompanyFilter || !refresh.SkipFieldRule {
 		t.Fatalf("unexpected refresh policy: %#v", refresh)
+	}
+	if !entryAllowsModelOp(refresh.RecordRuleAllow, "base.Language", "read") {
+		t.Fatalf("expected RefreshTokens recordRuleAllow to include base.Language:read, got %#v", refresh.RecordRuleAllow)
 	}
 	checkAccess := cfg.GrpcEntryPolicy["auth.User/CheckMethodAccess"]
 	if checkAccess == nil || !checkAccess.SkipMethodAccess || !checkAccess.SkipCompanyFilter || !checkAccess.SkipFieldRule {
@@ -92,4 +98,18 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if len(register.RecordRuleAllow) == 0 || len(login.RecordRuleAllow) == 0 || len(refresh.RecordRuleAllow) == 0 {
 		t.Fatal("expected default record rule allowlists to be populated")
 	}
+}
+
+func entryAllowsModelOp(allow []EntryRecordRuleAllow, model, op string) bool {
+	for _, item := range allow {
+		if item.Model != model {
+			continue
+		}
+		for _, got := range item.Ops {
+			if got == op {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -21,49 +21,32 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit="{ fieldValue, record }">
-      <el-select-v2
-        class="choy-many-to-one-select"
-        :model-value="fieldValue().value"
-        @update:model-value="(v: any) => onUpdate(fieldValue, v)"
-        value-key="Id"
-        :options="optionsFor(fieldValue().value as any)"
-        :remote="true"
-        :filterable="true"
-        :clearable="clearable"
-        :placeholder="effectivePlaceholder"
-        :loading="loading"
-        :remote-method="(q: string) => handleRemoteSearch(q, record)"
-        @visible-change="onDropdownVisibleChange"
-        @blur="() => {}"
-        v-bind="selectProps"
-        :style="{ width: width || '100%' }"
-      >
-        <template #footer>
-          <div
-            v-if="showNameCreateEntry"
-            class="choy-m2o__more choy-m2o__more--clickable"
-            role="button"
-            tabindex="0"
-            data-testid="choy-m2o-name-create"
-            @click.stop="onNameCreate(fieldValue)"
-            @keydown.enter.stop="onNameCreate(fieldValue)"
-            @keydown.space.prevent.stop="onNameCreate(fieldValue)"
-          >
-            {{ nameCreateLabel }}
-          </div>
-          <div
-            v-if="searchView"
-            class="choy-m2o__more choy-m2o__more--clickable"
-            role="button"
-            tabindex="0"
-            @click.stop="openSearchDialog(fieldValue, record)"
-            @keydown.enter.stop="openSearchDialog(fieldValue, record)"
-            @keydown.space.prevent.stop="openSearchDialog(fieldValue, record)"
-          >
-            {{ _t('Search more') }}
-          </div>
-        </template>
-      </el-select-v2>
+      <div class="choy-many-to-one-select" :style="{ width: width || '100%' }">
+        <RelationCombobox
+          :model-value="comboboxId(fieldValue().value)"
+          :selected-option="selectedOptionFor(fieldValue().value)"
+          :search="makeRelationSearch(record)"
+          :search-key="relationSearchKey"
+          :clearable="clearable"
+          :placeholder="effectivePlaceholder"
+          :page-size="pageSize"
+          :search-more="Boolean(searchView)"
+          @select="(opt) => onComboboxSelect(fieldValue, opt)"
+          @search-more="(q) => onSearchMore(fieldValue, record, q)"
+        />
+        <div
+          v-if="showNameCreateEntry"
+          class="choy-m2o__more choy-m2o__more--clickable"
+          role="button"
+          tabindex="0"
+          data-testid="choy-m2o-name-create"
+          @click.stop="onNameCreate(fieldValue)"
+          @keydown.enter.stop="onNameCreate(fieldValue)"
+          @keydown.space.prevent.stop="onNameCreate(fieldValue)"
+        >
+          {{ nameCreateLabel }}
+        </div>
+      </div>
     </template>
     <template #display="{ fieldValue }">
       <span
@@ -106,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
-import { ref, shallowRef, computed, onMounted, onBeforeUnmount, inject, Ref, watch, getCurrentInstance } from 'vue';
+import { ref, shallowRef, computed, inject, Ref, watch, getCurrentInstance } from 'vue';
 import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
 import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
 import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
@@ -130,6 +113,11 @@ import type { ValueClickPayload } from '@/web/web/components/field/manyToOneType
 import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
 import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
+import {
+  mapNameSearchRows,
+  type RelationOption,
+} from '@/web/web/components/internal/relationComboboxHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToOneRefField' });
 
@@ -241,10 +229,12 @@ const toView = (raw: any) => (raw ?? null) as V | null;
 const fromView = (v: V | null) => (v ?? null) as any;
 
 const options = shallowRef<OptionType[]>([]);
-const loading = ref(false);
 const searchQuery = ref('');
 const isSearching = computed(() => trimSearchKeyword(searchQuery.value).length > 0);
 const vm = getCurrentInstance();
+const relationSearchKey = computed(
+  () => `${relationStore.value?.storeId || relationStore.value?.fullModelName || ''}:${String(binding.prop)}`
+);
 
 const { hasAction } = usePermission();
 const showNameCreateEntry = computed(() =>
@@ -300,20 +290,25 @@ function upsertOption(item?: V | null) {
   else options.value.unshift(opt);
 }
 
-function composeOptionsForValue(val?: V | null): OptionType[] {
-  if (!val) return options.value;
-  // If val is a string id, keep the existing options list unchanged.
-  if (typeof val !== 'object') return options.value;
-
-  const head = toOption(val);
-  const exists = options.value.findIndex(o => (o.value as any).Id === (val as any).Id);
-  if (exists < 0) return [head, ...options.value];
-  const merged = options.value.slice();
-  merged.splice(exists, 1, head);
-  return merged;
+function comboboxId(val: any): string | null {
+  if (!val) return null;
+  if (typeof val === 'object') {
+    const id = val.Id;
+    if (id == null) return null;
+    const s = String(id).trim();
+    return s || null;
+  }
+  if (typeof val === 'string') {
+    const s = val.trim();
+    return s || null;
+  }
+  return null;
 }
-function optionsFor(val?: V | null): OptionType[] {
-  return isSearching.value ? options.value : composeOptionsForValue(val);
+
+function selectedOptionFor(val: any): RelationOption | null {
+  const id = comboboxId(val);
+  if (!id) return null;
+  return { id, label: getDisplayLabel(val) || id, raw: typeof val === 'object' ? val : resolveDisplayItem(val) };
 }
 
 // Enhanced display-label resolution.
@@ -547,26 +542,29 @@ const dialogEffectiveConditions = computed<QueryCondition<any> | []>(() => {
   return { And: parts } as any;
 });
 
-async function handleRemoteSearch(query: string, recordRef?: any) {
+async function relationSearch(query: string, opts: { limit: number }, recordRef?: any): Promise<RelationOption[]> {
   searchQuery.value = query ?? '';
-  loading.value = true;
-  try {
-    const parts: QueryCondition<any>[] = [];
-    parts.push(...externalConditions.value);
-    parts.push(...pickOnchangeConditions(recordRef));
+  const parts: QueryCondition<any>[] = [];
+  parts.push(...externalConditions.value);
+  parts.push(...pickOnchangeConditions(recordRef));
 
-    const final: QueryCondition<any> | [] = parts.length === 0 ? ([] as any) : parts.length === 1 ? parts[0] : ({ And: parts } as any);
+  const final: QueryCondition<any> | [] = parts.length === 0 ? ([] as any) : parts.length === 1 ? parts[0] : ({ And: parts } as any);
 
-    const result = (await relationStore.value?.NameSearch(String(query ?? '').trim(), final as any, {
-      fields: ['Id', 'DisplayName'],
-      limit: props.pageSize ?? 20,
-      ...buildRelationConditionSource(props.store as any, binding.prop),
-    })) as V[] | undefined;
+  const result = (await relationStore.value?.NameSearch(String(query ?? '').trim(), final as any, {
+    fields: ['Id', 'DisplayName'],
+    limit: opts.limit ?? props.pageSize ?? 20,
+    ...buildRelationConditionSource(props.store as any, binding.prop),
+  })) as V[] | undefined;
 
-    options.value = (result ?? []).map(toOption);
-  } finally {
-    loading.value = false;
+  const rows = result ?? [];
+  for (const row of rows) {
+    if (row && typeof row === 'object') upsertOption(row);
   }
+  return mapNameSearchRows(rows);
+}
+
+function makeRelationSearch(recordRef?: any) {
+  return (query: string, opts: { limit: number }) => relationSearch(query, opts, recordRef);
 }
 
 function onUpdate(getter: () => WritableComputedRef<V | null>, v: V | null) {
@@ -574,8 +572,28 @@ function onUpdate(getter: () => WritableComputedRef<V | null>, v: V | null) {
   if (v) upsertOption(v);
 }
 
-function onDropdownVisibleChange(_visible: boolean) {
+function onComboboxSelect(getter: () => WritableComputedRef<V | null>, opt: RelationOption | null) {
+  if (!opt) {
+    onUpdate(getter, null);
+    searchQuery.value = '';
+    return;
+  }
+  const raw = opt.raw;
+  if (raw && typeof raw === 'object') {
+    onUpdate(getter, raw as V);
+  } else {
+    onUpdate(getter, { Id: opt.id, DisplayName: opt.label } as V);
+  }
   searchQuery.value = '';
+}
+
+function onSearchMore(
+  target: () => WritableComputedRef<V | null>,
+  recordRef: any,
+  query: string
+) {
+  searchQuery.value = query ?? '';
+  openSearchDialog(target, recordRef);
 }
 
 function openSearchDialog(target?: () => WritableComputedRef<V | null>, recordRef?: any) {

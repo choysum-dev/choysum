@@ -28,6 +28,9 @@ SPEC_RE = re.compile(
 # Filename / path segments that still look like legacy engines.
 O_VUE_RE = re.compile(r"(?:^|/)O[A-Z]\w+\.vue\b|(?:^|/)OV[A-Z]\w+\.vue\b")
 
+# Opening Element Plus tags in Vue templates (`<el-button`, `<el-select-v2`, …).
+EL_TAG_RE = re.compile(r"<(el-[A-Za-z][\w-]*)\b")
+
 SCAN_SUFFIXES = {".ts", ".tsx", ".vue", ".js", ".mjs", ".cjs"}
 
 # Directory name segments skipped entirely (fixtures / generated / vendor-ish).
@@ -130,6 +133,64 @@ def iter_scan_files(modules_root: Path) -> list[Path]:
     return sorted(out)
 
 
+def strip_html_comments(text: str) -> str:
+    """Remove HTML/XML comments (non-greedy, DOTALL)."""
+    return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+
+
+def extract_vue_template_body(text: str) -> str | None:
+    """Return the first top-level <template>…</template> body, nesting-aware."""
+    open_re = re.compile(r"<template\b[^>]*>", re.IGNORECASE)
+    close_re = re.compile(r"</template\s*>", re.IGNORECASE)
+    m = open_re.search(text)
+    if not m:
+        return None
+    start = m.end()
+    depth = 1
+    pos = start
+    while depth > 0:
+        next_open = open_re.search(text, pos)
+        next_close = close_re.search(text, pos)
+        if not next_close:
+            return text[start:]
+        if next_open and next_open.start() < next_close.start():
+            depth += 1
+            pos = next_open.end()
+            continue
+        depth -= 1
+        if depth == 0:
+            return text[start : next_close.start()]
+        pos = next_close.end()
+    return None
+
+
+def line_number_at(text: str, index: int) -> int:
+    """1-based line number for a byte/char offset into text."""
+    return text.count("\n", 0, index) + 1
+
+
+def scan_vue_el_tags(path: Path, text: str) -> list[tuple[int, str, str]]:
+    """Flag <el-*> opening tags inside the SFC template (not script stubs)."""
+    body = extract_vue_template_body(text)
+    if body is None:
+        return []
+    cleaned = strip_html_comments(body)
+    # Map cleaned offsets back approximately via original body search of the tag text.
+    hits: list[tuple[int, str, str]] = []
+    # Locate the template body start in the original file for accurate line numbers.
+    open_re = re.compile(r"<template\b[^>]*>", re.IGNORECASE)
+    m = open_re.search(text)
+    body_start = m.end() if m else 0
+    for match in EL_TAG_RE.finditer(cleaned):
+        tag = match.group(1)
+        # Prefer the first occurrence of this exact open-tag snippet in the raw body.
+        snippet = match.group(0)
+        rel = body.find(snippet)
+        abs_index = body_start + rel if rel >= 0 else body_start + match.start()
+        hits.append((line_number_at(text, abs_index), tag, "el-tag"))
+    return hits
+
+
 def scan_file(path: Path) -> list[tuple[int, str, str]]:
     """Return (line, spec, rule) violations in one file."""
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -143,6 +204,8 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
                 continue
             if is_forbidden_o_vue(spec):
                 hits.append((line_no, spec, "o-star-vue"))
+    if path.suffix == ".vue":
+        hits.extend(scan_vue_el_tags(path, text))
     return hits
 
 
@@ -185,8 +248,8 @@ def main(argv: list[str] | None = None) -> int:
             rel = path
         print(f"  {rel}:{line}: [{rule}] {spec}", file=sys.stderr)
     print(
-        "Legacy Element Plus / echarts / O*.vue imports are banned after Choy UI Kit cutover. "
-        "Import Choy* from @/web instead.",
+        "Legacy Element Plus / echarts / O*.vue imports and <el-*> template tags "
+        "are banned after Choy UI Kit cutover. Import Choy* from @/web instead.",
         file=sys.stderr,
     )
     return 1

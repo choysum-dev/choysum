@@ -116,6 +116,71 @@ class ForbidLegacyUiImportsTest(unittest.TestCase):
             rules = {h[2] for h in hits}
             self.assertEqual(rules, {"element-plus", "echarts"})
 
+    def test_scan_vue_el_tags_in_template_only(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            app = root / "web" / "web"
+            app.mkdir(parents=True)
+            bad = app / "Leak.vue"
+            bad.write_text(
+                "<!--\nSPDX\n-->\n"
+                "<template>\n"
+                "  <!-- <el-button>commented</el-button> -->\n"
+                "  <div>\n"
+                "    <el-select-v2 multiple />\n"
+                "    <el-tree :data=\"nodes\" />\n"
+                "  </div>\n"
+                "</template>\n"
+                "<script setup lang=\"ts\">\n"
+                "const stubs = { 'el-select-v2': true, ElSelectV2: true };\n"
+                "const note = '<el-button>in string</el-button>';\n"
+                "</script>\n",
+                encoding="utf-8",
+            )
+            good = app / "Ok.vue"
+            good.write_text(
+                "<template>\n"
+                "  <RelationCombobox />\n"
+                "  <template #footer><span /></template>\n"
+                "</template>\n"
+                "<script setup lang=\"ts\">\n"
+                "const stubs = { 'el-select-v2': true };\n"
+                "</script>\n",
+                encoding="utf-8",
+            )
+
+            hits = mod.scan_file(bad)
+            rules = [h[2] for h in hits]
+            self.assertEqual(rules, ["el-tag", "el-tag"])
+            tags = {h[1] for h in hits}
+            self.assertEqual(tags, {"el-select-v2", "el-tree"})
+
+            self.assertEqual(mod.scan_file(good), [])
+
+            violations = mod.scan(root)
+            self.assertEqual(len(violations), 2)
+            self.assertTrue(all(v[3] == "el-tag" for v in violations))
+
+    def test_extract_vue_template_nested_slot_templates(self):
+        mod = load_mod()
+        text = (
+            "<template>\n"
+            "  <el-form>\n"
+            "    <template #default><span /></template>\n"
+            "  </el-form>\n"
+            "</template>\n"
+            "<script setup>const x = '<el-alert />';</script>\n"
+        )
+        body = mod.extract_vue_template_body(text)
+        self.assertIsNotNone(body)
+        assert body is not None
+        self.assertIn("<el-form>", body)
+        self.assertIn("<template #default>", body)
+        self.assertNotIn("<script", body)
+        hits = mod.scan_vue_el_tags(pathlib.Path("x.vue"), text)
+        self.assertEqual([h[1] for h in hits], ["el-form"])
+
 
 if __name__ == "__main__":
     unittest.main()

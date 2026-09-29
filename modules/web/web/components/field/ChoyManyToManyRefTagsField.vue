@@ -18,63 +18,64 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit>
-      <div class="choy-m2m-tags">
-        <el-select-v2
+      <div class="choy-m2m-tags" @keydown="handleKeydown">
+        <div class="choy-m2m-tags--edit-chips">
+          <template v-for="item in editChipItems" :key="item.id">
+            <span class="choy-m2m-tags__chip">
+              <slot
+                name="tag"
+                :item="item.record"
+                :label="item.label"
+                :removable="tagClosable"
+                :clickable="false"
+              >
+                <span class="choy-m2m-tags__tag">
+                  {{ item.label }}
+                  <button
+                    v-if="tagClosable"
+                    type="button"
+                    class="choy-m2m-tags__tag-remove"
+                    :aria-label="_t('Remove')"
+                    data-testid="choy-m2m-tag-remove"
+                    @click.stop="removeChip(item.id)"
+                  >
+                    ×
+                  </button>
+                </span>
+              </slot>
+            </span>
+          </template>
+          <span v-if="hiddenCount > 0" class="choy-m2m-tags__tag">+{{ hiddenCount }}</span>
+        </div>
+        <RelationCombobox
+          v-model="addModel"
           class="choy-m2m-tags__select"
-          multiple
-          filterable
-          remote
-          :reserve-keyword="false"
-          :model-value="selectedIds"
-          :options="selectOptions"
-          :placeholder="effectivePlaceholder"
-          :loading="loading"
+          :search="relationSearch"
+          :search-key="relationSearchKey"
           :clearable="false"
+          :placeholder="effectivePlaceholder"
+          :page-size="suggestLimit"
           :disabled="!relationStore"
+          :search-more="Boolean(searchList)"
           :style="{ width: width || '100%' }"
-          :collapse-tags="maxTagsVisible > 0"
-          :max-collapse-tags="maxTagsVisible > 0 ? maxTagsVisible : 1"
-          v-bind="selectProps"
-          :remote-method="handleRemoteSearch"
-          @visible-change="onDropdownVisibleChange"
-          @keydown="handleKeydown"
-          @update:model-value="onSelectedIdsChange"
-        >
-          <template #default="{ item }">
-            <slot name="suggestion" :item="item.record" :label="item.label">
-              <span class="choy-m2m-tags__suggestion" v-html="highlightSuggestion(item.label)"></span>
-            </slot>
-          </template>
-
-          <template #footer>
-            <div class="choy-m2m-tags__footer">
-              <slot name="suffix" />
-              <div
-                v-if="showNameCreateEntry"
-                class="choy-m2m-tags__more choy-m2m-tags__more--clickable"
-                role="button"
-                tabindex="0"
-                data-testid="choy-m2m-name-create"
-                @click.stop="onNameCreate"
-                @keydown.enter.stop="onNameCreate"
-                @keydown.space.prevent.stop="onNameCreate"
-              >
-                {{ nameCreateLabel }}
-              </div>
-              <div
-                v-if="searchList"
-                class="choy-m2m-tags__more choy-m2m-tags__more--clickable"
-                role="button"
-                tabindex="0"
-                @click.stop="openPicker"
-                @keydown.enter.stop="openPicker"
-                @keydown.space.prevent.stop="openPicker"
-              >
-                {{ _t('Search more') }}
-              </div>
-            </div>
-          </template>
-        </el-select-v2>
+          @select="onComboboxSelect"
+          @search-more="onSearchMore"
+        />
+        <div class="choy-m2m-tags__footer">
+          <slot name="suffix" />
+          <div
+            v-if="showNameCreateEntry"
+            class="choy-m2m-tags__more choy-m2m-tags__more--clickable"
+            role="button"
+            tabindex="0"
+            data-testid="choy-m2m-name-create"
+            @click.stop="onNameCreate"
+            @keydown.enter.stop="onNameCreate"
+            @keydown.space.prevent.stop="onNameCreate"
+          >
+            {{ nameCreateLabel }}
+          </div>
+        </div>
       </div>
     </template>
 
@@ -129,7 +130,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string[]>, V = FieldPathType<T, P>">
-import { computed, ref, shallowRef, type Component, inject, Ref, watch, onBeforeUnmount, getCurrentInstance } from 'vue';
+import { computed, ref, shallowRef, type Component, inject, Ref, watch, onBeforeUnmount, getCurrentInstance, nextTick } from 'vue';
 import Dialog from '@/web/web/components/vendor/ui/dialog/Dialog.vue';
 import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.vue';
 import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
@@ -151,18 +152,17 @@ import type { TagClickPayload } from '@/web/web/components/field/manyToManyTagsT
 import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
 import { runNameCreateQuickCreate, trimSearchKeyword } from '@/web/web/components/field/nameCreateQuickCreate';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
+import {
+  mapNameSearchRows,
+  type RelationOption,
+} from '@/web/web/components/internal/relationComboboxHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyRefTagsField' });
 
 defineOptions({ name: 'ManyToManyRefTagsField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
-
-type SelectOption = {
-  value: string;
-  label: string;
-  record: any;
-};
 
 const emit = defineEmits<{
   (e: 'tag-add', payload: { id: string; item: any }): void;
@@ -263,7 +263,11 @@ const hydratingIds = ref<Set<string>>(new Set());
 const searchRows = shallowRef<any[]>([]);
 const searchKeyword = ref('');
 const dropdownVisible = ref(false);
+const addModel = ref<string | null>(null);
 const vm = getCurrentInstance();
+const relationSearchKey = computed(
+  () => `${relationStore.value?.storeId || relationStore.value?.fullModelName || ''}:${String(binding.prop)}`
+);
 
 const hasKeyword = computed(() => trimSearchKeyword(searchKeyword.value).length > 0);
 const { hasAction } = usePermission();
@@ -351,6 +355,9 @@ const displayItems = computed(() => {
   });
 });
 
+/** Edit-mode chips use the same visibility cap as display. */
+const editChipItems = computed(() => displayItems.value);
+
 const hiddenCount = computed(() => {
   const cap = Number(props.maxTagsVisible || 0);
   if (cap <= 0) return 0;
@@ -369,30 +376,13 @@ function onDisplayTagKeydown(item: { id: string; record: any; label: string }, e
   emit('tag-click', { id: item.id, item: item.record, label: item.label, source: 'display', event });
 }
 
-const selectOptions = computed<SelectOption[]>(() => {
-  const map = new Map<string, SelectOption>();
-  const picked = new Set(selectedIds.value);
-
-  // Selected values must always remain in options so el-select-v2 can render tags.
-  // Hiding them only while the dropdown is open leaves model-value without matching
-  // options and can crash the renderer on the next selection.
-  for (const id of selectedIds.value) {
-    const rec = hydratedCache.value[id] || { Id: id };
-    map.set(id, { value: id, label: resolveTagLabel(rec, id), record: rec });
-  }
-
-  for (const rec of searchRows.value) {
-    const id = extractId(rec);
-    if (!id) continue;
-    const key = String(id);
-    if (picked.has(key)) continue;
-    map.set(key, { value: key, label: resolveTagLabel(rec, key), record: rec });
-  }
-  return Array.from(map.values());
-});
-
 function onDropdownVisibleChange(visible: boolean) {
   dropdownVisible.value = Boolean(visible);
+}
+
+function removeChip(id: string) {
+  if (!props.tagClosable) return;
+  onSelectedIdsChange(selectedIds.value.filter(x => x !== id));
 }
 
 const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(null));
@@ -482,13 +472,13 @@ function highlightSuggestion(label: string): string {
   return out;
 }
 
-async function handleRemoteSearch(keyword: string) {
+async function relationSearch(keyword: string, opts: { limit: number }): Promise<RelationOption[]> {
   searchKeyword.value = String(keyword || '');
   emit('search', { keyword: String(keyword || '') });
   const store = relationStore.value;
   if (!store) {
     searchRows.value = [];
-    return;
+    return [];
   }
 
   loading.value = true;
@@ -498,19 +488,42 @@ async function handleRemoteSearch(keyword: string) {
       effectiveConditions.value as any,
       {
         fields: pickHydrationFields() as any,
-        limit: props.suggestLimit,
+        limit: opts.limit ?? props.suggestLimit,
         ...buildRelationConditionSource(props.store as any, binding.prop),
       } as any
     );
     const rows = Array.isArray(records) ? records : [];
     searchRows.value = rows.map(x => ({ ...(x || {}) }));
     for (const row of searchRows.value) upsertHydrated(row);
+    return mapNameSearchRows(searchRows.value);
   } catch (e) {
     console.warn('[OManyToManyRefTagsField] search failed', e);
     searchRows.value = [];
+    return [];
   } finally {
     loading.value = false;
   }
+}
+
+/** Kept for mount tests and Backspace/Enter helpers that still call NameSearch directly. */
+async function handleRemoteSearch(keyword: string) {
+  await relationSearch(keyword, { limit: props.suggestLimit });
+}
+
+function onComboboxSelect(opt: RelationOption | null) {
+  if (!opt) return;
+  if (opt.raw && typeof opt.raw === 'object') upsertHydrated(opt.raw);
+  if (!selectedIds.value.includes(opt.id)) {
+    onSelectedIdsChange([...selectedIds.value, opt.id]);
+  }
+  void nextTick(() => {
+    addModel.value = null;
+  });
+}
+
+function onSearchMore(query: string) {
+  searchKeyword.value = query ?? '';
+  openPicker();
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -684,11 +697,25 @@ defineSlots<{
   width: 100%;
 }
 
+.choy-m2m-tags--edit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+  min-height: 0;
+  align-items: center;
+}
+
 .choy-m2m-tags--display {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   min-height: 28px;
+  align-items: center;
+}
+
+.choy-m2m-tags__chip {
+  display: inline-flex;
   align-items: center;
 }
 
@@ -700,6 +727,7 @@ defineSlots<{
 .choy-m2m-tags__tag {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   padding: 2px 8px;
   border: 1px solid var(--choy-color-border);
   border-radius: var(--choy-radius-sm, 0.25rem);
@@ -710,6 +738,16 @@ defineSlots<{
     color 0.16s ease,
     border-color 0.16s ease,
     background-color 0.16s ease;
+}
+
+.choy-m2m-tags__tag-remove {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
 }
 
 .choy-m2m-tags__tag--primary {
@@ -737,12 +775,13 @@ defineSlots<{
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 6px 8px;
+  gap: 8px;
+  padding: 6px 0;
 }
 
 .choy-m2m-tags__more {
   font-size: 12px;
-  color: var(--el-color-primary);
+  color: var(--choy-color-primary);
 }
 
 .choy-m2m-tags__more--clickable {
@@ -750,7 +789,7 @@ defineSlots<{
 }
 
 .choy-m2m-tags__suggestion-hit {
-  color: var(--el-color-primary);
+  color: var(--choy-color-primary);
   font-weight: 600;
 }
 </style>

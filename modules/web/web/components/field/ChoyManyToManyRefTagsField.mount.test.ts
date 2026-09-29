@@ -19,6 +19,7 @@ import DialogContent from '@/web/web/components/vendor/ui/dialog/DialogContent.v
 import DialogTitle from '@/web/web/components/vendor/ui/dialog/DialogTitle.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
+import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
 
 const searchExpose = {
   selectedItems: [] as any[],
@@ -32,45 +33,57 @@ const SearchListStub = defineComponent({
   },
 });
 
-const ElSelectV2Stub = defineComponent({
-  name: 'ElSelectV2Stub',
+const RelationComboboxStub = defineComponent({
+  name: 'RelationComboboxStub',
   inheritAttrs: false,
   props: {
-    remoteMethod: { type: Function, default: undefined },
-    modelValue: { type: [String, Number, Object, Array, null] as any, default: undefined },
-    options: { type: Array, default: () => [] },
+    modelValue: { type: [String, null] as any, default: null },
+    search: { type: Function, default: undefined },
+    searchKey: { type: String, default: '' },
+    clearable: { type: Boolean, default: true },
+    placeholder: { type: String, default: '' },
+    pageSize: { type: Number, default: 20 },
+    searchMore: { type: Boolean, default: true },
+    disabled: { type: Boolean, default: false },
   },
-  emits: ['update:modelValue', 'visible-change', 'keydown'],
-  setup(props: any, { slots, emit }: any) {
+  emits: ['update:modelValue', 'select', 'search-more', 'search-error'],
+  setup(props: any, { emit }: any) {
     return () =>
       h(
         'div',
         {
           class: 'select-stub',
-          'data-ids': JSON.stringify(props.modelValue ?? []),
-          'data-options': String((props.options || []).length),
+          'data-model': String(props.modelValue ?? ''),
+          'data-disabled': props.disabled ? '1' : '0',
         },
         [
           h('button', {
             type: 'button',
             'data-test': 'remote',
-            onClick: () => props.remoteMethod?.('alpha'),
+            onClick: () => props.search?.('alpha', { limit: props.pageSize }),
           }),
           h('button', {
             type: 'button',
             'data-test': 'remote-empty',
-            onClick: () => props.remoteMethod?.(''),
+            onClick: () => props.search?.('', { limit: props.pageSize }),
           }),
           h('button', {
             type: 'button',
             'data-test': 'visible-open',
-            onClick: () => emit('visible-change', true),
+            onClick: () => {},
           }),
-          // Render one suggestion so highlightSuggestion runs through the slot path when options exist.
-          ...(props.options || []).slice(0, 1).map((item: any) =>
-            h('div', { class: 'opt' }, slots.default?.({ item }) || [])
-          ),
-          slots.footer?.(),
+          props.searchMore
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'choy-m2m-tags__more choy-m2m-tags__more--clickable',
+                  'data-testid': 'choy-relation-search-more',
+                  onClick: () => emit('search-more', ''),
+                },
+                'Search more'
+              )
+            : null,
         ]
       );
   },
@@ -224,18 +237,19 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     restoreSfc(DialogTitle as any);
     restoreSfc(ChoyButton as any);
     restoreSfc(ChoyViewScope as any);
+    restoreSfc(RelationCombobox as any);
   });
 
   function mountField(props: Record<string, unknown>, on?: Record<string, (...args: any[]) => void>) {
+    stubSfc(RelationCombobox as any, RelationComboboxStub as any);
     return mountApp(ChoyManyToManyRefTagsField as any, {
       props: { renderMode: 'form', ...props },
       on,
       provide: { lastOnchangeResult },
-      stubs: { 'el-select-v2': ElSelectV2Stub, ElSelectV2: ElSelectV2Stub },
     });
   }
 
-  test('string ids hydrate via Search and render selected model-value', async () => {
+  test('string ids hydrate via Search and render selected chips', async () => {
     const Search = fnRecorder(async () => [
       { Id: 't1', DisplayName: 'Tag One' },
       { Id: 't3', DisplayName: 'Tag Three' },
@@ -249,9 +263,8 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     await nextTick();
 
     expect(Search.calls.length).toBeGreaterThanOrEqual(1);
-    const idsAttr = m.q('.select-stub')?.getAttribute('data-ids') || '[]';
-    expect(idsAttr).toContain('t1');
-    expect(idsAttr).toContain('t3');
+    const chips = Array.from(m.el.querySelectorAll('.choy-m2m-tags__chip') || []);
+    expect(chips.length).toBeGreaterThanOrEqual(1);
     expect(m.text()).toMatch(/\+/);
     m.unmount();
   });
@@ -263,9 +276,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     });
     const m = mountField({ binding, searchList: SearchListStub });
     await flushPromises();
-    const more = Array.from(m.el.querySelectorAll('.choy-m2m-tags__more')).find(n =>
-      (n.textContent || '').toLowerCase().includes('search')
-    ) as HTMLElement | undefined;
+    const more = m.q('[data-testid="choy-relation-search-more"]') as HTMLElement | null;
     expect(more).toBeTruthy();
     more!.click();
     await nextTick();
@@ -280,9 +291,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     });
     const m2 = mountField({ binding: noStore, searchList: SearchListStub });
     await flushPromises();
-    const more2 = Array.from(m2.el.querySelectorAll('.choy-m2m-tags__more')).find(n =>
-      (n.textContent || '').toLowerCase().includes('search')
-    ) as HTMLElement | undefined;
+    const more2 = m2.q('[data-testid="choy-relation-search-more"]') as HTMLElement | null;
     expect(more2).toBeTruthy();
     more2!.click();
     await nextTick();
@@ -659,9 +668,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     await flushPromises();
 
     // Open picker and confirm empty selection.
-    const more = Array.from(m.el.querySelectorAll('.choy-m2m-tags__more')).find(n =>
-      (n.textContent || '').toLowerCase().includes('search')
-    ) as HTMLElement;
+    const more = m.q('[data-testid="choy-relation-search-more"]') as HTMLElement;
     more.click();
     await nextTick();
     searchExpose.selectedItems = [];

@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit>
       <div class="choy-m2m-ref-tree" :style="treeBoxStyle">
-        <el-tree
+        <RelationTree
           ref="editTreeRef"
           class="choy-m2m-ref-tree__tree"
           node-key="__id"
@@ -32,7 +32,6 @@ SPDX-License-Identifier: Apache-2.0
           :check-strictly="checkStrictly"
           :default-expand-all="defaultExpandAll"
           :expand-on-click-node="false"
-          :highlight-current="false"
           :empty-text="effectiveEmptyText"
           :loading="loading"
           @check="onCheck"
@@ -45,13 +44,13 @@ SPDX-License-Identifier: Apache-2.0
               </slot>
             </slot>
           </template>
-        </el-tree>
+        </RelationTree>
       </div>
     </template>
 
     <template #display>
       <div class="choy-m2m-ref-tree choy-m2m-ref-tree--readonly" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
-        <el-tree
+        <RelationTree
           ref="displayTreeRef"
           class="choy-m2m-ref-tree__tree"
           node-key="__id"
@@ -60,12 +59,10 @@ SPDX-License-Identifier: Apache-2.0
           :lazy="lazy"
           :load="loadTreeNode"
           :show-checkbox="true"
-          :check-on-click-node="false"
-          :check-on-click-leaf="false"
+          :checkbox-disabled="true"
           :check-strictly="checkStrictly"
           :default-expand-all="defaultExpandAll"
           :expand-on-click-node="false"
-          :highlight-current="false"
           :empty-text="effectiveEmptyText"
           :loading="loading"
           @node-click="onNodeClick"
@@ -77,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
               </slot>
             </slot>
           </template>
-        </el-tree>
+        </RelationTree>
       </div>
     </template>
   </FieldBase>
@@ -94,6 +91,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
 import { normalizeTreeRefId as normalizeRefId } from './treeRefId';
+import RelationTree from '@/web/web/components/internal/RelationTree.vue';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ManyToManyRefTreeField' });
 
@@ -573,13 +571,13 @@ function toggleNodeExpanded(node: any) {
 function onNodeClick(_data: any, node: any, _treeNode: any, event?: MouseEvent) {
   if (!props.expandOnClickNode) return;
   const target = event?.target as HTMLElement | null;
-  if (target?.closest('.el-checkbox')) return;
+  if (target?.closest('.choy-relation-tree__checkbox')) return;
   toggleNodeExpanded(node);
 }
 
 function onDisplayTreeClickCapture(event: MouseEvent) {
   const target = event.target as HTMLElement | null;
-  if (!target?.closest('.el-checkbox')) return;
+  if (!target?.closest('.choy-relation-tree__checkbox')) return;
   event.preventDefault();
   event.stopPropagation();
 }
@@ -620,7 +618,7 @@ watch(
   min-height: 120px;
 }
 
-.choy-m2m-ref-tree--readonly :deep(.el-checkbox) {
+.choy-m2m-ref-tree--readonly :deep(.choy-relation-tree__checkbox) {
   cursor: default;
 }
 </style>

@@ -17,6 +17,7 @@ import FieldBase from './FieldBase.vue';
 import ChoyManyToOneField from './ChoyManyToOneField.vue';
 import ChoyManyToOneRefField from './ChoyManyToOneRefField.vue';
 import ChoyManyToManyRefTagsField from './ChoyManyToManyRefTagsField.vue';
+import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
 
 function makeM2OBinding(relationStore: any): UseField {
   const value = ref<any>(null);
@@ -73,34 +74,33 @@ function makeM2MBinding(relationStore: any): UseField {
 
 const origChoyMessageError = ChoyMessage.error;
 
-const ElSelectV2Stub = defineComponent({
-  name: 'ElSelectV2Stub',
+const RelationComboboxStub = defineComponent({
+  name: 'RelationComboboxStub',
   inheritAttrs: false,
   props: {
-    remoteMethod: { type: Function, default: undefined },
-    modelValue: { type: [String, Number, Object, Array, null] as any, default: undefined },
-    options: { type: Array, default: undefined },
-    loading: { type: Boolean, default: false },
+    search: { type: Function, default: undefined },
+    pageSize: { type: Number, default: 20 },
+    searchMore: { type: Boolean, default: true },
   },
-  setup(props: any, { slots }: any) {
+  emits: ['update:modelValue', 'select', 'search-more'],
+  setup(props: any) {
     return () =>
       h('div', { class: 'select-stub' }, [
         h('button', {
           type: 'button',
           'data-test': 'trigger-remote',
-          onClick: () => props.remoteMethod?.('  alice  '),
+          onClick: () => props.search?.('  alice  ', { limit: props.pageSize }),
         }),
         h('button', {
           type: 'button',
           'data-test': 'trigger-remote-null',
-          onClick: () => props.remoteMethod?.(null),
+          onClick: () => props.search?.(null, { limit: props.pageSize }),
         }),
         h('button', {
           type: 'button',
           'data-test': 'trigger-remote-empty',
-          onClick: () => props.remoteMethod?.(''),
+          onClick: () => props.search?.('', { limit: props.pageSize }),
         }),
-        slots.footer?.(),
       ]);
   },
 });
@@ -185,16 +185,14 @@ describe('relation typeahead NameSearch / NameCreate', () => {
   afterEach(() => {
     ChoyMessage.error = origChoyMessageError;
     restoreSfc(FieldBase as any);
+    restoreSfc(RelationCombobox as any);
   });
 
   function mountField(Comp: any, props: Record<string, unknown>) {
+    stubSfc(RelationCombobox as any, RelationComboboxStub as any);
     return mountApp(Comp, {
       props: { renderMode: 'form', ...props },
       plugins: [pinia],
-      stubs: {
-        'el-select-v2': ElSelectV2Stub,
-        ElSelectV2: ElSelectV2Stub,
-      },
     });
   }
 
