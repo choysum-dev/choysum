@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Basic Information')" class="bfv-card"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Basic Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="3">
           <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
         </ChoyCol>
@@ -117,8 +117,3 @@ function onCurrencyValueClick(payload: ManyToOneValueClickPayload<Currency>) {
 }
 </script>
 
-<style scoped>
-.bfv-card {
-  margin-bottom: 14px;
-}
-</style>

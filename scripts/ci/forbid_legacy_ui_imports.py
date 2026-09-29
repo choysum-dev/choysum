@@ -4,7 +4,9 @@
 """Forbid legacy UI imports after Choy UI Kit cutover.
 
 Product modules under modules/ must not import Element Plus, echarts, or
-legacy O*.vue / OV*.vue engines. Fixture / testdata trees may be allowlisted.
+legacy O*.vue / OV*.vue engines; must not use <el-*> template tags; and must
+not reference leftover --el-* CSS variables or .el-* selectors in product
+.vue / .css. Fixture / testdata trees may be allowlisted.
 
 Exit 0 when clean; exit 1 and print violations otherwise.
 Exit 2 when --modules is not a directory.
@@ -31,7 +33,7 @@ O_VUE_RE = re.compile(r"(?:^|/)O[A-Z]\w+\.vue\b|(?:^|/)OV[A-Z]\w+\.vue\b")
 # Opening Element Plus tags in Vue templates (`<el-button`, `<el-select-v2`, …).
 EL_TAG_RE = re.compile(r"<(el-[A-Za-z][\w-]*)\b")
 
-SCAN_SUFFIXES = {".ts", ".tsx", ".vue", ".js", ".mjs", ".cjs"}
+SCAN_SUFFIXES = {".ts", ".tsx", ".vue", ".js", ".mjs", ".cjs", ".css"}
 
 # Directory name segments skipped entirely (fixtures / generated / vendor-ish).
 SKIP_DIR_NAMES = {
@@ -42,6 +44,10 @@ SKIP_DIR_NAMES = {
     "testdata",
     "__fixtures__",
 }
+
+# Product vue/css must not reference legacy Element Plus CSS vars / selectors.
+EL_CSS_VAR_RE = re.compile(r"--el-[a-z0-9-]+")
+EL_CSS_SEL_RE = re.compile(r"\.el-[a-zA-Z][\w-]*")
 
 FORBIDDEN_PACKAGE_PREFIXES = (
     "element-plus",
@@ -195,6 +201,29 @@ def scan_vue_el_tags(path: Path, text: str) -> list[tuple[int, str, str]]:
     return hits
 
 
+def strip_css_comments(text: str) -> str:
+    """Blank CSS /* … */ comments in place so offsets stay aligned."""
+    return re.sub(
+        r"/\*.*?\*/",
+        lambda mm: " " * (mm.end() - mm.start()),
+        text,
+        flags=re.DOTALL,
+    )
+
+
+def scan_legacy_css_tokens(path: Path, text: str) -> list[tuple[int, str, str]]:
+    """Flag leftover --el-* vars and .el-* selectors in product .vue / .css."""
+    if path.suffix not in {".vue", ".css"}:
+        return []
+    cleaned = strip_css_comments(strip_html_comments(text))
+    hits: list[tuple[int, str, str]] = []
+    for match in EL_CSS_VAR_RE.finditer(cleaned):
+        hits.append((line_number_at(text, match.start()), match.group(0), "el-css-var"))
+    for match in EL_CSS_SEL_RE.finditer(cleaned):
+        hits.append((line_number_at(text, match.start()), match.group(0), "el-css-sel"))
+    return hits
+
+
 def scan_file(path: Path) -> list[tuple[int, str, str]]:
     """Return (line, spec, rule) violations in one file."""
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -210,6 +239,8 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
                 hits.append((line_no, spec, "o-star-vue"))
     if path.suffix == ".vue":
         hits.extend(scan_vue_el_tags(path, text))
+    if path.suffix in {".vue", ".css"}:
+        hits.extend(scan_legacy_css_tokens(path, text))
     return hits
 
 
@@ -252,8 +283,9 @@ def main(argv: list[str] | None = None) -> int:
             rel = path
         print(f"  {rel}:{line}: [{rule}] {spec}", file=sys.stderr)
     print(
-        "Legacy Element Plus / echarts / O*.vue imports and <el-*> template tags "
-        "are banned after Choy UI Kit cutover. Import Choy* from @/web instead.",
+        "Legacy Element Plus / echarts / O*.vue imports, <el-*> template tags, "
+        "and --el-* / .el-* CSS tokens are banned after Choy UI Kit cutover. "
+        "Import Choy* from @/web and use --choy-* tokens instead.",
         file=sys.stderr,
     )
     return 1

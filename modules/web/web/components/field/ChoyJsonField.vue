@@ -33,11 +33,11 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <pre v-if="isTableLike" class="choy-json-display">{{ displayString(fieldValue().value) }}</pre>
-      <div v-else-if="normalizeIncoming(fieldValue().value) == null" class="choy-json-display choy-json-display--empty" />
+      <pre v-if="isTableLike" class="choy-json-display m-0 whitespace-pre-wrap break-words px-2 py-1 font-mono leading-snug">{{ displayString(fieldValue().value) }}</pre>
+      <div v-else-if="normalizeIncoming(fieldValue().value) == null" class="choy-json-display choy-json-display--empty m-0 min-h-[1.4em] px-2 py-1 font-mono" />
       <VueJsonPretty
         v-else
-        class="choy-json-pretty"
+        class="choy-json-pretty w-full break-words px-2 py-1 text-[13px] leading-snug"
         :data="normalizeIncoming(fieldValue().value)!"
         :deep="prettyDeep"
         :show-length="true"
@@ -312,45 +312,16 @@ const OJsonCell = defineComponent({
     return () =>
       h('div', {}, [
         h('textarea', {
-          class: 'choy-json-input',
+          class: 'choy-json-input w-full font-mono',
           placeholder: p.placeholder,
           rows: 6,
           value: editingText.value ?? '',
           onInput: (e: Event) => onInput((e.target as HTMLTextAreaElement).value),
           onBlur,
         }),
-        parseError.value ? h('div', { class: 'choy-json-err' }, parseError.value) : null,
+        parseError.value ? h('div', { class: 'choy-json-err mt-1 text-xs text-danger' }, parseError.value) : null,
       ]);
   },
 });
 </script>
 
-<style scoped>
-.choy-json-input {
-  width: 100%;
-  font-family: monospace;
-}
-.choy-json-display {
-  margin: 0;
-  padding: 4px 8px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: monospace;
-  line-height: 1.4;
-}
-.choy-json-display--empty {
-  min-height: 1.4em;
-}
-.choy-json-pretty {
-  width: 100%;
-  padding: 4px 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  word-break: break-word;
-}
-.choy-json-err {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--el-color-error);
-}
-</style>

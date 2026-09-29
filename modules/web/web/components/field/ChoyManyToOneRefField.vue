@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit="{ fieldValue, record }">
-      <div class="choy-many-to-one-select" :style="{ width: width || '100%' }">
+      <div class="w-full" :style="{ width: width || '100%' }">
         <RelationCombobox
           :model-value="comboboxId(fieldValue().value)"
           :selected-option="selectedOptionFor(fieldValue().value)"
@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
         />
         <div
           v-if="showNameCreateEntry"
-          class="choy-m2o__more choy-m2o__more--clickable"
+          class="choy-m2o__more choy-m2o__more--clickable block w-full cursor-pointer select-none bg-transparent px-3 py-1.5 text-primary transition-colors hover:bg-muted active:bg-muted focus:outline-none focus-visible:rounded-sm focus-visible:shadow-[inset_0_0_0_2px_var(--choy-color-primary-muted)]"
           role="button"
           tabindex="0"
           data-testid="choy-m2o-name-create"
@@ -50,8 +50,12 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <template #display="{ fieldValue }">
       <span
-        class="choy-field-display-text"
-        :class="{ 'choy-field-display-text--clickable': isValueClickable }"
+        class="choy-field-display-text break-all whitespace-normal p-0 leading-[inherit]"
+        :class="
+          isValueClickable
+            ? 'choy-field-display-text--clickable cursor-pointer text-primary transition-colors hover:text-primary-dark focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-muted'
+            : 'text-foreground'
+        "
         :role="isValueClickable ? 'button' : undefined"
         :tabindex="isValueClickable ? 0 : undefined"
         @click="onDisplayValueClick(fieldValue().value as any, $event)"
@@ -625,55 +629,3 @@ async function confirmPick() {
 }
 </script>
 
-<style scoped>
-.choy-form-field {
-  margin-bottom: var(--choy-form-field-margin-bottom, 18px);
-}
-.choy-many-to-one-select {
-  width: 100%;
-}
-.choy-field-display-text {
-  color: var(--el-text-color-regular);
-  word-break: break-all;
-}
-.choy-field-display-text--clickable {
-  cursor: pointer;
-  color: var(--el-color-primary);
-  transition: color 0.16s ease;
-}
-.choy-field-display-text--clickable:hover {
-  color: var(--el-color-primary-dark-2);
-}
-.choy-field-display-text--clickable:focus-visible {
-  outline: 2px solid var(--el-color-primary-light-7);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-.choy-m2o__more {
-  text-align: center;
-}
-.choy-m2o__more--clickable {
-  display: block;
-  width: 100%;
-  padding: 5px 12px;
-  cursor: pointer;
-  user-select: none;
-  color: var(--el-color-primary);
-  background: transparent;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-}
-.choy-m2o__more--clickable:hover {
-  background-color: var(--el-fill-color-light);
-}
-.choy-m2o__more--clickable:active {
-  background-color: var(--el-fill-color-lighter);
-}
-.choy-m2o__more--clickable:focus,
-.choy-m2o__more--clickable:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--el-color-primary-light-7) inset;
-  border-radius: 2px;
-}
-</style>

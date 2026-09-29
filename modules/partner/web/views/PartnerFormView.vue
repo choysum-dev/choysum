@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
   >
     <div data-region="partner-detail-root">
       <div data-region="partner-primary-form">
-        <ChoyCard :title="_t('Basic Information')" class="pfv-card" data-region="partner-section-basic">
+        <ChoyCard :title="_t('Basic Information')" class="mb-3.5" data-region="partner-section-basic">
           <ChoyGrid :cols="12">
             <ChoyCol :span="3">
               <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyGrid>
         </ChoyCard>
 
-        <ChoyCard :title="_t('Commercial Basics')" class="pfv-card" data-region="partner-section-commercial-basics">
+        <ChoyCard :title="_t('Commercial Basics')" class="mb-3.5" data-region="partner-section-commercial-basics">
           <ChoyGrid :cols="12">
             <ChoyCol :span="3">
               <ChoyIntField :store="store" prop="CustomerRank" />
@@ -84,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyGrid>
         </ChoyCard>
 
-        <ChoyCard :title="_t('Contact Details')" class="pfv-card" data-region="partner-section-contact-channel">
+        <ChoyCard :title="_t('Contact Details')" class="mb-3.5" data-region="partner-section-contact-channel">
           <ChoyGrid :cols="12">
             <ChoyCol :span="3">
               <ChoyVarcharField :store="store" prop="Email" />
@@ -101,7 +101,7 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyGrid>
         </ChoyCard>
 
-        <ChoyCard :title="_t('Default Entries')" class="pfv-card" data-region="partner-section-default-entry">
+        <ChoyCard :title="_t('Default Entries')" class="mb-3.5" data-region="partner-section-default-entry">
           <ChoyGrid :cols="12">
             <ChoyCol :span="4">
               <ChoyManyToOneField
@@ -137,10 +137,10 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyCard>
       </div>
 
-      <ChoyCard :title="_t('Related Data')" class="pfv-card" data-region="partner-detail-tabs">
+      <ChoyCard :title="_t('Related Data')" class="mb-3.5" data-region="partner-detail-tabs">
         <ChoyTabs
           v-model="activeTab"
-          class="pfv-tabs"
+          class="mt-0"
           :data-anchor="PARTNER_DETAIL_TAB_PANELS_ANCHOR"
           default-value="contacts"
         >
@@ -160,19 +160,19 @@ SPDX-License-Identifier: Apache-2.0
                 :display-dialog-title="_t('View Contact')"
               >
                 <template #card="{ item, editable, removable, edit, remove }">
-                  <div class="pfv-contact-card">
-                    <div class="pfv-contact-card__title-row">
-                      <div class="pfv-contact-card__title">{{ item?.Name || _t('Unnamed Contact') }}</div>
-                      <div class="pfv-contact-card__flags">
-                        <span v-if="item?.IsDefault" class="pfv-flag pfv-flag--success">{{ _t('Default') }}</span>
-                        <span v-if="item?.IsActive === false" class="pfv-flag pfv-flag--muted">{{ _t('Inactive') }}</span>
+                  <div class="flex h-full min-h-0 flex-col gap-1.5">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="text-sm font-semibold text-foreground">{{ item?.Name || _t('Unnamed Contact') }}</div>
+                      <div class="inline-flex gap-1.5">
+                        <span v-if="item?.IsDefault" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-success/20 text-success">{{ _t('Default') }}</span>
+                        <span v-if="item?.IsActive === false" class="inline-flex items-center rounded-md border border-transparent px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">{{ _t('Inactive') }}</span>
                       </div>
                     </div>
-                    <div class="pfv-contact-card__meta">{{ _t('Role') }}: {{ getContactRoleLabel(item?.ContactRole) }}</div>
-                    <div class="pfv-contact-card__meta">{{ _t('Address Type') }}: {{ getAddressTypeLabel(item?.AddressType) }}</div>
-                    <div v-if="item?.Email" class="pfv-contact-card__line">{{ _t('Email') }}: {{ item.Email }}</div>
-                    <div v-if="item?.Phone" class="pfv-contact-card__line">{{ _t('Phone') }}: {{ item.Phone }}</div>
-                    <div v-if="editable || removable" class="pfv-contact-card__actions">
+                    <div class="text-xs text-muted-foreground">{{ _t('Role') }}: {{ getContactRoleLabel(item?.ContactRole) }}</div>
+                    <div class="text-xs text-muted-foreground">{{ _t('Address Type') }}: {{ getAddressTypeLabel(item?.AddressType) }}</div>
+                    <div v-if="item?.Email" class="text-xs text-muted-foreground">{{ _t('Email') }}: {{ item.Email }}</div>
+                    <div v-if="item?.Phone" class="text-xs text-muted-foreground">{{ _t('Phone') }}: {{ item.Phone }}</div>
+                    <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
                       <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
                       <ChoyButton v-if="removable" variant="ghost" size="sm" @click.stop="remove">{{ _t('Delete') }}</ChoyButton>
                     </div>
@@ -354,76 +354,3 @@ function onDefaultShippingAddressValueClick(payload: ManyToOneValueClickPayload<
 }
 </script>
 
-<style scoped>
-.pfv-card {
-  margin-bottom: 14px;
-}
-
-.pfv-tabs {
-  margin-top: 0;
-}
-
-.pfv-contact-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  height: 100%;
-  min-height: 0;
-}
-
-.pfv-contact-card__title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.pfv-contact-card__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--choy-foreground, inherit);
-}
-
-.pfv-contact-card__flags {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.pfv-flag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 0.375rem;
-  border: 1px solid transparent;
-  padding: 0.125rem 0.5rem;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.pfv-flag--success {
-  background: color-mix(in oklab, var(--choy-success, #16a34a) 18%, transparent);
-  color: var(--choy-success, #16a34a);
-}
-
-.pfv-flag--muted {
-  background: color-mix(in oklab, var(--choy-muted, #64748b) 18%, transparent);
-  color: var(--choy-muted-foreground, #64748b);
-}
-
-.pfv-flag--warning {
-  background: color-mix(in oklab, var(--choy-warning, #d97706) 18%, transparent);
-  color: var(--choy-warning, #d97706);
-}
-
-.pfv-contact-card__meta,
-.pfv-contact-card__line {
-  font-size: 12px;
-  color: var(--choy-muted-foreground, #64748b);
-}
-
-.pfv-contact-card__actions {
-  margin-top: auto;
-  padding-top: 4px;
-  display: inline-flex;
-  gap: 4px;
-}
-</style>

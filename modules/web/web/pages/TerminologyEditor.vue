@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyPage>
-    <div class="terminology-toolbar">
+    <div class="terminology-toolbar mb-3 flex flex-wrap items-center gap-2">
       <select
         :value="selectedApp"
         :aria-label="_t('Application')"
@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyVarcharField :store="termStore" prop="Kind" :readonly="true" />
       <ChoyVarcharField :store="termStore" prop="Source" :readonly="true" />
     </ChoyListView>
-    <div v-else class="terminology-empty">{{ _t('Select an application to edit terminology') }}</div>
+    <div v-else class="terminology-empty py-6 text-muted-foreground">{{ _t('Select an application to edit terminology') }}</div>
   </ChoyPage>
 </template>
 
@@ -181,16 +181,3 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.terminology-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-  align-items: center;
-}
-.terminology-empty {
-  color: var(--muted-foreground, #64748b);
-  padding: 24px 0;
-}
-</style>

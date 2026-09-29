@@ -4,9 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-pagination">
-    <span class="choy-pagination__text">
-      <span class="choy-pagination__editable-wrapper">
+  <div class="flex items-center justify-end gap-3 max-md:flex-col max-md:items-center max-md:gap-2">
+    <span class="flex items-center gap-1 whitespace-nowrap text-sm text-foreground max-md:text-xs">
+      <span class="relative inline-flex items-center">
         <input
           v-if="editingStart"
           ref="startInputRef"
@@ -15,16 +15,16 @@ SPDX-License-Identifier: Apache-2.0
           min="1"
           :max="paginationRange.total"
           step="1"
-          class="choy-pagination__input"
+          class="h-auto min-h-6 w-[60px] rounded-sm border border-border bg-background px-1.5 py-0.5 text-end text-sm max-md:w-[50px]"
           @blur="finishEditStart"
           @keydown="handleStartKeydown"
         />
-        <span v-else class="choy-pagination__editable" @click="startEditStart" @mouseenter="handleStartMouseEnter" @mouseleave="handleStartMouseLeave">
+        <span v-else class="choy-pagination__editable inline-block min-w-5 cursor-pointer rounded border border-transparent px-1 text-center transition-colors hover:border-border hover:bg-muted hover:text-primary" @click="startEditStart" @mouseenter="handleStartMouseEnter" @mouseleave="handleStartMouseLeave">
           {{ paginationRange.start }}
         </span>
       </span>
       -
-      <span class="choy-pagination__editable-wrapper">
+      <span class="relative inline-flex items-center">
         <input
           v-if="editingEnd"
           ref="endInputRef"
@@ -33,17 +33,17 @@ SPDX-License-Identifier: Apache-2.0
           min="1"
           :max="paginationRange.total"
           step="1"
-          class="choy-pagination__input"
+          class="h-auto min-h-6 w-[60px] rounded-sm border border-border bg-background px-1.5 py-0.5 text-end text-sm max-md:w-[50px]"
           @blur="finishEditEnd"
           @keydown="handleEndKeydown"
         />
-        <span v-else class="choy-pagination__editable" @click="startEditEnd" @mouseenter="handleEndMouseEnter" @mouseleave="handleEndMouseLeave">
+        <span v-else class="choy-pagination__editable inline-block min-w-5 cursor-pointer rounded border border-transparent px-1 text-center transition-colors hover:border-border hover:bg-muted hover:text-primary" @click="startEditEnd" @mouseenter="handleEndMouseEnter" @mouseleave="handleEndMouseLeave">
           {{ paginationRange.end }}
         </span>
       </span>
       {{ _t('of %s', paginationRange.total) }}
     </span>
-    <div class="choy-pagination__controls">
+    <div class="flex gap-1">
       <ChoyButton size="sm" :disabled="!paginationRange.canGoPrev" @click="goToPrevPage">
         <span class="inline-flex"><ArrowLeft /></span>
       </ChoyButton>
@@ -234,45 +234,3 @@ function handleEndMouseLeave(event: MouseEvent) {
 }
 </script>
 
-<style scoped>
-.choy-pagination {
-  display: flex;align-items: center;justify-content: flex-end;gap: 12px;
-}
-.choy-pagination__text {
-  font-size: 14px;color: var(--el-text-color-regular);white-space: nowrap;display: flex;align-items: center;gap: 4px;
-}
-.choy-pagination__editable-wrapper {
-  display: inline-flex;align-items: center;position: relative;
-}
-.choy-pagination__editable {
-  cursor: pointer;padding: 2px 4px;border-radius: 4px;transition: all 0.2s ease;border: 1px solid transparent;min-width: 20px;text-align: center;display: inline-block;
-}
-.choy-pagination__editable:hover,
-.choy-pagination__editable.hover {
-  background-color: var(--el-fill-color-light);border-color: var(--el-border-color);color: var(--el-color-primary);
-}
-.choy-pagination__input {
-  width: 60px !important;
-}
-.choy-pagination__input :deep(.el-input__inner) {
-  padding: 2px 6px;height: auto;min-height: 24px;font-size: 14px;text-align: end;
-}
-.choy-pagination__input :deep(.el-input__wrapper) {
-  padding: 0 2px !important;
-}
-.choy-pagination__controls {
-  display: flex;gap: 4px;
-}
-/* Responsive adjustments. */
-@media (max-width: 768px) {
-.choy-pagination {
-  flex-direction: column;align-items: center;gap: 8px;
-}
-.choy-pagination__text {
-  font-size: 12px;
-}
-.choy-pagination__input {
-  width: 50px !important;
-}
-}
-</style>

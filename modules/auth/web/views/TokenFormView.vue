@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Token Information')" class="tfv-card">
+    <ChoyCard :title="_t('Token Information')" class="mb-3.5">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyManyToOneField
@@ -42,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard :title="_t('System Information')" class="tfv-card">
+    <ChoyCard :title="_t('System Information')" class="mb-3.5">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyDatetimeField :store="store" prop="RevokedAt" />
@@ -109,12 +109,3 @@ function onUserValueClick(payload: ManyToOneValueClickPayload<User>) {
 }
 </script>
 
-<style scoped>
-.tfv-card {
-  margin-bottom: 14px;
-}
-.tfv-card__header {
-  font-weight: 600;
-  color: var(--choy-foreground, inherit);
-}
-</style>

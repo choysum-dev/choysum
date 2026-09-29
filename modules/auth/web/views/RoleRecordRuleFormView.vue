@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Record Rule')" class="rrfv-card">
+    <ChoyCard :title="_t('Record Rule')" class="mb-3.5">
       <RoleRecordRuleAudienceHints />
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
@@ -54,7 +54,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyGrid>
     </ChoyCard>
 
-    <ChoyCard :title="_t('System Information')" class="rrfv-card">
+    <ChoyCard :title="_t('System Information')" class="mb-3.5">
       <ChoyGrid :cols="12">
         <ChoyCol :span="6">
           <ChoyDatetimeField :store="store" prop="CreatedAt" />
@@ -118,12 +118,3 @@ function onRoleValueClick(payload: ManyToOneValueClickPayload<Role>) {
 }
 </script>
 
-<style scoped>
-.rrfv-card {
-  margin-bottom: 14px;
-}
-.rrfv-card__header {
-  font-weight: 600;
-  color: var(--choy-foreground, inherit);
-}
-</style>

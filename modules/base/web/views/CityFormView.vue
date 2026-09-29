@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('City Information')" class="bfv-card"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('City Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Code" /></ChoyCol>
         <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
@@ -79,8 +79,3 @@ function onStateValueClick(payload: ManyToOneValueClickPayload<State>) {
 }
 </script>
 
-<style scoped>
-.bfv-card {
-  margin-bottom: 14px;
-}
-</style>

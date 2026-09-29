@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <DropdownMenu v-if="visibleItems.length">
     <DropdownMenuTrigger
-      class="choy-page-io-menu__trigger"
+      class="cursor-pointer border-0 bg-transparent px-2 py-1"
       :aria-label="menuAriaLabel"
       data-testid="page-io-menu-trigger"
     >
@@ -187,11 +187,3 @@ function onImported() {
 defineExpose({ onCommand });
 </script>
 
-<style scoped>
-.choy-page-io-menu__trigger {
-  padding: 4px 8px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-</style>

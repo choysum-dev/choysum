@@ -4,14 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-view-container">
-    <div v-if="$slots.header || showHeader" class="choy-view-container__header">
+  <div class="flex h-full w-full min-w-0 flex-col">
+    <div v-if="$slots.header || showHeader" class="shrink-0">
       <slot name="header" />
     </div>
-    <div class="choy-view-container__body">
+    <div class="min-h-0 min-w-0 flex-1">
       <slot />
     </div>
-    <div v-if="$slots.footer" class="choy-view-container__footer">
+    <div v-if="$slots.footer" class="shrink-0">
       <slot name="footer" />
     </div>
   </div>
@@ -26,34 +26,3 @@ withDefaults(
 );
 </script>
 
-<style scoped>
-/* Primary new class names */
-.choy-view-container {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-}
-.choy-view-container__header {
-  flex: 0 0 auto;
-}
-.choy-view-container__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-}
-.choy-view-container__footer {
-  flex: 0 0 auto;
-}
-
-/* Alternate selectors kept for hosts that still target the old shell class names. */
-.choy-view-shell {
-  display: contents; /* neutralize legacy wrapper if still referenced */
-}
-.choy-view-shell__header,
-.choy-view-shell__body,
-.choy-view-shell__footer {
-  display: contents;
-}
-</style>

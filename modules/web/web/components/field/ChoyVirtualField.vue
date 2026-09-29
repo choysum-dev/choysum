@@ -84,6 +84,3 @@ if (!props.once) {
 }
 </script>
 
-<style scoped>
-/* No styles. */
-</style>

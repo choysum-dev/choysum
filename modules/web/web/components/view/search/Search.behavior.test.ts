@@ -92,7 +92,7 @@ function installEpStubs() {
           {
             type: props.type || 'button',
             ...attrs,
-            class: ['el-btn', attrs.class],
+            class: ['choy-btn', attrs.class],
             disabled: props.disabled || undefined,
             onClick: (e: any) => emit('click', e),
           },
@@ -107,7 +107,7 @@ function installEpStubs() {
     setup(props: any, { slots }: any) {
       return () =>
         props.open
-          ? h('div', { class: 'el-dialog' }, slots.default?.())
+          ? h('div', { class: 'choy-dialog', role: 'dialog' }, slots.default?.())
           : null;
     },
   });
@@ -219,7 +219,7 @@ function makeStore() {
 }
 
 function btnByText(m: { qa: (s: string) => Element[] }, substr: string) {
-  return m.qa('.el-btn').find(b => (b.textContent || '').includes(substr));
+  return m.qa('button').find(b => (b.textContent || '').includes(substr));
 }
 
 function setInputValue(el: Element | null, value: string) {
@@ -306,7 +306,7 @@ describe('OSearch behavior', () => {
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(0);
 
     const before = (m.emitted['query-update'] || []).length;
-    m.qa('.el-btn')[0]!.dispatchEvent(new Event('click', { bubbles: true }));
+    m.qa('.choy-search__leading-btn')[0]!.dispatchEvent(new Event('click', { bubbles: true }));
     await nextTick();
     expect((m.emitted['query-update'] || []).length).toBeGreaterThan(before);
     m.unmount();
@@ -617,17 +617,17 @@ describe('OSearch behavior', () => {
     const saveOpen = btnByText(m, 'Save current filters');
     (saveOpen as HTMLElement).click();
     await nextTick();
-    expect(m.q('.el-dialog')).toBeTruthy();
+    expect(m.q('[role="dialog"]')).toBeTruthy();
 
-    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save');
-    setInputValue(((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), '');
+    const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save');
+    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), '');
     await nextTick();
     (saveBtn as HTMLElement).click();
     await nextTick();
     expect(msgWarning.calls.length).toBeGreaterThan(0);
     expect(savedFiltersApi.saveCurrent.calls.length).toBe(0);
 
-    setInputValue(((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'NewFav');
+    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'NewFav');
     await nextTick();
     (saveBtn as HTMLElement).click();
     await flushPromises();
@@ -693,9 +693,9 @@ describe('OSearch behavior', () => {
     const saveOpen = btnByText(m, 'Save current filters');
     (saveOpen as HTMLElement).click();
     await nextTick();
-    setInputValue(((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'FailFav');
+    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'FailFav');
     await nextTick();
-    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save');
+    const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save');
     (saveBtn as HTMLElement).click();
     await flushPromises();
     expect(msgError.calls[0]).toEqual(['save blew up']);
@@ -731,9 +731,9 @@ describe('OSearch behavior', () => {
     const saveOpen = btnByText(m, 'Save current filters');
     (saveOpen as HTMLElement).click();
     await nextTick();
-    setInputValue(((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'ErrFav');
+    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'ErrFav');
     await nextTick();
-    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save');
+    const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save');
     (saveBtn as HTMLElement).click();
     await flushPromises();
     expect(msgError.calls[0]).toEqual(['save failed']);
@@ -753,9 +753,9 @@ describe('OSearch behavior', () => {
     const saveOpen = btnByText(m, 'Save current filters');
     (saveOpen as HTMLElement).click();
     await nextTick();
-    setInputValue(((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'Once');
+    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'Once');
     await nextTick();
-    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
+    const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
     saveBtn.click();
     saveBtn.click();
     await nextTick();
@@ -797,7 +797,7 @@ describe('OSearch behavior', () => {
     const saveOpen = btnByText(m, 'Save current filters');
     (saveOpen as HTMLElement).click();
     await nextTick();
-    setInputValue(((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'DefaultOnly');
+    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'DefaultOnly');
     await nextTick();
     const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     expect(defaultCheck).toBeTruthy();
@@ -805,7 +805,7 @@ describe('OSearch behavior', () => {
     defaultInput.checked = true;
     defaultInput.dispatchEvent(new Event('change', { bubbles: true }));
     await nextTick();
-    const saveBtn = m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
+    const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
     saveBtn.click();
     await flushPromises();
     expect(savedFiltersApi.saveCurrent.calls[0]![0]).toEqual({
@@ -817,7 +817,7 @@ describe('OSearch behavior', () => {
     savedFiltersApi.saveCurrent.mockClear();
     (saveOpen as HTMLElement).click();
     await nextTick();
-    setInputValue(((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'SharedOnly');
+    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'SharedOnly');
     await nextTick();
     const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
     expect(sharedCheck).toBeTruthy();
@@ -825,7 +825,7 @@ describe('OSearch behavior', () => {
     sharedInput.checked = true;
     sharedInput.dispatchEvent(new Event('change', { bubbles: true }));
     await nextTick();
-    (m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
+    (m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();
     expect(savedFiltersApi.saveCurrent.calls[0]![0]).toEqual({
       name: 'SharedOnly',
@@ -861,23 +861,23 @@ describe('OSearch behavior', () => {
 
     (m.q('.choy-search__menu-item-edit') as HTMLElement).click();
     await nextTick();
-    const dialog = m.q('.el-dialog');
+    const dialog = m.q('[role="dialog"]');
     expect(dialog).toBeTruthy();
     expect(dialog!.querySelector('[data-title]')?.getAttribute('data-title')).toBe('Edit favorite');
-    expect((((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null) as HTMLInputElement).value).toBe('Company Management');
+    expect((((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null) as HTMLInputElement).value).toBe('Company Management');
     const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
     expect((defaultCheck!.querySelector('input') as HTMLInputElement).checked).toBe(true);
     expect((sharedCheck!.querySelector('input') as HTMLInputElement).checked).toBe(true);
 
-    setInputValue(((m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'Renamed Fav');
+    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'Renamed Fav');
     await nextTick();
     const sharedInput = sharedCheck!.querySelector('input') as HTMLInputElement;
     sharedInput.checked = false;
     sharedInput.dispatchEvent(new Event('change', { bubbles: true }));
     await nextTick();
     const beforeReady = (m.emitted['defaults-ready'] || []).length;
-    (m.qa('.el-btn').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
+    (m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();
     expect(savedFiltersApi.updateMeta.calls[0]).toEqual([
       'fav-edit',

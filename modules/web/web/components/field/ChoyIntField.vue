@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
       <OIntCell :field-value="fieldValue" :options="bufferOptions" :placeholder="placeholder" :nullable="nullable" :min="min" :max="max" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
+      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ fieldValue().value == null ? '' : fieldValue().value }}</span>
     </template>
   </FieldBase>
 </template>
@@ -199,7 +199,7 @@ const OIntCell = defineComponent({
     return () =>
       h('input', {
         ...attrs,
-        class: 'choy-input choy-int-input',
+        class: 'choy-input choy-int-input w-full',
         type: 'text',
         value: editingRaw.value ?? '',
         placeholder: p.placeholder,
@@ -228,11 +228,3 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
-<style scoped>
-.choy-field-display-text {
-  line-height: var(--el-component-size-base, 32px);padding: 0 11px;color: var(--el-text-color-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
-}
-.choy-input {
-  width: 100%;
-}
-</style>

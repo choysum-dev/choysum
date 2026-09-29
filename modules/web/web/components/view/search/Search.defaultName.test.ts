@@ -71,7 +71,7 @@ function installEpStubs() {
           {
             type: props.type || 'button',
             ...attrs,
-            class: ['el-btn', attrs.class],
+            class: ['choy-btn', attrs.class],
             disabled: props.disabled || undefined,
             onClick: (e: any) => emit('click', e),
           },
@@ -84,7 +84,7 @@ function installEpStubs() {
     props: { open: { type: Boolean, default: false } },
     emits: ['update:open'],
     setup(props: any, { slots }: any) {
-      return () => (props.open ? h('div', { class: 'el-dialog' }, slots.default?.()) : null);
+      return () => (props.open ? h('div', { class: 'choy-dialog', role: 'dialog' }, slots.default?.()) : null);
     },
   });
   stubSfc(DialogContent as any, {
@@ -175,7 +175,7 @@ function mountSearch() {
 }
 
 async function openSaveDialog(m: ReturnType<typeof mountSearch>) {
-  const saveOpen = m.qa('.el-btn').find(b => (b.textContent || '').includes('Save current filters'));
+  const saveOpen = m.qa('button').find(b => (b.textContent || '').includes('Save current filters'));
   expect(saveOpen).toBeTruthy();
   (saveOpen as HTMLElement).click();
   await nextTick();
@@ -203,7 +203,7 @@ describe('OSearch default favorite name + scopeKey', () => {
     await flushPromises();
     expect(savedFiltersApi.lastScopeKey).toBe('/web/partners/42');
     await openSaveDialog(m);
-    const nameInput = (m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
+    const nameInput = (m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
     expect(nameInput?.value).toBe('Partners');
     m.unmount();
   });
@@ -213,7 +213,7 @@ describe('OSearch default favorite name + scopeKey', () => {
     const m = mountSearch();
     await flushPromises();
     await openSaveDialog(m);
-    const nameInput = (m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
+    const nameInput = (m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
     expect(nameInput?.value).toBe('Menu Label');
     m.unmount();
   });
@@ -223,7 +223,7 @@ describe('OSearch default favorite name + scopeKey', () => {
     const m = mountSearch();
     await flushPromises();
     await openSaveDialog(m);
-    const nameInput = (m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
+    const nameInput = (m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
     expect(nameInput?.value).toBe('Route Title');
     m.unmount();
   });
@@ -232,7 +232,7 @@ describe('OSearch default favorite name + scopeKey', () => {
     const m = mountSearch();
     await flushPromises();
     await openSaveDialog(m);
-    const nameInput = (m.q('.el-dialog') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
+    const nameInput = (m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
     expect(nameInput?.value).toBe('demo.Widget');
     m.unmount();
   });

@@ -3,11 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Global product styles (plain CSS; load after tokens.css).
+ * Box-sizing / body reset substitute for Tailwind FullCSS preflight.
  */
-
-@import './variables.css';
-@import './transitions.css';
-@import './a11y.css';
 
 html {
   box-sizing: border-box;
@@ -20,48 +17,65 @@ html {
 }
 
 body {
-  font-family: var(--choy-font-family, var(--el-font-family, system-ui, sans-serif));
-  font-size: var(--choy-font-size-base, var(--el-font-size-base, 1rem));
-  line-height: var(--choy-line-height-base, var(--el-line-height-base, 1.5));
-  color: var(--choy-color-foreground, var(--el-text-color-primary, inherit));
+  font-family: var(--choy-font-family, system-ui, sans-serif);
+  font-size: var(--choy-font-size-base, 1rem);
+  line-height: var(--choy-line-height-base, 1.5);
+  color: var(--choy-color-foreground, inherit);
   background-color: var(--choy-color-background, transparent);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-  color: var(--choy-color-primary, var(--el-color-primary, #2563eb));
+  color: var(--choy-color-primary, #2563eb);
   text-decoration: none;
-  transition: color var(--choy-motion-duration-fast, 150ms);
+  transition: color var(--choy-motion-duration-fast, 120ms);
 }
 
-/* Prefer explicit theme tokens; otherwise mix from base primary. */
 a:hover {
-  color: var(--choy-color-primary-light, var(--el-color-primary-light-3, #3b82f6));
-}
-
-@supports (color: color-mix(in oklab, red, white)) {
-  a:hover {
-    color: var(
-      --choy-color-primary-light,
-      color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, white)
-    );
-  }
+  color: var(--choy-color-primary-light, #3b82f6);
 }
 
 a:active {
-  color: var(--choy-color-primary-dark, var(--el-color-primary-dark-2, #1d4ed8));
-}
-
-@supports (color: color-mix(in oklab, red, white)) {
-  a:active {
-    color: var(
-      --choy-color-primary-dark,
-      color-mix(in oklab, var(--choy-color-primary, var(--el-color-primary, #2563eb)) 82%, black)
-    );
-  }
+  color: var(--choy-color-primary-dark, #1d4ed8);
 }
 
 ul {
   padding-inline-start: 0;
+}
+
+/* Vue <Transition name="fade"> (auth pages). */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--choy-motion-duration-normal, 200ms) var(--choy-motion-ease-in-out, ease-in-out);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Accessibility */
+[aria-busy='true'] {
+  cursor: progress;
+}
+
+[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@media (prefers-contrast: more) {
+  :focus-visible {
+    outline: 4px solid var(--choy-color-foreground, CanvasText) !important;
+    outline-offset: 2px !important;
+  }
+
+  a,
+  button,
+  [role='button'],
+  [role='link'] {
+    text-decoration: underline;
+  }
 }

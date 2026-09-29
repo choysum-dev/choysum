@@ -23,7 +23,7 @@ SPDX-License-Identifier: Apache-2.0
     <!-- Shared form/row edit slot: derive options from fieldValue and record context -->
     <template #edit="{ fieldValue, record }">
       <select
-        class="choy-selection-field"
+        class="choy-selection-field w-full"
         :value="fieldValue().value ?? ''"
         :disabled="disabled || optionsLoading"
         :data-loading="optionsLoading ? 'true' : 'false'"
@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text">{{ displayLabelFor(record, fieldValue().value) }}</span>
+      <span class="choy-field-display-text inline-block max-w-full truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ displayLabelFor(record, fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>
@@ -387,11 +387,3 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
-<style scoped>
-.choy-selection-field {
-  width: 100%;
-}
-.choy-field-display-text {
-  line-height: var(--el-component-size-base, 32px);color: var(--el-text-color-primary);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;padding: 0 11px;
-}
-</style>

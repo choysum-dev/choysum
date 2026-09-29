@@ -6,9 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ViewContainer :showHeader="resolvedShowHeader">
     <template #header>
-      <div class="form-view__action-bar">
-        <div class="form-view__actions" v-if="resolvedShowActions">
-          <div class="form-view__system-actions">
+      <div class="form-view__action-bar flex items-center justify-between gap-3 border-b border-border pb-1 min-h-10 max-md:flex-col max-md:items-stretch">
+        <div class="form-view__actions flex flex-1 items-center gap-4 max-md:flex-col max-md:items-stretch max-md:gap-2" v-if="resolvedShowActions">
+          <div class="form-view__system-actions flex items-center gap-2">
             <slot name="system-actions">
               <template v-if="viewMode === 'display' && effectiveRecordId">
                 <ChoyButton v-if="resolvedCreateAction && canCreate" size="sm" variant="default" @click="handleCreate">
@@ -62,11 +62,11 @@ SPDX-License-Identifier: Apache-2.0
               </template>
             </slot>
           </div>
-          <div class="form-view__user-actions">
+          <div class="form-view__user-actions flex items-center gap-2 border-l border-border pl-4 max-md:border-l-0 max-md:border-t max-md:border-border max-md:pl-0 max-md:pt-2">
             <slot name="user-actions"> </slot>
           </div>
         </div>
-        <div class="form-view__header-right">
+        <div class="form-view__header-right flex items-center justify-end gap-3 max-md:justify-center">
           <slot name="statusbar" />
           <slot name="button-box" />
           <slot name="header-right"> </slot>
@@ -76,8 +76,8 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Always render the form; busy state is local (no Element Plus v-loading). -->
     <div
-      class="form-view__content"
-      :class="{ 'form-view__content--busy': loading }"
+      class="form-view__content relative py-4 [&_.choy-field-base__label]:min-w-[120px]"
+      :class="{ 'form-view__content--busy pointer-events-none opacity-65': loading }"
       :aria-busy="loading || undefined"
     >      <form ref="formRef" @submit.prevent>
         <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
@@ -749,45 +749,3 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.form-view__action-bar {
-  display: flex;justify-content: space-between;padding-bottom: 4px;align-items: center;border-bottom: 1px solid var(--el-border-color-light);min-height: 40px;
-}
-.form-view__actions {
-  display: flex;align-items: center;gap: 16px;flex: 1;
-}
-.form-view__system-actions {
-  display: flex;align-items: center;gap: 8px;
-}
-.form-view__user-actions {
-  display: flex;align-items: center;gap: 8px;padding-left: 16px;border-left: 1px solid var(--el-border-color-light);
-}
-.form-view__header-right {
-  display: flex;align-items: center;justify-content: flex-end;gap: 12px;
-}
-.form-view__content {
-  position: relative;
-  padding: 16px 0;
-}
-.form-view__content--busy {
-  pointer-events: none;
-  opacity: 0.65;
-}
-.form-view__content :deep(.el-form-item__label) {
-  width: 120px;
-}
-@media (max-width: 768px) {
-.form-view__action-bar {
-  flex-direction: column;align-items: stretch;gap: 12px;
-}
-.form-view__header-right {
-  justify-content: center;
-}
-.form-view__actions {
-  flex-direction: column;align-items: stretch;gap: 8px;
-}
-.form-view__user-actions {
-  padding-left: 0;border-left: none;border-top: 1px solid var(--el-border-color-light);padding-top: 8px;
-}
-}
-</style>

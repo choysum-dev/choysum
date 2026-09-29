@@ -4,7 +4,7 @@
  *
  * Choysum Choy UI tokens (frozen names; values tunable).
  * Product SPA consumes --choy-* from :root / html (and html.dark /
- * [data-density=compact]).
+ * [data-density=compact] / [dir=rtl]).
  */
 
 :root,
@@ -47,10 +47,35 @@ html {
 
   --choy-motion-duration-fast: 120ms;
   --choy-motion-duration-normal: 200ms;
+  --choy-motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
   --choy-z-dropdown: 1000;
   --choy-z-modal: 1100;
   --choy-z-toast: 1200;
+
+  /* Semantic text / fill / border for product scoped CSS. */
+  --choy-color-muted-foreground: oklch(0.45 0.02 260);
+  --choy-color-fill: var(--choy-color-muted);
+  --choy-color-fill-light: var(--choy-color-muted);
+  --choy-color-border-light: var(--choy-color-border);
+  --choy-color-primary-light: color-mix(in oklab, var(--choy-color-primary) 82%, white);
+  --choy-color-primary-dark: color-mix(in oklab, var(--choy-color-primary) 82%, black);
+  --choy-color-primary-soft: color-mix(in oklab, var(--choy-color-primary) 55%, white);
+  --choy-color-primary-muted: color-mix(in oklab, var(--choy-color-primary) 35%, white);
+  --choy-color-primary-subtle: color-mix(in oklab, var(--choy-color-primary) 12%, white);
+  --choy-color-success-subtle: color-mix(in oklab, var(--choy-color-success) 12%, white);
+  --choy-color-warning-subtle: color-mix(in oklab, var(--choy-color-warning) 12%, white);
+  --choy-color-danger-subtle: color-mix(in oklab, var(--choy-color-danger) 12%, white);
+  --choy-color-info-subtle: color-mix(in oklab, var(--choy-color-info) 12%, white);
+
+  --choy-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --choy-line-height-base: 1.5;
+  --choy-component-size-base: 32px;
+
+  /* Direction defaults; updateDocumentDirection may override at runtime. */
+  --choy-direction: ltr;
+  --choy-transform-direction: -100%;
+  --choy-direction-flip: 1;
 }
 
 html.dark {
@@ -64,9 +89,16 @@ html.dark {
   --choy-color-muted: oklch(0.28 0.02 260);
   --choy-color-border: oklch(0.35 0.02 260);
   --choy-color-ring: oklch(0.7 0.12 255);
-}
-
-html.dark {
+  --choy-color-muted-foreground: oklch(0.72 0.02 260);
+  --choy-color-primary-light: color-mix(in oklab, var(--choy-color-primary) 82%, black);
+  --choy-color-primary-dark: color-mix(in oklab, var(--choy-color-primary) 82%, white);
+  --choy-color-primary-soft: color-mix(in oklab, var(--choy-color-primary) 55%, black);
+  --choy-color-primary-muted: color-mix(in oklab, var(--choy-color-primary) 35%, black);
+  --choy-color-primary-subtle: color-mix(in oklab, var(--choy-color-primary) 18%, black);
+  --choy-color-success-subtle: color-mix(in oklab, var(--choy-color-success) 18%, black);
+  --choy-color-warning-subtle: color-mix(in oklab, var(--choy-color-warning) 18%, black);
+  --choy-color-danger-subtle: color-mix(in oklab, var(--choy-color-danger) 18%, black);
+  --choy-color-info-subtle: color-mix(in oklab, var(--choy-color-info) 18%, black);
   color-scheme: dark;
 }
 
@@ -82,6 +114,12 @@ html[data-density='compact'] {
   --choy-font-size-lg: 1.0625rem;
   --choy-layout-header-height: 2.75rem;
   --choy-layout-content-padding: 0.75rem;
+}
+
+html[dir='rtl'] {
+  --choy-direction: rtl;
+  --choy-transform-direction: 100%;
+  --choy-direction-flip: -1;
 }
 
 @media (prefers-reduced-motion: reduce) {

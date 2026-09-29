@@ -1,7 +1,0 @@
-/*
- * SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
- * SPDX-License-Identifier: Apache-2.0
- *
- * Optional extra preflight hooks. Product box-sizing / body reset live in
- * index.css; Tailwind FullCSS preflight stays off for the generated utilities.
- */

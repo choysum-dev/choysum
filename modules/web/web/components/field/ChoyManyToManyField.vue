@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     <!-- Edit mode. -->
     <template #edit>
       <ChoyViewScope v-if="!allowRowEdit" view-mode="display" :container="'List'" :field-prefix="String(prop)">
-        <div class="choy-many-to-many__table" :style="{ height: tableHeightPxEdit }" tabindex="-1">
+        <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
           <ChoyTableHost
             ref="ovTableRef"
             :data="getItems()"
@@ -40,14 +40,14 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyTableColumn>
           </ChoyTableHost>
         </div>
-        <div class="choy-many-to-many-actions">
+        <div class="flex items-center ps-[60px] py-1.5">
           <ChoyButton v-if="searchList" size="sm" variant="link" @click="openPicker">{{ _t('Add row') }}</ChoyButton>
         </div>
       </ChoyViewScope>
 
       <template v-else>
         <ChoyViewScope :view-mode="binding.env.viewMode" :container="'List'" :field-prefix="String(prop)">
-          <div class="choy-many-to-many__table" :style="{ height: tableHeightPxEdit }" tabindex="-1">
+          <div class="w-full min-w-0" :style="{ height: tableHeightPxEdit }" tabindex="-1">
             <ChoyTableHost
               ref="ovTableRef"
               :data="getItems()"
@@ -67,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
               </ChoyTableColumn>
             </ChoyTableHost>
           </div>
-          <div class="choy-many-to-many-actions">
+          <div class="flex items-center ps-[60px] py-1.5">
             <ChoyButton v-if="searchList" size="sm" variant="link" @click="openPicker">{{ _t('Add row') }}</ChoyButton>
           </div>
         </ChoyViewScope>
@@ -77,7 +77,7 @@ SPDX-License-Identifier: Apache-2.0
     <!-- Display mode. -->
     <template #display>
       <ChoyViewScope view-mode="display" :container="'List'" :field-prefix="String(prop)">
-        <div class="choy-many-to-many__table" :style="{ height: tableHeightPxDisplay }">
+        <div class="w-full min-w-0" :style="{ height: tableHeightPxDisplay }">
           <ChoyTableHost
             :data="getItems()"
             :row-key="'__rowKey'"
@@ -404,15 +404,3 @@ watch(
 const store = props.store;
 </script>
 
-<style scoped>
-.choy-many-to-many__table {
-  width: 100%;
-  min-width: 0;
-}
-.choy-many-to-many-actions {
-  display: flex;
-  align-items: center;
-  padding-inline-start: 60px;
-  padding-block: 6px;
-}
-</style>

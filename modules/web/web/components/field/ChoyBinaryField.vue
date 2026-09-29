@@ -21,16 +21,16 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, onFieldChange }">
-      <div class="choy-binary-field">
-        <div v-if="hasAttachment(fieldValue().value)" class="choy-binary-current">
-          <div class="choy-binary-current__icon" aria-hidden="true">
+      <div class="flex w-full max-w-[360px] flex-col items-start gap-3">
+        <div v-if="hasAttachment(fieldValue().value)" class="choy-binary-current inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted w-full px-3 py-2.5">
+          <div class="inline-flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-primary-muted bg-primary-subtle text-xl text-primary" aria-hidden="true">
             <FileText class="size-4" />
           </div>
-          <div class="choy-binary-current__body">
-            <span class="choy-binary-current__title" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-            <span v-if="toMetaText(fieldValue().value)" class="choy-binary-current__meta">{{ toMetaText(fieldValue().value) }}</span>
-            <div class="choy-binary-current__actions">
-              <label class="choy-binary-action-upload">
+          <div class="flex min-w-0 flex-1 flex-col gap-1">
+            <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+            <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
+            <div class="mt-0.5 flex flex-wrap items-center gap-3">
+              <label class="inline-flex">
                 <input
                   type="file"
                   class="sr-only"
@@ -39,9 +39,9 @@ SPDX-License-Identifier: Apache-2.0
                   :disabled="uploadDisabled"
                   @change="onNativeFileChange($event, fieldValue, onFieldChange)"
                 />
-                <ChoyButton size="sm" variant="link" class="choy-upload-action-btn" :disabled="uploadDisabled" as="span">{{ replaceButtonText }}</ChoyButton>
+                <ChoyButton size="sm" variant="link" class="p-0" :disabled="uploadDisabled" as="span">{{ replaceButtonText }}</ChoyButton>
               </label>
-              <ChoyButton size="sm" variant="destructive" class="choy-upload-action-btn" :disabled="uploadDisabled" @click="removeBinary(fieldValue, onFieldChange)">
+              <ChoyButton size="sm" variant="destructive" class="p-0" :disabled="uploadDisabled" @click="removeBinary(fieldValue, onFieldChange)">
                 {{ _t('Remove') }}
               </ChoyButton>
             </div>
@@ -49,8 +49,8 @@ SPDX-License-Identifier: Apache-2.0
         </div>
         <label
           v-else
-          class="choy-binary-upload"
-          :class="{ 'choy-binary-upload--drag': uploadDrag }"
+          class="choy-binary-upload box-border block w-full"
+          :class="{ 'choy-binary-upload--drag min-h-[126px] cursor-pointer rounded-xl border border-dashed border-border bg-muted px-4 py-5 hover:border-primary hover:bg-primary-subtle': uploadDrag }"
           @dragover.prevent="onUploadDragOver"
           @drop.prevent="onNativeFileDrop($event, fieldValue, onFieldChange)"
         >
@@ -63,46 +63,46 @@ SPDX-License-Identifier: Apache-2.0
             @change="onNativeFileChange($event, fieldValue, onFieldChange)"
           />
           <template v-if="uploadDrag">
-            <Upload class="choy-upload-drag-icon size-5" />
-            <div class="choy-upload-drag-text">{{ uploadDropText }}</div>
+            <Upload class="mx-auto mb-2.5 block size-5 text-primary" />
+            <div class="text-center text-[13px] leading-normal text-muted-foreground">{{ uploadDropText }}</div>
           </template>
-          <ChoyButton v-else size="sm" variant="link" class="choy-upload-btn" as="span">{{ uploadButtonText }}</ChoyButton>
+          <ChoyButton v-else size="sm" variant="link" class="p-0" as="span">{{ uploadButtonText }}</ChoyButton>
         </label>
       </div>
     </template>
     <template #display="{ fieldValue, renderMode: slotRenderMode }">
-      <div v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)" class="choy-binary-display-row">
-        <span class="choy-binary-display-row__icon" aria-hidden="true">
+      <div v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)" class="inline-flex max-w-[140px] min-w-0 items-center gap-2">
+        <span class="inline-flex size-[30px] shrink-0 items-center justify-center rounded-lg border border-primary-muted bg-primary-subtle text-primary" aria-hidden="true">
           <FileText class="size-4" />
         </span>
-        <span class="choy-binary-display-row__text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+        <span class="min-w-0 truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
       </div>
       <a
         v-else-if="hasAttachment(fieldValue().value) && resolveDownloadUrl(fieldValue().value)"
-        class="choy-binary-display-card choy-binary-display-card--interactive"
+        class="choy-binary-display-card inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted choy-binary-display-card--interactive cursor-pointer px-2.5 py-1.5 text-inherit no-underline transition-colors hover:border-primary-soft hover:bg-primary-subtle"
         :href="resolveDownloadUrl(fieldValue().value)"
         target="_blank"
         rel="noopener noreferrer"
         @click.stop
       >
-        <span class="choy-binary-display-icon" aria-hidden="true">
+        <span class="inline-flex size-[34px] shrink-0 items-center justify-center rounded-lg border border-primary-muted bg-primary-subtle text-lg text-primary" aria-hidden="true">
           <FileText class="size-4" />
         </span>
-        <span class="choy-binary-display-copy">
-          <span class="choy-binary-display-text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-          <span v-if="toMetaText(fieldValue().value)" class="choy-binary-display-meta">{{ toMetaText(fieldValue().value) }}</span>
+        <span class="flex min-w-0 flex-1 flex-col gap-1">
+          <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+          <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
         </span>
       </a>
-      <div v-else-if="hasAttachment(fieldValue().value)" class="choy-binary-display-card">
-        <span class="choy-binary-display-icon" aria-hidden="true">
+      <div v-else-if="hasAttachment(fieldValue().value)" class="choy-binary-display-card inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted px-2.5 py-1.5 text-inherit no-underline">
+        <span class="inline-flex size-[34px] shrink-0 items-center justify-center rounded-lg border border-primary-muted bg-primary-subtle text-lg text-primary" aria-hidden="true">
           <FileText class="size-4" />
         </span>
-        <span class="choy-binary-display-copy">
-          <span class="choy-binary-display-text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-          <span v-if="toMetaText(fieldValue().value)" class="choy-binary-display-meta">{{ toMetaText(fieldValue().value) }}</span>
+        <span class="flex min-w-0 flex-1 flex-col gap-1">
+          <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+          <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
         </span>
       </div>
-      <span v-else class="choy-binary-display-empty">-</span>
+      <span v-else class="choy-field-display-empty inline-flex min-h-[34px] items-center text-muted-foreground">-</span>
     </template>
   </FieldBase>
 </template>
@@ -401,96 +401,3 @@ function toDisplayText(raw: any): string {
 }
 </script>
 
-<style scoped>
-.choy-binary-field {
-  display: flex;flex-direction: column;align-items: flex-start;gap: 12px;width: min(100%, 360px);max-width: 100%;
-}
-.choy-binary-current,
-.choy-binary-display-card {
-  display: inline-flex;align-items: center;gap: 12px;min-width: 0;max-width: 100%;border: 1px solid var(--el-border-color-light);border-radius: 12px;background: var(--el-fill-color-lighter);
-}
-.choy-binary-current {
-  width: 100%;padding: 10px 12px;
-}
-.choy-binary-display-card {
-  padding: 6px 10px;color: inherit;text-decoration: none;
-}
-.choy-binary-display-card--interactive {
-  cursor: pointer;transition:
-  border-color 0.2s ease,
-  background-color 0.2s ease;
-}
-.choy-binary-display-card--interactive:hover {
-  color: inherit;border-color: var(--el-color-primary-light-5);background: var(--el-color-primary-light-9);
-}
-.choy-binary-display-row {
-  display: inline-flex;align-items: center;gap: 8px;min-width: 0;max-width: 140px;
-}
-.choy-binary-display-row__icon {
-  display: inline-flex;align-items: center;justify-content: center;width: 30px;height: 30px;border-radius: 8px;flex: 0 0 auto;color: var(--el-color-primary);background: var(--el-color-primary-light-9);border: 1px solid var(--el-color-primary-light-7);
-}
-.choy-binary-display-row__text {
-  min-width: 0;color: var(--el-text-color-primary);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
-}
-.choy-binary-current__icon,
-.choy-binary-display-icon {
-  display: inline-flex;align-items: center;justify-content: center;flex: 0 0 auto;color: var(--el-color-primary);background: var(--el-color-primary-light-9);border: 1px solid var(--el-color-primary-light-7);
-}
-.choy-binary-current__icon {
-  width: 44px;height: 44px;border-radius: 10px;font-size: 20px;
-}
-.choy-binary-display-icon {
-  width: 34px;height: 34px;border-radius: 8px;font-size: 18px;
-}
-.choy-binary-current__body,
-.choy-binary-display-copy {
-  min-width: 0;display: flex;flex: 1;flex-direction: column;gap: 4px;
-}
-.choy-binary-current__title,
-.choy-binary-display-text {
-  color: var(--el-text-color-primary);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
-}
-.choy-binary-current__meta,
-.choy-binary-display-meta {
-  color: var(--el-text-color-secondary);font-size: 12px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
-}
-.choy-binary-current__actions {
-  display: flex;align-items: center;gap: 12px;flex-wrap: wrap;margin-top: 2px;
-}
-.choy-binary-action-upload {
-  display: inline-flex;
-}
-.choy-binary-action-upload :deep(.el-upload) {
-  display: inline-flex;
-}
-.choy-binary-upload {
-  display: block;width: 100%;
-}
-.choy-binary-upload :deep(.el-upload) {
-  width: 100%;display: block;
-}
-.choy-binary-upload :deep(.el-upload-dragger) {
-  width: 100%;min-height: 126px;padding: 20px 16px;border-radius: 12px;background: var(--el-fill-color-lighter);border-color: var(--el-border-color);transition:
-  border-color 0.2s ease,
-  background-color 0.2s ease;
-}
-.choy-binary-upload :deep(.el-upload-dragger:hover) {
-  border-color: var(--el-color-primary);background: var(--el-color-primary-light-9);
-}
-.choy-upload-drag-icon {
-  display: block;margin: 0 auto 10px;font-size: 28px;color: var(--el-color-primary);
-}
-.choy-upload-drag-text {
-  color: var(--el-text-color-secondary);font-size: 13px;line-height: 1.5;text-align: center;
-}
-.choy-binary-upload :deep(.el-upload-list) {
-  width: 100%;margin: 6px 0 0;
-}
-.choy-upload-action-btn,
-.choy-upload-btn {
-  padding: 0;
-}
-.choy-binary-display-empty {
-  display: inline-flex;align-items: center;min-height: 34px;color: var(--el-text-color-placeholder);
-}
-</style>

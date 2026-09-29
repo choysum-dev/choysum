@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" width="narrow" :padding="false" class="logout-page-container mx-auto w-full max-w-lg">
+  <ChoyPage :loading="loading" width="narrow" :padding="false" class="mx-auto flex min-h-full w-full max-w-lg items-center justify-center">
     <ChoyCard :title="_t('Sign Out')" class="logout-card w-full">
       <div class="logout-view flex flex-col items-center gap-4 py-4 text-center">
         <transition name="fade" mode="out-in">
@@ -125,8 +125,3 @@ function retryLogout() {
 }
 </script>
 
-<style scoped>
-.logout-page-container {
-  display: flex;align-items: center;justify-content: center;min-height: 100%;
-}
-</style>

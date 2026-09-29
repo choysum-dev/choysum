@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="onLanguageSaved"
     @create-success="onLanguageSaved"
   >
-    <ChoyCard :title="_t('Language Information')" class="bfv-card"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Language Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" /></ChoyCol>
         <ChoyCol :span="4"><ChoySelectionField :store="store" prop="Direction" /></ChoyCol>
@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="IsActive" /></ChoyCol>
       </ChoyGrid>
     </ChoyCard>
-    <ChoyCard :title="_t('Format')" class="bfv-card"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Format')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="DecimalSeparator" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="ThousandSeparator" /></ChoyCol>
         <ChoyCol :span="4"><ChoyVarcharField :store="store" prop="Grouping" /></ChoyCol>
@@ -74,8 +74,3 @@ async function onLanguageSaved() {
 }
 </script>
 
-<style scoped>
-.bfv-card {
-  margin-bottom: 14px;
-}
-</style>

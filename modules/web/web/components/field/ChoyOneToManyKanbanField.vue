@@ -19,19 +19,19 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #edit>
       <ChoyViewScope :view-mode="binding.env.viewMode" :container="'Kanban'" :field-prefix="String(prop)">
-        <div class="choy-otm-kanban">
-          <div v-if="showToolbar" class="choy-otm-kanban__toolbar">
+        <div class="flex w-full min-w-0 flex-col gap-2.5">
+          <div v-if="showToolbar" class="flex items-center justify-start">
             <slot name="toolbar" :items="getItems()" :add="handleAddItem" :editable="editable">
               <ChoyButton v-if="editable && showToolbarAdd" size="sm" variant="link" @click="handleAddItem">{{ effectiveAddButtonText }}</ChoyButton>
             </slot>
           </div>
 
-          <div class="choy-otm-kanban__board" :style="boardStyle">
+          <div class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]" :style="boardStyle">
             <template v-if="getItems().length > 0">
               <div
                 v-for="(item, index) in getItems()"
                 :key="String(readRowKeySeed(item) ?? index)"
-                class="choy-otm-kanban__card"
+                class="cursor-pointer rounded-lg border border-border bg-background p-3 transition-[border-color,box-shadow] duration-150 hover:border-primary-soft hover:shadow-sm"
                 @click="handleCardClick(index, false)"
               >
                 <slot
@@ -44,9 +44,9 @@ SPDX-License-Identifier: Apache-2.0
                   :editable="editable"
                   :removable="removable"
                 >
-                  <div class="choy-otm-kanban__card-title">{{ resolveCardTitle(item) }}</div>
-                  <div class="choy-otm-kanban__card-meta" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
-                  <div class="choy-otm-kanban__card-actions" v-if="editable || removable" @click.stop>
+                  <div class="text-sm font-semibold leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
+                  <div class="mt-1.5 break-words text-xs text-muted-foreground" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
+                  <div class="mt-2.5 flex items-center gap-2" v-if="editable || removable" @click.stop>
                     <ChoyButton v-if="editable" size="sm" variant="link" @click="handleEditItem(index)">{{ _t('Edit') }}</ChoyButton>
                     <ChoyButton v-if="removable" size="sm" variant="destructive" @click="handleRemoveItem(index)">{{ _t('Delete') }}</ChoyButton>
                   </div>
@@ -54,11 +54,11 @@ SPDX-License-Identifier: Apache-2.0
               </div>
             </template>
 
-            <div v-else class="choy-otm-kanban__empty">
+            <div v-else class="col-span-full flex min-h-[90px] items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
               <slot name="empty">{{ effectiveEmptyText }}</slot>
             </div>
 
-            <div v-if="editable" class="choy-otm-kanban__add-card" @click="handleAddItem">
+            <div v-if="editable" class="flex min-h-24 cursor-pointer select-none items-center justify-center rounded-lg border border-dashed border-border bg-primary/5 text-primary hover:border-primary" @click="handleAddItem">
               <span>{{ effectiveAddButtonText }}</span>
             </div>
           </div>
@@ -68,13 +68,13 @@ SPDX-License-Identifier: Apache-2.0
 
     <template #display>
       <ChoyViewScope view-mode="display" :container="'Kanban'" :field-prefix="String(prop)">
-        <div class="choy-otm-kanban">
-          <div class="choy-otm-kanban__board" :style="boardStyle">
+        <div class="flex w-full min-w-0 flex-col gap-2.5">
+          <div class="grid w-full min-w-0 overflow-auto p-0.5 [grid-template-columns:repeat(auto-fill,minmax(var(--kanban-min-card-width),1fr))] gap-[var(--kanban-gap)]" :style="boardStyle">
             <template v-if="getItems().length > 0">
               <div
                 v-for="(item, index) in getItems()"
                 :key="String(readRowKeySeed(item) ?? index)"
-                class="choy-otm-kanban__card"
+                class="cursor-pointer rounded-lg border border-border bg-background p-3 transition-[border-color,box-shadow] duration-150 hover:border-primary-soft hover:shadow-sm"
                 @click="handleCardClick(index, true)"
               >
                 <slot
@@ -87,13 +87,13 @@ SPDX-License-Identifier: Apache-2.0
                   :editable="false"
                   :removable="false"
                 >
-                  <div class="choy-otm-kanban__card-title">{{ resolveCardTitle(item) }}</div>
-                  <div class="choy-otm-kanban__card-meta" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
+                  <div class="text-sm font-semibold leading-snug text-foreground">{{ resolveCardTitle(item) }}</div>
+                  <div class="mt-1.5 break-words text-xs text-muted-foreground" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
                 </slot>
               </div>
             </template>
 
-            <div v-else class="choy-otm-kanban__empty">
+            <div v-else class="col-span-full flex min-h-[90px] items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
               <slot name="empty">{{ effectiveEmptyText }}</slot>
             </div>
           </div>
@@ -120,7 +120,7 @@ SPDX-License-Identifier: Apache-2.0
       :submit-handler="dialogFormSubmitHandler"
       v-bind="formViewProps"
     />
-    <div v-else class="choy-otm-kanban__dialog-hint">{{ _t('Provide a child record editor via the formView prop.') }}</div>
+    <div v-else class="rounded-lg border border-dashed border-border p-[18px] text-[13px] text-muted-foreground">{{ _t('Provide a child record editor via the formView prop.') }}</div>
       <div class="dialog-footer">
         <ChoyButton @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton v-if="dialogMode !== 'display'" @click="handleDialogSubmit">{{ _t('Save') }}</ChoyButton>
@@ -516,109 +516,3 @@ watch(
 );
 </script>
 
-<style scoped>
-.choy-otm-kanban {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  min-width: 0;
-}
-
-.choy-otm-kanban__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.choy-otm-kanban__board {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--kanban-min-card-width), 1fr));
-  gap: var(--kanban-gap);
-  overflow: auto;
-  padding: 2px;
-  width: 100%;
-  min-width: 0;
-}
-
-.choy-otm-kanban__card {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--el-fill-color-blank);
-  cursor: pointer;
-  transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.choy-otm-kanban__card:hover {
-  border-color: var(--el-color-primary-light-5);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.choy-otm-kanban__card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-  line-height: 1.4;
-}
-
-.choy-otm-kanban__card-meta {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  word-break: break-word;
-}
-
-.choy-otm-kanban__card-actions {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.choy-otm-kanban__add-card {
-  border: 1px dashed var(--el-border-color);
-  border-radius: 8px;
-  min-height: 96px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--el-color-primary);
-  background: color-mix(in oklab, var(--el-color-primary) 5%, transparent);
-  cursor: pointer;
-  user-select: none;
-}
-
-.choy-otm-kanban__add-card:hover {
-  border-color: var(--el-color-primary);
-}
-
-.choy-otm-kanban__empty {
-  grid-column: 1 / -1;
-  min-height: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed var(--el-border-color-light);
-  border-radius: 8px;
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-}
-
-.choy-otm-kanban__dialog-hint {
-  padding: 18px;
-  border: 1px dashed var(--el-border-color);
-  border-radius: 8px;
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-}
-
-.choy-otm-kanban__dialog-default-actions {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-</style>

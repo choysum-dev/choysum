@@ -9,15 +9,15 @@ SPDX-License-Identifier: Apache-2.0
   <div
     v-if="effectiveRenderMode === 'form'"
     v-show="visibleForm"
-    class="choy-field-base"
+    class="choy-field-base p-0"
     v-bind="formItemProps"
   >
-    <div class="choy-field-base__label">
-      <span class="choy-field-base__label-text">{{ resolvedLabel }}</span>
+    <div class="choy-field-base__label inline-flex max-w-full items-center gap-1">
+      <span class="choy-field-base__label-text min-w-0">{{ resolvedLabel }}</span>
       <button
         v-if="effectiveHelp"
         type="button"
-        class="choy-field-base__help-btn"
+        class="choy-field-base__help-btn m-0 inline-flex cursor-help items-center justify-center border-0 bg-transparent p-0 leading-none text-inherit focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         :aria-label="helpAccessibleLabel"
         :title="effectiveHelp"
       >
@@ -25,8 +25,8 @@ SPDX-License-Identifier: Apache-2.0
       </button>
     </div>
     <template v-if="preserveModeSlotForm">
-      <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap">
-        <div class="choy-field-base__edit-control">
+      <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
+        <div class="choy-field-base__edit-control min-w-0 flex-1">
           <slot
             name="edit"
             :fieldValue="valueForm"
@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="showTranslateAction"
           size="sm"
           variant="ghost"
-          class="choy-field-base__translate-btn"
+          class="choy-field-base__translate-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
           :aria-label="translateAriaLabel"
           :title="translateAriaLabel"
           @click="translationsOpen = true"
@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="showCompanyValuesAction"
           size="sm"
           variant="ghost"
-          class="choy-field-base__company-values-btn"
+          class="choy-field-base__company-values-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
           :aria-label="companyValuesAriaLabel"
           :title="companyValuesAriaLabel"
           @click="companyValuesOpen = true"
@@ -82,8 +82,8 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <template v-else>
       <template v-if="effectiveEditForm">
-        <div class="choy-field-base__edit-wrap">
-          <div class="choy-field-base__edit-control">
+        <div class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
+          <div class="choy-field-base__edit-control min-w-0 flex-1">
             <slot
               name="edit"
               :fieldValue="valueForm"
@@ -102,7 +102,7 @@ SPDX-License-Identifier: Apache-2.0
             v-if="showTranslateAction"
             size="sm"
             variant="ghost"
-            class="choy-field-base__translate-btn"
+            class="choy-field-base__translate-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
             :aria-label="translateAriaLabel"
             :title="translateAriaLabel"
             @click="translationsOpen = true"
@@ -113,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
             v-if="showCompanyValuesAction"
             size="sm"
             variant="ghost"
-            class="choy-field-base__company-values-btn"
+            class="choy-field-base__company-values-btn h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-primary focus:text-primary"
             :aria-label="companyValuesAriaLabel"
             :title="companyValuesAriaLabel"
             @click="companyValuesOpen = true"
@@ -138,7 +138,7 @@ SPDX-License-Identifier: Apache-2.0
         />
       </template>
     </template>
-    <p v-if="displayError" class="choy-field-base__error" role="alert">{{ displayError }}</p>
+    <p v-if="displayError" class="choy-field-base__error mt-1 whitespace-normal text-sm text-danger" role="alert">{{ displayError }}</p>
     <FieldTranslationsDialog
       v-if="showTranslateAction"
       v-model="translationsOpen"
@@ -173,7 +173,7 @@ SPDX-License-Identifier: Apache-2.0
     v-slot="{ row, $index }"
   >
     <div
-      class="choy-field-base__cell"
+      class="choy-field-base__cell block w-full"
       v-show="cellVisibleForRow(row)"
       :data-field="inputName"
       :data-row-key="guessRowKey(row)"
@@ -219,10 +219,10 @@ SPDX-License-Identifier: Apache-2.0
   </ChoyTableColumn>
 
   <!-- INLINE mode -->
-  <div v-else-if="effectiveRenderMode === 'inline'" class="choy-field-base__inline" v-show="visibleInline">
+  <div v-else-if="effectiveRenderMode === 'inline'" class="choy-field-base__inline inline-flex items-center gap-1" v-show="visibleInline">
     <div
       v-if="showInlineError && displayError"
-      class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error"
+      class="choy-field-base__inline-wrap choy-field-base__inline-wrap--has-error inline-flex items-center gap-1.5"
       :title="displayError"
     >
       <template v-if="effectiveEditInline">
@@ -260,7 +260,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <div
       v-else
-      class="choy-field-base__inline-wrap"
+      class="choy-field-base__inline-wrap inline-flex items-center gap-1.5"
       :class="{ 'choy-field-base__inline-wrap--has-help': !!effectiveHelp }"
     >
       <template v-if="effectiveEditInline">
@@ -296,7 +296,7 @@ SPDX-License-Identifier: Apache-2.0
       <button
         v-if="effectiveHelp"
         type="button"
-        class="choy-field-base__help-btn"
+        class="choy-field-base__help-btn m-0 inline-flex cursor-help items-center justify-center border-0 bg-transparent p-0 leading-none text-inherit focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         :aria-label="helpAccessibleLabel"
         :title="effectiveHelp"
       >
@@ -806,95 +806,3 @@ defineSlots<{
 }>();
 </script>
 
-<style scoped>
-.choy-field-base {
-  padding: 0; /* keep wrapper neutral; satisfy linter */
-}
-.choy-field-base__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 100%;
-}
-.choy-field-base__label-text {
-  min-width: 0;
-}
-.choy-field-base__help-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: help;
-  line-height: 0;
-}
-.choy-field-base__help-btn:focus-visible {
-  outline: 2px solid var(--el-color-primary);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-.choy-field-base__help-icon {
-  flex-shrink: 0;
-  color: var(--el-text-color-secondary);
-  vertical-align: middle;
-}
-.choy-field-base__cell {
-  display: block;
-  width: 100%;
-}
-/* Compact error styling inside cells */
-.choy-field-base__cell-item :deep(.el-form-item__error) {
-  white-space: normal;
-}
-
-/* Inline-mode error styles */
-.choy-field-base__inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.choy-field-base__inline-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.choy-inline-err-icon {
-  color: var(--el-color-error);
-}
-
-.choy-field-base__edit-wrap {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  width: 100%;
-}
-.choy-field-base__edit-control {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.choy-field-base__translate-btn {
-  flex: 0 0 auto;
-  height: 24px;
-  width: 24px;
-  padding: 0;
-  color: var(--el-text-color-secondary);
-}
-.choy-field-base__translate-btn:hover,
-.choy-field-base__translate-btn:focus {
-  color: var(--el-color-primary);
-}
-.choy-field-base__company-values-btn {
-  flex: 0 0 auto;
-  height: 24px;
-  width: 24px;
-  padding: 0;
-  color: var(--el-text-color-secondary);
-}
-.choy-field-base__company-values-btn:hover,
-.choy-field-base__company-values-btn:focus {
-  color: var(--el-color-primary);
-}
-</style>

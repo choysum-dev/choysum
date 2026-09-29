@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <ChoyCard :title="_t('Exchange Rate Information')" class="bfv-card"><ChoyGrid :cols="12">
+    <ChoyCard :title="_t('Exchange Rate Information')" class="mb-3.5"><ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoyManyToOneField
             :store="store"
             prop="CurrencyId"
@@ -85,8 +85,3 @@ function onCompanyValueClick(payload: ManyToOneValueClickPayload<Company>) {
 }
 </script>
 
-<style scoped>
-.bfv-card {
-  margin-bottom: 14px;
-}
-</style>

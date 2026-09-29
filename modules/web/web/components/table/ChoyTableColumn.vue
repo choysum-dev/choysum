@@ -242,7 +242,7 @@ function buildColumn(): Column {
         return h(
           'span',
           {
-            class: ['choy-list-handle', disabled ? 'choy-list-handle--disabled' : ''],
+            class: ['choy-list-handle inline-flex cursor-grab items-center justify-center text-muted-foreground select-none', disabled ? 'choy-list-handle--disabled pointer-events-none cursor-default opacity-35' : ''],
             draggable: disabled ? 'false' : 'true',
             title: disabled ? '' : 'Drag to reorder',
             onDragstart: (e: DragEvent) => {
@@ -263,7 +263,7 @@ function buildColumn(): Column {
             },
             onClick: (e: Event) => e.stopPropagation(),
           },
-          [h('span', { class: 'choy-list-handle__grip', 'aria-hidden': 'true' }, '⠿')]
+          [h('span', { class: 'choy-list-handle__grip text-sm leading-none tracking-tighter', 'aria-hidden': 'true' }, '⠿')]
         );
       },
     };
@@ -331,14 +331,3 @@ function buildColumn(): Column {
 }
 </script>
 
-<style scoped>
-:deep(.choy-list-handle) {
-  display: inline-flex;align-items: center;justify-content: center;color: var(--el-text-color-secondary);user-select: none;cursor: grab;
-}
-:deep(.choy-list-handle__grip) {
-  font-size: 14px;line-height: 1;letter-spacing: -1px;
-}
-:deep(.choy-list-handle--disabled) {
-  opacity: 0.35;pointer-events: none;cursor: default;
-}
-</style>

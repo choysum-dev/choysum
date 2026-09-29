@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" width="narrow" :padding="false" class="login-page-container mx-auto w-full max-w-md">
+  <ChoyPage :loading="loading" width="narrow" :padding="false" class="mx-auto flex min-h-full w-full max-w-md items-center justify-center">
     <ChoyCard :title="_t('User Login')" class="login-card w-full">
       <transition name="fade">
         <div
@@ -57,9 +57,9 @@ SPDX-License-Identifier: Apache-2.0
           {{ loading ? _t('Log In') + '…' : _t('Log In') }}
         </ChoyButton>
 
-        <div v-if="showRegisterLink" class="register-link text-center text-sm text-foreground/70">
+        <div v-if="showRegisterLink" class="text-center text-sm text-foreground/70">
           {{ _t("Don't have an account?") }}
-          <router-link to="/register" class="text-primary hover:underline">{{ _t('Register now') }}</router-link>
+          <router-link to="/register" class="ms-1 text-primary hover:underline">{{ _t('Register now') }}</router-link>
         </div>
       </form>
     </ChoyCard>
@@ -139,11 +139,3 @@ async function handleLogin() {
 }
 </script>
 
-<style scoped>
-.login-page-container {
-  display: flex;align-items: center;justify-content: center;min-height: 100%;
-}
-.register-link :deep(a) {
-  margin-inline-start: 0.25rem;
-}
-</style>

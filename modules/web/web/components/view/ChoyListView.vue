@@ -6,8 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ViewContainer :showHeader="showHeader">
     <template #header>
-      <div class="choy-list__action-bar">
-        <div class="choy-list__actions">
+      <div class="choy-list__action-bar grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border pb-1 min-h-10 max-md:grid-cols-1">
+        <div class="choy-list__actions flex items-center gap-4">
           <div class="choy-list__system-actions" v-if="showActions">
             <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
             <ChoyButton
@@ -61,11 +61,11 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <!-- Centered search: render only when searchView is provided -->
-        <div class="choy-list__search" v-if="resolvedSearchView">
+        <div class="choy-list__search flex min-w-60 items-center justify-center max-md:order-2" v-if="resolvedSearchView">
           <component :is="resolvedSearchView" :store="store" @query-update="onSearch" />
         </div>
 
-        <div class="choy-list__header-right">
+        <div class="choy-list__header-right flex items-center justify-end gap-2">
           <div class="choy-list__default-pagination" v-if="showPaginate">
             <ListPagination
               :store="store"
@@ -80,7 +80,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <div class="choy-list__table" ref="tableWrapRef" :style="{ height: tablePxHeight }">
+    <div class="choy-list__table min-h-0 min-w-0 flex-1 [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0" ref="tableWrapRef" :style="{ height: tablePxHeight }">
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
       <ListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
         <ChoyTableHost
@@ -100,19 +100,19 @@ SPDX-License-Identifier: Apache-2.0
           <!-- Automatically inject the leading group column in grouped mode -->
           <ChoyTableColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
             <template #default="{ row }">
-              <div v-if="row?.kind === 'group'" class="choy-group-cell" :style="{ paddingLeft: `${row.depth * 16}px` }">
-                <span class="choy-group-cell__caret" :class="{ expanded: isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
-                <span class="choy-group-cell__label">{{ row.label }}</span>
-                <span class="choy-group-cell__count">({{ row.count ?? 0 }})</span>
+              <div v-if="row?.kind === 'group'" class="inline-flex min-w-0 items-center gap-1.5" :style="{ paddingLeft: `${row.depth * 16}px` }">
+                <span class="inline-block size-0 cursor-pointer border-y-4 border-y-transparent border-l-[6px] border-l-foreground transition-transform duration-100" :class="{ 'rotate-90': isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
+                <span class="max-w-full truncate font-medium text-foreground">{{ row.label }}</span>
+                <span class="text-muted-foreground">({{ row.count ?? 0 }})</span>
               </div>
-              <div v-else-if="row?.kind === 'more'" class="choy-more-cell">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
+              <div v-else-if="row?.kind === 'more'" class="w-full cursor-pointer py-1.5 text-center text-foreground">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
               <span v-else></span>
             </template>
           </ChoyTableColumn>
           <slot />
           <template #empty>
             <slot name="empty">
-              <div class="ovtable__empty">{{ _t('No data') }}</div>
+              <div class="w-full py-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
             </slot>
           </template>
         </ChoyTableHost>
@@ -899,60 +899,3 @@ watch(
 // In views without a search bar, inject forcedCondition during the initial onMounted apply
 </script>
 
-<style scoped>
-.choy-list {
-  display: flex;flex-direction: column;width: 100%;height: 100%;min-width: 0;
-}
-.choy-list :deep(.choy-field-base__cell-item) {
-  margin-bottom: 0 !important;
-}
-.choy-list__table {
-  flex: 1 1 auto;min-height: 0;min-width: 0;
-}
-.choy-list__table :deep(.el-form-item--default) {
-  margin-bottom: 0 !important;
-}
-/* Header bar styles, kept as a placeholder to avoid empty rules */
-/* .choy-list__header { padding-bottom: 0; } */
-.choy-list__action-bar {
-  display: grid;grid-template-columns: auto 1fr auto;align-items: center;gap: 12px;padding-bottom: 4px;border-bottom: 1px solid var(--el-border-color-light);min-height: 40px;
-}
-.choy-list__search {
-  display: flex;justify-content: center;align-items: center;min-width: 240px;
-}
-.choy-list__actions {
-  display: flex;align-items: center;gap: 16px;
-}
-.choy-list__header-right {
-  display: flex;align-items: center;justify-content: flex-end;gap: 8px;
-}
-@media (max-width: 768px) {
-.choy-list__action-bar {
-  grid-template-columns: 1fr;grid-auto-rows: auto;
-}
-.choy-list__search {
-  order: 2;justify-content: center;
-}
-}
-.ovtable__empty {
-  width: 100%;padding: 24px 0;text-align: center;color: var(--el-text-color-secondary);
-}
-.choy-group-cell {
-  display: inline-flex;align-items: center;gap: 6px;min-width: 0;
-}
-.choy-group-cell__caret {
-  display: inline-block;width: 0;height: 0;border-top: 4px solid transparent;border-bottom: 4px solid transparent;border-left: 6px solid var(--el-text-color-regular);transition: transform 0.12s ease;cursor: pointer;
-}
-.choy-group-cell__caret.expanded {
-  transform: rotate(90deg);
-}
-.choy-group-cell__label {
-  font-weight: 500;color: var(--el-text-color-primary);max-width: 100%;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;
-}
-.choy-group-cell__count {
-  color: var(--el-text-color-secondary);
-}
-.choy-more-cell {
-  width: 100%;text-align: center;color: var(--el-text-color-primary);cursor: pointer;padding: 6px 0;
-}
-</style>
