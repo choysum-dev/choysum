@@ -24,6 +24,19 @@ func TestEmbeddedScripts(t *testing.T) {
 	}
 }
 
+func TestIsHostVueRuntimePackage(t *testing.T) {
+	for _, name := range []string{"vue", "@vue/shared", "@vue/reactivity", "@vue/runtime-core", "@vue/runtime-dom", "  vue  "} {
+		if !IsHostVueRuntimePackage(name) {
+			t.Fatalf("%q should be host-owned", name)
+		}
+	}
+	for _, name := range []string{"", "@vue/test-utils", "@vue/server-renderer", "reka-ui", "vue-router"} {
+		if IsHostVueRuntimePackage(name) {
+			t.Fatalf("%q must not be host-owned", name)
+		}
+	}
+}
+
 func TestVueBareImportPins(t *testing.T) {
 	pins := VueBareImportPins()
 	if pins["vue"] != VuePackageVersion {
@@ -43,8 +56,13 @@ func TestVueBareImportPins(t *testing.T) {
 	if custom["vue"] != "3.9.9" || custom["@vue/runtime-core"] != "3.9.9" {
 		t.Fatalf("VueBareImportPinsFor = %#v", custom)
 	}
-	if VueBareImportPinsFor("")["vue"] != VuePackageVersion {
-		t.Fatal("empty version must fall back to VuePackageVersion")
+	if VueBareImportPinsFor("v3.9.9")["vue"] != "3.9.9" {
+		t.Fatal("leading v must be stripped")
+	}
+	for _, bad := range []string{"", " ", "^3.5.38", "latest", "next", "*", "  ^1.0.0  "} {
+		if VueBareImportPinsFor(bad)["vue"] != VuePackageVersion {
+			t.Fatalf("non-exact %q must fall back to VuePackageVersion", bad)
+		}
 	}
 }
 
@@ -67,11 +85,15 @@ func TestVuePackageVersionMatchesWebKit(t *testing.T) {
 	if err := json.Unmarshal(data, &pkg); err != nil {
 		t.Fatal(err)
 	}
-	ver := strings.TrimSpace(pkg.Dependencies["vue"])
-	if ver == "" {
-		ver = strings.TrimSpace(pkg.PeerDependencies["vue"])
+	depVue := strings.TrimPrefix(strings.TrimSpace(pkg.Dependencies["vue"]), "v")
+	peerVue := strings.TrimPrefix(strings.TrimSpace(pkg.PeerDependencies["vue"]), "v")
+	if depVue != "" && peerVue != "" && depVue != peerVue {
+		t.Fatalf("modules/web declares conflicting vue pins: dependencies=%q peerDependencies=%q", depVue, peerVue)
 	}
-	ver = strings.TrimPrefix(ver, "v")
+	ver := depVue
+	if ver == "" {
+		ver = peerVue
+	}
 	if ver != VuePackageVersion {
 		t.Fatalf("modules/web exact vue = %q, choysummount.VuePackageVersion = %q; keep them identical (kit package.json is SSOT)", ver, VuePackageVersion)
 	}

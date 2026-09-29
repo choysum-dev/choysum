@@ -92,7 +92,7 @@ func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
 		t.Fatalf("@vue/* must follow kit vue %q, got %q", want["vue"], pins["@vue/runtime-core"])
 	}
 	for name, ver := range want {
-		if name == "vue" || strings.HasPrefix(name, "@vue/") {
+		if choysummount.IsHostVueRuntimePackage(name) {
 			continue
 		}
 		if pins[name] != ver {
@@ -118,7 +118,8 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 	pkg := `{
   "peerDependencies": {
     "vue": "9.9.9",
-    "@tanstack/vue-table": "8.21.3"
+    "@tanstack/vue-table": "8.21.3",
+    "@vue/test-utils": "2.4.6"
   }
 }`
 	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte(pkg), 0o644); err != nil {
@@ -136,6 +137,9 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 	}
 	if pins["@tanstack/vue-table"] != "8.21.3" {
 		t.Fatalf("expected peer pin, got %#v", pins)
+	}
+	if pins["@vue/test-utils"] != "2.4.6" {
+		t.Fatalf("non-host @vue/* must keep exact pin, got %#v", pins)
 	}
 
 	if err := os.WriteFile(filepath.Join(webRoot, "package.json"), []byte("{"), 0o644); err != nil {

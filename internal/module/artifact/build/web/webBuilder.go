@@ -2319,8 +2319,10 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 			return
 		}
 		for name, ver := range got {
-			// Vue / @vue/* already set from kit SSOT; never let a module override.
-			if name == "vue" || strings.HasPrefix(name, "@vue/") {
+			// Only host-owned Vue runtime packages come from the kit SSOT
+			// (see choysummount.VueBareImportPinsFor); never let a module
+			// override them. Other @vue/* names keep nearest-module-wins.
+			if choysummount.IsHostVueRuntimePackage(name) {
 				continue
 			}
 			if prev, ok := pins[name]; ok && prev != ver &&

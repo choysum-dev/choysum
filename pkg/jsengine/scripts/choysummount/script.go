@@ -5,6 +5,7 @@ package choysummount
 
 import (
 	_ "embed"
+	"strings"
 )
 
 //go:embed dom.js
@@ -23,13 +24,27 @@ func VueBareImportPins() map[string]string {
 	return VueBareImportPinsFor(VuePackageVersion)
 }
 
+// IsHostVueRuntimePackage reports packages owned by the single host Vue
+// instance (see VueBareImportPinsFor). Other @vue/* names (test-utils,
+// server-renderer, …) are not host-owned and may keep module exact pins.
+func IsHostVueRuntimePackage(name string) bool {
+	switch strings.TrimSpace(name) {
+	case "vue", "@vue/shared", "@vue/reactivity", "@vue/runtime-core", "@vue/runtime-dom":
+		return true
+	default:
+		return false
+	}
+}
+
 // VueBareImportPinsFor returns exact esmresolver pins for vue and its @vue/*
 // runtime packages at version. Nested peers (reka-ui, @floating-ui/vue, …)
 // must share this single instance; otherwise renderSlot hits a null
 // currentRenderingInstance (TypeError reading 'ce').
 func VueBareImportPinsFor(version string) map[string]string {
-	v := version
-	if v == "" {
+	v := strings.TrimPrefix(strings.TrimSpace(version), "v")
+	lower := strings.ToLower(v)
+	if v == "" || lower == "*" || lower == "latest" || lower == "next" ||
+		strings.ContainsAny(v, "^~*<>=| ") {
 		v = VuePackageVersion
 	}
 	return map[string]string{

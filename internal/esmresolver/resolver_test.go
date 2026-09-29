@@ -2157,6 +2157,25 @@ func TestApplyBareImportPin(t *testing.T) {
 	}
 }
 
+func TestBareImportPin(t *testing.T) {
+	if got := (*Resolver)(nil).BareImportPin("vue"); got != "" {
+		t.Fatalf("nil resolver = %q", got)
+	}
+	if got := New().BareImportPin("vue"); got != "" {
+		t.Fatalf("unpinned resolver = %q", got)
+	}
+	r := New(WithBareImportPins(map[string]string{"vue": "3.5.38", "lodash": "4.17.21"}))
+	if got := r.BareImportPin("vue"); got != "3.5.38" {
+		t.Fatalf("vue = %q", got)
+	}
+	if got := r.BareImportPin("  lodash  "); got != "4.17.21" {
+		t.Fatalf("trimmed pkg = %q", got)
+	}
+	if got := r.BareImportPin("react"); got != "" {
+		t.Fatalf("missing pkg = %q", got)
+	}
+}
+
 func TestIsExactPinVersion(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

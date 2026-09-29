@@ -335,7 +335,7 @@ func vueHostBareImportPins(repoRoot string) (map[string]string, error) {
 	}
 	pins := choysummount.VueBareImportPinsFor(vueVer)
 	for name, ver := range webPins {
-		if name == "vue" || strings.HasPrefix(name, "@vue/") {
+		if choysummount.IsHostVueRuntimePackage(name) {
 			continue
 		}
 		pins[name] = ver
