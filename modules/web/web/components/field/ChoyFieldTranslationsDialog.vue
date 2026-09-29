@@ -7,24 +7,24 @@ SPDX-License-Identifier: Apache-2.0
   <Dialog v-model:open="visible">
     <DialogContent class="choy-field-translations-dialog max-w-xl" @open-auto-focus.prevent>
       <DialogTitle>{{ dialogTitle }}</DialogTitle>
-      <div class="choy-field-translations-dialog__body" :aria-busy="loading || undefined">
-        <form class="choy-field-translations-dialog__form" @submit.prevent>
-          <div v-for="row in rows" :key="row.code" class="choy-field-translations-dialog__row">
-            <label class="choy-field-translations-dialog__label">{{ row.label }}</label>
+      <div class="choy-field-translations-dialog__body min-h-[120px]" :aria-busy="loading || undefined">
+        <form class="choy-field-translations-dialog__form flex flex-col gap-3.5" @submit.prevent>
+          <div v-for="row in rows" :key="row.code" class="choy-field-translations-dialog__row grid grid-cols-[168px_1fr] items-start gap-3">
+            <label class="choy-field-translations-dialog__label leading-8 text-foreground">{{ row.label }}</label>
             <div class="choy-field-translations-dialog__control">
               <input
                 v-model="row.value"
-                class="choy-field-translations-dialog__input"
+                class="choy-field-translations-dialog__input box-border w-full min-w-0"
                 :maxlength="maxLength ?? undefined"
               />
-              <div v-if="row.code === 'en_US'" class="choy-field-translations-dialog__hint">
+              <div v-if="row.code === 'en_US'" class="choy-field-translations-dialog__hint mt-1 text-xs leading-snug text-muted-foreground">
                 {{ _t('Base language (cannot be deleted)') }}
               </div>
             </div>
           </div>
         </form>
       </div>
-      <div class="dialog-footer">
+      <div class="mt-4 flex justify-end gap-2">
         <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton type="button" :disabled="saving" @click="handleSave">
           {{ _t('Save translations') }}
@@ -227,40 +227,3 @@ async function handleSave() {
 }
 </script>
 
-<style scoped>
-.choy-field-translations-dialog__body {
-  min-height: 120px;
-}
-.choy-field-translations-dialog__form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.choy-field-translations-dialog__row {
-  display: grid;
-  grid-template-columns: 168px 1fr;
-  gap: 12px;
-  align-items: start;
-}
-.choy-field-translations-dialog__label {
-  line-height: 32px;
-  color: var(--choy-color-foreground);
-}
-.choy-field-translations-dialog__input {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-}
-.choy-field-translations-dialog__hint {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--choy-color-muted-foreground);
-}
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-</style>

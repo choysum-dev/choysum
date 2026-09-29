@@ -21,6 +21,10 @@
   --color-ring: var(--choy-color-ring);
 
   --color-primary-subtle: var(--choy-color-primary-subtle);
+  --color-primary-soft: var(--choy-color-primary-soft);
+  --color-primary-muted: var(--choy-color-primary-muted);
+  --color-primary-dark: var(--choy-color-primary-dark);
+  --color-primary-light: var(--choy-color-primary-light);
   --color-success-subtle: var(--choy-color-success-subtle);
   --color-warning-subtle: var(--choy-color-warning-subtle);
   --color-danger-subtle: var(--choy-color-danger-subtle);

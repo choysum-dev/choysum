@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <FieldBase
     v-bind="$attrs"
-    class="choy-statusbar-field"
+    class="choy-statusbar-field mb-0 [&_.choy-field-base__label]:hidden"
     :binding="binding"
     :label="label"
     :rules="mergedRules"
@@ -294,12 +294,3 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules ?? []), internalRule]);
 </script>
 
-<style scoped>
-.choy-statusbar-field :deep(.choy-statusbar-form-item),
-.choy-statusbar-field :deep(.choy-field-base) {
-  margin-bottom: 0;
-}
-.choy-statusbar-field :deep(.choy-field-base__label) {
-  display: none;
-}
-</style>

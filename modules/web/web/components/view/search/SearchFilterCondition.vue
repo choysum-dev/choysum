@@ -4,9 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-search-filter__row">
+  <div class="choy-search-filter__row flex items-center gap-2">
     <select
-      class="w-field"
+      class="w-field w-[180px]"
       :placeholder="_t('Field')"
       :value="condition.field"
       @change="onFieldChange(($event.target as HTMLSelectElement).value)"
@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     </select>
 
     <select
-      class="w-operator"
+      class="w-operator w-[140px]"
       :disabled="!condition.field"
       :value="condition.operator"
       @change="onOperatorChange(($event.target as HTMLSelectElement).value)"
@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <input
       v-if="condition.field && isMultiValueOperator(condition.operator) && !isRelationValueField"
-      class="w-value el-select"
+      class="w-value flex-1"
       data-multi="true"
       :value="(multiValues || []).join(',')"
       :placeholder="_t('Add values')"
@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
       v-else-if="condition.field && requiresValue(condition.operator)"
       :key="`${conditionId}-${condition.field}-${condition.operator}`"
       :is="fieldComponent"
-      class="w-value"
+      class="flex-1"
       :store="store"
       :binding="binding"
       v-bind="extraProps"
@@ -44,8 +44,8 @@ SPDX-License-Identifier: Apache-2.0
       :placeholder="valuePlaceholder"
       :formItemProps="{ labelWidth: 0, style: { margin: 0, padding: 0 } }"
     />
-    <span v-else-if="condition.field && isNullOperator(condition.operator)" class="w-value choy-null-flag">NULL</span>
-    <input v-else class="w-value" :placeholder="_t('Select a field')" disabled />
+    <span v-else-if="condition.field && isNullOperator(condition.operator)" class="w-value choy-null-flag flex-1 text-info">NULL</span>
+    <input v-else class="flex-1" :placeholder="_t('Select a field')" disabled />
 
     <ChoyButton class="rm" size="sm" variant="destructive" @click="onRemove">{{ _t('Remove') }}</ChoyButton>
   </div>
@@ -277,20 +277,3 @@ function onRemove() {
 }
 </script>
 
-<style scoped>
-.choy-search-filter__row {
-  display: flex;gap: 8px;align-items: center;
-}
-.choy-search-filter__row .w-field {
-  width: 180px;
-}
-.choy-search-filter__row .w-operator {
-  width: 140px;
-}
-.choy-search-filter__row .w-value {
-  flex: 1;
-}
-.choy-search-filter__row .choy-null-flag {
-  color: var(--choy-color-info);
-}
-</style>

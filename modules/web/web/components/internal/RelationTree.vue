@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
             :aria-expanded="row.expanded ? 'true' : 'false'"
             @click.stop="toggleExpanded(row.key)"
           >
-            <span class="choy-relation-tree__expand-icon" :class="{ 'choy-relation-tree__expand-icon--open': row.expanded }">
+            <span class="choy-relation-tree__expand-icon inline-block leading-none transition-transform duration-150 ease-in-out" :class="{ 'choy-relation-tree__expand-icon--open rotate-90': row.expanded }">
               ›
             </span>
           </button>
@@ -372,14 +372,3 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.choy-relation-tree__expand-icon {
-  display: inline-block;
-  transform: rotate(0deg);
-  transition: transform 0.12s ease;
-  line-height: 1;
-}
-.choy-relation-tree__expand-icon--open {
-  transform: rotate(90deg);
-}
-</style>

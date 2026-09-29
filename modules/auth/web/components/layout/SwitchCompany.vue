@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyButton
       variant="ghost"
       size="sm"
-      class="choy-switch-company__trigger choy-header__action-item max-w-[12rem] truncate"
+      class="choy-header__action-item h-9 max-w-[12rem] truncate px-2.5"
       :aria-expanded="visible"
       :aria-label="_t('Switch company')"
       data-testid="company-switch-trigger"
@@ -387,8 +387,3 @@ async function apply(): Promise<void> {
 }
 </script>
 
-<style scoped>
-.choy-switch-company__trigger {
-  height: 36px;padding: 0 10px;
-}
-</style>

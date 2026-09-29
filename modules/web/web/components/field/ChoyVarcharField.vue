@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
       />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>
@@ -189,7 +189,7 @@ const OVarCharCell = defineComponent({
     return () =>
       h('input', {
         ...attrs,
-        class: 'choy-input',
+        class: 'choy-input w-full',
         placeholder: p.placeholder,
         maxlength: p.maxlength,
         value: buffer.editingValue.value ?? '',
@@ -215,8 +215,3 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
-<style scoped>
-.choy-input {
-  width: 100%;
-}
-</style>

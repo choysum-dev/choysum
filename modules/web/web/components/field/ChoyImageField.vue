@@ -21,17 +21,17 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue, onFieldChange }">
-      <div class="choy-image-field">
-        <div v-if="hasAttachment(fieldValue().value)" class="choy-image-current">
-          <img v-if="resolvePreviewUrl(fieldValue().value)" class="choy-image-current__preview" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
-          <div v-else class="choy-image-current__placeholder" aria-hidden="true">
+      <div class="flex w-full max-w-[360px] flex-col items-start gap-3">
+        <div v-if="hasAttachment(fieldValue().value)" class="choy-image-current inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted w-full px-3 py-2.5">
+          <img v-if="resolvePreviewUrl(fieldValue().value)" class="choy-image-current__preview size-12 shrink-0 rounded-[10px] border border-border bg-background object-cover" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
+          <div v-else class="inline-flex size-12 shrink-0 items-center justify-center rounded-[10px] border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-lg" aria-hidden="true">
             <Picture class="size-4" />
           </div>
-          <div class="choy-image-current__body">
-            <span class="choy-image-current__title" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-            <span v-if="toMetaText(fieldValue().value)" class="choy-image-current__meta">{{ toMetaText(fieldValue().value) }}</span>
-            <div class="choy-image-current__actions">
-              <label class="choy-image-action-upload">
+          <div class="flex min-w-0 flex-1 flex-col gap-1">
+            <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+            <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
+            <div class="mt-0.5 flex flex-wrap items-center gap-3">
+              <label class="inline-flex">
                 <input
                   type="file"
                   class="sr-only"
@@ -40,9 +40,9 @@ SPDX-License-Identifier: Apache-2.0
                   :disabled="uploadDisabled"
                   @change="onNativeFileChange($event, fieldValue, onFieldChange)"
                 />
-                <ChoyButton size="sm" variant="link" class="choy-upload-action-btn" :disabled="uploadDisabled" as="span">{{ replaceButtonText }}</ChoyButton>
+                <ChoyButton size="sm" variant="link" class="p-0" :disabled="uploadDisabled" as="span">{{ replaceButtonText }}</ChoyButton>
               </label>
-              <ChoyButton size="sm" variant="destructive" class="choy-upload-action-btn" :disabled="uploadDisabled" @click="removeImage(fieldValue, onFieldChange)">
+              <ChoyButton size="sm" variant="destructive" class="p-0" :disabled="uploadDisabled" @click="removeImage(fieldValue, onFieldChange)">
                 {{ _t('Remove') }}
               </ChoyButton>
             </div>
@@ -50,8 +50,8 @@ SPDX-License-Identifier: Apache-2.0
         </div>
         <label
           v-else
-          class="choy-image-upload"
-          :class="{ 'choy-image-upload--drag': uploadDrag }"
+          class="choy-image-upload box-border block w-full"
+          :class="{ 'choy-image-upload--drag min-h-[126px] cursor-pointer rounded-xl border border-dashed border-border bg-muted px-4 py-5 hover:border-primary hover:bg-primary-subtle': uploadDrag }"
           @dragover.prevent="onUploadDragOver"
           @drop.prevent="onNativeFileDrop($event, fieldValue, onFieldChange)"
         >
@@ -64,54 +64,54 @@ SPDX-License-Identifier: Apache-2.0
             @change="onNativeFileChange($event, fieldValue, onFieldChange)"
           />
           <template v-if="uploadDrag">
-            <Upload class="choy-upload-drag-icon size-5" />
-            <div class="choy-upload-drag-text">{{ uploadDropText }}</div>
+            <Upload class="mx-auto mb-2.5 block size-5 text-primary" />
+            <div class="text-center text-[13px] leading-normal text-muted-foreground">{{ uploadDropText }}</div>
           </template>
-          <ChoyButton v-else size="sm" variant="link" class="choy-upload-btn" as="span">{{ uploadButtonText }}</ChoyButton>
+          <ChoyButton v-else size="sm" variant="link" class="p-0" as="span">{{ uploadButtonText }}</ChoyButton>
         </label>
       </div>
     </template>
     <template #display="{ fieldValue, renderMode: slotRenderMode }">
-      <div v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)" class="choy-image-display-row">
+      <div v-if="hasAttachment(fieldValue().value) && isTableRenderMode(slotRenderMode)" class="inline-flex max-w-[124px] min-w-0 items-center gap-2">
         <img
           v-if="resolvePreviewUrl(fieldValue().value)"
-          class="choy-image-display-row__preview"
+          class="size-8 shrink-0 rounded-lg border border-border bg-background object-cover"
           :src="resolvePreviewUrl(fieldValue().value)"
           alt="image preview"
         />
-        <div v-else class="choy-image-display-row__placeholder" aria-hidden="true">
+        <div v-else class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-base" aria-hidden="true">
           <span class="inline-flex"><Picture class="size-4" /></span>
         </div>
-        <span class="choy-image-display-row__text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+        <span class="min-w-0 truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
       </div>
       <a
         v-else-if="hasAttachment(fieldValue().value) && resolveLinkHref(fieldValue().value)"
-        class="choy-image-display-card choy-image-display-card--interactive"
+        class="choy-image-display-card inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted choy-image-display-card--interactive cursor-pointer px-2.5 py-1.5 text-inherit no-underline transition-colors hover:border-primary-soft hover:bg-primary-subtle"
         :href="resolveLinkHref(fieldValue().value)"
         target="_blank"
         rel="noopener noreferrer"
         @click.stop
       >
-        <img v-if="resolvePreviewUrl(fieldValue().value)" class="choy-image-display-preview" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
-        <div v-else class="choy-image-display-placeholder" aria-hidden="true">
+        <img v-if="resolvePreviewUrl(fieldValue().value)" class="size-9 shrink-0 rounded-lg border border-border bg-background object-cover" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
+        <div v-else class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-lg" aria-hidden="true">
           <span class="inline-flex"><Picture class="size-4" /></span>
         </div>
-        <span class="choy-image-display-copy">
-          <span class="choy-image-display-text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-          <span v-if="toMetaText(fieldValue().value)" class="choy-image-display-meta">{{ toMetaText(fieldValue().value) }}</span>
+        <span class="flex min-w-0 flex-1 flex-col gap-1">
+          <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+          <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
         </span>
       </a>
-      <div v-else-if="hasAttachment(fieldValue().value)" class="choy-image-display-card">
-        <img v-if="resolvePreviewUrl(fieldValue().value)" class="choy-image-display-preview" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
-        <div v-else class="choy-image-display-placeholder" aria-hidden="true">
+      <div v-else-if="hasAttachment(fieldValue().value)" class="choy-image-display-card inline-flex max-w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-muted px-2.5 py-1.5 text-inherit no-underline">
+        <img v-if="resolvePreviewUrl(fieldValue().value)" class="size-9 shrink-0 rounded-lg border border-border bg-background object-cover" :src="resolvePreviewUrl(fieldValue().value)" alt="image preview" />
+        <div v-else class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-lg" aria-hidden="true">
           <span class="inline-flex"><Picture class="size-4" /></span>
         </div>
-        <span class="choy-image-display-copy">
-          <span class="choy-image-display-text" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
-          <span v-if="toMetaText(fieldValue().value)" class="choy-image-display-meta">{{ toMetaText(fieldValue().value) }}</span>
+        <span class="flex min-w-0 flex-1 flex-col gap-1">
+          <span class="truncate text-sm leading-snug text-foreground" :title="toDisplayText(fieldValue().value)">{{ toDisplayText(fieldValue().value) }}</span>
+          <span v-if="toMetaText(fieldValue().value)" class="truncate text-xs leading-snug text-muted-foreground">{{ toMetaText(fieldValue().value) }}</span>
         </span>
       </div>
-      <div v-else class="choy-image-display-empty" aria-hidden="true">
+      <div v-else class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground [&_svg]:text-lg" aria-hidden="true">
         <span class="inline-flex"><Picture /></span>
       </div>
     </template>
@@ -483,107 +483,3 @@ function toDisplayText(raw: any): string {
 }
 </script>
 
-<style scoped>
-.choy-image-field {
-  display: flex;flex-direction: column;align-items: flex-start;gap: 12px;width: min(100%, 360px);max-width: 100%;
-}
-.choy-image-current,
-.choy-image-display-card {
-  display: inline-flex;align-items: center;gap: 12px;min-width: 0;max-width: 100%;border: 1px solid var(--choy-color-border);border-radius: 12px;background: var(--choy-color-muted);
-}
-.choy-image-current {
-  width: 100%;padding: 10px 12px;
-}
-.choy-image-display-card {
-  padding: 6px 10px;color: inherit;text-decoration: none;
-}
-.choy-image-display-card--interactive {
-  cursor: pointer;transition:
-  border-color 0.2s ease,
-  background-color 0.2s ease;
-}
-.choy-image-display-card--interactive:hover {
-  color: inherit;border-color: var(--choy-color-primary-soft);background: var(--choy-color-primary-subtle);
-}
-.choy-image-display-row {
-  display: inline-flex;align-items: center;gap: 8px;min-width: 0;max-width: 124px;
-}
-.choy-image-display-row__preview,
-.choy-image-display-row__placeholder {
-  width: 32px;height: 32px;border-radius: 8px;flex: 0 0 auto;
-}
-.choy-image-display-row__preview {
-  display: block;object-fit: cover;border: 1px solid var(--choy-color-border);background: var(--choy-color-background);
-}
-.choy-image-display-row__placeholder {
-  display: inline-flex;align-items: center;justify-content: center;color: var(--choy-color-muted-foreground);background: var(--choy-color-muted);border: 1px dashed var(--choy-color-border);
-}
-.choy-image-display-row__placeholder :deep(svg) {
-  font-size: 16px;
-}
-.choy-image-display-row__text {
-  min-width: 0;color: var(--choy-color-foreground);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
-}
-.choy-image-current__preview,
-.choy-image-current__placeholder {
-  width: 48px;height: 48px;border-radius: 10px;flex: 0 0 auto;
-}
-.choy-image-display-preview,
-.choy-image-display-placeholder,
-.choy-image-display-empty {
-  width: 36px;height: 36px;border-radius: 8px;flex: 0 0 auto;
-}
-.choy-image-current__preview,
-.choy-image-display-preview {
-  display: block;object-fit: cover;border: 1px solid var(--choy-color-border);background: var(--choy-color-background);
-}
-.choy-image-current__placeholder,
-.choy-image-display-placeholder,
-.choy-image-display-empty {
-  display: inline-flex;align-items: center;justify-content: center;color: var(--choy-color-muted-foreground);background: var(--choy-color-muted);border: 1px dashed var(--choy-color-border);
-}
-.choy-image-current__placeholder :deep(svg),
-.choy-image-display-placeholder :deep(svg),
-.choy-image-display-empty :deep(svg) {
-  font-size: 18px;
-}
-.choy-image-current__body,
-.choy-image-display-copy {
-  min-width: 0;display: flex;flex: 1;flex-direction: column;gap: 4px;
-}
-.choy-image-current__title,
-.choy-image-display-text {
-  color: var(--choy-color-foreground);font-size: 14px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
-}
-.choy-image-current__meta,
-.choy-image-display-meta {
-  color: var(--choy-color-muted-foreground);font-size: 12px;line-height: 1.4;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
-}
-.choy-image-current__actions {
-  display: flex;align-items: center;gap: 12px;flex-wrap: wrap;margin-top: 2px;
-}
-.choy-image-action-upload {
-  display: inline-flex;
-}
-.choy-image-upload {
-  display: block;width: 100%;box-sizing: border-box;
-}
-.choy-image-upload--drag {
-  width: 100%;min-height: 126px;padding: 20px 16px;border-radius: 12px;border: 1px dashed var(--choy-color-border);background: var(--choy-color-muted);cursor: pointer;transition:
-  border-color 0.2s ease,
-  background-color 0.2s ease;
-}
-.choy-image-upload--drag:hover {
-  border-color: var(--choy-color-primary);background: var(--choy-color-primary-subtle);
-}
-.choy-upload-drag-icon {
-  display: block;margin: 0 auto 10px;font-size: 28px;color: var(--choy-color-primary);
-}
-.choy-upload-drag-text {
-  color: var(--choy-color-muted-foreground);font-size: 13px;line-height: 1.5;text-align: center;
-}
-.choy-upload-action-btn,
-.choy-upload-btn {
-  padding: 0;
-}
-</style>

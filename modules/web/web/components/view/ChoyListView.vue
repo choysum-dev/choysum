@@ -80,7 +80,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <div class="choy-list__table" ref="tableWrapRef" :style="{ height: tablePxHeight }">
+    <div class="choy-list__table min-h-0 min-w-0 flex-1 [&_.choy-field-base]:mb-0 [&_.choy-field-base__cell-item]:mb-0" ref="tableWrapRef" :style="{ height: tablePxHeight }">
       <!-- form-root + edit view-mode only under the table so header search cannot touch the row draft -->
       <ListInlineEditScope :form-root="inlineFormRoot" :view-mode="inlineTableViewMode">
         <ChoyTableHost
@@ -100,19 +100,19 @@ SPDX-License-Identifier: Apache-2.0
           <!-- Automatically inject the leading group column in grouped mode -->
           <ChoyTableColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
             <template #default="{ row }">
-              <div v-if="row?.kind === 'group'" class="choy-group-cell" :style="{ paddingLeft: `${row.depth * 16}px` }">
-                <span class="choy-group-cell__caret" :class="{ expanded: isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
-                <span class="choy-group-cell__label">{{ row.label }}</span>
-                <span class="choy-group-cell__count">({{ row.count ?? 0 }})</span>
+              <div v-if="row?.kind === 'group'" class="inline-flex min-w-0 items-center gap-1.5" :style="{ paddingLeft: `${row.depth * 16}px` }">
+                <span class="inline-block size-0 cursor-pointer border-y-4 border-y-transparent border-l-[6px] border-l-foreground transition-transform duration-100" :class="{ 'rotate-90': isExpanded(row.key) }" @click.stop="onToggleGroup(row.key)" />
+                <span class="max-w-full truncate font-medium text-foreground">{{ row.label }}</span>
+                <span class="text-muted-foreground">({{ row.count ?? 0 }})</span>
               </div>
-              <div v-else-if="row?.kind === 'more'" class="choy-more-cell">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
+              <div v-else-if="row?.kind === 'more'" class="w-full cursor-pointer py-1.5 text-center text-foreground">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
               <span v-else></span>
             </template>
           </ChoyTableColumn>
           <slot />
           <template #empty>
             <slot name="empty">
-              <div class="ovtable__empty">{{ _t('No data') }}</div>
+              <div class="w-full py-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
             </slot>
           </template>
         </ChoyTableHost>
@@ -899,38 +899,3 @@ watch(
 // In views without a search bar, inject forcedCondition during the initial onMounted apply
 </script>
 
-<style scoped>
-.choy-list {
-  display: flex;flex-direction: column;width: 100%;height: 100%;min-width: 0;
-}
-.choy-list :deep(.choy-field-base__cell-item) {
-  margin-bottom: 0 !important;
-}
-.choy-list__table {
-  flex: 1 1 auto;min-height: 0;min-width: 0;
-}
-.choy-list__table :deep(.choy-field-base) {
-  margin-bottom: 0;
-}
-.ovtable__empty {
-  width: 100%;padding: 24px 0;text-align: center;color: var(--choy-color-muted-foreground);
-}
-.choy-group-cell {
-  display: inline-flex;align-items: center;gap: 6px;min-width: 0;
-}
-.choy-group-cell__caret {
-  display: inline-block;width: 0;height: 0;border-top: 4px solid transparent;border-bottom: 4px solid transparent;border-left: 6px solid var(--choy-color-foreground);transition: transform 0.12s ease;cursor: pointer;
-}
-.choy-group-cell__caret.expanded {
-  transform: rotate(90deg);
-}
-.choy-group-cell__label {
-  font-weight: 500;color: var(--choy-color-foreground);max-width: 100%;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;
-}
-.choy-group-cell__count {
-  color: var(--choy-color-muted-foreground);
-}
-.choy-more-cell {
-  width: 100%;text-align: center;color: var(--choy-color-foreground);cursor: pointer;padding: 6px 0;
-}
-</style>

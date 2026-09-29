@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-search-filter">
+  <div class="choy-search-filter flex flex-col gap-4">
     <!-- Root group rendered recursively. -->
     <SearchFilterGroup
       :group="draft.root"
@@ -19,12 +19,12 @@ SPDX-License-Identifier: Apache-2.0
       :on-remove-group="onRemoveGroup"
     />
 
-    <div class="choy-search-filter__footer">
-      <div class="choy-search-filter__preview">
-        <span class="label">{{ _t('Preview (%s):', leafCount) }}</span>
-        <span class="expr">{{ preview }}</span>
+    <div class="choy-search-filter__footer flex flex-col gap-3 border-t border-border pt-3">
+      <div class="choy-search-filter__preview flex gap-1.5 text-xs">
+        <span class="label text-muted-foreground">{{ _t('Preview (%s):', leafCount) }}</span>
+        <span class="expr break-all">{{ preview }}</span>
       </div>
-      <div class="choy-search-filter__actions">
+      <div class="choy-search-filter__actions flex justify-end gap-2">
         <ChoyButton class="btn" @click="$emit('cancel')">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton class="btn" @click="$emit('confirm')">{{ _t('Confirm') }}</ChoyButton>
       </div>
@@ -153,23 +153,3 @@ const { preview, leafCount } = (() => {
 })();
 </script>
 
-<style scoped>
-.choy-search-filter {
-  display: flex;flex-direction: column;gap: 16px;
-}
-.choy-search-filter__footer {
-  display: flex;flex-direction: column;gap: 12px;border-top: 1px solid var(--choy-color-border);padding-top: 12px;
-}
-.choy-search-filter__preview {
-  font-size: 12px;display: flex;gap: 6px;
-}
-.choy-search-filter__preview .label {
-  color: var(--choy-color-muted-foreground);
-}
-.choy-search-filter__preview .expr {
-  word-break: break-all;
-}
-.choy-search-filter__actions {
-  display: flex;justify-content: flex-end;gap: 8px;
-}
-</style>

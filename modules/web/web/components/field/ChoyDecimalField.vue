@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Display: fixed scale pads; free decimals keep significant digits -->
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text choy-field-display-text--end">{{
+      <span class="choy-field-display-text truncate whitespace-nowrap px-[11px] leading-8 text-foreground inline-block max-w-full text-right">{{
         toDisplayText(resolveDisplayValue(fieldValue().value, record().value), () => resolveFixedScaleFrom(record().value))
       }}</span>
     </template>
@@ -409,7 +409,7 @@ const ODecimalCell = defineComponent({
     return () =>
       h('input', {
         ...attrs,
-        class: 'choy-input choy-decimal-input',
+        class: 'choy-input choy-decimal-input w-full text-right',
         value: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',
@@ -490,9 +490,3 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
-<style scoped>
-.choy-decimal-input {
-  width: 100%;
-  text-align: right;
-}
-</style>

@@ -76,7 +76,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Always render the form; busy state is local (no Element Plus v-loading). -->
     <div
-      class="form-view__content relative py-4"
+      class="form-view__content relative py-4 [&_.choy-field-base__label]:min-w-[120px]"
       :class="{ 'form-view__content--busy pointer-events-none opacity-65': loading }"
       :aria-busy="loading || undefined"
     >      <form ref="formRef" @submit.prevent>
@@ -749,8 +749,3 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.form-view__content :deep(.choy-field-base__label) {
-  min-width: 120px;
-}
-</style>

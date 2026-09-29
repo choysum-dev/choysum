@@ -4,10 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="osf-group" :class="group.logic === 'And' ? 'osf-group--and' : 'osf-group--or'">
-    <div class="osf-group__header">
-        <div class="osf-group__relation">
-        <span class="osf-group__relation-label">{{ _t('Group relation') }}</span>
+  <div :class="['osf-group', group.logic === 'And' ? 'osf-group--and rounded-md border border-border border-l-[3px] border-l-success p-3 mb-3 transition-colors hover:bg-success-subtle' : 'osf-group--or rounded-md border border-border border-l-[3px] border-l-warning p-3 mb-3 transition-colors hover:bg-warning-subtle']">
+    <div class="osf-group__header flex items-center justify-between">
+        <div class="osf-group__relation flex items-center gap-2">
+        <span :class="group.logic === 'And' ? 'text-success' : 'text-warning'">{{ _t('Group relation') }}</span>
         <div class="rg" role="group" :aria-label="_t('Group relation')">
           <button
             type="button"
@@ -29,16 +29,16 @@ SPDX-License-Identifier: Apache-2.0
           </button>
         </div>
       </div>
-      <div class="osf-group__ops">
+      <div class="osf-group__ops flex gap-2">
         <ChoyButton class="btn" size="sm" @click="onAddCondition(group.tempId || group.id)">+ {{ _t('Add condition') }}</ChoyButton>
         <ChoyButton class="btn" size="sm" @click="onAddGroup(group.tempId || group.id)">+ {{ _t('Add group') }}</ChoyButton>
         <ChoyButton v-if="!isRoot" class="btn" size="sm" variant="destructive" @click="onRemoveGroup(group.tempId || group.id)">{{ _t('Remove group') }}</ChoyButton>
       </div>
     </div>
 
-    <hr border-style="none" class="osf-group__divider" />
+    <hr border-style="none" class="my-2" />
 
-    <div class="osf-group__children">
+    <div class="osf-group__children flex flex-col gap-2.5 ps-1.5">
       <template v-for="ch in group.children" :key="nodeKey(ch)">
         <SearchFilterGroup
           v-if="isDraftGroup(ch)"
@@ -113,43 +113,3 @@ function nodeKey(n: any) {
 }
 </script>
 
-<style scoped>
-.osf-group {
-  border: 1px solid var(--choy-color-border);border-radius: 6px;padding: 12px;margin-bottom: 12px;border-left-width: 3px;border-left-style: solid;transition:
-  background-color 0.15s ease,
-  border-color 0.15s ease;
-}
-.osf-group--and {
-  border-left-color: var(--choy-color-success);
-}
-.osf-group--and:hover {
-  background-color: var(--choy-color-success-subtle);
-}
-.osf-group--or {
-  border-left-color: var(--choy-color-warning);
-}
-.osf-group--or:hover {
-  background-color: var(--choy-color-warning-subtle);
-}
-.osf-group__header {
-  display: flex;align-items: center;justify-content: space-between;
-}
-.osf-group__relation {
-  display: flex;align-items: center;gap: 8px;
-}
-.osf-group--and .osf-group__relation-label {
-  color: var(--choy-color-success);
-}
-.osf-group--or .osf-group__relation-label {
-  color: var(--choy-color-warning);
-}
-.osf-group__ops {
-  display: flex;gap: 8px;
-}
-.osf-group__divider {
-  margin: 8px 0;
-}
-.osf-group__children {
-  display: flex;flex-direction: column;gap: 10px;padding-left: 6px;
-}
-</style>

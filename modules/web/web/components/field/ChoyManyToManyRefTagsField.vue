@@ -18,10 +18,10 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit>
-      <div class="choy-m2m-tags" @keydown="handleKeydown">
-        <div class="choy-m2m-tags--edit-chips">
+      <div class="choy-m2m-tags w-full" @keydown="handleKeydown">
+        <div class="mb-1.5 flex min-h-0 flex-wrap items-center gap-1.5">
           <template v-for="item in editChipItems" :key="item.id">
-            <span class="choy-m2m-tags__chip">
+            <span class="choy-m2m-tags__chip inline-flex items-center">
               <slot
                 name="tag"
                 :item="item.record"
@@ -29,12 +29,12 @@ SPDX-License-Identifier: Apache-2.0
                 :removable="tagClosable"
                 :clickable="false"
               >
-                <span class="choy-m2m-tags__tag">
+                <span class="choy-m2m-tags__tag inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-sm text-foreground transition-colors">
                   {{ item.label }}
                   <button
                     v-if="tagClosable"
                     type="button"
-                    class="choy-m2m-tags__tag-remove"
+                    class="cursor-pointer border-0 bg-transparent p-0 text-sm leading-none text-inherit"
                     :aria-label="_t('Remove')"
                     data-testid="choy-m2m-tag-remove"
                     @click.stop="removeChip(item.id)"
@@ -45,11 +45,11 @@ SPDX-License-Identifier: Apache-2.0
               </slot>
             </span>
           </template>
-          <span v-if="hiddenCount > 0" class="choy-m2m-tags__tag">+{{ hiddenCount }}</span>
+          <span v-if="hiddenCount > 0" class="choy-m2m-tags__tag inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-sm text-foreground transition-colors">+{{ hiddenCount }}</span>
         </div>
         <RelationCombobox
           v-model="addModel"
-          class="choy-m2m-tags__select"
+          class="choy-m2m-tags__select w-full"
           :search="relationSearch"
           :search-key="relationSearchKey"
           :clearable="false"
@@ -61,11 +61,11 @@ SPDX-License-Identifier: Apache-2.0
           @select="onComboboxSelect"
           @search-more="onSearchMore"
         />
-        <div class="choy-m2m-tags__footer">
+        <div class="flex items-center justify-end gap-2 py-1.5">
           <slot name="suffix" />
           <div
             v-if="showNameCreateEntry"
-            class="choy-m2m-tags__more choy-m2m-tags__more--clickable"
+            class="cursor-pointer text-xs text-primary"
             role="button"
             tabindex="0"
             data-testid="choy-m2m-name-create"
@@ -80,26 +80,26 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display>
-      <div class="choy-m2m-tags choy-m2m-tags--display">
+      <div class="choy-m2m-tags choy-m2m-tags--display flex min-h-7 w-full flex-wrap items-center gap-1.5">
         <template v-if="displayItems.length">
           <template v-for="item in displayItems" :key="item.id">
             <span
-              class="choy-m2m-tags__tag-hit"
-              :class="{ 'choy-m2m-tags__tag-hit--clickable': isTagClickable }"
+              class="choy-m2m-tags__tag-hit inline-flex items-center"
+              :class="{ 'choy-m2m-tags__tag-hit--clickable group cursor-pointer': isTagClickable }"
               :role="isTagClickable ? 'button' : undefined"
               :tabindex="isTagClickable ? 0 : undefined"
               @click="onDisplayTagClick(item, $event)"
               @keydown="onDisplayTagKeydown(item, $event)"
             >
               <slot name="tag" :item="item.record" :label="item.label" :removable="false" :clickable="isTagClickable">
-                <span class="choy-m2m-tags__tag" :class="{ 'choy-m2m-tags__tag--primary': isTagClickable }">{{ item.label }}</span>
+                <span class="choy-m2m-tags__tag inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-sm text-foreground transition-colors" :class="{ 'choy-m2m-tags__tag--primary border-primary bg-primary/10 text-primary group-hover:border-primary group-hover:bg-primary/15': isTagClickable }">{{ item.label }}</span>
               </slot>
             </span>
           </template>
-          <span v-if="hiddenCount > 0" class="choy-m2m-tags__tag">+{{ hiddenCount }}</span>
+          <span v-if="hiddenCount > 0" class="choy-m2m-tags__tag inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-sm text-foreground transition-colors">+{{ hiddenCount }}</span>
         </template>
         <slot v-else name="empty">
-          <span class="choy-m2m-tags__empty">{{ _t('None') }}</span>
+          <span class="choy-m2m-tags__empty text-sm text-muted-foreground">{{ _t('None') }}</span>
         </slot>
       </div>
     </template>
@@ -464,7 +464,7 @@ function highlightSuggestion(label: string): string {
   let out = '';
   while (pos >= 0) {
     out += escapeHtml(raw.slice(cursor, pos));
-    out += `<span class="choy-m2m-tags__suggestion-hit">${escapeHtml(raw.slice(pos, pos + needle.length))}</span>`;
+    out += `<span class="choy-m2m-tags__suggestion-hit text-primary">${escapeHtml(raw.slice(pos, pos + needle.length))}</span>`;
     cursor = pos + needle.length;
     pos = lower.indexOf(needle, cursor);
   }
@@ -688,108 +688,3 @@ defineSlots<{
 }>();
 </script>
 
-<style scoped>
-.choy-m2m-tags {
-  width: 100%;
-}
-
-.choy-m2m-tags__select {
-  width: 100%;
-}
-
-.choy-m2m-tags--edit-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 6px;
-  min-height: 0;
-  align-items: center;
-}
-
-.choy-m2m-tags--display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 28px;
-  align-items: center;
-}
-
-.choy-m2m-tags__chip {
-  display: inline-flex;
-  align-items: center;
-}
-
-.choy-m2m-tags__tag-hit {
-  display: inline-flex;
-  align-items: center;
-}
-
-.choy-m2m-tags__tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border: 1px solid var(--choy-color-border);
-  border-radius: var(--choy-radius-sm, 0.25rem);
-  font-size: var(--choy-font-size-sm, 0.875rem);
-  background: var(--choy-color-muted);
-  color: var(--choy-color-foreground);
-  transition:
-    color 0.16s ease,
-    border-color 0.16s ease,
-    background-color 0.16s ease;
-}
-
-.choy-m2m-tags__tag-remove {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0 2px;
-}
-
-.choy-m2m-tags__tag--primary {
-  border-color: var(--choy-color-primary);
-  color: var(--choy-color-primary);
-  background: color-mix(in oklab, var(--choy-color-primary) 12%, white);
-}
-
-.choy-m2m-tags__tag-hit--clickable {
-  cursor: pointer;
-}
-
-.choy-m2m-tags__tag-hit--clickable:hover .choy-m2m-tags__tag {
-  color: var(--choy-color-primary);
-  border-color: var(--choy-color-primary);
-  background-color: color-mix(in oklab, var(--choy-color-primary) 18%, white);
-}
-
-.choy-m2m-tags__empty {
-  color: var(--choy-color-info);
-  font-size: 12px;
-}
-
-.choy-m2m-tags__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 6px 0;
-}
-
-.choy-m2m-tags__more {
-  font-size: 12px;
-  color: var(--choy-color-primary);
-}
-
-.choy-m2m-tags__more--clickable {
-  cursor: pointer;
-}
-
-.choy-m2m-tags__suggestion-hit {
-  color: var(--choy-color-primary);
-  font-weight: 600;
-}
-</style>

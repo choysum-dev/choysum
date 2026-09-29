@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <div class="choy-textfield-display">{{ toDisplayText(fieldValue().value) }}</div>
+      <div class="choy-textfield-display whitespace-pre-wrap break-words px-[11px] text-foreground leading-8">{{ toDisplayText(fieldValue().value) }}</div>
     </template>
   </FieldBase>
 </template>
@@ -184,7 +184,7 @@ const OTextCell = defineComponent({
     return () =>
       h('textarea', {
         ...attrs,
-        class: 'choy-textarea',
+        class: 'choy-textarea w-full',
         placeholder: p.placeholder,
         rows: p.rows ?? 3,
         maxlength: p.maxlength,
@@ -212,11 +212,3 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 
-<style scoped>
-.choy-textarea {
-  width: 100%;
-}
-.choy-textfield-display {
-  white-space: pre-wrap;word-break: break-word;line-height: var(--choy-component-size-base, 32px);color: var(--choy-color-foreground);padding: 0 11px;
-}
-</style>

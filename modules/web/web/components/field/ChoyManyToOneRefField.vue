@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit="{ fieldValue, record }">
-      <div class="choy-many-to-one-select" :style="{ width: width || '100%' }">
+      <div class="w-full" :style="{ width: width || '100%' }">
         <RelationCombobox
           :model-value="comboboxId(fieldValue().value)"
           :selected-option="selectedOptionFor(fieldValue().value)"
@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
         />
         <div
           v-if="showNameCreateEntry"
-          class="choy-m2o__more choy-m2o__more--clickable"
+          class="choy-m2o__more choy-m2o__more--clickable block w-full cursor-pointer select-none bg-transparent px-3 py-1.5 text-primary transition-colors hover:bg-muted active:bg-muted focus:outline-none focus-visible:rounded-sm focus-visible:shadow-[inset_0_0_0_2px_var(--choy-color-primary-muted)]"
           role="button"
           tabindex="0"
           data-testid="choy-m2o-name-create"
@@ -50,8 +50,8 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <template #display="{ fieldValue }">
       <span
-        class="choy-field-display-text choy-field-display-text--wrap"
-        :class="{ 'choy-field-display-text--clickable': isValueClickable }"
+        class="choy-field-display-text break-all whitespace-normal p-0 leading-[inherit] text-foreground"
+        :class="{ 'choy-field-display-text--clickable cursor-pointer text-primary transition-colors hover:text-primary-dark focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-muted': isValueClickable }"
         :role="isValueClickable ? 'button' : undefined"
         :tabindex="isValueClickable ? 0 : undefined"
         @click="onDisplayValueClick(fieldValue().value as any, $event)"
@@ -625,11 +625,3 @@ async function confirmPick() {
 }
 </script>
 
-<style scoped>
-.choy-form-field {
-  margin-bottom: var(--choy-form-field-margin-bottom, 18px);
-}
-.choy-many-to-one-select {
-  width: 100%;
-}
-</style>

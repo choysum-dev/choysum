@@ -57,8 +57,8 @@ SPDX-License-Identifier: Apache-2.0
 
       <template #card="{ card }">
         <div
-          class="token-card flex flex-col gap-1.5 text-xs"
-          :class="{ revoked: isRevokedCard(card) }"
+          class="flex cursor-grab flex-col gap-1.5 text-xs"
+          :class="{ 'opacity-90': isRevokedCard(card) }"
           @dblclick.stop="openDetailFromCard(card)"
         >
           <div class="top-row flex items-center justify-between gap-3">
@@ -209,7 +209,10 @@ function tokenTypeLabel(card: ChoyKanbanCard): string {
 }
 
 function tokenTypeClass(card: ChoyKanbanCard): string {
-  return String(payloadOf(card).TokenType ?? '').toLowerCase();
+  const kind = String(payloadOf(card).TokenType ?? '').toLowerCase();
+  if (kind === 'access') return 'bg-primary/15 text-primary';
+  if (kind === 'refresh') return 'bg-success/15 text-success';
+  return 'bg-foreground/10 text-foreground';
 }
 
 function usernameLabel(card: ChoyKanbanCard): string {
@@ -245,20 +248,3 @@ function formatDate(dt: unknown): string {
 }
 </script>
 
-<style scoped>
-.token-card {
-  cursor: grab;
-}
-.token-card.revoked {
-  opacity: 0.9;
-}
-.token-type.access {
-  color: #2563eb;background: rgba(37, 99, 235, 0.12);
-}
-.token-type.refresh {
-  color: #16a34a;background: rgba(22, 163, 74, 0.12);
-}
-.token-type:not(.access):not(.refresh) {
-  background: color-mix(in oklab, var(--foreground, currentColor) 8%, transparent);
-}
-</style>

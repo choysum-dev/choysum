@@ -40,10 +40,10 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue, inputName, inputId }">
-      <div class="choy-bool-editor">
+      <div class="choy-bool-editor inline-flex items-center gap-2 px-[11px]">
         <input
           type="checkbox"
-          class="choy-bool-input"
+          class="align-middle"
           :name="inputName"
           :id="inputId"
           :checked="fieldValue().value === true"
@@ -221,12 +221,12 @@ const OBooleanCell = defineComponent({
     return () => {
       const checked = buffer.editingValue.value === true;
       const indeterminate = buffer.editingValue.value === null && !(p.nullAsFalse || !p.nullable);
-      return h('div', { class: 'choy-bool-editor' }, [
+      return h('div', { class: 'choy-bool-editor inline-flex items-center gap-2 px-[11px]' }, [
         h('input', {
           ...(p.widget === 'checkbox' ? (p.checkboxProps as any) : (p.switchProps as any)),
           ...attrs,
           type: 'checkbox',
-          class: 'choy-bool-input',
+          class: 'choy-bool-input align-middle',
           name: p.inputName,
           id: p.inputId,
           checked,
@@ -238,7 +238,7 @@ const OBooleanCell = defineComponent({
               'button',
               {
                 type: 'button',
-                class: 'choy-clear-btn',
+                class: 'choy-clear-btn p-0',
                 onClick: () => {
                   if (buffer.editingValue.value !== null) {
                     buffer.setEditing(null);
@@ -255,17 +255,3 @@ const OBooleanCell = defineComponent({
 });
 </script>
 
-<style scoped>
-.choy-bool-editor {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 11px;
-}
-.choy-bool-input {
-  vertical-align: middle;
-}
-.choy-clear-btn {
-  padding: 0;
-}
-</style>

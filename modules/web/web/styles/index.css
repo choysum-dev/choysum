@@ -8,7 +8,6 @@
 @import './variables.css';
 @import './transitions.css';
 @import './a11y.css';
-@import './field-display.css';
 
 html {
   box-sizing: border-box;

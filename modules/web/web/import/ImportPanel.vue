@@ -13,27 +13,27 @@ SPDX-License-Identifier: Apache-2.0
         <li :class="{ active: step === 2 }">{{ importStepTitle }}</li>
       </ol>
 
-      <section v-if="step === 0" class="import-panel-section">
-        <p class="import-panel-hint">{{ resolvedUploadHint }}</p>
-        <p v-if="defaultFieldsHint" class="import-panel-hint" data-test="import-default-fields">{{ defaultFieldsHint }}</p>
-        <div v-if="catalogError" role="alert" class="import-panel-alert">{{ catalogError }}</div>
-        <label class="import-upload">
+      <section v-if="step === 0" class="min-h-[180px]">
+        <p class="mb-3 text-muted-foreground">{{ resolvedUploadHint }}</p>
+        <p v-if="defaultFieldsHint" class="mb-3 text-muted-foreground" data-test="import-default-fields">{{ defaultFieldsHint }}</p>
+        <div v-if="catalogError" role="alert" class="mt-3">{{ catalogError }}</div>
+        <label class="block">
           <input type="file" accept=".csv,text/csv" @change="onNativeFile" />
           <div>{{ uploadDropText }}</div>
         </label>
       </section>
 
-      <section v-else-if="step === 1" class="import-panel-section">
-        <p class="import-panel-hint">{{ mappingHint }}</p>
-        <div v-for="row in mappingRows" :key="row.header" class="import-panel-map-row">
+      <section v-else-if="step === 1" class="min-h-[180px]">
+        <p class="mb-3 text-muted-foreground">{{ mappingHint }}</p>
+        <div v-for="row in mappingRows" :key="row.header" class="mb-2 grid grid-cols-[minmax(120px,1fr)_minmax(180px,1.4fr)] items-center gap-2">
           <span>{{ row.header }}</span>
           <select v-model="row.fieldPath" @change="onMappingChange">
             <option value="">{{ sameAsHeaderLabel }}</option>
             <option v-for="f in catalogOptions" :key="f.path" :value="f.path">{{ f.label }}</option>
           </select>
         </div>
-        <div v-if="previewReport" role="alert" class="import-panel-alert">{{ previewSummary }}</div>
-        <table v-if="previewMessages.length" class="import-panel-table">
+        <div v-if="previewReport" role="alert" class="mt-3">{{ previewSummary }}</div>
+        <table v-if="previewMessages.length" class="mt-3">
           <thead>
             <tr>
               <th>{{ rowLabel }}</th>
@@ -53,15 +53,15 @@ SPDX-License-Identifier: Apache-2.0
         </table>
       </section>
 
-      <section v-else class="import-panel-section">
-        <div v-if="importDone" class="import-panel-success">
+      <section v-else class="min-h-[180px]">
+        <div v-if="importDone" class="text-success">
           <strong>{{ importSuccessTitle }}</strong>
           <p>{{ importSuccessSubtitle }}</p>
         </div>
-        <div v-else-if="importError" role="alert" class="import-panel-alert">{{ importError }}</div>
+        <div v-else-if="importError" role="alert" class="mt-3">{{ importError }}</div>
       </section>
 
-      <div class="import-panel-footer">
+      <div class="mt-4 flex justify-end gap-2">
         <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
         <ChoyButton
           v-if="step === 0"
@@ -446,51 +446,3 @@ watch(visible, value => {
 });
 </script>
 
-<style scoped>
-.import-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.import-panel-section {
-  min-height: 180px;
-}
-
-.import-panel-hint {
-  margin: 0 0 12px;
-  color: var(--choy-color-muted-foreground);
-}
-
-.import-panel-table {
-  margin-top: 12px;
-}
-
-.import-panel-alert {
-  margin-top: 12px;
-}
-
-.import-mapping {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.import-mapping__row {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.4fr);
-  gap: 8px;
-  align-items: center;
-}
-
-.import-mapping__header {
-  font-size: 13px;
-  word-break: break-all;
-}
-
-.import-mapping__select {
-  width: 100%;
-}
-</style>

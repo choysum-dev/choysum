@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
   <Dialog v-model:open="visible">
     <DialogContent class="choy-field-company-values-dialog max-w-xl" @open-auto-focus.prevent>
       <DialogTitle>{{ dialogTitle }}</DialogTitle>
-      <div class="choy-field-company-values-dialog__body" :aria-busy="loading || undefined">
-        <form class="choy-field-company-values-dialog__form" @submit.prevent>
-          <div v-for="row in rows" :key="row.companyId" class="choy-field-company-values-dialog__row">
-            <label class="choy-field-company-values-dialog__label">{{ row.label }}</label>
-            <div class="choy-field-company-values-dialog__control">
+      <div class="choy-field-company-values-dialog__body min-h-[120px]" :aria-busy="loading || undefined">
+        <form class="choy-field-company-values-dialog__form flex flex-col gap-3.5" @submit.prevent>
+          <div v-for="row in rows" :key="row.companyId" class="choy-field-company-values-dialog__row flex items-start gap-3">
+            <label class="choy-field-company-values-dialog__label min-w-28 shrink-0 text-left leading-8 text-foreground">{{ row.label }}</label>
+            <div class="choy-field-company-values-dialog__control min-w-0 flex-1">
               <input
                 v-model="row.value"
-                class="choy-field-company-values-dialog__input"
+                class="choy-field-company-values-dialog__input min-h-8 w-full rounded-md border border-border bg-background px-2.5 py-1 text-foreground"
                 :maxlength="maxLength ?? undefined"
               />
               
@@ -304,38 +304,3 @@ async function handleSave() {
 }
 </script>
 
-<style scoped>
-.choy-field-company-values-dialog__body {
-  min-height: 120px;
-}
-.choy-field-company-values-dialog__form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.choy-field-company-values-dialog__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.choy-field-company-values-dialog__label {
-  flex: 0 0 auto;
-  min-width: 7rem;
-  line-height: 32px;
-  color: var(--choy-color-foreground);
-  text-align: left;
-}
-.choy-field-company-values-dialog__control {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.choy-field-company-values-dialog__input {
-  width: 100%;
-  min-height: 32px;
-  padding: 4px 10px;
-  border: 1px solid var(--choy-color-border);
-  border-radius: var(--choy-radius-md);
-  background: var(--choy-color-background);
-  color: var(--choy-color-foreground);
-}
-</style>

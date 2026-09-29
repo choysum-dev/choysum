@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
   <Dialog v-model:open="visible">
     <DialogContent class="export-panel-dialog" @open-auto-focus.prevent>
       <DialogTitle>{{ title }}</DialogTitle>
-      <div class="export-panel">
-        <p class="export-panel-scope">{{ scopeSummary }}</p>
+      <div class="flex flex-col gap-3">
+        <p class="m-0 text-foreground">{{ scopeSummary }}</p>
 
         <details class="export-panel-fields" :open="customFieldsOpen.includes('fields')" @toggle="onFieldsToggle">
           <summary>{{ customFieldsLabel }}</summary>
-          <div v-if="templatesEnabled" class="export-panel-templates">
-            <div class="export-panel-template-row">
-              <select v-model="selectedTemplateId" class="export-panel-template-select">
+          <div v-if="templatesEnabled" class="mb-3 flex flex-col gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <select v-model="selectedTemplateId" class="min-w-[220px] flex-[1_1_220px]">
                 <option value="">{{ templateSelectLabel }}</option>
                 <option v-for="item in exportTemplateItems" :key="item.Id" :value="item.Id">
                   {{ item.shared ? `${item.Name} (${sharedTemplateLabel})` : item.Name }}
@@ -23,15 +23,15 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyButton size="sm" variant="outline" :disabled="!selectedTemplateId || busy" @click="applySelectedTemplate">{{ loadTemplateLabel }}</ChoyButton>
               <ChoyButton size="sm" variant="destructive" :disabled="!selectedTemplateCanDelete || busy" @click="deleteSelectedTemplate">{{ deleteTemplateLabel }}</ChoyButton>
             </div>
-            <div class="export-panel-template-row">
-              <input v-model="templateSaveName" :placeholder="templateNameLabel" class="export-panel-template-name" />
+            <div class="flex flex-wrap items-center gap-2">
+              <input v-model="templateSaveName" :placeholder="templateNameLabel" class="min-w-[180px] flex-[1_1_180px]" />
               <label class="inline-flex items-center gap-2">
                 <input type="checkbox" v-model="templateSaveShared" />
                 {{ sharedTemplateLabel }}
               </label>
               <ChoyButton size="sm" variant="outline" :disabled="!canSaveTemplate || busy" @click="saveCurrentTemplate">{{ saveTemplateLabel }}</ChoyButton>
             </div>
-            <p v-if="exportTemplatesLoadError" class="export-panel-hint">{{ exportTemplatesLoadError }}</p>
+            <p v-if="exportTemplatesLoadError" class="m-0 text-muted-foreground">{{ exportTemplatesLoadError }}</p>
           </div>
           <ul v-if="fieldTree.length" class="export-panel-field-list">
             <li v-for="node in flatFieldNodes" :key="node.path">
@@ -41,16 +41,16 @@ SPDX-License-Identifier: Apache-2.0
               </label>
             </li>
           </ul>
-          <p v-else-if="fieldsLoading" class="export-panel-hint">{{ loadingFieldsLabel }}</p>
-          <p v-else class="export-panel-hint">{{ noFieldsLabel }}</p>
+          <p v-else-if="fieldsLoading" class="m-0 text-muted-foreground">{{ loadingFieldsLabel }}</p>
+          <p v-else class="m-0 text-muted-foreground">{{ noFieldsLabel }}</p>
         </details>
 
-        <div v-if="previewReport" role="alert" class="export-panel-alert">{{ previewSummary }}</div>
+        <div v-if="previewReport" role="alert" class="mt-1">{{ previewSummary }}</div>
         <div v-if="exportDone" class="export-panel-success">
           <strong>{{ exportSuccessTitle }}</strong>
           <p>{{ exportSuccessSubtitle }}</p>
         </div>
-        <div v-else-if="exportError" role="alert" class="export-panel-alert">{{ exportError }}</div>
+        <div v-else-if="exportError" role="alert" class="mt-1">{{ exportError }}</div>
       </div>
 
       <div class="export-panel-footer">
@@ -455,48 +455,3 @@ watch(
 );
 </script>
 
-<style scoped>
-.export-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.export-panel-scope {
-  margin: 0;
-  color: var(--choy-color-foreground);
-}
-
-.export-panel-hint {
-  margin: 0;
-  color: var(--choy-color-muted-foreground);
-}
-
-.export-panel-templates {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.export-panel-template-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.export-panel-template-select {
-  min-width: 220px;
-  flex: 1 1 220px;
-}
-
-.export-panel-template-name {
-  min-width: 180px;
-  flex: 1 1 180px;
-}
-
-.export-panel-alert {
-  margin-top: 4px;
-}
-</style>

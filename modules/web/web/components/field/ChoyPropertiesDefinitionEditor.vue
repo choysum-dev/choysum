@@ -4,8 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-properties-definition-editor" data-testid="choy-properties-definition-editor">
-    <div class="choy-properties-definition-editor__toolbar">
+  <div class="flex w-full flex-col gap-2" data-testid="choy-properties-definition-editor">
+    <div class="flex flex-wrap items-center gap-2">
       <ChoyButton
         size="sm"
         :disabled="readonly || saving || loading || !canSave"
@@ -17,22 +17,22 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyButton size="sm" :disabled="readonly || saving || loading" data-testid="choy-properties-definition-add" @click="onAdd">
         {{ _t('Add property') }}
       </ChoyButton>
-      <span v-if="loadError" class="choy-properties-definition-editor__error" data-testid="choy-properties-definition-error">
+      <span v-if="loadError" class="text-[13px] text-danger" data-testid="choy-properties-definition-error">
         {{ loadError }}
       </span>
-      <span v-else-if="saveError" class="choy-properties-definition-editor__error" data-testid="choy-properties-definition-save-error">
+      <span v-else-if="saveError" class="text-[13px] text-danger" data-testid="choy-properties-definition-save-error">
         {{ saveError }}
       </span>
     </div>
 
-    <div v-if="!drafts.length" class="choy-properties-definition-editor__empty" data-testid="choy-properties-definition-empty">
+    <div v-if="!drafts.length" class="text-[13px] text-muted-foreground" data-testid="choy-properties-definition-empty">
       {{ _t('No properties defined') }}
     </div>
 
     <div
       v-for="(item, index) in drafts"
       :key="index"
-      class="choy-properties-definition-editor__row"
+      class="grid grid-cols-[minmax(80px,1fr)_110px_minmax(80px,1fr)_minmax(80px,1fr)_auto_minmax(120px,1.4fr)_auto] items-start gap-1.5"
       :data-index="index"
     >
       <input
@@ -68,7 +68,7 @@ SPDX-License-Identifier: Apache-2.0
       <textarea
         v-if="item.type === 'selection'"
         v-model="item.selectionText"
-        class="choy-properties-definition-editor__selection"
+        class="min-h-[4.5em] w-full resize-y font-[inherit]"
         rows="3"
         :disabled="readonly"
         :placeholder="_t('Selection JSON')"
@@ -277,26 +277,3 @@ watch(
 defineExpose({ reload, drafts, definitionId });
 </script>
 
-<style scoped>
-.choy-properties-definition-editor {
-  display: flex;flex-direction: column;gap: 8px;width: 100%;
-}
-.choy-properties-definition-editor__toolbar {
-  display: flex;flex-wrap: wrap;gap: 8px;align-items: center;
-}
-.choy-properties-definition-editor__row {
-  display: grid;grid-template-columns: minmax(80px, 1fr) 110px minmax(80px, 1fr) minmax(80px, 1fr) auto minmax(120px, 1.4fr) auto;gap: 6px;align-items: start;
-}
-.choy-properties-definition-editor__selection {
-  width: 100%;
-  min-height: 4.5em;
-  resize: vertical;
-  font: inherit;
-}
-.choy-properties-definition-editor__empty {
-  color: var(--choy-color-muted-foreground);font-size: 13px;
-}
-.choy-properties-definition-editor__error {
-  color: var(--choy-color-danger);font-size: 13px;
-}
-</style>

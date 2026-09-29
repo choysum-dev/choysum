@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyDateCell :field-value="fieldValue" :options="bufferOptions" :display-format="displayFormat" :picker-props="datePickerProps" v-bind="$attrs" />
     </template>
     <template #display="{ fieldValue }">
-      <span class="choy-field-display-text">{{ toDisplayText(fieldValue().value) }}</span>
+      <span class="choy-field-display-text truncate whitespace-nowrap px-[11px] leading-8 text-foreground">{{ toDisplayText(fieldValue().value) }}</span>
     </template>
   </FieldBase>
 </template>
@@ -209,7 +209,7 @@ const ChoyDateCell = defineComponent({
         ...attrs,
         ...(p.pickerProps || {}),
         type: 'date',
-        class: 'choy-date-picker',
+        class: 'choy-date-picker w-full',
         value,
         onInput: (e: Event) => {
           const raw = (e.target as HTMLInputElement).value;
@@ -222,8 +222,3 @@ const ChoyDateCell = defineComponent({
 });
 </script>
 
-<style scoped>
-.choy-date-picker {
-  width: 100%;
-}
-</style>

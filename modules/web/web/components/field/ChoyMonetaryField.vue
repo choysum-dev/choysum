@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue, record }">
-      <span class="choy-field-display-text choy-field-display-text--end">{{
+      <span class="choy-field-display-text truncate whitespace-nowrap px-[11px] leading-8 text-foreground inline-block max-w-full text-right">{{
         toDisplayText(
           resolveDisplayValue(fieldValue().value, record().value),
           () => resolveScaleFrom(record().value),
@@ -311,7 +311,7 @@ const OMonetaryCell = defineComponent({
     return () =>
       h('input', {
         ...attrs,
-        class: 'choy-input choy-monetary-input',
+        class: 'choy-input choy-monetary-input w-full text-right',
         value: editingRaw.value ?? '',
         placeholder: p.placeholder,
         inputmode: 'decimal',
@@ -342,9 +342,3 @@ const internalRule = {
 const mergedRules = computed<RuleItem[]>(() => [...props.rules, internalRule]);
 </script>
 
-<style scoped>
-.choy-monetary-input {
-  width: 100%;
-  text-align: right;
-}
-</style>

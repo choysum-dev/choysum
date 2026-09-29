@@ -19,10 +19,10 @@ SPDX-License-Identifier: Apache-2.0
     :showInlineError="showInlineError"
   >
     <template #edit>
-      <div class="choy-m2m-ref-tree" :style="treeBoxStyle">
+      <div class="w-full overflow-auto p-2" :style="treeBoxStyle">
         <RelationTree
           ref="editTreeRef"
-          class="choy-m2m-ref-tree__tree"
+          class="min-h-[120px]"
           node-key="__id"
           :data="treeData"
           :props="treeProps"
@@ -49,10 +49,10 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display>
-      <div class="choy-m2m-ref-tree choy-m2m-ref-tree--readonly" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
+      <div class="w-full overflow-auto p-2 [&_.choy-relation-tree__checkbox]:cursor-default" :style="treeBoxStyle" @click.capture="onDisplayTreeClickCapture">
         <RelationTree
           ref="displayTreeRef"
-          class="choy-m2m-ref-tree__tree"
+          class="min-h-[120px]"
           node-key="__id"
           :data="treeData"
           :props="treeProps"
@@ -607,18 +607,3 @@ watch(
 );
 </script>
 
-<style scoped>
-.choy-m2m-ref-tree {
-  width: 100%;
-  padding: 8px;
-  overflow: auto;
-}
-
-.choy-m2m-ref-tree__tree {
-  min-height: 120px;
-}
-
-.choy-m2m-ref-tree--readonly :deep(.choy-relation-tree__checkbox) {
-  cursor: default;
-}
-</style>

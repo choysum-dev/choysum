@@ -21,24 +21,24 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
   >
     <template #edit="{ fieldValue }">
-      <div v-if="isTableLike" class="choy-properties-summary" data-testid="choy-properties-summary">
+      <div v-if="isTableLike" class="truncate text-[13px] text-foreground" data-testid="choy-properties-summary">
         {{ summaryText(fieldValue().value) }}
       </div>
-      <div v-else class="choy-properties-form" data-testid="choy-properties-form">
-        <div v-if="!renderableItems.length" class="choy-properties-empty" data-testid="choy-properties-empty" />
+      <div v-else class="flex w-full flex-col gap-2" data-testid="choy-properties-form">
+        <div v-if="!renderableItems.length" class="min-h-1" data-testid="choy-properties-empty" />
         <div
           v-for="item in renderableItems"
           :key="item.name"
-          class="choy-properties-item"
+          class="grid grid-cols-[minmax(96px,28%)_1fr] items-center gap-2"
           :data-name="item.name"
           :data-type="item.type"
           :data-readonly="item.readonly ? '1' : '0'"
         >
-          <label class="choy-properties-item__label" :for="controlId(item)">{{ itemLabel(item) }}</label>
+          <label class="text-[13px] text-foreground" :for="controlId(item)">{{ itemLabel(item) }}</label>
           <input
             type="checkbox"
             v-if="item.type === 'boolean'"
-            class="choy-properties-control"
+            class="w-full"
             :id="controlId(item)"
             :checked="asBoolean(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
           />
           <input
             v-else-if="item.type === 'integer' || item.type === 'float'"
-            class="choy-properties-control"
+            class="w-full"
             :id="controlId(item)"
             type="number"
             :value="asNumber(itemValue(fieldValue().value, item)) ?? ''"
@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
           />
           <textarea
             v-else-if="item.type === 'text'"
-            class="choy-properties-control"
+            class="w-full"
             :id="controlId(item)"
             rows="3"
             :value="asString(itemValue(fieldValue().value, item))"
@@ -65,7 +65,7 @@ SPDX-License-Identifier: Apache-2.0
           ></textarea>
           <input
             v-else-if="item.type === 'date'"
-            class="choy-properties-control"
+            class="w-full"
             :id="controlId(item)"
             type="date"
             :value="dateInputValue(itemValue(fieldValue().value, item))"
@@ -74,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
           />
           <input
             v-else-if="item.type === 'datetime'"
-            class="choy-properties-control"
+            class="w-full"
             :id="controlId(item)"
             type="datetime-local"
             :value="datetimePickerValue(itemValue(fieldValue().value, item))"
@@ -83,7 +83,7 @@ SPDX-License-Identifier: Apache-2.0
           />
           <select
             v-else-if="item.type === 'selection'"
-            class="choy-properties-control"
+            class="w-full"
             :id="controlId(item)"
             :value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
@@ -99,7 +99,7 @@ SPDX-License-Identifier: Apache-2.0
           </select>
           <input
             v-else
-            class="choy-properties-control"
+            class="w-full"
             :id="controlId(item)"
             :value="asString(itemValue(fieldValue().value, item))"
             :disabled="!!item.readonly"
@@ -110,18 +110,18 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template #display="{ fieldValue }">
-      <span v-if="isTableLike" class="choy-properties-summary" data-testid="choy-properties-summary">
+      <span v-if="isTableLike" class="truncate text-[13px] text-foreground" data-testid="choy-properties-summary">
         {{ summaryText(fieldValue().value) }}
       </span>
       <div v-else class="choy-properties-form choy-properties-form--display" data-testid="choy-properties-form">
-        <div v-if="!renderableItems.length" class="choy-properties-empty" data-testid="choy-properties-empty" />
+        <div v-if="!renderableItems.length" class="min-h-1" data-testid="choy-properties-empty" />
         <div
           v-for="item in renderableItems"
           :key="item.name"
           class="choy-properties-item choy-properties-item--display"
           :data-name="item.name"
         >
-          <span class="choy-properties-item__label">{{ itemLabel(item) }}</span>
+          <span class="text-[13px] text-foreground">{{ itemLabel(item) }}</span>
           <span class="choy-properties-item__value">{{ displayItemValue(fieldValue().value, item) }}</span>
         </div>
       </div>
@@ -352,23 +352,3 @@ watch(
 );
 </script>
 
-<style scoped>
-.choy-properties-form {
-  display: flex;flex-direction: column;gap: 8px;width: 100%;
-}
-.choy-properties-item {
-  display: grid;grid-template-columns: minmax(96px, 28%) 1fr;gap: 8px;align-items: center;
-}
-.choy-properties-item__label {
-  color: var(--choy-color-foreground);font-size: 13px;
-}
-.choy-properties-control {
-  width: 100%;
-}
-.choy-properties-summary {
-  font-size: 13px;color: var(--choy-color-foreground);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;
-}
-.choy-properties-empty {
-  min-height: 4px;
-}
-</style>

@@ -4,16 +4,16 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div class="choy-table-host" :style="{ height: tableHeight ? `${tableHeight}px` : undefined }">
+  <div class="flex w-full min-h-0 flex-col" :style="{ height: tableHeight ? `${tableHeight}px` : undefined }">
     <!-- Hidden slot used only for ChoyTableColumn registration. -->
-    <div class="choy-table-host__registrars" aria-hidden="true">
+    <div class="hidden" aria-hidden="true">
       <slot />
     </div>
 
-    <div class="choy-table-host__body" :style="{ height: `${bodyHeight}px` }">
+    <div class="relative min-h-0 flex-1" :style="{ height: `${bodyHeight}px` }">
       <DataTable
         ref="dataTableRef"
-        class="choy-table-host__table"
+        class="h-full"
         :columns="columnDefs"
         :data="rowsAsRecords"
         :row-id="resolveRowId"
@@ -26,14 +26,14 @@ SPDX-License-Identifier: Apache-2.0
         @row-click="onDataTableRowClick"
         @sort-change="onSortChange"
       />
-      <div v-if="!rowsArray.length" class="choy-table-host__empty-wrap">
+      <div v-if="!rowsArray.length" class="pointer-events-none absolute inset-0 flex items-center justify-center">
         <slot name="empty">
-          <div class="choy-table-host__empty">{{ _t('No data') }}</div>
+          <div class="p-6 text-center text-muted-foreground">{{ _t('No data') }}</div>
         </slot>
       </div>
     </div>
 
-    <div v-if="footerHeight" class="choy-table-host__footer" :style="{ height: `${footerHeight}px` }">
+    <div v-if="footerHeight" class="border-t border-border" :style="{ height: `${footerHeight}px` }">
       <slot name="footer" />
     </div>
   </div>
@@ -203,38 +203,3 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.choy-table-host {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  width: 100%;
-}
-.choy-table-host__registrars {
-  display: none;
-}
-.choy-table-host__body {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-.choy-table-host__table {
-  height: 100%;
-}
-.choy-table-host__empty-wrap {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-.choy-table-host__empty {
-  padding: 24px;
-  text-align: center;
-  color: var(--choy-color-muted-foreground, #6b7280);
-}
-.choy-table-host__footer {
-  border-top: 1px solid var(--choy-color-border, #e5e7eb);
-}
-</style>
