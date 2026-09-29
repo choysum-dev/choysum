@@ -5338,8 +5338,9 @@ func TestAppendExactPinsFromPackageJSONSkipsVue(t *testing.T) {
 		t.Fatalf("host vue pins must always apply, got %d opts", len(opts))
 	}
 	r := esmresolver.New(opts...)
+	// No sibling modules/web ⇒ fallback const; domain exact vue must not win.
 	if got := r.BareImportPin("vue"); got != choysummount.VuePackageVersion {
-		t.Fatalf("vue pin = %q want host %q (module vue must not win)", got, choysummount.VuePackageVersion)
+		t.Fatalf("vue pin = %q want fallback %q (domain vue must not win)", got, choysummount.VuePackageVersion)
 	}
 	if got := r.BareImportPin("@vue/runtime-core"); got != choysummount.VuePackageVersion {
 		t.Fatalf("@vue/runtime-core pin = %q want %q", got, choysummount.VuePackageVersion)
@@ -5356,7 +5357,36 @@ func TestAppendExactPinsFromPackageJSONSkipsVue(t *testing.T) {
 		t.Fatalf("expected local-only pin, got %q", r.BareImportPin("local-only"))
 	}
 	if r.BareImportPin("vue") != choysummount.VuePackageVersion {
-		t.Fatalf("host vue must still win, got %q", r.BareImportPin("vue"))
+		t.Fatalf("fallback vue must still win over domain, got %q", r.BareImportPin("vue"))
+	}
+}
+
+func TestAppendExactPinsFromPackageJSONKitVueIsSSOT(t *testing.T) {
+	root := t.TempDir()
+	domain := filepath.Join(root, "partner")
+	kit := filepath.Join(root, "web")
+	for _, dir := range []string{domain, kit} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(kit, "package.json"), []byte(`{"peerDependencies":{"vue":"3.9.9","reka-ui":"2.10.4"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain, "package.json"), []byte(`{"dependencies":{"vue":"1.0.0","local-only":"1.2.3"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	builder := &WebModuleBuilder{module: &meta.Module{Name: "partner", Path: domain}}
+	opts := builder.appendExactPinsFromPackageJSON(nil)
+	r := esmresolver.New(opts...)
+	if got := r.BareImportPin("vue"); got != "3.9.9" {
+		t.Fatalf("kit modules/web exact vue is SSOT, got %q", got)
+	}
+	if got := r.BareImportPin("@vue/runtime-dom"); got != "3.9.9" {
+		t.Fatalf("@vue/* must follow kit vue, got %q", got)
+	}
+	if r.BareImportPin("reka-ui") != "2.10.4" || r.BareImportPin("local-only") != "1.2.3" {
+		t.Fatalf("other exact pins missing: reka=%q local=%q", r.BareImportPin("reka-ui"), r.BareImportPin("local-only"))
 	}
 }
 

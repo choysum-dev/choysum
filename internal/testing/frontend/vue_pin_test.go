@@ -75,9 +75,6 @@ func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pins["vue"] != choysummount.VuePackageVersion {
-		t.Fatalf("vue pin = %q want %q", pins["vue"], choysummount.VuePackageVersion)
-	}
 	want, err := esmresolver.ExactPinsFromPackageJSON(filepath.Join(repoRoot, "modules", "web"))
 	if err != nil {
 		t.Fatal(err)
@@ -85,8 +82,17 @@ func TestVueHostBareImportPinsIncludesWebExactPeers(t *testing.T) {
 	if len(want) == 0 {
 		t.Fatal("expected exact pins in modules/web/package.json")
 	}
+	if want["vue"] == "" {
+		t.Fatal("modules/web must declare exact vue (kit SSOT)")
+	}
+	if pins["vue"] != want["vue"] {
+		t.Fatalf("vue pin = %q want kit package.json %q", pins["vue"], want["vue"])
+	}
+	if pins["@vue/runtime-core"] != want["vue"] {
+		t.Fatalf("@vue/* must follow kit vue %q, got %q", want["vue"], pins["@vue/runtime-core"])
+	}
 	for name, ver := range want {
-		if name == "vue" {
+		if name == "vue" || strings.HasPrefix(name, "@vue/") {
 			continue
 		}
 		if pins[name] != ver {
@@ -101,7 +107,7 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(empty) != 5 || empty["vue"] != choysummount.VuePackageVersion {
-		t.Fatalf("missing web package.json => host vue pins only, got %#v", empty)
+		t.Fatalf("missing web package.json => fallback vue pins only, got %#v", empty)
 	}
 
 	root := t.TempDir()
@@ -122,8 +128,11 @@ func TestVueHostBareImportPinsFallbackAndHostVueWins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pins["vue"] != choysummount.VuePackageVersion {
-		t.Fatalf("host vue must win over package.json, got %q", pins["vue"])
+	if pins["vue"] != "9.9.9" {
+		t.Fatalf("modules/web exact vue is SSOT, got %q", pins["vue"])
+	}
+	if pins["@vue/runtime-core"] != "9.9.9" {
+		t.Fatalf("@vue/* must follow kit vue, got %#v", pins)
 	}
 	if pins["@tanstack/vue-table"] != "8.21.3" {
 		t.Fatalf("expected peer pin, got %#v", pins)

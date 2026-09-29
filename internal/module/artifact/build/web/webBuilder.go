@@ -2291,11 +2291,27 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 	if b == nil || b.module == nil || strings.TrimSpace(b.module.Path) == "" {
 		return opts
 	}
-	// Seed with the host Vue pin so reka-ui / floating-ui peers cannot float a
-	// second runtime (duplicate Vue → renderSlot TypeError reading 'ce').
-	pins := choysummount.VueBareImportPins()
-	mergePins := func(modulePath, logName string) {
-		got, err := esmresolver.ExactPinsFromPackageJSON(modulePath)
+	modulePath := filepath.Clean(strings.TrimSpace(b.module.Path))
+	kitHost := filepath.Join(filepath.Dir(modulePath), "web")
+
+	// Vue SSOT: exact "vue" from modules/web/package.json (kit host). Domain
+	// modules cannot override. Fallback: choysummount.VuePackageVersion.
+	vueSource := modulePath
+	if kitHost != modulePath {
+		vueSource = kitHost
+	}
+	vueVer := choysummount.VuePackageVersion
+	if kitPins, err := esmresolver.ExactPinsFromPackageJSON(vueSource); err != nil {
+		if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
+			b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", vueSource, "error", err)
+		}
+	} else if v := kitPins["vue"]; v != "" {
+		vueVer = v
+	}
+	pins := choysummount.VueBareImportPinsFor(vueVer)
+
+	mergePins := func(modPath, logName string) {
+		got, err := esmresolver.ExactPinsFromPackageJSON(modPath)
 		if err != nil {
 			if b.runtimeScope != nil && b.runtimeScope.Logger() != nil {
 				b.runtimeScope.Logger().Warn("exact peer pins from package.json unavailable", "module", logName, "error", err)
@@ -2303,8 +2319,7 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 			return
 		}
 		for name, ver := range got {
-			// The embedded host owns the Vue instance; never let a module-level
-			// exact pin override it (mirrors vueHostBareImportPins).
+			// Vue / @vue/* already set from kit SSOT; never let a module override.
 			if name == "vue" || strings.HasPrefix(name, "@vue/") {
 				continue
 			}
@@ -2319,8 +2334,6 @@ func (b *WebModuleBuilder) appendExactPinsFromPackageJSON(opts []esmresolver.Opt
 		}
 	}
 	// Kit host peers first so the built module's own exact pins win on conflict.
-	modulePath := filepath.Clean(strings.TrimSpace(b.module.Path))
-	kitHost := filepath.Join(filepath.Dir(modulePath), "web")
 	if kitHost != modulePath {
 		mergePins(kitHost, kitHost)
 	}
