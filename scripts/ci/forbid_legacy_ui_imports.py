@@ -134,8 +134,13 @@ def iter_scan_files(modules_root: Path) -> list[Path]:
 
 
 def strip_html_comments(text: str) -> str:
-    """Remove HTML/XML comments (non-greedy, DOTALL)."""
-    return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+    """Blank HTML/XML comments in place so character offsets stay aligned with the source."""
+    return re.sub(
+        r"<!--.*?-->",
+        lambda mm: " " * (mm.end() - mm.start()),
+        text,
+        flags=re.DOTALL,
+    )
 
 
 def extract_vue_template_body(text: str) -> str | None:
@@ -174,20 +179,15 @@ def scan_vue_el_tags(path: Path, text: str) -> list[tuple[int, str, str]]:
     body = extract_vue_template_body(text)
     if body is None:
         return []
+    # Comments blanked in place so match offsets still map onto the original body.
     cleaned = strip_html_comments(body)
-    # Map cleaned offsets back approximately via original body search of the tag text.
     hits: list[tuple[int, str, str]] = []
     # Locate the template body start in the original file for accurate line numbers.
     open_re = re.compile(r"<template\b[^>]*>", re.IGNORECASE)
     m = open_re.search(text)
     body_start = m.end() if m else 0
     for match in EL_TAG_RE.finditer(cleaned):
-        tag = match.group(1)
-        # Prefer the first occurrence of this exact open-tag snippet in the raw body.
-        snippet = match.group(0)
-        rel = body.find(snippet)
-        abs_index = body_start + rel if rel >= 0 else body_start + match.start()
-        hits.append((line_number_at(text, abs_index), tag, "el-tag"))
+        hits.append((line_number_at(text, body_start + match.start()), match.group(1), "el-tag"))
     return hits
 
 

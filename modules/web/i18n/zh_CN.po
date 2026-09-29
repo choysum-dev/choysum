@@ -121,7 +121,7 @@ msgctxt "web/components/field/BigintField"
 msgid "Must not be less than %s"
 msgstr "不得小于 %s"
 
-#: web/components/field/ChoyBinaryField.vue:82
+#: web/components/field/ChoyBinaryField.vue:83
 msgctxt "web/components/field/BinaryField"
 msgid "Drop file here or click to upload"
 msgstr "拖放文件到此处，或点击上传"
@@ -131,12 +131,17 @@ msgctxt "web/components/field/BinaryField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyBinaryField.vue:88
+#: web/components/field/ChoyBinaryField.vue:89
 msgctxt "web/components/field/BinaryField"
 msgid "Replace file"
 msgstr "替换文件"
 
-#: web/components/field/ChoyBinaryField.vue:81
+#: web/components/field/ChoyBinaryField.vue:215
+msgctxt "web/components/field/BinaryField"
+msgid "Selected file type is not allowed."
+msgstr "不允许所选文件类型。"
+
+#: web/components/field/ChoyBinaryField.vue:82
 msgctxt "web/components/field/BinaryField"
 msgid "Upload file"
 msgstr "上传文件"
@@ -641,7 +646,7 @@ msgctxt "web/components/field/PropertiesDefinitionEditor"
 msgid "PropertyDefinition store is unavailable"
 msgstr "PropertyDefinition 存储不可用"
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:32
+#: web/components/field/ChoyPropertiesDefinitionEditor.vue:31
 msgctxt "web/components/field/PropertiesDefinitionEditor"
 msgid "Remove"
 msgstr "移除"

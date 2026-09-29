@@ -127,7 +127,7 @@ msgctxt "web/components/field/BigintField"
 msgid "Must not be less than %s"
 msgstr ""
 
-#: web/components/field/ChoyBinaryField.vue:82
+#: web/components/field/ChoyBinaryField.vue:83
 msgctxt "web/components/field/BinaryField"
 msgid "Drop file here or click to upload"
 msgstr ""
@@ -137,12 +137,17 @@ msgctxt "web/components/field/BinaryField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/ChoyBinaryField.vue:88
+#: web/components/field/ChoyBinaryField.vue:89
 msgctxt "web/components/field/BinaryField"
 msgid "Replace file"
 msgstr ""
 
-#: web/components/field/ChoyBinaryField.vue:81
+#: web/components/field/ChoyBinaryField.vue:215
+msgctxt "web/components/field/BinaryField"
+msgid "Selected file type is not allowed."
+msgstr ""
+
+#: web/components/field/ChoyBinaryField.vue:82
 msgctxt "web/components/field/BinaryField"
 msgid "Upload file"
 msgstr ""
@@ -656,7 +661,7 @@ msgctxt "web/components/field/PropertiesDefinitionEditor"
 msgid "PropertyDefinition store is unavailable"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionEditor.vue:32
+#: web/components/field/ChoyPropertiesDefinitionEditor.vue:31
 msgctxt "web/components/field/PropertiesDefinitionEditor"
 msgid "Remove"
 msgstr ""

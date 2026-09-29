@@ -403,7 +403,7 @@ async function applySelectedImage(file: UploadRawFile, fieldValue: ValueRefGette
     return;
   }
   const valueRef = fieldValue();
-  revokeBlobPreview(valueRef.value);
+  // Local previews are data: URLs; any blob: URL in the value is host-owned and must not be revoked here.
   const previewUrl = await createLocalPreview(file);
   const fileName = normalizeOptionalString(file.name);
   const contentType = normalizeOptionalString(file.type);
@@ -463,7 +463,7 @@ async function onNativeFileDrop(
 
 async function removeImage(fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
   const valueRef = fieldValue();
-  revokeBlobPreview(valueRef.value);
+  // Do not revoke blob: previews — createLocalPreview uses data: URLs; blob: values are host-owned.
   valueRef.value = null;
   if (typeof onFieldChange === 'function') {
     await onFieldChange();

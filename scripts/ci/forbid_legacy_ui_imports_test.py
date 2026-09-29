@@ -177,6 +177,19 @@ class ForbidLegacyUiImportsTest(unittest.TestCase):
             self.assertEqual(len(violations), 2)
             self.assertTrue(all(v[3] == "el-tag" for v in violations))
 
+    def test_scan_vue_el_tags_line_maps_past_comments(self):
+        """Commented-out el-* must not steal the line number of a later live tag."""
+        mod = load_mod()
+        text = (
+            "<template>\n"
+            "  <!-- <el-select /> -->\n"
+            "  <el-select multiple />\n"
+            "</template>\n"
+            "<script setup>const x = 1;</script>\n"
+        )
+        hits = mod.scan_vue_el_tags(pathlib.Path("x.vue"), text)
+        self.assertEqual([(h[0], h[1]) for h in hits], [(3, "el-select")])
+
     def test_extract_vue_template_nested_slot_templates(self):
         mod = load_mod()
         text = (

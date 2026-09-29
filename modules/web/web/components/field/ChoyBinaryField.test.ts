@@ -4,7 +4,8 @@
 import { computed, h, ref } from 'vue';
 
 import type { UseField } from '@/web/web/composables/useField';
-import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { ChoyMessage } from '../../composables/useChoyMessage';
 import BinaryField from './ChoyBinaryField.vue';
 import FieldBase from './FieldBase.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
@@ -386,5 +387,49 @@ describe('BinaryField normalize helpers', () => {
     expect(singleSs.shouldUseDragMode(null)).toBe(true);
     expect(singleSs.shouldShowNativeFileList(null)).toBe(true);
     singleMount.unmount();
+  });
+
+  test('accept allow-list rejects disallowed file types on apply/drop', async () => {
+    installFieldBaseEditStub();
+    installChoyButtonStub();
+    const origError = ChoyMessage.error;
+    const msgError = fnRecorder();
+    ChoyMessage.error = msgError as typeof ChoyMessage.error;
+    const binding = makeBinding({ value: null });
+    const m = mountApp(BinaryField as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        accept: '.pdf,application/pdf',
+      },
+    });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    expect(ss.isAcceptAllowed(new File([new Uint8Array([1])], 'ok.pdf', { type: 'application/pdf' }))).toBe(true);
+    expect(ss.isAcceptAllowed(new File([new Uint8Array([1])], 'no.txt', { type: 'text/plain' }))).toBe(false);
+
+    await ss.applySelectedBinary(
+      new File([new Uint8Array([1])], 'no.txt', { type: 'text/plain' }),
+      () => binding.fieldRef(),
+    );
+    expect(binding.fieldRef().value).toBeNull();
+    expect(msgError.calls.length).toBeGreaterThanOrEqual(1);
+
+    await ss.onNativeFileDrop(
+      { dataTransfer: { files: [new File([new Uint8Array([1])], 'also.txt', { type: 'text/plain' })] } },
+      () => binding.fieldRef(),
+    );
+    expect(binding.fieldRef().value).toBeNull();
+
+    await ss.applySelectedBinary(
+      new File([new Uint8Array([1])], 'ok.pdf', { type: 'application/pdf' }),
+      () => binding.fieldRef(),
+      async () => {},
+    );
+    expect(binding.fieldRef().value?.fileName).toBe('ok.pdf');
+    m.unmount();
+    ChoyMessage.error = origError;
+    restoreSfc(FieldBase as any);
+    restoreSfc(ChoyButton as any);
   });
 });

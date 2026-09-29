@@ -119,6 +119,7 @@ import { computed } from 'vue';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { FileText, Upload } from 'lucide-vue-next';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import { ChoyMessage } from '../../composables/useChoyMessage';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/BinaryField' });
 
@@ -303,7 +304,26 @@ function isTableRenderMode(renderMode: unknown): boolean {
   return renderMode === 'table';
 }
 
+/** Enforce accept tokens beyond the native input hint (drag/drop and *.ext). */
+function isAcceptAllowed(file: File): boolean {
+  const name = String(file.name || '').toLowerCase();
+  const type = String(file.type || '').toLowerCase();
+  const tokens = accept.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+  const restrictive = tokens.filter(t => t !== '*' && t !== '*/*');
+  if (!restrictive.length) return true;
+  return restrictive.some(token => {
+    if (token.startsWith('*.')) return name.endsWith(token.slice(1));
+    if (token.startsWith('.')) return name.endsWith(token);
+    if (token.endsWith('/*')) return type !== '' && type.startsWith(token.slice(0, -1));
+    return type === token;
+  });
+}
+
 async function applySelectedBinary(file: UploadRawFile, fieldValue: ValueRefGetter, onFieldChange?: OnFieldChange): Promise<void> {
+  if (!isAcceptAllowed(file)) {
+    ChoyMessage.error(_t('Selected file type is not allowed.'));
+    return;
+  }
   const valueRef = fieldValue();
   const fileName = normalizeOptionalString(file.name);
   const contentType = normalizeOptionalString(file.type);
@@ -340,8 +360,8 @@ async function onNativeFileChange(ev: Event, fieldValue: ValueRefGetter, onField
   const input = ev.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
-  await applySelectedBinary(file, fieldValue, onFieldChange);
   input.value = '';
+  await applySelectedBinary(file, fieldValue, onFieldChange);
 }
 
 function onUploadDragOver(ev: DragEvent): void {
