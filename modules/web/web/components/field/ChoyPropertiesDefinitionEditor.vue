@@ -65,17 +65,15 @@ SPDX-License-Identifier: Apache-2.0
         :disabled="readonly"
         data-testid="choy-properties-definition-readonly"
       />
-      <input
+      <textarea
         v-if="item.type === 'selection'"
         v-model="item.selectionText"
-        size="small"
-        type="textarea"
-        :autosize="{ minRows: 1, maxRows: 4 }"
+        class="choy-properties-definition-editor__selection"
+        rows="3"
         :disabled="readonly"
         :placeholder="_t('Selection JSON')"
         data-testid="choy-properties-definition-selection"
-      />
-      <ChoyButton
+      ></textarea>      <ChoyButton
         size="sm"
         variant="destructive"
         :disabled="readonly"
@@ -288,6 +286,12 @@ defineExpose({ reload, drafts, definitionId });
 }
 .choy-properties-definition-editor__row {
   display: grid;grid-template-columns: minmax(80px, 1fr) 110px minmax(80px, 1fr) minmax(80px, 1fr) auto minmax(120px, 1.4fr) auto;gap: 6px;align-items: start;
+}
+.choy-properties-definition-editor__selection {
+  width: 100%;
+  min-height: 4.5em;
+  resize: vertical;
+  font: inherit;
 }
 .choy-properties-definition-editor__empty {
   color: var(--el-text-color-secondary);font-size: 13px;

@@ -8,8 +8,8 @@ SPDX-License-Identifier: Apache-2.0
     <select
       class="w-field"
       :placeholder="_t('Field')"
-      v-model="condition.field"
-      @change="onFieldChange(condition.field)"
+      :value="condition.field"
+      @change="onFieldChange(($event.target as HTMLSelectElement).value)"
     >
       <option v-for="f in fields" :key="f.prop" :label="f.label" :value="f.prop" />
     </select>

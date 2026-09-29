@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { h, defineComponent, inject, ref, computed, type Component } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyPage from '../layout/ChoyPage.vue';
 import ChoyFormView from '../view/ChoyFormView.vue';
@@ -124,6 +125,7 @@ describe('Choy store-mode field hosts', () => {
   ];
 
   beforeEach(() => {
+    setActivePinia(createPinia());
     stubStoreFieldBase();
     stubHost(ChoyFormView as any, 'choy-form');
     stubHost(ListView as any, 'choy-list');

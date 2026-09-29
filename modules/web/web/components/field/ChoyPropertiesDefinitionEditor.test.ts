@@ -164,4 +164,36 @@ describe('ChoyPropertiesDefinitionEditor', () => {
       mounted.unmount();
     }
   });
+
+  test('selection type uses a textarea for Selection JSON', async () => {
+    const Search = fnRecorder(async () => [
+      {
+        Id: 'sel-1',
+        Definition: [{ name: 'prio', type: 'selection', selection: [['low', 'Low'], ['high', 'High']] }],
+      },
+    ]);
+    const store = {
+      Search,
+      UpdateById: fnRecorder(async () => ({})),
+      Create: fnRecorder(async () => ({})),
+    } as any;
+
+    const mounted = mountApp(ChoyPropertiesDefinitionEditor as any, {
+      props: {
+        application: 'partner',
+        targetModel: 'Partner',
+        propertiesField: 'PartnerProperties',
+        store,
+      },
+    });
+    try {
+      await flushPromises();
+      const el = mounted.q('[data-testid="choy-properties-definition-selection"]') as HTMLTextAreaElement | null;
+      expect(el).toBeTruthy();
+      expect(el!.tagName).toBe('TEXTAREA');
+      expect(el!.value).toMatch(/low/);
+    } finally {
+      mounted.unmount();
+    }
+  });
 });

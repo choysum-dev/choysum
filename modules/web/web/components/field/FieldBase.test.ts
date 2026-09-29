@@ -440,4 +440,44 @@ describe('FieldBase list-editing-row-id gate', () => {
     m.unmount();
     expect(validators.size).toBe(0);
   });
+
+  test('client validators stay isolated across same-prop instances', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const bindingA = makeBinding({ string: 'Name' });
+    bindingA.prop = 'Name';
+    bindingA.__value.value = '';
+    const bindingB = makeBinding({ string: 'Name' });
+    bindingB.prop = 'Name';
+    bindingB.__value.value = 'keep';
+    const rules = [
+      {
+        validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+          if (!v) cb(new Error('need value'));
+          else cb();
+        },
+      },
+    ];
+    const mountOne = (binding: any) =>
+      mountApp(FieldBase as any, {
+        props: { binding, renderMode: 'form', rules },
+        provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+        slots: {
+          edit: () => h(EditStub),
+          display: () => h(DisplayStub),
+        },
+      });
+    const a = mountOne(bindingA);
+    const b = mountOne(bindingB);
+    await flushPromises();
+    expect(validators.size).toBe(2);
+    a.unmount();
+    expect(validators.size).toBe(1);
+    const remaining = [...validators.values()][0];
+    expect(await remaining()).toBe('');
+    b.unmount();
+    expect(validators.size).toBe(0);
+  });
 });

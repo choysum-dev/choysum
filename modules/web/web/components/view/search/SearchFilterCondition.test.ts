@@ -182,13 +182,25 @@ describe('SearchFilterCondition', () => {
 
   test('patches field change with first operator and clears value', async () => {
     const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
-    const { unmount, setupState, onUpdateCondition } = mountRow(condition);
+    const { unmount, setupState, onUpdateCondition, q } = mountRow(condition);
     await setupState().onFieldChange('Status');
     expect(onUpdateCondition.calls.length).toBeGreaterThan(0);
     const patch = onUpdateCondition.calls[0]![1] as any;
     expect(patch.field).toBe('Status');
     expect(patch.value).toBeUndefined();
     expect(typeof patch.operator).toBe('string');
+
+    // Controlled <select> dispatches through onFieldChange without mutating the prop in place first.
+    onUpdateCondition.calls.length = 0;
+    condition.field = 'Name';
+    await nextTick();
+    const fieldSelect = q('.w-field') as HTMLSelectElement | null;
+    expect(fieldSelect).toBeTruthy();
+    fieldSelect!.value = 'Status';
+    fieldSelect!.dispatchEvent(new Event('change', { bubbles: true }));
+    await nextTick();
+    expect(onUpdateCondition.calls.length).toBeGreaterThan(0);
+    expect((onUpdateCondition.calls[0]![1] as any).field).toBe('Status');
     unmount();
   });
 

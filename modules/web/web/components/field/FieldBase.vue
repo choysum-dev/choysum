@@ -313,7 +313,7 @@ import type { TermReference } from '@/core/service/i18n';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
-import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, inject, onMounted, onBeforeUnmount, ref, watch, getCurrentInstance } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import {
   FIELD_CLIENT_VALIDATORS_KEY,
@@ -752,21 +752,20 @@ async function evaluateClientRules(): Promise<string> {
   return message;
 }
 
-const clientValidatorKey = computed(() => String(inputName.value || binding.prop || ''));
+/** Per-instance key so list/table mounts of the same prop do not clobber each other. */
+const clientValidatorKey = `field-client-validator:${getCurrentInstance()?.uid ?? Math.random().toString(36).slice(2)}`;
 
 onMounted(() => {
   const map = fieldClientValidators;
-  const key = clientValidatorKey.value;
-  if (map && key) {
-    map.set(key, evaluateClientRules);
+  if (map) {
+    map.set(clientValidatorKey, evaluateClientRules);
   }
 });
 
 onBeforeUnmount(() => {
   const map = fieldClientValidators;
-  const key = clientValidatorKey.value;
-  if (map && key) {
-    map.delete(key);
+  if (map && map.get(clientValidatorKey) === evaluateClientRules) {
+    map.delete(clientValidatorKey);
   }
 });
 

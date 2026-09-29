@@ -109,6 +109,16 @@ describe('FormView handleCopy awaits beginCreate', () => {
     expect(wrapper.root.getViewMode()).toBe('create');
     expect(wrapper.root.isLoading()).toBe(false);
 
+    const content = wrapper.q('.form-view__content') as HTMLElement | null;
+    expect(content).toBeTruthy();
+    expect(content!.getAttribute('aria-busy')).toBeNull();
+    expect(content!.classList.contains('form-view__content--busy')).toBe(false);
+    ss.controller.vm.loading = true;
+    await flushPromises();
+    expect(content!.getAttribute('aria-busy')).toBe('true');
+    expect(content!.classList.contains('form-view__content--busy')).toBe(true);
+    ss.controller.vm.loading = false;
+
     wrapper.unmount();
   });
 

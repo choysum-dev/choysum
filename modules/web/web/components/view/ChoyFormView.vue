@@ -74,9 +74,12 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <!-- Always render the form and rely on v-loading for the overlay. -->
-    <div class="form-view__content" v-loading="loading">
-      <form ref="formRef" @submit.prevent>
+    <!-- Always render the form; busy state is local (no Element Plus v-loading). -->
+    <div
+      class="form-view__content"
+      :class="{ 'form-view__content--busy': loading }"
+      :aria-busy="loading || undefined"
+    >      <form ref="formRef" @submit.prevent>
         <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
       </form>
     </div>
@@ -763,7 +766,12 @@ defineExpose({
   display: flex;align-items: center;justify-content: flex-end;gap: 12px;
 }
 .form-view__content {
+  position: relative;
   padding: 16px 0;
+}
+.form-view__content--busy {
+  pointer-events: none;
+  opacity: 0.65;
 }
 .form-view__content :deep(.el-form-item__label) {
   width: 120px;
