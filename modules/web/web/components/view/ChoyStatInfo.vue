@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <button
     v-if="visible"
     type="button"
-    class="choy-stat-info choy-stat-info"
+    class="choy-stat-info"
     :class="{ 'is-disabled': disabled }"
     :disabled="disabled"
     v-bind="$attrs"

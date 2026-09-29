@@ -116,6 +116,23 @@ class ForbidLegacyUiImportsTest(unittest.TestCase):
             rules = {h[2] for h in hits}
             self.assertEqual(rules, {"element-plus", "echarts"})
 
+    def test_strip_comments_carries_template_literal_across_lines(self):
+        """Closing backtick on a later line must not open a string that hides imports."""
+        mod = load_mod()
+        text = (
+            "const note = `line1\n"
+            "line2`; import { ElButton } from 'element-plus';\n"
+            "import Chart from 'vue-echarts';\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            p = pathlib.Path(tmp) / "x.ts"
+            p.write_text(text, encoding="utf-8")
+            hits = mod.scan_file(p)
+            rules = {h[2] for h in hits}
+            self.assertEqual(rules, {"element-plus", "echarts"})
+            # Both banned imports remain visible after cross-line template strip.
+            self.assertGreaterEqual(len(hits), 2)
+
     def test_scan_export_star_from_banned_modules(self):
         mod = load_mod()
         with tempfile.TemporaryDirectory() as tmp:

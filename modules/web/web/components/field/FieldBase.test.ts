@@ -174,6 +174,10 @@ describe('FieldBase label and help', () => {
     restoreAll();
   });
 
+  test('component options name is FieldBase (not legacy OFieldBase)', () => {
+    expect((FieldBase as any).name || (FieldBase as any).__name).toBe('FieldBase');
+  });
+
   test('omits props.label and shows meta string fallback', () => {
     const m = mountBase({
       binding: makeBinding({ string: 'Access Token ID' }),

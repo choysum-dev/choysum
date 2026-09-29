@@ -104,8 +104,13 @@ const rowsAsRecords = computed(() => rowsArray.value as Record<string, unknown>[
 const baseIndexRef = computed(() => {
   const p = (props.store as any)?.state?.pagination;
   if (p) return (p.currentPage - 1) * p.pageSize + 1;
-  const bi = props.baseIndex as any;
-  return typeof bi === 'number' ? bi : 1;
+  const bi = props.baseIndex;
+  if (typeof bi === 'number') return bi;
+  if (isRef(bi)) {
+    const v = Number(bi.value);
+    return Number.isFinite(v) ? v : 1;
+  }
+  return 1;
 });
 
 useTableProvideBuildContext({

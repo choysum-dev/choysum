@@ -64,6 +64,8 @@ describe('StatInfo', () => {
     expect(q('.choy-stat-info__value')?.textContent).toBe('5');
     expect(q('.choy-stat-info__label')?.textContent).toBe('Users');
     expect(q('.choy-stat-info__icon')).toBeFalsy();
+    const rootClass = q('.choy-stat-info')?.getAttribute('class') || '';
+    expect(rootClass.split(/\s+/).filter(c => c === 'choy-stat-info').length).toBe(1);
     setupState().onClick(new Event('click'));
     expect(onClick.calls.length).toBe(1);
     expect(push.calls.length).toBe(0);

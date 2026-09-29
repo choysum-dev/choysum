@@ -76,10 +76,11 @@ def strip_comments(text: str) -> list[tuple[int, str]]:
     """Return (original_line_no, code) pairs with comments removed, string-aware."""
     lines_out: list[tuple[int, str]] = []
     in_block = False
+    # Only template literals may span source lines; carry that quote across lines.
+    quote: str | None = None
     for i, line in enumerate(text.splitlines(), start=1):
         out: list[str] = []
         j = 0
-        quote: str | None = None
         while j < len(line):
             ch = line[j]
             nxt = line[j + 1] if j + 1 < len(line) else ""
@@ -113,6 +114,9 @@ def strip_comments(text: str) -> list[tuple[int, str]]:
                 continue
             out.append(ch)
             j += 1
+        # A single/double-quoted string never spans a line, so only backticks stay open.
+        if quote in ("'", '"'):
+            quote = None
         lines_out.append((i, "".join(out)))
     return lines_out
 

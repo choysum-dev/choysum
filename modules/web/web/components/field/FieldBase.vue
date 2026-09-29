@@ -334,7 +334,7 @@ export type FormItemProps = Record<string, unknown>;
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
 
-defineOptions({ name: 'OFieldBase' });
+defineOptions({ name: 'FieldBase' });
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/FieldBase' });
 
